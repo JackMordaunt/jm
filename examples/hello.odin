@@ -1,0 +1,53 @@
+#!/usr/bin/env odin-run
+// A script that touches every package. Run it as ./hello.odin once odin-run
+// is installed, or with `just example`.
+package main
+
+import "core:fmt"
+import "core:log"
+import "core:time"
+
+import "jfm:http"
+import "jfm:path"
+import "jfm:prelude"
+import "jfm:sh"
+import "jfm:timefmt"
+
+must :: prelude.must
+die :: prelude.die
+
+main :: proc() {
+	context = prelude.init()
+	log.infof("started at %s", timefmt.local(time.now(), "%H:%M:%S %Z", context.temp_allocator))
+
+	// Shell: a string through the platform shell, or argv without quoting.
+	shell := "cmd" when ODIN_OS == .Windows else "sh"
+	shell_path := must(sh.which(shell))
+	fmt.println("shell:", shell_path)
+	fmt.println("echo:", must(sh.out("echo hello from the shell")))
+	r := sh.exec({shell_path, "-c" if ODIN_OS != .Windows else "/C", "exit 2"})
+	if !r.ok {
+		log.warnf("expected failure: %s", sh.error(r, context.temp_allocator))
+	}
+
+	// Files: a scratch tree, written and read back.
+	scratch := must(path.temp_dir("hello-"))
+	defer path.remove_all(scratch)
+	note := path.join(scratch, "notes", "today.txt")
+	must(path.write(note, fmt.tprintf("written %s\n", timefmt.iso(time.now(), context.temp_allocator))))
+	for line in must(path.read_lines(note)) {
+		fmt.println("note:", line)
+	}
+	fmt.println("files:", len(must(path.walk(scratch))))
+
+	// HTTP: skipped without HELLO_URL so the example runs offline.
+	if url := prelude.env("HELLO_URL"); url != "" {
+		res := must(http.get(url, {timeout = 10 * time.Second}))
+		fmt.printf("GET %s -> %d, %d bytes\n", url, res.status, len(res.body))
+	}
+
+	if len(prelude.args()) > 0 && prelude.args()[0] == "die" {
+		die("asked to die")
+	}
+	fmt.println("log:", prelude.log_path())
+}
