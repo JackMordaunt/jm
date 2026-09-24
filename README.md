@@ -42,7 +42,9 @@ binary.
 | `flow`    | `width`, `each`, `manage`: lock-free worker pools where each worker owns one state slot and the caller merges afterwards |
 | `tar`     | `read`, `extract`: `git archive` output without a tar program |
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
-| `sqlite3/fuzz` | property fuzzer for `jm:sqlite3`: generated values and damaged SQL, replayable by seed |
+| `fuzz`    | property fuzzing: an entropy `Source`, generators, format-agnostic `damage`, shrinking, a corpus, a per-case deadline |
+| `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
+| `tar/fuzz` | the `jm:tar` suite for `jm:fuzz` |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
@@ -86,7 +88,7 @@ just build     debug odin-run          just release   optimised odin-run
 just test      all package tests       just check     3-target type-check
 just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just sqlite    compile the vendored SQLite  just clean
-just example   run examples/hello.odin      just fuzz      30s of jm:sqlite3 fuzzing
+just example   run examples/hello.odin      just fuzz      30s of fuzzing
 ```
 
 `just install` bakes this checkout's path into the runner as the `jm`
@@ -121,34 +123,73 @@ pool rather than returning them to libc, so reading a stale pointer yields the
 *next* row's data instead of crashing. AddressSanitizer cannot see it. That is
 why `text` and `blob` clone into the allocator the query was given.
 
-## Fuzzing jm:sqlite3
+## Fuzzing
 
-`jm:sqlite3/fuzz` generates values and damaged SQL and checks the properties
-the package promises: a bound value reads back as itself, a value is never
-parsed as SQL, broken SQL faults and leaves the connection usable, an
-argument list that does not match the statement is refused, a failed
-transaction leaves nothing behind, and a reused statement stays honest.
+`jm:fuzz` runs properties against generated input and tells you the smallest
+case that broke one. A property is handed a subject and a `Source`, draws
+whatever input it wants, and says whether the promise held. The package does
+the rest: seeding, budgets, an arena per case, shrinking, the corpus, and a
+deadline on a case that will not finish.
 
 ```
-just fuzz                    30 seconds, roughly a million cases
-just fuzz "-for=5m"          longer
-just fuzz "-seed=12345"      replay a reported seed exactly
-just fuzz-asan               the same under AddressSanitizer
+just fuzz                             30 seconds of every suite
+just fuzz "tar -for=5m"               one suite, longer
+just fuzz "sqlite3 -seed=12345"       replay a reported seed exactly
+just fuzz "-corpus=build/corpus"      keep failures and replay them first
+just fuzz-asan                        the same under AddressSanitizer
 ```
 
-A run is a pure function of its seed, and a report always names the seed it
-used, so a failure found by a random run replays deterministically. `just
-test` runs 600 cases on each of four fixed seeds.
+`just test` runs a few hundred cases of each suite on fixed seeds.
 
-Two things about it are worth knowing, because both were found by building
-it:
+A case's randomness is **a finite byte string**, and every generator draws
+from it. That one decision is what the rest rests on: a case is a pure
+function of its bytes, so it replays exactly, it can be written to disk as a
+regression, and it can be shrunk by simplifying the bytes and running it
+again. Generators are written so a zero byte asks for the simplest value they
+can give, which is what shrinking converges on.
 
-- **The properties read every row before comparing any of them.** Comparing a
-  column while the cursor is still on its row passes even when the read handed
-  back SQLite's own memory instead of a copy, because the bytes have not been
-  reused yet. Deleting the clone from `text` leaves the whole example-based
-  test suite green and fails 1 case in 3 here.
-- **Each case has a watchdog.** Nothing in SQLite bounds how long a statement
-  runs, and a recursive CTE whose recursion stops advancing returns rows
-  forever, so a case that overruns is interrupted and reported as a hang
-  rather than stopping the run. `sqlite3.interrupt` is what does it.
+Writing a suite means naming a subject, how to make and unmake one, how to
+cancel work in flight, and the promises:
+
+```odin
+properties := []fuzz.Property(Sandbox){{"no_escape", no_escape}}
+
+suite :: proc() -> fuzz.Suite(Sandbox) {
+	return fuzz.Suite(Sandbox) {
+		name = "tar", setup = open, teardown = shut, properties = properties,
+	}
+}
+```
+
+Three things in it were each put there by something that went wrong:
+
+- **Shrinking**, because a failure arrived as an 80-byte blob when one byte
+  was enough. A found case shrinks to its simplest form before it is
+  reported.
+- **A corpus**, because a bug found once should be a test from then on. With
+  `-corpus`, the case about to run is also written out before it runs, so a
+  property that takes the process down — a panic, a failed bounds check,
+  anything the harness cannot catch — leaves the input that did it on disk.
+  That is how the `jm:tar` crash below was captured.
+- **A deadline**, because nothing in SQLite bounds how long a statement runs
+  and a damaged recursive CTE returns rows for ever. A suite supplies
+  `cancel`; without one there is no deadline, which is the case for `jm:tar`,
+  whose parser is a loop with nothing to interrupt.
+
+One trap the sqlite3 suite exists to catch: its properties read every row
+before comparing any of them. Comparing inside the loop passes even when a
+column read hands back SQLite's memory instead of a copy, because the bytes
+have not been reused yet. Deleting the clone from `sqlite3.text` leaves the
+example-based tests green and fails one case in three here.
+
+### What it found
+
+Wiring `jm:tar` up as the second suite turned up two ways to crash the parser
+on a malformed archive, both now fixed and both with regression tests in
+`tar/tar_test.odin`:
+
+- A size field in the base-256 form can name a number larger than an `int`
+  holds. The shift wrapped, the size came back negative, and `read` sliced
+  the archive backwards.
+- A pax record whose claimed length did not reach past its own length field
+  made `read` slice backwards too. `"1 "` was enough.

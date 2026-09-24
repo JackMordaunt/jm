@@ -5,7 +5,7 @@
 #   just test      run every package's tests
 #   just check     type-check every package for linux, darwin and windows
 #   just sqlite    compile the vendored SQLite amalgamation into sqlite3/lib
-#   just fuzz      run the jm:sqlite3 property fuzzer for thirty seconds
+#   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just install   release odin-run into ~/.local/bin with this checkout baked in
 #   just example   compile and run examples/hello.odin through the collection
 #   just clean     remove build/
@@ -15,7 +15,7 @@ root  := justfile_directory()
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 sqlite3/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 fuzz sqlite3/fuzz tar/fuzz"
 cc       := env("CC", "cc")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 
@@ -79,7 +79,7 @@ check:
     for t in {{targets}}; do \
       for p in {{packages}}; do {{odin}} check $p {{flags}} -no-entry-point -target:$t || exit 1; done; \
       {{odin}} check tools/odin-run {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/sqlite3-fuzz {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/jm-fuzz {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
     done
 
@@ -88,21 +88,21 @@ install: release
     mkdir -p {{bindir}}
     cp build/release/odin-run{{exe}} {{bindir}}/odin-run{{exe}}
 
-# `just fuzz` runs the default bound; `just fuzz "-for=5m"` or
-# `just fuzz "-seed=12345"` passes arguments straight through.
+# Arguments pass straight through: `just fuzz "tar -for=5m"`,
+# `just fuzz "sqlite3 -seed=12345"`, `just fuzz "-corpus=build/corpus"`.
 
-# Throw generated values and damaged SQL at jm:sqlite3 until something gives
+# Run every jm:fuzz suite until something gives
 fuzz args="-for=30s": sqlite
     mkdir -p build/debug
-    {{odin}} build tools/sqlite3-fuzz -debug {{flags}} -out:build/debug/sqlite3-fuzz{{exe}}
-    build/debug/sqlite3-fuzz{{exe}} {{args}}
+    {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
+    build/debug/jm-fuzz{{exe}} {{args}}
 
-# The same, with the FFI boundary under AddressSanitizer
+# The same, under AddressSanitizer
 [unix]
 fuzz-asan args="-for=30s": sqlite
     mkdir -p build/debug
-    {{odin}} build tools/sqlite3-fuzz -debug -sanitize:address {{flags}} -out:build/debug/sqlite3-fuzz-asan
-    build/debug/sqlite3-fuzz-asan {{args}}
+    {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} -out:build/debug/jm-fuzz-asan
+    build/debug/jm-fuzz-asan {{args}}
 
 # Compile and run the example script
 example: build sqlite
