@@ -42,6 +42,7 @@ binary.
 | `flow`    | `width`, `each`, `manage`: lock-free worker pools where each worker owns one state slot and the caller merges afterwards |
 | `tar`     | `read`, `extract`: `git archive` output without a tar program |
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
+| `sqlite3/fuzz` | property fuzzer for `jm:sqlite3`: generated values and damaged SQL, replayable by seed |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
@@ -85,7 +86,7 @@ just build     debug odin-run          just release   optimised odin-run
 just test      all package tests       just check     3-target type-check
 just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just sqlite    compile the vendored SQLite  just clean
-just example   run examples/hello.odin
+just example   run examples/hello.odin      just fuzz      30s of jm:sqlite3 fuzzing
 ```
 
 `just install` bakes this checkout's path into the runner as the `jm`
@@ -119,3 +120,35 @@ a text or blob column are freed on the next `step`, and SQLite reuses its own
 pool rather than returning them to libc, so reading a stale pointer yields the
 *next* row's data instead of crashing. AddressSanitizer cannot see it. That is
 why `text` and `blob` clone into the allocator the query was given.
+
+## Fuzzing jm:sqlite3
+
+`jm:sqlite3/fuzz` generates values and damaged SQL and checks the properties
+the package promises: a bound value reads back as itself, a value is never
+parsed as SQL, broken SQL faults and leaves the connection usable, an
+argument list that does not match the statement is refused, a failed
+transaction leaves nothing behind, and a reused statement stays honest.
+
+```
+just fuzz                    30 seconds, roughly a million cases
+just fuzz "-for=5m"          longer
+just fuzz "-seed=12345"      replay a reported seed exactly
+just fuzz-asan               the same under AddressSanitizer
+```
+
+A run is a pure function of its seed, and a report always names the seed it
+used, so a failure found by a random run replays deterministically. `just
+test` runs 600 cases on each of four fixed seeds.
+
+Two things about it are worth knowing, because both were found by building
+it:
+
+- **The properties read every row before comparing any of them.** Comparing a
+  column while the cursor is still on its row passes even when the read handed
+  back SQLite's own memory instead of a copy, because the bytes have not been
+  reused yet. Deleting the clone from `text` leaves the whole example-based
+  test suite green and fails 1 case in 3 here.
+- **Each case has a watchdog.** Nothing in SQLite bounds how long a statement
+  runs, and a recursive CTE whose recursion stops advancing returns rows
+  forever, so a case that overruns is interrupted and reported as a hang
+  rather than stopping the run. `sqlite3.interrupt` is what does it.

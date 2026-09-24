@@ -498,6 +498,19 @@ is_null :: proc(stmt: Stmt, col: int) -> bool {
 	return type_of(stmt, col) == .Null
 }
 
+// interrupt is sqlite3_interrupt: it asks the connection to abandon what it
+// is running, and is the one call here meant to be made from another thread.
+// The interrupted call comes back as a Fault with code Interrupt.
+//
+// It exists because nothing else here bounds how long a statement runs. A
+// query that keeps returning rows keeps exec and next busy until it is
+// interrupted; jm:sqlite3/fuzz uses this to put a deadline on a case.
+interrupt :: proc(db: Db) {
+	if db.handle != nil {
+		sqlite3_interrupt(db.handle)
+	}
+}
+
 // changes is how many rows the last INSERT, UPDATE or DELETE touched.
 changes :: proc(db: Db) -> i64 {
 	return sqlite3_changes64(db.handle)

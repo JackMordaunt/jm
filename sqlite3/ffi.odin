@@ -54,6 +54,7 @@ foreign lib {
 	sqlite3_errmsg            :: proc(db: ^Connection) -> cstring ---
 	sqlite3_extended_errcode  :: proc(db: ^Connection) -> c.int ---
 	sqlite3_busy_timeout      :: proc(db: ^Connection, ms: c.int) -> c.int ---
+	sqlite3_interrupt         :: proc(db: ^Connection) ---
 	sqlite3_changes64         :: proc(db: ^Connection) -> i64 ---
 	sqlite3_last_insert_rowid :: proc(db: ^Connection) -> i64 ---
 
