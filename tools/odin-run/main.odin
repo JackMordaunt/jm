@@ -16,7 +16,7 @@ odin-run/<key>/.
 
 Environment:
 	ODIN                 odin binary; default: "odin" on PATH
-	ODIN_RUN_COLLECTION  root of the jfm collection; default: baked in at install
+	ODIN_RUN_COLLECTION  root of the jm collection; default: baked in at install
 	ODIN_RUN_FLAGS       extra build flags, split on spaces, such as "-debug"
 	ODIN_RUN_VERBOSE=1   print the build command and cache path to stderr (exactly "1")
 */
@@ -28,10 +28,10 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
-import "jfm:sh"
+import "jm:sh"
 
 // The collection root baked in by `just install`; ODIN_RUN_COLLECTION wins.
-JFM_ROOT :: #config(JFM_ROOT, "")
+JM_COLLECTION :: #config(JM_COLLECTION, "")
 
 EXE :: ".exe" when ODIN_OS == .Windows else ""
 
@@ -78,7 +78,7 @@ main :: proc() {
 		argv := make([dynamic]string)
 		append(&argv, odin, "build", abs_script, "-file")
 		if collection != "" {
-			append(&argv, strings.concatenate({"-collection:jfm=", collection}))
+			append(&argv, strings.concatenate({"-collection:jm=", collection}))
 		}
 		append(&argv, strings.concatenate({"-out:", bin}))
 		append(&argv, ..flags)
@@ -156,7 +156,7 @@ collection_root :: proc() -> string {
 	if v, found := os.lookup_env("ODIN_RUN_COLLECTION", context.allocator); found && v != "" {
 		return v
 	}
-	return JFM_ROOT
+	return JM_COLLECTION
 }
 
 odin_binary :: proc() -> string {

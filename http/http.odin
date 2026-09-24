@@ -64,7 +64,7 @@ Opts :: struct {
 	on_error:   proc(msg: string),
 }
 
-DEFAULT_USER_AGENT :: "jfm-odin-http/1"
+DEFAULT_USER_AGENT :: "jm-odin-http/1"
 
 // get performs a GET.
 get :: proc(url: string, opts := Opts{}, allocator := context.allocator) -> (Response, Error) {

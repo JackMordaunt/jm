@@ -34,6 +34,6 @@ logfmt_quoting :: proc(t: ^testing.T) {
 
 @(test)
 env_default :: proc(t: ^testing.T) {
-	testing.expect_value(t, env("JFM_PRELUDE_UNSET_3F9A", "fallback", context.temp_allocator), "fallback")
+	testing.expect_value(t, env("JM_PRELUDE_UNSET_3F9A", "fallback", context.temp_allocator), "fallback")
 	testing.expect_value(t, level_name(.Warning), "warning")
 }

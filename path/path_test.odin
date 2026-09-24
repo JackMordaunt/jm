@@ -16,7 +16,7 @@ expand_home :: proc(t: ^testing.T) {
 
 @(test)
 files_roundtrip :: proc(t: ^testing.T) {
-	root, err := temp_dir("jfm-path-test-", context.temp_allocator)
+	root, err := temp_dir("jm-path-test-", context.temp_allocator)
 	testing.expect_value(t, err, nil)
 	defer remove_all(root)
 
@@ -75,8 +75,9 @@ same_paths :: proc(t: ^testing.T) {
 
 @(test)
 app_dirs_exist :: proc(t: ^testing.T) {
-	d, err := cache_dir("jfm-path-test", context.temp_allocator)
+	d, err := cache_dir("jm-path-test", context.temp_allocator)
 	testing.expect_value(t, err, nil)
 	testing.expect(t, is_dir(d))
+	testing.expect(t, strings.has_suffix(d, "jm-path-test"), "cache_dir must use the app name")
 	remove_all(d)
 }

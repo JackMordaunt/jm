@@ -25,8 +25,8 @@ dir_and_env :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	testing.expect_value(t, s, "/")
 	s, ok = out(
-		"echo $JFM_TEST",
-		{env = {"JFM_TEST=set", "PATH=/usr/bin:/bin"}},
+		"echo $JM_TEST",
+		{env = {"JM_TEST=set", "PATH=/usr/bin:/bin"}},
 		context.temp_allocator,
 	)
 	testing.expect(t, ok)

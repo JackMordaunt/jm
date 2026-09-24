@@ -17,7 +17,7 @@ issues when the debug allocator is in use.
 Allocation policy: a growing virtual arena is context.allocator. Scripts never
 free; the process exit reclaims everything. Set Options.debug (or ODIN_DEBUG,
 or the environment variable ODIN_SCRIPT_DEBUG=1) to swap in the debug
-allocator from jfm:debug, which reports overflow, double free, and write after
+allocator from jm:debug, which reports overflow, double free, and write after
 free at exit.
 
 Logging: one logfmt line per record in <log_dir>/<name>/<name>.log, plus a
@@ -45,7 +45,7 @@ import "core:path/filepath"
 import "core:strings"
 import "core:time"
 
-import "jfm:debug"
+import "jm:debug"
 
 Options :: struct {
 	// Program name used in log paths and lines. Default: basename of os.args[0].

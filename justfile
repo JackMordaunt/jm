@@ -10,7 +10,7 @@
 
 odin  := env("ODIN", "odin")
 root  := justfile_directory()
-flags := "-vet -strict-style -collection:jfm=" + root
+flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
 packages := "prelude sh http path timefmt debug flow tar"
@@ -23,12 +23,12 @@ default:
 # Debug odin-run -> build/debug/odin-run
 build:
     mkdir -p build/debug
-    {{odin}} build tools/odin-run -debug {{flags}} -define:JFM_ROOT={{root}} -out:build/debug/odin-run{{exe}}
+    {{odin}} build tools/odin-run -debug {{flags}} -define:JM_COLLECTION={{root}} -out:build/debug/odin-run{{exe}}
 
 # Optimised odin-run -> build/release/odin-run
 release:
     mkdir -p build/release
-    {{odin}} build tools/odin-run -o:speed {{flags}} -define:JFM_ROOT={{root}} -out:build/release/odin-run{{exe}}
+    {{odin}} build tools/odin-run -o:speed {{flags}} -define:JM_COLLECTION={{root}} -out:build/release/odin-run{{exe}}
 
 # Run every package's tests
 test:

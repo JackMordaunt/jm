@@ -4,13 +4,13 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "core:testing"
-import "jfm:sh"
+import "jm:sh"
 
 @(test)
 git_archive_extracts_whole :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	temp := os.temp_directory(context.temp_allocator) or_else ""
-	root, err := os.make_directory_temp(temp, "jfm-tar-*", context.temp_allocator)
+	root, err := os.make_directory_temp(temp, "jm-tar-*", context.temp_allocator)
 	testing.expect(t, err == nil)
 	defer os.remove_all(root)
 	git := proc(root: string, args: ..string) -> sh.Result {
@@ -79,7 +79,7 @@ git_archive_extracts_whole :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, len(names), 3)
 
-	dest, derr := os.make_directory_temp(temp, "jfm-tar-out-*", context.temp_allocator)
+	dest, derr := os.make_directory_temp(temp, "jm-tar-out-*", context.temp_allocator)
 	testing.expect(t, derr == nil)
 	defer os.remove_all(dest)
 	count, xerr := extract(transmute([]byte)archive.stdout, dest)

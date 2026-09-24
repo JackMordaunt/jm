@@ -1,4 +1,4 @@
-# jfm — Odin for scripts
+# jm — Odin for scripts
 
 A collection of small packages and one runner that make Odin comfortable for
 the scripts Python and bash usually get. Everything builds on `core:`; the
@@ -9,9 +9,9 @@ only linked dependency is libcurl through `vendor:curl`.
 package main
 
 import "core:fmt"
-import "jfm:prelude"
-import "jfm:sh"
-import "jfm:path"
+import "jm:prelude"
+import "jm:sh"
+import "jm:path"
 
 must :: prelude.must
 die :: prelude.die
@@ -84,5 +84,5 @@ just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just example   run examples/hello.odin  just clean
 ```
 
-`just install` bakes this checkout's path into the runner as the `jfm`
+`just install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.

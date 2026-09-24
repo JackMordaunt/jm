@@ -7,11 +7,11 @@ import "core:fmt"
 import "core:log"
 import "core:time"
 
-import "jfm:http"
-import "jfm:path"
-import "jfm:prelude"
-import "jfm:sh"
-import "jfm:timefmt"
+import "jm:http"
+import "jm:path"
+import "jm:prelude"
+import "jm:sh"
+import "jm:timefmt"
 
 must :: prelude.must
 die :: prelude.die

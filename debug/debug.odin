@@ -44,7 +44,7 @@ and where it was freed, since ASan itself only knows the address is poisoned.
 Usage (debug builds only, compile with -debug so call chains symbolize):
 
 	import "core:debug/trace"
-	import "jfm:debug"
+	import "jm:debug"
 
 	main :: proc() {
 		when ODIN_DEBUG {
