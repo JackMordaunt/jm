@@ -82,7 +82,7 @@ read :: proc(archive: []byte, allocator := context.allocator) -> (entries: []Ent
 			break // Two zero blocks end the archive; one is enough to stop.
 		}
 		size, ok := octal(header[124:136])
-		if !ok {
+		if !ok || size < 0 {
 			return nil, .Bad_Header
 		}
 		start := offset + block
@@ -138,6 +138,12 @@ octal :: proc(raw: []byte) -> (int, bool) {
 			if i == 0 {
 				v &= 0x7f
 			}
+			// A size larger than an int holds is not a size this can read.
+			// Without the check the shift wraps, the size comes back
+			// negative, and the caller slices the archive backwards.
+			if n > (max(int) - v) / 256 {
+				return 0, false
+			}
 			n = n << 8 | v
 		}
 		return n, true
@@ -146,7 +152,11 @@ octal :: proc(raw: []byte) -> (int, bool) {
 	if s == "" {
 		return 0, true
 	}
-	return strconv.parse_int(s, 8)
+	v, ok := strconv.parse_int(s, 8)
+	if !ok || v < 0 {
+		return 0, false
+	}
+	return v, true
 }
 
 // pax_path reads the path record out of a pax extended header, whose
@@ -159,7 +169,9 @@ pax_path :: proc(data: []byte) -> (string, bool) {
 			break
 		}
 		length, ok := strconv.parse_int(rest[:space])
-		if !ok || length <= 0 || length > len(rest) {
+		// The record is rest[space + 1:length], so a length that does not
+		// reach past the space would slice backwards.
+		if !ok || length <= space + 1 || length > len(rest) {
 			break
 		}
 		record := rest[space + 1:length]

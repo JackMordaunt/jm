@@ -125,3 +125,58 @@ headers_are_read_and_bad_ones_refused :: proc(t: ^testing.T) {
 	testing.expect_value(t, eerr, Error.None)
 	testing.expect_value(t, len(empty), 0)
 }
+
+// A size field in the base-256 form can name a number larger than an int
+// holds. The shift used to wrap, the size came back negative, and read
+// sliced the archive backwards. Found by jm:tar/fuzz.
+@(test)
+oversized_size_field_is_rejected :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	archive := make([]byte, 512)
+	for i in 124 ..< 136 {
+		archive[i] = 0xff
+	}
+	archive[156] = '0'
+	entries, err := read(archive)
+	testing.expect_value(t, err, Error.Bad_Header)
+	testing.expect_value(t, len(entries), 0)
+}
+
+// The same field in octal, written negative.
+@(test)
+negative_size_field_is_rejected :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	archive := make([]byte, 512)
+	copy(archive[124:136], "-0000000001")
+	archive[156] = '0'
+	_, err := read(archive)
+	testing.expect_value(t, err, Error.Bad_Header)
+}
+
+// A pax record's length must reach past the space that ends its length
+// field, or the record slice runs backwards. A record claiming length 1 is
+// one input that used to do it.
+@(test)
+short_pax_record_is_ignored :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	// A pax extended header claiming a record of length 1, then a real file
+	// after it. The bad record must be ignored and the file still read, so a
+	// parser that gave up entirely would not pass either.
+	archive := make([]byte, 3 * 512)
+	copy(archive[0:100], "pax")
+	copy(archive[124:136], "00000000002")
+	archive[156] = 'x'
+	copy(archive[512:], "1 ")
+	copy(archive[1024:1124], "real.txt")
+	copy(archive[1024 + 124:1024 + 136], "00000000000")
+	archive[1024 + 156] = '0'
+
+	entries, err := read(archive)
+	testing.expect_value(t, err, Error.None)
+	testing.expect_value(t, len(entries), 1)
+	if len(entries) == 1 {
+		// The unreadable pax record names nothing, so the entry keeps the
+		// name in its own header.
+		testing.expect_value(t, entries[0].name, "real.txt")
+	}
+}
