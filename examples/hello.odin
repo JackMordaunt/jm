@@ -11,10 +11,11 @@ import "jm:http"
 import "jm:path"
 import "jm:prelude"
 import "jm:sh"
+import "jm:sqlite3"
 import "jm:timefmt"
 
 must :: prelude.must
-die :: prelude.die
+die  :: prelude.die
 
 main :: proc() {
 	context = prelude.init()
@@ -34,11 +35,35 @@ main :: proc() {
 	scratch := must(path.temp_dir("hello-"))
 	defer path.remove_all(scratch)
 	note := path.join(scratch, "notes", "today.txt")
-	must(path.write(note, fmt.tprintf("written %s\n", timefmt.iso(time.now(), context.temp_allocator))))
+	must(
+		path.write(
+			note,
+			fmt.tprintf("written %s\n", timefmt.iso(time.now(), context.temp_allocator)),
+		),
+	)
 	for line in must(path.read_lines(note)) {
 		fmt.println("note:", line)
 	}
 	fmt.println("files:", len(must(path.walk(scratch))))
+
+	// SQLite: a database in the scratch tree, written and read back.
+	db := must(sqlite3.open(path.join(scratch, "hello.db")))
+	defer sqlite3.close(&db)
+	must(sqlite3.exec(db, `CREATE TABLE note(at TEXT, body TEXT)`))
+	must(
+		sqlite3.exec_args(
+			db,
+			`INSERT INTO note VALUES (?, ?)`,
+			timefmt.iso(time.now(), context.temp_allocator),
+			"it isn't interpolated",
+		),
+	)
+	rows := must(sqlite3.query(db, `SELECT at, body FROM note`))
+	defer sqlite3.finish(&rows)
+	for sqlite3.next(&rows) {
+		fmt.println("note:", sqlite3.text(rows, 0), sqlite3.text(rows, 1))
+	}
+	fmt.println("sqlite:", sqlite3.version())
 
 	// HTTP: skipped without HELLO_URL so the example runs offline.
 	if url := prelude.env("HELLO_URL"); url != "" {

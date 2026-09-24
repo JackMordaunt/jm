@@ -1,8 +1,9 @@
 # jm — Odin for scripts
 
 A collection of small packages and one runner that make Odin comfortable for
-the scripts Python and bash usually get. Everything builds on `core:`; the
-only linked dependency is libcurl through `vendor:curl`.
+the scripts Python and bash usually get. Everything builds on `core:`. The
+only system library is libcurl through `vendor:curl`; SQLite is vendored and
+linked statically, so a script that uses it still installs nothing.
 
 ```odin
 #!/usr/bin/env odin-run
@@ -39,6 +40,8 @@ binary.
 | `timefmt` | strftime `format`, `local`, `parse`; `iso`, `stamp`, `date`, `duration` |
 | `debug`   | guard-byte debug allocator (origin: sonar, which now imports this copy) |
 | `flow`    | `width`, `each`, `manage`: lock-free worker pools where each worker owns one state slot and the caller merges afterwards |
+| `tar`     | `read`, `extract`: `git archive` output without a tar program |
+| `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
@@ -81,8 +84,38 @@ the cached binary.
 just build     debug odin-run          just release   optimised odin-run
 just test      all package tests       just check     3-target type-check
 just install   odin-run -> ~/.local/bin (BINDIR overrides)
-just example   run examples/hello.odin  just clean
+just sqlite    compile the vendored SQLite  just clean
+just example   run examples/hello.odin
 ```
 
 `just install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.
+
+## SQLite
+
+`sqlite3/vendor/` holds the SQLite **3.53.4** amalgamation (`sqlite3.c` and
+`sqlite3.h`, source id `bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc`),
+taken from sqlite.org and verified against the SHA3-256 that page publishes.
+SQLite is public domain, so vendoring it carries no licence obligation.
+
+`just sqlite` compiles it once into `sqlite3/lib/sqlite3.a`, which is
+gitignored and rebuilt when the amalgamation changes. `foreign import`
+resolves that archive relative to the package directory. `odin check` never
+opens a foreign import, so `just check` still type-checks all three targets on
+one machine with no archive built.
+
+The compile options are sqlite.org's recommended set, with three deliberate
+departures, all of them in the justfile:
+
+- `SQLITE_THREADSAFE=1`, not the recommended `0`. `jm:flow` exists, and a
+  connection per worker has to be safe.
+- `SQLITE_OMIT_AUTOINIT` is **not** set, though it is recommended. With it, any
+  call made before `sqlite3_initialize` is a segfault rather than an error.
+- `SQLITE_ENABLE_FTS5` is added, for a full-text index, and
+  `SQLITE_OMIT_LOAD_EXTENSION` keeps the link from needing libdl.
+
+One trap is worth knowing even though the package handles it: the bytes behind
+a text or blob column are freed on the next `step`, and SQLite reuses its own
+pool rather than returning them to libc, so reading a stale pointer yields the
+*next* row's data instead of crashing. AddressSanitizer cannot see it. That is
+why `text` and `blob` clone into the allocator the query was given.
