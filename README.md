@@ -47,6 +47,7 @@ binary.
 | `fuzz`    | property fuzzing: an entropy `Source`, generators, format-agnostic `damage`, shrinking, a corpus, a per-case deadline |
 | `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
 | `tar/fuzz` | the `jm:tar` suite for `jm:fuzz` |
+| `wasm/fuzz` | the `jm:wasm` suite for `jm:fuzz`, with a small Wasm encoder to build cases from |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
@@ -156,6 +157,11 @@ meant to cross a thread, because it does nothing but set a flag. `just test`
 runs this package's tests with the test runner on a single thread for the
 same reason.
 
+`wasm/fuzz` is the suite: six properties over generated modules, damaged ones
+and bytes that were never a module, with a small Wasm encoder so a case needs
+no toolchain. `just fuzz "wasm -for=1m"` runs it; the section below records
+what it found.
+
 ## Fuzzing
 
 `jm:fuzz` runs properties against generated input and tells you the smallest
@@ -259,3 +265,14 @@ parser on a malformed archive, all now fixed, all with regression tests in
   check has to be a subtraction. This one is also `tar/fuzz/corpus`'s first
   entry: the shape needs a dozen specific bytes, so the corpus rather than
   the fuzzer is what keeps it tested.
+
+`jm:wasm` was the third suite, and its `bounds` property found the same bug in
+a different package on its first run. `wasm.bytes` is what stands between a
+guest's chosen pointer and the rest of the process; it checked the range by
+adding `ptr + size`, so a size near the top of `int` wrapped the sum back down
+into the memory, the check passed, and the slice that followed had a negative
+length. `wasm.bytes(mod, 8, max(int))` was enough. It subtracts now — what is
+left of the memory after `ptr`, which cannot wrap — and `wasm_test.odin` keeps
+the case. Two packages, written days apart, got the same arithmetic wrong in
+the same place; a property that draws pointers at the edges finds it in
+seconds, and no example-based test here had.

@@ -17,7 +17,7 @@ root  := justfile_directory()
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm fuzz sqlite3/fuzz tar/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm fuzz sqlite3/fuzz tar/fuzz wasm/fuzz"
 cc       := env("CC", "cc")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/wasm3.a" }
@@ -74,9 +74,11 @@ sqlite:
         lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj \
     }
 
-# Compile the vendored wasm3 into wasm/lib if it is stale. Unlike SQLite this
-# is a tree rather than one amalgamated file, so the objects go to a scratch
-# directory beside the archive and staleness is any source newer than it.
+# Unlike SQLite this is a tree rather than one amalgamated file, so the objects
+# go to a scratch directory beside the archive and staleness is any source
+# newer than it.
+#
+# Compile the vendored wasm3 into wasm/lib if it is stale
 [unix]
 wasm:
     @mkdir -p wasm/lib/obj
@@ -96,14 +98,15 @@ wasm:
         lib /nologo /OUT:{{wasm_lib}} wasm/lib/obj/*.obj \
     }
 
-# Run every package's tests. jm:wasm's run on one thread because wasm3 is not
-# thread-safe, whatever the runtimes are; the package doc records what two
-# threads do to it.
+# jm:wasm's tests run on one thread because wasm3 is not thread-safe, whatever
+# the runtimes are; the package doc records what two threads do to it.
+#
+# Run every package's tests
 test: sqlite wasm
     mkdir -p build/test
     for p in {{packages}}; do \
       threads=""; \
-      if [ "$p" = "wasm" ]; then threads="-define:ODIN_TEST_THREADS=1"; fi; \
+      case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac; \
       {{odin}} test $p {{flags}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
     done
 
@@ -125,7 +128,7 @@ install: release
 # `just fuzz "sqlite3 -seed=12345"`, `just fuzz "-corpus=build/corpus"`.
 
 # Run every jm:fuzz suite until something gives
-fuzz args="-for=30s": sqlite
+fuzz args="-for=30s": sqlite wasm
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} {{args}}
@@ -138,7 +141,7 @@ fuzz-isolate args="-for=5m": sqlite
 
 # The same, under AddressSanitizer
 [unix]
-fuzz-asan args="-for=30s": sqlite
+fuzz-asan args="-for=30s": sqlite wasm
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} -out:build/debug/jm-fuzz-asan
     build/debug/jm-fuzz-asan {{args}}
