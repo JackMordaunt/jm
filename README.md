@@ -223,6 +223,105 @@ cost nothing" is the same measurement against a C program driving
 `wasm/lib/wasm3.a` directly: 800ms against 923 on fib, 1166 against 1153 on
 memsum — the two are inside each other's noise.
 
+## PostgreSQL
+
+`pg_query/vendor/` holds **libpg_query** at commit `6e764b79` of the
+`17-latest` branch: PostgreSQL's own `gram.y` and everything it needs, lifted
+out of the server source tree, carrying the **17.7** grammar. Vendored is the
+`src/` tree, `protobuf/pg_query.pb-c.{c,h}`, the two third-party directories
+under `vendor/` and `srcdata/`, which is the schema the node types are
+generated from; left out are upstream's tests, generator scripts and the
+optional C++ protobuf path. libpg_query is BSD-3-Clause, and
+`pg_query/vendor/LICENSE` is its copy.
+
+`just pg_query` compiles it once into `pg_query/lib/pg_query.a` — 86
+translation units, about twenty seconds, 5 MB — which is gitignored and
+rebuilt when any vendored source changes. As with SQLite and wasm3,
+`foreign import` resolves that archive relative to the package directory and
+`odin check` never opens it, so `just check` still type-checks all three
+targets on one machine with no archive built.
+
+The flags are upstream's Makefile exactly, less its `-g` and at `-O2` rather
+than `-O3`, and they are in the justfile. Two of them are correctness rather
+than taste: the PostgreSQL sources are written against `-fno-strict-aliasing`
+and `-fwrapv` and miscompile without them.
+
+The protobuf objects are compiled although this binding only wants the JSON
+API, which is not for want of trying: `pg_query_parse.c` defines
+`pg_query_parse_protobuf` beside `pg_query_parse`, so the object that holds
+the one entry point we call also references the protobuf writer, and an
+archive without it fails to link. Measured, then written down in the recipe.
+
+### Typed nodes
+
+A parse tree comes back as the JSON libpg_query wrote *and* as typed Odin
+nodes, and the nodes are generated rather than written by hand.
+`vendor/srcdata/` is libpg_query's own schema — the input it generates its Go,
+Ruby and Python bindings from — and `pg_query/gen` turns the four sections
+that describe parse nodes into `pg_query/nodes.odin`: **267 structs, 63
+enumerated types** and a tag-dispatched decoder. `just pg_query-gen`
+regenerates it; the file is checked in, so nothing normally runs the
+generator.
+
+267 rather than the 474 in `nodetypes.json`, and the difference is not a
+subset taken for convenience. `struct_defs.json` describes nodes in sixteen
+sections; four of them — `nodes/parsenodes`, `nodes/primnodes`, `nodes/value`
+and `nodes/pg_list` — are what a *parse* tree can contain, and they hold 267
+structs between them. The rest describe planner and executor nodes, which
+exist only in a tree the server has already analysed and which
+`pg_query_parse` never emits. The fuzz suite is what says so rather than this
+paragraph: an unknown tag fails a parse, and a run that meets one fails.
+
+Typing them is the point rather than a convenience. Dropping the schema would
+not remove it, only make it implicit: a field PostgreSQL renames in its next
+major would stop decoding silently, and a caller asking "does this statement
+write?" would be told no because the field it looked for was absent rather
+than because the statement was harmless — a failure that fails *open*.
+Generated from the schema, the same rename fails to compile, and
+`schema_conforms` in the tests fails before that: it loads the vendored
+`struct_defs.json` at compile time and holds every node and field the Odin
+side names against it.
+
+The decoder dispatches on the tag rather than trying variants in order. Every
+node arrives as a single-key object — `{"UpdateStmt": {…}}`, `{"BoolExpr":
+{…}}` — so a union matched structurally would match whichever variant was
+declared first and hand back the wrong node, silently. A tag this build has no
+struct for fails the parse, for the same reason a missing field would: a gate
+must not be handed a tree with a hole in it.
+
+Fields are plain and left at their zero value when absent, because
+libpg_query omits anything false, zero or empty; `"inh":true` is written and
+`"inh":false` is not. Two shapes are written by hand in the C rather than
+generated from the schema — `A_Const`, whose value arrives under `ival`,
+`fval`, `boolval`, `sval` or `bsval`, and the bare `RawStmt` at the top level
+— and both are special-cased in `decode.odin` and named in the generator.
+
+Two traps, both handled, both worth knowing:
+
+- Every `char *` in a result dies at its `pg_query_free_*`, which releases a
+  whole memory context. A pointer held past that reads memory the next parse
+  reuses — the `sqlite3_column_text` trap in another dialect — so everything
+  the package hands back is cloned first.
+- `pg_query_exit` is the one entry point deliberately left unwrapped.
+  `pg_query_init` registers a pthread destructor over the same top memory
+  context, so a thread that calls it and then ends frees that context twice
+  and the process aborts in glibc. One worker thread, one parse, no
+  concurrency needed; reproduced in C against this archive. Let the thread
+  end and the destructor does it.
+
+Parsing itself *is* thread-safe, unlike wasm3: the memory contexts are
+`__thread`, and eight threads over the same statements agree on every tree
+through 144,000 parses in C and 9,600 in `pg_query_test.odin`.
+
+Statements must be valid UTF-8, and the package refuses one that is not with
+the offset of the first bad byte. That is not tidiness — see what the fuzzer
+found, below. `normalize`'s output is for showing a human and not for
+re-parsing, for a reason recorded there too.
+
+`pg_query/fuzz` is the suite: eight properties over generated SQL, damaged
+SQL and bytes that were never SQL, with a SQL generator so a case needs no
+fixtures. `just fuzz "pg_query -for=1m"` runs it.
+
 ## Fuzzing
 
 `jm:fuzz` runs properties against generated input and tells you the smallest
@@ -337,3 +436,27 @@ left of the memory after `ptr`, which cannot wrap — and `wasm_test.odin` keeps
 the case. Two packages, written days apart, got the same arithmetic wrong in
 the same place; a property that draws pointers at the edges finds it in
 seconds, and no example-based test here had.
+
+`jm:pg_query` was the fourth suite, and it found two things in its first
+runs. `error_sane` bounded `cursorpos` by the length of the statement; a
+statement cut short faults at *one past* the end, which is how PostgreSQL
+says "at end of input". That one was the property being wrong, and it is
+written down in the package now rather than left to be rediscovered.
+
+The second was real. `split_covers` took the process down on raw bytes after
+ten thousand cases, inside `core:encoding/json`. libpg_query sets the scanner's
+encoding to UTF-8 but does not validate its input against it, so
+`SELECT '<0xff><0xfe>' FROM t` parses and those bytes are copied into the parse
+tree verbatim — making the tree JSON that is not UTF-8. Decoding that walks
+`unquote_string` off the end of its buffer, because an invalid byte decodes as
+one byte and re-encodes as the three of U+FFFD. `jm:pg_query` now refuses a
+statement that is not UTF-8 before the parser sees it, which is what a
+PostgreSQL server with a UTF-8 database does anyway.
+
+A third, under the sanitizer, is upstream's rather than ours and is written
+down rather than fixed: `normalize` substitutes a parameter over the literal's
+recorded extent without checking that a token boundary survives. A leading
+minus belongs to the constant, so `SELECT-1` comes back as `SELECT$1` — one
+identifier, not a statement. `normalize_reparses` skips that shape and names
+it; `pg_query_test.odin` keeps the case, and the package doc tells a caller
+not to re-parse what normalize writes.
