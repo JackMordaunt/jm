@@ -41,6 +41,7 @@ Ctx :: struct {
 	theme:       ^Theme,
 	shaper:      Shaper,
 	router:      ^Router,
+	layout:      ^Layout,
 	frame:       u64,
 	dt:          f32,
 	allocator:   mem.Allocator,

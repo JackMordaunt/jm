@@ -204,3 +204,16 @@ shape_bounds :: proc(ops: ^Ops, s: Shape) -> Rect {
 	}
 	return {}
 }
+
+// Raw_Event is what a platform (ui/sdl, the probe) feeds the router: the
+// same fields as Event but with pos in device pixels and no area. The router
+// resolves the area and converts pos to local space.
+Raw_Event :: struct {
+	kind:   Event_Kind,
+	pos:    Point,
+	button: Button,
+	scroll: [2]f32,
+	key:    Key,
+	mods:   Mods,
+	text:   string,
+}
