@@ -14,6 +14,7 @@
 #   just kitchen-png   render the demo's first frame to build/kitchen.png
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just bench     time jm:wasm against the workloads in tools/wasm-bench
+#   just bench-ui  time jm:ui layout and the Blend2D executor per frame
 #   just fuzz-isolate  the same, a child process per case
 #   just install   release odin-run into ~/.local/bin with this checkout baked in
 #   just example   compile and run examples/hello.odin through the collection
@@ -202,6 +203,7 @@ check:
       {{odin}} check ui/render {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check examples/ui-kitchen {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
     done
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
@@ -239,6 +241,14 @@ bench args="": wasm
     mkdir -p build/release
     {{odin}} build tools/wasm-bench -o:speed {{flags}} -out:build/release/wasm-bench{{exe}}
     build/release/wasm-bench{{exe}} tools/wasm-bench/workloads {{args}}
+
+# `just bench-ui "-w 1800 -h 1200"` measures at another size.
+#
+# Time jm:ui layout and the Blend2D executor per frame
+bench-ui args="": blend2d
+    mkdir -p build/release
+    {{odin}} build tools/ui-bench -o:speed {{flags}} {{cxx_link}} -out:build/release/ui-bench{{exe}}
+    build/release/ui-bench{{exe}} {{args}}
 
 # The .wasm files are committed, so this is only needed when a source changes.
 # It wants a clang with the wasm32 target and wasm-ld; zig cc has both, as

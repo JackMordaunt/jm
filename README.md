@@ -104,6 +104,7 @@ just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
 just kitchen   open the jm:ui demo       just kitchen-dump  its first frame as text
 just kitchen-png  render it to build/kitchen.png
+just bench-ui  ms per frame for layout and the Blend2D executor
 just example   run examples/hello.odin      just fuzz      30s of fuzzing
 just clean     drop build/ and the four archives
 ```
