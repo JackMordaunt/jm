@@ -55,6 +55,12 @@ Renderer :: struct {
 	path:       bl.PathCore,
 	font_refs:  []ui.Font_Ref, // what the shaper loads from
 	allocator:  mem.Allocator,
+	// threads > 0 makes the target context asynchronous with that many
+	// workers (1 = the calling thread only). Layer and mask contexts stay
+	// synchronous, and the mask path flushes the target before it reuses
+	// the layer, so images are never written while a queued command reads
+	// them. Zero renders synchronously.
+	threads:    u32,
 }
 
 // init prepares r. Caches allocate from allocator.
@@ -106,7 +112,19 @@ render :: proc(r: ^Renderer, f: ^ui.Frame, target: ^bl.ImageCore, clear: ui.Colo
 		return
 	}
 	w, h := data.size.w, data.size.h
-	if w <= 0 || h <= 0 || bl.context_begin(&r.ctx, target, nil) != 0 {
+	if w <= 0 || h <= 0 {
+		return
+	}
+	cci: ^bl.ContextCreateInfo
+	info: bl.ContextCreateInfo
+	if r.threads > 0 {
+		info = {
+			flags        = u32(bl.ContextCreateFlags.FLAG_FALLBACK_TO_SYNC),
+			thread_count = r.threads,
+		}
+		cci = &info
+	}
+	if bl.context_begin(&r.ctx, target, cci) != 0 {
 		return
 	}
 	defer bl.context_end(&r.ctx)
@@ -209,6 +227,9 @@ exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw, w, h: i32) {
 	mask := clip_mask(r, f, d.clip, w, h)
 	if mask == nil || !ensure_layer(r, w, h) {
 		return
+	}
+	if r.threads > 0 {
+		bl.context_flush(&r.ctx, .SYNC) // a queued fill_mask may still read the layer
 	}
 	if bl.context_begin(&r.layer_ctx, &r.layer, nil) != 0 {
 		return

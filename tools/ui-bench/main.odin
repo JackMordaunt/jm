@@ -4,6 +4,11 @@
 //	ui-bench            every scene at 900x600
 //	ui-bench -n 50      frames per measurement (default 20)
 //	ui-bench -w 1800 -h 1200
+//	ui-bench -t 0,1,2,4,8   Blend2D worker threads to try (default 0,2,4,8)
+//
+// Layout is timed once per scene. Render is timed per thread count, and a
+// checksum of the pixels is compared with the synchronous render so a
+// threaded run that draws something else is reported, not hidden.
 package main
 
 import "core:fmt"
@@ -111,9 +116,26 @@ masked :: proc(gtx: ^ui.Ctx, _: rawptr) {
 	}
 }
 
+// checksum folds every pixel of img into one value.
+checksum :: proc(img: ^bl.ImageCore) -> u64 {
+	data: bl.ImageData
+	if bl.image_get_data(img, &data) != 0 {
+		return 0
+	}
+	sum: u64 = 1469598103934665603
+	for y in 0 ..< int(data.size.h) {
+		row := ([^]u32)(uintptr(data.pixel_data) + uintptr(y) * uintptr(data.stride))
+		for x in 0 ..< int(data.size.w) {
+			sum = (sum ~ u64(row[x])) * 1099511628211
+		}
+	}
+	return sum
+}
+
 main :: proc() {
 	n := 20
 	w, h := 900, 600
+	threads := []u32{0, 2, 4, 8}
 	args := os.args[1:]
 	for i := 0; i < len(args); i += 1 {
 		if i + 1 >= len(args) {
@@ -126,6 +148,13 @@ main :: proc() {
 			w, _ = strconv.parse_int(args[i + 1])
 		case "-h":
 			h, _ = strconv.parse_int(args[i + 1])
+		case "-t":
+			list := make([dynamic]u32)
+			for part in strings.split(args[i + 1], ",", context.temp_allocator) {
+				v, _ := strconv.parse_uint(part)
+				append(&list, u32(v))
+			}
+			threads = list[:]
 		}
 		i += 1
 	}
@@ -147,11 +176,15 @@ main :: proc() {
 	defer bl.image_destroy(&img)
 	assert(bl.image_create(&img, i32(w), i32(h), .PRGB32) == 0)
 
-	fmt.printfln("%dx%d, %d frames each, ms per frame", w, h, n)
-	fmt.printfln("%-14s %6s %6s %8s %8s %8s   %s", "scene", "draws", "hits", "layout", "render", "total", "what")
+	fmt.printfln("%dx%d, %d frames each, ms per frame; render columns are Blend2D thread counts", w, h, n)
 	cell :: proc(v: string, width: int) -> string {
 		return strings.right_justify(v, width, " ", context.temp_allocator)
 	}
+	fmt.printf("%-14s %6s %8s", "scene", "draws", "layout")
+	for t in threads {
+		fmt.printf(" %s", cell(fmt.tprintf("t=%d", t), 8))
+	}
+	fmt.println("   what")
 	for sc in scenes {
 		st := State{rows = 300, rrect = sc.name == "widgets+rrect"}
 		p: ui.Probe
@@ -168,22 +201,23 @@ main :: proc() {
 		layout := time.duration_milliseconds(time.tick_since(t0)) / f64(n)
 
 		f := ui.probe_current(&p)
-		t1 := time.tick_now()
-		for _ in 0 ..< n {
-			render.render(&r, f, &img, {250, 250, 250, 255})
+		fmt.printf("%-14s %s %s", sc.name, cell(fmt.tprint(len(f.draws)), 6), cell(fmt.tprintf("%.2f", layout), 8))
+		reference: u64
+		for t, ti in threads {
+			r.threads = t
+			render.render(&r, f, &img, {250, 250, 250, 255}) // warm the thread pool and the JIT
+			t1 := time.tick_now()
+			for _ in 0 ..< n {
+				render.render(&r, f, &img, {250, 250, 250, 255})
+			}
+			rend := time.duration_milliseconds(time.tick_since(t1)) / f64(n)
+			sum := checksum(&img)
+			if ti == 0 {
+				reference = sum
+			}
+			fmt.printf(" %s%s", cell(fmt.tprintf("%.2f", rend), 7), "!" if sum != reference else " ")
 		}
-		rend := time.duration_milliseconds(time.tick_since(t1)) / f64(n)
-
-		fmt.printfln(
-			"%-14s %s %s %s %s %s   %s",
-			sc.name,
-			cell(fmt.tprint(len(f.draws)), 6),
-			cell(fmt.tprint(len(f.hits)), 6),
-			cell(fmt.tprintf("%.2f", layout), 8),
-			cell(fmt.tprintf("%.2f", rend), 8),
-			cell(fmt.tprintf("%.2f", layout + rend), 8),
-			sc.what,
-		)
+		fmt.printfln("   %s", sc.what)
 		ui.probe_destroy(&p)
 	}
 }
