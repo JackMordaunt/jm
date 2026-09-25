@@ -34,6 +34,7 @@ import "core:time"
 
 import harness "jm:fuzz"
 import pg_query_fuzz "jm:pg_query/fuzz"
+import pq_fuzz "jm:pq/fuzz"
 import sqlite3_fuzz "jm:sqlite3/fuzz"
 import tar_fuzz "jm:tar/fuzz"
 import wasm_fuzz "jm:wasm/fuzz"
@@ -52,6 +53,7 @@ runners := []Runner {
 	{"tar", tar_fuzz.CORPUS, tar_fuzz.run},
 	{"wasm", wasm_fuzz.CORPUS, wasm_fuzz.run},
 	{"pg_query", pg_query_fuzz.CORPUS, pg_query_fuzz.run},
+	{"pq", pq_fuzz.CORPUS, pq_fuzz.run},
 }
 
 main :: proc() {
@@ -149,9 +151,11 @@ USAGE :: `usage: jm-fuzz [suite...] [-seed=N] [-iters=N] [-for=30s] [-entropy=N]
                [-shrink=N] [-no-shrink] [-corpus=DIR] [-no-corpus]
                [-isolate] [-stop] [-quiet]
 
-suites: sqlite3, tar, wasm, pg_query. With none named, every suite runs.
+suites: sqlite3, tar, wasm, pg_query, pq. With none named, every suite runs.
 Each suite keeps its regressions beside its source and replays them first;
--corpus=DIR uses DIR/<suite> instead, and -no-corpus skips them.
+-corpus=DIR uses DIR/<suite> instead, and -no-corpus skips them. pq needs
+initdb and pg_ctl to bring up a throwaway server; without them it says so and
+runs no cases.
 
 -isolate runs each case in a child process. It is far slower, and nothing a
 case does can end the run: a crash or a hang is reported like any other
