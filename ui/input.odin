@@ -239,7 +239,7 @@ shape_contains :: proc(ops: ^Ops, s: Shape, p: Point) -> bool {
 
 // local maps device point p into h's local space; zero when singular.
 @(private = "file")
-local :: proc(h: Hit, p: Point) -> Point {
+to_local :: proc(h: Hit, p: Point) -> Point {
 	inv, ok := invert(h.transform)
 	if !ok {
 		return {}
@@ -287,7 +287,7 @@ deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: Point) -> bool {
 // deliver_pointer delivers e to h with pos mapped into h's local space.
 @(private = "file")
 deliver_pointer :: proc(r: ^Router, h: Hit, e: Raw_Event) {
-	deliver(r, h, e, local(h, e.pos))
+	deliver(r, h, e, to_local(h, e.pos))
 }
 
 // synth delivers a router-made event of kind to h.
@@ -345,12 +345,12 @@ update_hover :: proc(r: ^Router, f: ^Frame, p: Point) {
 		return
 	}
 	if r.hover != 0 {
-		synth(r, r.hover_hit, .Leave, local(r.hover_hit, p))
+		synth(r, r.hover_hit, .Leave, to_local(r.hover_hit, p))
 	}
 	r.hover = next
 	r.hover_hit = h if ok else {}
 	if ok {
-		synth(r, h, .Enter, local(h, p))
+		synth(r, h, .Enter, to_local(h, p))
 	}
 }
 
