@@ -62,6 +62,10 @@ suite :: proc() -> harness.Suite(Sandbox) {
 	}
 }
 
+// CORPUS is where this suite's regressions live, relative to the repository
+// root. A case that failed once is kept there and replayed on every run.
+CORPUS :: "tar/fuzz/corpus"
+
 // run checks the suite. It is the whole package from a caller's side.
 run :: proc(opts := harness.Opts{}, allocator := context.allocator) -> harness.Report {
 	return harness.run(suite(), opts, allocator)

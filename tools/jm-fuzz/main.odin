@@ -8,6 +8,7 @@ did not hold.
 	jm-fuzz -iters=1000000         a million cases
 	jm-fuzz sqlite3 -seed=12345    replay a reported seed exactly
 	jm-fuzz -corpus=build/corpus   keep failures, and replay them first
+	jm-fuzz -isolate               a child process per case
 	jm-fuzz -stop                  stop at the first failure
 	jm-fuzz -no-shrink             report the case as found, unshrunk
 
@@ -37,16 +38,23 @@ import tar_fuzz "jm:tar/fuzz"
 // Runner is a suite under a name, already given its subject type. A Suite is
 // parametric, so the suites cannot sit in one slice; the run procedures can.
 Runner :: struct {
-	name: string,
-	run:  proc(opts: harness.Opts, allocator := context.allocator) -> harness.Report,
+	name:   string,
+	// Where this suite keeps its regressions when -corpus says nothing else.
+	corpus: string,
+	run:    proc(opts: harness.Opts, allocator := context.allocator) -> harness.Report,
 }
 
-runners := []Runner{{"sqlite3", sqlite3_fuzz.run}, {"tar", tar_fuzz.run}}
+runners := []Runner {
+	{"sqlite3", sqlite3_fuzz.CORPUS, sqlite3_fuzz.run},
+	{"tar", tar_fuzz.CORPUS, tar_fuzz.run},
+}
 
 main :: proc() {
 	opts := harness.Opts {
 		log = note,
 	}
+	corpus_root := ""
+	no_corpus := false
 	wanted: [dynamic]string
 	for arg in os.args[1:] {
 		switch {
@@ -59,6 +67,8 @@ main :: proc() {
 			opts.stop_on_first = true
 		case arg == "-no-shrink":
 			opts.shrink = -1
+		case arg == "-isolate":
+			opts.isolate = true
 		case strings.has_prefix(arg, "-seed="):
 			opts.seed = u64(number(arg, "-seed="))
 		case strings.has_prefix(arg, "-iters="):
@@ -67,8 +77,10 @@ main :: proc() {
 			opts.entropy = number(arg, "-entropy=")
 		case strings.has_prefix(arg, "-shrink="):
 			opts.shrink = number(arg, "-shrink=")
+		case arg == "-no-corpus":
+			no_corpus = true
 		case strings.has_prefix(arg, "-corpus="):
-			opts.corpus_dir = arg[len("-corpus="):]
+			corpus_root = arg[len("-corpus="):]
 		case strings.has_prefix(arg, "-for="):
 			opts.duration = span(arg[len("-for="):])
 		case strings.has_prefix(arg, "-"):
@@ -90,8 +102,13 @@ main :: proc() {
 		// Each suite keeps its cases apart, so replaying one does not hand
 		// the other input it cannot read.
 		suite_opts := opts
-		if opts.corpus_dir != "" {
-			suite_opts.corpus_dir = fmt.tprintf("%s/%s", opts.corpus_dir, r.name)
+		switch {
+		case no_corpus:
+			suite_opts.corpus_dir = ""
+		case corpus_root != "":
+			suite_opts.corpus_dir = fmt.tprintf("%s/%s", corpus_root, r.name)
+		case:
+			suite_opts.corpus_dir = r.corpus
 		}
 		report := r.run(suite_opts)
 		fmt.printfln(
@@ -104,7 +121,7 @@ main :: proc() {
 			len(report.failures),
 		)
 		for f in report.failures {
-			fmt.eprintfln("  %s/%s: %s", r.name, f.property, f.detail)
+			fmt.eprintfln("  %s/%s [%v]: %s", r.name, f.property, f.outcome, f.detail)
 			fmt.eprintfln(
 				"    case %d, %d bytes of entropy%s%s",
 				f.iteration,
@@ -124,9 +141,16 @@ main :: proc() {
 }
 
 USAGE :: `usage: jm-fuzz [suite...] [-seed=N] [-iters=N] [-for=30s] [-entropy=N]
-               [-shrink=N] [-no-shrink] [-corpus=DIR] [-stop] [-quiet]
+               [-shrink=N] [-no-shrink] [-corpus=DIR] [-no-corpus]
+               [-isolate] [-stop] [-quiet]
 
-suites: sqlite3, tar. With none named, every suite runs.`
+suites: sqlite3, tar. With none named, every suite runs.
+Each suite keeps its regressions beside its source and replays them first;
+-corpus=DIR uses DIR/<suite> instead, and -no-corpus skips them.
+
+-isolate runs each case in a child process. It is far slower, and nothing a
+case does can end the run: a crash or a hang is reported like any other
+failure, with the case that caused it.`
 
 // pick resolves the suite names on the command line, or every suite when
 // none were named. An unknown name is an error rather than an empty run that

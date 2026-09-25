@@ -6,6 +6,7 @@
 #   just check     type-check every package for linux, darwin and windows
 #   just sqlite    compile the vendored SQLite amalgamation into sqlite3/lib
 #   just fuzz      run every jm:fuzz suite for thirty seconds
+#   just fuzz-isolate  the same, a child process per case
 #   just install   release odin-run into ~/.local/bin with this checkout baked in
 #   just example   compile and run examples/hello.odin through the collection
 #   just clean     remove build/
@@ -96,6 +97,12 @@ fuzz args="-for=30s": sqlite
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} {{args}}
+
+# A child process per case: a crash or a hang is reported, not fatal
+fuzz-isolate args="-for=5m": sqlite
+    mkdir -p build/debug
+    {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
+    build/debug/jm-fuzz{{exe}} -isolate {{args}}
 
 # The same, under AddressSanitizer
 [unix]

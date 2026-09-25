@@ -86,6 +86,17 @@ Opts :: struct {
 	// and the next run replays it. That costs a file write per case, which
 	// is why it only happens when a corpus is asked for.
 	corpus_dir:    string,
+	// Run each case in a child process. It costs a spawn per case, which is
+	// an order of magnitude slower; the README records the measurement and
+	// the command that makes it. In return nothing a property does can end
+	// the run — a panic, a bounds check or a loop with no end come back as a
+	// result like any other — and the deadline works whether or not the
+	// suite supplies cancel.
+	isolate:       bool,
+	// What to spawn for a child. Empty means this binary, re-run with the
+	// case named in its environment, which is what a suite wants. A test
+	// points it somewhere else to drive the machinery on its own.
+	child_command: []string,
 	// Called on each failure, and every thousand cases. nil is silent.
 	log:           proc(format: string, args: ..any),
 }
@@ -104,6 +115,9 @@ Failure :: struct {
 	shrunk_by: int,
 	// Where the case was saved, if corpus_dir was set.
 	saved:     string,
+	// How the case ended. In this process only Held, Failed and Hung can be
+	// told apart; a child can also come back Crashed or Broken.
+	outcome:   Outcome,
 	// Set when the case had to be cancelled rather than finishing.
 	hung:      bool,
 }
@@ -213,6 +227,17 @@ DEFAULT_CASE_TIMEOUT :: 5 * time.Second
 // run checks the suite's properties against generated cases and reports what
 // failed, smallest form first.
 run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) -> Report {
+	// A child is this same binary with one case named in its environment.
+	// Serving it here means a program that calls run is its own child with
+	// no further wiring, and it must happen before anything else: a child
+	// that set up a run of its own would fork for ever.
+	if spec, is_child := os.lookup_env(ENV_CASE, context.temp_allocator); is_child {
+		if !serve_one(suite, spec) {
+			// Another suite in this binary owns the case.
+			return {}
+		}
+	}
+
 	opts := opts
 	if opts.seed == 0 {
 		opts.seed = u64(time.now()._nsec) | 1
@@ -231,9 +256,33 @@ run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) ->
 	state: rand.Default_Random_State
 	context.random_generator = seed_generator(opts.seed, &state)
 
+	iso: ^Isolation
+	if opts.isolate {
+		started, ierr := start_isolation(opts.child_command, context.temp_allocator)
+		if ierr != "" {
+			// Without children there is no run to make, and pretending
+			// otherwise would report a clean sweep of nothing.
+			failures := make([dynamic]Failure, allocator)
+			append(
+				&failures,
+				Failure {
+					property = suite.name,
+					seed = opts.seed,
+					detail = strings.clone(ierr, allocator),
+					outcome = .Broken,
+				},
+			)
+			return Report{seed = opts.seed, failures = failures[:]}
+		}
+		iso = started
+	}
+	defer stop_isolation(iso)
+
 	dog := new(Watchdog, context.temp_allocator)
 	guard: ^thread.Thread
-	if suite.cancel != nil {
+	// A child is held to its deadline by being killed, so the watchdog is
+	// only wanted when cases run here.
+	if suite.cancel != nil && iso == nil {
 		guard = start_watchdog(dog)
 	}
 	defer stop_watchdog(dog, guard)
@@ -255,8 +304,11 @@ run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) ->
 		// regression before it is replayed, so it survives both outcomes:
 		// dying again, and passing once the bug is fixed.
 		_ = save_case(opts.corpus_dir, entry.property, entry.entropy, context.temp_allocator)
-		crumb := drop_crumb(opts.corpus_dir, entry.property, entry.entropy)
-		detail, ok, hung := attempt(suite, i, entry.entropy, dog, timeout, suite.cancel)
+		crumb := ""
+		if iso == nil {
+			crumb = drop_crumb(opts.corpus_dir, entry.property, entry.entropy)
+		}
+		detail, ok, outcome := attempt(suite, i, entry.entropy, dog, timeout, suite.cancel, iso)
 		clear_crumb(crumb)
 		done += 1
 		if !ok {
@@ -269,7 +321,7 @@ run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) ->
 				entry.entropy,
 				0,
 				entry.path,
-				hung,
+				outcome,
 				allocator,
 			)
 			if opts.stop_on_first {
@@ -290,8 +342,15 @@ run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) ->
 			digest = (digest ~ u64(which) ~ fnv(entropy)) * 1099511628211
 			done += 1
 
-			crumb := drop_crumb(opts.corpus_dir, suite.properties[which].name, entropy)
-			detail, ok, hung := attempt(suite, which, entropy, dog, timeout, suite.cancel)
+			// A child that dies is reported by its parent, so the
+			// breadcrumb is only needed when the case runs here.
+			// A child that dies is reported by its parent, so the
+			// breadcrumb is only needed when the case runs here.
+			crumb := ""
+			if iso == nil {
+				crumb = drop_crumb(opts.corpus_dir, suite.properties[which].name, entropy)
+			}
+			detail, ok, outcome := attempt(suite, which, entropy, dog, timeout, suite.cancel, iso)
 			clear_crumb(crumb)
 			if !ok {
 				small, steps, small_detail := shrink(
@@ -301,6 +360,7 @@ run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) ->
 					dog,
 					timeout,
 					suite.cancel,
+					iso,
 					opts.shrink,
 				)
 				if small_detail != "" {
@@ -321,7 +381,7 @@ run :: proc(suite: Suite($S), opts := Opts{}, allocator := context.allocator) ->
 					small,
 					steps,
 					path,
-					hung,
+					outcome,
 					allocator,
 				)
 				if opts.stop_on_first {
@@ -354,11 +414,23 @@ attempt :: proc(
 	dog: ^Watchdog,
 	timeout: time.Duration,
 	cancel: proc(subject: S),
+	iso: ^Isolation,
 ) -> (
 	detail: string,
 	ok: bool,
-	hung: bool,
+	outcome: Outcome,
 ) {
+	if iso != nil {
+		d, o := run_isolated(
+			iso,
+			suite.name,
+			suite.properties[which].name,
+			entropy,
+			timeout,
+			context.temp_allocator,
+		)
+		return d, o == .Held, o
+	}
 	// The case owns an arena, so nothing it allocated can outlive it and no
 	// case can be handed memory the one before it left behind. The detail is
 	// the one thing that has to survive, so it is copied out into the
@@ -376,7 +448,7 @@ attempt :: proc(
 		made: bool
 		subject, made = suite.setup()
 		if !made {
-			return "setup failed", false, false
+			return "setup failed", false, .Broken
 		}
 	}
 
@@ -387,6 +459,7 @@ attempt :: proc(
 	src := source(entropy)
 	detail, ok = suite.properties[which].check(subject, &src)
 
+	hung := false
 	if cancel != nil {
 		hung = disarm(dog)
 	}
@@ -402,7 +475,7 @@ attempt :: proc(
 					allocator = caller.temp_allocator,
 				),
 				false,
-				true
+				.Hung
 		}
 		return fmt.aprintf(
 				"did not finish within %v, then: %s",
@@ -411,9 +484,9 @@ attempt :: proc(
 				allocator = caller.temp_allocator,
 			),
 			false,
-			true
+			.Hung
 	}
-	return strings.clone(detail, caller.temp_allocator), ok, false
+	return strings.clone(detail, caller.temp_allocator), ok, ok ? .Held : .Failed
 }
 
 // watch cancels a case that has run past its deadline, and keeps cancelling
@@ -449,6 +522,7 @@ shrink :: proc(
 	dog: ^Watchdog,
 	timeout: time.Duration,
 	cancel: proc(subject: S),
+	iso: ^Isolation,
 	budget: int,
 ) -> (
 	smallest: []byte,
@@ -469,7 +543,7 @@ shrink :: proc(
 		for cut := len(smallest) / 2; cut > 0 && spent < budget; cut /= 2 {
 			candidate := smallest[:len(smallest) - cut]
 			spent += 1
-			if d, ok, _ := attempt(suite, which, candidate, dog, timeout, cancel); !ok {
+			if d, ok, _ := attempt(suite, which, candidate, dog, timeout, cancel, iso); !ok {
 				smallest, detail, improved = candidate, d, true
 				break
 			}
@@ -500,7 +574,8 @@ shrink :: proc(
 					candidate[i] = smallest[i] / 2
 				}
 				spent += 1
-				if d, ok, _ := attempt(suite, which, candidate[:], dog, timeout, cancel); !ok {
+				if d, ok, _ := attempt(suite, which, candidate[:], dog, timeout, cancel, iso);
+				   !ok {
 					smallest, detail, improved = candidate[:], d, true
 					break
 				}
@@ -524,7 +599,7 @@ record :: proc(
 	entropy: []byte,
 	shrunk_by: int,
 	saved: string,
-	hung: bool,
+	outcome: Outcome,
 	allocator: mem.Allocator,
 ) {
 	kept := make([]byte, len(entropy), allocator)
@@ -537,7 +612,8 @@ record :: proc(
 		entropy   = kept,
 		shrunk_by = shrunk_by,
 		saved     = strings.clone(saved, allocator),
-		hung      = hung,
+		outcome   = outcome,
+		hung      = outcome == .Hung,
 	}
 	append(failures, f)
 	if opts.log != nil {
