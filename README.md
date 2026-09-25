@@ -44,6 +44,9 @@ binary.
 | `tar`     | `read`, `extract`: `git archive` output without a tar program |
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
+| `ui`      | immediate-mode UI: ops → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
+| `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`) and shapes text with it |
+| `ui/sdl`  | the SDL3 window and event loop for a `ui` app |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
 | `fuzz`    | property fuzzing: an entropy `Source`, generators, format-agnostic `damage`, shrinking, a corpus, a per-case deadline |
 | `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
@@ -95,8 +98,11 @@ just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just sqlite    compile the vendored SQLite  just wasm      compile wasm3
 just pg_query  compile the vendored libpg_query
 just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
+just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
+just kitchen   open the jm:ui demo       just kitchen-dump  its first frame as text
+just kitchen-png  render it to build/kitchen.png
 just example   run examples/hello.odin      just fuzz      30s of fuzzing
-just clean     drop build/ and the three archives
+just clean     drop build/ and the four archives
 ```
 
 `just install` bakes this checkout's path into the runner as the `jm`
@@ -460,3 +466,34 @@ minus belongs to the constant, so `SELECT-1` comes back as `SELECT$1` — one
 identifier, not a statement. `normalize_reparses` skips that shape and names
 it; `pg_query_test.odin` keeps the case, and the package doc tells a caller
 not to re-parse what normalize writes.
+
+## UI
+
+`jm:ui` is an immediate-mode user interface whose frame is data. A ui proc
+records scene ops, `flatten` turns them into a draw list and a hit list, and
+`ui/render` executes the draw list on Blend2D while the router hit-tests the
+hit list. Every stage is an array with a text dump, so a frame can be
+asserted on, serialized (`encode`) for a renderer in another process, or
+driven by `ui.Probe` with no window at all:
+
+```
+build/debug/ui-kitchen -dump                    the scene as text
+build/debug/ui-kitchen -click Save -names       click by tag, list what is on screen
+build/debug/ui-kitchen -click name -type Ada -png out.png
+```
+
+Widgets nest through containers with no per-child boilerplate:
+
+```odin
+col := ui.column(gtx, gap = 8); defer ui.end(&col)
+ui.label(gtx, "Name")
+ui.text_field(gtx, &m.name)
+if ui.button(gtx, "Save") { save(m) }
+```
+
+A zero field in a style struct takes the theme's value. Clipping is exact for
+any shape under any affine: Blend2D clips only to rectangles, so a path or
+rotated clip renders through an A8 mask. The Blend2D binding is copied from
+`odin-blend2d`; `just blend2d` builds its archive from that checkout's source
+(`BLEND2D_SRC`), and anything linking it needs `-lstdc++`.
+`examples/ui-kitchen` is the demo, `just kitchen` opens it.

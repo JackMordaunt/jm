@@ -8,6 +8,10 @@
 #   just wasm      compile the vendored wasm3 interpreter into wasm/lib
 #   just pg_query  compile the vendored libpg_query parser into pg_query/lib
 #   just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
+#   just blend2d   compile Blend2D into ui/blend2d/lib from BLEND2D_SRC
+#   just kitchen   build and open the jm:ui kitchen-sink demo
+#   just kitchen-dump  print the demo's first frame as text, no window
+#   just kitchen-png   render the demo's first frame to build/kitchen.png
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just bench     time jm:wasm against the workloads in tools/wasm-bench
 #   just fuzz-isolate  the same, a child process per case
@@ -20,12 +24,18 @@ root  := justfile_directory()
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/wasm3.a" }
 pg_query_lib := if os() == "windows" { "pg_query/lib/pg_query.lib" } else { "pg_query/lib/pg_query.a" }
+blend2d_lib := if os() == "windows" { "ui/blend2d/lib/blend2d.lib" } else { "ui/blend2d/lib/libblend2d.a" }
+# Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
+# vendored here: 29 MB of source is the sibling checkout's job. Anything that
+# links it needs libstdc++.
+blend2d_src := env("BLEND2D_SRC", home_directory() / "Source" / "Personal" / "odin-blend2d" / "blend2d")
+cxx_link := "-extra-linker-flags:\"-lstdc++\""
 
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
 # three deliberate changes: THREADSAFE=1 rather than 0, so a connection per
@@ -143,6 +153,17 @@ pg_query:
         lib /nologo /OUT:{{pg_query_lib}} pg_query/lib/obj/*.obj \
     }
 
+# Compile Blend2D into ui/blend2d/lib if it is missing
+[unix]
+blend2d:
+    @mkdir -p ui/blend2d/lib
+    @if [ ! -f {{blend2d_lib}} ]; then \
+        echo "cmake blend2d ({{blend2d_src}}) -> {{blend2d_lib}}"; \
+        cmake -S {{blend2d_src}} -B build/blend2d -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1; \
+        cmake --build build/blend2d --config Release --parallel >> build/blend2d.log 2>&1; \
+        cp build/blend2d/libblend2d.a {{blend2d_lib}}; \
+    fi
+
 # nodes.odin is generated and checked in, so nothing here depends on it: this
 # is for after the vendored parser is bumped. The schema it reads is
 # libpg_query's own, the same input upstream generates its Go and Ruby
@@ -159,7 +180,7 @@ pg_query-gen:
 # the runtimes are; the package doc records what two threads do to it.
 #
 # Run every package's tests
-test: sqlite wasm pg_query
+test: sqlite wasm pg_query blend2d
     mkdir -p build/test
     for p in {{packages}}; do \
       threads=""; \
@@ -167,6 +188,7 @@ test: sqlite wasm pg_query
       {{odin}} test $p {{flags}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
     done
     {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
+    {{odin}} test ui/render {{flags}} {{cxx_link}} -out:build/test/ui-render{{exe}}
 
 # Type-check every package and the runner for each target
 check:
@@ -177,6 +199,9 @@ check:
       {{odin}} check pg_query/gen {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/wasm-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
+      {{odin}} check ui/render {{flags}} -no-entry-point -target:$t || exit 1; \
+      {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
+      {{odin}} check examples/ui-kitchen {{flags}} -target:$t || exit 1; \
     done
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
@@ -231,6 +256,27 @@ bench-build:
 example: build sqlite
     ODIN_RUN_VERBOSE=1 build/debug/odin-run{{exe}} examples/hello.odin
 
-# Remove build/ and the compiled SQLite, wasm3 and libpg_query archives
+# The demo is the proof that the pieces of jm:ui fit: a window, or the same
+# frame as text or as a PNG without one.
+#
+# Build and open the jm:ui kitchen-sink demo
+kitchen: blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
+    build/debug/ui-kitchen{{exe}}
+
+# Print the demo's first frame as text, no window
+kitchen-dump: blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
+    build/debug/ui-kitchen{{exe}} -dump
+
+# Render the demo's first frame to build/kitchen.png, no window
+kitchen-png: blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
+    build/debug/ui-kitchen{{exe}} -png build/kitchen.png
+
+# Remove build/ and the compiled SQLite, wasm3, libpg_query and Blend2D archives
 clean:
-    rm -rf build sqlite3/lib wasm/lib pg_query/lib
+    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib
