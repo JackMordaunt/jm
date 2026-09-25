@@ -7,6 +7,7 @@
 #   just sqlite    compile the vendored SQLite amalgamation into sqlite3/lib
 #   just wasm      compile the vendored wasm3 interpreter into wasm/lib
 #   just fuzz      run every jm:fuzz suite for thirty seconds
+#   just bench     time jm:wasm against the workloads in tools/wasm-bench
 #   just fuzz-isolate  the same, a child process per case
 #   just install   release odin-run into ~/.local/bin with this checkout baked in
 #   just example   compile and run examples/hello.odin through the collection
@@ -19,6 +20,7 @@ exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
 packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm fuzz sqlite3/fuzz tar/fuzz wasm/fuzz"
 cc       := env("CC", "cc")
+wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/wasm3.a" }
 
@@ -109,6 +111,7 @@ test: sqlite wasm
       case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac; \
       {{odin}} test $p {{flags}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
     done
+    {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
 
 # Type-check every package and the runner for each target
 check:
@@ -116,6 +119,7 @@ check:
       for p in {{packages}}; do {{odin}} check $p {{flags}} -no-entry-point -target:$t || exit 1; done; \
       {{odin}} check tools/odin-run {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/jm-fuzz {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/wasm-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
     done
 
@@ -145,6 +149,27 @@ fuzz-asan args="-for=30s": sqlite wasm
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} -out:build/debug/jm-fuzz-asan
     build/debug/jm-fuzz-asan {{args}}
+
+# `just bench "-n=64"` fixes the work per call; without one each workload is
+# calibrated to take about 25ms.
+#
+# Time jm:wasm against the workloads in tools/wasm-bench
+bench args="": wasm
+    mkdir -p build/release
+    {{odin}} build tools/wasm-bench -o:speed {{flags}} -out:build/release/wasm-bench{{exe}}
+    build/release/wasm-bench{{exe}} tools/wasm-bench/workloads {{args}}
+
+# The .wasm files are committed, so this is only needed when a source changes.
+# It wants a clang with the wasm32 target and wasm-ld; zig cc has both, as
+# WASM_CC="zig cc".
+#
+# Rebuild the benchmark workloads from their C sources
+[unix]
+bench-build:
+    for f in tools/wasm-bench/workloads/*.c; do \
+      {{wasm_cc}} --target=wasm32-freestanding -O2 -nostdlib -Wl,--no-entry \
+        -Wl,--export=run -Wl,--export-memory -o ${f%.c}.wasm $f || exit 1; \
+    done
 
 # Compile and run the example script
 example: build sqlite
