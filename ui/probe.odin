@@ -59,6 +59,7 @@ probe_init :: proc(
 	frame_init(&p.frame, allocator)
 	frame_init(&p.prev, allocator)
 	router_init(&p.router, allocator)
+	layout_init(&p.layout, allocator)
 	err := virtual.arena_init_growing(&p.arena)
 	assert(err == nil, "probe: arena init failed")
 	probe_frame(p)
@@ -66,6 +67,7 @@ probe_init :: proc(
 
 // probe_destroy frees everything p owns.
 probe_destroy :: proc(p: ^Probe) {
+	layout_destroy(&p.layout)
 	router_destroy(&p.router)
 	frame_destroy(&p.frame)
 	frame_destroy(&p.prev)
@@ -80,6 +82,7 @@ probe_frame :: proc(p: ^Probe) {
 	router_route(&p.router, &p.prev)
 	virtual.arena_free_all(&p.arena)
 	ops_reset(&p.ops)
+	layout_reset(&p.layout)
 	gtx := Ctx {
 		ops         = &p.ops,
 		constraints = exact(p.size),
