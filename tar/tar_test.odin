@@ -180,3 +180,25 @@ short_pax_record_is_ignored :: proc(t: ^testing.T) {
 		testing.expect_value(t, entries[0].name, "real.txt")
 	}
 }
+
+// The size guard keeps the field inside an int, but read then adds the
+// header's own offset to it, and that is the addition that used to wrap:
+// a size of max(int) made end negative and read sliced backwards again.
+// Found by reasoning about the first fix rather than by a fuzz run. The
+// matching case is committed under tar/fuzz/corpus, so it is checked there
+// too.
+@(test)
+size_that_overflows_when_offset_is_added_is_rejected :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	archive := make([]byte, 512)
+	// A base-256 size field encoding exactly max(i64).
+	archive[124] = 0x80 // the high bit marks base-256, and is masked off
+	archive[128] = 0x7f
+	for i in 129 ..< 136 {
+		archive[i] = 0xff
+	}
+	archive[156] = '0'
+	entries, err := read(archive)
+	testing.expect_value(t, err, Error.Truncated)
+	testing.expect_value(t, len(entries), 0)
+}

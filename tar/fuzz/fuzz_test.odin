@@ -1,6 +1,8 @@
 package tar_fuzz
 
+import "core:os"
 import "core:slice"
+import "core:strings"
 import "core:testing"
 
 import harness "jm:fuzz"
@@ -101,4 +103,40 @@ same_seed_same_run :: proc(t: ^testing.T) {
 	second := run({seed = 5, iterations = 100})
 	testing.expect(t, first.digest != 0, "a run that generated cases has a digest")
 	testing.expect_value(t, first.digest, second.digest)
+}
+
+// The committed corpus is replayed by `just test`, so a bug found once by
+// fuzzing stays found without anyone having to run the fuzzer again.
+@(test)
+regressions_still_pass :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	report := run({seed = 1, iterations = 1, corpus_dir = CORPUS})
+	committed := count_cases(CORPUS)
+	testing.expect(t, committed >= 1, "this suite has regressions committed")
+	testing.expect_value(t, report.replayed, committed)
+	for f in report.failures {
+		testing.expectf(t, false, "%s regressed: %s", f.property, f.detail)
+	}
+}
+
+// count_cases is how many regressions are committed, so the test below can
+// say the corpus was read rather than only that nothing failed.
+@(private = "file")
+count_cases :: proc(dir: string) -> int {
+	handle, err := os.open(dir)
+	if err != nil {
+		return 0
+	}
+	defer os.close(handle)
+	entries, rerr := os.read_directory(handle, -1, context.temp_allocator)
+	if rerr != nil {
+		return 0
+	}
+	n := 0
+	for e in entries {
+		if strings.has_suffix(e.name, ".case") {
+			n += 1
+		}
+	}
+	return n
 }

@@ -86,10 +86,14 @@ read :: proc(archive: []byte, allocator := context.allocator) -> (entries: []Ent
 			return nil, .Bad_Header
 		}
 		start := offset + block
-		end := start + size
-		if end > len(archive) {
+		// Compared by subtraction, because start + size is the addition that
+		// overflows: the size guard above keeps size inside an int, and
+		// adding start to it is what pushes it back out. The loop condition
+		// puts start no further than len(archive), so this cannot wrap.
+		if size > len(archive) - start {
 			return nil, .Truncated
 		}
+		end := start + size
 		flag := header[156]
 		name := field(header[0:100])
 		if prefix := field(header[345:500]); prefix != "" && string(header[257:262]) == "ustar" {
