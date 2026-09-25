@@ -1,0 +1,147 @@
+package ui
+
+import "core:math/rand"
+import "core:mem/virtual"
+import "core:slice"
+import "core:testing"
+
+@(test)
+test_encode_round_trip :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+	src: Ops
+	ops_init(&src)
+	golden_scene(&src)
+	add_font(&src, "mono.ttf")
+	tag(&src, 99, "quote \" and\nnewline")
+	append(&src.ops, nil) // a nil op survives too
+
+	data := encode(&src)
+	testing.expect(t, len(data) > 5)
+	testing.expect_value(t, string(data[:4]), "UIOP")
+	testing.expect_value(t, data[4], 1)
+
+	dst: Ops
+	ops_init(&dst)
+	add_font(&dst, "stale.ttf") // decode replaces fonts and images
+	testing.expect(t, decode(data, &dst))
+	testing.expect_value(t, len(dst.ops), len(src.ops))
+	testing.expect_value(t, len(dst.paths), len(src.paths))
+	testing.expect_value(t, len(dst.runs), len(src.runs))
+	testing.expect_value(t, len(dst.macros), len(src.macros))
+	testing.expect_value(t, len(dst.fonts), 2)
+	testing.expect_value(t, len(dst.images), 1)
+	testing.expect_value(t, dst.fonts[1].path, "mono.ttf")
+	testing.expect_value(t, dst.images[0].path, "logo.png")
+	testing.expect(t, slice.equal(dst.paths[0].verbs, src.paths[0].verbs))
+	testing.expect(t, slice.equal(dst.paths[0].points, src.paths[0].points))
+	testing.expect(t, slice.equal(dst.runs[0].glyphs, src.runs[0].glyphs))
+	testing.expect_value(t, dst.runs[0].advance, src.runs[0].advance)
+	testing.expect_value(t, dst.macros[0], src.macros[0])
+	testing.expect_value(t, dump(&dst), dump(&src))
+
+	// flatten(decode(encode(x))) == flatten(x)
+	fs, fd: Frame
+	frame_init(&fs)
+	frame_init(&fd)
+	flatten(&src, &fs)
+	flatten(&dst, &fd)
+	testing.expect_value(t, dump_frame(&fd), dump_frame(&fs))
+
+	// Re-encoding the decoded ops gives the same bytes.
+	testing.expect(t, slice.equal(encode(&dst), data))
+}
+
+@(test)
+test_decode_rejects_every_truncation :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+	src: Ops
+	ops_init(&src)
+	golden_scene(&src)
+	data := encode(&src)
+
+	scratch: virtual.Arena
+	defer virtual.arena_destroy(&scratch)
+	dst: Ops
+	ops_init(&dst, virtual.arena_allocator(&scratch))
+	for n in 0 ..< len(data) {
+		testing.expectf(t, !decode(data[:n], &dst), "prefix of %d/%d bytes decoded", n, len(data))
+	}
+	extra := make([]byte, len(data) + 1)
+	copy(extra, data)
+	testing.expect(t, !decode(extra, &dst), "trailing byte accepted")
+	testing.expect(t, decode(data, &dst))
+}
+
+@(test)
+test_decode_rejects_bad_header_and_tags :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+	src: Ops
+	ops_init(&src)
+	pop_clip(&src)
+	data := encode(&src)
+	dst: Ops
+	ops_init(&dst)
+	testing.expect(t, decode(data, &dst))
+
+	bad := slice.clone(data)
+	bad[0] = 'X'
+	testing.expect(t, !decode(bad, &dst), "bad magic accepted")
+	bad = slice.clone(data)
+	bad[4] = 2
+	testing.expect(t, !decode(bad, &dst), "bad version accepted")
+	bad = slice.clone(data)
+	bad[len(bad) - 1] = 200 // the one op's tag
+	testing.expect(t, !decode(bad, &dst), "bad op tag accepted")
+
+	// A Call naming a macro that is not in the stream.
+	clear(&src.ops)
+	call(&src, 3)
+	testing.expect(t, !decode(encode(&src), &dst), "dangling call accepted")
+}
+
+@(test)
+test_decode_survives_random_bytes :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+	rand.reset(0x5eed)
+	src: Ops
+	ops_init(&src)
+	golden_scene(&src)
+	valid := encode(&src)
+
+	scratch: virtual.Arena
+	defer virtual.arena_destroy(&scratch)
+	dst: Ops
+	ops_init(&dst, virtual.arena_allocator(&scratch))
+	buf := make([]byte, 256)
+	for i in 0 ..< 2000 {
+		n := rand.int_max(len(buf))
+		b := buf[:n]
+		for &c in b {
+			c = u8(rand.uint32())
+		}
+		if i % 2 == 1 && n >= 5 {
+			// A valid header gets the noise past the magic check.
+			copy(b, valid[:5])
+		}
+		testing.expectf(t, !decode(b, &dst), "random %d-byte string decoded", n)
+	}
+	// Mutated valid streams must not crash; some may still decode.
+	mutant := make([]byte, len(valid))
+	for _ in 0 ..< 2000 {
+		copy(mutant, valid)
+		for _ in 0 ..< 1 + rand.int_max(4) {
+			mutant[rand.int_max(len(mutant))] = u8(rand.uint32())
+		}
+		if decode(mutant, &dst) {
+			_ = dump(&dst, virtual.arena_allocator(&scratch))
+		}
+	}
+}

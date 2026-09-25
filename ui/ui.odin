@@ -13,9 +13,9 @@ serialized, or driven by a probe without a window.
 		if ui.button(gtx, "Save") { save(m) }
 	}
 
-Frame flow: ops_reset -> ui(gtx) -> flatten(ops, frame) -> router_commit(frame.hits)
--> render(frame). Input arrives one frame late by design: events are routed
-against the previous frame's hit list, as in Gio.
+Frame flow: router_route(router, previous frame) -> ops_reset -> ui(gtx) ->
+flatten(ops, frame) -> render(frame). Input arrives one frame late by design:
+events are routed against the previous frame's hit list, as in Gio.
 
 Coordinates: y grows downwards, units are device pixels. Affine follows the
 Blend2D matrix layout: x' = a*x + c*y + e, y' = b*x + d*y + f.

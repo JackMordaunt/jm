@@ -1,0 +1,588 @@
+package ui
+
+import "core:encoding/endian"
+import "core:mem"
+
+// Binary wire form of Ops. Little-endian throughout:
+//
+//	"UIOP" u8(version)
+//	fonts   u32 n, n × (u32 id, str path)
+//	images  u32 n, n × (u32 id, str path)
+//	paths   u32 n, n × (u32 n, n × u8 verb; u32 n, n × (f32 x, f32 y))
+//	runs    u32 n, n × (u32 font, f32 size, u32 n, n × (u32 id, f32 x, f32 y), f32 advance)
+//	macros  u32 n, n × (i64 first, i64 last)
+//	ops     u32 n, n × (u8 tag, payload)
+//
+// str is u32 length then bytes. Unions (Op, Shape, Paint) are a u8 tag, 0
+// for nil and then the variant's position in the union from 1, followed by
+// the variant's fields in declaration order. Floats are their raw bits.
+
+ENCODE_MAGIC :: "UIOP"
+ENCODE_VERSION :: u8(1)
+
+// encode serializes ops, resources included, into a new byte slice.
+encode :: proc(ops: ^Ops, allocator := context.allocator) -> []byte {
+	w := make([dynamic]byte, 0, 256, allocator)
+	for c in transmute([]byte)string(ENCODE_MAGIC) {
+		append(&w, c)
+	}
+	append(&w, ENCODE_VERSION)
+
+	put_u32(&w, u32(len(ops.fonts)))
+	for f in ops.fonts {
+		put_u32(&w, u32(f.id))
+		put_str(&w, f.path)
+	}
+	put_u32(&w, u32(len(ops.images)))
+	for im in ops.images {
+		put_u32(&w, u32(im.id))
+		put_str(&w, im.path)
+	}
+	put_u32(&w, u32(len(ops.paths)))
+	for p in ops.paths {
+		put_u32(&w, u32(len(p.verbs)))
+		for v in p.verbs {
+			append(&w, u8(v))
+		}
+		put_u32(&w, u32(len(p.points)))
+		for q in p.points {
+			put_point(&w, q)
+		}
+	}
+	put_u32(&w, u32(len(ops.runs)))
+	for r in ops.runs {
+		put_u32(&w, u32(r.font))
+		put_f32(&w, r.size)
+		put_u32(&w, u32(len(r.glyphs)))
+		for g in r.glyphs {
+			put_u32(&w, g.id)
+			put_f32(&w, g.x)
+			put_f32(&w, g.y)
+		}
+		put_f32(&w, r.advance)
+	}
+	put_u32(&w, u32(len(ops.macros)))
+	for m in ops.macros {
+		put_u64(&w, u64(i64(m.first)))
+		put_u64(&w, u64(i64(m.last)))
+	}
+	put_u32(&w, u32(len(ops.ops)))
+	for op in ops.ops {
+		put_op(&w, op)
+	}
+	return w[:]
+}
+
+// decode reads an encoded stream into ops, which is emptied first (fonts
+// and images too: the stream is authoritative). Slices and strings are
+// allocated from ops.allocator. It returns false on truncation, bad magic
+// or version, an unknown tag or enum value, trailing bytes, or a reference
+// (path, run, macro) out of range; ops then holds a partial decode. It never
+// panics on hostile input.
+decode :: proc(data: []byte, ops: ^Ops) -> bool {
+	ops_reset(ops)
+	clear(&ops.fonts)
+	clear(&ops.images)
+	r := Reader {
+		data      = data,
+		allocator = ops.allocator,
+	}
+	for c in transmute([]byte)string(ENCODE_MAGIC) {
+		if b, ok := get_u8(&r); !ok || b != c {
+			return false
+		}
+	}
+	if v, ok := get_u8(&r); !ok || v != ENCODE_VERSION {
+		return false
+	}
+
+	// Every entry takes at least one byte, which bounds each count by what
+	// is left and keeps a hostile count from forcing a huge allocation.
+	n: int
+	ok: bool
+	if n, ok = get_count(&r, 1); !ok {
+		return false
+	}
+	for _ in 0 ..< n {
+		id := get_u32(&r) or_return
+		path := get_str(&r) or_return
+		append(&ops.fonts, Font_Ref{Font_Id(id), path})
+	}
+	if n, ok = get_count(&r, 1); !ok {
+		return false
+	}
+	for _ in 0 ..< n {
+		id := get_u32(&r) or_return
+		path := get_str(&r) or_return
+		append(&ops.images, Image_Ref{Image_Id(id), path})
+	}
+	if n, ok = get_count(&r, 1); !ok {
+		return false
+	}
+	for _ in 0 ..< n {
+		nv := get_count(&r, 1) or_return
+		verbs := make([]Path_Verb, nv, ops.allocator)
+		for &v in verbs {
+			b := get_u8(&r) or_return
+			if b > u8(max(Path_Verb)) {
+				return false
+			}
+			v = Path_Verb(b)
+		}
+		np := get_count(&r, 8) or_return
+		points := make([]Point, np, ops.allocator)
+		for &q in points {
+			q = get_point(&r) or_return
+		}
+		append(&ops.paths, Path{verbs, points})
+	}
+	if n, ok = get_count(&r, 1); !ok {
+		return false
+	}
+	for _ in 0 ..< n {
+		run: Glyph_Run
+		run.font = Font_Id(get_u32(&r) or_return)
+		run.size = get_f32(&r) or_return
+		ng := get_count(&r, 12) or_return
+		run.glyphs = make([]Glyph, ng, ops.allocator)
+		for &g in run.glyphs {
+			g.id = get_u32(&r) or_return
+			g.x = get_f32(&r) or_return
+			g.y = get_f32(&r) or_return
+		}
+		run.advance = get_f32(&r) or_return
+		append(&ops.runs, run)
+	}
+	if n, ok = get_count(&r, 16); !ok {
+		return false
+	}
+	for _ in 0 ..< n {
+		first := i64(get_u64(&r) or_return)
+		last := i64(get_u64(&r) or_return)
+		// Checked against len(ops) once the ops are in.
+		if first < 0 || first > i64(max(i32)) || last < -1 || last > i64(max(i32)) {
+			return false
+		}
+		append(&ops.macros, Macro{int(first), int(last)})
+	}
+	if n, ok = get_count(&r, 1); !ok {
+		return false
+	}
+	for _ in 0 ..< n {
+		op := get_op(&r, ops) or_return
+		append(&ops.ops, op)
+	}
+	if r.pos != len(r.data) {
+		return false
+	}
+	for m in ops.macros {
+		if m.first > len(ops.ops) || (m.last >= 0 && (m.last < m.first || m.last >= len(ops.ops))) {
+			return false
+		}
+	}
+	return true
+}
+
+// Writing.
+
+@(private = "file")
+put_u32 :: proc(w: ^[dynamic]byte, v: u32) {
+	b: [4]byte
+	endian.put_u32(b[:], .Little, v)
+	append(w, ..b[:])
+}
+
+@(private = "file")
+put_u64 :: proc(w: ^[dynamic]byte, v: u64) {
+	b: [8]byte
+	endian.put_u64(b[:], .Little, v)
+	append(w, ..b[:])
+}
+
+@(private = "file")
+put_f32 :: proc(w: ^[dynamic]byte, v: f32) {
+	put_u32(w, transmute(u32)v)
+}
+
+@(private = "file")
+put_f64 :: proc(w: ^[dynamic]byte, v: f64) {
+	put_u64(w, transmute(u64)v)
+}
+
+@(private = "file")
+put_point :: proc(w: ^[dynamic]byte, p: Point) {
+	put_f32(w, p.x)
+	put_f32(w, p.y)
+}
+
+@(private = "file")
+put_rect :: proc(w: ^[dynamic]byte, r: Rect) {
+	put_f32(w, r.x)
+	put_f32(w, r.y)
+	put_f32(w, r.w)
+	put_f32(w, r.h)
+}
+
+@(private = "file")
+put_str :: proc(w: ^[dynamic]byte, s: string) {
+	put_u32(w, u32(len(s)))
+	append(w, s)
+}
+
+@(private = "file")
+put_color :: proc(w: ^[dynamic]byte, c: Color) {
+	append(w, c.r, c.g, c.b, c.a)
+}
+
+@(private = "file")
+put_stops :: proc(w: ^[dynamic]byte, stops: []Gradient_Stop) {
+	put_u32(w, u32(len(stops)))
+	for s in stops {
+		put_f32(w, s.t)
+		put_color(w, s.color)
+	}
+}
+
+@(private = "file")
+put_shape :: proc(w: ^[dynamic]byte, s: Shape) {
+	switch v in s {
+	case Rect:
+		append(w, 1)
+		put_rect(w, v)
+	case Round_Rect:
+		append(w, 2)
+		put_rect(w, v.rect)
+		put_f32(w, v.radius)
+	case Ellipse:
+		append(w, 3)
+		put_rect(w, v.rect)
+	case Path_Ref:
+		append(w, 4)
+		put_u32(w, u32(v.id))
+	case:
+		append(w, 0)
+	}
+}
+
+@(private = "file")
+put_paint :: proc(w: ^[dynamic]byte, p: Paint) {
+	switch v in p {
+	case Color:
+		append(w, 1)
+		put_color(w, v)
+	case Linear_Gradient:
+		append(w, 2)
+		put_point(w, v.p0)
+		put_point(w, v.p1)
+		put_stops(w, v.stops)
+	case Radial_Gradient:
+		append(w, 3)
+		put_point(w, v.center)
+		put_f32(w, v.radius)
+		put_stops(w, v.stops)
+	case Image_Paint:
+		append(w, 4)
+		put_u32(w, u32(v.image))
+	case:
+		append(w, 0)
+	}
+}
+
+@(private = "file")
+put_op :: proc(w: ^[dynamic]byte, op: Op) {
+	switch v in op {
+	case Push_Transform:
+		append(w, 1)
+		m := v.m
+		for f in ([6]f64{m.a, m.b, m.c, m.d, m.e, m.f}) {
+			put_f64(w, f)
+		}
+	case Pop_Transform:
+		append(w, 2)
+	case Push_Clip:
+		append(w, 3)
+		put_shape(w, v.shape)
+	case Pop_Clip:
+		append(w, 4)
+	case Macro_Begin:
+		append(w, 5)
+		put_u32(w, u32(v.id))
+	case Macro_End:
+		append(w, 6)
+		put_u32(w, u32(v.id))
+	case Call:
+		append(w, 7)
+		put_u32(w, u32(v.id))
+	case Fill:
+		append(w, 8)
+		put_shape(w, v.shape)
+		put_paint(w, v.paint)
+	case Stroke:
+		append(w, 9)
+		put_shape(w, v.shape)
+		put_paint(w, v.paint)
+		put_f32(w, v.style.width)
+		append(w, u8(v.style.cap), u8(v.style.join))
+	case Glyphs:
+		append(w, 10)
+		put_u32(w, u32(v.run))
+		put_point(w, v.origin)
+		put_color(w, v.color)
+	case Image:
+		append(w, 11)
+		put_u32(w, u32(v.id))
+		put_rect(w, v.dst)
+		put_rect(w, v.src)
+	case Input_Area:
+		append(w, 12)
+		put_u64(w, u64(v.id))
+		put_shape(w, v.shape)
+		put_u32(w, u32(transmute(u16)v.kinds))
+	case Tag:
+		append(w, 13)
+		put_u64(w, u64(v.id))
+		put_str(w, v.name)
+	case:
+		append(w, 0)
+	}
+}
+
+// Reading. Every get_* bounds-checks and returns ok=false rather than
+// reading past the end.
+
+@(private = "file")
+Reader :: struct {
+	data:      []byte,
+	pos:       int,
+	allocator: mem.Allocator,
+}
+
+@(private = "file")
+take :: proc(r: ^Reader, n: int) -> (v: []byte, ok: bool) {
+	if n < 0 || n > len(r.data) - r.pos {
+		return nil, false
+	}
+	b := r.data[r.pos:][:n]
+	r.pos += n
+	return b, true
+}
+
+@(private = "file")
+get_u8 :: proc(r: ^Reader) -> (v: u8, ok: bool) {
+	b := take(r, 1) or_return
+	return b[0], true
+}
+
+@(private = "file")
+get_u32 :: proc(r: ^Reader) -> (v: u32, ok: bool) {
+	b := take(r, 4) or_return
+	return endian.get_u32(b, .Little)
+}
+
+@(private = "file")
+get_u64 :: proc(r: ^Reader) -> (v: u64, ok: bool) {
+	b := take(r, 8) or_return
+	return endian.get_u64(b, .Little)
+}
+
+@(private = "file")
+get_f32 :: proc(r: ^Reader) -> (v: f32, ok: bool) {
+	bits := get_u32(r) or_return
+	return transmute(f32)bits, true
+}
+
+@(private = "file")
+get_f64 :: proc(r: ^Reader) -> (v: f64, ok: bool) {
+	bits := get_u64(r) or_return
+	return transmute(f64)bits, true
+}
+
+// get_count reads a u32 count and rejects one whose entries, at least
+// min_size bytes each, could not fit in what is left.
+@(private = "file")
+get_count :: proc(r: ^Reader, min_size: int) -> (v: int, ok: bool) {
+	n := int(get_u32(r) or_return)
+	if n * min_size > len(r.data) - r.pos {
+		return 0, false
+	}
+	return n, true
+}
+
+@(private = "file")
+get_str :: proc(r: ^Reader) -> (v: string, ok: bool) {
+	n := get_count(r, 1) or_return
+	b := take(r, n) or_return
+	s := make([]byte, n, r.allocator)
+	copy(s, b)
+	return string(s), true
+}
+
+@(private = "file")
+get_point :: proc(r: ^Reader) -> (p: Point, ok: bool) {
+	p.x = get_f32(r) or_return
+	p.y = get_f32(r) or_return
+	return p, true
+}
+
+@(private = "file")
+get_rect :: proc(r: ^Reader) -> (v: Rect, ok: bool) {
+	v.x = get_f32(r) or_return
+	v.y = get_f32(r) or_return
+	v.w = get_f32(r) or_return
+	v.h = get_f32(r) or_return
+	return v, true
+}
+
+@(private = "file")
+get_color :: proc(r: ^Reader) -> (v: Color, ok: bool) {
+	b := take(r, 4) or_return
+	return {b[0], b[1], b[2], b[3]}, true
+}
+
+@(private = "file")
+get_stops :: proc(r: ^Reader) -> (v: []Gradient_Stop, ok: bool) {
+	n := get_count(r, 8) or_return
+	stops := make([]Gradient_Stop, n, r.allocator)
+	for &s in stops {
+		s.t = get_f32(r) or_return
+		s.color = get_color(r) or_return
+	}
+	return stops, true
+}
+
+@(private = "file")
+get_shape :: proc(r: ^Reader, ops: ^Ops) -> (s: Shape, ok: bool) {
+	switch get_u8(r) or_return {
+	case 0:
+		return nil, true
+	case 1:
+		return get_rect(r)
+	case 2:
+		rr: Round_Rect
+		rr.rect = get_rect(r) or_return
+		rr.radius = get_f32(r) or_return
+		return rr, true
+	case 3:
+		return Ellipse{get_rect(r) or_return}, true
+	case 4:
+		id := get_u32(r) or_return
+		if int(id) >= len(ops.paths) {
+			return nil, false
+		}
+		return Path_Ref{Path_Id(id)}, true
+	}
+	return nil, false
+}
+
+@(private = "file")
+get_paint :: proc(r: ^Reader) -> (p: Paint, ok: bool) {
+	switch get_u8(r) or_return {
+	case 0:
+		return nil, true
+	case 1:
+		return get_color(r)
+	case 2:
+		g: Linear_Gradient
+		g.p0 = get_point(r) or_return
+		g.p1 = get_point(r) or_return
+		g.stops = get_stops(r) or_return
+		return g, true
+	case 3:
+		g: Radial_Gradient
+		g.center = get_point(r) or_return
+		g.radius = get_f32(r) or_return
+		g.stops = get_stops(r) or_return
+		return g, true
+	case 4:
+		return Image_Paint{Image_Id(get_u32(r) or_return)}, true
+	}
+	return nil, false
+}
+
+@(private = "file")
+get_macro_id :: proc(r: ^Reader, ops: ^Ops) -> (v: Macro_Id, ok: bool) {
+	id := get_u32(r) or_return
+	if int(id) >= len(ops.macros) {
+		return 0, false
+	}
+	return Macro_Id(id), true
+}
+
+@(private = "file")
+get_op :: proc(r: ^Reader, ops: ^Ops) -> (op: Op, ok: bool) {
+	switch get_u8(r) or_return {
+	case 0:
+		return nil, true
+	case 1:
+		m: Affine
+		m.a = get_f64(r) or_return
+		m.b = get_f64(r) or_return
+		m.c = get_f64(r) or_return
+		m.d = get_f64(r) or_return
+		m.e = get_f64(r) or_return
+		m.f = get_f64(r) or_return
+		return Push_Transform{m}, true
+	case 2:
+		return Pop_Transform{}, true
+	case 3:
+		return Push_Clip{get_shape(r, ops) or_return}, true
+	case 4:
+		return Pop_Clip{}, true
+	case 5:
+		return Macro_Begin{get_macro_id(r, ops) or_return}, true
+	case 6:
+		return Macro_End{get_macro_id(r, ops) or_return}, true
+	case 7:
+		return Call{get_macro_id(r, ops) or_return}, true
+	case 8:
+		v: Fill
+		v.shape = get_shape(r, ops) or_return
+		v.paint = get_paint(r) or_return
+		return v, true
+	case 9:
+		v: Stroke
+		v.shape = get_shape(r, ops) or_return
+		v.paint = get_paint(r) or_return
+		v.style.width = get_f32(r) or_return
+		cap := get_u8(r) or_return
+		join := get_u8(r) or_return
+		if cap > u8(max(Line_Cap)) || join > u8(max(Line_Join)) {
+			return nil, false
+		}
+		v.style.cap = Line_Cap(cap)
+		v.style.join = Line_Join(join)
+		return v, true
+	case 10:
+		v: Glyphs
+		id := get_u32(r) or_return
+		if int(id) >= len(ops.runs) {
+			return nil, false
+		}
+		v.run = Run_Id(id)
+		v.origin = get_point(r) or_return
+		v.color = get_color(r) or_return
+		return v, true
+	case 11:
+		v: Image
+		v.id = Image_Id(get_u32(r) or_return)
+		v.dst = get_rect(r) or_return
+		v.src = get_rect(r) or_return
+		return v, true
+	case 12:
+		v: Input_Area
+		v.id = Area_Id(get_u64(r) or_return)
+		v.shape = get_shape(r, ops) or_return
+		bits := get_u32(r) or_return
+		if bits >= 1 << (uint(max(Event_Kind)) + 1) {
+			return nil, false
+		}
+		v.kinds = transmute(Event_Kinds)u16(bits)
+		return v, true
+	case 13:
+		v: Tag
+		v.id = Area_Id(get_u64(r) or_return)
+		v.name = get_str(r) or_return
+		return v, true
+	}
+	return nil, false
+}
