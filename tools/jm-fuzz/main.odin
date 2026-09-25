@@ -5,7 +5,7 @@ did not hold.
 	jm-fuzz                        every suite, a thousand cases each
 	jm-fuzz sqlite3                one suite
 	jm-fuzz tar -for=30s           as many as fit in thirty seconds
-	jm-fuzz wasm -isolate          a child process per case, for the ones that crash
+	jm-fuzz pg_query -isolate      a child process per case, for the ones that crash
 	jm-fuzz -iters=1000000         a million cases
 	jm-fuzz sqlite3 -seed=12345    replay a reported seed exactly
 	jm-fuzz -corpus=build/corpus   keep failures, and replay them first
@@ -33,6 +33,7 @@ import "core:strings"
 import "core:time"
 
 import harness "jm:fuzz"
+import pg_query_fuzz "jm:pg_query/fuzz"
 import sqlite3_fuzz "jm:sqlite3/fuzz"
 import tar_fuzz "jm:tar/fuzz"
 import wasm_fuzz "jm:wasm/fuzz"
@@ -50,6 +51,7 @@ runners := []Runner {
 	{"sqlite3", sqlite3_fuzz.CORPUS, sqlite3_fuzz.run},
 	{"tar", tar_fuzz.CORPUS, tar_fuzz.run},
 	{"wasm", wasm_fuzz.CORPUS, wasm_fuzz.run},
+	{"pg_query", pg_query_fuzz.CORPUS, pg_query_fuzz.run},
 }
 
 main :: proc() {
@@ -147,7 +149,7 @@ USAGE :: `usage: jm-fuzz [suite...] [-seed=N] [-iters=N] [-for=30s] [-entropy=N]
                [-shrink=N] [-no-shrink] [-corpus=DIR] [-no-corpus]
                [-isolate] [-stop] [-quiet]
 
-suites: sqlite3, tar, wasm. With none named, every suite runs.
+suites: sqlite3, tar, wasm, pg_query. With none named, every suite runs.
 Each suite keeps its regressions beside its source and replays them first;
 -corpus=DIR uses DIR/<suite> instead, and -no-corpus skips them.
 

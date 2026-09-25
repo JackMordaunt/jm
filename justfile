@@ -20,7 +20,7 @@ root  := justfile_directory()
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
@@ -188,20 +188,20 @@ install: release
 # `just fuzz "sqlite3 -seed=12345"`, `just fuzz "-corpus=build/corpus"`.
 
 # Run every jm:fuzz suite until something gives
-fuzz args="-for=30s": sqlite wasm
+fuzz args="-for=30s": sqlite wasm pg_query
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} {{args}}
 
 # A child process per case: a crash or a hang is reported, not fatal
-fuzz-isolate args="-for=5m": sqlite
+fuzz-isolate args="-for=5m": sqlite wasm pg_query
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} -isolate {{args}}
 
 # The same, under AddressSanitizer
 [unix]
-fuzz-asan args="-for=30s": sqlite wasm
+fuzz-asan args="-for=30s": sqlite wasm pg_query
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} -out:build/debug/jm-fuzz-asan
     build/debug/jm-fuzz-asan {{args}}

@@ -49,6 +49,7 @@ binary.
 | `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
 | `tar/fuzz` | the `jm:tar` suite for `jm:fuzz` |
 | `wasm/fuzz` | the `jm:wasm` suite for `jm:fuzz`, with a small Wasm encoder to build cases from |
+| `pg_query/fuzz` | the `jm:pg_query` suite for `jm:fuzz`, with a SQL generator to build cases from |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
