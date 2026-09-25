@@ -1,0 +1,40 @@
+package ui
+
+import "core:strings"
+
+// label draws one line of text, baseline at the font's ascent. Its size is
+// the text's advance by the line height, clamped to the constraints; v1 does
+// not wrap. It records a Tag with the text so a probe can find it.
+label :: proc(
+	gtx: ^Ctx,
+	text: string,
+	style := Label_Style{},
+	key: u64 = 0,
+	loc := #caller_location,
+) -> Dims {
+	p := widget_begin(gtx, key, loc)
+	s := resolve_label(gtx.theme, style)
+	run, m := shape_line(gtx, text, s.size)
+	size := constrain(gtx.constraints, {run.advance, line_height(m)})
+	if painted(s.color) {
+		glyphs(gtx.ops, add_run(gtx.ops, run), {0, m.ascent}, s.color)
+	}
+	tag(gtx.ops, p.id, frame_string(gtx, text))
+	return widget_end(gtx, &p, {size, m.ascent})
+}
+
+// shape_line shapes text in the theme font at size, into the frame
+// allocator, and returns the run with the font's metrics.
+@(private)
+shape_line :: proc(gtx: ^Ctx, text: string, size: f32) -> (Glyph_Run, Font_Metrics) {
+	run := shape(gtx.shaper, gtx.theme.font, size, text, gtx.allocator)
+	return run, metrics(gtx.shaper, gtx.theme.font, size)
+}
+
+// frame_string copies s into the frame allocator, since ops outlive the
+// caller's strings only for the frame.
+@(private)
+frame_string :: proc(gtx: ^Ctx, s: string) -> string {
+	out, _ := strings.clone(s, gtx.allocator)
+	return out
+}
