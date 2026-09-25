@@ -1,2 +1,3 @@
 build/
 sqlite3/lib/
+wasm/lib/

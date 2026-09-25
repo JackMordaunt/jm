@@ -5,6 +5,7 @@
 #   just test      run every package's tests
 #   just check     type-check every package for linux, darwin and windows
 #   just sqlite    compile the vendored SQLite amalgamation into sqlite3/lib
+#   just wasm      compile the vendored wasm3 interpreter into wasm/lib
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just fuzz-isolate  the same, a child process per case
 #   just install   release odin-run into ~/.local/bin with this checkout baked in
@@ -16,9 +17,10 @@ root  := justfile_directory()
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 fuzz sqlite3/fuzz tar/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm fuzz sqlite3/fuzz tar/fuzz"
 cc       := env("CC", "cc")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
+wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/wasm3.a" }
 
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
 # three deliberate changes: THREADSAFE=1 rather than 0, so a connection per
@@ -30,6 +32,10 @@ sqlite_defines := "-DSQLITE_DQS=0 -DSQLITE_THREADSAFE=1 -DSQLITE_DEFAULT_MEMSTAT
   "-DSQLITE_MAX_EXPR_DEPTH=0 -DSQLITE_OMIT_DECLTYPE -DSQLITE_OMIT_DEPRECATED " + \
   "-DSQLITE_OMIT_PROGRESS_CALLBACK -DSQLITE_OMIT_SHARED_CACHE -DSQLITE_STRICT_SUBTYPE=1 " + \
   "-DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_MATH_FUNCTIONS"
+# wasm3 compile-time options. The defaults are what the interpreter wants:
+# bytecode validation and gas metering are both on already. WASI is the one
+# thing that is off, and jm:wasm's run needs it to call a command's _start.
+wasm_defines := "-Dd_m3HasWASI"
 targets  := "linux_amd64 darwin_arm64 windows_amd64"
 
 # `just` alone lists the recipes.
@@ -68,11 +74,37 @@ sqlite:
         lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj \
     }
 
-# Run every package's tests
-test: sqlite
+# Compile the vendored wasm3 into wasm/lib if it is stale. Unlike SQLite this
+# is a tree rather than one amalgamated file, so the objects go to a scratch
+# directory beside the archive and staleness is any source newer than it.
+[unix]
+wasm:
+    @mkdir -p wasm/lib/obj
+    @if [ ! -f {{wasm_lib}} ] || [ -n "$(find wasm/vendor -name '*.[ch]' -newer {{wasm_lib}} -print -quit)" ]; then \
+        echo "{{cc}} wasm3 -> {{wasm_lib}}"; \
+        for f in wasm/vendor/*.c; do \
+            {{cc}} -O2 -fPIC -Iwasm/vendor {{wasm_defines}} -c $f -o wasm/lib/obj/$(basename $f .c).o || exit 1; \
+        done; \
+        ar rcs {{wasm_lib}} wasm/lib/obj/*.o; \
+    fi
+
+[windows]
+wasm:
+    @if (!(Test-Path {{wasm_lib}})) { \
+        New-Item -ItemType Directory -Force wasm/lib/obj | Out-Null; \
+        Get-ChildItem wasm/vendor/*.c | ForEach-Object { cl /nologo /O2 /I wasm/vendor {{wasm_defines}} /c $_.FullName /Fowasm/lib/obj/ }; \
+        lib /nologo /OUT:{{wasm_lib}} wasm/lib/obj/*.obj \
+    }
+
+# Run every package's tests. jm:wasm's run on one thread because wasm3 is not
+# thread-safe, whatever the runtimes are; the package doc records what two
+# threads do to it.
+test: sqlite wasm
     mkdir -p build/test
     for p in {{packages}}; do \
-      {{odin}} test $p {{flags}} -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
+      threads=""; \
+      if [ "$p" = "wasm" ]; then threads="-define:ODIN_TEST_THREADS=1"; fi; \
+      {{odin}} test $p {{flags}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
     done
 
 # Type-check every package and the runner for each target
@@ -115,6 +147,6 @@ fuzz-asan args="-for=30s": sqlite
 example: build sqlite
     ODIN_RUN_VERBOSE=1 build/debug/odin-run{{exe}} examples/hello.odin
 
-# Remove build/ and the compiled SQLite archive
+# Remove build/ and the compiled SQLite and wasm3 archives
 clean:
-    rm -rf build sqlite3/lib
+    rm -rf build sqlite3/lib wasm/lib
