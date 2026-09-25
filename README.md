@@ -48,11 +48,14 @@ binary.
 | `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`) and shapes text with it |
 | `ui/sdl`  | the SDL3 window and event loop for a `ui` app |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
+| `pq`      | `connect`, `exec`, `escape_literal`, `escape_identifier`, `identity`: a PostgreSQL client over the system libpq, the one dynamically linked library |
+| `pq/testdb` | a throwaway PostgreSQL server on a Unix socket, for tests |
 | `fuzz`    | property fuzzing: an entropy `Source`, generators, format-agnostic `damage`, shrinking, a corpus, a per-case deadline |
 | `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
 | `tar/fuzz` | the `jm:tar` suite for `jm:fuzz` |
 | `wasm/fuzz` | the `jm:wasm` suite for `jm:fuzz`, with a small Wasm encoder to build cases from |
 | `pg_query/fuzz` | the `jm:pg_query` suite for `jm:fuzz`, with a SQL generator to build cases from |
+| `pq/fuzz` | the `jm:pq` suite for `jm:fuzz`, against the `pq/testdb` server |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
@@ -328,6 +331,45 @@ re-parsing, for a reason recorded there too.
 SQL and bytes that were never SQL, with a SQL generator so a case needs no
 fixtures. `just fuzz "pg_query -for=1m"` runs it.
 
+## libpq
+
+`jm:pq` talks to a PostgreSQL server over **libpq**, and it is the one C
+library in the collection that is not vendored: it links the system's
+`libpq.so.5` dynamically, and a built script needs it at runtime. Every other
+binding here vendors its C because that C builds with a plain `cc` and nothing
+else. libpq does not — it is a slice of the PostgreSQL tree with its own
+configure step — and it brings OpenSSL and GSSAPI with it for TLS and
+Kerberos, which a machine should keep patched on its own schedule rather than
+have frozen into every script. What makes the exception safe is libpq's
+record: `libpq.so.5` has kept its ABI since 2006 and is on every machine with
+a PostgreSQL client, psql included. Built and tested against libpq 18.6;
+Windows links `libpq.lib` and is untested, like every Windows build here.
+
+So there is no `just` recipe for it and nothing under `pq/lib`. `foreign
+import "system:pq"` is resolved by the linker, and `odin check` never opens a
+foreign import, so `just check` type-checks all three targets on a machine
+without libpq installed. Only building and testing need it.
+
+**Tests need a server, and bring their own.** `jm:pq/testdb` runs `initdb`
+into a fresh directory under the temp location and `pg_ctl start` on it, once
+per process: a Unix socket in that directory, `listen_addresses=''` so nothing
+listens on TCP, `trust` authentication behind a socket only this user can
+reach. It clears every `PG*` variable — a shell exporting `PGHOSTADDR` or
+`PGSERVICE` for a real database would otherwise send a test there — and sets
+`PGHOST`, `PGPORT`, `PGUSER` and `PGDATABASE` to the throwaway, which is also
+what `pq.connect("")` reads. Bringing it up takes about half a second. It
+leaves a shell loop behind that waits for the test process to be gone, however
+it went, and then stops the server and deletes the directory; an `@(fini)`
+would miss an `os.exit`, a failed assertion and a sanitizer abort. No Docker,
+and no server needs to exist beforehand: on this machine `initdb` and `pg_ctl`
+come with the `postgresql` package. Where they are not on `PATH`, every test
+that needs a server logs why and skips, and `jm-fuzz pq` says so and runs no
+cases, so the other suites keep running without PostgreSQL.
+
+`pq/fuzz` is the suite: six properties against that server, each case on its
+own connection as an unprivileged role with a `statement_timeout`.
+`just fuzz "pq -for=1m"` runs it.
+
 ## Fuzzing
 
 `jm:fuzz` runs properties against generated input and tells you the smallest
@@ -466,6 +508,21 @@ minus belongs to the constant, so `SELECT-1` comes back as `SELECT$1` — one
 identifier, not a statement. `normalize_reparses` skips that shape and names
 it; `pg_query_test.odin` keeps the case, and the package doc tells a caller
 not to re-parse what normalize writes.
+
+`jm:pq` was the fifth suite. Its first run failed `error_sane` on every COPY:
+the binding refused `COPY … TO STDOUT` with no SQLSTATE, the mark of a
+refusal that never reached the server — but by then the server had started
+the COPY. It now carries `0A000`, feature_not_supported, which is both true
+and something a caller branching on SQLSTATE can match. Nothing else turned
+up in 100,000 cases under the sanitizer.
+
+The sanitizer taught something about itself while the tests were written.
+`values_outlive_the_connection` closes the connection and then reads every
+string the binding handed back, so that a string still pointing into a freed
+`PGresult` traps. With the clone deliberately removed it passed anyway: the
+comparison runs in `base:runtime`, which is not instrumented, so ASan never
+saw the read. The test now walks every byte in its own code first, and with
+the clone removed it fails with a heap-use-after-free, as it should.
 
 ## UI
 
