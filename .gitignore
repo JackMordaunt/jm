@@ -1,3 +1,4 @@
 build/
 sqlite3/lib/
 wasm/lib/
+pg_query/lib/

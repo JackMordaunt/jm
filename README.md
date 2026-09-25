@@ -44,6 +44,7 @@ binary.
 | `tar`     | `read`, `extract`: `git archive` output without a tar program |
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
+| `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
 | `fuzz`    | property fuzzing: an entropy `Source`, generators, format-agnostic `damage`, shrinking, a corpus, a per-case deadline |
 | `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
 | `tar/fuzz` | the `jm:tar` suite for `jm:fuzz` |
@@ -91,8 +92,10 @@ just build     debug odin-run          just release   optimised odin-run
 just test      all package tests       just check     3-target type-check
 just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just sqlite    compile the vendored SQLite  just wasm      compile wasm3
+just pg_query  compile the vendored libpg_query
+just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 just example   run examples/hello.odin      just fuzz      30s of fuzzing
-just clean     drop build/ and both archives
+just clean     drop build/ and the three archives
 ```
 
 `just install` bakes this checkout's path into the runner as the `jm`

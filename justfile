@@ -6,6 +6,8 @@
 #   just check     type-check every package for linux, darwin and windows
 #   just sqlite    compile the vendored SQLite amalgamation into sqlite3/lib
 #   just wasm      compile the vendored wasm3 interpreter into wasm/lib
+#   just pg_query  compile the vendored libpg_query parser into pg_query/lib
+#   just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just bench     time jm:wasm against the workloads in tools/wasm-bench
 #   just fuzz-isolate  the same, a child process per case
@@ -18,11 +20,12 @@ root  := justfile_directory()
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm fuzz sqlite3/fuzz tar/fuzz wasm/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/wasm3.a" }
+pg_query_lib := if os() == "windows" { "pg_query/lib/pg_query.lib" } else { "pg_query/lib/pg_query.a" }
 
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
 # three deliberate changes: THREADSAFE=1 rather than 0, so a connection per
@@ -38,6 +41,14 @@ sqlite_defines := "-DSQLITE_DQS=0 -DSQLITE_THREADSAFE=1 -DSQLITE_DEFAULT_MEMSTAT
 # bytecode validation and gas metering are both on already. WASI is the one
 # thing that is off, and jm:wasm's run needs it to call a command's _start.
 wasm_defines := "-Dd_m3HasWASI"
+# libpg_query compile flags: upstream's Makefile exactly, less its -g and at
+# -O2 rather than -O3. -fno-strict-aliasing and -fwrapv are not taste — the
+# PostgreSQL sources are written against them and miscompile without. The
+# three -Wno- suppress warnings in generated parser code.
+pg_query_flags := "-fno-strict-aliasing -fwrapv -fPIC -O2 " + \
+  "-Ipg_query/vendor -Ipg_query/vendor/vendor -Ipg_query/vendor/src/include " + \
+  "-Ipg_query/vendor/src/postgres/include " + \
+  "-Wno-unused-function -Wno-unused-value -Wno-unused-variable"
 targets  := "linux_amd64 darwin_arm64 windows_amd64"
 
 # `just` alone lists the recipes.
@@ -100,11 +111,55 @@ wasm:
         lib /nologo /OUT:{{wasm_lib}} wasm/lib/obj/*.obj \
     }
 
+# Like wasm3 this is a tree, so the objects go to a scratch directory beside
+# the archive and staleness is any source newer than it. It is 86 translation
+# units of PostgreSQL, so the first build takes about twenty seconds.
+#
+# The protobuf objects are compiled even though this binding only wants the
+# JSON API: pg_query_parse.c holds pg_query_parse_protobuf beside
+# pg_query_parse, so the object that defines the one we call also references
+# pg_query_nodes_to_protobuf, and a JSON-only archive fails to link. Measured,
+# not assumed. Upstream's file list it is.
+#
+# Compile the vendored libpg_query into pg_query/lib if it is stale
+[unix]
+pg_query:
+    @mkdir -p pg_query/lib/obj
+    @if [ ! -f {{pg_query_lib}} ] || [ -n "$(find pg_query/vendor -name '*.[ch]' -newer {{pg_query_lib}} -print -quit)" ]; then \
+        echo "{{cc}} libpg_query -> {{pg_query_lib}}"; \
+        for f in pg_query/vendor/src/*.c pg_query/vendor/src/postgres/*.c \
+                 pg_query/vendor/protobuf/*.c pg_query/vendor/vendor/*/*.c; do \
+            {{cc}} {{pg_query_flags}} -c $f -o pg_query/lib/obj/$(basename $f .c).o || exit 1; \
+        done; \
+        ar rcs {{pg_query_lib}} pg_query/lib/obj/*.o; \
+    fi
+
+# Windows wants the win32 port headers as well. Untested, like the other two.
+[windows]
+pg_query:
+    @if (!(Test-Path {{pg_query_lib}})) { \
+        New-Item -ItemType Directory -Force pg_query/lib/obj | Out-Null; \
+        Get-ChildItem -Recurse pg_query/vendor/src/*.c, pg_query/vendor/protobuf/*.c, pg_query/vendor/vendor/*.c | ForEach-Object { cl /nologo /O2 {{pg_query_flags}} /I pg_query/vendor/src/postgres/include/port/win32 /c $_.FullName /Fopg_query/lib/obj/ }; \
+        lib /nologo /OUT:{{pg_query_lib}} pg_query/lib/obj/*.obj \
+    }
+
+# nodes.odin is generated and checked in, so nothing here depends on it: this
+# is for after the vendored parser is bumped. The schema it reads is
+# libpg_query's own, the same input upstream generates its Go and Ruby
+# bindings from, and pg_query_test.odin's schema_conforms holds the checked-in
+# file against it on every `just test`.
+#
+# Regenerate pg_query/nodes.odin from the vendored schema
+pg_query-gen:
+    mkdir -p build/debug
+    {{odin}} build pg_query/gen {{flags}} -out:build/debug/pg_query-gen{{exe}}
+    build/debug/pg_query-gen{{exe}} pg_query/vendor/srcdata pg_query/nodes.odin
+
 # jm:wasm's tests run on one thread because wasm3 is not thread-safe, whatever
 # the runtimes are; the package doc records what two threads do to it.
 #
 # Run every package's tests
-test: sqlite wasm
+test: sqlite wasm pg_query
     mkdir -p build/test
     for p in {{packages}}; do \
       threads=""; \
@@ -119,6 +174,7 @@ check:
       for p in {{packages}}; do {{odin}} check $p {{flags}} -no-entry-point -target:$t || exit 1; done; \
       {{odin}} check tools/odin-run {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/jm-fuzz {{flags}} -target:$t || exit 1; \
+      {{odin}} check pg_query/gen {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/wasm-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
     done
@@ -175,6 +231,6 @@ bench-build:
 example: build sqlite
     ODIN_RUN_VERBOSE=1 build/debug/odin-run{{exe}} examples/hello.odin
 
-# Remove build/ and the compiled SQLite and wasm3 archives
+# Remove build/ and the compiled SQLite, wasm3 and libpg_query archives
 clean:
-    rm -rf build sqlite3/lib wasm/lib
+    rm -rf build sqlite3/lib wasm/lib pg_query/lib
