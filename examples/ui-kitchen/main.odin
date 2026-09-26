@@ -193,6 +193,7 @@ main :: proc() {
 				theme = &m.theme,
 				fonts = {{0, FONT}},
 				clear = m.theme.bg,
+				threads = 4,
 			},
 		)
 		return

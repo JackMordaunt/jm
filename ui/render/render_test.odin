@@ -207,3 +207,54 @@ test_path_gradient_stroke :: proc(t: ^testing.T) {
 	testing.expect_value(t, at(&fx, {40, 14}), RED)
 	testing.expect_value(t, at(&fx, {50, 14}), WHITE)
 }
+
+// Workers must draw what the synchronous path draws, masks included, while
+// earlier masked commands still hold the layer.
+@(test)
+test_threads_match_sync :: proc(t: ^testing.T) {
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	N :: 256
+	bl.image_create(&fx.img, N, N, .PRGB32)
+
+	rr := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{8, 8, N - 16, N - 16}, 40}, ui.IDENTITY)
+	rot := clip(&fx, ui.NO_CLIP, ui.Rect{0, 0, 120, 60}, ui.mul(ui.rotate(0.4), ui.translate(90, 40)))
+	box := clip(&fx, ui.NO_CLIP, ui.Rect{20, 20, 100, 100}, ui.IDENTITY)
+	for i in 0 ..< 64 {
+		x, y := f32(i % 8) * 32, f32(i / 8) * 32
+		c := [4]ui.Clip_Id{ui.NO_CLIP, rr, rot, box}[i % 4]
+		col := ui.Color{u8(i * 4), u8(255 - i * 3), u8(i * 9), 200}
+		fill(&fx, ui.translate(x, y), c, ui.Round_Rect{{0, 0, 40, 40}, 6}, col)
+	}
+
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	want := make([]u32, N * N)
+	defer delete(want)
+	copy_pixels(&fx.img, want)
+
+	fx.r.threads = 4
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	got := make([]u32, N * N)
+	defer delete(got)
+	copy_pixels(&fx.img, got)
+
+	diff := 0
+	for v, i in want {
+		if got[i] != v {
+			diff += 1
+		}
+	}
+	testing.expectf(t, diff == 0, "%d of %d pixels differ from the synchronous render", diff, N * N)
+}
+
+@(private = "file")
+copy_pixels :: proc(img: ^bl.ImageCore, out: []u32) {
+	data: bl.ImageData
+	bl.image_get_data(img, &data)
+	w := int(data.size.w)
+	for y in 0 ..< int(data.size.h) {
+		row := ([^]u32)(uintptr(data.pixel_data) + uintptr(y) * uintptr(data.stride))
+		copy(out[y * w:][:w], row[:w])
+	}
+}

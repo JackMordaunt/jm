@@ -68,6 +68,7 @@ App :: struct {
 	theme:         ^Theme, // nil uses ui.default_theme with the first font
 	fonts:         []Font_Ref, // registered into Ops in order before the first frame
 	clear:         Color,
+	threads:       u32, // Blend2D render workers; 0 renders on the main thread
 }
 
 // Window is the SDL state of one running App.
@@ -123,6 +124,7 @@ run :: proc(app: App) {
 	r: render.Renderer
 	render.init(&r)
 	defer render.destroy(&r)
+	r.threads = app.threads
 	shaper := render.shaper(&r, ops.fonts[:])
 
 	theme := app.theme

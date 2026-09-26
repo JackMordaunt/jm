@@ -23,7 +23,9 @@ add_image do). Masks live for one render call. Everything is released by
 destroy.
 
 Threads: a Renderer is not thread-safe. The Shaper it hands out shares the
-font cache, so shape and render must happen on the same thread.
+font cache, so shape and render must happen on the same thread. Setting
+Renderer.threads renders the target on that many Blend2D workers; render
+still returns only once every pixel is written.
 */
 package render
 
@@ -57,9 +59,7 @@ Renderer :: struct {
 	allocator:  mem.Allocator,
 	// threads > 0 makes the target context asynchronous with that many
 	// workers (1 = the calling thread only). Layer and mask contexts stay
-	// synchronous, and the mask path flushes the target before it reuses
-	// the layer, so images are never written while a queued command reads
-	// them. Zero renders synchronously.
+	// synchronous. Zero renders synchronously.
 	threads:    u32,
 }
 
@@ -229,7 +229,9 @@ exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw, w, h: i32) {
 		return
 	}
 	if r.threads > 0 {
-		bl.context_flush(&r.ctx, .SYNC) // a queued fill_mask may still read the layer
+		// Drain the queue so the layer is reused in place; a queued command
+		// still holding it makes the layer context copy it, which is slower.
+		bl.context_flush(&r.ctx, .SYNC)
 	}
 	if bl.context_begin(&r.layer_ctx, &r.layer, nil) != 0 {
 		return
