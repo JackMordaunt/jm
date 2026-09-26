@@ -13,14 +13,16 @@ ui records and flattens, render rasterizes, a platform (ui/sdl) presents.
 
 Clipping: a draw whose clip chain is all rects under translate/scale
 transforms is clipped with Blend2D's rect clip. Any other chain (a round rect,
-an ellipse, a path, a rotated rect) is rasterized once per frame into an A8
-mask the size of the target; the draw is rendered into a transparent scratch
-layer and painted onto the target through that mask.
+an ellipse, a path, a rotated rect) is rasterized once per render into an A8
+mask covering only the chain's bounds. Each run of consecutive draws under
+that clip is rendered together into a transparent layer and painted onto the
+target through the mask in one pass, so the clip's antialiased edge applies
+once to the group, as clipping a group should.
 
 Memory: fonts, font sizes and images are cached for the life of the Renderer,
 keyed by the ids in Ops, so an Ops must keep its ids stable (add_font and
-add_image do). Masks live for one render call. Everything is released by
-destroy.
+add_image do). Masks live for one render call; their pixels are buffers the
+Renderer reuses from call to call. Everything is released by destroy.
 
 Threads: a Renderer is not thread-safe. The Shaper it hands out shares the
 font cache, so shape and render must happen on the same thread. Setting
@@ -29,6 +31,7 @@ still returns only once every pixel is written.
 */
 package render
 
+import "core:math"
 import "core:mem"
 import "core:strings"
 
@@ -50,10 +53,11 @@ Renderer :: struct {
 	faces:      map[ui.Font_Id]bl.FontFaceCore,
 	fonts:      map[Font_Key]bl.FontCore,
 	images:     map[ui.Image_Id]bl.ImageCore,
-	masks:      map[ui.Clip_Id]bl.ImageCore, // per render call
-	layer:      bl.ImageCore,
+	masks:      map[ui.Clip_Id]Mask, // per render call
+	pool:       [dynamic][]u8, // mask pixel buffers, reused across calls
+	pool_used:  int, // buffers handed out this call
+	layer:      bl.ImageCore, // at least as big as every target so far
 	layer_size: [2]i32,
-	scratch:    bl.ImageCore, // one clip node while intersecting a mask
 	path:       bl.PathCore,
 	font_refs:  []ui.Font_Ref, // what the shaper loads from
 	allocator:  mem.Allocator,
@@ -63,6 +67,14 @@ Renderer :: struct {
 	threads:    u32,
 }
 
+// Mask is a clip chain's coverage over box, the part of the target the
+// chain can show; img is box-sized, empty when box is.
+@(private)
+Mask :: struct {
+	img: bl.ImageCore,
+	box: ui.Rect, // whole pixels
+}
+
 // init prepares r. Caches allocate from allocator.
 init :: proc(r: ^Renderer, allocator := context.allocator) {
 	r.allocator = allocator
@@ -70,12 +82,12 @@ init :: proc(r: ^Renderer, allocator := context.allocator) {
 	bl.context_init(&r.layer_ctx)
 	bl.context_init(&r.mask_ctx)
 	bl.image_init(&r.layer)
-	bl.image_init(&r.scratch)
 	bl.path_init(&r.path)
 	r.faces = make(map[ui.Font_Id]bl.FontFaceCore, allocator)
 	r.fonts = make(map[Font_Key]bl.FontCore, allocator)
 	r.images = make(map[ui.Image_Id]bl.ImageCore, allocator)
-	r.masks = make(map[ui.Clip_Id]bl.ImageCore, allocator)
+	r.masks = make(map[ui.Clip_Id]Mask, allocator)
+	r.pool = make([dynamic][]u8, allocator)
 }
 
 // destroy releases every Blend2D object and cache r holds.
@@ -94,8 +106,11 @@ destroy :: proc(r: ^Renderer) {
 	delete(r.faces)
 	delete(r.images)
 	delete(r.masks)
+	for b in r.pool {
+		delete(b, r.allocator)
+	}
+	delete(r.pool)
 	bl.image_destroy(&r.layer)
-	bl.image_destroy(&r.scratch)
 	bl.path_destroy(&r.path)
 	bl.context_destroy(&r.ctx)
 	bl.context_destroy(&r.layer_ctx)
@@ -134,8 +149,17 @@ render :: proc(r: ^Renderer, f: ^ui.Frame, target: ^bl.ImageCore, clear: ui.Colo
 	if f.ops == nil {
 		return
 	}
-	for &d in f.draws {
-		exec(r, f, &d, w, h)
+	for i := 0; i < len(f.draws); {
+		if exec(r, f, &f.draws[i]) {
+			i += 1
+			continue
+		}
+		j := i + 1
+		for j < len(f.draws) && f.draws[j].clip == f.draws[i].clip {
+			j += 1
+		}
+		exec_masked(r, f, f.draws[i:j], w, h)
+		i = j
 	}
 }
 
@@ -196,36 +220,57 @@ set_transform :: proc(ctx: ^bl.ContextCore, m: ui.Affine) {
 
 @(private)
 clear_masks :: proc(r: ^Renderer) {
-	for _, &img in r.masks {
-		bl.image_destroy(&img)
+	for _, &m in r.masks {
+		bl.image_destroy(&m.img)
 	}
 	clear(&r.masks)
+	r.pool_used = 0
 }
 
-// exec draws one command, picking the clip path from its chain.
+// pool_take hands out a reused buffer of at least n bytes for this call.
 @(private)
-exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw, w, h: i32) {
+pool_take :: proc(r: ^Renderer, n: int) -> []u8 {
+	if r.pool_used == len(r.pool) {
+		append(&r.pool, make([]u8, n, r.allocator))
+	} else if len(r.pool[r.pool_used]) < n {
+		delete(r.pool[r.pool_used], r.allocator)
+		r.pool[r.pool_used] = make([]u8, n, r.allocator)
+	}
+	r.pool_used += 1
+	return r.pool[r.pool_used - 1][:n]
+}
+
+// exec draws d unless its clip needs a mask, and reports whether it did.
+@(private)
+exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw) -> bool {
 	if d.clip == ui.NO_CLIP {
 		set_transform(&r.ctx, d.transform)
 		draw_cmd(r, &r.ctx, f, d)
-		return
+		return true
 	}
-	if dev, ok := rect_chain(f, d.clip); ok {
-		if dev.w <= 0 || dev.h <= 0 {
-			return
-		}
-		bl.context_save(&r.ctx, nil)
-		defer bl.context_restore(&r.ctx, nil)
-		set_transform(&r.ctx, ui.IDENTITY)
-		rect := bl.Rect{f64(dev.x), f64(dev.y), f64(dev.w), f64(dev.h)}
-		bl.context_clip_to_rect_d(&r.ctx, &rect)
-		set_transform(&r.ctx, d.transform)
-		draw_cmd(r, &r.ctx, f, d)
-		return
+	dev, ok := rect_chain(f, d.clip)
+	if !ok {
+		return false
 	}
+	if dev.w <= 0 || dev.h <= 0 {
+		return true
+	}
+	bl.context_save(&r.ctx, nil)
+	defer bl.context_restore(&r.ctx, nil)
+	set_transform(&r.ctx, ui.IDENTITY)
+	rect := bl.Rect{f64(dev.x), f64(dev.y), f64(dev.w), f64(dev.h)}
+	bl.context_clip_to_rect_d(&r.ctx, &rect)
+	set_transform(&r.ctx, d.transform)
+	draw_cmd(r, &r.ctx, f, d)
+	return true
+}
 
-	mask := clip_mask(r, f, d.clip, w, h)
-	if mask == nil || !ensure_layer(r, w, h) {
+// exec_masked draws draws, which share one clip, into the layer inside the
+// mask's box and paints that onto the target through the mask.
+@(private)
+exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
+	m := clip_mask(r, f, draws[0].clip, w, h)
+	if m == nil || !ensure_layer(r, w, h) {
 		return
 	}
 	if r.threads > 0 {
@@ -236,9 +281,13 @@ exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw, w, h: i32) {
 	if bl.context_begin(&r.layer_ctx, &r.layer, nil) != 0 {
 		return
 	}
-	bl.context_clear_all(&r.layer_ctx)
-	set_transform(&r.layer_ctx, d.transform)
-	draw_cmd(r, &r.layer_ctx, f, d)
+	box := bl.RectI{i32(m.box.x), i32(m.box.y), i32(m.box.w), i32(m.box.h)}
+	bl.context_clip_to_rect_i(&r.layer_ctx, &box)
+	bl.context_clear_rect_i(&r.layer_ctx, &box)
+	for &d in draws {
+		set_transform(&r.layer_ctx, d.transform)
+		draw_cmd(r, &r.layer_ctx, f, &d)
+	}
 	bl.context_end(&r.layer_ctx)
 
 	pattern: bl.PatternCore
@@ -249,8 +298,8 @@ exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw, w, h: i32) {
 	set_transform(&r.ctx, ui.IDENTITY)
 	bl.context_set_comp_op(&r.ctx, .SRC_OVER)
 	bl.context_set_fill_style(&r.ctx, (^bl.Unknown)(&pattern))
-	origin := bl.Point{0, 0}
-	bl.context_fill_mask_d(&r.ctx, &origin, mask, nil)
+	origin := bl.Point{f64(m.box.x), f64(m.box.y)}
+	bl.context_fill_mask_d(&r.ctx, &origin, &m.img, nil)
 }
 
 // rect_chain resolves a clip chain to one device rect when every node is a
@@ -272,56 +321,86 @@ rect_chain :: proc(f: ^ui.Frame, id: ui.Clip_Id) -> (ui.Rect, bool) {
 	return out, true
 }
 
+// ensure_layer makes the layer at least w×h. It only grows, so targets of
+// varying size, such as a compositor's bands, do not reallocate it.
 @(private)
 ensure_layer :: proc(r: ^Renderer, w, h: i32) -> bool {
-	if r.layer_size == {w, h} {
+	if r.layer_size.x >= w && r.layer_size.y >= h {
 		return true
 	}
-	if bl.image_create(&r.layer, w, h, .PRGB32) != 0 {
+	size := [2]i32{max(w, r.layer_size.x), max(h, r.layer_size.y)}
+	if bl.image_create(&r.layer, size.x, size.y, .PRGB32) != 0 {
 		r.layer_size = {}
 		return false
 	}
-	r.layer_size = {w, h}
+	r.layer_size = size
 	return true
 }
 
-// clip_mask returns the A8 coverage of a clip chain, rasterizing it on first
-// use this frame. The first node is filled into the mask; every further node
-// is filled into a scratch A8 image and multiplied in with DST_IN, which
-// covers the whole image and so leaves only the intersection.
+// clip_mask returns the coverage of a clip chain over the part of a w×h
+// target it can show, rasterizing it on first use this call; nil when that
+// part is empty. The first node is filled into the mask; every further node
+// is filled into a scratch mask and multiplied in with DST_IN, which covers
+// the whole mask and so leaves only the intersection.
 @(private)
-clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^bl.ImageCore {
+clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mask {
 	if m, ok := &r.masks[id]; ok {
-		return m
+		return m if m.box.w > 0 else nil
 	}
-	mask: bl.ImageCore
-	bl.image_init(&mask)
-	if bl.image_create(&mask, w, h, .A8) != 0 {
-		bl.image_destroy(&mask)
+	m := Mask{}
+	bl.image_init(&m.img)
+	dev := ui.Rect{0, 0, f32(w), f32(h)}
+	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
+		node := f.clips[c]
+		dev = ui.rect_intersect(dev, ui.transform_rect(node.transform, ui.shape_bounds(f.ops, node.shape)))
+	}
+	if dev.w > 0 && dev.h > 0 {
+		x0, y0 := math.floor(dev.x), math.floor(dev.y)
+		m.box = {x0, y0, math.ceil(dev.x + dev.w) - x0, math.ceil(dev.y + dev.h) - y0}
+	}
+	if m.box.w <= 0 || m.box.h <= 0 || !mask_view(r, &m.img, m.box) {
+		m.box = {}
+		r.masks[id] = m
 		return nil
 	}
+	shift := ui.translate(-m.box.x, -m.box.y)
 	first := true
 	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
 		node := f.clips[c]
+		node.transform = ui.mul(node.transform, shift)
 		if first {
-			fill_coverage(r, f, &mask, node)
+			fill_coverage(r, f, &m.img, node)
 			first = false
 			continue
 		}
-		if bl.image_create(&r.scratch, w, h, .A8) != 0 {
+		scratch: bl.ImageCore
+		bl.image_init(&scratch)
+		defer bl.image_destroy(&scratch)
+		if !mask_view(r, &scratch, m.box) {
 			continue
 		}
-		fill_coverage(r, f, &r.scratch, node)
-		if bl.context_begin(&r.mask_ctx, &mask, nil) != 0 {
+		fill_coverage(r, f, &scratch, node)
+		if bl.context_begin(&r.mask_ctx, &m.img, nil) != 0 {
 			continue
 		}
 		bl.context_set_comp_op(&r.mask_ctx, .DST_IN)
 		origin := bl.PointI{0, 0}
-		bl.context_blit_image_i(&r.mask_ctx, &origin, &r.scratch, nil)
+		bl.context_blit_image_i(&r.mask_ctx, &origin, &scratch, nil)
 		bl.context_end(&r.mask_ctx)
 	}
-	r.masks[id] = mask
+	r.masks[id] = m
 	return &r.masks[id]
+}
+
+// mask_view points img at a pooled A8 buffer the size of box. Rows are
+// padded to 16 bytes: with unpadded rows the mask fill painted outside the
+// clip.
+@(private)
+mask_view :: proc(r: ^Renderer, img: ^bl.ImageCore, box: ui.Rect) -> bool {
+	w, h := int(box.w), int(box.h)
+	stride := mem.align_forward_int(w, 16)
+	buf := pool_take(r, stride * h)
+	return bl.image_create_from_data(img, i32(w), i32(h), .A8, raw_data(buf), stride, .RW, nil, nil) == 0
 }
 
 // fill_coverage clears img and fills one clip node's shape opaque into it.

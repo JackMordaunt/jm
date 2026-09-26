@@ -258,3 +258,48 @@ copy_pixels :: proc(img: ^bl.ImageCore, out: []u32) {
 		copy(out[y * w:][:w], row[:w])
 	}
 }
+
+// A clip applies to the draws under it as a group: its antialiased edge
+// covers the group once, so repeating an opaque draw changes nothing.
+@(test)
+test_masked_group_edge_applies_once :: proc(t: ^testing.T) {
+	once, twice: Fixture
+	setup(&once)
+	defer teardown(&once)
+	setup(&twice)
+	defer teardown(&twice)
+	rr := ui.Round_Rect{{6.5, 6.5, 50, 40}, 14}
+	c1 := clip(&once, ui.NO_CLIP, rr, ui.IDENTITY)
+	c2 := clip(&twice, ui.NO_CLIP, rr, ui.IDENTITY)
+	fill(&once, ui.IDENTITY, c1, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	fill(&twice, ui.IDENTITY, c2, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	fill(&twice, ui.IDENTITY, c2, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	render(&once.r, &once.frame, &once.img, WHITE)
+	render(&twice.r, &twice.frame, &twice.img, WHITE)
+	differ := 0
+	for y in 0 ..< SIZE {
+		for x in 0 ..< SIZE {
+			if at(&once, {f32(x), f32(y)}) != at(&twice, {f32(x), f32(y)}) {
+				differ += 1
+			}
+		}
+	}
+	testing.expectf(t, differ == 0, "%d pixels differ between one and two fills", differ)
+}
+
+// A clip reaching past the target draws only the part inside; one wholly
+// outside draws nothing.
+@(test)
+test_masked_clip_off_target :: proc(t: ^testing.T) {
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	part := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{-30, -30, 60, 60}, 20}, ui.IDENTITY)
+	gone := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{100, 100, 40, 40}, 10}, ui.IDENTITY)
+	fill(&fx, ui.IDENTITY, part, ui.Rect{-40, -40, 200, 200}, RED)
+	fill(&fx, ui.IDENTITY, gone, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	testing.expect_value(t, at(&fx, {5, 5}), RED)
+	testing.expect_value(t, at(&fx, {40, 40}), WHITE)
+	testing.expect_value(t, at(&fx, {60, 60}), WHITE)
+}
