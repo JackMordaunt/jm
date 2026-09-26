@@ -24,9 +24,10 @@ TILE :: 64
 //
 // Zero it, or damage_init it to choose the allocator. Its buffers keep their
 // capacity between frames, so a steady stream of similar frames allocates
-// nothing. damage_update does one frame; damage_begin, then
-// damage_draws over disjoint ranges from any threads, then damage_end, does
-// the same with the per-draw work shared out.
+// nothing. damage_update does one frame. To share the per-draw work out,
+// call damage_begin, damage_draws over disjoint ranges from any threads,
+// damage_find, damage_model over disjoint ranges of what it returns from
+// any threads, then damage_finish.
 Damage :: struct {
 	size:       [2]i32,
 	cols, rows: int,
@@ -79,7 +80,10 @@ Damage_Scratch :: struct {
 	curr_keys:  map[u64]int, // clip key -> first clip with it, this frame
 	old_keys:   map[u64]int, // the same for the previous frame
 	anchors:    [dynamic]int, // per draw
+	sigs:       [dynamic]u64, // per draw anchored to a rect clip: its signature
 	old_anchor: [dynamic]int,
+	anchoring:  bool, // damage_draws fills anchors and sigs this frame
+	scrolled:   bool, // this frame found scrolls to model
 	old_placed: [dynamic]Placed,
 	new_placed: [dynamic]Placed,
 	sort_tmp:   [dynamic]Placed,
@@ -118,6 +122,7 @@ damage_init :: proc(d: ^Damage, allocator := context.allocator) {
 	s.curr_keys = make(map[u64]int, allocator)
 	s.old_keys = make(map[u64]int, allocator)
 	s.anchors = make([dynamic]int, allocator)
+	s.sigs = make([dynamic]u64, allocator)
 	s.old_anchor = make([dynamic]int, allocator)
 	s.old_placed = make([dynamic]Placed, allocator)
 	s.new_placed = make([dynamic]Placed, allocator)
@@ -148,6 +153,7 @@ damage_destroy :: proc(d: ^Damage) {
 	delete(s.curr_keys)
 	delete(s.old_keys)
 	delete(s.anchors)
+	delete(s.sigs)
 	delete(s.old_anchor)
 	delete(s.old_placed)
 	delete(s.new_placed)
@@ -181,7 +187,8 @@ damage_invalidate :: proc(d: ^Damage) {
 damage_update :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^Renderer = nil) -> ([]ui.Rect, []Scroll) {
 	damage_begin(d, f, w, h, bg, fonts)
 	damage_draws(d, f, 0, len(f.draws))
-	return damage_end(d)
+	damage_model(d, 0, damage_find(d))
+	return damage_finish(d)
 }
 
 // damage_begin records f's clips, looks up the metrics of every font f's
@@ -234,37 +241,80 @@ damage_begin :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^
 		}
 	}
 	resize(&d.draws, len(f.draws))
-}
 
-// damage_draws records draws lo ..< hi. Calls on disjoint ranges may run on
-// different threads between damage_begin and damage_end.
-damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
-	for i in lo ..< hi {
-		d.draws[i] = draw_rec(f, d.clips[:], &d.glyph_box, &f.draws[i])
+	// Scroll detection anchors each draw to the innermost clip the previous
+	// frame also has; damage_draws does it alongside the hashing. The
+	// previous frame's anchors are kept for find_scrolls to reuse.
+	s := &d.scratch
+	s.old_anchor, s.anchors = s.anchors, s.old_anchor
+	s.anchoring = d.valid && len(d.clips) > 0 && len(d.old_clips) > 0
+	if s.anchoring {
+		clear(&s.old_keys)
+		for c, i in d.old_clips {
+			if c.key not_in s.old_keys {
+				s.old_keys[c.key] = i
+			}
+		}
+		resize(&s.anchors, len(f.draws))
+		resize(&s.sigs, len(f.draws))
 	}
 }
 
-// damage_end diffs the recorded frame against the previous one; see
-// damage_update for the results.
-damage_end :: proc(d: ^Damage) -> ([]ui.Rect, []Scroll) {
+// damage_draws records draws lo ..< hi. Calls on disjoint ranges may run on
+// different threads between damage_begin and damage_find.
+damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
+	s := &d.scratch
+	for i in lo ..< hi {
+		d.draws[i] = draw_rec(f, d.clips[:], &d.glyph_box, &f.draws[i])
+		if !s.anchoring {
+			continue
+		}
+		a := anchor(d.clips[:], f.draws[i].clip, &s.old_keys)
+		s.anchors[i] = a
+		if a >= 0 && d.clips[a].rect {
+			s.sigs[i] = signature(d.clips[:], &d.draws[i], a)
+		}
+	}
+}
+
+// damage_find looks for scrolls between the recorded frame and the
+// previous one, and returns how many of the previous frame's draws
+// damage_model must then see; zero when nothing scrolled.
+damage_find :: proc(d: ^Damage) -> int {
 	n := d.cols * d.rows
 	resize(&d.curr, n)
 	resize(&d.prev, n)
 	clear(&d.rects)
 	clear(&d.scrolls)
 	bin(d.curr[:], d.cols, d.rows, d.draws[:])
+	s := &d.scratch
+	s.scrolled = false
 	if !d.valid {
-		d.scratch.placed_ok = false
+		s.placed_ok = false
+		return 0
+	}
+	if !find_scrolls(d) {
+		return 0
+	}
+	s.scrolled = true
+	model_clips(d)
+	return len(d.old_draws)
+}
+
+// damage_finish works out what to repaint and files the recorded frame as
+// the previous one; see damage_update for the results.
+damage_finish :: proc(d: ^Damage) -> ([]ui.Rect, []Scroll) {
+	s := &d.scratch
+	if !d.valid {
 		append(&d.rects, ui.Rect{0, 0, f32(d.size.x), f32(d.size.y)})
 	} else {
-		scrolled := find_scrolls(d)
-		if scrolled {
-			model_scrolled(d)
+		if s.scrolled {
+			model_finish(d)
 		}
 		dirty_rects(d)
-		if scrolled {
+		if s.scrolled {
 			full := ui.Rect{0, 0, f32(d.size.x), f32(d.size.y)}
-			for r in d.scratch.strips {
+			for r in s.strips {
 				if c := ui.rect_intersect(r, full); c.w > 0 {
 					append(&d.rects, c)
 				}
@@ -509,15 +559,17 @@ pos :: proc(q: [2]i64) -> u64 {
 }
 
 // placed lists the draws anchored to a rect clip, sorted by signature and
-// then position; tmp is scratch for the sort.
+// then position; tmp is scratch for the sort. sigs, when given, holds the
+// draws' signatures already worked out.
 @(private)
-placed :: proc(out, tmp: ^[dynamic]Placed, draws: []Draw_Rec, clips: []Clip_Rec, anchors: []int) {
+placed :: proc(out, tmp: ^[dynamic]Placed, draws: []Draw_Rec, clips: []Clip_Rec, anchors: []int, sigs: []u64 = nil) {
 	clear(out)
 	for &dr, i in draws {
 		a := anchors[i]
 		if a >= 0 && clips[a].rect {
 			q := [2]i64{quantize(dr.t.e), quantize(dr.t.f)}
-			append(out, Placed{signature(clips, &dr, a), a, dr.t.e, dr.t.f, q, pos(q)})
+			sig := sigs[i] if sigs != nil else signature(clips, &dr, a)
+			append(out, Placed{sig, a, dr.t.e, dr.t.f, q, pos(q)})
 		}
 	}
 	sort_placed(out, tmp)
@@ -588,36 +640,26 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 		return false
 	}
 
-	// Anchor every draw in both frames to the innermost clip both frames have.
-	clear(&s.curr_keys)
-	clear(&s.old_keys)
-	for c, i in d.clips {
-		if c.key not_in s.curr_keys {
-			s.curr_keys[c.key] = i
-		}
-	}
-	for c, i in d.old_clips {
-		if c.key not_in s.old_keys {
-			s.old_keys[c.key] = i
-		}
-	}
-	// The previous frame's anchors and placed list, worked out when it was
-	// the new frame, are reused. They were anchored against the frame before
-	// it; that can only cost matches, never pixels, because the safety check
-	// and the shifted model read the same anchors.
-	if reuse && len(s.anchors) == len(d.old_draws) {
-		s.old_anchor, s.anchors = s.anchors, s.old_anchor
+	// Every draw is anchored to the innermost clip both frames have; the new
+	// frame's draws were anchored as they were recorded. The previous
+	// frame's anchors and placed list, worked out when it was the new frame,
+	// are reused. They were anchored against the frame before it; that can
+	// only cost matches, never pixels, because the safety check and the
+	// shifted model read the same anchors.
+	if reuse && len(s.old_anchor) == len(d.old_draws) {
 		s.old_placed, s.new_placed = s.new_placed, s.old_placed
 	} else {
 		reuse = false
+		clear(&s.curr_keys)
+		for c, i in d.clips {
+			if c.key not_in s.curr_keys {
+				s.curr_keys[c.key] = i
+			}
+		}
 		resize(&s.old_anchor, len(d.old_draws))
 		for &dr, i in d.old_draws {
 			s.old_anchor[i] = anchor(d.old_clips[:], dr.clip, &s.curr_keys)
 		}
-	}
-	resize(&s.anchors, len(d.draws))
-	for &dr, i in d.draws {
-		s.anchors[i] = anchor(d.clips[:], dr.clip, &s.old_keys)
 	}
 
 	// Candidates: each draw votes for how far its region moved, once per
@@ -629,7 +671,7 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 	if !reuse {
 		placed(&s.old_placed, &s.sort_tmp, d.old_draws[:], d.old_clips[:], s.old_anchor[:])
 	}
-	placed(&s.new_placed, &s.sort_tmp, d.draws[:], d.clips[:], s.anchors[:])
+	placed(&s.new_placed, &s.sort_tmp, d.draws[:], d.clips[:], s.anchors[:], s.sigs[:])
 	s.placed_ok = true
 	old_p, new_p := s.old_placed[:], s.new_placed[:]
 	clear(&s.groups)
@@ -774,10 +816,11 @@ safe_to_move :: proc(draws: []Draw_Rec, anchors: []int, a: int, inner: ui.Rect) 
 	return true
 }
 
-// model_scrolled rehashes the previous frame's tiles as if every found
-// region's content had moved, and forces the tiles a move cannot fill.
+// The previous frame's tiles are rehashed as if every found region's
+// content had moved: model_clips moves the clips, damage_model the draws,
+// and model_finish bins them and forces the tiles a move cannot fill.
 @(private)
-model_scrolled :: proc(d: ^Damage) {
+model_clips :: proc(d: ^Damage) {
 	s := &d.scratch
 	// Clips below a region move with it; the region and its ancestors stay.
 	resize(&s.shift, len(d.old_clips))
@@ -808,7 +851,15 @@ model_scrolled :: proc(d: ^Damage) {
 
 	resize(&s.draw_keys, len(d.old_draws))
 	resize(&s.draw_boxes, len(d.old_draws))
-	for &dr, i in d.old_draws {
+}
+
+// damage_model moves the previous frame's draws lo ..< hi with the found
+// scrolls. Calls on disjoint ranges may run on different threads between
+// damage_find and damage_finish.
+damage_model :: proc(d: ^Damage, lo, hi: int) {
+	s := &d.scratch
+	for i in lo ..< hi {
+		dr := &d.old_draws[i]
 		s.draw_keys[i], s.draw_boxes[i] = dr.key, dr.bounds
 		qi := -1
 		for q, n in s.found {
@@ -827,6 +878,11 @@ model_scrolled :: proc(d: ^Damage) {
 		s.draw_keys[i] = hash_affine(hash_value(clip_key, dr.content), t)
 		s.draw_boxes[i] = pixel_bounds(ui.rect_intersect(ui.transform_rect(t, dr.local), clip_box))
 	}
+}
+
+@(private)
+model_finish :: proc(d: ^Damage) {
+	s := &d.scratch
 	bin(d.prev[:], d.cols, d.rows, d.old_draws[:], s.draw_keys[:], s.draw_boxes[:])
 
 	// A move cannot fill the strip it uncovers, nor the partly covered

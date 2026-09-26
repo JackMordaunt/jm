@@ -11,7 +11,8 @@ import bl "jm:ui/blend2d"
 // against the previous one (see Damage), moves the pixels of scrolled
 // regions, cuts the dirty rects into bands one tile high and renders the
 // bands on a crew of workers, each with its own Renderer, straight into the
-// target. The crew also shares the per-draw hashing of large frames. The
+// target. The crew also shares the per-draw work of damage tracking on
+// large frames, and the move of a large scroll. The
 // target must keep its pixels from one compose to the next; call
 // damage_invalidate(&c.damage) when it does not.
 //
@@ -28,6 +29,7 @@ Compositor :: struct {
 	quit:      bool,
 	phase:     enum u8 {
 		Hash,
+		Model,
 		Move,
 		Paint,
 	},
@@ -35,6 +37,7 @@ Compositor :: struct {
 	move:      Scroll, // the one the Move phase is moving
 	jobs:      [dynamic]ui.Rect, // bands to paint
 	next:      int, // index of the next job or draw chunk, taken atomically
+	count:     int, // draws the Hash or Model phase goes through
 	frame:     ^ui.Frame,
 	target:    ^bl.ImageCore,
 	bg:        ui.Color,
@@ -130,12 +133,19 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 
 	// Worker 0 is this thread, so its font cache is safe to use here.
 	damage_begin(&c.damage, f, data.size.w, data.size.h, bg, &c.workers[0].r)
-	if len(c.threads) > 0 && len(f.draws) > HASH_CHUNK {
+	c.count = len(f.draws)
+	if len(c.threads) > 0 && c.count > HASH_CHUNK {
 		run_phase(c, .Hash)
 	} else {
-		damage_draws(&c.damage, f, 0, len(f.draws))
+		damage_draws(&c.damage, f, 0, c.count)
 	}
-	rects, scrolls := damage_end(&c.damage)
+	c.count = damage_find(&c.damage)
+	if len(c.threads) > 0 && c.count > HASH_CHUNK {
+		run_phase(c, .Model)
+	} else {
+		damage_model(&c.damage, 0, c.count)
+	}
+	rects, scrolls := damage_finish(&c.damage)
 
 	clear(&c.changed)
 	c.pixels = data
@@ -202,14 +212,18 @@ worker_loop :: proc(t: ^thread.Thread) {
 @(private)
 work :: proc(c: ^Compositor, w: ^Worker) {
 	switch c.phase {
-	case .Hash:
-		n := len(c.frame.draws)
+	case .Hash, .Model:
 		for {
 			lo := sync.atomic_add(&c.next, HASH_CHUNK)
-			if lo >= n {
+			if lo >= c.count {
 				return
 			}
-			damage_draws(&c.damage, c.frame, lo, min(lo + HASH_CHUNK, n))
+			hi := min(lo + HASH_CHUNK, c.count)
+			if c.phase == .Hash {
+				damage_draws(&c.damage, c.frame, lo, hi)
+			} else {
+				damage_model(&c.damage, lo, hi)
+			}
 		}
 	case .Move:
 		n := len(c.workers) * MOVE_PARTS
@@ -233,7 +247,7 @@ drain :: proc(c: ^Compositor, w: ^Worker) {
 		if i >= len(c.jobs) {
 			return
 		}
-		// damage_end has already filed this frame's records as the old ones.
+		// damage_finish has already filed this frame's records as the old ones.
 		band := c.jobs[i]
 		row := clamp(int(band.y) / TILE, 0, len(c.row_start) - 2)
 		picks := c.row_draws[c.row_start[row]:c.row_start[row + 1]]

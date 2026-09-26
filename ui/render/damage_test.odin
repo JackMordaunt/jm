@@ -48,7 +48,7 @@ test_damage_text_bounds :: proc(t: ^testing.T) {
 			d: Damage
 			defer damage_destroy(&d)
 			damage_update(&d, &f, 400, 200, {0, 0, 0, 0}, &r)
-			b := d.old_draws[0].bounds // damage_end files this frame as the old one
+			b := d.old_draws[0].bounds // damage_finish files this frame as the old one
 
 			data: bl.ImageData
 			bl.image_get_data(&img, &data)
