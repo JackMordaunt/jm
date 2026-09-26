@@ -31,7 +31,9 @@ all in device pixels, as package ui requires.
 Memory: gtx.allocator is one of two arenas that alternate by frame, so
 everything the previous frame allocated (paths, glyph runs, event text)
 stays valid while its hits are routed, then is freed wholesale a frame
-later. Everything else is released when run returns.
+later. context.temp_allocator is freed at the end of every frame, so the
+ui proc may use it for anything that frame needs. Everything else is
+released when run returns.
 
 Threads: run blocks the calling thread, which must be the main thread.
 */
@@ -186,6 +188,7 @@ run :: proc(app: App) {
 		ui.flatten(&ops, frame)
 		present(&w, &r, frame, app.clear)
 		frame, prev = prev, frame
+		free_all(context.temp_allocator)
 	}
 }
 
