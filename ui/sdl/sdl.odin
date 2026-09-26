@@ -17,8 +17,9 @@ here knows how.
 	}
 
 Each frame: poll SDL events into the Router, route them against the previous
-frame, reset Ops, run the ui proc, flatten, render into a CPU-side
-image, upload it to the streaming texture, present, swap frames.
+frame, reset Ops, run the ui proc, flatten, repaint what changed into a
+CPU-side image (render.Compositor), upload the changed rects to the
+streaming texture, present, swap frames.
 
 Render never targets the locked texture: the Direct3D renderers map it as
 write-combined memory, which is slow to read, and blending reads it.
@@ -36,6 +37,8 @@ ui proc may use it for anything that frame needs. Everything else is
 released when run returns.
 
 Threads: run blocks the calling thread, which must be the main thread.
+App.threads workers, the main thread among them, repaint changed regions in
+parallel.
 */
 package sdl
 
@@ -70,7 +73,7 @@ App :: struct {
 	theme:         ^Theme, // nil uses ui.default_theme with the first font
 	fonts:         []Font_Ref, // registered into Ops in order before the first frame
 	clear:         Color,
-	threads:       u32, // Blend2D render workers; 0 renders on the main thread
+	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 }
 
 // Window is the SDL state of one running App.
@@ -123,11 +126,14 @@ run :: proc(app: App) {
 	ui.layout_init(&layout)
 	defer ui.layout_destroy(&layout)
 
+	// r only shapes text; the compositor's workers draw.
 	r: render.Renderer
 	render.init(&r)
 	defer render.destroy(&r)
-	r.threads = app.threads
 	shaper := render.shaper(&r, ops.fonts[:])
+	comp: render.Compositor
+	render.compositor_init(&comp, int(app.threads))
+	defer render.compositor_destroy(&comp)
 
 	theme := app.theme
 	default_theme := ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
@@ -186,7 +192,7 @@ run :: proc(app: App) {
 			ui.pop_transform(&ops)
 		}
 		ui.flatten(&ops, frame)
-		present(&w, &r, frame, app.clear)
+		present(&w, &comp, frame, app.clear)
 		frame, prev = prev, frame
 		free_all(context.temp_allocator)
 	}
@@ -265,19 +271,21 @@ resize :: proc(w: ^Window) -> bool {
 	return true
 }
 
-// present renders f into the window's image, uploads it and shows it.
+// present repaints what f changed in the window's image, uploads those
+// rects and shows the texture.
 @(private)
-present :: proc(w: ^Window, r: ^render.Renderer, f: ^ui.Frame, clear: ui.Color) {
+present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color) {
 	if w.texture == nil {
 		return
 	}
-	render.render(r, f, &w.pixels, clear)
 	data: bl.ImageData
 	if bl.image_get_data(&w.pixels, &data) != 0 {
 		return
 	}
-	if !sdl3.UpdateTexture(w.texture, nil, data.pixel_data, i32(data.stride)) {
-		return
+	for r in render.compose(c, f, &w.pixels, clear) {
+		area := sdl3.Rect{i32(r.x), i32(r.y), i32(r.w), i32(r.h)}
+		px := rawptr(uintptr(data.pixel_data) + uintptr(int(r.y) * int(data.stride) + int(r.x) * 4))
+		sdl3.UpdateTexture(w.texture, &area, px, i32(data.stride))
 	}
 	sdl3.RenderClear(w.renderer)
 	sdl3.RenderTexture(w.renderer, w.texture, nil, nil)
