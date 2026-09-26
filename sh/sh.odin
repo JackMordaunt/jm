@@ -319,7 +319,7 @@ stdin_file :: proc(text: string) -> (f: ^os.File, path: string) {
 	if text == "" {
 		return nil, ""
 	}
-	tmp, err := os.create_temp_file("", "sh-stdin-*", {.Read})
+	tmp, err := os.create_temp_file("", "sh-stdin-*", STDIN_FLAGS)
 	if err != nil {
 		return nil, ""
 	}

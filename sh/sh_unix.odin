@@ -1,8 +1,13 @@
 #+build !windows
 package sh
 
+import "core:os"
 import "core:slice"
 import "core:strings"
+
+// STDIN_FLAGS leaves the spooled stdin close-on-exec: process_start dups it
+// onto the child's fd 0, and no other child should inherit it.
+STDIN_FLAGS :: os.File_Flags{.Read}
 
 shell_argv :: proc(cmd: string, shell: Shell, allocator := context.allocator) -> []string {
 	switch shell {

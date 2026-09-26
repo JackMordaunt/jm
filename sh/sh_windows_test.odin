@@ -1,7 +1,16 @@
 #+build windows
 package sh
 
+import "core:strings"
 import "core:testing"
+
+// findstr ships in System32 and echoes every line matching "^".
+@(test)
+stdin_reaches_child :: proc(t: ^testing.T) {
+	r := exec({"findstr", "^"}, {stdin = "from stdin\n"}, context.temp_allocator)
+	testing.expectf(t, r.ok, "exit %d: %s", r.code, r.stderr)
+	testing.expect_value(t, strings.trim_space(r.stdout), "from stdin")
+}
 
 @(test)
 quote_cmd :: proc(t: ^testing.T) {

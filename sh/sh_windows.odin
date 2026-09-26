@@ -5,6 +5,11 @@ import "core:os"
 import "core:slice"
 import "core:strings"
 
+// STDIN_FLAGS opens the spooled stdin inheritable: CreateProcess hands the
+// child this very handle, and without the flag the child's reads fail with
+// "The handle is invalid".
+STDIN_FLAGS :: os.File_Flags{.Read, .Inheritable}
+
 shell_argv :: proc(cmd: string, shell: Shell, allocator := context.allocator) -> []string {
 	switch shell {
 	case .Pwsh:
