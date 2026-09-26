@@ -7,6 +7,7 @@
 //	ui-bench -t 0,1,2,4,8   Blend2D worker threads to try (default 0,2,4,8)
 //	ui-bench -sweep         grow each kind of content until a frame is over budget
 //	ui-bench -sweep -budget 8.3   the same against a 120 Hz frame
+//	ui-bench -compose       partial repaint by render.Compositor; -t lists worker counts
 //
 // Layout is timed once per scene. Render is timed per thread count, and a
 // checksum of the pixels is compared with the synchronous render so a
@@ -144,10 +145,13 @@ main :: proc() {
 	threads := []u32{0, 2, 4, 8}
 	budget := 1000.0 / 60
 	do_sweep := false
+	do_compose := false
 	args := make([dynamic]string)
 	for a in os.args[1:] {
 		if a == "-sweep" {
 			do_sweep = true
+		} else if a == "-compose" {
+			do_compose = true
 		} else {
 			append(&args, a)
 		}
@@ -176,6 +180,14 @@ main :: proc() {
 		i += 1
 	}
 
+	if do_compose {
+		workers := make([]int, len(threads))
+		for t, i in threads {
+			workers[i] = max(int(t), 1)
+		}
+		compose_bench(w, h, workers, n)
+		return
+	}
 	if do_sweep {
 		sweep(w, h, threads, budget)
 		return
