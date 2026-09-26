@@ -10,8 +10,13 @@ import bl "jm:ui/blend2d"
 RED :: ui.Color{255, 0, 0, 255}
 @(private = "file")
 WHITE :: ui.Color{255, 255, 255, 255}
-@(private = "file")
-FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+when ODIN_OS == .Windows {
+	@(private = "file")
+	FONT :: "C:/Windows/Fonts/arial.ttf"
+} else {
+	@(private = "file")
+	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+}
 @(private = "file")
 SIZE :: 64
 

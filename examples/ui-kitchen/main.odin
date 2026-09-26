@@ -17,7 +17,11 @@ import "jm:ui"
 import "jm:ui/render"
 import "jm:ui/sdl"
 
-FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+when ODIN_OS == .Windows {
+	FONT :: "C:/Windows/Fonts/arial.ttf"
+} else {
+	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+}
 WIDTH :: 900
 HEIGHT :: 600
 ROWS :: 200

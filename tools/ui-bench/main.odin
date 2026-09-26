@@ -20,7 +20,11 @@ import "jm:ui"
 import bl "jm:ui/blend2d"
 import "jm:ui/render"
 
-FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+when ODIN_OS == .Windows {
+	FONT :: "C:/Windows/Fonts/arial.ttf"
+} else {
+	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+}
 
 Scene :: struct {
 	name: string,
