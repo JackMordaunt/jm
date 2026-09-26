@@ -28,8 +28,11 @@ Compositor :: struct {
 	quit:      bool,
 	phase:     enum u8 {
 		Hash,
+		Move,
 		Paint,
 	},
+	pixels:    bl.ImageData, // the target's, while composing
+	move:      Scroll, // the one the Move phase is moving
 	jobs:      [dynamic]ui.Rect, // bands to paint
 	next:      int, // index of the next job or draw chunk, taken atomically
 	frame:     ^ui.Frame,
@@ -53,6 +56,13 @@ Worker :: struct {
 // are hashed on the calling thread alone.
 @(private)
 HASH_CHUNK :: 1024
+
+// MOVE_SHARED is the scrolled area, in pixels, from which the crew shares a
+// move; MOVE_PARTS is how many parts each worker's share is cut into.
+@(private)
+MOVE_SHARED :: 1 << 18
+@(private)
+MOVE_PARTS :: 4
 
 // compositor_init starts workers-1 threads; the thread calling compose is
 // the last worker. Fewer than one worker counts as one.
@@ -128,8 +138,14 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 	rects, scrolls := damage_end(&c.damage)
 
 	clear(&c.changed)
+	c.pixels = data
 	for s in scrolls {
-		move_pixels(&data, s)
+		if len(c.threads) > 0 && (s.delta.x == 0 || s.delta.y == 0) && s.rect.w * s.rect.h >= MOVE_SHARED {
+			c.move = s
+			run_phase(c, .Move)
+		} else {
+			move_part(&data, s, 0, 1)
+		}
 		append(&c.changed, s.rect)
 	}
 	if len(rects) == 0 {
@@ -195,6 +211,15 @@ work :: proc(c: ^Compositor, w: ^Worker) {
 			}
 			damage_draws(&c.damage, c.frame, lo, min(lo + HASH_CHUNK, n))
 		}
+	case .Move:
+		n := len(c.workers) * MOVE_PARTS
+		for {
+			k := sync.atomic_add(&c.next, 1)
+			if k >= n {
+				return
+			}
+			move_part(&c.pixels, c.move, k, n)
+		}
 	case .Paint:
 		drain(c, w)
 	}
@@ -252,28 +277,49 @@ index_rows :: proc(c: ^Compositor, recs: []Draw_Rec, rows: int) {
 	}
 }
 
-// move_pixels shifts the pixels inside s.rect by s.delta. Rows are copied
-// in the order that never reads a row already overwritten.
+// move_part shifts part k of n of the pixels inside s.rect by s.delta. A
+// vertical move is cut into bands of columns and any other into bands of
+// rows, so parts touch disjoint pixels and may run at once; a move along
+// both axes must be one part. Rows are copied in the order that never reads
+// a row already overwritten.
 @(private)
-move_pixels :: proc(data: ^bl.ImageData, s: Scroll) {
+move_part :: proc(data: ^bl.ImageData, s: Scroll, k, n: int) {
 	dx, dy := int(s.delta.x), int(s.delta.y)
 	x0, y0 := int(s.rect.x), int(s.rect.y)
-	w, h := int(s.rect.w), int(s.rect.h)
-	cols := w - abs(dx)
-	rows := h - abs(dy)
+	cols := int(s.rect.w) - abs(dx)
+	rows := int(s.rect.h) - abs(dy)
 	if cols <= 0 || rows <= 0 {
 		return
 	}
-	src_x := x0 + max(-dx, 0)
-	dst_x := x0 + max(dx, 0)
+	c0, c1 := 0, cols
+	r0, r1 := 0, rows
+	if dx == 0 {
+		// Cut at target columns that are multiples of 16: 16 PRGB32 pixels
+		// are 64 bytes, x86-64's cache line, so on a target whose rows
+		// start on one no two parts write the same line.
+		cut :: proc(x0, cols, k, n: int) -> int {
+			if k == 0 || k == n {
+				return 0 if k == 0 else cols
+			}
+			return clamp((x0 + cols * k / n) &~ 15 - x0, 0, cols)
+		}
+		c0, c1 = cut(x0, cols, k, n), cut(x0, cols, k + 1, n)
+	} else {
+		r0, r1 = rows * k / n, rows * (k + 1) / n
+	}
+	if c1 <= c0 {
+		return
+	}
+	src_x := x0 + max(-dx, 0) + c0
+	dst_x := x0 + max(dx, 0) + c0
 	stride := int(data.stride)
-	for k in 0 ..< rows {
-		r := k if dy <= 0 else rows - 1 - k
+	for i in r0 ..< r1 {
+		r := i if dy <= 0 else r0 + r1 - 1 - i
 		src_y := y0 + max(-dy, 0) + r
 		dst_y := y0 + max(dy, 0) + r
 		src := rawptr(uintptr(data.pixel_data) + uintptr(src_y * stride + src_x * 4))
 		dst := rawptr(uintptr(data.pixel_data) + uintptr(dst_y * stride + dst_x * 4))
-		mem.copy(dst, src, cols * 4)
+		mem.copy(dst, src, (c1 - c0) * 4)
 	}
 }
 

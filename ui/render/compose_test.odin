@@ -443,3 +443,65 @@ test_compose_scroll_repeated_columns :: proc(t: ^testing.T) {
 		testing.expect_value(t, g.c.damage.scrolls[0].delta, [2]i32{0, -11})
 	}
 }
+
+
+// A scroll big enough for the crew to share everything: the draws are
+// hashed and moved by several workers, the pixels are moved in parts, and
+// the thin strip uncovered is cut into several bands. Every frame must come
+// out as a whole render draws it, and as one worker composes it.
+@(test)
+test_compose_large_scroll_shared :: proc(t: ^testing.T) {
+	W, H :: 800, 600
+	grid :: proc(s: ^Scene, off: [2]f32) {
+		ui.ops_reset(&s.ops)
+		ui.frame_reset(&s.frame)
+		s.frame.ops = &s.ops
+		append(&s.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, W, H}, BG}})
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{10, 10, W - 20, H - 20}, ui.IDENTITY})
+		for i in 0 ..< 60 {
+			for c in 0 ..< 20 {
+				m := ui.translate(10 + f32(c) * 48 - off.x, 10 + f32(i) * 24 - off.y)
+				col := ui.Color{u8(i * 4), u8(c * 12), u8(255 - i * 3), 255}
+				append(&s.frame.draws, ui.Draw{m, 0, ui.Fill{ui.Round_Rect{{2, 2, 42, 18}, 5}, col}})
+			}
+		}
+	}
+	scenes: [2]Scene
+	comps: [2]Compositor
+	imgs: [3]bl.ImageCore
+	r: Renderer
+	init(&r)
+	defer destroy(&r)
+	for i in 0 ..< 2 {
+		ui.ops_init(&scenes[i].ops)
+		ui.frame_init(&scenes[i].frame)
+		compositor_init(&comps[i], 1 if i == 0 else 4)
+	}
+	defer for i in 0 ..< 2 {
+		compositor_destroy(&comps[i])
+		ui.frame_destroy(&scenes[i].frame)
+		ui.ops_destroy(&scenes[i].ops)
+	}
+	for &img in imgs {
+		bl.image_init(&img)
+		bl.image_create(&img, W, H, .PRGB32)
+	}
+	defer for &img in imgs {
+		bl.image_destroy(&img)
+	}
+
+	// Down, further down, back up, then sideways each way.
+	moves := [][2]f32{{0, 100}, {0, 107}, {0, 131}, {0, 118}, {13, 118}, {4, 118}}
+	scrolled := 0
+	for off in moves {
+		for i in 0 ..< 2 {
+			grid(&scenes[i], off)
+			compose(&comps[i], &scenes[i].frame, &imgs[i], BG)
+		}
+		scrolled += len(comps[1].damage.scrolls)
+		render(&r, &scenes[1].frame, &imgs[2], BG)
+		testing.expectf(t, max_delta(&imgs[1], &imgs[2]) <= 1, "at %v four workers differ from a whole render by %d", off, max_delta(&imgs[1], &imgs[2]))
+		testing.expectf(t, max_delta(&imgs[0], &imgs[1]) == 0, "at %v four workers differ from one by %d", off, max_delta(&imgs[0], &imgs[1]))
+	}
+	testing.expectf(t, scrolled == len(moves) - 1, "%d of %d moves scrolled", scrolled, len(moves) - 1)
+}
