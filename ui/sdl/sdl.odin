@@ -18,11 +18,18 @@ here knows how.
 
 Each frame: poll SDL events into the Router, route them against the previous
 frame, reset Ops, run the ui proc, flatten, repaint what changed into a
-CPU-side image (render.Compositor), upload the changed rects to the
-streaming texture, present, swap frames.
+CPU-side image (render.Compositor), bring the texture up to date, present,
+swap frames.
 
-Render never targets the locked texture: the Direct3D renderers map it as
+Render never targets a locked texture: the Direct3D renderers map it as
 write-combined memory, which is slow to read, and blending reads it.
+
+The texture follows the image without uploading it whole. A scroll the
+compositor applied to the image is applied on the GPU too, by drawing the
+front texture, moved, into the back one; only the repainted rects are
+uploaded. On the machine this was written on, a whole 4K upload cost 12 to
+16 ms a frame on Direct3D 11, OpenGL and Vulkan alike; the move and the
+strip it uncovers cost under 1 ms.
 
 Coordinates: the ui proc lays out in logical units (window points).
 On a HiDPI display a root scale transform by the pixel density maps them to
@@ -81,8 +88,10 @@ App :: struct {
 Window :: struct {
 	window:   ^sdl3.Window,
 	renderer: ^sdl3.Renderer,
-	texture:  ^sdl3.Texture,
-	pixels:   bl.ImageCore, // what render draws into; uploaded each frame
+	textures: [2]^sdl3.Texture, // render targets; front shows, the other takes scrolls
+	front:    int,
+	stale:    bool, // the textures lost their pixels: upload the whole image
+	pixels:   bl.ImageCore, // what render draws into
 	size:     [2]i32, // device pixels
 	density:  f32,
 }
@@ -228,16 +237,25 @@ open :: proc(w: ^Window, app: App) -> bool {
 @(private)
 close :: proc(w: ^Window) {
 	_ = sdl3.StopTextInput(w.window)
-	if w.texture != nil {
-		sdl3.DestroyTexture(w.texture)
-	}
+	destroy_textures(w)
 	bl.image_destroy(&w.pixels)
 	sdl3.DestroyRenderer(w.renderer)
 	sdl3.DestroyWindow(w.window)
 	w^ = {}
 }
 
-// resize reads the output size and density and remakes the texture to match.
+@(private)
+destroy_textures :: proc(w: ^Window) {
+	for &t in w.textures {
+		if t != nil {
+			sdl3.DestroyTexture(t)
+			t = nil
+		}
+	}
+}
+
+// resize reads the output size and density and remakes the textures to
+// match.
 @(private)
 resize :: proc(w: ^Window) -> bool {
 	size: [2]i32
@@ -246,24 +264,27 @@ resize :: proc(w: ^Window) -> bool {
 	if w.density <= 0 {
 		w.density = 1
 	}
-	if size == w.size && w.texture != nil {
+	if size == w.size && w.textures[0] != nil {
 		return true
 	}
-	if w.texture != nil {
-		sdl3.DestroyTexture(w.texture)
-		w.texture = nil
-	}
+	destroy_textures(w)
 	w.size = size
 	if size.x <= 0 || size.y <= 0 {
 		return true
 	}
 	// ARGB8888 is a native-endian 0xAARRGGBB word: Blend2D's PRGB32 layout.
-	w.texture = sdl3.CreateTexture(w.renderer, .ARGB8888, .STREAMING, size.x, size.y)
-	if w.texture == nil {
-		fmt.eprintln("sdl: texture:", sdl3.GetError())
-		return false
+	// Copies between the textures must be exact: no blending, no filtering.
+	for &t in w.textures {
+		t = sdl3.CreateTexture(w.renderer, .ARGB8888, .TARGET, size.x, size.y)
+		if t == nil {
+			fmt.eprintln("sdl: texture:", sdl3.GetError())
+			return false
+		}
+		sdl3.SetTextureBlendMode(t, sdl3.BLENDMODE_NONE)
+		sdl3.SetTextureScaleMode(t, .NEAREST)
 	}
-	sdl3.SetTextureBlendMode(w.texture, sdl3.BLENDMODE_NONE)
+	w.front = 0
+	w.stale = true
 	if bl.image_create(&w.pixels, size.x, size.y, .PRGB32) != 0 {
 		fmt.eprintln("sdl: image: out of memory")
 		return false
@@ -271,25 +292,68 @@ resize :: proc(w: ^Window) -> bool {
 	return true
 }
 
-// present repaints what f changed in the window's image, uploads those
-// rects and shows the texture.
+// present repaints what f changed in the window's image, brings the front
+// texture up to date and shows it.
 @(private)
 present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color) {
-	if w.texture == nil {
+	if w.textures[0] == nil {
 		return
 	}
 	data: bl.ImageData
 	if bl.image_get_data(&w.pixels, &data) != 0 {
 		return
 	}
-	for r in render.compose(c, f, &w.pixels, clear) {
-		area := sdl3.Rect{i32(r.x), i32(r.y), i32(r.w), i32(r.h)}
-		px := rawptr(uintptr(data.pixel_data) + uintptr(int(r.y) * int(data.stride) + int(r.x) * 4))
-		sdl3.UpdateTexture(w.texture, &area, px, i32(data.stride))
+	changed := render.compose(c, f, &w.pixels, clear)
+	if w.stale {
+		upload(w.textures[w.front], &data, {0, 0, f32(w.size.x), f32(w.size.y)})
+		w.stale = false
+	} else if len(changed) > 0 {
+		if scrolls := c.damage.scrolls[:]; len(scrolls) > 0 {
+			// Draw the front texture into the back one, then each scrolled
+			// region again, moved, from the front: the source never
+			// overlaps what is being written.
+			back := w.textures[1 - w.front]
+			sdl3.SetRenderTarget(w.renderer, back)
+			sdl3.RenderTexture(w.renderer, w.textures[w.front], nil, nil)
+			for s in scrolls {
+				src, dst, ok := scroll_copy(s)
+				if ok {
+					sdl3.RenderTexture(w.renderer, w.textures[w.front], &src, &dst)
+				}
+			}
+			sdl3.SetRenderTarget(w.renderer, nil)
+			w.front = 1 - w.front
+		}
+		for r in c.damage.rects {
+			upload(w.textures[w.front], &data, r)
+		}
 	}
 	sdl3.RenderClear(w.renderer)
-	sdl3.RenderTexture(w.renderer, w.texture, nil, nil)
+	sdl3.RenderTexture(w.renderer, w.textures[w.front], nil, nil)
 	sdl3.RenderPresent(w.renderer)
+}
+
+// upload copies r of the image into the same place in t.
+@(private)
+upload :: proc(t: ^sdl3.Texture, data: ^bl.ImageData, r: ui.Rect) {
+	area := sdl3.Rect{i32(r.x), i32(r.y), i32(r.w), i32(r.h)}
+	px := rawptr(uintptr(data.pixel_data) + uintptr(int(r.y) * int(data.stride) + int(r.x) * 4))
+	sdl3.UpdateTexture(t, &area, px, i32(data.stride))
+}
+
+// scroll_copy is where s takes pixels from and puts them, as render's
+// compositor moves them in the image: what stays inside s.rect after the
+// move.
+@(private)
+scroll_copy :: proc(s: render.Scroll) -> (src, dst: sdl3.FRect, ok: bool) {
+	dx, dy := f32(s.delta.x), f32(s.delta.y)
+	w, h := s.rect.w - abs(dx), s.rect.h - abs(dy)
+	if w <= 0 || h <= 0 {
+		return {}, {}, false
+	}
+	src = {s.rect.x + max(-dx, 0), s.rect.y + max(-dy, 0), w, h}
+	dst = {s.rect.x + max(dx, 0), s.rect.y + max(dy, 0), w, h}
+	return src, dst, true
 }
 
 // poll drains SDL's queue into the router. Text is cloned into allocator.
@@ -307,6 +371,13 @@ poll :: proc(w: ^Window, router: ^ui.Router, allocator := context.allocator) -> 
 				return false
 			}
 			d = w.density
+		case .RENDER_TARGETS_RESET:
+			w.stale = true
+		case .RENDER_DEVICE_RESET:
+			destroy_textures(w)
+			if !resize(w) {
+				return false
+			}
 		case .MOUSE_MOTION:
 			ui.router_push(router, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState())})
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
