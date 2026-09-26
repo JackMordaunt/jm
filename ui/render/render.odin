@@ -17,7 +17,10 @@ an ellipse, a path, a rotated rect) is rasterized once per render into an A8
 mask covering only the chain's bounds. Each run of consecutive draws under
 that clip is rendered together into a transparent layer and painted onto the
 target through the mask in one pass, so the clip's antialiased edge applies
-once to the group, as clipping a group should.
+once to the group, as clipping a group should. Where a chain of rects and
+round rects under axis-aligned transforms covers pixels fully, its group
+draws there straight onto the target, and only the ring around that
+interior goes through the layer.
 
 Memory: fonts, font sizes and images are cached for the life of the Renderer,
 keyed by the ids in Ops, so an Ops must keep its ids stable (add_font and
@@ -68,11 +71,14 @@ Renderer :: struct {
 }
 
 // Mask is a clip chain's coverage over box, the part of the target the
-// chain can show; img is box-sized, empty when box is.
+// chain can show; img is box-sized, empty when box is. Inside inner the
+// chain covers every pixel fully, so img holds coverage only in the ring
+// around inner; the bytes under inner are never written or read.
 @(private)
 Mask :: struct {
-	img: bl.ImageCore,
-	box: ui.Rect, // whole pixels
+	img:   bl.ImageCore,
+	box:   ui.Rect, // whole pixels
+	inner: ui.Rect, // whole pixels inside box, empty when the chain has none
 }
 
 // init prepares r. Caches allocate from allocator.
@@ -265,12 +271,31 @@ exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw) -> bool {
 	return true
 }
 
-// exec_masked draws draws, which share one clip, into the layer inside the
-// mask's box and paints that onto the target through the mask.
+// exec_masked draws draws, which share one clip, so that the clip's coverage
+// applies to them once, as a group. Inside the clip's interior the coverage
+// is full, so there they draw straight onto the target; only the ring
+// between the interior and the mask's box is drawn into the layer and
+// painted onto the target through the mask.
 @(private)
 exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
 	m := clip_mask(r, f, draws[0].clip, w, h)
-	if m == nil || !ensure_layer(r, w, h) {
+	if m == nil {
+		return
+	}
+	inner := m.inner
+	if inner.w > 0 {
+		bl.context_save(&r.ctx, nil)
+		set_transform(&r.ctx, ui.IDENTITY)
+		rect := bl.Rect{f64(inner.x), f64(inner.y), f64(inner.w), f64(inner.h)}
+		bl.context_clip_to_rect_d(&r.ctx, &rect)
+		for &d in draws {
+			set_transform(&r.ctx, d.transform)
+			draw_cmd(r, &r.ctx, f, &d)
+		}
+		bl.context_restore(&r.ctx, nil)
+	}
+	edges, n := ring(m.box, inner)
+	if n == 0 || !ensure_layer(r, w, h) {
 		return
 	}
 	if r.threads > 0 {
@@ -281,12 +306,16 @@ exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
 	if bl.context_begin(&r.layer_ctx, &r.layer, nil) != 0 {
 		return
 	}
-	box := bl.RectI{i32(m.box.x), i32(m.box.y), i32(m.box.w), i32(m.box.h)}
-	bl.context_clip_to_rect_i(&r.layer_ctx, &box)
-	bl.context_clear_rect_i(&r.layer_ctx, &box)
-	for &d in draws {
-		set_transform(&r.layer_ctx, d.transform)
-		draw_cmd(r, &r.layer_ctx, f, &d)
+	for e in edges[:n] {
+		bl.context_save(&r.layer_ctx, nil)
+		area := bl.RectI{i32(e.x), i32(e.y), i32(e.w), i32(e.h)}
+		bl.context_clip_to_rect_i(&r.layer_ctx, &area)
+		bl.context_clear_rect_i(&r.layer_ctx, &area)
+		for &d in draws {
+			set_transform(&r.layer_ctx, d.transform)
+			draw_cmd(r, &r.layer_ctx, f, &d)
+		}
+		bl.context_restore(&r.layer_ctx, nil)
 	}
 	bl.context_end(&r.layer_ctx)
 
@@ -298,8 +327,54 @@ exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
 	set_transform(&r.ctx, ui.IDENTITY)
 	bl.context_set_comp_op(&r.ctx, .SRC_OVER)
 	bl.context_set_fill_style(&r.ctx, (^bl.Unknown)(&pattern))
-	origin := bl.Point{f64(m.box.x), f64(m.box.y)}
-	bl.context_fill_mask_d(&r.ctx, &origin, &m.img, nil)
+	for e in edges[:n] {
+		origin := bl.Point{f64(e.x), f64(e.y)}
+		area := bl.RectI{i32(e.x - m.box.x), i32(e.y - m.box.y), i32(e.w), i32(e.h)}
+		bl.context_fill_mask_d(&r.ctx, &origin, &m.img, &area)
+	}
+}
+
+// clip_interior is the whole pixels of a w×h target that a clip chain
+// covers fully, where its mask is opaque. It is empty unless every node is
+// a Rect or Round_Rect under an axis-aligned transform.
+@(private)
+clip_interior :: proc(f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ui.Rect {
+	out := ui.Rect{0, 0, f32(w), f32(h)}
+	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
+		node := f.clips[c]
+		inside, ok := box_inside(node.shape, 0)
+		if !ok || !ui.is_axis_aligned(node.transform) {
+			return {}
+		}
+		out = ui.rect_intersect(out, ui.transform_rect(node.transform, inside))
+	}
+	return inner_pixels(out, {w, h})
+}
+
+// ring cuts box minus inner, which lies inside it, into at most four
+// rects: full-width bands above and below inner, then its left and right.
+// An empty inner leaves box whole.
+@(private)
+ring :: proc(box, inner: ui.Rect) -> (out: [4]ui.Rect, n: int) {
+	if inner.w <= 0 || inner.h <= 0 {
+		out[0] = box
+		return out, 1
+	}
+	bx1, by1 := box.x + box.w, box.y + box.h
+	ix1, iy1 := inner.x + inner.w, inner.y + inner.h
+	parts := [4]ui.Rect {
+		{box.x, box.y, box.w, inner.y - box.y},
+		{box.x, iy1, box.w, by1 - iy1},
+		{box.x, inner.y, inner.x - box.x, inner.h},
+		{ix1, inner.y, bx1 - ix1, inner.h},
+	}
+	for p in parts {
+		if p.w > 0 && p.h > 0 {
+			out[n] = p
+			n += 1
+		}
+	}
+	return out, n
 }
 
 // rect_chain resolves a clip chain to one device rect when every node is a
@@ -339,9 +414,10 @@ ensure_layer :: proc(r: ^Renderer, w, h: i32) -> bool {
 
 // clip_mask returns the coverage of a clip chain over the part of a w×h
 // target it can show, rasterizing it on first use this call; nil when that
-// part is empty. The first node is filled into the mask; every further node
-// is filled into a scratch mask and multiplied in with DST_IN, which covers
-// the whole mask and so leaves only the intersection.
+// part is empty. Only the ring around the chain's interior is rasterized.
+// The first node is filled into the mask; every further node is filled
+// into a scratch mask and multiplied in with DST_IN over the same ring,
+// which leaves only the intersection.
 @(private)
 clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mask {
 	if m, ok := &r.masks[id]; ok {
@@ -363,13 +439,23 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 		r.masks[id] = m
 		return nil
 	}
+	m.inner = ui.rect_intersect(clip_interior(f, id, w, h), m.box)
+	if m.inner.w <= 0 || m.inner.h <= 0 {
+		m.inner = {}
+	}
+	// The ring's rects, moved into the mask's own coordinates.
+	edges, n := ring(m.box, m.inner)
+	for &e in edges[:n] {
+		e.x -= m.box.x
+		e.y -= m.box.y
+	}
 	shift := ui.translate(-m.box.x, -m.box.y)
 	first := true
 	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
 		node := f.clips[c]
 		node.transform = ui.mul(node.transform, shift)
 		if first {
-			fill_coverage(r, f, &m.img, node)
+			fill_coverage(r, f, &m.img, node, edges[:n])
 			first = false
 			continue
 		}
@@ -379,13 +465,16 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 		if !mask_view(r, &scratch, m.box) {
 			continue
 		}
-		fill_coverage(r, f, &scratch, node)
+		fill_coverage(r, f, &scratch, node, edges[:n])
 		if bl.context_begin(&r.mask_ctx, &m.img, nil) != 0 {
 			continue
 		}
 		bl.context_set_comp_op(&r.mask_ctx, .DST_IN)
-		origin := bl.PointI{0, 0}
-		bl.context_blit_image_i(&r.mask_ctx, &origin, &scratch, nil)
+		for e in edges[:n] {
+			area := bl.RectI{i32(e.x), i32(e.y), i32(e.w), i32(e.h)}
+			origin := bl.PointI{area.x, area.y}
+			bl.context_blit_image_i(&r.mask_ctx, &origin, &scratch, &area)
+		}
 		bl.context_end(&r.mask_ctx)
 	}
 	r.masks[id] = m
@@ -403,17 +492,24 @@ mask_view :: proc(r: ^Renderer, img: ^bl.ImageCore, box: ui.Rect) -> bool {
 	return bl.image_create_from_data(img, i32(w), i32(h), .A8, raw_data(buf), stride, .RW, nil, nil) == 0
 }
 
-// fill_coverage clears img and fills one clip node's shape opaque into it.
+// fill_coverage clears each of areas in img and fills one clip node's shape
+// opaque into them, leaving the rest of img untouched.
 @(private)
-fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.Clip) {
+fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.Clip, areas: []ui.Rect) {
 	if bl.context_begin(&r.mask_ctx, img, nil) != 0 {
 		return
 	}
 	defer bl.context_end(&r.mask_ctx)
-	bl.context_clear_all(&r.mask_ctx)
-	set_transform(&r.mask_ctx, node.transform)
 	bl.context_set_fill_style_rgba32(&r.mask_ctx, 0xFFFFFFFF)
-	fill_shape(r, &r.mask_ctx, f.ops, node.shape)
+	for a in areas {
+		bl.context_save(&r.mask_ctx, nil)
+		area := bl.RectI{i32(a.x), i32(a.y), i32(a.w), i32(a.h)}
+		bl.context_clip_to_rect_i(&r.mask_ctx, &area)
+		bl.context_clear_rect_i(&r.mask_ctx, &area)
+		set_transform(&r.mask_ctx, node.transform)
+		fill_shape(r, &r.mask_ctx, f.ops, node.shape)
+		bl.context_restore(&r.mask_ctx, nil)
+	}
 }
 
 // draw_cmd executes one command on ctx under the transform already set.

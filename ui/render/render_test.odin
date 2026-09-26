@@ -303,3 +303,86 @@ test_masked_clip_off_target :: proc(t: ^testing.T) {
 	testing.expect_value(t, at(&fx, {40, 40}), WHITE)
 	testing.expect_value(t, at(&fx, {60, 60}), WHITE)
 }
+
+// A clip's interior is drawn without its mask, so the mask must be opaque
+// on every pixel the interior claims: at fractional edges, under scale, in
+// nested chains, and with a radius too big for the rect.
+@(test)
+test_clip_interior_is_opaque :: proc(t: ^testing.T) {
+	Case :: struct {
+		name:  string,
+		outer: ui.Shape,
+		inner: ui.Shape, // nil for a single-node chain
+		m:     ui.Affine,
+		least: f32, // the interior area the case must find
+	}
+	cases := []Case {
+		{"fractional", ui.Round_Rect{{3.3, 4.7, 51.2, 49.9}, 9.6}, nil, ui.IDENTITY, 1500},
+		{"scaled", ui.Round_Rect{{2.25, 3.5, 20.5, 18.75}, 5}, nil, ui.mul(ui.scale(2.5, 2.25), ui.translate(0.3, 0.6)), 1500},
+		{"nested", ui.Rect{10.4, 0.5, 40.2, 63}, ui.Round_Rect{{1.5, 8.25, 60, 30.5}, 12}, ui.IDENTITY, 600},
+		{"big radius", ui.Round_Rect{{8.5, 8.5, 40, 20}, 30}, nil, ui.IDENTITY, 0},
+		{"past the target", ui.Round_Rect{{-20.5, 30.5, 120, 60}, 16}, nil, ui.IDENTITY, 1500},
+	}
+	for tc in cases {
+		fx: Fixture
+		setup(&fx)
+		defer teardown(&fx)
+		id := clip(&fx, ui.NO_CLIP, tc.outer, tc.m)
+		if tc.inner != nil {
+			id = clip(&fx, id, tc.inner, tc.m)
+		}
+		m := clip_mask(&fx.r, &fx.frame, id, SIZE, SIZE)
+		inner := m.inner
+		testing.expectf(t, inner.w * inner.h >= tc.least, "%s: interior %v is smaller than %v px", tc.name, inner, tc.least)
+		// The mask skips the interior, so rasterize each node's coverage
+		// over the whole box and check it there.
+		whole := []ui.Rect{{0, 0, m.box.w, m.box.h}}
+		partial := 0
+		for c := id; c != ui.NO_CLIP; c = fx.frame.clips[c].parent {
+			node := fx.frame.clips[c]
+			node.transform = ui.mul(node.transform, ui.translate(-m.box.x, -m.box.y))
+			cover: bl.ImageCore
+			bl.image_init(&cover)
+			defer bl.image_destroy(&cover)
+			mask_view(&fx.r, &cover, m.box)
+			fill_coverage(&fx.r, &fx.frame, &cover, node, whole)
+			data: bl.ImageData
+			bl.image_get_data(&cover, &data)
+			for y in int(inner.y) ..< int(inner.y + inner.h) {
+				row := ([^]u8)(uintptr(data.pixel_data) + uintptr((y - int(m.box.y)) * int(data.stride)))
+				for x in int(inner.x) ..< int(inner.x + inner.w) {
+					if row[x - int(m.box.x)] != 255 {
+						partial += 1
+					}
+				}
+			}
+		}
+		testing.expectf(t, partial == 0, "%s: %d interior pixels are not fully covered", tc.name, partial)
+	}
+}
+
+// Drawing a clip's interior straight onto the target must look the same as
+// drawing it through the layer: translucent draws overlapping across the
+// interior's edge show no seam.
+@(test)
+test_clip_interior_no_seam :: proc(t: ^testing.T) {
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	c := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{2.5, 2.5, 59, 59}, 20}, ui.IDENTITY)
+	for i in 0 ..< 4 {
+		fill(&fx, ui.IDENTITY, c, ui.Rect{0, f32(i) * 8, SIZE, 30}, ui.Color{0, 80, 200, 90})
+	}
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	// Row 40 is under the same fills from x = 4, in the ring, across the
+	// interior's left edge near x = 9 and on to the ring at the right; away
+	// from the antialiased edge every pixel must match.
+	want := at(&fx, {4, 40})
+	for x in 4 ..< 60 {
+		got := at(&fx, {f32(x), 40})
+		if got != want {
+			testing.expectf(t, false, "pixel (%d, 40) is %v, the row starts %v", x, got, want)
+			break
+		}
+	}
+}
