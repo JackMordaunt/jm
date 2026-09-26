@@ -17,8 +17,11 @@ here knows how.
 	}
 
 Each frame: poll SDL events into the Router, route them against the previous
-frame, reset Ops, run the ui proc, flatten, render into the streaming
-texture, present, swap frames.
+frame, reset Ops, run the ui proc, flatten, render into a CPU-side
+image, upload it to the streaming texture, present, swap frames.
+
+Render never targets the locked texture: the Direct3D renderers map it as
+write-combined memory, which is slow to read, and blending reads it.
 
 Coordinates: the ui proc lays out in logical units (window points).
 On a HiDPI display a root scale transform by the pixel density maps them to
@@ -73,6 +76,7 @@ Window :: struct {
 	window:   ^sdl3.Window,
 	renderer: ^sdl3.Renderer,
 	texture:  ^sdl3.Texture,
+	pixels:   bl.ImageCore, // what render draws into; uploaded each frame
 	size:     [2]i32, // device pixels
 	density:  f32,
 }
@@ -205,6 +209,7 @@ open :: proc(w: ^Window, app: App) -> bool {
 		return false
 	}
 	sdl3.SetRenderVSync(w.renderer, 1)
+	bl.image_init(&w.pixels)
 	_ = sdl3.StartTextInput(w.window)
 	return resize(w)
 }
@@ -215,6 +220,7 @@ close :: proc(w: ^Window) {
 	if w.texture != nil {
 		sdl3.DestroyTexture(w.texture)
 	}
+	bl.image_destroy(&w.pixels)
 	sdl3.DestroyRenderer(w.renderer)
 	sdl3.DestroyWindow(w.window)
 	w^ = {}
@@ -247,29 +253,25 @@ resize :: proc(w: ^Window) -> bool {
 		return false
 	}
 	sdl3.SetTextureBlendMode(w.texture, sdl3.BLENDMODE_NONE)
+	if bl.image_create(&w.pixels, size.x, size.y, .PRGB32) != 0 {
+		fmt.eprintln("sdl: image: out of memory")
+		return false
+	}
 	return true
 }
 
-// present renders f straight into the locked streaming texture and shows it.
+// present renders f into the window's image, uploads it and shows it.
 @(private)
 present :: proc(w: ^Window, r: ^render.Renderer, f: ^ui.Frame, clear: ui.Color) {
 	if w.texture == nil {
 		return
 	}
-	pixels: rawptr
-	pitch: i32
-	if !sdl3.LockTexture(w.texture, nil, &pixels, &pitch) {
+	render.render(r, f, &w.pixels, clear)
+	data: bl.ImageData
+	if bl.image_get_data(&w.pixels, &data) != 0 {
 		return
 	}
-	img: bl.ImageCore
-	bl.image_init(&img)
-	ok := bl.image_create_from_data(&img, w.size.x, w.size.y, .PRGB32, pixels, int(pitch), .RW, nil, nil) == 0
-	if ok {
-		render.render(r, f, &img, clear)
-	}
-	bl.image_destroy(&img)
-	sdl3.UnlockTexture(w.texture)
-	if !ok {
+	if !sdl3.UpdateTexture(w.texture, nil, data.pixel_data, i32(data.stride)) {
 		return
 	}
 	sdl3.RenderClear(w.renderer)
