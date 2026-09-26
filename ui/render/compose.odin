@@ -62,6 +62,15 @@ HASH_SHARED :: 1024
 @(private)
 HASH_CHUNK :: 256
 
+// A band thinner than THIN, such as the strip a scroll uncovers, is cut at
+// multiples of BAND_W so the crew can share it. Thicker bands are not: each
+// cut draws what spans it again: cutting every band at 1024 px took the
+// full scene of ui-bench -compose at 4K from 2.5 to 3.2 ms.
+@(private)
+THIN :: TILE / 2
+@(private)
+BAND_W :: 4 * TILE
+
 // MOVE_SHARED is the scrolled area, in pixels, from which the crew shares a
 // move; MOVE_PARTS is how many parts each worker's share is cut into.
 @(private)
@@ -165,15 +174,23 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 	}
 	append(&c.changed, ..rects)
 
-	// Bands never cross a tile row: that keeps masks band-sized, puts band
-	// edges in the same place whatever the crew size, so the pixels do not
-	// depend on it, and lets a band find its draws in one row's list.
+	// Bands never cross a tile row, and thin ones never a multiple of
+	// BAND_W: that keeps masks band-sized, puts band edges in the same place
+	// whatever the crew size, so the pixels do not depend on it, and lets a
+	// band find its draws in one row's list.
 	clear(&c.jobs)
 	for r in rects {
 		for y := r.y; y < r.y + r.h; {
-			next := min(f32((int(y) / TILE + 1) * TILE), r.y + r.h)
-			append(&c.jobs, ui.Rect{r.x, y, r.w, next - y})
-			y = next
+			next_y := min(f32((int(y) / TILE + 1) * TILE), r.y + r.h)
+			for x := r.x; x < r.x + r.w; {
+				next_x := r.x + r.w
+				if next_y - y < THIN {
+					next_x = min(f32((int(x) / BAND_W + 1) * BAND_W), next_x)
+				}
+				append(&c.jobs, ui.Rect{x, y, next_x - x, next_y - y})
+				x = next_x
+			}
+			y = next_y
 		}
 	}
 	index_rows(c, c.damage.old_draws[:], c.damage.rows)
