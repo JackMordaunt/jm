@@ -5,6 +5,8 @@
 //	ui-bench -n 50      frames per measurement (default 20)
 //	ui-bench -w 1800 -h 1200
 //	ui-bench -t 0,1,2,4,8   Blend2D worker threads to try (default 0,2,4,8)
+//	ui-bench -sweep         grow each kind of content until a frame is over budget
+//	ui-bench -sweep -budget 8.3   the same against a 120 Hz frame
 //
 // Layout is timed once per scene. Render is timed per thread count, and a
 // checksum of the pixels is compared with the synchronous render so a
@@ -140,7 +142,16 @@ main :: proc() {
 	n := 20
 	w, h := 900, 600
 	threads := []u32{0, 2, 4, 8}
-	args := os.args[1:]
+	budget := 1000.0 / 60
+	do_sweep := false
+	args := make([dynamic]string)
+	for a in os.args[1:] {
+		if a == "-sweep" {
+			do_sweep = true
+		} else {
+			append(&args, a)
+		}
+	}
 	for i := 0; i < len(args); i += 1 {
 		if i + 1 >= len(args) {
 			break
@@ -159,8 +170,15 @@ main :: proc() {
 				append(&list, u32(v))
 			}
 			threads = list[:]
+		case "-budget":
+			budget, _ = strconv.parse_f64(args[i + 1])
 		}
 		i += 1
+	}
+
+	if do_sweep {
+		sweep(w, h, threads, budget)
+		return
 	}
 
 	scenes := []Scene {
