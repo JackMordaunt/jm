@@ -1,0 +1,314 @@
+package render
+
+import "core:mem"
+import "core:sync"
+import "core:thread"
+
+import "jm:ui"
+import bl "jm:ui/blend2d"
+
+// Compositor repaints only what changed. Each compose diffs the frame
+// against the previous one (see Damage), moves the pixels of scrolled
+// regions, cuts the dirty rects into bands one tile high and renders the
+// bands on a crew of workers, each with its own Renderer, straight into the
+// target. The crew also shares the per-draw hashing of large frames. The
+// target must keep its pixels from one compose to the next; call
+// damage_invalidate(&c.damage) when it does not.
+//
+// Bands meet at tile edges, where Blend2D's antialiasing of a shape crossing
+// the edge can differ from one whole-target render by one step in a channel.
+//
+// A Compositor must not move after compositor_init.
+Compositor :: struct {
+	damage:    Damage,
+	workers:   []Worker,
+	threads:   []^thread.Thread,
+	start:     sync.Barrier,
+	done:      sync.Barrier,
+	quit:      bool,
+	phase:     enum u8 {
+		Hash,
+		Paint,
+	},
+	jobs:      [dynamic]ui.Rect, // bands to paint
+	next:      int, // index of the next job or draw chunk, taken atomically
+	frame:     ^ui.Frame,
+	target:    ^bl.ImageCore,
+	bg:        ui.Color,
+	changed:   [dynamic]ui.Rect, // what compose returns
+	row_start: [dynamic]int, // per tile row: where its draws start in row_draws
+	row_draws: [dynamic]int, // draw indices touching each tile row, in draw order
+	row_fill:  [dynamic]int,
+	allocator: mem.Allocator,
+}
+
+@(private)
+Worker :: struct {
+	c:   ^Compositor,
+	r:   Renderer,
+	sub: ui.Frame, // the draws of one band, shifted to its origin
+}
+
+// HASH_CHUNK is how many draws a worker hashes per turn; frames with fewer
+// are hashed on the calling thread alone.
+@(private)
+HASH_CHUNK :: 1024
+
+// compositor_init starts workers-1 threads; the thread calling compose is
+// the last worker. Fewer than one worker counts as one.
+compositor_init :: proc(c: ^Compositor, workers: int, allocator := context.allocator) {
+	n := max(workers, 1)
+	c.allocator = allocator
+	damage_init(&c.damage, allocator)
+	c.jobs = make([dynamic]ui.Rect, allocator)
+	c.changed = make([dynamic]ui.Rect, allocator)
+	c.row_start = make([dynamic]int, allocator)
+	c.row_draws = make([dynamic]int, allocator)
+	c.row_fill = make([dynamic]int, allocator)
+	c.workers = make([]Worker, n, allocator)
+	for &w in c.workers {
+		w.c = c
+		init(&w.r, allocator)
+		ui.frame_init(&w.sub, allocator)
+	}
+	if n == 1 {
+		return
+	}
+	sync.barrier_init(&c.start, n)
+	sync.barrier_init(&c.done, n)
+	c.threads = make([]^thread.Thread, n - 1, allocator)
+	for &t, i in c.threads {
+		t = thread.create(worker_loop)
+		t.data = &c.workers[i + 1]
+		thread.start(t)
+	}
+}
+
+// compositor_destroy stops the crew and releases everything c holds.
+compositor_destroy :: proc(c: ^Compositor) {
+	if len(c.threads) > 0 {
+		sync.atomic_store(&c.quit, true)
+		sync.barrier_wait(&c.start)
+		for t in c.threads {
+			thread.destroy(t)
+		}
+		delete(c.threads, c.allocator)
+	}
+	for &w in c.workers {
+		destroy(&w.r)
+		ui.frame_destroy(&w.sub)
+	}
+	delete(c.workers, c.allocator)
+	delete(c.jobs)
+	delete(c.changed)
+	delete(c.row_start)
+	delete(c.row_draws)
+	delete(c.row_fill)
+	damage_destroy(&c.damage)
+	c^ = {}
+}
+
+// compose brings target up to date with f and returns the rects whose
+// pixels changed, repainted or scrolled; nil when nothing did. target must
+// be PRGB32. The result is valid until the next compose.
+compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Color) -> []ui.Rect {
+	data: bl.ImageData
+	if bl.image_get_data(target, &data) != 0 || data.size.w <= 0 || data.size.h <= 0 {
+		return nil
+	}
+	c.frame, c.target, c.bg = f, target, bg
+
+	// Worker 0 is this thread, so its font cache is safe to use here.
+	damage_begin(&c.damage, f, data.size.w, data.size.h, bg, &c.workers[0].r)
+	if len(c.threads) > 0 && len(f.draws) > HASH_CHUNK {
+		run_phase(c, .Hash)
+	} else {
+		damage_draws(&c.damage, f, 0, len(f.draws))
+	}
+	rects, scrolls := damage_end(&c.damage)
+
+	clear(&c.changed)
+	for s in scrolls {
+		move_pixels(&data, s)
+		append(&c.changed, s.rect)
+	}
+	if len(rects) == 0 {
+		return c.changed[:] if len(c.changed) > 0 else nil
+	}
+	append(&c.changed, ..rects)
+
+	// Bands never cross a tile row: that keeps masks band-sized, puts band
+	// edges in the same place whatever the crew size, so the pixels do not
+	// depend on it, and lets a band find its draws in one row's list.
+	clear(&c.jobs)
+	for r in rects {
+		for y := r.y; y < r.y + r.h; {
+			next := min(f32((int(y) / TILE + 1) * TILE), r.y + r.h)
+			append(&c.jobs, ui.Rect{r.x, y, r.w, next - y})
+			y = next
+		}
+	}
+	index_rows(c, c.damage.old_draws[:], c.damage.rows)
+	if len(c.threads) > 0 {
+		run_phase(c, .Paint)
+	} else {
+		sync.atomic_store(&c.next, 0)
+		drain(c, &c.workers[0])
+	}
+	return c.changed[:]
+}
+
+// run_phase has the whole crew, the caller included, work through phase.
+@(private)
+run_phase :: proc(c: ^Compositor, phase: type_of(c.phase)) {
+	c.phase = phase
+	sync.atomic_store(&c.next, 0)
+	sync.barrier_wait(&c.start)
+	work(c, &c.workers[0])
+	sync.barrier_wait(&c.done)
+}
+
+@(private)
+worker_loop :: proc(t: ^thread.Thread) {
+	w := (^Worker)(t.data)
+	c := w.c
+	for {
+		sync.barrier_wait(&c.start)
+		if sync.atomic_load(&c.quit) {
+			return
+		}
+		work(c, w)
+		free_all(context.temp_allocator)
+		sync.barrier_wait(&c.done)
+	}
+}
+
+@(private)
+work :: proc(c: ^Compositor, w: ^Worker) {
+	switch c.phase {
+	case .Hash:
+		n := len(c.frame.draws)
+		for {
+			lo := sync.atomic_add(&c.next, HASH_CHUNK)
+			if lo >= n {
+				return
+			}
+			damage_draws(&c.damage, c.frame, lo, min(lo + HASH_CHUNK, n))
+		}
+	case .Paint:
+		drain(c, w)
+	}
+}
+
+// drain paints jobs until none are left.
+@(private)
+drain :: proc(c: ^Compositor, w: ^Worker) {
+	for {
+		i := sync.atomic_add(&c.next, 1)
+		if i >= len(c.jobs) {
+			return
+		}
+		// damage_end has already filed this frame's records as the old ones.
+		band := c.jobs[i]
+		row := clamp(int(band.y) / TILE, 0, len(c.row_start) - 2)
+		picks := c.row_draws[c.row_start[row]:c.row_start[row + 1]]
+		paint_band(w, c.frame, c.target, band, c.damage.old_draws[:], picks, c.bg)
+	}
+}
+
+// index_rows lists, for each tile row, the draws whose bounds touch it, in
+// draw order.
+@(private)
+index_rows :: proc(c: ^Compositor, recs: []Draw_Rec, rows: int) {
+	resize(&c.row_start, rows + 1)
+	mem.zero_slice(c.row_start[:])
+	span :: proc(b: ui.Rect, rows: int) -> (int, int) {
+		return clamp(int(b.y) / TILE, 0, rows - 1), clamp(int(b.y + b.h - 1) / TILE, 0, rows - 1)
+	}
+	for &rec in recs {
+		if rec.bounds.w <= 0 || rec.bounds.h <= 0 {
+			continue
+		}
+		y0, y1 := span(rec.bounds, rows)
+		for r in y0 ..= y1 {
+			c.row_start[r + 1] += 1
+		}
+	}
+	for r in 0 ..< rows {
+		c.row_start[r + 1] += c.row_start[r]
+	}
+	resize(&c.row_draws, c.row_start[rows])
+	resize(&c.row_fill, rows)
+	copy(c.row_fill[:], c.row_start[:rows])
+	for &rec, i in recs {
+		if rec.bounds.w <= 0 || rec.bounds.h <= 0 {
+			continue
+		}
+		y0, y1 := span(rec.bounds, rows)
+		for r in y0 ..= y1 {
+			c.row_draws[c.row_fill[r]] = i
+			c.row_fill[r] += 1
+		}
+	}
+}
+
+// move_pixels shifts the pixels inside s.rect by s.delta. Rows are copied
+// in the order that never reads a row already overwritten.
+@(private)
+move_pixels :: proc(data: ^bl.ImageData, s: Scroll) {
+	dx, dy := int(s.delta.x), int(s.delta.y)
+	x0, y0 := int(s.rect.x), int(s.rect.y)
+	w, h := int(s.rect.w), int(s.rect.h)
+	cols := w - abs(dx)
+	rows := h - abs(dy)
+	if cols <= 0 || rows <= 0 {
+		return
+	}
+	src_x := x0 + max(-dx, 0)
+	dst_x := x0 + max(dx, 0)
+	stride := int(data.stride)
+	for k in 0 ..< rows {
+		r := k if dy <= 0 else rows - 1 - k
+		src_y := y0 + max(-dy, 0) + r
+		dst_y := y0 + max(dy, 0) + r
+		src := rawptr(uintptr(data.pixel_data) + uintptr(src_y * stride + src_x * 4))
+		dst := rawptr(uintptr(data.pixel_data) + uintptr(dst_y * stride + dst_x * 4))
+		mem.copy(dst, src, cols * 4)
+	}
+}
+
+// paint_band renders the draws of f that touch r into the part of target
+// under r, through a view that shares target's pixels. picks are the
+// indices of the draws that may touch r, in order; recs are f's draw
+// records, whose bounds decide.
+@(private)
+paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ui.Rect, recs: []Draw_Rec, picks: []int, bg: ui.Color) {
+	sub := &w.sub
+	clear(&sub.draws)
+	clear(&sub.clips)
+	sub.ops = f.ops
+	shift := ui.translate(-r.x, -r.y)
+	for cl in f.clips {
+		append(&sub.clips, ui.Clip{cl.parent, cl.shape, ui.mul(cl.transform, shift)})
+	}
+	for i in picks {
+		if ui.rect_intersect(recs[i].bounds, r).w <= 0 {
+			continue
+		}
+		d := f.draws[i]
+		append(&sub.draws, ui.Draw{ui.mul(d.transform, shift), d.clip, d.cmd})
+	}
+
+	data: bl.ImageData
+	if bl.image_get_data(target, &data) != 0 {
+		return
+	}
+	px := rawptr(uintptr(data.pixel_data) + uintptr(int(r.y) * int(data.stride) + int(r.x) * 4))
+	view: bl.ImageCore
+	bl.image_init(&view)
+	defer bl.image_destroy(&view)
+	if bl.image_create_from_data(&view, i32(r.w), i32(r.h), .PRGB32, px, int(data.stride), .RW, nil, nil) != 0 {
+		return
+	}
+	render(&w.r, sub, &view, bg)
+}
