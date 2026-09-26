@@ -55,10 +55,12 @@ Worker :: struct {
 	sub: ui.Frame, // the draws of one band, shifted to its origin
 }
 
-// HASH_CHUNK is how many draws a worker hashes per turn; frames with fewer
-// are hashed on the calling thread alone.
+// HASH_SHARED is the draw count from which the crew shares the per-draw
+// work of damage tracking, HASH_CHUNK how many draws a worker takes per turn.
 @(private)
-HASH_CHUNK :: 1024
+HASH_SHARED :: 1024
+@(private)
+HASH_CHUNK :: 256
 
 // MOVE_SHARED is the scrolled area, in pixels, from which the crew shares a
 // move; MOVE_PARTS is how many parts each worker's share is cut into.
@@ -134,13 +136,13 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 	// Worker 0 is this thread, so its font cache is safe to use here.
 	damage_begin(&c.damage, f, data.size.w, data.size.h, bg, &c.workers[0].r)
 	c.count = len(f.draws)
-	if len(c.threads) > 0 && c.count > HASH_CHUNK {
+	if len(c.threads) > 0 && c.count > HASH_SHARED {
 		run_phase(c, .Hash)
 	} else {
 		damage_draws(&c.damage, f, 0, c.count)
 	}
 	c.count = damage_find(&c.damage)
-	if len(c.threads) > 0 && c.count > HASH_CHUNK {
+	if len(c.threads) > 0 && c.count > HASH_SHARED {
 		run_phase(c, .Model)
 	} else {
 		damage_model(&c.damage, 0, c.count)
