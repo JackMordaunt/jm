@@ -342,6 +342,19 @@ hot-architecture: blend2d sdl3
     @echo "terminal 2: build/debug/hot-architecture-host{{exe}} build/debug/hot-architecture.watch"
     @echo "then edit examples/hot-architecture/child/main.odin and watch the window update."
 
+# Build the hot-reloaded button pilot: one widget (button), watched live
+# while ui/widget_button.odin and ui/theme.odin are edited elsewhere in the
+# tree — the watch is on examples/hot-button/child, but a rebuild is
+# triggered by touching either its own file or a jm:ui source it imports,
+# so edit the widget/theme files and touch the child (or just re-save it).
+hot-button: blend2d sdl3
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/hot-button/host -debug {{flags}} {{cxx_link}} -out:build/debug/hot-button-host{{exe}}
+    @echo "terminal 1: build/debug/hot-watch{{exe}} examples/hot-button/child build/debug/hot-button.watch"
+    @echo "terminal 2: build/debug/hot-button-host{{exe}} build/debug/hot-button.watch"
+    @echo "then edit ui/widget_button.odin or ui/theme.odin and watch the window update."
+
 # Print the demo's first frame as text, no window
 kitchen-dump: blend2d sdl3
     mkdir -p build/debug

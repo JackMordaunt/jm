@@ -57,15 +57,17 @@ Align :: enum u8 {
 
 // Widget_State is what a widget keeps between frames, keyed by its id.
 Widget_State :: struct {
-	seen:        u64,
-	hovered:     bool,
-	pressed:     bool,
-	focused:     bool,
-	scroll:      f32, // text field: horizontal scroll to keep the caret visible
-	flex_valid:  bool, // flex: the fields below hold last frame's totals
-	flex_rigid:  f32,
-	flex_weight: f32,
-	flex_count:  int,
+	seen:          u64,
+	hovered:       bool,
+	pressed:       bool,
+	focused:       bool,
+	scroll:        f32, // text field: horizontal scroll to keep the caret visible
+	flex_valid:    bool, // flex: the fields below hold last frame's totals
+	flex_rigid:    f32,
+	flex_weight:   f32,
+	flex_count:    int,
+	ripple:        Tween, // button family: ink-ripple progress since the last Press; ripple.t < ripple.duration means still animating
+	ripple_origin: Point, // where that Press landed, local to the widget
 }
 
 @(private)

@@ -75,7 +75,7 @@ test_button_clicks_on_press_then_release :: proc(t: ^testing.T) {
 	testing.expect(t, i >= 0)
 	ia := h.ops.ops[i].(Input_Area)
 	testing.expect_value(t, ia.id, area)
-	testing.expect_value(t, ia.kinds, Event_Kinds{.Press, .Release, .Enter, .Leave, .Move})
+	testing.expect_value(t, ia.kinds, Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur})
 	rr := ia.shape.(Round_Rect)
 	testing.expect(t, near(rr.rect.w, 4 * W + 24) && near(rr.rect.h, 14 + 12))
 
@@ -104,9 +104,29 @@ test_button_hover_and_release_outside :: proc(t: ^testing.T) {
 	push_event(&h, {kind = .Press, area = area, pos = {1, 1}})
 	push_event(&h, {kind = .Release, area = area, pos = {-5, 1}})
 	testing.expect(t, !go_button(&h))
-	f := h.ops.ops[index_of(&h.ops, Fill)].(Fill)
+	// Two fills: the container, then the hover state layer on top of it.
+	container := index_of(&h.ops, Fill)
+	testing.expect(t, container >= 0)
+	layer := index_of(&h.ops, Fill, container + 1)
+	testing.expect(t, layer >= 0)
+	f := h.ops.ops[layer].(Fill)
 	st := resolve_button(&h.theme, {})
-	testing.expect_value(t, f.paint.(Color), st.hover)
+	testing.expect_value(t, f.paint.(Color), with_alpha(st.text, STATE_HOVER_OPACITY))
+}
+
+@(test)
+test_button_refuses_to_shrink_below_its_text :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {1, 1}) // pathologically small container
+	defer harness_destroy(&h)
+	testing.expect(t, !save_ui(&h.gtx))
+	i := index_of(&h.ops, Input_Area)
+	testing.expect(t, i >= 0)
+	rr := h.ops.ops[i].(Input_Area).shape.(Round_Rect)
+	// Same natural size test_button_clicks_on_press_then_release checks at
+	// a normal 400x300 window: padding {12, 6, 12, 6} around "Save" (4
+	// runes) plus its line height — unshrunk by the 1x1 container.
+	testing.expect(t, near(rr.rect.w, 4 * W + 24) && near(rr.rect.h, 14 + 12))
 }
 
 @(test)

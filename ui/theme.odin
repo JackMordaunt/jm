@@ -16,29 +16,40 @@ package ui
 CLEAR :: Color{255, 255, 255, 0}
 
 Theme :: struct {
-	font:           Font_Id,
-	text_size:      f32,
-	small_size:     f32,
-	heading_size:   f32,
-	bg:             Color, // window background
-	surface:        Color, // panels, fields, unchecked boxes
-	surface_hover:  Color,
-	surface_active: Color,
-	fg:             Color, // body text
-	muted:          Color, // secondary text, placeholders
-	accent:         Color, // buttons, checked boxes, slider fill, focus ring
-	on_accent:      Color, // text and marks drawn on accent
-	outline:        Color, // borders, dividers, slider track
-	danger:         Color,
-	success:        Color,
-	radius:         f32,
-	spacing:        f32, // base unit; paddings and gaps are multiples of it
-	stroke:         f32, // outline width
+	font:                    Font_Id,
+	text_size:               f32,
+	small_size:              f32,
+	heading_size:            f32,
+	bg:                      Color, // window background
+	surface:                 Color, // panels, fields, unchecked boxes
+	surface_hover:           Color,
+	surface_active:          Color,
+	fg:                      Color, // body text
+	muted:                   Color, // secondary text, placeholders
+	accent:                  Color, // buttons, checked boxes, slider fill, focus ring
+	on_accent:               Color, // text and marks drawn on accent
+	outline:                 Color, // borders, dividers, slider track
+	danger:                  Color,
+	success:                 Color,
+	// M3's "tonal" container pair, for filled-tonal buttons and FABs: a
+	// muted background with a colour of its own, one step below the full
+	// accent. jm:ui has a single accent hue rather than M3's full
+	// primary/secondary/tertiary tonal palette, so primary_container is
+	// derived from accent (a light tint of it, dark text for contrast) and
+	// secondary_container reuses surface_active rather than inventing a
+	// second hue from nothing.
+	primary_container:       Color, // FAB container; default a light tint of accent
+	on_primary_container:    Color, // default accent, shifted enough to read on primary_container
+	secondary_container:     Color, // filled-tonal container; default surface_active
+	on_secondary_container:  Color, // default fg
+	radius:                  f32,
+	spacing:                 f32, // base unit; paddings and gaps are multiples of it
+	stroke:                  f32, // outline width
 }
 
 // light_theme is a light palette on font.
 light_theme :: proc(font: Font_Id) -> Theme {
-	return {
+	th := Theme {
 		font = font,
 		text_size = 14,
 		small_size = 12,
@@ -58,6 +69,8 @@ light_theme :: proc(font: Font_Id) -> Theme {
 		spacing = 8,
 		stroke = 1,
 	}
+	derive_tonal_containers(&th)
+	return th
 }
 
 // dark_theme is a dark palette on font, with the same scale as light_theme.
@@ -74,7 +87,20 @@ dark_theme :: proc(font: Font_Id) -> Theme {
 	th.outline = {70, 70, 82, 255}
 	th.danger = {240, 90, 90, 255}
 	th.success = {70, 190, 120, 255}
+	derive_tonal_containers(&th) // accent/bg/fg/surface_active just changed; rederive from them
 	return th
+}
+
+// derive_tonal_containers fills the primary/secondary container pair from
+// th's own accent, bg, fg and surface_active — called after any of those
+// change, so a theme built by overriding fields (as dark_theme does on
+// light_theme) still gets containers that match.
+@(private)
+derive_tonal_containers :: proc(th: ^Theme) {
+	th.primary_container = mix(th.accent, th.bg, 0.75)
+	th.on_primary_container = mix(th.accent, th.fg, 0.4)
+	th.secondary_container = th.surface_active
+	th.on_secondary_container = th.fg
 }
 
 // default_theme is light_theme.
@@ -82,12 +108,23 @@ default_theme :: proc(font: Font_Id) -> Theme {
 	return light_theme(font)
 }
 
-// mix blends a toward b by t in [0, 1], channel by channel.
+// mix blends a toward b by t in [0, 1], channel by channel (alpha included).
 mix :: proc(a, b: Color, t: f32) -> Color {
 	out: Color
 	for i in 0 ..< 4 {
 		out[i] = u8(f32(a[i]) + (f32(b[i]) - f32(a[i])) * clamp(t, 0, 1) + 0.5)
 	}
+	return out
+}
+
+// with_alpha is c with its alpha channel set to t in [0, 1], RGB unchanged
+// — a real translucent colour, not a pre-mixed solid one. State layers and
+// disabled dimming both use this: painted on top of whatever is already
+// there, the way Material's own state layers and disabled scrims work,
+// rather than baking a flattened colour ahead of time per widget state.
+with_alpha :: proc(c: Color, t: f32) -> Color {
+	out := c
+	out[3] = u8(255 * clamp(t, 0, 1))
 	return out
 }
 
@@ -146,28 +183,144 @@ resolve_label :: proc(th: ^Theme, s: Label_Style) -> Label_Style {
 	return {color = or_color(s.color, th.fg), size = or_size(s.size, th.text_size)}
 }
 
+// State-layer opacities, straight from Material 3's own token generator
+// (md-sys-state, material-web tokens/versions/v0_192/_md-sys-state.scss):
+// the interaction feedback for every M3 component is its content colour
+// painted translucently on top of its container at one of these opacities,
+// not a per-widget guess and not a pre-mixed solid colour — see with_alpha.
+// (md-sys-state also defines a fourth, dragged-state-layer-opacity: 0.16,
+// for drag-reorder; left out here since jm:ui has no drag-reorder input to
+// drive it.) Disabled dims container and content by a fixed alpha instead
+// of switching colour, so a disabled control loses its identity colour
+// rather than looking like a duller version of it — checked across the
+// three button kinds that have a container (_md-comp-filled-button.scss,
+// -filled-tonal-button.scss, -elevated-button.scss), all three agreeing on
+// disabled-container-opacity 0.12, disabled-label-text-opacity 0.38.
+STATE_HOVER_OPACITY :: 0.08
+STATE_FOCUS_OPACITY :: 0.12
+STATE_PRESSED_OPACITY :: 0.12
+STATE_DISABLED_CONTAINER_OPACITY :: 0.12
+STATE_DISABLED_CONTENT_OPACITY :: 0.38
+
+// RIPPLE_DURATION and RIPPLE_PEAK_OPACITY drive the button family's
+// click/tap ink ripple (see start_ripple/paint_ripple in widget_button.odin)
+// — an expanding, fading circle of the content colour from wherever the
+// Press landed. Unlike STATE_*_OPACITY above these are not read from an M3
+// token: Material's motion spec for ripple is a curve, not one number, so
+// this is a deliberate, reasonable approximation (peaking at the same
+// intensity as the pressed state layer, over half a second) rather than a
+// verified value.
+RIPPLE_DURATION :: 0.5
+RIPPLE_PEAK_OPACITY :: STATE_PRESSED_OPACITY
+
+// Button_Kind selects which of M3's five common buttons to resolve
+// defaults from — the type is what picks the colour roles (container vs.
+// transparent, accent vs. on-accent vs. on-secondary-container); state and
+// disabled handling are identical across all five and live in button()
+// itself. Elevated's real differentiator, per _md-comp-elevated-button.scss,
+// is elevation: container-elevation level1 at rest, rising to level2 on
+// hover (every other kind sits at level0); jm:ui has no shadow primitive to
+// render that lift, so Elevated here is only a surface-coloured Text
+// button — a known, deliberate simplification.
+Button_Kind :: enum u8 {
+	Filled,
+	Tonal,
+	Outlined,
+	Text,
+	Elevated,
+}
+
 Button_Style :: struct {
-	fill:    Color, // default accent
-	hover:   Color, // default fill lightened
-	active:  Color, // default fill darkened
-	text:    Color, // default on_accent
+	kind:    Button_Kind, // default Filled
+	fill:    Color, // container colour; default per kind, CLEAR for Outlined/Text
+	outline: Color, // border colour; default th.outline for Outlined, CLEAR otherwise
+	text:    Color, // label colour; default per kind
 	size:    f32, // text size, default text_size
-	radius:  f32, // default radius
+	radius:  f32, // default fully rounded (pill), M3's own corner-full
 	padding: Padding, // default 1.5 x spacing by 0.75 x spacing
 }
 
-// resolve_button fills s's zero fields from th; hover and active derive from
-// the resolved fill, so overriding fill alone recolours every state.
+// resolve_button fills s's zero fields from th, per s.kind's colour roles.
 resolve_button :: proc(th: ^Theme, s: Button_Style) -> Button_Style {
 	r := s
-	r.fill = or_color(s.fill, th.accent)
-	r.hover = or_color(s.hover, mix(r.fill, {255, 255, 255, r.fill[3]}, 0.15))
-	r.active = or_color(s.active, mix(r.fill, {0, 0, 0, r.fill[3]}, 0.2))
-	r.text = or_color(s.text, th.on_accent)
+	fill_def, text_def, outline_def: Color
+	switch s.kind {
+	case .Filled:
+		fill_def, text_def, outline_def = th.accent, th.on_accent, CLEAR
+	case .Tonal:
+		fill_def, text_def, outline_def = th.secondary_container, th.on_secondary_container, CLEAR
+	case .Elevated:
+		fill_def, text_def, outline_def = th.surface, th.accent, CLEAR
+	case .Outlined:
+		fill_def, text_def, outline_def = CLEAR, th.accent, th.outline
+	case .Text:
+		fill_def, text_def, outline_def = CLEAR, th.accent, CLEAR
+	}
+	r.fill = or_color(s.fill, fill_def)
+	r.text = or_color(s.text, text_def)
+	r.outline = or_color(s.outline, outline_def)
 	r.size = or_size(s.size, th.text_size)
-	r.radius = or_size(s.radius, th.radius)
 	r.padding = or_padding(s.padding, pad_xy(th.spacing * 1.5, th.spacing * 0.75))
 	return r
+}
+
+// Icon_Button_Style is M3's "standard" icon button: no container, just a
+// glyph whose colour switches between unselected and selected (a
+// caller-owned toggle, the same shape as checkbox).
+Icon_Button_Style :: struct {
+	icon:          Color, // unselected glyph colour; default muted (on-surface-variant)
+	selected_icon: Color, // selected glyph colour; default accent
+	size:          f32, // glyph size, default 24
+	box:           f32, // hit target / state-layer square, default 40
+}
+
+resolve_icon_button :: proc(th: ^Theme, s: Icon_Button_Style) -> Icon_Button_Style {
+	return {
+		icon = or_color(s.icon, th.muted),
+		selected_icon = or_color(s.selected_icon, th.accent),
+		size = or_size(s.size, 24),
+		box = or_size(s.box, 40),
+	}
+}
+
+// Fab_Size picks one of M3's three fixed FAB footprints.
+Fab_Size :: enum u8 {
+	Small,
+	Regular,
+	Large,
+}
+
+// fab_box returns size's container box, corner radius and icon size — M3's
+// own fixed values (_md-comp-fab-primary{,-small,-large}.scss): 40/12/24,
+// 56/16/24, 96/28/36.
+fab_box :: proc(size: Fab_Size) -> (box, radius, icon_size: f32) {
+	switch size {
+	case .Small:
+		return 40, 12, 24
+	case .Large:
+		return 96, 28, 36
+	case .Regular:
+	}
+	return 56, 16, 24
+}
+
+// Fab_Style is shared by fab and extended_fab: always the primary
+// container pair, at every size — none of _md-comp-fab-primary{,-small,
+// -large}.scss's tokens define a disabled-* field the way every button
+// kind's own token file does, consistent with a FAB being meant to always
+// be available, so there is no disabled field here either.
+Fab_Style :: struct {
+	fill: Color, // container; default primary_container
+	icon: Color, // default on_primary_container
+	text: Color, // extended_fab's label colour; default on_primary_container
+}
+
+resolve_fab :: proc(th: ^Theme, s: Fab_Style) -> Fab_Style {
+	return {
+		fill = or_color(s.fill, th.primary_container),
+		icon = or_color(s.icon, th.on_primary_container),
+		text = or_color(s.text, th.on_primary_container),
+	}
 }
 
 Box_Style :: struct {
@@ -211,6 +364,31 @@ resolve_checkbox :: proc(th: ^Theme, s: Checkbox_Style) -> Checkbox_Style {
 		size = or_size(s.size, th.text_size),
 		gap = or_size(s.gap, th.spacing),
 		radius = or_size(s.radius, th.radius / 2),
+	}
+}
+
+// Segmented_Button_Style is M3's segmented button: one shared pill
+// outline around N toggle segments, tokens verified against material-web
+// (_md-comp-outlined-segmented-button.scss) — unselected segments are
+// on-surface text on no fill, selected ones get the same secondary-
+// container/on-secondary-container pair as a filled-tonal button.
+Segmented_Button_Style :: struct {
+	outline:       Color, // shared border; default th.outline
+	text:          Color, // unselected label colour; default fg (M3's on-surface)
+	selected_fill: Color, // default secondary_container
+	selected_text: Color, // default on_secondary_container
+	size:          f32, // text size, default text_size
+	height:        f32, // default 40
+}
+
+resolve_segmented_button :: proc(th: ^Theme, s: Segmented_Button_Style) -> Segmented_Button_Style {
+	return {
+		outline = or_color(s.outline, th.outline),
+		text = or_color(s.text, th.fg),
+		selected_fill = or_color(s.selected_fill, th.secondary_container),
+		selected_text = or_color(s.selected_text, th.on_secondary_container),
+		size = or_size(s.size, th.text_size),
+		height = or_size(s.height, 40),
 	}
 }
 

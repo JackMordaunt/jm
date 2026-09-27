@@ -569,10 +569,13 @@ Input/Reply over `ui/ipc`'s pipes. `Host_App.watch` names a pointer file a
 builder republishes on every successful build (`tools/hot-watch` is one);
 the host re-reads it and respawns the child on a change, never
 overwriting a running executable in place, which Windows refuses.
-`examples/hot-counter` (a two-binary click counter) and
+`examples/hot-counter` (a two-binary click counter),
 `examples/hot-architecture` (a live-editable diagram of this very
-pipeline) are the demos; `just hot-architecture` builds the second one and
-prints the two commands that run it.
+pipeline) and `examples/hot-button` (every M3 button kind — filled,
+tonal, outlined, text, elevated, icon, FAB and its sizes, extended FAB,
+segmented, split) are the demos; `just hot-architecture` and
+`just hot-button` build their own host and print the two commands that
+run them.
 
 Checking a change without a window: `-dump` prints the scene as text,
 free of vision tokens and enough for most bugs; `-png` renders it to a

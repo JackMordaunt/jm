@@ -119,3 +119,14 @@ constrain :: proc(c: Constraints, s: Size) -> Size {
 		clamp(s.y, c.min.y, c.max.y),
 	}
 }
+
+// constrain_min is constrain, except the result never goes below natural in
+// either axis, even when c.max is smaller — a widget's own content (its
+// label, its icon) sets a hard floor a too-small container cannot squeeze
+// it past. The button family uses this instead of constrain so a
+// pathologically small parent clips or overflows the button rather than
+// shrinking its box below what its own text needs to stay legible.
+constrain_min :: proc(c: Constraints, natural: Size) -> Size {
+	s := constrain(c, natural)
+	return {max(s.x, natural.x), max(s.y, natural.y)}
+}
