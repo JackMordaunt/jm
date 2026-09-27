@@ -18,8 +18,10 @@ here knows how.
 
 Each frame: poll SDL events into the Router, route them against the previous
 frame, reset Ops, run the ui proc, flatten, repaint what changed into a
-CPU-side image (render.Compositor), bring the texture up to date, present,
-swap frames.
+CPU-side image (render.Compositor), bring the texture up to date, present
+if anything changed, swap frames. Then wait: for input, or for as long as
+the ui asked with ui.request_frame. An idle window spends no CPU; wake
+runs a frame from any thread.
 
 Render never targets a locked texture: the Direct3D renderers map it as
 write-combined memory, which is slow to read, and blending reads it.
@@ -83,6 +85,19 @@ App :: struct {
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 }
 
+// wake runs a frame soon, as input would. Any thread may call it, for
+// instance when work the ui shows has finished.
+wake :: proc() {
+	e: sdl3.Event
+	e.type = .USER
+	_ = sdl3.PushEvent(&e)
+}
+
+// MAX_DT caps ui.Ctx.dt, so an animation that starts after an idle wait
+// does not jump by the whole wait.
+@(private)
+MAX_DT :: 0.1
+
 // Window is the SDL state of one running App.
 @(private)
 Window :: struct {
@@ -91,6 +106,7 @@ Window :: struct {
 	textures: [2]^sdl3.Texture, // render targets; front shows, the other takes scrolls
 	front:    int,
 	stale:    bool, // the textures lost their pixels: upload the whole image
+	exposed:  bool, // the window must be shown again though nothing changed
 	pixels:   bl.ImageCore, // what render draws into
 	size:     [2]i32, // device pixels
 	density:  f32,
@@ -170,7 +186,7 @@ run :: proc(app: App) {
 			break
 		}
 		now := sdl3.GetTicksNS()
-		dt := f32(now - last) / 1e9
+		dt := min(f32(now - last) / 1e9, MAX_DT)
 		last = now
 
 		ui.router_route(&router, prev if n > 0 else nil)
@@ -201,9 +217,10 @@ run :: proc(app: App) {
 			ui.pop_transform(&ops)
 		}
 		ui.flatten(&ops, frame)
-		present(&w, &comp, frame, app.clear)
+		shown := present(&w, &comp, frame, app.clear)
 		frame, prev = prev, frame
 		free_all(context.temp_allocator)
+		wait(&w, gtx.wants_frame, gtx.frame_after, shown)
 	}
 }
 
@@ -292,18 +309,51 @@ resize :: proc(w: ^Window) -> bool {
 	return true
 }
 
-// present repaints what f changed in the window's image, brings the front
-// texture up to date and shows it.
+// wait blocks until the next frame is due: until input when the ui asked
+// for no frame, else for at most the time it asked for. A frame that
+// showed nothing did not wait on the display's refresh, so an immediate
+// request waits one refresh here instead of spinning.
 @(private)
-present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color) {
-	if w.textures[0] == nil {
+wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
+	if !wants {
+		_ = sdl3.WaitEvent(nil)
 		return
+	}
+	ms := i32(after * 1000)
+	if !shown {
+		ms = max(ms, refresh_ms(w))
+	}
+	if ms > 0 {
+		_ = sdl3.WaitEventTimeout(nil, ms)
+	}
+}
+
+// refresh_ms is one refresh of the display showing w, 60 Hz when unknown.
+@(private)
+refresh_ms :: proc(w: ^Window) -> i32 {
+	if mode := sdl3.GetCurrentDisplayMode(sdl3.GetDisplayForWindow(w.window)); mode != nil && mode.refresh_rate > 0 {
+		return max(i32(1000 / mode.refresh_rate), 1)
+	}
+	return 16
+}
+
+// present repaints what f changed in the window's image and brings the
+// front texture up to date. It shows the texture and reports true when
+// anything changed or the window must be shown again.
+@(private)
+present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color) -> bool {
+	if w.textures[0] == nil {
+		return false
 	}
 	data: bl.ImageData
 	if bl.image_get_data(&w.pixels, &data) != 0 {
-		return
+		return false
 	}
 	changed := render.compose(c, f, &w.pixels, clear)
+	if !w.stale && !w.exposed && len(changed) == 0 {
+		return false
+	}
+	w.exposed = false
 	if w.stale {
 		upload(w.textures[w.front], &data, {0, 0, f32(w.size.x), f32(w.size.y)})
 		w.stale = false
@@ -331,6 +381,7 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 	sdl3.RenderClear(w.renderer)
 	sdl3.RenderTexture(w.renderer, w.textures[w.front], nil, nil)
 	sdl3.RenderPresent(w.renderer)
+	return true
 }
 
 // upload copies r of the image into the same place in t.
@@ -371,6 +422,8 @@ poll :: proc(w: ^Window, router: ^ui.Router, allocator := context.allocator) -> 
 				return false
 			}
 			d = w.density
+		case .WINDOW_EXPOSED:
+			w.exposed = true
 		case .RENDER_TARGETS_RESET:
 			w.stale = true
 		case .RENDER_DEVICE_RESET:
