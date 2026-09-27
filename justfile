@@ -209,6 +209,7 @@ test: sqlite wasm pg_query blend2d
     done
     {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
     {{odin}} test ui/render {{flags}} {{cxx_link}} -out:build/test/ui-render{{exe}}
+    {{odin}} test ui/render/fuzz {{flags}} {{cxx_link}} -out:build/test/ui-render-fuzz{{exe}}
 
 # Type-check every package and the runner for each target
 check:
@@ -220,6 +221,7 @@ check:
       {{odin}} check tools/wasm-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
       {{odin}} check ui/render {{flags}} -no-entry-point -target:$t || exit 1; \
+      {{odin}} check ui/render/fuzz {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check examples/ui-kitchen {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
@@ -234,22 +236,22 @@ install: release
 # `just fuzz "sqlite3 -seed=12345"`, `just fuzz "-corpus=build/corpus"`.
 
 # Run every jm:fuzz suite until something gives
-fuzz args="-for=30s": sqlite wasm pg_query
+fuzz args="-for=30s": sqlite wasm pg_query blend2d
     mkdir -p build/debug
-    {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
+    {{odin}} build tools/jm-fuzz -debug {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} {{args}}
 
 # A child process per case: a crash or a hang is reported, not fatal
-fuzz-isolate args="-for=5m": sqlite wasm pg_query
+fuzz-isolate args="-for=5m": sqlite wasm pg_query blend2d
     mkdir -p build/debug
-    {{odin}} build tools/jm-fuzz -debug {{flags}} -out:build/debug/jm-fuzz{{exe}}
+    {{odin}} build tools/jm-fuzz -debug {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} -isolate {{args}}
 
 # The same, under AddressSanitizer
 [unix]
-fuzz-asan args="-for=30s": sqlite wasm pg_query
+fuzz-asan args="-for=30s": sqlite wasm pg_query blend2d
     mkdir -p build/debug
-    {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} -out:build/debug/jm-fuzz-asan
+    {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz-asan
     build/debug/jm-fuzz-asan {{args}}
 
 # `just bench "-n=64"` fixes the work per call; without one each workload is

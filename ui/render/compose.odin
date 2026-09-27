@@ -17,7 +17,8 @@ import bl "jm:ui/blend2d"
 // damage_invalidate(&c.damage) when it does not.
 //
 // Bands meet at tile edges, where Blend2D's antialiasing of a shape crossing
-// the edge can differ from one whole-target render by one step in a channel.
+// the edge can differ from one whole-target render by a few steps in a
+// channel; the fuzz suite in ui/render/fuzz holds it to three.
 //
 // A Compositor must not move after compositor_init.
 Compositor :: struct {

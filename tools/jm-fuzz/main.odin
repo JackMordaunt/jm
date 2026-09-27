@@ -37,6 +37,7 @@ import pg_query_fuzz "jm:pg_query/fuzz"
 import pq_fuzz "jm:pq/fuzz"
 import sqlite3_fuzz "jm:sqlite3/fuzz"
 import tar_fuzz "jm:tar/fuzz"
+import render_fuzz "jm:ui/render/fuzz"
 import wasm_fuzz "jm:wasm/fuzz"
 
 // Runner is a suite under a name, already given its subject type. A Suite is
@@ -54,6 +55,7 @@ runners := []Runner {
 	{"wasm", wasm_fuzz.CORPUS, wasm_fuzz.run},
 	{"pg_query", pg_query_fuzz.CORPUS, pg_query_fuzz.run},
 	{"pq", pq_fuzz.CORPUS, pq_fuzz.run},
+	{"ui_render", render_fuzz.CORPUS, render_fuzz.run},
 }
 
 main :: proc() {
@@ -151,7 +153,8 @@ USAGE :: `usage: jm-fuzz [suite...] [-seed=N] [-iters=N] [-for=30s] [-entropy=N]
                [-shrink=N] [-no-shrink] [-corpus=DIR] [-no-corpus]
                [-isolate] [-stop] [-quiet]
 
-suites: sqlite3, tar, wasm, pg_query, pq. With none named, every suite runs.
+suites: sqlite3, tar, wasm, pg_query, pq, ui_render. With none named, every
+suite runs.
 Each suite keeps its regressions beside its source and replays them first;
 -corpus=DIR uses DIR/<suite> instead, and -no-corpus skips them. pq needs
 initdb and pg_ctl to bring up a throwaway server; without them it says so and
