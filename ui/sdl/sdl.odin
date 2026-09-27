@@ -33,6 +33,14 @@ uploaded. On the machine this was written on, a whole 4K upload cost 12 to
 16 ms a frame on Direct3D 11, OpenGL and Vulkan alike; the move and the
 strip it uncovers cost under 1 ms.
 
+Resizing: frames keep running while the window is being resized, from an
+event watch on WINDOW_EXPOSED, which SDL documents as safe to redraw from.
+On Windows the event loop sees no events until a resize drag ends, but
+SDL still sends WINDOW_EXPOSED to watches during it. The
+image and textures only grow, with headroom, so a resize in progress draws
+into what is already allocated; half a second after the size settles they
+shrink to fit.
+
 Coordinates: the ui proc lays out in logical units (window points).
 On a HiDPI display a root scale transform by the pixel density maps them to
 device pixels, so a Frame, its hits and the Raw_Events fed to the router are
@@ -51,6 +59,7 @@ parallel.
 */
 package sdl
 
+import "base:runtime"
 import "core:fmt"
 import "core:mem/virtual"
 import "core:strings"
@@ -98,6 +107,14 @@ wake :: proc() {
 @(private)
 MAX_DT :: 0.1
 
+// GROW is the headroom, in pixels, the image and textures get when a
+// resize outgrows them, and SETTLE how long after the last resize they
+// shrink to fit.
+@(private)
+GROW :: 256
+@(private)
+SETTLE_MS :: 500
+
 // Window is the SDL state of one running App.
 @(private)
 Window :: struct {
@@ -107,9 +124,41 @@ Window :: struct {
 	front:    int,
 	stale:    bool, // the textures lost their pixels: upload the whole image
 	exposed:  bool, // the window must be shown again though nothing changed
-	pixels:   bl.ImageCore, // what render draws into
+	fresh:    bool, // the image was just allocated and holds nothing drawn
+	pixels:   bl.ImageCore, // allocated at cap
+	view:     bl.ImageCore, // the part of pixels the window shows, what render draws into
 	size:     [2]i32, // device pixels
+	cap:      [2]i32, // what pixels and textures are allocated at
+	resized:  u64, // ticks, in ms, of the last change of size
 	density:  f32,
+}
+
+// Loop is everything a running App keeps from frame to frame. step runs one
+// frame; the run loop calls it, and so does the event watch that keeps
+// frames coming while the window is being resized.
+@(private)
+Loop :: struct {
+	app:           App,
+	w:             Window,
+	ops:           ui.Ops,
+	frames:        [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
+	router:        ui.Router,
+	layout:        ui.Layout,
+	r:             render.Renderer, // only shapes text; the compositor's workers draw
+	shaper:        ui.Shaper,
+	comp:          render.Compositor,
+	theme:         ^ui.Theme,
+	default_theme: ui.Theme,
+	arenas:        [2]virtual.Arena, // frame allocators, alternating
+	events:        virtual.Arena, // text of the events the next frame routes
+	n:             u64,
+	last:          u64, // ticks, in ns, of the last frame
+	in_frame:      bool,
+	ctx:           runtime.Context, // for the event watch, which SDL calls without one
+	// What the last frame asked of the wait after it.
+	wants_frame:   bool,
+	frame_after:   f32,
+	shown:         bool,
 }
 
 // run opens the window and loops until it is closed or Escape is pressed.
@@ -121,107 +170,142 @@ run :: proc(app: App) {
 	}
 	defer sdl3.Quit()
 
-	w: Window
-	if !open(&w, app) {
+	// The Compositor inside must not move, and the event watch holds l.
+	l := new(Loop)
+	defer free(l)
+	if !loop_init(l, app) {
 		return
 	}
-	defer close(&w)
+	defer loop_destroy(l)
+	_ = sdl3.AddEventWatch(redraw_on_expose, l)
+	defer sdl3.RemoveEventWatch(redraw_on_expose, l)
 
-	ops: ui.Ops
-	ui.ops_init(&ops)
-	defer ui.ops_destroy(&ops)
+	for {
+		if !poll(&l.w, &l.router, virtual.arena_allocator(&l.events)) {
+			break
+		}
+		step(l)
+		settle(&l.w)
+		wait(&l.w, l.wants_frame, l.frame_after, l.shown)
+	}
+}
+
+@(private)
+loop_init :: proc(l: ^Loop, app: App) -> bool {
+	l.app = app
+	l.ctx = context
+	if !open(&l.w, app) {
+		return false
+	}
+	ui.ops_init(&l.ops)
 	for ref in app.fonts {
-		if id := ui.add_font(&ops, ref.path); id != ref.id {
+		if id := ui.add_font(&l.ops, ref.path); id != ref.id {
 			fmt.eprintfln("sdl: font %q registered as %v, not %v", ref.path, id, ref.id)
 		}
 	}
-
-	frames: [2]ui.Frame
-	ui.frame_init(&frames[0])
-	ui.frame_init(&frames[1])
-	defer ui.frame_destroy(&frames[0])
-	defer ui.frame_destroy(&frames[1])
-	frame, prev := &frames[0], &frames[1]
-
-	router: ui.Router
-	ui.router_init(&router)
-	defer ui.router_destroy(&router)
-
-	layout: ui.Layout
-	ui.layout_init(&layout)
-	defer ui.layout_destroy(&layout)
-
-	// r only shapes text; the compositor's workers draw.
-	r: render.Renderer
-	render.init(&r)
-	defer render.destroy(&r)
-	shaper := render.shaper(&r, ops.fonts[:])
-	comp: render.Compositor
-	render.compositor_init(&comp, int(app.threads))
-	defer render.compositor_destroy(&comp)
-
-	theme := app.theme
-	default_theme := ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
-	if theme == nil {
-		theme = &default_theme
-	}
-
-	arenas: [2]virtual.Arena
-	for &a in arenas {
+	ui.frame_init(&l.frames[0])
+	ui.frame_init(&l.frames[1])
+	ui.router_init(&l.router)
+	ui.layout_init(&l.layout)
+	render.init(&l.r)
+	l.shaper = render.shaper(&l.r, l.ops.fonts[:])
+	render.compositor_init(&l.comp, int(app.threads))
+	l.default_theme = ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
+	l.theme = app.theme if app.theme != nil else &l.default_theme
+	for &a in l.arenas {
 		if err := virtual.arena_init_growing(&a); err != nil {
 			fmt.eprintln("sdl: arena:", err)
-			return
+			return false
 		}
 	}
-	defer virtual.arena_destroy(&arenas[0])
-	defer virtual.arena_destroy(&arenas[1])
-
-	last := sdl3.GetTicksNS()
-	for n: u64 = 0;; n += 1 {
-		arena := &arenas[n % 2]
-		virtual.arena_free_all(arena)
-		allocator := virtual.arena_allocator(arena)
-
-		if !poll(&w, &router, allocator) {
-			break
-		}
-		now := sdl3.GetTicksNS()
-		dt := min(f32(now - last) / 1e9, MAX_DT)
-		last = now
-
-		ui.router_route(&router, prev if n > 0 else nil)
-		ui.ops_reset(&ops)
-		ui.frame_reset(frame)
-		ui.layout_reset(&layout)
-
-		logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
-		gtx := ui.Ctx {
-			ops         = &ops,
-			constraints = ui.exact(logical),
-			theme       = theme,
-			shaper      = shaper,
-			router      = &router,
-			layout      = &layout,
-			frame       = n,
-			dt          = dt,
-			allocator   = allocator,
-		}
-		scaled := w.density != 1
-		if scaled {
-			ui.push_transform(&ops, ui.scale(w.density, w.density))
-		}
-		if app.ui != nil {
-			app.ui(&gtx, app.user)
-		}
-		if scaled {
-			ui.pop_transform(&ops)
-		}
-		ui.flatten(&ops, frame)
-		shown := present(&w, &comp, frame, app.clear)
-		frame, prev = prev, frame
-		free_all(context.temp_allocator)
-		wait(&w, gtx.wants_frame, gtx.frame_after, shown)
+	if err := virtual.arena_init_growing(&l.events); err != nil {
+		fmt.eprintln("sdl: arena:", err)
+		return false
 	}
+	l.last = sdl3.GetTicksNS()
+	return true
+}
+
+@(private)
+loop_destroy :: proc(l: ^Loop) {
+	virtual.arena_destroy(&l.events)
+	virtual.arena_destroy(&l.arenas[0])
+	virtual.arena_destroy(&l.arenas[1])
+	render.compositor_destroy(&l.comp)
+	render.destroy(&l.r)
+	ui.layout_destroy(&l.layout)
+	ui.router_destroy(&l.router)
+	ui.frame_destroy(&l.frames[0])
+	ui.frame_destroy(&l.frames[1])
+	ui.ops_destroy(&l.ops)
+	close(&l.w)
+}
+
+// step runs one frame: route the events polled so far, run the ui proc,
+// flatten, compose and present.
+@(private)
+step :: proc(l: ^Loop) {
+	l.in_frame = true
+	defer l.in_frame = false
+	arena := &l.arenas[l.n % 2]
+	virtual.arena_free_all(arena)
+	allocator := virtual.arena_allocator(arena)
+	frame, prev := &l.frames[l.n % 2], &l.frames[(l.n + 1) % 2]
+
+	now := sdl3.GetTicksNS()
+	dt := min(f32(now - l.last) / 1e9, MAX_DT)
+	l.last = now
+
+	w := &l.w
+	ui.router_route(&l.router, prev if l.n > 0 else nil)
+	ui.ops_reset(&l.ops)
+	ui.frame_reset(frame)
+	ui.layout_reset(&l.layout)
+
+	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
+	gtx := ui.Ctx {
+		ops         = &l.ops,
+		constraints = ui.exact(logical),
+		theme       = l.theme,
+		shaper      = l.shaper,
+		router      = &l.router,
+		layout      = &l.layout,
+		frame       = l.n,
+		dt          = dt,
+		allocator   = allocator,
+	}
+	scaled := w.density != 1
+	if scaled {
+		ui.push_transform(&l.ops, ui.scale(w.density, w.density))
+	}
+	if l.app.ui != nil {
+		l.app.ui(&gtx, l.app.user)
+	}
+	if scaled {
+		ui.pop_transform(&l.ops)
+	}
+	ui.flatten(&l.ops, frame)
+	l.shown = present(w, &l.comp, frame, l.app.clear)
+	l.wants_frame, l.frame_after = gtx.wants_frame, gtx.frame_after
+	free_all(context.temp_allocator)
+	// Every event polled before this frame was routed in it.
+	virtual.arena_free_all(&l.events)
+	l.n += 1
+}
+
+// redraw_on_expose runs a frame whenever the window must be redrawn, so a resize
+// in progress keeps drawing even while the platform holds the event loop.
+@(private)
+redraw_on_expose :: proc "c" (userdata: rawptr, e: ^sdl3.Event) -> bool {
+	l := (^Loop)(userdata)
+	if e.type != .WINDOW_EXPOSED || l.in_frame {
+		return true
+	}
+	context = l.ctx
+	if resize(&l.w) {
+		step(l)
+	}
+	return true
 }
 
 @(private)
@@ -247,6 +331,7 @@ open :: proc(w: ^Window, app: App) -> bool {
 	}
 	sdl3.SetRenderVSync(w.renderer, 1)
 	bl.image_init(&w.pixels)
+	bl.image_init(&w.view)
 	_ = sdl3.StartTextInput(w.window)
 	return resize(w)
 }
@@ -255,6 +340,7 @@ open :: proc(w: ^Window, app: App) -> bool {
 close :: proc(w: ^Window) {
 	_ = sdl3.StopTextInput(w.window)
 	destroy_textures(w)
+	bl.image_destroy(&w.view)
 	bl.image_destroy(&w.pixels)
 	sdl3.DestroyRenderer(w.renderer)
 	sdl3.DestroyWindow(w.window)
@@ -271,42 +357,68 @@ destroy_textures :: proc(w: ^Window) {
 	}
 }
 
-// resize reads the output size and density and remakes the textures to
-// match.
+// resize reads the output size and density. A size that fits what is
+// allocated is drawn into as it is; a bigger one reallocates with GROW
+// pixels of headroom. exact reallocates at the size itself.
 @(private)
-resize :: proc(w: ^Window) -> bool {
+resize :: proc(w: ^Window, exact := false) -> bool {
 	size: [2]i32
 	sdl3.GetRenderOutputSize(w.renderer, &size.x, &size.y)
 	w.density = sdl3.GetWindowPixelDensity(w.window)
 	if w.density <= 0 {
 		w.density = 1
 	}
-	if size == w.size && w.textures[0] != nil {
+	if size == w.size && w.textures[0] != nil && !exact {
 		return true
 	}
-	destroy_textures(w)
+	if size != w.size {
+		w.resized = sdl3.GetTicks()
+	}
 	w.size = size
 	if size.x <= 0 || size.y <= 0 {
 		return true
 	}
-	// ARGB8888 is a native-endian 0xAARRGGBB word: Blend2D's PRGB32 layout.
-	// Copies between the textures must be exact: no blending, no filtering.
-	for &t in w.textures {
-		t = sdl3.CreateTexture(w.renderer, .ARGB8888, .TARGET, size.x, size.y)
-		if t == nil {
-			fmt.eprintln("sdl: texture:", sdl3.GetError())
+	fits := w.textures[0] != nil && size.x <= w.cap.x && size.y <= w.cap.y
+	if exact || !fits {
+		// The first allocation has no resize in progress to leave room for.
+		cap := size if exact || w.textures[0] == nil else size + GROW
+		destroy_textures(w)
+		// ARGB8888 is a native-endian 0xAARRGGBB word: Blend2D's PRGB32
+		// layout. Copies between the textures must be exact: no blending,
+		// no filtering.
+		for &t in w.textures {
+			t = sdl3.CreateTexture(w.renderer, .ARGB8888, .TARGET, cap.x, cap.y)
+			if t == nil {
+				fmt.eprintln("sdl: texture:", sdl3.GetError())
+				return false
+			}
+			sdl3.SetTextureBlendMode(t, sdl3.BLENDMODE_NONE)
+			sdl3.SetTextureScaleMode(t, .NEAREST)
+		}
+		if bl.image_create(&w.pixels, cap.x, cap.y, .PRGB32) != 0 {
+			fmt.eprintln("sdl: image: out of memory")
 			return false
 		}
-		sdl3.SetTextureBlendMode(t, sdl3.BLENDMODE_NONE)
-		sdl3.SetTextureScaleMode(t, .NEAREST)
+		w.cap = cap
+		w.front = 0
+		w.stale = true
+		w.fresh = true
 	}
-	w.front = 0
-	w.stale = true
-	if bl.image_create(&w.pixels, size.x, size.y, .PRGB32) != 0 {
-		fmt.eprintln("sdl: image: out of memory")
+	data: bl.ImageData
+	if bl.image_get_data(&w.pixels, &data) != 0 {
 		return false
 	}
-	return true
+	return bl.image_create_from_data(&w.view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil) == 0
+}
+
+// settle shrinks the image and textures to the window once its size has
+// not changed for SETTLE_MS.
+@(private)
+settle :: proc(w: ^Window) {
+	if w.cap == w.size || w.size.x <= 0 || w.size.y <= 0 || sdl3.GetTicks() - w.resized < SETTLE_MS {
+		return
+	}
+	_ = resize(w, exact = true)
 }
 
 // wait blocks until the next frame is due: until input when the ui asked
@@ -315,15 +427,21 @@ resize :: proc(w: ^Window) -> bool {
 // request waits one refresh here instead of spinning.
 @(private)
 wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
-	if !wants {
+	ms := i32(-1)
+	if wants {
+		ms = i32(after * 1000)
+		if !shown {
+			ms = max(ms, refresh_ms(w))
+		}
+	}
+	// Oversized buffers wake the loop in time for settle to shrink them.
+	if w.cap != w.size {
+		due := i32(max(i64(SETTLE_MS) - i64(sdl3.GetTicks() - w.resized), 0)) + 1
+		ms = due if ms < 0 else min(ms, due)
+	}
+	if ms < 0 {
 		_ = sdl3.WaitEvent(nil)
-		return
-	}
-	ms := i32(after * 1000)
-	if !shown {
-		ms = max(ms, refresh_ms(w))
-	}
-	if ms > 0 {
+	} else if ms > 0 {
 		_ = sdl3.WaitEventTimeout(nil, ms)
 	}
 }
@@ -346,10 +464,15 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 		return false
 	}
 	data: bl.ImageData
-	if bl.image_get_data(&w.pixels, &data) != 0 {
+	if bl.image_get_data(&w.view, &data) != 0 {
 		return false
 	}
-	changed := render.compose(c, f, &w.pixels, clear)
+	if w.fresh {
+		// The compositor must not trust what it drew into the old image.
+		render.damage_invalidate(&c.damage)
+		w.fresh = false
+	}
+	changed := render.compose(c, f, &w.view, clear)
 	if !w.stale && !w.exposed && len(changed) == 0 {
 		return false
 	}
@@ -364,7 +487,8 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 			// overlaps what is being written.
 			back := w.textures[1 - w.front]
 			sdl3.SetRenderTarget(w.renderer, back)
-			sdl3.RenderTexture(w.renderer, w.textures[w.front], nil, nil)
+			shown := sdl3.FRect{0, 0, f32(w.size.x), f32(w.size.y)}
+			sdl3.RenderTexture(w.renderer, w.textures[w.front], &shown, &shown)
 			for s in scrolls {
 				src, dst, ok := scroll_copy(s)
 				if ok {
@@ -379,7 +503,8 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 		}
 	}
 	sdl3.RenderClear(w.renderer)
-	sdl3.RenderTexture(w.renderer, w.textures[w.front], nil, nil)
+	src := sdl3.FRect{0, 0, f32(w.size.x), f32(w.size.y)}
+	sdl3.RenderTexture(w.renderer, w.textures[w.front], &src, nil)
 	sdl3.RenderPresent(w.renderer)
 	return true
 }
