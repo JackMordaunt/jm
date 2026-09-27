@@ -185,7 +185,9 @@ decode :: proc(data: []byte, ops: ^Ops) -> bool {
 
 // Writing.
 
-@(private = "file")
+// Shared with wire.odin: the host/subprocess wire messages, a separate
+// format from this file's, reuse this little-endian layout.
+@(private)
 put_u32 :: proc(w: ^[dynamic]byte, v: u32) {
 	b: [4]byte
 	endian.put_u32(b[:], .Little, v)
@@ -199,7 +201,7 @@ put_u64 :: proc(w: ^[dynamic]byte, v: u64) {
 	append(w, ..b[:])
 }
 
-@(private = "file")
+@(private)
 put_f32 :: proc(w: ^[dynamic]byte, v: f32) {
 	put_u32(w, transmute(u32)v)
 }
@@ -223,7 +225,7 @@ put_rect :: proc(w: ^[dynamic]byte, r: Rect) {
 	put_f32(w, r.h)
 }
 
-@(private = "file")
+@(private)
 put_str :: proc(w: ^[dynamic]byte, s: string) {
 	put_u32(w, u32(len(s)))
 	append(w, s)
@@ -350,14 +352,14 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 // Reading. Every get_* bounds-checks and returns ok=false rather than
 // reading past the end.
 
-@(private = "file")
+@(private)
 Reader :: struct {
 	data:      []byte,
 	pos:       int,
 	allocator: mem.Allocator,
 }
 
-@(private = "file")
+@(private)
 take :: proc(r: ^Reader, n: int) -> (v: []byte, ok: bool) {
 	if n < 0 || n > len(r.data) - r.pos {
 		return nil, false
@@ -367,13 +369,13 @@ take :: proc(r: ^Reader, n: int) -> (v: []byte, ok: bool) {
 	return b, true
 }
 
-@(private = "file")
+@(private)
 get_u8 :: proc(r: ^Reader) -> (v: u8, ok: bool) {
 	b := take(r, 1) or_return
 	return b[0], true
 }
 
-@(private = "file")
+@(private)
 get_u32 :: proc(r: ^Reader) -> (v: u32, ok: bool) {
 	b := take(r, 4) or_return
 	return endian.get_u32(b, .Little)
@@ -385,7 +387,7 @@ get_u64 :: proc(r: ^Reader) -> (v: u64, ok: bool) {
 	return endian.get_u64(b, .Little)
 }
 
-@(private = "file")
+@(private)
 get_f32 :: proc(r: ^Reader) -> (v: f32, ok: bool) {
 	bits := get_u32(r) or_return
 	return transmute(f32)bits, true
@@ -399,7 +401,7 @@ get_f64 :: proc(r: ^Reader) -> (v: f64, ok: bool) {
 
 // get_count reads a u32 count and rejects one whose entries, at least
 // min_size bytes each, could not fit in what is left.
-@(private = "file")
+@(private)
 get_count :: proc(r: ^Reader, min_size: int) -> (v: int, ok: bool) {
 	n := int(get_u32(r) or_return)
 	if n * min_size > len(r.data) - r.pos {
@@ -408,7 +410,7 @@ get_count :: proc(r: ^Reader, min_size: int) -> (v: int, ok: bool) {
 	return n, true
 }
 
-@(private = "file")
+@(private)
 get_str :: proc(r: ^Reader) -> (v: string, ok: bool) {
 	n := get_count(r, 1) or_return
 	b := take(r, n) or_return

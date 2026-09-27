@@ -32,6 +32,11 @@ package ui
 
 import "core:mem"
 
+// Ui_Proc builds one frame: it records into gtx.ops and reads events from
+// gtx.router. user is passed through from whatever ran it (ui/sdl's App,
+// ui/child's App) untouched.
+Ui_Proc :: proc(gtx: ^Ctx, user: rawptr)
+
 // Ctx is the per-frame layout context every widget takes first. Widgets
 // record into ops, size themselves inside constraints, read theme for
 // defaults, shape text through shaper and read their events from router.

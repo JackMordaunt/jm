@@ -25,7 +25,7 @@ root  := replace(justfile_directory(), "\\", "/")
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/testutil ui/diagram pq pq/testdb pq/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/testutil ui/diagram ui/ipc pq pq/testdb pq/fuzz"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
@@ -199,8 +199,15 @@ pg_query-gen:
 # jm:wasm's tests run on one thread because wasm3 is not thread-safe, whatever
 # the runtimes are; the package doc records what two threads do to it.
 #
+# examples/hot-counter/child, the real subprocess ui/sdl's own test
+# spawns to prove the host/child protocol against a real process, not a
+# stub. blend2d only: the child never links SDL.
+hot-counter-child: blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/hot-counter/child -debug {{flags}} {{cxx_link}} -out:build/debug/hot-counter-child{{exe}}
+
 # Run every package's tests
-test: sqlite wasm pg_query blend2d
+test: sqlite wasm pg_query blend2d hot-counter-child
     mkdir -p build/test
     for p in {{packages}}; do \
       threads=""; \
@@ -210,6 +217,8 @@ test: sqlite wasm pg_query blend2d
     {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
     {{odin}} test ui/render {{flags}} {{cxx_link}} -out:build/test/ui-render{{exe}}
     {{odin}} test ui/render/fuzz {{flags}} {{cxx_link}} -out:build/test/ui-render-fuzz{{exe}}
+    {{odin}} test ui/child {{flags}} {{cxx_link}} -out:build/test/ui-child{{exe}}
+    {{odin}} test ui/sdl {{flags}} {{cxx_link}} -out:build/test/ui-sdl{{exe}}
 
 # Type-check every package and the runner for each target
 check:
@@ -222,9 +231,12 @@ check:
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
       {{odin}} check ui/render {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/render/fuzz {{flags}} -no-entry-point -target:$t || exit 1; \
+      {{odin}} check ui/child {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check examples/ui-kitchen {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hotreload-diagram {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/hot-counter/child {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/hot-counter/host {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
     done
 

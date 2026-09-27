@@ -71,9 +71,8 @@ import "jm:ui/render"
 import bl "jm:ui/blend2d"
 import sdl3 "vendor:sdl3"
 
-// Ui_Proc builds one frame: it records into gtx.ops and reads events from
-// gtx.router. user is App.user, passed through untouched.
-Ui_Proc :: proc(gtx: ^ui.Ctx, user: rawptr)
+// Ui_Proc is ui.Ui_Proc.
+Ui_Proc :: ui.Ui_Proc
 
 // Inside App the field named ui shadows the package, so its other field
 // types are spelled through these aliases.
@@ -96,21 +95,9 @@ App :: struct {
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 }
 
-// default_font is a path an app can try for a sans-serif font without
-// hardcoding one itself, picked per ODIN_OS from paths commonly reported
-// for a stock install of each OS (Arial on Windows, San Francisco on
-// macOS, Liberation Sans on Linux) — not verified against any specific OS
-// version by this build, and not checked to exist. Check the path (or fall
-// back) before relying on it.
-default_font :: proc() -> string {
-	when ODIN_OS == .Windows {
-		return "C:/Windows/Fonts/arial.ttf"
-	} else when ODIN_OS == .Darwin {
-		return "/System/Library/Fonts/SFNS.ttf"
-	} else {
-		return "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
-	}
-}
+// default_font is ui.default_font: kept here too since every existing
+// caller in this codebase spells it sdl.default_font.
+default_font :: ui.default_font
 
 // wake runs a frame soon, as input would. Any thread may call it, for
 // instance when work the ui shows has finished.
@@ -204,7 +191,7 @@ run :: proc(app: App) {
 	defer sdl3.RemoveEventWatch(redraw_on_expose, l)
 
 	for {
-		if !poll(&l.w, &l.router, virtual.arena_allocator(&l.events)) {
+		if !poll(&l.w, router_sink, &l.router, virtual.arena_allocator(&l.events)) {
 			break
 		}
 		step(l)
@@ -328,19 +315,26 @@ redraw_on_expose :: proc "c" (userdata: rawptr, e: ^sdl3.Event) -> bool {
 		return true
 	}
 	context = l.ctx
-	size := l.w.size
-	if !resize(&l.w) {
-		return true
+	if resize_for_new_size(&l.w) {
+		step(l)
 	}
-	// A move exposes the window too, but its content is still right, and
-	// the compositor takes frames presented during a move so slowly that
-	// presenting blocks and holds the move back: draw only for a new size.
-	// An animation pauses while the window moves.
-	if l.w.size == size {
-		return true
-	}
-	step(l)
 	return true
+}
+
+// resize_for_new_size is redraw_on_expose's (and its Host_Loop
+// counterpart's) shared body: it applies whatever WINDOW_EXPOSED implies
+// for w and reports whether that was worth a frame for. A move exposes
+// the window too, but its content is still right; draw only for a new
+// size, on the assumption that presenting during a move is slow enough to
+// itself hold the move back, which redrawing on every such expose would
+// make worse. An animation pauses while the window moves.
+@(private)
+resize_for_new_size :: proc(w: ^Window) -> bool {
+	size := w.size
+	if !resize(w) {
+		return false
+	}
+	return w.size != size
 }
 
 // go_live turns vsync off for frames drawn while the window is being
@@ -622,10 +616,17 @@ scroll_copy :: proc(s: render.Scroll) -> (src, dst: sdl3.FRect, ok: bool) {
 	return src, dst, true
 }
 
-// poll drains SDL's queue into the router. Text is cloned into allocator.
+// Event_Sink receives one Raw_Event polled off SDL's queue: ui.router_push
+// for a single-process App, or a batch append for a host/subprocess split.
+// user is whatever poll's caller passed it.
+@(private)
+Event_Sink :: proc(user: rawptr, e: ui.Raw_Event)
+
+// poll drains SDL's queue, translating input events to sink (text cloned
+// into allocator first) and handling window/render-target events itself.
 // It returns false when the app should quit.
 @(private)
-poll :: proc(w: ^Window, router: ^ui.Router, allocator := context.allocator) -> bool {
+poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.allocator) -> bool {
 	d := w.density
 	e: sdl3.Event
 	for sdl3.PollEvent(&e) {
@@ -647,35 +648,42 @@ poll :: proc(w: ^Window, router: ^ui.Router, allocator := context.allocator) -> 
 				return false
 			}
 		case .MOUSE_MOTION:
-			ui.router_push(router, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState())})
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
 			btn, ok := button(e.button.button)
 			if !ok {
 				continue
 			}
 			kind: ui.Event_Kind = .Press if e.type == .MOUSE_BUTTON_DOWN else .Release
-			ui.router_push(router, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState())})
 		case .MOUSE_WHEEL:
 			// Positive y scrolls down (toward the user), like a scroll offset.
 			s := [2]f32{e.wheel.x, -e.wheel.y}
 			if e.wheel.direction == .FLIPPED {
 				s = -s
 			}
-			ui.router_push(router, {kind = .Scroll, pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d}, scroll = s, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Scroll, pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d}, scroll = s, mods = mods(sdl3.GetModState())})
 		case .KEY_DOWN:
 			k := key(e.key.key)
 			if k == .Escape {
 				return false
 			}
 			if k != .None {
-				ui.router_push(router, {kind = .Key, key = k, mods = mods(e.key.mod)})
+				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod)})
 			}
 		case .TEXT_INPUT:
 			text := strings.clone_from_cstring(e.text.text, allocator)
-			ui.router_push(router, {kind = .Text, text = text, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Text, text = text, mods = mods(sdl3.GetModState())})
 		}
 	}
 	return true
+}
+
+// router_sink is poll's Event_Sink for a single-process App: user is the
+// App's own ^ui.Router.
+@(private)
+router_sink :: proc(user: rawptr, e: ui.Raw_Event) {
+	ui.router_push((^ui.Router)(user), e)
 }
 
 @(private)

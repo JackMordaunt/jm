@@ -46,7 +46,9 @@ binary.
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
 | `ui`      | immediate-mode UI: ops → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
 | `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`), shapes text with it, and `snapshot`s a `ui` proc straight to a PNG |
-| `ui/sdl`  | the SDL3 window and event loop for a `ui` app |
+| `ui/sdl`  | the SDL3 window and event loop for a `ui` app; `run_host` runs the same window against a subprocess instead of a local ui proc |
+| `ui/ipc`  | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/sdl`'s host/subprocess split |
+| `ui/child` | the subprocess half of that split: owns the Model, the ui proc, `Router` and `Layout`, and speaks `ui`'s wire format over its own stdin/stdout |
 | `ui/diagram` | titled, accent-bordered groups of chips and arrows (solid or dashed) for an architecture diagram, over plain `ui` calls |
 | `ui/testutil` | `count_ops`: assertions a `ui` package's own tests and a downstream package's tests both want, without an import cycle |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
@@ -108,6 +110,7 @@ just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
 just kitchen   open the jm:ui demo       just kitchen-dump  its first frame as text
 just kitchen-png  render it to build/kitchen.png
 just bench-ui  ms per frame for layout and the Blend2D executor
+just hot-counter-child  build the subprocess `just test`'s own host/child test spawns
 just example   run examples/hello.odin      just fuzz      30s of fuzzing
 just clean     drop build/ and the four archives
 ```
