@@ -35,8 +35,9 @@ import "core:mem"
 // Ctx is the per-frame layout context every widget takes first. Widgets
 // record into ops, size themselves inside constraints, read theme for
 // defaults, shape text through shaper and read their events from router.
-// A host runs a frame for every input event; anything else that changes
-// with time asks for its next frame with request_frame.
+// A host runs a frame for every input event, and one more after it, which
+// events asks for; anything else that changes with time asks for its next
+// frame with request_frame.
 Ctx :: struct {
 	ops:         ^Ops,
 	constraints: Constraints,

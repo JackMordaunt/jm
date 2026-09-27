@@ -21,19 +21,21 @@ import "core:unicode/utf8"
 // gets a fresh arena (Ctx.allocator) that is reset at the start of the next
 // probe_frame; slices returned by probe_names live in it.
 Probe :: struct {
-	ops:       Ops,
-	frame:     Frame, // scratch: the next flatten target
-	prev:      Frame, // the frame just laid out; probe_current returns it
-	router:    Router,
-	layout:    Layout,
-	theme:     Theme,
-	shaper:    Shaper,
-	ui:        proc(gtx: ^Ctx, user: rawptr),
-	user:      rawptr,
-	size:      Size,
-	frame_no:  u64,
-	arena:     virtual.Arena,
-	allocator: mem.Allocator,
+	ops:         Ops,
+	frame:       Frame, // scratch: the next flatten target
+	prev:        Frame, // the frame just laid out; probe_current returns it
+	router:      Router,
+	layout:      Layout,
+	theme:       Theme,
+	shaper:      Shaper,
+	ui:          proc(gtx: ^Ctx, user: rawptr),
+	user:        rawptr,
+	size:        Size,
+	frame_no:    u64,
+	wants_frame: bool, // the last frame called request_frame
+	frame_after: f32, // then: the soonest it asked for, in seconds
+	arena:       virtual.Arena,
+	allocator:   mem.Allocator,
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -95,6 +97,7 @@ probe_frame :: proc(p: ^Probe) {
 		allocator   = virtual.arena_allocator(&p.arena),
 	}
 	p.ui(&gtx, p.user)
+	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	flatten(&p.ops, &p.frame)
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1

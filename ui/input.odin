@@ -134,6 +134,10 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 // events returns the events routed to area this frame, in arrival order.
 // The slice is allocated from gtx.allocator (the frame allocator); Text
 // strings in it are valid until the next router_route.
+//
+// Handling an event can change state that widgets drawn earlier in the
+// frame already read, such as a theme, so any area given events asks for
+// one more frame to redraw them.
 events :: proc(gtx: ^Ctx, area: Area_Id) -> []Event {
 	if gtx.router == nil {
 		return nil
@@ -143,6 +147,9 @@ events :: proc(gtx: ^Ctx, area: Area_Id) -> []Event {
 		if e.area == area {
 			append(&out, e)
 		}
+	}
+	if len(out) > 0 {
+		request_frame(gtx)
 	}
 	return out[:]
 }

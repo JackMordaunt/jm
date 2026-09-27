@@ -69,6 +69,22 @@ probe_click_by_name :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.saved, 1)
 }
 
+// A click can change what widgets drawn before it read, so the frame that
+// handles it asks for another; a frame without input asks for nothing.
+@(test)
+probe_input_asks_for_a_frame :: proc(t: ^testing.T) {
+	m: Probe_Model
+	p: Probe
+	probe_init(&p, probe_model_ui, &m, {400, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, !p.wants_frame)
+	testing.expect(t, probe_click(&p, "Save"))
+	testing.expect_value(t, m.saved, 1)
+	testing.expect(t, p.wants_frame)
+	probe_frame(&p)
+	testing.expect(t, !p.wants_frame)
+}
+
 @(test)
 probe_type_into_focused :: proc(t: ^testing.T) {
 	m: Probe_Model
