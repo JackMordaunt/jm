@@ -8,18 +8,37 @@
 //
 // A crash, a hang, or a rebuild-in-progress subprocess never reaches this
 // loop: a failed round trip just leaves the window showing its last good
-// frame and stops trying until the next poll wakes it. Respawning the
-// child on a rebuild is a host's caller's job, not run_host's, in this
-// first version — see ui/child for the subprocess side.
+// frame and stops trying. When Host_App.watch names a pointer file,
+// run_host re-reads it every poll and respawns whenever its content (the
+// child's own path) changes — this is the "hot" of hot reload.
+//
+// One anecdote, not a documented guarantee, is the reason this is an
+// indirection rather than a fixed path: os.chtimes on this session's own
+// running hot-counter-child.exe, once, on this Windows machine, returned
+// Permission_Denied. tools/hot-watch (or any other builder) avoids
+// finding out the hard way whether a build would hit the same thing, by
+// writing each new build to its own path and republishing the pointer
+// rather than touching the path the running child was started from. It
+// polls for that at least every RESPAWN_POLL_S seconds even with an idle
+// child,
+// so a rebuild is never left waiting on the next real input event to be
+// seen.
 package sdl
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
+import "core:strings"
 
 import "jm:ui"
 import "jm:ui/ipc"
 import "jm:ui/render"
 import sdl3 "vendor:sdl3"
+
+// RESPAWN_POLL_S bounds how long an idle host can go without checking
+// Host_App.watch for a rebuild.
+@(private)
+RESPAWN_POLL_S :: f32(0.5)
 
 // Host_App describes a window and the child process that fills it. Unlike
 // App, it carries no ui proc, theme or fonts: those belong to the child,
@@ -27,7 +46,8 @@ import sdl3 "vendor:sdl3"
 Host_App :: struct {
 	title:         string,
 	width, height: int, // initial size in logical units
-	child:         []string, // argv to spawn the subprocess; child[0] is the executable
+	child:         []string, // argv to spawn the subprocess; child[0] is the executable (or the fixed extra args, when watch names the executable instead — see watch)
+	watch:         string, // "" uses child[0] as a fixed path. Otherwise, the path to a text file whose trimmed content replaces child[0], re-read every poll: what tools/hot-watch republishes on every successful build.
 	dir:           string, // the child's working directory; "" is this process's own
 	clear:         Color, // shown before the child's first reply arrives
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
@@ -39,6 +59,7 @@ Host_Loop :: struct {
 	w:           Window,
 	child:       ipc.Child,
 	child_dead:  bool, // a round trip failed; stop trying until respawned
+	child_path:  string, // the path last spawned; compared each poll to Host_App.watch's current content
 	ops:         ui.Ops, // ui.decode rebuilds this from each reply
 	frame:       ui.Frame, // ui.flatten rebuilds this from ops each frame
 	comp:        render.Compositor,
@@ -77,7 +98,11 @@ run_host :: proc(app: Host_App) {
 		}
 		host_step(l)
 		settle(&l.w)
-		wait(&l.w, l.wants_frame, l.frame_after, l.shown)
+		after := RESPAWN_POLL_S
+		if l.wants_frame {
+			after = min(after, l.frame_after)
+		}
+		wait(&l.w, true, after, l.shown)
 	}
 }
 
@@ -94,13 +119,21 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	if !open(&l.w, App{title = app.title, width = app.width, height = app.height}) {
 		return false
 	}
-	child, ok := ipc.spawn(app.child, app.dir)
+	path, pok := resolve_child_path(&l.app, context.temp_allocator)
+	if !pok {
+		fmt.eprintln("sdl: no child to spawn (check Host_App.child / watch)")
+		close(&l.w)
+		return false
+	}
+	argv := child_argv(&l.app, path, context.temp_allocator)
+	child, ok := ipc.spawn(argv, app.dir)
 	if !ok {
-		fmt.eprintln("sdl: spawn:", app.child)
+		fmt.eprintln("sdl: spawn:", argv)
 		close(&l.w)
 		return false
 	}
 	l.child = child
+	l.child_path = strings.clone(path)
 	ui.ops_init(&l.ops)
 	ui.frame_init(&l.frame)
 	ui.flatten(&l.ops, &l.frame) // a valid, empty frame until the first reply
@@ -120,21 +153,79 @@ host_loop_destroy :: proc(l: ^Host_Loop) {
 	// nothing left to do about one, whatever it turns out to mean in the
 	// already-gone case.
 	ipc.kill(&l.child)
+	delete(l.child_path)
 	render.compositor_destroy(&l.comp)
 	ui.frame_destroy(&l.frame)
 	ui.ops_destroy(&l.ops)
 	close(&l.w)
 }
 
+// resolve_child_path is the path to spawn: app.child[0] fixed, or, when
+// app.watch names a pointer file, that file's trimmed content. False
+// means nothing to spawn — app.child is empty with no watch set, the
+// pointer file is empty, or it could not be read at all: the caller
+// keeps whatever path it already had and tries again next poll.
+@(private)
+resolve_child_path :: proc(app: ^Host_App, allocator := context.allocator) -> (string, bool) {
+	if app.watch == "" {
+		if len(app.child) == 0 {
+			return "", false
+		}
+		return app.child[0], true
+	}
+	data, err := os.read_entire_file(app.watch, allocator)
+	if err != nil {
+		return "", false
+	}
+	path := strings.trim_space(string(data))
+	return path, path != ""
+}
+
+// child_argv is path, app.child's own extra arguments (app.child[1:], or
+// all of app.child when watch is unset and child[0] already is path).
+@(private)
+child_argv :: proc(app: ^Host_App, path: string, allocator := context.allocator) -> []string {
+	extra := app.child[1:] if len(app.child) > 1 else app.child[:0]
+	argv := make([]string, 1 + len(extra), allocator)
+	argv[0] = path
+	copy(argv[1:], extra)
+	return argv
+}
+
+// host_maybe_respawn kills and replaces l.child when resolve_child_path no
+// longer matches l.child_path — a rebuild landed, whether l.child was
+// still running or already dead. The old child's Router, Layout and Model
+// go with it; the new one starts cold, same as if the host itself had
+// just opened.
+@(private)
+host_maybe_respawn :: proc(l: ^Host_Loop) {
+	path, ok := resolve_child_path(&l.app, context.temp_allocator)
+	if !ok || path == l.child_path {
+		return
+	}
+	ipc.kill(&l.child)
+	argv := child_argv(&l.app, path, context.temp_allocator)
+	child, sok := ipc.spawn(argv, l.app.dir)
+	delete(l.child_path)
+	l.child_path = strings.clone(path)
+	if !sok {
+		l.child_dead = true
+		return
+	}
+	l.child = child
+	l.child_dead = false
+}
+
 // host_step sends this frame's polled events to the child, decodes its
 // reply, flattens and presents. A round trip that fails (the child died,
 // or sent something ui/wire cannot parse) marks it dead: the window keeps
-// showing its last good frame and host_step becomes a no-op.
+// showing its last good frame until resolve_child_path names something new.
 @(private)
 host_step :: proc(l: ^Host_Loop) {
 	l.in_frame = true
 	defer l.in_frame = false
 	defer free_all(context.temp_allocator)
+	host_maybe_respawn(l)
 	if l.child_dead {
 		l.wants_frame = false
 		return

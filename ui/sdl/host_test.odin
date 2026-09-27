@@ -1,22 +1,40 @@
 package sdl
 
+import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
 import "core:testing"
 
+import "jm:sh"
 import "jm:ui"
 import "jm:ui/ipc"
 
-// CHILD_EXE is where `just test`'s hot-counter-child recipe (a
-// prerequisite of test itself, so this runs there) puts
-// examples/hot-counter/child, relative to the repo root — the working
-// directory odin test ran from in every invocation observed in this
-// session, `just test` and a plain `odin test ui/sdl` from the root
-// alike. This test drives that real built binary, not a stub, so a
-// missing one fails loudly (`just hot-counter-child` builds it) rather
-// than silently reporting a round trip it never actually tried.
+// CHILD_EXE is where examples/hot-counter/child gets built to, relative
+// to the repo root — the working directory odin test ran from in every
+// invocation observed in this session, `just test` and a plain `odin
+// test ui/sdl` from the root alike.
 @(private = "file")
 CHILD_EXE :: "build/debug/hot-counter-child.exe" when ODIN_OS == .Windows else "build/debug/hot-counter-child"
+
+// require_child_exe makes every test in this file that drives the real
+// hot-counter-child binary self-sufficient: `just test`'s
+// hot-counter-child recipe builds it ahead of time so this is normally
+// an already-true check, but a bare `odin test ui/sdl` (run often enough
+// while working on this package that it should not depend on going
+// through just first) builds it here instead of finding it missing.
+// Only an actual build failure fails t.
+@(private = "file")
+require_child_exe :: proc(t: ^testing.T) -> bool {
+	if os.exists(CHILD_EXE) {
+		return true
+	}
+	code, ok := sh.run(fmt.tprintf("odin build examples/hot-counter/child -collection:jm=. -out:%s", CHILD_EXE))
+	if !ok {
+		testing.expectf(t, false, "hot-counter-child build failed (exit %d)", code)
+		return false
+	}
+	return true
+}
 
 // test_host_child_round_trip_moves_a_click_across_the_pipe spawns the real
 // hot-counter child, asks for a frame, finds the "+" button the same way
@@ -26,8 +44,7 @@ CHILD_EXE :: "build/debug/hot-counter-child.exe" when ODIN_OS == .Windows else "
 // the label would still read "count 0".
 @(test)
 test_host_child_round_trip_moves_a_click_across_the_pipe :: proc(t: ^testing.T) {
-	if !os.exists(CHILD_EXE) {
-		testing.expect(t, false, "hot-counter-child not built; run `just hot-counter-child` (or `just test`)")
+	if !require_child_exe(t) {
 		return
 	}
 	c, ok := ipc.spawn({CHILD_EXE})
@@ -73,6 +90,61 @@ test_host_child_round_trip_moves_a_click_across_the_pipe :: proc(t: ^testing.T) 
 	// input, is what shows the click actually took.
 	f = ask(t, &c, size, nil, &ops)
 	testing.expect(t, shows_label(f, "count 1"))
+}
+
+// test_maybe_respawn_follows_the_watch_pointer_file drives host_maybe_respawn
+// directly against a real spawned child, with no Window: none of the
+// fields it touches (app, child, child_dead, child_path) need one. A
+// rebuild is simulated the way it matters to host_maybe_respawn — the pointer
+// file's content names something new — with a second copy of CHILD_EXE
+// standing in for a fresh build's own path; content is irrelevant here,
+// only the path string host_maybe_respawn compares against is. Everything this
+// test allocates uses context.temp_allocator, including what
+// resolve_child_path/host_maybe_respawn clone internally, so there is nothing
+// left to free by hand.
+@(test)
+test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
+	if !require_child_exe(t) {
+		return
+	}
+	context.allocator = context.temp_allocator
+
+	copy_path := fmt.tprintf("%s.copy%s", CHILD_EXE, ".exe" when ODIN_OS == .Windows else "")
+	data, rerr := os.read_entire_file(CHILD_EXE, context.temp_allocator)
+	testing.expect(t, rerr == nil)
+	testing.expect(t, os.write_entire_file(copy_path, data) == nil)
+	defer os.remove(copy_path)
+
+	pointer := "build/debug/host_test.pointer"
+	defer os.remove(pointer)
+	testing.expect(t, os.write_entire_file(pointer, CHILD_EXE) == nil)
+
+	l: Host_Loop
+	l.app = {watch = pointer}
+	path, pok := resolve_child_path(&l.app)
+	testing.expect(t, pok)
+	testing.expect_value(t, path, CHILD_EXE)
+	child, ok := ipc.spawn(child_argv(&l.app, path))
+	testing.expect(t, ok)
+	l.child = child
+	l.child_path = path
+	defer ipc.kill(&l.child)
+	first_pid := l.child.process.pid
+
+	host_maybe_respawn(&l) // pointer unchanged: same child, still alive
+	testing.expect_value(t, l.child.process.pid, first_pid)
+	testing.expect(t, !l.child_dead)
+
+	testing.expect(t, os.write_entire_file(pointer, copy_path) == nil)
+	host_maybe_respawn(&l) // pointer moved: a new process replaces it
+	testing.expect(t, !l.child_dead)
+	testing.expect(t, l.child.process.pid != first_pid)
+
+	// The new child is a live process, not just a new pid: it answers.
+	input := ui.encode_input({100, 100}, 1, 0, nil, context.temp_allocator)
+	testing.expect(t, ipc.write_frame(l.child.stdin, input))
+	_, rok := ipc.read_frame(l.child.stdout, context.temp_allocator)
+	testing.expect(t, rok)
 }
 
 @(private = "file")

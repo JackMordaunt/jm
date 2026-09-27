@@ -561,3 +561,15 @@ rotated clip renders through an A8 mask. The Blend2D binding is copied from
 `odin-blend2d`; `just blend2d` builds its archive from that checkout's source
 (`BLEND2D_SRC`), and anything linking it needs `-lstdc++`.
 `examples/ui-kitchen` is the demo, `just kitchen` opens it.
+
+That "serialized for a renderer in another process" is `ui/sdl.run_host`:
+a host owns the window and renders, a subprocess (`ui/child`) owns the
+Model, the ui proc, `Router` and `Layout`, and the two talk `ui/wire`'s
+Input/Reply over `ui/ipc`'s pipes. `Host_App.watch` names a pointer file a
+builder republishes on every successful build (`tools/hot-watch` is one);
+the host re-reads it and respawns the child on a change, never
+overwriting a running executable in place, which Windows refuses.
+`examples/hot-counter` (a two-binary click counter) and
+`examples/hot-architecture` (a live-editable diagram of this very
+pipeline) are the demos; `just hot-architecture` builds the second one and
+prints the two commands that run it.

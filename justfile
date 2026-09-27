@@ -218,7 +218,9 @@ test: sqlite wasm pg_query blend2d hot-counter-child
     {{odin}} test ui/render {{flags}} {{cxx_link}} -out:build/test/ui-render{{exe}}
     {{odin}} test ui/render/fuzz {{flags}} {{cxx_link}} -out:build/test/ui-render-fuzz{{exe}}
     {{odin}} test ui/child {{flags}} {{cxx_link}} -out:build/test/ui-child{{exe}}
-    {{odin}} test ui/sdl {{flags}} {{cxx_link}} -out:build/test/ui-sdl{{exe}}
+    # -1 thread: ui/sdl's tests spawn real hot-counter-child processes
+    # sharing one exe path, the same reason wasm's own tests above do.
+    {{odin}} test ui/sdl {{flags}} {{cxx_link}} -define:ODIN_TEST_THREADS=1 -out:build/test/ui-sdl{{exe}}
 
 # Type-check every package and the runner for each target
 check:
@@ -237,7 +239,10 @@ check:
       {{odin}} check examples/hotreload-diagram {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hot-counter/child {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hot-counter/host {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/hot-architecture/child {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/hot-architecture/host {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
     done
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
@@ -321,6 +326,20 @@ kitchen: blend2d sdl3
     mkdir -p build/debug
     {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
     build/debug/ui-kitchen{{exe}}
+
+# Build the hot-reloaded architecture-diagram demo: a live-editable
+# diagram of jm:ui's own input/layout/render pipeline, respawned by
+# tools/hot-watch every time examples/hot-architecture/child changes.
+# Prints the two commands to run it (in separate terminals) rather than
+# launching them itself: backgrounding a long-running process portably
+# from one just recipe is more trouble than it is worth.
+hot-architecture: blend2d sdl3
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/hot-architecture/host -debug {{flags}} {{cxx_link}} -out:build/debug/hot-architecture-host{{exe}}
+    @echo "terminal 1: build/debug/hot-watch{{exe}} examples/hot-architecture/child build/debug/hot-architecture.watch"
+    @echo "terminal 2: build/debug/hot-architecture-host{{exe}} build/debug/hot-architecture.watch"
+    @echo "then edit examples/hot-architecture/child/main.odin and watch the window update."
 
 # Print the demo's first frame as text, no window
 kitchen-dump: blend2d sdl3
