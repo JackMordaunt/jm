@@ -505,3 +505,49 @@ test_compose_large_scroll_shared :: proc(t: ^testing.T) {
 	}
 	testing.expectf(t, scrolled == len(moves) - 1, "%d of %d moves scrolled", scrolled, len(moves) - 1)
 }
+
+// off_render is how far g's composed target is from a whole render of its
+// scene; bands may leave up to SEAM where they meet.
+@(private = "file")
+off_render :: proc(g: ^Rig) -> int {
+	render(&g.r, &g.scene.frame, &g.ref, BG)
+	return max_delta(&g.img, &g.ref)
+}
+
+@(private = "file")
+SEAM :: 3
+
+@(private = "file")
+reset :: proc(s: ^Scene) {
+	ui.ops_reset(&s.ops)
+	ui.frame_reset(&s.frame)
+	s.frame.ops = &s.ops
+}
+
+// Draws A and C, translucent under a turned round-rect clip, overlap along
+// its edge; B, far off, parts them. In the whole frame they are two groups,
+// so the edge covers each once. A band that leaves B out must too.
+@(private = "file")
+split_groups :: proc(s: ^Scene, b_between: bool) {
+	reset(s)
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Round_Rect{{0, 0, 200, 120}, 6}, ui.mul(ui.rotate(0.1), ui.translate(100, 80))})
+	a := ui.Draw{ui.translate(150, 70), 0, ui.Fill{ui.Rect{0, 0, 60, 40}, ui.Color{200, 40, 40, 150}}}
+	b := ui.Draw{ui.translate(10, 10), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 30, 20}, ui.Color{40, 40, 200, 255}}}
+	c := ui.Draw{ui.translate(170, 75), 0, ui.Fill{ui.Rect{0, 0, 60, 40}, ui.Color{40, 180, 40, 150}}}
+	if b_between {
+		append(&s.frame.draws, a, b, c)
+	} else {
+		append(&s.frame.draws, b, a, c)
+	}
+}
+
+@(test)
+test_compose_band_keeps_groups_apart :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	split_groups(&g.scene, true)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	d := off_render(&g)
+	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
+}

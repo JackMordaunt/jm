@@ -45,6 +45,7 @@ Compositor :: struct {
 	row_start: [dynamic]int, // per tile row: where its draws start in row_draws
 	row_draws: [dynamic]int, // draw indices touching each tile row, in draw order
 	row_fill:  [dynamic]int,
+	runs:      [dynamic]int, // per draw: which run of draws sharing a clip it is in
 	allocator: mem.Allocator,
 }
 
@@ -82,6 +83,9 @@ MOVE_PARTS :: 4
 // the last worker. Fewer than one worker counts as one. Every worker's
 // Renderer allocates from allocator on its own thread, so with more than
 // one worker it must be thread-safe: the default heap allocator is,
+// core:mem's arenas, which take no lock, are not. Every worker's
+// Renderer allocates from allocator on its own thread, so with more than
+// one worker it must be thread-safe: the default heap allocator is,
 // core:mem's arenas, which take no lock, are not.
 compositor_init :: proc(c: ^Compositor, workers: int, allocator := context.allocator) {
 	n := max(workers, 1)
@@ -92,6 +96,7 @@ compositor_init :: proc(c: ^Compositor, workers: int, allocator := context.alloc
 	c.row_start = make([dynamic]int, allocator)
 	c.row_draws = make([dynamic]int, allocator)
 	c.row_fill = make([dynamic]int, allocator)
+	c.runs = make([dynamic]int, allocator)
 	c.workers = make([]Worker, n, allocator)
 	for &w in c.workers {
 		w.c = c
@@ -131,6 +136,7 @@ compositor_destroy :: proc(c: ^Compositor) {
 	delete(c.row_start)
 	delete(c.row_draws)
 	delete(c.row_fill)
+	delete(c.runs)
 	damage_destroy(&c.damage)
 	c^ = {}
 }
@@ -197,6 +203,7 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 		}
 	}
 	index_rows(c, c.damage.old_draws[:], c.damage.rows)
+	number_runs(c, f)
 	if len(c.threads) > 0 {
 		run_phase(c, .Paint)
 	} else {
@@ -273,7 +280,7 @@ drain :: proc(c: ^Compositor, w: ^Worker) {
 		band := c.jobs[i]
 		row := clamp(int(band.y) / TILE, 0, len(c.row_start) - 2)
 		picks := c.row_draws[c.row_start[row]:c.row_start[row + 1]]
-		paint_band(w, c.frame, c.target, band, c.damage.old_draws[:], picks, c.bg)
+		paint_band(w, c.frame, c.target, band, c.damage.old_draws[:], picks, c.runs[:], c.bg)
 	}
 }
 
@@ -359,12 +366,31 @@ move_part :: proc(data: ^bl.ImageData, s: Scroll, k, n: int) {
 	}
 }
 
+// number_runs numbers the runs of consecutive draws sharing a clip, which
+// render draws as one group under a clip that needs a mask.
+@(private)
+number_runs :: proc(c: ^Compositor, f: ^ui.Frame) {
+	resize(&c.runs, len(f.draws))
+	run := 0
+	for d, i in f.draws {
+		if i > 0 && d.clip != f.draws[i - 1].clip {
+			run += 1
+		}
+		c.runs[i] = run
+	}
+}
+
+// barrier draws nothing and has no clip: between two draws it keeps render
+// from grouping them.
+@(private)
+barrier := ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{}, ui.Color{}}}
+
 // paint_band renders the draws of f that touch r into the part of target
 // under r, through a view that shares target's pixels. picks are the
 // indices of the draws that may touch r, in order; recs are f's draw
 // records, whose bounds decide.
 @(private)
-paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ui.Rect, recs: []Draw_Rec, picks: []int, bg: ui.Color) {
+paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ui.Rect, recs: []Draw_Rec, picks: []int, runs: []int, bg: ui.Color) {
 	sub := &w.sub
 	clear(&sub.draws)
 	clear(&sub.clips)
@@ -373,12 +399,21 @@ paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ui.Rect, 
 	for cl in f.clips {
 		append(&sub.clips, ui.Clip{cl.parent, cl.shape, ui.mul(cl.transform, shift)})
 	}
+	// Draws left out of the band can sit between two it keeps. Two kept draws
+	// under one clip were grouped in the whole frame only if they were in one
+	// run, so a barrier keeps them apart when they were not: the clip's edge
+	// must cover them as it does in a whole render.
+	last := -1
 	for i in picks {
 		if ui.rect_intersect(recs[i].bounds, r).w <= 0 {
 			continue
 		}
 		d := f.draws[i]
+		if last >= 0 && d.clip == f.draws[last].clip && runs[i] != runs[last] {
+			append(&sub.draws, barrier)
+		}
 		append(&sub.draws, ui.Draw{ui.mul(d.transform, shift), d.clip, d.cmd})
+		last = i
 	}
 
 	data: bl.ImageData
