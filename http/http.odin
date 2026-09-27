@@ -12,6 +12,7 @@ curl build is linked rather than from here.
 
 	res  = must(http.post_json(url, Payload{name = "x"}))
 	must(http.download("https://example.com/big.tar.gz", "build/big.tar.gz"))
+	_, err := http.stream("GET", url, os.to_writer(f))   // any io.Writer, nothing allocated
 
 Every call returns (Response, Error). Error is set only when the transfer
 could not complete; an HTTP 4xx or 5xx is a Response with ok == false, so
@@ -22,6 +23,7 @@ package http
 import "base:runtime"
 import "core:c"
 import "core:encoding/json"
+import "core:io"
 import "core:os"
 import "core:strings"
 import "core:sync"
@@ -111,26 +113,46 @@ download :: proc(url, dest: string, opts := Opts{}, allocator := context.allocat
 		return {}, .Write_Failed
 	}
 	defer os.close(f)
-	return perform("GET", url, opts, f, allocator)
+	hb := strings.builder_make(allocator)
+	res, err := stream("GET", url, os.to_writer(f), opts, strings.to_writer(&hb))
+	res.headers = strings.to_string(hb)
+	return res, err
 }
 
 // request performs an arbitrary method with the body from opts.
 request :: proc(method, url: string, opts := Opts{}, allocator := context.allocator) -> (Response, Error) {
-	return perform(method, url, opts, nil, allocator)
+	bb := strings.builder_make(allocator)
+	hb := strings.builder_make(allocator)
+	res, err := stream(method, url, strings.to_writer(&bb), opts, strings.to_writer(&hb))
+	res.body = strings.to_string(bb)
+	res.headers = strings.to_string(hb)
+	return res, err
+}
+
+// stream performs a request and writes the body to dst as it arrives, and
+// the raw headers to headers when one is given. It allocates nothing of
+// its own: the writers decide where bytes go, so a caller can stream into
+// a file, a builder, or a fixed buffer. The returned Response carries the
+// status only; body and headers are empty.
+stream :: proc(method, url: string, dst: io.Writer, opts := Opts{}, headers: io.Writer = {}) -> (Response, Error) {
+	return perform(method, url, opts, dst, headers)
 }
 
 // ---- internals ----------------------------------------------------------
 
+// Sink is what curl's write callback hands bytes to: a writer, or nothing.
 Sink :: struct {
 	ctx:    runtime.Context,
-	buf:    [dynamic]byte,
-	file:   ^os.File,
+	w:      io.Writer,
 	failed: bool,
 }
 
 global_once: sync.Once
 
-perform :: proc(method, url: string, opts: Opts, file: ^os.File, allocator: runtime.Allocator) -> (res: Response, err: Error) {
+// perform is the one transfer routine. Its own temporaries (C strings for
+// curl) live on the temp allocator and are released before it returns.
+perform :: proc(method, url: string, opts: Opts, body: io.Writer, headers_w: io.Writer) -> (res: Response, err: Error) {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
 	sync.once_do(&global_once, proc() {
 		curl.global_init(curl.GLOBAL_DEFAULT)
 	})
@@ -140,10 +162,8 @@ perform :: proc(method, url: string, opts: Opts, file: ^os.File, allocator: runt
 	}
 	defer curl.easy_cleanup(h)
 
-	body_sink := Sink{ctx = context, file = file}
-	body_sink.buf.allocator = allocator
-	header_sink := Sink{ctx = context}
-	header_sink.buf.allocator = allocator
+	body_sink := Sink{ctx = context, w = body}
+	header_sink := Sink{ctx = context, w = headers_w}
 
 	curl.easy_setopt(h, .URL, cstr(url))
 	curl.easy_setopt(h, .NOSIGNAL, c.long(1))
@@ -194,7 +214,7 @@ perform :: proc(method, url: string, opts: Opts, file: ^os.File, allocator: runt
 		}
 		return {}, .Transfer_Failed
 	}
-	if body_sink.failed {
+	if body_sink.failed || header_sink.failed {
 		return {}, .Write_Failed
 	}
 
@@ -202,8 +222,6 @@ perform :: proc(method, url: string, opts: Opts, file: ^os.File, allocator: runt
 	curl.easy_getinfo(h, .RESPONSE_CODE, &status)
 	res.status = int(status)
 	res.ok = status >= 200 && status < 300
-	res.body = string(body_sink.buf[:])
-	res.headers = string(header_sink.buf[:])
 	return res, .None
 }
 
@@ -211,15 +229,10 @@ write_cb :: proc "c" (buffer: [^]byte, size, nitems: c.size_t, userdata: rawptr)
 	sink := (^Sink)(userdata)
 	context = sink.ctx
 	n := int(size * nitems)
-	if sink.file != nil {
-		written, err := os.write(sink.file, buffer[:n])
-		if err != nil || written != n {
-			sink.failed = true
-			return curl.WRITEFUNC_ERROR
-		}
+	if sink.w.procedure == nil {
 		return c.size_t(n)
 	}
-	if _, err := append(&sink.buf, ..buffer[:n]); err != nil {
+	if _, err := io.write_full(sink.w, buffer[:n]); err != nil {
 		sink.failed = true
 		return curl.WRITEFUNC_ERROR
 	}
