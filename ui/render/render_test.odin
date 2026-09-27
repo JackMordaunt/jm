@@ -6,9 +6,11 @@ import "core:testing"
 import "jm:ui"
 import bl "jm:ui/blend2d"
 
-@(private = "file")
+// RED, WHITE and SIZE are package-private, not file-private: diff_test.odin
+// shares them as its own test-fixture colors and dimension.
+@(private)
 RED :: ui.Color{255, 0, 0, 255}
-@(private = "file")
+@(private)
 WHITE :: ui.Color{255, 255, 255, 255}
 when ODIN_OS == .Windows {
 	@(private = "file")
@@ -17,7 +19,7 @@ when ODIN_OS == .Windows {
 	@(private = "file")
 	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
 }
-@(private = "file")
+@(private)
 SIZE :: 64
 
 // Fixture is a renderer, an Ops, a Frame over it and a 64×64 target.

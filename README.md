@@ -573,3 +573,10 @@ overwriting a running executable in place, which Windows refuses.
 `examples/hot-architecture` (a live-editable diagram of this very
 pipeline) are the demos; `just hot-architecture` builds the second one and
 prints the two commands that run it.
+
+Checking a change without a window: `-dump` prints the scene as text,
+free of vision tokens and enough for most bugs; `-png` renders it to a
+PNG when the question is actually about pixels; `tools/img-diff` (over
+`ui/render`'s `diff_files`) turns two PNGs into a list of changed regions
+as text, so confirming an edit changed what it should needs looking at
+neither.

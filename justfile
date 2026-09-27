@@ -243,6 +243,7 @@ check:
       {{odin}} check examples/hot-architecture/host {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
     done
 
 # Install odin-run into ~/.local/bin (override with BINDIR)

@@ -25,8 +25,29 @@ ops (paths, glyph runs, tag names) are expected to live in the frame
 allocator. Nothing in this package is thread-safe; one Ctx per thread.
 
 Subpackages: ui/blend2d is the raster binding, ui/render executes a Frame on
-it and provides the Shaper, ui/sdl opens a window. The core package has no
-foreign dependencies so `odin check` and tests need nothing built.
+it and provides the Shaper, and shaper/render.snapshot a ui proc to a PNG
+without a window. ui/sdl opens a window (sdl.run) or, for the host half of a
+hot-reload split, spawns and re-spawns a subprocess in place of a local ui
+proc (sdl.run_host); ui/child is that subprocess's own runtime loop; ui/ipc
+is the framing and process handling underneath the two of them. The core
+package has no foreign dependencies so `odin check` and tests need nothing
+built.
+
+Checking a change headlessly, cheapest first: `-dump` (see examples/
+ui-kitchen, examples/hot-architecture) prints the scene as text — free of
+vision tokens, and enough for most bugs (wrong position, wrong color as a
+hex value, a missing widget). Reach for `-png` only once the question is
+actually about pixels — blending, clipping, antialiasing — and even then,
+render.diff_files (or the tools/img-diff command line over it) turns two
+PNGs into a list of changed rects as text, so confirming an edit changed
+what it should not need opening either image: only diff_files's own
+`highlight` output, if anything, is worth a look. A headless example that
+never opens a window builds faster and simpler importing only ui/child (as
+examples/hot-counter and examples/hot-architecture's child binaries do) than
+one that also imports ui/sdl for a window fallback (as ui-kitchen and
+hotreload-diagram do) — real but, on programs this size, modest, so it is
+a default for new headless-first work, not a reason to split an existing
+example.
 */
 package ui
 
