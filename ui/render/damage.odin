@@ -90,7 +90,7 @@ Damage_Scratch :: struct {
 	curr_keys:  map[u64]int, // clip key -> first clip with it, this frame
 	old_keys:   map[u64]int, // the same for the previous frame
 	anchors:    [dynamic]int, // per draw
-	sigs:       [dynamic]u64, // per draw anchored to a rect clip: its signature
+	sigs:       [dynamic]u64, // per draw anchored to an all-rect clip chain: its signature
 	old_anchor: [dynamic]int,
 	anchoring:  bool, // damage_draws fills anchors and sigs this frame
 	scrolled:   bool, // this frame found scrolls to model
@@ -296,7 +296,7 @@ damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
 		}
 		a := anchor(d.clips[:], f.draws[i].clip, &s.old_keys)
 		s.anchors[i] = a
-		if a >= 0 && d.clips[a].rect {
+		if a >= 0 && d.clips[a].all_rects {
 			s.sigs[i] = signature(d.clips[:], &d.draws[i], a)
 		}
 	}
@@ -677,15 +677,17 @@ pos :: proc(q: [2]i64) -> u64 {
 	return u64(u32(q[0]) ~ 0x8000_0000) << 32 | u64(u32(q[1]) ~ 0x8000_0000)
 }
 
-// placed lists the draws anchored to a rect clip, sorted by signature and
-// then position; tmp is scratch for the sort. sigs, when given, holds the
-// draws' signatures already worked out.
+// placed lists the draws anchored to a clip whose chain is all axis-aligned
+// rects, sorted by signature and then position; tmp is scratch for the
+// sort. sigs, when given, holds the draws' signatures already worked out.
+// A clip under any other shape cannot scroll: its parent's mask stays put
+// while the pixels under it move.
 @(private)
 placed :: proc(out, tmp: ^[dynamic]Placed, draws: []Draw_Rec, clips: []Clip_Rec, anchors: []int, sigs: []u64 = nil) {
 	clear(out)
 	for &dr, i in draws {
 		a := anchors[i]
-		if a >= 0 && clips[a].rect {
+		if a >= 0 && clips[a].all_rects {
 			q := [2]i64{quantize(dr.t.e), quantize(dr.t.f)}
 			sig := sigs[i] if sigs != nil else signature(clips, &dr, a)
 			append(out, Placed{sig, a, dr.t.e, dr.t.f, q, pos(q)})

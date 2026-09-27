@@ -735,3 +735,30 @@ test_compose_frame_after_resize_does_not_scroll :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+// A rect clip scrolled under a turned ellipse clip must repaint, not move
+// pixels: the ellipse's mask stays where it is, and moving the pixels would
+// carry what it cut away into view.
+@(test)
+test_compose_no_scroll_under_masked_clip :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	build :: proc(s: ^Scene, off: f32) {
+		reset(s)
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Ellipse{{0, 0, 153, 51}}, ui.mul(ui.rotate(0.3), ui.translate(80.3, 28.25))})
+		append(&s.frame.clips, ui.Clip{0, ui.Rect{0, 0, 129, 68}, ui.translate(16.3, 41)})
+		for i in 0 ..< 6 {
+			col := ui.Color{u8(40 * i), 160, u8(200 - 30 * i), 255}
+			m := ui.translate(96 + f32(i % 2) * 20, 30 + f32(i) * 14 - off)
+			append(&s.frame.draws, ui.Draw{m, 1, ui.Fill{ui.Round_Rect{{0, 0, 34, 12}, 5}, col}})
+		}
+	}
+	build(&g.scene, 0)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	build(&g.scene, 24)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	d := off_render(&g)
+	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
+	testing.expectf(t, len(g.c.damage.scrolls) == 0, "scrolled under a masked clip: %v", g.c.damage.scrolls[:])
+}
