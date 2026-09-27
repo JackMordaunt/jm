@@ -103,6 +103,7 @@ Damage_Scratch :: struct {
 	found:      [dynamic]Found_Scroll,
 	last_run:   [dynamic]int, // bin's scratch: per tile, the run of the last draw binned
 	strips:     [dynamic]ui.Rect, // pixels the found scrolls cannot fill
+	pieces:     [dynamic]ui.Rect, // what is left of a strip once the rects before it are cut out
 }
 
 @(private)
@@ -143,6 +144,7 @@ damage_init :: proc(d: ^Damage, allocator := context.allocator) {
 	s.found = make([dynamic]Found_Scroll, allocator)
 	s.last_run = make([dynamic]int, allocator)
 	s.strips = make([dynamic]ui.Rect, allocator)
+	s.pieces = make([dynamic]ui.Rect, allocator)
 }
 
 damage_destroy :: proc(d: ^Damage) {
@@ -175,6 +177,7 @@ damage_destroy :: proc(d: ^Damage) {
 	delete(s.found)
 	delete(s.last_run)
 	delete(s.strips)
+	delete(s.pieces)
 	d^ = {}
 }
 
@@ -321,11 +324,26 @@ damage_finish :: proc(d: ^Damage) -> ([]ui.Rect, []Scroll) {
 		}
 		dirty_rects(d)
 		if s.scrolled {
+			// The rects must not overlap: workers paint them at once, and two
+			// painting one pixel would blend a translucent draw into it twice.
+			// Each strip goes in less what is already there.
 			full := ui.Rect{0, 0, f32(d.size.x), f32(d.size.y)}
 			for r in s.strips {
-				if c := ui.rect_intersect(r, full); c.w > 0 {
-					append(&d.rects, c)
+				c := ui.rect_intersect(r, full)
+				if c.w <= 0 || c.h <= 0 {
+					continue
 				}
+				clear(&s.pieces)
+				append(&s.pieces, c)
+				for q in d.rects {
+					n := len(s.pieces)
+					for i in 0 ..< n {
+						parts, count := subtract(s.pieces[i], q)
+						append(&s.pieces, ..parts[:count])
+					}
+					remove_range(&s.pieces, 0, n)
+				}
+				append(&d.rects, ..s.pieces[:])
 			}
 		}
 	}
@@ -334,6 +352,32 @@ damage_finish :: proc(d: ^Damage) -> ([]ui.Rect, []Scroll) {
 	d.old_clips, d.clips = d.clips, d.old_clips
 	d.valid = true
 	return d.rects[:], d.scrolls[:]
+}
+
+// subtract cuts b out of a, leaving up to four rects: full-width bands
+// above and below b, then the parts beside it.
+@(private)
+subtract :: proc(a, b: ui.Rect) -> (out: [4]ui.Rect, n: int) {
+	i := ui.rect_intersect(a, b)
+	if i.w <= 0 || i.h <= 0 {
+		out[0] = a
+		return out, 1
+	}
+	ax1, ay1 := a.x + a.w, a.y + a.h
+	ix1, iy1 := i.x + i.w, i.y + i.h
+	parts := [4]ui.Rect {
+		{a.x, a.y, a.w, i.y - a.y},
+		{a.x, iy1, a.w, ay1 - iy1},
+		{a.x, i.y, i.x - a.x, i.h},
+		{ix1, i.y, ax1 - ix1, i.h},
+	}
+	for p in parts {
+		if p.w > 0 && p.h > 0 {
+			out[n] = p
+			n += 1
+		}
+	}
+	return out, n
 }
 
 @(private)

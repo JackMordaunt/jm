@@ -582,3 +582,40 @@ test_compose_draw_reaches_clip_edge :: proc(t: ^testing.T) {
 	d := off_render(&g)
 	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
 }
+
+// scrolled_grid is a column of distinct cells under a rect clip, moved
+// right by dx, and a mark outside the clip that changes with dx, in the
+// tile the strip the move uncovers lies in.
+@(private = "file")
+scrolled_grid :: proc(s: ^Scene, dx: f32) {
+	reset(s)
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{0, 0, 100, 200}, ui.translate(20, 20)})
+	for i in 0 ..< 18 {
+		col := ui.Color{u8(i * 13), u8(200 - i * 9), 90, 255}
+		append(&s.frame.draws, ui.Draw{ui.translate(22 + dx, 22 + f32(i) * 11), 0, ui.Fill{ui.Rect{0, 0, 60, 9}, col}})
+	}
+	append(&s.frame.draws, ui.Draw{ui.translate(2, 2), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 10, 10}, ui.Color{u8(dx * 5), 0, 0, 255}}})
+}
+
+// Workers paint the rects to repaint at once, so no two may overlap, even
+// when a strip a scroll uncovers lies in a tile that changed.
+@(test)
+test_compose_repaints_do_not_overlap :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 4)
+	defer rig_destroy(&g)
+	scrolled_grid(&g.scene, 0)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	scrolled_grid(&g.scene, 12)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	testing.expectf(t, len(g.c.damage.scrolls) == 1, "expected one scroll, got %v", g.c.damage.scrolls[:])
+	rects := g.c.damage.rects[:]
+	for a, i in rects {
+		for b in rects[i + 1:] {
+			o := ui.rect_intersect(a, b)
+			testing.expectf(t, o.w <= 0 || o.h <= 0, "%v and %v overlap", a, b)
+		}
+	}
+	d := off_render(&g)
+	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
+}
