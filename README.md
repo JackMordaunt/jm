@@ -45,8 +45,10 @@ binary.
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
 | `ui`      | immediate-mode UI: ops → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
-| `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`) and shapes text with it |
+| `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`), shapes text with it, and `snapshot`s a `ui` proc straight to a PNG |
 | `ui/sdl`  | the SDL3 window and event loop for a `ui` app |
+| `ui/diagram` | titled, accent-bordered groups of chips and arrows (solid or dashed) for an architecture diagram, over plain `ui` calls |
+| `ui/testutil` | `count_ops`: assertions a `ui` package's own tests and a downstream package's tests both want, without an import cycle |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
 | `pq`      | `connect`, `exec`, `escape_literal`, `escape_identifier`, `identity`: a PostgreSQL client over the system libpq, the one dynamically linked library |
 | `pq/testdb` | a throwaway PostgreSQL server on a Unix socket, for tests |

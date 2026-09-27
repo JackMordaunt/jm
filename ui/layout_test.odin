@@ -1,6 +1,7 @@
 package ui
 
 import "core:testing"
+import "jm:ui/testutil"
 
 // Harness is one window's worth of ui state for tests: ops, layout, router
 // and a light theme, over the stub shaper and the temp allocator.
@@ -68,17 +69,6 @@ pushes :: proc(o: ^Ops) -> [dynamic]Point {
 }
 
 @(private)
-count_ops :: proc(o: ^Ops, $T: typeid) -> int {
-	n := 0
-	for op in o.ops {
-		if _, ok := op.(T); ok {
-			n += 1
-		}
-	}
-	return n
-}
-
-@(private)
 index_of :: proc(o: ^Ops, $T: typeid, from := 0) -> int {
 	for i in from ..< len(o.ops) {
 		if _, ok := o.ops[i].(T); ok {
@@ -107,9 +97,9 @@ test_column_places_second_label_below_first :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(p), 2)
 	testing.expect_value(t, p[0], Point{0, 0})
 	testing.expect_value(t, p[1], Point{0, 14 + 8})
-	testing.expect_value(t, count_ops(&h.ops, Pop_Transform), 2)
-	testing.expect_value(t, count_ops(&h.ops, Glyphs), 2)
-	testing.expect_value(t, count_ops(&h.ops, Macro_Begin), 0)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Pop_Transform), 2)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Glyphs), 2)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 0)
 }
 
 @(test)
@@ -194,8 +184,8 @@ test_align_center_offsets_narrow_child :: proc(t: ^testing.T) {
 		label(gtx, "wide")
 	}
 	// Both children are macros placed at end: narrow first, then wide.
-	testing.expect_value(t, count_ops(&h.ops, Macro_Begin), 2)
-	testing.expect_value(t, count_ops(&h.ops, Call), 2)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 2)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Call), 2)
 	p := pushes(&h.ops)
 	testing.expect_value(t, len(p), 2)
 	testing.expect(t, near(p[0].x, (4 * W - W) / 2))
@@ -228,7 +218,7 @@ test_align_end_and_fill :: proc(t: ^testing.T) {
 		d := divider(gtx)
 		testing.expect_value(t, d.size, Size{200, 1})
 	}
-	testing.expect_value(t, count_ops(&h.ops, Macro_Begin), 0)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 0)
 }
 
 @(test)
@@ -283,7 +273,7 @@ test_fill_space_pushes_the_rest_to_the_end :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(p), 2)
 	testing.expect_value(t, p[0], Point{0, 0})
 	testing.expect(t, near(p[1].x, 300 - 2 * W))
-	testing.expect_value(t, count_ops(&h.ops, Macro_Begin), 1)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 1)
 }
 
 @(test)
@@ -362,8 +352,8 @@ test_nil_layout_places_at_origin :: proc(t: ^testing.T) {
 		label(gtx, "a")
 		label(gtx, "b")
 	}
-	testing.expect_value(t, count_ops(&h.ops, Push_Transform), 0)
-	testing.expect_value(t, count_ops(&h.ops, Glyphs), 2)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Push_Transform), 0)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Glyphs), 2)
 }
 
 @(test)

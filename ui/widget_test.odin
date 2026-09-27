@@ -3,6 +3,7 @@ package ui
 import "core:fmt"
 import "core:slice"
 import "core:testing"
+import "jm:ui/testutil"
 
 @(private)
 find_tag :: proc(o: ^Ops, name: string) -> (Area_Id, bool) {
@@ -117,7 +118,7 @@ test_checkbox_toggles :: proc(t: ^testing.T) {
 	agree(&h, &on)
 	area, ok := find_tag(&h.ops, "Agree")
 	testing.expect(t, ok)
-	testing.expect_value(t, count_ops(&h.ops, Stroke), 1) // unchecked outline
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Stroke), 1) // unchecked outline
 
 	harness_frame(&h)
 	push_event(&h, {kind = .Press, area = area, pos = {1, 1}})
@@ -244,7 +245,7 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 	names := tag_names(&h.ops)
 	testing.expect_value(t, len(names), 4)
 	testing.expect_value(t, names[3], "item 3")
-	testing.expect_value(t, count_ops(&h.ops, Call), 1) // item 0 from its measuring macro
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Call), 1) // item 0 from its measuring macro
 	ia := h.ops.ops[index_of(&h.ops, Input_Area)].(Input_Area)
 	testing.expect_value(t, ia.kinds, Event_Kinds{.Scroll})
 	// Items have distinct ids though they share a call site.
@@ -259,7 +260,7 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 	testing.expect_value(t, s.offset, 700)
 	// Item 0 is always measured; then rows 50..53.
 	testing.expect(t, slice.equal(m.laid[:], []int{0, 50, 51, 52, 53}))
-	testing.expect_value(t, count_ops(&h.ops, Call), 0)
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Call), 0)
 	p := pushes(&h.ops)
 	testing.expect_value(t, p[0], Point{0, 0})
 
