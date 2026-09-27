@@ -1,8 +1,9 @@
 /*
-Package selfupdate lets a distributed binary update itself from a release.
+Package selfupdate lets a distributed binary update itself from a release
+served at any base path.
 
 	r := selfupdate.run(selfupdate.Config{
-		repo       = "owner/tool",
+		base_url   = "https://example.com/tool/latest",
 		version    = VERSION,     // "" on a development build: nothing happens
 		asset      = "tool-linux-amd64",
 		public_key = PUBLIC_KEY,  // 32 raw Ed25519 bytes, embedded
@@ -11,12 +12,22 @@ Package selfupdate lets a distributed binary update itself from a release.
 	})
 	if r.outcome == .Update_Available { fmt.eprintln(r.message) }
 
-The release holds the assets, `sha256sums.txt`, an Ed25519 signature of it
-in `sha256sums.txt.sig`, and `version.txt`. Nothing is trusted until the
-signature verifies with the embedded key; the checksum file alone would
-only prove the download arrived intact. An update exists when the published
-hash for this asset differs from the hash of the running executable, so no
-version is parsed: version is for display and the development-build guard.
+The host is anything that serves files under one base path by plain GET: a
+GitHub release (`https://github.com/<owner>/<repo>/releases/latest/download`),
+an S3 bucket, a static web server, a network share, or a directory (a
+base_url without a scheme is read from disk, which is how the tests work).
+The layout under the base is:
+
+	<asset>               one file per platform, named as Config.asset
+	sha256sums.txt        `sha256sum` output over the assets
+	sha256sums.txt.sig    64-byte Ed25519 signature of sha256sums.txt
+	version.txt           the release's version, for display only
+
+Nothing is trusted until the signature verifies with the embedded key; the
+checksum file alone would only prove a download arrived intact. An update
+exists when the published hash for this asset differs from the hash of the
+running executable, so no version is parsed: version is for display and
+the development-build guard.
 
 Notify checks at most once per interval, recorded by a stamp under
 state_dir, and never changes anything. Apply downloads the asset, verifies
@@ -27,8 +38,7 @@ on Windows. The `.old` file is removed on the next run.
 A development build (empty version) or an executable that is a symlink,
 which is how a checkout is installed, is refused rather than replaced.
 
-Network is jm:http, so libcurl. A base_url without a scheme is read as a
-directory, which is how the tests serve a release.
+Network is jm:http, so libcurl.
 */
 package selfupdate
 
@@ -70,10 +80,8 @@ Result :: struct {
 }
 
 Config :: struct {
-	// GitHub "owner/name"; the release is the latest one.
-	repo:       string,
-	// Where the release files are. "" derives GitHub's latest-release URL
-	// from repo. A value without "://" is a directory read directly.
+	// Where the release files are served, without a trailing slash. A value
+	// without "://" is a directory read directly.
 	base_url:   string,
 	// This build's version. "" marks a development build and refuses.
 	version:    string,
@@ -96,10 +104,10 @@ Config :: struct {
 	timeout:    time.Duration,
 }
 
-SUMS_FILE :: "sha256sums.txt"
-SIG_FILE :: "sha256sums.txt.sig"
+SUMS_FILE    :: "sha256sums.txt"
+SIG_FILE     :: "sha256sums.txt.sig"
 VERSION_FILE :: "version.txt"
-STAMP_FILE :: "selfupdate.stamp"
+STAMP_FILE   :: "selfupdate.stamp"
 
 // run performs the check or the update cfg.mode asks for.
 run :: proc(cfg: Config) -> Result {
@@ -130,9 +138,9 @@ run :: proc(cfg: Config) -> Result {
 		}
 	}
 
-	base := cfg.base_url
+	base := strings.trim_suffix(cfg.base_url, "/")
 	if base == "" {
-		base = fmt.aprintf("https://github.com/%s/releases/latest/download", cfg.repo)
+		return {.Failed, "no base_url", ""}
 	}
 	sums, ok := fetch(base, SUMS_FILE, cfg.timeout)
 	if !ok {
@@ -150,7 +158,7 @@ run :: proc(cfg: Config) -> Result {
 		version = strings.trim_space(string(v))
 	}
 
-	want, found := published_hash(string(sums), cfg.asset)
+	want, found := published_hash_lookup(string(sums), cfg.asset)
 	if !found {
 		return {.Failed, fmt.aprintf("%s is not in the release", cfg.asset), version}
 	}
@@ -219,9 +227,9 @@ verify :: proc(public_key, msg, sig: []byte) -> bool {
 	return ed25519.verify(&pk, msg, sig)
 }
 
-// published_hash finds the hex hash for name in sha256sum's output, which
+// published_hash_lookup finds the hex hash for name in sha256sum's output, which
 // writes `hash  name`, or `hash *name` for a binary on Windows.
-published_hash :: proc(sums, name: string) -> (string, bool) {
+published_hash_lookup :: proc(sums, name: string) -> (string, bool) {
 	rest := sums
 	for raw in strings.split_lines_iterator(&rest) {
 		line := strings.trim_space(strings.trim_suffix(raw, "\r"))

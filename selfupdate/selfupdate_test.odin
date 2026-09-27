@@ -53,7 +53,6 @@ exe_file :: proc(t: ^testing.T, root, body: string) -> string {
 
 config :: proc(r: Release, exe, state: string, mode: Mode) -> Config {
 	return Config {
-		repo = "example/tool",
 		base_url = r.dir,
 		version = "v1.0.0",
 		asset = "tool",
@@ -190,12 +189,12 @@ development_builds_and_missing_assets_are_refused :: proc(t: ^testing.T) {
 published_hash_reads_both_sha256sum_forms :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	sums := "AAAA  tool-linux-amd64\nbbbb *tool-windows-amd64.exe\r\n"
-	h, ok := published_hash(sums, "tool-linux-amd64")
+	h, ok := published_hash_lookup(sums, "tool-linux-amd64")
 	testing.expect(t, ok)
 	testing.expect_value(t, h, "aaaa")
-	h, ok = published_hash(sums, "tool-windows-amd64.exe")
+	h, ok = published_hash_lookup(sums, "tool-windows-amd64.exe")
 	testing.expect(t, ok)
 	testing.expect_value(t, h, "bbbb")
-	_, ok = published_hash(sums, "tool")
+	_, ok = published_hash_lookup(sums, "tool")
 	testing.expect(t, !ok, "a prefix is not a match")
 }
