@@ -125,8 +125,10 @@ SIG_FILE :: "sha256sums.txt.sig"
 VERSION_FILE :: "version.txt"
 STAMP_FILE :: "selfupdate.stamp"
 
-PATH_CAP :: 4096
-SUMS_CAP :: 16 * 1024
+PATH_CAP :: 4 * mem.Kilobyte
+SUMS_CAP :: 16 * mem.Kilobyte
+// CHUNK is the read size for hashing and copying files.
+CHUNK :: 64 * mem.Kilobyte
 VERSION_CAP :: 128
 HEX_DIGEST :: 2 * sha2.DIGEST_SIZE_256
 
@@ -312,7 +314,7 @@ published_hash_lookup :: proc(sums, name: string) -> (string, bool) {
 }
 
 // file_hash writes the lowercase hex SHA-256 of a file into dst, reading
-// it in 64 KiB chunks.
+// it in CHUNK-sized pieces.
 file_hash :: proc(p: string, dst: []byte) -> os.Error {
 	f, err := os.open(p)
 	if err != nil {
@@ -321,7 +323,7 @@ file_hash :: proc(p: string, dst: []byte) -> os.Error {
 	defer os.close(f)
 	ctx: sha2.Context_256
 	sha2.init_256(&ctx)
-	chunk: [64 * 1024]byte
+	chunk: [CHUNK]byte
 	for {
 		n, rerr := os.read(f, chunk[:])
 		if n > 0 {
@@ -376,7 +378,7 @@ copy_file_to :: proc(p: string, dst: io.Writer) -> bool {
 		return false
 	}
 	defer os.close(f)
-	chunk: [64 * 1024]byte
+	chunk: [CHUNK]byte
 	for {
 		n, rerr := os.read(f, chunk[:])
 		if n > 0 {
