@@ -41,6 +41,12 @@ Damage :: struct {
 	rects:      [dynamic]ui.Rect, // to repaint
 	scrolls:    [dynamic]Scroll, // to apply before repainting
 	glyph_box:  map[Font_Key]ui.Rect, // per font and size: the box every glyph fits, from its origin
+	// resize_in_place says the target keeps its pixels across a change of
+	// size, as a view into one buffer does. A new size then repaints only
+	// what changed and what it uncovers, not the whole target. Leave it
+	// false for a target reallocated at each size.
+	resize_in_place: bool,
+	resized:    bool, // this frame's size differs from the last one's
 	scratch:    Damage_Scratch,
 }
 
@@ -204,13 +210,21 @@ damage_update :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: 
 // damage_begin records f's clips, looks up the metrics of every font f's
 // text uses (see damage_update) and sizes the per-draw records.
 damage_begin :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^Renderer = nil) {
-	if d.size != {w, h} || d.clear != bg {
+	if d.clear != bg {
 		d.valid = false
 	}
+	d.resized = d.size != {w, h}
+	if d.resized && !(d.valid && d.resize_in_place) {
+		d.valid = false
+	}
+	old_size, old_cols := d.size, d.cols
 	d.size = {w, h}
 	d.clear = bg
 	d.cols = (int(w) + TILE - 1) / TILE
 	d.rows = (int(h) + TILE - 1) / TILE
+	if d.resized && d.valid {
+		regrid(d, old_size, old_cols)
+	}
 	resize(&d.clips, len(f.clips))
 	for c, i in f.clips {
 		rec := Clip_Rec {
@@ -288,6 +302,31 @@ damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
 	}
 }
 
+// STALE is the hash of a tile whose pixels were never drawn: one a resize
+// uncovered. A drawn tile's hash is a 64-bit FNV-1a chain, so it equals
+// STALE, and stays clean when it should repaint, with odds of 1 in 2^64.
+@(private)
+STALE :: u64(0x5354414c455f5449)
+
+// regrid carries the previous frame's tile hashes from a grid of old_cols
+// columns over old_size to the current one. A tile keeps its hash only when
+// all of it that lies inside the new size lay inside the old one; the rest
+// were uncovered, and hold nothing drawn.
+@(private)
+regrid :: proc(d: ^Damage, old_size: [2]i32, old_cols: int) {
+	n := d.cols * d.rows
+	resize(&d.curr, n)
+	for ty in 0 ..< d.rows {
+		for tx in 0 ..< d.cols {
+			x1 := min((tx + 1) * TILE, int(d.size.x))
+			y1 := min((ty + 1) * TILE, int(d.size.y))
+			kept := x1 <= int(old_size.x) && y1 <= int(old_size.y)
+			d.curr[ty * d.cols + tx] = d.prev[ty * old_cols + tx] if kept else STALE
+		}
+	}
+	d.prev, d.curr = d.curr, d.prev
+}
+
 // damage_find looks for scrolls between the recorded frame and the
 // previous one, and returns how many of the previous frame's draws
 // damage_model must then see; zero when nothing scrolled.
@@ -301,6 +340,13 @@ damage_find :: proc(d: ^Damage) -> int {
 	s := &d.scratch
 	s.scrolled = false
 	if !d.valid {
+		s.placed_ok = false
+		return 0
+	}
+	// A resize frame does not scroll: the scroll model rebuilds the previous
+	// frame's tiles, which would forget the ones the resize uncovered. Nor
+	// does it record this frame's placed draws for the next frame to reuse.
+	if d.resized {
 		s.placed_ok = false
 		return 0
 	}

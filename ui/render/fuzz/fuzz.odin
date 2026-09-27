@@ -51,13 +51,17 @@ FRAMES :: 8
 CORPUS :: "ui/render/fuzz/corpus"
 
 // Rig is one case's renderer, compositors and targets. ref holds whole
-// renders, one and crew what one and four workers composed.
+// renders, one and crew what one and four workers composed. The composed
+// targets are views into buffers of the biggest size, resized in place as a
+// window's are, so a resize keeps what they hold.
 Rig :: struct {
 	r:         render.Renderer,
 	one, crew: render.Compositor,
 	ref:       bl.ImageCore,
 	img_one:   bl.ImageCore,
 	img_crew:  bl.ImageCore,
+	buf_one:   bl.ImageCore, // what img_one views
+	buf_crew:  bl.ImageCore,
 	size:      [2]i32,
 	ops:       ui.Ops,
 	frame:     ui.Frame,
@@ -87,7 +91,9 @@ setup :: proc() -> (^Rig, bool) {
 	// The case's arena is not thread-safe, and the crew's workers allocate
 	// on their own threads.
 	render.compositor_init(&g.crew, 4, runtime.heap_allocator())
-	for img in ([]^bl.ImageCore{&g.ref, &g.img_one, &g.img_crew}) {
+	g.one.damage.resize_in_place = true
+	g.crew.damage.resize_in_place = true
+	for img in ([]^bl.ImageCore{&g.ref, &g.img_one, &g.img_crew, &g.buf_one, &g.buf_crew}) {
 		bl.image_init(img)
 	}
 	ui.ops_init(&g.ops)
@@ -98,7 +104,7 @@ setup :: proc() -> (^Rig, bool) {
 
 teardown :: proc(g: ^^Rig) {
 	r := g^
-	for img in ([]^bl.ImageCore{&r.ref, &r.img_one, &r.img_crew}) {
+	for img in ([]^bl.ImageCore{&r.ref, &r.img_one, &r.img_crew, &r.buf_one, &r.buf_crew}) {
 		bl.image_destroy(img)
 	}
 	render.compositor_destroy(&r.one)
@@ -120,8 +126,15 @@ advance :: proc(g: ^Rig, src: ^harness.Source, m: ^Model, n: int) {
 	}
 	if m.size != g.size {
 		g.size = m.size
-		for img in ([]^bl.ImageCore{&g.ref, &g.img_one, &g.img_crew}) {
-			bl.image_create(img, m.size.x, m.size.y, .PRGB32)
+		bl.image_create(&g.ref, m.size.x, m.size.y, .PRGB32)
+		views := [2][2]^bl.ImageCore{{&g.img_one, &g.buf_one}, {&g.img_crew, &g.buf_crew}}
+		for v in views {
+			data: bl.ImageData
+			if bl.image_get_data(v[1], &data) != 0 || data.size.w == 0 {
+				bl.image_create(v[1], BIG.x, BIG.y, .PRGB32)
+				bl.image_get_data(v[1], &data)
+			}
+			bl.image_create_from_data(v[0], m.size.x, m.size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil)
 		}
 	}
 	build(m, &g.ops, &g.frame, render.shaper(&g.r, g.ops.fonts[:]), g.font)

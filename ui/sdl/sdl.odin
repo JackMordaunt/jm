@@ -213,6 +213,9 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	render.init(&l.r)
 	l.shaper = render.shaper(&l.r, l.ops.fonts[:])
 	render.compositor_init(&l.comp, int(app.threads))
+	// The window's image is a view into one buffer that only reallocates
+	// when a resize outgrows it, and then present invalidates the damage.
+	l.comp.damage.resize_in_place = true
 	l.default_theme = ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
 	l.theme = app.theme if app.theme != nil else &l.default_theme
 	for &a in l.arenas {

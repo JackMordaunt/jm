@@ -645,3 +645,93 @@ test_compose_repeats_do_not_scroll :: proc(t: ^testing.T) {
 	testing.expectf(t, len(again) == 0, "composing it again changed %v", again)
 	testing.expectf(t, len(g.c.damage.scrolls) == 0, "an unchanged frame scrolled %v", g.c.damage.scrolls[:])
 }
+
+// A target resized in place, as a view into one bigger buffer, keeps its
+// pixels: shrinking repaints nothing that did not change, growing repaints
+// only the tiles it uncovers, and every frame is what a whole render draws.
+// Without resize_in_place a new size repaints all of it.
+@(test)
+test_compose_resize_in_place :: proc(t: ^testing.T) {
+	CAP :: [2]i32{400, 320}
+	buffer, ref: bl.ImageCore
+	bl.image_init(&buffer)
+	bl.image_init(&ref)
+	defer bl.image_destroy(&buffer)
+	defer bl.image_destroy(&ref)
+	bl.image_create(&buffer, CAP.x, CAP.y, .PRGB32)
+	data: bl.ImageData
+	bl.image_get_data(&buffer, &data)
+
+	for in_place in ([]bool{true, false}) {
+		g: Rig
+		rig_init(&g, 2)
+		defer rig_destroy(&g)
+		g.c.damage.resize_in_place = in_place
+		scene_build(&g.scene, false)
+
+		sizes := [][2]i32{{320, 256}, {300, 240}, {360, 300}, {360, 300}}
+		for size, i in sizes {
+			view: bl.ImageCore
+			bl.image_init(&view)
+			defer bl.image_destroy(&view)
+			bl.image_create_from_data(&view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil)
+			rects := compose(&g.c, &g.scene.frame, &view, BG)
+
+			bl.image_create(&ref, size.x, size.y, .PRGB32)
+			render(&g.r, &g.scene.frame, &ref, BG)
+			d := max_delta(&view, &ref)
+			testing.expectf(t, d <= 3, "in place %v, size %v: composed differs from a whole render by %d", in_place, size, d)
+
+			painted := area(rects)
+			full := f32(size.x * size.y)
+			switch {
+			case i == 0 || !in_place && i < 3:
+				testing.expectf(t, painted == full, "in place %v, size %v: repainted %v of %v", in_place, size, painted, full)
+			case i == 1:
+				testing.expectf(t, painted == 0, "shrinking in place repainted %v", painted)
+			case i == 2:
+				// Only whole tiles inside 300x240 were drawn before: 256x192.
+				testing.expectf(t, painted == full - 256 * 192, "growing in place repainted %v of %v", painted, full)
+			case:
+				testing.expectf(t, painted == 0, "an unchanged frame repainted %v", painted)
+			}
+		}
+	}
+}
+
+// A resize frame skips scroll detection, so the frame after it must not
+// compare itself with the frame before the resize: drawn again unchanged,
+// it repaints and moves nothing.
+@(test)
+test_compose_frame_after_resize_does_not_scroll :: proc(t: ^testing.T) {
+	buffer: bl.ImageCore
+	bl.image_init(&buffer)
+	defer bl.image_destroy(&buffer)
+	bl.image_create(&buffer, CW, CH, .PRGB32)
+	data: bl.ImageData
+	bl.image_get_data(&buffer, &data)
+
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	g.c.damage.resize_in_place = true
+	steps := []struct {
+		size:   [2]i32,
+		offset: f32,
+	}{{{CW, CH}, 30}, {{CW, CH}, 30}, {{CW - 20, CH}, 37}, {{CW - 20, CH}, 37}}
+	for st, i in steps {
+		view: bl.ImageCore
+		bl.image_init(&view)
+		defer bl.image_destroy(&view)
+		bl.image_create_from_data(&view, st.size.x, st.size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil)
+		list_build(&g.scene, {origin = {40, 20}, offset = st.offset})
+		rects := compose(&g.c, &g.scene.frame, &view, BG)
+		if i == 2 {
+			testing.expectf(t, len(rects) > 0, "the resize frame, whose list scrolled, repainted nothing")
+		}
+		if i == len(steps) - 1 {
+			testing.expectf(t, len(rects) == 0, "drawn again unchanged, it changed %v", rects)
+			testing.expectf(t, len(g.c.damage.scrolls) == 0, "drawn again unchanged, it scrolled %v", g.c.damage.scrolls[:])
+		}
+	}
+}
