@@ -780,11 +780,11 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 		budget -= pairs
 		for n in new_p[g.new_lo:g.new_hi] {
 			for o in old_p[g.old_lo:g.old_hi] {
+				// Pairs that did not move vote too: content that repeats can
+				// look scrolled by its period when nothing moved at all.
 				dx, dy := n.e - o.e, n.f - o.f
-				if dx != 0 || dy != 0 {
-					if abs(dx - math.round(dx)) <= 1e-3 && abs(dy - math.round(dy)) <= 1e-3 {
-						s.votes[{i64(n.region), i64(math.round(dx)), i64(math.round(dy))}] += 1
-					}
+				if abs(dx - math.round(dx)) <= 1e-3 && abs(dy - math.round(dy)) <= 1e-3 {
+					s.votes[{i64(n.region), i64(math.round(dx)), i64(math.round(dy))}] += 1
 				}
 			}
 		}
@@ -800,7 +800,7 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 	// look-alike in the previous frame exactly one offset away. A spread of
 	// up to CONFIRM_SAMPLES of them is checked.
 	for a, cand in s.best {
-		if cand.z < 2 {
+		if cand.z < 2 || (cand.x == 0 && cand.y == 0) {
 			continue
 		}
 		best := [2]i32{i32(cand.x), i32(cand.y)}

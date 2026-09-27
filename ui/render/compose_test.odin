@@ -619,3 +619,27 @@ test_compose_repaints_do_not_overlap :: proc(t: ^testing.T) {
 	d := off_render(&g)
 	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
 }
+
+// A grid that repeats looks scrolled by its period; drawn again unchanged,
+// it must still repaint and move nothing.
+@(test)
+test_compose_repeats_do_not_scroll :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	grid :: proc(s: ^Scene) {
+		reset(s)
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{0, 0, 300, 230}, ui.translate(10, 10)})
+		for i in 0 ..< 200 {
+			x, y := f32(i % 10) * 30, f32(i / 10) * 12
+			append(&s.frame.draws, ui.Draw{ui.translate(12 + x, 12 + y), 0, ui.Fill{ui.Rect{0, 0, 26, 9}, ui.Color{u8(i % 10) * 25, 120, 200, 255}}})
+		}
+	}
+	grid(&g.scene)
+	first := compose(&g.c, &g.scene.frame, &g.img, BG)
+	testing.expect_value(t, area(first), f32(CW * CH))
+	grid(&g.scene)
+	again := compose(&g.c, &g.scene.frame, &g.img, BG)
+	testing.expectf(t, len(again) == 0, "composing it again changed %v", again)
+	testing.expectf(t, len(g.c.damage.scrolls) == 0, "an unchanged frame scrolled %v", g.c.damage.scrolls[:])
+}
