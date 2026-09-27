@@ -10,7 +10,7 @@ served at any base path.
 		mode       = .Notify,     // or .Apply on `tool update`
 		state_dir  = state,
 	})
-	if r.outcome == .Update_Available { fmt.eprintln(r.message) }
+	if r.outcome == .Update_Available { fmt.eprintln(selfupdate.message(&r)) }
 
 The host is anything that serves files under one base path by plain GET: a
 GitHub release (`https://github.com/<owner>/<repo>/releases/latest/download`),
@@ -38,20 +38,25 @@ on Windows. The `.old` file is removed on the next run.
 A development build (empty version) or an executable that is a symlink,
 which is how a checkout is installed, is refused rather than replaced.
 
-Network is jm:http, so libcurl.
+Memory: run allocates nothing from context.allocator. Paths, the checksum
+file, the signature and the messages live in fixed buffers on the stack
+and in the Result, files are hashed in chunks, and downloads stream to
+disk. The caps (4 KiB paths, 16 KiB of checksums, 128 bytes of version)
+fail loudly when exceeded. core:os and jm:http use the temp allocator for
+their own scoped conversions.
 */
 package selfupdate
 
 import "core:crypto/ed25519"
-import "core:crypto/hash"
-import "core:encoding/hex"
+import "core:crypto/sha2"
 import "core:fmt"
+import "core:io"
+import "core:mem"
 import "core:os"
 import "core:strings"
 import "core:time"
 
 import "jm:http"
-import "jm:path"
 
 Mode :: enum {
 	Notify,
@@ -72,11 +77,22 @@ Outcome :: enum {
 	Failed,
 }
 
+// Result is returned by value; message and version read its inline buffers.
 Result :: struct {
-	outcome: Outcome,
-	message: string,
-	// The released version, from version.txt, when it was read.
-	version: string,
+	outcome:     Outcome,
+	message_buf: [256]byte,
+	message_len: int,
+	version_buf: [VERSION_CAP]byte,
+	version_len: int,
+}
+
+message :: proc(r: ^Result) -> string {
+	return string(r.message_buf[:r.message_len])
+}
+
+// version is the released version from version.txt, when it was read.
+version :: proc(r: ^Result) -> string {
+	return string(r.version_buf[:r.version_len])
 }
 
 Config :: struct {
@@ -104,117 +120,166 @@ Config :: struct {
 	timeout:    time.Duration,
 }
 
-SUMS_FILE    :: "sha256sums.txt"
-SIG_FILE     :: "sha256sums.txt.sig"
+SUMS_FILE :: "sha256sums.txt"
+SIG_FILE :: "sha256sums.txt.sig"
 VERSION_FILE :: "version.txt"
-STAMP_FILE   :: "selfupdate.stamp"
+STAMP_FILE :: "selfupdate.stamp"
+
+PATH_CAP :: 4096
+SUMS_CAP :: 16 * 1024
+VERSION_CAP :: 128
+HEX_DIGEST :: 2 * sha2.DIGEST_SIZE_256
 
 // run performs the check or the update cfg.mode asks for.
-run :: proc(cfg: Config) -> Result {
+run :: proc(cfg: Config) -> (r: Result) {
+	// The one place core:os needs an allocator, given a stack arena.
+	scratch: [PATH_CAP]byte
+	arena: mem.Arena
+	mem.arena_init(&arena, scratch[:])
+
 	exe := cfg.exe
 	if exe == "" {
-		p, err := os.get_executable_path(context.allocator)
+		p, err := os.get_executable_path(mem.arena_allocator(&arena))
 		if err != nil {
-			return {.Failed, fmt.aprintf("cannot find this executable: %v", err), ""}
+			return failf(&r, .Failed, "cannot find this executable: %v", err)
 		}
 		exe = p
 	}
+	if len(exe) + 4 >= PATH_CAP {
+		return failf(&r, .Failed, "executable path longer than %d bytes", PATH_CAP)
+	}
+	old_path, new_path: [PATH_CAP]byte
+	old := fmt.bprintf(old_path[:], "%s.old", exe)
+	fresh := fmt.bprintf(new_path[:], "%s.new", exe)
 	// The previous binary, left by an earlier apply. On Windows the run
 	// that replaced it may still hold it open, so a failure here is fine.
-	os.remove(strings.concatenate({exe, ".old"}))
+	os.remove(old)
 
 	if cfg.version == "" {
-		return {.Refused, "development build", ""}
+		return failf(&r, .Refused, "development build")
 	}
 	if is_link(exe) {
-		return {.Refused, "installed as a link, not a copy", ""}
+		return failf(&r, .Refused, "installed as a link, not a copy")
 	}
 
 	interval := cfg.interval == 0 ? 24 * time.Hour : cfg.interval
-	stamp := cfg.state_dir == "" ? "" : path.join(cfg.state_dir, STAMP_FILE)
+	stamp_path: [PATH_CAP]byte
+	stamp := ""
+	if cfg.state_dir != "" {
+		stamp = fmt.bprintf(stamp_path[:], "%s%c%s", cfg.state_dir, SEPARATOR, STAMP_FILE)
+	}
 	if cfg.mode == .Notify && stamp != "" {
 		if t, err := os.modification_time_by_path(stamp); err == nil && time.since(t) < interval {
-			return {.Skipped, "checked recently", ""}
+			return failf(&r, .Skipped, "checked recently")
 		}
 	}
 
 	base := strings.trim_suffix(cfg.base_url, "/")
 	if base == "" {
-		return {.Failed, "no base_url", ""}
+		return failf(&r, .Failed, "no base_url")
 	}
-	sums, ok := fetch(base, SUMS_FILE, cfg.timeout)
-	if !ok {
-		return {.Failed, fmt.aprintf("cannot fetch %s/%s", base, SUMS_FILE), ""}
+	sums: Fixed(SUMS_CAP)
+	if !fetch(base, SUMS_FILE, fixed_writer(&sums), cfg.timeout) {
+		return failf(&r, .Failed, "cannot fetch %s/%s", base, SUMS_FILE)
 	}
-	sig, sok := fetch(base, SIG_FILE, cfg.timeout)
-	if !sok {
-		return {.Failed, fmt.aprintf("cannot fetch %s/%s", base, SIG_FILE), ""}
+	sig: Fixed(ed25519.SIGNATURE_SIZE)
+	if !fetch(base, SIG_FILE, fixed_writer(&sig), cfg.timeout) {
+		return failf(&r, .Failed, "cannot fetch %s/%s", base, SIG_FILE)
 	}
-	if !verify(cfg.public_key, sums, sig) {
-		return {.Failed, "signature of sha256sums.txt does not verify", ""}
+	if !verify(cfg.public_key, fixed_bytes(&sums), fixed_bytes(&sig)) {
+		return failf(&r, .Failed, "signature of %s does not verify", SUMS_FILE)
 	}
-	version := ""
-	if v, vok := fetch(base, VERSION_FILE, cfg.timeout); vok {
-		version = strings.trim_space(string(v))
+	ver: Fixed(VERSION_CAP)
+	if fetch(base, VERSION_FILE, fixed_writer(&ver), cfg.timeout) {
+		v := strings.trim_space(fixed_string(&ver))
+		r.version_len = copy(r.version_buf[:], v)
 	}
 
-	want, found := published_hash_lookup(string(sums), cfg.asset)
+	want, found := published_hash_lookup(fixed_string(&sums), cfg.asset)
 	if !found {
-		return {.Failed, fmt.aprintf("%s is not in the release", cfg.asset), version}
+		return failf(&r, .Failed, "%s is not in the release", cfg.asset)
 	}
-	have, herr := file_hash(exe)
-	if herr != nil {
-		return {.Failed, fmt.aprintf("cannot read %s: %v", exe, herr), version}
+	have: [HEX_DIGEST]byte
+	if err := file_hash(exe, have[:]); err != nil {
+		return failf(&r, .Failed, "cannot read %s: %v", exe, err)
 	}
 	if stamp != "" {
-		path.mkdirs(cfg.state_dir)
-		path.write(stamp, version)
+		os.make_directory_all(cfg.state_dir)
+		_ = os.write_entire_file(stamp, r.version_buf[:r.version_len])
 	}
-	if have == want {
-		return {.Up_To_Date, "up to date", version}
+	if strings.equal_fold(string(have[:]), want) {
+		return failf(&r, .Up_To_Date, "up to date")
 	}
 	if cfg.mode == .Notify {
-		msg := version == "" ? "update available" : fmt.aprintf("update available: %s", version)
-		return {.Update_Available, msg, version}
+		if r.version_len == 0 {
+			return failf(&r, .Update_Available, "update available")
+		}
+		return failf(&r, .Update_Available, "update available: %s", version(&r))
 	}
 
-	fresh := strings.concatenate({exe, ".new"})
 	if !fetch_to_file(base, cfg.asset, fresh, cfg.timeout) {
 		os.remove(fresh)
-		return {.Failed, fmt.aprintf("cannot download %s", cfg.asset), version}
+		return failf(&r, .Failed, "cannot download %s", cfg.asset)
 	}
-	got, gerr := file_hash(fresh)
-	if gerr != nil || got != want {
+	got: [HEX_DIGEST]byte
+	if err := file_hash(fresh, got[:]); err != nil || !strings.equal_fold(string(got[:]), want) {
 		os.remove(fresh)
-		return {.Failed, "downloaded file does not match its published hash", version}
+		return failf(&r, .Failed, "downloaded file does not match its published hash")
 	}
-	if msg := swap(exe, fresh); msg != "" {
+	if !swap(exe, old, fresh, &r) {
 		os.remove(fresh)
-		return {.Failed, msg, version}
+		return r
 	}
 	if cfg.no_reexec {
-		return {.Applied, "updated", version}
+		return failf(&r, .Applied, "updated")
 	}
 	args := cfg.args
 	if args == nil && len(os.args) > 1 {
 		args = os.args[1:]
 	}
-	if msg := reexec(exe, args); msg != "" {
-		return {.Failed, msg, version}
-	}
-	return {.Applied, "updated", version}
+	reexec(exe, args, &r)
+	return r
 }
 
-// key_from_hex decodes a 64-character hex public key.
-key_from_hex :: proc(s: string) -> ([]byte, bool) {
-	b, ok := hex.decode(transmute([]byte)s)
-	if !ok || len(b) != ed25519.PUBLIC_KEY_SIZE {
-		return nil, false
+// key_from_hex decodes a 64-character hex public key into dst, which must
+// hold 32 bytes.
+key_from_hex :: proc(s: string, dst: []byte) -> bool {
+	if len(s) != 2 * ed25519.PUBLIC_KEY_SIZE || len(dst) < ed25519.PUBLIC_KEY_SIZE {
+		return false
 	}
-	return b, true
+	for i in 0 ..< ed25519.PUBLIC_KEY_SIZE {
+		hi, ok1 := nibble(s[2 * i])
+		lo, ok2 := nibble(s[2 * i + 1])
+		if !ok1 || !ok2 {
+			return false
+		}
+		dst[i] = hi << 4 | lo
+	}
+	return true
 }
 
 // ---- internals ----------------------------------------------------------
+
+SEPARATOR :: '\\' when ODIN_OS == .Windows else '/'
+
+// failf sets the outcome and formats the message into the Result.
+failf :: proc(r: ^Result, outcome: Outcome, format: string, args: ..any) -> Result {
+	r.outcome = outcome
+	r.message_len = len(fmt.bprintf(r.message_buf[:], format, ..args))
+	return r^
+}
+
+nibble :: proc(c: byte) -> (byte, bool) {
+	switch {
+	case c >= '0' && c <= '9':
+		return c - '0', true
+	case c >= 'a' && c <= 'f':
+		return c - 'a' + 10, true
+	case c >= 'A' && c <= 'F':
+		return c - 'A' + 10, true
+	}
+	return 0, false
+}
 
 verify :: proc(public_key, msg, sig: []byte) -> bool {
 	pk: ed25519.Public_Key
@@ -227,8 +292,9 @@ verify :: proc(public_key, msg, sig: []byte) -> bool {
 	return ed25519.verify(&pk, msg, sig)
 }
 
-// published_hash_lookup finds the hex hash for name in sha256sum's output, which
-// writes `hash  name`, or `hash *name` for a binary on Windows.
+// published_hash_lookup finds the hex hash for name in sha256sum's output,
+// which writes `hash  name`, or `hash *name` for a binary on Windows. The
+// hash is returned as written; callers compare it case-insensitively.
 published_hash_lookup :: proc(sums, name: string) -> (string, bool) {
 	rest := sums
 	for raw in strings.split_lines_iterator(&rest) {
@@ -239,64 +305,116 @@ published_hash_lookup :: proc(sums, name: string) -> (string, bool) {
 		}
 		file := strings.trim_left(line[i:], " *")
 		if file == name {
-			return strings.to_lower(line[:i]), true
+			return line[:i], true
 		}
 	}
 	return "", false
 }
 
-file_hash :: proc(p: string) -> (string, os.Error) {
-	data, err := os.read_entire_file_from_path(p, context.allocator)
+// file_hash writes the lowercase hex SHA-256 of a file into dst, reading
+// it in 64 KiB chunks.
+file_hash :: proc(p: string, dst: []byte) -> os.Error {
+	f, err := os.open(p)
 	if err != nil {
-		return "", err
+		return err
 	}
-	digest := hash.hash_bytes(.SHA256, data)
-	return string(hex.encode(digest)), nil
+	defer os.close(f)
+	ctx: sha2.Context_256
+	sha2.init_256(&ctx)
+	chunk: [64 * 1024]byte
+	for {
+		n, rerr := os.read(f, chunk[:])
+		if n > 0 {
+			sha2.update(&ctx, chunk[:n])
+		}
+		if rerr != nil || n == 0 {
+			break
+		}
+	}
+	digest: [sha2.DIGEST_SIZE_256]byte
+	sha2.final(&ctx, digest[:])
+	hex := HEX
+	for b, i in digest {
+		dst[2 * i] = hex[b >> 4]
+		dst[2 * i + 1] = hex[b & 0xF]
+	}
+	return nil
 }
 
-fetch :: proc(base, name: string, timeout: time.Duration) -> ([]byte, bool) {
+HEX :: "0123456789abcdef"
+
+// fetch writes base/name into dst: over HTTP when base has a scheme,
+// otherwise from the file system.
+fetch :: proc(base, name: string, dst: io.Writer, timeout: time.Duration) -> bool {
 	if !strings.contains(base, "://") {
-		data, err := os.read_entire_file_from_path(path.join(base, name), context.allocator)
-		return data, err == nil
+		src: [PATH_CAP]byte
+		return copy_file_to(fmt.bprintf(src[:], "%s%c%s", base, SEPARATOR, name), dst)
 	}
-	url := strings.concatenate({base, "/", name})
-	res, err := http.get(url, {timeout = timeout == 0 ? 60 * time.Second : timeout})
-	if err != .None || !res.ok {
-		return nil, false
-	}
-	return transmute([]byte)res.body, true
+	url: [PATH_CAP]byte
+	res, err := http.stream(
+		"GET",
+		fmt.bprintf(url[:], "%s/%s", base, name),
+		dst,
+		{timeout = timeout == 0 ? 60 * time.Second : timeout},
+	)
+	return err == .None && res.ok
 }
 
 fetch_to_file :: proc(base, name, dest: string, timeout: time.Duration) -> bool {
-	if !strings.contains(base, "://") {
-		return os.copy_file(dest, path.join(base, name)) == nil
+	f, err := os.create(dest)
+	if err != nil {
+		return false
 	}
-	url := strings.concatenate({base, "/", name})
-	res, err := http.download(url, dest, {timeout = timeout == 0 ? 60 * time.Second : timeout})
-	return err == .None && res.ok
+	defer os.close(f)
+	return fetch(base, name, os.to_writer(f), timeout)
+}
+
+// copy_file_to streams a file into a writer through a stack buffer.
+copy_file_to :: proc(p: string, dst: io.Writer) -> bool {
+	f, err := os.open(p)
+	if err != nil {
+		return false
+	}
+	defer os.close(f)
+	chunk: [64 * 1024]byte
+	for {
+		n, rerr := os.read(f, chunk[:])
+		if n > 0 {
+			if _, werr := io.write_full(dst, chunk[:n]); werr != nil {
+				return false
+			}
+		}
+		if n == 0 || rerr != nil {
+			return n == 0 || rerr == .EOF
+		}
+	}
 }
 
 // swap moves the running executable aside and the new file into its place.
 // Renaming a running executable is allowed on every platform; overwriting
 // one is not on Windows, and on Unix the old process keeps its inode.
-swap :: proc(exe, fresh: string) -> string {
-	old := strings.concatenate({exe, ".old"})
+swap :: proc(exe, old, fresh: string, r: ^Result) -> bool {
 	os.remove(old)
 	if err := os.rename(exe, old); err != nil {
-		return fmt.aprintf("cannot move %s aside: %v", exe, err)
+		failf(r, .Failed, "cannot move %s aside: %v", exe, err)
+		return false
 	}
 	if err := os.rename(fresh, exe); err != nil {
 		// Put the old binary back rather than leave nothing on PATH.
 		os.rename(old, exe)
-		return fmt.aprintf("cannot install %s: %v", exe, err)
+		failf(r, .Failed, "cannot install %s: %v", exe, err)
+		return false
 	}
 	when ODIN_OS != .Windows {
 		os.change_mode(exe, os.Permissions_All - os.Permissions_Write_All + {.Write_User})
 	}
-	return ""
+	return true
 }
 
 is_link :: proc(p: string) -> bool {
-	_, err := os.read_link(p, context.temp_allocator)
+	buf: [PATH_CAP]byte
+	arena: mem.Arena
+	mem.arena_init(&arena, buf[:])
+	_, err := os.read_link(p, mem.arena_allocator(&arena))
 	return err == nil
 }
