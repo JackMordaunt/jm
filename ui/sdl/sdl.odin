@@ -39,7 +39,9 @@ On Windows the event loop sees no events until a resize drag ends, but
 SDL still sends WINDOW_EXPOSED to watches during it. The
 image and textures only grow, with headroom, so a resize in progress draws
 into what is already allocated; half a second after the size settles they
-shrink to fit.
+shrink to fit. While resizing, vsync is off and, on Windows, each frame
+waits for the desktop compositor, so the window does not show its new size
+with the previous frame's content in it.
 
 Coordinates: the ui proc lays out in logical units (window points).
 On a HiDPI display a root scale transform by the pixel density maps them to
@@ -527,6 +529,11 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 	src := sdl3.FRect{0, 0, f32(w.size.x), f32(w.size.y)}
 	sdl3.RenderTexture(w.renderer, w.textures[w.front], &src, nil)
 	sdl3.RenderPresent(w.renderer)
+	if w.live {
+		// Hold the resize until this frame is on screen, so the window is
+		// never shown at a size its content was not drawn for.
+		wait_for_compositor()
+	}
 	return true
 }
 
