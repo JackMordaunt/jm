@@ -566,3 +566,19 @@ test_compose_regrouping_repaints :: proc(t: ^testing.T) {
 	d := off_render(&g)
 	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
 }
+
+// A rect ending at x = 48.25 under a round-rect clip starting there: the
+// shapes do not overlap, but pixel 48 is partly in each, and a whole render
+// shows the rect there. The draw must be bounded to include it.
+@(test)
+test_compose_draw_reaches_clip_edge :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	reset(&g.scene)
+	append(&g.scene.frame.clips, ui.Clip{ui.NO_CLIP, ui.Round_Rect{{0, 0, 78, 24}, 3}, ui.translate(48.25, 15.5)})
+	append(&g.scene.frame.draws, ui.Draw{ui.translate(-27.75, -10.7), 0, ui.Fill{ui.Rect{0, 0, 76, 41}, ui.Color{60, 220, 5, 255}}})
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	d := off_render(&g)
+	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
+}

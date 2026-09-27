@@ -71,6 +71,10 @@ Clip_Rec :: struct {
 	local:     ui.Rect,
 	key:       u64, // shape and transform of this clip and its ancestors
 	bounds:    ui.Rect, // device bounds of the chain
+	// Whole pixels the chain's coverage can reach. A pixel two shapes each
+	// cover in part gets both coverages multiplied, so this can be wider
+	// than bounds, and a draw is bounded by it, not by bounds.
+	reach:     ui.Rect,
 	rect:      bool, // an axis-aligned Rect
 	all_rects: bool, // this clip and every ancestor are rect
 }
@@ -214,13 +218,14 @@ damage_begin :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^
 		}
 		_, is_rect := c.shape.(ui.Rect)
 		rec.rect = is_rect && ui.is_axis_aligned(c.transform)
-		parent_key, parent_box, parent_rects := ui.FNV_OFFSET, EVERYWHERE, true
+		parent_key, parent_box, parent_reach, parent_rects := ui.FNV_OFFSET, EVERYWHERE, EVERYWHERE, true
 		if c.parent != ui.NO_CLIP {
 			p := &d.clips[c.parent] // flatten appends a parent before its children
-			parent_key, parent_box, parent_rects = p.key, p.bounds, p.all_rects
+			parent_key, parent_box, parent_reach, parent_rects = p.key, p.bounds, p.reach, p.all_rects
 		}
 		rec.key = hash_affine(hash_value(parent_key, rec.shape), rec.t)
 		rec.bounds = ui.rect_intersect(ui.transform_rect(rec.t, rec.local), parent_box)
+		rec.reach = ui.rect_intersect(pixel_bounds(ui.transform_rect(rec.t, rec.local)), parent_reach)
 		rec.all_rects = rec.rect && parent_rects
 		d.clips[i] = rec
 	}
@@ -365,13 +370,13 @@ draw_rec :: proc(f: ^ui.Frame, clips: []Clip_Rec, glyph_box: ^map[Font_Key]ui.Re
 		rec.local = c.dst if c.dst.w > 0 && c.dst.h > 0 else EVERYWHERE
 	}
 	rec.content = h
-	clip_key, clip_box, clip_rects := ui.FNV_OFFSET, EVERYWHERE, true
+	clip_key, clip_box, clip_reach, clip_rects := ui.FNV_OFFSET, EVERYWHERE, EVERYWHERE, true
 	if d.clip != ui.NO_CLIP {
 		cl := &clips[d.clip]
-		clip_key, clip_box, clip_rects = cl.key, cl.bounds, cl.all_rects
+		clip_key, clip_box, clip_reach, clip_rects = cl.key, cl.bounds, cl.reach, cl.all_rects
 	}
 	rec.key = hash_affine(hash_value(clip_key, h), rec.t)
-	rec.bounds = pixel_bounds(ui.rect_intersect(ui.transform_rect(rec.t, rec.local), clip_box))
+	rec.bounds = ui.rect_intersect(pixel_bounds(ui.transform_rect(rec.t, rec.local)), clip_reach)
 
 	// What a scroll beneath may rely on: a solid axis-aligned fill is one
 	// color inside its corners and its clip's inner edge, and a stroked box
@@ -853,7 +858,7 @@ model_clips :: proc(d: ^Damage) {
 	for c, i in d.old_clips {
 		s.shift[i] = -1
 		s.keys[i] = c.key
-		s.boxes[i] = c.bounds
+		s.boxes[i] = c.reach
 		if c.parent == ui.NO_CLIP {
 			continue
 		}
@@ -870,7 +875,7 @@ model_clips :: proc(d: ^Damage) {
 		}
 		t := shifted(c.t, s.found[s.shift[i]].delta)
 		s.keys[i] = hash_affine(hash_value(s.keys[c.parent], c.shape), t)
-		s.boxes[i] = ui.rect_intersect(ui.transform_rect(t, c.local), s.boxes[c.parent])
+		s.boxes[i] = ui.rect_intersect(pixel_bounds(ui.transform_rect(t, c.local)), s.boxes[c.parent])
 	}
 
 	resize(&s.draw_keys, len(d.old_draws))
@@ -900,7 +905,7 @@ damage_model :: proc(d: ^Damage, lo, hi: int) {
 			clip_key, clip_box = s.keys[dr.clip], s.boxes[dr.clip]
 		}
 		s.draw_keys[i] = hash_affine(hash_value(clip_key, dr.content), t)
-		s.draw_boxes[i] = pixel_bounds(ui.rect_intersect(ui.transform_rect(t, dr.local), clip_box))
+		s.draw_boxes[i] = ui.rect_intersect(pixel_bounds(ui.transform_rect(t, dr.local)), clip_box)
 	}
 }
 
