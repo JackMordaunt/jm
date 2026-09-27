@@ -411,3 +411,19 @@ test_style_zero_means_theme :: proc(t: ^testing.T) {
 	testing.expect(t, d.bg != th.bg)
 	testing.expect_value(t, default_theme(0), th)
 }
+
+// Of several frame requests the soonest wins, whatever the order, and a
+// frame with none asks for nothing.
+@(test)
+test_request_frame_soonest_wins :: proc(t: ^testing.T) {
+	gtx: Ctx
+	testing.expect(t, !gtx.wants_frame)
+	request_frame(&gtx, 0.5)
+	request_frame(&gtx, 2)
+	testing.expect(t, gtx.wants_frame)
+	testing.expect_value(t, gtx.frame_after, 0.5)
+	request_frame(&gtx)
+	testing.expect_value(t, gtx.frame_after, 0)
+	request_frame(&gtx, -3)
+	testing.expect_value(t, gtx.frame_after, 0)
+}

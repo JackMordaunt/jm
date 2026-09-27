@@ -35,6 +35,8 @@ import "core:mem"
 // Ctx is the per-frame layout context every widget takes first. Widgets
 // record into ops, size themselves inside constraints, read theme for
 // defaults, shape text through shaper and read their events from router.
+// A host runs a frame for every input event; anything else that changes
+// with time asks for its next frame with request_frame.
 Ctx :: struct {
 	ops:         ^Ops,
 	constraints: Constraints,
@@ -43,8 +45,22 @@ Ctx :: struct {
 	router:      ^Router,
 	layout:      ^Layout,
 	frame:       u64,
-	dt:          f32,
+	dt:          f32, // seconds since the previous frame
 	allocator:   mem.Allocator,
+	wants_frame: bool, // request_frame was called this frame
+	frame_after: f32, // then: the fewest seconds any caller asked to wait
+}
+
+// request_frame asks the host for another frame within after seconds; 0,
+// the default, is the next display refresh. An animation asks every frame
+// it moves. Of several requests in one frame the soonest wins; a frame with
+// none waits for input.
+request_frame :: proc(gtx: ^Ctx, after: f32 = 0) {
+	a := max(after, 0)
+	if !gtx.wants_frame || a < gtx.frame_after {
+		gtx.frame_after = a
+	}
+	gtx.wants_frame = true
 }
 
 // Constraints flow down: a widget must return a size within [min, max].
