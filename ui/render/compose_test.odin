@@ -273,13 +273,15 @@ test_compose_scroll_refused :: proc(t: ^testing.T) {
 }
 
 // Whatever the sequence of scrolls and overlays, every frame must come out
-// as a whole render draws it.
+// as a whole render draws it. The sequence is fixed: from the test runner's
+// random seed, 18 of 200 seeds scrolled too little to count, and
+// ui/render/fuzz covers the variety.
 @(test)
 test_compose_scroll_sequence :: proc(t: ^testing.T) {
 	g: Rig
 	rig_init(&g, 3)
 	defer rig_destroy(&g)
-	rng := u64(t.seed) | 1
+	rng: u64 = 0x9E3779B97F4A7C15
 	next :: proc(x: ^u64) -> u64 {
 		x^ ~= x^ << 13
 		x^ ~= x^ >> 7
