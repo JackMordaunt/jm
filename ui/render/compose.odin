@@ -83,9 +83,6 @@ MOVE_PARTS :: 4
 // the last worker. Fewer than one worker counts as one. Every worker's
 // Renderer allocates from allocator on its own thread, so with more than
 // one worker it must be thread-safe: the default heap allocator is,
-// core:mem's arenas, which take no lock, are not. Every worker's
-// Renderer allocates from allocator on its own thread, so with more than
-// one worker it must be thread-safe: the default heap allocator is,
 // core:mem's arenas, which take no lock, are not.
 compositor_init :: proc(c: ^Compositor, workers: int, allocator := context.allocator) {
 	n := max(workers, 1)

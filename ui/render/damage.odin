@@ -97,6 +97,7 @@ Damage_Scratch :: struct {
 	draw_keys:  [dynamic]u64, // per old draw, as moved
 	draw_boxes: [dynamic]ui.Rect,
 	found:      [dynamic]Found_Scroll,
+	last_run:   [dynamic]int, // bin's scratch: per tile, the run of the last draw binned
 	strips:     [dynamic]ui.Rect, // pixels the found scrolls cannot fill
 }
 
@@ -136,6 +137,7 @@ damage_init :: proc(d: ^Damage, allocator := context.allocator) {
 	s.draw_keys = make([dynamic]u64, allocator)
 	s.draw_boxes = make([dynamic]ui.Rect, allocator)
 	s.found = make([dynamic]Found_Scroll, allocator)
+	s.last_run = make([dynamic]int, allocator)
 	s.strips = make([dynamic]ui.Rect, allocator)
 }
 
@@ -167,6 +169,7 @@ damage_destroy :: proc(d: ^Damage) {
 	delete(s.draw_keys)
 	delete(s.draw_boxes)
 	delete(s.found)
+	delete(s.last_run)
 	delete(s.strips)
 	d^ = {}
 }
@@ -286,7 +289,7 @@ damage_find :: proc(d: ^Damage) -> int {
 	resize(&d.prev, n)
 	clear(&d.rects)
 	clear(&d.scrolls)
-	bin(d.curr[:], d.cols, d.rows, d.draws[:])
+	bin(d.curr[:], d.cols, d.rows, d.draws[:], d.clips[:], &d.scratch.last_run)
 	s := &d.scratch
 	s.scrolled = false
 	if !d.valid {
@@ -437,12 +440,26 @@ pixel_bounds :: proc(r: ui.Rect) -> ui.Rect {
 
 // bin folds each draw's key into the tiles its bounds touch, in draw order.
 // Given keys and boxes, draw i is binned as keys[i] over boxes[i] instead.
+//
+// render draws a run of consecutive draws under a clip that needs a mask as
+// one group, so the clip's edge covers them once; which draws share a run
+// changes pixels even when a draw that splits the run lies elsewhere. So a
+// draw under such a clip also folds in whether it is in the same run as the
+// draw before it in the tile. last is scratch, one entry per tile.
 @(private)
-bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, keys: []u64 = nil, boxes: []ui.Rect = nil) {
+bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec, last: ^[dynamic]int, keys: []u64 = nil, boxes: []ui.Rect = nil) {
 	for &t in tiles {
 		t = ui.FNV_OFFSET
 	}
+	resize(last, len(tiles))
+	for &l in last {
+		l = -1
+	}
+	run := 0
 	for &dr, i in draws {
+		if i > 0 && dr.clip != draws[i - 1].clip {
+			run += 1
+		}
 		k, b := dr.key, dr.bounds
 		if keys != nil {
 			k, b = keys[i], boxes[i]
@@ -450,13 +467,20 @@ bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, keys: []u64 = nil,
 		if b.w <= 0 || b.h <= 0 {
 			continue
 		}
+		masked := dr.clip != ui.NO_CLIP && !clips[dr.clip].all_rects
 		x0 := clamp(int(b.x) / TILE, 0, cols - 1)
 		y0 := clamp(int(b.y) / TILE, 0, rows - 1)
 		x1 := clamp(int(b.x + b.w - 1) / TILE, 0, cols - 1)
 		y1 := clamp(int(b.y + b.h - 1) / TILE, 0, rows - 1)
 		for ty in y0 ..= y1 {
 			for tx in x0 ..= x1 {
-				tiles[ty * cols + tx] = hash_value(tiles[ty * cols + tx], k)
+				t := ty * cols + tx
+				h := hash_value(tiles[t], k)
+				if masked {
+					h = hash_value(h, last[t] == run)
+				}
+				tiles[t] = h
+				last[t] = run
 			}
 		}
 	}
@@ -883,7 +907,7 @@ damage_model :: proc(d: ^Damage, lo, hi: int) {
 @(private)
 model_finish :: proc(d: ^Damage) {
 	s := &d.scratch
-	bin(d.prev[:], d.cols, d.rows, d.old_draws[:], s.draw_keys[:], s.draw_boxes[:])
+	bin(d.prev[:], d.cols, d.rows, d.old_draws[:], d.old_clips[:], &s.last_run, s.draw_keys[:], s.draw_boxes[:])
 
 	// A move cannot fill the strip it uncovers, nor the partly covered
 	// pixels along a fractional edge, which it leaves in place. Those are

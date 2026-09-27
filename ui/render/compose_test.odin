@@ -551,3 +551,18 @@ test_compose_band_keeps_groups_apart :: proc(t: ^testing.T) {
 	d := off_render(&g)
 	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
 }
+
+// Moving B between A and C splits their group and changes the clip's edge
+// where they overlap, though B lies in other tiles: those tiles must repaint.
+@(test)
+test_compose_regrouping_repaints :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	split_groups(&g.scene, false)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	split_groups(&g.scene, true)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	d := off_render(&g)
+	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
+}
