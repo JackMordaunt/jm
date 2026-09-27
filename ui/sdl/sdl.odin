@@ -135,6 +135,8 @@ Window :: struct {
 	cap:      [2]i32, // what pixels and textures are allocated at
 	resized:  u64, // ticks, in ms, of the last change of size
 	live:     bool, // a resize is in progress, and vsync is off for it
+	live_at:  u64, // ticks, in ms, of the last frame that kept it live
+	sized:    bool, // the frame being drawn is for a new size
 	density:  f32,
 }
 
@@ -310,10 +312,30 @@ redraw_on_expose :: proc "c" (userdata: rawptr, e: ^sdl3.Event) -> bool {
 		return true
 	}
 	context = l.ctx
-	if resize(&l.w) {
-		step(l)
+	size := l.w.size
+	if !resize(&l.w) {
+		return true
 	}
+	// A move exposes the window too, but its content is still right, and
+	// the compositor takes frames presented during a move so slowly that
+	// presenting blocks and holds the move back: draw only for a new size.
+	// An animation pauses while the window moves.
+	if l.w.size == size {
+		return true
+	}
+	step(l)
 	return true
+}
+
+// go_live turns vsync off for frames drawn while the window is being
+// resized; settle turns it back on once they stop.
+@(private)
+go_live :: proc(w: ^Window) {
+	w.live_at = sdl3.GetTicks()
+	if !w.live {
+		sdl3.SetRenderVSync(w.renderer, 0)
+		w.live = true
+	}
 }
 
 @(private)
@@ -384,9 +406,9 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 		// The window shows its new size before a frame for it arrives: the
 		// old frame, cropped when shrinking. Waiting for vsync to present
 		// the new one keeps that on screen up to a refresh longer.
-		if !exact && w.textures[0] != nil && !w.live {
-			sdl3.SetRenderVSync(w.renderer, 0)
-			w.live = true
+		if !exact && w.textures[0] != nil {
+			go_live(w)
+			w.sized = true
 		}
 	}
 	w.size = size
@@ -396,7 +418,13 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 	fits := w.textures[0] != nil && size.x <= w.cap.x && size.y <= w.cap.y
 	if exact || !fits {
 		// The first allocation has no resize in progress to leave room for.
-		cap := size if exact || w.textures[0] == nil else size + GROW
+		// A resize that outgrows the buffers grows them to the display, so
+		// the rest of the drag draws into what is allocated.
+		cap := size
+		if !exact && w.textures[0] != nil {
+			d := display_pixels(w)
+			cap = {max(size.x + GROW, d.x), max(size.y + GROW, d.y)}
+		}
 		destroy_textures(w)
 		// ARGB8888 is a native-endian 0xAARRGGBB word: Blend2D's PRGB32
 		// layout. Copies between the textures must be exact: no blending,
@@ -426,13 +454,24 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 	return bl.image_create_from_data(&w.view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil) == 0
 }
 
+// display_pixels is the size, in pixels, of the display showing w.
+@(private)
+display_pixels :: proc(w: ^Window) -> [2]i32 {
+	mode := sdl3.GetCurrentDisplayMode(sdl3.GetDisplayForWindow(w.window))
+	if mode == nil {
+		return {}
+	}
+	d := mode.pixel_density if mode.pixel_density > 0 else 1
+	return {i32(f32(mode.w) * d), i32(f32(mode.h) * d)}
+}
+
 // settle turns vsync back on once the size has not changed for LIVE_MS,
 // and shrinks the image and textures to the window once it has not changed
 // for SETTLE_MS.
 @(private)
 settle :: proc(w: ^Window) {
 	since := sdl3.GetTicks() - w.resized
-	if w.live && since >= LIVE_MS {
+	if w.live && sdl3.GetTicks() - w.live_at >= LIVE_MS {
 		sdl3.SetRenderVSync(w.renderer, 1)
 		w.live = false
 	}
@@ -458,8 +497,14 @@ wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
 	// A resize in progress, or oversized buffers, wake the loop in time for
 	// settle.
 	if w.live || w.cap != w.size {
-		after_ms := i64(LIVE_MS) if w.live else i64(SETTLE_MS)
-		due := i32(max(after_ms - i64(sdl3.GetTicks() - w.resized), 0)) + 1
+		now := sdl3.GetTicks()
+		due_live := i64(LIVE_MS) - i64(now - w.live_at)
+		due_settle := i64(SETTLE_MS) - i64(now - w.resized)
+		left := due_live if w.live else due_settle
+		if w.live && w.cap != w.size {
+			left = min(due_live, due_settle)
+		}
+		due := i32(max(left, 0)) + 1
 		ms = due if ms < 0 else min(ms, due)
 	}
 	if ms < 0 {
@@ -529,10 +574,11 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 	src := sdl3.FRect{0, 0, f32(w.size.x), f32(w.size.y)}
 	sdl3.RenderTexture(w.renderer, w.textures[w.front], &src, nil)
 	sdl3.RenderPresent(w.renderer)
-	if w.live {
+	if w.sized {
 		// Hold the resize until this frame is on screen, so the window is
 		// never shown at a size its content was not drawn for.
 		wait_for_compositor()
+		w.sized = false
 	}
 	return true
 }
