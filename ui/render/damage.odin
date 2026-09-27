@@ -66,6 +66,10 @@ Draw_Rec :: struct {
 	key:     u64, // content, transform and clip chain
 	bounds:  ui.Rect, // device pixels it can touch, whole pixels; empty when none
 	flat:    ui.Rect, // device rect where it paints one constant color, else empty
+	// flat_local is flat before the transform and the clip, for the scroll
+	// model to move; flat_key hashes what it paints there, the color alone.
+	flat_local: ui.Rect,
+	flat_key:   u64,
 	hole:    ui.Rect, // device rect where it paints nothing, else empty
 }
 
@@ -106,6 +110,8 @@ Damage_Scratch :: struct {
 	boxes:      [dynamic]ui.Rect,
 	draw_keys:  [dynamic]u64, // per old draw, as moved
 	draw_boxes: [dynamic]ui.Rect,
+	draw_flats: [dynamic]ui.Rect, // per old draw, as moved
+	geo:        [dynamic]ui.Rect, // per old clip, as moved: its chain's device bounds
 	found:      [dynamic]Found_Scroll,
 	last_run:   [dynamic]int, // bin's scratch: per tile, the run of the last draw binned
 	strips:     [dynamic]ui.Rect, // pixels the found scrolls cannot fill
@@ -147,6 +153,8 @@ damage_init :: proc(d: ^Damage, allocator := context.allocator) {
 	s.boxes = make([dynamic]ui.Rect, allocator)
 	s.draw_keys = make([dynamic]u64, allocator)
 	s.draw_boxes = make([dynamic]ui.Rect, allocator)
+	s.draw_flats = make([dynamic]ui.Rect, allocator)
+	s.geo = make([dynamic]ui.Rect, allocator)
 	s.found = make([dynamic]Found_Scroll, allocator)
 	s.last_run = make([dynamic]int, allocator)
 	s.strips = make([dynamic]ui.Rect, allocator)
@@ -180,6 +188,8 @@ damage_destroy :: proc(d: ^Damage) {
 	delete(s.boxes)
 	delete(s.draw_keys)
 	delete(s.draw_boxes)
+	delete(s.draw_flats)
+	delete(s.geo)
 	delete(s.found)
 	delete(s.last_run)
 	delete(s.strips)
@@ -301,6 +311,23 @@ damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
 		}
 	}
 }
+
+// flat_rect is the whole device pixels inside local under t, less a pixel
+// along the edge of the clip bounds clip.
+@(private)
+flat_rect :: proc(t: ui.Affine, local, clip: ui.Rect) -> ui.Rect {
+	d := ui.transform_rect(t, local)
+	x0, y0 := math.ceil(d.x), math.ceil(d.y)
+	x1, y1 := math.floor(d.x + d.w), math.floor(d.y + d.h)
+	if x1 <= x0 || y1 <= y0 {
+		return {}
+	}
+	return ui.rect_intersect({x0, y0, x1 - x0, y1 - y0}, outset(clip, -1))
+}
+
+// FLAT_TAG marks a flat_key, so a flat fill never hashes like another draw.
+@(private)
+FLAT_TAG :: u64(0x464c41545f46494c)
 
 // STALE is the hash of a tile whose pixels were never drawn: one a resize
 // uncovered. A drawn tile's hash is a 64-bit FNV-1a chain, so it equals
@@ -477,8 +504,13 @@ draw_rec :: proc(f: ^ui.Frame, clips: []Clip_Rec, glyph_box: ^map[Font_Key]ui.Re
 	#partial switch c in d.cmd {
 	case ui.Fill:
 		if _, solid := c.paint.(ui.Color); solid && clip_rects {
-			if r, ok := box_inside(c.shape, 1); ok {
-				rec.flat = ui.rect_intersect(ui.transform_rect(rec.t, r), outset(clip_box, -1))
+			// A rect's edges need no margin: the whole pixels inside it are
+			// fully covered. A round rect's corners do.
+			_, square := c.shape.(ui.Rect)
+			if r, ok := box_inside(c.shape, 0 if square else 1); ok {
+				rec.flat = flat_rect(rec.t, r, clip_box)
+				rec.flat_local = r
+				rec.flat_key = hash_value(hash_value(ui.FNV_OFFSET, FLAT_TAG), c.paint.(ui.Color))
 			}
 		}
 	case ui.Stroke:
@@ -541,8 +573,15 @@ pixel_bounds :: proc(r: ui.Rect) -> ui.Rect {
 // changes pixels even when a draw that splits the run lies elsewhere. So a
 // draw under such a clip also folds in whether it is in the same run as the
 // draw before it in the tile. last is scratch, one entry per tile.
+//
+// A tile a solid fill covers completely gets the fill's color alone,
+// flat_key: the fill paints that tile the same whatever its size or place,
+// so a background or panel that grows with the window changes only the
+// tiles along its edges. Whole tiles are tested, not the part inside the
+// target, so a tile does not change key when only the target's size does.
+// flats, given with keys, are the draws' flat rects as moved.
 @(private)
-bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec, last: ^[dynamic]int, keys: []u64 = nil, boxes: []ui.Rect = nil) {
+bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec, last: ^[dynamic]int, keys: []u64 = nil, boxes: []ui.Rect = nil, flats: []ui.Rect = nil) {
 	for &t in tiles {
 		t = ui.FNV_OFFSET
 	}
@@ -555,9 +594,9 @@ bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec,
 		if i > 0 && dr.clip != draws[i - 1].clip {
 			run += 1
 		}
-		k, b := dr.key, dr.bounds
+		k, b, flat := dr.key, dr.bounds, dr.flat
 		if keys != nil {
-			k, b = keys[i], boxes[i]
+			k, b, flat = keys[i], boxes[i], flats[i]
 		}
 		if b.w <= 0 || b.h <= 0 {
 			continue
@@ -570,7 +609,14 @@ bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec,
 		for ty in y0 ..= y1 {
 			for tx in x0 ..= x1 {
 				t := ty * cols + tx
-				h := hash_value(tiles[t], k)
+				kt := k
+				if flat.w > 0 {
+					tile := ui.Rect{f32(tx * TILE), f32(ty * TILE), TILE, TILE}
+					if contains(flat, tile) {
+						kt = dr.flat_key
+					}
+				}
+				h := hash_value(tiles[t], kt)
 				if masked {
 					h = hash_value(h, last[t] == run)
 				}
@@ -947,10 +993,12 @@ model_clips :: proc(d: ^Damage) {
 	resize(&s.shift, len(d.old_clips))
 	resize(&s.keys, len(d.old_clips))
 	resize(&s.boxes, len(d.old_clips))
+	resize(&s.geo, len(d.old_clips))
 	for c, i in d.old_clips {
 		s.shift[i] = -1
 		s.keys[i] = c.key
 		s.boxes[i] = c.reach
+		s.geo[i] = c.bounds
 		if c.parent == ui.NO_CLIP {
 			continue
 		}
@@ -968,10 +1016,12 @@ model_clips :: proc(d: ^Damage) {
 		t := shifted(c.t, s.found[s.shift[i]].delta)
 		s.keys[i] = hash_affine(hash_value(s.keys[c.parent], c.shape), t)
 		s.boxes[i] = ui.rect_intersect(pixel_bounds(ui.transform_rect(t, c.local)), s.boxes[c.parent])
+		s.geo[i] = ui.rect_intersect(ui.transform_rect(t, c.local), s.geo[c.parent])
 	}
 
 	resize(&s.draw_keys, len(d.old_draws))
 	resize(&s.draw_boxes, len(d.old_draws))
+	resize(&s.draw_flats, len(d.old_draws))
 }
 
 // damage_model moves the previous frame's draws lo ..< hi with the found
@@ -981,7 +1031,7 @@ damage_model :: proc(d: ^Damage, lo, hi: int) {
 	s := &d.scratch
 	for i in lo ..< hi {
 		dr := &d.old_draws[i]
-		s.draw_keys[i], s.draw_boxes[i] = dr.key, dr.bounds
+		s.draw_keys[i], s.draw_boxes[i], s.draw_flats[i] = dr.key, dr.bounds, dr.flat
 		qi := -1
 		for q, n in s.found {
 			if s.old_anchor[i] == q.old {
@@ -992,19 +1042,23 @@ damage_model :: proc(d: ^Damage, lo, hi: int) {
 			continue
 		}
 		t := shifted(dr.t, s.found[qi].delta)
-		clip_key, clip_box := ui.FNV_OFFSET, EVERYWHERE
+		clip_key, clip_box, clip_geo := ui.FNV_OFFSET, EVERYWHERE, EVERYWHERE
 		if dr.clip != ui.NO_CLIP {
-			clip_key, clip_box = s.keys[dr.clip], s.boxes[dr.clip]
+			clip_key, clip_box, clip_geo = s.keys[dr.clip], s.boxes[dr.clip], s.geo[dr.clip]
 		}
 		s.draw_keys[i] = hash_affine(hash_value(clip_key, dr.content), t)
 		s.draw_boxes[i] = ui.rect_intersect(pixel_bounds(ui.transform_rect(t, dr.local)), clip_box)
+		s.draw_flats[i] = {}
+		if dr.flat_local.w > 0 {
+			s.draw_flats[i] = flat_rect(t, dr.flat_local, clip_geo)
+		}
 	}
 }
 
 @(private)
 model_finish :: proc(d: ^Damage) {
 	s := &d.scratch
-	bin(d.prev[:], d.cols, d.rows, d.old_draws[:], d.old_clips[:], &s.last_run, s.draw_keys[:], s.draw_boxes[:])
+	bin(d.prev[:], d.cols, d.rows, d.old_draws[:], d.old_clips[:], &s.last_run, s.draw_keys[:], s.draw_boxes[:], s.draw_flats[:])
 
 	// A move cannot fill the strip it uncovers, nor the partly covered
 	// pixels along a fractional edge, which it leaves in place. Those are

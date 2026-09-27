@@ -190,6 +190,11 @@ item :: proc(src: ^harness.Source, m: ^Model) -> Item {
 		radius = f32(harness.integer_in(src, 0, 20)),
 	}
 	it.size = {f32(harness.integer_in(src, 1, 90)), f32(harness.integer_in(src, 1, 60))}
+	// One in six is large enough to cover whole tiles, like a background
+	// or a panel.
+	if harness.integer_in(src, 0, 6) == 5 {
+		it.size = {f32(harness.integer_in(src, 64, int(w) + 40)), f32(harness.integer_in(src, 64, int(h) + 40))}
+	}
 	it.pos = {
 		f32(harness.integer_in(src, -30, int(w) + 10)) + harness.choice(src, FRACTIONS),
 		f32(harness.integer_in(src, -30, int(h) + 10)) + harness.choice(src, FRACTIONS),

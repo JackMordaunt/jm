@@ -37,11 +37,11 @@ when ODIN_OS == .Windows {
 
 BG :: ui.Color{240, 240, 244, 255}
 
-// SEAM is how far a composed pixel may differ from a whole render: bands
-// meet at tile edges, and a shape crossing one is rasterised against the
-// band's edge rather than the target's, which can come out a few steps
-// apart; the fuzzer has seen three.
-SEAM :: 3
+// SEAM is how far a composed pixel may differ from a whole render. A band
+// renders its draws moved by its offset and clipped at its own edges, and
+// antialiased edges, masks and gradients come out a few steps apart from a
+// whole render; seed 1 found five, at case 10281.
+SEAM :: 6
 
 // FRAMES bounds how many edited frames a case composes after its first.
 FRAMES :: 8

@@ -762,3 +762,42 @@ test_compose_no_scroll_under_masked_clip :: proc(t: ^testing.T) {
 	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
 	testing.expectf(t, len(g.c.damage.scrolls) == 0, "scrolled under a masked clip: %v", g.c.damage.scrolls[:])
 }
+
+// A background that fills the target, resized with it in place, changes
+// only the tiles along its edges: whole tiles inside it hash its color, not
+// its size.
+@(test)
+test_compose_background_follows_resize :: proc(t: ^testing.T) {
+	buffer: bl.ImageCore
+	bl.image_init(&buffer)
+	defer bl.image_destroy(&buffer)
+	bl.image_create(&buffer, CW, CH, .PRGB32)
+	data: bl.ImageData
+	bl.image_get_data(&buffer, &data)
+
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	g.c.damage.resize_in_place = true
+	sizes := [][2]i32{{CW, CH}, {CW - 20, CH}, {CW - 20, CH - 30}}
+	for size, i in sizes {
+		view: bl.ImageCore
+		bl.image_init(&view)
+		defer bl.image_destroy(&view)
+		bl.image_create_from_data(&view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil)
+		reset(&g.scene)
+		append(&g.scene.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, f32(size.x), f32(size.y)}, ui.Color{30, 60, 90, 255}}})
+		append(&g.scene.frame.draws, ui.Draw{ui.translate(20, 20), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 40, 30}, ui.Color{220, 40, 40, 255}}})
+		painted := area(compose(&g.c, &g.scene.frame, &view, BG))
+		if i > 0 {
+			// Only the last column of tiles, and after the second resize the
+			// last row, touch the moving edge.
+			full := f32(size.x * size.y)
+			testing.expectf(t, painted > 0 && painted <= full / 3, "size %v repainted %v of %v", size, painted, full)
+		}
+		bl.image_create(&g.ref, size.x, size.y, .PRGB32)
+		render(&g.r, &g.scene.frame, &g.ref, BG)
+		d := max_delta(&view, &g.ref)
+		testing.expectf(t, d <= SEAM, "size %v: composed differs from a whole render by %d", size, d)
+	}
+}
