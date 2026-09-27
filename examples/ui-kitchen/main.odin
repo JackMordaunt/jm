@@ -37,6 +37,7 @@ Model :: struct {
 	list:      ui.List_State,
 	picked:    int,
 	angle:     f32,
+	still:     bool, // the badge has stopped turning
 }
 
 kitchen :: proc(gtx: ^ui.Ctx, user: rawptr) {
@@ -72,10 +73,17 @@ kitchen :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			side := ui.column(gtx, gap = 12)
 			defer ui.end(&side)
 			badge(gtx, "affine + clip", m.angle)
+			if ui.button(gtx, "Spin" if m.still else "Stop") {
+				m.still = !m.still
+			}
 			ui.label(gtx, fmt.tprintf("picked row %d", m.picked), {color = th.muted})
 		}
 	}
-	m.angle += gtx.dt * 0.4
+	// A turning badge wants every frame; a still one lets the window idle.
+	if !m.still {
+		m.angle += gtx.dt * 0.4
+		ui.request_frame(gtx)
+	}
 }
 
 // form is the left panel: every input widget and a save round-trip.
