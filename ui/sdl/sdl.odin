@@ -109,11 +109,13 @@ MAX_DT :: 0.1
 
 // GROW is the headroom, in pixels, the image and textures get when a
 // resize outgrows them, and SETTLE how long after the last resize they
-// shrink to fit.
+// shrink to fit. LIVE_MS is how long after the last resize vsync stays off.
 @(private)
 GROW :: 256
 @(private)
 SETTLE_MS :: 500
+@(private)
+LIVE_MS :: 100
 
 // Window is the SDL state of one running App.
 @(private)
@@ -130,6 +132,7 @@ Window :: struct {
 	size:     [2]i32, // device pixels
 	cap:      [2]i32, // what pixels and textures are allocated at
 	resized:  u64, // ticks, in ms, of the last change of size
+	live:     bool, // a resize is in progress, and vsync is off for it
 	density:  f32,
 }
 
@@ -373,6 +376,13 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 	}
 	if size != w.size {
 		w.resized = sdl3.GetTicks()
+		// The window shows its new size before a frame for it arrives: the
+		// old frame, cropped when shrinking. Waiting for vsync to present
+		// the new one keeps that on screen up to a refresh longer.
+		if !exact && w.textures[0] != nil && !w.live {
+			sdl3.SetRenderVSync(w.renderer, 0)
+			w.live = true
+		}
 	}
 	w.size = size
 	if size.x <= 0 || size.y <= 0 {
@@ -411,11 +421,17 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 	return bl.image_create_from_data(&w.view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil) == 0
 }
 
-// settle shrinks the image and textures to the window once its size has
-// not changed for SETTLE_MS.
+// settle turns vsync back on once the size has not changed for LIVE_MS,
+// and shrinks the image and textures to the window once it has not changed
+// for SETTLE_MS.
 @(private)
 settle :: proc(w: ^Window) {
-	if w.cap == w.size || w.size.x <= 0 || w.size.y <= 0 || sdl3.GetTicks() - w.resized < SETTLE_MS {
+	since := sdl3.GetTicks() - w.resized
+	if w.live && since >= LIVE_MS {
+		sdl3.SetRenderVSync(w.renderer, 1)
+		w.live = false
+	}
+	if w.cap == w.size || w.size.x <= 0 || w.size.y <= 0 || since < SETTLE_MS {
 		return
 	}
 	_ = resize(w, exact = true)
@@ -434,9 +450,11 @@ wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
 			ms = max(ms, refresh_ms(w))
 		}
 	}
-	// Oversized buffers wake the loop in time for settle to shrink them.
-	if w.cap != w.size {
-		due := i32(max(i64(SETTLE_MS) - i64(sdl3.GetTicks() - w.resized), 0)) + 1
+	// A resize in progress, or oversized buffers, wake the loop in time for
+	// settle.
+	if w.live || w.cap != w.size {
+		after_ms := i64(LIVE_MS) if w.live else i64(SETTLE_MS)
+		due := i32(max(after_ms - i64(sdl3.GetTicks() - w.resized), 0)) + 1
 		ms = due if ms < 0 else min(ms, due)
 	}
 	if ms < 0 {
