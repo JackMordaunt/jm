@@ -96,6 +96,22 @@ App :: struct {
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 }
 
+// default_font is a path an app can try for a sans-serif font without
+// hardcoding one itself, picked per ODIN_OS from paths commonly reported
+// for a stock install of each OS (Arial on Windows, San Francisco on
+// macOS, Liberation Sans on Linux) — not verified against any specific OS
+// version by this build, and not checked to exist. Check the path (or fall
+// back) before relying on it.
+default_font :: proc() -> string {
+	when ODIN_OS == .Windows {
+		return "C:/Windows/Fonts/arial.ttf"
+	} else when ODIN_OS == .Darwin {
+		return "/System/Library/Fonts/SFNS.ttf"
+	} else {
+		return "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
+	}
+}
+
 // wake runs a frame soon, as input would. Any thread may call it, for
 // instance when work the ui shows has finished.
 wake :: proc() {

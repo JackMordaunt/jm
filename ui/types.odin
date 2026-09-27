@@ -49,6 +49,15 @@ Path_Verb :: enum u8 {
 	Close,
 }
 
+// verbs and points must be built with make(..., gtx.allocator) — or with
+// line, polyline or polygon, which do this for you — never a bare
+// composite literal like []Point{a, b}. In an isolated repro against odin
+// dev-2026-09 (a6650ce78), such a literal read back correctly inside the
+// proc that wrote it and as garbage from its caller once that proc
+// returned — consistent with that literal being backed by the proc's own
+// stack frame rather than any allocator, though only this one case was
+// checked. add_path stores the slices exactly as given and never copies
+// them.
 Path :: struct {
 	verbs:  []Path_Verb,
 	points: []Point,

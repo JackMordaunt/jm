@@ -31,6 +31,7 @@ Probe :: struct {
 	ui:          proc(gtx: ^Ctx, user: rawptr),
 	user:        rawptr,
 	size:        Size,
+	dt:          f32, // gtx.dt for the next probe_frame; probe_set_dt overrides
 	frame_no:    u64,
 	wants_frame: bool, // the last frame called request_frame
 	frame_after: f32, // then: the soonest it asked for, in seconds
@@ -57,6 +58,7 @@ probe_init :: proc(
 	p.allocator = allocator
 	p.shaper = stub_shaper()
 	p.theme = theme.? or_else default_theme(font)
+	p.dt = 1.0 / 60
 	ops_init(&p.ops, allocator)
 	frame_init(&p.frame, allocator)
 	frame_init(&p.prev, allocator)
@@ -93,7 +95,7 @@ probe_frame :: proc(p: ^Probe) {
 		router      = &p.router,
 		layout      = &p.layout,
 		frame       = p.frame_no,
-		dt          = 1.0 / 60,
+		dt          = p.dt,
 		allocator   = virtual.arena_allocator(&p.arena),
 	}
 	p.ui(&gtx, p.user)
@@ -101,6 +103,26 @@ probe_frame :: proc(p: ^Probe) {
 	flatten(&p.ops, &p.frame)
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
+}
+
+// probe_set_dt overrides gtx.dt for every probe_frame from here on, in
+// place of the fixed 1/60 s default: an animation driven by dt can be
+// sampled at a chosen rate, or advanced by a chosen step with probe_advance,
+// without waiting on a real clock.
+probe_set_dt :: proc(p: ^Probe, dt: f32) {
+	p.dt = dt
+}
+
+// probe_advance runs n frames (one when n <= 0), each dt seconds apart, and
+// leaves probe_current as the last. It is probe_frame repeated for an
+// animation that needs several steps to reach the state under test.
+probe_advance :: proc(p: ^Probe, n: int, dt: f32) {
+	prev := p.dt
+	probe_set_dt(p, dt)
+	defer probe_set_dt(p, prev)
+	for _ in 0 ..< max(n, 1) {
+		probe_frame(p)
+	}
 }
 
 // probe_current returns the frame laid out by the last probe_frame.

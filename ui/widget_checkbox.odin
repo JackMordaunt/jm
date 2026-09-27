@@ -36,20 +36,16 @@ checkbox :: proc(
 		if painted(s.checked) {
 			fill(o, bx, s.checked)
 		}
-		verbs := make([]Path_Verb, 3, gtx.allocator)
-		points := make([]Point, 3, gtx.allocator)
-		verbs[0], verbs[1], verbs[2] = .Move, .Line, .Line
-		points[0] = {0.24 * side, y + 0.52 * side}
-		points[1] = {0.42 * side, y + 0.70 * side}
-		points[2] = {0.76 * side, y + 0.30 * side}
-		mark := add_path(o, {verbs, points})
 		if painted(s.mark) {
-			stroke(
-				o,
-				Path_Ref{mark},
-				s.mark,
-				{width = max(side / 8, 1.5), cap = .Round, join = .Round},
+			mark := polyline(
+				gtx,
+				[]Point {
+					{0.24 * side, y + 0.52 * side},
+					{0.42 * side, y + 0.70 * side},
+					{0.76 * side, y + 0.30 * side},
+				},
 			)
+			stroke(o, mark, s.mark, {width = max(side / 8, 1.5), cap = .Round, join = .Round})
 		}
 	} else {
 		if painted(s.box) {

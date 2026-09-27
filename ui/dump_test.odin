@@ -7,6 +7,7 @@ import "core:testing"
 
 // golden_scene records a small scene touching every dump form. Shared with
 // encode_test.odin.
+@(private)
 golden_scene :: proc(ops: ^Ops) {
 	font := add_font(ops, "inter.ttf")
 	img := add_image(ops, "logo.png")

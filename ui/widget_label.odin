@@ -23,6 +23,19 @@ label :: proc(
 	return widget_end(gtx, &p, {size, m.ascent})
 }
 
+// text draws one line of s with its top-left at pos: font, size and colour
+// come from style same as label, but there is no widget slot, no sizing
+// against constraints and no tag. For a custom widget or canvas that places
+// its own text directly, this is the one call in place of shape, metrics,
+// line_height, add_run and glyphs.
+text :: proc(gtx: ^Ctx, s: string, pos: Point, style := Label_Style{}) {
+	st := resolve_label(gtx.theme, style)
+	run, m := shape_line(gtx, s, st.size)
+	if painted(st.color) {
+		glyphs(gtx.ops, add_run(gtx.ops, run), {pos.x, pos.y + m.ascent}, st.color)
+	}
+}
+
 // shape_line shapes text in the theme font at size, into the frame
 // allocator, and returns the run with the font's metrics.
 @(private)

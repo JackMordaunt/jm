@@ -207,6 +207,10 @@ call :: proc(o: ^Ops, id: Macro_Id) {
 
 // Resources.
 
+// add_path records p as given: it does not copy verbs or points, so they
+// must outlive the frame (gtx.allocator, never a bare composite literal —
+// see Path). add_run and add_image/add_font follow the same rule for their
+// own slices.
 add_path :: proc(o: ^Ops, p: Path) -> Path_Id {
 	append(&o.paths, p)
 	return Path_Id(len(o.paths) - 1)
