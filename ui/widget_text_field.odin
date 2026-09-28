@@ -113,8 +113,8 @@ text_field :: proc(
 	return changed
 }
 
-// text_key applies an editing key; true when the text changed.
-@(private)
+// text_key applies an editing key to s; true when the text changed.
+// Exported for text inputs built outside this package.
 text_key :: proc(s: ^Text_State, k: Key) -> bool {
 	#partial switch k {
 	case .Backspace:
@@ -150,7 +150,6 @@ text_key :: proc(s: ^Text_State, k: Key) -> bool {
 
 // text_hit returns the rune boundary nearest x (in text space). It shapes
 // each prefix, which is exact for any shaper and cheap for one line.
-@(private)
 text_hit :: proc(gtx: ^Ctx, s: ^Text_State, size: f32, x: f32) -> int {
 	str := string(s.buf[:])
 	best, best_d := 0, abs(x)

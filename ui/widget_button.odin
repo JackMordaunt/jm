@@ -88,8 +88,8 @@ button :: proc(
 // while focused — a widget that registers .Key and .Focus/.Blur in its
 // input_area (button, icon_button, fab) becomes keyboard-activatable for
 // free; one that doesn't (checkbox) sees no Key or Focus/Blur events at
-// all, since the router only delivers what an area registered.
-@(private)
+// all, since the router only delivers what an area registered. Exported
+// for widgets built outside this package (jm:ui/material's controls).
 click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: Rect) -> bool {
 	clicked := false
 	for e in events(gtx, area) {
@@ -117,7 +117,7 @@ click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: R
 		case .Key:
 			if e.key == .Enter || e.key == .Space {
 				clicked = true
-				start_ripple(st, {bounds.w / 2, bounds.h / 2}) // no pointer position for a keyboard activation
+				start_ripple(st, {bounds.x + bounds.w / 2, bounds.y + bounds.h / 2}) // no pointer position for a keyboard activation
 			}
 		}
 	}
@@ -129,7 +129,6 @@ click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: R
 // animation rather than queuing or blending with the first. Simpler than
 // tracking multiple concurrent ripples per widget; revisit if a rapid
 // double-click ever needs to show two overlapping ripples at once.
-@(private)
 start_ripple :: proc(st: ^Widget_State, origin: Point) {
 	st.ripple = {to = 1, duration = RIPPLE_DURATION}
 	st.ripple_origin = origin
@@ -142,7 +141,6 @@ start_ripple :: proc(st: ^Widget_State, origin: Point) {
 // so RIPPLE_DURATION and RIPPLE_PEAK_OPACITY are a deliberate, reasonable
 // choice (the same intensity as the pressed state layer, fading out),
 // not a verified value.
-@(private)
 paint_ripple :: proc(gtx: ^Ctx, st: ^Widget_State, shape: Shape, tint: Color) {
 	if st.ripple.t >= st.ripple.duration {
 		return

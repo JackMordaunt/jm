@@ -46,7 +46,6 @@ shape_line :: proc(gtx: ^Ctx, text: string, size: f32) -> (Glyph_Run, Font_Metri
 
 // frame_string copies s into the frame allocator, since ops outlive the
 // caller's strings only for the frame.
-@(private)
 frame_string :: proc(gtx: ^Ctx, s: string) -> string {
 	out, _ := strings.clone(s, gtx.allocator)
 	return out

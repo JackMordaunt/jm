@@ -149,7 +149,7 @@ pad :: proc {
 	pad_xy,
 }
 
-@(private)
+// or_color is c, or def when c is the zero Color ("take the theme's").
 or_color :: proc(c, def: Color) -> Color {
 	return c == {} ? def : c
 }
@@ -174,7 +174,7 @@ or_padding :: proc(p, def: Padding) -> Padding {
 	return {max(p.left, 0), max(p.top, 0), max(p.right, 0), max(p.bottom, 0)}
 }
 
-@(private)
+// painted reports whether c has any alpha: a widget skips paint that has none.
 painted :: proc(c: Color) -> bool {
 	return c[3] != 0
 }
