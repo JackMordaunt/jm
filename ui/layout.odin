@@ -68,6 +68,7 @@ Widget_State :: struct {
 	flex_count:    int,
 	ripple:        Tween, // button family: ink-ripple progress since the last Press; ripple.t < ripple.duration means still animating
 	ripple_origin: Point, // where that Press landed, local to the widget
+	springs:       [4]Spring, // a component's own animated properties, one slot each, numbered by the component
 }
 
 @(private)
