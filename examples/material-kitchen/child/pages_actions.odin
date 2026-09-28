@@ -56,7 +56,7 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		W := [?]f32{0, 1, 2}
 		DIS := [?]bool{false, false, true}
 		sel := [3]bool{true, false, false}
-		m3.button_group(gtx, LABELS[:], sel[:], connected = true, disabled = DIS[:], weights = W[:], width = 480, key = 50)
+		m3.button_group(gtx, LABELS[:], sel[:], connected = true, disabled = DIS[:], weights = W[:], width = min(480, gtx.constraints.max.x), key = 50)
 		FIVE := [?]string{"Mon", "Tue", "Wed", "Thu", "Fri"}
 		m3.button_group(gtx, FIVE[:], m.group_c[:], width = 250, overflow = &m.group_menu, key = 51)
 	}

@@ -24,7 +24,7 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	section(gtx, "Live", fmt.tprintf("cards hold any widgets; clicked %d times", m.card_hits))
-	r := ui.row(gtx, gap = 16)
+	r := ui.wrap(gtx, gap = 16)
 	defer ui.end(&r)
 	for kind, i in m3.Card_Kind {
 		hit: bool

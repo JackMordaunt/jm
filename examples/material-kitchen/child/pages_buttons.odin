@@ -376,16 +376,16 @@ page_split :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		defer ui.end(&r)
 		ui.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 24 - label_width(gtx, n), 0))
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		size := m3.Button_Size(i)
 		shut, open := false, true
 		m3.split_button(gtx, "Save", &shut, .Filled, size = size, state = .Enabled, key = u64(200 + i * 4))
-		if size != .X_Large { // three x-large pairs overflow the page
-			m3.split_button(gtx, "Save", &shut, .Filled, size = size, state = .Pressed, key = u64(201 + i * 4))
-		}
+		m3.split_button(gtx, "Save", &shut, .Filled, size = size, state = .Pressed, key = u64(201 + i * 4))
 		m3.split_button(gtx, "Save", &open, .Filled, size = size, state = .Enabled, key = u64(202 + i * 4))
 	}
 	section(gtx, "Live")
-	r := ui.row(gtx, gap = 16, align = .Center)
+	r := ui.wrap(gtx, gap = 16, align = .Center)
 	defer ui.end(&r)
 	m3.split_button(gtx, "Save", &m.expanded, .Filled, .Edit, key = 40)
 	m3.split_button(gtx, "Share", &m.split_open, .Outlined, .Share, size = .Medium, key = 41)

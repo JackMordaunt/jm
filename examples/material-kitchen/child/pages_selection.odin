@@ -187,7 +187,7 @@ page_text_fields :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Autocomplete", "a field composed with a menu of options as wide as it; type to filter, arrows and Enter to pick, Escape to close")
 	FRUIT := [?]string{"Apple", "Apricot", "Banana", "Blueberry", "Cherry", "Grape"}
 	{
-		r := ui.row(gtx, gap = 24, key = 400)
+		r := ui.wrap(gtx, gap = 24, line_gap = 12, key = 400)
 		defer ui.end(&r)
 		if i := m3.autocomplete(gtx, &m.fruit, "Fruit", FRUIT[:], &m.fruit_open, .Filled, key = 401); i >= 0 {
 			m.fruit_pick = FRUIT[i]
@@ -200,7 +200,7 @@ page_text_fields :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	ui.spacer(gtx, 8)
 
 	section(gtx, "Live", "click to focus, then type")
-	r := ui.row(gtx, gap = 24)
+	r := ui.wrap(gtx, gap = 24, line_gap = 12)
 	defer ui.end(&r)
 	m3.text_field(gtx, &m.name, "Name", .Filled, supporting = "As it appears on your card", key = 500)
 	m3.text_field(gtx, &m.email, "Email", .Outlined, .Mail, placeholder = "you@example.com", key = 501)
