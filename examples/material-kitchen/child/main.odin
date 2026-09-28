@@ -9,6 +9,8 @@
 //	material-kitchen-child -page Buttons -dump            that page's ops as text
 //	material-kitchen-child -dark ...                      the dark scheme
 //	material-kitchen-child -size 950x1040 ...             at another window size
+//	material-kitchen-child -reveal ...                    show what hides until used
+//	JM_UI_REVEAL=1 ...                                    the same, live or headless
 //	material-kitchen-child -page Menus -click Edit -png out.png  click by tag first
 //	material-kitchen-child -open ...                      every menu, dialog and snackbar open
 //
@@ -469,8 +471,13 @@ main :: proc() {
 	}
 	args := os.args[1:]
 	size := ui.Size{WIDTH, HEIGHT}
+	debug: ui.Debug_Flags
 	for i := 0; i < len(args); i += 1 {
 		switch args[i] {
+		case "-reveal":
+			// Parts that hide until used (idle scroll bars) draw anyway, in
+			// the -png, -dump and -click that follow.
+			debug += {.Reveal}
 		case "-size":
 			// -size WxH renders at another window size, to check the
 			// layout at a phone width or a half-screen tile.
@@ -511,7 +518,7 @@ main :: proc() {
 			}
 			i += 1
 			p: ui.Probe
-			ui.probe_init(&p, kitchen_ui, &m, size)
+			ui.probe_init(&p, kitchen_ui, &m, size, debug = debug)
 			defer ui.probe_destroy(&p)
 			if !ui.probe_click(&p, args[i]) {
 				fmt.eprintfln("no %q to click", args[i])
@@ -520,7 +527,7 @@ main :: proc() {
 			ui.probe_frame(&p)
 		case "-dump":
 			p: ui.Probe
-			ui.probe_init(&p, kitchen_ui, &m, size)
+			ui.probe_init(&p, kitchen_ui, &m, size, debug = debug)
 			defer ui.probe_destroy(&p)
 			fmt.print(ui.probe_dump(&p))
 		case "-png":
@@ -529,7 +536,7 @@ main :: proc() {
 				os.exit(2)
 			}
 			i += 1
-			if !render.snapshot(kitchen_ui, &m, size, fonts, args[i]) {
+			if !render.snapshot(kitchen_ui, &m, size, fonts, args[i], debug = debug) {
 				fmt.eprintfln("could not write %s", args[i])
 				os.exit(1)
 			}
