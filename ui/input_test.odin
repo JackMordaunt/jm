@@ -132,6 +132,33 @@ input_hit_test_filters_kinds :: proc(t: ^testing.T) {
 }
 
 @(test)
+input_router_travel_is_local_and_ignores_where_the_area_moved :: proc(t: ^testing.T) {
+	r: Router
+	router_init(&r)
+	defer router_destroy(&r)
+	// The area is drawn at 2x, then moves 40px right between frames: travel
+	// is the pointer's own movement in local units either way.
+	a: Frame
+	frame_init(&a)
+	defer frame_destroy(&a)
+	add_hit(&a, 1, Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, mul(scale(2, 2), translate(10, 0)))
+	evs := route(&r, &a, {kind = .Press, pos = {20, 20}}, {kind = .Move, pos = {30, 20}})
+	if !testing.expect_value(t, len(evs), 2) {
+		return
+	}
+	testing.expect_value(t, evs[1].travel, Point{5, 0})
+	b: Frame
+	frame_init(&b)
+	defer frame_destroy(&b)
+	add_hit(&b, 1, Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, mul(scale(2, 2), translate(50, 0)))
+	evs = route(&r, &b, {kind = .Move, pos = {36, 20}})
+	if !testing.expect_value(t, len(evs), 1) {
+		return
+	}
+	testing.expect_value(t, evs[0].travel, Point{3, 0})
+}
+
+@(test)
 input_router_grabs_until_release :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)

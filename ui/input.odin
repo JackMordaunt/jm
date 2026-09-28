@@ -55,6 +55,7 @@ Router :: struct {
 	focus_hit:   Hit,
 	hover_hit:   Hit,
 	pressed_hit: Hit,
+	pointer:     Point, // the device position of the last pointer event, for Event.travel
 }
 
 @(private = "file")
@@ -126,6 +127,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 		case .Enter, .Leave, .Focus, .Blur:
 		// Synthesized by the router; a pushed one is ignored.
+		}
+		if e.kind == .Press || e.kind == .Release || e.kind == .Move {
+			r.pointer = e.pos
 		}
 	}
 	clear(&r.queue)
@@ -291,10 +295,14 @@ deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: Point) -> bool {
 	return true
 }
 
-// deliver_pointer delivers e to h with pos mapped into h's local space.
+// deliver_pointer delivers e to h with pos mapped into h's local space,
+// and its travel since the last pointer event mapped the same way.
 @(private = "file")
 deliver_pointer :: proc(r: ^Router, h: Hit, e: Raw_Event) {
-	deliver(r, h, e, to_local(h, e.pos))
+	pos := to_local(h, e.pos)
+	if deliver(r, h, e, pos) {
+		r.events[len(r.events) - 1].travel = pos - to_local(h, r.pointer)
+	}
 }
 
 // synth delivers a router-made event of kind to h.

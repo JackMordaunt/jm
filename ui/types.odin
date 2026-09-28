@@ -166,6 +166,7 @@ Event :: struct {
 	kind:   Event_Kind,
 	area:   Area_Id,
 	pos:    Point, // local to the area for pointer kinds
+	travel: Point, // pointer kinds: how far the pointer moved since the previous pointer event, in local units. Unlike differences of pos, it does not change when the area itself moves between frames, so a drag that moves its own widget adds it up without feeding back.
 	button: Button,
 	scroll: [2]f32,
 	key:    Key,
