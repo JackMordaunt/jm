@@ -236,12 +236,20 @@ widget_begin :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placem
 	return p
 }
 
+// BOUNDS_COLOR outlines widgets under Debug_Flag.Bounds: magenta, a colour
+// no theme uses, translucent so nested boxes read as nesting.
+BOUNDS_COLOR :: Color{255, 0, 255, 140}
+
 // widget_end closes a widget opened by widget_begin: it clamps dims into the
 // constraints the widget was given, restores gtx.constraints and reports the
 // size to the container. Returns the clamped dims.
 widget_end :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 	d := dims
 	d.size = constrain(p.given, d.size)
+	if .Bounds in gtx.debug {
+		// In the widget's own space, before its transform or macro closes.
+		stroke(gtx.ops, Rect{0, 0, d.size.x, d.size.y}, BOUNDS_COLOR, {width = 1})
+	}
 	if p.pushed {
 		pop_transform(gtx.ops)
 	}

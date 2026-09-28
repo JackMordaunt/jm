@@ -1,6 +1,7 @@
 package ui
 
 import "core:os"
+import "core:strings"
 
 // Debug_Flag is a switch for inspecting a UI, set on Ctx.debug.
 Debug_Flag :: enum u8 {
@@ -9,25 +10,44 @@ Debug_Flag :: enum u8 {
 	// render that must show every part. Layout, input and animation are
 	// unchanged; only whether the part is drawn differs.
 	Reveal,
+	// Bounds outlines every widget's box, so a layout bug (a child past
+	// its parent, a gap from the wrong side) shows in one screenshot.
+	Bounds,
 }
 
 Debug_Flags :: bit_set[Debug_Flag;u8]
 
-// DEBUG_REVEAL_ENV is the environment variable that sets .Reveal for a
-// whole app: JM_UI_REVEAL=1, read by the hot-reload child, the SDL host
-// loop and render.snapshot through debug_from_env.
-DEBUG_REVEAL_ENV :: "JM_UI_REVEAL"
+// DEBUG_ENV is the environment variable that sets debug flags for a whole
+// app, as a comma-separated list of flag names in lower case:
+// JM_UI_DEBUG=reveal,bounds. The hot-reload child, the SDL host loop and
+// render.snapshot read it through debug_from_env.
+DEBUG_ENV :: "JM_UI_DEBUG"
 
-// debug_from_env is the debug flags the environment asks for: .Reveal
-// when JM_UI_REVEAL is set to anything but empty or 0.
-debug_from_env :: proc() -> Debug_Flags {
+// debug_from_env is the debug flags JM_UI_DEBUG names; an unknown name is
+// ignored, so a typo turns nothing on rather than failing the app.
+debug_from_env :: proc() -> (flags: Debug_Flags) {
 	// The buffer holds the name, NUL-terminated for getenv, then the value.
-	buf: [64]u8
-	v := os.get_env(buf[:], DEBUG_REVEAL_ENV)
-	if v == "" || v == "0" {
-		return {}
+	buf: [256]u8
+	v := os.get_env(buf[:], DEBUG_ENV)
+	for name in strings.split_iterator(&v, ",") {
+		for f in Debug_Flag {
+			if strings.equal_fold(strings.trim_space(name), debug_flag_name(f)) {
+				flags += {f}
+			}
+		}
 	}
-	return {.Reveal}
+	return
+}
+
+// debug_flag_name is f as JM_UI_DEBUG spells it.
+debug_flag_name :: proc(f: Debug_Flag) -> string {
+	switch f {
+	case .Reveal:
+		return "reveal"
+	case .Bounds:
+		return "bounds"
+	}
+	return ""
 }
 
 // revealing reports whether a part that hides until used should draw

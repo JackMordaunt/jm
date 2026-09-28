@@ -780,3 +780,33 @@ test_scroll_box_bar_shows_at_once_when_revealing :: proc(t: ^testing.T) {
 	testing.expect(t, ok) // nothing has happened, yet it draws
 	testing.expect(t, near(thumb.w, SCROLL_BAR_THIN))
 }
+
+@(test)
+test_bounds_flag_outlines_each_widget :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	count :: proc(h: ^Harness) -> (n: int) {
+		for op in h.ops.ops {
+			s, is_stroke := op.(Stroke)
+			if !is_stroke {
+				continue
+			}
+			if c, is_color := s.paint.(Color); is_color && c == BOUNDS_COLOR {
+				n += 1
+			}
+		}
+		return
+	}
+	frame :: proc(h: ^Harness, debug: Debug_Flags) {
+		harness_frame(h)
+		h.gtx.debug = debug
+		col := column(&h.gtx); defer end(&col)
+		label(&h.gtx, "a")
+		label(&h.gtx, "b")
+	}
+	frame(&h, {})
+	testing.expect_value(t, count(&h), 0)
+	frame(&h, {.Bounds})
+	testing.expect_value(t, count(&h), 3) // two labels and their column
+}
