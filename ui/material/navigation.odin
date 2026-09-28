@@ -151,7 +151,7 @@ DRAWER_ITEM_GAP :: f32(12)
 // navigation_drawer is M3's navigation drawer sheet: width wide (at most
 // comp.navigation-drawer.container-width, 360), height tall (0: the
 // height it is offered, or its content's when unbounded), headlines and 56dp destinations whose active one sits on a
-// secondary-container pill. It scrolls when the items overflow. Clicking
+// secondary-container pill. It scrolls, with a scroll bar, when the items overflow. Clicking
 // a destination sets selected^ and returns true.
 //
 // variant picks the presentation (modal = true is the older spelling of
@@ -199,8 +199,9 @@ navigation_drawer :: proc(
 			dc.st.scroll += e.scroll.y * ui.SCROLL_STEP
 		}
 	}
-	dc.st.scroll = clamp(dc.st.scroll, 0, max(content - h, 0))
-	offset := dc.st.scroll
+	bar_id := ui.id_mix(p.id, 0xfffe)
+	offset := ui.scroll_bar_handle(gtx, bar_id, .Vertical, {w, h}, content, clamp(dc.st.scroll, 0, max(content - h, 0)))
+	ui.widget_state(gtx, p.id).scroll = offset // the bar's own state may have moved dc.st
 
 	layout_w := w
 	switch v {
@@ -270,6 +271,9 @@ navigation_drawer :: proc(
 		}
 		y += ih
 	}
+	ui.push_transform(gtx.ops, ui.translate(sheet.x, 0))
+	ui.scroll_bar_paint(gtx, bar_id, .Vertical, {w, h}, content, offset)
+	ui.pop_transform(gtx.ops)
 	ui.pop_clip(gtx.ops)
 	if v == .Modal {
 		ui.end(&o)

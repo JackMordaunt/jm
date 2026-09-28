@@ -468,8 +468,11 @@ year_grid :: proc(
 			}
 		}
 	}
-	sc = clamp(sc, 0, max(f32(rows) * pitch + DATE_YEAR_GUTTER - r.h, 0))
+	content := f32(rows) * pitch + DATE_YEAR_GUTTER
+	sc = clamp(sc, 0, max(content - r.h, 0))
+	bar_id := ui.id_mix(pid, 8)
 	if live {
+		sc = ui.scroll_bar_handle(gtx, bar_id, .Vertical, {r.w, r.h}, content, sc)
 		ui.input_area(gtx.ops, sid, r, {.Scroll})
 	}
 	ui.push_clip(gtx.ops, r)
@@ -510,6 +513,11 @@ year_grid :: proc(
 				ui.tag(gtx.ops, id, ui.frame_string(gtx, fmt.tprintf("year %d", y)))
 			}
 		}
+	}
+	if live {
+		ui.push_transform(gtx.ops, ui.translate(r.x, r.y))
+		ui.scroll_bar_paint(gtx, bar_id, .Vertical, {r.w, r.h}, content, sc)
+		ui.pop_transform(gtx.ops)
 	}
 	ui.pop_clip(gtx.ops)
 	return sc
