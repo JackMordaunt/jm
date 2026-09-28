@@ -22,7 +22,7 @@ ENCODE_MAGIC :: "UIOP"
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
 // Defer.
-ENCODE_VERSION :: u8(3)
+ENCODE_VERSION :: u8(4)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.

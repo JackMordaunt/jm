@@ -57,9 +57,12 @@ test_encode_reply_round_trip :: proc(t: ^testing.T) {
 	ops_bytes := encode(&src)
 
 	data := encode_reply(true, 0.25, ops_bytes)
-	wants_frame, frame_after, got_ops, ok := decode_reply(data)
+	wants_frame, frame_after, got_ops, ok, full := decode_reply(data)
 	testing.expect(t, ok)
 	testing.expect(t, wants_frame)
+	testing.expect(t, !full)
+	_, _, _, ok, full = decode_reply(encode_reply(false, 0, ops_bytes, full_frames = true))
+	testing.expect(t, ok && full)
 	testing.expect_value(t, frame_after, f32(0.25))
 	testing.expect(t, slice.equal(got_ops, ops_bytes))
 
@@ -102,6 +105,6 @@ test_decode_reply_survives_random_bytes :: proc(t: ^testing.T) {
 		for &c in b {
 			c = u8(rand.uint32())
 		}
-		_, _, _, _ = decode_reply(b)
+		_, _, _, _, _ = decode_reply(b)
 	}
 }

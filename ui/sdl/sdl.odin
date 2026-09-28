@@ -65,6 +65,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:mem/virtual"
 import "core:strings"
+import "core:time"
 
 import "jm:ui"
 import "jm:ui/render"
@@ -164,7 +165,7 @@ Loop :: struct {
 	n:             u64,
 	last:          u64, // ticks, in ns, of the last frame
 	time:          f64, // ui.Ctx.time: the frames' dt so far
-	debug_on:      bool, // ui.DEBUG_TOGGLE_KEY has switched ui.DEBUG_TOGGLE on
+	tray:          ui.Debug_Tray, // ui.DEBUG_TOGGLE_KEY opens it
 	in_frame:      bool,
 	ctx:           runtime.Context, // for the event watch, which SDL calls without one
 	// What the last frame asked of the wait after it.
@@ -238,6 +239,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 		return false
 	}
 	l.last = sdl3.GetTicksNS()
+	ui.debug_tray_init(&l.tray)
 	return true
 }
 
@@ -269,9 +271,9 @@ step :: proc(l: ^Loop) {
 
 	now := sdl3.GetTicksNS()
 	if ui.debug_take_toggles(&l.router) {
-		l.debug_on = !l.debug_on
+		l.tray.open = !l.tray.open
 	}
-	debug := ui.debug_from_env() ~ (l.debug_on ? ui.DEBUG_TOGGLE : {})
+	debug := ui.debug_from_env() | ui.debug_tray_flags(&l.tray)
 	dt := ui.debug_dt(debug, min(f32(now - l.last) / 1e9, MAX_DT))
 	l.last = now
 	l.time += f64(dt)
@@ -301,18 +303,21 @@ step :: proc(l: ^Loop) {
 	if scaled {
 		ui.push_transform(&l.ops, ui.scale(w.density, w.density))
 	}
+	ui_start := time.tick_now()
 	if l.app.ui != nil {
 		l.app.ui(&gtx, l.app.user)
 	}
+	ui_ms := ui.ms(ui_start)
+	ui.debug_tray(&gtx, &l.tray)
 	if scaled {
 		ui.pop_transform(&l.ops)
 	}
-	if .Inspect in debug && l.n > 0 {
-		ui.paint_inspector(&gtx, prev, l.router.pointer, w.density)
-	}
+	ui.debug_inspect(&gtx, debug, &l.tray, prev if l.n > 0 else nil, l.router.pointer, w.density)
+	build_start := time.tick_now()
 	ui.flatten(&l.ops, frame)
-	l.shown = present(w, &l.comp, frame, l.app.clear)
-	l.wants_frame, l.frame_after = gtx.wants_frame, gtx.frame_after
+	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used)))
+	l.shown = present(w, &l.comp, frame, l.app.clear, ui.debug_tray_wants_full_frames(&l.tray))
+	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open, gtx.frame_after
 	free_all(context.temp_allocator)
 	// Every event polled before this frame was routed in it.
 	virtual.arena_free_all(&l.events)
@@ -550,13 +555,18 @@ refresh_ms :: proc(w: ^Window) -> i32 {
 // front texture up to date. It shows the texture and reports true when
 // anything changed or the window must be shown again.
 @(private)
-present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color) -> bool {
+present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color, full := false) -> bool {
 	if w.textures[0] == nil {
 		return false
 	}
 	data: bl.ImageData
 	if bl.image_get_data(&w.view, &data) != 0 {
 		return false
+	}
+	if full {
+		// The debug tray's full frames: redraw and upload all of it, as if
+		// the image were new, to rule the damage tracker out of a glitch.
+		w.fresh, w.stale = true, true
 	}
 	if w.fresh {
 		// The compositor must not trust what it drew into the old image.

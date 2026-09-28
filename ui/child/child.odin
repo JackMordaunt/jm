@@ -15,6 +15,7 @@ pipe, ui/ipc the framing underneath that.
 package child
 
 import "core:os"
+import t "core:time"
 
 import "jm:ui"
 import "jm:ui/ipc"
@@ -88,7 +89,8 @@ run :: proc(app: App) {
 	defer ui.frame_arena_destroy(&arenas[1])
 
 	env_debug := ui.debug_from_env()
-	debug_on := false // ui.DEBUG_TOGGLE_KEY has switched ui.DEBUG_TOGGLE on
+	tray: ui.Debug_Tray // ui.DEBUG_TOGGLE_KEY opens it
+	ui.debug_tray_init(&tray)
 	time: f64
 	for n: u64 = 0;; n += 1 {
 		arena := &arenas[n % 2]
@@ -108,9 +110,9 @@ run :: proc(app: App) {
 			ui.router_push(&router, e)
 		}
 		if ui.debug_take_toggles(&router) {
-			debug_on = !debug_on
+			tray.open = !tray.open
 		}
-		debug := env_debug ~ (debug_on ? ui.DEBUG_TOGGLE : {})
+		debug := env_debug | ui.debug_tray_flags(&tray)
 		dt := ui.debug_dt(debug, raw_dt)
 		time += f64(dt)
 		ui.router_route(&router, prev if n > 0 else nil)
@@ -136,19 +138,22 @@ run :: proc(app: App) {
 		if scaled {
 			ui.push_transform(&ops, ui.scale(density, density))
 		}
+		ui_start := t.tick_now()
 		if app.ui != nil {
 			app.ui(&gtx, app.user)
 		}
+		ui_ms := ui.ms(ui_start)
+		ui.debug_tray(&gtx, &tray)
 		if scaled {
 			ui.pop_transform(&ops)
 		}
-		if .Inspect in debug && n > 0 {
-			ui.paint_inspector(&gtx, prev, router.pointer, density)
-		}
+		ui.debug_inspect(&gtx, debug, &tray, prev if n > 0 else nil, router.pointer, density)
+		build_start := t.tick_now()
 		ui.flatten(&ops, frame)
 
 		ops_bytes := ui.encode(&ops, allocator)
-		reply := ui.encode_reply(gtx.wants_frame, gtx.frame_after, ops_bytes, allocator)
+		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used)))
+		reply := ui.encode_reply(gtx.wants_frame || tray.open, gtx.frame_after, ops_bytes, allocator, ui.debug_tray_wants_full_frames(&tray))
 		if !ipc.write_frame(os.stdout, reply) {
 			return // the host is gone
 		}

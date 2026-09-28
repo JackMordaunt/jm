@@ -1,6 +1,7 @@
 package ui
 
 import "core:mem"
+import "core:time"
 import "core:unicode/utf8"
 
 // Probe drives a ui proc headless, one frame per call, for tests and
@@ -36,6 +37,7 @@ Probe :: struct {
 	wants_frame: bool, // the last frame called request_frame
 	frame_after: f32, // then: the soonest it asked for, in seconds
 	debug:       Debug_Flags, // gtx.debug for every frame; probe_init takes it
+	tray:        Debug_Tray, // DEBUG_TOGGLE_KEY opens it, as in a live loop; its stats are the last frame's
 	arena:       Frame_Arena,
 	allocator:   mem.Allocator,
 }
@@ -55,6 +57,7 @@ probe_init :: proc(
 ) {
 	p^ = {}
 	p.debug = debug
+	debug_tray_init(&p.tray)
 	p.ui = ui
 	p.user = user
 	p.size = size
@@ -87,14 +90,15 @@ probe_destroy :: proc(p: ^Probe) {
 // record the ui, flatten it. Afterwards probe_current is the new frame.
 probe_frame :: proc(p: ^Probe) {
 	if debug_take_toggles(&p.router) {
-		p.debug ~= DEBUG_TOGGLE
+		p.tray.open = !p.tray.open
 	}
+	debug := p.debug | debug_tray_flags(&p.tray)
 	router_route(&p.router, &p.prev)
 	frame_arena_reset(&p.arena)
 	ops_reset(&p.ops)
-	p.ops.debug = p.debug
+	p.ops.debug = debug
 	layout_reset(&p.layout)
-	dt := debug_dt(p.debug, p.dt)
+	dt := debug_dt(debug, p.dt)
 	p.time += f64(dt)
 	gtx := Ctx {
 		ops         = &p.ops,
@@ -107,14 +111,17 @@ probe_frame :: proc(p: ^Probe) {
 		dt          = dt,
 		time        = p.time,
 		allocator   = frame_arena_allocator(&p.arena),
-		debug       = p.debug,
+		debug       = debug,
 	}
+	ui_start := time.tick_now()
 	p.ui(&gtx, p.user)
-	if .Inspect in p.debug {
-		paint_inspector(&gtx, &p.prev, p.router.pointer)
-	}
+	ui_ms := ms(ui_start)
+	debug_tray(&gtx, &p.tray)
+	debug_inspect(&gtx, debug, &p.tray, &p.prev, p.router.pointer, 1)
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
+	build_start := time.tick_now()
 	flatten(&p.ops, &p.frame)
+	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), int(p.arena.arena.total_used)))
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
 }

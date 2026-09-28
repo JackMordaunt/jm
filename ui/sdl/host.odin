@@ -270,7 +270,7 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame = false
 		return
 	}
-	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply)
+	wants_frame, frame_after, ops_bytes, dok, full := ui.decode_reply(reply)
 	if !dok || !ui.decode(ops_bytes, &l.ops) {
 		// Say why: the window just freezes on its last frame otherwise, which
 		// reads as a crash. A version mismatch is a host built before the
@@ -289,7 +289,7 @@ host_step :: proc(l: ^Host_Loop) {
 	}
 	l.wants_frame, l.frame_after = wants_frame, frame_after
 	ui.flatten(&l.ops, &l.frame)
-	l.shown = present(w, &l.comp, &l.frame, l.app.clear)
+	l.shown = present(w, &l.comp, &l.frame, l.app.clear, full)
 	l.n += 1
 }
 
