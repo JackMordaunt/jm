@@ -905,19 +905,24 @@ end_scroll_box :: proc(s: ^Scroll_Box) {
 	overlay_close(s.gtx, &s.index)
 }
 
-// Scrollbar metrics, in dp: Compose Multiplatform's desktop defaults
-// (defaultScrollbarStyle in foundation's Scrollbar.skiko.kt, JetBrains
-// compose-multiplatform-core jb-main, read 2026-09-28), as neither
-// Material 3 nor jm:ui's own theme specifies a scrollbar.
-SCROLL_BAR_THICKNESS :: f32(8)
-SCROLL_BAR_RADIUS :: f32(4)
+// Scroll bar metrics, in dp. The bar is an overlay scroller, modelled on
+// macOS's: hidden until the content scrolls or the pointer reaches its
+// edge, thin while it shows, wider while hovered or dragged, and gone again
+// SCROLL_BAR_LINGER seconds after the last of those. The m3e-kit has no
+// scroll bar spec or tokens, nor does jm:ui's theme; the expanded bar is Compose
+// Multiplatform's desktop default (defaultScrollbarStyle in foundation's
+// Scrollbar.skiko.kt, JetBrains compose-multiplatform-core jb-main, read
+// 2026-09-28): 8dp thick, 4dp corners, a 16dp minimum thumb, 50% alpha.
+SCROLL_BAR_THICKNESS :: f32(8) // expanded, and the width of the hit area
+SCROLL_BAR_THIN :: f32(4) // shown but not hovered
 SCROLL_BAR_MIN_THUMB :: f32(16)
 SCROLL_BAR_INSET :: f32(2) // from the box's edge, so the thumb does not touch it
-SCROLL_BAR_IDLE_ALPHA :: f32(0.12)
+SCROLL_BAR_THIN_ALPHA :: f32(0.35)
 SCROLL_BAR_HOVER_ALPHA :: f32(0.50)
+SCROLL_BAR_LINGER :: f32(1) // seconds a bar stays after the last activity
 
-// SCROLL_BAR_FADE moves the thumb between its idle and hover alpha: a
-// critically damped spring, never overshooting a colour.
+// SCROLL_BAR_FADE moves the bar in and out, and between thin and
+// expanded: a critically damped spring, never overshooting a colour.
 @(private)
 SCROLL_BAR_FADE :: Spring_Params{1, 1600}
 
@@ -994,27 +999,51 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, conten
 }
 
 // scroll_bar_paint draws the bar for axis at offset and lays its input
-// area over the track, on top of what came before. The thumb is the
-// theme's foreground, faint until the bar is hovered or held.
+// area over the track, on top of what came before. The bar shows while
+// the content is scrolling or the pointer is on it, and fades
+// SCROLL_BAR_LINGER seconds after; its input area stays, so reaching the
+// edge brings it back. The thumb is the theme's foreground.
 scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false) {
 	b, ok := scroll_bar_layout(axis, size, content, both)
 	if !ok {
 		return
 	}
+	// The bar's own widget state: scroll holds the seconds since the last
+	// activity, ripple_origin.x the offset it last drew at, springs 0 and
+	// 1 the expand and the fade. A bar starts idle, so it stays hidden
+	// until something happens.
 	st := widget_state(gtx, id)
-	t := spring_update(&st.springs[0], gtx, st.hovered || st.pressed ? 1 : 0, SCROLL_BAR_FADE)
-	alpha := SCROLL_BAR_IDLE_ALPHA + (SCROLL_BAR_HOVER_ALPHA - SCROLL_BAR_IDLE_ALPHA) * t
+	held := st.hovered || st.pressed
+	switch {
+	case !st.springs[1].started:
+		st.scroll = SCROLL_BAR_LINGER
+	case held || offset != st.ripple_origin.x:
+		st.scroll = 0
+	case:
+		st.scroll += gtx.dt
+	}
+	st.ripple_origin.x = offset
+	shown := st.scroll < SCROLL_BAR_LINGER
+	if shown && !held {
+		request_frame(gtx, SCROLL_BAR_LINGER - st.scroll)
+	}
+	vis := spring_update(&st.springs[1], gtx, shown ? 1 : 0, SCROLL_BAR_FADE)
+	grow := spring_update(&st.springs[0], gtx, held ? 1 : 0, SCROLL_BAR_FADE)
+	input_area(gtx.ops, id, b.track, {.Press, .Release, .Move, .Enter, .Leave})
+	alpha := (SCROLL_BAR_THIN_ALPHA + (SCROLL_BAR_HOVER_ALPHA - SCROLL_BAR_THIN_ALPHA) * grow) * vis
+	if alpha < 0.01 {
+		return
+	}
+	// The thumb hugs the box's outer edge and grows inward.
+	thick := SCROLL_BAR_THIN + (SCROLL_BAR_THICKNESS - SCROLL_BAR_THIN) * grow
 	at := b.travel * offset / b.range
 	thumb := b.track
 	if axis == .Vertical {
-		thumb.y += at
-		thumb.h = b.thumb_len
+		thumb = {b.track.x + b.track.w - thick, b.track.y + at, thick, b.thumb_len}
 	} else {
-		thumb.x += at
-		thumb.w = b.thumb_len
+		thumb = {b.track.x + at, b.track.y + b.track.h - thick, b.thumb_len, thick}
 	}
-	fill(gtx.ops, Round_Rect{thumb, SCROLL_BAR_RADIUS}, with_alpha(gtx.theme.fg, alpha))
-	input_area(gtx.ops, id, b.track, {.Press, .Release, .Move, .Enter, .Leave})
+	fill(gtx.ops, Round_Rect{thumb, thick / 2}, with_alpha(gtx.theme.fg, alpha))
 }
 
 @(private)

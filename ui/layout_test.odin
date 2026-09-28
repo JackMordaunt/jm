@@ -472,8 +472,8 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
 }
 
-// thumb_of is the scroll bar thumb scroll_box drew at x, if any: the one
-// SCROLL_BAR_THICKNESS-wide Round_Rect fill there.
+// thumb_of is the scroll bar thumb scroll_box drew in the track starting
+// at x, if any: a Round_Rect fill inside the track's width.
 @(private)
 thumb_of :: proc(h: ^Harness, x: f32) -> (Rect, bool) {
 	for op in h.ops.ops {
@@ -482,11 +482,59 @@ thumb_of :: proc(h: ^Harness, x: f32) -> (Rect, bool) {
 			continue
 		}
 		rr, is_rr := f.shape.(Round_Rect)
-		if is_rr && rr.rect.w == SCROLL_BAR_THICKNESS && rr.rect.x == x {
+		if is_rr && rr.rect.x >= x - 0.01 && rr.rect.x + rr.rect.w <= x + SCROLL_BAR_THICKNESS + 0.01 && rr.rect.w <= SCROLL_BAR_THICKNESS {
 			return rr.rect, true
 		}
 	}
 	return {}, false
+}
+
+// scroll_frames runs n frames of scroll_frame at 60 Hz, pushing evs into
+// the first, and returns the box's input area.
+@(private)
+scroll_frames :: proc(h: ^Harness, n: int, evs: ..Event) -> Input_Area {
+	ia: Input_Area
+	for i in 0 ..< n {
+		clear(&h.router.events)
+		harness_frame(h)
+		h.gtx.dt = 1.0 / 60
+		if i == 0 {
+			for e in evs {
+				push_event(h, e)
+			}
+		}
+		ia = scroll_frame(h)
+	}
+	return ia
+}
+
+@(test)
+test_scroll_box_bar_hides_until_used_and_expands_on_hover :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	ia := scroll_frame(&h)
+	bar := id_mix(ia.id, 1)
+	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w // the box's width
+	edge := w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
+	_, shown := thumb_of(&h, edge)
+	testing.expect(t, !shown) // nothing has happened yet
+
+	// Scrolling shows it, thin, against the box's edge.
+	scroll_frames(&h, 20, Event{kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	thumb, ok := thumb_of(&h, edge)
+	testing.expect(t, ok)
+	testing.expect(t, near(thumb.w, SCROLL_BAR_THIN) && near(thumb.x + thumb.w, edge + SCROLL_BAR_THICKNESS))
+
+	// The pointer on it widens it, and keeps it while it stays.
+	scroll_frames(&h, 120, Event{kind = .Enter, area = bar})
+	thumb, ok = thumb_of(&h, edge)
+	testing.expect(t, ok && near(thumb.w, SCROLL_BAR_THICKNESS))
+
+	// Left alone past SCROLL_BAR_LINGER, it fades away.
+	scroll_frames(&h, 120, Event{kind = .Leave, area = bar})
+	_, shown = thumb_of(&h, edge)
+	testing.expect(t, !shown)
 }
 
 @(test)
@@ -498,19 +546,21 @@ test_scroll_box_bar_drags_and_pages :: proc(t: ^testing.T) {
 	bar := id_mix(ia.id, 1)
 	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w // the box's width
 	edge := w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
-	thumb, ok := thumb_of(&h, edge)
-	testing.expect(t, ok)
 	// 314 of content in a 100 view: the thumb is 100/314 of the 96 track.
-	testing.expect(t, near(thumb.h, 96 * 100.0 / 314))
-	testing.expect_value(t, thumb.y, SCROLL_BAR_INSET)
+	thumb_h := f32(96 * 100.0 / 314)
 
-	// Dragging the thumb across its whole travel scrolls the whole range.
-	travel := 96 - thumb.h
+	// Dragging the thumb across half its travel scrolls half the range. A
+	// hidden bar takes input too: the pointer reaching it shows it.
+	travel := 96 - thumb_h
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = bar, pos = {edge + 4, thumb.y + 4}})
+	h.gtx.dt = 1.0 / 60 // so the bar can start to fade in
+	push_event(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 4}})
 	push_event(&h, {kind = .Move, area = bar, travel = {0, travel / 2}})
 	scroll_frame(&h)
 	testing.expect(t, near(f32(-scroll_offset(&h)), (314 - 100) / 2.0))
+	thumb, ok := thumb_of(&h, edge)
+	testing.expect(t, ok) // shown while held
+	testing.expect(t, near(thumb.h, thumb_h))
 	clear(&h.router.events)
 	harness_frame(&h)
 	push_event(&h, {kind = .Release, area = bar})
