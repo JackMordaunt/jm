@@ -529,6 +529,13 @@ icon_button_colors :: proc(kind: Icon_Button_Kind, toggle, on, disabled: bool) -
 	return
 }
 
+// Tooltip_Timer is how long an icon button has been hovered, for its
+// tooltip: its own widget_data, not a borrowed Widget_State field.
+@(private)
+Tooltip_Timer :: struct {
+	seconds: f32,
+}
+
 // icon_button is M3's icon button (icon-button.json): size picks the
 // comp.<size>-icon-button group (height, icon size, outline width), width
 // the narrow, uniform or wide spacing either side of the icon, and shape
@@ -602,9 +609,7 @@ icon_button :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
 	if c.st != nil {
-		// An icon button never scrolls, so its Widget_State.scroll is free to
-		// hold the hover timer (Widget_State has no other slot for it).
-		hover_tooltip(gtx, c.st.hovered, &c.st.scroll, tooltip, sz)
+		hover_tooltip(gtx, c.st.hovered, &ui.widget_data(gtx, p.id, Tooltip_Timer).seconds, tooltip, sz)
 	}
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, tooltip != "" ? tooltip : "icon_button"))
 	ui.widget_end(gtx, &p, {size = sz})
