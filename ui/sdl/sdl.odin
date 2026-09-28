@@ -164,6 +164,7 @@ Loop :: struct {
 	n:             u64,
 	last:          u64, // ticks, in ns, of the last frame
 	time:          f64, // ui.Ctx.time: the frames' dt so far
+	debug_on:      bool, // ui.DEBUG_TOGGLE_KEY has switched ui.DEBUG_TOGGLE on
 	in_frame:      bool,
 	ctx:           runtime.Context, // for the event watch, which SDL calls without one
 	// What the last frame asked of the wait after it.
@@ -267,7 +268,10 @@ step :: proc(l: ^Loop) {
 	frame, prev := &l.frames[l.n % 2], &l.frames[(l.n + 1) % 2]
 
 	now := sdl3.GetTicksNS()
-	debug := ui.debug_from_env()
+	if ui.debug_take_toggles(&l.router) {
+		l.debug_on = !l.debug_on
+	}
+	debug := ui.debug_from_env() ~ (l.debug_on ? ui.DEBUG_TOGGLE : {})
 	dt := ui.debug_dt(debug, min(f32(now - l.last) / 1e9, MAX_DT))
 	l.last = now
 	l.time += f64(dt)
@@ -758,6 +762,8 @@ key :: proc(k: sdl3.Keycode) -> ui.Key {
 		return ui.Key(int(ui.Key.A) + int(k - sdl3.K_A))
 	case sdl3.K_0 ..= sdl3.K_9:
 		return ui.Key(int(ui.Key.N0) + int(k - sdl3.K_0))
+	case sdl3.K_F11:
+		return .F11
 	}
 	return .None
 }

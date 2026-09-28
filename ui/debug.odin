@@ -64,6 +64,32 @@ debug_dt :: proc(flags: Debug_Flags, dt: f32) -> f32 {
 	return .Slow in flags ? dt * SLOW_FACTOR : dt
 }
 
+// DEBUG_TOGGLE_KEY switches DEBUG_TOGGLE on and off in a running app: the
+// child's, the SDL loop's and a probe's frame loop take its presses out of
+// the input before routing, so no widget ever sees it.
+DEBUG_TOGGLE_KEY :: Key.F11
+
+// DEBUG_TOGGLE is what DEBUG_TOGGLE_KEY switches, on top of whatever
+// JM_UI_DEBUG set: hidden parts shown and every widget outlined.
+DEBUG_TOGGLE :: Debug_Flags{.Reveal, .Bounds}
+
+// debug_take_toggles removes the presses of DEBUG_TOGGLE_KEY queued in r
+// and reports whether there was an odd number of them: whether the frame
+// loop should flip DEBUG_TOGGLE.
+debug_take_toggles :: proc(r: ^Router) -> (flip: bool) {
+	kept := 0
+	for e in r.queue {
+		if e.kind == .Key && e.key == DEBUG_TOGGLE_KEY {
+			flip = !flip
+			continue
+		}
+		r.queue[kept] = e
+		kept += 1
+	}
+	resize(&r.queue, kept)
+	return
+}
+
 // revealing reports whether a part that hides until used should draw
 // now anyway. Every such part asks it at the point where it decides to
 // hide, so one grep finds them all.

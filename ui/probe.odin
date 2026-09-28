@@ -86,6 +86,9 @@ probe_destroy :: proc(p: ^Probe) {
 // probe_frame runs one frame: route queued input against the last frame,
 // record the ui, flatten it. Afterwards probe_current is the new frame.
 probe_frame :: proc(p: ^Probe) {
+	if debug_take_toggles(&p.router) {
+		p.debug ~= DEBUG_TOGGLE
+	}
 	router_route(&p.router, &p.prev)
 	frame_arena_reset(&p.arena)
 	ops_reset(&p.ops)

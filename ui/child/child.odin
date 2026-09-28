@@ -87,7 +87,8 @@ run :: proc(app: App) {
 	defer ui.frame_arena_destroy(&arenas[0])
 	defer ui.frame_arena_destroy(&arenas[1])
 
-	debug := ui.debug_from_env()
+	env_debug := ui.debug_from_env()
+	debug_on := false // ui.DEBUG_TOGGLE_KEY has switched ui.DEBUG_TOGGLE on
 	time: f64
 	for n: u64 = 0;; n += 1 {
 		arena := &arenas[n % 2]
@@ -103,11 +104,15 @@ run :: proc(app: App) {
 			return // a corrupt request; nothing salvageable
 		}
 
-		dt := ui.debug_dt(debug, raw_dt)
-		time += f64(dt)
 		for e in events {
 			ui.router_push(&router, e)
 		}
+		if ui.debug_take_toggles(&router) {
+			debug_on = !debug_on
+		}
+		debug := env_debug ~ (debug_on ? ui.DEBUG_TOGGLE : {})
+		dt := ui.debug_dt(debug, raw_dt)
+		time += f64(dt)
 		ui.router_route(&router, prev if n > 0 else nil)
 		ui.ops_reset(&ops)
 		ui.frame_reset(frame)
