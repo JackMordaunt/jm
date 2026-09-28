@@ -107,21 +107,29 @@ range_slider :: proc(
 	g = slider_geom(size.x, false, true, lo, hi, step)
 	old := [2]f32{lo_value^, hi_value^}
 	c := slider_state(gtx, p.id, state)
-	// Which handle the keys and a drag move lives in the Widget_State's
-	// scroll field: 0 the low handle, 1 the high one. Forced states show
-	// the high one active.
+	// Which handle the keys and a drag move is the Range_Handle's to keep.
+	// Forced states show the high one active.
 	active := 1
 	if c.st != nil {
+		rh := ui.widget_data(gtx, p.id, Range_Handle)
 		vals := [2]^f32{lo_value, hi_value}
-		apply_slider_input(gtx, p.id, c.st, g, vals[:], lo, hi, step)
+		apply_slider_input(gtx, p.id, c.st, g, vals[:], lo, hi, step, rh)
 		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
-		active = int(c.st.scroll)
+		active = rh.active
 	}
 	paint_slider(gtx, c, g, lo, hi, {lo_value^, hi_value^}, true, false, active, {}, indicator)
 	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "range slider"))
 	ui.widget_end(gtx, &p, {size = size})
 	return old != {lo_value^, hi_value^}
+}
+
+// Range_Handle is which of a range slider's handles the keys and a drag
+// move: 0 the low one, 1 the high one. A press picks the nearer; Tab
+// swaps.
+@(private = "file")
+Range_Handle :: struct {
+	active: int,
 }
 
 @(private)
@@ -258,11 +266,11 @@ slider_state :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, state: Interaction) -> Contro
 }
 
 // apply_slider_input applies this frame's events to vals, one pointer per
-// handle; with two, st.scroll holds which one is active.
-@(private)
-apply_slider_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, st: ^ui.Widget_State, g: Slider_Geom, vals: []^f32, lo, hi, step: f32) {
-	two := len(vals) == 2
-	active := two ? clamp(int(st.scroll), 0, 1) : 0
+// handle; with two, rh holds which one is active.
+@(private = "file")
+apply_slider_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, st: ^ui.Widget_State, g: Slider_Geom, vals: []^f32, lo, hi, step: f32, rh: ^Range_Handle = nil) {
+	two := len(vals) == 2 && rh != nil
+	active := two ? clamp(rh.active, 0, 1) : 0
 	for e in ui.events(gtx, id) {
 		#partial switch e.kind {
 		case .Enter:
@@ -326,7 +334,7 @@ apply_slider_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, st: ^ui.Widget_State, g
 		}
 	}
 	if two {
-		st.scroll = f32(active)
+		rh.active = active
 	}
 }
 
@@ -613,6 +621,7 @@ linear_progress :: proc(
 	wavy := style == .Wavy
 	size := ui.constrain(gtx.constraints, {width, wavy ? tok.LINEAR_PROGRESS_INDICATOR_WAVE_HEIGHT : tok.LINEAR_PROGRESS_INDICATOR_HEIGHT})
 	st := at < 0 ? ui.widget_state(gtx, p.id) : nil
+	ramp := st != nil ? ui.widget_data(gtx, p.id, Amplitude_Ramp) : nil
 	indeterminate := value < 0
 
 	// segs are the active lines as (tail, head) fractions of the width.
@@ -646,7 +655,7 @@ linear_progress :: proc(
 			}
 		}
 		if !indeterminate {
-			amp = amplitude_ramp(gtx, st, 1, clamp(amp, 0, 1))
+			amp = amplitude_ramp(gtx, ramp, clamp(amp, 0, 1))
 		}
 	}
 	lambda := wavelength
@@ -794,6 +803,7 @@ circular_progress :: proc(
 	}
 	sz := ui.constrain(gtx.constraints, {d, d})
 	st := at < 0 ? ui.widget_state(gtx, p.id) : nil
+	ramp := st != nil ? ui.widget_data(gtx, p.id, Amplitude_Ramp) : nil
 	indeterminate := value < 0
 	t: f32
 	rot, sweep: f32 // degrees, clockwise from 12 o'clock; fraction of the circle
@@ -816,7 +826,7 @@ circular_progress :: proc(
 			}
 		}
 		if !indeterminate {
-			amp = amplitude_ramp(gtx, st, 1, clamp(amp, 0, 1))
+			amp = amplitude_ramp(gtx, ramp, clamp(amp, 0, 1))
 		}
 	}
 	paint_circular_progress(gtx, sz, rot, sweep, wavy, amp, wavelength, t, square, indeterminate)
@@ -955,8 +965,8 @@ loading_indicator :: proc(
 		seq = &LOADING_INDETERMINATE
 		st := at < 0 ? ui.widget_state(gtx, p.id) : nil
 		n := len(seq.morphs)
-		// Slot 0 counts whole morphs' time over 4 × n of them, when the
-		// step rotation and the shape both come round; slot 1 the 4666ms
+		// clock counts whole morphs' time over 4 × n of them, when the
+		// step rotation and the shape both come round; turn the 4666ms
 		// turn (loading-indicator.json behaviour, LoadingIndicator.kt:
 		// 392-434).
 		MORPH_S :: f32(0.65)
@@ -1052,32 +1062,40 @@ progress_clock :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, period, at: f32) -> f
 	return f32(math.mod(gtx.time, f64(period)))
 }
 
+// Amplitude_Ramp is a wavy indicator's amplitude tween: value the current
+// amplitude, from where the tween started, target where it ends, t the
+// seconds since it started. started is false until the first frame, which
+// sits at its target.
+@(private = "file")
+Amplitude_Ramp :: struct {
+	value, from, target, t: f32,
+	started:                bool,
+}
+
 // amplitude_ramp eases a wavy indicator's amplitude to target over 500ms
 // (sys.motion.duration.long2), standard easing going up and
 // emphasized-accelerate coming down (progress-indicator.json layout,
-// WavyProgressIndicator.kt:490-511). It keeps a tween in
-// st.springs[slot]: value the current amplitude, x0 where it started, t
-// the seconds since. A nil st, a still frame, is the target at once.
-@(private)
-amplitude_ramp :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, slot: int, target: f32) -> f32 {
-	if st == nil {
+// WavyProgressIndicator.kt:490-511), in s. A nil s, a still frame, is the
+// target at once.
+@(private = "file")
+amplitude_ramp :: proc(gtx: ^ui.Ctx, s: ^Amplitude_Ramp, target: f32) -> f32 {
+	if s == nil {
 		return target
 	}
-	s := &st.springs[slot]
 	if !s.started {
 		s^ = {value = target, target = target, started = true}
 		return target
 	}
 	if target != s.target {
-		s.x0, s.target, s.t = s.value, target, 0
+		s.from, s.target, s.t = s.value, target, 0
 	}
 	if s.value == s.target {
 		return s.value
 	}
 	s.t += gtx.dt
 	u := min(s.t / (tok.SYS_MOTION_DURATION_LONG2 / 1000), 1)
-	e := tok.SYS_MOTION_EASING_STANDARD if s.target > s.x0 else tok.SYS_MOTION_EASING_EMPHASIZED_ACCELERATE
-	s.value = u >= 1 ? s.target : s.x0 + (s.target - s.x0) * bezier_ease(e, u)
+	e := tok.SYS_MOTION_EASING_STANDARD if s.target > s.from else tok.SYS_MOTION_EASING_EMPHASIZED_ACCELERATE
+	s.value = u >= 1 ? s.target : s.from + (s.target - s.from) * bezier_ease(e, u)
 	if u < 1 {
 		ui.request_frame(gtx)
 	}
