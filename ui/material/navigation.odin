@@ -200,7 +200,7 @@ navigation_drawer :: proc(
 		}
 	}
 	bar_id := ui.id_mix(p.id, 0xfffe)
-	offset := ui.scroll_bar_handle(gtx, bar_id, .Vertical, {w, h}, content, clamp(dc.st.scroll, 0, max(content - h, 0)))
+	offset := ui.scroll_bar_handle(gtx, bar_id, .Vertical, {w, h}, content, clamp(dc.st.scroll, 0, max(content - h, 0)), ends = drawer_bar_ends(v))
 	ui.widget_state(gtx, p.id).scroll = offset // the bar's own state may have moved dc.st
 
 	layout_w := w
@@ -238,11 +238,14 @@ navigation_drawer :: proc(
 	// elevation, NavigationDrawer.kt) draws it at level 0: the scrim is its
 	// depth cue. So neither variant casts a shadow.
 	fill := v == .Modal ? tok.NAVIGATION_DRAWER_MODAL_CONTAINER_COLOR : tok.NAVIGATION_DRAWER_STANDARD_CONTAINER_COLOR
-	ui.fill(gtx.ops, rounded(gtx, sheet, k), color(fill))
+	outline := rounded(gtx, sheet, k)
+	ui.fill(gtx.ops, outline, color(fill))
 	ui.input_area(gtx.ops, p.id, sheet, {.Scroll, .Press, .Release})
 
 	changed := false
-	ui.push_clip(gtx.ops, sheet)
+	// Clip to the sheet's own outline, not its bounds, so the items and the
+	// scroll bar along its edge stay inside its rounded corners.
+	ui.push_clip(gtx.ops, outline)
 	// Items start a margin down, the same margin as their sides: the kit
 	// gives no top inset.
 	y := DRAWER_MARGIN - offset
@@ -272,7 +275,7 @@ navigation_drawer :: proc(
 		y += ih
 	}
 	ui.push_transform(gtx.ops, ui.translate(sheet.x, 0))
-	ui.scroll_bar_paint(gtx, bar_id, .Vertical, {w, h}, content, offset)
+	ui.scroll_bar_paint(gtx, bar_id, .Vertical, {w, h}, content, offset, ends = drawer_bar_ends(v))
 	ui.pop_transform(gtx.ops)
 	ui.pop_clip(gtx.ops)
 	if v == .Modal {
@@ -777,6 +780,17 @@ navigation_rail :: proc(
 	}
 	ui.widget_end(gtx, &p, {size = size})
 	return
+}
+
+// drawer_bar_ends keeps a drawer's scroll bar clear of its rounded
+// trailing corners, where the sheet's clip would cut the thumb short.
+@(private = "file")
+drawer_bar_ends :: proc(v: Drawer_Kind) -> f32 {
+	if v == .Permanent {
+		return 0
+	}
+	sh := tok.NAVIGATION_DRAWER_CONTAINER_SHAPE
+	return max(sh.radii[1], sh.radii[2])
 }
 
 // Navigation bar (navigation-bar.json).
