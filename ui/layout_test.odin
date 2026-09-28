@@ -839,3 +839,17 @@ test_inspect_flag_records_each_widgets_box :: proc(t: ^testing.T) {
 	testing.expect_value(t, got[0].max, h.size) // the harness offers the window, loosely
 	testing.expect_value(t, got[0].procedure, "test_inspect_flag_records_each_widgets_box")
 }
+
+@(test)
+test_widget_state_pointers_survive_the_map_growing :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	first := widget_state(&h.gtx, 1)
+	first.scroll = 42
+	for i in 2 ..< 2000 {
+		widget_state(&h.gtx, Area_Id(i))
+	}
+	testing.expect_value(t, first, widget_state(&h.gtx, 1))
+	testing.expect_value(t, first.scroll, 42)
+}

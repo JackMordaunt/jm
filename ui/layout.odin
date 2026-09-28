@@ -70,6 +70,7 @@ Widget_State :: struct {
 	ripple:        Tween, // button family: ink-ripple progress since the last Press; ripple.t < ripple.duration means still animating
 	ripple_origin: Point, // where that Press landed, local to the widget
 	springs:       [4]Spring, // a component's own animated properties, one slot each, numbered by the component
+	root:          Area_Id, // the root scope it was last seen under, for retain
 }
 
 @(private)
@@ -124,8 +125,11 @@ Container :: struct {
 Layout :: struct {
 	stack:     [dynamic]Container,
 	children:  [dynamic]Child,
-	state:     map[Area_Id]Widget_State,
-	scope:     Area_Id, // mixed into widget ids; list sets it per item
+	state:     map[Area_Id]^Widget_State, // each on the heap, so a pointer lasts until its widget is dropped
+	data:      map[Data_Key]Data_Entry, // widget_data's typed values
+	retained:  map[Area_Id]u64, // root scope -> the last frame retain kept it
+	scope:     Area_Id, // mixed into widget ids; scope and list set it
+	scope_root: Area_Id, // the outermost open scope, which state records as its root
 	frame:     u64,
 	allocator: mem.Allocator,
 }
@@ -149,45 +153,78 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.allocator = allocator
 	l.stack = make([dynamic]Container, allocator)
 	l.children = make([dynamic]Child, allocator)
-	l.state = make(map[Area_Id]Widget_State, allocator)
+	l.state = make(map[Area_Id]^Widget_State, allocator)
+	l.data = make(map[Data_Key]Data_Entry, allocator)
+	l.retained = make(map[Area_Id]u64, allocator)
 }
 
 // layout_destroy frees l's storage.
 layout_destroy :: proc(l: ^Layout) {
 	delete(l.stack)
 	delete(l.children)
+	for _, v in l.state {
+		free(v, l.allocator)
+	}
 	delete(l.state)
+	for _, e in l.data {
+		mem.free(e.ptr, l.allocator)
+	}
+	delete(l.data)
+	delete(l.retained)
 	l^ = {}
 }
 
-// layout_reset starts a frame: it checks every container was ended and
-// drops the state of widgets not seen in the frame before.
+// layout_reset starts a frame: it checks every container and scope was
+// ended and drops the state of widgets not seen in the frame before,
+// unless a retained scope holds it (see retain).
 layout_reset :: proc(l: ^Layout) {
 	assert(len(l.stack) == 0, "ui: a container was not ended")
+	assert(l.scope == 0, "ui: a scope was not ended")
 	clear(&l.stack)
 	clear(&l.children)
-	l.scope = 0
+	l.scope, l.scope_root = 0, 0
 	l.frame += 1
 	stale := make([dynamic]Area_Id, context.temp_allocator)
 	for k, v in l.state {
-		if v.seen + 1 < l.frame {
+		if !kept(l, v.seen, v.root) {
 			append(&stale, k)
 		}
 	}
 	for k in stale {
+		free(l.state[k], l.allocator)
 		delete_key(&l.state, k)
+	}
+	stale_data := make([dynamic]Data_Key, context.temp_allocator)
+	for k, e in l.data {
+		if !kept(l, e.seen, e.root) {
+			append(&stale_data, k)
+		}
+	}
+	for k in stale_data {
+		mem.free(l.data[k].ptr, l.allocator)
+		delete_key(&l.data, k)
+	}
+	for k, f in l.retained {
+		if f + 1 < l.frame {
+			delete_key(&l.retained, k)
+		}
 	}
 }
 
-// widget_state returns the retained state for id. The pointer is valid until
-// the next widget_state call; without a layout it lasts the frame.
+// widget_state returns the retained state for id. The pointer stays valid
+// until the widget is dropped, a frame after it was last asked for (or
+// later, under a retained scope); without a layout it lasts the frame.
 widget_state :: proc(gtx: ^Ctx, area: Area_Id) -> ^Widget_State {
 	l := gtx.layout
 	if l == nil {
 		return new(Widget_State, gtx.allocator)
 	}
-	_, v, _, _ := map_entry(&l.state, area)
-	v.seen = l.frame
+	v, ok := l.state[area]
+	if !ok {
+		v = new(Widget_State, l.allocator)
+		l.state[area] = v
+	}
+	v.seen, v.root = l.frame, l.scope_root
 	return v
 }
 
@@ -375,6 +412,7 @@ end :: proc {
 	end_centered,
 	end_scroll_box,
 	end_overlay,
+	end_scope,
 }
 
 // container_open places the container as a child of its parent and pushes

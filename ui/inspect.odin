@@ -70,7 +70,7 @@ inspect_lines :: proc(got: Inspection, layout: ^Layout, allocator := context.all
 		append(&lines, fmt.aprintf("min  %s", size_text(b.min), allocator = allocator))
 		append(&lines, fmt.aprintf("max  %s", size_text(b.max), allocator = allocator))
 		if shared > 0 {
-			append(&lines, fmt.aprintf("id shared with %d other widget(s): give them keys", shared, allocator = allocator))
+			append(&lines, fmt.aprintf("id shared with %d other widget(s): wrap each in a ui.scope, or give it a key", shared, allocator = allocator))
 		}
 		if s := state_text(layout, b.id); s != "" {
 			append(&lines, fmt.aprintf("state  %s", s, allocator = allocator))
@@ -116,6 +116,10 @@ layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	for x in f.boxes {
 		uses[x.id] += 1
 	}
+	interactive := make(map[Area_Id]bool, context.temp_allocator)
+	for hit in f.hits {
+		interactive[hit.area] = true
+	}
 	b := strings.builder_make(allocator)
 	for x in f.boxes {
 		for _ in 0 ..< x.depth {
@@ -125,7 +129,7 @@ layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 		if name, ok := tags[x.id]; ok {
 			fmt.sbprintf(&b, "  %q", name)
 		}
-		if n := uses[x.id]; n > 1 {
+		if n := uses[x.id]; n > 1 && interactive[x.id] {
 			fmt.sbprintf(&b, "  (id shared by %d)", n)
 		}
 		strings.write_byte(&b, '\n')
@@ -212,10 +216,21 @@ kinds_text :: proc(ks: Event_Kinds) -> string {
 	return strings.to_string(b)
 }
 
-// id_sharers is how many boxes in f other than got's own share its id.
+// id_sharers is how many boxes in f other than got's own share its id,
+// when the id takes input: a static widget's shared id is harmless, an
+// interactive one's shares hover, press and animation.
 @(private = "file")
 id_sharers :: proc(f: ^Frame, got: Inspection) -> (n: int) {
 	if !got.has_box {
+		return
+	}
+	takes_input := false
+	for h in f.hits {
+		if h.area == got.box.id {
+			takes_input = true
+		}
+	}
+	if !takes_input {
 		return
 	}
 	for b in f.boxes {
@@ -248,7 +263,7 @@ state_text :: proc(layout: ^Layout, id: Area_Id) -> string {
 		return ""
 	}
 	st, ok := layout.state[id]
-	if !ok {
+	if !ok || st == nil {
 		return ""
 	}
 	b := strings.builder_make(context.temp_allocator)
