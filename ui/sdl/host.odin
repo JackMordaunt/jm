@@ -30,6 +30,7 @@ import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
 import "core:strings"
+import "core:time"
 
 import "jm:ui"
 import "jm:ui/ipc"
@@ -77,6 +78,7 @@ Host_Loop :: struct {
 	last:        u64,
 	in_frame:    bool,
 	ctx:         runtime.Context, // for the event watch, which SDL calls without one
+	started:     time.Time, // when this host process began, to tell whether its executable was rebuilt since
 	wants_frame: bool,
 	frame_after: f32,
 	shown:       bool,
@@ -125,6 +127,7 @@ host_sink :: proc(user: rawptr, e: ui.Raw_Event) {
 host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	l.app = app
 	l.ctx = context
+	l.started = time.now()
 	if !open(&l.w, App{title = app.title, width = app.width, height = app.height}) {
 		return false
 	}
@@ -274,6 +277,9 @@ host_step :: proc(l: ^Host_Loop) {
 		// child's jm:ui changed its ops.
 		if v, vok := ui.encoded_version(ops_bytes); dok && vok && v != ui.ENCODE_VERSION {
 			fmt.eprintfln("sdl: %s speaks ops version %d, this host %d: rebuild the host", l.child_path, v, ui.ENCODE_VERSION)
+			if host_rebuilt(l) {
+				host_reexec(l)
+			}
 		} else {
 			fmt.eprintfln("sdl: %s sent a reply this host cannot decode; showing its last frame", l.child_path)
 		}
@@ -285,6 +291,17 @@ host_step :: proc(l: ^Host_Loop) {
 	ui.flatten(&l.ops, &l.frame)
 	l.shown = present(w, &l.comp, &l.frame, l.app.clear)
 	l.n += 1
+}
+
+// host_rebuilt reports whether this host's executable on disk is newer
+// than the process running it: tools/hot-watch -host rebuilt it.
+@(private)
+host_rebuilt :: proc(l: ^Host_Loop) -> bool {
+	fi, err := os.stat(os.args[0], context.temp_allocator)
+	if err != nil {
+		return false
+	}
+	return time.diff(l.started, fi.modification_time) > 0
 }
 
 // redraw_on_expose_host is redraw_on_expose for a Host_Loop, sharing its
