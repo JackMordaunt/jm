@@ -14,6 +14,7 @@ Flattener :: struct {
 	transform:  Affine,
 	clip:       Clip_Id,
 	deferred:   [dynamic]Deferred,
+	layer:      i32, // 0 for the frame, then 1, 2, ... for each deferred macro in the order run
 }
 
 // Deferred is a Defer met during the pass: its macro and the transform to
@@ -48,6 +49,7 @@ flatten :: proc(ops: ^Ops, f: ^Frame) {
 		d := st.deferred[i]
 		m := ops.macros[d.id]
 		st.transform, st.clip = d.transform, NO_CLIP
+		st.layer = i32(i + 1)
 		flatten_range(&st, m.first, m.last, 1)
 	}
 	delete(st.deferred)
@@ -117,10 +119,14 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 					transform = st.transform,
 					clip = st.clip,
 					order = len(st.f.hits),
+					layer = st.layer,
 				},
 			)
 		case Tag:
 			append(&st.f.tags, op)
+		case Debug_Box:
+			r := transform_rect(st.transform, Rect{0, 0, op.size.x, op.size.y})
+			append(&st.f.boxes, Layout_Box{op.id, r, op.min, op.max, op.depth, op.file, op.line, op.procedure, st.clip, st.layer})
 		}
 		i += 1
 	}

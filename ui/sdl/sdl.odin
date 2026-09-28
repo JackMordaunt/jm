@@ -279,6 +279,7 @@ step :: proc(l: ^Loop) {
 	w := &l.w
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
 	ui.ops_reset(&l.ops)
+	l.ops.debug = debug
 	ui.frame_reset(frame)
 	ui.layout_reset(&l.layout)
 
@@ -305,6 +306,9 @@ step :: proc(l: ^Loop) {
 	}
 	if scaled {
 		ui.pop_transform(&l.ops)
+	}
+	if .Inspect in debug && l.n > 0 {
+		ui.paint_inspector(&gtx, prev, l.router.pointer, w.density)
 	}
 	ui.flatten(&l.ops, frame)
 	l.shown = present(w, &l.comp, frame, l.app.clear)

@@ -810,3 +810,32 @@ test_bounds_flag_outlines_each_widget :: proc(t: ^testing.T) {
 	frame(&h, {.Bounds})
 	testing.expect_value(t, count(&h), 3) // two labels and their column
 }
+
+@(test)
+test_inspect_flag_records_each_widgets_box :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	boxes :: proc(h: ^Harness) -> (out: [dynamic]Debug_Box) {
+		out = make([dynamic]Debug_Box, context.temp_allocator)
+		for op in h.ops.ops {
+			if b, ok := op.(Debug_Box); ok {
+				append(&out, b)
+			}
+		}
+		return
+	}
+	harness_frame(&h)
+	label(&h.gtx, "a")
+	testing.expect_value(t, len(boxes(&h)), 0)
+	harness_frame(&h)
+	h.gtx.debug = {.Inspect}
+	d := label(&h.gtx, "a")
+	got := boxes(&h)
+	if !testing.expect_value(t, len(got), 1) {
+		return
+	}
+	testing.expect_value(t, got[0].size, d.size)
+	testing.expect_value(t, got[0].max, h.size) // the harness offers the window, loosely
+	testing.expect_value(t, got[0].procedure, "test_inspect_flag_records_each_widgets_box")
+}

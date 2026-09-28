@@ -92,6 +92,7 @@ probe_frame :: proc(p: ^Probe) {
 	router_route(&p.router, &p.prev)
 	frame_arena_reset(&p.arena)
 	ops_reset(&p.ops)
+	p.ops.debug = p.debug
 	layout_reset(&p.layout)
 	dt := debug_dt(p.debug, p.dt)
 	p.time += f64(dt)
@@ -109,6 +110,9 @@ probe_frame :: proc(p: ^Probe) {
 		debug       = p.debug,
 	}
 	p.ui(&gtx, p.user)
+	if .Inspect in p.debug {
+		paint_inspector(&gtx, &p.prev, p.router.pointer)
+	}
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	flatten(&p.ops, &p.frame)
 	p.frame, p.prev = p.prev, p.frame

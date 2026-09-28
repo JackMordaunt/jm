@@ -13,6 +13,10 @@ Debug_Flag :: enum u8 {
 	// Bounds outlines every widget's box, so a layout bug (a child past
 	// its parent, a gap from the wrong side) shows in one screenshot.
 	Bounds,
+	// Inspect records each widget's layout (Debug_Box) and, in a frame
+	// loop, shows the widget under the pointer: its constraints, size,
+	// source and state. -layout and -inspect print the same as text.
+	Inspect,
 	// Slow runs time at a quarter speed, dt and time both, so a spring or
 	// a transition can be watched frame by frame.
 	Slow,
@@ -51,6 +55,8 @@ debug_flag_name :: proc(f: Debug_Flag) -> string {
 		return "bounds"
 	case .Slow:
 		return "slow"
+	case .Inspect:
+		return "inspect"
 	}
 	return ""
 }
@@ -70,8 +76,9 @@ debug_dt :: proc(flags: Debug_Flags, dt: f32) -> f32 {
 DEBUG_TOGGLE_KEY :: Key.F11
 
 // DEBUG_TOGGLE is what DEBUG_TOGGLE_KEY switches, on top of whatever
-// JM_UI_DEBUG set: hidden parts shown and every widget outlined.
-DEBUG_TOGGLE :: Debug_Flags{.Reveal, .Bounds}
+// JM_UI_DEBUG set: hidden parts shown, every widget and input area
+// outlined, and the one under the pointer inspected.
+DEBUG_TOGGLE :: Debug_Flags{.Reveal, .Bounds, .Inspect}
 
 // debug_take_toggles removes the presses of DEBUG_TOGGLE_KEY queued in r
 // and reports whether there was an odd number of them: whether the frame

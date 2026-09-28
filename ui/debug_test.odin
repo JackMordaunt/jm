@@ -88,7 +88,7 @@ test_f11_toggles_debug_and_never_reaches_a_widget :: proc(t: ^testing.T) {
 	probe_init(&p, view, &seen, {10, 10}, debug = {.Slow})
 	defer probe_destroy(&p)
 	probe_key(&p, .F11)
-	testing.expect_value(t, seen.debug, Debug_Flags{.Slow, .Reveal, .Bounds})
+	testing.expect_value(t, seen.debug, Debug_Flags{.Slow} + DEBUG_TOGGLE)
 	probe_key(&p, .F11)
 	testing.expect_value(t, seen.debug, Debug_Flags{.Slow})
 	testing.expect_value(t, seen.keys, 0)

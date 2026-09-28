@@ -39,6 +39,20 @@ Hit :: struct {
 	transform: Affine,
 	clip:      Clip_Id,
 	order:     int, // recording order; later areas are on top
+	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
+}
+
+// Layout_Box is a Debug_Box placed on the frame: its rect in device space.
+Layout_Box :: struct {
+	id:        Area_Id,
+	rect:      Rect,
+	min, max:  Size,
+	depth:     i32,
+	file:      string,
+	line:      i32,
+	procedure: string,
+	clip:      Clip_Id,
+	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
 }
 
 Frame :: struct {
@@ -46,6 +60,7 @@ Frame :: struct {
 	clips: [dynamic]Clip,
 	hits:  [dynamic]Hit,
 	tags:  [dynamic]Tag,
+	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
 	ops:   ^Ops, // resources: paths, runs, fonts, images
 }
 
@@ -54,6 +69,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.clips = make([dynamic]Clip, allocator)
 	f.hits = make([dynamic]Hit, allocator)
 	f.tags = make([dynamic]Tag, allocator)
+	f.boxes = make([dynamic]Layout_Box, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -61,6 +77,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.clips)
 	clear(&f.hits)
 	clear(&f.tags)
+	clear(&f.boxes)
 	f.ops = nil
 }
 
@@ -69,5 +86,6 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.clips)
 	delete(f.hits)
 	delete(f.tags)
+	delete(f.boxes)
 	f^ = {}
 }

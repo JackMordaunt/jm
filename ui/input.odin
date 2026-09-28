@@ -180,7 +180,7 @@ hit_test_any :: proc(f: ^Frame, p: Point, kinds: Event_Kinds) -> (Hit, bool) {
 
 // hit_contains reports whether device point p lies in h's shape and inside
 // every clip on h's chain.
-@(private = "file")
+@(private)
 hit_contains :: proc(f: ^Frame, h: Hit, p: Point) -> bool {
 	if f == nil || !shape_contains_device(f.ops, h.shape, h.transform, p) {
 		return false

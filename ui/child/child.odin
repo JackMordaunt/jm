@@ -115,6 +115,7 @@ run :: proc(app: App) {
 		time += f64(dt)
 		ui.router_route(&router, prev if n > 0 else nil)
 		ui.ops_reset(&ops)
+		ops.debug = debug
 		ui.frame_reset(frame)
 		ui.layout_reset(&layout)
 
@@ -140,6 +141,9 @@ run :: proc(app: App) {
 		}
 		if scaled {
 			ui.pop_transform(&ops)
+		}
+		if .Inspect in debug && n > 0 {
+			ui.paint_inspector(&gtx, prev, router.pointer, density)
 		}
 		ui.flatten(&ops, frame)
 

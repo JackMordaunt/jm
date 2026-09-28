@@ -12,7 +12,7 @@ add_hit :: proc(
 	m := IDENTITY,
 	clip := NO_CLIP,
 ) {
-	append(&f.hits, Hit{area, kinds, shape, m, clip, len(f.hits)})
+	append(&f.hits, Hit{area, kinds, shape, m, clip, len(f.hits), 0})
 }
 
 // route pushes evs, routes them against f and returns the routed events.

@@ -22,7 +22,7 @@ ENCODE_MAGIC :: "UIOP"
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
 // Defer.
-ENCODE_VERSION :: u8(2)
+ENCODE_VERSION :: u8(3)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -361,6 +361,16 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 14)
 		put_u32(w, u32(v.id))
 		append(w, v.root ? 1 : 0)
+	case Debug_Box:
+		append(w, 15)
+		put_u64(w, u64(v.id))
+		put_point(w, v.size)
+		put_point(w, v.min)
+		put_point(w, v.max)
+		put_u32(w, u32(v.depth))
+		put_str(w, v.file)
+		put_u32(w, u32(v.line))
+		put_str(w, v.procedure)
 	case:
 		append(w, 0)
 	}
@@ -610,6 +620,17 @@ get_op :: proc(r: ^Reader, ops: ^Ops) -> (op: Op, ok: bool) {
 			return nil, false
 		}
 		v.root = root == 1
+		return v, true
+	case 15:
+		v: Debug_Box
+		v.id = Area_Id(get_u64(r) or_return)
+		v.size = get_point(r) or_return
+		v.min = get_point(r) or_return
+		v.max = get_point(r) or_return
+		v.depth = i32(get_u32(r) or_return)
+		v.file = get_str(r) or_return
+		v.line = i32(get_u32(r) or_return)
+		v.procedure = get_str(r) or_return
 		return v, true
 	}
 	return nil, false

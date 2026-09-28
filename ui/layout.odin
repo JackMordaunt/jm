@@ -141,6 +141,7 @@ Placement :: struct {
 	deferred: bool,
 	macro:    Macro_Id,
 	weight:   f32,
+	loc:      runtime.Source_Code_Location, // the call that made the widget, for Debug_Box
 }
 
 // layout_init prepares l; its storage lives in allocator.
@@ -195,6 +196,7 @@ widget_state :: proc(gtx: ^Ctx, area: Area_Id) -> ^Widget_State {
 // the widget (a pushed translate, or a macro the container places later).
 widget_begin :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placement {
 	p := Placement {
+		loc    = loc,
 		id     = id(key, loc),
 		parent = -1,
 		saved  = gtx.constraints,
@@ -249,6 +251,13 @@ widget_end :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 	if .Bounds in gtx.debug {
 		// In the widget's own space, before its transform or macro closes.
 		stroke(gtx.ops, Rect{0, 0, d.size.x, d.size.y}, BOUNDS_COLOR, {width = 1})
+	}
+	if .Inspect in gtx.debug {
+		depth := gtx.layout != nil ? i32(len(gtx.layout.stack)) : 0
+		append(
+			&gtx.ops.ops,
+			Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure},
+		)
 	}
 	if p.pushed {
 		pop_transform(gtx.ops)

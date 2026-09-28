@@ -97,6 +97,21 @@ Op :: union {
 	Image,
 	Input_Area,
 	Tag,
+	Debug_Box,
+}
+
+// Debug_Box records one widget's layout for the inspector, when
+// Debug_Flag.Inspect is on: its box, size wide and tall from the local
+// origin, the constraints it was given, how deep in the container stack it
+// sat, and the call that made it. It draws nothing.
+Debug_Box :: struct {
+	id:        Area_Id,
+	size:      Size,
+	min, max:  Size, // the constraints the widget was given
+	depth:     i32,
+	file:      string,
+	line:      i32,
+	procedure: string,
 }
 
 // Macro records the op index range [first, last) of a macro's body,
@@ -126,6 +141,7 @@ Ops :: struct {
 	fonts:     [dynamic]Font_Ref,
 	images:    [dynamic]Image_Ref,
 	allocator: mem.Allocator,
+	debug:     Debug_Flags, // the frame's Ctx.debug: under .Bounds, input_area outlines each area it records
 }
 
 ops_init :: proc(o: ^Ops, allocator := context.allocator) {
@@ -193,7 +209,15 @@ image :: proc(o: ^Ops, id: Image_Id, dst: Rect, src: Rect = {}) {
 
 input_area :: proc(o: ^Ops, id: Area_Id, shape: Shape, kinds: Event_Kinds) {
 	append(&o.ops, Input_Area{id, shape, kinds})
+	if .Bounds in o.debug {
+		// Every area a user can reach, widget or painted row alike.
+		stroke(o, shape, HIT_BOUNDS_COLOR, {width = 1})
+	}
 }
+
+// HIT_BOUNDS_COLOR outlines input areas under Debug_Flag.Bounds: cyan,
+// against BOUNDS_COLOR's magenta for widget boxes.
+HIT_BOUNDS_COLOR :: Color{0, 200, 255, 160}
 
 tag :: proc(o: ^Ops, id: Area_Id, name: string) {
 	append(&o.ops, Tag{id, name})
