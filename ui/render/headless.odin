@@ -130,6 +130,7 @@ inspecting :: proc(h: ^Headless) {
 //	-scroll NAME DY    scroll DY notches over NAME (positive is down)
 //	-key KEY           press KEY (a ui.Key name: Enter, Tab, Down, A, ...)
 //	-move X Y          move the pointer to X, Y
+//	-hover NAME        move the pointer to the middle of the area tagged NAME
 //	-advance N         run N frames at 1/60 s
 //	-png PATH          write the current frame
 //	-dump              print the current frame's ops as text
@@ -193,6 +194,17 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		}
 		ui.probe_move(&h.p, x, y)
 		i^ += 2
+	case "-hover":
+		if !need(args, i, 1, flag) {
+			return true, false
+		}
+		i^ += 1
+		c, found := ui.probe_center(&h.p, args[i^])
+		if !found {
+			fmt.eprintfln("no %q to hover", args[i^])
+			return true, false
+		}
+		ui.probe_move(&h.p, c.x, c.y)
 	case "-advance":
 		if !need(args, i, 1, flag) {
 			return true, false
