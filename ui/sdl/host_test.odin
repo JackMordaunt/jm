@@ -112,7 +112,10 @@ test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
 	copy_path := fmt.tprintf("%s.copy%s", CHILD_EXE, ".exe" when ODIN_OS == .Windows else "")
 	data, rerr := os.read_entire_file(CHILD_EXE, context.temp_allocator)
 	testing.expect(t, rerr == nil)
-	testing.expect(t, os.write_entire_file(copy_path, data) == nil)
+	// Executable, or the respawn below cannot start it; removed first, since
+	// open(2) applies the mode only when it creates the file.
+	os.remove(copy_path)
+	testing.expect(t, os.write_entire_file(copy_path, data, os.Permissions_Read_All + os.Permissions_Execute_All + {.Write_User}) == nil)
 	defer os.remove(copy_path)
 
 	pointer := "build/debug/host_test.pointer"

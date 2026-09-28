@@ -146,6 +146,12 @@ spawn :: proc(argv: []string, dir: string = "") -> (c: Child, ok: bool) {
 
 // kill forces c's process to exit and closes the pipe ends this side held.
 kill :: proc(c: ^Child) {
+	// A zero Child (never spawned, or already killed or waited on) has pid
+	// 0, and per kill(2) pid 0 signals every process in the caller's
+	// process group, the caller included.
+	if c.process.pid == 0 {
+		return
+	}
 	_ = os.process_kill(c.process)
 	_, _ = os.process_wait(c.process)
 	os.close(c.stdin)

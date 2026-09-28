@@ -27,6 +27,7 @@ package sdl
 
 import "base:runtime"
 import "core:fmt"
+import "core:mem/virtual"
 import "core:os"
 import "core:strings"
 
@@ -63,7 +64,15 @@ Host_Loop :: struct {
 	ops:         ui.Ops, // ui.decode rebuilds this from each reply
 	frame:       ui.Frame, // ui.flatten rebuilds this from ops each frame
 	comp:        render.Compositor,
-	events:      [dynamic]ui.Raw_Event, // this frame's batch, in context.temp_allocator
+	// This frame's batch. Both outlive host_step's free_all of
+	// context.temp_allocator: events is on the heap, and the Text strings
+	// in it are in text, which is reset only once they are encoded. Both
+	// used to live in the temp allocator, so a frame's free_all left the
+	// array pointing at memory the next temp allocation (every poll reads
+	// the watch file into it) scribbled over — the watch-only segfault in
+	// encode_input.
+	events:      [dynamic]ui.Raw_Event,
+	text:        virtual.Arena,
 	n:           u64,
 	last:        u64,
 	in_frame:    bool,
@@ -93,7 +102,7 @@ run_host :: proc(app: Host_App) {
 	defer sdl3.RemoveEventWatch(redraw_on_expose_host, l)
 
 	for {
-		if !poll(&l.w, host_sink, l, context.temp_allocator) {
+		if !poll(&l.w, host_sink, l, virtual.arena_allocator(&l.text)) {
 			break
 		}
 		host_step(l)
@@ -139,7 +148,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	ui.flatten(&l.ops, &l.frame) // a valid, empty frame until the first reply
 	render.compositor_init(&l.comp, int(app.threads))
 	l.comp.damage.resize_in_place = true
-	l.events = make([dynamic]ui.Raw_Event, context.temp_allocator)
+	l.events = make([dynamic]ui.Raw_Event)
 	l.last = sdl3.GetTicksNS()
 	return true
 }
@@ -154,6 +163,8 @@ host_loop_destroy :: proc(l: ^Host_Loop) {
 	// already-gone case.
 	ipc.kill(&l.child)
 	delete(l.child_path)
+	delete(l.events)
+	virtual.arena_destroy(&l.text)
 	render.compositor_destroy(&l.comp)
 	ui.frame_destroy(&l.frame)
 	ui.ops_destroy(&l.ops)
@@ -227,6 +238,8 @@ host_step :: proc(l: ^Host_Loop) {
 	defer free_all(context.temp_allocator)
 	host_maybe_respawn(l)
 	if l.child_dead {
+		clear(&l.events) // nobody to send them to
+		virtual.arena_free_all(&l.text)
 		l.wants_frame = false
 		return
 	}
@@ -239,6 +252,7 @@ host_step :: proc(l: ^Host_Loop) {
 	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator)
 	clear(&l.events)
+	virtual.arena_free_all(&l.text) // encode_input copied every Text string
 
 	if !ipc.write_frame(l.child.stdin, input) {
 		l.child_dead = true

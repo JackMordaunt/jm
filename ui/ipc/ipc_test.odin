@@ -76,3 +76,13 @@ test_write_frame_refuses_an_oversized_payload :: proc(t: ^testing.T) {
 	defer os.close(w)
 	testing.expect(t, !write_frame(w, make([]byte, MAX_FRAME + 1, context.temp_allocator)))
 }
+
+// A zero Child has pid 0, and signalling pid 0 hits the whole process
+// group: if kill ever forwards it, this test runner dies with the group.
+@(test)
+test_kill_on_a_zero_child_signals_nothing :: proc(t: ^testing.T) {
+	c: Child
+	kill(&c)
+	kill(&c)
+	testing.expect_value(t, c.process.pid, 0)
+}
