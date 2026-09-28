@@ -13,6 +13,7 @@
 #   just kitchen-dump  print the demo's first frame as text, no window
 #   just kitchen-png   render the demo's first frame to build/kitchen.png
 #   just material-tokens  regenerate ui/material/tokens from the m3e-kit
+#   just material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just bench     time jm:wasm against the workloads in tools/wasm-bench
 #   just bench-ui  time jm:ui layout and the Blend2D executor per frame
@@ -246,6 +247,7 @@ check:
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/material-tokens {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/material-shapes {{flags}} -target:$t || exit 1; \
     done
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
@@ -361,6 +363,11 @@ hot-button: blend2d sdl3
 # resolved tokens. M3E_KIT is the kit checkout.
 material-tokens:
     {{odin}} run tools/material-tokens {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/tokens/m3e.resolved.json" ui/material/tokens/tokens.odin
+
+# Regenerate ui/material/shape_data.odin, the loading indicator's morph
+# pairs, from the M3 Expressive kit's shapes/morphs.json.
+material-shapes:
+    {{odin}} run tools/material-shapes {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/shapes/morphs.json" ui/material/shape_data.odin
 
 # Print the demo's first frame as text, no window
 kitchen-dump: blend2d sdl3
