@@ -148,6 +148,12 @@ DRAWER_ITEM_TRAILING :: f32(24)
 @(private = "file")
 DRAWER_ITEM_GAP :: f32(12)
 
+// Drawer_Scroll is a navigation drawer's item list scroll: offset is how
+// far down the list is scrolled, in dp, clamped to its overflow each frame.
+Drawer_Scroll :: struct {
+	offset: f32,
+}
+
 // navigation_drawer is M3's navigation drawer sheet: width wide (at most
 // comp.navigation-drawer.container-width, 360), height tall (0: the
 // height it is offered, or its content's when unbounded), headlines and 56dp destinations whose active one sits on a
@@ -162,6 +168,10 @@ DRAWER_ITEM_GAP :: f32(12)
 // scrim that closes it on a press, as does Escape on a focused item. Open
 // runs on the default-spatial spring and close on fast-effects, as the
 // spec's asymmetric motion asks.
+//
+// scroll is the item list's scroll position (see Drawer_Scroll). Pass one
+// to keep it yourself: to restore it, persist it, or share it between the
+// drawer's variants; nil keeps it in the drawer's own widget_data.
 navigation_drawer :: proc(
 	gtx: ^ui.Ctx,
 	items: []Nav_Item,
@@ -171,6 +181,7 @@ navigation_drawer :: proc(
 	modal := false,
 	variant := Drawer_Kind.Permanent,
 	open: ^bool = nil,
+	scroll: ^Drawer_Scroll = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -185,23 +196,24 @@ navigation_drawer :: proc(
 	h := height > 0 ? height : (cs.max.y < ui.INF ? cs.max.y : content)
 	shown := v == .Permanent || open == nil || open^
 
-	// The drawer's own state: slot 0 is the open progress; scroll is the
-	// item list's offset. Read before any item's control() moves the map.
+	// The drawer's own state: spring 0 is the open progress; sc the item
+	// list's scroll.
 	dc := Control {
 		st = ui.widget_state(gtx, p.id),
 	}
+	sc := scroll if scroll != nil else ui.widget_data(gtx, p.id, Drawer_Scroll)
 	prog: f32 = 1
 	if v != .Permanent {
 		prog = animate(gtx, dc, 0, shown ? 1 : 0, shown ? .Default_Spatial : .Fast_Effects)
 	}
 	for e in ui.events(gtx, p.id) {
 		if e.kind == .Scroll {
-			dc.st.scroll += e.scroll.y * ui.SCROLL_STEP
+			sc.offset += e.scroll.y * ui.SCROLL_STEP
 		}
 	}
 	bar_id := ui.id_mix(p.id, 0xfffe)
-	offset := ui.scroll_bar_handle(gtx, bar_id, .Vertical, {w, h}, content, clamp(dc.st.scroll, 0, max(content - h, 0)), ends = drawer_bar_ends(v))
-	ui.widget_state(gtx, p.id).scroll = offset // the bar's own state may have moved dc.st
+	sc.offset = ui.scroll_bar_handle(gtx, bar_id, .Vertical, {w, h}, content, clamp(sc.offset, 0, max(content - h, 0)), ends = drawer_bar_ends(v))
+	offset := sc.offset
 
 	layout_w := w
 	switch v {

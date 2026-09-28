@@ -253,6 +253,16 @@ TAB_INDICATOR_MIN :: f32(24) // indicatorMinWidth, TabRow.kt:460-461
 @(private = "file")
 MAX_TABS :: 32
 
+// Tabs_Scroll is a scrollable tab row's scroll position: target is where
+// the row is headed (wheel input and a newly selected tab move it, clamped
+// to the overflow), offset the default-spatial spring that carries the
+// drawn offset there. Set target to scroll the row; leave offset zero to
+// have it jump there on the first frame.
+Tabs_Scroll :: struct {
+	target: f32,
+	offset: ui.Spring,
+}
+
 // tabs is M3's tab row (comp.primary-navigation-tab, or secondary). Fixed
 // rows share the offered width (width when > 0) equally; scrollable rows
 // lay tabs out at their natural width (min 90) from a 52dp edge padding
@@ -267,6 +277,10 @@ MAX_TABS :: 32
 // spatial spring (tabs.json indicator-motion); a tab's colour fades in on
 // default-effects and out on fast-effects. state forces the look of tab
 // state_tab only. Returns true when selected^ changed.
+//
+// scroll is a scrollable row's scroll position (see Tabs_Scroll). Pass one
+// to keep it yourself: to restore it, persist it, or keep it when the row
+// is rebuilt under another id; nil keeps it in the row's own widget_data.
 tabs :: proc(
 	gtx: ^ui.Ctx,
 	labels: []string,
@@ -277,6 +291,7 @@ tabs :: proc(
 	state := Interaction.Live,
 	state_tab := -1,
 	scrollable := false,
+	scroll: ^Tabs_Scroll = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -325,22 +340,24 @@ tabs :: proc(
 		target_x = xs[sel] + (ws[sel] - target_w) / 2
 	}
 
-	// The row's springs: 0 indicator x, 1 indicator width, 2 scroll
-	// offset (toward Widget_State.scroll, the scroll target). A forced
-	// row has no retained state and sits at its targets.
+	// The row's springs: 0 indicator x, 1 indicator width; the scroll
+	// lives in sc. A forced row has no retained state and sits at its
+	// targets.
 	ind_x, ind_w, off := target_x, target_w, f32(0)
+	sc: ^Tabs_Scroll
 	if state == .Live {
 		rc := Control {
 			st = ui.widget_state(gtx, p.id),
 		}
+		sc = scroll if scroll != nil else ui.widget_data(gtx, p.id, Tabs_Scroll)
 		if scrollable {
 			for e in ui.events(gtx, p.id) {
 				if e.kind == .Scroll {
-					rc.st.scroll += (e.scroll.x != 0 ? e.scroll.x : e.scroll.y) * ui.SCROLL_STEP
+					sc.target += (e.scroll.x != 0 ? e.scroll.x : e.scroll.y) * ui.SCROLL_STEP
 				}
 			}
-			rc.st.scroll = clamp(rc.st.scroll, 0, max_scroll)
-			off = clamp(animate(gtx, rc, 2, rc.st.scroll, .Default_Spatial, 0.1), 0, max_scroll)
+			sc.target = clamp(sc.target, 0, max_scroll)
+			off = clamp(ui.spring_update(&sc.offset, gtx, sc.target, spring_params(.Default_Spatial), 0.1), 0, max_scroll)
 			ui.input_area(gtx.ops, p.id, view, {.Scroll})
 		}
 		ind_x = animate(gtx, rc, 0, target_x, .Default_Spatial, 0.1)
@@ -401,11 +418,10 @@ tabs :: proc(
 	}
 	if scrollable {
 		ui.pop_clip(gtx.ops)
-		if changed && state == .Live {
-			// Bring the new tab to the centre; spring 2 carries the scroll there.
-			st := ui.widget_state(gtx, p.id)
+		if changed && sc != nil {
+			// Bring the new tab to the centre; the offset springs there.
 			s := selected^
-			st.scroll = clamp(xs[s] + ws[s] / 2 - size.x / 2, 0, max_scroll)
+			sc.target = clamp(xs[s] + ws[s] / 2 - size.x / 2, 0, max_scroll)
 		}
 	}
 	ui.widget_end(gtx, &p, {size = size})
