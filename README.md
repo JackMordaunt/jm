@@ -109,6 +109,7 @@ just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
 just kitchen   open the jm:ui demo       just kitchen-dump  its first frame as text
 just kitchen-png  render it to build/kitchen.png
+just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
 just bench-ui  ms per frame for layout and the Blend2D executor
 just hot-counter-child  build the subprocess `just test`'s own host/child test spawns
 just example   run examples/hello.odin      just fuzz      30s of fuzzing
