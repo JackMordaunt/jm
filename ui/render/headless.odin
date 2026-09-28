@@ -111,6 +111,16 @@ content_rows :: proc(data: bl.ImageData, w, h: int) -> int {
 	return y
 }
 
+// inspecting turns Debug_Flag.Inspect on for h and, if the current frame
+// was recorded without it, runs one so the frame has its layout boxes.
+@(private = "file")
+inspecting :: proc(h: ^Headless) {
+	if .Inspect not_in h.p.debug {
+		h.p.debug += {.Inspect}
+		ui.probe_frame(&h.p)
+	}
+}
+
 // headless_step runs the session step at args[i^], advancing i^ past its
 // arguments. It returns handled false for an argument that is not a step,
 // for the caller's own flags, and ok false, with a message printed, for a
@@ -124,6 +134,8 @@ content_rows :: proc(data: bl.ImageData, w, h: int) -> int {
 //	-png PATH          write the current frame
 //	-dump              print the current frame's ops as text
 //	-overflow          print what the window or a clip cuts off at the sides
+//	-layout            print every widget's box, constraints and call
+//	-inspect X Y       print the widget and input area under X, Y
 headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bool) {
 	need :: proc(args: []string, i: ^int, n: int, flag: string) -> bool {
 		if i^ + n >= len(args) {
@@ -205,6 +217,22 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		fmt.print(ui.probe_dump(&h.p))
 	case "-overflow":
 		fmt.print(ui.overflow_report(ui.probe_current(&h.p), h.p.size, context.temp_allocator))
+	case "-layout":
+		inspecting(h)
+		fmt.print(ui.layout_report(ui.probe_current(&h.p), context.temp_allocator))
+	case "-inspect":
+		if !need(args, i, 2, flag) {
+			return true, false
+		}
+		x, x_ok := strconv.parse_f32(args[i^ + 1])
+		y, y_ok := strconv.parse_f32(args[i^ + 2])
+		if !x_ok || !y_ok {
+			fmt.eprintfln("-inspect: %q %q are not numbers", args[i^ + 1], args[i^ + 2])
+			return true, false
+		}
+		inspecting(h)
+		fmt.print(ui.inspect_report(ui.probe_current(&h.p), &h.p.layout, {x, y}, context.temp_allocator))
+		i^ += 2
 	case:
 		return false, true
 	}
