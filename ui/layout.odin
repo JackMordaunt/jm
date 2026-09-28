@@ -62,6 +62,7 @@ Widget_State :: struct {
 	pressed:       bool,
 	focused:       bool,
 	scroll:        f32, // text field: horizontal scroll to keep the caret visible
+	scroll_x:      f32, // scroll_box: horizontal offset, when its content is wider than it
 	flex_valid:    bool, // flex: the fields below hold last frame's totals
 	flex_rigid:    f32,
 	flex_weight:   f32,
@@ -796,10 +797,14 @@ SCROLL_STEP :: f32(48)
 // events move the content, clamped to its overflow; the offset is kept in
 // the box's own widget state, so a distinct key gives a fresh offset. The
 // body is a macro, as in clip_box.
-scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Scroll_Box {
+//
+// min_width lays the content out at least that wide, however narrow the
+// box: content that cannot reflow narrower then scrolls sideways, by a
+// horizontal wheel or Shift and the vertical one, instead of being cut off.
+scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, loc := #caller_location) -> Scroll_Box {
 	i, c := overlay_open(gtx, .Scroll, key, loc)
 	if c != nil {
-		c.inner = {min = {c.cs.min.x, 0}, max = {c.cs.max.x, INF}}
+		c.inner = {min = {max(c.cs.min.x, min_width), 0}, max = {max(c.cs.max.x, min_width), INF}}
 		c.body = macro_begin(gtx.ops)
 	}
 	return {gtx, i}
@@ -856,15 +861,22 @@ overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 		size = constrain(c.cs, {content.x, is_finite(c.cs.max.y) ? c.cs.max.y : content.y})
 		st := widget_state(gtx, c.place.id)
 		for e in events(gtx, c.place.id) {
-			if e.kind == .Scroll {
+			if e.kind != .Scroll {
+				continue
+			}
+			if .Shift in e.mods && e.scroll.x == 0 {
+				st.scroll_x += e.scroll.y * SCROLL_STEP
+			} else {
 				st.scroll += e.scroll.y * SCROLL_STEP
+				st.scroll_x += e.scroll.x * SCROLL_STEP
 			}
 		}
 		st.scroll = clamp(st.scroll, 0, max(content.y - size.y, 0))
+		st.scroll_x = clamp(st.scroll_x, 0, max(content.x - size.x, 0))
 		view := Rect{0, 0, size.x, size.y}
 		input_area(o, c.place.id, view, {.Scroll})
 		push_clip(o, view)
-		push_transform(o, translate(0, -st.scroll))
+		push_transform(o, translate(-st.scroll_x, -st.scroll))
 		call(o, c.body)
 		pop_transform(o)
 		pop_clip(o)

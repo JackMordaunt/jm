@@ -472,6 +472,53 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
 }
 
+// wide_scroll_frame lays a scroll_box with min_width 500 over a 500px
+// wide, 300px tall column in h's 200x100 window.
+@(private)
+wide_scroll_frame :: proc(h: ^Harness) -> Input_Area {
+	gtx := &h.gtx
+	{
+		sb := scroll_box(gtx, min_width = 500); defer end(&sb)
+		col := column(gtx); defer end(&col)
+		spacer(gtx, 300)
+	}
+	return h.ops.ops[index_of(&h.ops, Input_Area)].(Input_Area)
+}
+
+@(test)
+test_scroll_box_min_width_scrolls_sideways :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	ia := wide_scroll_frame(&h)
+	clip := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip)
+	testing.expect_value(t, clip.shape.(Rect).w, 200) // the box stays the window's width
+	x_offset :: proc(h: ^Harness) -> f64 {
+		return h.ops.ops[index_of(&h.ops, Push_Clip) + 1].(Push_Transform).m.e
+	}
+	testing.expect_value(t, x_offset(&h), 0)
+
+	// A horizontal wheel moves it sideways; Shift turns a vertical one.
+	harness_frame(&h)
+	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {1, 0}})
+	wide_scroll_frame(&h)
+	testing.expect_value(t, x_offset(&h), f64(-SCROLL_STEP))
+	testing.expect_value(t, scroll_offset(&h), 0)
+	clear(&h.router.events)
+	harness_frame(&h)
+	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}, mods = {.Shift}})
+	wide_scroll_frame(&h)
+	testing.expect_value(t, x_offset(&h), f64(-2 * SCROLL_STEP))
+	testing.expect_value(t, scroll_offset(&h), 0)
+
+	// It clamps to the overflow: 500 - 200.
+	clear(&h.router.events)
+	harness_frame(&h)
+	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {1e6, 0}})
+	wide_scroll_frame(&h)
+	testing.expect_value(t, x_offset(&h), -300)
+}
+
 @(test)
 test_box_paint_replaces_fill_and_outline :: proc(t: ^testing.T) {
 	h: Harness
