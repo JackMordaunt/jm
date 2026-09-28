@@ -96,6 +96,11 @@ DATE_INPUT_BODY :: f32(10 + 56 + 4 + 16 + 12)
 // resizes the card on a default-spatial spring. actions, when given, are
 // text buttons along the bottom end; action^ is set to the one clicked.
 //
+// state, when given, is the caller's Date_Picker_State: the mode (when
+// mode is nil) and whether the year menu is open and how far it has
+// scrolled. Pass it to keep or restore the picker's view across its
+// dialog closing and reopening; it is kept internally otherwise.
+//
 // Departures: no arrow-key focus movement between days (jm:ui has no
 // focus traversal); months change without the paging slide; the card
 // keeps the picker's 360dp width and colour in input mode, so
@@ -114,6 +119,7 @@ date_picker :: proc(
 	max_year := 2100,
 	actions: []string = nil,
 	action: ^int = nil,
+	state: ^Date_Picker_State = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -127,15 +133,12 @@ date_picker :: proc(
 		base := selected^ != {} ? selected^ : today
 		view^ = {base.year, base.month, 1}
 	}
-	// The picker's own bits sit on a child state: scroll is the mode when
-	// the caller keeps none, pressed whether the year grid is open, and
-	// ripple_origin.y the year grid's scroll.
-	ms := ui.widget_state(gtx, ui.id_mix(p.id, 1))
-	m := mode != nil ? mode^ : Date_Mode(int(ms.scroll))
+	ds := state if state != nil else ui.widget_data(gtx, p.id, Date_Picker_State)
+	m := mode != nil ? mode^ : ds.mode
 	if input == nil {
 		m = .Picker
 	}
-	year_open, year_scroll := ms.pressed, ms.ripple_origin.y
+	year_open, year_scroll := ds.year_open, ds.year_scroll
 	ranged := range_end != nil
 	changed := false
 
@@ -246,12 +249,11 @@ date_picker :: proc(
 	}
 	ui.pop_clip(gtx.ops)
 
-	ms = ui.widget_state(gtx, ui.id_mix(p.id, 1))
-	ms.pressed, ms.ripple_origin.y = year_open, year_scroll
+	ds.year_open, ds.year_scroll = year_open, year_scroll
 	if mode != nil {
 		mode^ = m
 	} else {
-		ms.scroll = f32(int(m))
+		ds.mode = m
 	}
 	ui.widget_end(gtx, &p, {size = size})
 
@@ -273,6 +275,15 @@ date_picker :: proc(
 		ui.end(&stack)
 	}
 	return changed
+}
+
+// Date_Picker_State is what a date picker keeps between frames: see
+// date_picker's state parameter. The zero value shows the calendar grid
+// with the year menu shut.
+Date_Picker_State :: struct {
+	mode:        Date_Mode, // when the caller keeps no mode
+	year_open:   bool, // the year menu is showing in place of the day grid
+	year_scroll: f32, // the year menu's scroll offset, in dp
 }
 
 // date_short is d as "Sep 28", or none for the zero date.
@@ -995,21 +1006,21 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 	inner := DIAL * TIME_INNER_RING
 	id := ui.id_mix(pid, 30)
 	st := ui.widget_state(gtx, id)
-	// scroll is 1 once a press has moved: a drag, not a tap.
+	grab := ui.widget_data(gtx, id, Dial_Grab)
 	if live {
 		for e in ui.events(gtx, id) {
 			#partial switch e.kind {
 			case .Press:
 				st.pressed = true
-				st.scroll = 0
+				grab.moved = false
 			case .Move:
 				if st.pressed {
-					st.scroll = 1
+					grab.moved = true
 				}
 			case .Release:
 				if st.pressed && !editing_minute^ {
 					editing_minute^ = true // an hour picked: on to minutes
-				} else if st.pressed && st.scroll == 0 {
+				} else if st.pressed && !grab.moved {
 					// A tap snaps minutes to the nearest five.
 					t.minute = (t.minute + 2) / 5 * 5 % 60
 				}
@@ -1040,14 +1051,14 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 		ui.input_area(gtx.ops, id, face, {.Press, .Release, .Move})
 		ui.tag(gtx.ops, id, "clock dial")
 	}
-	dragging := st.pressed && st.scroll != 0
+	dragging := st.pressed && grab.moved
 
 	// The handle's angle, in turns, springs to the value (default-spatial)
 	// the short way round; a drag follows the pointer directly.
 	value := editing_minute^ ? f32(t.minute) / 60 : f32(t.hour % 12) / 12
 	c := Control{}
 	if live {
-		c.st = ui.widget_state(gtx, id)
+		c.st = st
 	}
 	cur := c.st != nil ? c.st.springs[0].value : value
 	target := cur + (value - cur) - math.round(value - cur)
@@ -1099,6 +1110,14 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 	ui.pop_clip(gtx.ops)
 }
 
+// Dial_Grab is the clock dial's grab: whether the pointer has moved since
+// the press, which makes it a drag (whole minutes) rather than a tap
+// (minutes snapped to five).
+@(private)
+Dial_Grab :: struct {
+	moved: bool,
+}
+
 // Carousel_Item is one carousel tile: a two-colour gradient standing in
 // for an image, and a label.
 Carousel_Item :: struct {
@@ -1136,6 +1155,11 @@ CAROUSEL_SETTLE_DELAY :: f32(0.15) // how long scrolling must rest before a snap
 // carousel tokens; M3's carousel item shape). Returns the index of an
 // item clicked this frame, or -1.
 //
+// state, when given, is the caller's Carousel_State: the scroll position
+// and the grab in progress. Pass it to keep or restore the position, or
+// to move the carousel from outside (set position; it snaps from there
+// like a scroll); it is kept internally otherwise.
+//
 // Departures: horizontal only; the hero-center strategy centres the
 // focal item on a small leading keyline rather than solving both sides.
 carousel :: proc(
@@ -1148,6 +1172,7 @@ carousel :: proc(
 	item_spacing: f32 = 0,
 	min_small := CAROUSEL_MIN_SMALL,
 	max_small := CAROUSEL_MAX_SMALL,
+	state: ^Carousel_State = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
@@ -1159,29 +1184,31 @@ carousel :: proc(
 	if strategy == .Uncontained {
 		max_pos = max(f32(n) - (size.x + item_spacing) / (kl.large + item_spacing), 0)
 	}
-	// scroll is the position in items (0 = the first item on the first
-	// focal keyline); springs[0] its snap; ripple drives the rest delay.
+	// springs[0] is the position's snap.
 	st := ui.widget_state(gtx, p.id)
-	scrolled := false
+	cs := state if state != nil else ui.widget_data(gtx, p.id, Carousel_State)
+	rest := &ui.widget_data(gtx, p.id, Carousel_Rest).delay
+	// A position set from outside since last frame moves like a scroll:
+	// internally the snap's value always ends a frame equal to it.
+	scrolled := cs.position != st.springs[0].value
 	clicked := -1
 	for e in ui.events(gtx, p.id) {
 		#partial switch e.kind {
 		case .Scroll:
-			st.scroll += (e.scroll.x + e.scroll.y) * ui.SCROLL_STEP / (kl.large + item_spacing)
+			cs.position += (e.scroll.x + e.scroll.y) * ui.SCROLL_STEP / (kl.large + item_spacing)
 			scrolled = true
 		case .Press:
 			st.pressed = true
-			st.ripple_origin = {e.pos.x, st.scroll}
-			st.hovered = false // hovered is "the press moved": a drag, not a click
+			cs.grab_x, cs.grab_position, cs.moved = e.pos.x, cs.position, false
 		case .Move:
 			if st.pressed {
-				st.scroll = st.ripple_origin.y - (e.pos.x - st.ripple_origin.x) / (kl.large + item_spacing)
-				st.hovered |= abs(e.pos.x - st.ripple_origin.x) > 4
+				cs.position = cs.grab_position - (e.pos.x - cs.grab_x) / (kl.large + item_spacing)
+				cs.moved |= abs(e.pos.x - cs.grab_x) > 4
 				scrolled = true
 			}
 		case .Release:
-			if st.pressed && !st.hovered {
-				clicked = carousel_hit(kl, st.scroll, n, e.pos.x, item_spacing)
+			if st.pressed && !cs.moved {
+				clicked = carousel_hit(kl, cs.position, n, e.pos.x, item_spacing)
 			}
 			st.pressed = false
 			scrolled = true
@@ -1192,28 +1219,28 @@ carousel :: proc(
 		case .Key:
 			#partial switch e.key {
 			case .Left:
-				st.scroll = math.round(st.scroll) - 1
+				cs.position = math.round(cs.position) - 1
 				scrolled = true
 			case .Right:
-				st.scroll = math.round(st.scroll) + 1
+				cs.position = math.round(cs.position) + 1
 				scrolled = true
 			}
 		}
 	}
-	st.scroll = clamp(st.scroll, 0, max_pos)
+	cs.position = clamp(cs.position, 0, max_pos)
 	if scrolled || st.pressed {
-		st.springs[0] = {value = st.scroll, target = st.scroll, started = true}
-		st.ripple = {to = 1, duration = CAROUSEL_SETTLE_DELAY}
+		st.springs[0] = {value = cs.position, target = cs.position, started = true}
+		rest^ = {to = 1, duration = CAROUSEL_SETTLE_DELAY}
 	} else if strategy != .Uncontained {
 		// Resting: once the delay runs out, snap to the nearest item.
-		resting := st.ripple.t >= st.ripple.duration
+		resting := rest.t >= rest.duration
 		if !resting {
-			ui.tween_update(&st.ripple, gtx)
+			ui.tween_update(rest, gtx)
 		} else {
-			st.scroll = ui.spring_update(&st.springs[0], gtx, clamp(math.round(st.scroll), 0, max_pos), CAROUSEL_SNAP, 0.001)
+			cs.position = ui.spring_update(&st.springs[0], gtx, clamp(math.round(cs.position), 0, max_pos), CAROUSEL_SNAP, 0.001)
 		}
 	}
-	pos := st.scroll
+	pos := cs.position
 	focused := st.focused
 	view := ui.Rect{0, 0, size.x, size.y}
 	ui.input_area(gtx.ops, p.id, view, {.Scroll, .Press, .Release, .Move, .Key, .Focus, .Blur})
@@ -1247,6 +1274,24 @@ carousel :: proc(
 	}
 	ui.widget_end(gtx, &p, {size = size})
 	return clicked
+}
+
+// Carousel_State is what a carousel keeps between frames: see carousel's
+// state parameter. The zero value is scrolled to the start, not grabbed.
+Carousel_State :: struct {
+	// position is the scroll position in items: 0 puts the first item on
+	// the first focal keyline, 1 the second, and fractions lie between.
+	position:      f32,
+	grab_x:        f32, // the pointer's x where the press landed
+	grab_position: f32, // position when the press landed
+	moved:         bool, // the press has moved past 4dp: a drag, not a click
+}
+
+// Carousel_Rest is how long a carousel's scrolling has rested, counting
+// up to CAROUSEL_SETTLE_DELAY before the snap starts.
+@(private)
+Carousel_Rest :: struct {
+	delay: ui.Tween,
 }
 
 // Carousel_Keylines are one strategy's item sizes along the viewport:

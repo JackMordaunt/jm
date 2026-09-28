@@ -83,15 +83,13 @@ search_bar :: proc(
 	pad_l, pad_r := search_padding(leading, trailing)
 	inner := max(size.x - pad_l - pad_r, 0)
 
-	// The view's retained bits live on a child id: its scroll is 1 while a
-	// pick keeps the auto-mode view shut, its ripple_origin the bar's
-	// window origin as last hit-tested.
-	view_id := ui.id_mix(p.id, 1)
+	vs := ui.widget_data(gtx, p.id, Search_View_State)
+	st: ^ui.Widget_State // the input's, while live
 	changed, enter, escape, blurred, pressed := false, false, false, false, false
 	focused, hovered, bar_pressed: bool
 	scroll: f32
 	if live {
-		st := ui.widget_state(gtx, p.id)
+		st = ui.widget_state(gtx, p.id)
 		changed, enter, escape, blurred, pressed = search_text_events(gtx, p.id, st, s, pad_l)
 		focused, hovered, bar_pressed = st.focused, st.hovered, st.pressed
 	}
@@ -99,15 +97,13 @@ search_bar :: proc(
 	full := shape_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT).width
 	caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], tok.SEARCH_BAR_INPUT_TEXT_FONT).width : full
 	if live {
-		st := ui.widget_state(gtx, p.id)
 		st.scroll = max(clamp(min(st.scroll, max(full + 2 - inner, 0)), caret + 2 - inner, caret), 0)
 		scroll = st.scroll
 	}
 
 	// Expanded: the caller's, or focus unless a pick dismissed it.
-	vs := ui.widget_state(gtx, view_id)
 	if changed || pressed {
-		vs.scroll = 0
+		vs.dismissed = false
 	}
 	open: bool
 	if expanded != nil {
@@ -120,34 +116,29 @@ search_bar :: proc(
 		open = expanded^
 	} else {
 		if escape || enter {
-			vs.scroll = 1
+			vs.dismissed = true
 		}
-		open = live ? focused && vs.scroll == 0 && len(suggestions) > 0 : false
+		open = live ? focused && !vs.dismissed && len(suggestions) > 0 : false
 	}
 	if enter && submitted != nil {
 		submitted^ = true
 	}
 	// The bar's window origin, read from its hit while it was last fully
 	// collapsed (once expanded, the header takes the same id elsewhere).
-	origin := vs.ripple_origin
-	if live && gtx.router != nil && ui.widget_state(gtx, p.id).springs[0].value <= 0.001 {
+	if live && gtx.router != nil && st.springs[0].value <= 0.001 {
 		r := gtx.router
 		switch {
 		case r.pressed == p.id:
-			origin = ui.apply(r.pressed_hit.transform, {})
+			vs.origin = ui.apply(r.pressed_hit.transform, {})
 		case r.focus == p.id:
-			origin = ui.apply(r.focus_hit.transform, {})
+			vs.origin = ui.apply(r.focus_hit.transform, {})
 		case r.hover == p.id:
-			origin = ui.apply(r.hover_hit.transform, {})
+			vs.origin = ui.apply(r.hover_hit.transform, {})
 		}
-		ui.widget_state(gtx, view_id).ripple_origin = origin
 	}
 
 	// Progress: 0 collapsed, 1 expanded, overshooting under a spatial spring.
-	c := Control{}
-	if live {
-		c.st = ui.widget_state(gtx, p.id)
-	}
+	c := Control{st = st}
 	t := animate(gtx, c, 0, open ? 1 : 0, search_spring(mode, open))
 
 	// The collapsed bar, in place. It paints its forced state; live it
@@ -174,17 +165,18 @@ search_bar :: proc(
 
 	picked := -1
 	if t > 0.001 {
-		picked = search_view(gtx, p.id, mode, s, str, placeholder, leading, trailing, suggestions, size.x, window, origin, t, open, live, scroll, caret, focused)
+		picked = search_view(gtx, p.id, mode, s, str, placeholder, leading, trailing, suggestions, size.x, window, vs.origin, t, open, live, scroll, caret, focused)
 	}
 	if picked >= 0 {
 		ui.text_set(s, suggestions[picked])
 	}
-	closed := search_view_closed(gtx, p.id)
+	closed := vs.close
+	vs.close = false
 	if picked >= 0 || (open && closed) {
 		if expanded != nil {
 			expanded^ = false
 		} else {
-			ui.widget_state(gtx, view_id).scroll = 1
+			vs.dismissed = true
 		}
 	}
 	ui.widget_end(gtx, &p, {size = size})
@@ -193,6 +185,21 @@ search_bar :: proc(
 
 @(private)
 SEARCH_KINDS :: ui.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur}
+
+// Search_View_State is what a search bar keeps for its view between
+// frames, beside the Widget_State its input uses.
+@(private)
+Search_View_State :: struct {
+	// dismissed keeps a view that follows focus shut after a pick, Enter or
+	// Escape, until the text next changes or the bar is pressed.
+	dismissed: bool,
+	// close is the view's own areas (the outside catcher, the back arrow)
+	// asking search_bar to collapse, set and read in the same frame.
+	close:     bool,
+	// origin is the bar's window origin as last hit-tested while fully
+	// collapsed: where a full-screen view grows from.
+	origin:    ui.Point,
+}
 
 // search_padding is the input text's start and end inset: an icon sits
 // SEARCH_ICON_INSET from each edge and the text as far again past it.
@@ -426,7 +433,7 @@ search_view :: proc(
 		// A press anywhere outside the view collapses it, and reaches nothing else.
 		for e in ui.events(gtx, catch_id) {
 			if e.kind == .Press {
-				search_view_close(gtx, id)
+				ui.widget_data(gtx, id, Search_View_State).close = true
 			}
 		}
 		ui.input_area(gtx.ops, catch_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
@@ -465,7 +472,7 @@ search_view :: proc(
 		bid := ui.id_mix(id, 4)
 		bc := control(gtx, bid, ui.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, .Live)
 		if bc.clicked {
-			search_view_close(gtx, id)
+			ui.widget_data(gtx, id, Search_View_State).close = true
 		}
 		listen(gtx, bc, bid, ui.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {.Press, .Release, .Enter, .Leave, .Move})
 		ui.tag(gtx.ops, bid, "search back")
@@ -506,22 +513,6 @@ search_view :: proc(
 	return picked
 }
 
-// search_view_close and search_view_closed pass "collapse" from the view's
-// own areas (the outside catcher, the back arrow) back to search_bar in
-// the same frame, through a child id's pressed flag.
-@(private)
-search_view_close :: proc(gtx: ^ui.Ctx, id: ui.Area_Id) {
-	ui.widget_state(gtx, ui.id_mix(id, 5)).pressed = true
-}
-
-@(private)
-search_view_closed :: proc(gtx: ^ui.Ctx, id: ui.Area_Id) -> bool {
-	st := ui.widget_state(gtx, ui.id_mix(id, 5))
-	closed := st.pressed
-	st.pressed = false
-	return closed
-}
-
 // lerp_rect is the rect between a and b at t, per edge.
 @(private)
 search_lerp_rect :: proc(a, b: ui.Rect, t: f32) -> ui.Rect {
@@ -555,10 +546,10 @@ Sheet_Kind :: enum u8 {
 
 @(private)
 Sheet_Paint :: struct {
-	kind:     Sheet_Kind,
-	left:     bool, // side sheets: anchored to the left edge
-	drag_id:  ui.Area_Id, // the area the sheet registers for drags and Escape
-	state_id: ui.Area_Id, // where paint records the measured height
+	kind:    Sheet_Kind,
+	left:    bool, // side sheets: anchored to the left edge
+	drag_id: ui.Area_Id, // the area the sheet registers for drags and Escape
+	state:   ^Sheet_State, // bottom sheets: where paint records the measured height
 }
 
 // Values sheets.json gives without tokens, cited where they are used.
@@ -587,6 +578,11 @@ SHEET_HANDLE_PADDING :: f32(22) // layout bottom-drag-handle-shape, SheetDefault
 // handle cycles the anchor (states click-cycle). Escape closes a sheet that
 // has focus.
 //
+// state, when given, is the caller's Sheet_State: the anchor (when value
+// is nil), the drag in progress and the measured height. Pass it to keep a
+// sheet's drag and place through a rebuild that changes its id, or to
+// inspect or reset them; it is kept internally otherwise.
+//
 // Departures: the fling's velocity only picks the anchor; the settle
 // spring starts from rest, so the boundary damping near Hidden (layout
 // bottom-boundary-damping) has nothing to damp. No predictive back.
@@ -599,17 +595,17 @@ bottom_sheet :: proc(
 	value: ^Sheet_Value = nil,
 	skip_partial := false,
 	max_width := SHEET_MAX_WIDTH,
+	state: ^Sheet_State = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Sheet {
 	sh: Sheet
-	id := ui.id(key, loc)
+	id := ui.scoped_id(gtx, key, loc)
 	drag_id := ui.id_mix(id, 1)
 	handle_id := ui.id_mix(id, 2)
-	vs := ui.widget_state(gtx, ui.id_mix(id, 3))
-	// The retained anchor is the child state's scroll, as a Sheet_Value.
-	anchor := value != nil ? value^ : Sheet_Value(int(vs.scroll))
-	h := ui.widget_state(gtx, id).scroll // the sheet's height, measured last frame
+	ss := state if state != nil else ui.widget_data(gtx, id, Sheet_State)
+	anchor := value != nil ? value^ : ss.anchor
+	h := ss.height
 	hidden_at := h > 0 ? h : window.y
 	partial_at := h - min(window.y / 2, h)
 	if skip_partial {
@@ -623,14 +619,12 @@ bottom_sheet :: proc(
 	}
 
 	// Drags: from the sheet body and from its handle, one gesture state.
-	// Widget_State has no slot for a gesture, so a child state that is
-	// never animated carries it in its own fields (see sheet_drag_save).
-	d := sheet_drag_load(ui.widget_state(gtx, ui.id_mix(id, 4)))
+	d := &ss.drag
 	settle, clicked, escape := false, false, false
 	areas := [2]ui.Area_Id{drag_id, handle_id}
 	for area in areas {
 		for e in ui.events(gtx, area) {
-			s, c, esc := sheet_drag_event(&d, e, area == handle_id, gtx.dt)
+			s, c, esc := sheet_drag_event(d, e, area == handle_id, gtx.dt)
 			settle |= s
 			clicked |= c
 			escape |= esc
@@ -652,7 +646,7 @@ bottom_sheet :: proc(
 	if value != nil {
 		value^ = anchor
 	}
-	ui.widget_state(gtx, ui.id_mix(id, 3)).scroll = f32(int(anchor))
+	ss.anchor = anchor
 
 	// Offset below the fully shown position: a spring to the anchor, or the
 	// pointer while dragging. While closed and never measured, the target
@@ -674,12 +668,10 @@ bottom_sheet :: proc(
 	} else {
 		offset = animate(gtx, c, 0, target, anchor == .Hidden ? .Fast_Effects : .Default_Spatial, 0.1)
 	}
-	st = ui.widget_state(gtx, id)
-	scrim := animate(gtx, {st = st}, 1, open^ ? 1 : 0, .Default_Effects)
+	scrim := animate(gtx, c, 1, open^ ? 1 : 0, .Default_Effects)
 	if !d.dragging {
 		d.start = offset
 	}
-	sheet_drag_save(ui.widget_state(gtx, ui.id_mix(id, 4)), d)
 
 	if !open^ && offset >= hidden_at - 0.5 {
 		return sh // closed and off screen
@@ -707,7 +699,7 @@ bottom_sheet :: proc(
 	sh.nflex = 1
 	ui.fill_space(gtx)
 	sp := new(Sheet_Paint, gtx.allocator)
-	sp^ = {kind = .Bottom, drag_id = drag_id, state_id = id}
+	sp^ = {kind = .Bottom, drag_id = drag_id, state = ss}
 	b := ui.box(gtx, {padding = {tok.LIST_ITEM_LEADING_SPACE, 0, tok.LIST_ITEM_LEADING_SPACE, 24}, paint = paint_sheet, user = sp}, key = 1)
 	sh.boxes[0] = b
 	sh.nbox = 1
@@ -723,27 +715,21 @@ bottom_sheet :: proc(
 	return sh
 }
 
+// Sheet_State is what a bottom sheet keeps between frames: see
+// bottom_sheet's state parameter. The zero value is a hidden sheet, never
+// measured, with no drag.
+Sheet_State :: struct {
+	anchor: Sheet_Value, // where the sheet rests, when the caller keeps no value
+	drag:   Sheet_Drag,
+	height: f32, // the sheet's height as last painted; 0 before it first shows
+}
+
 // Sheet_Drag is a bottom sheet's drag gesture, kept across frames.
-@(private)
 Sheet_Drag :: struct {
 	dragging: bool,
 	delta:    f32, // how far the pointer has moved since the press
 	start:    f32, // the sheet's offset when the press landed
 	velocity: f32, // dp/s, from the last move
-}
-
-// sheet_drag_load and sheet_drag_save keep a Sheet_Drag in a Widget_State
-// no widget animates: pressed, scroll and a spring's
-// fields, named for what they hold here.
-@(private)
-sheet_drag_load :: proc(st: ^ui.Widget_State) -> Sheet_Drag {
-	return {st.pressed, st.scroll, st.springs[0].target, st.springs[0].velocity}
-}
-
-@(private)
-sheet_drag_save :: proc(st: ^ui.Widget_State, d: Sheet_Drag) {
-	st.pressed, st.scroll = d.dragging, d.delta
-	st.springs[0].target, st.springs[0].velocity = d.start, d.velocity
 }
 
 // sheet_drag_event applies e, from the sheet body or its handle, to d.
@@ -827,9 +813,9 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_locati
 	for e in ui.events(gtx, id) {
 		#partial switch e.kind {
 		case .Focus:
-			ui.widget_state(gtx, id).focused = true
+			st.focused = true
 		case .Blur:
-			ui.widget_state(gtx, id).focused = false
+			st.focused = false
 		}
 	}
 	hit := ui.Rect{(w - 48) / 2, 0, 48, slot.h}
@@ -862,9 +848,9 @@ side_sheet :: proc(
 	loc := #caller_location,
 ) -> Sheet {
 	sh: Sheet
-	id := ui.id(key, loc)
+	id := ui.scoped_id(gtx, key, loc)
 	sp := new(Sheet_Paint, gtx.allocator)
-	sp^ = {kind = modal ? .Side_Modal : .Side_Standard, left = left, drag_id = ui.id_mix(id, 1), state_id = id}
+	sp^ = {kind = modal ? .Side_Modal : .Side_Standard, left = left, drag_id = ui.id_mix(id, 1)}
 	sh.width = width - 48
 	if modal {
 		for e in ui.events(gtx, sp.drag_id) {
@@ -875,7 +861,6 @@ side_sheet :: proc(
 		st := ui.widget_state(gtx, id)
 		// Offset toward the edge it hides behind: 0 shown, width hidden.
 		slide := animate(gtx, {st = st}, 0, open^ ? 0 : width, .Default_Spatial, 0.1)
-		st = ui.widget_state(gtx, id)
 		scrim := animate(gtx, {st = st}, 1, open^ ? 1 : 0, .Default_Effects)
 		if !open^ && slide >= width - 0.5 {
 			return sh
@@ -971,7 +956,7 @@ paint_sheet :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
 		paint_elevation(gtx, {r, k.tl}, elevation_level(tok.SHEET_BOTTOM_DOCKED_MODAL_CONTAINER_ELEVATION))
 		ui.fill(gtx.ops, shape, color(tok.SHEET_BOTTOM_DOCKED_CONTAINER_COLOR))
 		// The measured height, for next frame's anchors.
-		ui.widget_state(gtx, sp.state_id).scroll = size.y
+		sp.state.height = size.y
 	case .Side_Modal:
 		// The drawer's shape rounds its end edge; a right-edge sheet mirrors it.
 		k := corners(tok.NAVIGATION_DRAWER_CONTAINER_SHAPE, r)
@@ -1013,11 +998,11 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	#partial switch state {
 	case .Live:
 		st := ui.widget_state(gtx, p.id)
+		grab := ui.widget_data(gtx, p.id, Handle_Grab)
 		// Each Move adds its travel, which (unlike a difference of positions
 		// local to the handle) does not change when the handle itself moves,
 		// so the handle following the pointer cannot feed back into the next
-		// delta. scroll is 1 once the grab has moved (a drag, not just a
-		// press).
+		// delta.
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Enter:
@@ -1030,21 +1015,21 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 				st.focused = false
 			case .Press:
 				st.pressed = true
-				st.scroll = 0
+				grab.moved = false
 			case .Move:
 				if st.pressed {
 					dx += e.travel.x
 					if e.travel.x != 0 {
-						st.scroll = 1
+						grab.moved = true
 					}
 				}
 			case .Release:
 				st.pressed = false
-				st.scroll = 0
+				grab.moved = false
 			}
 		}
 		c = {st = st, hovered = st.hovered, pressed = st.pressed, focused = st.focused}
-		dragged = st.pressed && st.scroll != 0
+		dragged = st.pressed && grab.moved
 	case:
 		c = control(gtx, p.id, hit, state)
 	}
@@ -1052,13 +1037,7 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	pw := dragged ? tok.DRAG_HANDLE_DRAGGED_WIDTH : tok.DRAG_HANDLE_PRESSED_WIDTH
 	ph := dragged ? tok.DRAG_HANDLE_DRAGGED_HEIGHT : tok.DRAG_HANDLE_PRESSED_HEIGHT
 	w := animate(gtx, c, 0, active ? pw : tok.DRAG_HANDLE_WIDTH, .Fast_Spatial, 0.1)
-	if c.st != nil {
-		c.st = ui.widget_state(gtx, p.id)
-	}
 	h := animate(gtx, c, 1, active ? ph : tok.DRAG_HANDLE_HEIGHT, .Fast_Spatial, 0.1)
-	if c.st != nil {
-		c.st = ui.widget_state(gtx, p.id)
-	}
 	k := animate(gtx, c, 2, active ? 1 : 0, .Fast_Effects)
 	pill := ui.Rect{(W - w) / 2, (H - h) / 2, w, h}
 	shape_to := dragged ? tok.DRAG_HANDLE_DRAGGED_SHAPE : tok.DRAG_HANDLE_PRESSED_SHAPE
@@ -1075,6 +1054,13 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	ui.tag(gtx.ops, p.id, "drag_handle")
 	ui.widget_end(gtx, &p, {size = {W, H}})
 	return dx
+}
+
+// Handle_Grab is a drag handle's grab: whether it has moved since the
+// press, which makes it a drag (the Dragged look) rather than a press.
+@(private)
+Handle_Grab :: struct {
+	moved: bool,
 }
 
 // strut is an empty widget w wide and 0 tall: a minimum width for the
