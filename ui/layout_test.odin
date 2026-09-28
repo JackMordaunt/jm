@@ -754,3 +754,15 @@ test_discarded_overlay_is_never_drawn :: proc(t: ^testing.T) {
 	flatten(&h.ops, &f)
 	testing.expect_value(t, len(f.draws), 0)
 }
+
+@(test)
+test_scroll_bar_ends_stop_the_track_at_the_corners :: proc(t: ^testing.T) {
+	plain, ok := scroll_bar_layout(.Vertical, {100, 200}, 400, false)
+	testing.expect(t, ok)
+	testing.expect_value(t, plain.track.y, SCROLL_BAR_INSET)
+	testing.expect_value(t, plain.track.h, 200 - 2 * SCROLL_BAR_INSET)
+	// A 16dp corner radius: the track runs only along the straight edge.
+	rounded, _ := scroll_bar_layout(.Vertical, {100, 200}, 400, false, ends = 16)
+	testing.expect_value(t, rounded.track.y, 16)
+	testing.expect_value(t, rounded.track.h, 200 - 2 * 16)
+}

@@ -937,14 +937,18 @@ Scroll_Bar :: struct {
 
 // scroll_bar_layout is the bar for axis over a box of size whose content is
 // content long on that axis; ok is false when nothing overflows. both
-// shortens the bars so the two do not cross in the corner.
+// shortens the bars so the two do not cross in the corner; ends, when
+// larger than the usual inset, is how far the track stops short of each
+// end: a rounded box's corner radius, so the bar runs only along its
+// straight edge and ends where the corner's curve begins.
 @(private)
-scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool) -> (b: Scroll_Bar, ok: bool) {
+scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool, ends: f32 = 0) -> (b: Scroll_Bar, ok: bool) {
 	b.view = main_of(axis, size)
 	if content <= b.view {
 		return
 	}
-	track_len := b.view - 2 * SCROLL_BAR_INSET
+	start := max(SCROLL_BAR_INSET, ends)
+	track_len := b.view - 2 * start
 	if both {
 		track_len -= SCROLL_BAR_THICKNESS + SCROLL_BAR_INSET
 	}
@@ -952,7 +956,7 @@ scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool) -> (
 	b.range = content - b.view
 	b.travel = max(track_len - b.thumb_len, 1)
 	edge := cross_of(axis, size) - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
-	b.track = axis == .Vertical ? Rect{edge, SCROLL_BAR_INSET, SCROLL_BAR_THICKNESS, track_len} : Rect{SCROLL_BAR_INSET, edge, track_len, SCROLL_BAR_THICKNESS}
+	b.track = axis == .Vertical ? Rect{edge, start, SCROLL_BAR_THICKNESS, track_len} : Rect{start, edge, track_len, SCROLL_BAR_THICKNESS}
 	return b, true
 }
 
@@ -962,16 +966,17 @@ scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool) -> (
 // own bars; a widget that scrolls content it paints itself (a list drawn
 // row by row) calls this before painting at the offset, then
 // scroll_bar_paint after, both in its box's space and with an id of its
-// own. size is the box, content the content's length on axis.
-scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false) -> f32 {
-	b, ok := scroll_bar_layout(axis, size, content, both)
+// own. size is the box, content the content's length on axis; a rounded
+// box passes its corner radius as ends, to both.
+scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false, ends: f32 = 0) -> f32 {
+	b, ok := scroll_bar_layout(axis, size, content, both, ends)
 	if !ok {
 		return offset
 	}
 	off := offset
 	st := widget_state(gtx, id)
 	for e in events(gtx, id) {
-		along := main_of(axis, e.pos) - SCROLL_BAR_INSET
+		along := main_of(axis, e.pos) - main_of(axis, Point{b.track.x, b.track.y})
 		#partial switch e.kind {
 		case .Enter:
 			st.hovered = true
@@ -1003,8 +1008,8 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, conten
 // the content is scrolling or the pointer is on it, and fades
 // SCROLL_BAR_LINGER seconds after; its input area stays, so reaching the
 // edge brings it back. The thumb is the theme's foreground.
-scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false) {
-	b, ok := scroll_bar_layout(axis, size, content, both)
+scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false, ends: f32 = 0) {
+	b, ok := scroll_bar_layout(axis, size, content, both, ends)
 	if !ok {
 		return
 	}
