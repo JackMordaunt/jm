@@ -70,6 +70,14 @@ snap_spring :: proc(c: Control, slot: int, v: f32) {
 	}
 }
 
+// Check_Snap_Clock is how long an unchecked checkbox has held its mark, in
+// seconds: the mark drops once it passes CHECK_SNAP_DELAY. Zero while
+// checked and once the mark has dropped.
+@(private = "file")
+Check_Snap_Clock :: struct {
+	seconds: f32,
+}
+
 // checkbox is M3's checkbox (checkbox.json): an 18dp box with a 2dp
 // outline, filled with a checkmark when checked^ and with a dash when
 // indeterminate (which a click resolves by setting checked^ true: a tap
@@ -100,25 +108,22 @@ checkbox :: proc(
 	on := checked^ || indeterminate
 
 	// Springs: 0 box colour in (0-1), 1 mark drawn (0-1), 2 check-to-dash
-	// shift (0-1), 3 the uncheck snap delay's clock (its t only).
+	// shift (0-1). The uncheck snap delay runs on its own Check_Snap_Clock.
 	fill := animate(gtx, c, 0, on ? 1 : 0, on ? .Default_Effects : .Fast_Effects)
 	shift := animate(gtx, c, 2, indeterminate ? 1 : 0, .Default_Spatial)
 	draw: f32 = on ? 1 : 0
 	if c.st != nil {
-		d, clock := &c.st.springs[1], &c.st.springs[3]
+		d, clock := &c.st.springs[1], ui.widget_data(gtx, p.id, Check_Snap_Clock)
 		switch {
 		case on:
 			clock^ = {}
 			draw = animate(gtx, c, 1, 1, .Default_Spatial)
 		case d.started && d.target != 0:
 			// Box out: hold the mark while the colour fades, then drop it.
-			if !clock.started {
-				clock^ = {started = true}
-			}
-			clock.t += gtx.dt
-			if clock.t < CHECK_SNAP_DELAY {
+			clock.seconds += gtx.dt
+			if clock.seconds < CHECK_SNAP_DELAY {
 				draw = d.value
-				ui.request_frame(gtx, CHECK_SNAP_DELAY - clock.t)
+				ui.request_frame(gtx, CHECK_SNAP_DELAY - clock.seconds)
 			} else {
 				snap_spring(c, 1, 0)
 				clock^ = {}
