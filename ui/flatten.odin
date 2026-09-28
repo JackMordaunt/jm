@@ -13,6 +13,15 @@ Flattener :: struct {
 	clips:      [dynamic]Clip_Id,
 	transform:  Affine,
 	clip:       Clip_Id,
+	deferred:   [dynamic]Deferred,
+}
+
+// Deferred is a Defer met during the pass: its macro and the transform to
+// run it under once everything else is flattened.
+@(private = "file")
+Deferred :: struct {
+	id:        Macro_Id,
+	transform: Affine,
 }
 
 // flatten turns the scene ops into f: every draw and hit carries its device
@@ -29,8 +38,19 @@ flatten :: proc(ops: ^Ops, f: ^Frame) {
 		clips      = make([dynamic]Clip_Id, context.allocator),
 		transform  = IDENTITY,
 		clip       = NO_CLIP,
+		deferred   = make([dynamic]Deferred, context.allocator),
 	}
 	flatten_range(&st, 0, len(ops.ops), 0)
+	// Deferred macros run last, in the order met, so their draws and hits
+	// sit above everything else; one deferred from inside another runs
+	// after it. Each starts unclipped.
+	for i := 0; i < len(st.deferred); i += 1 {
+		d := st.deferred[i]
+		m := ops.macros[d.id]
+		st.transform, st.clip = d.transform, NO_CLIP
+		flatten_range(&st, m.first, m.last, 1)
+	}
+	delete(st.deferred)
 	assert(len(st.transforms) == 0, "flatten: push_transform without pop_transform")
 	assert(len(st.clips) == 0, "flatten: push_clip without pop_clip")
 	delete(st.transforms)
@@ -73,6 +93,12 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			assert(0 <= m.first && m.first <= m.last && m.last <= len(ops), "flatten: macro range out of bounds")
 			assert(depth < MAX_CALL_DEPTH, "flatten: macro calls nested deeper than MAX_CALL_DEPTH")
 			flatten_range(st, m.first, m.last, depth + 1)
+		case Defer:
+			assert(int(op.id) < len(st.ops.macros), "flatten: defer names an unknown macro")
+			m := st.ops.macros[op.id]
+			assert(m.last >= 0, "flatten: defer of an unterminated macro")
+			assert(0 <= m.first && m.first <= m.last && m.last <= len(ops), "flatten: macro range out of bounds")
+			append(&st.deferred, Deferred{op.id, op.root ? IDENTITY : st.transform})
 		case Fill:
 			append(&st.f.draws, Draw{st.transform, st.clip, op})
 		case Stroke:

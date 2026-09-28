@@ -509,3 +509,55 @@ test_negative_padding_means_none :: proc(t: ^testing.T) {
 	testing.expect(t, near(rr.rect.w, 4 * W) && near(rr.rect.h, 14))
 	testing.expect_value(t, len(pushes(&h.ops)), 0) // no offset for the body
 }
+
+@(test)
+test_overlay_takes_no_space_and_draws_last :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		col := column(gtx); defer end(&col)
+		label(gtx, "before")
+		{
+			o := overlay(gtx, {5, 6}); defer end(&o)
+			inner := column(gtx); defer end(&inner)
+			label(gtx, "menu")
+		}
+		label(gtx, "after")
+	}
+	// "after" sits right below "before": the overlay took no space.
+	p := pushes(&h.ops)
+	testing.expect_value(t, p[len(p) - 1], Point{0, 14})
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Defer), 1)
+
+	f: Frame
+	frame_init(&f, context.temp_allocator)
+	flatten(&h.ops, &f)
+	names := make([dynamic]string, context.temp_allocator)
+	for tg in f.tags {
+		append(&names, tg.name)
+	}
+	testing.expect_value(t, names[len(names) - 1], "menu")
+	// At `at` from the enclosing column's origin, not from a slot in it.
+	last := f.draws[len(f.draws) - 1]
+	testing.expect_value(t, apply(last.transform, {0, 0}), Point{5, 6})
+}
+
+@(test)
+test_discarded_overlay_is_never_drawn :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		o := overlay(gtx); defer end(&o)
+		label(gtx, "gone")
+		o.discard = true
+	}
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Defer), 0)
+	f: Frame
+	frame_init(&f, context.temp_allocator)
+	flatten(&h.ops, &f)
+	testing.expect_value(t, len(f.draws), 0)
+}

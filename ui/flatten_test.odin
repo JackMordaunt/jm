@@ -180,3 +180,47 @@ test_flatten_hits_and_tags :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(f.hits), 3)
 	testing.expect_value(t, len(f.tags), 2)
 }
+
+@(test)
+test_flatten_defer_runs_last_under_its_transform_unclipped :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+	ops: Ops
+	ops_init(&ops)
+	f: Frame
+	frame_init(&f)
+
+	RED :: Color{255, 0, 0, 255}
+	GREEN :: Color{0, 255, 0, 255}
+	BLUE :: Color{0, 0, 255, 255}
+	push_clip(&ops, Rect{0, 0, 5, 5})
+	push_transform(&ops, translate(10, 20))
+	menu := macro_begin(&ops)
+	fill(&ops, Rect{0, 0, 1, 1}, RED)
+	input_area(&ops, 7, Rect{0, 0, 1, 1}, {.Press})
+	inner := macro_begin(&ops)
+	fill(&ops, Rect{0, 0, 1, 1}, BLUE)
+	macro_end(&ops, inner)
+	push_transform(&ops, translate(1, 1))
+	defer_call(&ops, inner) // a defer from inside a deferred macro
+	pop_transform(&ops)
+	macro_end(&ops, menu)
+	defer_call(&ops, menu)
+	pop_transform(&ops)
+	pop_clip(&ops)
+	fill(&ops, Rect{0, 0, 1, 1}, GREEN) // recorded after the defer, drawn before it
+	input_area(&ops, 8, Rect{0, 0, 1, 1}, {.Press})
+	flatten(&ops, &f)
+
+	testing.expect_value(t, len(f.draws), 3)
+	testing.expect_value(t, f.draws[0].cmd.(Fill).paint.(Color), GREEN)
+	testing.expect_value(t, f.draws[1].cmd.(Fill).paint.(Color), RED)
+	testing.expect_value(t, f.draws[2].cmd.(Fill).paint.(Color), BLUE)
+	testing.expect_value(t, f.draws[1].transform, translate(10, 20))
+	testing.expect_value(t, f.draws[2].transform, translate(11, 21))
+	testing.expect_value(t, f.draws[1].clip, NO_CLIP) // escapes the clip it was met under
+	// The deferred hit is after (above) the one recorded later inline.
+	testing.expect_value(t, f.hits[0].area, Area_Id(8))
+	testing.expect_value(t, f.hits[1].area, Area_Id(7))
+}

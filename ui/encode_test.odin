@@ -15,6 +15,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	golden_scene(&src)
 	add_font(&src, "mono.ttf")
 	tag(&src, 99, "quote \" and\nnewline")
+	defer_call(&src, 0) // golden_scene's first macro, run again on top
 	append(&src.ops, nil) // a nil op survives too
 
 	data := encode(&src)

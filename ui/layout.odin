@@ -353,6 +353,7 @@ end :: proc {
 	end_clip_box,
 	end_centered,
 	end_scroll_box,
+	end_overlay,
 }
 
 // container_open places the container as a child of its parent and pushes
@@ -714,6 +715,72 @@ centered :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Centered {
 // end_centered offsets the body to the center.
 end_centered :: proc(s: ^Centered) {
 	overlay_close(s.gtx, &s.index)
+}
+
+// Overlay is an open overlay; see overlay.
+Overlay :: struct {
+	gtx:    ^Ctx,
+	macro:  Macro_Id,
+	stack:  [dynamic]Container, // the enclosing containers, set aside
+	saved:  Constraints,
+	scope:  Area_Id,
+	root:   bool,
+	pushed: bool, // at was non-zero: a translate to pop
+	active: bool,
+	// discard, set before end, drops the layer: recorded, never drawn or
+	// hit — for a menu closed by a click in its own frame, whose scrim
+	// would otherwise take the next click (input routes against the last
+	// frame's hits).
+	discard: bool,
+}
+
+// overlay records the widgets up to end into a layer drawn after the rest
+// of the frame, on top of it (see Defer): at `at` from the enclosing
+// container's origin — wrap an anchor widget and the overlay in a stack to
+// place it against that widget — or from the window's top-left when root. They lay out from a fresh root
+// under cs — they are not children of the container around the call, and
+// take no space in it. A menu, tooltip or dialog is one of these.
+overlay :: proc(gtx: ^Ctx, at: Point = {}, cs := Constraints{max = {INF, INF}}, root := false) -> Overlay {
+	o := Overlay {
+		gtx    = gtx,
+		saved  = gtx.constraints,
+		root   = root,
+		active = true,
+	}
+	o.macro = macro_begin(gtx.ops)
+	if at != {} {
+		push_transform(gtx.ops, translate_to(at))
+		o.pushed = true
+	}
+	if l := gtx.layout; l != nil {
+		o.stack = l.stack
+		o.scope = l.scope
+		l.stack = make([dynamic]Container, gtx.allocator)
+	}
+	gtx.constraints = cs
+	return o
+}
+
+// end_overlay closes the layer and schedules it.
+end_overlay :: proc(o: ^Overlay) {
+	if !o.active {
+		return
+	}
+	o.active = false
+	gtx := o.gtx
+	if l := gtx.layout; l != nil {
+		assert(len(l.stack) == 0, "ui: a container inside an overlay was not ended")
+		l.stack = o.stack
+		l.scope = o.scope
+	}
+	gtx.constraints = o.saved
+	if o.pushed {
+		pop_transform(gtx.ops)
+	}
+	macro_end(gtx.ops, o.macro)
+	if !o.discard {
+		defer_call(gtx.ops, o.macro, o.root)
+	}
 }
 
 // SCROLL_STEP is the pixels scroll_box moves per unit of Event.scroll:

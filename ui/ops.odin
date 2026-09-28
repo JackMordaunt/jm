@@ -33,6 +33,17 @@ Call :: struct {
 	id: Macro_Id,
 }
 
+// Defer runs a macro after the rest of the frame, on top of it, under the
+// transform current at the Defer (identity when root) and no clip. It is
+// how a menu or tooltip paints above everything while still positioned
+// against the widget that opened it — that widget cannot know its own
+// device position while recording, since a container may place it later
+// through a macro — and how a dialog covers the whole window (root).
+Defer :: struct {
+	id:   Macro_Id,
+	root: bool,
+}
+
 Fill :: struct {
 	shape: Shape,
 	paint: Paint,
@@ -79,6 +90,7 @@ Op :: union {
 	Macro_Begin,
 	Macro_End,
 	Call,
+	Defer,
 	Fill,
 	Stroke,
 	Glyphs,
@@ -203,6 +215,11 @@ macro_end :: proc(o: ^Ops, id: Macro_Id) {
 
 call :: proc(o: ^Ops, id: Macro_Id) {
 	append(&o.ops, Call{id})
+}
+
+// defer_call runs macro id after the rest of the frame, on top; see Defer.
+defer_call :: proc(o: ^Ops, id: Macro_Id, root := false) {
+	append(&o.ops, Defer{id, root})
 }
 
 // Resources.

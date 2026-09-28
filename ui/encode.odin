@@ -344,6 +344,10 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 13)
 		put_u64(w, u64(v.id))
 		put_str(w, v.name)
+	case Defer:
+		append(w, 14)
+		put_u32(w, u32(v.id))
+		append(w, v.root ? 1 : 0)
 	case:
 		append(w, 0)
 	}
@@ -584,6 +588,15 @@ get_op :: proc(r: ^Reader, ops: ^Ops) -> (op: Op, ok: bool) {
 		v: Tag
 		v.id = Area_Id(get_u64(r) or_return)
 		v.name = get_str(r) or_return
+		return v, true
+	case 14:
+		v: Defer
+		v.id = get_macro_id(r, ops) or_return
+		root := get_u8(r) or_return
+		if root > 1 {
+			return nil, false
+		}
+		v.root = root == 1
 		return v, true
 	}
 	return nil, false

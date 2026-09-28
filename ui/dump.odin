@@ -38,6 +38,8 @@ dump :: proc(ops: ^Ops, allocator := context.allocator) -> string {
 			depth += 1
 		case Call:
 			fmt.sbprintf(&sb, "call %d", v.id)
+		case Defer:
+			fmt.sbprintf(&sb, "defer %d%s", v.id, v.root ? " root" : "")
 		case Fill:
 			write_draw(&sb, ops, v)
 		case Stroke:
