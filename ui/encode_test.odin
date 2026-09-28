@@ -21,7 +21,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	data := encode(&src)
 	testing.expect(t, len(data) > 5)
 	testing.expect_value(t, string(data[:4]), "UIOP")
-	testing.expect_value(t, data[4], 1)
+	testing.expect_value(t, data[4], ENCODE_VERSION)
 
 	dst: Ops
 	ops_init(&dst)
@@ -94,7 +94,7 @@ test_decode_rejects_bad_header_and_tags :: proc(t: ^testing.T) {
 	bad[0] = 'X'
 	testing.expect(t, !decode(bad, &dst), "bad magic accepted")
 	bad = slice.clone(data)
-	bad[4] = 2
+	bad[4] = ENCODE_VERSION + 1
 	testing.expect(t, !decode(bad, &dst), "bad version accepted")
 	bad = slice.clone(data)
 	bad[len(bad) - 1] = 200 // the one op's tag

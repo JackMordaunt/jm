@@ -18,7 +18,20 @@ import "core:mem"
 // the variant's fields in declaration order. Floats are their raw bits.
 
 ENCODE_MAGIC :: "UIOP"
-ENCODE_VERSION :: u8(1)
+// ENCODE_VERSION changes whenever an op is added or its layout changes: a
+// decoder built against another version rejects the stream outright (see
+// encoded_version) rather than failing on the first unknown tag. 2 added
+// Defer.
+ENCODE_VERSION :: u8(2)
+
+// encoded_version is the version byte of an encoded stream, false when
+// data does not start with ENCODE_MAGIC and a version.
+encoded_version :: proc(data: []byte) -> (u8, bool) {
+	if len(data) < len(ENCODE_MAGIC) + 1 || string(data[:len(ENCODE_MAGIC)]) != ENCODE_MAGIC {
+		return 0, false
+	}
+	return data[len(ENCODE_MAGIC)], true
+}
 
 // encode serializes ops, resources included, into a new byte slice.
 encode :: proc(ops: ^Ops, allocator := context.allocator) -> []byte {

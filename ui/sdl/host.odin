@@ -255,18 +255,28 @@ host_step :: proc(l: ^Host_Loop) {
 	virtual.arena_free_all(&l.text) // encode_input copied every Text string
 
 	if !ipc.write_frame(l.child.stdin, input) {
+		fmt.eprintfln("sdl: %s stopped reading input (exited?); showing its last frame", l.child_path)
 		l.child_dead = true
 		l.wants_frame = false
 		return
 	}
 	reply, rok := ipc.read_frame(l.child.stdout, context.temp_allocator)
 	if !rok {
+		fmt.eprintfln("sdl: %s sent no reply (exited or crashed?); showing its last frame", l.child_path)
 		l.child_dead = true
 		l.wants_frame = false
 		return
 	}
 	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply)
 	if !dok || !ui.decode(ops_bytes, &l.ops) {
+		// Say why: the window just freezes on its last frame otherwise, which
+		// reads as a crash. A version mismatch is a host built before the
+		// child's jm:ui changed its ops.
+		if v, vok := ui.encoded_version(ops_bytes); dok && vok && v != ui.ENCODE_VERSION {
+			fmt.eprintfln("sdl: %s speaks ops version %d, this host %d: rebuild the host", l.child_path, v, ui.ENCODE_VERSION)
+		} else {
+			fmt.eprintfln("sdl: %s sent a reply this host cannot decode; showing its last frame", l.child_path)
+		}
 		l.child_dead = true
 		l.wants_frame = false
 		return
