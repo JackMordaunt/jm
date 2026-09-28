@@ -584,7 +584,9 @@ hot-architecture` and `just hot-button` build their own host and print
 the two commands that run them, and `just material-kitchen` builds and
 opens its own. `tools/hot-watch`
 takes extra directories to watch after the pointer file, so a child
-rebuilds when the `ui` package it imports is edited too.
+rebuilds when the `ui` package it imports is edited too, and with `-host`
+it rebuilds the host as well, which restarts itself when the ops
+encoding changed under it.
 
 Checking a change without a window: `-dump` prints the scene as text,
 free of vision tokens and enough for most bugs; `-png` renders it to a

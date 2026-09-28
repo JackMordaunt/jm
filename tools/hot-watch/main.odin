@@ -15,6 +15,15 @@ Any further directories are watched too (each flat, like the source
 dir), so a child rebuilds when a jm:ui package it imports changes, not
 only when its own main.odin does.
 
+-host SRC OUT also rebuilds the host, SRC, to OUT whenever one of those
+further directories changes, before the child: a host built before a
+change to jm:ui's ops encoding cannot read the new child, and on seeing
+that, ui/sdl's host restarts itself from OUT. It builds beside OUT and
+renames over it, so the running host's image is untouched. Not on
+Windows, which will not rename over a running executable.
+
+	hot-watch examples/material-kitchen/child build/debug/material-kitchen.watch -host examples/material-kitchen/host build/debug/material-kitchen-host ui ui/material
+
 Run from the repo root, same as `just`: it passes that as -collection:jm
 to the odin build it shells out to.
 */
@@ -32,14 +41,23 @@ POLL :: 400 * time.Millisecond
 
 main :: proc() {
 	if len(os.args) < 3 {
-		fmt.eprintln("usage: hot-watch <source-dir> <pointer-file> [extra-dir...]")
+		fmt.eprintln("usage: hot-watch <source-dir> <pointer-file> [-host <host-dir> <host-out>] [extra-dir...]")
 		os.exit(2)
 	}
 	src_dir := os.args[1]
 	pointer := os.args[2]
 	dirs := make([dynamic]string)
 	append(&dirs, src_dir)
-	append(&dirs, ..os.args[3:])
+	host_src, host_out: string
+	rest := os.args[3:]
+	for i := 0; i < len(rest); i += 1 {
+		if rest[i] == "-host" && i + 2 < len(rest) {
+			host_src, host_out = rest[i + 1], rest[i + 2]
+			i += 2
+			continue
+		}
+		append(&dirs, rest[i])
+	}
 	root, rerr := os.getwd(context.allocator)
 	if rerr != nil {
 		fmt.eprintln("hot-watch: getwd:", rerr)
@@ -60,17 +78,27 @@ main :: proc() {
 	exe_suffix := ".exe" when ODIN_OS == .Windows else ""
 
 	fmt.printfln("hot-watch: watching %v for .odin changes", dirs[:])
-	last: time.Time
+	last, last_shared: time.Time
 	for {
-		mt: time.Time
+		mt, shared: time.Time
 		ok := false
-		for d in dirs {
-			if dmt, dok := newest_odin_mtime(d); dok && (!ok || time.diff(mt, dmt) > 0) {
+		for d, i in dirs {
+			dmt, dok := newest_odin_mtime(d)
+			if !dok {
+				continue
+			}
+			if !ok || time.diff(mt, dmt) > 0 {
 				mt, ok = dmt, true
+			}
+			if i > 0 && time.diff(shared, dmt) > 0 {
+				shared = dmt // the newest change outside the child's own dir
 			}
 		}
 		if ok && time.diff(last, mt) > 0 {
-			last = mt
+			if host_src != "" && time.diff(last_shared, shared) > 0 && last_shared != {} {
+				build_host(host_src, host_out, root, link)
+			}
+			last, last_shared = mt, shared
 			out := fmt.tprintf("%s/%s-%d%s", out_dir, base, time.to_unix_nanoseconds(time.now()), exe_suffix)
 			fmt.printfln("hot-watch: building %s -> %s", src_dir, out)
 			cmd := fmt.tprintf("odin build %s -debug -collection:jm=%s%s -out:%s", src_dir, root, link, out)
@@ -84,6 +112,25 @@ main :: proc() {
 			}
 		}
 		time.sleep(POLL)
+	}
+}
+
+// build_host rebuilds the host in src to out, beside it then renamed over
+// it, so a host running from out keeps its image until it restarts.
+build_host :: proc(src, out, root, link: string) {
+	when ODIN_OS == .Windows {
+		fmt.eprintln("hot-watch: -host: Windows cannot replace a running host; rebuild it by hand")
+	} else {
+		tmp := fmt.tprintf("%s.new", out)
+		fmt.printfln("hot-watch: building host %s -> %s", src, out)
+		code, ok := sh.run(fmt.tprintf("odin build %s -debug -collection:jm=%s%s -out:%s", src, root, link, tmp))
+		if !ok {
+			fmt.eprintfln("hot-watch: host build failed (exit %d)", code)
+			return
+		}
+		if err := os.rename(tmp, out); err != nil {
+			fmt.eprintln("hot-watch: host rename:", err)
+		}
 	}
 }
 

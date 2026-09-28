@@ -366,17 +366,21 @@ hot-button: blend2d sdl3
 # examples/material-kitchen: every jm:ui/material component, one page
 # each. Build it and open its window; hot-watch runs in the background
 # while the window is open, watching ui and ui/material too, so editing a
-# component rebuilds and respawns it.
+# component rebuilds and respawns it, and a change there rebuilds the host,
+# which restarts itself if the ops encoding changed. Ending the recipe,
+# however it ends, stops both.
 material-kitchen: blend2d sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
     {{odin}} build examples/material-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch ui ui/material &
+    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch -host examples/material-kitchen/host build/debug/material-kitchen-host{{exe}} ui ui/material &
     watch=$!
-    trap 'kill $watch 2>/dev/null' EXIT
-    build/debug/material-kitchen-host{{exe}} build/debug/material-kitchen.watch
+    build/debug/material-kitchen-host{{exe}} build/debug/material-kitchen.watch &
+    host=$!
+    trap 'kill $watch $host 2>/dev/null' EXIT
+    wait $host
 
 # Regenerate ui/material/tokens/tokens.odin from the M3 Expressive kit's
 # resolved tokens. M3E_KIT is the kit checkout.
