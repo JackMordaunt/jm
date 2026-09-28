@@ -8,6 +8,8 @@ import "jm:ui"
 // that many probe_frame steps at dt seconds apart before capturing, so an
 // animated state reached only after several frames can be sampled without a
 // real clock; frames defaults to 1 (the first frame) and dt to 1/60.
+// debug sets gtx.debug, joined by whatever JM_UI_REVEAL asks for
+// (ui.debug_from_env): .Reveal draws parts that hide until used.
 snapshot :: proc(
 	ui_proc: proc(gtx: ^ui.Ctx, user: rawptr),
 	user: rawptr,
@@ -18,9 +20,10 @@ snapshot :: proc(
 	clear: ui.Color = {255, 255, 255, 255},
 	frames: int = 1,
 	dt: f32 = 1.0 / 60,
+	debug: ui.Debug_Flags = {},
 ) -> bool {
 	p: ui.Probe
-	ui.probe_init(&p, ui_proc, user, size, theme = theme)
+	ui.probe_init(&p, ui_proc, user, size, theme = theme, debug = debug | ui.debug_from_env())
 	defer ui.probe_destroy(&p)
 	for f in fonts {
 		ui.add_font(&p.ops, f.path)

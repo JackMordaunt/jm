@@ -35,6 +35,7 @@ Probe :: struct {
 	frame_no:    u64,
 	wants_frame: bool, // the last frame called request_frame
 	frame_after: f32, // then: the soonest it asked for, in seconds
+	debug:       Debug_Flags, // gtx.debug for every frame; probe_init takes it
 	arena:       virtual.Arena,
 	allocator:   mem.Allocator,
 }
@@ -50,8 +51,10 @@ probe_init :: proc(
 	font: Font_Id = 0,
 	theme: Maybe(Theme) = nil,
 	allocator := context.allocator,
+	debug: Debug_Flags = {},
 ) {
 	p^ = {}
+	p.debug = debug
 	p.ui = ui
 	p.user = user
 	p.size = size
@@ -97,6 +100,7 @@ probe_frame :: proc(p: ^Probe) {
 		frame       = p.frame_no,
 		dt          = p.dt,
 		allocator   = virtual.arena_allocator(&p.arena),
+		debug       = p.debug,
 	}
 	p.ui(&gtx, p.user)
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after

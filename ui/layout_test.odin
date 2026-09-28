@@ -766,3 +766,17 @@ test_scroll_bar_ends_stop_the_track_at_the_corners :: proc(t: ^testing.T) {
 	testing.expect_value(t, rounded.track.y, 16)
 	testing.expect_value(t, rounded.track.h, 200 - 2 * 16)
 }
+
+@(test)
+test_scroll_box_bar_shows_at_once_when_revealing :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	harness_frame(&h)
+	h.gtx.debug = {.Reveal}
+	scroll_frame(&h)
+	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w
+	thumb, ok := thumb_of(&h, w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET)
+	testing.expect(t, ok) // nothing has happened, yet it draws
+	testing.expect(t, near(thumb.w, SCROLL_BAR_THIN))
+}

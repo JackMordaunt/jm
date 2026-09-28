@@ -276,6 +276,7 @@ step :: proc(l: ^Loop) {
 	ui.layout_reset(&l.layout)
 
 	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
+	debug := ui.debug_from_env()
 	gtx := ui.Ctx {
 		ops         = &l.ops,
 		constraints = ui.exact(logical),
@@ -286,6 +287,7 @@ step :: proc(l: ^Loop) {
 		frame       = l.n,
 		dt          = dt,
 		allocator   = allocator,
+		debug       = debug,
 	}
 	scaled := w.density != 1
 	if scaled {

@@ -1007,7 +1007,8 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, conten
 // area over the track, on top of what came before. The bar shows while
 // the content is scrolling or the pointer is on it, and fades
 // SCROLL_BAR_LINGER seconds after; its input area stays, so reaching the
-// edge brings it back. The thumb is the theme's foreground.
+// edge brings it back. With Debug_Flag.Reveal it always shows. The thumb
+// is the theme's foreground.
 scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false, ends: f32 = 0) {
 	b, ok := scroll_bar_layout(axis, size, content, both, ends)
 	if !ok {
@@ -1028,7 +1029,7 @@ scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content
 		st.scroll += gtx.dt
 	}
 	st.ripple_origin.x = offset
-	shown := st.scroll < SCROLL_BAR_LINGER
+	shown := st.scroll < SCROLL_BAR_LINGER || revealing(gtx)
 	if shown && !held {
 		request_frame(gtx, SCROLL_BAR_LINGER - st.scroll)
 	}

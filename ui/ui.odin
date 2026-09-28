@@ -76,6 +76,7 @@ Ctx :: struct {
 	allocator:   mem.Allocator,
 	wants_frame: bool, // request_frame was called this frame
 	frame_after: f32, // then: the fewest seconds any caller asked to wait
+	debug:       Debug_Flags, // inspection switches; see Debug_Flag
 }
 
 // request_frame asks the host for another frame within after seconds; 0,

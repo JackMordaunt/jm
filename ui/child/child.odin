@@ -88,6 +88,7 @@ run :: proc(app: App) {
 	defer virtual.arena_destroy(&arenas[0])
 	defer virtual.arena_destroy(&arenas[1])
 
+	debug := ui.debug_from_env()
 	for n: u64 = 0;; n += 1 {
 		arena := &arenas[n % 2]
 		virtual.arena_free_all(arena)
@@ -120,6 +121,7 @@ run :: proc(app: App) {
 			frame       = n,
 			dt          = dt,
 			allocator   = allocator,
+			debug       = debug,
 		}
 		scaled := density != 1
 		if scaled {
