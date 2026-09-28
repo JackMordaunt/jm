@@ -73,6 +73,7 @@ Ctx :: struct {
 	layout:      ^Layout,
 	frame:       u64,
 	dt:          f32, // seconds since the previous frame
+	time:        f64, // seconds of frame time since the app began: the sum of every frame's dt, so a looping animation read from it is deterministic in a probe
 	allocator:   mem.Allocator,
 	wants_frame: bool, // request_frame was called this frame
 	frame_after: f32, // then: the fewest seconds any caller asked to wait

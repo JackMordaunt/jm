@@ -32,6 +32,7 @@ Probe :: struct {
 	user:        rawptr,
 	size:        Size,
 	dt:          f32, // gtx.dt for the next probe_frame; probe_set_dt overrides
+	time:        f64, // gtx.time: advanced by each frame's dt; set it to jump the clock
 	frame_no:    u64,
 	wants_frame: bool, // the last frame called request_frame
 	frame_after: f32, // then: the soonest it asked for, in seconds
@@ -90,6 +91,8 @@ probe_frame :: proc(p: ^Probe) {
 	virtual.arena_free_all(&p.arena)
 	ops_reset(&p.ops)
 	layout_reset(&p.layout)
+	dt := debug_dt(p.debug, p.dt)
+	p.time += f64(dt)
 	gtx := Ctx {
 		ops         = &p.ops,
 		constraints = exact(p.size),
@@ -98,7 +101,8 @@ probe_frame :: proc(p: ^Probe) {
 		router      = &p.router,
 		layout      = &p.layout,
 		frame       = p.frame_no,
-		dt          = p.dt,
+		dt          = dt,
+		time        = p.time,
 		allocator   = virtual.arena_allocator(&p.arena),
 		debug       = p.debug,
 	}

@@ -163,6 +163,7 @@ Loop :: struct {
 	events:        virtual.Arena, // text of the events the next frame routes
 	n:             u64,
 	last:          u64, // ticks, in ns, of the last frame
+	time:          f64, // ui.Ctx.time: the frames' dt so far
 	in_frame:      bool,
 	ctx:           runtime.Context, // for the event watch, which SDL calls without one
 	// What the last frame asked of the wait after it.
@@ -266,8 +267,10 @@ step :: proc(l: ^Loop) {
 	frame, prev := &l.frames[l.n % 2], &l.frames[(l.n + 1) % 2]
 
 	now := sdl3.GetTicksNS()
-	dt := min(f32(now - l.last) / 1e9, MAX_DT)
+	debug := ui.debug_from_env()
+	dt := ui.debug_dt(debug, min(f32(now - l.last) / 1e9, MAX_DT))
 	l.last = now
+	l.time += f64(dt)
 
 	w := &l.w
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
@@ -276,7 +279,6 @@ step :: proc(l: ^Loop) {
 	ui.layout_reset(&l.layout)
 
 	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
-	debug := ui.debug_from_env()
 	gtx := ui.Ctx {
 		ops         = &l.ops,
 		constraints = ui.exact(logical),
@@ -286,6 +288,7 @@ step :: proc(l: ^Loop) {
 		layout      = &l.layout,
 		frame       = l.n,
 		dt          = dt,
+		time        = l.time,
 		allocator   = allocator,
 		debug       = debug,
 	}

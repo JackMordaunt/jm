@@ -89,6 +89,7 @@ run :: proc(app: App) {
 	defer virtual.arena_destroy(&arenas[1])
 
 	debug := ui.debug_from_env()
+	time: f64
 	for n: u64 = 0;; n += 1 {
 		arena := &arenas[n % 2]
 		virtual.arena_free_all(arena)
@@ -98,11 +99,13 @@ run :: proc(app: App) {
 		if !ok {
 			return // the host closed the pipe: exit clean
 		}
-		size, density, dt, events, dok := ui.decode_input(payload, allocator)
+		size, density, raw_dt, events, dok := ui.decode_input(payload, allocator)
 		if !dok {
 			return // a corrupt request; nothing salvageable
 		}
 
+		dt := ui.debug_dt(debug, raw_dt)
+		time += f64(dt)
 		for e in events {
 			ui.router_push(&router, e)
 		}
@@ -120,6 +123,7 @@ run :: proc(app: App) {
 			layout      = &layout,
 			frame       = n,
 			dt          = dt,
+			time        = time,
 			allocator   = allocator,
 			debug       = debug,
 		}

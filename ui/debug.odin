@@ -13,6 +13,9 @@ Debug_Flag :: enum u8 {
 	// Bounds outlines every widget's box, so a layout bug (a child past
 	// its parent, a gap from the wrong side) shows in one screenshot.
 	Bounds,
+	// Slow runs time at a quarter speed, dt and time both, so a spring or
+	// a transition can be watched frame by frame.
+	Slow,
 }
 
 Debug_Flags :: bit_set[Debug_Flag;u8]
@@ -46,8 +49,19 @@ debug_flag_name :: proc(f: Debug_Flag) -> string {
 		return "reveal"
 	case .Bounds:
 		return "bounds"
+	case .Slow:
+		return "slow"
 	}
 	return ""
+}
+
+// SLOW_FACTOR is how much Debug_Flag.Slow slows time.
+SLOW_FACTOR :: f32(0.25)
+
+// debug_dt is a frame's dt as the flags have it run: a quarter of it
+// under .Slow. Every loop that feeds Ctx.dt and Ctx.time passes it here.
+debug_dt :: proc(flags: Debug_Flags, dt: f32) -> f32 {
+	return .Slow in flags ? dt * SLOW_FACTOR : dt
 }
 
 // revealing reports whether a part that hides until used should draw
