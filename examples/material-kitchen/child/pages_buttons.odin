@@ -37,7 +37,7 @@ page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		state_row(gtx, m, "Trailing", cell, 20)
 	}
 	section(gtx, "Live", "hover, press, Tab and Enter these")
-	r := ui.row(gtx, gap = 12, align = .Center)
+	r := ui.wrap(gtx, gap = 12, align = .Center)
 	defer ui.end(&r)
 	for k, i in BUTTON_KINDS {
 		if m3.button(gtx, fmt.tprintf("Clicked %d", m.clicks), k, key = u64(100 + i)) {
@@ -46,27 +46,30 @@ page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 }
 
+// SIZE_CELL_W is a state cell wide enough for an x-large button.
+SIZE_CELL_W :: f32(190)
+
 page_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column(gtx, gap = 10)
 	defer ui.end(&col)
 	section(gtx, "Round", "x-small 32 / small 40 / medium 56 / large 96 / x-large 136dp; label type grows with size")
-	state_header(gtx)
+	state_header(gtx, SIZE_CELL_W)
 	for n, i in SIZE_NAMES {
 		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
 			m3.button(gtx, "Go", .Filled, size = m3.Button_Size(key / 16 - 1), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		state_row(gtx, m, n, cell, u64(i + 1), SIZE_CELL_W)
 	}
 	section(gtx, "Square", "corner 12 / 12 / 16 / 28 / 28dp at rest")
-	state_header(gtx)
+	state_header(gtx, SIZE_CELL_W)
 	for n, i in SIZE_NAMES {
 		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
 			m3.button(gtx, "Go", .Tonal, .Check, size = m3.Button_Size(key / 16 - 11), shape = .Square, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11))
+		state_row(gtx, m, n, cell, u64(i + 11), SIZE_CELL_W)
 	}
 	section(gtx, "Live", "press and hold to see each size's squish")
-	r := ui.row(gtx, gap = 12, align = .Center)
+	r := ui.wrap(gtx, gap = 12, align = .Center)
 	defer ui.end(&r)
 	for _, i in SIZE_NAMES {
 		if m3.button(gtx, "Go", .Outlined, size = m3.Button_Size(i), key = u64(100 + i)) {
@@ -99,7 +102,7 @@ page_toggle_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "click to toggle; a square button morphs round when checked")
 	{
-		r := ui.row(gtx, gap = 12, align = .Center)
+		r := ui.wrap(gtx, gap = 12, align = .Center)
 		defer ui.end(&r)
 		for n, i in TOGGLE_NAMES {
 			g := m.btn_checked[i] ? m3.Icon.Favorite_Fill1 : m3.Icon.Favorite
@@ -146,7 +149,7 @@ page_icon_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		state_row(gtx, m, n, cell, u64(i + 21))
 	}
 	section(gtx, "Live toggles", "round, then square resting shapes")
-	r := ui.row(gtx, gap = 12, align = .Center)
+	r := ui.wrap(gtx, gap = 12, align = .Center)
 	defer ui.end(&r)
 	for i in 0 ..< 8 {
 		shape := i < 4 ? m3.Button_Shape.Round : m3.Button_Shape.Square
@@ -159,7 +162,7 @@ page_icon_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.end(&col)
 	section(gtx, "Live", "every size, outlined; press to squish")
 	{
-		r := ui.row(gtx, gap = 12, align = .Center)
+		r := ui.wrap(gtx, gap = 12, align = .Center)
 		defer ui.end(&r)
 		for _, i in SIZE_NAMES {
 			m3.icon_button(gtx, .Edit, .Outlined, size = m3.Button_Size(i), key = u64(300 + i))
@@ -191,10 +194,33 @@ page_icon_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // Size_Cell draws column's variant of a component at size.
 Size_Cell :: proc(gtx: ^ui.Ctx, size: m3.Button_Size, column: int, key: u64)
 
+// SIZE_GRID_CELL_W is a size grid cell wide enough for an x-large wide
+// icon button.
+SIZE_GRID_CELL_W :: f32(200)
+
 // size_grid is a titled grid: one row per Button_Size, one cell per column.
+// Where the columns do not fit beside the labels, each size's cells wrap
+// below its label instead, each captioned with its column.
 size_grid :: proc(gtx: ^ui.Ctx, title, note: string, columns: []string, cell: Size_Cell, key: u64) {
 	s := m3.scheme()
 	section(gtx, title, note)
+	if gtx.constraints.max.x < LABEL_W + f32(len(columns)) * SIZE_GRID_CELL_W {
+		for n, i in SIZE_NAMES {
+			col := ui.column(gtx, gap = 8, key = key + u64(i + 1))
+			defer ui.end(&col)
+			ui.label(gtx, n, {size = 12, color = s[.On_Surface]})
+			wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .End)
+			defer ui.end(&wr)
+			for name, j in columns {
+				cc := ui.column(gtx, gap = 4, key = u64(j))
+				ui.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
+				cell(gtx, m3.Button_Size(i), j, key * 16 + u64(i * len(columns) + j))
+				ui.end(&cc)
+			}
+		}
+		return
+	}
+	// The heads, across the top.
 	{
 		r := ui.row(gtx, key = key)
 		defer ui.end(&r)
@@ -282,11 +308,11 @@ page_extended_fab :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "the switch collapses each FAB to its icon square: width on fast-spatial, label on fast-effects")
 	{
-		r := ui.row(gtx, gap = 12, align = .Center)
+		r := ui.wrap(gtx, gap = 12, align = .Center)
 		defer ui.end(&r)
 		m3.switch_(gtx, &m.fab_collapsed, "Collapsed")
 	}
-	r := ui.row(gtx, gap = 16, align = .Center)
+	r := ui.wrap(gtx, gap = 16, align = .Center)
 	defer ui.end(&r)
 	for i in 0 ..< 4 {
 		if m3.extended_fab(gtx, .Edit, "Compose", size = m3.Extended_Fab_Size(i), expanded = !m.fab_collapsed, key = u64(100 + i)) {
@@ -305,6 +331,8 @@ page_segmented :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		defer ui.end(&r)
 		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - label_width(gtx, STATE_NAMES[i]), 0))
+		wr := ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		sel := [3]bool{false, true, false}
 		m3.segmented_button(gtx, LABELS[:], sel[:], state = st, key = u64(10 + i))
 	}

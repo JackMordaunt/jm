@@ -255,7 +255,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	ui.flexible(gtx, 1)
 	{
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
-		sb := ui.scroll_box(gtx, key = u64(m.page), min_width = page_min_width(p))
+		sb := ui.scroll_box(gtx, key = u64(m.page))
 		defer ui.end(&sb)
 		page := ui.inset(gtx, {24, 8, 24, 48})
 		defer ui.end(&page)
@@ -266,26 +266,6 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 	}
 	persist(m)
-}
-
-// WIDE_PAGES are the pages whose grids hold fixed-width components (the
-// largest buttons, three-line list rows, whole pickers) that cannot share
-// a narrower width, so below WIDE_PAGE_MIN they scroll sideways rather
-// than crowd or crop. Every other page reflows to the window.
-WIDE_PAGES := [?]string{"Button sizes", "Button groups", "Date pickers", "Lists", "Snackbar", "Tooltips"}
-
-// WIDE_PAGE_MIN is the page width the kitchen's grids were laid out for:
-// a 1400dp window less the docked drawer and the page's side insets.
-WIDE_PAGE_MIN :: 1400 - 300
-
-// page_min_width is the width p's content is laid out at, at least.
-page_min_width :: proc(p: Page) -> f32 {
-	for name in WIDE_PAGES {
-		if p.name == name {
-			return WIDE_PAGE_MIN
-		}
-	}
-	return 0
 }
 
 // app_bar is a plain small top app bar until the real component lands:
@@ -318,7 +298,9 @@ section :: proc(gtx: ^ui.Ctx, title: string, note := "") {
 	ui.spacer(gtx, 12)
 	ui.label(gtx, title, {size = 16, color = s[.On_Surface]})
 	if note != "" {
-		ui.label(gtx, note, {size = 12, color = s[.On_Surface_Variant]})
+		// Wrapped, not a one-line label: notes run long, and a narrow
+		// window must not cut them off.
+		m3.wrapped_text(gtx, note, .Body_Small, s[.On_Surface_Variant], gtx.constraints.max.x)
 	}
 }
 
@@ -327,8 +309,24 @@ STATE_NAMES := [?]string{"Enabled", "Hovered", "Focused", "Pressed", "Disabled"}
 // LABEL_W is the width of a state grid's row-label column.
 LABEL_W :: 110
 
-// state_header is the column headings of a state grid.
-state_header :: proc(gtx: ^ui.Ctx) {
+// CELL_W is the width a state grid's cell needs by default: a grid whose
+// five states fit beside the labels at this width lays out as columns,
+// and one that does not stacks (see state_row). Grids of wider components
+// pass their own.
+CELL_W :: f32(120)
+
+// grid_stacked reports whether a state grid of cell_w cells is too wide
+// for the width it is offered, so each row must stack instead.
+grid_stacked :: proc(gtx: ^ui.Ctx, cell_w: f32) -> bool {
+	return gtx.constraints.max.x < LABEL_W + f32(len(m3.STATES)) * cell_w
+}
+
+// state_header is the column headings of a state grid; a stacked grid
+// has none, as each of its cells carries its own.
+state_header :: proc(gtx: ^ui.Ctx, cell_w := CELL_W) {
+	if grid_stacked(gtx, cell_w) {
+		return
+	}
 	s := m3.scheme()
 	r := ui.row(gtx)
 	defer ui.end(&r)
@@ -349,9 +347,26 @@ cell_fixed :: proc(gtx: ^ui.Ctx, w: f32, loc := #caller_location) {
 // State_Cell draws one component in state; key tells the cells apart.
 State_Cell :: proc(gtx: ^ui.Ctx, m: ^Model, state: m3.Interaction, key: u64)
 
-// state_row is one variant across every forced state, then a gap.
-state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key: u64) {
+// state_row is one variant across every forced state, then a gap. Where
+// the five cells do not fit beside the label (see grid_stacked), the label
+// takes its own line and the cells, each captioned with its state, wrap
+// below it: the grid reflows rather than overflow the window.
+state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key: u64, cell_w := CELL_W) {
 	s := m3.scheme()
+	if grid_stacked(gtx, cell_w) {
+		col := ui.column(gtx, gap = 8, key = key)
+		defer ui.end(&col)
+		ui.label(gtx, label, {size = 12, color = s[.On_Surface]})
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .End)
+		defer ui.end(&wr)
+		for st, i in m3.STATES {
+			c := ui.column(gtx, gap = 4, key = u64(i))
+			ui.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface_Variant]})
+			cell(gtx, m, st, key * 16 + u64(i))
+			ui.end(&c)
+		}
+		return
+	}
 	r := ui.row(gtx, align = .Center, key = key)
 	defer ui.end(&r)
 	{

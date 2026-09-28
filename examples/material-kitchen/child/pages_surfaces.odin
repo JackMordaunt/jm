@@ -28,7 +28,7 @@ page_search :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Search view, expanded", "comp.search-view: docked (one popup, 28dp corners, a divider under the 56dp header) and docked with a gap (the bar stays)")
 	{
-		r := ui.row(gtx, gap = 48)
+		r := ui.wrap(gtx, gap = 48)
 		defer ui.end(&r)
 		VIEWS := [2]m3.Search_View{.Docked, .Docked_With_Gap}
 		for v, i in VIEWS {
@@ -46,14 +46,14 @@ page_search :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Live", "click a bar: docked follows focus; the others are caller-owned. Full screen covers the window, contained keeps the bar as its header")
 	{
-		r := ui.row(gtx, gap = 24, align = .Start)
+		r := ui.wrap(gtx, gap = 24, align = .Start)
 		defer ui.end(&r)
 		if i := m3.search_bar(gtx, &m.query, "Search the spec", .Search, .Account_Circle, SUGGESTIONS[:], 360, window = m.window, submitted = &m.searched, key = 30); i >= 0 {
 			m.searched = false
 		}
 		m3.search_bar(gtx, &m.queries[0], "Docked with gap", .Search, .None, SUGGESTIONS[:], 360, .Docked_With_Gap, &m.search_open[1], m.window, key = 31)
 	}
-	r := ui.row(gtx, gap = 24, align = .Start)
+	r := ui.wrap(gtx, gap = 24, align = .Start)
 	defer ui.end(&r)
 	m3.search_bar(gtx, &m.queries[1], "Full screen search", .Search, .None, SUGGESTIONS[:], 360, .Full_Screen, &m.search_open[2], m.window, key = 32)
 	m3.search_bar(gtx, &m.queries[2], "Contained search", .Search, .Account_Circle, SUGGESTIONS[:], 360, .Full_Screen_Contained, &m.search_open[3], m.window, key = 33)
@@ -203,7 +203,7 @@ page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		ui.text_set(&m.input_text, "09282026")
 	}
 	section(gtx, "Modal date picker", "comp.date-picker-modal: 360dp, surface-container-high, corner 28; the pencil switches to input mode, the month label opens the years")
-	r := ui.row(gtx, gap = 24, align = .Start)
+	r := ui.wrap(gtx, gap = 24, line_gap = 24)
 	defer ui.end(&r)
 	ACTIONS := [?]string{"Cancel", "OK"}
 	m3.date_picker(gtx, &m.date, &m.date_view, TODAY, mode = &m.date_mode, input = &m.date_input, actions = ACTIONS[:], action = &m.date_action, key = 1)
@@ -226,7 +226,7 @@ page_time_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Dial", "comp.time-picker: 96x80 selectors, the AM/PM toggle, a 256dp dial; drag on the dial, a tap snaps minutes to fives, an hour moves on to minutes")
 	{
-		r := ui.row(gtx, gap = 24, align = .Start)
+		r := ui.wrap(gtx, gap = 24, align = .Start)
 		defer ui.end(&r)
 		m3.time_picker(gtx, &m.time, &m.minutes, key = 1)
 		m3.time_picker(gtx, &m.times[0], &m.editing[0], is_24h = true, key = 2)
@@ -241,7 +241,7 @@ page_time_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Horizontal layout", "landscape: the selectors beside the dial, the period toggle below them")
 	m3.time_picker(gtx, &m.times[2], &m.editing[2], layout = .Horizontal, key = 4)
 	section(gtx, "Forced", "state forces the selectors and the period toggle")
-	r := ui.row(gtx, gap = 24, align = .Start)
+	r := ui.wrap(gtx, gap = 24, align = .Start)
 	defer ui.end(&r)
 	STATES := [2]m3.Interaction{.Hovered, .Disabled}
 	for st, i in STATES {

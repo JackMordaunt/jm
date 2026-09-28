@@ -90,8 +90,29 @@ FIELD_W :: 280
 // Field_Cell draws one text field of column col in state.
 Field_Cell :: proc(gtx: ^ui.Ctx, col: int, st: m3.Interaction, key: u64)
 
-// field_grid is a text field state grid: heads across, STATES down.
+// field_grid is a text field state grid: heads across, STATES down. Where
+// the columns do not fit beside the labels, each state's fields wrap below
+// its label instead, each captioned with its head.
 field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
+	if gtx.constraints.max.x < LABEL_W + f32(len(heads)) * (FIELD_W + 24) {
+		s := m3.scheme()
+		for st, i in m3.STATES {
+			k := key * 100 + u64(10 * (i + 1))
+			col := ui.column(gtx, gap = 8, key = k)
+			defer ui.end(&col)
+			ui.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface]})
+			wr := ui.wrap(gtx, gap = 24, line_gap = 12)
+			defer ui.end(&wr)
+			for h, c in heads {
+				cc := ui.column(gtx, gap = 4, key = u64(c))
+				ui.label(gtx, h, {size = 12, color = s[.On_Surface_Variant]})
+				cell(gtx, c, st, k + u64(c + 1))
+				ui.end(&cc)
+			}
+		}
+		return
+	}
+	// The heads, across the top.
 	{
 		r := ui.row(gtx, gap = 24, key = key)
 		defer ui.end(&r)
@@ -247,7 +268,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Dragged", "every kind lifts to 8dp while dragged")
 	{
-		r := ui.row(gtx, gap = 16, key = 200)
+		r := ui.wrap(gtx, gap = 16, key = 200)
 		defer ui.end(&r)
 		off := false
 		m3.chip(gtx, "Assist", .Assist, leading = .Event, state = .Dragged, key = 201)
@@ -257,7 +278,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "filter chips toggle (the check slides in); the second row morphs its corners; input chips remove themselves")
 	{
-		r := ui.row(gtx, gap = 8, key = 300)
+		r := ui.wrap(gtx, gap = 8, key = 300)
 		defer ui.end(&r)
 		FOOD := [?]string{"Breakfast", "Brunch", "Lunch", "Dinner", "Late night"}
 		for f, i in FOOD {
@@ -265,7 +286,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		r := ui.row(gtx, gap = 8, key = 310)
+		r := ui.wrap(gtx, gap = 8, key = 310)
 		defer ui.end(&r)
 		SIZES := [?]string{"Small", "Medium", "Large", "Extra large"}
 		for f, i in SIZES {
@@ -273,7 +294,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		r := ui.row(gtx, gap = 8, key = 320)
+		r := ui.wrap(gtx, gap = 8, key = 320)
 		defer ui.end(&r)
 		PEOPLE := [?]string{"Ali", "Sandra", "Trevor", "Britta"}
 		for name, i in PEOPLE {
@@ -287,7 +308,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		r := ui.row(gtx, gap = 8, key = 340)
+		r := ui.wrap(gtx, gap = 8, key = 340)
 		defer ui.end(&r)
 		HINTS := [?]string{"Sounds good", "On my way", "Call me"}
 		for h, i in HINTS {

@@ -17,7 +17,7 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Dragged", "elevated 8dp, filled and outlined 6dp: the lift a host drag gives")
 	{
-		r := ui.row(gtx, gap = 16)
+		r := ui.wrap(gtx, gap = 16)
 		defer ui.end(&r)
 		for i in 0 ..< len(m3.Card_Kind) {
 			card_cell(gtx, m, .Dragged, u64(16 * (i + 1)) + 5)
@@ -80,7 +80,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	list_state_rows(gtx, SEL[:], 100)
 	section(gtx, "Leading media and wrapping", "image 56×56 corner 8; small video 100×56, large video 114×64; the row grows to fit. Three lines without an overline wrap the supporting text")
 	{
-		r := ui.row(gtx, gap = 16)
+		r := ui.wrap(gtx, gap = 16)
 		defer ui.end(&r)
 		MEDIA := [?]m3.List_Item {
 			{headline = "Image", supporting = "56 × 56", leading_media = .Image},
@@ -118,7 +118,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Multi-select and expanded", "multi-select flips checked; an expanded row turns its disclosure and shows its children")
 	{
-		r := ui.row(gtx, gap = 24)
+		r := ui.wrap(gtx, gap = 24)
 		defer ui.end(&r)
 		{
 			bg := segmented_bg(gtx, 801)
@@ -173,7 +173,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Reorder", "drag a row by any point, or focus it and press Up/Down; a lifted row is tertiary at 8dp over a drop zone")
 	{
-		r := ui.row(gtx, gap = 24)
+		r := ui.wrap(gtx, gap = 24)
 		defer ui.end(&r)
 		{
 			bg := segmented_bg(gtx, 803)
@@ -213,7 +213,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Reveal", fmt.tprintf("drag a row left, or focus it and press Left, to uncover its actions; last picked: %s", m.reveal_pick == "" ? "none" : m.reveal_pick))
 	{
-		r := ui.row(gtx, gap = 24)
+		r := ui.wrap(gtx, gap = 24)
 		defer ui.end(&r)
 		bg := segmented_bg(gtx, 810)
 		lc := ui.column(gtx, gap = tok.LIST_SEGMENTED_GAP)
@@ -283,6 +283,8 @@ list_state_rows :: proc(gtx: ^ui.Ctx, items: []m3.List_Item, base: u64) {
 		defer ui.end(&r)
 		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
+		wr := ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		for it, j in items {
 			m3.list_item(gtx, it, 300, st, key = base + u64(10 * i + j + 10))
 		}
@@ -358,7 +360,7 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.end(&col)
 	section(gtx, "Menu", "legacy: surface-container, corner 4, 48dp label-large items; Expressive standard and vibrant: 16dp corners, body-large, tertiary selection")
 	{
-		r := ui.row(gtx, gap = 24)
+		r := ui.wrap(gtx, gap = 24, line_gap = 12)
 		defer ui.end(&r)
 		{
 			st := ui.stack(gtx)
@@ -407,7 +409,7 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Always open", "each style pinned open, its items in every state, a selected item and a submenu arrow; then a grouped menu")
 	// Pinned open inline, in the layout, so the live popups above draw
 	// over them rather than under.
-	r := ui.row(gtx, gap = 24, align = .Start)
+	r := ui.wrap(gtx, gap = 24, align = .Start)
 	defer ui.end(&r)
 	pinned := true
 	m3.menu(gtx, &pinned, MENU_STATES[:], modal = false, inline = true, key = 40)
@@ -454,7 +456,7 @@ page_tooltips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.end(&col)
 	section(gtx, "Plain tooltip", "inverse-surface, body-small, corner 4, 8×4dp padding, wraps at 200dp; a 16×8dp caret points at the anchor")
 	{
-		r := ui.row(gtx, gap = 16, align = .Center)
+		r := ui.wrap(gtx, gap = 16, align = .Center)
 		defer ui.end(&r)
 		m3.plain_tooltip(gtx, "Save to favourites", key = 1)
 		m3.plain_tooltip(gtx, "Caret up", .Up, key = 2)
@@ -465,14 +467,14 @@ page_tooltips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Rich tooltip", "surface-container, 3dp, corner 12, 320dp max; subhead baseline 28dp down, body 24dp under it")
 	{
-		r := ui.row(gtx, gap = 16)
+		r := ui.wrap(gtx, gap = 16)
 		defer ui.end(&r)
 		m3.rich_tooltip(gtx, "Rich tooltip", "Rich tooltips bring attention to a particular element or feature that warrants the user's focus.", "Learn more", key = 10)
 		m3.rich_tooltip(gtx, "No action", "Without an action the body gets 16dp below it.", key = 11)
 		m3.rich_tooltip(gtx, "", "Body only, with a caret pointing up at its anchor.", caret = .Up, key = 12)
 	}
 	section(gtx, "Live", "hover an icon button: the tooltip shows at once and hides after 1.5s")
-	r := ui.row(gtx, gap = 8)
+	r := ui.wrap(gtx, gap = 8)
 	defer ui.end(&r)
 	TIPS := [?]string{"Favourite", "Share", "Bookmark", "Delete"}
 	GLYPHS := [?]m3.Icon{.Favorite, .Share, .Bookmark, .Delete}
@@ -491,11 +493,11 @@ page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	m3.snackbar(gtx, "Two lines: this message is long enough that it wraps onto a second line beside its action", "Undo", width = 480, key = 4)
 	m3.snackbar(gtx, "The action on its own row, for a long action label", "Open the settings", closable = true, width = 420, action_on_new_line = true, key = 5)
 	section(gtx, "Action and close icon states")
-	state_header(gtx)
-	state_row(gtx, m, "Snackbar", snackbar_cell, 6)
+	state_header(gtx, SNACKBAR_CELL_W)
+	state_row(gtx, m, "Snackbar", snackbar_cell, 6, SNACKBAR_CELL_W)
 	section(gtx, "Live", "shows at the bottom of the window; with an action it stays until acted on or closed (indefinite)")
 	{
-		r := ui.row(gtx, gap = 12)
+		r := ui.wrap(gtx, gap = 12)
 		defer ui.end(&r)
 		if m3.button(gtx, "Archive", .Tonal, .Archive, key = 10) {
 			m.snack = true
@@ -532,6 +534,9 @@ page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 }
+
+// SNACKBAR_CELL_W is a state cell wide enough for snackbar_cell.
+SNACKBAR_CELL_W :: f32(190)
 
 // snackbar_cell is a snackbar whose action and close icon take st.
 snackbar_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {

@@ -22,6 +22,8 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		r := ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.end(&r)
 		state_label(gtx, STATE_NAMES[i])
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		sel := [3]bool{true, false, false}
 		m3.button_group(gtx, LABELS[:], sel[:], state = st, key = u64(10 + i))
 		sel2 := [3]bool{true, false, false}
@@ -34,6 +36,8 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		r := ui.row(gtx, gap = 24, align = .Center)
 		defer ui.end(&r)
 		state_label(gtx, "Enabled")
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		sel := [3]bool{false, true, false}
 		m3.button_group(gtx, LABELS[:], sel[:], style = .Tonal, key = 40)
 		sel2 := [3]bool{false, true, false}
@@ -47,6 +51,8 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		r := ui.row(gtx, gap = 24, align = .Center)
 		defer ui.end(&r)
 		state_label(gtx, "Enabled")
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		W := [?]f32{0, 1, 2}
 		DIS := [?]bool{false, false, true}
 		sel := [3]bool{true, false, false}
@@ -77,12 +83,14 @@ page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		r := ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.end(&r)
 		state_label(gtx, STATE_NAMES[i])
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating, 2, key = u64(10 + i), state = st)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating_Vibrant, 2, key = u64(20 + i), state = st)
 	}
 	section(gtx, "Paired FAB and vertical", "expanded, then collapsed: the toolbar folds away and its FAB grows from 56 to 80dp. Vertical, with a leading-side FAB")
 	{
-		r := ui.row(gtx, gap = 32, align = .Center)
+		r := ui.wrap(gtx, gap = 32, align = .Center)
 		defer ui.end(&r)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating, -1, key = 30, fab = .Edit, state = .Enabled)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating_Vibrant, -1, key = 31, fab = .Edit, state = .Enabled)
@@ -92,7 +100,7 @@ page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "the toggle expands and collapses both: the first and last actions are side groups, shown only while expanded")
 	{
-		r := ui.row(gtx, gap = 32, align = .Center)
+		r := ui.wrap(gtx, gap = 32, align = .Center)
 		defer ui.end(&r)
 		if m3.button(gtx, m.tool_folded ? "Expand" : "Collapse", key = 40) {
 			m.tool_folded = !m.tool_folded
@@ -115,6 +123,8 @@ page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		r := ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.end(&r)
 		state_label(gtx, STATE_NAMES[i])
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		shut := false
 		for size, j in m3.Fab_Menu_Size {
 			m3.fab_menu(gtx, .Add, ITEMS[:], &shut, key = u64(10 * i + j), size = size, state = st)
@@ -123,7 +133,7 @@ page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Open", "the trigger becomes a 56dp primary close button; the items stack above it in list order, 4dp apart, 8dp above it. End-aligned, then start-aligned")
 	ui.spacer(gtx, 320)
 	{
-		r := ui.row(gtx, gap = 200, align = .End)
+		r := ui.wrap(gtx, gap = 200, align = .End)
 		defer ui.end(&r)
 		ui.spacer(gtx, 100)
 		open := true
@@ -151,6 +161,8 @@ page_bottom_app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		r := ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.end(&r)
 		state_label(gtx, STATE_NAMES[i])
+		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
+		defer ui.end(&wr)
 		m3.bottom_app_bar(gtx, ACTIONS[:], .Add, width = W, state = st, key = u64(10 + i))
 	}
 	section(gtx, "Flexible", "the docked toolbar's 64dp and 16dp end padding; space-between, then fixed-centered (at most 32dp apart), the FAB just the last item")
