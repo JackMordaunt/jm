@@ -123,6 +123,7 @@ content_rows :: proc(data: bl.ImageData, w, h: int) -> int {
 //	-advance N         run N frames at 1/60 s
 //	-png PATH          write the current frame
 //	-dump              print the current frame's ops as text
+//	-overflow          print what the window or a clip cuts off at the sides
 headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bool) {
 	need :: proc(args: []string, i: ^int, n: int, flag: string) -> bool {
 		if i^ + n >= len(args) {
@@ -202,6 +203,8 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		}
 	case "-dump":
 		fmt.print(ui.probe_dump(&h.p))
+	case "-overflow":
+		fmt.print(ui.overflow_report(ui.probe_current(&h.p), h.p.size, context.temp_allocator))
 	case:
 		return false, true
 	}
