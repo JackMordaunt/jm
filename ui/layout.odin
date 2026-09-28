@@ -815,6 +815,118 @@ end_scroll_box :: proc(s: ^Scroll_Box) {
 	overlay_close(s.gtx, &s.index)
 }
 
+// Scrollbar metrics, in dp: Compose Multiplatform's desktop defaults
+// (defaultScrollbarStyle in foundation's Scrollbar.skiko.kt, JetBrains
+// compose-multiplatform-core jb-main, read 2026-09-28), as neither
+// Material 3 nor jm:ui's own theme specifies a scrollbar.
+SCROLL_BAR_THICKNESS :: f32(8)
+SCROLL_BAR_RADIUS :: f32(4)
+SCROLL_BAR_MIN_THUMB :: f32(16)
+SCROLL_BAR_INSET :: f32(2) // from the box's edge, so the thumb does not touch it
+SCROLL_BAR_IDLE_ALPHA :: f32(0.12)
+SCROLL_BAR_HOVER_ALPHA :: f32(0.50)
+
+// SCROLL_BAR_FADE moves the thumb between its idle and hover alpha: a
+// critically damped spring, never overshooting a colour.
+@(private)
+SCROLL_BAR_FADE :: Spring_Params{1, 1600}
+
+// Scroll_Bar is one bar's layout along its box's edge, in the box's space.
+@(private)
+Scroll_Bar :: struct {
+	view, range: f32, // the box's length on the axis, and how far it scrolls
+	track:       Rect,
+	thumb_len:   f32,
+	travel:      f32, // how far the thumb moves along the track
+}
+
+// scroll_bar_layout is the bar for axis over a box of size whose content is
+// content long on that axis; ok is false when nothing overflows. both
+// shortens the bars so the two do not cross in the corner.
+@(private)
+scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool) -> (b: Scroll_Bar, ok: bool) {
+	b.view = main_of(axis, size)
+	if content <= b.view {
+		return
+	}
+	track_len := b.view - 2 * SCROLL_BAR_INSET
+	if both {
+		track_len -= SCROLL_BAR_THICKNESS + SCROLL_BAR_INSET
+	}
+	b.thumb_len = clamp(track_len * b.view / content, SCROLL_BAR_MIN_THUMB, track_len)
+	b.range = content - b.view
+	b.travel = max(track_len - b.thumb_len, 1)
+	edge := cross_of(axis, size) - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
+	b.track = axis == .Vertical ? Rect{edge, SCROLL_BAR_INSET, SCROLL_BAR_THICKNESS, track_len} : Rect{SCROLL_BAR_INSET, edge, track_len, SCROLL_BAR_THICKNESS}
+	return b, true
+}
+
+// scroll_bar_handle applies this frame's events on the bar for axis to
+// offset and returns the result: dragging the thumb scrolls in proportion,
+// a press on the track either side of it moves a page. scroll_box draws its
+// own bars; a widget that scrolls content it paints itself (a list drawn
+// row by row) calls this before painting at the offset, then
+// scroll_bar_paint after, both in its box's space and with an id of its
+// own. size is the box, content the content's length on axis.
+scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false) -> f32 {
+	b, ok := scroll_bar_layout(axis, size, content, both)
+	if !ok {
+		return offset
+	}
+	off := offset
+	st := widget_state(gtx, id)
+	for e in events(gtx, id) {
+		along := main_of(axis, e.pos) - SCROLL_BAR_INSET
+		#partial switch e.kind {
+		case .Enter:
+			st.hovered = true
+		case .Leave:
+			st.hovered = false
+		case .Press:
+			at := b.travel * off / b.range
+			switch {
+			case along < at:
+				off -= b.view
+			case along > at + b.thumb_len:
+				off += b.view
+			case:
+				st.pressed = true
+			}
+		case .Move:
+			if st.pressed {
+				off += main_of(axis, e.travel) * b.range / b.travel
+			}
+		case .Release:
+			st.pressed = false
+		}
+	}
+	return clamp(off, 0, b.range)
+}
+
+// scroll_bar_paint draws the bar for axis at offset and lays its input
+// area over the track, on top of what came before. The thumb is the
+// theme's foreground, faint until the bar is hovered or held.
+scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false) {
+	b, ok := scroll_bar_layout(axis, size, content, both)
+	if !ok {
+		return
+	}
+	st := widget_state(gtx, id)
+	t := spring_update(&st.springs[0], gtx, st.hovered || st.pressed ? 1 : 0, SCROLL_BAR_FADE)
+	alpha := SCROLL_BAR_IDLE_ALPHA + (SCROLL_BAR_HOVER_ALPHA - SCROLL_BAR_IDLE_ALPHA) * t
+	at := b.travel * offset / b.range
+	thumb := b.track
+	if axis == .Vertical {
+		thumb.y += at
+		thumb.h = b.thumb_len
+	} else {
+		thumb.x += at
+		thumb.w = b.thumb_len
+	}
+	fill(gtx.ops, Round_Rect{thumb, SCROLL_BAR_RADIUS}, with_alpha(gtx.theme.fg, alpha))
+	input_area(gtx.ops, id, b.track, {.Press, .Release, .Move, .Enter, .Leave})
+}
+
 @(private)
 overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 	if index^ < 0 {
@@ -873,12 +985,24 @@ overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 		}
 		st.scroll = clamp(st.scroll, 0, max(content.y - size.y, 0))
 		st.scroll_x = clamp(st.scroll_x, 0, max(content.x - size.x, 0))
+		// The bars take their input before the body is placed, so a drag
+		// moves the content this frame. Each bar has its own widget state,
+		// which may grow the state map, so st is read into locals first and
+		// written back after.
+		y, x := st.scroll, st.scroll_x
+		both := content.y > size.y && content.x > size.x
+		y = scroll_bar_handle(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, y, both)
+		x = scroll_bar_handle(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, x, both)
+		st = widget_state(gtx, c.place.id)
+		st.scroll, st.scroll_x = y, x
 		view := Rect{0, 0, size.x, size.y}
 		input_area(o, c.place.id, view, {.Scroll})
 		push_clip(o, view)
-		push_transform(o, translate(-st.scroll_x, -st.scroll))
+		push_transform(o, translate(-x, -y))
 		call(o, c.body)
 		pop_transform(o)
+		scroll_bar_paint(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, y, both)
+		scroll_bar_paint(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, x, both)
 		pop_clip(o)
 		baseline = 0
 	case .Center:
