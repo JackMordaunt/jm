@@ -143,7 +143,7 @@ paint_card :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
 	}
 	dp := target
 	if c.st != nil {
-		dp = elevation_tween(gtx, &c.st.springs[0], target, t.rest, t.hover)
+		dp = elevation_tween(gtx, ui.widget_data(gtx, id, Elevation_Tween), target, t.rest, t.hover)
 	}
 	container := color(t.container)
 	edge: ui.Color
@@ -186,37 +186,49 @@ card_icon :: proc(gtx: ^ui.Ctx, glyph: Icon, kind := Card_Kind.Elevated, loc := 
 @(private)
 ELEVATION_OUT_EASING :: tok.Bezier{0.4, 0, 0.6, 1}
 
-// elevation_tween moves s toward target (dp) along Compose's elevation
+// Elevation_Tween is a card's elevation on its way to a target: an eased
+// tween of fixed length, as Compose's animateElevation is (a tween
+// AnimationSpec, Elevation.kt:109-113), not a spring, so it keeps its own
+// record in the card's widget_data.
+@(private)
+Elevation_Tween :: struct {
+	value:    f32, // dp now
+	target:   f32, // dp it is heading for
+	from:     f32, // dp when the target last changed
+	t:        f32, // seconds since then
+	duration: f32, // seconds the move takes
+	started:  bool, // false until the first frame, which starts at target
+}
+
+// elevation_tween moves e toward target (dp) along Compose's elevation
 // tweens (Elevation.kt:109-113): into a raised state over 120ms with
 // FastOutSlowIn (sys.motion.easing.legacy); back to rest over 120ms from
-// hover or 150ms from anything else, with ELEVATION_OUT_EASING. jm:ui has
-// no eased tween a widget can retain, so a ui.Spring slot holds it: x0 is
-// the start value, v0 the duration, t the time since the target changed.
+// hover or 150ms from anything else, with ELEVATION_OUT_EASING.
 @(private)
-elevation_tween :: proc(gtx: ^ui.Ctx, s: ^ui.Spring, target, rest, hover: f32) -> f32 {
-	if !s.started {
-		s^ = {value = target, target = target, started = true}
+elevation_tween :: proc(gtx: ^ui.Ctx, e: ^Elevation_Tween, target, rest, hover: f32) -> f32 {
+	if !e.started {
+		e^ = {value = target, target = target, started = true}
 		return target
 	}
-	if target != s.target {
-		from_hover := s.target == hover && hover != rest
-		s.x0, s.t = s.value, 0
-		s.v0 = target == rest && !from_hover ? 0.150 : 0.120
-		s.target = target
+	if target != e.target {
+		from_hover := e.target == hover && hover != rest
+		e.from, e.t = e.value, 0
+		e.duration = target == rest && !from_hover ? 0.150 : 0.120
+		e.target = target
 	}
-	if s.value == s.target {
-		return s.value
+	if e.value == e.target {
+		return e.value
 	}
-	s.t += gtx.dt
-	f := s.v0 > 0 ? clamp(s.t / s.v0, 0, 1) : 1
-	ease := s.target == rest ? ELEVATION_OUT_EASING : tok.SYS_MOTION_EASING_LEGACY
-	s.value = s.x0 + (s.target - s.x0) * bezier_ease(ease, f)
+	e.t += gtx.dt
+	f := e.duration > 0 ? clamp(e.t / e.duration, 0, 1) : 1
+	ease := e.target == rest ? ELEVATION_OUT_EASING : tok.SYS_MOTION_EASING_LEGACY
+	e.value = e.from + (e.target - e.from) * bezier_ease(ease, f)
 	if f >= 1 {
-		s.value = s.target
+		e.value = e.target
 	} else {
 		ui.request_frame(gtx)
 	}
-	return s.value
+	return e.value
 }
 
 // spring_progress is where a 0→1 move along spring s stands t seconds
