@@ -474,6 +474,17 @@ LIST_PAD_Y_THREE :: f32(12)
 @(private)
 DRAG_SLOP :: f32(8)
 
+// List_Item_State is a reorder or reveal row's gesture and resting place,
+// kept across frames. list_item keeps one per row by itself; pass your
+// own to keep a reveal row open (or a drag going) through a reorder of the
+// list, to persist it, or to open or close a reveal row from outside by
+// setting reveal.target.
+List_Item_State :: struct {
+	drag:   f32, // the pointer's travel along the row's drag axis since the press, once past DRAG_SLOP; 0 when not dragging
+	grab:   ui.Point, // where that press landed, local to the row
+	reveal: ui.Spring, // a reveal row's offset (dp, 0 or less); its target is where it rests: 0 closed, minus the actions' width open
+}
+
 // list_item is M3's list item on the Expressive tokens: 56/72/88dp for
 // one/two/three lines (taller when its content is), 16dp side space, 12dp
 // between slots, a body-large headline, body-medium supporting text,
@@ -493,11 +504,16 @@ DRAG_SLOP :: f32(8)
 // one clicked. Compose at the kit's pinned commit has none of these three
 // (list.json behaviour compose-gap): their interaction is list.json's
 // inference. A long press (onLongClick) has no jm:ui event.
+//
+// row_state holds a Reorder or Reveal row's drag and a Reveal row's
+// resting offset (see List_Item_State); nil keeps them in the row's own
+// widget_data, which follows the row's id.
 list_item :: proc(
 	gtx: ^ui.Ctx,
 	it: List_Item,
 	width: f32 = 0,
 	state := Interaction.Live,
+	row_state: ^List_Item_State = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -533,19 +549,23 @@ list_item :: proc(
 	}
 
 	// Drags: a press that moves past DRAG_SLOP lifts a reorder row or
-	// slides a reveal row. The offset lives in Widget_State.scroll, free
-	// because a row never scrolls; the reveal row's resting offset lives in
-	// spring slot 2's target.
+	// slides a reveal row.
 	drag: f32
 	reveal_w := list_reveal_width(len(it.actions))
+	gs: ^List_Item_State
 	if c.st != nil && (it.kind == .Reorder || it.kind == .Reveal) {
+		gs = row_state if row_state != nil else ui.widget_data(gtx, p.id, List_Item_State)
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
+			case .Press:
+				if e.button == .Left {
+					gs.grab = e.pos
+				}
 			case .Move:
 				if c.st.pressed {
-					d := it.kind == .Reorder ? e.pos.y - c.st.ripple_origin.y : e.pos.x - c.st.ripple_origin.x
-					if abs(d) > DRAG_SLOP || c.st.scroll != 0 {
-						c.st.scroll = d
+					d := it.kind == .Reorder ? e.pos.y - gs.grab.y : e.pos.x - gs.grab.x
+					if abs(d) > DRAG_SLOP || gs.drag != 0 {
+						gs.drag = d
 					}
 				}
 			case .Key:
@@ -560,16 +580,16 @@ list_item :: proc(
 					}
 				case .Left:
 					if it.kind == .Reveal {
-						c.st.springs[2].target = -reveal_w
+						gs.reveal.target = -reveal_w
 					}
 				case .Right, .Escape:
 					if it.kind == .Reveal {
-						c.st.springs[2].target = 0
+						gs.reveal.target = 0
 					}
 				}
 			}
 		}
-		drag = c.st.scroll
+		drag = gs.drag
 		if !c.st.pressed && drag != 0 {
 			// Released after a drag: it was not a click.
 			activated = false
@@ -577,14 +597,14 @@ list_item :: proc(
 				it.moved^ = int(math.round(drag / size.y))
 			}
 			if it.kind == .Reveal {
-				base := c.st.springs[2].target
-				c.st.springs[2].value = clamp(base + drag, -reveal_w, 0)
-				c.st.springs[2].velocity = 0
-				c.st.springs[2].target = c.st.springs[2].value < -reveal_w / 2 ? -reveal_w : 0
-				c.st.springs[2].x0 = c.st.springs[2].value - c.st.springs[2].target
-				c.st.springs[2].v0, c.st.springs[2].t = 0, 0
+				rv := &gs.reveal
+				rv.value = clamp(rv.target + drag, -reveal_w, 0)
+				rv.velocity = 0
+				rv.target = rv.value < -reveal_w / 2 ? -reveal_w : 0
+				rv.x0 = rv.value - rv.target
+				rv.v0, rv.t = 0, 0
 			}
-			c.st.scroll, drag = 0, 0
+			gs.drag, drag = 0, 0
 		}
 	}
 	if activated {
@@ -660,14 +680,14 @@ list_item :: proc(
 		ui.end(&o)
 	case it.kind == .Reveal:
 		offset: f32 = it.revealed ? -reveal_w : 0
-		if c.st != nil {
-			offset = clamp(c.st.springs[2].target + drag, -reveal_w, 0)
+		if gs != nil {
+			offset = clamp(gs.reveal.target + drag, -reveal_w, 0)
 			if drag == 0 {
-				offset = ui.spring_update(&c.st.springs[2], gtx, c.st.springs[2].target, spring_params(.Fast_Spatial), 0.5)
+				offset = ui.spring_update(&gs.reveal, gtx, gs.reveal.target, spring_params(.Fast_Spatial), 0.5)
 			}
 		}
 		ui.push_clip(gtx.ops, area)
-		paint_reveal_actions(gtx, it, p.id, size, offset, c)
+		paint_reveal_actions(gtx, it, p.id, size, offset, c, gs)
 		open := reveal_w > 0 ? -offset / reveal_w : 0
 		body.corners = lerp_corners(k, corners(tok.REVEAL_LIST_ITEM_CONTAINER_SHAPE, area), open)
 		ui.push_transform(gtx.ops, ui.translate(offset, 0))
@@ -869,7 +889,7 @@ list_reveal_width :: proc(n: int) -> f32 {
 // action (primary container, rounded square); the rest are secondary
 // containers, full shape (comp.reveal-list).
 @(private)
-paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size: ui.Size, offset: f32, rc: Control) {
+paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size: ui.Size, offset: f32, rc: Control, gs: ^List_Item_State) {
 	n := len(it.actions)
 	if n == 0 {
 		return
@@ -890,8 +910,8 @@ paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size:
 		ac := control(gtx, id, r, open && rc.st != nil ? .Live : .Enabled)
 		if ac.clicked && it.action != nil {
 			it.action^ = i
-			if rc.st != nil {
-				rc.st.springs[2].target = 0
+			if gs != nil {
+				gs.reveal.target = 0
 			}
 		}
 		ui.fill(gtx.ops, shape, fill)
