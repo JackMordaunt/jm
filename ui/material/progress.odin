@@ -622,7 +622,7 @@ linear_progress :: proc(
 	if indeterminate {
 		// Four head and tail sweeps staggered on a 1750ms loop, eased
 		// emphasized-accelerate (ProgressIndicator.kt:1049-1063).
-		t = progress_clock(gtx, st, 0, 7, at) // 7s: the loop and a 1s wave both repeat
+		t = progress_clock(gtx, st, 7, at) // 7s: the loop and a 1s wave both repeat
 		lt := math.mod(t, 1.75)
 		sweep :: proc(t, delay, dur: f32) -> f32 {
 			return bezier_ease(tok.SYS_MOTION_EASING_EMPHASIZED_ACCELERATE, clamp((t - delay) / dur, 0, 1))
@@ -633,7 +633,7 @@ linear_progress :: proc(
 	} else {
 		segs[0] = {0, clamp(value, 0, 1)}
 		if wavy {
-			t = progress_clock(gtx, st, 0, 1, at)
+			t = progress_clock(gtx, st, 1, at)
 		}
 	}
 	amp: f32
@@ -798,12 +798,12 @@ circular_progress :: proc(
 	t: f32
 	rot, sweep: f32 // degrees, clockwise from 12 o'clock; fraction of the circle
 	if indeterminate {
-		t = progress_clock(gtx, st, 0, 6, at)
+		t = progress_clock(gtx, st, 6, at)
 		rot, sweep = circular_indeterminate(t)
 	} else {
 		sweep = clamp(value, 0, 1)
 		if wavy {
-			t = progress_clock(gtx, st, 0, 1, at)
+			t = progress_clock(gtx, st, 1, at)
 		}
 	}
 	amp: f32
@@ -960,8 +960,8 @@ loading_indicator :: proc(
 		// turn (loading-indicator.json behaviour, LoadingIndicator.kt:
 		// 392-434).
 		MORPH_S :: f32(0.65)
-		clock := progress_clock(gtx, st, 0, MORPH_S * f32(4 * n), at)
-		turn := progress_clock(gtx, st, 1, 4.666, at)
+		clock := progress_clock(gtx, st, MORPH_S * f32(4 * n), at)
+		turn := progress_clock(gtx, st, 4.666, at)
 		k := int(clock / MORPH_S)
 		morph = k % n
 		t = morph_spring(clock - f32(k) * MORPH_S)
@@ -1040,19 +1040,16 @@ paint_morph :: proc(gtx: ^ui.Ctx, m: Shape_Morph, t: f32, c: ui.Point, scale, ro
 }
 
 // progress_clock is seconds into a loop of period for an animated
-// indicator, kept in st.springs[slot].value (a progress indicator has no
-// spring of its own there), and asks for the next frame so it keeps
-// moving. at >= 0 is a fixed time instead, for a still frame; so is a nil
-// st.
+// indicator, read from the frame clock (gtx.time), and asks for the next
+// frame so it keeps moving. at >= 0 is a fixed time instead, for a still
+// frame; so is a nil st, a forced state.
 @(private)
-progress_clock :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, slot: int, period, at: f32) -> f32 {
+progress_clock :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, period, at: f32) -> f32 {
 	if at >= 0 || st == nil {
 		return math.mod(max(at, 0), period)
 	}
-	s := &st.springs[slot]
-	s.value = math.mod(s.value + gtx.dt, period)
 	ui.request_frame(gtx)
-	return s.value
+	return f32(math.mod(gtx.time, f64(period)))
 }
 
 // amplitude_ramp eases a wavy indicator's amplitude to target over 500ms
