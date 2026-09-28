@@ -91,3 +91,22 @@ test_event_log_names_each_target_and_skips_moves :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(lines[len(lines) - 1], "-> \"Save\""))
 	testing.expect(t, strings.contains(event_log_report(&p.tray, context.temp_allocator), "Press"))
 }
+
+@(test)
+test_flash_is_off_and_untouchable_under_full_frames :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {}
+	p: Probe
+	probe_init(&p, view, nil, {800, 600}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	probe_key(&p, DEBUG_TOGGLE_KEY)
+	testing.expect(t, probe_click(&p, "Flash repaints"))
+	testing.expect(t, debug_tray_wants_flash(&p.tray))
+	testing.expect(t, probe_click(&p, "Full frames (compositor damage off)"))
+	probe_frame(&p)
+	testing.expect(t, !debug_tray_wants_flash(&p.tray)) // the whole window repaints: nothing to flash
+	testing.expect(t, !probe_click(&p, "Flash repaints")) // dimmed, with no area to click
+	testing.expect(t, probe_click(&p, "Full frames (compositor damage off)"))
+	probe_frame(&p)
+	testing.expect(t, debug_tray_wants_flash(&p.tray)) // the choice was kept
+}

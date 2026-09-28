@@ -88,9 +88,10 @@ debug_tray_wants_full_frames :: proc(t: ^Debug_Tray) -> bool {
 }
 
 // debug_tray_wants_flash reports whether t asks the compositor to tint
-// what it repaints.
+// what it repaints. Not under full frames: every frame repaints the whole
+// window then, and the flash would only tint all of it.
 debug_tray_wants_flash :: proc(t: ^Debug_Tray) -> bool {
-	return t.open && t.flash
+	return t.open && t.flash && !t.full_frames
 }
 
 // debug_tray_log records the events r routed this frame into t's log,
@@ -285,7 +286,8 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 		t.full_frames = !t.full_frames
 	}
 	y += row
-	if tray_toggle(gtx, {pad, y, TRAY_WIDTH - 2 * pad, row}, "Flash repaints", t.flash, 21) {
+	// Off under full frames (see debug_tray_wants_flash), and shown so.
+	if tray_toggle(gtx, {pad, y, TRAY_WIDTH - 2 * pad, row}, "Flash repaints", t.flash, 21, enabled = !t.full_frames) {
 		t.flash = !t.flash
 	}
 	y += row + 6
@@ -316,9 +318,17 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	}
 }
 
-// tray_toggle draws a check and name in r and reports a click on it.
+// tray_toggle draws a check and name in r and reports a click on it. A
+// toggle that is not enabled is drawn dimmed, unchecked, and takes no
+// input.
 @(private = "file")
-tray_toggle :: proc(gtx: ^Ctx, r: Rect, name: string, on: bool, key: u64) -> bool {
+tray_toggle :: proc(gtx: ^Ctx, r: Rect, name: string, on: bool, key: u64, enabled := true) -> bool {
+	if !enabled {
+		box := Rect{r.x + 2, r.y + (r.h - 12) / 2, 12, 12}
+		stroke(gtx.ops, Round_Rect{box, 3}, Color{90, 88, 100, 255}, {width = 1})
+		tray_text(gtx, name, {r.x + 22, r.y + (r.h + 12) / 2 - 1}, 12, Color{120, 118, 130, 255})
+		return false
+	}
 	id := scoped_id(gtx, key)
 	st := widget_state(gtx, id)
 	clicked := click_from_events(gtx, id, st, r)
