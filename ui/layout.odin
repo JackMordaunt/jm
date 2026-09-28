@@ -117,6 +117,8 @@ Container :: struct {
 	rigid:    f32, // main size of unweighted children so far
 	weights:  f32, // weights so far, slots included
 	next:     f32, // weight for the next child, set by flexible
+	wrap:     bool, // wrap: children break into lines, line_gap apart
+	line_gap: f32,
 }
 
 Layout :: struct {
@@ -444,6 +446,31 @@ flex_open :: proc(
 	return {gtx, i}
 }
 
+// wrap lays children left to right, gap apart, starting a new line, line_gap
+// below, whenever the next child would pass the width it is offered: the
+// row of chips, buttons or cards that must reflow, not scroll, when the
+// window narrows. Each child is offered the full width and measures at its
+// natural size; align places a child across its line (Start, Center or
+// End; Fill acts as Start). A line_gap below 0 means gap. Weights do not
+// apply: a flexible child is laid out at its natural size.
+wrap :: proc(
+	gtx: ^Ctx,
+	gap: f32 = 0,
+	line_gap: f32 = -1,
+	align: Align = .Start,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> Flex {
+	f := flex_open(gtx, .Horizontal, gap, align, key, loc)
+	if f.index >= 0 {
+		c := &gtx.layout.stack[f.index]
+		c.wrap = true
+		c.deferred = true
+		c.line_gap = line_gap < 0 ? gap : line_gap
+	}
+	return f
+}
+
 // flexible marks the next child of the innermost row or column as weighted:
 // it is given a tight main-axis share, weight / total weight, of the space
 // the unweighted children leave. A child is laid out when it is called, so
@@ -465,6 +492,9 @@ flexible :: proc(gtx: ^Ctx, weight: f32) {
 flex_child_constraints :: proc(l: ^Layout, c: ^Container, weight: f32) -> Constraints {
 	main_max := main_of(c.axis, c.cs.max)
 	cross_max := cross_of(c.axis, c.cs.max)
+	if c.wrap {
+		return {max = axis_vec(c.axis, main_max, INF)}
+	}
 	// An unweighted child is offered what the unweighted children before it
 	// left, as in Gio, so it measures at its natural size even when a
 	// weighted child took too much on a first frame.
@@ -515,6 +545,10 @@ end_flex :: proc(f: ^Flex) {
 	}
 	l := gtx.layout
 	c := &l.stack[f.index]
+	if c.wrap {
+		end_wrap(f)
+		return
+	}
 	kids := l.children[c.first:]
 	gaps := c.gap * f32(max(len(kids) - 1, 0))
 	fixed, slot_weight: f32
@@ -572,6 +606,62 @@ end_flex :: proc(f: ^Flex) {
 	memo.flex_rigid = c.rigid
 	memo.flex_weight = c.weights
 	memo.flex_count = c.count
+	done := container_pop(gtx, f.index)
+	widget_end(gtx, &done.place, {size, baseline})
+	f.index = -1
+}
+
+// end_wrap places a wrap's children in lines and reports its size: the
+// widest line by the lines' total height.
+@(private)
+end_wrap :: proc(f: ^Flex) {
+	gtx := f.gtx
+	l := gtx.layout
+	c := &l.stack[f.index]
+	kids := l.children[c.first:]
+	limit := is_finite(c.cs.max.x) ? c.cs.max.x : INF
+	// Two passes over the lines: measure one, then place it, so a child
+	// can be aligned across its line's height.
+	width, y, baseline: f32
+	start := 0
+	for start < len(kids) {
+		end := start
+		w, h: f32
+		for end < len(kids) {
+			kw := kids[end].size.x
+			next := end > start ? w + c.gap + kw : kw
+			if end > start && next > limit {
+				break
+			}
+			w = next
+			h = max(h, kids[end].size.y)
+			end += 1
+		}
+		x: f32
+		for k in kids[start:end] {
+			off: f32
+			#partial switch c.align {
+			case .Center:
+				off = (h - k.size.y) / 2
+			case .End:
+				off = h - k.size.y
+			}
+			push_transform(gtx.ops, translate(x, y + off))
+			call(gtx.ops, k.macro)
+			pop_transform(gtx.ops)
+			if baseline == 0 && k.baseline > 0 {
+				baseline = k.baseline + y + off
+			}
+			x += k.size.x + c.gap
+		}
+		width = max(width, w)
+		y += h
+		start = end
+		if start < len(kids) {
+			y += c.line_gap
+		}
+	}
+	size := constrain(c.cs, {width, y})
 	done := container_pop(gtx, f.index)
 	widget_end(gtx, &done.place, {size, baseline})
 	f.index = -1

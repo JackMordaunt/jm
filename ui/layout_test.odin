@@ -535,6 +535,39 @@ test_scroll_box_draws_no_bar_without_overflow :: proc(t: ^testing.T) {
 	testing.expect(t, !ok)
 }
 
+@(test)
+test_wrap_breaks_children_into_lines :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {100, 300})
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	d: Dims
+	{
+		wr := wrap(gtx, gap = 10, line_gap = 4)
+		defer end(&wr)
+		for _ in 0 ..< 3 {
+			d = label(gtx, "aaaaa")
+		}
+	}
+	// Each placed child is a Push_Transform then its Call.
+	at: [dynamic]Point
+	defer delete(at)
+	for i in 0 ..< len(h.ops.ops) - 1 {
+		pt, is_pt := h.ops.ops[i].(Push_Transform)
+		if _, is_call := h.ops.ops[i + 1].(Call); is_pt && is_call {
+			append(&at, Point{f32(pt.m.e), f32(pt.m.f)})
+		}
+	}
+	w, lh := d.size.x, d.size.y
+	testing.expect(t, 2 * w + 10 <= 100 && 3 * w + 20 > 100) // two fit a line, three do not
+	if !testing.expect_value(t, len(at), 3) {
+		return
+	}
+	testing.expect_value(t, at[0], Point{0, 0})
+	testing.expect(t, near(at[1].x, w + 10) && at[1].y == 0)
+	testing.expect(t, at[2].x == 0 && near(at[2].y, lh + 4))
+}
+
 // wide_scroll_frame lays a scroll_box with min_width 500 over a 500px
 // wide, 300px tall column in h's 200x100 window.
 @(private)
