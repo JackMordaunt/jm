@@ -424,3 +424,88 @@ test_request_frame_soonest_wins :: proc(t: ^testing.T) {
 	request_frame(&gtx, -3)
 	testing.expect_value(t, gtx.frame_after, 0)
 }
+
+// scroll_frame lays a scroll_box over 300px of content in h's window and
+// returns the box's input area.
+@(private)
+scroll_frame :: proc(h: ^Harness) -> Input_Area {
+	gtx := &h.gtx
+	{
+		sb := scroll_box(gtx); defer end(&sb)
+		col := column(gtx); defer end(&col)
+		spacer(gtx, 300)
+		label(gtx, "last")
+	}
+	return h.ops.ops[index_of(&h.ops, Input_Area)].(Input_Area)
+}
+
+// scroll_offset is the y of the transform scroll_box pushes right after its
+// clip (the body's own transforms come earlier, inside its macro).
+@(private)
+scroll_offset :: proc(h: ^Harness) -> f64 {
+	i := index_of(&h.ops, Push_Clip)
+	return h.ops.ops[i + 1].(Push_Transform).m.f
+}
+
+@(test)
+test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	ia := scroll_frame(&h)
+	testing.expect_value(t, ia.kinds, Event_Kinds{.Scroll})
+	clip := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip)
+	testing.expect_value(t, clip.shape.(Rect).h, 100) // the offered height, not the content's
+	testing.expect_value(t, scroll_offset(&h), 0)
+
+	// One unit of scroll moves SCROLL_STEP pixels.
+	harness_frame(&h)
+	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	scroll_frame(&h)
+	testing.expect_value(t, scroll_offset(&h), f64(-SCROLL_STEP))
+
+	// Scrolling past the end clamps to the overflow: 300 + 14 - 100.
+	clear(&h.router.events)
+	harness_frame(&h)
+	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
+	scroll_frame(&h)
+	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
+}
+
+@(test)
+test_box_paint_replaces_fill_and_outline :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	got: Size
+	painter :: proc(gtx: ^Ctx, id: Area_Id, size: Size, user: rawptr) {
+		(^Size)(user)^ = size
+		fill(gtx.ops, Rect{0, 0, size.x, size.y}, Color{1, 2, 3, 255})
+	}
+	{
+		b := box(gtx, {paint = painter, user = &got}); defer end(&b)
+		label(gtx, "card")
+	}
+	testing.expect(t, near(got.x, 4 * W + 16) && near(got.y, 14 + 16))
+	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Stroke), 0)
+	f := h.ops.ops[index_of(&h.ops, Fill)].(Fill)
+	testing.expect_value(t, f.paint.(Color), Color{1, 2, 3, 255})
+	// The paint runs under the body.
+	testing.expect(t, index_of(&h.ops, Fill) < index_of(&h.ops, Call))
+}
+
+@(test)
+test_negative_padding_means_none :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		b := box(gtx, {padding = pad_all(-1)}); defer end(&b)
+		label(gtx, "card")
+	}
+	rr := h.ops.ops[index_of(&h.ops, Fill)].(Fill).shape.(Round_Rect)
+	testing.expect(t, near(rr.rect.w, 4 * W) && near(rr.rect.h, 14))
+	testing.expect_value(t, len(pushes(&h.ops)), 0) // no offset for the body
+}

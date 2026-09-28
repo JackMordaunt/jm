@@ -79,6 +79,7 @@ Container_Kind :: enum u8 {
 	Clip,
 	Center,
 	List,
+	Scroll,
 }
 
 @(private)
@@ -220,7 +221,7 @@ widget_begin :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placem
 			push_transform(gtx.ops, translate_to(axis_vec(c.axis, at, 0)))
 			p.pushed = true
 		}
-	case .Stack, .Inset, .Box, .Clip, .Center, .List:
+	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
 		gtx.constraints = c.inner
 		if c.offset != {} {
 			push_transform(gtx.ops, translate_to(c.offset))
@@ -263,7 +264,7 @@ widget_end :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 				deferred = p.deferred,
 			},
 		)
-	case .Stack, .Inset, .Box, .Clip, .Center, .List:
+	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
 		c.extent = {max(c.extent.x, d.size.x), max(c.extent.y, d.size.y)}
 		if c.baseline == 0 && d.baseline > 0 {
 			c.baseline = d.baseline + c.offset.y
@@ -338,6 +339,11 @@ Centered :: struct {
 	index: int,
 }
 
+Scroll_Box :: struct {
+	gtx:   ^Ctx,
+	index: int,
+}
+
 // end closes any container; `defer end(&c)` right after opening it.
 end :: proc {
 	end_flex,
@@ -346,6 +352,7 @@ end :: proc {
 	end_box,
 	end_clip_box,
 	end_centered,
+	end_scroll_box,
 }
 
 // container_open places the container as a child of its parent and pushes
@@ -709,6 +716,32 @@ end_centered :: proc(s: ^Centered) {
 	overlay_close(s.gtx, &s.index)
 }
 
+// SCROLL_STEP is the pixels scroll_box moves per unit of Event.scroll:
+// ui/sdl (sdl.odin's MOUSE_WHEEL case) forwards SDL's wheel.y, which is
+// typically 1.0 per notch on a discrete wheel and fractional on a
+// touchpad, not pixels — though list's doc treats it as pixels.
+SCROLL_STEP :: f32(48)
+
+// scroll_box is a vertical viewport over content of any height: children
+// get the box's width constraints and an unbounded height, and the box
+// takes the height it is offered (the content's, when unbounded). Scroll
+// events move the content, clamped to its overflow; the offset is kept in
+// the box's own widget state, so a distinct key gives a fresh offset. The
+// body is a macro, as in clip_box.
+scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Scroll_Box {
+	i, c := overlay_open(gtx, .Scroll, key, loc)
+	if c != nil {
+		c.inner = {min = {c.cs.min.x, 0}, max = {c.cs.max.x, INF}}
+		c.body = macro_begin(gtx.ops)
+	}
+	return {gtx, i}
+}
+
+// end_scroll_box applies scroll events, then clips and offsets the body.
+end_scroll_box :: proc(s: ^Scroll_Box) {
+	overlay_close(s.gtx, &s.index)
+}
+
 @(private)
 overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 	if index^ < 0 {
@@ -730,10 +763,12 @@ overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 		macro_end(o, c.body)
 		size = constrain(c.cs, content + pads)
 		rr := Round_Rect{{0, 0, size.x, size.y}, c.style.radius}
-		if painted(c.style.fill) {
+		if c.style.paint != nil {
+			c.style.paint(gtx, c.place.id, size, c.style.user)
+		} else if painted(c.style.fill) {
 			fill(o, rr, c.style.fill)
 		}
-		if c.style.stroke > 0 && painted(c.style.outline) {
+		if c.style.paint == nil && c.style.stroke > 0 && painted(c.style.outline) {
 			h := c.style.stroke / 2
 			edge := Round_Rect {
 				{h, h, size.x - c.style.stroke, size.y - c.style.stroke},
@@ -748,6 +783,24 @@ overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 		push_clip(o, Rect{0, 0, size.x, size.y})
 		call(o, c.body)
 		pop_clip(o)
+	case .Scroll:
+		macro_end(o, c.body)
+		size = constrain(c.cs, {content.x, is_finite(c.cs.max.y) ? c.cs.max.y : content.y})
+		st := widget_state(gtx, c.place.id)
+		for e in events(gtx, c.place.id) {
+			if e.kind == .Scroll {
+				st.scroll += e.scroll.y * SCROLL_STEP
+			}
+		}
+		st.scroll = clamp(st.scroll, 0, max(content.y - size.y, 0))
+		view := Rect{0, 0, size.x, size.y}
+		input_area(o, c.place.id, view, {.Scroll})
+		push_clip(o, view)
+		push_transform(o, translate(0, -st.scroll))
+		call(o, c.body)
+		pop_transform(o)
+		pop_clip(o)
+		baseline = 0
 	case .Center:
 		macro_end(o, c.body)
 		want := Size {

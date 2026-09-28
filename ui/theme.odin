@@ -163,9 +163,15 @@ or_size :: proc(v, def: f32) -> f32 {
 	return max(v, 0)
 }
 
+// or_padding resolves a padding field like or_size: all-zero takes def,
+// and a negative side means exactly 0 — so pad_all(-1) is "no padding",
+// which the zero value cannot say.
 @(private)
 or_padding :: proc(p, def: Padding) -> Padding {
-	return p == {} ? def : p
+	if p == {} {
+		return def
+	}
+	return {max(p.left, 0), max(p.top, 0), max(p.right, 0), max(p.bottom, 0)}
 }
 
 @(private)
@@ -329,7 +335,16 @@ Box_Style :: struct {
 	stroke:  f32, // outline width, default stroke
 	radius:  f32, // default radius
 	padding: Padding, // default spacing on every side
+	// paint, when set, replaces the fill and outline: it is called once the
+	// box's size is known, under the body, with the box's own id — so a
+	// design system can paint its own surface (a shadow, per-corner radii,
+	// a state layer) and register an input area the body sits on top of.
+	paint:   Box_Paint,
+	user:    rawptr, // passed to paint
 }
+
+// Box_Paint paints a box's background at size; id is the box's Area_Id.
+Box_Paint :: proc(gtx: ^Ctx, id: Area_Id, size: Size, user: rawptr)
 
 // resolve_box fills s's zero fields from th.
 resolve_box :: proc(th: ^Theme, s: Box_Style) -> Box_Style {
@@ -339,6 +354,8 @@ resolve_box :: proc(th: ^Theme, s: Box_Style) -> Box_Style {
 		stroke = or_size(s.stroke, th.stroke),
 		radius = or_size(s.radius, th.radius),
 		padding = or_padding(s.padding, pad_all(th.spacing)),
+		paint = s.paint,
+		user = s.user,
 	}
 }
 
