@@ -10,7 +10,8 @@
 //	material-kitchen-child -dark ...                      the dark scheme
 //	material-kitchen-child -size 950x1040 ...             at another window size
 //	material-kitchen-child -reveal ...                    show what hides until used
-//	JM_UI_REVEAL=1 ...                                    the same, live or headless
+//	material-kitchen-child -bounds ...                    outline every widget's box
+//	JM_UI_DEBUG=reveal,bounds ...                         either, live or headless
 //	material-kitchen-child -page Menus -click Edit -png out.png  click by tag first
 //	material-kitchen-child -open ...                      every menu, dialog and snackbar open
 //
@@ -478,6 +479,9 @@ main :: proc() {
 			// Parts that hide until used (idle scroll bars) draw anyway, in
 			// the -png, -dump and -click that follow.
 			debug += {.Reveal}
+		case "-bounds":
+			// Every widget's box outlined, in the -png that follows.
+			debug += {.Bounds}
 		case "-size":
 			// -size WxH renders at another window size, to check the
 			// layout at a phone width or a half-screen tile.
