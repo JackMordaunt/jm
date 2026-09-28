@@ -13,6 +13,8 @@
 //	material-kitchen-child -bounds ...                    outline every widget's box
 //	JM_UI_DEBUG=reveal,bounds ...                         either, live or headless
 //	material-kitchen-child -page Menus -click Edit -png out.png  click by tag first
+//	material-kitchen-child -page Lists -scroll "One line" 3 -advance 30 -png out.png
+//	material-kitchen-child -full -page Chips -png out.png  the whole page, trimmed
 //	material-kitchen-child -open ...                      every menu, dialog and snackbar open
 //
 // The selected page and scheme survive a hot-reload respawn through
@@ -473,21 +475,43 @@ main :: proc() {
 	args := os.args[1:]
 	size := ui.Size{WIDTH, HEIGHT}
 	debug: ui.Debug_Flags
+	full := false
+	// One headless session runs every step (see render.headless_step), so
+	// a click, scroll or key press is still in effect when a later -png or
+	// -dump captures the frame. It opens at the first step; flags that set
+	// it up must come before that.
+	h: render.Headless
+	open := false
+	defer if open {
+		render.headless_destroy(&h)
+	}
+	setup :: proc(open: bool, flag: string) {
+		if open {
+			fmt.eprintfln("%s must come before the first step", flag)
+			os.exit(2)
+		}
+	}
 	for i := 0; i < len(args); i += 1 {
 		switch args[i] {
 		case "-reveal":
-			// Parts that hide until used (idle scroll bars) draw anyway, in
-			// the -png, -dump and -click that follow.
+			// Parts that hide until used (idle scroll bars) draw anyway.
+			setup(open, args[i])
 			debug += {.Reveal}
 		case "-bounds":
-			// Every widget's box outlined, in the -png that follows.
+			// Every widget's box outlined.
+			setup(open, args[i])
 			debug += {.Bounds}
+		case "-full":
+			// The whole page, not a window's height of it.
+			setup(open, args[i])
+			full = true
 		case "-size":
 			// -size WxH renders at another window size, to check the
 			// layout at a phone width or a half-screen tile.
+			setup(open, args[i])
 			i += 1
-			w, _, h := strings.partition(i < len(args) ? args[i] : "", "x")
-			size = {f32(parse_int(w)), f32(parse_int(h))}
+			w, _, ht := strings.partition(i < len(args) ? args[i] : "", "x")
+			size = {f32(parse_int(w)), f32(parse_int(ht))}
 			if size.x <= 0 || size.y <= 0 {
 				fmt.eprintln("-size needs WxH, e.g. 950x1040")
 				os.exit(2)
@@ -512,41 +536,25 @@ main :: proc() {
 				fmt.eprintfln("no page %q", args[i])
 				os.exit(2)
 			}
-		case "-click":
-			// Clicks run on the model before any -png/-dump that follows,
-			// through a stub-shaped probe, so they drive the same code paths
-			// a live click does.
-			if i + 1 >= len(args) {
-				fmt.eprintln("-click needs a tag name")
-				os.exit(2)
-			}
-			i += 1
-			p: ui.Probe
-			ui.probe_init(&p, kitchen_ui, &m, size, debug = debug)
-			defer ui.probe_destroy(&p)
-			if !ui.probe_click(&p, args[i]) {
-				fmt.eprintfln("no %q to click", args[i])
-				os.exit(1)
-			}
-			ui.probe_frame(&p)
-		case "-dump":
-			p: ui.Probe
-			ui.probe_init(&p, kitchen_ui, &m, size, debug = debug)
-			defer ui.probe_destroy(&p)
-			fmt.print(ui.probe_dump(&p))
-		case "-png":
-			if i + 1 >= len(args) {
-				fmt.eprintln("-png needs a path")
-				os.exit(2)
-			}
-			i += 1
-			if !render.snapshot(kitchen_ui, &m, size, fonts, args[i], debug = debug) {
-				fmt.eprintfln("could not write %s", args[i])
-				os.exit(1)
-			}
 		case:
-			fmt.eprintfln("unknown flag %s", args[i])
-			os.exit(2)
+			if !open {
+				render.headless_init(&h, kitchen_ui, &m, size, fonts, debug, full = full)
+				open = true
+			}
+			handled, ok := render.headless_step(&h, args, &i)
+			if !handled {
+				fmt.eprintfln("unknown flag %s", args[i])
+				os.exit(2)
+			}
+			if !ok {
+				os.exit(1)
+			}
+			continue
+		}
+		// A model flag after the session opened shows from the next frame,
+		// so run one now: a -png that follows sees it.
+		if open {
+			ui.probe_frame(&h.p)
 		}
 	}
 }
