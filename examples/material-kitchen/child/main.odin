@@ -12,7 +12,9 @@
 //	material-kitchen-child -reveal ...                    show what hides until used
 //	material-kitchen-child -bounds ...                    outline every widget's box
 //	JM_UI_DEBUG=reveal,bounds ...                         either, live or headless
-//	F11 in the live window                                both on or off
+//	F11 in the live window                                debug mode: reveal, outlines, inspector on hover
+//	material-kitchen-child -page Chips -layout            every widget's box, constraints and call, as text
+//	material-kitchen-child -page Chips -inspect 470 170   the widget and input area under a point
 //	material-kitchen-child -page Menus -click Edit -png out.png  click by tag first
 //	material-kitchen-child -page Lists -scroll "One line" 3 -advance 30 -png out.png
 //	material-kitchen-child -full -page Chips -png out.png  the whole page, trimmed
