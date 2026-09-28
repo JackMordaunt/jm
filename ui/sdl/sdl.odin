@@ -159,7 +159,7 @@ Loop :: struct {
 	comp:          render.Compositor,
 	theme:         ^ui.Theme,
 	default_theme: ui.Theme,
-	arenas:        [2]virtual.Arena, // frame allocators, alternating
+	arenas:        [2]ui.Frame_Arena, // frame allocators, alternating
 	events:        virtual.Arena, // text of the events the next frame routes
 	n:             u64,
 	last:          u64, // ticks, in ns, of the last frame
@@ -227,7 +227,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	l.default_theme = ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
 	l.theme = app.theme if app.theme != nil else &l.default_theme
 	for &a in l.arenas {
-		if err := virtual.arena_init_growing(&a); err != nil {
+		if err := ui.frame_arena_init(&a); err != nil {
 			fmt.eprintln("sdl: arena:", err)
 			return false
 		}
@@ -243,8 +243,8 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 @(private)
 loop_destroy :: proc(l: ^Loop) {
 	virtual.arena_destroy(&l.events)
-	virtual.arena_destroy(&l.arenas[0])
-	virtual.arena_destroy(&l.arenas[1])
+	ui.frame_arena_destroy(&l.arenas[0])
+	ui.frame_arena_destroy(&l.arenas[1])
 	render.compositor_destroy(&l.comp)
 	render.destroy(&l.r)
 	ui.layout_destroy(&l.layout)
@@ -262,8 +262,8 @@ step :: proc(l: ^Loop) {
 	l.in_frame = true
 	defer l.in_frame = false
 	arena := &l.arenas[l.n % 2]
-	virtual.arena_free_all(arena)
-	allocator := virtual.arena_allocator(arena)
+	ui.frame_arena_reset(arena)
+	allocator := ui.frame_arena_allocator(arena)
 	frame, prev := &l.frames[l.n % 2], &l.frames[(l.n + 1) % 2]
 
 	now := sdl3.GetTicksNS()

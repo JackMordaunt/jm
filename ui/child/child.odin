@@ -14,7 +14,6 @@ pipe, ui/ipc the framing underneath that.
 */
 package child
 
-import "core:mem/virtual"
 import "core:os"
 
 import "jm:ui"
@@ -79,21 +78,21 @@ run :: proc(app: App) {
 		theme = &default_theme
 	}
 
-	arenas: [2]virtual.Arena
+	arenas: [2]ui.Frame_Arena
 	for &a in arenas {
-		if err := virtual.arena_init_growing(&a); err != nil {
+		if err := ui.frame_arena_init(&a); err != nil {
 			return
 		}
 	}
-	defer virtual.arena_destroy(&arenas[0])
-	defer virtual.arena_destroy(&arenas[1])
+	defer ui.frame_arena_destroy(&arenas[0])
+	defer ui.frame_arena_destroy(&arenas[1])
 
 	debug := ui.debug_from_env()
 	time: f64
 	for n: u64 = 0;; n += 1 {
 		arena := &arenas[n % 2]
-		virtual.arena_free_all(arena)
-		allocator := virtual.arena_allocator(arena)
+		ui.frame_arena_reset(arena)
+		allocator := ui.frame_arena_allocator(arena)
 
 		payload, ok := ipc.read_frame(os.stdin, allocator)
 		if !ok {

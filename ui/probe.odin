@@ -1,7 +1,6 @@
 package ui
 
 import "core:mem"
-import "core:mem/virtual"
 import "core:unicode/utf8"
 
 // Probe drives a ui proc headless, one frame per call, for tests and
@@ -37,7 +36,7 @@ Probe :: struct {
 	wants_frame: bool, // the last frame called request_frame
 	frame_after: f32, // then: the soonest it asked for, in seconds
 	debug:       Debug_Flags, // gtx.debug for every frame; probe_init takes it
-	arena:       virtual.Arena,
+	arena:       Frame_Arena,
 	allocator:   mem.Allocator,
 }
 
@@ -68,7 +67,7 @@ probe_init :: proc(
 	frame_init(&p.prev, allocator)
 	router_init(&p.router, allocator)
 	layout_init(&p.layout, allocator)
-	err := virtual.arena_init_growing(&p.arena)
+	err := frame_arena_init(&p.arena)
 	assert(err == nil, "probe: arena init failed")
 	probe_frame(p)
 }
@@ -80,7 +79,7 @@ probe_destroy :: proc(p: ^Probe) {
 	frame_destroy(&p.frame)
 	frame_destroy(&p.prev)
 	ops_destroy(&p.ops)
-	virtual.arena_destroy(&p.arena)
+	frame_arena_destroy(&p.arena)
 	p^ = {}
 }
 
@@ -88,7 +87,7 @@ probe_destroy :: proc(p: ^Probe) {
 // record the ui, flatten it. Afterwards probe_current is the new frame.
 probe_frame :: proc(p: ^Probe) {
 	router_route(&p.router, &p.prev)
-	virtual.arena_free_all(&p.arena)
+	frame_arena_reset(&p.arena)
 	ops_reset(&p.ops)
 	layout_reset(&p.layout)
 	dt := debug_dt(p.debug, p.dt)
@@ -103,7 +102,7 @@ probe_frame :: proc(p: ^Probe) {
 		frame       = p.frame_no,
 		dt          = dt,
 		time        = p.time,
-		allocator   = virtual.arena_allocator(&p.arena),
+		allocator   = frame_arena_allocator(&p.arena),
 		debug       = p.debug,
 	}
 	p.ui(&gtx, p.user)
@@ -228,7 +227,7 @@ probe_dump_frame :: proc(p: ^Probe) -> string {
 // order. The slice lives in the frame arena, valid until the next frame.
 probe_names :: proc(p: ^Probe) -> []string {
 	f := probe_current(p)
-	out := make([]string, len(f.tags), virtual.arena_allocator(&p.arena))
+	out := make([]string, len(f.tags), frame_arena_allocator(&p.arena))
 	for t, i in f.tags {
 		out[i] = t.name
 	}

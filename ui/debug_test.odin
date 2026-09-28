@@ -38,3 +38,32 @@ test_probe_time_sums_dt_and_slow_quarters_it :: proc(t: ^testing.T) {
 	testing.expect_value(t, seen.dt, SLOW_FACTOR)
 	testing.expect(t, abs(seen.time - f64(SLOW_FACTOR) * (1.0 / 60 + 2)) < 1e-6)
 }
+
+@(test)
+test_frame_memory_kept_past_its_frame_reads_as_poison :: proc(t: ^testing.T) {
+	when !POISON_FRAMES {
+		return
+	}
+	// A view that keeps a frame-allocated string in its model: the bug
+	// poisoning exists to make loud.
+	Model :: struct {
+		kept: string,
+	}
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		m := (^Model)(user)
+		if m.kept == "" {
+			buf := make([]u8, 4, gtx.allocator)
+			copy(buf, "kept")
+			m.kept = string(buf)
+		}
+	}
+	m: Model
+	p: Probe
+	probe_init(&p, view, &m, {10, 10}) // the first frame keeps the string
+	defer probe_destroy(&p)
+	testing.expect_value(t, m.kept, "kept")
+	probe_frame(&p) // resets the arena the string was in
+	for b in transmute([]u8)m.kept {
+		testing.expect_value(t, b, u8(FRAME_POISON))
+	}
+}
