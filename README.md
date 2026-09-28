@@ -56,6 +56,7 @@ binary.
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
 | `pq`      | `connect`, `exec`, `escape_literal`, `escape_identifier`, `identity`: a PostgreSQL client over the system libpq, the one dynamically linked library |
 | `pq/testdb` | a throwaway PostgreSQL server on a Unix socket, for tests |
+| `git`     | `open`, `init`, `clone`, `status`, `add`, `commit`, `log`, `remotes`, `fetch`, `push`, `pull`, `diff` over a statically linked libgit2, so a shipped program needs no git on the machine |
 | `fuzz`    | property fuzzing: an entropy `Source`, generators, format-agnostic `damage`, shrinking, a corpus, a per-case deadline |
 | `sqlite3/fuzz` | the `jm:sqlite3` suite for `jm:fuzz` |
 | `tar/fuzz` | the `jm:tar` suite for `jm:fuzz` |
@@ -343,6 +344,21 @@ re-parsing, for a reason recorded there too.
 `pg_query/fuzz` is the suite: eight properties over generated SQL, damaged
 SQL and bytes that were never SQL, with a SQL generator so a case needs no
 fixtures. `just fuzz "pg_query -for=1m"` runs it.
+
+## libgit2
+
+`jm:git` is the git a shipped program carries with it: `just libgit2`
+builds libgit2 from a sibling checkout (`LIBGIT2_SRC`, v1.9.7) into
+`git/lib`, and the package links that archive when it exists and the
+system libgit2 otherwise, so a machine with the distribution's package
+tests without the CMake step. The archive is built with the platform's
+own HTTPS (WinHTTP, SecureTransport, OpenSSL loaded at run time on Linux),
+`USE_SSH=exec` so `git@` remotes go through the platform's ssh and agent,
+and the bundled zlib, regex engine and HTTP parser. libgit2 runs no
+hooks; a program that wants pre-commit checks runs them before `commit`.
+`git/ffi_test.odin` pins every option struct's size and offsets against
+what the C headers lay out, so a libgit2 bump that moves a field fails a
+test instead of corrupting a stack.
 
 ## libpq
 

@@ -3,3 +3,4 @@ sqlite3/lib/
 wasm/lib/
 pg_query/lib/
 ui/blend2d/lib/
+git/lib/

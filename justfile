@@ -9,6 +9,7 @@
 #   just pg_query  compile the vendored libpg_query parser into pg_query/lib
 #   just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 #   just blend2d   compile Blend2D into ui/blend2d/lib from BLEND2D_SRC
+#   just libgit2   compile libgit2 into git/lib from LIBGIT2_SRC
 #   just kitchen   build and open the jm:ui kitchen-sink demo
 #   just kitchen-dump  print the demo's first frame as text, no window
 #   just kitchen-png   render the demo's first frame to build/kitchen.png
@@ -29,18 +30,27 @@ root  := replace(justfile_directory(), "\\", "/")
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/testutil ui/design ui/diagram ui/ipc ui/material ui/material/tokens pq pq/testdb pq/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/testutil ui/design ui/diagram ui/ipc ui/material ui/material/tokens pq pq/testdb pq/fuzz git"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/wasm3.a" }
 pg_query_lib := if os() == "windows" { "pg_query/lib/pg_query.lib" } else { "pg_query/lib/pg_query.a" }
 blend2d_lib := if os() == "windows" { "ui/blend2d/lib/blend2d.lib" } else { "ui/blend2d/lib/libblend2d.a" }
+libgit2_lib := if os() == "windows" { "git/lib/git2.lib" } else { "git/lib/libgit2.a" }
 # Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
 # vendored here: 29 MB of source is the sibling checkout's job. Anything that
 # links it needs libstdc++, except on Windows where the MSVC linker finds the
 # C++ runtime itself.
 blend2d_src := env("BLEND2D_SRC", home_directory() / "Source" / "Personal" / "odin-blend2d" / "blend2d")
+# libgit2 is C with its own CMake tree, a sibling checkout at the tag the
+# binding was written against (v1.9.7). HTTPS uses the platform: WinHTTP,
+# SecureTransport, and on Linux OpenSSL loaded at run time, so the archive
+# links against no distribution's libssl. SSH runs the platform's ssh
+# binary (USE_SSH=exec). zlib, the regex engine and the HTTP parser are the
+# bundled ones, so nothing else is needed on the machine.
+libgit2_src := env("LIBGIT2_SRC", home_directory() / "Source" / "Vendor" / "libgit2")
+libgit2_https := if os() == "macos" { "SecureTransport" } else { "OpenSSL-Dynamic" }
 cxx_link := if os() == "windows" { "" } else { "-extra-linker-flags:\"-lstdc++\"" }
 
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
@@ -188,6 +198,35 @@ blend2d:
         cp build/blend2d/blend2d.lib {{blend2d_lib}}; \
     fi
 
+# Compile libgit2 into git/lib if it is missing
+[unix]
+libgit2:
+    @mkdir -p git/lib
+    @if [ ! -f {{libgit2_lib}} ]; then \
+        echo "cmake libgit2 ({{libgit2_src}}) -> {{libgit2_lib}}"; \
+        cmake -S {{libgit2_src}} -B build/libgit2 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_SSH=exec -DUSE_HTTPS={{libgit2_https}} \
+            -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin \
+            -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1; \
+        cmake --build build/libgit2 --config Release --parallel >> build/libgit2.log 2>&1; \
+        cp build/libgit2/libgit2.a {{libgit2_lib}}; \
+    fi
+
+# Compile libgit2 into git/lib if it is missing
+[windows]
+libgit2:
+    @mkdir -p git/lib build
+    @if [ ! -f {{libgit2_lib}} ]; then \
+        echo "cmake libgit2 ({{libgit2_src}}) -> {{libgit2_lib}}"; \
+        cmake -S {{libgit2_src}} -B build/libgit2 -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
+            -DCMAKE_C_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_CLI=OFF \
+            -DUSE_SSH=exec -DUSE_HTTPS=WinHTTP -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin \
+            -DUSE_HTTP_PARSER=builtin -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1 || exit 1; \
+        cmake --build build/libgit2 --parallel >> build/libgit2.log 2>&1 || exit 1; \
+        cp build/libgit2/git2.lib {{libgit2_lib}}; \
+    fi
+
 # nodes.odin is generated and checked in, so nothing here depends on it: this
 # is for after the vendored parser is bumped. The schema it reads is
 # libpg_query's own, the same input upstream generates its Go and Ruby
@@ -211,7 +250,7 @@ hot-counter-child: blend2d
     {{odin}} build examples/hot-counter/child -debug {{flags}} {{cxx_link}} -out:build/debug/hot-counter-child{{exe}}
 
 # Run every package's tests
-test: sqlite wasm pg_query blend2d hot-counter-child
+test: sqlite wasm pg_query blend2d libgit2 hot-counter-child
     mkdir -p build/test
     for p in {{packages}}; do \
       threads=""; \
