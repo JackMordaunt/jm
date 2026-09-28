@@ -12,6 +12,7 @@
 //	material-kitchen-child -reveal ...                    show what hides until used
 //	material-kitchen-child -bounds ...                    outline every widget's box
 //	JM_UI_DEBUG=reveal,bounds ...                         either, live or headless
+//	F11 in the live window                                both on or off
 //	material-kitchen-child -page Menus -click Edit -png out.png  click by tag first
 //	material-kitchen-child -page Lists -scroll "One line" 3 -advance 30 -png out.png
 //	material-kitchen-child -full -page Chips -png out.png  the whole page, trimmed
