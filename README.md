@@ -110,6 +110,8 @@ just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
 just kitchen   open the jm:ui demo       just kitchen-dump  its first frame as text
 just kitchen-png  render it to build/kitchen.png
+just material-kitchen  build and open the hot-reloaded M3 kitchen
+just material-png page=Chips  render one M3 kitchen page to build/
 just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
 just material-shapes   regenerate ui/material/shape_data.odin from the m3e-kit's morphs
 just bench-ui  ms per frame for layout and the Blend2D executor
@@ -576,9 +578,13 @@ overwriting a running executable in place, which Windows refuses.
 `examples/hot-architecture` (a live-editable diagram of this very
 pipeline) and `examples/hot-button` (every M3 button kind — filled,
 tonal, outlined, text, elevated, icon, FAB and its sizes, extended FAB,
-segmented, split) are the demos; `just hot-architecture` and
-`just hot-button` build their own host and print the two commands that
-run them.
+segmented, split) and `examples/material-kitchen` (every `ui/material`
+component, a page each, in all its spec states) are the demos; `just
+hot-architecture` and `just hot-button` build their own host and print
+the two commands that run them, and `just material-kitchen` builds and
+opens its own. `tools/hot-watch`
+takes extra directories to watch after the pointer file, so a child
+rebuilds when the `ui` package it imports is edited too.
 
 Checking a change without a window: `-dump` prints the scene as text,
 free of vision tokens and enough for most bugs; `-png` renders it to a

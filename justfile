@@ -12,6 +12,8 @@
 #   just kitchen   build and open the jm:ui kitchen-sink demo
 #   just kitchen-dump  print the demo's first frame as text, no window
 #   just kitchen-png   render the demo's first frame to build/kitchen.png
+#   just material-kitchen  build and open the hot-reloaded Material 3 kitchen
+#   just material-png  render one material-kitchen page headlessly
 #   just material-tokens  regenerate ui/material/tokens from the m3e-kit
 #   just material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit
 #   just fuzz      run every jm:fuzz suite for thirty seconds
@@ -243,6 +245,8 @@ check:
       {{odin}} check examples/hot-counter/host {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hot-architecture/child {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hot-architecture/host {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/material-kitchen/child {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/material-kitchen/host {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
@@ -359,6 +363,21 @@ hot-button: blend2d sdl3
     @echo "terminal 2: build/debug/hot-button-host{{exe}} build/debug/hot-button.watch"
     @echo "then edit ui/widget_button.odin or ui/theme.odin and watch the window update."
 
+# examples/material-kitchen: every jm:ui/material component, one page
+# each. Build it and open its window; hot-watch runs in the background
+# while the window is open, watching ui and ui/material too, so editing a
+# component rebuilds and respawns it.
+material-kitchen: blend2d sdl3
+    #!/usr/bin/env bash
+    set -eu
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/material-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch ui ui/material &
+    watch=$!
+    trap 'kill $watch 2>/dev/null' EXIT
+    build/debug/material-kitchen-host{{exe}} build/debug/material-kitchen.watch
+
 # Regenerate ui/material/tokens/tokens.odin from the M3 Expressive kit's
 # resolved tokens. M3E_KIT is the kit checkout.
 material-tokens:
@@ -368,6 +387,12 @@ material-tokens:
 # pairs, from the M3 Expressive kit's shapes/morphs.json.
 material-shapes:
     {{odin}} run tools/material-shapes {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/shapes/morphs.json" ui/material/shape_data.odin
+
+# Render one material-kitchen page to build/material-<page>.png, no window
+material-png page="Buttons": blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/material-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-child{{exe}}
+    build/debug/material-kitchen-child{{exe}} -page "{{page}}" -png "build/material-{{page}}.png"
 
 # Print the demo's first frame as text, no window
 kitchen-dump: blend2d sdl3

@@ -1,0 +1,526 @@
+// The Material 3 kitchen: every M3 component in jm:ui/material, one page
+// each, picked from a navigation drawer. Each page shows a component's
+// variants against every spec state (enabled, hovered, focused, pressed,
+// disabled — forced, so they sit side by side), plus a live row to poke.
+// Components not built yet show where they sit in the plan.
+//
+//	material-kitchen-child                                run as the hot-reload subprocess
+//	material-kitchen-child -page Buttons -png out.png     render one page headlessly
+//	material-kitchen-child -page Buttons -dump            that page's ops as text
+//	material-kitchen-child -dark ...                      the dark scheme
+//	material-kitchen-child -size 950x1040 ...             at another window size
+//	material-kitchen-child -page Menus -click Edit -png out.png  click by tag first
+//	material-kitchen-child -open ...                      every menu, dialog and snackbar open
+//
+// The selected page and scheme survive a hot-reload respawn through
+// build/debug/material-kitchen.state: the child owns the model, and a
+// respawn starts a fresh child.
+package main
+
+import "core:fmt"
+import "core:os"
+import "core:strings"
+import "jm:ui"
+import "jm:ui/child"
+import m3 "jm:ui/material"
+import "jm:ui/render"
+
+WIDTH :: 1400
+// DOCKED_NAV_MIN is the narrowest window that keeps the page drawer
+// docked beside the page: the m3e-kit foundations.json large window
+// class (layout.windowSizeClasses, 1200-1599dp).
+DOCKED_NAV_MIN :: 1200
+HEIGHT :: 900
+STATE_FILE :: "build/debug/material-kitchen.state"
+
+Page :: struct {
+	name: string,
+	icon: m3.Icon,
+	draw: proc(gtx: ^ui.Ctx, m: ^Model),
+}
+
+Model :: struct {
+	page:      int,
+	nav_open:  bool, // the modal page drawer, in a narrow window
+	dark:      bool,
+	scheme:    m3.Scheme,
+	theme:     ui.Theme,
+	clicks:    int,
+	toggles:   [8]bool,
+	segments:  [3]bool,
+	multi:     [4]bool,
+	expanded:  bool,
+	checks:    [4]bool,
+	radio:     int,
+	switches:  [3]bool,
+	name:      ui.Text_State,
+	email:     ui.Text_State,
+	list_sel:  int,
+	card_hits: int,
+	filters:   [5]bool,
+	inputs:    [4]bool, // true once removed
+	rail_sel:  int,
+	bar_sel:   int,
+	tab_a:     int,
+	tab_b:     int,
+	tab_c:     int,
+	window:    ui.Size,
+	menu_open: bool,
+	menu_pick: string,
+	split_menu: bool,
+	dialog:    bool,
+	dialog2:   bool,
+	dialog_msg: string, // a static action label; never a tprintf result, which dies with the frame
+	snack:     bool,
+	snack_n:   int,
+	volume:    f32,
+	steps:     f32,
+	range_lo:  f32,
+	range_hi:  f32,
+	group_a:   [3]bool,
+	group_b:   [4]bool,
+	fab_open:  bool,
+	fab_pick:  string,
+	tool_sel:  int,
+	query:     ui.Text_State,
+	bottom:    bool,
+	side:      bool,
+	date:      m3.Date,
+	date_view: m3.Date,
+	time:      m3.Time,
+	minutes:   bool,
+	persisted: [2]int, // page and dark as last written, to write only on change
+	// actions
+	group_c:       [5]bool,
+	group_menu:    bool,
+	tool_folded:   bool,
+	bab_hide:      f32,
+	bab_clicks:    int,
+	// buttons
+	btn_checked:   [4]bool,
+	size_checked:  [4]bool,
+	fab_collapsed: bool,
+	split_open:    bool,
+	// progress
+	progress_ready: bool, // init_progress_values has run
+	centered:       f32,
+	upright:        f32,
+	brightness:     f32,
+	progress:       f32,
+	// navigation
+	drawer_sel:    int,
+	drawer_open:   bool, // the dismissible drawer
+	drawer_modal:  bool,
+	rail_plain:    int,
+	rail_expanded: bool,
+	rail_modal:    bool,
+	rail_modal_sel: int,
+	bar_flex:      int,
+	bar_wide:      int,
+	bar_quiet:     int,
+	tab_d:         int,
+	tab_e:         int,
+	// containment
+	list_single: int,
+	list_multi:  [4]bool,
+	list_expand: [2]bool,
+	list_order:  [5]int, // task shown in each slot of the reorder list
+	reveal_pick: string, // a static action name
+	menu_styles: [3]bool, // the standard, vibrant and grouped live menus
+	menu_sort:   string, // a static label
+	dialog3:     bool,
+	snack_t:     f32, // seconds the live snackbar has been up
+	snack_short: bool,
+	// selection
+	agree:         bool,
+	fruit:         ui.Text_State,
+	fruit2:        ui.Text_State,
+	fruit_open:    bool,
+	fruit2_open:   bool,
+	fruit_pick:    string, // an option literal, never frame memory
+	amount:        ui.Text_State,
+	amount_clear:  bool,
+	morph_filters: [4]bool,
+	input_sel:     [4]bool,
+	suggestion:    string, // a hint literal
+	// surfaces
+	queries:     [3]ui.Text_State, // the live search bars after the first (which uses query)
+	search_open: [4]bool,
+	searched:    bool,
+	sheet_value: m3.Sheet_Value,
+	bottom_std:  bool,
+	side_left:   bool,
+	pane:        f32, // the drag-handle demo's left pane width
+	date_mode:   m3.Date_Mode,
+	date_input:  ui.Text_State,
+	date_action: int,
+	range_start: m3.Date,
+	range_end:   m3.Date,
+	range_view:  m3.Date,
+	input_mode:  m3.Date_Mode,
+	input_text:  ui.Text_State,
+	input_date:  m3.Date,
+	input_view:  m3.Date,
+	times:       [3]m3.Time,
+	editing:     [3]bool,
+	carousel_hit: int,
+}
+
+// PAGES follows m3.material.io/components' own grouping; a nil draw is a
+// component not built yet.
+PAGES := [?]Page {
+	{"Actions", .None, nil},
+	{"Buttons", .Smart_Button, page_buttons},
+	{"Button sizes", .Smart_Button, page_button_sizes},
+	{"Toggle buttons", .Smart_Button, page_toggle_buttons},
+	{"Icon buttons", .Favorite, page_icon_buttons},
+	{"Icon button sizes", .Favorite, page_icon_button_sizes},
+	{"FAB", .Add, page_fab},
+	{"Extended FAB", .Edit, page_extended_fab},
+	{"Segmented buttons", .View_Agenda, page_segmented},
+	{"Split buttons", .Arrow_Drop_Down, page_split},
+	{"Button groups", .Widgets, page_button_groups},
+	{"FAB menu", .Add, page_fab_menu},
+	{"Navigation", .None, nil},
+	{"Navigation drawer", .Side_Navigation, page_drawer},
+	{"Navigation rail", .Side_Navigation, page_rail},
+	{"Navigation bar", .Dock_To_Bottom, page_bar},
+	{"App bars", .Web_Asset, page_app_bars},
+	{"Tabs", .Tab, page_tabs},
+	{"Toolbars", .Tune, page_toolbars},
+	{"Bottom app bar", .Dock_To_Bottom, page_bottom_app_bar},
+	{"Selection", .None, nil},
+	{"Checkbox", .Check_Box, page_checkbox},
+	{"Radio button", .Radio_Button_Checked, page_radio},
+	{"Switch", .Toggle_On, page_switch},
+	{"Chips", .Label, page_chips},
+	{"Sliders", .Linear_Scale, page_sliders},
+	{"Menus", .More_Vert, page_menus},
+	{"Date pickers", .Calendar_Today, page_date_picker},
+	{"Time pickers", .Schedule, page_time_picker},
+	{"Text inputs", .None, nil},
+	{"Text fields", .Text_Fields, page_text_fields},
+	{"Search", .Search, page_search},
+	{"Containment", .None, nil},
+	{"Cards", .Crop_Square, page_cards},
+	{"Lists", .List, page_lists},
+	{"Dialogs", .Picture_In_Picture, page_dialogs},
+	{"Bottom sheets", .Dock_To_Bottom, page_bottom_sheet},
+	{"Side sheets", .Side_Navigation, page_side_sheet},
+	{"Carousel", .View_Carousel, page_carousel},
+	{"Divider", .Table_Rows, page_divider},
+	{"Communication", .None, nil},
+	{"Badges", .Notifications, page_badges},
+	{"Progress indicators", .Progress_Activity, page_progress},
+	{"Loading indicator", .Progress_Activity, page_loading},
+	{"Snackbar", .Chat_Bubble, page_snackbar},
+	{"Tooltips", .Info, page_tooltips},
+}
+
+kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Model)(user)
+	m.scheme = m.dark ? m3.dark_scheme() : m3.light_scheme()
+	m3.use(&m.scheme)
+	m3.use_fonts({0, 1, 2})
+	gtx.theme^ = m3.theme_for(&m.scheme, gtx.theme.font)
+	s := &m.scheme
+	m.window = gtx.constraints.max
+	ui.fill(gtx.ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Surface])
+
+	items := make([]m3.Nav_Item, len(PAGES), gtx.allocator)
+	for p, i in PAGES {
+		items[i] = {label = p.name, icon = p.icon, headline = p.icon == .None}
+		if p.icon != .None && p.draw == nil {
+			items[i].badge = "soon"
+		}
+	}
+
+	// Windows narrower than DOCKED_NAV_MIN (a half-screen tile) give the
+	// page the whole width: the drawer becomes a modal one, opened from
+	// the app bar and closed once a page is picked.
+	docked := m.window.x >= DOCKED_NAV_MIN
+	r := ui.row(gtx, align = .Fill)
+	defer ui.end(&r)
+	if docked {
+		m3.navigation_drawer(gtx, items, &m.page, width = 300)
+	} else if m.nav_open {
+		if m3.navigation_drawer(gtx, items, &m.page, width = 300, variant = .Modal, open = &m.nav_open) {
+			m.nav_open = false
+		}
+	}
+	ui.flexible(gtx, 1)
+	body := ui.column(gtx)
+	defer ui.end(&body)
+	app_bar(gtx, m, docked)
+	ui.flexible(gtx, 1)
+	{
+		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
+		sb := ui.scroll_box(gtx, key = u64(m.page), min_width = page_min_width(p))
+		defer ui.end(&sb)
+		page := ui.inset(gtx, {24, 8, 24, 48})
+		defer ui.end(&page)
+		if p.draw != nil {
+			p.draw(gtx, m)
+		} else {
+			page_todo(gtx, p)
+		}
+	}
+	persist(m)
+}
+
+// WIDE_PAGES are the pages whose grids hold fixed-width components (the
+// largest buttons, three-line list rows, whole pickers) that cannot share
+// a narrower width, so below WIDE_PAGE_MIN they scroll sideways rather
+// than crowd or crop. Every other page reflows to the window.
+WIDE_PAGES := [?]string{"Button sizes", "Button groups", "Date pickers", "Lists", "Snackbar", "Tooltips"}
+
+// WIDE_PAGE_MIN is the page width the kitchen's grids were laid out for:
+// a 1400dp window less the docked drawer and the page's side insets.
+WIDE_PAGE_MIN :: 1400 - 300
+
+// page_min_width is the width p's content is laid out at, at least.
+page_min_width :: proc(p: Page) -> f32 {
+	for name in WIDE_PAGES {
+		if p.name == name {
+			return WIDE_PAGE_MIN
+		}
+	}
+	return 0
+}
+
+// app_bar is a plain small top app bar until the real component lands:
+// the page title and a light/dark toggle.
+// Undocked, it leads with a menu button that opens the modal drawer.
+app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
+	s := m3.scheme()
+	bar := ui.inset(gtx, {docked ? 24 : 8, 8, 16, 8})
+	defer ui.end(&bar)
+	r := ui.row(gtx, align = .Center)
+	defer ui.end(&r)
+	if !docked {
+		if m3.icon_button(gtx, .Menu, tooltip = "Pages") {
+			m.nav_open = true
+		}
+		ui.spacer(gtx, 8)
+	}
+	ui.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 22, color = s[.On_Surface]})
+	ui.fill_space(gtx)
+	if m3.icon_button(gtx, m.dark ? .Light_Mode : .Dark_Mode, tooltip = m.dark ? "Light scheme" : "Dark scheme") {
+		m.dark = !m.dark
+	}
+}
+
+// Page scaffolding.
+
+// section is a titled block: Title_Medium caption, then whatever follows.
+section :: proc(gtx: ^ui.Ctx, title: string, note := "") {
+	s := m3.scheme()
+	ui.spacer(gtx, 12)
+	ui.label(gtx, title, {size = 16, color = s[.On_Surface]})
+	if note != "" {
+		ui.label(gtx, note, {size = 12, color = s[.On_Surface_Variant]})
+	}
+}
+
+STATE_NAMES := [?]string{"Enabled", "Hovered", "Focused", "Pressed", "Disabled"}
+
+// LABEL_W is the width of a state grid's row-label column.
+LABEL_W :: 110
+
+// state_header is the column headings of a state grid.
+state_header :: proc(gtx: ^ui.Ctx) {
+	s := m3.scheme()
+	r := ui.row(gtx)
+	defer ui.end(&r)
+	cell_fixed(gtx, LABEL_W)
+	for name in STATE_NAMES {
+		ui.flexible(gtx, 1)
+		c := ui.stack(gtx)
+		ui.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
+		ui.end(&c)
+	}
+}
+
+// cell_fixed takes w of a row's width.
+cell_fixed :: proc(gtx: ^ui.Ctx, w: f32, loc := #caller_location) {
+	ui.spacer(gtx, w, loc)
+}
+
+// State_Cell draws one component in state; key tells the cells apart.
+State_Cell :: proc(gtx: ^ui.Ctx, m: ^Model, state: m3.Interaction, key: u64)
+
+// state_row is one variant across every forced state, then a gap.
+state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key: u64) {
+	s := m3.scheme()
+	r := ui.row(gtx, align = .Center, key = key)
+	defer ui.end(&r)
+	{
+		c := ui.stack(gtx)
+		ui.label(gtx, label, {size = 12, color = s[.On_Surface_Variant]})
+		ui.end(&c)
+	}
+	ui.spacer(gtx, max(LABEL_W - label_width(gtx, label), 0))
+	for st, i in m3.STATES {
+		ui.flexible(gtx, 1)
+		c := ui.stack(gtx, key = u64(i))
+		cell(gtx, m, st, key * 16 + u64(i))
+		ui.end(&c)
+	}
+}
+
+label_width :: proc(gtx: ^ui.Ctx, s: string) -> f32 {
+	return ui.shape(gtx.shaper, gtx.theme.font, 12, s, gtx.allocator).advance
+}
+
+gap :: proc(gtx: ^ui.Ctx, h: f32 = 20, loc := #caller_location) {
+	ui.spacer(gtx, h, loc)
+}
+
+page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
+	s := m3.scheme()
+	col := ui.column(gtx, gap = 8)
+	defer ui.end(&col)
+	if p.icon == .None {
+		ui.label(gtx, fmt.tprintf("%s: pick a component below this heading.", p.name), {color = s[.On_Surface_Variant]})
+		return
+	}
+	ui.label(gtx, "Not built yet.", {size = 16, color = s[.On_Surface]})
+	ui.label(gtx, "See the priority list in the material kitchen plan.", {color = s[.On_Surface_Variant]})
+}
+
+// Pages.
+
+// TODAY is fixed rather than read from the clock, so -png renders are
+// reproducible.
+TODAY :: m3.Date{2026, 9, 28}
+
+// State that survives a respawn.
+
+persist :: proc(m: ^Model) {
+	now := [2]int{m.page, int(m.dark)}
+	if now == m.persisted {
+		return
+	}
+	m.persisted = now
+	_ = os.write_entire_file(STATE_FILE, transmute([]u8)fmt.tprintf("%d %d", now[0], now[1]))
+}
+
+restore :: proc(m: ^Model) {
+	data, err := os.read_entire_file(STATE_FILE, context.temp_allocator)
+	if err != nil {
+		return
+	}
+	fields := strings.fields(string(data), context.temp_allocator)
+	if len(fields) == 2 {
+		m.page = clamp(parse_int(fields[0]), 0, len(PAGES) - 1)
+		m.dark = parse_int(fields[1]) != 0
+	}
+	m.persisted = {m.page, int(m.dark)}
+}
+
+parse_int :: proc(s: string) -> int {
+	n := 0
+	for c in s {
+		if c < '0' || c > '9' {
+			return 0
+		}
+		n = n * 10 + int(c - '0')
+	}
+	return n
+}
+
+// kitchen_fonts is Noto Sans at 400, 500 and 700 (font ids 0, 1, 2) for
+// the type scale's weights, or jm:ui's default font for all three.
+kitchen_fonts :: proc() -> []ui.Font_Ref {
+	NOTO :: "/usr/share/fonts/noto/NotoSans-"
+	paths := [3]string{NOTO + "Regular.ttf", NOTO + "Medium.ttf", NOTO + "Bold.ttf"}
+	fonts := make([]ui.Font_Ref, 3)
+	for p, i in paths {
+		fonts[i] = {ui.Font_Id(i), os.exists(p) ? p : ui.default_font()}
+	}
+	return fonts
+}
+
+main :: proc() {
+	m: Model
+	m.page = 1
+	m.volume, m.steps, m.range_lo, m.range_hi = 0.4, 30, 20, 70
+	m.date, m.time = TODAY, {9, 41}
+	fonts := kitchen_fonts()
+	if len(os.args) == 1 {
+		restore(&m)
+		child.run({ui = kitchen_ui, user = &m, theme = &m.theme, fonts = fonts})
+		return
+	}
+	args := os.args[1:]
+	size := ui.Size{WIDTH, HEIGHT}
+	for i := 0; i < len(args); i += 1 {
+		switch args[i] {
+		case "-size":
+			// -size WxH renders at another window size, to check the
+			// layout at a phone width or a half-screen tile.
+			i += 1
+			w, _, h := strings.partition(i < len(args) ? args[i] : "", "x")
+			size = {f32(parse_int(w)), f32(parse_int(h))}
+			if size.x <= 0 || size.y <= 0 {
+				fmt.eprintln("-size needs WxH, e.g. 950x1040")
+				os.exit(2)
+			}
+		case "-dark":
+			m.dark = true
+		case "-open":
+			m.menu_open, m.split_menu, m.dialog, m.snack, m.fab_open, m.bottom, m.side = true, true, true, true, true, true, true
+		case "-page":
+			if i + 1 >= len(args) {
+				fmt.eprintln("-page needs a name")
+				os.exit(2)
+			}
+			i += 1
+			found := false
+			for p, j in PAGES {
+				if strings.equal_fold(p.name, args[i]) {
+					m.page, found = j, true
+				}
+			}
+			if !found {
+				fmt.eprintfln("no page %q", args[i])
+				os.exit(2)
+			}
+		case "-click":
+			// Clicks run on the model before any -png/-dump that follows,
+			// through a stub-shaped probe, so they drive the same code paths
+			// a live click does.
+			if i + 1 >= len(args) {
+				fmt.eprintln("-click needs a tag name")
+				os.exit(2)
+			}
+			i += 1
+			p: ui.Probe
+			ui.probe_init(&p, kitchen_ui, &m, size)
+			defer ui.probe_destroy(&p)
+			if !ui.probe_click(&p, args[i]) {
+				fmt.eprintfln("no %q to click", args[i])
+				os.exit(1)
+			}
+			ui.probe_frame(&p)
+		case "-dump":
+			p: ui.Probe
+			ui.probe_init(&p, kitchen_ui, &m, size)
+			defer ui.probe_destroy(&p)
+			fmt.print(ui.probe_dump(&p))
+		case "-png":
+			if i + 1 >= len(args) {
+				fmt.eprintln("-png needs a path")
+				os.exit(2)
+			}
+			i += 1
+			if !render.snapshot(kitchen_ui, &m, size, fonts, args[i]) {
+				fmt.eprintfln("could not write %s", args[i])
+				os.exit(1)
+			}
+		case:
+			fmt.eprintfln("unknown flag %s", args[i])
+			os.exit(2)
+		}
+	}
+}
