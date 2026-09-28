@@ -17,7 +17,7 @@ package ui
 
 // encode_input serializes size, density, dt and events into a new byte
 // slice, the host's half of one frame's round trip.
-encode_input :: proc(size: Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator) -> []byte {
+encode_input :: proc(size: Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}) -> []byte {
 	w := make([dynamic]byte, 0, 64, allocator)
 	put_f32(&w, size.x)
 	put_f32(&w, size.y)
@@ -27,6 +27,11 @@ encode_input :: proc(size: Size, density, dt: f32, events: []Raw_Event, allocato
 	for e in events {
 		encode_raw_event(&w, e)
 	}
+	// What presenting the child's last frame cost the host, for its tray.
+	put_f32(&w, host.present_ms)
+	put_f32(&w, host.roundtrip_ms)
+	put_u32(&w, u32(host.repaint_rects))
+	put_u32(&w, u32(host.repaint_px))
 	return w[:]
 }
 
@@ -42,6 +47,7 @@ decode_input :: proc(
 	size: Size,
 	density, dt: f32,
 	events: []Raw_Event,
+	host: Host_Stats,
 	ok: bool,
 ) {
 	r := Reader {
@@ -57,10 +63,14 @@ decode_input :: proc(
 	for &e in out {
 		e = decode_raw_event(&r) or_return
 	}
+	host.present_ms = get_f32(&r) or_return
+	host.roundtrip_ms = get_f32(&r) or_return
+	host.repaint_rects = int(get_u32(&r) or_return)
+	host.repaint_px = int(get_u32(&r) or_return)
 	if r.pos != len(r.data) {
-		return {}, 0, 0, nil, false
+		return {}, 0, 0, nil, {}, false
 	}
-	return size, density, dt, out, true
+	return size, density, dt, out, host, true
 }
 
 @(private = "file")
@@ -109,11 +119,12 @@ decode_raw_event :: proc(r: ^Reader) -> (e: Raw_Event, ok: bool) {
 // encode_reply serializes wants_frame, frame_after and ops_bytes (already
 // ui.encode(ops)'s own output) into a new byte slice, the subprocess's
 // half of one frame's round trip.
-encode_reply :: proc(wants_frame: bool, frame_after: f32, ops_bytes: []byte, allocator := context.allocator, full_frames := false) -> []byte {
+encode_reply :: proc(wants_frame: bool, frame_after: f32, ops_bytes: []byte, allocator := context.allocator, full_frames := false, flash := false) -> []byte {
 	w := make([dynamic]byte, 0, 5 + len(ops_bytes), allocator)
 	// Bit 0: wants another frame. Bit 1: redraw it whole (the debug tray's
-	// full frames), since the compositor runs in the host.
-	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0))
+	// full frames), since the compositor runs in the host. Bit 2: flash
+	// what it repaints.
+	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0))
 	put_f32(&w, frame_after)
 	append(&w, ..ops_bytes)
 	return w[:]
@@ -121,13 +132,13 @@ encode_reply :: proc(wants_frame: bool, frame_after: f32, ops_bytes: []byte, all
 
 // decode_reply is encode_reply's inverse: ops_bytes is a slice into data
 // (not copied), meant for an immediate ui.decode.
-decode_reply :: proc(data: []byte) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool, full_frames: bool) {
+decode_reply :: proc(data: []byte) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool, full_frames: bool, flash: bool) {
 	r := Reader{data = data}
 	flag := get_u8(&r) or_return
-	if flag > 3 {
-		return false, 0, nil, false, false
+	if flag > 7 {
+		return false, 0, nil, false, false, false
 	}
-	wants_frame, full_frames = flag & 1 != 0, flag & 2 != 0
+	wants_frame, full_frames, flash = flag & 1 != 0, flag & 2 != 0, flag & 4 != 0
 	frame_after = get_f32(&r) or_return
-	return wants_frame, frame_after, data[r.pos:], true, full_frames
+	return wants_frame, frame_after, data[r.pos:], true, full_frames, flash
 }

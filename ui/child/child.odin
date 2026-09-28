@@ -101,7 +101,7 @@ run :: proc(app: App) {
 		if !ok {
 			return // the host closed the pipe: exit clean
 		}
-		size, density, raw_dt, events, dok := ui.decode_input(payload, allocator)
+		size, density, raw_dt, events, host, dok := ui.decode_input(payload, allocator)
 		if !dok {
 			return // a corrupt request; nothing salvageable
 		}
@@ -116,6 +116,7 @@ run :: proc(app: App) {
 		dt := ui.debug_dt(debug, raw_dt)
 		time += f64(dt)
 		ui.router_route(&router, prev if n > 0 else nil)
+		ui.debug_tray_log(&tray, &router, prev if n > 0 else nil, n)
 		ui.ops_reset(&ops)
 		ops.debug = debug
 		ui.frame_reset(frame)
@@ -143,17 +144,25 @@ run :: proc(app: App) {
 			app.ui(&gtx, app.user)
 		}
 		ui_ms := ui.ms(ui_start)
-		ui.debug_tray(&gtx, &tray)
 		if scaled {
 			ui.pop_transform(&ops)
 		}
 		ui.debug_inspect(&gtx, debug, &tray, prev if n > 0 else nil, router.pointer, density)
+		// The tray last, so it sits over the inspector's highlight too.
+		if scaled {
+			ui.push_transform(&ops, ui.scale(density, density))
+		}
+		ui.debug_tray(&gtx, &tray)
+		if scaled {
+			ui.pop_transform(&ops)
+		}
 		build_start := t.tick_now()
 		ui.flatten(&ops, frame)
 
 		ops_bytes := ui.encode(&ops, allocator)
-		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used)))
-		reply := ui.encode_reply(gtx.wants_frame || tray.open, gtx.frame_after, ops_bytes, allocator, ui.debug_tray_wants_full_frames(&tray))
+		// host is what the host said presenting the frame before cost.
+		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used), host))
+		reply := ui.encode_reply(gtx.wants_frame || tray.open, gtx.frame_after, ops_bytes, allocator, ui.debug_tray_wants_full_frames(&tray), ui.debug_tray_wants_flash(&tray))
 		if !ipc.write_frame(os.stdout, reply) {
 			return // the host is gone
 		}

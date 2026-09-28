@@ -79,6 +79,7 @@ Host_Loop :: struct {
 	in_frame:    bool,
 	ctx:         runtime.Context, // for the event watch, which SDL calls without one
 	started:     time.Time, // when this host process began, to tell whether its executable was rebuilt since
+	host_stats:  ui.Host_Stats, // what the last frame cost here, sent to the child with the next input
 	wants_frame: bool,
 	frame_after: f32,
 	shown:       bool,
@@ -253,10 +254,11 @@ host_step :: proc(l: ^Host_Loop) {
 
 	w := &l.w
 	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
-	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator)
+	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats)
 	clear(&l.events)
 	virtual.arena_free_all(&l.text) // encode_input copied every Text string
 
+	trip_start := time.tick_now()
 	if !ipc.write_frame(l.child.stdin, input) {
 		fmt.eprintfln("sdl: %s stopped reading input (exited?); showing its last frame", l.child_path)
 		l.child_dead = true
@@ -270,7 +272,8 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame = false
 		return
 	}
-	wants_frame, frame_after, ops_bytes, dok, full := ui.decode_reply(reply)
+	roundtrip_ms := ui.ms(trip_start)
+	wants_frame, frame_after, ops_bytes, dok, full, flash := ui.decode_reply(reply)
 	if !dok || !ui.decode(ops_bytes, &l.ops) {
 		// Say why: the window just freezes on its last frame otherwise, which
 		// reads as a crash. A version mismatch is a host built before the
@@ -287,9 +290,12 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame = false
 		return
 	}
-	l.wants_frame, l.frame_after = wants_frame, frame_after
 	ui.flatten(&l.ops, &l.frame)
-	l.shown = present(w, &l.comp, &l.frame, l.app.clear, full)
+	present_start := time.tick_now()
+	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, full, flash)
+	// Sent with the next input, for the child's debug tray.
+	l.host_stats.present_ms, l.host_stats.roundtrip_ms = ui.ms(present_start), roundtrip_ms
+	l.wants_frame, l.frame_after = wants_frame || flashing(w), frame_after
 	l.n += 1
 }
 

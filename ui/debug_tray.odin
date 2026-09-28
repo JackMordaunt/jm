@@ -4,6 +4,16 @@ import "core:fmt"
 import "core:strings"
 import "core:time"
 
+// Host_Stats is what presenting a frame cost whoever composites it: the
+// SDL loop itself, or the hot-reload host, which sends them to its child
+// with the next input.
+Host_Stats :: struct {
+	present_ms:    f32, // compose, upload and present
+	roundtrip_ms:  f32, // host only: sending the input to getting the reply
+	repaint_rects: int, // rects the compositor redrew
+	repaint_px:    int, // their area in device pixels
+}
+
 // Frame_Stats is what a frame loop measured of one frame: for the debug
 // tray, and for -stats in a headless session.
 Frame_Stats :: struct {
@@ -19,7 +29,24 @@ Frame_Stats :: struct {
 	data:        int, // retained widget_data values
 	arena_bytes: int, // the frame arena's allocations this frame
 	rss_bytes:   int, // the process's resident memory, or -1 where not read
+	host:        Host_Stats, // the frame before's presentation
 }
+
+// Logged_Event is one routed event in the debug tray's log. The target's
+// tag is copied into name, as the frame it came from is gone next frame.
+Logged_Event :: struct {
+	frame:    u64,
+	kind:     Event_Kind,
+	key:      Key,
+	pos:      Point,
+	name:     [32]u8,
+	name_len: u8,
+	area:     Area_Id,
+}
+
+// EVENT_LOG_CAP is how many routed events the tray keeps; it shows the last
+// few, -events prints them all.
+EVENT_LOG_CAP :: 32
 
 // TRAY_HISTORY is how many frames the tray's frame-time graph shows.
 TRAY_HISTORY :: 120
@@ -31,6 +58,10 @@ Debug_Tray :: struct {
 	open:        bool,
 	flags:       Debug_Flags, // what the toggles set while open
 	full_frames: bool, // the compositor redraws every frame whole, damage tracking off
+	flash:       bool, // the compositor tints what it repaints, fading
+	events:      [EVENT_LOG_CAP]Logged_Event, // newest at events_head - 1
+	events_head: int,
+	events_n:    int,
 	last:        Frame_Stats,
 	history:     [TRAY_HISTORY]f32, // frame times in ms, newest at head - 1
 	head:        int,
@@ -56,6 +87,77 @@ debug_tray_wants_full_frames :: proc(t: ^Debug_Tray) -> bool {
 	return t.open && t.full_frames
 }
 
+// debug_tray_wants_flash reports whether t asks the compositor to tint
+// what it repaints.
+debug_tray_wants_flash :: proc(t: ^Debug_Tray) -> bool {
+	return t.open && t.flash
+}
+
+// debug_tray_log records the events r routed this frame into t's log,
+// naming each target by its tag in prev, the frame they were routed
+// against. Moves are left out: they would flood it.
+debug_tray_log :: proc(t: ^Debug_Tray, r: ^Router, prev: ^Frame, frame: u64) {
+	for e in r.events {
+		if e.kind == .Move {
+			continue
+		}
+		l := Logged_Event {
+			frame = frame,
+			kind  = e.kind,
+			key   = e.key,
+			pos   = e.pos,
+			area  = e.area,
+		}
+		if prev != nil {
+			for tg in prev.tags {
+				if tg.id == e.area {
+					l.name_len = u8(copy(l.name[:], tg.name))
+					break
+				}
+			}
+		}
+		t.events[t.events_head] = l
+		t.events_head = (t.events_head + 1) % EVENT_LOG_CAP
+		t.events_n = min(t.events_n + 1, EVENT_LOG_CAP)
+	}
+}
+
+// event_log_lines is t's newest most logged events as text, oldest first.
+@(private)
+event_log_lines :: proc(t: ^Debug_Tray, most: int, allocator := context.allocator) -> []string {
+	n := min(most, t.events_n)
+	lines := make([]string, n, allocator)
+	for k in 0 ..< n {
+		e := t.events[(t.events_head - n + k + EVENT_LOG_CAP) % EVENT_LOG_CAP]
+		target := string(e.name[:e.name_len])
+		if target == "" {
+			target = fmt.tprintf("area %x", u64(e.area))
+		}
+		detail := ""
+		#partial switch e.kind {
+		case .Key:
+			detail = fmt.tprintf(" %v", e.key)
+		case .Press, .Release, .Scroll:
+			detail = fmt.tprintf(" at %.0f,%.0f", e.pos.x, e.pos.y)
+		}
+		lines[k] = fmt.aprintf("%d %v%s -> %q", e.frame, e.kind, detail, target, allocator = allocator)
+	}
+	return lines
+}
+
+// event_log_report is t's whole event log as text: -events.
+event_log_report :: proc(t: ^Debug_Tray, allocator := context.allocator) -> string {
+	if t.events_n == 0 {
+		return strings.clone("no events\n", allocator)
+	}
+	b := strings.builder_make(allocator)
+	for l in event_log_lines(t, EVENT_LOG_CAP, context.temp_allocator) {
+		strings.write_string(&b, l)
+		strings.write_byte(&b, '\n')
+	}
+	return strings.to_string(b)
+}
+
 // debug_tray_record stores s as t's latest stats and its frame time in the
 // graph.
 debug_tray_record :: proc(t: ^Debug_Tray, s: Frame_Stats) {
@@ -67,7 +169,7 @@ debug_tray_record :: proc(t: ^Debug_Tray, s: Frame_Stats) {
 
 // frame_stats gathers what gtx's frame left in its ops, layout and frame
 // f, with the loop's timings and arena use.
-frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int) -> Frame_Stats {
+frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int, host: Host_Stats = {}) -> Frame_Stats {
 	s := Frame_Stats {
 		frame       = gtx.frame,
 		dt          = gtx.dt,
@@ -76,6 +178,7 @@ frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int
 		ops         = len(gtx.ops.ops),
 		arena_bytes = arena_bytes,
 		rss_bytes   = process_rss(),
+		host        = host,
 	}
 	if f != nil {
 		s.draws, s.hits, s.boxes = len(f.draws), len(f.hits), len(f.boxes)
@@ -125,11 +228,18 @@ stats_lines :: proc(s: Frame_Stats, allocator := context.allocator) -> []string 
 	append(&lines, fmt.aprintf("widget state %d   widget data %d", s.states, s.data, allocator = allocator))
 	rss := s.rss_bytes >= 0 ? fmt.tprintf("%.1f MiB", f64(s.rss_bytes) / (1 << 20)) : "n/a"
 	append(&lines, fmt.aprintf("frame arena %.1f KiB   resident %s", f64(s.arena_bytes) / 1024, rss, allocator = allocator))
+	h := s.host
+	rt := h.roundtrip_ms > 0 ? fmt.tprintf("   round trip %.2f ms", h.roundtrip_ms) : ""
+	append(&lines, fmt.aprintf("present %.2f ms%s", h.present_ms, rt, allocator = allocator))
+	append(&lines, fmt.aprintf("repainted %d rects, %.0fk px", h.repaint_rects, f64(h.repaint_px) / 1000, allocator = allocator))
 	return lines[:]
 }
 
+// TRAY_EVENTS is how many of the logged events the tray shows.
+TRAY_EVENTS :: 6
+
 // TRAY_WIDTH fits the longest toggle label at 12sp with its check.
-TRAY_WIDTH :: f32(300)
+TRAY_WIDTH :: f32(340)
 
 // debug_tray draws t, when open, in the window's bottom-right corner above
 // everything: a toggle a line for each debug switch, then the latest stats
@@ -150,8 +260,9 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	}{{.Bounds, "Outline widgets and input areas"}, {.Inspect, "Inspect under the pointer"}, {.Reveal, "Reveal hidden parts"}, {.Slow, "Slow motion (quarter speed)"}}
 	pad, row, text :: f32(10), f32(22), f32(12)
 	lines := stats_lines(t.last, gtx.allocator)
+	log := event_log_lines(t, TRAY_EVENTS, gtx.allocator)
 	graph_h :: f32(36)
-	h := 2 * pad + row * f32(len(TOGGLES) + 1) + 6 + f32(len(lines)) * (text + 5) + 6 + graph_h
+	h := 2 * pad + row * f32(len(TOGGLES) + 2) + 6 + f32(len(lines)) * (text + 5) + 6 + graph_h + 8 + f32(TRAY_EVENTS) * (text + 3)
 	window := gtx.constraints.max
 	at := Point{max(window.x - TRAY_WIDTH - 12, 0), max(window.y - h - 12, 0)}
 	o := overlay(gtx, at, exact({TRAY_WIDTH, h}))
@@ -173,6 +284,10 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	if tray_toggle(gtx, {pad, y, TRAY_WIDTH - 2 * pad, row}, "Full frames (compositor damage off)", t.full_frames, 20) {
 		t.full_frames = !t.full_frames
 	}
+	y += row
+	if tray_toggle(gtx, {pad, y, TRAY_WIDTH - 2 * pad, row}, "Flash repaints", t.flash, 21) {
+		t.flash = !t.flash
+	}
 	y += row + 6
 	for l in lines {
 		tray_text(gtx, l, {pad, y + text}, text, Color{220, 218, 228, 255})
@@ -192,6 +307,12 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 		bh := min(v / top, 1) * graph_h
 		c := v > budget * 1.05 ? Color{255, 90, 90, 255} : Color{120, 200, 140, 255} // a hair over, from rounding, is on time
 		fill(gtx.ops, Rect{pad + f32(TRAY_HISTORY - t.count + k) * bar, y + graph_h - bh, max(bar - 0.5, 0.5), bh}, c)
+	}
+	// The event log, newest last, under the graph.
+	y += graph_h + 8
+	for l in log {
+		tray_text(gtx, l, {pad, y + text - 2}, text - 1, Color{180, 190, 230, 255})
+		y += text + 3
 	}
 }
 

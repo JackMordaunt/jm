@@ -94,6 +94,7 @@ probe_frame :: proc(p: ^Probe) {
 	}
 	debug := p.debug | debug_tray_flags(&p.tray)
 	router_route(&p.router, &p.prev)
+	debug_tray_log(&p.tray, &p.router, &p.prev, p.frame_no)
 	frame_arena_reset(&p.arena)
 	ops_reset(&p.ops)
 	p.ops.debug = debug
@@ -116,8 +117,8 @@ probe_frame :: proc(p: ^Probe) {
 	ui_start := time.tick_now()
 	p.ui(&gtx, p.user)
 	ui_ms := ms(ui_start)
-	debug_tray(&gtx, &p.tray)
 	debug_inspect(&gtx, debug, &p.tray, &p.prev, p.router.pointer, 1)
+	debug_tray(&gtx, &p.tray) // last: over the inspector's highlight too
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	build_start := time.tick_now()
 	flatten(&p.ops, &p.frame)

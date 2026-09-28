@@ -18,9 +18,11 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Key, key = .Enter, mods = {.Alt}},
 		{kind = .Text, text = "héllo\nworld"},
 	}
-	data := encode_input({800, 600}, 2, 1.0 / 60, events)
+	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000}
+	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
 
-	size, density, dt, got, ok := decode_input(data)
+	size, density, dt, got, got_host, ok := decode_input(data)
+	testing.expect_value(t, got_host, host)
 	testing.expect(t, ok)
 	testing.expect_value(t, size, Size{800, 600})
 	testing.expect_value(t, density, f32(2))
@@ -31,13 +33,13 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 	}
 
 	// Re-encoding the decoded events gives the same bytes.
-	testing.expect(t, slice.equal(encode_input(size, density, dt, got), data))
+	testing.expect(t, slice.equal(encode_input(size, density, dt, got, host = got_host), data))
 }
 
 @(test)
 test_encode_input_no_events :: proc(t: ^testing.T) {
 	data := encode_input({0, 0}, 1, 0, nil, context.temp_allocator)
-	size, density, dt, events, ok := decode_input(data, context.temp_allocator)
+	size, density, dt, events, _, ok := decode_input(data, context.temp_allocator)
 	testing.expect(t, ok)
 	testing.expect_value(t, size, Size{0, 0})
 	testing.expect_value(t, density, f32(1))
@@ -57,12 +59,13 @@ test_encode_reply_round_trip :: proc(t: ^testing.T) {
 	ops_bytes := encode(&src)
 
 	data := encode_reply(true, 0.25, ops_bytes)
-	wants_frame, frame_after, got_ops, ok, full := decode_reply(data)
+	wants_frame, frame_after, got_ops, ok, full, flash := decode_reply(data)
+	testing.expect(t, !flash)
 	testing.expect(t, ok)
 	testing.expect(t, wants_frame)
 	testing.expect(t, !full)
-	_, _, _, ok, full = decode_reply(encode_reply(false, 0, ops_bytes, full_frames = true))
-	testing.expect(t, ok && full)
+	_, _, _, ok, full, flash = decode_reply(encode_reply(false, 0, ops_bytes, full_frames = true, flash = true))
+	testing.expect(t, ok && full && flash)
 	testing.expect_value(t, frame_after, f32(0.25))
 	testing.expect(t, slice.equal(got_ops, ops_bytes))
 
@@ -90,7 +93,7 @@ test_decode_input_survives_random_bytes :: proc(t: ^testing.T) {
 		if i % 2 == 1 && n >= 16 {
 			copy(b, valid[:16])
 		}
-		_, _, _, _, _ = decode_input(b, context.temp_allocator)
+		_, _, _, _, _, _ = decode_input(b, context.temp_allocator)
 		free_all(context.temp_allocator)
 	}
 }
@@ -105,6 +108,6 @@ test_decode_reply_survives_random_bytes :: proc(t: ^testing.T) {
 		for &c in b {
 			c = u8(rand.uint32())
 		}
-		_, _, _, _, _ = decode_reply(b)
+		_, _, _, _, _, _ = decode_reply(b)
 	}
 }

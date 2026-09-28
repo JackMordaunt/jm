@@ -137,6 +137,7 @@ inspecting :: proc(h: ^Headless) {
 //	-overflow          print what the window or a clip cuts off at the sides
 //	-layout            print every widget's box, constraints and call
 //	-stats             print the last frame's timings, counts and memory
+//	-events            print the routed events the session logged
 //	-inspect X Y       print the widget and input area under X, Y
 headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bool) {
 	need :: proc(args: []string, i: ^int, n: int, flag: string) -> bool {
@@ -230,6 +231,8 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		fmt.print(ui.probe_dump(&h.p))
 	case "-overflow":
 		fmt.print(ui.overflow_report(ui.probe_current(&h.p), h.p.size, context.temp_allocator))
+	case "-events":
+		fmt.print(ui.event_log_report(&h.p.tray, context.temp_allocator))
 	case "-stats":
 		fmt.print(ui.frame_stats_report(h.p.tray.last, context.temp_allocator))
 	case "-layout":

@@ -62,3 +62,32 @@ test_inspector_skips_the_open_tray :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, deferred, 0) // no inspector panel over the tray
 }
+
+@(test)
+test_event_log_names_each_target_and_skips_moves :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		p := widget_begin(gtx, 1)
+		input_area(gtx.ops, p.id, Rect{0, 0, 80, 30}, {.Press, .Release, .Move, .Enter, .Leave})
+		tag(gtx.ops, p.id, frame_string(gtx, "Save"))
+		widget_end(gtx, &p, {size = {80, 30}})
+	}
+	p: Probe
+	probe_init(&p, view, nil, {200, 100}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, probe_click(&p, "Save"))
+	lines := event_log_lines(&p.tray, EVENT_LOG_CAP, context.temp_allocator)
+	kinds: [dynamic]Event_Kind
+	defer delete(kinds)
+	for i in 0 ..< p.tray.events_n {
+		e := p.tray.events[i]
+		append(&kinds, e.kind)
+		testing.expect_value(t, string(e.name[:e.name_len]), "Save") // copied, though its frame is gone
+	}
+	testing.expect(t, len(kinds) >= 2)
+	for k in kinds {
+		testing.expect(t, k != .Move)
+	}
+	testing.expect(t, strings.contains(lines[len(lines) - 1], "-> \"Save\""))
+	testing.expect(t, strings.contains(event_log_report(&p.tray, context.temp_allocator), "Press"))
+}

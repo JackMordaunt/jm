@@ -61,6 +61,7 @@ parallel.
 */
 package sdl
 
+import "base:builtin"
 import "base:runtime"
 import "core:fmt"
 import "core:mem/virtual"
@@ -142,6 +143,51 @@ Window :: struct {
 	live_at:  u64, // ticks, in ms, of the last frame that kept it live
 	sized:    bool, // the frame being drawn is for a new size
 	density:  f32,
+	flashes:  [dynamic]Flash, // repaint flashes still fading, for the debug tray
+}
+
+// Flash is one repainted rect tinted over the window until FLASH_MS after
+// it was drawn: the debug tray's repaint flash.
+Flash :: struct {
+	r:  sdl3.FRect, // device pixels
+	at: u64, // SDL ticks, in ms, when it was repainted
+}
+
+// FLASH_MS is how long a repaint flash takes to fade.
+FLASH_MS :: 400
+
+// draw_flashes tints each live flash's rect over the presented frame,
+// fading with age, and drops the ones that have faded. It draws on the
+// renderer, over the texture, never into w.view: render.Compositor keeps
+// that image from frame to frame and repaints only what changed, so a tint
+// drawn into it would stay.
+@(private)
+draw_flashes :: proc(w: ^Window) {
+	if len(w.flashes) == 0 {
+		return
+	}
+	now := sdl3.GetTicks()
+	sdl3.SetRenderDrawBlendMode(w.renderer, sdl3.BLENDMODE_BLEND)
+	kept := 0
+	for fl in w.flashes {
+		age := f32(now - fl.at) / FLASH_MS
+		if age >= 1 {
+			continue
+		}
+		sdl3.SetRenderDrawColor(w.renderer, 255, 40, 160, u8(110 * (1 - age)))
+		r := fl.r
+		sdl3.RenderFillRect(w.renderer, &r)
+		w.flashes[kept] = fl
+		kept += 1
+	}
+	builtin.resize(&w.flashes, kept) // sdl's own resize shadows the builtin
+}
+
+// flashing reports whether repaint flashes are still fading, so the loop
+// keeps presenting until they are gone.
+@(private)
+flashing :: proc(w: ^Window) -> bool {
+	return len(w.flashes) > 0
 }
 
 // Loop is everything a running App keeps from frame to frame. step runs one
@@ -280,6 +326,7 @@ step :: proc(l: ^Loop) {
 
 	w := &l.w
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
+	ui.debug_tray_log(&l.tray, &l.router, prev if l.n > 0 else nil, l.n)
 	ui.ops_reset(&l.ops)
 	l.ops.debug = debug
 	ui.frame_reset(frame)
@@ -308,16 +355,27 @@ step :: proc(l: ^Loop) {
 		l.app.ui(&gtx, l.app.user)
 	}
 	ui_ms := ui.ms(ui_start)
-	ui.debug_tray(&gtx, &l.tray)
 	if scaled {
 		ui.pop_transform(&l.ops)
 	}
 	ui.debug_inspect(&gtx, debug, &l.tray, prev if l.n > 0 else nil, l.router.pointer, w.density)
+	// The tray last, so it sits over the inspector's highlight too.
+	if scaled {
+		ui.push_transform(&l.ops, ui.scale(w.density, w.density))
+	}
+	ui.debug_tray(&gtx, &l.tray)
+	if scaled {
+		ui.pop_transform(&l.ops)
+	}
 	build_start := time.tick_now()
 	ui.flatten(&l.ops, frame)
-	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used)))
-	l.shown = present(w, &l.comp, frame, l.app.clear, ui.debug_tray_wants_full_frames(&l.tray))
-	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open, gtx.frame_after
+	build_ms := ui.ms(build_start)
+	present_start := time.tick_now()
+	host: ui.Host_Stats
+	l.shown, host.repaint_rects, host.repaint_px = present(w, &l.comp, frame, l.app.clear, ui.debug_tray_wants_full_frames(&l.tray), ui.debug_tray_wants_flash(&l.tray))
+	host.present_ms = ui.ms(present_start)
+	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, int(arena.arena.total_used), host))
+	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
 	free_all(context.temp_allocator)
 	// Every event polled before this frame was routed in it.
 	virtual.arena_free_all(&l.events)
@@ -402,6 +460,7 @@ close :: proc(w: ^Window) {
 	bl.image_destroy(&w.pixels)
 	sdl3.DestroyRenderer(w.renderer)
 	sdl3.DestroyWindow(w.window)
+	delete(w.flashes)
 	w^ = {}
 }
 
@@ -555,13 +614,13 @@ refresh_ms :: proc(w: ^Window) -> i32 {
 // front texture up to date. It shows the texture and reports true when
 // anything changed or the window must be shown again.
 @(private)
-present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color, full := false) -> bool {
+present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color, full := false, flash := false) -> (shown: bool, repaint_rects, repaint_px: int) {
 	if w.textures[0] == nil {
-		return false
+		return
 	}
 	data: bl.ImageData
 	if bl.image_get_data(&w.view, &data) != 0 {
-		return false
+		return
 	}
 	if full {
 		// The debug tray's full frames: redraw and upload all of it, as if
@@ -574,8 +633,18 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 		w.fresh = false
 	}
 	changed := render.compose(c, f, &w.view, clear)
-	if !w.stale && !w.exposed && len(changed) == 0 {
-		return false
+	repaint_rects = len(changed)
+	for r in changed {
+		repaint_px += int(r.w * r.h)
+	}
+	if flash {
+		at := sdl3.GetTicks()
+		for r in changed {
+			append(&w.flashes, Flash{{r.x, r.y, r.w, r.h}, at})
+		}
+	}
+	if !w.stale && !w.exposed && len(changed) == 0 && len(w.flashes) == 0 {
+		return
 	}
 	w.exposed = false
 	if w.stale {
@@ -606,6 +675,7 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 	sdl3.RenderClear(w.renderer)
 	src := sdl3.FRect{0, 0, f32(w.size.x), f32(w.size.y)}
 	sdl3.RenderTexture(w.renderer, w.textures[w.front], &src, nil)
+	draw_flashes(w)
 	sdl3.RenderPresent(w.renderer)
 	if w.sized {
 		// Hold the resize until this frame is on screen, so the window is
@@ -613,7 +683,7 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 		wait_for_compositor()
 		w.sized = false
 	}
-	return true
+	return true, repaint_rects, repaint_px
 }
 
 // upload copies r of the image into the same place in t.
