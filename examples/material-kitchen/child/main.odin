@@ -262,8 +262,17 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	app_bar(gtx, m, docked)
 	ui.flexible(gtx, 1)
 	{
+		// Each page is a root scope, and every page is retained, drawn or
+		// not: switching away and back keeps its scroll position and any
+		// state its widgets hold. The scope also keeps two pages' widgets
+		// from sharing ids.
+		for i in 0 ..< len(PAGES) {
+			ui.retain(gtx, i)
+		}
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
-		sb := ui.scroll_box(gtx, key = u64(m.page))
+		ps := ui.scope(gtx, m.page)
+		defer ui.end(&ps)
+		sb := ui.scroll_box(gtx)
 		defer ui.end(&sb)
 		page := ui.inset(gtx, {24, 8, 24, 48})
 		defer ui.end(&page)
