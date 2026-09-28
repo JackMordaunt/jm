@@ -263,7 +263,7 @@ menu :: proc(
 	// No widget slot, unless inline: a menu takes no space where it is called. Its
 	// springs live in the widget state of its own id, read every frame so
 	// they outlast a close and play it out.
-	menu_id := ui.id(key, loc)
+	menu_id := ui.scoped_id(gtx, key, loc)
 	mc := Control {
 		st = ui.widget_state(gtx, menu_id),
 	}
@@ -928,7 +928,7 @@ dialog :: proc(
 		return -1
 	}
 	chosen := -1
-	id := ui.id(key, loc)
+	id := ui.scoped_id(gtx, key, loc)
 	o := ui.overlay(gtx, cs = ui.loose(window), root = true)
 	defer ui.end(&o)
 	defer o.discard = !open^ // closed this frame: draw nothing, catch nothing

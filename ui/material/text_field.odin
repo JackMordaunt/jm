@@ -597,6 +597,14 @@ MENU_PAD :: f32(8)
 @(private = "file")
 MENU_ITEM_INSET :: f32(12)
 
+// Autocomplete_Highlight is the autocomplete menu's keyboard highlight,
+// kept in the field's widget_data: the row, 1-based so the zero value an
+// unseen field starts with is no highlight.
+@(private)
+Autocomplete_Highlight :: struct {
+	row: int,
+}
+
 // autocomplete is a text field composed with a menu of options
 // (text-field.json's filled-autocomplete and outlined-autocomplete). A
 // press on the field, typing, or Down opens the menu under it, as wide as
@@ -670,10 +678,9 @@ autocomplete :: proc(
 		}
 	}
 
-	// The keyboard highlight, 1-based so 0 is none, kept in a side state's
-	// scroll: Widget_State has no other slot for an integer.
-	hs := ui.widget_state(gtx, ui.id_mix(p.id, 0x686c))
-	hl := int(hs.scroll) - 1
+	// The keyboard highlight: an index into matches, -1 for none.
+	hs := ui.widget_data(gtx, p.id, Autocomplete_Highlight)
+	hl := hs.row - 1
 	if r.pressed || r.changed {
 		expanded^ = true
 		hl = -1
@@ -753,7 +760,7 @@ autocomplete :: proc(
 		chosen = pick
 		hl = -1
 	}
-	hs.scroll = f32(hl + 1)
+	hs.row = hl + 1
 	return chosen
 }
 
