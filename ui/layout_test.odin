@@ -1055,3 +1055,124 @@ mask_ids :: proc(s: string) -> string {
 	}
 	return strings.to_string(b)
 }
+
+// Popups: placed by flatten, flipped and shifted to stay in the window.
+
+@(private = "file")
+Popup_Model :: struct {
+	anchor: ops.Rect, // where the anchor widget is laid out
+	side:   ops.Side,
+	align:  ops.Side_Align,
+	seen:   ops.Side, // placed_side as the popup's frame read it
+	shift:  ops.Point,
+}
+
+// popup_view lays a 40x20 anchor at m.anchor's origin and opens a 100x120
+// popup from it, tagged "popup".
+@(private = "file")
+popup_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Popup_Model)(user)
+	ops.transform_push(gtx.scene, ops.translate(m.anchor.x, m.anchor.y))
+	defer ops.transform_pop(gtx.scene)
+	key := ops.Area_Id(0x9090)
+	m.seen = placed_side(gtx, key, m.side)
+	o := popup_open(gtx, {0, 0, m.anchor.w, m.anchor.h}, key, m.side, m.align, gap = 4)
+	ops.input_area(gtx.scene, 7, ops.Rect{0, 0, 100, 120}, {.Press})
+	ops.tag(gtx.scene, 7, "popup")
+	popup_close(&o, {100, 120})
+}
+
+@(test)
+test_popup_opens_where_asked_when_it_fits :: proc(t: ^testing.T) {
+	m := Popup_Model{anchor = {20, 20, 40, 20}}
+	p: Probe
+	probe_init(&p, popup_view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, probe_bounds(&p, "popup"), ops.Rect{20, 44, 100, 120})
+	probe_frame(&p)
+	testing.expect_value(t, m.seen, ops.Side.Below)
+}
+
+@(test)
+test_popup_flips_above_near_the_bottom_and_reports_it :: proc(t: ^testing.T) {
+	m := Popup_Model{anchor = {20, 260, 40, 20}}
+	p: Probe
+	probe_init(&p, popup_view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	// Below would run to y 404 in a 300 window: above, 4px over the anchor.
+	testing.expect_value(t, probe_bounds(&p, "popup"), ops.Rect{20, 260 - 4 - 120, 100, 120})
+	probe_frame(&p)
+	testing.expect_value(t, m.seen, ops.Side.Above)
+}
+
+@(test)
+test_popup_shifts_inside_at_the_edges :: proc(t: ^testing.T) {
+	// Near the right edge: kept below, shifted left to end at the window's edge.
+	m := Popup_Model{anchor = {370, 20, 20, 20}}
+	p: Probe
+	probe_init(&p, popup_view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, probe_bounds(&p, "popup"), ops.Rect{300, 44, 100, 120})
+	// Too tall for either side in a short window: the side with less
+	// overflow, then shifted to lie inside from the top.
+	m.anchor = {20, 60, 40, 20}
+	p2: Probe
+	probe_init(&p2, popup_view, &m, {400, 130}, allocator = context.temp_allocator)
+	defer probe_destroy(&p2)
+	r := probe_bounds(&p2, "popup")
+	testing.expect_value(t, r.y, 0)
+	testing.expect_value(t, r.h, 120)
+	// After, centred on the anchor's edge.
+	m.anchor, m.side, m.align = {20, 100, 40, 20}, .After, .Center
+	p3: Probe
+	probe_init(&p3, popup_view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p3)
+	testing.expect_value(t, probe_bounds(&p3, "popup"), ops.Rect{64, 110 - 60, 100, 120})
+}
+
+@(test)
+test_popup_of_an_offscreen_anchor_stays_with_it :: proc(t: ^testing.T) {
+	// An anchor scrolled below the window: its popup is not pulled into view.
+	m := Popup_Model{anchor = {20, 500, 40, 20}}
+	p: Probe
+	probe_init(&p, popup_view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, probe_bounds(&p, "popup"), ops.Rect{20, 524, 100, 120})
+}
+
+@(test)
+test_popup_of_a_zero_width_anchor_still_flips :: proc(t: ^testing.T) {
+	// An anchor that is only an edge, as a picker's field often gives.
+	m := Popup_Model{anchor = {20, 260, 0, 20}}
+	p: Probe
+	probe_init(&p, popup_view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, probe_bounds(&p, "popup"), ops.Rect{20, 260 - 4 - 120, 100, 120})
+}
+
+@(test)
+test_popup_reports_its_shift_in_anchor_coordinates :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		m := (^Popup_Model)(user)
+		// A 2x scale: the shift reads back in the anchor's own units.
+		ops.transform_push(gtx.scene, ops.mul(ops.scale(2, 2), ops.translate(m.anchor.x, m.anchor.y)))
+		defer ops.transform_pop(gtx.scene)
+		_, m.shift = placed(gtx, 0x9191, .Below)
+		o := popup_open(gtx, {0, 0, 10, 10}, 0x9191)
+		popup_close(&o, {100, 20})
+	}
+	// The popup is 200 device px wide from x 300 in a 400 window: shifted
+	// 100 device px left, 50 in the anchor's units.
+	m := Popup_Model{anchor = {300, 20, 0, 0}}
+	p: Probe
+	probe_init(&p, view, &m, {400, 300}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	probe_frame(&p)
+	testing.expect_value(t, m.shift, ops.Point{-50, 0})
+}

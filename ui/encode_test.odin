@@ -18,6 +18,8 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.add_font(&src, "mono.ttf")
 	ops.tag(&src, 99, "quote \" and\nnewline")
 	ops.defer_call(&src, 0) // golden_scene's first macro, run again on top
+	// and once more as a popup, which carries its placement on the wire
+	ops.defer_place(&src, 0, {key = 5, anchor = {1, 2, 3, 4}, size = {10, 20}, side = .Above, align = .End, gap = 2})
 	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view", "label"})
 	append(&src.ops, nil) // a nil op survives too
 
@@ -45,13 +47,15 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	testing.expect_value(t, dst.macros[0], src.macros[0])
 	testing.expect_value(t, ops.dump(&dst), ops.dump(&src))
 
-	// flatten(decode(encode(x))) == flatten(x)
+	// flatten(decode(encode(x))) == flatten(x), the popup placed the same
 	fs, fd: Frame
 	frame_init(&fs)
 	frame_init(&fd)
-	flatten(&src, &fs)
-	flatten(&dst, &fd)
+	flatten(&src, &fs, {0, 0, 200, 100})
+	flatten(&dst, &fd, {0, 0, 200, 100})
 	testing.expect_value(t, dump_frame(&fd), dump_frame(&fs))
+	testing.expect_value(t, len(fd.placed), 1)
+	testing.expect_value(t, fd.placed[0], fs.placed[0])
 
 	// Re-encoding the decoded sc gives the same bytes.
 	testing.expect(t, slice.equal(ops.encode(&dst), data))

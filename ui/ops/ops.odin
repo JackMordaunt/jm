@@ -44,9 +44,48 @@ Call :: struct {
 // against the widget that opened it — that widget cannot know its own
 // device position while recording, since a container may place it later
 // through a macro — and how a dialog covers the whole window (root).
+//
+// A placed Defer (place.set) is a popup: its macro is laid out from its
+// own origin, and flatten chooses where that origin lands so the popup
+// stays in the viewport (see Placement).
 Defer :: struct {
-	id:   Macro_Id,
-	root: bool,
+	id:    Macro_Id,
+	root:  bool,
+	place: Placement,
+}
+
+// Side is which side of its anchor a popup opens on. After is the
+// inline end (right, left to right), Before the inline start.
+Side :: enum u8 {
+	Below,
+	Above,
+	After,
+	Before,
+}
+
+// Side_Align is where a popup sits along its anchor's edge: flush with
+// the anchor's start, centred on it, or flush with its end.
+Side_Align :: enum u8 {
+	Start,
+	Center,
+	End,
+}
+
+// Placement is a popup's position asked of flatten, in the coordinates
+// current at the Defer: open on side of anchor, gap away, aligned along
+// the edge by align, the popup being size. flatten flips to the opposite
+// side when side leaves the popup outside the viewport and the opposite
+// side does not, or leaves it less outside; then it shifts the popup
+// along both axes to keep it inside. key names the popup, so the side
+// flatten chose can be read back the next frame (ui.placed_side).
+Placement :: struct {
+	set:    bool,
+	key:    Area_Id,
+	anchor: Rect,
+	size:   Size,
+	side:   Side,
+	align:  Side_Align,
+	gap:    f32,
 }
 
 Fill :: struct {
@@ -255,9 +294,17 @@ call :: proc(o: ^Scene, id: Macro_Id) {
 	append(&o.ops, Call{id})
 }
 
+// defer_place runs macro id after the rest of the frame, on top, as a
+// popup placed by place; see Defer and Placement.
+defer_place :: proc(o: ^Scene, id: Macro_Id, place: Placement) {
+	p := place
+	p.set = true
+	append(&o.ops, Defer{id = id, place = p})
+}
+
 // defer_call runs macro id after the rest of the frame, on top; see Defer.
 defer_call :: proc(o: ^Scene, id: Macro_Id, root := false) {
-	append(&o.ops, Defer{id, root})
+	append(&o.ops, Defer{id = id, root = root})
 }
 
 // Resources.

@@ -21,8 +21,8 @@ ENCODE_MAGIC :: "UIOP"
 // ENCODE_VERSION changes whenever an op is added or its layout changes: a
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
-// Defer.
-ENCODE_VERSION :: u8(7)
+// Defer; 8 gave Defer its Placement.
+ENCODE_VERSION :: u8(8)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -358,6 +358,14 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 14)
 		put_u32(w, u32(v.id))
 		append(w, v.root ? 1 : 0)
+		append(w, v.place.set ? 1 : 0)
+		if v.place.set {
+			put_u64(w, u64(v.place.key))
+			put_rect(w, v.place.anchor)
+			put_point(w, v.place.size)
+			append(w, u8(v.place.side), u8(v.place.align))
+			put_f32(w, v.place.gap)
+		}
 	case Debug_Box:
 		append(w, 15)
 		put_u64(w, u64(v.id))
@@ -601,6 +609,23 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			return nil, false
 		}
 		v.root = root == 1
+		placed := get_u8(r) or_return
+		if placed > 1 {
+			return nil, false
+		}
+		if placed == 1 {
+			v.place.set = true
+			v.place.key = Area_Id(get_u64(r) or_return)
+			v.place.anchor = get_rect(r) or_return
+			v.place.size = get_point(r) or_return
+			side := get_u8(r) or_return
+			align := get_u8(r) or_return
+			if int(side) >= len(Side) || int(align) >= len(Side_Align) {
+				return nil, false
+			}
+			v.place.side, v.place.align = Side(side), Side_Align(align)
+			v.place.gap = get_f32(r) or_return
+		}
 		return v, true
 	case 15:
 		v: Debug_Box

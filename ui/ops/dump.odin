@@ -40,6 +40,10 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "call %d", v.id)
 		case Defer:
 			fmt.sbprintf(&sb, "defer %d%s", v.id, v.root ? " root" : "")
+			if v.place.set {
+				a := v.place.anchor
+				fmt.sbprintf(&sb, " place %v %v of %v %v %v size %v %v gap %v", v.place.side, v.place.align, a.x, a.y, a.w, a.h, v.place.size.x, v.place.size.y, v.place.gap)
+			}
 		case Fill:
 			write_draw(&sb, ops, v)
 		case Stroke:

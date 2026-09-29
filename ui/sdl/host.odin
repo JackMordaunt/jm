@@ -319,7 +319,7 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame = false
 		return
 	}
-	ui.flatten(&l.scene, &l.frame)
+	ui.flatten(&l.scene, &l.frame, {0, 0, f32(w.size.x), f32(w.size.y)})
 	present_start := time.tick_now()
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
 	// Sent with the next input, for the child's debug tray.

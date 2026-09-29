@@ -907,6 +907,7 @@ centered_close :: proc(s: ^Centered) {
 
 // Overlay is an open overlay; see overlay.
 Overlay :: struct {
+	place:  ops.Placement, // set for a popup: flatten decides where it lands
 	gtx:    ^Ctx,
 	macro:  ops.Macro_Id,
 	stack:  [dynamic]Container, // the enclosing containers, set aside
@@ -964,9 +965,75 @@ overlay_close :: proc(o: ^Overlay) {
 		ops.transform_pop(gtx.scene)
 	}
 	ops.macro_close(gtx.scene, o.macro)
-	if !o.discard {
+	if o.discard {
+		return
+	}
+	if o.place.set {
+		ops.defer_place(gtx.scene, o.macro, o.place)
+	} else {
 		ops.defer_call(gtx.scene, o.macro, o.root)
 	}
+}
+
+// popup_open is overlay_open for a popup attached to an anchor: a menu,
+// listbox, tooltip or popover. anchor is the widget it opens from, in the
+// coordinates current at the call; the popup is laid out from its own
+// origin under cs, and popup_close, given the size it came to, has
+// flatten place it on side of anchor, gap away, aligned by align, flipped
+// to the opposite side and shifted as needed to stay inside the window
+// (see ops.Placement). key names the popup for placed_side; a widget
+// passes its own id.
+popup_open :: proc(
+	gtx: ^Ctx,
+	anchor: ops.Rect,
+	key: ops.Area_Id,
+	side := ops.Side.Below,
+	align := ops.Side_Align.Start,
+	gap: f32 = 0,
+	cs := Constraints{max = {INF, INF}},
+) -> Overlay {
+	o := overlay_open(gtx, cs = cs)
+	o.place = {
+		set    = true,
+		key    = key,
+		anchor = anchor,
+		side   = side,
+		align  = align,
+		gap    = gap,
+	}
+	return o
+}
+
+// popup_close closes a popup opened by popup_open, whose content came to
+// size, and schedules it to be placed.
+popup_close :: proc(o: ^Overlay, size: ops.Size) {
+	o.place.size = size
+	overlay_close(o)
+}
+
+// placed_side is the side the popup keyed key opened on last frame, or
+// side when it was not shown: what a popup that draws toward its anchor
+// (an arrow, a slide) reads to follow a flip. A popup's first frame
+// takes side; flatten places it right regardless.
+placed_side :: proc(gtx: ^Ctx, key: ops.Area_Id, side: ops.Side) -> ops.Side {
+	s, _ := placed(gtx, key, side)
+	return s
+}
+
+// placed is placed_side and the shift flatten applied along the edge to
+// keep the popup in the window, in the anchor's coordinates: an arrow
+// meant to point at the anchor's centre moves by -shift within the popup.
+// Zero shift when it was not shown last frame.
+placed :: proc(gtx: ^Ctx, key: ops.Area_Id, side: ops.Side) -> (ops.Side, ops.Point) {
+	if gtx.router == nil {
+		return side, {}
+	}
+	for p in gtx.router.placed {
+		if p.key == key {
+			return p.side, p.shift
+		}
+	}
+	return side, {}
 }
 
 // SCROLL_THUMB_COLOR is the bar's thumb: a mid grey that reads on light and

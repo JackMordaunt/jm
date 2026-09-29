@@ -57,6 +57,7 @@ Router :: struct {
 	hover_hit:   Hit,
 	pressed_hit: Hit,
 	pointer:     ops.Point, // the device position of the last pointer event, for Event.travel
+	placed:      [dynamic]Placed, // the popups the last frame placed, for placed_side
 }
 
 @(private = "file")
@@ -68,6 +69,7 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.allocator = allocator
 	r.queue = make([dynamic]Raw_Event, allocator)
 	r.events = make([dynamic]Event, allocator)
+	r.placed = make([dynamic]Placed, allocator)
 }
 
 // router_destroy frees everything r owns.
@@ -80,6 +82,7 @@ router_destroy :: proc(r: ^Router) {
 	}
 	delete(r.queue)
 	delete(r.events)
+	delete(r.placed)
 	r^ = {}
 }
 
@@ -100,6 +103,10 @@ router_push :: proc(r: ^Router, e: Raw_Event) {
 router_route :: proc(r: ^Router, f: ^Frame) {
 	release_text(r)
 	clear(&r.events)
+	clear(&r.placed)
+	if f != nil {
+		append(&r.placed, ..f.placed[:])
+	}
 	refresh(f, r.focus, &r.focus_hit)
 	refresh(f, r.hover, &r.hover_hit)
 	refresh(f, r.pressed, &r.pressed_hit)

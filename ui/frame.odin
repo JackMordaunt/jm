@@ -45,6 +45,16 @@ Hit :: struct {
 	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
 }
 
+// Placed is a popup flatten placed (see ops.Placement): its key, the
+// side it opened on, which is the asked side unless flatten flipped it,
+// and how far it was shifted along its edge to stay in the window, in
+// the anchor's own coordinates.
+Placed :: struct {
+	key:   ops.Area_Id,
+	side:  ops.Side,
+	shift: ops.Point,
+}
+
 // Layout_Box is a Debug_Box placed on the frame: its rect in device space.
 Layout_Box :: struct {
 	id:        ops.Area_Id,
@@ -65,6 +75,7 @@ Frame :: struct {
 	hits:  [dynamic]Hit,
 	tags:  [dynamic]ops.Tag,
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
+	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images
 }
 
@@ -74,6 +85,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.hits = make([dynamic]Hit, allocator)
 	f.tags = make([dynamic]ops.Tag, allocator)
 	f.boxes = make([dynamic]Layout_Box, allocator)
+	f.placed = make([dynamic]Placed, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -82,6 +94,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.hits)
 	clear(&f.tags)
 	clear(&f.boxes)
+	clear(&f.placed)
 	f.scene = nil
 }
 
@@ -91,5 +104,6 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.hits)
 	delete(f.tags)
 	delete(f.boxes)
+	delete(f.placed)
 	f^ = {}
 }

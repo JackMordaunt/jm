@@ -17,6 +17,7 @@ Flattener :: struct {
 	clip:       Clip_Id,
 	deferred:   [dynamic]Deferred,
 	layer:      i32, // 0 for the frame, then 1, 2, ... for each deferred macro in the order run
+	viewport:   ops.Rect, // device space; zero leaves popups where they ask to be
 }
 
 // Deferred is a Defer met during the pass: its macro and the transform to
@@ -29,9 +30,12 @@ Deferred :: struct {
 
 // flatten turns the scene sc into f: every draw and hit carries its device
 // transform and a clip reference. f is reset first and keeps a pointer to
-// sc for its resources. Unbalanced push/pop, a Call to an unterminated or
-// unknown macro, or calls nested deeper than MAX_CALL_DEPTH assert.
-flatten :: proc(sc: ^ops.Scene, f: ^Frame) {
+// sc for its resources. viewport is the window in device pixels: a placed
+// popup (ops.Placement) is kept inside it, and a zero viewport leaves
+// popups where they ask to be. Unbalanced push/pop, a Call to an
+// unterminated or unknown macro, or calls nested deeper than
+// MAX_CALL_DEPTH assert.
+flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
 	frame_reset(f)
 	f.scene = sc
 	st := Flattener {
@@ -42,6 +46,7 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame) {
 		transform  = ops.IDENTITY,
 		clip       = NO_CLIP,
 		deferred   = make([dynamic]Deferred, context.allocator),
+		viewport   = viewport,
 	}
 	flatten_range(&st, 0, len(sc.ops), 0)
 	// Deferred macros run last, in the order met, so their draws and hits
@@ -102,7 +107,14 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			m := st.scene.macros[op.id]
 			assert(m.last >= 0, "flatten: defer of an unterminated macro")
 			assert(0 <= m.first && m.first <= m.last && m.last <= len(sc), "flatten: macro range out of bounds")
-			append(&st.deferred, Deferred{op.id, op.root ? ops.IDENTITY : st.transform})
+			t := op.root ? ops.IDENTITY : st.transform
+			if op.place.set {
+				side: ops.Side
+				shift: ops.Point
+				t, side, shift = place(t, op.place, st.viewport)
+				append(&st.f.placed, Placed{op.place.key, side, shift})
+			}
+			append(&st.deferred, Deferred{op.id, t})
 		case ops.Fill:
 			append(&st.f.draws, Draw{st.transform, st.clip, op})
 		case ops.Stroke:
@@ -134,4 +146,89 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 	}
 	assert(len(st.transforms) == base_t, "flatten: transform_push without transform_pop")
 	assert(len(st.clips) == base_c, "flatten: clip_push without clip_pop")
+}
+
+// place is the transform a popup's macro runs under, and the side it
+// chose. The popup opens on p.side unless that leaves it further outside
+// viewport than the opposite side does; then it is shifted along both
+// axes to lie inside, flush with viewport's start when larger than it.
+// The popup's origin is placed in its anchor's own coordinates first and
+// composed with t in f64, as a plain translate would be, so a popup that
+// fits lands exactly where an unplaced one would; only a flip or a shift
+// moves it. A zero viewport, or an anchor wholly outside it (a widget
+// scrolled out of view), keeps p.side and shifts nothing.
+@(private = "file")
+place :: proc(t: ops.Affine, p: ops.Placement, viewport: ops.Rect) -> (ops.Affine, ops.Side, ops.Point) {
+	origin :: proc(a: ops.Rect, size: ops.Size, gap: f32, side: ops.Side, align: ops.Side_Align) -> ops.Point {
+		along :: proc(start, len, size: f32, align: ops.Side_Align) -> f32 {
+			switch align {
+			case .Center:
+				return start + (len - size) / 2
+			case .End:
+				return start + len - size
+			case .Start:
+			}
+			return start
+		}
+		switch side {
+		case .Below:
+			return {along(a.x, a.w, size.x, align), a.y + a.h + gap}
+		case .Above:
+			return {along(a.x, a.w, size.x, align), a.y - gap - size.y}
+		case .After:
+			return {a.x + a.w + gap, along(a.y, a.h, size.y, align)}
+		case .Before:
+			return {a.x - gap - size.x, along(a.y, a.h, size.y, align)}
+		}
+		return {}
+	}
+	// device is the popup's device rect with its local origin at o.
+	device :: proc(t: ops.Affine, o: ops.Point, size: ops.Size) -> ops.Rect {
+		return ops.transform_rect(ops.mul(ops.translate(o.x, o.y), t), {0, 0, size.x, size.y})
+	}
+	// overflow is how far r's main axis leaves the viewport.
+	overflow :: proc(r: ops.Rect, side: ops.Side, v: ops.Rect) -> f32 {
+		lo, hi, vlo, vhi := r.y, r.y + r.h, v.y, v.y + v.h
+		if side == .After || side == .Before {
+			lo, hi, vlo, vhi = r.x, r.x + r.w, v.x, v.x + v.w
+		}
+		return max(vlo - lo, 0) + max(hi - vhi, 0)
+	}
+	OPPOSITE := [ops.Side]ops.Side {
+		.Below  = .Above,
+		.Above  = .Below,
+		.After  = .Before,
+		.Before = .After,
+	}
+	side := p.side
+	o := origin(p.anchor, p.size, p.gap, side, p.align)
+	a := ops.transform_rect(t, p.anchor)
+	v := viewport
+	// Inclusive, so a zero-width or zero-height anchor (an edge or a point)
+	// counts as visible when it lies within the viewport.
+	visible := v.w > 0 && v.h > 0 && a.x <= v.x + v.w && a.x + a.w >= v.x && a.y <= v.y + v.h && a.y + a.h >= v.y
+	if !visible {
+		return ops.mul(ops.translate(o.x, o.y), t), side, {}
+	}
+	r := device(t, o, p.size)
+	if out := overflow(r, side, v); out > 0 {
+		flip := OPPOSITE[side]
+		fo := origin(p.anchor, p.size, p.gap, flip, p.align)
+		fr := device(t, fo, p.size)
+		if overflow(fr, flip, v) < out {
+			side, o, r = flip, fo, fr
+		}
+	}
+	out := ops.mul(ops.translate(o.x, o.y), t)
+	dx := max(min(r.x, v.x + v.w - r.w), v.x) - r.x
+	dy := max(min(r.y, v.y + v.h - r.h), v.y) - r.y
+	out.e += f64(dx)
+	out.f += f64(dy)
+	// The shift in the anchor's coordinates: the device shift through t's
+	// inverse linear part.
+	shift: ops.Point
+	if inv, ok := ops.invert(t); ok {
+		shift = {f32(inv.a * f64(dx) + inv.c * f64(dy)), f32(inv.b * f64(dx) + inv.d * f64(dy))}
+	}
+	return out, side, shift
 }

@@ -151,7 +151,7 @@ run :: proc(app: App) {
 			ops.transform_pop(&sc)
 		}
 		build_start := t.tick_now()
-		ui.flatten(&sc, frame)
+		ui.flatten(&sc, frame, {0, 0, size.x * density, size.y * density})
 
 		ops_bytes := ops.encode(&sc, allocator)
 		// host is what the host said presenting the frame before cost.

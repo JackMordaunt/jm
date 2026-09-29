@@ -121,7 +121,7 @@ probe_frame :: proc(p: ^Probe) {
 	debug_tray(&gtx, &p.tray) // last: over the inspector's highlight too
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	build_start := time.tick_now()
-	flatten(&p.scene, &p.frame)
+	flatten(&p.scene, &p.frame, {0, 0, p.size.x, p.size.y})
 	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), int(p.arena.arena.total_used)))
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
@@ -247,6 +247,18 @@ probe_dump :: proc(p: ^Probe) -> string {
 // probe_dump_frame is dump_frame of the current frame.
 probe_dump_frame :: proc(p: ^Probe) -> string {
 	return dump_frame(probe_current(p))
+}
+
+// probe_tagged reports whether the current frame tags anything name,
+// whether or not it has an input area: a label, a message, a row that
+// only paints. probe_find is the one for what a pointer can reach.
+probe_tagged :: proc(p: ^Probe, name: string) -> bool {
+	for t in probe_current(p).tags {
+		if t.name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // probe_names lists every tag name in the current frame in recording
