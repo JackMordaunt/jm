@@ -6,6 +6,7 @@ import "core:math"
 import "core:strconv"
 import "jm:timefmt"
 import "jm:ui"
+import "jm:ui/design"
 import tok "jm:ui/material/tokens"
 
 // Date and time pickers (m3e-kit components/date-picker.json:
@@ -13,44 +14,11 @@ import tok "jm:ui/material/tokens"
 // comp.time-picker, comp.time-input) and the carousel (carousel.json, which
 // has no tokens: its keyline strategies are the spec's).
 
-Date :: struct {
-	year:  int,
-	month: int, // 1-12
-	day:   int, // 1-31
-}
-
-// days_in_month is the length of month (1-12) in year, Gregorian.
-days_in_month :: proc(year, month: int) -> int {
-	switch month {
-	case 2:
-		leap := (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
-		return leap ? 29 : 28
-	case 4, 6, 9, 11:
-		return 30
-	}
-	return 31
-}
-
-// weekday is 0 (Sunday) to 6 for a Gregorian date (Sakamoto's method).
-weekday :: proc(d: Date) -> int {
-	T := [12]int{0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4}
-	y := d.year
-	if d.month < 3 {
-		y -= 1
-	}
-	return (y + y / 4 - y / 100 + y / 400 + T[d.month - 1] + d.day) % 7
-}
-
-// date_less reports whether a is before b.
-date_less :: proc(a, b: Date) -> bool {
-	if a.year != b.year {
-		return a.year < b.year
-	}
-	if a.month != b.month {
-		return a.month < b.month
-	}
-	return a.day < b.day
-}
+// Date and its arithmetic are jm:ui/design's (design/calendar.odin).
+Date :: design.Date
+days_in_month :: design.days_in_month
+weekday :: design.weekday
+date_less :: design.date_less
 
 // Date_Mode is the date picker's display mode (date-picker.json inputs.displayMode).
 Date_Mode :: enum u8 {
