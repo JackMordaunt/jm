@@ -85,7 +85,9 @@ jobs:
         run: |
           if [ -n "${PGROOT:-}" ] && [ -f "$PGROOT/lib/libpq.lib" ]; then
             echo "$PGBIN" >> "$GITHUB_PATH"
-            echo "LINKFLAGS=/LIBPATH:$(cygpath -w "$PGROOT/lib")" >> "$GITHUB_ENV"
+            # The 8.3 spelling: the linker splits a /LIBPATH at the space in
+            # "Program Files".
+            echo "LINKFLAGS=/LIBPATH:$(cygpath -d "$PGROOT/lib")" >> "$GITHUB_ENV"
             echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
           else
             echo "no PostgreSQL on this image: pq is left out"
