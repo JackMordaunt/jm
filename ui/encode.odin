@@ -87,8 +87,9 @@ encode :: proc(ops: ^Ops, allocator := context.allocator) -> []byte {
 }
 
 // decode reads an encoded stream into ops, which is emptied first (fonts
-// and images too: the stream is authoritative). Slices and strings are
-// allocated from ops.allocator. It returns false on truncation, bad magic
+// and images too: the stream is authoritative). Its slices and strings live
+// in ops' own decode arena until the next decode into ops resets it, so a
+// decoded frame is valid until then and none of it accumulates. It returns false on truncation, bad magic
 // or version, an unknown tag or enum value, trailing bytes, or a reference
 // (path, run, macro) out of range; ops then holds a partial decode. It never
 // panics on hostile input.
@@ -96,9 +97,17 @@ decode :: proc(data: []byte, ops: ^Ops) -> bool {
 	ops_reset(ops)
 	clear(&ops.fonts)
 	clear(&ops.images)
+	if !ops.has_decoded {
+		if frame_arena_init(&ops.decoded) != nil {
+			return false
+		}
+		ops.has_decoded = true
+	}
+	frame_arena_reset(&ops.decoded)
+	a := frame_arena_allocator(&ops.decoded)
 	r := Reader {
 		data      = data,
-		allocator = ops.allocator,
+		allocator = a,
 	}
 	for c in transmute([]byte)string(ENCODE_MAGIC) {
 		if b, ok := get_u8(&r); !ok || b != c {
@@ -134,7 +143,7 @@ decode :: proc(data: []byte, ops: ^Ops) -> bool {
 	}
 	for _ in 0 ..< n {
 		nv := get_count(&r, 1) or_return
-		verbs := make([]Path_Verb, nv, ops.allocator)
+		verbs := make([]Path_Verb, nv, a)
 		for &v in verbs {
 			b := get_u8(&r) or_return
 			if b > u8(max(Path_Verb)) {
@@ -143,7 +152,7 @@ decode :: proc(data: []byte, ops: ^Ops) -> bool {
 			v = Path_Verb(b)
 		}
 		np := get_count(&r, 8) or_return
-		points := make([]Point, np, ops.allocator)
+		points := make([]Point, np, a)
 		for &q in points {
 			q = get_point(&r) or_return
 		}
@@ -157,7 +166,7 @@ decode :: proc(data: []byte, ops: ^Ops) -> bool {
 		run.font = Font_Id(get_u32(&r) or_return)
 		run.size = get_f32(&r) or_return
 		ng := get_count(&r, 12) or_return
-		run.glyphs = make([]Glyph, ng, ops.allocator)
+		run.glyphs = make([]Glyph, ng, a)
 		for &g in run.glyphs {
 			g.id = get_u32(&r) or_return
 			g.x = get_f32(&r) or_return

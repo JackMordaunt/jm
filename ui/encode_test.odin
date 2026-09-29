@@ -1,6 +1,7 @@
 package ui
 
 import "core:math/rand"
+import "core:mem"
 import "core:mem/virtual"
 import "core:slice"
 import "core:testing"
@@ -146,4 +147,35 @@ test_decode_survives_random_bytes :: proc(t: ^testing.T) {
 			_ = dump(&dst, virtual.arena_allocator(&scratch))
 		}
 	}
+}
+
+@(test)
+test_decode_frees_the_frame_before :: proc(t: ^testing.T) {
+	// A host decodes a frame a refresh; what one decode allocates (paths,
+	// glyphs, strings) must not outlive the next, or memory climbs.
+	src: Ops
+	ops_init(&src, context.temp_allocator)
+	golden_scene(&src)
+	tag(&src, 99, "a tag")
+	append(&src.ops, Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view"})
+	data := encode(&src, context.temp_allocator)
+	defer free_all(context.temp_allocator)
+
+	track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	defer mem.tracking_allocator_destroy(&track)
+	dst: Ops
+	ops_init(&dst, mem.tracking_allocator(&track))
+	testing.expect(t, decode(data, &dst))
+	after_one := track.current_memory_allocated
+	used, reserved := dst.decoded.arena.total_used, dst.decoded.arena.total_reserved
+	testing.expect(t, used > 0) // the decoded data is in the arena, where the heap does not see it
+	for _ in 0 ..< 50 {
+		testing.expect(t, decode(data, &dst))
+	}
+	testing.expect_value(t, track.current_memory_allocated, after_one) // nothing piled up on the heap
+	testing.expect_value(t, dst.decoded.arena.total_used, used) // each decode reused the last one's space
+	testing.expect_value(t, dst.decoded.arena.total_reserved, reserved)
+	ops_destroy(&dst)
+	testing.expect_value(t, len(track.allocation_map), 0) // and destroy frees it all
 }

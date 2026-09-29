@@ -142,6 +142,11 @@ Ops :: struct {
 	images:    [dynamic]Image_Ref,
 	allocator: mem.Allocator,
 	debug:     Debug_Flags, // the frame's Ctx.debug: under .Bounds, input_area outlines each area it records
+	// decoded holds what decode read (paths, glyphs, strings) until the next
+	// decode resets it: a host decodes a frame a refresh, and anything kept
+	// longer piles up.
+	decoded:   Frame_Arena,
+	has_decoded: bool,
 }
 
 ops_init :: proc(o: ^Ops, allocator := context.allocator) {
@@ -164,6 +169,9 @@ ops_reset :: proc(o: ^Ops) {
 }
 
 ops_destroy :: proc(o: ^Ops) {
+	if o.has_decoded {
+		frame_arena_destroy(&o.decoded)
+	}
 	delete(o.ops)
 	delete(o.paths)
 	delete(o.runs)
