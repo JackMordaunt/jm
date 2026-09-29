@@ -413,8 +413,8 @@
 //     32-bit address space, and none to spare on anything embedded.
 //   - address space to reserve, and a way to say so: mmap on POSIX, VirtualAlloc on
 //     Windows. m3_host_none.h refuses to build with this on.
-//   - a way to catch the fault. On Windows that means a compiler that speaks
-//     __try/__except - MSVC or clang-cl, not MinGW.
+//   - a way to catch the fault: a SIGSEGV handler on POSIX, a vectored exception
+//     handler first in line on Windows (m3_host_win32.h says why first).
 //   - no d_m3FixedHeap: the memory comes from the system here, not from that heap.
 //
 // d_m3GuardedArenaSlots caps how many memories a process can have at once, since

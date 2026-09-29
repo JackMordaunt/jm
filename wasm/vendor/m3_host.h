@@ -166,9 +166,6 @@ bool m3_HostReadFile (const char* i_path, size_t i_maxBytes, M3HostFile* o_file)
 #  if d_m3FixedHeap
 #    error "d_m3GuardedMemory and d_m3FixedHeap are two different places for a linear memory to come from"
 #  endif
-#  if defined(_WIN32) && !defined(_MSC_VER)
-#    error "d_m3GuardedMemory on Windows needs __try/__except - build with MSVC or clang-cl"
-#  endif
 
 // The system's allocation granularity: what a reservation's size and a commit's
 // bounds are rounded to. Never zero.

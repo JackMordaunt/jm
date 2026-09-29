@@ -189,11 +189,11 @@ void m3_HostRelease (void* i_address, size_t i_bytes)
     VirtualFree(i_address, 0, MEM_RELEASE);
 }
 
-// Which faults are ours, for the filter below. Read from the exception record
+// Which faults are ours, for the handler below. Read from the exception record
 // rather than from anything of ours, so nothing here depends on what the faulting
 // code was in the middle of.
 static
-bool guard_fault (EXCEPTION_POINTERS* i_info, void* i_low, size_t i_bytes)
+bool guard_fault (const EXCEPTION_POINTERS* i_info, const u8* i_low, size_t i_bytes)
 {
     if (i_info == NULL or i_info->ExceptionRecord == NULL) {
         return false;
@@ -209,31 +209,96 @@ bool guard_fault (EXCEPTION_POINTERS* i_info, void* i_low, size_t i_bytes)
     // [0] says read or write, [1] is the address that could not be reached
     const u8* address = (const u8*)record->ExceptionInformation[1];
 
-    return address >= (const u8*)i_low and address < (const u8*)i_low + i_bytes;
+    return address >= i_low and address < i_low + i_bytes;
+}
+
+// One protected call on this thread: the region it guards, and the thread's context
+// at the point m3_HostProtectedCall carries on from when the body faults - the Win32
+// counterpart of the sigjmp_buf on POSIX. CONTEXT wants 16-byte alignment and
+// declares it, which the struct inherits.
+typedef struct M3GuardFrame {
+    CONTEXT              resume;
+    const u8*            low;
+    size_t               bytes;
+    struct M3GuardFrame* previous;
+    volatile LONG        faulted;
+} M3GuardFrame;
+
+static M3_THREAD_LOCAL M3GuardFrame* g_guardFrame;
+
+// 0 until the first ask, then 1 for a handler in place or 2 for none: settled once,
+// as m3_host.h says, and by whichever thread asks first.
+static volatile LONG                 g_guards;
+
+// A vectored handler, first in line, rather than the __try/__except this used to be.
+// Every vectored handler in the process runs before any frame's __except - and a
+// process may well have one that was not ours: a test runner's or a crash reporter's,
+// which takes a fault in our arena for a crash and ends the thread before the frame
+// handler is ever asked. Registering first is what makes the fault ours to answer.
+//
+// The answer is to hand the thread back to m3_HostProtectedCall at the point it saved:
+// the dispatcher restores the saved context on our behalf when this returns
+// EXCEPTION_CONTINUE_EXECUTION with it in place of the faulting one. Nothing between
+// is unwound, and nothing needs to be: what the body was doing is data on the heap,
+// as the POSIX path's siglongjmp relies on too.
+static
+LONG CALLBACK guard_handler (EXCEPTION_POINTERS* i_info)
+{
+    M3GuardFrame* frame = g_guardFrame;
+
+    if (frame and guard_fault(i_info, frame->low, frame->bytes)) {
+        frame->faulted = 1;
+        *i_info->ContextRecord = frame->resume;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    return EXCEPTION_CONTINUE_SEARCH;
 }
 
 bool m3_HostGuardsActive (void)
 {
-    // __try/__except is part of the frame m3_HostProtectedCall compiles to, so there is
-    // nothing to install and nothing another part of the process can take away
-    return true;
+    if (g_guards == 0) {
+        PVOID handler = AddVectoredExceptionHandler(1 /* first */, guard_handler);
+        LONG  state = handler ? 1 : 2;
+
+        if (InterlockedCompareExchange(&g_guards, state, 0) != 0 and handler) {
+            // another thread's handler went in first; one is enough
+            RemoveVectoredExceptionHandler(handler);
+        }
+    }
+
+    return g_guards == 1;
 }
 
-// Structured exception handling rather than a vectored handler: the unwind is the
-// system's to do, so the stack between here and the fault is given back properly
-// instead of being jumped over. It is also why this needs a compiler that speaks
-// __try - see d_m3GuardedMemory.
 bool m3_HostProtectedCall (void (*i_body)(void*), void* i_context,
                            void* i_guardLow, size_t i_guardBytes)
 {
-    __try {
-        i_body(i_context);
-        return true;
-    } __except (guard_fault(GetExceptionInformation(), i_guardLow, i_guardBytes)
-                  ? EXCEPTION_EXECUTE_HANDLER
-                  : EXCEPTION_CONTINUE_SEARCH) {
+    if (not m3_HostGuardsActive()) {
         return false;
     }
+
+    M3GuardFrame frame;
+    frame.low = (const u8*)i_guardLow;
+    frame.bytes = i_guardBytes;
+    frame.previous = g_guardFrame;
+    frame.faulted = 0;
+
+    g_guardFrame = &frame;
+
+    // Returns once now, and once more from guard_handler if the body faults, with
+    // faulted set; faulted is volatile so the second time is read from memory rather
+    // than from a register the first time left behind.
+    RtlCaptureContext(&frame.resume);
+
+    if (frame.faulted) {
+        g_guardFrame = frame.previous;
+        return false;
+    }
+
+    i_body(i_context);
+
+    g_guardFrame = frame.previous;
+    return true;
 }
 
 #endif // d_m3GuardedMemory
