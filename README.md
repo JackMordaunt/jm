@@ -111,8 +111,6 @@ just sqlite    compile the vendored SQLite  just wasm      compile wasm3
 just pg_query  compile the vendored libpg_query
 just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
-just kitchen   open the jm:ui demo       just kitchen-dump  its first frame as text
-just kitchen-png  render it to build/kitchen.png
 just material-kitchen  build and open the hot-reloaded M3 kitchen
 just material-png page=Chips  render one M3 kitchen page to build/
 just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
@@ -605,9 +603,9 @@ asserted on, serialized (`encode`) for a renderer in another process, or
 driven by `ui.Probe` with no window at all:
 
 ```
-build/debug/ui-kitchen -dump                    the scene as text
-build/debug/ui-kitchen -click Save -names       click by tag, list what is on screen
-build/debug/ui-kitchen -click name -type Ada -png out.png
+build/debug/material-kitchen-child -page Buttons -dump          the scene as text
+build/debug/material-kitchen-child -page Menus -click Edit -events   click by tag, list what it routed
+build/debug/material-kitchen-child -page Buttons -png out.png   render it headlessly
 ```
 
 Widgets nest through containers with no per-child boilerplate:
@@ -615,16 +613,20 @@ Widgets nest through containers with no per-child boilerplate:
 ```odin
 col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
 ui.label(gtx, "Name")
-ui.text_field(gtx, &m.name)
-if ui.button(gtx, "Save") { save(m) }
+m3.text_field(gtx, &m.name, "Name")
+if m3.button(gtx, "Save") { save(m) }
 ```
+
+`ui` itself has layout, input, text and paint plus a few plain widgets
+(label, divider, list); the components come from a design system on top
+of it, `ui/material` today, through the shared `ui/design` layer.
 
 A zero field in a style struct takes the theme's value. Clipping is exact for
 any shape under any affine: Blend2D clips only to rectangles, so a path or
 rotated clip renders through an A8 mask. The Blend2D binding is copied from
 `odin-blend2d`; `just blend2d` builds its archive from that checkout's source
 (`BLEND2D_SRC`), and anything linking it needs `-lstdc++`.
-`examples/ui-kitchen` is the demo, `just kitchen` opens it.
+`examples/material-kitchen` is the demo, `just material-kitchen` opens it.
 
 That "serialized for a renderer in another process" is `ui/sdl.run_host`:
 a host owns the window and renders, a subprocess (`ui/child`) owns the
@@ -635,13 +637,10 @@ the host re-reads it and respawns the child on a change, never
 overwriting a running executable in place, which Windows refuses.
 `examples/hot-counter` (a two-binary click counter),
 `examples/hot-architecture` (a live-editable diagram of this very
-pipeline) and `examples/hot-button` (every M3 button kind — filled,
-tonal, outlined, text, elevated, icon, FAB and its sizes, extended FAB,
-segmented, split) and `examples/material-kitchen` (every `ui/material`
+pipeline) and `examples/material-kitchen` (every `ui/material`
 component, a page each, in all its spec states) are the demos; `just
-hot-architecture` and `just hot-button` build their own host and print
-the two commands that run them, and `just material-kitchen` builds and
-opens its own. `tools/hot-watch`
+hot-architecture` builds its own host and prints the two commands that
+run it, and `just material-kitchen` builds and opens its own. `tools/hot-watch`
 takes extra directories to watch after the pointer file, so a child
 rebuilds when the `ui` package it imports is edited too, and with `-host`
 it rebuilds the host as well, which restarts itself when the ops

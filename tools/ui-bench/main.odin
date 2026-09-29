@@ -20,6 +20,7 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "jm:ui"
+import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 import "jm:ui/render"
 
@@ -65,9 +66,9 @@ row :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 	r := ui.row_open(gtx, gap = 8, align = .Center)
 	defer ui.close(&r)
 	ui.label(gtx, fmt.tprintf("Row %d", i))
-	ui.checkbox(gtx, "on", &s.toggle)
+	m3.checkbox(gtx, &s.toggle)
 	ui.fill_space(gtx)
-	if ui.button(gtx, "Pick") {
+	if m3.button(gtx, "Pick") {
 		s.count += 1
 	}
 }

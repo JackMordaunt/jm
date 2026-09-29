@@ -362,7 +362,7 @@ test_state_is_pruned_after_a_frame_unseen :: proc(t: ^testing.T) {
 	h: Harness
 	harness_init(&h)
 	defer harness_destroy(&h)
-	button(&h.gtx, "a")
+	widget_state(&h.gtx, scoped_id(&h.gtx)) // a widget asking for retained state
 	testing.expect_value(t, len(h.layout.state), 1)
 	harness_frame(&h)
 	testing.expect_value(t, len(h.layout.state), 1)
@@ -386,28 +386,15 @@ test_id_is_stable_per_site_and_key :: proc(t: ^testing.T) {
 @(test)
 test_style_zero_means_theme :: proc(t: ^testing.T) {
 	th := light_theme(0)
-	b := resolve_button(&th, {})
-	testing.expect_value(t, b.fill, th.accent)
-	testing.expect_value(t, b.text, th.on_accent)
-	testing.expect_value(t, b.radius, f32(0)) // unresolved here; button() defaults it to a pill from the measured height
-	testing.expect_value(t, b.padding, Padding{12, 6, 12, 6})
-	o := resolve_button(&th, {fill = th.danger, radius = -1})
-	testing.expect_value(t, o.fill, th.danger)
-	testing.expect_value(t, o.text, th.on_accent)
-	testing.expect_value(t, o.radius, f32(-1)) // resolve_button passes radius through untouched; button() turns negative into exactly 0
-	tonal := resolve_button(&th, {kind = .Tonal})
-	testing.expect_value(t, tonal.fill, th.secondary_container)
-	testing.expect_value(t, tonal.text, th.on_secondary_container)
-	outlined := resolve_button(&th, {kind = .Outlined})
-	testing.expect_value(t, outlined.fill, CLEAR)
-	testing.expect_value(t, outlined.outline, th.outline)
-	testing.expect_value(t, outlined.text, th.accent)
-	l := resolve_label(&th, {size = th.heading_size})
-	testing.expect_value(t, l.color, th.fg)
-	testing.expect_value(t, l.size, f32(20))
-	d := dark_theme(0)
-	testing.expect(t, d.bg != th.bg)
-	testing.expect_value(t, default_theme(0), th)
+	s := resolve_label(&th, {})
+	testing.expect_value(t, s.color, th.fg)
+	testing.expect_value(t, s.size, th.text_size)
+	o := resolve_label(&th, {color = th.danger})
+	testing.expect_value(t, o.color, th.danger) // an override stays
+	testing.expect_value(t, o.size, th.text_size) // the rest is the theme's
+	b := resolve_box(&th, {})
+	testing.expect_value(t, b.fill, th.surface)
+	testing.expect_value(t, b.outline, th.outline)
 }
 
 // Of several frame requests the soonest wins, whatever the order, and a

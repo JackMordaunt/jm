@@ -10,9 +10,6 @@
 #   just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 #   just blend2d   compile Blend2D into ui/blend2d/lib from BLEND2D_SRC
 #   just libgit2   compile libgit2 into git/lib from LIBGIT2_SRC
-#   just kitchen   build and open the jm:ui kitchen-sink demo
-#   just kitchen-dump  print the demo's first frame as text, no window
-#   just kitchen-png   render the demo's first frame to build/kitchen.png
 #   just material-kitchen  build and open the hot-reloaded Material 3 kitchen
 #   just material-png  render one material-kitchen page headlessly
 #   just material-tokens  regenerate ui/material/tokens from the m3e-kit
@@ -280,7 +277,6 @@ check:
       {{odin}} check ui/render/fuzz {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/child {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
-      {{odin}} check examples/ui-kitchen {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hotreload-diagram {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hot-counter/child {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/hot-counter/host {{flags}} -target:$t || exit 1; \
@@ -371,13 +367,6 @@ sdl3:
 
 # The demo is the proof that the pieces of jm:ui fit: a window, or the same
 # frame as text or as a PNG without one.
-#
-# Build and open the jm:ui kitchen-sink demo
-kitchen: blend2d sdl3
-    mkdir -p build/debug
-    {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
-    build/debug/ui-kitchen{{exe}}
-
 # Build the hot-reloaded architecture-diagram demo: a live-editable
 # diagram of jm:ui's own input/layout/render pipeline, respawned by
 # tools/hot-watch every time examples/hot-architecture/child changes.
@@ -391,19 +380,6 @@ hot-architecture: blend2d sdl3
     @echo "terminal 1: build/debug/hot-watch{{exe}} examples/hot-architecture/child build/debug/hot-architecture.watch"
     @echo "terminal 2: build/debug/hot-architecture-host{{exe}} build/debug/hot-architecture.watch"
     @echo "then edit examples/hot-architecture/child/main.odin and watch the window update."
-
-# Build the hot-reloaded button pilot: one widget (button), watched live
-# while ui/widget_button.odin and ui/theme.odin are edited elsewhere in the
-# tree — the watch is on examples/hot-button/child, but a rebuild is
-# triggered by touching either its own file or a jm:ui source it imports,
-# so edit the widget/theme files and touch the child (or just re-save it).
-hot-button: blend2d sdl3
-    mkdir -p build/debug
-    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/hot-button/host -debug {{flags}} {{cxx_link}} -out:build/debug/hot-button-host{{exe}}
-    @echo "terminal 1: build/debug/hot-watch{{exe}} examples/hot-button/child build/debug/hot-button.watch"
-    @echo "terminal 2: build/debug/hot-button-host{{exe}} build/debug/hot-button.watch"
-    @echo "then edit ui/widget_button.odin or ui/theme.odin and watch the window update."
 
 # examples/material-kitchen: every jm:ui/material component, one page
 # each. Build it and open its window; hot-watch runs in the background
@@ -439,18 +415,6 @@ material-png page="Buttons": blend2d
     mkdir -p build/debug
     {{odin}} build examples/material-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-child{{exe}}
     build/debug/material-kitchen-child{{exe}} -page "{{page}}" -png "build/material-{{page}}.png"
-
-# Print the demo's first frame as text, no window
-kitchen-dump: blend2d sdl3
-    mkdir -p build/debug
-    {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
-    build/debug/ui-kitchen{{exe}} -dump
-
-# Render the demo's first frame to build/kitchen.png, no window
-kitchen-png: blend2d sdl3
-    mkdir -p build/debug
-    {{odin}} build examples/ui-kitchen -debug {{flags}} {{cxx_link}} -out:build/debug/ui-kitchen{{exe}}
-    build/debug/ui-kitchen{{exe}} -png build/kitchen.png
 
 # Remove build/ and the compiled SQLite, wasm3, libpg_query and Blend2D archives
 clean:

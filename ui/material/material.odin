@@ -109,10 +109,6 @@ theme_for :: proc(s: ^Scheme, font: ui.Font_Id) -> ui.Theme {
 	th.on_accent = s[.On_Primary]
 	th.outline = s[.Outline_Variant]
 	th.danger = s[.Error]
-	th.primary_container = s[.Primary_Container]
-	th.on_primary_container = s[.On_Primary_Container]
-	th.secondary_container = s[.Secondary_Container]
-	th.on_secondary_container = s[.On_Secondary_Container]
 	th.text_size = 14
 	return th
 }

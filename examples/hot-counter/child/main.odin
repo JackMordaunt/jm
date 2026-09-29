@@ -12,6 +12,7 @@ package main
 import "core:fmt"
 import "core:os"
 import "jm:ui"
+import m3 "jm:ui/material"
 import "jm:ui/child"
 import "jm:ui/render"
 
@@ -31,11 +32,11 @@ counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	defer ui.close(&pad)
 	row := ui.row_open(gtx, gap = 12, align = .Center)
 	defer ui.close(&row)
-	if ui.button(gtx, "-") {
+	if m3.button(gtx, "-") {
 		m.count -= 1
 	}
 	ui.label(gtx, fmt.tprintf("count %d", m.count), {size = th.heading_size})
-	if ui.button(gtx, "+") {
+	if m3.button(gtx, "+") {
 		m.count += 1
 	}
 }

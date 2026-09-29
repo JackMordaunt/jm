@@ -9,8 +9,8 @@ serialized, or driven by a probe without a window.
 	ui :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
 		ui.label(gtx, "Name")
-		ui.text_field(gtx, &m.name)
-		if ui.button(gtx, "Save") { save(m) }
+		ui.label(gtx, m.name)
+		if m3.button(gtx, "Save") { save(m) } // a design system's widget, on the same gtx
 	}
 
 Frame flow: router_route(router, previous frame) -> ops_reset -> ui(gtx) ->

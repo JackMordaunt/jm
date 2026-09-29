@@ -6,6 +6,7 @@ import "core:mem"
 import "core:testing"
 
 import "jm:ui"
+import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 
 @(private = "file")
@@ -371,9 +372,9 @@ widgets_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		r := ui.row_open(gtx, gap = 8, align = .Center)
 		defer ui.close(&r)
 		ui.label(gtx, fmt.tprintf("Row %d", i))
-		ui.checkbox(gtx, "on", &w.on)
+		m3.checkbox(gtx, &w.on)
 		ui.fill_space(gtx)
-		ui.button(gtx, "Pick")
+		m3.button(gtx, "Pick")
 	}, w)
 }
 

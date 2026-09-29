@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:strings"
 import "core:time"
 import "jm:ui"
+import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 import "jm:ui/render"
 
@@ -22,8 +23,8 @@ compose_card :: proc(gtx: ^ui.Ctx, s: ^Compose_State, i: int, x, y: f32, text: s
 	card := ui.box_open(gtx, key = u64(i))
 	r := ui.row_open(gtx, gap = 6, align = .Center, key = u64(i))
 	ui.label(gtx, text)
-	ui.checkbox(gtx, "", &s.toggle, key = u64(i))
-	ui.button(gtx, "Go", key = u64(i))
+	m3.checkbox(gtx, &s.toggle, key = u64(i))
+	m3.button(gtx, "Go", key = u64(i))
 	ui.close(&r)
 	ui.close(&card)
 	ui.transform_pop(gtx.ops)

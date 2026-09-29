@@ -5,6 +5,7 @@ import "core:math"
 import "core:strings"
 import "core:time"
 import "jm:ui"
+import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 import "jm:ui/render"
 
@@ -83,7 +84,7 @@ sweep_button :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
 		gtx.constraints = ui.loose(c)
-		ui.button(gtx, "Pick", key = u64(i))
+		m3.button(gtx, "Pick", key = u64(i))
 		ui.transform_pop(gtx.ops)
 	}
 	gtx.constraints = outer
@@ -101,8 +102,8 @@ sweep_panel :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		card := ui.box_open(gtx, key = u64(i))
 		r := ui.row_open(gtx, gap = 8, align = .Center, key = u64(i))
 		ui.label(gtx, fmt.tprintf("Item %d", i))
-		ui.checkbox(gtx, "on", &s.toggle, key = u64(i))
-		ui.button(gtx, "Pick", key = u64(i))
+		m3.checkbox(gtx, &s.toggle, key = u64(i))
+		m3.button(gtx, "Pick", key = u64(i))
 		ui.close(&r)
 		ui.close(&card)
 		ui.transform_pop(gtx.ops)

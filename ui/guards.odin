@@ -2,13 +2,12 @@ package ui
 
 import "base:runtime"
 
-// Guards: every container opener as a self-closing form, in the spirit of
-// core:sync's guard procs:
+// Guards: every container opener as a self-closing form.
 //
 //	if ui.column(gtx, gap = 8) {
 //		ui.label(gtx, "Name")
 //		if ui.row(gtx, gap = 4) {
-//			ui.button(gtx, "Save")
+//			ui.label(gtx, "Save")
 //		}
 //	}
 //
@@ -24,19 +23,38 @@ import "base:runtime"
 // procs or needs the handle.
 
 @(deferred_in = column_guard_close)
-column :: proc(gtx: ^Ctx, gap: f32 = 0, align: Align = .Start, key: u64 = 0, loc := #caller_location) -> bool {
+column :: proc(
+	gtx: ^Ctx,
+	gap: f32 = 0,
+	align: Align = .Start,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
 	column_open(gtx, gap, align, key, loc)
 	return true
 }
 
 @(deferred_in = row_guard_close)
-row :: proc(gtx: ^Ctx, gap: f32 = 0, align: Align = .Start, key: u64 = 0, loc := #caller_location) -> bool {
+row :: proc(
+	gtx: ^Ctx,
+	gap: f32 = 0,
+	align: Align = .Start,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
 	row_open(gtx, gap, align, key, loc)
 	return true
 }
 
 @(deferred_in = wrap_guard_close)
-wrap :: proc(gtx: ^Ctx, gap: f32 = 0, line_gap: f32 = -1, align: Align = .Start, key: u64 = 0, loc := #caller_location) -> bool {
+wrap :: proc(
+	gtx: ^Ctx,
+	gap: f32 = 0,
+	line_gap: f32 = -1,
+	align: Align = .Start,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
 	wrap_open(gtx, gap, line_gap, align, key, loc)
 	return true
 }
@@ -81,17 +99,36 @@ scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, loc := #caller_l
 // and use only gtx.
 
 @(private = "file")
-column_guard_close :: proc(gtx: ^Ctx, gap: f32, align: Align, key: u64, loc: runtime.Source_Code_Location) {
+column_guard_close :: proc(
+	gtx: ^Ctx,
+	gap: f32,
+	align: Align,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
 	innermost_close(gtx, .Flex)
 }
 
 @(private = "file")
-row_guard_close :: proc(gtx: ^Ctx, gap: f32, align: Align, key: u64, loc: runtime.Source_Code_Location) {
+row_guard_close :: proc(
+	gtx: ^Ctx,
+	gap: f32,
+	align: Align,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
 	innermost_close(gtx, .Flex)
 }
 
 @(private = "file")
-wrap_guard_close :: proc(gtx: ^Ctx, gap: f32, line_gap: f32, align: Align, key: u64, loc: runtime.Source_Code_Location) {
+wrap_guard_close :: proc(
+	gtx: ^Ctx,
+	gap: f32,
+	line_gap: f32,
+	align: Align,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
 	innermost_close(gtx, .Flex)
 }
 
@@ -101,7 +138,12 @@ stack_guard_close :: proc(gtx: ^Ctx, key: u64, loc: runtime.Source_Code_Location
 }
 
 @(private = "file")
-inset_guard_close :: proc(gtx: ^Ctx, padding: Padding, key: u64, loc: runtime.Source_Code_Location) {
+inset_guard_close :: proc(
+	gtx: ^Ctx,
+	padding: Padding,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
 	innermost_close(gtx, .Inset)
 }
 
@@ -121,7 +163,12 @@ centered_guard_close :: proc(gtx: ^Ctx, key: u64, loc: runtime.Source_Code_Locat
 }
 
 @(private = "file")
-scroll_box_guard_close :: proc(gtx: ^Ctx, key: u64, min_width: f32, loc: runtime.Source_Code_Location) {
+scroll_box_guard_close :: proc(
+	gtx: ^Ctx,
+	key: u64,
+	min_width: f32,
+	loc: runtime.Source_Code_Location,
+) {
 	innermost_close(gtx, .Scroll)
 }
 

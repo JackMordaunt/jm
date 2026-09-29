@@ -23,8 +23,15 @@ import tok "jm:ui/material/tokens"
 // laid-out size rather than growing it, so an x-small button still lays
 // out 32 tall and neighbours may share the overhang.
 
-// Button_Kind is jm:ui's own: the same M3 variants, one owner.
-Button_Kind :: ui.Button_Kind
+// Button_Kind is which of M3's five common buttons: the kind picks the
+// colour roles and the elevation; state handling is the same for all.
+Button_Kind :: enum u8 {
+	Filled,
+	Tonal,
+	Outlined,
+	Text,
+	Elevated,
+}
 
 // Button_Size is the Expressive size scale shared by buttons, icon buttons
 // and split buttons: one comp.*-{x-small,small,medium,large,x-large} token
@@ -617,9 +624,7 @@ icon_button :: proc(
 }
 
 // Fab_Size is a FAB's size group: comp.fab-small, -baseline (Regular),
-// -medium (new in Expressive) and -large. It is material's own rather than
-// an alias of ui.Fab_Size, which has no Medium; the shared names keep
-// callers of the old alias compiling.
+// -medium (new in Expressive) and -large.
 Fab_Size :: enum u8 {
 	Small,
 	Regular,
