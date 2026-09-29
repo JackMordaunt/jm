@@ -233,3 +233,31 @@ bezier_ease :: proc(b: Bezier, x: f32) -> f32 {
 	}
 	return curve(b[1], b[3], (lo + hi) / 2)
 }
+
+// paint_shadow_layer paints one layer of a box shadow under rr: the
+// shape offset by (x, y) and blurred over blur px, in color. jm:ui has no
+// blur, so it is a stack of translucent round rects from blur/2 inside
+// the offset edge to blur/2 outside it, each carrying a share of the
+// colour's alpha: solid under the shape, fading to a quarter share at
+// the blur's edge. A system's shadow token is one or more such layers.
+paint_shadow_layer :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, x, y, blur: f32, color: ops.Color) {
+	if color[3] == 0 {
+		return
+	}
+	r := rr.rect
+	if blur <= 0 {
+		ops.fill(gtx.scene, ops.Round_Rect{{r.x + x, r.y + y, r.w, r.h}, rr.radius}, color)
+		return
+	}
+	steps := 4
+	share := f32(color[3]) / 255 / f32(steps)
+	for i in 0 ..< steps {
+		// Spread runs from -blur/2 (the innermost rect) to +blur/2.
+		spread := blur * (f32(i) / f32(steps - 1) - 0.5)
+		ops.fill(
+			gtx.scene,
+			ops.Round_Rect{{r.x + x - spread, r.y + y - spread, r.w + 2 * spread, r.h + 2 * spread}, max(rr.radius + spread, 0)},
+			ops.with_alpha(color, share),
+		)
+	}
+}

@@ -54,6 +54,7 @@ binary.
 | `ui/design` | what every design system on `ui` shares: the interaction states and per-frame `Control`, per-corner geometry, text shaping in a line box, a blur-free shadow, CSS easing, and a generic `Theme(Role, Context)` with axioms that `check` measures in every context (OKLab, APCA and WCAG metrics) |
 | `ui/base` | the smallest design system on `ui`: a five-role palette bound light and dark as an instance of `ui/design`, checked by its axioms, and the plain widgets every page needs — label, text, divider, panel; a full system maps its scheme down to it |
 | `ui/material` | Material 3 Expressive on `ui`: the colour scheme, type scale, shape, motion springs and state tokens generated from the m3e-kit into `ui/material/tokens`, Material Symbols icons as paths, and the components (buttons, text fields, selection controls, chips, cards, lists, navigation, app bars, tabs), each able to paint any spec state on demand |
+| `ui/fluent` | Fluent 2 on `ui`: the five colour themes (web and Teams, light and dark, high contrast), type ramp, spacing, radii, strokes, shadows and motion generated from the fluent-kit into `ui/fluent/tokens`, with states read as separate tokens through a `design.Control` and colour changes eased over the kit's duration and curve |
 | `ui/testutil` | `count_ops`: assertions a `ui` package's own tests and a downstream package's tests both want, without an import cycle |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
 | `pq`      | `connect`, `exec`, `escape_literal`, `escape_identifier`, `identity`: a PostgreSQL client over the system libpq, the one dynamically linked library |
@@ -622,8 +623,8 @@ if m3.button(gtx, "Save") { save(m) }
 
 `ui` itself has layout, input, text and paint and no look of its own;
 `ui/base` is the smallest design system on it (a checked palette, label,
-divider, panel) and `ui/material` the full one, both through the shared
-`ui/design` layer.
+divider, panel), `ui/material` and `ui/fluent` the full ones, all through
+the shared `ui/design` layer.
 
 A zero field in a style struct takes the theme's value. Clipping is exact for
 any shape under any affine: Blend2D clips only to rectangles, so a path or

@@ -5,8 +5,9 @@
 // named after their kit path: comp.button-small.container-height is
 // BUTTON_SMALL_CONTAINER_HEIGHT and sys.shape.corner.full is
 // SYS_SHAPE_CORNER_FULL. Units are the kit file's: dimensions dp (text
-// sp), durations ms, opacities 0-1.
-package tokens
+// sp), durations ms, opacities 0-1. The package is named apart from
+// ui/fluent/tokens so one program can link both systems.
+package material_tokens
 
 import "jm:ui/design"
 

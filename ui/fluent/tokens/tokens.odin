@@ -6,8 +6,9 @@
 // BORDER_RADIUS_MEDIUM, tokens.colorNeutralForeground1Hover is
 // Role.Neutral_Foreground1_Hover and typographyStyles.body1Strong is
 // TYPOGRAPHY_STYLES_BODY1_STRONG. Units are the kit file's: dimensions
-// px, durations ms.
-package tokens
+// px, durations ms. The package is named apart from ui/material/tokens
+// so one program can link both systems.
+package fluent_tokens
 
 import "jm:ui/design"
 
