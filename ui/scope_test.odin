@@ -77,6 +77,9 @@ test_retain_keeps_a_page_state_while_it_is_not_drawn :: proc(t: ^testing.T) {
 		retain(&h.gtx, &page) // switched away from, but kept
 	}
 	testing.expect_value(t, len(h.layout.state), 1)
+	for _, st in h.layout.state {
+		testing.expect_value(t, st.springs[0].value, 9) // kept as it was, not reset
+	}
 	for _ in 0 ..< 3 {
 		harness_frame(&h) // no longer retained
 	}
