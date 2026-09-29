@@ -171,7 +171,9 @@ jobs:
         env:
           MSYS_NO_PATHCONV: 1
         run: |
-          flags="-vet -strict-style -collection:jm=$PWD"
+          # GITHUB_WORKSPACE is the checkout in the platform's own spelling;
+          # Git Bash's $PWD (/d/a/jm/jm) is not a path Odin can open.
+          flags="-vet -strict-style -collection:jm=$GITHUB_WORKSPACE"
           # Odin takes -extra-linker-flags once and the value may hold
           # spaces, so the platform's flags and the C++ runtime Blend2D
           # needs travel as one quoted argument, held in arrays so an

@@ -148,6 +148,15 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 		return nil
 	}
 	c.frame, c.target, c.bg = f, target, bg
+	// Each worker's band buffers are sized for the whole frame up front:
+	// which worker paints the largest band changes with scheduling, so
+	// without this a frame that allocates nothing on one platform grows a
+	// buffer mid-paint on another (CI's macOS runner, in paint_band).
+	// A barrier can precede every kept draw, hence twice the draws.
+	for &w in c.workers {
+		reserve(&w.sub.draws, 2 * len(f.draws))
+		reserve(&w.sub.clips, len(f.clips))
+	}
 
 	// Worker 0 is this thread, so its font cache is safe to use here.
 	damage_begin(&c.damage, f, data.size.w, data.size.h, bg, &c.workers[0].r)
