@@ -13,6 +13,7 @@
 #   just material-kitchen  build and open the hot-reloaded Material 3 kitchen
 #   just material-png  render one material-kitchen page headlessly
 #   just material-tokens  regenerate ui/material/tokens from the m3e-kit
+#   just fluent-tokens  regenerate ui/fluent/tokens from the fluent-kit
 #   just material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just bench     time jm:wasm against the workloads in tools/wasm-bench
@@ -27,7 +28,7 @@ root  := replace(justfile_directory(), "\\", "/")
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/ops ui/testutil ui/design ui/base ui/diagram ui/ipc ui/material ui/material/tokens pq pq/testdb pq/fuzz git git/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/ops ui/testutil ui/design ui/base ui/diagram ui/ipc ui/material ui/material/tokens ui/fluent/tokens pq pq/testdb pq/fuzz git git/fuzz"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
@@ -287,7 +288,7 @@ check:
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/material-tokens {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/design-tokens {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/git-probe {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/material-shapes {{flags}} -target:$t || exit 1; \
     done
@@ -403,7 +404,11 @@ material-kitchen: blend2d sdl3
 # Regenerate ui/material/tokens/tokens.odin from the M3 Expressive kit's
 # resolved tokens. M3E_KIT is the kit checkout.
 material-tokens:
-    {{odin}} run tools/material-tokens {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/tokens/m3e.resolved.json" ui/material/tokens/tokens.odin
+    {{odin}} run tools/design-tokens {{flags}} -- material "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/tokens/m3e.resolved.json" ui/material/tokens/tokens.odin
+
+# Regenerate ui/fluent/tokens from the Fluent 2 kit's fluent.resolved.json.
+fluent-tokens:
+    {{odin}} run tools/design-tokens {{flags}} -- fluent "${FLUENT_KIT:-$HOME/Source/Personal/fluent-kit}/tokens/fluent.resolved.json" ui/fluent/tokens/tokens.odin
 
 # Regenerate ui/material/shape_data.odin, the loading indicator's morph
 # pairs, from the M3 Expressive kit's shapes/morphs.json.

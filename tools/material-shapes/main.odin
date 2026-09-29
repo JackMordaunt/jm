@@ -147,7 +147,7 @@ sequence :: proc(b: ^strings.Builder, mode: string, seq: json.Object) -> bool {
 }
 
 // number is v as an f64, whether json parsed it as an integer or a float:
-// a copy of tools/material-tokens' number, as each tool is its own main
+// a copy of tools/design-tokens' number, as each tool is its own main
 // package.
 number :: proc(v: json.Value) -> f64 {
 	#partial switch n in v {
