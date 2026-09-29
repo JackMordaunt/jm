@@ -524,9 +524,11 @@ writable :: proc(dir, rel: string) -> bool {
 // truncated object and on random bytes over one; a gdb backtrace put the
 // spin in git_zstream_get_output under read_loose, whose loop in
 // src/util/zstream.c runs while inflate reports Z_BUF_ERROR on exhausted
-// input and zstream_seterr does not count that as an error. The suite has
-// no cancel to cut such a case short, so the object store stays out until
-// upstream returns from it.
+// input and zstream_seterr does not count that as an error. libgit2 main
+// fixed it in PR #7346 (5254f5dc, after the 1.9.7 tag). The suite has no
+// cancel to cut such a case short, so the object store stays out until
+// `just libgit2` builds from a release that carries that commit; then add
+// "objects/%s" back here, formatted with the first commit's id.
 TARGETS := []string{"HEAD", "index", "config", "refs/heads/%s"}
 
 // damaged corrupts one file of clone a's repository and asks the binding
