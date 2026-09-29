@@ -1,5 +1,7 @@
 package material
 
+import "base:runtime"
+
 import "core:strings"
 import "jm:ui/ops"
 import "jm:ui"
@@ -838,6 +840,56 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, w: f32, loc := #caller_locat
 // press on the scrim, its close button or Escape; standard sits inline
 // with a divider on its inner edge, and ignores open. headline, when set,
 // heads the sheet with a close icon button (modal) at its end. Call
+// bottom_sheet and side_sheet are the sheet openers as guards: the if body
+// is the sheet's content and runs only while the sheet is visible, and
+// the sheet closes at the end of the if. The Sheet handle lives in the
+// widget's own data slot between open and close.
+@(deferred_in = bottom_sheet_guard_close)
+bottom_sheet :: proc(
+	gtx: ^ui.Ctx,
+	open: ^bool,
+	window: ops.Size,
+	modal := true,
+	handle := true,
+	value: ^Sheet_Value = nil,
+	skip_partial := false,
+	max_width := SHEET_MAX_WIDTH,
+	state: ^Sheet_State = nil,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	sh := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet)
+	sh^ = bottom_sheet_open(gtx, open, window, modal, handle, value, skip_partial, max_width, state, key, loc)
+	return sh.visible
+}
+
+@(private = "file")
+bottom_sheet_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, modal: bool, handle: bool, value: ^Sheet_Value, skip_partial: bool, max_width: f32, state: ^Sheet_State, key: u64, loc: runtime.Source_Code_Location) {
+	sheet_close(ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet))
+}
+
+@(deferred_in = side_sheet_guard_close)
+side_sheet :: proc(
+	gtx: ^ui.Ctx,
+	open: ^bool,
+	window: ops.Size,
+	modal := true,
+	width: f32 = tok.NAVIGATION_DRAWER_CONTAINER_WIDTH,
+	left := false,
+	headline := "",
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	sh := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet)
+	sh^ = side_sheet_open(gtx, open, window, modal, width, left, headline, key, loc)
+	return sh.visible
+}
+
+@(private = "file")
+side_sheet_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, modal: bool, width: f32, left: bool, headline: string, key: u64, loc: runtime.Source_Code_Location) {
+	sheet_close(ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet))
+}
+
 // sheet_close whatever visible says. The spec gives no width;
 // MDC's example uses 256 (layout side-sheet-width, mdc:SideSheet.md).
 side_sheet_open :: proc(

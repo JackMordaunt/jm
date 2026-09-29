@@ -33,7 +33,7 @@ RAIL_H :: 480
 // demo_pane is the content beside a drawer or rail demo: a filled card w
 // wide and h tall, naming the selection.
 demo_pane :: proc(gtx: ^ui.Ctx, title: string, w: f32, h: f32 = DRAWER_H, key: u64 = 0, loc := #caller_location) {
-	c := m3.card(gtx, .Filled, key = key, loc = loc)
+	c := m3.card_open(gtx, .Filled, key = key, loc = loc)
 	defer ui.close(&c)
 	r := ui.row_open(gtx)
 	defer ui.close(&r)

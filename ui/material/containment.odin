@@ -1,5 +1,7 @@
 package material
 
+import "base:runtime"
+
 import "core:fmt"
 import "jm:ui/ops"
 import "core:math"
@@ -81,14 +83,14 @@ card_tokens :: proc(kind: Card_Kind) -> Card_Tokens {
 	return {}
 }
 
-// card opens an M3 card around the widgets up to ui.end, padded by
+// card_open opens an M3 card around the widgets up to ui.close, padded by
 // padding (the kit gives no padding token; 16 keeps this proc's earlier
 // default).
 // Shape, fill, outline and the elevation of each state come from the
 // variant's comp.*-card tokens. A clickable card is one tap target: it
 // takes hover, focus, press and a forced Dragged state, each moving its
 // elevation along Compose's 120/150ms tweens, and sets clicked^ when
-// activated — known only at ui.end, so read it after. A disabled card
+// activated — known only at ui.close, so read it after. A disabled card
 // composites its disabled colour over its container (the outlined card
 // its disabled outline), as Card.kt:618-628 does.
 //
@@ -96,7 +98,7 @@ card_tokens :: proc(kind: Card_Kind) -> Card_Tokens {
 // drag even though comp.outlined-card has tokens for it: Compose's
 // outlinedCardBorder never reads them (card.json notes), and this follows
 // Compose.
-card :: proc(
+card_open :: proc(
 	gtx: ^ui.Ctx,
 	kind := Card_Kind.Elevated,
 	clickable := false,
@@ -113,6 +115,30 @@ card :: proc(
 }
 
 @(private)
+
+// card is card_open as a guard: `if m3.card(gtx, .Filled) { … }` lays the
+// block out inside the card and closes it at the end of the if, as ui's
+// own container guards do (ui/guards.odin).
+@(deferred_in = card_guard_close)
+card :: proc(
+	gtx: ^ui.Ctx,
+	kind := Card_Kind.Elevated,
+	clickable := false,
+	clicked: ^bool = nil,
+	state := Interaction.Live,
+	padding := f32(16),
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	card_open(gtx, kind, clickable, clicked, state, padding, key, loc)
+	return true
+}
+
+@(private = "file")
+card_guard_close :: proc(gtx: ^ui.Ctx, kind: Card_Kind, clickable: bool, clicked: ^bool, state: Interaction, padding: f32, key: u64, loc: runtime.Source_Code_Location) {
+	ui.innermost_close(gtx, .Box)
+}
+
 paint_card :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
 	cp := (^Card_Paint)(user)
 	t := card_tokens(cp.kind)

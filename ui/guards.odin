@@ -174,8 +174,8 @@ scroll_box_guard_close :: proc(
 
 // innermost_close closes the innermost container, which must be of kind:
 // what a guard opened is what is on top when its scope ends. Without a
-// layout the open pushed nothing, so there is nothing to close.
-@(private)
+// layout the open pushed nothing, so there is nothing to close. A design
+// system's guards (material.card) close through it too.
 innermost_close :: proc(gtx: ^Ctx, kind: Container_Kind) {
 	l := gtx.layout
 	if l == nil {

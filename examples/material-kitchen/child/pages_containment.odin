@@ -29,7 +29,7 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for kind, i in m3.Card_Kind {
 		hit: bool
 		{
-			c := m3.card(gtx, kind, clickable = true, clicked = &hit, key = u64(200 + i))
+			c := m3.card_open(gtx, kind, clickable = true, clicked = &hit, key = u64(200 + i))
 			defer ui.close(&c)
 			cc := ui.column_open(gtx, gap = 8)
 			defer ui.close(&cc)
@@ -50,7 +50,7 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 // card_cell is one card of kind key/16 - 1 in state st.
 card_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
-	c := m3.card(gtx, m3.Card_Kind(key / 16 - 1), clickable = true, state = st, key = key)
+	c := m3.card_open(gtx, m3.Card_Kind(key / 16 - 1), clickable = true, state = st, key = key)
 	defer ui.close(&c)
 	cc := ui.column_open(gtx, gap = 4)
 	defer ui.close(&cc)
@@ -248,7 +248,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 
 	section(gtx, "Live", "a list in an outlined card; click to select")
-	c := m3.card(gtx, .Outlined, padding = 0, key = 700)
+	c := m3.card_open(gtx, .Outlined, padding = 0, key = 700)
 	defer ui.close(&c)
 	lc := ui.column_open(gtx)
 	defer ui.close(&lc)
@@ -273,7 +273,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // segmented_bg is the filled surface a segmented run sits on, so its
 // surface-coloured rows read as segments.
 segmented_bg :: proc(gtx: ^ui.Ctx, key: u64) -> ui.Box {
-	return m3.card(gtx, .Filled, padding = 8, key = key)
+	return m3.card_open(gtx, .Filled, padding = 8, key = key)
 }
 
 // list_state_rows lays items out once per forced state, a row each.

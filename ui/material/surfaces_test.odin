@@ -455,3 +455,40 @@ test_carousel_steps_by_key_and_reports_clicks :: proc(t: ^testing.T) {
 	st_pos := m.hit
 	testing.expect(t, st_pos == 1 || st_pos == 2)
 }
+
+@(private = "file")
+Guard_Model :: struct {
+	open: bool,
+}
+
+@(private = "file")
+guard_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Guard_Model)(user)
+	if card(gtx, .Filled, key = 1) {
+		button(gtx, "In card")
+	}
+	if bottom_sheet(gtx, &m.open, {400, 600}, key = 2) {
+		button(gtx, "Inside")
+	}
+	button(gtx, "After") // laid out on the page, not in the card or the sheet
+}
+
+@(test)
+test_container_guards_close_themselves_and_gate_on_visibility :: proc(t: ^testing.T) {
+	m: Guard_Model
+	p: ui.Probe
+	ui.probe_init(&p, guard_ui, &m, {400, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	_, in_card := ui.probe_find(&p, "In card")
+	testing.expect(t, in_card)
+	_, inside := ui.probe_find(&p, "Inside")
+	testing.expect(t, !inside) // a closed sheet lays out no content
+	_, after := ui.probe_find(&p, "After")
+	testing.expect(t, after)
+	m.open = true
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	_, inside = ui.probe_find(&p, "Inside")
+	testing.expect(t, inside) // an open one does
+}

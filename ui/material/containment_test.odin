@@ -25,7 +25,7 @@ rows :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	col := ui.column_open(gtx)
 	defer ui.close(&col)
 	{
-		c := card(gtx, .Filled, clickable = true, clicked = &m.card_hit, key = 1)
+		c := card_open(gtx, .Filled, clickable = true, clicked = &m.card_hit, key = 1)
 		ui.spacer(gtx, 40)
 		ui.close(&c)
 		if m.card_hit {

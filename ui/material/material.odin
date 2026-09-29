@@ -18,6 +18,11 @@ kept per widget in ui.Widget_State.springs through animate. use_motion
 picks the Expressive or Standard spring set; use_fonts gives the faces for
 the type scale's 400, 500 and 700 weights.
 
+Containers — card, bottom_sheet, side_sheet — come in both of ui's forms:
+the explicit pair (card_open and ui.close, bottom_sheet_open and
+sheet_close) and the guard, `if material.card(gtx) { … }`, which closes
+itself at the end of the if (see ui/guards.odin).
+
 Interaction: every interactive component takes state := Interaction.Live.
 Live reads real input. Any other value paints that state statically and
 ignores input — the kitchen uses this to show a component's enabled,

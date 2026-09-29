@@ -92,7 +92,8 @@ Scroll_Bar_Memo :: struct {
 	idle, offset: f32,
 }
 
-@(private)
+// Container_Kind is what a container lays its children out as. It is
+// public for the guards a design system builds (ui/guards.odin).
 Container_Kind :: enum u8 {
 	Flex,
 	Stack,
