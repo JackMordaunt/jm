@@ -120,6 +120,9 @@ just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
 just fluent-tokens     regenerate ui/fluent/tokens from the fluent-kit (FLUENT_KIT)
 just fluent-icons      regenerate ui/fluent/icon_data.odin from the vendored Fluent icons (FLUENT_ICONS)
 just fluent-icons-fetch  fetch the icons tools/fluent-icons/icons.txt names into FLUENT_ICONS
+just fluent-kitchen    build and open the hot-reloaded Fluent 2 kitchen
+just fluent-png page=Button  render one Fluent kitchen page to build/
+just fluent-fonts      fetch Selawik, the kitchen's stand-in for Segoe UI, into ~/.local/share/fonts
 just material-shapes   regenerate ui/material/shape_data.odin from the m3e-kit's morphs
 just bench-ui  ms per frame for layout and the Blend2D executor
 just hot-counter-child  build the subprocess `just test`'s own host/child test spawns
@@ -644,10 +647,12 @@ the host re-reads it and respawns the child on a change, never
 overwriting a running executable in place, which Windows refuses.
 `examples/hot-counter` (a two-binary click counter),
 `examples/hot-architecture` (a live-editable diagram of this very
-pipeline) and `examples/material-kitchen` (every `ui/material`
-component, a page each, in all its spec states) are the demos; `just
-hot-architecture` builds its own host and prints the two commands that
-run it, and `just material-kitchen` builds and opens its own. `tools/hot-watch`
+pipeline), `examples/material-kitchen` (every `ui/material`
+component, a page each, in all its spec states) and
+`examples/fluent-kitchen` (the same for `ui/fluent`, in all five themes)
+are the demos; `just hot-architecture` builds its own host and prints the
+two commands that run it, and `just material-kitchen` and `just
+fluent-kitchen` build and open their own. `tools/hot-watch`
 takes extra directories to watch after the pointer file, so a child
 rebuilds when the `ui` package it imports is edited too, and with `-host`
 it rebuilds the host as well, which restarts itself when the ops

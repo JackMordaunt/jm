@@ -152,6 +152,17 @@ probe_current :: proc(p: ^Probe) -> ^Frame {
 	return &p.prev
 }
 
+// probe_bounds is the device-space bounding rect of the area tagged
+// name, or the zero rect when nothing is: where a widget landed, for a
+// test that measures rather than clicks.
+probe_bounds :: proc(p: ^Probe, name: string) -> ops.Rect {
+	h, ok := probe_find(p, name)
+	if !ok {
+		return {}
+	}
+	return ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape))
+}
+
 // probe_find returns the hit of the first area tagged name in the current
 // frame (the top-most hit when the area has several).
 probe_find :: proc(p: ^Probe, name: string) -> (Hit, bool) {

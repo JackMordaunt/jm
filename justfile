@@ -12,6 +12,8 @@
 #   just libgit2   compile libgit2 into git/lib from LIBGIT2_SRC
 #   just material-kitchen  build and open the hot-reloaded Material 3 kitchen
 #   just material-png  render one material-kitchen page headlessly
+#   just fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
+#   just fluent-png  render one fluent-kitchen page headlessly
 #   just material-tokens  regenerate ui/material/tokens from the m3e-kit
 #   just fluent-tokens  regenerate ui/fluent/tokens from the fluent-kit
 #   just fluent-icons  regenerate ui/fluent/icon_data.odin from the vendored Fluent icons
@@ -288,6 +290,8 @@ check:
       {{odin}} check examples/hot-architecture/host {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/material-kitchen/child {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/material-kitchen/host {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/fluent-kitchen/child {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/fluent-kitchen/host {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
@@ -414,11 +418,6 @@ material-tokens:
 fluent-tokens:
     {{odin}} run tools/design-tokens {{flags}} -- fluent "${FLUENT_KIT:-$HOME/Source/Personal/fluent-kit}/tokens/fluent.resolved.json" ui/fluent/tokens/tokens.odin
 
-# Regenerate ui/material/shape_data.odin, the loading indicator's morph
-# pairs, from the M3 Expressive kit's shapes/morphs.json.
-material-shapes:
-    {{odin}} run tools/material-shapes {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/shapes/morphs.json" ui/material/shape_data.odin
-
 # Regenerate ui/fluent/icon_data.odin from the Fluent UI System Icons in
 # FLUENT_ICONS, the directory fluent-icons-fetch fills.
 fluent-icons:
@@ -451,6 +450,42 @@ material-png page="Buttons": blend2d
     mkdir -p build/debug
     {{odin}} build examples/material-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-child{{exe}}
     build/debug/material-kitchen-child{{exe}} -page "{{page}}" -png "build/material-{{page}}.png"
+
+# examples/fluent-kitchen: every jm:ui/fluent component, one page each,
+# hot-reloaded like material-kitchen. Selawik, the kit's stand-in for
+# Segoe UI, is read from ~/.local/share/fonts/selawik (just fluent-fonts).
+fluent-kitchen: blend2d sdl3
+    #!/usr/bin/env bash
+    set -eu
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/fluent-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/fluent-kitchen/child build/debug/fluent-kitchen.watch -host examples/fluent-kitchen/host build/debug/fluent-kitchen-host{{exe}} ui ui/fluent &
+    watch=$!
+    build/debug/fluent-kitchen-host{{exe}} build/debug/fluent-kitchen.watch &
+    host=$!
+    trap 'kill $watch $host 2>/dev/null' EXIT
+    wait $host
+
+# Render one fluent-kitchen page to build/fluent-<page>.png, no window
+fluent-png page="Button": blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/fluent-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-child{{exe}}
+    build/debug/fluent-kitchen-child{{exe}} -page "{{page}}" -png "build/fluent-{{page}}.png"
+
+# Fetch Selawik regular, semibold and bold (OFL-1.1) from microsoft/Selawik
+# release 1.01 into ~/.local/share/fonts/selawik for the fluent kitchen.
+fluent-fonts:
+    #!/usr/bin/env bash
+    set -eu
+    dir="$HOME/.local/share/fonts/selawik"
+    mkdir -p "$dir"
+    tmp=$(mktemp -d)
+    curl -sSL --max-time 120 -o "$tmp/selawik.zip" https://github.com/microsoft/Selawik/releases/download/1.01/Selawik_Release.zip
+    unzip -o -q "$tmp/selawik.zip" -d "$tmp/selawik"
+    cp "$tmp/selawik/selawk.ttf" "$tmp/selawik/selawksb.ttf" "$tmp/selawik/selawkb.ttf" "$dir/"
+    curl -sSL --max-time 30 -o "$dir/LICENSE.txt" https://raw.githubusercontent.com/microsoft/Selawik/master/LICENSE.txt
+    rm -rf "$tmp"
 
 # Remove build/ and the compiled SQLite, wasm3, libpg_query and Blend2D archives
 clean:
