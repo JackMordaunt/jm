@@ -112,8 +112,11 @@ jobs:
           # wasm3 is C11 that MSVC's cl rejects (m3_exec.h); clang-cl takes it.
           for f in wasm/vendor/*.c; do clang-cl -nologo -O2 -I wasm/vendor $wasm_defines -c "$f" -Fowasm/lib/obj/ || exit 1; done
           lib -nologo -OUT:wasm/lib/wasm3.lib wasm/lib/obj/*.obj
-          find pg_query/vendor/src pg_query/vendor/protobuf pg_query/vendor/vendor -name '*.c' | while read -r f; do
-            cl -nologo -O2 $pg_query_flags -I pg_query/vendor/src/postgres/include/port/win32 -c "$f" -Fopg_query/lib/obj/ > /dev/null || exit 1
+          # cl prints its errors on stdout, so nothing here is discarded;
+          # only the per-file name echo is filtered out.
+          for f in $(find pg_query/vendor/src pg_query/vendor/protobuf pg_query/vendor/vendor -name '*.c'); do
+            cl -nologo -O2 $pg_query_flags -I pg_query/vendor/src/postgres/include -I pg_query/vendor/src/postgres/include/port/win32 -c "$f" -Fopg_query/lib/obj/ | grep -v '^[A-Za-z0-9_.-]*\.c$' || true
+            [ -f "pg_query/lib/obj/$(basename "${f%.c}").obj" ] || { echo "::error::$f did not compile"; exit 1; }
           done
           lib -nologo -OUT:pg_query/lib/pg_query.lib pg_query/lib/obj/*.obj
 
@@ -167,11 +170,12 @@ jobs:
           MSYS_NO_PATHCONV: 1
         run: |
           flags="-vet -strict-style -collection:jm=$PWD"
-          # Odin takes -extra-linker-flags once, so the platform's flags and
-          # the C++ runtime Blend2D needs travel in one value.
-          link=""; [ -z "${LINKFLAGS:-}" ] || link="-extra-linker-flags:$LINKFLAGS"
-          cxx=""
-          if [ "$RUNNER_OS" != Windows ]; then cxx="-extra-linker-flags:${LINKFLAGS:+$LINKFLAGS }-lstdc++"; else cxx="$link"; fi
+          # Odin takes -extra-linker-flags once and the value may hold
+          # spaces, so the platform's flags and the C++ runtime Blend2D
+          # needs travel as one quoted argument, held in arrays so an
+          # empty one adds nothing.
+          link=(); [ -z "${LINKFLAGS:-}" ] || link=("-extra-linker-flags:$LINKFLAGS")
+          if [ "$RUNNER_OS" != Windows ]; then cxx=("-extra-linker-flags:${LINKFLAGS:+$LINKFLAGS }-lstdc++"); else cxx=("${link[@]}"); fi
           exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
           packages=$(sed -n 's/^packages := "\(.*\)"$/\1/p' justfile | sed 's| pq pq/testdb pq/fuzz||')
           mkdir -p build/test build/debug
@@ -180,20 +184,20 @@ jobs:
             threads=""
             case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac
             echo "::group::odin test $p"
-            odin test "$p" $flags $link $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            odin test "$p" $flags "${link[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
             echo "::endgroup::"
           done
           echo "::group::odin test tools/wasm-bench"
-          odin test tools/wasm-bench $flags $link -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::tools/wasm-bench failed"; failed=1; }
+          odin test tools/wasm-bench $flags "${link[@]}" -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::tools/wasm-bench failed"; failed=1; }
           echo "::endgroup::"
           for p in ui/render ui/render/fuzz ui/child; do
             echo "::group::odin test $p"
-            odin test "$p" $flags $cxx -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            odin test "$p" $flags "${cxx[@]}" -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
             echo "::endgroup::"
           done
           echo "::group::build the hot-reload child and the probe"
-          odin build examples/hot-counter/child -debug $flags $cxx -out:build/debug/hot-counter-child$exe || failed=1
-          odin build tools/git-probe $flags $link -out:build/debug/git-probe$exe || failed=1
+          odin build examples/hot-counter/child -debug $flags "${cxx[@]}" -out:build/debug/hot-counter-child$exe || failed=1
+          odin build tools/git-probe $flags "${link[@]}" -out:build/debug/git-probe$exe || failed=1
           echo "::endgroup::"
           exit $failed
 
