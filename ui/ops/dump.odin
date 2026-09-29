@@ -56,7 +56,7 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 		case Tag:
 			write_tag(&sb, v)
 		case Debug_Box:
-			fmt.sbprintf(&sb, "box %d %vx%v min %vx%v max %vx%v %s:%d", v.id, v.size.x, v.size.y, v.min.x, v.min.y, v.max.x, v.max.y, v.file, v.line)
+			fmt.sbprintf(&sb, "box %d %s %vx%v min %vx%v max %vx%v %s:%d", v.id, v.kind, v.size.x, v.size.y, v.min.x, v.min.y, v.max.x, v.max.y, v.file, v.line)
 		}
 		strings.write_byte(&sb, '\n')
 	}

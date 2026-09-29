@@ -829,6 +829,20 @@ test_inspect_flag_records_each_widgets_box :: proc(t: ^testing.T) {
 	testing.expect_value(t, got[0].size, d.size)
 	testing.expect_value(t, got[0].max, h.size) // the harness offers the window, loosely
 	testing.expect_value(t, got[0].procedure, "test_inspect_flag_records_each_widgets_box")
+	testing.expect_value(t, got[0].kind, "label") // the widget proc that made it, not the caller
+	// A container is named by its opener with _open trimmed, through the
+	// private flex_open it delegates to, and a guard the same.
+	harness_frame(&h)
+	h.gtx.debug = {.Inspect}
+	col := column_open(&h.gtx)
+	close(&col)
+	if row(&h.gtx) {
+	}
+	kinds := boxes(&h)
+	if testing.expect_value(t, len(kinds), 2) {
+		testing.expect_value(t, kinds[0].kind, "column")
+		testing.expect_value(t, kinds[1].kind, "row")
+	}
 }
 
 @(test)

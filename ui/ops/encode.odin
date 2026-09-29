@@ -22,7 +22,7 @@ ENCODE_MAGIC :: "UIOP"
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
 // Defer.
-ENCODE_VERSION :: u8(6)
+ENCODE_VERSION :: u8(7)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -368,6 +368,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_str(w, v.file)
 		put_u32(w, u32(v.line))
 		put_str(w, v.procedure)
+		put_str(w, v.kind)
 	case:
 		append(w, 0)
 	}
@@ -611,6 +612,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.file = get_str(r) or_return
 		v.line = i32(get_u32(r) or_return)
 		v.procedure = get_str(r) or_return
+		v.kind = get_str(r) or_return
 		return v, true
 	}
 	return nil, false

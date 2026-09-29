@@ -4,6 +4,7 @@ import "base:runtime"
 import "jm:ui/ops"
 import "core:math"
 import "core:mem"
+import "core:strings"
 
 // Layout. Constraints flow down and Dims flow up in a single pass, as in Gio,
 // but containers wrap the widgets called between their open and close without
@@ -166,6 +167,7 @@ Placement :: struct {
 	macro:    ops.Macro_Id,
 	weight:   f32,
 	loc:      runtime.Source_Code_Location, // the call that made the widget, for Debug_Box
+	kind:     string, // the widget proc that made it, for Debug_Box: button, column
 }
 
 // layout_init prepares l; its storage lives in allocator.
@@ -248,12 +250,18 @@ widget_state :: proc(gtx: ^Ctx, area: ops.Area_Id) -> ^Widget_State {
 	return v
 }
 
+// self is where widget_open itself was called from. That is inside the
+// widget proc, so its procedure names the widget: a button's is button,
+// a column's is column_open, trimmed to column. A private helper that
+// opens on an opener's behalf passes its own self through, as flex_open
+// does, so the name stays the opener's.
 // widget_open opens a widget: it derives the widget's id from key and loc,
 // sets gtx.constraints to what the innermost container offers, and places
 // the widget (a pushed translate, or a macro the container places later).
-widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placement {
+widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location, self := #caller_location) -> Placement {
 	p := Placement {
 		loc    = loc,
+		kind   = strings.trim_suffix(self.procedure, "_open"),
 		id     = id(key, loc),
 		parent = -1,
 		saved  = gtx.constraints,
@@ -313,7 +321,7 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 		depth := i32(depth(gtx.layout))
 		append(
 			&gtx.scene.ops,
-			ops.Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure},
+			ops.Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure, p.kind},
 		)
 	}
 	if p.pushed {
@@ -556,8 +564,8 @@ row_open :: proc(
 // flex_open is column_open and row_open: a flex along axis, deferred when
 // its alignment needs the total before any child can be placed.
 @(private)
-flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, key: u64, loc: runtime.Source_Code_Location) -> Flex {
-	p := widget_open(gtx, key, loc)
+flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, key: u64, loc: runtime.Source_Code_Location, self := #caller_location) -> Flex {
+	p := widget_open(gtx, key, loc, self)
 	c := Container {
 		kind     = .Flex,
 		axis     = axis,

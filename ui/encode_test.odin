@@ -18,7 +18,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.add_font(&src, "mono.ttf")
 	ops.tag(&src, 99, "quote \" and\nnewline")
 	ops.defer_call(&src, 0) // golden_scene's first macro, run again on top
-	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view"})
+	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view", "label"})
 	append(&src.ops, nil) // a nil op survives too
 
 	data := ops.encode(&src)
@@ -158,7 +158,7 @@ test_decode_frees_the_frame_before :: proc(t: ^testing.T) {
 	ops.init(&src, context.temp_allocator)
 	golden_scene(&src)
 	ops.tag(&src, 99, "a tag")
-	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view"})
+	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view", "label"})
 	data := ops.encode(&src, context.temp_allocator)
 	defer free_all(context.temp_allocator)
 

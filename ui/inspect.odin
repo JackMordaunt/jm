@@ -16,7 +16,7 @@ Inspection :: struct {
 	hit_rect: ops.Rect, // the hit's shape's device bounds
 	has_hit:  bool,
 	name:     string, // the tag on the hit's area, or on the box's
-	path:     string, // the box's ancestry as a slug, root first: each box by its tag, else its call site
+	path:     string, // the box's ancestry as a slug, root first: each box by widget kind and tag
 }
 
 // inspect_at is what f has under device point p: of the boxes whose rect
@@ -74,7 +74,7 @@ inspect_lines :: proc(got: Inspection, layout: ^Layout, allocator := context.all
 		if got.path != "" {
 			append(&lines, fmt.aprintf("path %s", got.path, allocator = allocator))
 		}
-		append(&lines, fmt.aprintf("from %s at %s:%d", b.procedure, filepath.base(b.file), b.line, allocator = allocator))
+		append(&lines, fmt.aprintf("%s from %s at %s:%d", b.kind, b.procedure, filepath.base(b.file), b.line, allocator = allocator))
 		append(&lines, fmt.aprintf("box  %s at %.0f,%.0f  depth %d", size_text(ops.Size{b.rect.w, b.rect.h}), b.rect.x, b.rect.y, b.depth, allocator = allocator))
 		append(&lines, fmt.aprintf("min  %s", size_text(b.min), allocator = allocator))
 		append(&lines, fmt.aprintf("max  %s", size_text(b.max), allocator = allocator))
@@ -134,7 +134,7 @@ layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 		for _ in 0 ..< x.depth {
 			strings.write_string(&b, "  ")
 		}
-		fmt.sbprintf(&b, "from %s at %s:%d  %s at %.0f,%.0f  min %s max %s", x.procedure, filepath.base(x.file), x.line, size_text(ops.Size{x.rect.w, x.rect.h}), x.rect.x, x.rect.y, size_text(x.min), size_text(x.max))
+		fmt.sbprintf(&b, "%s from %s at %s:%d  %s at %.0f,%.0f  min %s max %s", x.kind, x.procedure, filepath.base(x.file), x.line, size_text(ops.Size{x.rect.w, x.rect.h}), x.rect.x, x.rect.y, size_text(x.min), size_text(x.max))
 		if name, ok := tags[x.id]; ok {
 			fmt.sbprintf(&b, "  %q", name)
 		}
@@ -295,9 +295,9 @@ state_text :: proc(layout: ^Layout, id: ops.Area_Id) -> string {
 	return strings.trim_right_space(strings.to_string(b))
 }
 
-// box_path is box i's ancestry as a slug, root first, each box named by
-// its tag when it has one and otherwise by the call that made it:
-// `page:212/rows:40/"Save"`. Boxes close children before their container,
+// box_path is box i's ancestry as a slug, root first, each box by the
+// widget proc that made it and its tag when it has one:
+// `column/row/button#Save`. Boxes close children before their container,
 // so a box's parent is the next box after it one level shallower on the
 // same layer; an overlay's boxes start from their own root.
 box_path :: proc(f: ^Frame, i: int, allocator := context.allocator) -> string {
@@ -324,13 +324,14 @@ box_path :: proc(f: ^Frame, i: int, allocator := context.allocator) -> string {
 	return strings.to_string(sb)
 }
 
-// box_name is a box by its tag, quoted, else by the call that made it.
+// box_name is a box by the widget proc that made it, with its tag after a
+// # when it has one.
 @(private = "file")
 box_name :: proc(f: ^Frame, b: Layout_Box) -> string {
 	for t in f.tags {
 		if t.id == b.id {
-			return fmt.tprintf("%q", t.name)
+			return fmt.tprintf("%s#%s", b.kind, t.name)
 		}
 	}
-	return fmt.tprintf("%s:%d", b.procedure, b.line)
+	return b.kind
 }

@@ -117,6 +117,7 @@ Debug_Box :: struct {
 	file:      string,
 	line:      i32,
 	procedure: string,
+	kind:      string, // the widget proc that made it, its _open suffix dropped: button, column
 }
 
 // Macro records the op index range [first, last) of a macro's body,

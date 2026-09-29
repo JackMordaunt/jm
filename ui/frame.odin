@@ -54,6 +54,7 @@ Layout_Box :: struct {
 	file:      string,
 	line:      i32,
 	procedure: string,
+	kind:      string, // the widget proc that made it: button, column
 	clip:      Clip_Id,
 	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
 }
