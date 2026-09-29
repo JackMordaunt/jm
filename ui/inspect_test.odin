@@ -30,11 +30,16 @@ test_inspect_reports_the_widget_under_a_point :: proc(t: ^testing.T) {
 	got := inspect_at(f, {second.x + 5, second.y + 5})
 	testing.expect(t, got.has_box && got.box.depth == 1 && got.box.rect == second)
 	testing.expect(t, got.has_hit && got.name == "second")
+	// Its ancestry: the column that made it, by call site, then itself by tag.
+	testing.expect(t, strings.has_prefix(got.path, "inspect_view:"), got.path)
+	testing.expect(t, strings.has_suffix(got.path, "/\"second\""), got.path)
+	testing.expect_value(t, strings.count(got.path, "/"), 1)
 	first := f.boxes[0].rect
 	testing.expect_value(t, got.box.max, ops.Size{200, 100 - first.h}) // the column's width, and what the first child left of its height
 
 	report := inspect_report(f, &p.layout, {second.x + 5, second.y + 5}, context.temp_allocator)
 	testing.expect(t, strings.contains(report, "inspect_test.odin"))
+	testing.expect(t, strings.contains(report, "path inspect_view:"), report)
 	testing.expect(t, strings.contains(report, "max  200x"))
 	testing.expect(t, strings.contains(inspect_report(f, &p.layout, {250, 50}, context.temp_allocator), "nothing at 250,50"))
 

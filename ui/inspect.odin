@@ -16,6 +16,7 @@ Inspection :: struct {
 	hit_rect: ops.Rect, // the hit's shape's device bounds
 	has_hit:  bool,
 	name:     string, // the tag on the hit's area, or on the box's
+	path:     string, // the box's ancestry as a slug, root first: each box by its tag, else its call site
 }
 
 // inspect_at is what f has under device point p: of the boxes whose rect
@@ -23,7 +24,8 @@ Inspection :: struct {
 // beneath it), the deepest there, the smallest of equals; and the top-most
 // hit area of any kind.
 inspect_at :: proc(f: ^Frame, p: ops.Point) -> (got: Inspection) {
-	for b in f.boxes {
+	best := -1
+	for b, i in f.boxes {
 		if !ops.rect_contains(b.rect, p) || !ops.rect_contains(clip_chain_bounds(f, b.clip), p) {
 			continue
 		}
@@ -32,7 +34,7 @@ inspect_at :: proc(f: ^Frame, p: ops.Point) -> (got: Inspection) {
 			better = b.depth > got.box.depth || (b.depth == got.box.depth && area(b.rect) <= area(got.box.rect))
 		}
 		if better {
-			got.box, got.has_box = b, true
+			got.box, got.has_box, best = b, true, i
 		}
 	}
 	#reverse for h in f.hits {
@@ -45,7 +47,10 @@ inspect_at :: proc(f: ^Frame, p: ops.Point) -> (got: Inspection) {
 	if got.has_box && got.has_hit && got.hit.layer > got.box.layer {
 		// The area on top (a menu item painted in an overlay) covers the
 		// box found beneath it: that widget is not what is under p.
-		got.box, got.has_box = {}, false
+		got.box, got.has_box, best = {}, false, -1
+	}
+	if best >= 0 {
+		got.path = box_path(f, best, context.temp_allocator)
 	}
 	for t in f.tags {
 		if got.has_hit && t.id == got.hit.area {
@@ -66,6 +71,9 @@ inspect_lines :: proc(got: Inspection, layout: ^Layout, allocator := context.all
 	}
 	if got.has_box {
 		b := got.box
+		if got.path != "" {
+			append(&lines, fmt.aprintf("path %s", got.path, allocator = allocator))
+		}
 		append(&lines, fmt.aprintf("from %s at %s:%d", b.procedure, filepath.base(b.file), b.line, allocator = allocator))
 		append(&lines, fmt.aprintf("box  %s at %.0f,%.0f  depth %d", size_text(ops.Size{b.rect.w, b.rect.h}), b.rect.x, b.rect.y, b.depth, allocator = allocator))
 		append(&lines, fmt.aprintf("min  %s", size_text(b.min), allocator = allocator))
@@ -285,4 +293,44 @@ state_text :: proc(layout: ^Layout, id: ops.Area_Id) -> string {
 		}
 	}
 	return strings.trim_right_space(strings.to_string(b))
+}
+
+// box_path is box i's ancestry as a slug, root first, each box named by
+// its tag when it has one and otherwise by the call that made it:
+// `page:212/rows:40/"Save"`. Boxes close children before their container,
+// so a box's parent is the next box after it one level shallower on the
+// same layer; an overlay's boxes start from their own root.
+box_path :: proc(f: ^Frame, i: int, allocator := context.allocator) -> string {
+	names := make([dynamic]string, context.temp_allocator)
+	b := f.boxes[i]
+	append(&names, box_name(f, b))
+	depth, j := b.depth, i
+	for depth > 0 {
+		depth -= 1
+		for j += 1; j < len(f.boxes); j += 1 {
+			if f.boxes[j].depth == depth && f.boxes[j].layer == b.layer {
+				append(&names, box_name(f, f.boxes[j]))
+				break
+			}
+		}
+	}
+	sb := strings.builder_make(allocator)
+	#reverse for n, k in names {
+		strings.write_string(&sb, n)
+		if k > 0 {
+			strings.write_byte(&sb, '/')
+		}
+	}
+	return strings.to_string(sb)
+}
+
+// box_name is a box by its tag, quoted, else by the call that made it.
+@(private = "file")
+box_name :: proc(f: ^Frame, b: Layout_Box) -> string {
+	for t in f.tags {
+		if t.id == b.id {
+			return fmt.tprintf("%q", t.name)
+		}
+	}
+	return fmt.tprintf("%s:%d", b.procedure, b.line)
 }
