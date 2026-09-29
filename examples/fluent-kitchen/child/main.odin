@@ -84,6 +84,8 @@ Model :: struct {
 	acc_open:    [7]bool,
 	acc_single:  [3]bool,
 	// feedback
+	avatar_active: bool,
+	progress:      f32,
 	// overlays and the button family
 }
 
@@ -114,10 +116,10 @@ PAGES := [?]Page {
 	{"Toolbar", page_toolbar, false},
 	{"Accordion", page_accordion, false},
 	{"Feedback", nil, true},
-	{"Badge", nil, false},
-	{"Avatar", nil, false},
-	{"Progress bar", nil, false},
-	{"Spinner", nil, false},
+	{"Badge", page_badge, false},
+	{"Avatar", page_avatar, false},
+	{"Progress bar", page_progress_bar, false},
+	{"Spinner", page_spinner, false},
 	{"Overlays", nil, true},
 	{"Menu", nil, false},
 	{"Dialog", nil, false},
