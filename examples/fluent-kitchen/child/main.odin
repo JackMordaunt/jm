@@ -30,7 +30,7 @@ import "jm:ui/render"
 WIDTH :: 1400
 HEIGHT :: 900
 STATE_FILE :: "build/debug/fluent-kitchen.state"
-NAV_WIDTH :: 220
+NAV_WIDTH :: 240
 
 Page :: struct {
 	name: string,
@@ -86,6 +86,21 @@ Model :: struct {
 	// feedback
 	avatar_active: bool,
 	progress:      f32,
+	toasts:         fluent.Toasts,
+	toast_seeded:   bool,
+	bar_closed:     bool,
+	bar_action:     string, // a literal
+	pop_open:       [8]bool,
+	pop_seeded:     bool,
+	teach_open:     bool,
+	teach_brand:    bool,
+	teach_seeded:   bool,
+	teach_page:     int,
+	info_open:      bool,
+	info_seeded:    bool,
+	slide_flat:     int,
+	slide_elevated: int,
+	slide_auto:     bool,
 	// overlays and the button family
 	window:                                       ops.Size,
 	menu_open, menu_bold, menu_italic:            bool,
@@ -97,6 +112,66 @@ Model :: struct {
 	dialog_result:                                string, // a literal
 	fmt_bold, fmt_italic, fmt_underline, fmt_star: bool,
 	menu_button_open, menu_icon_open:             bool,
+	// navigation
+	nav_selected:    string, // a value literal
+	nav_reports:     bool,
+	nav_open:        bool,
+	drawer_open:     bool,
+	drawer_inline:   bool,
+	drawer_size:     fluent.Drawer_Size,
+	drawer_position: fluent.Drawer_Position,
+	drawer_checks:   [4]bool,
+	crumb_pick:      int,
+	tree_open:       [4]bool,
+	tree_checks:     [3]bool,
+	// pickers
+	pk_ready:       bool,
+	pk_fruit:       ui.Text_State,
+	pk_clear:       ui.Text_State,
+	pk_query:       ui.Text_State,
+	pk_empty:       ui.Text_State,
+	pk_people:      ui.Text_State,
+	pk_pick:        int,
+	pk_drop:        int,
+	pk_clear_pick:  int,
+	pk_grid_pick:   int,
+	pk_select:      int,
+	pk_count:       f32,
+	pk_price:       f32,
+	pk_chosen:      [6]bool,
+	pk_grid_chosen: [6]bool,
+	pk_swatch:      int,
+	pk_swatch_grid: int,
+	pk_hsv:         fluent.Hsv,
+	pk_stars:       f32,
+	pk_halves:      f32,
+	// data display
+	table_rows:   [4]bool,
+	table_sort:   fluent.Sort_Direction,
+	list_single:  int,
+	list_multi:   [4]bool,
+	list_actions: int,
+	tags_removed: [5]bool,
+	groups_open:  [9]bool,
+	// dates
+	cal_selected, cal_view:   fluent.Date,
+	cal_selected2, cal_view2: fluent.Date,
+	cal_picks:                int,
+	date_cells:               [15]ui.Text_State, // one per state-grid cell
+	date_text, due_text:      ui.Text_State,
+	date_value, due_value:    fluent.Date,
+	date_open, due_open:      bool,
+	due_check:                fluent.Date_Validation,
+	time_cells:               [5]ui.Text_State,
+	time_text, time24_text:   ui.Text_State,
+	free_text:                ui.Text_State,
+	time_value, time24_value: fluent.Time,
+	free_value:               fluent.Time,
+	time_valid, time24_valid: bool,
+	free_valid:               bool,
+	time_open, time24_open:   bool,
+	free_open:                bool,
+	free_err:                 fluent.Time_Error,
 }
 
 // PAGES follows the fluent-kit's component index, grouped by the plan's
@@ -125,15 +200,48 @@ PAGES := [?]Page {
 	{"Tab list", page_tab_list, false},
 	{"Toolbar", page_toolbar, false},
 	{"Accordion", page_accordion, false},
+	{"Carousel", page_carousel, false},
 	{"Feedback", nil, true},
 	{"Badge", page_badge, false},
 	{"Avatar", page_avatar, false},
 	{"Progress bar", page_progress_bar, false},
 	{"Spinner", page_spinner, false},
+	{"Toast", page_toast, false},
+	{"Message bar", page_message_bar, false},
 	{"Overlays", nil, true},
 	{"Menu", page_menu, false},
 	{"Dialog", page_dialog, false},
 	{"Tooltip", page_tooltip, false},
+	{"Popover", page_popover, false},
+	{"Teaching popover", page_teaching_popover, false},
+	{"Info label", page_info_label, false},
+	{"Navigation", nil, true},
+	{"Nav", page_nav, false},
+	{"Drawer", page_drawer, false},
+	{"Breadcrumb", page_breadcrumb, false},
+	{"Tree", page_tree, false},
+	{"Pickers", nil, true},
+	{"Combobox", page_combobox, false},
+	{"Select", page_select, false},
+	{"Spin button", page_spin_button, false},
+	{"Search box", page_search_box, false},
+	{"Tag picker", page_tag_picker, false},
+	{"Swatch picker", page_swatch_picker, false},
+	{"Color picker", page_color_picker, false},
+	{"Rating", page_rating, false},
+	{"Data display", nil, true},
+	{"Table", page_table, false},
+	{"List", page_list, false},
+	{"Tag", page_tag, false},
+	{"Persona", page_persona, false},
+	{"Avatar group", page_avatar_group, false},
+	{"Skeleton", page_skeleton, false},
+	{"Text", page_text, false},
+	{"Image", page_image, false},
+	{"Dates", nil, true},
+	{"Calendar", page_calendar, false},
+	{"Date picker", page_date_picker, false},
+	{"Time picker", page_time_picker, false},
 }
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
@@ -175,31 +283,25 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	persist(m)
 }
 
-// nav is the page list: a heading per group in caption text, and a
-// subtle button per page, the current one secondary. It stands in for
-// a tab list until that component lands.
+// nav is the page list as the toolkit's own inline nav drawer: the
+// kitchen's name in the header, a section header per group and a nav
+// item per page, the current one selected. Its body scrolls.
 nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	s := fluent.scheme()
-	panel := ui.box_open(gtx, {fill = s[.Neutral_Background1], padding = ui.pad_all(8)})
-	defer ui.close(&panel)
-	sb := ui.scroll_box_open(gtx, min_width = NAV_WIDTH)
-	defer ui.close(&sb)
-	col := ui.column_open(gtx, gap = 2)
-	defer ui.close(&col)
-	for p, i in PAGES {
-		if p.head {
-			ui.spacer(gtx, i == 0 ? 4 : 12)
-			hd := ui.inset_open(gtx, {12, 0, 0, 4})
-			base.label(gtx, p.name, {color = s[.Neutral_Foreground3], size = 12})
-			ui.close(&hd)
-			continue
-		}
-		label := p.name
-		if p.draw == nil {
-			label = fmt.tprintf("%s (soon)", p.name)
-		}
-		if fluent.button(gtx, label, i == m.page ? .Secondary : .Subtle, size = .Small, key = u64(i)) {
-			m.page = i
+	n := fluent.nav_open(gtx, width = NAV_WIDTH)
+	defer fluent.nav_close(&n)
+	if fluent.nav_header(gtx) {
+		fluent.app_item(gtx, "jm:ui fluent", .Grid, static = true)
+	}
+	if fluent.nav_body(gtx) {
+		selected := PAGES[clamp(m.page, 0, len(PAGES) - 1)].name
+		for p, i in PAGES {
+			if p.head {
+				fluent.nav_section_header(gtx, p.name, key = u64(i))
+				continue
+			}
+			if fluent.nav_item(gtx, p.name, p.name, &selected, key = u64(i)) {
+				m.page = i
+			}
 		}
 	}
 }
