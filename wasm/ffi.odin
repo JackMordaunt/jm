@@ -20,6 +20,8 @@ package wasm
 import "core:c"
 
 when ODIN_OS == .Windows {
+	// wasm3's WASI random_get calls SystemFunction036 (RtlGenRandom).
+	@(extra_linker_flags = "advapi32.lib")
 	foreign import lib "lib/wasm3.lib"
 } else {
 	@(extra_linker_flags = "-lm")

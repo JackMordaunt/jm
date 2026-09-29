@@ -44,6 +44,12 @@ jobs:
       run:
         shell: bash
     steps:
+      # The Windows runner's git converts line endings on checkout and
+      # libgit2 honours the same setting when it checks a pull out, so the
+      # tests that compare file bytes would read CRLF where they wrote LF.
+      - name: keep line endings as committed (windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: laytan/setup-odin@v2.12.2
         with:
