@@ -37,17 +37,6 @@ inputs :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	label(gtx, "Plain label", required = true)
 }
 
-// tagged reports whether the current frame has a widget tagged name.
-@(private = "file")
-tagged :: proc(p: ^ui.Probe, name: string) -> bool {
-	for n in ui.probe_names(p) {
-		if n == name {
-			return true
-		}
-	}
-	return false
-}
-
 // fluent_field is the field guard, spelled apart from the test model's
 // own names.
 @(private = "file")
@@ -78,12 +67,12 @@ test_input_edits_its_text_and_reports_focus_and_submit :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_click(&p, "Off"))
 	// The field's label and hint are widgets a probe finds by text; the
 	// message appears once there is one.
-	testing.expect(t, tagged(&p, "Name"))
-	testing.expect(t, tagged(&p, "Your full name"))
-	testing.expect(t, !tagged(&p, "Name is required"))
+	testing.expect(t, ui.probe_tagged(&p, "Name"))
+	testing.expect(t, ui.probe_tagged(&p, "Your full name"))
+	testing.expect(t, !ui.probe_tagged(&p, "Name is required"))
 	m.invalid = true
 	ui.probe_frame(&p)
-	testing.expect(t, tagged(&p, "Name is required"))
+	testing.expect(t, ui.probe_tagged(&p, "Name is required"))
 }
 
 @(test)

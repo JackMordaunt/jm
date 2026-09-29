@@ -234,3 +234,71 @@ test_wrap_breaks_at_spaces_and_keeps_a_long_word :: proc(t: ^testing.T) {
 	testing.expect_value(t, long[0].width, shape_style(gtx, "supercalifragilistic", st).width)
 	testing.expect_value(t, len(wrap(gtx, "", st, 100)), 0)
 }
+
+// inside_window reports whether r lies wholly inside a window of size w.
+@(private = "file")
+inside_window :: proc(r: ops.Rect, w: ops.Size) -> bool {
+	return r.x >= 0 && r.y >= 0 && r.x + r.w <= w.x && r.y + r.h <= w.y
+}
+
+// bottom_menu is a menu button 40px from the window's bottom edge, too
+// low for its menu to open below.
+@(private = "file")
+bottom_menu :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Overlay_Model)(user)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
+	ui.spacer(gtx, WINDOW.y - 40)
+	st := ui.stack_open(gtx)
+	defer ui.close(&st)
+	menu_button(gtx, "Edit", &m.menu)
+	if menu(gtx, &m.menu) {
+		menu_item(gtx, "Cut")
+		menu_item(gtx, "Copy")
+		menu_item(gtx, "Paste")
+	}
+}
+
+@(test)
+test_menu_near_the_bottom_opens_above_its_trigger :: proc(t: ^testing.T) {
+	m: Overlay_Model
+	p: ui.Probe
+	ui.probe_init(&p, bottom_menu, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Edit"))
+	ui.probe_advance(&p, 30, 0.02) // through the enter motion
+	trigger := ui.probe_bounds(&p, "Edit")
+	for name in ([]string{"Cut", "Copy", "Paste"}) {
+		r := ui.probe_bounds(&p, name)
+		testing.expectf(t, r.h > 0 && inside_window(r, WINDOW), "%s at %v leaves the window", name, r)
+		testing.expectf(t, r.y + r.h <= trigger.y, "%s at %v is not above the trigger at %v", name, r, trigger)
+	}
+	// The flipped menu still acts.
+	testing.expect(t, ui.probe_click(&p, "Cut"))
+	testing.expect(t, !m.menu)
+}
+
+// top_tip is the tooltip anchor flush with the window's top edge, where
+// a tooltip asked above has no room.
+@(private = "file")
+top_tip :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	tip_anchor(gtx, (^Overlay_Model)(user))
+}
+
+@(test)
+test_tooltip_at_the_top_opens_below_its_anchor :: proc(t: ^testing.T) {
+	m: Overlay_Model
+	p: ui.Probe
+	ui.probe_init(&p, top_tip, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	a := ui.probe_bounds(&p, "anchor")
+	ui.probe_move(&p, a.x + 10, a.y + 10)
+	ui.probe_advance(&p, 6, 0.05) // past the show delay
+	tip := ui.probe_bounds(&p, "A helpful hint")
+	testing.expect(t, tip.h > 0 && inside_window(tip, WINDOW))
+	testing.expectf(t, tip.y >= a.y + a.h, "tooltip at %v is not below the anchor at %v", tip, a)
+}

@@ -74,17 +74,6 @@ test_initials_and_the_colorful_hash :: proc(t: ^testing.T) {
 	testing.expect_value(t, avatar_roles(.Brass).bg, tok.Role.Palette_Brass_Background2)
 }
 
-// tagged reports whether the frame tagged an area name.
-@(private = "file")
-tagged :: proc(p: ^ui.Probe, name: string) -> bool {
-	for op in p.scene.ops {
-		if g, ok := op.(ops.Tag); ok && g.name == name {
-			return true
-		}
-	}
-	return false
-}
-
 @(test)
 test_badge_avatar_and_spinner_measure_their_sizes :: proc(t: ^testing.T) {
 	m := Feedback_Model{value = 0.5}
@@ -102,9 +91,9 @@ test_badge_avatar_and_spinner_measure_their_sizes :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.spin.size.y, 32)
 	testing.expect(t, m.spin.size.x > 32 + SPINNER_GAP) // the label after the ring
 	// Tags: the badge by its text, the avatar by its name, the spinner by its label.
-	testing.expect(t, tagged(&p, "New"))
-	testing.expect(t, tagged(&p, "Katri Ahokas"))
-	testing.expect(t, tagged(&p, "Loading"))
+	testing.expect(t, ui.probe_tagged(&p, "New"))
+	testing.expect(t, ui.probe_tagged(&p, "Katri Ahokas"))
+	testing.expect(t, ui.probe_tagged(&p, "Loading"))
 }
 
 @(test)

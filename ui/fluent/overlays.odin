@@ -63,6 +63,8 @@ Menu :: struct {
 	open:    ^bool,
 	width:   f32, // the items' content width this frame
 	alpha:   f32,
+	paint:   ^Menu_Paint, // the popover's paint record, which learns its size at close
+	slid:    bool, // a slide transform is pushed inside the overlay
 }
 
 // Menu_Data is what a menu keeps between frames: the widest item seen
@@ -80,27 +82,35 @@ Menu_Data :: struct {
 Menu_Paint :: struct {
 	id:    ops.Area_Id,
 	alpha: f32,
+	size:  ops.Size, // the popover's size, set when its box closes
 }
 
 @(private, thread_local)
 current_menu: ^Menu
 
-// menu_open opens the popover while open^, at offset from the enclosing
-// container's origin (an anchor's height, usually, for a menu below its
-// trigger). The popover is Neutral_Background1 inside a 1px
+// MENU_TRIGGER_GAP is the space between a menu and its trigger.
+@(private)
+MENU_TRIGGER_GAP :: f32(4)
+
+// menu_open opens the popover while open^ from anchor, its trigger's
+// rect in the enclosing container (a 32px trigger at the origin by
+// default, as in a stack with its menu button): below it, MENU_TRIGGER_GAP
+// away, flush with its start, flipped above or shifted along the edge
+// when that would leave the window (ui.popup_open). The popover is Neutral_Background1 inside a 1px
 // Transparent_Stroke border with borderRadiusMedium corners and shadow16,
 // 4px of padding around a column of items 2px apart, between 138 and
 // 300px wide. It enters by fading in and sliding 10px into place over
 // DURATION_SLOWER with CURVE_DECELERATE_MID and closes at once. A press
 // outside closes it; a click on an item closes it unless the item
-// persists. Returns visible false, and lays nothing out, when closed.
+// persists. It slides in from the anchor's side, whichever side it
+// opened on. Returns visible false, and lays nothing out, when closed.
 //
 // Not done, for want of jm:ui support: arrow-key travel between items,
 // Home/End and typeahead (jm:ui moves focus only by press; a focused
-// item still takes Enter, Space and Escape), placement that flips to
-// stay in view, hover- and context-opened menus, and submenus (an item
-// can show the chevron; the caller composes the second menu).
-menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, offset := ops.Point{0, 36}, key: u64 = 0, loc := #caller_location) -> (m: Menu) {
+// item still takes Enter, Space and Escape), hover- and context-opened
+// menus, and submenus (an item can show the chevron; the caller
+// composes the second menu).
+menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, key: u64 = 0, loc := #caller_location) -> (m: Menu) {
 	id := ui.scoped_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Menu_Data)
 	if !open^ {
@@ -131,12 +141,19 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, offset := ops.Point{0, 36}, key: u6
 	d.width = d.seen
 	d.seen = 0
 
-	slide := ops.Point{0, -MENU_SLIDE * (1 - t)}
-	m.overlay = ui.overlay_open(gtx, offset + slide)
+	m.overlay = ui.popup_open(gtx, anchor, id, .Below, .Start, MENU_TRIGGER_GAP)
 	// Scrim: an invisible catch-all under the popover; a press on it closes.
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+	// The slide comes from the anchor: down into place below it, up into
+	// place above it.
+	dir: f32 = ui.placed_side(gtx, id, .Below) == .Above ? 1 : -1
+	if slide := MENU_SLIDE * (1 - t); slide > 0 {
+		ops.transform_push(gtx.scene, ops.translate(0, dir * slide))
+		m.slid = true
+	}
 	mp := new(Menu_Paint, gtx.allocator)
-	mp^ = {id, t}
+	mp^ = {id = id, alpha = t}
+	m.paint = mp
 	m.box = ui.box_open(gtx, {padding = ui.pad_all(MENU_PAD + tok.STROKE_WIDTH_THIN), paint = paint_menu, user = mp}, key = 1)
 	m.col = ui.column_open(gtx, gap = MENU_GAP, key = 2)
 	current_menu = ui.widget_data(gtx, id, Menu)
@@ -154,8 +171,11 @@ menu_close :: proc(m: ^Menu) {
 	// Closed by an item this frame: draw nothing and catch nothing, or
 	// the scrim would take the next click (input routes against the
 	// last frame's hits).
+	if m.slid {
+		ops.transform_pop(m.overlay.gtx.scene)
+	}
 	m.overlay.discard = !m.open^
-	ui.close(&m.overlay)
+	ui.popup_close(&m.overlay, m.paint.size)
 	m.visible = false
 	current_menu = nil
 }
@@ -164,13 +184,13 @@ menu_close :: proc(m: ^Menu) {
 // the items out only while the menu shows and closes it at the end of
 // the if (see ui/guards.odin).
 @(deferred_in = menu_guard_close)
-menu :: proc(gtx: ^ui.Ctx, open: ^bool, offset := ops.Point{0, 36}, key: u64 = 0, loc := #caller_location) -> bool {
-	m := menu_open(gtx, open, offset, key, loc)
+menu :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, key: u64 = 0, loc := #caller_location) -> bool {
+	m := menu_open(gtx, open, anchor, key, loc)
 	return m.visible
 }
 
 @(private = "file")
-menu_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, offset: ops.Point, key: u64, loc: runtime.Source_Code_Location) {
+menu_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, anchor: ops.Rect, key: u64, loc: runtime.Source_Code_Location) {
 	if current_menu != nil {
 		menu_close(current_menu)
 	}
@@ -182,6 +202,7 @@ menu_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, offset: ops.Point, key: u64,
 @(private)
 paint_menu :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
 	mp := (^Menu_Paint)(user)
+	mp.size = size
 	area := ops.Rect{0, 0, size.x, size.y}
 	rr := ops.Round_Rect{area, tok.BORDER_RADIUS_MEDIUM}
 	for l in tok.SHADOW16.layers {
@@ -600,9 +621,10 @@ Tooltip_Timer :: struct {
 // borderRadiusMedium corners, at most 240px wide, on Neutral_Background1
 // with Neutral_Foreground1 text (or the static inverted pair), under a
 // shadow of shadow8's geometry, centred above or below the anchor 4px
-// away, or 6px with the arrow. There is no enter or exit motion
-// (tooltip.json behaviour no-motion). Placement does not flip to stay
-// in view.
+// away, or 6px with the arrow, flipped to the other side or shifted
+// along the edge when that would leave the window, the arrow following
+// (ui.popup_open). There is no enter or exit motion (tooltip.json
+// behaviour no-motion).
 tooltip :: proc(
 	gtx: ^ui.Ctx,
 	id: ops.Area_Id,
@@ -654,18 +676,21 @@ tooltip :: proc(
 	w := tw + TOOLTIP_PAD.left + TOOLTIP_PAD.right + 2 * tok.STROKE_WIDTH_THIN
 	h := th + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom + 2 * tok.STROKE_WIDTH_THIN
 	gap := arrow ? TOOLTIP_ARROW : TOOLTIP_GAP
-	at := ops.Point{(box.x - w) / 2, position == .Above ? -(h + gap) : box.y + gap}
-	o := ui.overlay_open(gtx, at)
-	defer ui.close(&o)
+	asked := position == .Above ? ops.Side.Above : ops.Side.Below
+	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, bubble_id, asked, .Center, gap)
+	defer ui.popup_close(&o, {w, h})
+	side, shift := ui.placed(gtx, bubble_id, asked)
 	fill := color(appearance == .Inverted ? .Neutral_Background_Static : .Neutral_Background1)
 	fg := color(appearance == .Inverted ? .Neutral_Foreground_Static_Inverted : .Neutral_Foreground1)
 	rr := ops.Round_Rect{{0, 0, w, h}, tok.BORDER_RADIUS_MEDIUM}
 	paint_shadow(gtx, rr, tok.SHADOW8)
 	ops.fill(gtx.scene, rr, fill)
 	if arrow {
-		cx := w / 2
+		// At the anchor's centre, undoing any shift placement made, clear
+		// of the rounded corners.
+		cx := clamp(w / 2 - shift.x, TOOLTIP_ARROW + tok.BORDER_RADIUS_MEDIUM, w - TOOLTIP_ARROW - tok.BORDER_RADIUS_MEDIUM)
 		pts: [3]ops.Point
-		if position == .Above {
+		if side == .Above {
 			pts = {{cx - TOOLTIP_ARROW, h}, {cx + TOOLTIP_ARROW, h}, {cx, h + TOOLTIP_ARROW}}
 		} else {
 			pts = {{cx - TOOLTIP_ARROW, 0}, {cx + TOOLTIP_ARROW, 0}, {cx, -TOOLTIP_ARROW}}
