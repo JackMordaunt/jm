@@ -5,6 +5,8 @@ import "jm:ui/ops"
 import "core:mem/virtual"
 import "core:os"
 import "core:testing"
+import "core:thread"
+import "core:time"
 
 import "jm:sh"
 import "jm:ui"
@@ -176,4 +178,38 @@ shows_label :: proc(f: ^ui.Frame, name: string) -> bool {
 		}
 	}
 	return false
+}
+
+// test_wait_for_child_outlasts_the_first_build waits on a pointer file
+// another thread writes 200ms later, as hot-watch's first build does
+// after the recipe starts the host; a name with no child and no watch
+// fails without waiting.
+@(test)
+test_wait_for_child_outlasts_the_first_build :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	pointer := "build/debug/host_test.wait"
+	os.remove(pointer)
+	defer os.remove(pointer)
+	writer := thread.create_and_start_with_data(rawptr(uintptr(0)), proc(_: rawptr) {
+		time.sleep(200 * time.Millisecond)
+		_ = os.write_entire_file("build/debug/host_test.wait", CHILD_EXE)
+	})
+	defer thread.destroy(writer)
+	app := Host_App{watch = pointer}
+	start := time.tick_now()
+	path, ok := wait_for_child(&app, 5 * time.Second)
+	testing.expect(t, ok)
+	testing.expect_value(t, path, CHILD_EXE)
+	testing.expect(t, time.tick_since(start) >= 200 * time.Millisecond)
+	thread.join(writer)
+
+	none := Host_App{}
+	_, ok = wait_for_child(&none, 5 * time.Second)
+	testing.expect(t, !ok)
+	os.remove(pointer)
+	gone := Host_App{watch = pointer}
+	start = time.tick_now()
+	_, ok = wait_for_child(&gone, 600 * time.Millisecond) // one poll, then the deadline
+	testing.expect(t, !ok)
+	testing.expect(t, time.tick_since(start) < 3 * time.Second)
 }

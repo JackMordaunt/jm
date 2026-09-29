@@ -130,13 +130,14 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	l.app = app
 	l.ctx = context
 	l.started = time.now()
-	if !open(&l.w, App{title = app.title, width = app.width, height = app.height}) {
-		return false
-	}
-	path, pok := resolve_child_path(&l.app, context.temp_allocator)
+	// The child first, so a watch whose first build has not landed yet
+	// is waited for without a window sitting unresponsive meanwhile.
+	path, pok := wait_for_child(&l.app, WATCH_WAIT, context.temp_allocator)
 	if !pok {
 		fmt.eprintln("sdl: no child to spawn (check Host_App.child / watch)")
-		close(&l.w)
+		return false
+	}
+	if !open(&l.w, App{title = app.title, width = app.width, height = app.height}) {
 		return false
 	}
 	argv := child_argv(&l.app, path, context.temp_allocator)
@@ -195,6 +196,32 @@ resolve_child_path :: proc(app: ^Host_App, allocator := context.allocator) -> (s
 	}
 	path := strings.trim_space(string(data))
 	return path, path != ""
+}
+
+// WATCH_WAIT is how long a host waits for its watch pointer file to
+// appear when the recipe starts it and hot-watch at once: the first
+// build of the child has to land first (about 20 s for the kitchens on
+// the machine this was written on), and two minutes leaves room for a
+// slower one without hanging a recipe whose watcher never builds.
+WATCH_WAIT :: 2 * time.Minute
+
+// wait_for_child is resolve_child_path, retried every RESPAWN_POLL_S
+// for up to timeout while app names a watch file that does not exist
+// yet (the first build has not landed). A missing child list fails at
+// once, as there is nothing to wait for.
+@(private)
+wait_for_child :: proc(app: ^Host_App, timeout: time.Duration, allocator := context.allocator) -> (string, bool) {
+	path, ok := resolve_child_path(app, allocator)
+	if ok || app.watch == "" {
+		return path, ok
+	}
+	fmt.eprintfln("sdl: waiting for %s", app.watch)
+	deadline := time.time_add(time.now(), timeout)
+	for !ok && time.diff(time.now(), deadline) > 0 {
+		time.sleep(time.Duration(RESPAWN_POLL_S * f32(time.Second)))
+		path, ok = resolve_child_path(app, allocator)
+	}
+	return path, ok
 }
 
 // child_argv is path, app.child's own extra arguments (app.child[1:], or
