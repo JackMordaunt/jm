@@ -110,3 +110,37 @@ test_flash_is_off_and_untouchable_under_full_frames :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	testing.expect(t, debug_tray_wants_flash(&p.tray)) // the choice was kept
 }
+
+@(test)
+test_debug_tray_drags_by_its_title_and_stays_in_the_window :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {}
+	p: Probe
+	probe_init(&p, view, nil, {1200, 1000}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	probe_key(&p, DEBUG_TOGGLE_KEY)
+	start := p.tray.rect
+	testing.expect(t, start.x + start.w > 1100 && start.y + start.h > 900) // the bottom-right corner
+
+	grip, ok := probe_center(&p, "Debug tray")
+	testing.expect(t, ok)
+	router_push(&p.router, {kind = .Move, pos = grip})
+	router_push(&p.router, {kind = .Press, pos = grip, button = .Left})
+	probe_frame(&p)
+	router_push(&p.router, {kind = .Move, pos = grip - {300, 200}})
+	probe_frame(&p)
+	router_push(&p.router, {kind = .Release, pos = grip - {300, 200}, button = .Left})
+	probe_frame(&p)
+	testing.expect_value(t, Point{p.tray.rect.x, p.tray.rect.y}, Point{start.x - 300, start.y - 200})
+
+	// Dragged far past the top-left, it stops at the window's edge.
+	grip, _ = probe_center(&p, "Debug tray")
+	router_push(&p.router, {kind = .Move, pos = grip})
+	router_push(&p.router, {kind = .Press, pos = grip, button = .Left})
+	probe_frame(&p)
+	router_push(&p.router, {kind = .Move, pos = grip - {5000, 5000}})
+	probe_frame(&p)
+	router_push(&p.router, {kind = .Release, pos = grip - {5000, 5000}, button = .Left})
+	probe_frame(&p)
+	testing.expect_value(t, Point{p.tray.rect.x, p.tray.rect.y}, Point{0, 0})
+}

@@ -68,6 +68,8 @@ Debug_Tray :: struct {
 	count:       int,
 	rect:        Rect, // where it was drawn last, in the ui's own units, so the inspector can skip it
 	panel:       Rect, // the inspector's panel this frame, device space, or empty
+	offset:      Point, // where its title bar has dragged it from the bottom-right corner
+	dragging:    bool,
 }
 
 // debug_tray_init gives t its opening toggles: what F11 turned on before
@@ -256,6 +258,9 @@ stats_lines :: proc(s: Frame_Stats, allocator := context.allocator) -> []string 
 	return lines[:]
 }
 
+// TRAY_TITLE is the height of the title bar the tray is dragged by.
+TRAY_TITLE :: f32(24)
+
 // TRAY_EVENTS is how many of the logged events the tray shows.
 TRAY_EVENTS :: 6
 
@@ -283,9 +288,29 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	lines := stats_lines(t.last, gtx.allocator)
 	log := event_log_lines(t, TRAY_EVENTS, gtx.allocator)
 	graph_h :: f32(36)
-	h := 2 * pad + row * f32(len(TOGGLES) + 2) + 6 + f32(len(lines)) * (text + 5) + 6 + graph_h + 8 + f32(TRAY_EVENTS) * (text + 3)
+	h := TRAY_TITLE + pad + row * f32(len(TOGGLES) + 2) + 6 + f32(len(lines)) * (text + 5) + 6 + graph_h + 8 + f32(TRAY_EVENTS) * (text + 3)
+
+	// The title bar drags it: by the pointer's travel, which holds however
+	// the bar itself moves (see Event.travel). Kept inside the window.
+	grip := scoped_id(gtx, 2)
+	for e in events(gtx, grip) {
+		#partial switch e.kind {
+		case .Press:
+			t.dragging = true
+		case .Release:
+			t.dragging = false
+		case .Move:
+			if t.dragging {
+				t.offset += e.travel
+			}
+		}
+	}
 	window := gtx.constraints.max
-	at := Point{max(window.x - TRAY_WIDTH - 12, 0), max(window.y - h - 12, 0)}
+	corner := Point{window.x - TRAY_WIDTH - 12, window.y - h - 12}
+	at := corner + t.offset
+	at = {clamp(at.x, 0, max(window.x - TRAY_WIDTH, 0)), clamp(at.y, 0, max(window.y - h, 0))}
+	t.offset = at - corner // a drag past the edge does not bank distance to come back through
+
 	o := overlay(gtx, at, exact({TRAY_WIDTH, h}))
 	defer end(&o)
 	t.rect = {at.x, at.y, TRAY_WIDTH, h}
@@ -293,8 +318,17 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	// Its own hit area, below the toggles: presses on the tray's padding
 	// reach nothing under it.
 	input_area(gtx.ops, scoped_id(gtx, 1), Rect{0, 0, TRAY_WIDTH, h}, {.Press, .Release, .Move, .Scroll})
+	// The title bar: a name and a grip, darker, to drag by.
+	title := Rect{0, 0, TRAY_WIDTH, TRAY_TITLE}
+	title_color := Color{40, 37, 50, 255}
+	fill(gtx.ops, Round_Rect{title, 8}, title_color)
+	fill(gtx.ops, Rect{0, TRAY_TITLE / 2, TRAY_WIDTH, TRAY_TITLE / 2}, title_color) // square lower corners, flush with the body
+	tray_text(gtx, "Debug", {pad, TRAY_TITLE / 2 + 4}, 12, Color{235, 233, 242, 255})
+	tray_text(gtx, t.dragging ? "moving" : "drag to move", {TRAY_WIDTH - pad - 76, TRAY_TITLE / 2 + 4}, 11, Color{150, 148, 162, 255})
+	input_area(gtx.ops, grip, title, {.Press, .Release, .Move, .Enter, .Leave})
+	tag(gtx.ops, grip, "Debug tray")
 
-	y := pad
+	y := TRAY_TITLE + pad
 	for tg, i in TOGGLES {
 		on := tg.flag in t.flags
 		if tray_toggle(gtx, {pad, y, TRAY_WIDTH - 2 * pad, row}, tg.name, on, u64(10 + i)) {
