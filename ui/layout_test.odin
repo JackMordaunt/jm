@@ -880,6 +880,7 @@ test_layout_accessors_name_the_open_containers :: proc(t: ^testing.T) {
 			testing.expect_value(t, kids[0].size, one.size) // the labels, in order, at the size they took
 			testing.expect_value(t, kids[1].size, two.size)
 		}
+		// A nested row is innermost while open and the column's child once ended.
 		{
 			r := row(gtx); defer end(&r)
 			testing.expect_value(t, depth(l), 2)

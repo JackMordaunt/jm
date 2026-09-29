@@ -510,18 +510,18 @@ children_of :: proc(l: ^Layout, c: ^Container) -> []Child {
 	return l.children[c.first:]
 }
 
-// stack_detach gives l an empty container stack, so what is laid out
+// containers_detach gives l an empty container stack, so what is laid out
 // next is at the root whatever was open, and returns the stack it had;
-// stack_attach puts that back once the detached run is ended.
+// containers_attach puts that back once the detached run is ended.
 @(private)
-stack_detach :: proc(l: ^Layout, allocator: mem.Allocator) -> [dynamic]Container {
+containers_detach :: proc(l: ^Layout, allocator: mem.Allocator) -> [dynamic]Container {
 	saved := l.stack
 	l.stack = make([dynamic]Container, allocator)
 	return saved
 }
 
 @(private)
-stack_attach :: proc(l: ^Layout, saved: [dynamic]Container) {
+containers_attach :: proc(l: ^Layout, saved: [dynamic]Container) {
 	assert(len(l.stack) == 0, "ui: a container inside an overlay was not ended")
 	l.stack = saved
 }
@@ -957,7 +957,7 @@ overlay :: proc(gtx: ^Ctx, at: Point = {}, cs := Constraints{max = {INF, INF}}, 
 		o.pushed = true
 	}
 	if l := gtx.layout; l != nil {
-		o.stack = stack_detach(l, gtx.allocator)
+		o.stack = containers_detach(l, gtx.allocator)
 		o.scope = l.scope
 	}
 	gtx.constraints = cs
@@ -972,7 +972,7 @@ end_overlay :: proc(o: ^Overlay) {
 	o.active = false
 	gtx := o.gtx
 	if l := gtx.layout; l != nil {
-		stack_attach(l, o.stack)
+		containers_attach(l, o.stack)
 		l.scope = o.scope
 	}
 	gtx.constraints = o.saved
