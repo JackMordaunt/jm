@@ -1,0 +1,196 @@
+# Type-checks every package for every target, then runs the test suite on
+# Linux, macOS and Windows. The native libraries the tests link are built
+# here the way the justfile builds them: the vendored SQLite, wasm3 and
+# libpg_query with the platform's C compiler, libgit2 and Blend2D with
+# CMake from pinned upstream checkouts, cached between runs.
+#
+# Not run here: ui/sdl (needs SDL3 and a display), and the pq tests skip
+# themselves on a runner where the PostgreSQL server binaries are not on
+# PATH; the package still has to link libpq, so pq is left out where
+# there is no libpq to link.
+name: test
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  ODIN_RELEASE: dev-2026-09
+  LIBGIT2_TAG: v1.9.7
+  BLEND2D_REF: 58ca9460b4138af6e793184682e9324e0a8053b2
+  ASMJIT_REF: 0d7f01052f2d3f6d6b9bb6714ef32bd7b80177eb
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: laytan/setup-odin@v2.12.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: ${{ env.ODIN_RELEASE }}
+      - uses: extractions/setup-just@v3
+      - run: just check
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: laytan/setup-odin@v2.12.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: ${{ env.ODIN_RELEASE }}
+      - uses: extractions/setup-just@v3
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
+      # What each platform needs beyond its compilers: libcurl for jm:http,
+      # libpq and a PostgreSQL server for jm:pq, and the fonts the render
+      # tests name. The Odin release's vendor:curl also names mbedtls on
+      # Linux, which the system libcurl does not use; empty archives satisfy
+      # those flags.
+      - name: platform packages (linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libcurl4-openssl-dev libpq-dev postgresql fonts-liberation cmake ninja-build
+          sudo mkdir -p /usr/share/fonts/liberation
+          sudo ln -sf /usr/share/fonts/truetype/liberation/*.ttf /usr/share/fonts/liberation/
+          mkdir -p "$RUNNER_TEMP/stubs"
+          for l in mbedtls mbedx509 mbedcrypto; do ar rcs "$RUNNER_TEMP/stubs/lib$l.a"; done
+          echo "LINK=-extra-linker-flags:-L$RUNNER_TEMP/stubs" >> "$GITHUB_ENV"
+          echo "/usr/lib/postgresql/$(ls /usr/lib/postgresql | sort -V | tail -1)/bin" >> "$GITHUB_PATH"
+          echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
+      - name: platform packages (macos)
+        if: runner.os == 'macOS'
+        run: |
+          brew install --quiet postgresql@17 ninja
+          prefix="$(brew --prefix postgresql@17)"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+          echo "LINK=-extra-linker-flags:-L$prefix/lib" >> "$GITHUB_ENV"
+          echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
+      - name: platform packages (windows)
+        if: runner.os == 'Windows'
+        run: |
+          if [ -n "${PGROOT:-}" ] && [ -f "$PGROOT/lib/libpq.lib" ]; then
+            echo "$PGBIN" >> "$GITHUB_PATH"
+            echo "LINK=-extra-linker-flags:/LIBPATH:$(cygpath -w "$PGROOT/lib")" >> "$GITHUB_ENV"
+            echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
+          else
+            echo "no PostgreSQL on this image: pq is left out"
+          fi
+
+      # The vendored C libraries, compiled as the justfile compiles them.
+      # On Windows the recipes are written for PowerShell and just's parser
+      # trips over the file there, so the same commands run directly.
+      - name: sqlite, wasm3, libpg_query (unix)
+        if: runner.os != 'Windows'
+        run: just sqlite wasm pg_query
+      - name: sqlite, wasm3, libpg_query (windows)
+        if: runner.os == 'Windows'
+        env:
+          MSYS_NO_PATHCONV: 1
+        run: |
+          value() { sed -n "/^$1 :=/,/[^\\\\]$/p" justfile | grep -o '"[^"]*"' | tr -d '"' | tr -d '\n'; }
+          sqlite_defines=$(value sqlite_defines)
+          wasm_defines=$(value wasm_defines)
+          pg_query_flags=$(value pg_query_flags | sed 's/-fno-strict-aliasing//; s/-fwrapv//; s/-fPIC//; s/-O2//; s/-Wno-[a-z-]*//g')
+          mkdir -p sqlite3/lib wasm/lib/obj pg_query/lib/obj
+          cl -nologo -O2 -c sqlite3/vendor/sqlite3.c -Fosqlite3/lib/sqlite3.obj $sqlite_defines
+          lib -nologo -OUT:sqlite3/lib/sqlite3.lib sqlite3/lib/sqlite3.obj
+          for f in wasm/vendor/*.c; do cl -nologo -O2 -I wasm/vendor $wasm_defines -c "$f" -Fowasm/lib/obj/ || exit 1; done
+          lib -nologo -OUT:wasm/lib/wasm3.lib wasm/lib/obj/*.obj
+          find pg_query/vendor/src pg_query/vendor/protobuf pg_query/vendor/vendor -name '*.c' | while read -r f; do
+            cl -nologo -O2 $pg_query_flags -I pg_query/vendor/src/postgres/include/port/win32 -c "$f" -Fopg_query/lib/obj/ > /dev/null || exit 1
+          done
+          lib -nologo -OUT:pg_query/lib/pg_query.lib pg_query/lib/obj/*.obj
+
+      # libgit2, static, from the tag the binding was written against, with
+      # the platform's HTTPS and ssh through the platform's binary.
+      - uses: actions/cache@v4
+        id: libgit2
+        with:
+          path: git/lib
+          key: libgit2-${{ env.LIBGIT2_TAG }}-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: libgit2
+        if: steps.libgit2.outputs.cache-hit != 'true'
+        run: |
+          git clone -q --depth 1 --branch "$LIBGIT2_TAG" https://github.com/libgit2/libgit2 "$RUNNER_TEMP/libgit2"
+          case "$RUNNER_OS" in
+            Linux)   https=OpenSSL-Dynamic; gen="-G Ninja" ;;
+            macOS)   https=SecureTransport; gen="-G Ninja" ;;
+            Windows) https=WinHTTP; gen="-G Ninja -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded" ;;
+          esac
+          cmake -S "$RUNNER_TEMP/libgit2" -B "$RUNNER_TEMP/libgit2/build" $gen -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_SSH=exec -DUSE_HTTPS=$https \
+            -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin
+          cmake --build "$RUNNER_TEMP/libgit2/build" --parallel
+          mkdir -p git/lib
+          if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/libgit2/build/git2.lib" git/lib/; else cp "$RUNNER_TEMP/libgit2/build/libgit2.a" git/lib/; fi
+
+      # Blend2D, static, with asmjit beside it as its build expects.
+      - uses: actions/cache@v4
+        id: blend2d
+        with:
+          path: ui/blend2d/lib
+          key: blend2d-${{ env.BLEND2D_REF }}-${{ env.ASMJIT_REF }}-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: blend2d
+        if: steps.blend2d.outputs.cache-hit != 'true'
+        run: |
+          git clone -q https://github.com/blend2d/blend2d "$RUNNER_TEMP/blend2d"
+          git -C "$RUNNER_TEMP/blend2d" checkout -q "$BLEND2D_REF"
+          git clone -q https://github.com/asmjit/asmjit "$RUNNER_TEMP/blend2d/3rdparty/asmjit"
+          [ "$ASMJIT_REF" = master ] || git -C "$RUNNER_TEMP/blend2d/3rdparty/asmjit" checkout -q "$ASMJIT_REF"
+          gen="-G Ninja"
+          [ "$RUNNER_OS" = Windows ] && gen="-G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+          cmake -S "$RUNNER_TEMP/blend2d" -B "$RUNNER_TEMP/blend2d/build" $gen -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF
+          cmake --build "$RUNNER_TEMP/blend2d/build" --parallel
+          mkdir -p ui/blend2d/lib
+          if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/blend2d/build/blend2d.lib" ui/blend2d/lib/; else cp "$RUNNER_TEMP/blend2d/build/libblend2d.a" ui/blend2d/lib/; fi
+
+      # The suite: the justfile's package list, plus the packages that link
+      # Blend2D, each as `just test` runs it. pq joins where libpq exists.
+      - name: test
+        env:
+          MSYS_NO_PATHCONV: 1
+        run: |
+          flags="-vet -strict-style -collection:jm=$PWD $LINK"
+          cxx=""; [ "$RUNNER_OS" = Windows ] || cxx='-extra-linker-flags:-lstdc++'
+          exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
+          packages=$(sed -n 's/^packages := "\(.*\)"$/\1/p' justfile | sed 's| pq pq/testdb pq/fuzz||')
+          mkdir -p build/test build/debug
+          failed=0
+          for p in $packages $PQ; do
+            threads=""
+            case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac
+            echo "::group::odin test $p"
+            odin test "$p" $flags $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            echo "::endgroup::"
+          done
+          echo "::group::odin test tools/wasm-bench"
+          odin test tools/wasm-bench $flags -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::tools/wasm-bench failed"; failed=1; }
+          echo "::endgroup::"
+          for p in ui/render ui/render/fuzz ui/child; do
+            echo "::group::odin test $p"
+            odin test "$p" $flags $cxx -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            echo "::endgroup::"
+          done
+          echo "::group::build the hot-reload child and the probe"
+          odin build examples/hot-counter/child -debug $flags $cxx -out:build/debug/hot-counter-child$exe || failed=1
+          odin build tools/git-probe $flags -out:build/debug/git-probe$exe || failed=1
+          echo "::endgroup::"
+          exit $failed
+
+      # The one network step: an anonymous HTTPS clone through the static
+      # libgit2 and the platform's own TLS.
+      - name: git-probe (anonymous https)
+        run: build/debug/git-probe https://github.com/octocat/Hello-World.git

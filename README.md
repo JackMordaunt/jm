@@ -126,6 +126,14 @@ just clean     drop build/ and the four archives
 `just install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.
 
+GitHub Actions runs `just check` and the same test suite on Linux, macOS
+and Windows on every push (`.github/workflows/test.yml`), building the
+vendored C libraries, libgit2 and Blend2D there the way the recipes do
+and caching the two CMake builds. `ui/sdl` stays out, for want of SDL3
+and a display on a runner; `pq` runs wherever the runner has libpq and a
+PostgreSQL server, which is all three.
+
+
 ## SQLite
 
 `sqlite3/vendor/` holds the SQLite **3.53.4** amalgamation (`sqlite3.c` and
