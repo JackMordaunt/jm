@@ -130,8 +130,10 @@ GitHub Actions runs `just check` and the same test suite on Linux, macOS
 and Windows on every push (`.github/workflows/test.yml`), building the
 vendored C libraries, libgit2 and Blend2D there the way the recipes do
 and caching the two CMake builds. `ui/sdl` stays out, for want of SDL3
-and a display on a runner; `pq` runs wherever the runner has libpq and a
-PostgreSQL server, which is all three.
+and a display on a runner; `pq` runs on all three, each runner having
+libpq and a PostgreSQL server; `wasm` sits out on Windows, where wasm3
+built with clang-cl fails one trap test with a fault (the workflow says
+which) and the recipe's own cl build does not compile.
 
 
 ## SQLite
