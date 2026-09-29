@@ -183,6 +183,30 @@ draw_flashes :: proc(w: ^Window) {
 	builtin.resize(&w.flashes, kept) // sdl's own resize shadows the builtin
 }
 
+// flash_outside adds a flash for each part of r outside every rect in
+// keep_out.
+@(private)
+flash_outside :: proc(w: ^Window, r: ui.Rect, keep_out: []ui.Rect, at: u64) {
+	if r.w <= 0 || r.h <= 0 {
+		return
+	}
+	for k, i in keep_out {
+		cut := ui.rect_intersect(r, k)
+		if cut.w <= 0 || cut.h <= 0 {
+			continue
+		}
+		// The parts of r above, below, left and right of the cut, each
+		// checked against the rest of keep_out.
+		rest := keep_out[i + 1:]
+		flash_outside(w, {r.x, r.y, r.w, cut.y - r.y}, rest, at)
+		flash_outside(w, {r.x, cut.y + cut.h, r.w, r.y + r.h - cut.y - cut.h}, rest, at)
+		flash_outside(w, {r.x, cut.y, cut.x - r.x, cut.h}, rest, at)
+		flash_outside(w, {cut.x + cut.w, cut.y, r.x + r.w - cut.x - cut.w, cut.h}, rest, at)
+		return
+	}
+	append(&w.flashes, Flash{{r.x, r.y, r.w, r.h}, at})
+}
+
 // flashing reports whether repaint flashes are still fading, so the loop
 // keeps presenting until they are gone.
 @(private)
@@ -372,7 +396,16 @@ step :: proc(l: ^Loop) {
 	build_ms := ui.ms(build_start)
 	present_start := time.tick_now()
 	host: ui.Host_Stats
-	l.shown, host.repaint_rects, host.repaint_px = present(w, &l.comp, frame, l.app.clear, ui.debug_tray_wants_full_frames(&l.tray), ui.debug_tray_wants_flash(&l.tray))
+	keep_out: [2]ui.Rect
+	l.shown, host.repaint_rects, host.repaint_px = present(
+		w,
+		&l.comp,
+		frame,
+		l.app.clear,
+		ui.debug_tray_wants_full_frames(&l.tray),
+		ui.debug_tray_wants_flash(&l.tray),
+		ui.debug_tray_overlays(&l.tray, w.density, &keep_out),
+	)
 	host.present_ms = ui.ms(present_start)
 	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, int(arena.arena.total_used), host))
 	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
@@ -614,7 +647,18 @@ refresh_ms :: proc(w: ^Window) -> i32 {
 // front texture up to date. It shows the texture and reports true when
 // anything changed or the window must be shown again.
 @(private)
-present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color, full := false, flash := false) -> (shown: bool, repaint_rects, repaint_px: int) {
+present :: proc(
+	w: ^Window,
+	c: ^render.Compositor,
+	f: ^ui.Frame,
+	clear: ui.Color,
+	full := false,
+	flash := false,
+	keep_out: []ui.Rect = nil,
+) -> (
+	shown: bool,
+	repaint_rects, repaint_px: int,
+) {
 	if w.textures[0] == nil {
 		return
 	}
@@ -638,9 +682,11 @@ present :: proc(w: ^Window, c: ^render.Compositor, f: ^ui.Frame, clear: ui.Color
 		repaint_px += int(r.w * r.h)
 	}
 	if flash {
+		// Never over keep_out, the debug panels: they repaint every frame,
+		// and their own flash would hide them.
 		at := sdl3.GetTicks()
 		for r in changed {
-			append(&w.flashes, Flash{{r.x, r.y, r.w, r.h}, at})
+			flash_outside(w, r, keep_out, at)
 		}
 	}
 	if !w.stale && !w.exposed && len(changed) == 0 && len(w.flashes) == 0 {

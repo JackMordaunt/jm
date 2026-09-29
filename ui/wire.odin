@@ -119,26 +119,71 @@ decode_raw_event :: proc(r: ^Reader) -> (e: Raw_Event, ok: bool) {
 // encode_reply serializes wants_frame, frame_after and ops_bytes (already
 // ui.encode(ops)'s own output) into a new byte slice, the subprocess's
 // half of one frame's round trip.
-encode_reply :: proc(wants_frame: bool, frame_after: f32, ops_bytes: []byte, allocator := context.allocator, full_frames := false, flash := false) -> []byte {
+encode_reply :: proc(
+	wants_frame: bool,
+	frame_after: f32,
+	ops_bytes: []byte,
+	allocator := context.allocator,
+	full_frames := false,
+	flash := false,
+	keep_out: []Rect = nil,
+) -> []byte {
 	w := make([dynamic]byte, 0, 5 + len(ops_bytes), allocator)
 	// Bit 0: wants another frame. Bit 1: redraw it whole (the debug tray's
 	// full frames), since the compositor runs in the host. Bit 2: flash
-	// what it repaints.
+	// what it repaints, but not over keep_out, the debug panels, which
+	// follow as a count and rects.
 	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0))
 	put_f32(&w, frame_after)
+	if flash {
+		append(&w, u8(min(len(keep_out), 255)))
+		for r in keep_out[:min(len(keep_out), 255)] {
+			put_rect(&w, r)
+		}
+	}
 	append(&w, ..ops_bytes)
 	return w[:]
 }
 
 // decode_reply is encode_reply's inverse: ops_bytes is a slice into data
 // (not copied), meant for an immediate ui.decode.
-decode_reply :: proc(data: []byte) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool, full_frames: bool, flash: bool) {
+// keep_out is read into its fixed buffer; the reply's flags and keep_out
+// come back as Reply_Debug.
+decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
 	r := Reader{data = data}
 	flag := get_u8(&r) or_return
 	if flag > 7 {
-		return false, 0, nil, false, false, false
+		return false, 0, nil, false
 	}
-	wants_frame, full_frames, flash = flag & 1 != 0, flag & 2 != 0, flag & 4 != 0
+	d: Reply_Debug
+	wants_frame, d.full_frames, d.flash = flag & 1 != 0, flag & 2 != 0, flag & 4 != 0
 	frame_after = get_f32(&r) or_return
-	return wants_frame, frame_after, data[r.pos:], true, full_frames, flash
+	if d.flash {
+		n := int(get_u8(&r) or_return)
+		for i in 0 ..< n {
+			rect := get_rect(&r) or_return
+			if i < len(d.keep_out_buf) {
+				d.keep_out_buf[i] = rect
+				d.keep_out_n = i + 1
+			}
+		}
+	}
+	if dbg != nil {
+		dbg^ = d
+	}
+	return wants_frame, frame_after, data[r.pos:], true
+}
+
+// Reply_Debug is what a reply asks of the host for the child's debug tray:
+// full frames, the repaint flash, and where the flash must not draw.
+Reply_Debug :: struct {
+	full_frames:  bool,
+	flash:        bool,
+	keep_out_buf: [4]Rect,
+	keep_out_n:   int,
+}
+
+// reply_keep_out is d's rects the flash must leave alone.
+reply_keep_out :: proc(d: ^Reply_Debug) -> []Rect {
+	return d.keep_out_buf[:d.keep_out_n]
 }

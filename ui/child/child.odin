@@ -162,7 +162,16 @@ run :: proc(app: App) {
 		ops_bytes := ui.encode(&ops, allocator)
 		// host is what the host said presenting the frame before cost.
 		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used), host))
-		reply := ui.encode_reply(gtx.wants_frame || tray.open, gtx.frame_after, ops_bytes, allocator, ui.debug_tray_wants_full_frames(&tray), ui.debug_tray_wants_flash(&tray))
+		keep_out: [2]ui.Rect
+		reply := ui.encode_reply(
+			gtx.wants_frame || tray.open,
+			gtx.frame_after,
+			ops_bytes,
+			allocator,
+			ui.debug_tray_wants_full_frames(&tray),
+			ui.debug_tray_wants_flash(&tray),
+			ui.debug_tray_overlays(&tray, density, &keep_out),
+		)
 		if !ipc.write_frame(os.stdout, reply) {
 			return // the host is gone
 		}

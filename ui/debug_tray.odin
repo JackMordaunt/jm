@@ -67,6 +67,7 @@ Debug_Tray :: struct {
 	head:        int,
 	count:       int,
 	rect:        Rect, // where it was drawn last, in the ui's own units, so the inspector can skip it
+	panel:       Rect, // the inspector's panel this frame, device space, or empty
 }
 
 // debug_tray_init gives t its opening toggles: what F11 turned on before
@@ -194,13 +195,32 @@ frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int
 // it and p is not over the open tray t (which it would otherwise inspect).
 // density is the display scale; call it outside the scale transform.
 debug_inspect :: proc(gtx: ^Ctx, flags: Debug_Flags, t: ^Debug_Tray, prev: ^Frame, p: Point, density: f32) {
+	t.panel = {}
 	if .Inspect not_in flags || prev == nil {
 		return
 	}
 	if t.open && rect_contains(t.rect, p / density) {
 		return
 	}
-	paint_inspector(gtx, prev, p, density)
+	t.panel = paint_inspector(gtx, prev, p, density)
+}
+
+// debug_tray_overlays is where t's own panels are, in device space for display
+// density density: the tray and the inspector's panel, both redrawn every
+// frame. The repaint flash leaves them out, or their own repaints would
+// tint them past reading. Empty rects are left out; the slice is into buf.
+debug_tray_overlays :: proc(t: ^Debug_Tray, density: f32, buf: ^[2]Rect) -> []Rect {
+	n := 0
+	if t.open {
+		r := t.rect
+		buf[n] = {r.x * density, r.y * density, r.w * density, r.h * density}
+		n += 1
+	}
+	if t.panel.w > 0 && t.panel.h > 0 {
+		buf[n] = t.panel
+		n += 1
+	}
+	return buf[:n]
 }
 
 // ms is the milliseconds since start, for the loops' timings.

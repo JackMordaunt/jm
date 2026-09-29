@@ -148,8 +148,9 @@ INSPECT_MIN_COLOR :: Color{40, 200, 90, 220}
 // filled, its max and min constraints outlined from its origin, the hit
 // area outlined, and a panel of inspect_lines beside p. The frame loops
 // call it after the app's ui, outside any transform; scale is the display
-// density, for the panel's text.
-paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) {
+// density, for the panel's text. It returns the panel's rect, in device
+// space, or an empty one when nothing is under p.
+paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) -> (panel: Rect) {
 	if f == nil {
 		return
 	}
@@ -199,6 +200,7 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) {
 	}
 	macro_end(o, m)
 	defer_call(o, m, root = true)
+	return card
 }
 
 // kinds_text is ks as their names, space separated.

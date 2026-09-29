@@ -59,13 +59,16 @@ test_encode_reply_round_trip :: proc(t: ^testing.T) {
 	ops_bytes := encode(&src)
 
 	data := encode_reply(true, 0.25, ops_bytes)
-	wants_frame, frame_after, got_ops, ok, full, flash := decode_reply(data)
-	testing.expect(t, !flash)
+	dbg: Reply_Debug
+	wants_frame, frame_after, got_ops, ok := decode_reply(data, &dbg)
+	testing.expect(t, !dbg.flash && !dbg.full_frames)
 	testing.expect(t, ok)
 	testing.expect(t, wants_frame)
-	testing.expect(t, !full)
-	_, _, _, ok, full, flash = decode_reply(encode_reply(false, 0, ops_bytes, full_frames = true, flash = true))
-	testing.expect(t, ok && full && flash)
+	keep := []Rect{{10, 20, 30, 40}, {1, 2, 3, 4}}
+	_, _, again, ok2 := decode_reply(encode_reply(false, 0, ops_bytes, full_frames = true, flash = true, keep_out = keep), &dbg)
+	testing.expect(t, ok2 && dbg.full_frames && dbg.flash)
+	testing.expect(t, slice.equal(reply_keep_out(&dbg), keep))
+	testing.expect(t, slice.equal(again, ops_bytes)) // the rects sit before the ops, not in them
 	testing.expect_value(t, frame_after, f32(0.25))
 	testing.expect(t, slice.equal(got_ops, ops_bytes))
 
@@ -108,6 +111,6 @@ test_decode_reply_survives_random_bytes :: proc(t: ^testing.T) {
 		for &c in b {
 			c = u8(rand.uint32())
 		}
-		_, _, _, _, _, _ = decode_reply(b)
+		_, _, _, _ = decode_reply(b)
 	}
 }

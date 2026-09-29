@@ -273,7 +273,8 @@ host_step :: proc(l: ^Host_Loop) {
 		return
 	}
 	roundtrip_ms := ui.ms(trip_start)
-	wants_frame, frame_after, ops_bytes, dok, full, flash := ui.decode_reply(reply)
+	dbg: ui.Reply_Debug
+	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg)
 	if !dok || !ui.decode(ops_bytes, &l.ops) {
 		// Say why: the window just freezes on its last frame otherwise, which
 		// reads as a crash. A version mismatch is a host built before the
@@ -292,7 +293,7 @@ host_step :: proc(l: ^Host_Loop) {
 	}
 	ui.flatten(&l.ops, &l.frame)
 	present_start := time.tick_now()
-	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, full, flash)
+	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
 	// Sent with the next input, for the child's debug tray.
 	l.host_stats.present_ms, l.host_stats.roundtrip_ms = ui.ms(present_start), roundtrip_ms
 	l.wants_frame, l.frame_after = wants_frame || flashing(w), frame_after

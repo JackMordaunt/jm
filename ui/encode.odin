@@ -22,7 +22,7 @@ ENCODE_MAGIC :: "UIOP"
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
 // Defer.
-ENCODE_VERSION :: u8(5)
+ENCODE_VERSION :: u8(6)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -230,7 +230,7 @@ put_point :: proc(w: ^[dynamic]byte, p: Point) {
 	put_f32(w, p.y)
 }
 
-@(private = "file")
+@(private)
 put_rect :: proc(w: ^[dynamic]byte, r: Rect) {
 	put_f32(w, r.x)
 	put_f32(w, r.y)
@@ -453,7 +453,7 @@ get_point :: proc(r: ^Reader) -> (p: Point, ok: bool) {
 	return p, true
 }
 
-@(private = "file")
+@(private)
 get_rect :: proc(r: ^Reader) -> (v: Rect, ok: bool) {
 	v.x = get_f32(r) or_return
 	v.y = get_f32(r) or_return
