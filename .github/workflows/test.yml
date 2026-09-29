@@ -89,15 +89,22 @@ jobs:
       - name: platform packages (windows)
         if: runner.os == 'Windows'
         run: |
+          # An 8 MB stack, as Linux and macOS threads get: wasm3 interprets a
+          # wasm call as a C call, and its stack-exhaustion trap needs more
+          # than the 1 MB a Windows thread has by default. The PE header's
+          # reserve is what CreateThread gives a thread that asks for 0, so
+          # the test runner's workers get it too.
+          link="/STACK:8388608"
           if [ -n "${PGROOT:-}" ] && [ -f "$PGROOT/lib/libpq.lib" ]; then
             echo "$PGBIN" >> "$GITHUB_PATH"
             # The 8.3 spelling: the linker splits a /LIBPATH at the space in
             # "Program Files".
-            echo "LINKFLAGS=/LIBPATH:$(cygpath -d "$PGROOT/lib")" >> "$GITHUB_ENV"
+            link="$link /LIBPATH:$(cygpath -d "$PGROOT/lib")"
             echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
           else
             echo "no PostgreSQL on this image: pq is left out"
           fi
+          echo "LINKFLAGS=$link" >> "$GITHUB_ENV"
 
       # The vendored C libraries, compiled as the justfile compiles them.
       # On Windows the recipes are written for PowerShell and just's parser
