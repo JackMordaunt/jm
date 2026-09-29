@@ -87,6 +87,16 @@ Model :: struct {
 	avatar_active: bool,
 	progress:      f32,
 	// overlays and the button family
+	window:                                       ops.Size,
+	menu_open, menu_bold, menu_italic:            bool,
+	menu_pick:                                    string, // an item literal, never frame memory
+	split_open, split_live:                       bool,
+	split_count:                                  int,
+	dialog_open:                                  bool,
+	dialog_kind:                                  fluent.Dialog_Kind,
+	dialog_result:                                string, // a literal
+	fmt_bold, fmt_italic, fmt_underline, fmt_star: bool,
+	menu_button_open, menu_icon_open:             bool,
 }
 
 // PAGES follows the fluent-kit's component index, grouped by the plan's
@@ -94,10 +104,10 @@ Model :: struct {
 PAGES := [?]Page {
 	{"Buttons", nil, true},
 	{"Button", page_buttons, false},
-	{"Toggle button", nil, false},
-	{"Split button", nil, false},
-	{"Menu button", nil, false},
-	{"Compound button", nil, false},
+	{"Toggle button", page_toggle_button, false},
+	{"Split button", page_split_button, false},
+	{"Menu button", page_menu_button, false},
+	{"Compound button", page_compound_button, false},
 	{"Form controls", nil, true},
 	{"Checkbox", page_checkbox, false},
 	{"Radio group", page_radio, false},
@@ -121,9 +131,9 @@ PAGES := [?]Page {
 	{"Progress bar", page_progress_bar, false},
 	{"Spinner", page_spinner, false},
 	{"Overlays", nil, true},
-	{"Menu", nil, false},
-	{"Dialog", nil, false},
-	{"Tooltip", nil, false},
+	{"Menu", page_menu, false},
+	{"Dialog", page_dialog, false},
+	{"Tooltip", page_tooltip, false},
 }
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
@@ -133,6 +143,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	fluent.use_fonts({0, 1, 2})
 	s := &m.scheme
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Neutral_Background2])
+	m.window = gtx.constraints.max // for the dialog page's backdrop and centring
 
 	r := ui.row_open(gtx, align = .Fill)
 	defer ui.close(&r)
