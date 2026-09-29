@@ -44,6 +44,20 @@ Model :: struct {
 	scheme:    fluent.Scheme,
 	clicks:    int,
 	persisted: [2]int,
+	// form controls
+	checks:    [4]bool,
+	all:       bool,
+	all_mixed: bool,
+	radio:     int,
+	radio2:    int,
+	switches:  [3]bool,
+	volume:    f32,
+	steps:     f32,
+	level:     f32,
+	// inputs
+	// containers
+	// feedback
+	// overlays and the button family
 }
 
 // PAGES follows the fluent-kit's component index, grouped by the plan's
@@ -56,10 +70,10 @@ PAGES := [?]Page {
 	{"Menu button", nil, false},
 	{"Compound button", nil, false},
 	{"Form controls", nil, true},
-	{"Checkbox", nil, false},
-	{"Radio group", nil, false},
-	{"Switch", nil, false},
-	{"Slider", nil, false},
+	{"Checkbox", page_checkbox, false},
+	{"Radio group", page_radio, false},
+	{"Switch", page_switch, false},
+	{"Slider", page_slider, false},
 	{"Inputs", nil, true},
 	{"Input", nil, false},
 	{"Textarea", nil, false},
