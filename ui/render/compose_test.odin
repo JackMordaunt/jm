@@ -342,6 +342,11 @@ test_compose_shared_hashing :: proc(t: ^testing.T) {
 when ODIN_OS == .Windows {
 	@(private = "file")
 	LIST_FONT :: "C:/Windows/Fonts/arial.ttf"
+} else when ODIN_OS == .Darwin {
+	// A plain TrueType file every macOS since Catalina ships; the
+	// system face, SFNS.ttf, is not one Blend2D reads.
+	@(private = "file")
+	LIST_FONT :: "/System/Library/Fonts/Supplemental/Arial.ttf"
 } else {
 	@(private = "file")
 	LIST_FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"

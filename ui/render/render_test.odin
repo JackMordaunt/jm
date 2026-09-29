@@ -15,6 +15,11 @@ WHITE :: ui.Color{255, 255, 255, 255}
 when ODIN_OS == .Windows {
 	@(private = "file")
 	FONT :: "C:/Windows/Fonts/arial.ttf"
+} else when ODIN_OS == .Darwin {
+	// A plain TrueType file every macOS since Catalina ships; the
+	// system face, SFNS.ttf, is not one Blend2D reads.
+	@(private = "file")
+	FONT :: "/System/Library/Fonts/Supplemental/Arial.ttf"
 } else {
 	@(private = "file")
 	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
