@@ -2,11 +2,29 @@ package ops
 
 // Colour arithmetic on Color.
 
-// mix blends a toward b by t in [0, 1], channel by channel (alpha included).
+// mix blends a toward b by t in [0, 1] with premultiplied alpha, and is
+// exactly a at t <= 0 and b at t >= 1. Premultiplying is what makes a
+// fade from a transparent colour read right: transparent black (a
+// subtle button's rest background) toward light grey eases through
+// translucent light grey, not through dark grey, which straight
+// channel-by-channel mixing gives. Opaque colours mix as before.
 mix :: proc(a, b: Color, t: f32) -> Color {
+	if t <= 0 {
+		return a
+	}
+	if t >= 1 {
+		return b
+	}
+	aa, ba := f32(a[3]) / 255, f32(b[3]) / 255
+	alpha := aa + (ba - aa) * t
 	out: Color
-	for i in 0 ..< 4 {
-		out[i] = u8(f32(a[i]) + (f32(b[i]) - f32(a[i])) * clamp(t, 0, 1) + 0.5)
+	out[3] = u8(alpha * 255 + 0.5)
+	if alpha <= 0 {
+		return out
+	}
+	for i in 0 ..< 3 {
+		pa, pb := f32(a[i]) * aa, f32(b[i]) * ba
+		out[i] = u8(clamp((pa + (pb - pa) * t) / alpha, 0, 255) + 0.5)
 	}
 	return out
 }
