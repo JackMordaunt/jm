@@ -117,7 +117,7 @@ jobs:
           # The same file set as the unix recipe: a recursive find would also
           # sweep up .c files under the include and vendor trees.
           for f in pg_query/vendor/src/*.c pg_query/vendor/src/postgres/*.c pg_query/vendor/protobuf/*.c pg_query/vendor/vendor/*/*.c; do
-            cl -nologo -O2 $pg_query_flags -I pg_query/vendor/src/postgres/include -I pg_query/vendor/src/postgres/include/port/win32 -c "$f" -Fopg_query/lib/obj/ | grep -v '^[A-Za-z0-9_.-]*\.c$' || true
+            cl -nologo -O2 $pg_query_flags -I pg_query/vendor/src/postgres/include -I pg_query/vendor/src/postgres/include/port/win32 -I pg_query/vendor/src/postgres/include/port/win32_msvc -c "$f" -Fopg_query/lib/obj/ | grep -v '^[A-Za-z0-9_.-]*\.c$' || true
             [ -f "pg_query/lib/obj/$(basename "${f%.c}").obj" ] || { echo "::error::$f did not compile"; exit 1; }
           done
           lib -nologo -OUT:pg_query/lib/pg_query.lib pg_query/lib/obj/*.obj

@@ -1,5 +1,6 @@
 package render
 
+import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:testing"
@@ -411,8 +412,15 @@ test_compose_list_widget_scrolls :: proc(t: ^testing.T) {
 // scrolling or not.
 @(test)
 test_compose_steady_state_allocates_nothing :: proc(t: ^testing.T) {
+	// Every allocation's source line is kept, so a platform where the
+	// count is not zero says which call it was rather than only that
+	// there was one (CI's macOS runner saw two, from a font Linux does
+	// not use).
+	trace := Alloc_Trace{parent = context.allocator}
+	trace.locs = make([dynamic]runtime.Source_Code_Location, trace.parent)
+	defer delete(trace.locs)
 	track: mem.Tracking_Allocator
-	mem.tracking_allocator_init(&track, context.allocator)
+	mem.tracking_allocator_init(&track, mem.Allocator{tracing_allocator_proc, &trace})
 	defer mem.tracking_allocator_destroy(&track)
 	context.allocator = mem.tracking_allocator(&track)
 
@@ -433,7 +441,35 @@ test_compose_steady_state_allocates_nothing :: proc(t: ^testing.T) {
 		scrolled += len(g.c.damage.scrolls)
 	}
 	testing.expect_value(t, spent, 0)
+	if spent != 0 {
+		for loc in trace.locs[len(trace.locs) - int(spent):] {
+			testing.expectf(t, false, "steady-state allocation at %v", loc)
+		}
+	}
 	testing.expect(t, scrolled > 0, "the measured frames include scrolls")
+}
+
+// Alloc_Trace records where each allocation through it was asked for,
+// and forwards everything to parent.
+Alloc_Trace :: struct {
+	parent: mem.Allocator,
+	locs:   [dynamic]runtime.Source_Code_Location,
+}
+
+tracing_allocator_proc :: proc(
+	data: rawptr,
+	mode: mem.Allocator_Mode,
+	size, alignment: int,
+	old_memory: rawptr,
+	old_size: int,
+	loc := #caller_location,
+) -> ([]byte, mem.Allocator_Error) {
+	tr := (^Alloc_Trace)(data)
+	#partial switch mode {
+	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
+		append(&tr.locs, loc)
+	}
+	return tr.parent.procedure(tr.parent.data, mode, size, alignment, old_memory, old_size, loc)
 }
 
 // Wide layouts repeat every row across columns, so no draw is unique; the

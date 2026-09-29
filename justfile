@@ -160,12 +160,14 @@ pg_query:
         ar rcs {{pg_query_lib}} pg_query/lib/obj/*.o; \
     fi
 
-# Windows wants the win32 port headers as well. Untested, like the other two.
+# Windows wants the win32 port headers, and win32_msvc's shims for the
+# unistd.h and dirent.h the sources include (CI compiles this file set
+# with these flags on windows-latest).
 [windows]
 pg_query:
     @if (!(Test-Path {{pg_query_lib}})) { \
         New-Item -ItemType Directory -Force pg_query/lib/obj | Out-Null; \
-        Get-ChildItem -Recurse pg_query/vendor/src/*.c, pg_query/vendor/protobuf/*.c, pg_query/vendor/vendor/*.c | ForEach-Object { cl /nologo /O2 {{pg_query_flags}} /I pg_query/vendor/src/postgres/include/port/win32 /c $_.FullName /Fopg_query/lib/obj/ }; \
+        Get-ChildItem -Recurse pg_query/vendor/src/*.c, pg_query/vendor/protobuf/*.c, pg_query/vendor/vendor/*.c | ForEach-Object { cl /nologo /O2 {{pg_query_flags}} /I pg_query/vendor/src/postgres/include/port/win32 /I pg_query/vendor/src/postgres/include/port/win32_msvc /c $_.FullName /Fopg_query/lib/obj/ }; \
         lib /nologo /OUT:{{pg_query_lib}} pg_query/lib/obj/*.obj \
     }
 
