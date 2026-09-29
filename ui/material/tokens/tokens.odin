@@ -7,6 +7,8 @@
 // SYS_SHAPE_CORNER_FULL. Dimensions are dp, durations ms, opacities 0-1.
 package tokens
 
+import "jm:ui/design"
+
 // Shape is a corner shape: four radii in dp, [top-start, top-end,
 // bottom-end, bottom-start], or full, half the shorter side.
 Shape :: struct {
@@ -14,16 +16,11 @@ Shape :: struct {
 	full:  bool,
 }
 
-// Type_Style is a composite typography token. Sizes are sp.
-Type_Style :: struct {
-	weight:      f32,
-	size:        f32,
-	line_height: f32,
-	tracking:    f32,
-}
-
-// Bezier is a CSS-style cubic-bezier easing, [x1, y1, x2, y2].
-Bezier :: [4]f32
+// Type_Style and Bezier are jm:ui/design's: a composite typography token
+// (sizes in sp) and a CSS cubic-bezier easing, so a token passes straight
+// to design's shaping and easing procs.
+Type_Style :: design.Type_Style
+Bezier :: design.Bezier
 
 // Role is one sys.color role. A colour token names the role it aliases.
 Role :: enum u8 {

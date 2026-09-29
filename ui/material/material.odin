@@ -24,6 +24,14 @@ ignores input — the kitchen uses this to show a component's enabled,
 hovered, focused, pressed and disabled looks side by side, as the spec's
 own state diagrams do.
 
+What is not Material's is jm:ui/design's: the Interaction states and
+Control, per-corner geometry, text shaping, the shadow stack, easing and
+the Theme/axiom checker. This package aliases what it uses unchanged and
+wraps what needs its own tokens (state-layer opacities, the focus ring's
+colour, its named springs, its font weights), so a component reads one
+namespace. What only Material does — painting states as a translucent
+layer of the content colour — stays here.
+
 The scheme lives outside ui.Ctx: jm:ui's Theme is its own small palette and
 Ctx has no slot for a design system's tokens, so the active Scheme is a
 thread-local set by use.
@@ -31,6 +39,7 @@ thread-local set by use.
 package material
 
 import "jm:ui"
+import "jm:ui/design"
 import tok "jm:ui/material/tokens"
 
 // Scheme is M3's colour roles (sys.color), indexed by role.
@@ -129,13 +138,8 @@ font_for :: proc(gtx: ^ui.Ctx, w: f32) -> ui.Font_Id {
 	if !ok {
 		return gtx.theme.font
 	}
-	switch {
-	case w >= 600:
-		return f.bold
-	case w >= 450:
-		return f.medium
-	}
-	return f.regular
+	faces := [3]design.Font_Face{{400, f.regular}, {500, f.medium}, {700, f.bold}}
+	return design.font_for(faces[:], w, gtx.theme.font)
 }
 
 // Motion_Scheme is the app-wide spring set: Expressive overshoots on
@@ -184,14 +188,10 @@ spring_params :: proc(s: Spring) -> ui.Spring_Params {
 }
 
 // animate moves c's spring slot (0-3, numbered by the component) toward
-// target along spring s and returns its value. A forced state (c.st nil)
-// has no retained state, so it is the target at once. threshold is the
-// settle distance in the value's own unit: 0.01 for a 0-1 fraction, 0.1 for dp.
+// target along spring s and returns its value: design.animate with the
+// active motion scheme's params.
 animate :: proc(gtx: ^ui.Ctx, c: Control, slot: int, target: f32, s: Spring, threshold := ui.SPRING_THRESHOLD) -> f32 {
-	if c.st == nil {
-		return target
-	}
-	return ui.spring_update(&c.st.springs[slot], gtx, target, spring_params(s), threshold)
+	return design.animate(gtx, c.base, slot, target, spring_params(s), threshold)
 }
 
 // Shape scale (sys.shape.corner), in dp. Full has no value: it is half
@@ -291,74 +291,47 @@ DRAGGED_OPACITY :: tok.SYS_STATE_DRAGGED_STATE_LAYER_OPACITY
 DISABLED_CONTAINER_OPACITY :: f32(0.12)
 DISABLED_CONTENT_OPACITY :: f32(0.38)
 
-// Interaction is the state a component paints. Live follows real input;
-// the rest force one look and take no input.
-Interaction :: enum u8 {
-	Live,
-	Enabled,
-	Hovered,
-	Focused,
-	Pressed,
-	Dragged,
-	Disabled,
-}
+// Interaction and STATES are design's: Live follows real input; the rest
+// force one look and take no input.
+Interaction :: design.Interaction
+STATES :: design.STATES
 
-// STATES is every forced Interaction, in the order the spec shows them.
-STATES :: [?]Interaction{.Enabled, .Hovered, .Focused, .Pressed, .Disabled}
-
-// Control is one frame's interaction outcome for a component: whether it
-// was activated, and what to paint.
+// Control is design's resolved interaction plus Material's reading of it:
+// the state-layer opacity to paint, 0 for none.
 Control :: struct {
-	st:       ^ui.Widget_State, // nil unless Live
-	clicked:  bool,
-	layer:    f32, // state-layer opacity, 0 for none
-	hovered:  bool,
-	pressed:  bool,
-	focused:  bool, // paint a focus ring
-	disabled: bool,
+	using base: design.Control,
+	layer:      f32,
 }
 
-// control resolves state for the component with id and bounds. Live reads
-// this frame's events, so a click or an Enter/Space while focused sets
-// clicked; the forced states only set what to paint.
-control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interaction) -> Control {
-	c: Control
-	switch state {
-	case .Live:
-		c.st = ui.widget_state(gtx, id)
-		c.clicked = ui.click_from_events(gtx, id, c.st, bounds)
-		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
-	case .Enabled:
-	case .Hovered:
-		c.hovered = true
+// control resolves state for the component with id and bounds (see
+// design.control) and picks the state layer for the state it lands in.
+control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interaction) -> (c: Control) {
+	c.base = design.control(gtx, id, bounds, state)
+	c.layer = state_layer(c.state)
+	return
+}
+
+// state_layer is the sys.state opacity for st: a translucent layer of
+// the content colour over the container, none when enabled or disabled.
+state_layer :: proc(st: Interaction) -> f32 {
+	#partial switch st {
+	case .Dragged:
+		return DRAGGED_OPACITY
+	case .Pressed:
+		return PRESSED_OPACITY
 	case .Focused:
-		c.focused = true
-	case .Pressed, .Dragged:
-		c.pressed = true
-	case .Disabled:
-		c.disabled = true
+		return FOCUS_OPACITY
+	case .Hovered:
+		return HOVER_OPACITY
 	}
-	switch {
-	case state == .Dragged:
-		c.layer = DRAGGED_OPACITY
-	case c.pressed:
-		c.layer = PRESSED_OPACITY
-	case c.focused:
-		c.layer = FOCUS_OPACITY
-	case c.hovered:
-		c.layer = HOVER_OPACITY
-	}
-	return c
+	return 0
 }
 
-// CLICK_KINDS is what a clickable component's input area asks for.
-CLICK_KINDS :: ui.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur}
+CLICK_KINDS :: design.CLICK_KINDS
 
 // listen registers id's input area when c is Live.
 listen :: proc(gtx: ^ui.Ctx, c: Control, id: ui.Area_Id, shape: ui.Shape, kinds := CLICK_KINDS) {
-	if c.st != nil {
-		ui.input_area(gtx.ops, id, shape, kinds)
-	}
+	design.listen(gtx, c.st, id, shape, kinds)
 }
 
 // paint_state_layer paints c's state layer of color over shape, then any ripple.
@@ -380,27 +353,22 @@ paint_state_layer :: proc(gtx: ^ui.Ctx, c: Control, shape: ui.Shape, color: ui.C
 FOCUS_RING_WIDTH :: f32(3)
 FOCUS_RING_OFFSET :: f32(2)
 
-// paint_focus_ring is the focus ring: a secondary stroke outside rr,
-// following its corners.
+// focus_ring is the ring in the active scheme: a secondary stroke.
+focus_ring :: proc() -> design.Focus_Ring {
+	return {FOCUS_RING_WIDTH, FOCUS_RING_OFFSET, scheme()[.Secondary]}
+}
+
+// paint_focus_ring is the focus ring outside rr, following its corners.
 paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ui.Round_Rect, inward := false) {
-	paint_focus_ring_corners(gtx, c, rr.rect, corners_all(rr.radius), inward)
+	design.paint_focus_ring(gtx, c.base, rr, focus_ring(), inward)
 }
 
 // paint_focus_ring_corners is paint_focus_ring for per-corner radii k.
-//
-// inward draws the ring just inside the shape instead, its outer edge on
-// the shape's: for controls packed closer than the ring's 5dp reach
-// (connected groups, segments, list and menu rows, tabs, calendar days),
-// where an outward ring would cross into the neighbours. Material Web
-// does the same: md-focus-ring's inward attribute (@material/web
-// focus/internal/focus-ring.ts).
+// inward draws it just inside the shape, for controls packed closer than
+// the ring's 5dp reach, as md-focus-ring's inward attribute does
+// (@material/web focus/internal/focus-ring.ts).
 paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, k: Corners, inward := false) {
-	if !c.focused || c.disabled {
-		return
-	}
-	o := inward ? -FOCUS_RING_WIDTH / 2 : FOCUS_RING_OFFSET + FOCUS_RING_WIDTH / 2
-	ring := ui.Rect{r.x - o, r.y - o, r.w + 2 * o, r.h + 2 * o}
-	ui.stroke(gtx.ops, rounded(gtx, ring, grow_corners(k, o)), scheme()[.Secondary], {width = FOCUS_RING_WIDTH})
+	design.paint_focus_ring_corners(gtx, c.base, r, k, focus_ring(), inward)
 }
 
 // disabled_content and disabled_container are M3's disabled treatment:
@@ -422,45 +390,21 @@ paint_elevation :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, level: int) {
 	paint_elevation_dp(gtx, rr, DP[clamp(level, 0, 5)])
 }
 
-// Text helpers. Every component shapes in the theme font at a type role.
+// Text helpers. Every component shapes in the face for its weight at a
+// type role; the shaping and drawing are design's.
+Text :: design.Text
+draw_text :: design.draw_text
+baseline_of :: design.baseline_of
 
-// Text :: a shaped run with the metrics needed to place it.
-Text :: struct {
-	run:     ui.Glyph_Run,
-	metrics: ui.Font_Metrics,
-	width:   f32,
-	height:  f32, // the role's line height, not the font's
-}
-
-// shape_text shapes s at a type role or style, in the face for its
-// weight, into the frame allocator. jm:ui has no tracking, so a style's
-// letter spacing is dropped.
-// A comp.*-font token is a style, so shape_style takes it directly.
+// shape_text shapes s at a type role, into the frame allocator.
 shape_text :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role) -> Text {
 	return shape_style(gtx, s, TYPE_STYLES[role])
 }
 
+// shape_style shapes s at a style, in the face for its weight. A
+// comp.*-font token is a style, so it takes one directly.
 shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
-	font := font_for(gtx, st.weight)
-	run := ui.shape(gtx.shaper, font, st.size, s, gtx.allocator)
-	m := ui.metrics(gtx.shaper, font, st.size)
-	return {run, m, run.advance, st.line_height}
-}
-
-// draw_text draws t with its line box's top-left at pos, vertically
-// centring the font's ascent+descent in the role's line height.
-draw_text :: proc(gtx: ^ui.Ctx, t: Text, pos: ui.Point, color: ui.Color) {
-	if color[3] == 0 || len(t.run.glyphs) == 0 {
-		return
-	}
-	glyph_h := t.metrics.ascent + t.metrics.descent
-	y := pos.y + (t.height - glyph_h) / 2 + t.metrics.ascent
-	ui.glyphs(gtx.ops, ui.add_run(gtx.ops, t.run), {pos.x, y}, color)
-}
-
-// baseline_of is where draw_text puts t's baseline, relative to its top.
-baseline_of :: proc(t: Text) -> f32 {
-	return (t.height - t.metrics.ascent - t.metrics.descent) / 2 + t.metrics.ascent
+	return design.shape_style(gtx, s, st, font_for(gtx, st.weight))
 }
 
 // draw_role_text is shape_text then draw_text of s at role, in one call.
@@ -477,12 +421,11 @@ draw_style_text :: proc(gtx: ^ui.Ctx, s: string, pos: ui.Point, st: tok.Type_Sty
 	return t
 }
 
-// stroke_inside strokes the inside edge of rr at width w.
-stroke_inside :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, color: ui.Color, w: f32 = 1) {
-	h := w / 2
-	r := rr.rect
-	ui.stroke(gtx.ops, ui.Round_Rect{{r.x + h, r.y + h, r.w - w, r.h - w}, max(rr.radius - h, 0)}, color, {width = w})
-}
+// Geometry and paint helpers that are design's unchanged.
+stroke_inside :: design.stroke_inside
+stroke_inside_corners :: design.stroke_inside_corners
+fade :: design.fade
+bezier_ease :: design.bezier_ease
 
 // elevation_level is the sys.elevation level (0-5) for an elevation token
 // in dp: the highest level at or below it. paint_elevation takes levels.
@@ -504,72 +447,57 @@ elevation_level :: proc(dp: f32) -> int {
 	return level
 }
 
-// fade is c with its alpha scaled by t, for content fading in or out.
-fade :: proc(c: ui.Color, t: f32) -> ui.Color {
-	return ui.with_alpha(c, f32(c[3]) / 255 * clamp(t, 0, 1))
-}
-
 // MIN_TOUCH is foundations.json interaction.touchTarget.minDp.
 MIN_TOUCH :: f32(48)
 
 // touch_target is r grown to at least MIN_TOUCH on each axis, about its centre.
 touch_target :: proc(r: ui.Rect) -> ui.Rect {
-	dw, dh := max(MIN_TOUCH - r.w, 0), max(MIN_TOUCH - r.h, 0)
-	return {r.x - dw / 2, r.y - dh / 2, r.w + dw, r.h + dh}
-}
-
-// stroke_inside_corners strokes the inside edge of r with per-corner
-// radii k at width w: stroke_inside for a shape a Round_Rect cannot hold.
-stroke_inside_corners :: proc(gtx: ^ui.Ctx, r: ui.Rect, k: Corners, color: ui.Color, w: f32) {
-	h := w / 2
-	ui.stroke(gtx.ops, rounded(gtx, {r.x + h, r.y + h, r.w - w, r.h - w}, grow_corners(k, -h)), color, {width = w})
-}
-
-// bezier_ease is a CSS cubic-bezier easing b at x in [0, 1]: it solves
-// the curve's x for its parameter, then returns y there.
-bezier_ease :: proc(b: tok.Bezier, x: f32) -> f32 {
-	if x <= 0 {
-		return 0
-	}
-	if x >= 1 {
-		return 1
-	}
-	curve :: proc(p1, p2, u: f32) -> f32 {
-		v := 1 - u
-		return 3 * v * v * u * p1 + 3 * v * u * u * p2 + u * u * u
-	}
-	// Bisection: x(u) rises monotonically for any easing whose control
-	// points' x lie in [0, 1], and 24 halvings are finer than f32.
-	lo, hi: f32 = 0, 1
-	for _ in 0 ..< 24 {
-		mid := (lo + hi) / 2
-		if curve(b[0], b[2], mid) < x {
-			lo = mid
-		} else {
-			hi = mid
-		}
-	}
-	return curve(b[1], b[3], (lo + hi) / 2)
+	return design.touch_target(r, MIN_TOUCH)
 }
 
 // paint_elevation_dp is paint_elevation for an elevation in dp rather
 // than a level, so a token's value (and a tween between two) paints
-// directly: the same stack of offset translucent round rects.
+// directly. The shadow is black: the m3e-kit's foundations.json,
+// color.missingRoles.
 paint_elevation_dp :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, dp: f32) {
-	if dp <= 0 {
-		return
-	}
-	sh := ui.Color{0, 0, 0, 255} // foundations.json color.missingRoles: shadow is black
-	steps := 4
-	for i in 0 ..< steps {
-		t := f32(i + 1) / f32(steps)
-		spread := dp * 0.5 * t
-		y := dp * 0.5 * t
-		r := rr.rect
-		ui.fill(
-			gtx.ops,
-			ui.Round_Rect{{r.x - spread + dp * 0.25, r.y - spread + y + dp * 0.25, r.w + 2 * spread - dp * 0.5, r.h + 2 * spread - dp * 0.5}, rr.radius + spread},
-			ui.with_alpha(sh, 0.10 / f32(steps) * (2 - t)),
-		)
-	}
+	design.paint_shadow(gtx, rr, dp, {0, 0, 0, 255})
+}
+
+// Mode is the baseline schemes' context: the kit ships a light and a dark
+// binding of the same roles.
+Mode :: enum u8 {
+	Light,
+	Dark,
+}
+
+// baseline_theme is both baseline schemes as one design.Theme, so
+// design.check can measure AXIOMS against them.
+baseline_theme :: proc() -> (t: design.Theme(tok.Role, Mode)) {
+	t.bind[.Light] = light_scheme()
+	t.bind[.Dark] = dark_scheme()
+	return
+}
+
+// AXIOMS are the guarantees M3's colour system makes of any scheme
+// (m3.material.io/styles/color/system/how-the-system-works): every on-X
+// role reads on X at WCAG 4.5:1 or better, and outline is visible on
+// surface at 3:1. A custom scheme that passes check keeps the pairs
+// components lean on most readable.
+AXIOMS := []design.Axiom(tok.Role) {
+	{.Ratio_Min, .On_Primary, .Primary, 4.5},
+	{.Ratio_Min, .On_Secondary, .Secondary, 4.5},
+	{.Ratio_Min, .On_Tertiary, .Tertiary, 4.5},
+	{.Ratio_Min, .On_Error, .Error, 4.5},
+	{.Ratio_Min, .On_Primary_Container, .Primary_Container, 4.5},
+	{.Ratio_Min, .On_Secondary_Container, .Secondary_Container, 4.5},
+	{.Ratio_Min, .On_Tertiary_Container, .Tertiary_Container, 4.5},
+	{.Ratio_Min, .On_Error_Container, .Error_Container, 4.5},
+	{.Ratio_Min, .On_Surface, .Surface, 4.5},
+	{.Ratio_Min, .On_Surface_Variant, .Surface_Variant, 4.5},
+	{.Ratio_Min, .On_Background, .Background, 4.5},
+	{.Ratio_Min, .Inverse_On_Surface, .Inverse_Surface, 4.5},
+	{.Ratio_Min, .Inverse_Primary, .Inverse_Surface, 4.5},
+	{.Ratio_Min, .Primary, .Surface, 4.5},
+	{.Ratio_Min, .Error, .Surface, 4.5},
+	{.Ratio_Min, .Outline, .Surface, 3},
 }

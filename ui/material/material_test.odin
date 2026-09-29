@@ -2,6 +2,7 @@ package material
 
 import "core:testing"
 import "jm:ui"
+import "jm:ui/design"
 import tok "jm:ui/material/tokens"
 
 @(test)
@@ -124,4 +125,25 @@ test_font_for_picks_the_nearest_weight :: proc(t: ^testing.T) {
 	testing.expect_value(t, font_for(&gtx, 300), ui.Font_Id(1))
 	testing.expect_value(t, font_for(&gtx, 550), ui.Font_Id(2))
 	testing.expect_value(t, font_for(&gtx, 900), ui.Font_Id(3))
+}
+
+@(test)
+test_baseline_schemes_satisfy_the_colour_axioms :: proc(t: ^testing.T) {
+	v := design.check(baseline_theme(), AXIOMS, context.temp_allocator)
+	testing.expect_value(t, len(v), 0)
+	for x in v {
+		testing.expectf(t, false, "%v: %v %v vs %v: got %.2f, want %v", x.ctx, x.axiom.rel, x.axiom.a, x.axiom.b, x.got, x.axiom.k)
+	}
+}
+
+@(test)
+test_check_catches_a_scheme_that_loses_a_pair :: proc(t: ^testing.T) {
+	th := baseline_theme()
+	th.bind[.Dark][.On_Primary] = th.bind[.Dark][.Primary]
+	v := design.check(th, AXIOMS, context.temp_allocator)
+	testing.expect_value(t, len(v), 1)
+	if len(v) == 1 {
+		testing.expect_value(t, v[0].ctx, Mode.Dark)
+		testing.expect_value(t, v[0].axiom.a, tok.Role.On_Primary)
+	}
 }

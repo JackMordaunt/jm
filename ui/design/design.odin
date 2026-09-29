@@ -1,0 +1,231 @@
+/*
+Package design is what every design system built on jm:ui shares, and
+nothing any one of them owns. A system (ui/material, ui/fluent) supplies
+three inputs and gets its components from them:
+
+  - semantics: a Role enum for its colours and a Context enum for its
+    modes (light, dark, high contrast);
+  - a Theme(Role, Context): the binding from every context and role to a
+    colour, however the system's aesthetic produced it;
+  - axioms: relations over role pairs, as data, that check verifies in
+    every context — "on-primary reads on primary", "outline is visible on
+    surface".
+
+What this package holds is the machinery under those inputs, in four
+parts:
+
+  - Interaction: the states a control can be in and Control, one frame's
+    resolved state for a widget (control, listen, animate). How a state
+    is painted is the system's: Material overlays a translucent layer,
+    Fluent binds a colour role per state. Both read the same Control.
+  - Geometry: per-corner radii (Corners, rounded), arcs, inside strokes,
+    focus rings, touch targets, a blur-free drop shadow and CSS easing.
+  - Text: a composite type style, a weight-to-face lookup, and shaping
+    and drawing a run inside a line box.
+  - Theme and check: the generic binding table, axioms and the colour
+    metrics (OKLab lightness, APCA and WCAG contrast) that measure them.
+
+Nothing here is thread-local or global. A system keeps its own active
+scheme, faces and motion set, and passes what these procs need.
+*/
+package design
+
+import "jm:ui"
+
+// Interaction is the state a component paints. Live follows real input;
+// the rest force one look and take no input, so a gallery can show every
+// state of a component side by side.
+Interaction :: enum u8 {
+	Live,
+	Enabled,
+	Hovered,
+	Focused,
+	Pressed,
+	Dragged,
+	Disabled,
+}
+
+// STATES is every forced Interaction, in the order specs show them.
+STATES :: [?]Interaction{.Enabled, .Hovered, .Focused, .Pressed, .Disabled}
+
+// Control is one frame's interaction outcome for a component: whether it
+// was activated, what it is doing, and the single state that summarises
+// that for painting.
+Control :: struct {
+	st:       ^ui.Widget_State, // nil unless Live
+	clicked:  bool,
+	hovered:  bool,
+	pressed:  bool,
+	focused:  bool, // paint a focus ring
+	disabled: bool,
+	state:    Interaction, // never Live: the strongest of the flags, by effective_state's order
+}
+
+// control resolves state for the component with id and bounds. Live reads
+// this frame's events, so a click or an Enter/Space while focused sets
+// clicked; the forced states only set what to paint.
+control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interaction) -> Control {
+	c: Control
+	switch state {
+	case .Live:
+		c.st = ui.widget_state(gtx, id)
+		c.clicked = ui.click_from_events(gtx, id, c.st, bounds)
+		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
+	case .Enabled:
+	case .Hovered:
+		c.hovered = true
+	case .Focused:
+		c.focused = true
+	case .Pressed, .Dragged:
+		c.pressed = true
+	case .Disabled:
+		c.disabled = true
+	}
+	c.state = state == .Dragged ? .Dragged : effective_state(c)
+	return c
+}
+
+// effective_state is the one state c's flags amount to, strongest first:
+// disabled, pressed, focused, hovered, else enabled. Dragged is not a
+// flag, so it is only ever forced.
+effective_state :: proc(c: Control) -> Interaction {
+	switch {
+	case c.disabled:
+		return .Disabled
+	case c.pressed:
+		return .Pressed
+	case c.focused:
+		return .Focused
+	case c.hovered:
+		return .Hovered
+	}
+	return .Enabled
+}
+
+// CLICK_KINDS is what a clickable component's input area asks for.
+CLICK_KINDS :: ui.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur}
+
+// listen registers id's input area when st is live (a Control's st, nil
+// for a forced state).
+listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ui.Area_Id, shape: ui.Shape, kinds := CLICK_KINDS) {
+	if st != nil {
+		ui.input_area(gtx.ops, id, shape, kinds)
+	}
+}
+
+// animate moves c's spring slot (0-3, numbered by the component) toward
+// target along a spring with params p and returns its value. A forced
+// state (c.st nil) has no retained state, so it is the target at once.
+// threshold is the settle distance in the value's own unit: 0.01 for a
+// 0-1 fraction, 0.1 for dp.
+animate :: proc(gtx: ^ui.Ctx, c: Control, slot: int, target: f32, p: ui.Spring_Params, threshold := ui.SPRING_THRESHOLD) -> f32 {
+	if c.st == nil {
+		return target
+	}
+	return ui.spring_update(&c.st.springs[slot], gtx, target, p, threshold)
+}
+
+// fade is c with its alpha scaled by t, for content fading in or out.
+fade :: proc(c: ui.Color, t: f32) -> ui.Color {
+	return ui.with_alpha(c, f32(c[3]) / 255 * clamp(t, 0, 1))
+}
+
+// touch_target is r grown to at least min on each axis, about its centre.
+touch_target :: proc(r: ui.Rect, min_side: f32) -> ui.Rect {
+	dw, dh := max(min_side - r.w, 0), max(min_side - r.h, 0)
+	return {r.x - dw / 2, r.y - dh / 2, r.w + dw, r.h + dh}
+}
+
+// Focus_Ring is how a system draws keyboard focus: a stroke of width
+// sitting offset outside the component's edge.
+Focus_Ring :: struct {
+	width:  f32,
+	offset: f32,
+	color:  ui.Color,
+}
+
+// paint_focus_ring paints ring around rr when c is focused and enabled.
+paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ui.Round_Rect, ring: Focus_Ring, inward := false) {
+	paint_focus_ring_corners(gtx, c, rr.rect, corners_all(rr.radius), ring, inward)
+}
+
+// paint_focus_ring_corners is paint_focus_ring for per-corner radii k.
+//
+// inward draws the ring just inside the shape instead, its outer edge on
+// the shape's: for controls packed closer than the ring's reach
+// (connected groups, segments, list and menu rows, tabs, calendar days),
+// where an outward ring would cross into the neighbours.
+paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, k: Corners, ring: Focus_Ring, inward := false) {
+	if !c.focused || c.disabled {
+		return
+	}
+	o := inward ? -ring.width / 2 : ring.offset + ring.width / 2
+	rect := ui.Rect{r.x - o, r.y - o, r.w + 2 * o, r.h + 2 * o}
+	ui.stroke(gtx.ops, rounded(gtx, rect, grow_corners(k, o)), ring.color, {width = ring.width})
+}
+
+// stroke_inside strokes the inside edge of rr at width w.
+stroke_inside :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, color: ui.Color, w: f32 = 1) {
+	h := w / 2
+	r := rr.rect
+	ui.stroke(gtx.ops, ui.Round_Rect{{r.x + h, r.y + h, r.w - w, r.h - w}, max(rr.radius - h, 0)}, color, {width = w})
+}
+
+// stroke_inside_corners strokes the inside edge of r with per-corner
+// radii k at width w: stroke_inside for a shape a Round_Rect cannot hold.
+stroke_inside_corners :: proc(gtx: ^ui.Ctx, r: ui.Rect, k: Corners, color: ui.Color, w: f32) {
+	h := w / 2
+	ui.stroke(gtx.ops, rounded(gtx, {r.x + h, r.y + h, r.w - w, r.h - w}, grow_corners(k, -h)), color, {width = w})
+}
+
+// paint_shadow paints an approximate drop shadow of colour under rr for
+// an elevation of dp. jm:ui has no blur, so it is a stack of offset
+// translucent round rects: soft enough to read as a lift, not a true
+// blurred composite.
+paint_shadow :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, dp: f32, color: ui.Color) {
+	if dp <= 0 {
+		return
+	}
+	steps := 4
+	for i in 0 ..< steps {
+		t := f32(i + 1) / f32(steps)
+		spread := dp * 0.5 * t
+		y := dp * 0.5 * t
+		r := rr.rect
+		ui.fill(
+			gtx.ops,
+			ui.Round_Rect{{r.x - spread + dp * 0.25, r.y - spread + y + dp * 0.25, r.w + 2 * spread - dp * 0.5, r.h + 2 * spread - dp * 0.5}, rr.radius + spread},
+			ui.with_alpha(color, 0.10 / f32(steps) * (2 - t)),
+		)
+	}
+}
+
+// Bezier is a CSS-style cubic-bezier easing, [x1, y1, x2, y2].
+Bezier :: [4]f32
+
+// bezier_ease is easing b at x in [0, 1]: it solves the curve's x for its
+// parameter, then returns y there.
+bezier_ease :: proc(b: Bezier, x: f32) -> f32 {
+	if x <= 0 {
+		return 0
+	}
+	if x >= 1 {
+		return 1
+	}
+	curve :: proc(p1, p2, u: f32) -> f32 {
+		v := 1 - u
+		return 3 * v * v * u * p1 + 3 * v * u * u * p2 + u * u * u
+	}
+	// Bisection: x(u) rises monotonically for any easing whose control
+	// points' x lie in [0, 1], and 24 halvings are finer than f32.
+	lo, hi: f32 = 0, 1
+	for _ in 0 ..< 24 {
+		mid := (lo + hi) / 2
+		if curve(b[0], b[2], mid) < x {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return curve(b[1], b[3], (lo + hi) / 2)
+}
