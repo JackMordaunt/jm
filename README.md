@@ -118,6 +118,8 @@ just material-kitchen  build and open the hot-reloaded M3 kitchen
 just material-png page=Chips  render one M3 kitchen page to build/
 just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
 just fluent-tokens     regenerate ui/fluent/tokens from the fluent-kit (FLUENT_KIT)
+just fluent-icons      regenerate ui/fluent/icon_data.odin from the vendored Fluent icons (FLUENT_ICONS)
+just fluent-icons-fetch  fetch the icons tools/fluent-icons/icons.txt names into FLUENT_ICONS
 just material-shapes   regenerate ui/material/shape_data.odin from the m3e-kit's morphs
 just bench-ui  ms per frame for layout and the Blend2D executor
 just hot-counter-child  build the subprocess `just test`'s own host/child test spawns

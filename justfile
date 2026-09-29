@@ -14,6 +14,7 @@
 #   just material-png  render one material-kitchen page headlessly
 #   just material-tokens  regenerate ui/material/tokens from the m3e-kit
 #   just fluent-tokens  regenerate ui/fluent/tokens from the fluent-kit
+#   just fluent-icons  regenerate ui/fluent/icon_data.odin from the vendored Fluent icons
 #   just material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit
 #   just fuzz      run every jm:fuzz suite for thirty seconds
 #   just bench     time jm:wasm against the workloads in tools/wasm-bench
@@ -258,6 +259,8 @@ test: sqlite wasm pg_query blend2d libgit2 hot-counter-child
       {{odin}} test $p {{flags}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
     done
     {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
+    {{odin}} test tools/design-tokens {{flags}} -out:build/test/design-tokens{{exe}}
+    {{odin}} test tools/fluent-icons {{flags}} -out:build/test/fluent-icons{{exe}}
     {{odin}} test ui/render {{flags}} {{cxx_link}} -out:build/test/ui-render{{exe}}
     {{odin}} test ui/render/fuzz {{flags}} {{cxx_link}} -out:build/test/ui-render-fuzz{{exe}}
     {{odin}} test ui/child {{flags}} {{cxx_link}} -out:build/test/ui-child{{exe}}
@@ -289,6 +292,7 @@ check:
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/design-tokens {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/fluent-icons {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/git-probe {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/material-shapes {{flags}} -target:$t || exit 1; \
     done
@@ -409,6 +413,33 @@ material-tokens:
 # Regenerate ui/fluent/tokens from the Fluent 2 kit's fluent.resolved.json.
 fluent-tokens:
     {{odin}} run tools/design-tokens {{flags}} -- fluent "${FLUENT_KIT:-$HOME/Source/Personal/fluent-kit}/tokens/fluent.resolved.json" ui/fluent/tokens/tokens.odin
+
+# Regenerate ui/material/shape_data.odin, the loading indicator's morph
+# pairs, from the M3 Expressive kit's shapes/morphs.json.
+material-shapes:
+    {{odin}} run tools/material-shapes {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/shapes/morphs.json" ui/material/shape_data.odin
+
+# Regenerate ui/fluent/icon_data.odin from the Fluent UI System Icons in
+# FLUENT_ICONS, the directory fluent-icons-fetch fills.
+fluent-icons:
+    {{odin}} run tools/fluent-icons {{flags}} -- "${FLUENT_ICONS:-$HOME/Source/Vendor/fluent-icons}" ui/fluent/icon_data.odin
+
+# Fetch the 20px regular and filled SVG of every icon named in
+# tools/fluent-icons/icons.txt from microsoft/fluentui-system-icons (MIT)
+# into FLUENT_ICONS, with the licence beside them.
+fluent-icons-fetch:
+    #!/usr/bin/env bash
+    set -eu
+    dir="${FLUENT_ICONS:-$HOME/Source/Vendor/fluent-icons}"
+    base=https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main
+    mkdir -p "$dir"
+    curl -sSL --max-time 30 -o "$dir/LICENSE" "$base/LICENSE"
+    while read -r name; do
+      folder=$(echo "$name" | sed 's/_/ /g; s/\b./\u&/g; s/ /%20/g')
+      for v in regular filled; do
+        curl -sSL --max-time 30 -o "$dir/ic_fluent_${name}_20_$v.svg" "$base/assets/$folder/SVG/ic_fluent_${name}_20_$v.svg"
+      done
+    done < tools/fluent-icons/icons.txt
 
 # Regenerate ui/material/shape_data.odin, the loading indicator's morph
 # pairs, from the M3 Expressive kit's shapes/morphs.json.
