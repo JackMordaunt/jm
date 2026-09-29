@@ -4,10 +4,11 @@
 # libpg_query with the platform's C compiler, libgit2 and Blend2D with
 # CMake from pinned upstream checkouts, cached between runs.
 #
-# Not run here: ui/sdl (needs SDL3 and a display), and the pq tests skip
+# Not run here: ui/sdl (needs SDL3 and a display). The pq tests skip
 # themselves on a runner where the PostgreSQL server binaries are not on
 # PATH; the package still has to link libpq, so pq is left out where
-# there is no libpq to link.
+# there is no libpq to link. wasm-windows.yml is the shorter loop for
+# jm:wasm on Windows alone.
 name: test
 on:
   push:
@@ -198,15 +199,6 @@ jobs:
           exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
           packages=$(sed -n 's/^packages := "\(.*\)"$/\1/p' justfile | sed 's| pq pq/testdb pq/fuzz||')
           bench=tools/wasm-bench
-          if [ "$RUNNER_OS" = Windows ]; then
-            # jm:wasm on Windows is unverified: wasm3 built with clang-cl
-            # passes every test but one, where an out-of-bounds load that
-            # must trap faults the process instead (run 36509663220). The
-            # recipe's own cl build does not compile at all. Left out here
-            # until that is understood, not hidden by a skip in the test.
-            packages=$(echo " $packages " | sed 's| wasm | |; s| wasm/fuzz | |')
-            bench=""
-          fi
           mkdir -p build/test build/debug
           failed=0
           for p in $packages $PQ; do
@@ -216,11 +208,9 @@ jobs:
             odin test "$p" $flags "${link[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
             echo "::endgroup::"
           done
-          if [ -n "$bench" ]; then
-            echo "::group::odin test $bench"
-            odin test "$bench" $flags "${link[@]}" -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::$bench failed"; failed=1; }
-            echo "::endgroup::"
-          fi
+          echo "::group::odin test $bench"
+          odin test "$bench" $flags "${link[@]}" -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::$bench failed"; failed=1; }
+          echo "::endgroup::"
           for p in ui/render ui/render/fuzz ui/child; do
             echo "::group::odin test $p"
             odin test "$p" $flags "${cxx[@]}" -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
