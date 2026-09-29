@@ -8,18 +8,16 @@ import "jm:ui/testutil"
 @(private = "file")
 Harness :: struct {
 	scene:   ops.Scene,
-	theme: ui.Theme,
 	gtx:   ui.Ctx,
 }
 
 @(private = "file")
 harness_init :: proc(h: ^Harness) {
 	ops.init(&h.scene)
-	h.theme = ui.light_theme(0)
 	h.gtx = {
 		scene         = &h.scene,
 		constraints = ui.exact({800, 600}),
-		theme       = &h.theme,
+		font        = 0,
 		shaper      = ui.stub_shaper(),
 		allocator   = context.temp_allocator,
 	}

@@ -2,11 +2,12 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 
 // state_label is a state grid's row label, padded to LABEL_W.
 state_label :: proc(gtx: ^ui.Ctx, name: string) {
-	ui.label(gtx, name, {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+	base.label(gtx, name, {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 	ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, name), 0))
 }
 
@@ -17,7 +18,7 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	ICONS := [?]m3.Icon{.Format_Bold, .Format_Italic, .Format_Underlined, .Palette}
 	NO_LABELS := [?]string{"", "", "", ""}
 	section(gtx, "Standard and connected", "standard: 12dp apart, round, 12 once selected, 8 pressed. Connected: 2dp apart, inner 8 (middle: small), pressed inner 4, selected a full pill")
-	ui.label(gtx, "Hover, focus and press land on the second child: a press widens it by 15% into its neighbours", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+	base.label(gtx, "Hover, focus and press land on the second child: a press widens it by 15% into its neighbours", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.close(&r)

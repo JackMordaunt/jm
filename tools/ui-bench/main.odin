@@ -21,6 +21,7 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 import "jm:ui/render"
@@ -54,7 +55,7 @@ widgets :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		// A round-rect clip over the whole page: every draw takes the mask path.
 		ops.clip_push(gtx.scene, ops.Round_Rect{{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, 24})
 	}
-	card := ui.box_open(gtx)
+	card := base.panel_open(gtx)
 	ui.list(gtx, &s.list, s.rows, row, s)
 	ui.close(&card)
 	if s.rrect {
@@ -66,7 +67,7 @@ row :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 	s := (^State)(user)
 	r := ui.row_open(gtx, gap = 8, align = .Center)
 	defer ui.close(&r)
-	ui.label(gtx, fmt.tprintf("Row %d", i))
+	base.label(gtx, fmt.tprintf("Row %d", i))
 	m3.checkbox(gtx, &s.toggle)
 	ui.fill_space(gtx)
 	if m3.button(gtx, "Pick") {
@@ -105,7 +106,7 @@ text :: proc(gtx: ^ui.Ctx, _: rawptr) {
 			break
 		}
 		ops.transform_push(gtx.scene, ops.translate(x, y))
-		ui.label(gtx, fmt.tprintf("label %d", i))
+		base.label(gtx, fmt.tprintf("label %d", i))
 		ops.transform_pop(gtx.scene)
 	}
 }

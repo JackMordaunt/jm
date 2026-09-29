@@ -28,8 +28,6 @@ Ui_Proc :: ui.Ui_Proc
 // Inside App the field named ui shadows the package, so its other field
 // types are spelled through these aliases (as ui/sdl's App does).
 @(private)
-Theme :: ui.Theme
-@(private)
 Font_Ref :: ops.Font_Ref
 
 // App describes the ui proc to run and what it needs. size and density
@@ -38,7 +36,6 @@ Font_Ref :: ops.Font_Ref
 App :: struct {
 	ui:    Ui_Proc,
 	user:  rawptr,
-	theme: ^Theme, // nil uses ui.default_theme with the first font
 	fonts: []Font_Ref, // registered into the Scene in order before the first frame
 }
 
@@ -74,11 +71,7 @@ run :: proc(app: App) {
 	defer render.destroy(&r)
 	shaper := render.shaper(&r, sc.fonts[:])
 
-	theme := app.theme
-	default_theme := ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
-	if theme == nil {
-		theme = &default_theme
-	}
+	font := app.fonts[0].id if len(app.fonts) > 0 else 0
 
 	arenas: [2]ops.Frame_Arena
 	for &a in arenas {
@@ -126,7 +119,7 @@ run :: proc(app: App) {
 		gtx := ui.Ctx {
 			scene         = &sc,
 			constraints = ui.exact(size),
-			theme       = theme,
+			font        = font,
 			shaper      = shaper,
 			router      = &router,
 			layout      = &layout,

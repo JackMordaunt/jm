@@ -76,12 +76,12 @@ text_hit :: proc(gtx: ^Ctx, s: ^Text_State, size: f32, x: f32) -> int {
 		if i == 0 {
 			continue
 		}
-		adv := shape(gtx.shaper, gtx.theme.font, size, str[:i], gtx.allocator).advance
+		adv := shape(gtx.shaper, gtx.font, size, str[:i], gtx.allocator).advance
 		if d := abs(x - adv); d < best_d {
 			best, best_d = i, d
 		}
 	}
-	end := shape(gtx.shaper, gtx.theme.font, size, str, gtx.allocator).advance
+	end := shape(gtx.shaper, gtx.font, size, str, gtx.allocator).advance
 	if abs(x - end) < best_d {
 		best = len(str)
 	}

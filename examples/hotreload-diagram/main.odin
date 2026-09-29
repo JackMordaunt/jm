@@ -15,6 +15,7 @@ import "core:fmt"
 import "jm:ui/ops"
 import "core:os"
 import "jm:ui"
+import "jm:ui/base"
 import "jm:ui/diagram"
 import "jm:ui/render"
 import "jm:ui/sdl"
@@ -55,12 +56,12 @@ new_model :: proc() -> Model {
 
 diagram_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
-	th := gtx.theme
+	th := base.theme()
 	sc := gtx.scene
-	ops.fill(sc, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
+	ops.fill(sc, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, base.color(.Bg))
 
-	ui.text(gtx, "jm:ui hot-reload architecture: the subprocess split", {40, 18}, {size = 22})
-	ui.text(gtx, "solid arrows = per-frame wire traffic     dashed arrow = rebuild/respawn, out of band", {40, 46}, {size = 12, color = th.muted})
+	base.text(gtx, "jm:ui hot-reload architecture: the subprocess split", {40, 18}, {size = 22})
+	base.text(gtx, "solid arrows = per-frame wire traffic     dashed arrow = rebuild/respawn, out of band", {40, 46}, {size = 12, color = base.color(.Muted)})
 
 	host := ops.Rect{40, 86, 500, diagram.group_height(len(HOST_CHIPS))}
 	subp := ops.Rect{640, 86, 500, diagram.group_height(len(SUB_CHIPS))}
@@ -69,37 +70,38 @@ diagram_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	diagram.group(gtx, host, "HOST PROCESS", "owns the OS window - stays up across every rebuild", HOST_COLOR, HOST_CHIPS)
 	diagram.group(gtx, subp, "UI SUBPROCESS", "killed and relaunched whenever the source changes", SUB_COLOR, SUB_CHIPS)
 
-	diagram.fill_rrect(sc, watch, 8, th.surface, th.outline, th.stroke)
-	ui.text(gtx, "file watcher / build supervisor", {watch.x + 20, watch.y + 12}, {size = 14})
-	ui.text(gtx, "runs `odin build`; respawns the subprocess on success", {watch.x + 20, watch.y + 34}, {size = 11, color = th.muted})
+	diagram.fill_rrect(sc, watch, 8, base.color(.Surface), base.color(.Outline), th.stroke)
+	base.text(gtx, "file watcher / build supervisor", {watch.x + 20, watch.y + 12}, {size = 14})
+	base.text(gtx, "runs `odin build`; respawns the subprocess on success", {watch.x + 20, watch.y + 34}, {size = 11, color = base.color(.Muted)})
 
 	// Per-frame wire traffic, in the gap between the two boxes. The top
 	// arrow's width pulses to stand in for events actually flowing.
 	width := ui.tween_update(&m.pulse, gtx)
 	diagram.arrow(gtx, {host.x + host.w + 5, 170}, {subp.x - 5, 170}, HOST_COLOR, width)
-	ui.text(gtx, "Raw_Event", {host.x + host.w + 8, 132}, {size = 11})
-	ui.text(gtx, "(device px, stdin)", {host.x + host.w + 8, 148}, {size = 10, color = th.muted})
+	base.text(gtx, "Raw_Event", {host.x + host.w + 8, 132}, {size = 11})
+	base.text(gtx, "(device px, stdin)", {host.x + host.w + 8, 148}, {size = 10, color = base.color(.Muted)})
 
 	diagram.arrow(gtx, {subp.x - 5, 560}, {host.x + host.w + 5, 560}, SUB_COLOR, 2.5)
-	ui.text(gtx, "Ops bytes", {host.x + host.w + 8, 570}, {size = 11})
-	ui.text(gtx, "(stdout) + wants_frame", {host.x + host.w + 8, 586}, {size = 10, color = th.muted})
+	base.text(gtx, "Ops bytes", {host.x + host.w + 8, 570}, {size = 11})
+	base.text(gtx, "(stdout) + wants_frame", {host.x + host.w + 8, 586}, {size = 10, color = base.color(.Muted)})
 
 	// Out-of-band supervision, as designed (the subprocess split itself is
 	// not built yet): the watcher is meant to kill and relaunch the
 	// subprocess without the host needing to know it happened mid-frame.
-	diagram.dashed_arrow(gtx, {watch.x + 70, watch.y}, {watch.x + 70, subp.y + subp.h}, th.muted, 2, 8, 6)
-	ui.text(gtx, "kill + respawn", {watch.x + 90, watch.y - 34}, {size = 11})
-	ui.text(gtx, "(the model resets; no state crosses a rebuild)", {watch.x + 90, watch.y - 18}, {size = 10, color = th.muted})
+	diagram.dashed_arrow(gtx, {watch.x + 70, watch.y}, {watch.x + 70, subp.y + subp.h}, base.color(.Muted), 2, 8, 6)
+	base.text(gtx, "kill + respawn", {watch.x + 90, watch.y - 34}, {size = 11})
+	base.text(gtx, "(the model resets; no state crosses a rebuild)", {watch.x + 90, watch.y - 18}, {size = 10, color = base.color(.Muted)})
 
-	ui.text(gtx, "A crash or a failed build never reaches the host: it keeps the", {host.x, host.y + host.h + 18}, {size = 11, color = th.muted})
-	ui.text(gtx, "last good frame on screen until the next respawn lands.", {host.x, host.y + host.h + 34}, {size = 11, color = th.muted})
+	base.text(gtx, "A crash or a failed build never reaches the host: it keeps the", {host.x, host.y + host.h + 18}, {size = 11, color = base.color(.Muted)})
+	base.text(gtx, "last good frame on screen until the next respawn lands.", {host.x, host.y + host.h + 34}, {size = 11, color = base.color(.Muted)})
 }
 
 main :: proc() {
 	m := new_model()
 
 	if len(os.args) == 1 {
-		theme := ui.light_theme(0)
+		th := base.light(0)
+		base.use(&th)
 		sdl.run(
 			{
 				title = "jm:ui hot-reload architecture",
@@ -107,9 +109,8 @@ main :: proc() {
 				height = HEIGHT,
 				ui = diagram_ui,
 				user = &m,
-				theme = &theme,
 				fonts = {{0, sdl.default_font()}},
-				clear = theme.bg,
+				clear = base.color(.Bg),
 			},
 		)
 		return

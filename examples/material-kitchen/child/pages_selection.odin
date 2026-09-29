@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 
 page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
@@ -100,12 +101,12 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 			k := key * 100 + u64(10 * (i + 1))
 			col := ui.column_open(gtx, gap = 8, key = k)
 			defer ui.close(&col)
-			ui.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface]})
+			base.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface]})
 			wr := ui.wrap_open(gtx, gap = 24, line_gap = 12)
 			defer ui.close(&wr)
 			for h, c in heads {
 				cc := ui.column_open(gtx, gap = 4, key = u64(c))
-				ui.label(gtx, h, {size = 12, color = s[.On_Surface_Variant]})
+				base.label(gtx, h, {size = 12, color = s[.On_Surface_Variant]})
 				cell(gtx, c, st, k + u64(c + 1))
 				ui.close(&cc)
 			}
@@ -119,7 +120,7 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 		ui.spacer(gtx, LABEL_W - 24)
 		for h, i in heads {
 			c := ui.stack_open(gtx, key = u64(i))
-			ui.label(gtx, h, {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+			base.label(gtx, h, {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 			ui.close(&c)
 			ui.spacer(gtx, FIELD_W - label_width(gtx, h))
 		}
@@ -132,7 +133,7 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 		defer ui.close(&r)
 		{
 			c := ui.inset_open(gtx, {0, 20, 0, 0})
-			ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+			base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 			ui.close(&c)
 		}
 		ui.spacer(gtx, max(LABEL_W - 48 - label_width(gtx, STATE_NAMES[i]), 0))
@@ -195,7 +196,7 @@ page_text_fields :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		if i := m3.autocomplete(gtx, &m.fruit2, "Fruit", FRUIT[:], &m.fruit2_open, .Outlined, leading = .Search, key = 402); i >= 0 {
 			m.fruit_pick = FRUIT[i]
 		}
-		ui.label(gtx, m.fruit_pick == "" ? "" : fmt.tprintf("Picked: %s", m.fruit_pick), {color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, m.fruit_pick == "" ? "" : fmt.tprintf("Picked: %s", m.fruit_pick), {color = m3.scheme()[.On_Surface_Variant]})
 	}
 	ui.spacer(gtx, 8)
 
@@ -316,7 +317,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 				m.suggestion = h
 			}
 		}
-		ui.label(gtx, m.suggestion == "" ? "" : fmt.tprintf("Sent: %s", m.suggestion), {color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, m.suggestion == "" ? "" : fmt.tprintf("Sent: %s", m.suggestion), {color = m3.scheme()[.On_Surface_Variant]})
 	}
 }
 

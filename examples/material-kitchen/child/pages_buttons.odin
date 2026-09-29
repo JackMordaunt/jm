@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 
 // The buttons group: common and toggle buttons, icon buttons, FABs,
@@ -208,12 +209,12 @@ size_grid :: proc(gtx: ^ui.Ctx, title, note: string, columns: []string, cell: Si
 		for n, i in SIZE_NAMES {
 			col := ui.column_open(gtx, gap = 8, key = key + u64(i + 1))
 			defer ui.close(&col)
-			ui.label(gtx, n, {size = 12, color = s[.On_Surface]})
+			base.label(gtx, n, {size = 12, color = s[.On_Surface]})
 			wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .End)
 			defer ui.close(&wr)
 			for name, j in columns {
 				cc := ui.column_open(gtx, gap = 4, key = u64(j))
-				ui.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
+				base.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
 				cell(gtx, m3.Button_Size(i), j, key * 16 + u64(i * len(columns) + j))
 				ui.close(&cc)
 			}
@@ -228,7 +229,7 @@ size_grid :: proc(gtx: ^ui.Ctx, title, note: string, columns: []string, cell: Si
 		for name in columns {
 			ui.flexible(gtx, 1)
 			c := ui.stack_open(gtx)
-			ui.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
+			base.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
 			ui.close(&c)
 		}
 	}
@@ -237,7 +238,7 @@ size_grid :: proc(gtx: ^ui.Ctx, title, note: string, columns: []string, cell: Si
 		defer ui.close(&r)
 		{
 			c := ui.stack_open(gtx)
-			ui.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
+			base.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
 			ui.close(&c)
 		}
 		ui.spacer(gtx, max(LABEL_W - label_width(gtx, n), 0))
@@ -329,7 +330,7 @@ page_segmented :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - label_width(gtx, STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
@@ -374,7 +375,7 @@ page_split :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		s := m3.scheme()
 		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(20 + i))
 		defer ui.close(&r)
-		ui.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 24 - label_width(gtx, n), 0))
 		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
 		defer ui.close(&wr)

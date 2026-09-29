@@ -1,6 +1,7 @@
 package main
 
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 
 // NAV_ITEMS are the rail and bar demos' destinations: a numeral badge, a
@@ -40,7 +41,7 @@ demo_pane :: proc(gtx: ^ui.Ctx, title: string, w: f32, h: f32 = DRAWER_H, key: u
 	{
 		col := ui.column_open(gtx, gap = 8)
 		defer ui.close(&col)
-		ui.label(gtx, title, {size = 18, color = m3.scheme()[.On_Surface]})
+		base.label(gtx, title, {size = 18, color = m3.scheme()[.On_Surface]})
 		ui.spacer(gtx, 0)
 		wide := ui.row_open(gtx)
 		defer ui.close(&wide)
@@ -59,7 +60,7 @@ page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - label_width(gtx, STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
@@ -75,7 +76,7 @@ page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	{
 		c := ui.column_open(gtx, gap = 8, key = 1)
 		defer ui.close(&c)
-		ui.label(gtx, "Permanent", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, "Permanent", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		m3.navigation_drawer(gtx, DRAWER_ITEMS[:], &m.drawer_sel, width = 300, height = DRAWER_H, key = 1)
 	}
 	{
@@ -235,7 +236,7 @@ page_tabs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
@@ -248,7 +249,7 @@ page_tabs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(30 + i))
 		defer ui.close(&r)
-		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)

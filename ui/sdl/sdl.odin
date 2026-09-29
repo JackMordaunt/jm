@@ -80,8 +80,6 @@ Ui_Proc :: ui.Ui_Proc
 // Inside App the field named ui shadows the package, so its other field
 // types are spelled through these aliases.
 @(private)
-Theme :: ui.Theme
-@(private)
 Font_Ref :: ops.Font_Ref
 @(private)
 Color :: ops.Color
@@ -92,7 +90,6 @@ App :: struct {
 	width, height: int, // initial size in logical units
 	ui:            Ui_Proc,
 	user:          rawptr,
-	theme:         ^Theme, // nil uses ui.default_theme with the first font
 	fonts:         []Font_Ref, // registered into the Scene in order before the first frame
 	clear:         Color,
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
@@ -240,8 +237,7 @@ Loop :: struct {
 	r:             render.Renderer, // only shapes text; the compositor's workers draw
 	shaper:        ui.Shaper,
 	comp:          render.Compositor,
-	theme:         ^ui.Theme,
-	default_theme: ui.Theme,
+	font:          ops.Font_Id, // the toolkit's face: the first font
 	arenas:        [2]ops.Frame_Arena, // frame allocators, alternating
 	events:        virtual.Arena, // text of the events the next frame routes
 	n:             u64,
@@ -308,8 +304,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	// The window's image is a view into one buffer that only reallocates
 	// when a resize outgrows it, and then present invalidates the damage.
 	l.comp.damage.resize_in_place = true
-	l.default_theme = ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
-	l.theme = app.theme if app.theme != nil else &l.default_theme
+	l.font = app.fonts[0].id if len(app.fonts) > 0 else 0
 	for &a in l.arenas {
 		if err := ops.frame_arena_init(&a); err != nil {
 			fmt.eprintln("sdl: arena:", err)
@@ -372,7 +367,7 @@ step :: proc(l: ^Loop) {
 	gtx := ui.Ctx {
 		scene         = &l.scene,
 		constraints = ui.exact(logical),
-		theme       = l.theme,
+		font        = l.font,
 		shaper      = l.shaper,
 		router      = &l.router,
 		layout      = &l.layout,

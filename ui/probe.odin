@@ -27,7 +27,7 @@ Probe :: struct {
 	prev:        Frame, // the frame just laid out; probe_current returns it
 	router:      Router,
 	layout:      Layout,
-	theme:       Theme,
+	font:        ops.Font_Id, // gtx.font for every frame
 	shaper:      Shaper,
 	ui:          proc(gtx: ^Ctx, user: rawptr),
 	user:        rawptr,
@@ -45,14 +45,13 @@ Probe :: struct {
 
 // probe_init prepares p to drive ui with user at a window of size, then
 // runs the first frame so names are findable at once. shaper is
-// stub_shaper(); theme defaults to default_theme(font).
+// stub_shaper(); font is the toolkit's face.
 probe_init :: proc(
 	p: ^Probe,
 	ui: proc(gtx: ^Ctx, user: rawptr),
 	user: rawptr,
 	size: ops.Size,
 	font: ops.Font_Id = 0,
-	theme: Maybe(Theme) = nil,
 	allocator := context.allocator,
 	debug: Debug_Flags = {},
 ) {
@@ -64,7 +63,7 @@ probe_init :: proc(
 	p.size = size
 	p.allocator = allocator
 	p.shaper = stub_shaper()
-	p.theme = theme.? or_else default_theme(font)
+	p.font = font
 	p.dt = 1.0 / 60
 	ops.init(&p.scene, allocator)
 	frame_init(&p.frame, allocator)
@@ -105,7 +104,7 @@ probe_frame :: proc(p: ^Probe) {
 	gtx := Ctx {
 		scene         = &p.scene,
 		constraints = exact(p.size),
-		theme       = &p.theme,
+		font        = p.font,
 		shaper      = p.shaper,
 		router      = &p.router,
 		layout      = &p.layout,

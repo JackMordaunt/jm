@@ -9,7 +9,7 @@ serialized, or driven by a probe without a window.
 	ui :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
 		ui.label(gtx, "Name")
-		ui.label(gtx, m.name)
+		base.label(gtx, m.name)
 		if m3.button(gtx, "Save") { save(m) } // a design system's widget, on the same gtx
 	}
 
@@ -60,15 +60,15 @@ import "jm:ui/ops"
 Ui_Proc :: proc(gtx: ^Ctx, user: rawptr)
 
 // Ctx is the per-frame layout context every widget takes first. Widgets
-// record into sc, size themselves inside constraints, read theme for
-// defaults, shape text through shaper and read their events from router.
+// record into the scene, size themselves inside constraints, take the
+// toolkit's font from font, shape text through shaper and read their events from router.
 // A host runs a frame for every input event, and one more after it, which
 // events asks for; anything else that changes with time asks for its next
 // frame with request_frame.
 Ctx :: struct {
 	scene:         ^ops.Scene,
 	constraints: Constraints,
-	theme:       ^Theme,
+	font:        ops.Font_Id, // the toolkit's own face: text hit-testing, the debug chrome, and what a base label falls back to
 	shaper:      Shaper,
 	router:      ^Router,
 	layout:      ^Layout,

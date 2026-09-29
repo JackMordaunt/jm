@@ -52,6 +52,7 @@ binary.
 | `ui/child` | the subprocess half of that split: owns the Model, the ui proc, `Router` and `Layout`, and speaks `ui`'s wire format over its own stdin/stdout |
 | `ui/diagram` | titled, accent-bordered groups of chips and arrows (solid or dashed) for an architecture diagram, over plain `ui` calls |
 | `ui/design` | what every design system on `ui` shares: the interaction states and per-frame `Control`, per-corner geometry, text shaping in a line box, a blur-free shadow, CSS easing, and a generic `Theme(Role, Context)` with axioms that `check` measures in every context (OKLab, APCA and WCAG metrics) |
+| `ui/base` | the smallest design system on `ui`: a five-role palette bound light and dark as an instance of `ui/design`, checked by its axioms, and the plain widgets every page needs — label, text, divider, panel; a full system maps its scheme down to it |
 | `ui/material` | Material 3 Expressive on `ui`: the colour scheme, type scale, shape, motion springs and state tokens generated from the m3e-kit into `ui/material/tokens`, Material Symbols icons as paths, and the components (buttons, text fields, selection controls, chips, cards, lists, navigation, app bars, tabs), each able to paint any spec state on demand |
 | `ui/testutil` | `count_ops`: assertions a `ui` package's own tests and a downstream package's tests both want, without an import cycle |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
@@ -613,14 +614,15 @@ Widgets nest through containers with no per-child boilerplate:
 
 ```odin
 col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
-ui.label(gtx, "Name")
+base.label(gtx, "Name")
 m3.text_field(gtx, &m.name, "Name")
 if m3.button(gtx, "Save") { save(m) }
 ```
 
-`ui` itself has layout, input, text and paint plus a few plain widgets
-(label, divider, list); the components come from a design system on top
-of it, `ui/material` today, through the shared `ui/design` layer.
+`ui` itself has layout, input, text and paint and no look of its own;
+`ui/base` is the smallest design system on it (a checked palette, label,
+divider, panel) and `ui/material` the full one, both through the shared
+`ui/design` layer.
 
 A zero field in a style struct takes the theme's value. Clipping is exact for
 any shape under any affine: Blend2D clips only to rectangles, so a path or

@@ -111,7 +111,7 @@ card_open :: proc(
 	cp := new(Card_Paint, gtx.allocator)
 	cp^ = {kind, clickable, state, clicked}
 	// ui's zero padding means "theme default"; negative means exactly 0.
-	return ui.box_open(gtx, {padding = ui.pad_all(padding > 0 ? padding : -1), paint = paint_card, user = cp}, key, loc)
+	return ui.box_open(gtx, {padding = ui.pad_all(padding), paint = paint_card, user = cp}, key, loc)
 }
 
 @(private)

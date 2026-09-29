@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 
 // init_progress_values gives the progress group's live controls their
@@ -81,18 +82,18 @@ page_sliders :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Live", "drag, or click to focus and use the arrow keys, Page Up/Down, Home and End")
 	s := m3.scheme()
-	ui.label(gtx, fmt.tprintf("Volume %.0f%%", m.volume * 100), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Volume %.0f%%", m.volume * 100), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.volume, width = 320, key = 10)
-	ui.label(gtx, fmt.tprintf("Steps %.0f", m.steps), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Steps %.0f", m.steps), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.steps, 0, 100, 10, width = 320, key = 11)
-	ui.label(gtx, fmt.tprintf("Range %.0f to %.0f", m.range_lo, m.range_hi), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Range %.0f to %.0f", m.range_lo, m.range_hi), {color = s[.On_Surface_Variant]})
 	m3.range_slider(gtx, &m.range_lo, &m.range_hi, 0, 100, width = 320, key = 12)
-	ui.label(gtx, fmt.tprintf("Balance %.0f", m.centered), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Balance %.0f", m.centered), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.centered, -100, 100, width = 320, track = .Centered, key = 13)
-	ui.label(gtx, fmt.tprintf("Brightness %.0f%%, label always shown", m.brightness * 100), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Brightness %.0f%%, label always shown", m.brightness * 100), {color = s[.On_Surface_Variant]})
 	gap(gtx, 56)
 	m3.slider(gtx, &m.brightness, width = 320, start_icon = .Remove, end_icon = .Add, indicator = .Always, key = 14)
-	ui.label(gtx, fmt.tprintf("Vertical %.2f", m.upright), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Vertical %.2f", m.upright), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.upright, width = 160, vertical = true, key = 15)
 }
 
@@ -134,7 +135,7 @@ page_progress :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Live", "the slider drives the determinate indicators below it")
 	s := m3.scheme()
-	ui.label(gtx, fmt.tprintf("Progress %.0f%%", m.progress * 100), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Progress %.0f%%", m.progress * 100), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.progress, width = 320, key = 500)
 	m3.linear_progress(gtx, m.progress, 320, key = 501)
 	m3.linear_progress(gtx, m.progress, 320, style = .Wavy, key = 502)
@@ -167,7 +168,7 @@ page_loading :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "the slider drives the determinate pair")
 	s := m3.scheme()
-	ui.label(gtx, fmt.tprintf("Progress %.0f%%", m.progress * 100), {color = s[.On_Surface_Variant]})
+	base.label(gtx, fmt.tprintf("Progress %.0f%%", m.progress * 100), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.progress, width = 320, key = 40)
 	r := ui.wrap_open(gtx, gap = 24, align = .Center)
 	defer ui.close(&r)

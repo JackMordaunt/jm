@@ -6,13 +6,12 @@ import "core:testing"
 import "jm:ui/testutil"
 
 // Harness is one window's worth of ui state for tests: sc, layout, router
-// and a light theme, over the stub shaper and the temp allocator.
+// and font 0, over the stub shaper and the temp allocator.
 @(private)
 Harness :: struct {
 	scene:    ops.Scene,
 	layout: Layout,
 	router: Router,
-	theme:  Theme,
 	gtx:    Ctx,
 	size:   ops.Size,
 }
@@ -22,7 +21,6 @@ harness_init :: proc(h: ^Harness, size := ops.Size{400, 300}) {
 	ops.init(&h.scene)
 	layout_init(&h.layout)
 	router_init(&h.router)
-	h.theme = light_theme(0)
 	h.size = size
 	harness_frame(h)
 }
@@ -37,7 +35,7 @@ harness_frame :: proc(h: ^Harness) {
 	h.gtx = {
 		scene         = &h.scene,
 		constraints = loose(h.size),
-		theme       = &h.theme,
+		font        = 0,
 		shaper      = stub_shaper(),
 		router      = &h.router,
 		layout      = &h.layout,
@@ -150,7 +148,7 @@ test_box_records_macro_then_fill_then_call :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		b := box_open(gtx); defer close(&b)
+		b := box_open(gtx, {fill = {4, 5, 6, 255}, outline = {7, 8, 9, 255}, stroke = 1, radius = 6, padding = pad_all(8)}); defer close(&b)
 		label(gtx, "card")
 	}
 	begin := index_of(&h.scene, ops.Macro_Begin)
@@ -166,8 +164,8 @@ test_box_records_macro_then_fill_then_call :: proc(t: ^testing.T) {
 	rr := f.shape.(ops.Round_Rect)
 	testing.expect(t, near(rr.rect.w, 4 * W + 16))
 	testing.expect(t, near(rr.rect.h, 14 + 16))
-	testing.expect_value(t, rr.radius, h.theme.radius)
-	testing.expect_value(t, f.paint.(ops.Color), h.theme.surface)
+	testing.expect_value(t, rr.radius, 6)
+	testing.expect_value(t, f.paint.(ops.Color), ops.Color{4, 5, 6, 255})
 	testing.expect_value(t, h.scene.ops[begin].(ops.Macro_Begin).id, h.scene.ops[run].(ops.Call).id)
 	// The label inside is offset by the padding.
 	p := pushes(&h.scene)
@@ -382,22 +380,6 @@ test_id_is_stable_per_site_and_key :: proc(t: ^testing.T) {
 	testing.expect(t, ids[0] != ids[2])
 	testing.expect(t, id() != ids[0])
 	testing.expect(t, id_mix(ids[0], 1) != id_mix(ids[0], 2))
-}
-
-@(test)
-test_style_zero_means_theme :: proc(t: ^testing.T) {
-	th := light_theme(0)
-	th.fg, th.text_size = {1, 2, 3, 255}, 17 // values no palette uses, so a match is the theme's
-	s := resolve_label(&th, {})
-	testing.expect_value(t, s.color, ops.Color{1, 2, 3, 255})
-	testing.expect_value(t, s.size, 17)
-	o := resolve_label(&th, {color = {9, 8, 7, 255}})
-	testing.expect_value(t, o.color, ops.Color{9, 8, 7, 255}) // an override stays
-	testing.expect_value(t, o.size, 17) // the rest is the theme's
-	th.surface, th.outline = {4, 5, 6, 255}, {7, 8, 9, 255}
-	b := resolve_box(&th, {})
-	testing.expect_value(t, b.fill, ops.Color{4, 5, 6, 255})
-	testing.expect_value(t, b.outline, ops.Color{7, 8, 9, 255})
 }
 
 // Of several frame requests the soonest wins, whatever the order, and a
@@ -668,7 +650,7 @@ test_box_paint_replaces_fill_and_outline :: proc(t: ^testing.T) {
 		ops.fill(gtx.scene, ops.Rect{0, 0, size.x, size.y}, ops.Color{1, 2, 3, 255})
 	}
 	{
-		b := box_open(gtx, {paint = painter, user = &got}); defer close(&b)
+		b := box_open(gtx, {padding = pad_all(8), paint = painter, user = &got}); defer close(&b)
 		label(gtx, "card")
 	}
 	testing.expect(t, near(got.x, 4 * W + 16) && near(got.y, 14 + 16))
@@ -680,18 +662,27 @@ test_box_paint_replaces_fill_and_outline :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_negative_padding_means_none :: proc(t: ^testing.T) {
+test_zero_style_paints_nothing_and_pads_nothing :: proc(t: ^testing.T) {
+	// ui has no theme: a box's zero style is exactly that, so a design
+	// system's panel fills the defaults before calling.
 	h: Harness
 	harness_init(&h)
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		b := box_open(gtx, {padding = pad_all(-1)}); defer close(&b)
+		b := box_open(gtx); defer close(&b)
+		label(gtx, "card")
+	}
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Fill), 0)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Stroke), 0)
+	testing.expect_value(t, len(pushes(&h.scene)), 0) // no offset for the body
+	harness_frame(&h)
+	{
+		b := box_open(gtx, {fill = {1, 2, 3, 255}}); defer close(&b)
 		label(gtx, "card")
 	}
 	rr := h.scene.ops[index_of(&h.scene, ops.Fill)].(ops.Fill).shape.(ops.Round_Rect)
-	testing.expect(t, near(rr.rect.w, 4 * W) && near(rr.rect.h, 14))
-	testing.expect_value(t, len(pushes(&h.scene)), 0) // no offset for the body
+	testing.expect(t, near(rr.rect.w, 4 * W) && near(rr.rect.h, 14)) // the body's size, unpadded
 }
 
 @(test)

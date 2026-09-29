@@ -17,6 +17,7 @@ deciding where things go, not measured and wrapped like a form.
 package diagram
 
 import "jm:ui"
+import "jm:ui/base"
 import "jm:ui/ops"
 
 // Chip is one labeled row in a group: a short title and subtitle.
@@ -40,23 +41,22 @@ fill_rrect :: proc(o: ^ops.Scene, r: ops.Rect, radius: f32, fill, outline: ops.C
 // boxes. Size r to fit len(chips) chips at 74 logical units each below a
 // 74-unit header; group does not clip or scroll what does not fit.
 group :: proc(gtx: ^ui.Ctx, r: ops.Rect, title, subtitle: string, accent: ops.Color, chips: []Chip) {
-	th := gtx.theme
 	o := gtx.scene
-	fill_rrect(o, r, 10, th.surface, accent, 2)
+	fill_rrect(o, r, 10, base.color(.Surface), accent, 2)
 	ops.fill(o, ops.Rect{r.x, r.y, r.w, 4}, accent)
-	ui.text(gtx, title, {r.x + 20, r.y + 16}, {size = 16, color = accent})
-	ui.text(gtx, subtitle, {r.x + 20, r.y + 40}, {size = 11, color = th.muted})
+	base.text(gtx, title, {r.x + 20, r.y + 16}, {size = 16, color = accent})
+	base.text(gtx, subtitle, {r.x + 20, r.y + 40}, {size = 11, color = base.color(.Muted)})
 
 	y := r.y + 74
 	chip_h: f32 = 62
 	gap: f32 = 10
 	for c, i in chips {
 		cr := ops.Rect{r.x + 20, y, r.w - 40, chip_h}
-		fill := i % 2 == 0 ? th.bg : th.surface
-		fill_rrect(o, cr, 8, fill, th.outline, 1)
+		fill := i % 2 == 0 ? base.color(.Bg) : base.color(.Surface)
+		fill_rrect(o, cr, 8, fill, base.color(.Outline), 1)
 		ops.fill(o, ops.Rect{cr.x, cr.y, 4, cr.h}, accent)
-		ui.text(gtx, c.title, {cr.x + 14, cr.y + 9}, {size = 13})
-		ui.text(gtx, c.subtitle, {cr.x + 14, cr.y + 30}, {size = 10.5, color = th.muted})
+		base.text(gtx, c.title, {cr.x + 14, cr.y + 9}, {size = 13})
+		base.text(gtx, c.subtitle, {cr.x + 14, cr.y + 30}, {size = 10.5, color = base.color(.Muted)})
 		y += chip_h + gap
 	}
 }

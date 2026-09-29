@@ -14,6 +14,7 @@ import "core:fmt"
 import "jm:ui/ops"
 import "core:os"
 import "jm:ui"
+import "jm:ui/base"
 import "jm:ui/child"
 import "jm:ui/diagram"
 import "jm:ui/render"
@@ -60,12 +61,11 @@ new_model :: proc() -> Model {
 
 architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
-	th := gtx.theme
 	sc := gtx.scene
-	ops.fill(sc, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
+	ops.fill(sc, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, base.color(.Bg))
 
-	ui.text(gtx, "jm:ui's own pipeline: input, layout, render (edited live, hot-reloaded)", {40, 18}, {size = 22})
-	ui.text(gtx, "the layout/render seam (Ops) either flattens in place or tunnels through ui/ipc to a second process", {40, 46}, {size = 12, color = th.muted})
+	base.text(gtx, "jm:ui's own pipeline: input, layout, render (edited live, hot-reloaded)", {40, 18}, {size = 22})
+	base.text(gtx, "the layout/render seam (Ops) either flattens in place or tunnels through ui/ipc to a second process", {40, 46}, {size = 12, color = base.color(.Muted)})
 
 	stage_h := diagram.group_height(len(INPUT_CHIPS))
 	input := ops.Rect{30, 86, 330, stage_h}
@@ -78,25 +78,25 @@ architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 
 	// Input -> Layout: an ordinary solid arrow, always in-process.
 	diagram.arrow(gtx, {input.x + input.w + 5, 170}, {layout.x - 5, 170}, INPUT_COLOR, 2.5)
-	ui.text(gtx, "Raw_Event", {input.x + input.w + 10, 145}, {size = 11})
+	base.text(gtx, "Raw_Event", {input.x + input.w + 10, 145}, {size = 11})
 
 	// The seam: the same Scene, two routes. Solid is the direct call this
 	// package's own sdl.run takes; dashed is sdl.run_host's, through the
 	// ipc box, tunneling to wherever the render side actually lives.
 	seam_y :: 170
 	diagram.arrow(gtx, {layout.x + layout.w + 5, seam_y}, {render_box.x - 5, seam_y}, LAYOUT_COLOR, 2.5)
-	ui.text(gtx, "Ops", {layout.x + layout.w + 10, seam_y - 25}, {size = 11})
-	ui.text(gtx, "(same process)", {layout.x + layout.w + 10, seam_y - 11}, {size = 10, color = th.muted})
+	base.text(gtx, "Ops", {layout.x + layout.w + 10, seam_y - 25}, {size = 11})
+	base.text(gtx, "(same process)", {layout.x + layout.w + 10, seam_y - 11}, {size = 10, color = base.color(.Muted)})
 
 	ipc := ops.Rect{830, 300, 100, diagram.group_height(0)}
 	diagram.group(gtx, ipc, "ui/ipc", "encode -> pipe -> decode", IPC_COLOR, nil)
 	pulse_width := ui.tween_update(&m.flow, gtx)
 	diagram.dashed_arrow(gtx, {layout.x + layout.w + 5, ipc.y + ipc.h / 2 - 3}, {ipc.x, ipc.y + ipc.h / 2 - 3}, IPC_COLOR, pulse_width, 8, 6)
 	diagram.dashed_arrow(gtx, {ipc.x + ipc.w, ipc.y + ipc.h / 2 + 3}, {render_box.x - 5, ipc.y + ipc.h / 2 + 3}, IPC_COLOR, pulse_width, 8, 6)
-	ui.text(gtx, "tunneled: sdl.run_host <-> ui/child", {layout.x + layout.w + 10, ipc.y - 20}, {size = 10, color = th.muted})
+	base.text(gtx, "tunneled: sdl.run_host <-> ui/child", {layout.x + layout.w + 10, ipc.y - 20}, {size = 10, color = base.color(.Muted)})
 
-	ui.text(gtx, "The same Ops that flatten straight into a render call (ui/sdl.run) can instead cross a process boundary first (ui/sdl.run_host):", {input.x, render_box.y + render_box.h + 20}, {size = 11, color = th.muted})
-	ui.text(gtx, "ui/child owns Layout and everything left of the seam; the host owns everything right of it and never links the ui proc at all.", {input.x, render_box.y + render_box.h + 36}, {size = 11, color = th.muted})
+	base.text(gtx, "The same Ops that flatten straight into a render call (ui/sdl.run) can instead cross a process boundary first (ui/sdl.run_host):", {input.x, render_box.y + render_box.h + 20}, {size = 11, color = base.color(.Muted)})
+	base.text(gtx, "ui/child owns Layout and everything left of the seam; the host owns everything right of it and never links the ui proc at all.", {input.x, render_box.y + render_box.h + 36}, {size = 11, color = base.color(.Muted)})
 }
 
 main :: proc() {

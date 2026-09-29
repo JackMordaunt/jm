@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 
 SUGGESTIONS := [?]string{"Material Design", "Material Symbols", "Motion", "Color roles", "Typography", "Shape scale", "Elevation"}
@@ -77,7 +78,7 @@ page_bottom_sheet :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			.Partially_Expanded = "partially expanded",
 			.Expanded           = "expanded",
 		}
-		ui.label(gtx, fmt.tprintf("modal sheet: %s", NAMES[m.sheet_value]), {color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, fmt.tprintf("modal sheet: %s", NAMES[m.sheet_value]), {color = m3.scheme()[.On_Surface_Variant]})
 	}
 	{
 		sh := m3.bottom_sheet_open(gtx, &m.bottom, m.window, value = &m.sheet_value, key = 3)
@@ -104,9 +105,9 @@ page_bottom_sheet :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		sh := m3.bottom_sheet_open(gtx, &m.bottom_std, m.window, modal = false, skip_partial = true, max_width = 480, key = 4)
 		defer m3.sheet_close(&sh)
 		if sh.visible {
-			ui.label(gtx, "Standard: no scrim, the page stays live", {size = 16, color = m3.scheme()[.On_Surface]})
+			base.label(gtx, "Standard: no scrim, the page stays live", {size = 16, color = m3.scheme()[.On_Surface]})
 			ui.spacer(gtx, 8)
-			ui.label(gtx, "Now playing: Clair de lune", {color = m3.scheme()[.On_Surface_Variant]})
+			base.label(gtx, "Now playing: Clair de lune", {color = m3.scheme()[.On_Surface_Variant]})
 			ui.spacer(gtx, 16)
 		}
 	}
@@ -122,7 +123,7 @@ page_bottom_sheet :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	{
 		r := ui.row_open(gtx, gap = 8, align = .Center)
 		defer ui.close(&r)
-		ui.label(gtx, "Dragged", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, "Dragged", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, 60)
 		m3.drag_handle(gtx, .Dragged, key = 6)
 	}
@@ -133,10 +134,10 @@ page_bottom_sheet :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	r := ui.row_open(gtx, align = .Center)
 	defer ui.close(&r)
 	pane :: proc(gtx: ^ui.Ctx, w: f32, label: string, key: u64) {
-		b := ui.box_open(gtx, {fill = m3.scheme()[.Surface_Container], radius = m3.CORNER_MEDIUM, padding = ui.pad_all(16)}, key = key)
+		b := base.panel_open(gtx, {fill = m3.scheme()[.Surface_Container], radius = m3.CORNER_MEDIUM, padding = ui.pad_all(16)}, key = key)
 		defer ui.close(&b)
 		m3.strut(gtx, w - 32)
-		ui.label(gtx, label, {color = m3.scheme()[.On_Surface]})
+		base.label(gtx, label, {color = m3.scheme()[.On_Surface]})
 		ui.spacer(gtx, 80)
 	}
 	pane(gtx, m.pane, fmt.tprintf("%.0fdp", m.pane), 7)
@@ -151,8 +152,8 @@ page_side_sheet :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		col := ui.column_open(gtx, gap = 10)
 		defer ui.close(&col)
 		section(gtx, "Side sheets", "comp.navigation-drawer stands in (no side-sheet tokens)")
-		ui.label(gtx, "standard: surface, inline, beside this column", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-		ui.label(gtx, "modal: surface-container-low over a scrim", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, "standard: surface, inline, beside this column", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, "modal: surface-container-low over a scrim", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		if m3.button(gtx, "Show modal sheet", .Filled, key = 1) {
 			m.side, m.side_left = true, false
 		}
@@ -212,8 +213,8 @@ page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		c := ui.column_open(gtx, gap = 10)
 		defer ui.close(&c)
 		m3.date_picker(gtx, &m.input_date, &m.input_view, TODAY, mode = &m.input_mode, input = &m.input_text, key = 3)
-		ui.label(gtx, fmt.tprintf("Selected %04d-%02d-%02d", m.date.year, m.date.month, m.date.day), {color = s[.On_Surface_Variant]})
-		ui.label(gtx, fmt.tprintf("Range %d/%d - %d/%d", m.range_start.month, m.range_start.day, m.range_end.month, m.range_end.day), {color = s[.On_Surface_Variant]})
+		base.label(gtx, fmt.tprintf("Selected %04d-%02d-%02d", m.date.year, m.date.month, m.date.day), {color = s[.On_Surface_Variant]})
+		base.label(gtx, fmt.tprintf("Range %d/%d - %d/%d", m.range_start.month, m.range_start.day, m.range_end.month, m.range_end.day), {color = s[.On_Surface_Variant]})
 	}
 }
 
@@ -234,8 +235,8 @@ page_time_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			c := ui.column_open(gtx, gap = 10)
 			defer ui.close(&c)
 			m3.time_picker(gtx, &m.times[1], &m.editing[1], mode = .Input, key = 3)
-			ui.label(gtx, "Input mode (comp.time-input): click a field, type digits, Up/Down", {size = 12, color = s[.On_Surface_Variant]})
-			ui.label(gtx, fmt.tprintf("%02d:%02d   %02d:%02d   %02d:%02d", m.time.hour, m.time.minute, m.times[0].hour, m.times[0].minute, m.times[1].hour, m.times[1].minute), {color = s[.On_Surface_Variant]})
+			base.label(gtx, "Input mode (comp.time-input): click a field, type digits, Up/Down", {size = 12, color = s[.On_Surface_Variant]})
+			base.label(gtx, fmt.tprintf("%02d:%02d   %02d:%02d   %02d:%02d", m.time.hour, m.time.minute, m.times[0].hour, m.times[0].minute, m.times[1].hour, m.times[1].minute), {color = s[.On_Surface_Variant]})
 		}
 	}
 	section(gtx, "Horizontal layout", "landscape: the selectors beside the dial, the period toggle below them")
@@ -281,6 +282,6 @@ page_carousel :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	if m.carousel_hit > 0 {
-		ui.label(gtx, fmt.tprintf("Clicked %s", ITEMS[m.carousel_hit - 1].label), {color = s[.On_Surface_Variant]})
+		base.label(gtx, fmt.tprintf("Clicked %s", ITEMS[m.carousel_hit - 1].label), {color = s[.On_Surface_Variant]})
 	}
 }

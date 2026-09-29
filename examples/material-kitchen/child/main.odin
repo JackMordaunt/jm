@@ -32,6 +32,7 @@ import "jm:ui/ops"
 import "core:os"
 import "core:strings"
 import "jm:ui"
+import "jm:ui/base"
 import "jm:ui/child"
 import m3 "jm:ui/material"
 import "jm:ui/render"
@@ -55,7 +56,6 @@ Model :: struct {
 	nav_open:  bool, // the modal page drawer, in a narrow window
 	dark:      bool,
 	scheme:    m3.Scheme,
-	theme:     ui.Theme,
 	clicks:    int,
 	toggles:   [8]bool,
 	segments:  [3]bool,
@@ -231,9 +231,8 @@ PAGES := [?]Page {
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	m.scheme = m.dark ? m3.dark_scheme() : m3.light_scheme()
-	m3.use(&m.scheme)
+	m3.use(&m.scheme, m.dark ? .Dark : .Light)
 	m3.use_fonts({0, 1, 2})
-	gtx.theme^ = m3.theme_for(&m.scheme, gtx.theme.font)
 	s := &m.scheme
 	m.window = gtx.constraints.max
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Surface])
@@ -303,7 +302,7 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
 		}
 		ui.spacer(gtx, 8)
 	}
-	ui.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 22, color = s[.On_Surface]})
+	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 22, color = s[.On_Surface]})
 	ui.fill_space(gtx)
 	if m3.icon_button(gtx, m.dark ? .Light_Mode : .Dark_Mode, tooltip = m.dark ? "Light scheme" : "Dark scheme") {
 		m.dark = !m.dark
@@ -316,7 +315,7 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
 section :: proc(gtx: ^ui.Ctx, title: string, note := "") {
 	s := m3.scheme()
 	ui.spacer(gtx, 12)
-	ui.label(gtx, title, {size = 16, color = s[.On_Surface]})
+	base.label(gtx, title, {size = 16, color = s[.On_Surface]})
 	if note != "" {
 		// Wrapped, not a one-line label: notes run long, and a narrow
 		// window must not cut them off.
@@ -354,7 +353,7 @@ state_header :: proc(gtx: ^ui.Ctx, cell_w := CELL_W) {
 	for name in STATE_NAMES {
 		ui.flexible(gtx, 1)
 		c := ui.stack_open(gtx)
-		ui.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
 		ui.close(&c)
 	}
 }
@@ -376,12 +375,12 @@ state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key:
 	if grid_stacked(gtx, cell_w) {
 		col := ui.column_open(gtx, gap = 8, key = key)
 		defer ui.close(&col)
-		ui.label(gtx, label, {size = 12, color = s[.On_Surface]})
+		base.label(gtx, label, {size = 12, color = s[.On_Surface]})
 		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .End)
 		defer ui.close(&wr)
 		for st, i in m3.STATES {
 			c := ui.column_open(gtx, gap = 4, key = u64(i))
-			ui.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface_Variant]})
+			base.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface_Variant]})
 			cell(gtx, m, st, key * 16 + u64(i))
 			ui.close(&c)
 		}
@@ -391,7 +390,7 @@ state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key:
 	defer ui.close(&r)
 	{
 		c := ui.stack_open(gtx)
-		ui.label(gtx, label, {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, label, {size = 12, color = s[.On_Surface_Variant]})
 		ui.close(&c)
 	}
 	ui.spacer(gtx, max(LABEL_W - label_width(gtx, label), 0))
@@ -404,7 +403,7 @@ state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key:
 }
 
 label_width :: proc(gtx: ^ui.Ctx, s: string) -> f32 {
-	return ui.shape(gtx.shaper, gtx.theme.font, 12, s, gtx.allocator).advance
+	return ui.shape(gtx.shaper, gtx.font, 12, s, gtx.allocator).advance
 }
 
 gap :: proc(gtx: ^ui.Ctx, h: f32 = 20, loc := #caller_location) {
@@ -416,11 +415,11 @@ page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
 	col := ui.column_open(gtx, gap = 8)
 	defer ui.close(&col)
 	if p.icon == .None {
-		ui.label(gtx, fmt.tprintf("%s: pick a component below this heading.", p.name), {color = s[.On_Surface_Variant]})
+		base.label(gtx, fmt.tprintf("%s: pick a component below this heading.", p.name), {color = s[.On_Surface_Variant]})
 		return
 	}
-	ui.label(gtx, "Not built yet.", {size = 16, color = s[.On_Surface]})
-	ui.label(gtx, "See the priority list in the material kitchen plan.", {color = s[.On_Surface_Variant]})
+	base.label(gtx, "Not built yet.", {size = 16, color = s[.On_Surface]})
+	base.label(gtx, "See the priority list in the material kitchen plan.", {color = s[.On_Surface_Variant]})
 }
 
 // Pages.
@@ -484,7 +483,7 @@ main :: proc() {
 	fonts := kitchen_fonts()
 	if len(os.args) == 1 {
 		restore(&m)
-		child.run({ui = kitchen_ui, user = &m, theme = &m.theme, fonts = fonts})
+		child.run({ui = kitchen_ui, user = &m, fonts = fonts})
 		return
 	}
 	args := os.args[1:]

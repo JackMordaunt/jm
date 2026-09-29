@@ -37,12 +37,12 @@ test_label_records_run_at_baseline :: proc(t: ^testing.T) {
 	h: Harness
 	harness_init(&h)
 	defer harness_destroy(&h)
-	d := label(&h.gtx, "Hi", {color = h.theme.muted})
+	d := label(&h.gtx, "Hi", {9, 8, 7, 255})
 	testing.expect(t, near(d.size.x, 2 * W) && near(d.size.y, 14))
 	testing.expect(t, near(d.baseline, 0.8 * 14))
 	g := h.scene.ops[0].(ops.Glyphs)
 	testing.expect(t, near(g.origin.y, 0.8 * 14))
-	testing.expect_value(t, g.color, h.theme.muted)
+	testing.expect_value(t, g.color, ops.Color{9, 8, 7, 255})
 	testing.expect_value(t, len(h.scene.runs[g.run].glyphs), 2)
 	_, ok := find_tag(&h.scene, "Hi")
 	testing.expect(t, ok)
@@ -108,20 +108,6 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
 	item_list(&h, &s, &m)
 	testing.expect_value(t, s.offset, 100 * 14 - 50)
-}
-
-@(test)
-test_divider_in_row_is_vertical :: proc(t: ^testing.T) {
-	h: Harness
-	harness_init(&h, {200, 40})
-	defer harness_destroy(&h)
-	gtx := &h.gtx
-	r := row_open(gtx)
-	d := divider(gtx)
-	close(&r)
-	testing.expect_value(t, d.size, ops.Size{1, 40})
-	f := h.scene.ops[index_of(&h.scene, ops.Fill)].(ops.Fill)
-	testing.expect_value(t, f.paint.(ops.Color), h.theme.outline)
 }
 
 // The authoring density the package is for: no per-child boilerplate.

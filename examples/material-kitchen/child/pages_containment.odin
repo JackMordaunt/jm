@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 import tok "jm:ui/material/tokens"
 
@@ -34,8 +35,8 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			cc := ui.column_open(gtx, gap = 8)
 			defer ui.close(&cc)
 			m3.card_icon(gtx, .Photo, kind)
-			ui.label(gtx, "Glass souls' world", {size = 22, color = m3.scheme()[.On_Surface]})
-			ui.label(gtx, "Deep ocean exploration", {size = 14, color = m3.scheme()[.On_Surface_Variant]})
+			base.label(gtx, "Glass souls' world", {size = 22, color = m3.scheme()[.On_Surface]})
+			base.label(gtx, "Deep ocean exploration", {size = 14, color = m3.scheme()[.On_Surface_Variant]})
 			gap(gtx, 8)
 			br := ui.row_open(gtx, gap = 8)
 			m3.button(gtx, "Explore", .Filled, key = u64(210 + i))
@@ -56,8 +57,8 @@ card_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
 	defer ui.close(&cc)
 	dim := st == .Disabled
 	on := m3.scheme()[.On_Surface]
-	ui.label(gtx, "Headline", {size = 16, color = dim ? m3.disabled_content() : on})
-	ui.label(gtx, "Subhead", {size = 14, color = dim ? m3.disabled_content() : m3.scheme()[.On_Surface_Variant]})
+	base.label(gtx, "Headline", {size = 16, color = dim ? m3.disabled_content() : on})
+	base.label(gtx, "Subhead", {size = 14, color = dim ? m3.disabled_content() : m3.scheme()[.On_Surface_Variant]})
 }
 
 page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
@@ -206,7 +207,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		{
 			lc := ui.column_open(gtx, gap = 8)
 			defer ui.close(&lc)
-			ui.label(gtx, "Dragged (forced)", {size = 12, color = s[.On_Surface_Variant]})
+			base.label(gtx, "Dragged (forced)", {size = 12, color = s[.On_Surface_Variant]})
 			m3.list_item(gtx, {headline = "Lifted row", supporting = "reorder-list item", leading_icon = .Label, kind = .Reorder}, 320, .Dragged, key = 520)
 		}
 	}
@@ -241,7 +242,7 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		ui.close(&bg)
 		oc := ui.column_open(gtx, gap = 8)
 		defer ui.close(&oc)
-		ui.label(gtx, "Revealed (forced)", {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, "Revealed (forced)", {size = 12, color = s[.On_Surface_Variant]})
 		rb := segmented_bg(gtx, 811)
 		m3.list_item(gtx, {headline = "Brunch this weekend?", supporting = "Swipe for actions", leading_avatar = "B", kind = .Reveal, actions = ACTIONS[:], revealed = true}, 420, .Enabled, key = 620)
 		ui.close(&rb)
@@ -277,16 +278,16 @@ segmented_bg :: proc(gtx: ^ui.Ctx, key: u64) -> ui.Box {
 }
 
 // list_state_rows lays items out once per forced state, a row each.
-list_state_rows :: proc(gtx: ^ui.Ctx, items: []m3.List_Item, base: u64) {
+list_state_rows :: proc(gtx: ^ui.Ctx, items: []m3.List_Item, base_key: u64) {
 	for st, i in m3.STATES {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = base + u64(i))
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = base_key + u64(i))
 		defer ui.close(&r)
-		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		for it, j in items {
-			m3.list_item(gtx, it, 300, st, key = base + u64(10 * i + j + 10))
+			m3.list_item(gtx, it, 300, st, key = base_key + u64(10 * i + j + 10))
 		}
 	}
 }
@@ -310,25 +311,25 @@ page_divider :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	{
 		cc := ui.column_open(gtx, gap = 16)
 		defer ui.close(&cc)
-		ui.label(gtx, "Full width", {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, "Full width", {size = 12, color = s[.On_Surface_Variant]})
 		m3.divider(gtx)
-		ui.label(gtx, "Inset", {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, "Inset", {size = 12, color = s[.On_Surface_Variant]})
 		m3.divider(gtx, 16)
-		ui.label(gtx, "Middle inset", {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, "Middle inset", {size = 12, color = s[.On_Surface_Variant]})
 		m3.divider(gtx, 16, 16)
-		ui.label(gtx, "Heavy (MDC's 8dp, a thickness override)", {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, "Heavy (MDC's 8dp, a thickness override)", {size = 12, color = s[.On_Surface_Variant]})
 		m3.divider(gtx, thickness = 8)
-		ui.label(gtx, "Colour override (primary)", {size = 12, color = s[.On_Surface_Variant]})
+		base.label(gtx, "Colour override (primary)", {size = 12, color = s[.On_Surface_Variant]})
 		m3.divider(gtx, line_color = s[.Primary])
 	}
 	section(gtx, "Vertical, in a row", "the row's height is unbounded in this scroll view, so each takes length 24")
 	r := ui.row_open(gtx, gap = 16, align = .Fill)
 	defer ui.close(&r)
-	ui.label(gtx, "Left")
+	base.label(gtx, "Left")
 	m3.divider(gtx, vertical = true, length = 24)
-	ui.label(gtx, "Middle")
+	base.label(gtx, "Middle")
 	m3.divider(gtx, vertical = true, length = 24)
-	ui.label(gtx, "Right")
+	base.label(gtx, "Right")
 }
 
 // MENU_STATES is a menu whose items each show one forced state, then a
@@ -405,7 +406,7 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			}
 		}
 	}
-	ui.label(gtx, m.menu_pick == "" ? "Nothing picked yet" : fmt.tprintf("Picked: %s", m.menu_pick), {color = m3.scheme()[.On_Surface_Variant]})
+	base.label(gtx, m.menu_pick == "" ? "Nothing picked yet" : fmt.tprintf("Picked: %s", m.menu_pick), {color = m3.scheme()[.On_Surface_Variant]})
 	section(gtx, "Always open", "each style pinned open, its items in every state, a selected item and a submenu arrow; then a grouped menu")
 	// Pinned open inline, in the layout, so the live popups above draw
 	// over them rather than under.
@@ -434,7 +435,7 @@ page_dialogs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	ui.close(&r)
 	if m.dialog_msg != "" {
-		ui.label(gtx, fmt.tprintf("Chose %s", m.dialog_msg), {color = m3.scheme()[.On_Surface_Variant]})
+		base.label(gtx, fmt.tprintf("Chose %s", m.dialog_msg), {color = m3.scheme()[.On_Surface_Variant]})
 	}
 	ACTIONS := [?]string{"Cancel", "Discard"}
 	if i := m3.dialog(gtx, &m.dialog, m.window, "Discard draft?", "This draft will be removed from this device and everywhere you are signed in.", ACTIONS[:], key = 3); i >= 0 {

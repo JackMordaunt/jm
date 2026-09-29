@@ -37,7 +37,6 @@ headless_init :: proc(
 	size: ops.Size,
 	fonts: []ops.Font_Ref,
 	debug: ui.Debug_Flags = {},
-	theme: Maybe(ui.Theme) = nil,
 	full := false,
 	clear: ops.Color = {255, 255, 255, 255},
 ) {
@@ -46,7 +45,7 @@ headless_init :: proc(
 	if full {
 		at.y = FULL_HEIGHT
 	}
-	ui.probe_init(&h.p, ui_proc, user, at, theme = theme, debug = debug | ui.debug_from_env())
+	ui.probe_init(&h.p, ui_proc, user, at, debug = debug | ui.debug_from_env())
 	for f in fonts {
 		ops.add_font(&h.p.scene, f.path)
 	}

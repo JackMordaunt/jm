@@ -13,6 +13,7 @@ import "core:fmt"
 import "jm:ui/ops"
 import "core:os"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 import "jm:ui/child"
 import "jm:ui/render"
@@ -26,8 +27,8 @@ Model :: struct {
 
 counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
-	th := gtx.theme
-	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
+	th := base.theme()
+	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, base.color(.Bg))
 
 	pad := ui.inset_open(gtx, ui.pad_all(24))
 	defer ui.close(&pad)
@@ -36,7 +37,7 @@ counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	if m3.button(gtx, "-") {
 		m.count -= 1
 	}
-	ui.label(gtx, fmt.tprintf("count %d", m.count), {size = th.heading_size})
+	base.label(gtx, fmt.tprintf("count %d", m.count), {size = th.heading_size})
 	if m3.button(gtx, "+") {
 		m.count += 1
 	}

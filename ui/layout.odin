@@ -379,7 +379,6 @@ axis_vec :: proc(a: Axis, main, cross: f32) -> [2]f32 {
 	return a == .Horizontal ? {main, cross} : {cross, main}
 }
 
-@(private)
 is_finite :: proc(v: f32) -> bool {
 	return v < INF
 }
@@ -821,7 +820,6 @@ fill_space :: proc(gtx: ^Ctx, weight: f32 = 1, loc := #caller_location) {
 }
 
 // parent_axis reports the innermost container's main axis if it is a flex.
-@(private)
 parent_axis :: proc(gtx: ^Ctx) -> (Axis, bool) {
 	c := innermost(gtx.layout)
 	if c == nil {
@@ -861,11 +859,12 @@ inset_close :: proc(s: ^Inset) {
 }
 
 // box is a panel: it pads its children like inset and paints a round-rect
-// background and outline under them. The body is recorded into a macro
+// background and outline under them, each only when its style says so; a
+// design system's panel (base.panel) fills the style from its theme. The body is recorded into a macro
 // because the background's size is known only at end.
 box_open :: proc(gtx: ^Ctx, style := Box_Style{}, key: u64 = 0, loc := #caller_location) -> Box {
 	p := widget_open(gtx, key, loc)
-	st := resolve_box(gtx.theme, style)
+	st := style
 	c := Container {
 		kind   = .Box,
 		style  = st,
@@ -969,6 +968,10 @@ overlay_close :: proc(o: ^Overlay) {
 		ops.defer_call(gtx.scene, o.macro, o.root)
 	}
 }
+
+// SCROLL_THUMB_COLOR is the bar's thumb: a mid grey that reads on light and
+// dark alike, faded by the bar's own alpha, so the chrome needs no theme.
+SCROLL_THUMB_COLOR :: ops.Color{128, 128, 128, 255}
 
 // SCROLL_STEP is the pixels scroll_box moves per unit of Event.scroll:
 // ui/sdl (sdl.odin's MOUSE_WHEEL case) forwards SDL's wheel.y, which is
@@ -1145,7 +1148,7 @@ scroll_bar_paint :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size,
 	} else {
 		thumb = {b.track.x + at, b.track.y + b.track.h - thick, b.thumb_len, thick}
 	}
-	ops.fill(gtx.scene, ops.Round_Rect{thumb, thick / 2}, ops.with_alpha(gtx.theme.fg, alpha))
+	ops.fill(gtx.scene, ops.Round_Rect{thumb, thick / 2}, ops.with_alpha(SCROLL_THUMB_COLOR, alpha))
 }
 
 @(private)

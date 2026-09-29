@@ -5,6 +5,7 @@ import "jm:ui/ops"
 import "core:strings"
 import "core:time"
 import "jm:ui"
+import "jm:ui/base"
 import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 import "jm:ui/render"
@@ -21,9 +22,9 @@ compose_card :: proc(gtx: ^ui.Ctx, s: ^Compose_State, i: int, x, y: f32, text: s
 	outer := gtx.constraints
 	ops.transform_push(gtx.scene, ops.translate(x, y))
 	gtx.constraints = ui.loose({150, 44})
-	card := ui.box_open(gtx, key = u64(i))
+	card := base.panel_open(gtx, key = u64(i))
 	r := ui.row_open(gtx, gap = 6, align = .Center, key = u64(i))
-	ui.label(gtx, text)
+	base.label(gtx, text)
 	m3.checkbox(gtx, &s.toggle, key = u64(i))
 	m3.button(gtx, "Go", key = u64(i))
 	ui.close(&r)
@@ -44,7 +45,7 @@ compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			compose_card(gtx, s, i, 16 + f32(i % 5) * 160, 80 + f32(i / 5) * 52, fmt.tprintf("Item %d", i))
 		}
 		ops.transform_push(gtx.scene, ops.translate(16, 20))
-		ui.label(gtx, fmt.tprintf("frame %d", s.step))
+		base.label(gtx, fmt.tprintf("frame %d", s.step))
 		ops.transform_pop(gtx.scene)
 		w, h: f32 = 220, 70
 		m := ops.mul(ops.mul(ops.translate(-w / 2, -h / 2), ops.rotate(f32(s.step) * 0.02)), ops.translate(size.x - 150, 60))
@@ -55,7 +56,7 @@ compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		for k in 0 ..< 8 {
 			ops.fill(gtx.scene, ops.Rect{f32(k) * 30, -10, 12, h + 20}, ops.Color{255, 255, 255, 60})
 		}
-		ui.label(gtx, "affine + clip")
+		base.label(gtx, "affine + clip")
 		ops.clip_pop(gtx.scene)
 		ops.transform_pop(gtx.scene)
 	case 1:

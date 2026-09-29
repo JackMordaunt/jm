@@ -192,7 +192,7 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: ops.Point, scale: f32 = 1) -> (
 	runs := make([]ops.Glyph_Run, len(lines), gtx.allocator)
 	w: f32
 	for l, i in lines {
-		runs[i] = shape(gtx.shaper, gtx.theme.font, size, l, gtx.allocator)
+		runs[i] = shape(gtx.shaper, gtx.font, size, l, gtx.allocator)
 		w = max(w, runs[i].advance)
 	}
 	card := ops.Rect{p.x + 16 * scale, p.y + 16 * scale, w + 2 * pad, f32(len(lines)) * lh + 2 * pad}

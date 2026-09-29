@@ -17,14 +17,13 @@ snapshot :: proc(
 	size: ops.Size,
 	fonts: []ops.Font_Ref,
 	path: string,
-	theme: Maybe(ui.Theme) = nil,
 	clear: ops.Color = {255, 255, 255, 255},
 	frames: int = 1,
 	dt: f32 = 1.0 / 60,
 	debug: ui.Debug_Flags = {},
 ) -> bool {
 	p: ui.Probe
-	ui.probe_init(&p, ui_proc, user, size, theme = theme, debug = debug | ui.debug_from_env())
+	ui.probe_init(&p, ui_proc, user, size, debug = debug | ui.debug_from_env())
 	defer ui.probe_destroy(&p)
 	for f in fonts {
 		ops.add_font(&p.scene, f.path)

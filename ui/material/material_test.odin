@@ -115,8 +115,7 @@ test_schemes_and_springs_come_from_the_tokens :: proc(t: ^testing.T) {
 @(test)
 test_font_for_picks_the_nearest_weight :: proc(t: ^testing.T) {
 	gtx: ui.Ctx
-	th := ui.light_theme(7)
-	gtx.theme = &th
+	gtx.font = 7
 	testing.expect_value(t, font_for(&gtx, 500), ops.Font_Id(7)) // no faces set: the theme font
 	use_fonts({1, 2, 3})
 	defer fonts = nil

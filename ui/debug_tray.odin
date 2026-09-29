@@ -411,6 +411,6 @@ tray_toggle :: proc(gtx: ^Ctx, r: ops.Rect, name: string, on: bool, key: u64, en
 // tray_text draws s with its baseline at pos, in the theme font.
 @(private = "file")
 tray_text :: proc(gtx: ^Ctx, s: string, pos: ops.Point, size: f32, c: ops.Color) {
-	run := shape(gtx.shaper, gtx.theme.font, size, s, gtx.allocator)
+	run := shape(gtx.shaper, gtx.font, size, s, gtx.allocator)
 	ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), pos, c)
 }

@@ -44,6 +44,7 @@ thread-local set by use.
 package material
 
 import "jm:ui"
+import "jm:ui/base"
 import "jm:ui/ops"
 import "jm:ui/design"
 import tok "jm:ui/material/tokens"
@@ -78,10 +79,16 @@ baseline: Scheme
 @(private = "file", thread_local)
 active: ^Scheme
 
-// use makes s the scheme every component on this thread reads. s must
-// outlive the frames that use it.
-use :: proc(s: ^Scheme) {
+@(private = "file", thread_local)
+base_of: base.Theme
+
+// use makes s the scheme every component on this thread reads, and maps
+// it onto the base theme in mode for base's widgets. s must outlive the
+// frames that use it.
+use :: proc(s: ^Scheme, mode: base.Mode = .Light) {
 	active = s
+	base_of = base_theme(s, mode)
+	base.use(&base_of)
 }
 
 // scheme is the active scheme, the baseline light one if use was never called.
@@ -101,16 +108,19 @@ color :: proc(r: tok.Role) -> ops.Color {
 	return scheme()[r]
 }
 
-// theme_for maps s onto a jm:ui Theme so jm:ui's own widgets (label,
-// divider, box) sit in the same palette as the material ones around them.
-theme_for :: proc(s: ^Scheme, font: ops.Font_Id) -> ui.Theme {
-	th := ui.light_theme(font)
-	th.bg = s[.Surface]
-	th.surface = s[.Surface_Container]
-	th.fg = s[.On_Surface]
-	th.muted = s[.On_Surface_Variant]
-	th.outline = s[.Outline_Variant]
-	th.text_size = 14
+// base_theme maps s onto a base Theme in mode, so base's own widgets —
+// label, divider, panel — sit in the same palette as the material ones
+// around them. use installs it beside the scheme.
+base_theme :: proc(s: ^Scheme, mode: base.Mode = .Light) -> base.Theme {
+	th := base.light()
+	th.mode = mode
+	th.colors.bind[mode] = {
+		.Bg      = s[.Surface],
+		.Surface = s[.Surface_Container],
+		.Fg      = s[.On_Surface],
+		.Muted   = s[.On_Surface_Variant],
+		.Outline = s[.Outline_Variant],
+	}
 	return th
 }
 
@@ -133,10 +143,10 @@ use_fonts :: proc(f: Fonts) {
 font_for :: proc(gtx: ^ui.Ctx, w: f32) -> ops.Font_Id {
 	f, ok := fonts.?
 	if !ok {
-		return gtx.theme.font
+		return gtx.font
 	}
 	faces := [3]design.Font_Face{{400, f.regular}, {500, f.medium}, {700, f.bold}}
-	return design.font_for(faces[:], w, gtx.theme.font)
+	return design.font_for(faces[:], w, gtx.font)
 }
 
 // Motion_Scheme is the app-wide spring set: Expressive overshoots on
