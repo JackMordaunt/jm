@@ -64,6 +64,7 @@ binary.
 | `pg_query/fuzz` | the `jm:pg_query` suite for `jm:fuzz`, with a SQL generator to build cases from |
 | `pq/fuzz` | the `jm:pq` suite for `jm:fuzz`, against the `pq/testdb` server |
 | `ui/render/fuzz` | the `jm:ui/render` suite for `jm:fuzz`: composed frames checked against whole renders |
+| `git/fuzz` | the `jm:git` suite for `jm:fuzz`: random operation sequences over two clones of a hub, held against a model that knows no merges |
 
 `tools/odin-run` is the runner. Every package reads on its own; the doc
 comment at the top of each file is the reference.
@@ -359,6 +360,18 @@ hooks; a program that wants pre-commit checks runs them before `commit`.
 `git/ffi_test.odin` pins every option struct's size and offsets against
 what the C headers lay out, so a libgit2 bump that moves a field fails a
 test instead of corrupting a stack.
+
+`git/fuzz` is the suite: three properties, each case a fresh bare hub with
+two clones on local paths. `sequence` draws any order of writes, adds,
+commits, pushes, fetches and pulls across the clones and holds every step
+against a model of the three trees and the commit history, so a push
+succeeds exactly when the hub is behind, a pull fast-forwards exactly when
+the clone is and refuses when work is uncommitted, and status is what the
+trees say. `strings` sends a generated message, path and remote name
+through and reads each back byte for byte, or sees the call refuse it: it
+is why the wrapper refuses a string with a NUL in it rather than letting
+the C boundary cut it short. `damaged` corrupts one file under `.git` and
+asks every question; a Fault is a fine answer, a crash is not.
 
 ## libpq
 

@@ -202,9 +202,12 @@ GIT_DIFF_OPTIONS_VERSION :: 1
 
 // The git_error_code values the wrapper returns or a caller tells apart:
 // a push the remote refuses because it has moved on, a branch with no
-// commit, and the credential callback declining to answer.
+// commit, a string libgit2 cannot take, a pull that would overwrite
+// uncommitted work, and the credential callback declining to answer.
 GIT_ENONFASTFORWARD :: -11
 GIT_EUNBORNBRANCH :: -9
+GIT_EINVALIDSPEC :: -12
+GIT_EUNCOMMITTED :: -15
 GIT_PASSTHROUGH :: -30
 
 // One path's status bits, from status.h.
@@ -224,7 +227,6 @@ GIT_STATUS_CONFLICTED :: 1 << 15
 // What status lists, from status.h.
 GIT_STATUS_OPT_INCLUDE_UNTRACKED :: 1 << 0
 GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS :: 1 << 4
-GIT_STATUS_OPT_RENAMES_HEAD_TO_INDEX :: 1 << 7
 GIT_STATUS_OPT_SORT_CASE_SENSITIVELY :: 1 << 9
 GIT_STATUS_SHOW_INDEX_AND_WORKDIR :: 0
 
@@ -232,6 +234,7 @@ GIT_INDEX_ADD_DEFAULT :: 0
 GIT_OBJECT_COMMIT :: 1
 GIT_RESET_HARD :: 3
 GIT_DIFF_FORMAT_PATCH :: 1
+GIT_SORT_TOPOLOGICAL :: 1 << 0
 GIT_SORT_TIME :: 1 << 1
 
 // What git_merge_analysis reports, from merge.h.
@@ -281,7 +284,7 @@ foreign lib {
 	git_commit_lookup :: proc(out: ^^git_commit, repo: ^git_repository, id: ^git_oid) -> c.int ---
 	git_commit_free :: proc(commit: ^git_commit) ---
 	git_commit_summary :: proc(commit: ^git_commit) -> cstring ---
-	git_commit_message :: proc(commit: ^git_commit) -> cstring ---
+	git_commit_message_raw :: proc(commit: ^git_commit) -> cstring ---
 	git_commit_author :: proc(commit: ^git_commit) -> ^git_signature ---
 	git_commit_time :: proc(commit: ^git_commit) -> i64 ---
 	git_commit_id :: proc(commit: ^git_commit) -> ^git_oid ---

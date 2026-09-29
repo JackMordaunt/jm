@@ -87,7 +87,7 @@ Entry :: struct {
 Commit :: struct {
 	id:      string, // 40 hex digits
 	summary: string, // the first line of the message
-	message: string,
+	message: string, // as written, leading newlines included: libgit2's own accessor would trim them
 	author:  Signature,
 	at:      time.Time,
 }
@@ -98,9 +98,9 @@ Remote :: struct {
 
 // Sync is what pull did.
 Sync :: enum u8 {
-	Up_To_Date,
-	Fast_Forwarded,
-	Diverged, // the local branch has commits the remote lacks; nothing was changed
+	Up_To_Date, // the remote has nothing the branch lacks; the branch may be ahead of it
+	Fast_Forwarded, // the branch moved onto the remote's commit
+	Diverged, // both sides have commits the other lacks; nothing was changed
 }
 
 @(private)
@@ -131,6 +131,19 @@ cstr :: proc(s: string) -> cstring {
 	return strings.clone_to_cstring(s, context.temp_allocator)
 }
 
+// reject_nul refuses a string a C API would silently cut at its first NUL:
+// a message, a path or a name with one inside it would otherwise be
+// stored as something shorter than the caller asked for.
+@(private)
+reject_nul :: proc(what: string, values: ..string) -> Error {
+	for v in values {
+		if strings.contains_rune(v, 0) {
+			return Fault{GIT_EINVALIDSPEC, strings.clone(fmt.tprintf("%s holds a NUL byte", what))}
+		}
+	}
+	return nil
+}
+
 @(private)
 oid_string :: proc(id: ^git_oid, allocator := context.allocator) -> string {
 	return strings.clone(string(git_oid_tostr_s(id)), allocator)
@@ -139,6 +152,7 @@ oid_string :: proc(id: ^git_oid, allocator := context.allocator) -> string {
 // open opens the repository at path, a working tree or a bare repository.
 open :: proc(path: string) -> (repo: Repo, err: Error) {
 	ready()
+	reject_nul("path", path) or_return
 	if rc := git_repository_open(&repo.ptr, cstr(path)); rc < 0 {
 		return {}, fault(rc)
 	}
@@ -150,6 +164,7 @@ open :: proc(path: string) -> (repo: Repo, err: Error) {
 // to push to has.
 init :: proc(path: string, bare := false) -> (repo: Repo, err: Error) {
 	ready()
+	reject_nul("path", path) or_return
 	if rc := git_repository_init(&repo.ptr, cstr(path), c.uint(bare ? 1 : 0)); rc < 0 {
 		return {}, fault(rc)
 	}
@@ -159,6 +174,7 @@ init :: proc(path: string, bare := false) -> (repo: Repo, err: Error) {
 // clone fetches url into path, a new directory, and opens it.
 clone :: proc(url, path: string) -> (repo: Repo, err: Error) {
 	ready()
+	reject_nul("url or path", url, path) or_return
 	if rc := git_clone(&repo.ptr, cstr(url), cstr(path), nil); rc < 0 {
 		return {}, fault(rc)
 	}
@@ -187,12 +203,13 @@ head :: proc(repo: Repo, allocator := context.allocator) -> (branch, id: string,
 
 // status is every path that differs between HEAD, the index and the
 // working tree, untracked files included, ignored ones left out, in
-// libgit2's path order.
+// libgit2's path order. A rename is a delete and a new file: no
+// similarity guess stands between the caller and the three trees.
 status :: proc(repo: Repo, allocator := context.allocator) -> (entries: []Entry, err: Error) {
 	opts: git_status_options
 	git_status_options_init(&opts, GIT_STATUS_OPTIONS_VERSION)
 	opts.show = GIT_STATUS_SHOW_INDEX_AND_WORKDIR
-	opts.flags = GIT_STATUS_OPT_INCLUDE_UNTRACKED | GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS | GIT_STATUS_OPT_RENAMES_HEAD_TO_INDEX | GIT_STATUS_OPT_SORT_CASE_SENSITIVELY
+	opts.flags = GIT_STATUS_OPT_INCLUDE_UNTRACKED | GIT_STATUS_OPT_RECURSE_UNTRACKED_DIRS | GIT_STATUS_OPT_SORT_CASE_SENSITIVELY
 	list: ^git_status_list
 	if rc := git_status_list_new(&list, repo.ptr, &opts); rc < 0 {
 		return nil, fault(rc)
@@ -271,6 +288,9 @@ strarray :: proc(items: []string) -> git_strarray {
 // and modified files are added, deleted ones removed, as `git add -A`
 // does. Ignored files stay out.
 add :: proc(repo: Repo, pathspecs: []string) -> Error {
+	if err := reject_nul("pathspec", ..pathspecs); err != nil {
+		return err
+	}
 	index: ^git_index
 	if rc := git_repository_index(&index, repo.ptr); rc < 0 {
 		return fault(rc)
@@ -293,6 +313,7 @@ add :: proc(repo: Repo, pathspecs: []string) -> Error {
 // its id. The author is sig, or the repository's user.name and user.email
 // when sig is zero; with neither, the error says so.
 commit :: proc(repo: Repo, message: string, sig := Signature{}, allocator := context.allocator) -> (id: string, err: Error) {
+	reject_nul("message or signature", message, sig.name, sig.email) or_return
 	author: ^git_signature
 	if sig == {} {
 		if rc := git_signature_default(&author, repo.ptr); rc < 0 {
@@ -353,7 +374,11 @@ log :: proc(repo: Repo, limit := 0, allocator := context.allocator) -> (commits:
 		return nil, fault(rc)
 	}
 	defer git_revwalk_free(walk)
-	git_revwalk_sorting(walk, GIT_SORT_TIME)
+	// Time alone is not enough: git/fuzz's first run made three commits
+	// in one second and read them back as [c2, c0, c1], the parent
+	// before its child. Topological order keeps every commit after the
+	// ones that follow from it, whatever the clock says.
+	git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME)
 	if rc := git_revwalk_push_head(walk); rc < 0 {
 		return nil, fault(rc)
 	}
@@ -370,7 +395,7 @@ log :: proc(repo: Repo, limit := 0, allocator := context.allocator) -> (commits:
 			Commit {
 				id = oid_string(&oid, allocator),
 				summary = strings.clone(string(git_commit_summary(cm)), allocator),
-				message = strings.clone(string(git_commit_message(cm)), allocator),
+				message = strings.clone(string(git_commit_message_raw(cm)), allocator),
 				author = {strings.clone(string(a.name), allocator), strings.clone(string(a.email), allocator)},
 				at = time.unix(git_commit_time(cm), 0),
 			},
@@ -404,6 +429,9 @@ remotes :: proc(repo: Repo, allocator := context.allocator) -> (out: []Remote, e
 
 // remote_add configures name to point at url.
 remote_add :: proc(repo: Repo, name, url: string) -> Error {
+	if err := reject_nul("remote name or url", name, url); err != nil {
+		return err
+	}
 	r: ^git_remote
 	if rc := git_remote_create(&r, repo.ptr, cstr(name), cstr(url)); rc < 0 {
 		return fault(rc)
@@ -414,6 +442,9 @@ remote_add :: proc(repo: Repo, name, url: string) -> Error {
 
 // remote_remove drops name and its tracking branches.
 remote_remove :: proc(repo: Repo, name: string) -> Error {
+	if err := reject_nul("remote name", name); err != nil {
+		return err
+	}
 	if rc := git_remote_delete(repo.ptr, cstr(name)); rc < 0 {
 		return fault(rc)
 	}
@@ -455,6 +486,9 @@ tmp_cstring :: proc "contextless" (buf: []u8, s: string) -> cstring {
 
 // fetch brings remote's branches up to date under refs/remotes/<remote>.
 fetch :: proc(repo: Repo, remote: string, creds := Credentials{}) -> Error {
+	if err := reject_nul("remote name", remote); err != nil {
+		return err
+	}
 	r: ^git_remote
 	if rc := git_remote_lookup(&r, repo.ptr, cstr(remote)); rc < 0 {
 		return fault(rc)
@@ -475,6 +509,9 @@ fetch :: proc(repo: Repo, remote: string, creds := Credentials{}) -> Error {
 // there when it is new. A remote that has moved on refuses the push with
 // GIT_ENONFASTFORWARD; pull first.
 push :: proc(repo: Repo, remote: string, branch := "", creds := Credentials{}) -> Error {
+	if err := reject_nul("remote or branch", remote, branch); err != nil {
+		return err
+	}
 	b := branch
 	if b == "" {
 		ok: bool
@@ -512,7 +549,9 @@ upstream_id :: proc(repo: Repo, remote, branch: string) -> (id: git_oid, err: Er
 
 // pull fetches remote and fast-forwards the current branch onto its copy,
 // working tree included. It never merges: a branch with its own commits
-// reports Diverged and is left as it was, for the caller to decide.
+// reports Diverged and is left as it was, for the caller to decide. Nor
+// does it overwrite: with anything uncommitted it fails with
+// GIT_EUNCOMMITTED and changes nothing.
 pull :: proc(repo: Repo, remote: string, creds := Credentials{}) -> (sync: Sync, err: Error) {
 	if ferr := fetch(repo, remote, creds); ferr != nil {
 		return .Up_To_Date, ferr
@@ -536,6 +575,12 @@ pull :: proc(repo: Repo, remote: string, creds := Credentials{}) -> (sync: Sync,
 	case analysis & GIT_MERGE_ANALYSIS_UP_TO_DATE != 0:
 		return .Up_To_Date, nil
 	case analysis & (GIT_MERGE_ANALYSIS_FASTFORWARD | GIT_MERGE_ANALYSIS_UNBORN) != 0:
+		// The fast-forward below is a hard reset, which would take
+		// uncommitted work with it: refuse while there is any.
+		entries := status(repo, context.temp_allocator) or_return
+		if len(entries) > 0 {
+			return .Up_To_Date, Fault{GIT_EUNCOMMITTED, strings.clone("uncommitted changes would be overwritten; commit or discard them first")}
+		}
 		target: ^git_object
 		if rc := git_object_lookup(&target, repo.ptr, &their, GIT_OBJECT_COMMIT); rc < 0 {
 			return .Up_To_Date, fault(rc)
