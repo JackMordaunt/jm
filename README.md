@@ -361,6 +361,23 @@ hooks; a program that wants pre-commit checks runs them before `commit`.
 what the C headers lay out, so a libgit2 bump that moves a field fails a
 test instead of corrupting a stack.
 
+**The network is tested by hand.** `tools/git-probe` is the run no test in
+the repository can make: an anonymous HTTPS clone and fetch, a token
+pulling from and pushing to a private remote (from an unborn branch, so
+the remote is asked for its default branch), a push refused as
+non-fast-forward, a wrong token refused with a plain message, and the
+same repository over `git@` through the platform's ssh. It passed on
+2026-09-28 against GitHub with the static Linux build, OpenSSL loaded at
+run time. Run it again after a libgit2 bump or a change to the transport
+options:
+
+```
+just libgit2
+odin build tools/git-probe -collection:jm=. -out:build/debug/git-probe
+build/debug/git-probe https://github.com/octocat/Hello-World.git \
+    https://github.com/<you>/<throwaway>.git "$(gh auth token)" git@github.com:<you>/<throwaway>.git
+```
+
 `git/fuzz` is the suite: three properties, each case a fresh bare hub with
 two clones on local paths. `sequence` draws any order of writes, adds,
 commits, pushes, fetches and pulls across the clones and holds every step

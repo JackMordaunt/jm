@@ -163,3 +163,69 @@ errors_carry_the_message :: proc(t: ^testing.T) {
 	testing.expect(t, is_fault, "open of nothing fails")
 	testing.expect(t, f.code < 0 && len(f.message) > 0, f.message)
 }
+
+// The credential callback hands over the token once, refuses to repeat
+// a token the remote rejected, and refuses one it cannot hold.
+@(test)
+acquire_answers_once :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	ready_for_test()
+	ask := Ask{creds = {token = "tok"}}
+	cred: ^git_credential
+	testing.expect_value(t, acquire(&cred, "https://x", nil, GIT_CREDENTIAL_USERPASS_PLAINTEXT, &ask), 0)
+	testing.expect(t, cred != nil, "a credential was made")
+	git_credential_free(cred)
+	cred = nil
+	testing.expect_value(t, acquire(&cred, "https://x", nil, GIT_CREDENTIAL_USERPASS_PLAINTEXT, &ask), -1)
+	testing.expect(t, cred == nil, "no second credential")
+	testing.expect_value(t, string(git_error_last().message), "the remote refused the token")
+
+	long := Ask{creds = {token = strings.repeat("x", TOKEN_MAX + 1)}}
+	testing.expect_value(t, acquire(&cred, "https://x", nil, GIT_CREDENTIAL_USERPASS_PLAINTEXT, &long), -1)
+	testing.expect(t, strings.has_prefix(string(git_error_last().message), "credential too long"), "the long token is named")
+
+	none: Ask
+	testing.expect_value(t, acquire(&cred, "https://x", nil, GIT_CREDENTIAL_USERPASS_PLAINTEXT, &none), GIT_PASSTHROUGH)
+}
+
+// A pull into a repository with no commit takes the remote's default
+// branch, and a remote with nothing on it is simply up to date.
+@(test)
+pull_from_unborn :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	root := temp_root(t)
+	defer os.remove_all(root)
+	bare := path.join(root, "hub.git")
+	hub, err := init(bare, bare = true)
+	testing.expect(t, err == nil, "init bare")
+	close(&hub)
+
+	empty_dir := path.join(root, "empty")
+	empty, eerr := init(empty_dir)
+	testing.expect(t, eerr == nil, "init")
+	defer close(&empty)
+	testing.expect(t, remote_add(empty, "origin", bare) == nil, "remote add")
+	sync, perr := pull(empty, "origin")
+	testing.expect(t, perr == nil, "pull from an empty remote")
+	testing.expect_value(t, sync, Sync.Up_To_Date)
+
+	src_dir := path.join(root, "src")
+	src, serr := init(src_dir)
+	testing.expect(t, serr == nil, "init src")
+	defer close(&src)
+	write(t, path.join(src_dir, "a.md"), "a\n")
+	testing.expect(t, add(src, {"."}) == nil, "add")
+	_, cerr := commit(src, "a", SIG)
+	testing.expect(t, cerr == nil, "commit")
+	testing.expect(t, remote_add(src, "origin", bare) == nil, "remote add src")
+	testing.expect(t, push(src, "origin") == nil, "push")
+
+	sync, perr = pull(empty, "origin")
+	testing.expect(t, perr == nil, "pull from unborn onto the pushed branch")
+	testing.expect_value(t, sync, Sync.Fast_Forwarded)
+	branch, _, born := head(empty)
+	want, _, _ := head(src)
+	testing.expect(t, born && branch == want, "the unborn repository took the remote's branch name")
+	body, _ := path.read(path.join(empty_dir, "a.md"))
+	testing.expect_value(t, body, "a\n")
+}

@@ -200,10 +200,9 @@ GIT_FETCH_OPTIONS_VERSION :: 1
 GIT_PUSH_OPTIONS_VERSION :: 1
 GIT_DIFF_OPTIONS_VERSION :: 1
 
-// The git_error_code values the wrapper returns or a caller tells apart:
-// a push the remote refuses because it has moved on, a branch with no
-// commit, a string libgit2 cannot take, a pull that would overwrite
-// uncommitted work, and the credential callback declining to answer.
+// The git_error_code values (errors.h) the wrapper returns or a caller
+// tells apart; each is named where it is used.
+GIT_ENOTFOUND :: -3
 GIT_ENONFASTFORWARD :: -11
 GIT_EUNBORNBRANCH :: -9
 GIT_EINVALIDSPEC :: -12
@@ -234,6 +233,8 @@ GIT_INDEX_ADD_DEFAULT :: 0
 GIT_OBJECT_COMMIT :: 1
 GIT_RESET_HARD :: 3
 GIT_DIFF_FORMAT_PATCH :: 1
+GIT_DIRECTION_FETCH :: 0
+GIT_ERROR_NET :: 12 // git_error_t: the class a credential problem is reported under
 GIT_SORT_TOPOLOGICAL :: 1 << 0
 GIT_SORT_TIME :: 1 << 1
 
@@ -253,6 +254,7 @@ foreign lib {
 	git_libgit2_init :: proc() -> c.int ---
 	git_libgit2_shutdown :: proc() -> c.int ---
 	git_error_last :: proc() -> ^git_error ---
+	git_error_set_str :: proc(error_class: c.int, str: cstring) -> c.int ---
 
 	git_repository_open :: proc(out: ^^git_repository, path: cstring) -> c.int ---
 	git_repository_init :: proc(out: ^^git_repository, path: cstring, is_bare: c.uint) -> c.int ---
@@ -317,6 +319,9 @@ foreign lib {
 	git_push_options_init :: proc(opts: ^git_push_options, version: c.uint) -> c.int ---
 	git_remote_fetch :: proc(remote: ^git_remote, refspecs: ^git_strarray, opts: ^git_fetch_options, reflog_message: cstring) -> c.int ---
 	git_remote_push :: proc(remote: ^git_remote, refspecs: ^git_strarray, opts: ^git_push_options) -> c.int ---
+	git_remote_connect :: proc(remote: ^git_remote, direction: c.int, callbacks: ^git_remote_callbacks, proxy_opts: ^git_proxy_options, custom_headers: ^git_strarray) -> c.int ---
+	git_remote_default_branch :: proc(out: ^git_buf, remote: ^git_remote) -> c.int ---
+	git_remote_disconnect :: proc(remote: ^git_remote) -> c.int ---
 	git_strarray_dispose :: proc(array: ^git_strarray) ---
 
 	git_graph_ahead_behind :: proc(ahead, behind: ^c.size_t, repo: ^git_repository, local, upstream: ^git_oid) -> c.int ---
@@ -337,4 +342,5 @@ foreign lib {
 	git_credential_userpass_plaintext_new :: proc(out: ^^git_credential, username, password: cstring) -> c.int ---
 	git_credential_ssh_key_from_agent :: proc(out: ^^git_credential, username: cstring) -> c.int ---
 	git_credential_default_new :: proc(out: ^^git_credential) -> c.int ---
+	git_credential_free :: proc(cred: ^git_credential) ---
 }

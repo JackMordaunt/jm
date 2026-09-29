@@ -116,12 +116,25 @@ ready :: proc() {
 	})
 }
 
+// ready_for_test is ready for a test that calls into libgit2 without
+// going through an entry point first.
+@(private)
+ready_for_test :: proc() {
+	ready()
+}
+
 // fault reads libgit2's last error for a call that returned code.
 @(private)
 fault :: proc(code: c.int) -> Error {
 	msg := "unknown error"
 	if e := git_error_last(); e != nil && e.message != nil {
 		msg = string(e.message)
+	}
+	if strings.has_prefix(msg, "could not load ssl") {
+		// `just libgit2` builds Linux with -DUSE_HTTPS=OpenSSL-Dynamic, which
+		// dlopens libssl and libcrypto on first use; src/libgit2/streams/
+		// openssl_dynamic.c sets this message when that fails.
+		msg = fmt.tprintf("%s: libgit2 loads the system OpenSSL 3 at run time; install libssl (libssl.so.3) or use an ssh:// remote", msg)
 	}
 	return Fault{i32(code), strings.clone(msg)}
 }
@@ -451,18 +464,47 @@ remote_remove :: proc(repo: Repo, name: string) -> Error {
 	return nil
 }
 
+// USERNAME_MAX and TOKEN_MAX bound what acquire copies into its stack
+// buffers, which is all a callback without a context can allocate. The
+// GitHub token tools/git-probe ran with used under a tenth of TOKEN_MAX.
+USERNAME_MAX :: 255
+TOKEN_MAX :: 1023
+
+// Ask is what a fetch or push hands acquire: the credentials, and how
+// many times the remote has asked. libgit2 calls the callback again
+// after the server rejects what it was given, so a second ask for a
+// password is the first answer refused; tools/git-probe with a wrong
+// token showed the calls repeating until libgit2 gave up on its own.
+@(private)
+Ask :: struct {
+	creds: Credentials,
+	asked: int,
+}
+
 // acquire is the credential callback every fetch and push installs: it
 // answers with the token in the payload's Credentials when the remote
 // takes a password, with the ssh agent when it takes a key, and with the
 // platform default otherwise. Without a token it lets libgit2 carry on.
+// A token the remote refused is not offered twice, so the caller reads
+// "the remote refused the token" rather than libgit2's own give-up
+// message about authentication replays, which the probe saw first.
 @(private)
 acquire :: proc "c" (out: ^^git_credential, url, username_from_url: cstring, allowed: c.uint, payload: rawptr) -> c.int {
-	creds := (^Credentials)(payload)
-	if allowed & GIT_CREDENTIAL_USERPASS_PLAINTEXT != 0 && creds != nil && creds.token != "" {
-		context = {}
-		buf: [256]u8
-		user := creds.username != "" ? creds.username : "git"
-		return git_credential_userpass_plaintext_new(out, tmp_cstring(buf[:128], user), tmp_cstring(buf[128:], creds.token))
+	ask := (^Ask)(payload)
+	if allowed & GIT_CREDENTIAL_USERPASS_PLAINTEXT != 0 && ask != nil && ask.creds.token != "" {
+		ask.asked += 1
+		if ask.asked > 1 {
+			git_error_set_str(GIT_ERROR_NET, "the remote refused the token")
+			return -1
+		}
+		user := ask.creds.username != "" ? ask.creds.username : "git"
+		if len(user) > USERNAME_MAX || len(ask.creds.token) > TOKEN_MAX {
+			git_error_set_str(GIT_ERROR_NET, "credential too long for jm:git (username 255 bytes, token 1023)")
+			return -1
+		}
+		ubuf: [USERNAME_MAX + 1]u8
+		tbuf: [TOKEN_MAX + 1]u8
+		return git_credential_userpass_plaintext_new(out, tmp_cstring(ubuf[:], user), tmp_cstring(tbuf[:], ask.creds.token))
 	}
 	if allowed & GIT_CREDENTIAL_SSH_KEY != 0 {
 		return git_credential_ssh_key_from_agent(out, username_from_url)
@@ -473,9 +515,9 @@ acquire :: proc "c" (out: ^^git_credential, url, username_from_url: cstring, all
 	return GIT_PASSTHROUGH
 }
 
-// tmp_cstring copies s, NUL-terminated, into buf: for the callback above,
-// which runs without a context to allocate from. A token longer than the
-// buffer is cut, and fails authentication rather than overrunning.
+// tmp_cstring copies s, NUL-terminated, into buf, which the caller has
+// sized for it: for the callback above, which runs without a context to
+// allocate from.
 @(private)
 tmp_cstring :: proc "contextless" (buf: []u8, s: string) -> cstring {
 	n := min(len(s), len(buf) - 1)
@@ -494,11 +536,11 @@ fetch :: proc(repo: Repo, remote: string, creds := Credentials{}) -> Error {
 		return fault(rc)
 	}
 	defer git_remote_free(r)
-	creds := creds
+	ask := Ask{creds = creds}
 	opts: git_fetch_options
 	git_fetch_options_init(&opts, GIT_FETCH_OPTIONS_VERSION)
 	opts.callbacks.credentials = acquire
-	opts.callbacks.payload = &creds
+	opts.callbacks.payload = &ask
 	if rc := git_remote_fetch(r, nil, &opts, "fetch"); rc < 0 {
 		return fault(rc)
 	}
@@ -525,17 +567,44 @@ push :: proc(repo: Repo, remote: string, branch := "", creds := Credentials{}) -
 		return fault(rc)
 	}
 	defer git_remote_free(r)
-	creds := creds
+	ask := Ask{creds = creds}
 	opts: git_push_options
 	git_push_options_init(&opts, GIT_PUSH_OPTIONS_VERSION)
 	opts.callbacks.credentials = acquire
-	opts.callbacks.payload = &creds
+	opts.callbacks.payload = &ask
 	refspec := fmt.tprintf("refs/heads/%s:refs/heads/%s", b, b)
 	specs := strarray({refspec})
 	if rc := git_remote_push(r, &specs, &opts); rc < 0 {
 		return fault(rc)
 	}
 	return nil
+}
+
+// default_branch asks remote which branch it checks out by default, the
+// short name ("main"), which takes a connection of its own.
+@(private)
+default_branch :: proc(repo: Repo, remote: string, creds: Credentials) -> (name: string, err: Error) {
+	r: ^git_remote
+	if rc := git_remote_lookup(&r, repo.ptr, cstr(remote)); rc < 0 {
+		return "", fault(rc)
+	}
+	defer git_remote_free(r)
+	ask := Ask{creds = creds}
+	cb: git_remote_callbacks
+	cb.version = 1
+	cb.credentials = acquire
+	cb.payload = &ask
+	if rc := git_remote_connect(r, GIT_DIRECTION_FETCH, &cb, nil, nil); rc < 0 {
+		return "", fault(rc)
+	}
+	defer git_remote_disconnect(r)
+	buf: git_buf
+	if rc := git_remote_default_branch(&buf, r); rc < 0 {
+		return "", fault(rc)
+	}
+	defer git_buf_dispose(&buf)
+	full := string(buf.ptr[:buf.size])
+	return strings.clone(strings.trim_prefix(full, "refs/heads/"), context.temp_allocator), nil
 }
 
 // upstream_id is the commit remote's copy of branch is on, after a fetch.
@@ -558,8 +627,16 @@ pull :: proc(repo: Repo, remote: string, creds := Credentials{}) -> (sync: Sync,
 	}
 	branch, _, born := head(repo, context.temp_allocator)
 	if !born {
-		// An empty clone-by-hand: take the remote's branch as ours.
-		branch = "main"
+		// A repository made by hand and pointed at a remote: take the
+		// branch the remote calls its default as ours. A remote with no
+		// commit either has nothing to give, and says so with ENOTFOUND.
+		derr: Error
+		branch, derr = default_branch(repo, remote, creds)
+		if f, is_fault := derr.(Fault); is_fault && f.code == GIT_ENOTFOUND {
+			return .Up_To_Date, nil
+		} else if derr != nil {
+			return .Up_To_Date, derr
+		}
 	}
 	their := upstream_id(repo, remote, branch) or_return
 	annotated: [1]^git_annotated_commit

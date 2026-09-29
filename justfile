@@ -290,6 +290,7 @@ check:
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/material-tokens {{flags}} -target:$t || exit 1; \
+      {{odin}} check tools/git-probe {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/material-shapes {{flags}} -target:$t || exit 1; \
     done
 
