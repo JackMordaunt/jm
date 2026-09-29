@@ -433,35 +433,35 @@ end :: proc {
 	end_scope,
 }
 
-// container_open places the container as a child of its parent and pushes
-// it. Returns its stack index, or -1 without a layout.
+// PAINT_AFTER_CHILDREN are the kinds whose own paint (a background, a
+// clip, a centring offset, a scroll) needs the children's size first, so
+// container_push records their children into a body macro that the end
+// proc calls after painting.
 @(private)
-container_open :: proc(
-	gtx: ^Ctx,
-	kind: Container_Kind,
-	key: u64,
-	loc: runtime.Source_Code_Location,
-) -> int {
-	p := widget_begin(gtx, key, loc)
-	return container_push(gtx, kind, p)
-}
+PAINT_AFTER_CHILDREN :: bit_set[Container_Kind]{.Box, .Clip, .Center, .Scroll}
 
+// container_push makes c the innermost container, for the widget placed
+// as p. An opener says what c is — its kind and how it lays out, complete
+// in one literal — and the layout adds what only it knows: the placement,
+// the constraints the parent offered, where its children start and, for a
+// PAINT_AFTER_CHILDREN kind, the body macro. Every opener is widget_begin then this,
+// in that order: the offered constraints exist only after widget_begin,
+// and so must the macro. Without a layout nothing is pushed and the index
+// is -1, which every end proc accepts.
 @(private)
-container_push :: proc(gtx: ^Ctx, kind: Container_Kind, p: Placement) -> int {
+container_push :: proc(gtx: ^Ctx, c: Container, p: Placement) -> int {
 	l := gtx.layout
 	if l == nil {
 		return -1
 	}
-	append(
-		&l.stack,
-		Container {
-			kind = kind,
-			place = p,
-			cs = gtx.constraints,
-			inner = gtx.constraints,
-			first = len(l.children),
-		},
-	)
+	c := c
+	c.place = p
+	c.cs = gtx.constraints
+	c.first = len(l.children)
+	if c.kind in PAINT_AFTER_CHILDREN {
+		c.body = macro_begin(gtx.ops)
+	}
+	append(&l.stack, c)
 	return len(l.stack) - 1
 }
 
@@ -535,7 +535,8 @@ column :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Flex {
-	return flex_open(gtx, .Vertical, gap, align, key, loc)
+	p := widget_begin(gtx, key, loc)
+	return {gtx, container_push(gtx, {kind = .Flex, axis = .Vertical, gap = gap, align = align, deferred = align == .Center || align == .End}, p)}
 }
 
 // row lays children left to right, gap apart.
@@ -546,27 +547,8 @@ row :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Flex {
-	return flex_open(gtx, .Horizontal, gap, align, key, loc)
-}
-
-@(private)
-flex_open :: proc(
-	gtx: ^Ctx,
-	axis: Axis,
-	gap: f32,
-	align: Align,
-	key: u64,
-	loc: runtime.Source_Code_Location,
-) -> Flex {
-	i := container_open(gtx, .Flex, key, loc)
-	if i >= 0 {
-		c := container_at(gtx.layout, i)
-		c.axis = axis
-		c.gap = gap
-		c.align = align
-		c.deferred = align == .Center || align == .End
-	}
-	return {gtx, i}
+	p := widget_begin(gtx, key, loc)
+	return {gtx, container_push(gtx, {kind = .Flex, axis = .Horizontal, gap = gap, align = align, deferred = align == .Center || align == .End}, p)}
 }
 
 // wrap lays children left to right, gap apart, starting a new line, line_gap
@@ -584,14 +566,17 @@ wrap :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Flex {
-	f := flex_open(gtx, .Horizontal, gap, align, key, loc)
-	if f.index >= 0 {
-		c := container_at(gtx.layout, f.index)
-		c.wrap = true
-		c.deferred = true
-		c.line_gap = line_gap < 0 ? gap : line_gap
+	p := widget_begin(gtx, key, loc)
+	c := Container {
+		kind     = .Flex,
+		axis     = .Horizontal,
+		gap      = gap,
+		align    = align,
+		wrap     = true,
+		deferred = true, // every child is placed once the lines are known
+		line_gap = line_gap < 0 ? gap : line_gap,
 	}
-	return f
+	return {gtx, container_push(gtx, c, p)}
 }
 
 // flexible marks the next child of the innermost row or column as weighted:
@@ -820,31 +805,11 @@ parent_axis :: proc(gtx: ^Ctx) -> (Axis, bool) {
 	return c.axis, c.kind == .Flex
 }
 
-@(private)
-overlay_open :: proc(
-	gtx: ^Ctx,
-	kind: Container_Kind,
-	key: u64,
-	loc: runtime.Source_Code_Location,
-) -> (
-	int,
-	^Container,
-) {
-	i := container_open(gtx, kind, key, loc)
-	if i < 0 {
-		return i, nil
-	}
-	return i, container_at(gtx.layout, i)
-}
-
 // stack overlays its children at the origin with loose constraints; its
 // size is the largest child.
 stack :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Stack {
-	i, c := overlay_open(gtx, .Stack, key, loc)
-	if c != nil {
-		c.inner = loose(c.cs.max)
-	}
-	return {gtx, i}
+	p := widget_begin(gtx, key, loc)
+	return {gtx, container_push(gtx, {kind = .Stack, inner = loose(gtx.constraints.max)}, p)}
 }
 
 // end_stack reports the stack's size.
@@ -855,13 +820,14 @@ end_stack :: proc(s: ^Stack) {
 // inset pads its children: constraints shrink by the padding, children are
 // offset by (left, top), and the size is the content plus the padding.
 inset :: proc(gtx: ^Ctx, padding: Padding, key: u64 = 0, loc := #caller_location) -> Inset {
-	i, c := overlay_open(gtx, .Inset, key, loc)
-	if c != nil {
-		c.pad = padding
-		c.inner = shrink(c.cs, padding)
-		c.offset = {padding.left, padding.top}
+	p := widget_begin(gtx, key, loc)
+	c := Container {
+		kind   = .Inset,
+		pad    = padding,
+		inner  = shrink(gtx.constraints, padding),
+		offset = {padding.left, padding.top},
 	}
-	return {gtx, i}
+	return {gtx, container_push(gtx, c, p)}
 }
 
 // end_inset reports the inset's size.
@@ -873,15 +839,16 @@ end_inset :: proc(s: ^Inset) {
 // background and outline under them. The body is recorded into a macro
 // because the background's size is known only at end.
 box :: proc(gtx: ^Ctx, style := Box_Style{}, key: u64 = 0, loc := #caller_location) -> Box {
-	i, c := overlay_open(gtx, .Box, key, loc)
-	if c != nil {
-		c.style = resolve_box(gtx.theme, style)
-		c.pad = c.style.padding
-		c.inner = shrink(c.cs, c.pad)
-		c.offset = {c.pad.left, c.pad.top}
-		c.body = macro_begin(gtx.ops)
+	p := widget_begin(gtx, key, loc)
+	st := resolve_box(gtx.theme, style)
+	c := Container {
+		kind   = .Box,
+		style  = st,
+		pad    = st.padding,
+		inner  = shrink(gtx.constraints, st.padding),
+		offset = {st.padding.left, st.padding.top},
 	}
-	return {gtx, i}
+	return {gtx, container_push(gtx, c, p)}
 }
 
 // end_box paints the background, then runs the body over it.
@@ -892,11 +859,8 @@ end_box :: proc(s: ^Box) {
 // clip_box clips its children to its final size (a macro, since the size
 // is known only at end). Children get the box's own constraints.
 clip_box :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Clip_Box {
-	i, c := overlay_open(gtx, .Clip, key, loc)
-	if c != nil {
-		c.body = macro_begin(gtx.ops)
-	}
-	return {gtx, i}
+	p := widget_begin(gtx, key, loc)
+	return {gtx, container_push(gtx, {kind = .Clip, inner = gtx.constraints}, p)}
 }
 
 // end_clip_box emits the clip around the body.
@@ -908,12 +872,8 @@ end_clip_box :: proc(s: ^Clip_Box) {
 // max constraint on every bounded axis and the content's size on an
 // unbounded one. Children get loose constraints; the body is a macro.
 centered :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Centered {
-	i, c := overlay_open(gtx, .Center, key, loc)
-	if c != nil {
-		c.inner = loose(c.cs.max)
-		c.body = macro_begin(gtx.ops)
-	}
-	return {gtx, i}
+	p := widget_begin(gtx, key, loc)
+	return {gtx, container_push(gtx, {kind = .Center, inner = loose(gtx.constraints.max)}, p)}
 }
 
 // end_centered offsets the body to the center.
@@ -1002,12 +962,13 @@ SCROLL_STEP :: f32(48)
 // box: content that cannot reflow narrower then scrolls sideways, by a
 // horizontal wheel or Shift and the vertical one, instead of being cut off.
 scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, loc := #caller_location) -> Scroll_Box {
-	i, c := overlay_open(gtx, .Scroll, key, loc)
-	if c != nil {
-		c.inner = {min = {max(c.cs.min.x, min_width), 0}, max = {max(c.cs.max.x, min_width), INF}}
-		c.body = macro_begin(gtx.ops)
+	p := widget_begin(gtx, key, loc)
+	cs := gtx.constraints
+	c := Container {
+		kind  = .Scroll,
+		inner = {min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}},
 	}
-	return {gtx, i}
+	return {gtx, container_push(gtx, c, p)}
 }
 
 // end_scroll_box applies scroll events, then clips and offsets the body.

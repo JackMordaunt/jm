@@ -34,12 +34,8 @@ list :: proc(
 		return widget_end(gtx, &p, {size = gtx.constraints.min})
 	}
 	cs := gtx.constraints
-	idx := container_push(gtx, .List, p)
 	width := is_finite(cs.max.x) ? cs.max.x : 0
-	container_at(l, idx).inner = {
-		min = {width, 0},
-		max = {cs.max.x, INF},
-	}
+	idx := container_push(gtx, {kind = .List, inner = {min = {width, 0}, max = {cs.max.x, INF}}}, p)
 	saved := l.scope
 
 	o := gtx.ops

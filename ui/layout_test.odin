@@ -905,3 +905,47 @@ test_layout_accessors_name_the_open_containers :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, depth(l), 0)
 }
+
+@(test)
+test_openers_push_complete_containers :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	l := &h.layout
+	{
+		w := wrap(gtx, gap = 6); defer end(&w)
+		c := innermost(l)
+		testing.expect(t, c.kind == .Flex && c.axis == .Horizontal && c.wrap)
+		testing.expect_value(t, c.gap, 6)
+		testing.expect_value(t, c.line_gap, 6) // line_gap follows gap when not given
+		testing.expect(t, c.deferred)
+	}
+	{
+		w := wrap(gtx, gap = 6, line_gap = 2); defer end(&w)
+		testing.expect_value(t, innermost(l).line_gap, 2)
+	}
+	{
+		col := column(gtx, align = .Fill); defer end(&col)
+		testing.expect(t, !innermost(l).deferred) // Fill places as it goes
+		r := row(gtx, align = .End); defer end(&r)
+		testing.expect(t, innermost(l).deferred) // End must know the total first
+	}
+	{
+		macros := testutil.count_ops(h.ops.ops[:], Macro_Begin)
+		b := box(gtx, {padding = {4, 8, 4, 8}}); defer end(&b)
+		c := innermost(l)
+		testing.expect(t, c.kind == .Box)
+		testing.expect_value(t, c.pad, Padding{4, 8, 4, 8})
+		testing.expect_value(t, c.offset, Point{4, 8})
+		testing.expect_value(t, c.inner.max, c.cs.max - {8, 16}) // shrunk by the padding
+		testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), macros + 1) // its body records
+	}
+	{
+		st := stack(gtx); defer end(&st)
+		c := innermost(l)
+		testing.expect(t, c.kind == .Stack)
+		testing.expect_value(t, c.inner.min, Size{0, 0}) // loose: children may be any size up to the max
+		testing.expect_value(t, c.inner.max, c.cs.max)
+	}
+}
