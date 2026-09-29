@@ -73,6 +73,16 @@ Model :: struct {
 	field_i:     ui.Text_State,
 	link_clicks: int,
 	// containers
+	card_sel:    [3]bool,
+	card_hit:    bool,
+	card_hits:   int,
+	tab_a:       int,
+	tab_b:       int,
+	tab_c:       int,
+	tab_d:       int,
+	tool_clicks: int,
+	acc_open:    [7]bool,
+	acc_single:  [3]bool,
 	// feedback
 	// overlays and the button family
 }
@@ -98,11 +108,11 @@ PAGES := [?]Page {
 	{"Label", page_label, false},
 	{"Link", page_link, false},
 	{"Containers", nil, true},
-	{"Card", nil, false},
-	{"Divider", nil, false},
-	{"Tab list", nil, false},
-	{"Toolbar", nil, false},
-	{"Accordion", nil, false},
+	{"Card", page_card, false},
+	{"Divider", page_divider, false},
+	{"Tab list", page_tab_list, false},
+	{"Toolbar", page_toolbar, false},
+	{"Accordion", page_accordion, false},
 	{"Feedback", nil, true},
 	{"Badge", nil, false},
 	{"Avatar", nil, false},
