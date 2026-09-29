@@ -1,7 +1,7 @@
 package design
 
 import "core:testing"
-import "jm:ui"
+import "jm:ui/ops"
 
 @(private = "file")
 Role :: enum u8 {
@@ -18,9 +18,9 @@ Mode :: enum u8 {
 }
 
 @(private = "file")
-WHITE :: ui.Color{255, 255, 255, 255}
+WHITE :: ops.Color{255, 255, 255, 255}
 @(private = "file")
-BLACK :: ui.Color{0, 0, 0, 255}
+BLACK :: ops.Color{0, 0, 0, 255}
 
 @(private = "file")
 expect_near :: proc(t: ^testing.T, got, want, tol: f32, loc := #caller_location) {
@@ -30,7 +30,7 @@ expect_near :: proc(t: ^testing.T, got, want, tol: f32, loc := #caller_location)
 @(test)
 test_apca_matches_the_published_reference_pairs :: proc(t: ^testing.T) {
 	// The APCA-W3 readme's example pairs (0.0.98G), text on background.
-	hex :: proc(v: u32) -> ui.Color {return {u8(v >> 16), u8(v >> 8), u8(v), 255}}
+	hex :: proc(v: u32) -> ops.Color {return {u8(v >> 16), u8(v >> 8), u8(v), 255}}
 	expect_near(t, apca(hex(0x888888), hex(0xffffff)), 63.06, 0.05)
 	expect_near(t, apca(hex(0xffffff), hex(0x888888)), 68.54, 0.05)
 	expect_near(t, apca(hex(0x000000), hex(0xaaaaaa)), 58.15, 0.05)
@@ -94,12 +94,12 @@ test_measure_lightness_relations :: proc(t: ^testing.T) {
 @(test)
 test_font_for_picks_the_nearest_weight_heavier_on_ties :: proc(t: ^testing.T) {
 	faces := []Font_Face{{400, 1}, {500, 2}, {700, 3}}
-	testing.expect_value(t, font_for(nil, 500, 7), ui.Font_Id(7))
-	testing.expect_value(t, font_for(faces, 400, 7), ui.Font_Id(1))
-	testing.expect_value(t, font_for(faces, 550, 7), ui.Font_Id(2))
-	testing.expect_value(t, font_for(faces, 600, 7), ui.Font_Id(3))
-	testing.expect_value(t, font_for(faces, 300, 7), ui.Font_Id(1))
-	testing.expect_value(t, font_for(faces, 900, 7), ui.Font_Id(3))
+	testing.expect_value(t, font_for(nil, 500, 7), ops.Font_Id(7))
+	testing.expect_value(t, font_for(faces, 400, 7), ops.Font_Id(1))
+	testing.expect_value(t, font_for(faces, 550, 7), ops.Font_Id(2))
+	testing.expect_value(t, font_for(faces, 600, 7), ops.Font_Id(3))
+	testing.expect_value(t, font_for(faces, 300, 7), ops.Font_Id(1))
+	testing.expect_value(t, font_for(faces, 900, 7), ops.Font_Id(3))
 }
 
 @(test)
@@ -136,5 +136,5 @@ test_corners_lerp_and_grow :: proc(t: ^testing.T) {
 	k := lerp_corners({0, 0, 0, 0}, {8, 8, 8, 8}, 0.5)
 	testing.expect_value(t, k, Corners{4, 4, 4, 4})
 	testing.expect_value(t, grow_corners({2, 0, 2, 0}, -1), Corners{1, 0, 1, 0})
-	testing.expect_value(t, touch_target({10, 10, 20, 48}, 48), ui.Rect{-4, 10, 48, 48})
+	testing.expect_value(t, touch_target({10, 10, 20, 48}, 48), ops.Rect{-4, 10, 48, 48})
 }

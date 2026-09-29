@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:math"
 import "core:strings"
 import "core:time"
@@ -26,11 +27,11 @@ SWEEP_MAX :: 1 << 17
 
 // grid_cell places item i of n in a grid that covers the window with cells
 // of roughly the window's aspect, and constrains gtx to that cell.
-grid_cell :: proc(gtx: ^ui.Ctx, i, n: int, size: ui.Size) -> ui.Size {
+grid_cell :: proc(gtx: ^ui.Ctx, i, n: int, size: ops.Size) -> ops.Size {
 	cols := max(1, int(math.ceil(math.sqrt(f32(n) * size.x / size.y))))
 	rows := max(1, (n + cols - 1) / cols)
 	cw, ch := size.x / f32(cols), size.y / f32(rows)
-	ui.transform_push(gtx.ops, ui.translate(f32(i % cols) * cw, f32(i / cols) * ch))
+	ops.transform_push(gtx.scene, ops.translate(f32(i % cols) * cw, f32(i / cols) * ch))
 	return {cw, ch}
 }
 
@@ -39,8 +40,8 @@ sweep_rect :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	size := gtx.constraints.max
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
-		ui.fill(gtx.ops, ui.Rect{0, 0, c.x - 1, c.y - 1}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
-		ui.transform_pop(gtx.ops)
+		ops.fill(gtx.scene, ops.Rect{0, 0, c.x - 1, c.y - 1}, ops.Color{u8(i), u8(i * 3), u8(i * 7), 255})
+		ops.transform_pop(gtx.scene)
 	}
 }
 
@@ -49,8 +50,8 @@ sweep_rrect :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	size := gtx.constraints.max
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
-		ui.fill(gtx.ops, ui.Round_Rect{{0, 0, c.x - 1, c.y - 1}, 4}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
-		ui.transform_pop(gtx.ops)
+		ops.fill(gtx.scene, ops.Round_Rect{{0, 0, c.x - 1, c.y - 1}, 4}, ops.Color{u8(i), u8(i * 3), u8(i * 7), 255})
+		ops.transform_pop(gtx.scene)
 	}
 }
 
@@ -59,8 +60,8 @@ sweep_stroke :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	size := gtx.constraints.max
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
-		ui.stroke(gtx.ops, ui.Round_Rect{{0.5, 0.5, c.x - 2, c.y - 2}, 4}, ui.Color{60, 60, 70, 255}, {width = 1})
-		ui.transform_pop(gtx.ops)
+		ops.stroke(gtx.scene, ops.Round_Rect{{0.5, 0.5, c.x - 2, c.y - 2}, 4}, ops.Color{60, 60, 70, 255}, {width = 1})
+		ops.transform_pop(gtx.scene)
 	}
 }
 
@@ -72,7 +73,7 @@ sweep_label :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		c := grid_cell(gtx, i, s.n, size)
 		gtx.constraints = ui.loose(c)
 		ui.label(gtx, fmt.tprintf("label %d", i))
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 	gtx.constraints = outer
 }
@@ -85,7 +86,7 @@ sweep_button :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		c := grid_cell(gtx, i, s.n, size)
 		gtx.constraints = ui.loose(c)
 		m3.button(gtx, "Pick", key = u64(i))
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 	gtx.constraints = outer
 }
@@ -106,7 +107,7 @@ sweep_panel :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m3.button(gtx, "Pick", key = u64(i))
 		ui.close(&r)
 		ui.close(&card)
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 	gtx.constraints = outer
 }
@@ -116,13 +117,13 @@ sweep_panel :: proc(gtx: ^ui.Ctx, user: rawptr) {
 sweep_clip_shared :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	s := (^Sweep_State)(user)
 	size := gtx.constraints.max
-	ui.clip_push(gtx.ops, ui.Round_Rect{{0, 0, size.x, size.y}, 24})
+	ops.clip_push(gtx.scene, ops.Round_Rect{{0, 0, size.x, size.y}, 24})
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
-		ui.fill(gtx.ops, ui.Round_Rect{{0, 0, c.x - 1, c.y - 1}, 4}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
-		ui.transform_pop(gtx.ops)
+		ops.fill(gtx.scene, ops.Round_Rect{{0, 0, c.x - 1, c.y - 1}, 4}, ops.Color{u8(i), u8(i * 3), u8(i * 7), 255})
+		ops.transform_pop(gtx.scene)
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 }
 
 // sweep_clip_each gives every fill its own rotated clip: a mask per draw.
@@ -131,12 +132,12 @@ sweep_clip_each :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	size := gtx.constraints.max
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
-		ui.transform_push(gtx.ops, ui.rotate(0.1))
-		ui.clip_push(gtx.ops, ui.Rect{0, 0, c.x - 1, c.y - 1})
-		ui.fill(gtx.ops, ui.Rect{-4, -4, c.x + 8, c.y + 8}, ui.Color{u8(i), 120, 200, 255})
-		ui.clip_pop(gtx.ops)
-		ui.transform_pop(gtx.ops)
-		ui.transform_pop(gtx.ops)
+		ops.transform_push(gtx.scene, ops.rotate(0.1))
+		ops.clip_push(gtx.scene, ops.Rect{0, 0, c.x - 1, c.y - 1})
+		ops.fill(gtx.scene, ops.Rect{-4, -4, c.x + 8, c.y + 8}, ops.Color{u8(i), 120, 200, 255})
+		ops.clip_pop(gtx.scene)
+		ops.transform_pop(gtx.scene)
+		ops.transform_pop(gtx.scene)
 	}
 }
 
@@ -197,8 +198,8 @@ sweep :: proc(w, h: int, threads: []u32, budget: f64) {
 			st := Sweep_State{n = n}
 			p: ui.Probe
 			ui.probe_init(&p, fam.ui, &st, {f32(w), f32(h)})
-			ui.add_font(&p.ops, FONT)
-			p.shaper = render.shaper(&r, p.ops.fonts[:])
+			ops.add_font(&p.scene, FONT)
+			p.shaper = render.shaper(&r, p.scene.fonts[:])
 			ui.probe_frame(&p)
 			ui.probe_frame(&p)
 

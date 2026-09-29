@@ -1,14 +1,14 @@
 package design
 
 import "base:intrinsics"
-import "jm:ui"
+import "jm:ui/ops"
 
 // Theme is a design system's colour binding: for every context (light,
 // dark, high contrast) and every role, one colour. Components read roles;
 // only the binding knows which context is active. R is the system's role
 // enum and C its context enum.
 Theme :: struct($R, $C: typeid) where intrinsics.type_is_enum(R), intrinsics.type_is_enum(C) {
-	bind: [C][R]ui.Color,
+	bind: [C][R]ops.Color,
 }
 
 // Relation is what an axiom asserts about two bound roles a and b.
@@ -53,7 +53,7 @@ check :: proc(t: Theme($R, $C), axioms: []Axiom(R), allocator := context.allocat
 
 // measure applies rel to colours a and b against k: the value measured
 // and whether it satisfies the relation.
-measure :: proc(a, b: ui.Color, rel: Relation, k: f32) -> (got: f32, ok: bool) {
+measure :: proc(a, b: ops.Color, rel: Relation, k: f32) -> (got: f32, ok: bool) {
 	switch rel {
 	case .Contrast_Min:
 		got = apca(a, b)

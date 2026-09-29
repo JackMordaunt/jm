@@ -1,7 +1,7 @@
 /*
 Package ui is an immediate-mode user interface whose frame is data. A ui proc
-records scene ops (transforms, clips, fills, glyph runs, input areas, tags)
-into an Ops buffer; flatten turns that into a device-space draw list and a hit
+records scene sc (transforms, clips, fills, glyph runs, input areas, tags)
+into an ops.Scene buffer; flatten turns that into a device-space draw list and a hit
 list; a renderer executes the draw list and a router hit-tests the hit list.
 Every stage is a plain array with a text dump, so a frame can be asserted on,
 serialized, or driven by a probe without a window.
@@ -14,14 +14,14 @@ serialized, or driven by a probe without a window.
 	}
 
 Frame flow: router_route(router, previous frame) -> ops_reset -> ui(gtx) ->
-flatten(ops, frame) -> render(frame). Input arrives one frame late by design:
+flatten(sc, frame) -> render(frame). Input arrives one frame late by design:
 events are routed against the previous frame's hit list, as in Gio.
 
-Coordinates: y grows downwards, units are device pixels. Affine follows the
+Coordinates: y grows downwards, units are device pixels. ops.Affine follows the
 Blend2D matrix layout: x' = a*x + c*y + e, y' = b*x + d*y + f.
 
-Memory: Ops holds only per-frame data and is reset each frame; slices inside
-ops (paths, glyph runs, tag names) are expected to live in the frame
+Memory: ops.Scene holds only per-frame data and is reset each frame; slices inside
+sc (paths, glyph runs, tag names) are expected to live in the frame
 allocator. Nothing in this package is thread-safe; one Ctx per thread.
 
 Subpackages: ui/blend2d is the raster binding, ui/render executes a Frame on
@@ -52,20 +52,21 @@ example.
 package ui
 
 import "core:mem"
+import "jm:ui/ops"
 
-// Ui_Proc builds one frame: it records into gtx.ops and reads events from
+// Ui_Proc builds one frame: it records into gtx.scene and reads events from
 // gtx.router. user is passed through from whatever ran it (ui/sdl's App,
 // ui/child's App) untouched.
 Ui_Proc :: proc(gtx: ^Ctx, user: rawptr)
 
 // Ctx is the per-frame layout context every widget takes first. Widgets
-// record into ops, size themselves inside constraints, read theme for
+// record into sc, size themselves inside constraints, read theme for
 // defaults, shape text through shaper and read their events from router.
 // A host runs a frame for every input event, and one more after it, which
 // events asks for; anything else that changes with time asks for its next
 // frame with request_frame.
 Ctx :: struct {
-	ops:         ^Ops,
+	scene:         ^ops.Scene,
 	constraints: Constraints,
 	theme:       ^Theme,
 	shaper:      Shaper,
@@ -94,28 +95,28 @@ request_frame :: proc(gtx: ^Ctx, after: f32 = 0) {
 
 // Constraints flow down: a widget must return a size within [min, max].
 Constraints :: struct {
-	min, max: Size,
+	min, max: ops.Size,
 }
 
 // Dims flow up: the size a widget took, and its text baseline from the top
 // (0 when it has none) so siblings can align on it.
 Dims :: struct {
-	size:     Size,
+	size:     ops.Size,
 	baseline: f32,
 }
 
 // exact makes constraints that admit only one size.
-exact :: proc(s: Size) -> Constraints {
+exact :: proc(s: ops.Size) -> Constraints {
 	return {min = s, max = s}
 }
 
 // loose makes constraints from zero up to s.
-loose :: proc(s: Size) -> Constraints {
+loose :: proc(s: ops.Size) -> Constraints {
 	return {min = {}, max = s}
 }
 
 // constrain clamps s into c.
-constrain :: proc(c: Constraints, s: Size) -> Size {
+constrain :: proc(c: Constraints, s: ops.Size) -> ops.Size {
 	return {
 		clamp(s.x, c.min.x, c.max.x),
 		clamp(s.y, c.min.y, c.max.y),
@@ -128,7 +129,7 @@ constrain :: proc(c: Constraints, s: Size) -> Size {
 // it past. The button family uses this instead of constrain so a
 // pathologically small parent clips or overflows the button rather than
 // shrinking its box below what its own text needs to stay legible.
-constrain_min :: proc(c: Constraints, natural: Size) -> Size {
+constrain_min :: proc(c: Constraints, natural: ops.Size) -> ops.Size {
 	s := constrain(c, natural)
 	return {max(s.x, natural.x), max(s.y, natural.y)}
 }

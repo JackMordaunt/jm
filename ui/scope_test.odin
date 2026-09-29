@@ -1,6 +1,7 @@
 package ui
 
 import "core:testing"
+import "jm:ui/ops"
 
 @(test)
 test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
@@ -8,7 +9,7 @@ test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
 	harness_init(&h)
 	defer harness_destroy(&h)
 	gtx := &h.gtx
-	ids: [3]Area_Id
+	ids: [3]ops.Area_Id
 	for i in 0 ..< 3 {
 		s := scope_open(gtx, i)
 		defer close(&s)
@@ -17,11 +18,11 @@ test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
 		widget_close(gtx, &p, {})
 	}
 	testing.expect(t, ids[0] != ids[1] && ids[1] != ids[2] && ids[0] != ids[2])
-	testing.expect_value(t, h.layout.scope, Area_Id(0)) // every scope ended
+	testing.expect_value(t, h.layout.scope, ops.Area_Id(0)) // every scope ended
 
 	// Nested: a page, then a row; the same row index under another page
 	// is another id.
-	row_under :: proc(gtx: ^Ctx, page: string) -> Area_Id {
+	row_under :: proc(gtx: ^Ctx, page: string) -> ops.Area_Id {
 		ps := scope_open(gtx, page)
 		defer close(&ps)
 		rs := scope_open(gtx, 7)
@@ -38,7 +39,7 @@ test_widget_data_keeps_one_value_per_type_while_asked_for :: proc(t: ^testing.T)
 		t: f32,
 	}
 	Anchor :: struct {
-		at: Point,
+		at: ops.Point,
 	}
 	h: Harness
 	harness_init(&h)

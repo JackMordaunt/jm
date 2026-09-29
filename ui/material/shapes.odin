@@ -1,6 +1,6 @@
 package material
 
-import "jm:ui"
+import "jm:ui/ops"
 import "jm:ui/design"
 import tok "jm:ui/material/tokens"
 
@@ -17,7 +17,7 @@ KAPPA :: design.KAPPA
 // corners resolves shape token sh for a box r: full becomes half the
 // shorter side, and the token's [top-start, top-end, bottom-end,
 // bottom-start] maps onto left-to-right corners.
-corners :: proc(sh: tok.Shape, r: ui.Rect) -> Corners {
+corners :: proc(sh: tok.Shape, r: ops.Rect) -> Corners {
 	if sh.full {
 		return corners_all(min(r.w, r.h) / 2)
 	}

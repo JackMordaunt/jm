@@ -4,12 +4,12 @@
 // an import cycle.
 package testutil
 
-// count_ops returns how many elements of ops are exactly variant T of the
+// count_ops returns how many elements of sc are exactly variant T of the
 // union type E — e.g. count_ops(o.ops[:], ui.Fill) for how many Fill draws
-// an Ops buffer holds.
-count_ops :: proc(ops: []$E, $T: typeid) -> int {
+// a Scene holds.
+count_ops :: proc(sc: []$E, $T: typeid) -> int {
 	n := 0
-	for op in ops {
+	for op in sc {
 		if _, ok := op.(T); ok {
 			n += 1
 		}

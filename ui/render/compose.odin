@@ -1,6 +1,7 @@
 package render
 
 import "core:mem"
+import "jm:ui/ops"
 import "core:sync"
 import "core:thread"
 
@@ -36,13 +37,13 @@ Compositor :: struct {
 	},
 	pixels:    bl.ImageData, // the target's, while composing
 	move:      Scroll, // the one the Move phase is moving
-	jobs:      [dynamic]ui.Rect, // bands to paint
+	jobs:      [dynamic]ops.Rect, // bands to paint
 	next:      int, // index of the next job or draw chunk, taken atomically
 	count:     int, // draws the Hash or Model phase goes through
 	frame:     ^ui.Frame,
 	target:    ^bl.ImageCore,
-	bg:        ui.Color,
-	changed:   [dynamic]ui.Rect, // what compose returns
+	bg:        ops.Color,
+	changed:   [dynamic]ops.Rect, // what compose returns
 	row_start: [dynamic]int, // per tile row: where its draws start in row_draws
 	row_draws: [dynamic]int, // draw indices touching each tile row, in draw order
 	row_fill:  [dynamic]int,
@@ -89,8 +90,8 @@ compositor_init :: proc(c: ^Compositor, workers: int, allocator := context.alloc
 	n := max(workers, 1)
 	c.allocator = allocator
 	damage_init(&c.damage, allocator)
-	c.jobs = make([dynamic]ui.Rect, allocator)
-	c.changed = make([dynamic]ui.Rect, allocator)
+	c.jobs = make([dynamic]ops.Rect, allocator)
+	c.changed = make([dynamic]ops.Rect, allocator)
 	c.row_start = make([dynamic]int, allocator)
 	c.row_draws = make([dynamic]int, allocator)
 	c.row_fill = make([dynamic]int, allocator)
@@ -142,7 +143,7 @@ compositor_destroy :: proc(c: ^Compositor) {
 // compose brings target up to date with f and returns the rects whose
 // pixels changed, repainted or scrolled; nil when nothing did. target must
 // be PRGB32. The result is valid until the next compose.
-compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Color) -> []ui.Rect {
+compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ops.Color) -> []ops.Rect {
 	data: bl.ImageData
 	if bl.image_get_data(target, &data) != 0 || data.size.w <= 0 || data.size.h <= 0 {
 		return nil
@@ -203,7 +204,7 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 				if next_y - y < THIN {
 					next_x = min(f32((int(x) / BAND_W + 1) * BAND_W), next_x)
 				}
-				append(&c.jobs, ui.Rect{x, y, next_x - x, next_y - y})
+				append(&c.jobs, ops.Rect{x, y, next_x - x, next_y - y})
 				x = next_x
 			}
 			y = next_y
@@ -297,7 +298,7 @@ drain :: proc(c: ^Compositor, w: ^Worker) {
 index_rows :: proc(c: ^Compositor, recs: []Draw_Rec, rows: int) {
 	resize(&c.row_start, rows + 1)
 	mem.zero_slice(c.row_start[:])
-	span :: proc(b: ui.Rect, rows: int) -> (int, int) {
+	span :: proc(b: ops.Rect, rows: int) -> (int, int) {
 		return clamp(int(b.y) / TILE, 0, rows - 1), clamp(int(b.y + b.h - 1) / TILE, 0, rows - 1)
 	}
 	for &rec in recs {
@@ -390,21 +391,21 @@ number_runs :: proc(c: ^Compositor, f: ^ui.Frame) {
 // barrier draws nothing and has no clip: between two draws it keeps render
 // from grouping them.
 @(private)
-barrier := ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{}, ui.Color{}}}
+barrier := ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{}, ops.Color{}}}
 
 // paint_band renders the draws of f that touch r into the part of target
 // under r, through a view that shares target's pixels. picks are the
 // indices of the draws that may touch r, in order; recs are f's draw
 // records, whose bounds decide.
 @(private)
-paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ui.Rect, recs: []Draw_Rec, picks: []int, runs: []int, bg: ui.Color) {
+paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ops.Rect, recs: []Draw_Rec, picks: []int, runs: []int, bg: ops.Color) {
 	sub := &w.sub
 	clear(&sub.draws)
 	clear(&sub.clips)
-	sub.ops = f.ops
-	shift := ui.translate(-r.x, -r.y)
+	sub.scene = f.scene
+	shift := ops.translate(-r.x, -r.y)
 	for cl in f.clips {
-		append(&sub.clips, ui.Clip{cl.parent, cl.shape, ui.mul(cl.transform, shift)})
+		append(&sub.clips, ui.Clip{cl.parent, cl.shape, ops.mul(cl.transform, shift)})
 	}
 	// Draws left out of the band can sit between two it keeps. Two kept draws
 	// under one clip were grouped in the whole frame only if they were in one
@@ -412,14 +413,14 @@ paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ui.Rect, 
 	// must cover them as it does in a whole render.
 	last := -1
 	for i in picks {
-		if ui.rect_intersect(recs[i].bounds, r).w <= 0 {
+		if ops.rect_intersect(recs[i].bounds, r).w <= 0 {
 			continue
 		}
 		d := f.draws[i]
 		if last >= 0 && d.clip == f.draws[last].clip && runs[i] != runs[last] {
 			append(&sub.draws, barrier)
 		}
-		append(&sub.draws, ui.Draw{ui.mul(d.transform, shift), d.clip, d.cmd})
+		append(&sub.draws, ui.Draw{ops.mul(d.transform, shift), d.clip, d.cmd})
 		last = i
 	}
 

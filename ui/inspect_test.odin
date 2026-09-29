@@ -1,6 +1,7 @@
 package ui
 
 import "core:strings"
+import "jm:ui/ops"
 import "core:testing"
 
 // inspect_view is a 200x100 column of two labels, the second tagged.
@@ -10,8 +11,8 @@ inspect_view :: proc(gtx: ^Ctx, user: rawptr) {
 	defer close(&col)
 	label(gtx, "first", key = 2)
 	p := widget_open(gtx, 3)
-	input_area(gtx.ops, p.id, Rect{0, 0, 60, 20}, {.Press})
-	tag(gtx.ops, p.id, "second")
+	ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 60, 20}, {.Press})
+	ops.tag(gtx.scene, p.id, "second")
 	widget_close(gtx, &p, {size = {60, 20}})
 }
 
@@ -30,7 +31,7 @@ test_inspect_reports_the_widget_under_a_point :: proc(t: ^testing.T) {
 	testing.expect(t, got.has_box && got.box.depth == 1 && got.box.rect == second)
 	testing.expect(t, got.has_hit && got.name == "second")
 	first := f.boxes[0].rect
-	testing.expect_value(t, got.box.max, Size{200, 100 - first.h}) // the column's width, and what the first child left of its height
+	testing.expect_value(t, got.box.max, ops.Size{200, 100 - first.h}) // the column's width, and what the first child left of its height
 
 	report := inspect_report(f, &p.layout, {second.x + 5, second.y + 5}, context.temp_allocator)
 	testing.expect(t, strings.contains(report, "inspect_test.odin"))
@@ -51,8 +52,8 @@ test_inspect_defers_one_root_panel_when_hovering :: proc(t: ^testing.T) {
 	probe_move(&p, 5, 5) // over the first label: the next frame paints its panel
 	probe_frame(&p)
 	deferred := 0
-	for op in p.ops.ops {
-		if d, ok := op.(Defer); ok && d.root {
+	for op in p.scene.ops {
+		if d, ok := op.(ops.Defer); ok && d.root {
 			deferred += 1
 		}
 	}
@@ -66,12 +67,12 @@ test_bounds_outlines_input_areas_too :: proc(t: ^testing.T) {
 	defer probe_destroy(&p)
 	defer free_all(context.temp_allocator)
 	hits := 0
-	for op in p.ops.ops {
-		s, is_stroke := op.(Stroke)
+	for op in p.scene.ops {
+		s, is_stroke := op.(ops.Stroke)
 		if !is_stroke {
 			continue
 		}
-		if c, ok := s.paint.(Color); ok && c == HIT_BOUNDS_COLOR {
+		if c, ok := s.paint.(ops.Color); ok && c == ops.HIT_BOUNDS_COLOR {
 			hits += 1
 		}
 	}
@@ -100,6 +101,6 @@ test_inspect_prefers_an_overlay_over_the_page_beneath :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
 	got := inspect_at(probe_current(&p), {20, 20})
 	testing.expect(t, got.has_box)
-	testing.expect_value(t, got.box.rect, Rect{10, 10, 50, 50})
+	testing.expect_value(t, got.box.rect, ops.Rect{10, 10, 50, 50})
 	testing.expect(t, got.box.layer > 0)
 }

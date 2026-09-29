@@ -1,6 +1,7 @@
 package ui
 
 import "core:os"
+import "jm:ui/ops"
 import "core:testing"
 
 @(test)
@@ -41,7 +42,7 @@ test_probe_time_sums_dt_and_slow_quarters_it :: proc(t: ^testing.T) {
 
 @(test)
 test_frame_memory_kept_past_its_frame_reads_as_poison :: proc(t: ^testing.T) {
-	when !POISON_FRAMES {
+	when !ops.POISON_FRAMES {
 		return
 	}
 	// A view that keeps a frame-allocated string in its model: the bug
@@ -64,7 +65,7 @@ test_frame_memory_kept_past_its_frame_reads_as_poison :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.kept, "kept")
 	probe_frame(&p) // resets the arena the string was in
 	for b in transmute([]u8)m.kept {
-		testing.expect_value(t, b, u8(FRAME_POISON))
+		testing.expect_value(t, b, u8(ops.FRAME_POISON))
 	}
 }
 

@@ -1,15 +1,16 @@
 package render
 
 import "core:mem"
+import "jm:ui/ops"
 
 import "jm:ui"
 import bl "jm:ui/blend2d"
 
 // shaper returns a ui.Shaper over Blend2D's font_shape. It loads fonts from
-// fonts (typically ops.fonts[:] after add_font), so it works before any
+// fonts (typically sc.fonts[:] after add_font), so it works before any
 // frame exists, and shares r's font cache so glyph ids match what render
 // draws. fonts must outlive the shaper.
-shaper :: proc(r: ^Renderer, fonts: []ui.Font_Ref) -> ui.Shaper {
+shaper :: proc(r: ^Renderer, fonts: []ops.Font_Ref) -> ui.Shaper {
 	r.font_refs = fonts
 	return {data = r, shape = shape, metrics = metrics}
 }
@@ -18,9 +19,9 @@ shaper :: proc(r: ^Renderer, fonts: []ui.Font_Ref) -> ui.Shaper {
 // the run origin in pixels, y down; advance is the pen position after the
 // last glyph. An unknown font yields an empty run.
 @(private)
-shape :: proc(data: rawptr, font: ui.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ui.Glyph_Run {
+shape :: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {
 	r := (^Renderer)(data)
-	run := ui.Glyph_Run{font = font, size = size}
+	run := ops.Glyph_Run{font = font, size = size}
 	fnt := font_for(r, font, size, r.font_refs)
 	if fnt == nil || len(text) == 0 {
 		return run
@@ -47,7 +48,7 @@ shape :: proc(data: rawptr, font: ui.Font_Id, size: f32, text: string, allocator
 	fm: bl.FontMatrix
 	bl.font_get_matrix(fnt, &fm)
 
-	run.glyphs = make([]ui.Glyph, n, allocator)
+	run.glyphs = make([]ops.Glyph, n, allocator)
 	pen: [2]f64
 	for i in 0 ..< n {
 		id := mem.ptr_offset(ids, i)^
@@ -66,7 +67,7 @@ shape :: proc(data: rawptr, font: ui.Font_Id, size: f32, text: string, allocator
 
 // metrics reports ascent, descent and line gap in pixels, all positive.
 @(private)
-metrics :: proc(data: rawptr, font: ui.Font_Id, size: f32) -> ui.Font_Metrics {
+metrics :: proc(data: rawptr, font: ops.Font_Id, size: f32) -> ui.Font_Metrics {
 	r := (^Renderer)(data)
 	fnt := font_for(r, font, size, r.font_refs)
 	if fnt == nil {

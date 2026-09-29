@@ -1,6 +1,7 @@
 package material
 
 import "jm:ui"
+import "jm:ui/ops"
 import tok "jm:ui/material/tokens"
 
 // Bottom_Bar_Arrangement is how a flexible bottom app bar spreads its
@@ -67,10 +68,10 @@ bottom_app_bar :: proc(
 		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
-	bar := ui.Rect{0, 0, w, h}
+	bar := ops.Rect{0, 0, w, h}
 	// Clip to what shows; popped before widget_close, inside its transform.
-	ui.clip_push(gtx.ops, ui.Rect{0, 0, w, shown})
-	ui.fill(gtx.ops, rounded(gtx, bar, corners(tok.BOTTOM_APP_BAR_CONTAINER_SHAPE, bar)), color(tok.BOTTOM_APP_BAR_CONTAINER_COLOR))
+	ops.clip_push(gtx.scene, ops.Rect{0, 0, w, shown})
+	ops.fill(gtx.scene, rounded(gtx, bar, corners(tok.BOTTOM_APP_BAR_CONTAINER_SHAPE, bar)), color(tok.BOTTOM_APP_BAR_CONTAINER_COLOR))
 
 	// The actions are standard icon buttons: no container of their own.
 	col := Toolbar_Colors {
@@ -99,12 +100,12 @@ bottom_app_bar :: proc(
 			// Top-start in a box at the row's end, inset so the FAB's own
 			// margins net out (AppBar.kt:2655-2656).
 			pad := BOTTOM_BAR_FAB_PADDING
-			fr := ui.Rect{w - BOTTOM_BAR_CONTENT_PADDING - pad[0] - fab_d, BOTTOM_BAR_CONTENT_PADDING + pad[1], fab_d, fab_d}
+			fr := ops.Rect{w - BOTTOM_BAR_CONTENT_PADDING - pad[0] - fab_d, BOTTOM_BAR_CONTENT_PADDING + pad[1], fab_d, fab_d}
 			if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, tok.FAB_BASELINE_ICON_SIZE, fab_c, fab_i, tok.FAB_SECONDARY_CONTAINER_CONTAINER_ELEVATION, fab_st) {
 				clicked = TOOLBAR_FAB
 			}
 		}
-		ui.clip_pop(gtx.ops)
+		ops.clip_pop(gtx.scene)
 		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
@@ -141,14 +142,14 @@ bottom_app_bar :: proc(
 				clicked = i
 			}
 		} else {
-			fr := ui.Rect{x, (h - fab_d) / 2, fab_d, fab_d}
+			fr := ops.Rect{x, (h - fab_d) / 2, fab_d, fab_d}
 			if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, tok.FAB_BASELINE_ICON_SIZE, fab_c, fab_i, tok.FAB_SECONDARY_CONTAINER_CONTAINER_ELEVATION, fab_st) {
 				clicked = TOOLBAR_FAB
 			}
 		}
 		x += e + g
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }

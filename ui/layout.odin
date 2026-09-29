@@ -1,6 +1,7 @@
 package ui
 
 import "base:runtime"
+import "jm:ui/ops"
 import "core:math"
 import "core:mem"
 
@@ -66,7 +67,7 @@ Widget_State :: struct {
 	pressed: bool,
 	focused: bool,
 	springs: [4]Spring, // a component's own animated properties, one slot each, numbered by the component
-	root:    Area_Id, // the root scope it was last seen under, for retain
+	root:    ops.Area_Id, // the root scope it was last seen under, for retain
 }
 
 // Flex_Memo is a flex container's totals from the frame before, so a
@@ -105,10 +106,10 @@ Container_Kind :: enum u8 {
 
 @(private)
 Child :: struct {
-	size:     Size,
+	size:     ops.Size,
 	baseline: f32,
 	weight:   f32,
-	macro:    Macro_Id,
+	macro:    ops.Macro_Id,
 	deferred: bool, // recorded into macro; placed at the flex's end
 	slot:     bool, // fill_space: no content, size resolved at end
 }
@@ -119,11 +120,11 @@ Container :: struct {
 	place:    Placement, // how this container sits in its parent
 	cs:       Constraints, // the container's own constraints
 	inner:    Constraints, // overlay kinds: what each child gets
-	offset:   Point, // overlay kinds: where each child goes
+	offset:   ops.Point, // overlay kinds: where each child goes
 	pad:      Padding,
 	style:    Box_Style,
-	body:     Macro_Id,
-	extent:   Size, // overlay: max child size; flex: max cross in .y
+	body:     ops.Macro_Id,
+	extent:   ops.Size, // overlay: max child size; flex: max cross in .y
 	baseline: f32,
 	// Flex only.
 	axis:     Axis,
@@ -143,11 +144,11 @@ Container :: struct {
 Layout :: struct {
 	stack:     [dynamic]Container,
 	children:  [dynamic]Child,
-	state:     map[Area_Id]^Widget_State, // each on the heap, so a pointer lasts until its widget is dropped
+	state:     map[ops.Area_Id]^Widget_State, // each on the heap, so a pointer lasts until its widget is dropped
 	data:      map[Data_Key]Data_Entry, // widget_data's typed values
-	retained:  map[Area_Id]u64, // root scope -> the last frame retain kept it
-	scope:     Area_Id, // mixed into widget ids; scope and list set it
-	scope_root: Area_Id, // the outermost open scope, which state records as its root
+	retained:  map[ops.Area_Id]u64, // root scope -> the last frame retain kept it
+	scope:     ops.Area_Id, // mixed into widget ids; scope and list set it
+	scope_root: ops.Area_Id, // the outermost open scope, which state records as its root
 	frame:     u64,
 	allocator: mem.Allocator,
 }
@@ -155,13 +156,13 @@ Layout :: struct {
 // Placement is a widget's bracket: widget_open fills it, widget_close
 // consumes it. id is the widget's Area_Id.
 Placement :: struct {
-	id:       Area_Id,
+	id:       ops.Area_Id,
 	parent:   int, // container index, -1 at the root
 	saved:    Constraints,
 	given:    Constraints,
 	pushed:   bool,
 	deferred: bool,
-	macro:    Macro_Id,
+	macro:    ops.Macro_Id,
 	weight:   f32,
 	loc:      runtime.Source_Code_Location, // the call that made the widget, for Debug_Box
 }
@@ -171,9 +172,9 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.allocator = allocator
 	l.stack = make([dynamic]Container, allocator)
 	l.children = make([dynamic]Child, allocator)
-	l.state = make(map[Area_Id]^Widget_State, allocator)
+	l.state = make(map[ops.Area_Id]^Widget_State, allocator)
 	l.data = make(map[Data_Key]Data_Entry, allocator)
-	l.retained = make(map[Area_Id]u64, allocator)
+	l.retained = make(map[ops.Area_Id]u64, allocator)
 }
 
 // layout_destroy frees l's storage.
@@ -202,7 +203,7 @@ layout_reset :: proc(l: ^Layout) {
 	clear(&l.children)
 	l.scope, l.scope_root = 0, 0
 	l.frame += 1
-	stale := make([dynamic]Area_Id, context.temp_allocator)
+	stale := make([dynamic]ops.Area_Id, context.temp_allocator)
 	for k, v in l.state {
 		if !kept(l, v.seen, v.root) {
 			append(&stale, k)
@@ -232,7 +233,7 @@ layout_reset :: proc(l: ^Layout) {
 // widget_state returns the retained state for id. The pointer stays valid
 // until the widget is dropped, a frame after it was last asked for (or
 // later, under a retained scope); without a layout it lasts the frame.
-widget_state :: proc(gtx: ^Ctx, area: Area_Id) -> ^Widget_State {
+widget_state :: proc(gtx: ^Ctx, area: ops.Area_Id) -> ^Widget_State {
 	l := gtx.layout
 	if l == nil {
 		return new(Widget_State, gtx.allocator)
@@ -276,16 +277,16 @@ widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placeme
 		gtx.constraints = flex_child_constraints(l, c, p.weight)
 		if c.deferred {
 			p.deferred = true
-			p.macro = macro_open(gtx.ops)
+			p.macro = ops.macro_open(gtx.scene)
 		} else {
 			at := c.count > 0 ? c.cursor + c.gap : 0
-			transform_push(gtx.ops, translate_to(axis_vec(c.axis, at, 0)))
+			ops.transform_push(gtx.scene, translate_to(axis_vec(c.axis, at, 0)))
 			p.pushed = true
 		}
 	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
 		gtx.constraints = c.inner
 		if c.offset != {} {
-			transform_push(gtx.ops, translate_to(c.offset))
+			ops.transform_push(gtx.scene, translate_to(c.offset))
 			p.pushed = true
 		}
 	}
@@ -295,7 +296,7 @@ widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placeme
 
 // BOUNDS_COLOR outlines widgets under Debug_Flag.Bounds: magenta, a colour
 // no theme uses, translucent so nested boxes read as nesting.
-BOUNDS_COLOR :: Color{255, 0, 255, 140}
+BOUNDS_COLOR :: ops.Color{255, 0, 255, 140}
 
 // widget_close closes a widget opened by widget_open: it clamps dims into the
 // constraints the widget was given, restores gtx.constraints and reports the
@@ -305,20 +306,20 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 	d.size = constrain(p.given, d.size)
 	if .Bounds in gtx.debug {
 		// In the widget's own space, before its transform or macro closes.
-		stroke(gtx.ops, Rect{0, 0, d.size.x, d.size.y}, BOUNDS_COLOR, {width = 1})
+		ops.stroke(gtx.scene, ops.Rect{0, 0, d.size.x, d.size.y}, BOUNDS_COLOR, {width = 1})
 	}
 	if .Inspect in gtx.debug {
 		depth := i32(depth(gtx.layout))
 		append(
-			&gtx.ops.ops,
-			Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure},
+			&gtx.scene.ops,
+			ops.Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure},
 		)
 	}
 	if p.pushed {
-		transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 	if p.deferred {
-		macro_close(gtx.ops, p.macro)
+		ops.macro_close(gtx.scene, p.macro)
 	}
 	gtx.constraints = p.saved
 	l := gtx.layout
@@ -350,8 +351,8 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 }
 
 @(private)
-translate_to :: proc(p: Point) -> Affine {
-	return translate(p.x, p.y)
+translate_to :: proc(p: ops.Point) -> ops.Affine {
+	return ops.translate(p.x, p.y)
 }
 
 @(private)
@@ -376,7 +377,7 @@ is_finite :: proc(v: f32) -> bool {
 
 @(private)
 shrink :: proc(cs: Constraints, p: Padding) -> Constraints {
-	d := Size{p.left + p.right, p.top + p.bottom}
+	d := ops.Size{p.left + p.right, p.top + p.bottom}
 	return {
 		min = {max(cs.min.x - d.x, 0), max(cs.min.y - d.y, 0)},
 		max = {max(cs.max.x - d.x, 0), max(cs.max.y - d.y, 0)},
@@ -461,7 +462,7 @@ container_push :: proc(gtx: ^Ctx, c: Container, p: Placement) -> int {
 	c.cs = gtx.constraints
 	c.first = len(l.children)
 	if c.kind in PAINT_AFTER_CHILDREN {
-		c.body = macro_open(gtx.ops)
+		c.body = ops.macro_open(gtx.scene)
 	}
 	append(&l.stack, c)
 	return len(l.stack) - 1
@@ -709,9 +710,9 @@ flex_close :: proc(f: ^Flex) {
 		}
 		pos := axis_vec(c.axis, at, off)
 		if k.deferred {
-			transform_push(gtx.ops, translate_to(pos))
-			call(gtx.ops, k.macro)
-			transform_pop(gtx.ops)
+			ops.transform_push(gtx.scene, translate_to(pos))
+			ops.call(gtx.scene, k.macro)
+			ops.transform_pop(gtx.scene)
 		}
 		if baseline == 0 && k.baseline > 0 {
 			baseline = k.baseline + pos.y
@@ -762,9 +763,9 @@ wrap_close :: proc(f: ^Flex) {
 			case .End:
 				off = h - k.size.y
 			}
-			transform_push(gtx.ops, translate(x, y + off))
-			call(gtx.ops, k.macro)
-			transform_pop(gtx.ops)
+			ops.transform_push(gtx.scene, ops.translate(x, y + off))
+			ops.call(gtx.scene, k.macro)
+			ops.transform_pop(gtx.scene)
 			if baseline == 0 && k.baseline > 0 {
 				baseline = k.baseline + y + off
 			}
@@ -788,7 +789,7 @@ wrap_close :: proc(f: ^Flex) {
 spacer :: proc(gtx: ^Ctx, size: f32, loc := #caller_location) -> Dims {
 	axis, in_flex := parent_axis(gtx)
 	p := widget_open(gtx, 0, loc)
-	s := Size{size, size}
+	s := ops.Size{size, size}
 	if in_flex {
 		s = axis_vec(axis, size, 0)
 	}
@@ -899,10 +900,10 @@ centered_close :: proc(s: ^Centered) {
 // Overlay is an open overlay; see overlay.
 Overlay :: struct {
 	gtx:    ^Ctx,
-	macro:  Macro_Id,
+	macro:  ops.Macro_Id,
 	stack:  [dynamic]Container, // the enclosing containers, set aside
 	saved:  Constraints,
-	scope:  Area_Id,
+	scope:  ops.Area_Id,
 	root:   bool,
 	pushed: bool, // at was non-zero: a translate to pop
 	active: bool,
@@ -919,16 +920,16 @@ Overlay :: struct {
 // place it against that widget — or from the window's top-left when root. They lay out from a fresh root
 // under cs — they are not children of the container around the call, and
 // take no space in it. A menu, tooltip or dialog is one of these.
-overlay_open :: proc(gtx: ^Ctx, at: Point = {}, cs := Constraints{max = {INF, INF}}, root := false) -> Overlay {
+overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF, INF}}, root := false) -> Overlay {
 	o := Overlay {
 		gtx    = gtx,
 		saved  = gtx.constraints,
 		root   = root,
 		active = true,
 	}
-	o.macro = macro_open(gtx.ops)
+	o.macro = ops.macro_open(gtx.scene)
 	if at != {} {
-		transform_push(gtx.ops, translate_to(at))
+		ops.transform_push(gtx.scene, translate_to(at))
 		o.pushed = true
 	}
 	if l := gtx.layout; l != nil {
@@ -952,11 +953,11 @@ overlay_close :: proc(o: ^Overlay) {
 	}
 	gtx.constraints = o.saved
 	if o.pushed {
-		transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
-	macro_close(gtx.ops, o.macro)
+	ops.macro_close(gtx.scene, o.macro)
 	if !o.discard {
-		defer_call(gtx.ops, o.macro, o.root)
+		ops.defer_call(gtx.scene, o.macro, o.root)
 	}
 }
 
@@ -1016,7 +1017,7 @@ SCROLL_BAR_FADE :: Spring_Params{1, 1600}
 @(private)
 Scroll_Bar :: struct {
 	view, range: f32, // the box's length on the axis, and how far it scrolls
-	track:       Rect,
+	track:       ops.Rect,
 	thumb_len:   f32,
 	travel:      f32, // how far the thumb moves along the track
 }
@@ -1028,7 +1029,7 @@ Scroll_Bar :: struct {
 // end: a rounded box's corner radius, so the bar runs only along its
 // straight edge and ends where the corner's curve begins.
 @(private)
-scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool, ends: f32 = 0) -> (b: Scroll_Bar, ok: bool) {
+scroll_bar_layout :: proc(axis: Axis, size: ops.Size, content: f32, both: bool, ends: f32 = 0) -> (b: Scroll_Bar, ok: bool) {
 	b.view = main_of(axis, size)
 	if content <= b.view {
 		return
@@ -1042,7 +1043,7 @@ scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool, ends
 	b.range = content - b.view
 	b.travel = max(track_len - b.thumb_len, 1)
 	edge := cross_of(axis, size) - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
-	b.track = axis == .Vertical ? Rect{edge, start, SCROLL_BAR_THICKNESS, track_len} : Rect{start, edge, track_len, SCROLL_BAR_THICKNESS}
+	b.track = axis == .Vertical ? ops.Rect{edge, start, SCROLL_BAR_THICKNESS, track_len} : ops.Rect{start, edge, track_len, SCROLL_BAR_THICKNESS}
 	return b, true
 }
 
@@ -1054,7 +1055,7 @@ scroll_bar_layout :: proc(axis: Axis, size: Size, content: f32, both: bool, ends
 // scroll_bar_paint after, both in its box's space and with an id of its
 // own. size is the box, content the content's length on axis; a rounded
 // box passes its corner radius as ends, to both.
-scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false, ends: f32 = 0) -> f32 {
+scroll_bar_handle :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size, content, offset: f32, both := false, ends: f32 = 0) -> f32 {
 	b, ok := scroll_bar_layout(axis, size, content, both, ends)
 	if !ok {
 		return offset
@@ -1062,7 +1063,7 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, conten
 	off := offset
 	st := widget_state(gtx, id)
 	for e in events(gtx, id) {
-		along := main_of(axis, e.pos) - main_of(axis, Point{b.track.x, b.track.y})
+		along := main_of(axis, e.pos) - main_of(axis, ops.Point{b.track.x, b.track.y})
 		#partial switch e.kind {
 		case .Enter:
 			st.hovered = true
@@ -1095,7 +1096,7 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, conten
 // SCROLL_BAR_LINGER seconds after; its input area stays, so reaching the
 // edge brings it back. With Debug_Flag.Reveal it always shows. The thumb
 // is the theme's foreground.
-scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content, offset: f32, both := false, ends: f32 = 0) {
+scroll_bar_paint :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size, content, offset: f32, both := false, ends: f32 = 0) {
 	b, ok := scroll_bar_layout(axis, size, content, both, ends)
 	if !ok {
 		return
@@ -1121,7 +1122,7 @@ scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content
 	}
 	vis := spring_update(&st.springs[1], gtx, shown ? 1 : 0, SCROLL_BAR_FADE)
 	grow := spring_update(&st.springs[0], gtx, held ? 1 : 0, SCROLL_BAR_FADE)
-	input_area(gtx.ops, id, b.track, {.Press, .Release, .Move, .Enter, .Leave})
+	ops.input_area(gtx.scene, id, b.track, {.Press, .Release, .Move, .Enter, .Leave})
 	alpha := (SCROLL_BAR_THIN_ALPHA + (SCROLL_BAR_HOVER_ALPHA - SCROLL_BAR_THIN_ALPHA) * grow) * vis
 	if alpha < 0.01 {
 		return
@@ -1135,7 +1136,7 @@ scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content
 	} else {
 		thumb = {b.track.x + at, b.track.y + b.track.h - thick, b.thumb_len, thick}
 	}
-	fill(gtx.ops, Round_Rect{thumb, thick / 2}, with_alpha(gtx.theme.fg, alpha))
+	ops.fill(gtx.scene, ops.Round_Rect{thumb, thick / 2}, ops.with_alpha(gtx.theme.fg, alpha))
 }
 
 @(private)
@@ -1145,10 +1146,10 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 	}
 	c := container_pop(gtx, index^)
 	index^ = -1
-	o := gtx.ops
+	o := gtx.scene
 	content := c.extent
-	pads := Size{c.pad.left + c.pad.right, c.pad.top + c.pad.bottom}
-	size: Size
+	pads := ops.Size{c.pad.left + c.pad.right, c.pad.top + c.pad.bottom}
+	size: ops.Size
 	baseline := c.baseline
 	#partial switch c.kind {
 	case .Stack:
@@ -1156,31 +1157,31 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 	case .Inset:
 		size = constrain(c.cs, content + pads)
 	case .Box:
-		macro_close(o, c.body)
+		ops.macro_close(o, c.body)
 		size = constrain(c.cs, content + pads)
-		rr := Round_Rect{{0, 0, size.x, size.y}, c.style.radius}
+		rr := ops.Round_Rect{{0, 0, size.x, size.y}, c.style.radius}
 		if c.style.paint != nil {
 			c.style.paint(gtx, c.place.id, size, c.style.user)
 		} else if painted(c.style.fill) {
-			fill(o, rr, c.style.fill)
+			ops.fill(o, rr, c.style.fill)
 		}
 		if c.style.paint == nil && c.style.stroke > 0 && painted(c.style.outline) {
 			h := c.style.stroke / 2
-			edge := Round_Rect {
+			edge := ops.Round_Rect {
 				{h, h, size.x - c.style.stroke, size.y - c.style.stroke},
 				max(c.style.radius - h, 0),
 			}
-			stroke(o, edge, c.style.outline, {width = c.style.stroke})
+			ops.stroke(o, edge, c.style.outline, {width = c.style.stroke})
 		}
-		call(o, c.body)
+		ops.call(o, c.body)
 	case .Clip:
-		macro_close(o, c.body)
+		ops.macro_close(o, c.body)
 		size = constrain(c.cs, content)
-		clip_push(o, Rect{0, 0, size.x, size.y})
-		call(o, c.body)
-		clip_pop(o)
+		ops.clip_push(o, ops.Rect{0, 0, size.x, size.y})
+		ops.call(o, c.body)
+		ops.clip_pop(o)
 	case .Scroll:
-		macro_close(o, c.body)
+		ops.macro_close(o, c.body)
 		size = constrain(c.cs, {content.x, is_finite(c.cs.max.y) ? c.cs.max.y : content.y})
 		sc := widget_data(gtx, c.place.id, Scroll_Offset)
 		for e in events(gtx, c.place.id) {
@@ -1202,27 +1203,27 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 		both := content.y > size.y && content.x > size.x
 		sc.y = scroll_bar_handle(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, sc.y, both)
 		sc.x = scroll_bar_handle(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
-		view := Rect{0, 0, size.x, size.y}
-		input_area(o, c.place.id, view, {.Scroll})
-		clip_push(o, view)
-		transform_push(o, translate(-sc.x, -sc.y))
-		call(o, c.body)
-		transform_pop(o)
+		view := ops.Rect{0, 0, size.x, size.y}
+		ops.input_area(o, c.place.id, view, {.Scroll})
+		ops.clip_push(o, view)
+		ops.transform_push(o, ops.translate(-sc.x, -sc.y))
+		ops.call(o, c.body)
+		ops.transform_pop(o)
 		scroll_bar_paint(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, sc.y, both)
 		scroll_bar_paint(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
-		clip_pop(o)
+		ops.clip_pop(o)
 		baseline = 0
 	case .Center:
-		macro_close(o, c.body)
-		want := Size {
+		ops.macro_close(o, c.body)
+		want := ops.Size {
 			is_finite(c.cs.max.x) ? c.cs.max.x : content.x,
 			is_finite(c.cs.max.y) ? c.cs.max.y : content.y,
 		}
 		size = constrain(c.cs, want)
 		off := (size - content) / 2
-		transform_push(o, translate_to(off))
-		call(o, c.body)
-		transform_pop(o)
+		ops.transform_push(o, translate_to(off))
+		ops.call(o, c.body)
+		ops.transform_pop(o)
 		if baseline > 0 {
 			baseline += off.y
 		}

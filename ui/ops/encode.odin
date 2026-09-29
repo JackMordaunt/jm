@@ -1,9 +1,9 @@
-package ui
+package ops
 
 import "core:encoding/endian"
 import "core:mem"
 
-// Binary wire form of Ops. Little-endian throughout:
+// Binary wire form of Scene. Little-endian throughout:
 //
 //	"UIOP" u8(version)
 //	fonts   u32 n, n × (u32 id, str path)
@@ -34,7 +34,7 @@ encoded_version :: proc(data: []byte) -> (u8, bool) {
 }
 
 // encode serializes ops, resources included, into a new byte slice.
-encode :: proc(ops: ^Ops, allocator := context.allocator) -> []byte {
+encode :: proc(ops: ^Scene, allocator := context.allocator) -> []byte {
 	w := make([dynamic]byte, 0, 256, allocator)
 	for c in transmute([]byte)string(ENCODE_MAGIC) {
 		append(&w, c)
@@ -93,8 +93,8 @@ encode :: proc(ops: ^Ops, allocator := context.allocator) -> []byte {
 // or version, an unknown tag or enum value, trailing bytes, or a reference
 // (path, run, macro) out of range; ops then holds a partial decode. It never
 // panics on hostile input.
-decode :: proc(data: []byte, ops: ^Ops) -> bool {
-	ops_reset(ops)
+decode :: proc(data: []byte, ops: ^Scene) -> bool {
+	reset(ops)
 	clear(&ops.fonts)
 	clear(&ops.images)
 	if !ops.has_decoded {
@@ -209,37 +209,31 @@ decode :: proc(data: []byte, ops: ^Ops) -> bool {
 
 // Shared with wire.odin: the host/subprocess wire messages, a separate
 // format from this file's, reuse this little-endian layout.
-@(private)
 put_u32 :: proc(w: ^[dynamic]byte, v: u32) {
 	b: [4]byte
 	endian.put_u32(b[:], .Little, v)
 	append(w, ..b[:])
 }
 
-@(private)
 put_u64 :: proc(w: ^[dynamic]byte, v: u64) {
 	b: [8]byte
 	endian.put_u64(b[:], .Little, v)
 	append(w, ..b[:])
 }
 
-@(private)
 put_f32 :: proc(w: ^[dynamic]byte, v: f32) {
 	put_u32(w, transmute(u32)v)
 }
 
-@(private = "file")
 put_f64 :: proc(w: ^[dynamic]byte, v: f64) {
 	put_u64(w, transmute(u64)v)
 }
 
-@(private = "file")
 put_point :: proc(w: ^[dynamic]byte, p: Point) {
 	put_f32(w, p.x)
 	put_f32(w, p.y)
 }
 
-@(private)
 put_rect :: proc(w: ^[dynamic]byte, r: Rect) {
 	put_f32(w, r.x)
 	put_f32(w, r.y)
@@ -247,18 +241,15 @@ put_rect :: proc(w: ^[dynamic]byte, r: Rect) {
 	put_f32(w, r.h)
 }
 
-@(private)
 put_str :: proc(w: ^[dynamic]byte, s: string) {
 	put_u32(w, u32(len(s)))
 	append(w, s)
 }
 
-@(private = "file")
 put_color :: proc(w: ^[dynamic]byte, c: Color) {
 	append(w, c.r, c.g, c.b, c.a)
 }
 
-@(private = "file")
 put_stops :: proc(w: ^[dynamic]byte, stops: []Gradient_Stop) {
 	put_u32(w, u32(len(stops)))
 	for s in stops {
@@ -267,7 +258,6 @@ put_stops :: proc(w: ^[dynamic]byte, stops: []Gradient_Stop) {
 	}
 }
 
-@(private = "file")
 put_shape :: proc(w: ^[dynamic]byte, s: Shape) {
 	switch v in s {
 	case Rect:
@@ -288,7 +278,6 @@ put_shape :: proc(w: ^[dynamic]byte, s: Shape) {
 	}
 }
 
-@(private = "file")
 put_paint :: proc(w: ^[dynamic]byte, p: Paint) {
 	switch v in p {
 	case Color:
@@ -312,7 +301,6 @@ put_paint :: proc(w: ^[dynamic]byte, p: Paint) {
 	}
 }
 
-@(private = "file")
 put_op :: proc(w: ^[dynamic]byte, op: Op) {
 	switch v in op {
 	case Push_Transform:
@@ -388,14 +376,12 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 // Reading. Every get_* bounds-checks and returns ok=false rather than
 // reading past the end.
 
-@(private)
 Reader :: struct {
 	data:      []byte,
 	pos:       int,
 	allocator: mem.Allocator,
 }
 
-@(private)
 take :: proc(r: ^Reader, n: int) -> (v: []byte, ok: bool) {
 	if n < 0 || n > len(r.data) - r.pos {
 		return nil, false
@@ -405,31 +391,26 @@ take :: proc(r: ^Reader, n: int) -> (v: []byte, ok: bool) {
 	return b, true
 }
 
-@(private)
 get_u8 :: proc(r: ^Reader) -> (v: u8, ok: bool) {
 	b := take(r, 1) or_return
 	return b[0], true
 }
 
-@(private)
 get_u32 :: proc(r: ^Reader) -> (v: u32, ok: bool) {
 	b := take(r, 4) or_return
 	return endian.get_u32(b, .Little)
 }
 
-@(private)
 get_u64 :: proc(r: ^Reader) -> (v: u64, ok: bool) {
 	b := take(r, 8) or_return
 	return endian.get_u64(b, .Little)
 }
 
-@(private)
 get_f32 :: proc(r: ^Reader) -> (v: f32, ok: bool) {
 	bits := get_u32(r) or_return
 	return transmute(f32)bits, true
 }
 
-@(private = "file")
 get_f64 :: proc(r: ^Reader) -> (v: f64, ok: bool) {
 	bits := get_u64(r) or_return
 	return transmute(f64)bits, true
@@ -437,7 +418,6 @@ get_f64 :: proc(r: ^Reader) -> (v: f64, ok: bool) {
 
 // get_count reads a u32 count and rejects one whose entries, at least
 // min_size bytes each, could not fit in what is left.
-@(private)
 get_count :: proc(r: ^Reader, min_size: int) -> (v: int, ok: bool) {
 	n := int(get_u32(r) or_return)
 	if n * min_size > len(r.data) - r.pos {
@@ -446,7 +426,6 @@ get_count :: proc(r: ^Reader, min_size: int) -> (v: int, ok: bool) {
 	return n, true
 }
 
-@(private)
 get_str :: proc(r: ^Reader) -> (v: string, ok: bool) {
 	n := get_count(r, 1) or_return
 	b := take(r, n) or_return
@@ -455,14 +434,12 @@ get_str :: proc(r: ^Reader) -> (v: string, ok: bool) {
 	return string(s), true
 }
 
-@(private = "file")
 get_point :: proc(r: ^Reader) -> (p: Point, ok: bool) {
 	p.x = get_f32(r) or_return
 	p.y = get_f32(r) or_return
 	return p, true
 }
 
-@(private)
 get_rect :: proc(r: ^Reader) -> (v: Rect, ok: bool) {
 	v.x = get_f32(r) or_return
 	v.y = get_f32(r) or_return
@@ -471,13 +448,11 @@ get_rect :: proc(r: ^Reader) -> (v: Rect, ok: bool) {
 	return v, true
 }
 
-@(private = "file")
 get_color :: proc(r: ^Reader) -> (v: Color, ok: bool) {
 	b := take(r, 4) or_return
 	return {b[0], b[1], b[2], b[3]}, true
 }
 
-@(private = "file")
 get_stops :: proc(r: ^Reader) -> (v: []Gradient_Stop, ok: bool) {
 	n := get_count(r, 8) or_return
 	stops := make([]Gradient_Stop, n, r.allocator)
@@ -488,8 +463,7 @@ get_stops :: proc(r: ^Reader) -> (v: []Gradient_Stop, ok: bool) {
 	return stops, true
 }
 
-@(private = "file")
-get_shape :: proc(r: ^Reader, ops: ^Ops) -> (s: Shape, ok: bool) {
+get_shape :: proc(r: ^Reader, ops: ^Scene) -> (s: Shape, ok: bool) {
 	switch get_u8(r) or_return {
 	case 0:
 		return nil, true
@@ -512,7 +486,6 @@ get_shape :: proc(r: ^Reader, ops: ^Ops) -> (s: Shape, ok: bool) {
 	return nil, false
 }
 
-@(private = "file")
 get_paint :: proc(r: ^Reader) -> (p: Paint, ok: bool) {
 	switch get_u8(r) or_return {
 	case 0:
@@ -537,8 +510,7 @@ get_paint :: proc(r: ^Reader) -> (p: Paint, ok: bool) {
 	return nil, false
 }
 
-@(private = "file")
-get_macro_id :: proc(r: ^Reader, ops: ^Ops) -> (v: Macro_Id, ok: bool) {
+get_macro_id :: proc(r: ^Reader, ops: ^Scene) -> (v: Macro_Id, ok: bool) {
 	id := get_u32(r) or_return
 	if int(id) >= len(ops.macros) {
 		return 0, false
@@ -546,8 +518,7 @@ get_macro_id :: proc(r: ^Reader, ops: ^Ops) -> (v: Macro_Id, ok: bool) {
 	return Macro_Id(id), true
 }
 
-@(private = "file")
-get_op :: proc(r: ^Reader, ops: ^Ops) -> (op: Op, ok: bool) {
+get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 	switch get_u8(r) or_return {
 	case 0:
 		return nil, true

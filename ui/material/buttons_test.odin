@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 
 // Behaviour of the buttons group, driven through ui.Probe by their tags.
@@ -38,12 +39,12 @@ buttons :: proc(gtx: ^ui.Ctx, user: rawptr) {
 }
 
 @(private = "file")
-hit_rect :: proc(p: ^ui.Probe, name: string) -> ui.Rect {
+hit_rect :: proc(p: ^ui.Probe, name: string) -> ops.Rect {
 	h, ok := ui.probe_find(p, name)
 	if !ok {
 		return {}
 	}
-	return ui.transform_rect(h.transform, ui.shape_bounds(&p.ops, h.shape))
+	return ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape))
 }
 
 @(test)
@@ -155,9 +156,9 @@ test_small_buttons_take_a_48dp_touch_target :: proc(t: ^testing.T) {
 // the only ellipse the buttons page paints.
 @(private = "file")
 count_ellipse_fills :: proc(p: ^ui.Probe) -> (n: int) {
-	for op in p.ops.ops {
-		if f, ok := op.(ui.Fill); ok {
-			if _, e := f.shape.(ui.Ellipse); e {
+	for op in p.scene.ops {
+		if f, ok := op.(ops.Fill); ok {
+			if _, e := f.shape.(ops.Ellipse); e {
 				n += 1
 			}
 		}

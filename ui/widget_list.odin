@@ -1,6 +1,7 @@
 package ui
 
 import "core:math"
+import "jm:ui/ops"
 
 // List_State is a list's scroll offset in pixels, owned by the caller.
 List_State :: struct {
@@ -38,11 +39,11 @@ list :: proc(
 	idx := container_push(gtx, {kind = .List, inner = {min = {width, 0}, max = {cs.max.x, INF}}}, p)
 	saved := l.scope
 
-	o := gtx.ops
+	o := gtx.scene
 	l.scope = id_mix(p.id, 0)
-	first_item := macro_open(o)
+	first_item := ops.macro_open(o)
 	item(gtx, 0, user)
-	macro_close(o, first_item)
+	ops.macro_close(o, first_item)
 	measured := container_at(l, idx).extent
 	row := max(measured.y, 1)
 	if !is_finite(cs.max.x) {
@@ -59,21 +60,21 @@ list :: proc(
 	s.offset = clamp(s.offset, 0, max(content - view, 0))
 	size := constrain(cs, {width, view})
 
-	input_area(o, p.id, Rect{0, 0, size.x, size.y}, {.Scroll})
-	clip_push(o, Rect{0, 0, size.x, size.y})
+	ops.input_area(o, p.id, ops.Rect{0, 0, size.x, size.y}, {.Scroll})
+	ops.clip_push(o, ops.Rect{0, 0, size.x, size.y})
 	lo := int(s.offset / row)
 	hi := min(count, int(math.ceil((s.offset + size.y) / row)))
 	for i in lo ..< hi {
-		transform_push(o, translate(0, f32(i) * row - s.offset))
+		ops.transform_push(o, ops.translate(0, f32(i) * row - s.offset))
 		if i == 0 {
-			call(o, first_item)
+			ops.call(o, first_item)
 		} else {
 			l.scope = id_mix(p.id, u64(i))
 			item(gtx, i, user)
 		}
-		transform_pop(o)
+		ops.transform_pop(o)
 	}
-	clip_pop(o)
+	ops.clip_pop(o)
 
 	l.scope = saved
 	container_pop(gtx, idx)

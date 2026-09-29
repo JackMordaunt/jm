@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 import "jm:ui/design"
 import tok "jm:ui/material/tokens"
@@ -10,18 +11,18 @@ test_parse_svg_path_absolute_relative_and_quadratics :: proc(t: ^testing.T) {
 	p, ok := parse_svg_path("M10 20h30v-10L0 0q10 0 10 10t10 10Z", context.temp_allocator)
 	testing.expect(t, ok)
 	defer free_all(context.temp_allocator)
-	want := []ui.Path_Verb{.Move, .Line, .Line, .Line, .Cubic, .Cubic, .Close}
+	want := []ops.Path_Verb{.Move, .Line, .Line, .Line, .Cubic, .Cubic, .Close}
 	testing.expect_value(t, len(p.verbs), len(want))
 	for v, i in want {
 		testing.expect_value(t, p.verbs[i], v)
 	}
-	testing.expect_value(t, p.points[1], ui.Point{40, 20}) // h30, relative
-	testing.expect_value(t, p.points[2], ui.Point{40, 10}) // v-10
-	testing.expect_value(t, p.points[3], ui.Point{0, 0}) // L, absolute
+	testing.expect_value(t, p.points[1], ops.Point{40, 20}) // h30, relative
+	testing.expect_value(t, p.points[2], ops.Point{40, 10}) // v-10
+	testing.expect_value(t, p.points[3], ops.Point{0, 0}) // L, absolute
 	// q10 0 10 10 from (0,0): control (10,0) raised to a cubic, end (10,10).
-	testing.expect_value(t, p.points[6], ui.Point{10, 10})
+	testing.expect_value(t, p.points[6], ops.Point{10, 10})
 	// t10 10 reflects that control through (10,10) and ends at (20,20).
-	testing.expect_value(t, p.points[9], ui.Point{20, 20})
+	testing.expect_value(t, p.points[9], ops.Point{20, 20})
 }
 
 @(test)
@@ -29,8 +30,8 @@ test_parse_svg_path_implicit_lines_after_move :: proc(t: ^testing.T) {
 	p, _ := parse_svg_path("m1 1 2 0 0 2z", context.temp_allocator)
 	defer free_all(context.temp_allocator)
 	testing.expect_value(t, len(p.verbs), 4)
-	testing.expect_value(t, p.verbs[1], ui.Path_Verb.Line)
-	testing.expect_value(t, p.points[2], ui.Point{3, 3})
+	testing.expect_value(t, p.verbs[1], ops.Path_Verb.Line)
+	testing.expect_value(t, p.points[2], ops.Point{3, 3})
 }
 
 @(test)
@@ -60,24 +61,24 @@ test_parse_svg_path_stops_at_an_arc :: proc(t: ^testing.T) {
 	testing.expect(t, !ok)
 	// The moveto before the arc was kept; the arc is what stopped it.
 	testing.expect_value(t, len(p.verbs), 1)
-	testing.expect_value(t, p.points[0], ui.Point{3, 4})
+	testing.expect_value(t, p.points[0], ops.Point{3, 4})
 }
 
 @(test)
 test_rounded_clamps_radii_to_half_the_short_side :: proc(t: ^testing.T) {
-	ops: ui.Ops
-	ui.ops_init(&ops, context.temp_allocator)
+	sc: ops.Scene
+	ops.init(&sc, context.temp_allocator)
 	defer free_all(context.temp_allocator)
-	gtx := ui.Ctx{ops = &ops, allocator = context.temp_allocator}
+	gtx := ui.Ctx{scene = &sc, allocator = context.temp_allocator}
 	ref := rounded(&gtx, {0, 0, 100, 20}, corners_all(50))
-	pts := ops.paths[ref.id].points
+	pts := sc.paths[ref.id].points
 	// Every corner clamped to 10, half the 20px height.
-	testing.expect_value(t, pts[0], ui.Point{10, 0})
-	testing.expect_value(t, pts[1], ui.Point{90, 0})
-	testing.expect_value(t, pts[5], ui.Point{100, 10})
-	testing.expect_value(t, pts[8], ui.Point{90, 20})
-	testing.expect_value(t, pts[9], ui.Point{10, 20})
-	testing.expect_value(t, pts[12], ui.Point{0, 10})
+	testing.expect_value(t, pts[0], ops.Point{10, 0})
+	testing.expect_value(t, pts[1], ops.Point{90, 0})
+	testing.expect_value(t, pts[5], ops.Point{100, 10})
+	testing.expect_value(t, pts[8], ops.Point{90, 20})
+	testing.expect_value(t, pts[9], ops.Point{10, 20})
+	testing.expect_value(t, pts[12], ops.Point{0, 10})
 }
 
 @(test)
@@ -93,7 +94,7 @@ test_calendar_arithmetic :: proc(t: ^testing.T) {
 
 @(test)
 test_corners_resolve_full_to_half_the_short_side :: proc(t: ^testing.T) {
-	r := ui.Rect{0, 0, 120, 40}
+	r := ops.Rect{0, 0, 120, 40}
 	testing.expect_value(t, corners(tok.SYS_SHAPE_CORNER_FULL, r), corners_all(20))
 	testing.expect_value(t, corners(tok.SYS_SHAPE_CORNER_LARGE_TOP, r), Corners{16, 16, 0, 0})
 	m := lerp_corners(corners_all(20), corners_all(8), 0.5)
@@ -116,15 +117,15 @@ test_font_for_picks_the_nearest_weight :: proc(t: ^testing.T) {
 	gtx: ui.Ctx
 	th := ui.light_theme(7)
 	gtx.theme = &th
-	testing.expect_value(t, font_for(&gtx, 500), ui.Font_Id(7)) // no faces set: the theme font
+	testing.expect_value(t, font_for(&gtx, 500), ops.Font_Id(7)) // no faces set: the theme font
 	use_fonts({1, 2, 3})
 	defer fonts = nil
-	testing.expect_value(t, font_for(&gtx, 400), ui.Font_Id(1))
-	testing.expect_value(t, font_for(&gtx, 500), ui.Font_Id(2))
-	testing.expect_value(t, font_for(&gtx, 700), ui.Font_Id(3))
-	testing.expect_value(t, font_for(&gtx, 300), ui.Font_Id(1))
-	testing.expect_value(t, font_for(&gtx, 550), ui.Font_Id(2))
-	testing.expect_value(t, font_for(&gtx, 900), ui.Font_Id(3))
+	testing.expect_value(t, font_for(&gtx, 400), ops.Font_Id(1))
+	testing.expect_value(t, font_for(&gtx, 500), ops.Font_Id(2))
+	testing.expect_value(t, font_for(&gtx, 700), ops.Font_Id(3))
+	testing.expect_value(t, font_for(&gtx, 300), ops.Font_Id(1))
+	testing.expect_value(t, font_for(&gtx, 550), ops.Font_Id(2))
+	testing.expect_value(t, font_for(&gtx, 900), ops.Font_Id(3))
 }
 
 @(test)

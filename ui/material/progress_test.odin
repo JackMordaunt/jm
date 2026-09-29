@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -19,20 +20,20 @@ track_x :: proc(f: f32) -> f32 {
 }
 
 @(private = "file")
-press_at :: proc(p: ^ui.Probe, pos: ui.Point) {
+press_at :: proc(p: ^ui.Probe, pos: ops.Point) {
 	ui.router_push(&p.router, {kind = .Move, pos = pos})
 	ui.router_push(&p.router, {kind = .Press, pos = pos, button = .Left})
 	ui.probe_frame(p)
 }
 
 @(private = "file")
-drag_to :: proc(p: ^ui.Probe, pos: ui.Point) {
+drag_to :: proc(p: ^ui.Probe, pos: ops.Point) {
 	ui.router_push(&p.router, {kind = .Move, pos = pos})
 	ui.probe_frame(p)
 }
 
 @(private = "file")
-release_at :: proc(p: ^ui.Probe, pos: ui.Point) {
+release_at :: proc(p: ^ui.Probe, pos: ops.Point) {
 	ui.router_push(&p.router, {kind = .Release, pos = pos, button = .Left})
 	ui.probe_frame(p)
 }

@@ -1,6 +1,7 @@
 package ui
 
 import "core:mem"
+import "jm:ui/ops"
 import "core:time"
 import "core:unicode/utf8"
 
@@ -17,11 +18,11 @@ import "core:unicode/utf8"
 // proc has seen them: input is routed against the previous frame, so an
 // event lands one frame after it is pushed.
 //
-// Memory: ops and frames use the allocator given to probe_init. Each frame
+// Memory: sc and frames use the allocator given to probe_init. Each frame
 // gets a fresh arena (Ctx.allocator) that is reset at the start of the next
 // probe_frame; slices returned by probe_names live in it.
 Probe :: struct {
-	ops:         Ops,
+	scene:         ops.Scene,
 	frame:       Frame, // scratch: the next flatten target
 	prev:        Frame, // the frame just laid out; probe_current returns it
 	router:      Router,
@@ -30,7 +31,7 @@ Probe :: struct {
 	shaper:      Shaper,
 	ui:          proc(gtx: ^Ctx, user: rawptr),
 	user:        rawptr,
-	size:        Size,
+	size:        ops.Size,
 	dt:          f32, // gtx.dt for the next probe_frame; probe_set_dt overrides
 	time:        f64, // gtx.time: advanced by each frame's dt; set it to jump the clock
 	frame_no:    u64,
@@ -38,7 +39,7 @@ Probe :: struct {
 	frame_after: f32, // then: the soonest it asked for, in seconds
 	debug:       Debug_Flags, // gtx.debug for every frame; probe_init takes it
 	tray:        Debug_Tray, // DEBUG_TOGGLE_KEY opens it, as in a live loop; its stats are the last frame's
-	arena:       Frame_Arena,
+	arena:       ops.Frame_Arena,
 	allocator:   mem.Allocator,
 }
 
@@ -49,8 +50,8 @@ probe_init :: proc(
 	p: ^Probe,
 	ui: proc(gtx: ^Ctx, user: rawptr),
 	user: rawptr,
-	size: Size,
-	font: Font_Id = 0,
+	size: ops.Size,
+	font: ops.Font_Id = 0,
 	theme: Maybe(Theme) = nil,
 	allocator := context.allocator,
 	debug: Debug_Flags = {},
@@ -65,12 +66,12 @@ probe_init :: proc(
 	p.shaper = stub_shaper()
 	p.theme = theme.? or_else default_theme(font)
 	p.dt = 1.0 / 60
-	ops_init(&p.ops, allocator)
+	ops.init(&p.scene, allocator)
 	frame_init(&p.frame, allocator)
 	frame_init(&p.prev, allocator)
 	router_init(&p.router, allocator)
 	layout_init(&p.layout, allocator)
-	err := frame_arena_init(&p.arena)
+	err := ops.frame_arena_init(&p.arena)
 	assert(err == nil, "probe: arena init failed")
 	probe_frame(p)
 }
@@ -81,8 +82,8 @@ probe_destroy :: proc(p: ^Probe) {
 	router_destroy(&p.router)
 	frame_destroy(&p.frame)
 	frame_destroy(&p.prev)
-	ops_destroy(&p.ops)
-	frame_arena_destroy(&p.arena)
+	ops.destroy(&p.scene)
+	ops.frame_arena_destroy(&p.arena)
 	p^ = {}
 }
 
@@ -95,14 +96,14 @@ probe_frame :: proc(p: ^Probe) {
 	debug := p.debug | debug_tray_flags(&p.tray)
 	router_route(&p.router, &p.prev)
 	debug_tray_log(&p.tray, &p.router, &p.prev, p.frame_no)
-	frame_arena_reset(&p.arena)
-	ops_reset(&p.ops)
-	p.ops.debug = debug
+	ops.frame_arena_reset(&p.arena)
+	ops.reset(&p.scene)
+	p.scene.outline_areas = .Bounds in debug
 	layout_reset(&p.layout)
 	dt := debug_dt(debug, p.dt)
 	p.time += f64(dt)
 	gtx := Ctx {
-		ops         = &p.ops,
+		scene         = &p.scene,
 		constraints = exact(p.size),
 		theme       = &p.theme,
 		shaper      = p.shaper,
@@ -111,7 +112,7 @@ probe_frame :: proc(p: ^Probe) {
 		frame       = p.frame_no,
 		dt          = dt,
 		time        = p.time,
-		allocator   = frame_arena_allocator(&p.arena),
+		allocator   = ops.frame_arena_allocator(&p.arena),
 		debug       = debug,
 	}
 	ui_start := time.tick_now()
@@ -121,7 +122,7 @@ probe_frame :: proc(p: ^Probe) {
 	debug_tray(&gtx, &p.tray) // last: over the inspector's highlight too
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	build_start := time.tick_now()
-	flatten(&p.ops, &p.frame)
+	flatten(&p.scene, &p.frame)
 	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), int(p.arena.arena.total_used)))
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
@@ -171,12 +172,12 @@ probe_find :: proc(p: ^Probe, name: string) -> (Hit, bool) {
 
 // probe_center returns the device-space center of the bounding rect of the
 // area tagged name.
-probe_center :: proc(p: ^Probe, name: string) -> (Point, bool) {
+probe_center :: proc(p: ^Probe, name: string) -> (ops.Point, bool) {
 	h, ok := probe_find(p, name)
 	if !ok {
 		return {}, false
 	}
-	r := transform_rect(h.transform, shape_bounds(&p.ops, h.shape))
+	r := ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape))
 	return {r.x + r.w / 2, r.y + r.h / 2}, true
 }
 
@@ -228,9 +229,9 @@ probe_move :: proc(p: ^Probe, x, y: f32) {
 	probe_frame(p)
 }
 
-// probe_dump is dump of the ops recorded by the last frame.
+// probe_dump is dump of the sc recorded by the last frame.
 probe_dump :: proc(p: ^Probe) -> string {
-	return dump(&p.ops)
+	return ops.dump(&p.scene)
 }
 
 // probe_dump_frame is dump_frame of the current frame.
@@ -242,7 +243,7 @@ probe_dump_frame :: proc(p: ^Probe) -> string {
 // order. The slice lives in the frame arena, valid until the next frame.
 probe_names :: proc(p: ^Probe) -> []string {
 	f := probe_current(p)
-	out := make([]string, len(f.tags), frame_arena_allocator(&p.arena))
+	out := make([]string, len(f.tags), ops.frame_arena_allocator(&p.arena))
 	for t, i in f.tags {
 		out[i] = t.name
 	}

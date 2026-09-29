@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -22,7 +23,7 @@ width_of :: proc(p: ^ui.Probe, name: string) -> f32 {
 	if !ok {
 		return -1
 	}
-	return ui.shape_bounds(&p.ops, h.shape).w
+	return ops.shape_bounds(&p.scene, h.shape).w
 }
 
 @(private = "file")

@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 
 // The surfaces group's caller-owned state: a bottom sheet's Sheet_State, a
@@ -9,7 +10,7 @@ import "jm:ui"
 
 // click_at presses and releases at device point pt, a frame each.
 @(private = "file")
-click_at :: proc(p: ^ui.Probe, pt: ui.Point) {
+click_at :: proc(p: ^ui.Probe, pt: ops.Point) {
 	ui.router_push(&p.router, {kind = .Move, pos = pt})
 	ui.router_push(&p.router, {kind = .Press, pos = pt})
 	ui.probe_frame(p)
@@ -153,7 +154,7 @@ test_carousel_keeps_its_state_where_told :: proc(t: ^testing.T) {
 	ui.probe_advance(&p, 60, 1.0 / 60)
 	c, ok := ui.probe_center(&p, "carousel")
 	testing.expect(t, ok)
-	left := ui.Point{c.x - 190, c.y}
+	left := ops.Point{c.x - 190, c.y}
 	click_at(&p, left)
 	testing.expect_value(t, m.hit, 2)
 	testing.expect_value(t, m.state.position, 2)

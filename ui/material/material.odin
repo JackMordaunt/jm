@@ -39,14 +39,15 @@ thread-local set by use.
 package material
 
 import "jm:ui"
+import "jm:ui/ops"
 import "jm:ui/design"
 import tok "jm:ui/material/tokens"
 
 // Scheme is M3's colour roles (sys.color), indexed by role.
-Scheme :: [tok.Role]ui.Color
+Scheme :: [tok.Role]ops.Color
 
 // hex is 0xRRGGBB as an opaque Color.
-hex :: proc(v: u32) -> ui.Color {
+hex :: proc(v: u32) -> ops.Color {
 	return {u8(v >> 16), u8(v >> 8), u8(v), 255}
 }
 
@@ -91,13 +92,13 @@ scheme :: proc() -> ^Scheme {
 
 // color is role r in the active scheme; a comp colour token is a Role, so
 // color(tok.FILLED_BUTTON_CONTAINER_COLOR) is that button's container.
-color :: proc(r: tok.Role) -> ui.Color {
+color :: proc(r: tok.Role) -> ops.Color {
 	return scheme()[r]
 }
 
 // theme_for maps s onto a jm:ui Theme so jm:ui's own widgets (label,
 // divider, box) sit in the same palette as the material ones around them.
-theme_for :: proc(s: ^Scheme, font: ui.Font_Id) -> ui.Theme {
+theme_for :: proc(s: ^Scheme, font: ops.Font_Id) -> ui.Theme {
 	th := ui.light_theme(font)
 	th.bg = s[.Surface]
 	th.surface = s[.Surface_Container]
@@ -116,7 +117,7 @@ theme_for :: proc(s: ^Scheme, font: ui.Font_Id) -> ui.Theme {
 // Fonts are the faces for the weights M3's type scale uses. jm:ui picks a
 // face per run, not a weight, so each weight is its own font file.
 Fonts :: struct {
-	regular, medium, bold: ui.Font_Id, // 400, 500, 700
+	regular, medium, bold: ops.Font_Id, // 400, 500, 700
 }
 
 @(private, thread_local)
@@ -129,7 +130,7 @@ use_fonts :: proc(f: Fonts) {
 }
 
 // font_for is the face for weight w: the nearest of 400, 500 and 700.
-font_for :: proc(gtx: ^ui.Ctx, w: f32) -> ui.Font_Id {
+font_for :: proc(gtx: ^ui.Ctx, w: f32) -> ops.Font_Id {
 	f, ok := fonts.?
 	if !ok {
 		return gtx.theme.font
@@ -302,7 +303,7 @@ Control :: struct {
 
 // control resolves state for the component with id and bounds (see
 // design.control) and picks the state layer for the state it lands in.
-control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interaction) -> (c: Control) {
+control :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, bounds: ops.Rect, state: Interaction) -> (c: Control) {
 	c.base = design.control(gtx, id, bounds, state)
 	c.layer = state_layer(c.state)
 	if c.st != nil {
@@ -333,17 +334,17 @@ state_layer :: proc(st: Interaction) -> f32 {
 CLICK_KINDS :: design.CLICK_KINDS
 
 // listen registers id's input area when c is Live.
-listen :: proc(gtx: ^ui.Ctx, c: Control, id: ui.Area_Id, shape: ui.Shape, kinds := CLICK_KINDS) {
+listen :: proc(gtx: ^ui.Ctx, c: Control, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS) {
 	design.listen(gtx, c.st, id, shape, kinds)
 }
 
 // paint_state_layer paints c's state layer of color over shape, then any ripple.
-paint_state_layer :: proc(gtx: ^ui.Ctx, c: Control, shape: ui.Shape, color: ui.Color) {
+paint_state_layer :: proc(gtx: ^ui.Ctx, c: Control, shape: ops.Shape, color: ops.Color) {
 	if c.disabled {
 		return
 	}
 	if c.layer > 0 {
-		ui.fill(gtx.ops, shape, ui.with_alpha(color, c.layer))
+		ops.fill(gtx.scene, shape, ops.with_alpha(color, c.layer))
 	}
 	if c.ripple != nil {
 		paint_ripple(gtx, c.ripple, shape, color)
@@ -355,7 +356,7 @@ paint_state_layer :: proc(gtx: ^ui.Ctx, c: Control, shape: ui.Shape, color: ui.C
 // own widget_data, started by control on a press.
 Ripple :: struct {
 	tween:  ui.Tween,
-	origin: ui.Point,
+	origin: ops.Point,
 }
 
 // RIPPLE_DURATION is how long the ripple takes to fill the shape; it
@@ -366,23 +367,23 @@ RIPPLE_PEAK_OPACITY :: PRESSED_OPACITY
 // start_ripple (re)starts r from origin, overwriting whatever ripple was
 // already running: a second click restarts the animation rather than
 // showing two ripples at once.
-start_ripple :: proc(r: ^Ripple, origin: ui.Point) {
+start_ripple :: proc(r: ^Ripple, origin: ops.Point) {
 	r.tween = {to = 1, duration = RIPPLE_DURATION}
 	r.origin = origin
 }
 
 // paint_ripple draws r, if it is still running, as an expanding circle of
 // tint clipped to shape, fading as it grows.
-paint_ripple :: proc(gtx: ^ui.Ctx, r: ^Ripple, shape: ui.Shape, tint: ui.Color) {
+paint_ripple :: proc(gtx: ^ui.Ctx, r: ^Ripple, shape: ops.Shape, tint: ops.Color) {
 	if r.tween.t >= r.tween.duration {
 		return
 	}
 	t := ui.tween_update(&r.tween, gtx)
-	bounds := ui.shape_bounds(gtx.ops, shape)
+	bounds := ops.shape_bounds(gtx.scene, shape)
 	rad := t * (bounds.w + bounds.h) // a cheap, safely-oversized bound on the origin-to-farthest-corner distance, without a sqrt
-	ui.clip_push(gtx.ops, shape)
-	ui.fill(gtx.ops, ui.Ellipse{{r.origin.x - rad, r.origin.y - rad, rad * 2, rad * 2}}, ui.with_alpha(tint, (1 - t) * RIPPLE_PEAK_OPACITY))
-	ui.clip_pop(gtx.ops)
+	ops.clip_push(gtx.scene, shape)
+	ops.fill(gtx.scene, ops.Ellipse{{r.origin.x - rad, r.origin.y - rad, rad * 2, rad * 2}}, ops.with_alpha(tint, (1 - t) * RIPPLE_PEAK_OPACITY))
+	ops.clip_pop(gtx.scene)
 }
 
 // FOCUS_RING_WIDTH and FOCUS_RING_OFFSET are the focus ring's stroke and
@@ -397,7 +398,7 @@ focus_ring :: proc() -> design.Focus_Ring {
 }
 
 // paint_focus_ring is the focus ring outside rr, following its corners.
-paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ui.Round_Rect, inward := false) {
+paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect, inward := false) {
 	design.paint_focus_ring(gtx, c.base, rr, focus_ring(), inward)
 }
 
@@ -405,25 +406,25 @@ paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ui.Round_Rect, inward := 
 // inward draws it just inside the shape, for controls packed closer than
 // the ring's 5dp reach, as md-focus-ring's inward attribute does
 // (@material/web focus/internal/focus-ring.ts).
-paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, k: Corners, inward := false) {
+paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners, inward := false) {
 	design.paint_focus_ring_corners(gtx, c.base, r, k, focus_ring(), inward)
 }
 
 // disabled_content and disabled_container are M3's disabled treatment:
 // on-surface at a fixed alpha, whatever the component's own colours were.
-disabled_content :: proc() -> ui.Color {
-	return ui.with_alpha(scheme()[.On_Surface], DISABLED_CONTENT_OPACITY)
+disabled_content :: proc() -> ops.Color {
+	return ops.with_alpha(scheme()[.On_Surface], DISABLED_CONTENT_OPACITY)
 }
 
-disabled_container :: proc() -> ui.Color {
-	return ui.with_alpha(scheme()[.On_Surface], DISABLED_CONTAINER_OPACITY)
+disabled_container :: proc() -> ops.Color {
+	return ops.with_alpha(scheme()[.On_Surface], DISABLED_CONTAINER_OPACITY)
 }
 
 // paint_elevation paints an approximate shadow for M3 elevation level 0-5 under
 // rr (level 1-5 = 1, 3, 6, 8, 12dp). jm:ui has no blur, so it is a stack
 // of offset translucent round rects: soft enough to read as a lift, not the
 // spec's two-shadow (key + ambient) composite.
-paint_elevation :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, level: int) {
+paint_elevation :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, level: int) {
 	DP := [6]f32{0, 1, 3, 6, 8, 12}
 	paint_elevation_dp(gtx, rr, DP[clamp(level, 0, 5)])
 }
@@ -446,14 +447,14 @@ shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
 }
 
 // draw_role_text is shape_text then draw_text of s at role, in one call.
-draw_role_text :: proc(gtx: ^ui.Ctx, s: string, pos: ui.Point, role: Type_Role, color: ui.Color) -> Text {
+draw_role_text :: proc(gtx: ^ui.Ctx, s: string, pos: ops.Point, role: Type_Role, color: ops.Color) -> Text {
 	t := shape_text(gtx, s, role)
 	draw_text(gtx, t, pos, color)
 	return t
 }
 
 // draw_style_text is draw_role_text for a style token.
-draw_style_text :: proc(gtx: ^ui.Ctx, s: string, pos: ui.Point, st: tok.Type_Style, color: ui.Color) -> Text {
+draw_style_text :: proc(gtx: ^ui.Ctx, s: string, pos: ops.Point, st: tok.Type_Style, color: ops.Color) -> Text {
 	t := shape_style(gtx, s, st)
 	draw_text(gtx, t, pos, color)
 	return t
@@ -489,7 +490,7 @@ elevation_level :: proc(dp: f32) -> int {
 MIN_TOUCH :: f32(48)
 
 // touch_target is r grown to at least MIN_TOUCH on each axis, about its centre.
-touch_target :: proc(r: ui.Rect) -> ui.Rect {
+touch_target :: proc(r: ops.Rect) -> ops.Rect {
 	return design.touch_target(r, MIN_TOUCH)
 }
 
@@ -497,7 +498,7 @@ touch_target :: proc(r: ui.Rect) -> ui.Rect {
 // than a level, so a token's value (and a tween between two) paints
 // directly. The shadow is black: the m3e-kit's foundations.json,
 // color.missingRoles.
-paint_elevation_dp :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, dp: f32) {
+paint_elevation_dp :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, dp: f32) {
 	design.paint_shadow(gtx, rr, dp, {0, 0, 0, 255})
 }
 

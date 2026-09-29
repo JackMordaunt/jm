@@ -1,7 +1,7 @@
 package design
 
 import "core:math"
-import "jm:ui"
+import "jm:ui/ops"
 
 // Colour metrics: the measurements axioms are stated in. Every one takes
 // jm:ui's sRGB Color, so a system's scheme is measured as it is painted.
@@ -16,7 +16,7 @@ linear :: proc(v: u8) -> f32 {
 }
 
 // luminance is c's relative luminance Y (0-1), alpha ignored.
-luminance :: proc(c: ui.Color) -> f32 {
+luminance :: proc(c: ops.Color) -> f32 {
 	return 0.2126 * linear(c[0]) + 0.7152 * linear(c[1]) + 0.0722 * linear(c[2])
 }
 
@@ -29,7 +29,7 @@ OKLCH :: struct {
 // oklch is c in OKLCH, alpha ignored. The matrices are OKLab's
 // (bottosson.github.io/posts/oklab, "A perceptual color space for image
 // processing").
-oklch :: proc(c: ui.Color) -> OKLCH {
+oklch :: proc(c: ops.Color) -> OKLCH {
 	r, g, b := linear(c[0]), linear(c[1]), linear(c[2])
 	l_ := math.pow(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b, 1.0 / 3)
 	m_ := math.pow(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b, 1.0 / 3)
@@ -53,7 +53,7 @@ hue_dist :: proc(a, b: f32) -> f32 {
 
 // wcag_ratio is the WCAG 2 contrast ratio between a and b, 1-21. It is
 // symmetric, so neither has to be the text.
-wcag_ratio :: proc(a, b: ui.Color) -> f32 {
+wcag_ratio :: proc(a, b: ops.Color) -> f32 {
 	la, lb := luminance(a), luminance(b)
 	if la < lb {
 		la, lb = lb, la
@@ -68,10 +68,10 @@ wcag_ratio :: proc(a, b: ui.Color) -> f32 {
 // differently from the reverse, which is why axioms keep foreground and
 // background ordered. Typical thresholds to ask for: Lc 75 for body
 // text, 60 for larger text, 45 for headlines, 30 for non-text.
-apca :: proc(fg, bg: ui.Color) -> f32 {
+apca :: proc(fg, bg: ops.Color) -> f32 {
 	// APCA's own sRGB coefficients, close to but not WCAG's, on a plain
 	// 2.4 power curve rather than the piecewise sRGB transfer.
-	y :: proc(c: ui.Color) -> f32 {
+	y :: proc(c: ops.Color) -> f32 {
 		ch :: proc(v: u8) -> f32 {return math.pow(f32(v) / 255, 2.4)}
 		return 0.2126729 * ch(c[0]) + 0.7151522 * ch(c[1]) + 0.0721750 * ch(c[2])
 	}

@@ -1,14 +1,14 @@
 package render
 
 import "core:os"
+import "jm:ui/ops"
 import "core:strings"
 import "core:testing"
 
-import "jm:ui"
 import bl "jm:ui/blend2d"
 
 @(private = "file")
-fill_solid :: proc(img: ^bl.ImageCore, c: ui.Color) {
+fill_solid :: proc(img: ^bl.ImageCore, c: ops.Color) {
 	bl.image_init(img)
 	bl.image_create(img, SIZE, SIZE, .PRGB32)
 	ctx: bl.ContextCore
@@ -20,7 +20,7 @@ fill_solid :: proc(img: ^bl.ImageCore, c: ui.Color) {
 }
 
 @(private = "file")
-fill_solid_with_patch :: proc(img: ^bl.ImageCore, c, patch: ui.Color, at: ui.Rect) {
+fill_solid_with_patch :: proc(img: ^bl.ImageCore, c, patch: ops.Color, at: ops.Rect) {
 	fill_solid(img, c)
 	ctx: bl.ContextCore
 	bl.context_init(&ctx)
@@ -59,7 +59,7 @@ test_image_diff_finds_a_changed_region :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	testing.expect(t, !identical)
 	testing.expect_value(t, len(changed), 1)
-	testing.expect_value(t, changed[0], ui.Rect{48, 0, 16, 16})
+	testing.expect_value(t, changed[0], ops.Rect{48, 0, 16, 16})
 }
 
 @(test)
@@ -76,7 +76,7 @@ test_image_diff_different_sizes_is_one_full_rect :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 	testing.expect(t, !identical)
 	testing.expect_value(t, len(changed), 1)
-	testing.expect_value(t, changed[0], ui.Rect{0, 0, 64, 48})
+	testing.expect_value(t, changed[0], ops.Rect{0, 0, 64, 48})
 }
 
 // test_diff_files_round_trip drives the real path an agent's edit/rebuild

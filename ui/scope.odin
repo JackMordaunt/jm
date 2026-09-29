@@ -1,13 +1,14 @@
 package ui
 
 import "base:intrinsics"
+import "jm:ui/ops"
 import "core:mem"
 
 // Scope is an open ui.scope; end it with close(&s), usually deferred.
 Scope :: struct {
 	gtx:       ^Ctx,
-	prev:      Area_Id,
-	prev_root: Area_Id,
+	prev:      ops.Area_Id,
+	prev_root: ops.Area_Id,
 	active:    bool,
 }
 
@@ -59,7 +60,7 @@ retain :: proc(gtx: ^Ctx, v: $T) {
 
 // scoped_id is id(key, loc) mixed with the open scopes, for a widget that
 // makes its id without widget_open (an overlay's own state, say).
-scoped_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Area_Id {
+scoped_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
 	i := id(key, loc)
 	if l := gtx.layout; l != nil && l.scope != 0 {
 		i = id_mix(l.scope, u64(i))
@@ -74,7 +75,7 @@ scoped_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Area_Id {
 // component's own presentation state — timers, gesture progress, an
 // animation's anchor — without borrowing Widget_State's fields. Each type
 // is its own slot, so one widget may keep several.
-widget_data :: proc(gtx: ^Ctx, id: Area_Id, $T: typeid) -> ^T {
+widget_data :: proc(gtx: ^Ctx, id: ops.Area_Id, $T: typeid) -> ^T {
 	l := gtx.layout
 	if l == nil {
 		return new(T, gtx.allocator)
@@ -99,7 +100,7 @@ data_slot :: proc(l: ^Layout, key: Data_Key, size, align: int) -> rawptr {
 // Data_Key and Data_Entry are widget_data's table.
 @(private)
 Data_Key :: struct {
-	id:   Area_Id,
+	id:   ops.Area_Id,
 	type: typeid,
 }
 
@@ -107,13 +108,13 @@ Data_Key :: struct {
 Data_Entry :: struct {
 	ptr:  rawptr,
 	seen: u64,
-	root: Area_Id,
+	root: ops.Area_Id,
 }
 
 // kept reports whether state last seen in frame seen under root lives on
 // into frame: seen last frame or this, or under a root retained then.
 @(private)
-kept :: proc(l: ^Layout, seen: u64, root: Area_Id) -> bool {
+kept :: proc(l: ^Layout, seen: u64, root: ops.Area_Id) -> bool {
 	if seen + 1 >= l.frame {
 		return true
 	}

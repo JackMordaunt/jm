@@ -15,6 +15,7 @@
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:os"
 import "core:strconv"
 import "core:strings"
@@ -51,13 +52,13 @@ widgets :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	defer ui.close(&page)
 	if s.rrect {
 		// A round-rect clip over the whole page: every draw takes the mask path.
-		ui.clip_push(gtx.ops, ui.Round_Rect{{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, 24})
+		ops.clip_push(gtx.scene, ops.Round_Rect{{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, 24})
 	}
 	card := ui.box_open(gtx)
 	ui.list(gtx, &s.list, s.rows, row, s)
 	ui.close(&card)
 	if s.rrect {
-		ui.clip_pop(gtx.ops)
+		ops.clip_pop(gtx.scene)
 	}
 }
 
@@ -79,7 +80,7 @@ rects :: proc(gtx: ^ui.Ctx, _: rawptr) {
 	for i in 0 ..< 5000 {
 		x := f32(i % 100) * (w / 100)
 		y := f32(i / 100) * (h / 50)
-		ui.fill(gtx.ops, ui.Rect{x, y, w / 100 - 1, h / 50 - 1}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
+		ops.fill(gtx.scene, ops.Rect{x, y, w / 100 - 1, h / 50 - 1}, ops.Color{u8(i), u8(i * 3), u8(i * 7), 255})
 	}
 }
 
@@ -89,7 +90,7 @@ rrects :: proc(gtx: ^ui.Ctx, _: rawptr) {
 	for i in 0 ..< 5000 {
 		x := f32(i % 100) * (w / 100)
 		y := f32(i / 100) * (h / 50)
-		ui.fill(gtx.ops, ui.Round_Rect{{x, y, w / 100 - 1, h / 50 - 1}, 3}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
+		ops.fill(gtx.scene, ops.Round_Rect{{x, y, w / 100 - 1, h / 50 - 1}, 3}, ops.Color{u8(i), u8(i * 3), u8(i * 7), 255})
 	}
 }
 
@@ -103,9 +104,9 @@ text :: proc(gtx: ^ui.Ctx, _: rawptr) {
 		if y > gtx.constraints.max.y {
 			break
 		}
-		ui.transform_push(gtx.ops, ui.translate(x, y))
+		ops.transform_push(gtx.scene, ops.translate(x, y))
 		ui.label(gtx, fmt.tprintf("label %d", i))
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 }
 
@@ -116,11 +117,11 @@ masked :: proc(gtx: ^ui.Ctx, _: rawptr) {
 	for i in 0 ..< 200 {
 		x := f32(i % 20) * (w / 20)
 		y := f32(i / 20) * (h / 10)
-		ui.transform_push(gtx.ops, ui.mul(ui.rotate(0.3), ui.translate(x, y)))
-		ui.clip_push(gtx.ops, ui.Rect{0, 0, w / 20, h / 10})
-		ui.fill(gtx.ops, ui.Rect{-10, -10, w / 20 + 20, h / 10 + 20}, ui.Color{u8(i), 120, 200, 255})
-		ui.clip_pop(gtx.ops)
-		ui.transform_pop(gtx.ops)
+		ops.transform_push(gtx.scene, ops.mul(ops.rotate(0.3), ops.translate(x, y)))
+		ops.clip_push(gtx.scene, ops.Rect{0, 0, w / 20, h / 10})
+		ops.fill(gtx.scene, ops.Rect{-10, -10, w / 20 + 20, h / 10 + 20}, ops.Color{u8(i), 120, 200, 255})
+		ops.clip_pop(gtx.scene)
+		ops.transform_pop(gtx.scene)
 	}
 }
 
@@ -224,8 +225,8 @@ main :: proc() {
 		st := State{rows = 300, rrect = sc.name == "widgets+rrect"}
 		p: ui.Probe
 		ui.probe_init(&p, sc.ui, &st, {f32(w), f32(h)})
-		ui.add_font(&p.ops, FONT)
-		p.shaper = render.shaper(&r, p.ops.fonts[:])
+		ops.add_font(&p.scene, FONT)
+		p.shaper = render.shaper(&r, p.scene.fonts[:])
 		ui.probe_frame(&p)
 		ui.probe_frame(&p) // weights settle on the second frame
 

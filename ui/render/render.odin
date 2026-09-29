@@ -7,8 +7,8 @@ ui records and flattens, render rasterizes, a platform (ui/sdl) presents.
 	render.init(&r)
 	defer render.destroy(&r)
 
-	gtx.shaper = render.shaper(&r, ops.fonts[:])
-	// ... ui(gtx), ui.flatten(&ops, &frame) ...
+	gtx.shaper = render.shaper(&r, sc.fonts[:])
+	// ... ui(gtx), ui.flatten(&sc, &frame) ...
 	render.render_png(&r, &frame, 640, 480, "build/frame.png", {255, 255, 255, 255})
 
 Clipping: a draw whose clip chain is all rects under translate/scale
@@ -35,6 +35,7 @@ still returns only once every pixel is written.
 package render
 
 import "core:math"
+import "jm:ui/ops"
 import "core:mem"
 import "core:strings"
 
@@ -43,7 +44,7 @@ import bl "jm:ui/blend2d"
 
 // Font_Key names one Blend2D font instance: a face at a pixel size.
 Font_Key :: struct {
-	id:   ui.Font_Id,
+	id:   ops.Font_Id,
 	size: f32,
 }
 
@@ -53,16 +54,16 @@ Renderer :: struct {
 	ctx:        bl.ContextCore, // draws into the target
 	layer_ctx:  bl.ContextCore, // draws a clipped command into layer
 	mask_ctx:   bl.ContextCore, // rasterizes clip shapes into masks
-	faces:      map[ui.Font_Id]bl.FontFaceCore,
+	faces:      map[ops.Font_Id]bl.FontFaceCore,
 	fonts:      map[Font_Key]bl.FontCore,
-	images:     map[ui.Image_Id]bl.ImageCore,
+	images:     map[ops.Image_Id]bl.ImageCore,
 	masks:      map[ui.Clip_Id]Mask, // per render call
 	pool:       [dynamic][]u8, // mask pixel buffers, reused across calls
 	pool_used:  int, // buffers handed out this call
 	layer:      bl.ImageCore, // at least as big as every target so far
 	layer_size: [2]i32,
 	path:       bl.PathCore,
-	font_refs:  []ui.Font_Ref, // what the shaper loads from
+	font_refs:  []ops.Font_Ref, // what the shaper loads from
 	allocator:  mem.Allocator,
 	// threads > 0 makes the target context asynchronous with that many
 	// workers (1 = the calling thread only). Layer and mask contexts stay
@@ -77,8 +78,8 @@ Renderer :: struct {
 @(private)
 Mask :: struct {
 	img:   bl.ImageCore,
-	box:   ui.Rect, // whole pixels
-	inner: ui.Rect, // whole pixels inside box, empty when the chain has none
+	box:   ops.Rect, // whole pixels
+	inner: ops.Rect, // whole pixels inside box, empty when the chain has none
 }
 
 // init prepares r. Caches allocate from allocator.
@@ -89,9 +90,9 @@ init :: proc(r: ^Renderer, allocator := context.allocator) {
 	bl.context_init(&r.mask_ctx)
 	bl.image_init(&r.layer)
 	bl.path_init(&r.path)
-	r.faces = make(map[ui.Font_Id]bl.FontFaceCore, allocator)
+	r.faces = make(map[ops.Font_Id]bl.FontFaceCore, allocator)
 	r.fonts = make(map[Font_Key]bl.FontCore, allocator)
-	r.images = make(map[ui.Image_Id]bl.ImageCore, allocator)
+	r.images = make(map[ops.Image_Id]bl.ImageCore, allocator)
 	r.masks = make(map[ui.Clip_Id]Mask, allocator)
 	r.pool = make([dynamic][]u8, allocator)
 }
@@ -125,8 +126,8 @@ destroy :: proc(r: ^Renderer) {
 }
 
 // render clears target to clear and executes f.draws in order onto it.
-// target must be a PRGB32 image; f.ops supplies paths, runs, fonts and images.
-render :: proc(r: ^Renderer, f: ^ui.Frame, target: ^bl.ImageCore, clear: ui.Color) {
+// target must be a PRGB32 image; f.scene supplies paths, runs, fonts and images.
+render :: proc(r: ^Renderer, f: ^ui.Frame, target: ^bl.ImageCore, clear: ops.Color) {
 	clear_masks(r)
 	data: bl.ImageData
 	if bl.image_get_data(target, &data) != 0 {
@@ -152,7 +153,7 @@ render :: proc(r: ^Renderer, f: ^ui.Frame, target: ^bl.ImageCore, clear: ui.Colo
 
 	bl.context_clear_all(&r.ctx)
 	bl.context_fill_all_rgba32(&r.ctx, rgba32(clear))
-	if f.ops == nil {
+	if f.scene == nil {
 		return
 	}
 	for i := 0; i < len(f.draws); {
@@ -171,7 +172,7 @@ render :: proc(r: ^Renderer, f: ^ui.Frame, target: ^bl.ImageCore, clear: ui.Colo
 
 // render_png renders f into a new w×h image and writes it to path; the
 // codec is picked from the extension. It reports whether the write worked.
-render_png :: proc(r: ^Renderer, f: ^ui.Frame, w, h: int, path: string, clear: ui.Color) -> bool {
+render_png :: proc(r: ^Renderer, f: ^ui.Frame, w, h: int, path: string, clear: ops.Color) -> bool {
 	img: bl.ImageCore
 	bl.image_init(&img)
 	defer bl.image_destroy(&img)
@@ -185,7 +186,7 @@ render_png :: proc(r: ^Renderer, f: ^ui.Frame, w, h: int, path: string, clear: u
 
 // pixel reads the straight (unpremultiplied) color at (x, y) of a PRGB32
 // image, or zero when the point is outside it.
-pixel :: proc(img: ^bl.ImageCore, x, y: int) -> ui.Color {
+pixel :: proc(img: ^bl.ImageCore, x, y: int) -> ops.Color {
 	data: bl.ImageData
 	if bl.image_get_data(img, &data) != 0 {
 		return {}
@@ -207,19 +208,19 @@ pixel :: proc(img: ^bl.ImageCore, x, y: int) -> ui.Color {
 
 // rgba32 packs a straight color the way Blend2D's *_rgba32 calls take it:
 // 0xAARRGGBB, not premultiplied.
-rgba32 :: proc(c: ui.Color) -> u32 {
+rgba32 :: proc(c: ops.Color) -> u32 {
 	return u32(c.a) << 24 | u32(c.r) << 16 | u32(c.g) << 8 | u32(c.b)
 }
 
 @(private)
-to_matrix :: proc(m: ui.Affine) -> bl.Matrix2D {
+to_matrix :: proc(m: ops.Affine) -> bl.Matrix2D {
 	out: bl.Matrix2D
 	out.m = {m.a, m.b, m.c, m.d, m.e, m.f}
 	return out
 }
 
 @(private)
-set_transform :: proc(ctx: ^bl.ContextCore, m: ui.Affine) {
+set_transform :: proc(ctx: ^bl.ContextCore, m: ops.Affine) {
 	mm := to_matrix(m)
 	bl.context_apply_transform_op(ctx, .ASSIGN, &mm)
 }
@@ -263,7 +264,7 @@ exec :: proc(r: ^Renderer, f: ^ui.Frame, d: ^ui.Draw) -> bool {
 	}
 	bl.context_save(&r.ctx, nil)
 	defer bl.context_restore(&r.ctx, nil)
-	set_transform(&r.ctx, ui.IDENTITY)
+	set_transform(&r.ctx, ops.IDENTITY)
 	rect := bl.Rect{f64(dev.x), f64(dev.y), f64(dev.w), f64(dev.h)}
 	bl.context_clip_to_rect_d(&r.ctx, &rect)
 	set_transform(&r.ctx, d.transform)
@@ -285,7 +286,7 @@ exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
 	inner := m.inner
 	if inner.w > 0 {
 		bl.context_save(&r.ctx, nil)
-		set_transform(&r.ctx, ui.IDENTITY)
+		set_transform(&r.ctx, ops.IDENTITY)
 		rect := bl.Rect{f64(inner.x), f64(inner.y), f64(inner.w), f64(inner.h)}
 		bl.context_clip_to_rect_d(&r.ctx, &rect)
 		for &d in draws {
@@ -324,7 +325,7 @@ exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
 	defer bl.pattern_destroy(&pattern)
 	bl.context_save(&r.ctx, nil)
 	defer bl.context_restore(&r.ctx, nil)
-	set_transform(&r.ctx, ui.IDENTITY)
+	set_transform(&r.ctx, ops.IDENTITY)
 	bl.context_set_comp_op(&r.ctx, .SRC_OVER)
 	bl.context_set_fill_style(&r.ctx, (^bl.Unknown)(&pattern))
 	for e in edges[:n] {
@@ -338,15 +339,15 @@ exec_masked :: proc(r: ^Renderer, f: ^ui.Frame, draws: []ui.Draw, w, h: i32) {
 // covers fully, where its mask is opaque. It is empty unless every node is
 // a Rect or Round_Rect under an axis-aligned transform.
 @(private)
-clip_interior :: proc(f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ui.Rect {
-	out := ui.Rect{0, 0, f32(w), f32(h)}
+clip_interior :: proc(f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ops.Rect {
+	out := ops.Rect{0, 0, f32(w), f32(h)}
 	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
 		node := f.clips[c]
 		inside, ok := box_inside(node.shape, 0)
-		if !ok || !ui.is_axis_aligned(node.transform) {
+		if !ok || !ops.is_axis_aligned(node.transform) {
 			return {}
 		}
-		out = ui.rect_intersect(out, ui.transform_rect(node.transform, inside))
+		out = ops.rect_intersect(out, ops.transform_rect(node.transform, inside))
 	}
 	return inner_pixels(out, {w, h})
 }
@@ -355,14 +356,14 @@ clip_interior :: proc(f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ui.Rect {
 // rects: full-width bands above and below inner, then its left and right.
 // An empty inner leaves box whole.
 @(private)
-ring :: proc(box, inner: ui.Rect) -> (out: [4]ui.Rect, n: int) {
+ring :: proc(box, inner: ops.Rect) -> (out: [4]ops.Rect, n: int) {
 	if inner.w <= 0 || inner.h <= 0 {
 		out[0] = box
 		return out, 1
 	}
 	bx1, by1 := box.x + box.w, box.y + box.h
 	ix1, iy1 := inner.x + inner.w, inner.y + inner.h
-	parts := [4]ui.Rect {
+	parts := [4]ops.Rect {
 		{box.x, box.y, box.w, inner.y - box.y},
 		{box.x, iy1, box.w, by1 - iy1},
 		{box.x, inner.y, inner.x - box.x, inner.h},
@@ -380,17 +381,17 @@ ring :: proc(box, inner: ui.Rect) -> (out: [4]ui.Rect, n: int) {
 // rect_chain resolves a clip chain to one device rect when every node is a
 // Rect under an axis-aligned transform.
 @(private)
-rect_chain :: proc(f: ^ui.Frame, id: ui.Clip_Id) -> (ui.Rect, bool) {
-	out: ui.Rect
+rect_chain :: proc(f: ^ui.Frame, id: ui.Clip_Id) -> (ops.Rect, bool) {
+	out: ops.Rect
 	first := true
 	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
 		node := f.clips[c]
-		rect, is_rect := node.shape.(ui.Rect)
-		if !is_rect || !ui.is_axis_aligned(node.transform) {
+		rect, is_rect := node.shape.(ops.Rect)
+		if !is_rect || !ops.is_axis_aligned(node.transform) {
 			return {}, false
 		}
-		dev := ui.transform_rect(node.transform, rect)
-		out = dev if first else ui.rect_intersect(out, dev)
+		dev := ops.transform_rect(node.transform, rect)
+		out = dev if first else ops.rect_intersect(out, dev)
 		first = false
 	}
 	return out, true
@@ -425,10 +426,10 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 	}
 	m := Mask{}
 	bl.image_init(&m.img)
-	dev := ui.Rect{0, 0, f32(w), f32(h)}
+	dev := ops.Rect{0, 0, f32(w), f32(h)}
 	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
 		node := f.clips[c]
-		dev = ui.rect_intersect(dev, ui.transform_rect(node.transform, ui.shape_bounds(f.ops, node.shape)))
+		dev = ops.rect_intersect(dev, ops.transform_rect(node.transform, ops.shape_bounds(f.scene, node.shape)))
 	}
 	if dev.w > 0 && dev.h > 0 {
 		x0, y0 := math.floor(dev.x), math.floor(dev.y)
@@ -439,7 +440,7 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 		r.masks[id] = m
 		return nil
 	}
-	m.inner = ui.rect_intersect(clip_interior(f, id, w, h), m.box)
+	m.inner = ops.rect_intersect(clip_interior(f, id, w, h), m.box)
 	if m.inner.w <= 0 || m.inner.h <= 0 {
 		m.inner = {}
 	}
@@ -449,11 +450,11 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 		e.x -= m.box.x
 		e.y -= m.box.y
 	}
-	shift := ui.translate(-m.box.x, -m.box.y)
+	shift := ops.translate(-m.box.x, -m.box.y)
 	first := true
 	for c := id; c != ui.NO_CLIP; c = f.clips[c].parent {
 		node := f.clips[c]
-		node.transform = ui.mul(node.transform, shift)
+		node.transform = ops.mul(node.transform, shift)
 		if first {
 			fill_coverage(r, f, &m.img, node, edges[:n])
 			first = false
@@ -485,7 +486,7 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 // padded to 16 bytes: with unpadded rows the mask fill painted outside the
 // clip.
 @(private)
-mask_view :: proc(r: ^Renderer, img: ^bl.ImageCore, box: ui.Rect) -> bool {
+mask_view :: proc(r: ^Renderer, img: ^bl.ImageCore, box: ops.Rect) -> bool {
 	w, h := int(box.w), int(box.h)
 	stride := mem.align_forward_int(w, 16)
 	buf := pool_take(r, stride * h)
@@ -495,7 +496,7 @@ mask_view :: proc(r: ^Renderer, img: ^bl.ImageCore, box: ui.Rect) -> bool {
 // fill_coverage clears each of areas in img and fills one clip node's shape
 // opaque into them, leaving the rest of img untouched.
 @(private)
-fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.Clip, areas: []ui.Rect) {
+fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.Clip, areas: []ops.Rect) {
 	if bl.context_begin(&r.mask_ctx, img, nil) != 0 {
 		return
 	}
@@ -507,7 +508,7 @@ fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.C
 		bl.context_clip_to_rect_i(&r.mask_ctx, &area)
 		bl.context_clear_rect_i(&r.mask_ctx, &area)
 		set_transform(&r.mask_ctx, node.transform)
-		fill_shape(r, &r.mask_ctx, f.ops, node.shape)
+		fill_shape(r, &r.mask_ctx, f.scene, node.shape)
 		bl.context_restore(&r.mask_ctx, nil)
 	}
 }
@@ -516,23 +517,23 @@ fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.C
 @(private)
 draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) {
 	switch cmd in d.cmd {
-	case ui.Fill:
+	case ops.Fill:
 		style := make_style(r, f, cmd.paint)
 		defer destroy_style(&style)
 		set_style(ctx, &style, true)
-		fill_shape(r, ctx, f.ops, cmd.shape)
-	case ui.Stroke:
+		fill_shape(r, ctx, f.scene, cmd.shape)
+	case ops.Stroke:
 		style := make_style(r, f, cmd.paint)
 		defer destroy_style(&style)
 		set_style(ctx, &style, false)
 		bl.context_set_stroke_width(ctx, f64(cmd.style.width))
 		bl.context_set_stroke_caps(ctx, stroke_cap(cmd.style.cap))
 		bl.context_set_stroke_join(ctx, stroke_join(cmd.style.join))
-		stroke_shape(r, ctx, f.ops, cmd.shape)
-	case ui.Glyphs:
+		stroke_shape(r, ctx, f.scene, cmd.shape)
+	case ops.Glyphs:
 		draw_glyphs(r, ctx, f, cmd)
-	case ui.Image:
-		img := image(r, f.ops, cmd.id)
+	case ops.Image:
+		img := image(r, f.scene, cmd.id)
 		if img == nil {
 			return
 		}
@@ -552,7 +553,7 @@ draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) 
 }
 
 @(private)
-stroke_cap :: proc(c: ui.Line_Cap) -> bl.StrokeCap {
+stroke_cap :: proc(c: ops.Line_Cap) -> bl.StrokeCap {
 	switch c {
 	case .Butt:
 		return .BUTT
@@ -565,7 +566,7 @@ stroke_cap :: proc(c: ui.Line_Cap) -> bl.StrokeCap {
 }
 
 @(private)
-stroke_join :: proc(j: ui.Line_Join) -> bl.StrokeJoin {
+stroke_join :: proc(j: ops.Line_Join) -> bl.StrokeJoin {
 	switch j {
 	case .Miter:
 		return .MITER_CLIP
@@ -578,16 +579,16 @@ stroke_join :: proc(j: ui.Line_Join) -> bl.StrokeJoin {
 }
 
 @(private)
-draw_glyphs :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, g: ui.Glyphs) {
-	if int(g.run) >= len(f.ops.runs) {
+draw_glyphs :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, g: ops.Glyphs) {
+	if int(g.run) >= len(f.scene.runs) {
 		return
 	}
-	run := f.ops.runs[g.run]
+	run := f.scene.runs[g.run]
 	n := len(run.glyphs)
 	if n == 0 {
 		return
 	}
-	font := font_for(r, run.font, run.size, f.ops.fonts[:])
+	font := font_for(r, run.font, run.size, f.scene.fonts[:])
 	if font == nil {
 		return
 	}
@@ -612,19 +613,19 @@ draw_glyphs :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, g: ui.Glyp
 }
 
 @(private)
-fill_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, ops: ^ui.Ops, s: ui.Shape) {
+fill_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, sc: ^ops.Scene, s: ops.Shape) {
 	switch v in s {
-	case ui.Rect:
+	case ops.Rect:
 		rect := bl.Rect{f64(v.x), f64(v.y), f64(v.w), f64(v.h)}
 		bl.context_fill_rect_d(ctx, &rect)
-	case ui.Round_Rect:
+	case ops.Round_Rect:
 		rr := round_rect(v)
 		bl.context_fill_geometry(ctx, .ROUND_RECT, &rr)
-	case ui.Ellipse:
+	case ops.Ellipse:
 		e := ellipse(v)
 		bl.context_fill_geometry(ctx, .ELLIPSE, &e)
-	case ui.Path_Ref:
-		if build_path(r, ops, v.id) {
+	case ops.Path_Ref:
+		if build_path(r, sc, v.id) {
 			origin := bl.Point{0, 0}
 			bl.context_fill_path_d(ctx, &origin, &r.path)
 		}
@@ -632,19 +633,19 @@ fill_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, ops: ^ui.Ops, s: ui.Shape
 }
 
 @(private)
-stroke_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, ops: ^ui.Ops, s: ui.Shape) {
+stroke_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, sc: ^ops.Scene, s: ops.Shape) {
 	switch v in s {
-	case ui.Rect:
+	case ops.Rect:
 		rect := bl.Rect{f64(v.x), f64(v.y), f64(v.w), f64(v.h)}
 		bl.context_stroke_rect_d(ctx, &rect)
-	case ui.Round_Rect:
+	case ops.Round_Rect:
 		rr := round_rect(v)
 		bl.context_stroke_geometry(ctx, .ROUND_RECT, &rr)
-	case ui.Ellipse:
+	case ops.Ellipse:
 		e := ellipse(v)
 		bl.context_stroke_geometry(ctx, .ELLIPSE, &e)
-	case ui.Path_Ref:
-		if build_path(r, ops, v.id) {
+	case ops.Path_Ref:
+		if build_path(r, sc, v.id) {
 			origin := bl.Point{0, 0}
 			bl.context_stroke_path_d(ctx, &origin, &r.path)
 		}
@@ -652,25 +653,25 @@ stroke_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, ops: ^ui.Ops, s: ui.Sha
 }
 
 @(private)
-round_rect :: proc(v: ui.Round_Rect) -> bl.RoundRect {
+round_rect :: proc(v: ops.Round_Rect) -> bl.RoundRect {
 	rad := f64(v.radius)
 	return {f64(v.rect.x), f64(v.rect.y), f64(v.rect.w), f64(v.rect.h), rad, rad}
 }
 
 @(private)
-ellipse :: proc(v: ui.Ellipse) -> bl.Ellipse {
+ellipse :: proc(v: ops.Ellipse) -> bl.Ellipse {
 	rx, ry := f64(v.rect.w) / 2, f64(v.rect.h) / 2
 	return {f64(v.rect.x) + rx, f64(v.rect.y) + ry, rx, ry}
 }
 
-// build_path decodes ops.paths[id] into r.path. Move and Line consume one
+// build_path decodes sc.paths[id] into r.path. Move and Line consume one
 // point, Cubic three, Close none; a path that runs out of points stops there.
 @(private)
-build_path :: proc(r: ^Renderer, ops: ^ui.Ops, id: ui.Path_Id) -> bool {
-	if int(id) >= len(ops.paths) {
+build_path :: proc(r: ^Renderer, sc: ^ops.Scene, id: ops.Path_Id) -> bool {
+	if int(id) >= len(sc.paths) {
 		return false
 	}
-	p := ops.paths[id]
+	p := sc.paths[id]
 	bl.path_clear(&r.path)
 	i := 0
 	for verb in p.verbs {
@@ -718,21 +719,21 @@ Style :: struct {
 }
 
 @(private)
-make_style :: proc(r: ^Renderer, f: ^ui.Frame, p: ui.Paint) -> Style {
+make_style :: proc(r: ^Renderer, f: ^ui.Frame, p: ops.Paint) -> Style {
 	s: Style
 	switch v in p {
-	case ui.Color:
+	case ops.Color:
 		s.kind = .Solid
 		s.color = rgba32(v)
-	case ui.Linear_Gradient:
+	case ops.Linear_Gradient:
 		values := bl.LinearGradientValues{f64(v.p0.x), f64(v.p0.y), f64(v.p1.x), f64(v.p1.y)}
 		gradient(&s, .LINEAR, &values, v.stops)
-	case ui.Radial_Gradient:
+	case ops.Radial_Gradient:
 		cx, cy := f64(v.center.x), f64(v.center.y)
 		values := bl.RadialGradientValues{cx, cy, cx, cy, f64(v.radius), 0}
 		gradient(&s, .RADIAL, &values, v.stops)
-	case ui.Image_Paint:
-		img := image(r, f.ops, v.image)
+	case ops.Image_Paint:
+		img := image(r, f.scene, v.image)
 		if img == nil {
 			s.kind = .None
 			return s
@@ -746,7 +747,7 @@ make_style :: proc(r: ^Renderer, f: ^ui.Frame, p: ui.Paint) -> Style {
 }
 
 @(private)
-gradient :: proc(s: ^Style, type: bl.GradientType, values: rawptr, stops: []ui.Gradient_Stop) {
+gradient :: proc(s: ^Style, type: bl.GradientType, values: rawptr, stops: []ops.Gradient_Stop) {
 	s.kind = .Gradient
 	bl.gradient_init_as(&s.gradient, type, values, .PAD, nil, 0, nil)
 	for st in stops {
@@ -795,11 +796,11 @@ destroy_style :: proc(s: ^Style) {
 	}
 }
 
-// image returns the cached image for id, reading it from ops.images on
+// image returns the cached image for id, reading it from sc.images on
 // first use. A missing or unreadable file yields nil every time after a
 // single failed read.
 @(private)
-image :: proc(r: ^Renderer, ops: ^ui.Ops, id: ui.Image_Id) -> ^bl.ImageCore {
+image :: proc(r: ^Renderer, sc: ^ops.Scene, id: ops.Image_Id) -> ^bl.ImageCore {
 	if img, ok := &r.images[id]; ok {
 		data: bl.ImageData
 		if bl.image_get_data(img, &data) != 0 || data.size.w == 0 {
@@ -809,7 +810,7 @@ image :: proc(r: ^Renderer, ops: ^ui.Ops, id: ui.Image_Id) -> ^bl.ImageCore {
 	}
 	img: bl.ImageCore
 	bl.image_init(&img)
-	for ref in ops.images {
+	for ref in sc.images {
 		if ref.id == id {
 			cpath := strings.clone_to_cstring(ref.path, context.temp_allocator)
 			if bl.image_read_from_file(&img, cpath, nil) != 0 {
@@ -821,13 +822,13 @@ image :: proc(r: ^Renderer, ops: ^ui.Ops, id: ui.Image_Id) -> ^bl.ImageCore {
 		}
 	}
 	r.images[id] = img
-	return image(r, ops, id)
+	return image(r, sc, id)
 }
 
 // face returns the cached font face for id, loading it from the path refs
 // name on first use; nil when the id is unknown or the file does not load.
 @(private)
-face :: proc(r: ^Renderer, id: ui.Font_Id, refs: []ui.Font_Ref) -> ^bl.FontFaceCore {
+face :: proc(r: ^Renderer, id: ops.Font_Id, refs: []ops.Font_Ref) -> ^bl.FontFaceCore {
 	if fc, ok := &r.faces[id]; ok {
 		return fc
 	}
@@ -850,7 +851,7 @@ face :: proc(r: ^Renderer, id: ui.Font_Id, refs: []ui.Font_Ref) -> ^bl.FontFaceC
 
 // font_for returns the cached Blend2D font for (id, size).
 @(private)
-font_for :: proc(r: ^Renderer, id: ui.Font_Id, size: f32, refs: []ui.Font_Ref) -> ^bl.FontCore {
+font_for :: proc(r: ^Renderer, id: ops.Font_Id, size: f32, refs: []ops.Font_Ref) -> ^bl.FontCore {
 	key := Font_Key{id, size}
 	if fnt, ok := &r.fonts[key]; ok {
 		return fnt

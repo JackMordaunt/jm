@@ -1,6 +1,7 @@
 package material
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:math"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
@@ -66,7 +67,7 @@ slider :: proc(
 ) -> bool {
 	p := ui.widget_open(gtx, key, loc)
 	g := slider_geom(width, vertical, top_to_bottom, lo, hi, step)
-	size := ui.constrain(gtx.constraints, g.vertical ? ui.Size{g.cross, g.length} : ui.Size{g.length, g.cross})
+	size := ui.constrain(gtx.constraints, g.vertical ? ops.Size{g.cross, g.length} : ops.Size{g.length, g.cross})
 	g = slider_geom(vertical ? size.y : size.x, vertical, top_to_bottom, lo, hi, step)
 	old := value^
 	c := slider_state(gtx, p.id, state)
@@ -77,8 +78,8 @@ slider :: proc(
 	}
 	icons := track == .Standard ? [2]Icon{start_icon, end_icon} : {}
 	paint_slider(gtx, c, g, lo, hi, {value^, value^}, false, track == .Centered, 1, icons, indicator)
-	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "slider"))
+	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "slider"))
 	ui.widget_close(gtx, &p, {size = size})
 	return value^ != old
 }
@@ -118,8 +119,8 @@ range_slider :: proc(
 		active = rh.active
 	}
 	paint_slider(gtx, c, g, lo, hi, {lo_value^, hi_value^}, true, false, active, {}, indicator)
-	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "range slider"))
+	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "range slider"))
 	ui.widget_close(gtx, &p, {size = size})
 	return old != {lo_value^, hi_value^}
 }
@@ -133,7 +134,7 @@ Range_Handle :: struct {
 }
 
 @(private)
-SLIDER_KINDS :: ui.Event_Kinds{.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur}
+SLIDER_KINDS :: ops.Event_Kinds{.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur}
 
 // TRACK_INSIDE_CORNER is the radius of a track segment's corner that faces
 // a gap: hard-coded in Compose, whatever active-track-shape-leading says
@@ -188,7 +189,7 @@ slider_geom :: proc(length: f32, vertical, top_to_bottom: bool, lo, hi, step: f3
 // slider_rect is the widget-space rect spanning u0..u1 along the track and
 // v0..v1 across it.
 @(private)
-slider_rect :: proc(g: Slider_Geom, u0, u1, v0, v1: f32) -> ui.Rect {
+slider_rect :: proc(g: Slider_Geom, u0, u1, v0, v1: f32) -> ops.Rect {
 	if !g.vertical {
 		return {u0, v0, u1 - u0, v1 - v0}
 	}
@@ -213,7 +214,7 @@ slider_corners :: proc(g: Slider_Geom, a, b: f32) -> Corners {
 
 // slider_point is the widget-space point at u along the track, v across.
 @(private)
-slider_point :: proc(g: Slider_Geom, u, v: f32) -> ui.Point {
+slider_point :: proc(g: Slider_Geom, u, v: f32) -> ops.Point {
 	r := slider_rect(g, u, u, v, v)
 	return {r.x, r.y}
 }
@@ -234,7 +235,7 @@ handle_u :: proc(g: Slider_Geom, f: f32) -> f32 {
 // value_at is the value under widget-space pos: linear over the handle's
 // travel, then snapped to the nearest stop.
 @(private)
-value_at :: proc(g: Slider_Geom, pos: ui.Point, lo, hi, step: f32) -> f32 {
+value_at :: proc(g: Slider_Geom, pos: ops.Point, lo, hi, step: f32) -> f32 {
 	u := g.vertical ? pos.y : pos.x
 	if g.flip {
 		u = g.length - u
@@ -256,7 +257,7 @@ snap :: proc(v, lo, hi, step: f32) -> f32 {
 // own and a press draws no ripple (slider.json states), so no state layer
 // opacity is set.
 @(private)
-slider_state :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, state: Interaction) -> Control {
+slider_state :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, state: Interaction) -> Control {
 	if state != .Live {
 		c := control(gtx, id, {}, state)
 		c.layer = 0
@@ -268,7 +269,7 @@ slider_state :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, state: Interaction) -> Contro
 // apply_slider_input applies this frame's events to vals, one pointer per
 // handle; with two, rh holds which one is active.
 @(private = "file")
-apply_slider_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, st: ^ui.Widget_State, g: Slider_Geom, vals: []^f32, lo, hi, step: f32, rh: ^Range_Handle = nil) {
+apply_slider_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, st: ^ui.Widget_State, g: Slider_Geom, vals: []^f32, lo, hi, step: f32, rh: ^Range_Handle = nil) {
 	two := len(vals) == 2 && rh != nil
 	active := two ? clamp(rh.active, 0, 1) : 0
 	for e in ui.events(gtx, id) {
@@ -355,7 +356,7 @@ set_handle :: proc(vals: []^f32, i: int, v: f32) {
 // Slider_Colors are a slider's resolved colours in its current state.
 @(private)
 Slider_Colors :: struct {
-	active, inactive, handle: ui.Color,
+	active, inactive, handle: ops.Color,
 }
 
 @(private)
@@ -364,9 +365,9 @@ slider_colors :: proc(disabled: bool) -> Slider_Colors {
 		// The disabled handle is composited over the surface so the track
 		// does not show through it (slider.json states, Slider.kt:1723-1737).
 		return {
-			active = ui.with_alpha(color(tok.SLIDER_DISABLED_ACTIVE_TRACK_COLOR), tok.SLIDER_DISABLED_ACTIVE_TRACK_OPACITY),
-			inactive = ui.with_alpha(color(tok.SLIDER_DISABLED_INACTIVE_TRACK_COLOR), tok.SLIDER_DISABLED_INACTIVE_TRACK_OPACITY),
-			handle = ui.mix(color(.Surface), color(tok.SLIDER_DISABLED_HANDLE_COLOR), tok.SLIDER_DISABLED_HANDLE_OPACITY),
+			active = ops.with_alpha(color(tok.SLIDER_DISABLED_ACTIVE_TRACK_COLOR), tok.SLIDER_DISABLED_ACTIVE_TRACK_OPACITY),
+			inactive = ops.with_alpha(color(tok.SLIDER_DISABLED_INACTIVE_TRACK_COLOR), tok.SLIDER_DISABLED_INACTIVE_TRACK_OPACITY),
+			handle = ops.mix(color(.Surface), color(tok.SLIDER_DISABLED_HANDLE_COLOR), tok.SLIDER_DISABLED_HANDLE_OPACITY),
 		}
 	}
 	return {color(tok.SLIDER_ACTIVE_TRACK_COLOR), color(tok.SLIDER_INACTIVE_TRACK_COLOR), color(tok.SLIDER_HANDLE_COLOR)}
@@ -432,13 +433,13 @@ paint_slider :: proc(
 	mid := L / 2
 	shrink := g.n == 0 // corner shrinking: a continuous segment may shorten to nothing
 	v0, v1 := (g.cross - g.th) / 2, (g.cross + g.th) / 2
-	seg :: proc(gtx: ^ui.Ctx, g: Slider_Geom, u0, u1, v0, v1, a, b: f32, color: ui.Color) {
+	seg :: proc(gtx: ^ui.Ctx, g: Slider_Geom, u0, u1, v0, v1, a, b: f32, color: ops.Color) {
 		if u1 > u0 {
-			ui.fill(gtx.ops, rounded(gtx, slider_rect(g, g.t0 + u0, g.t0 + u1, v0, v1), slider_corners(g, a, b)), color)
+			ops.fill(gtx.scene, rounded(gtx, slider_rect(g, g.t0 + u0, g.t0 + u1, v0, v1), slider_corners(g, a, b)), color)
 		}
 	}
-	dot :: proc(gtx: ^ui.Ctx, g: Slider_Geom, u: f32, color: ui.Color) {
-		ui.fill(gtx.ops, ui.circle(slider_point(g, g.t0 + u, g.cross / 2), tok.SLIDER_STOP_INDICATOR_SIZE / 2), color)
+	dot :: proc(gtx: ^ui.Ctx, g: Slider_Geom, u: f32, color: ops.Color) {
+		ops.fill(gtx.scene, ui.circle(slider_point(g, g.t0 + u, g.cross / 2), tok.SLIDER_STOP_INDICATOR_SIZE / 2), color)
 	}
 
 	// The inactive segment before the fill: a range's, or a centered
@@ -538,7 +539,7 @@ paint_slider_handles :: proc(
 	gtx: ^ui.Ctx,
 	c: Control,
 	g: Slider_Geom,
-	handle: ui.Color,
+	handle: ops.Color,
 	us, hw, values: [2]f32,
 	range: bool,
 	active: int,
@@ -552,7 +553,7 @@ paint_slider_handles :: proc(
 		u := g.t0 + us[i]
 		hr := slider_rect(g, u - hw[i] / 2, u + hw[i] / 2, (g.cross - tok.SLIDER_HANDLE_HEIGHT) / 2, (g.cross + tok.SLIDER_HANDLE_HEIGHT) / 2)
 		k := corners(tok.SLIDER_HANDLE_SHAPE, hr)
-		ui.fill(gtx.ops, rounded(gtx, hr, k), handle)
+		ops.fill(gtx.scene, rounded(gtx, hr, k), handle)
 		mine := !range || i == active
 		if mine {
 			paint_focus_ring_corners(gtx, c, hr, k)
@@ -568,20 +569,20 @@ paint_slider_handles :: proc(
 // inverse-on-surface on an inverse-surface pill, active-bottom-space
 // above the handle hr (to its start side when vertical).
 @(private)
-paint_value_indicator :: proc(gtx: ^ui.Ctx, g: Slider_Geom, hr: ui.Rect, v, span: f32) {
+paint_value_indicator :: proc(gtx: ^ui.Ctx, g: Slider_Geom, hr: ops.Rect, v, span: f32) {
 	str := abs(v) >= 10 || span >= 10 ? fmt.tprintf("%.0f", v) : fmt.tprintf("%.2g", v)
 	t := shape_style(gtx, str, tok.SLIDER_VALUE_INDICATOR_LABEL_TEXT_FONT)
 	pad := VALUE_INDICATOR_PAD
 	h := t.height + 2 * pad.y
 	w := max(t.width + 2 * pad.x, h)
 	space := tok.SLIDER_VALUE_INDICATOR_ACTIVE_BOTTOM_SPACE
-	at := ui.Point{hr.x + hr.w / 2 - w / 2, hr.y - space - h}
+	at := ops.Point{hr.x + hr.w / 2 - w / 2, hr.y - space - h}
 	if g.vertical {
 		at = {hr.x - space - w, hr.y + hr.h / 2 - h / 2}
 	}
 	o := ui.overlay_open(gtx, at)
 	defer ui.close(&o)
-	ui.fill(gtx.ops, ui.Round_Rect{{0, 0, w, h}, h / 2}, color(tok.SLIDER_VALUE_INDICATOR_CONTAINER_COLOR))
+	ops.fill(gtx.scene, ops.Round_Rect{{0, 0, w, h}, h / 2}, color(tok.SLIDER_VALUE_INDICATOR_CONTAINER_COLOR))
 	draw_text(gtx, t, {(w - t.width) / 2, pad.y}, color(tok.SLIDER_VALUE_INDICATOR_LABEL_TEXT_COLOR))
 }
 
@@ -673,7 +674,7 @@ linear_progress :: proc(
 @(private)
 paint_linear_progress :: proc(
 	gtx: ^ui.Ctx,
-	size: ui.Size,
+	size: ops.Size,
 	segs: [][2]f32,
 	wavy: bool,
 	amp, lambda, phase: f32,
@@ -683,13 +684,13 @@ paint_linear_progress :: proc(
 	cy := h / 2
 	stroke := tok.LINEAR_PROGRESS_INDICATOR_ACTIVE_THICKNESS
 	track := tok.LINEAR_PROGRESS_INDICATOR_TRACK_THICKNESS
-	cap := square ? ui.Line_Cap.Butt : .Round
+	cap := square ? ops.Line_Cap.Butt : .Round
 	capw := square ? 0 : max(stroke, track) / 2
 	gap := tok.LINEAR_PROGRESS_INDICATOR_TRACK_ACTIVE_SPACE
 	track_col := color(tok.PROGRESS_INDICATOR_TRACK_COLOR)
 	active_col := color(tok.PROGRESS_INDICATOR_ACTIVE_INDICATOR_COLOR)
-	line :: proc(gtx: ^ui.Ctx, x0, x1, y, width: f32, cap: ui.Line_Cap, col: ui.Color) {
-		ui.stroke(gtx.ops, ui.line(gtx, {x0, y}, {x1, y}), col, {width = width, cap = cap})
+	line :: proc(gtx: ^ui.Ctx, x0, x1, y, width: f32, cap: ops.Line_Cap, col: ops.Color) {
+		ops.stroke(gtx.scene, ui.line(gtx, {x0, y}, {x1, y}), col, {width = width, cap = cap})
 	}
 
 	next_end := w - capw
@@ -743,9 +744,9 @@ paint_linear_progress :: proc(
 	}
 	stop_col := color(tok.PROGRESS_INDICATOR_STOP_COLOR)
 	if square {
-		ui.fill(gtx.ops, ui.Rect{x, cy - stop / 2, stop, stop}, stop_col)
+		ops.fill(gtx.scene, ops.Rect{x, cy - stop / 2, stop, stop}, stop_col)
 	} else {
-		ui.fill(gtx.ops, ui.circle({x + stop / 2, cy}, stop / 2), stop_col)
+		ops.fill(gtx.scene, ui.circle({x + stop / 2, cy}, stop / 2), stop_col)
 	}
 }
 
@@ -762,14 +763,14 @@ wave_amplitude :: proc(h, stroke: f32) -> f32 {
 // (LinearWavyProgressModifiers.kt updateFullPaths); this samples a true
 // sine every 1.5dp instead, a slightly rounder crest.
 @(private)
-paint_wave :: proc(gtx: ^ui.Ctx, x0, x1, y, a, lambda, phase, width: f32, cap: ui.Line_Cap, col: ui.Color) {
+paint_wave :: proc(gtx: ^ui.Ctx, x0, x1, y, a, lambda, phase, width: f32, cap: ops.Line_Cap, col: ops.Color) {
 	n := max(int((x1 - x0) / 1.5), 1) + 1
-	pts := make([]ui.Point, n, gtx.allocator)
+	pts := make([]ops.Point, n, gtx.allocator)
 	for i in 0 ..< n {
 		x := x0 + (x1 - x0) * f32(i) / f32(n - 1)
 		pts[i] = {x, y + a * math.sin(2 * math.PI * (x / lambda + phase))}
 	}
-	ui.stroke(gtx.ops, ui.polyline(gtx, pts), col, {width = width, cap = cap, join = .Round})
+	ops.stroke(gtx.scene, ui.polyline(gtx, pts), col, {width = width, cap = cap, join = .Round})
 }
 
 // circular_progress is M3's circular progress indicator: a primary arc from
@@ -857,7 +858,7 @@ circular_indeterminate :: proc(t: f32) -> (rot, sweep: f32) {
 @(private)
 paint_circular_progress :: proc(
 	gtx: ^ui.Ctx,
-	sz: ui.Size,
+	sz: ops.Size,
 	rot, sweep: f32,
 	wavy: bool,
 	amp, wavelength, t: f32,
@@ -868,7 +869,7 @@ paint_circular_progress :: proc(
 	c := sz / 2
 	d := min(sz.x, sz.y)
 	r := (d - max(stroke, track)) / 2
-	cap := square ? ui.Line_Cap.Butt : .Round
+	cap := square ? ops.Line_Cap.Butt : .Round
 	gap := tok.CIRCULAR_PROGRESS_INDICATOR_TRACK_ACTIVE_SPACE
 	if !square {
 		gap += stroke
@@ -882,7 +883,7 @@ paint_circular_progress :: proc(
 		t0 := sweep + min(sweep, gap_sweep)
 		ts := 1 - sweep - 2 * min(sweep, gap_sweep)
 		if ts > 0 {
-			ui.stroke(gtx.ops, arc(gtx, c, r, start + t0 * full, start + (t0 + ts) * full), color(tok.PROGRESS_INDICATOR_TRACK_COLOR), {width = track, cap = cap})
+			ops.stroke(gtx.scene, arc(gtx, c, r, start + t0 * full, start + (t0 + ts) * full), color(tok.PROGRESS_INDICATOR_TRACK_COLOR), {width = track, cap = cap})
 		}
 	}
 	if sweep <= 0 {
@@ -890,7 +891,7 @@ paint_circular_progress :: proc(
 	}
 	col := color(tok.PROGRESS_INDICATOR_ACTIVE_INDICATOR_COLOR)
 	if !wavy || amp <= 0 {
-		ui.stroke(gtx.ops, arc(gtx, c, r, start, start + sweep * full), col, {width = stroke, cap = cap})
+		ops.stroke(gtx.scene, arc(gtx, c, r, start, start + sweep * full), col, {width = stroke, cap = cap})
 		return
 	}
 	// The wave: n whole waves round the ring, n from the wavelength and
@@ -905,13 +906,13 @@ paint_circular_progress :: proc(
 	a := amp * tok.CIRCULAR_PROGRESS_INDICATOR_ACTIVE_WAVE_AMPLITUDE
 	phase := math.mod(t, 1) / n * full
 	count := max(int(sweep * 180), 2)
-	pts := make([]ui.Point, count + 1, gtx.allocator)
+	pts := make([]ops.Point, count + 1, gtx.allocator)
 	for i in 0 ..= count {
 		th := start + sweep * full * f32(i) / f32(count)
 		rr := r - a + a * math.cos(n * (th - start - phase))
-		pts[i] = c + rr * ui.Point{math.cos(th), math.sin(th)}
+		pts[i] = c + rr * ops.Point{math.cos(th), math.sin(th)}
 	}
-	ui.stroke(gtx.ops, ui.polyline(gtx, pts), col, {width = stroke, cap = cap, join = .Round})
+	ops.stroke(gtx.scene, ui.polyline(gtx, pts), col, {width = stroke, cap = cap, join = .Round})
 }
 
 // loading_indicator is M3 Expressive's loading indicator: one filled
@@ -933,19 +934,19 @@ loading_indicator :: proc(
 	contained := false,
 	size: f32 = 0,
 	progress: f32 = -1,
-	indicator_color := ui.Color{},
-	container_color := ui.Color{},
+	indicator_color := ops.Color{},
+	container_color := ops.Color{},
 	at: f32 = -1,
 	key: u64 = 0,
 	loc := #caller_location,
 ) {
 	p := ui.widget_open(gtx, key, loc)
-	box := ui.Size{tok.LOADING_INDICATOR_CONTAINER_WIDTH, tok.LOADING_INDICATOR_CONTAINER_HEIGHT}
+	box := ops.Size{tok.LOADING_INDICATOR_CONTAINER_WIDTH, tok.LOADING_INDICATOR_CONTAINER_HEIGHT}
 	if size > 0 {
 		box = {size, size}
 	}
 	sz := ui.constrain(gtx.constraints, box)
-	area := ui.Rect{0, 0, sz.x, sz.y}
+	area := ops.Rect{0, 0, sz.x, sz.y}
 	col := color(contained ? tok.LOADING_INDICATOR_CONTAINED_ACTIVE_COLOR : tok.LOADING_INDICATOR_ACTIVE_INDICATOR_COLOR)
 	if ui.painted(indicator_color) {
 		col = indicator_color
@@ -955,7 +956,7 @@ loading_indicator :: proc(
 		if ui.painted(container_color) {
 			bg = container_color
 		}
-		ui.fill(gtx.ops, rounded(gtx, area, corners(tok.LOADING_INDICATOR_CONTAINER_SHAPE, area)), bg)
+		ops.fill(gtx.scene, rounded(gtx, area, corners(tok.LOADING_INDICATOR_CONTAINER_SHAPE, area)), bg)
 	}
 
 	seq: ^Loading_Sequence
@@ -1013,11 +1014,11 @@ morph_spring :: proc(tau: f32) -> f32 {
 // on c and turned rot degrees clockwise about c, as LoadingIndicator draws
 // its morph path every frame (morphs.json notes).
 @(private)
-paint_morph :: proc(gtx: ^ui.Ctx, m: Shape_Morph, t: f32, c: ui.Point, scale, rot: f32, col: ui.Color) {
+paint_morph :: proc(gtx: ^ui.Ctx, m: Shape_Morph, t: f32, c: ops.Point, scale, rot: f32, col: ops.Color) {
 	n := len(m.start)
-	pts := make([]ui.Point, 1 + 3 * n, gtx.allocator)
-	verbs := make([]ui.Path_Verb, n + 2, gtx.allocator)
-	lo, hi := ui.Point{math.F32_MAX, math.F32_MAX}, ui.Point{-math.F32_MAX, -math.F32_MAX}
+	pts := make([]ops.Point, 1 + 3 * n, gtx.allocator)
+	verbs := make([]ops.Path_Verb, n + 2, gtx.allocator)
+	lo, hi := ops.Point{math.F32_MAX, math.F32_MAX}, ops.Point{-math.F32_MAX, -math.F32_MAX}
 	for i in 0 ..< n {
 		a, b := m.start[i], m.end[i]
 		q: Shape_Cubic
@@ -1028,7 +1029,7 @@ paint_morph :: proc(gtx: ^ui.Ctx, m: Shape_Morph, t: f32, c: ui.Point, scale, ro
 			pts[0] = {q[0], q[1]}
 		}
 		for j in 0 ..< 3 {
-			pt := ui.Point{q[2 + 2 * j], q[3 + 2 * j]}
+			pt := ops.Point{q[2 + 2 * j], q[3 + 2 * j]}
 			pts[1 + 3 * i + j] = pt
 			lo, hi = {min(lo.x, pt.x), min(lo.y, pt.y)}, {max(hi.x, pt.x), max(hi.y, pt.y)}
 		}
@@ -1039,14 +1040,14 @@ paint_morph :: proc(gtx: ^ui.Ctx, m: Shape_Morph, t: f32, c: ui.Point, scale, ro
 	s, co := math.sincos(rot * math.PI / 180)
 	for &pt in pts {
 		d := (pt - mid) * scale
-		pt = c + ui.Point{d.x * co - d.y * s, d.x * s + d.y * co}
+		pt = c + ops.Point{d.x * co - d.y * s, d.x * s + d.y * co}
 	}
 	verbs[0] = .Move
 	for i in 0 ..< n {
 		verbs[1 + i] = .Cubic
 	}
 	verbs[n + 1] = .Close
-	ui.fill(gtx.ops, ui.Path_Ref{ui.add_path(gtx.ops, {verbs, pts})}, col)
+	ops.fill(gtx.scene, ops.Path_Ref{ops.add_path(gtx.scene, {verbs, pts})}, col)
 }
 
 // progress_clock is seconds into a loop of period for an animated

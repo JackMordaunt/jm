@@ -7,11 +7,12 @@
 // the subprocess split itself is not built yet, so nothing here sends any.
 //
 //	hotreload-diagram                          open a window
-//	hotreload-diagram -dump                    the scene ops as text
+//	hotreload-diagram -dump                    the scene sc as text
 //	hotreload-diagram -png build/hotreload.png render it headlessly
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:os"
 import "jm:ui"
 import "jm:ui/diagram"
@@ -21,8 +22,8 @@ import "jm:ui/sdl"
 WIDTH :: 1180
 HEIGHT :: 820
 
-HOST_COLOR :: ui.Color{51, 102, 255, 255} // blue: the host, owns the window
-SUB_COLOR :: ui.Color{155, 89, 182, 255} // purple: the subprocess, gets rebuilt
+HOST_COLOR :: ops.Color{51, 102, 255, 255} // blue: the host, owns the window
+SUB_COLOR :: ops.Color{155, 89, 182, 255} // purple: the subprocess, gets rebuilt
 
 HOST_CHIPS :: []diagram.Chip {
 	{"SDL window & event loop", "owns the OS window; never rebuilt"},
@@ -41,7 +42,7 @@ SUB_CHIPS :: []diagram.Chip {
 	{"Layout", "hover, focus, scroll - reset on respawn"},
 	{"flatten (Ops -> Frame)", "only to hit-test its own next frame"},
 	{"Shaper (Blend2D font_shape)", "text shaping only, never rasterizes"},
-	{"encode(ops) -> stdout", "wire format: draw list + resource paths"},
+	{"encode(sc) -> stdout", "wire format: draw list + resource paths"},
 }
 
 Model :: struct {
@@ -55,20 +56,20 @@ new_model :: proc() -> Model {
 diagram_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	th := gtx.theme
-	ops := gtx.ops
-	ui.fill(ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
+	sc := gtx.scene
+	ops.fill(sc, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
 
 	ui.text(gtx, "jm:ui hot-reload architecture: the subprocess split", {40, 18}, {size = 22})
 	ui.text(gtx, "solid arrows = per-frame wire traffic     dashed arrow = rebuild/respawn, out of band", {40, 46}, {size = 12, color = th.muted})
 
-	host := ui.Rect{40, 86, 500, diagram.group_height(len(HOST_CHIPS))}
-	subp := ui.Rect{640, 86, 500, diagram.group_height(len(SUB_CHIPS))}
-	watch := ui.Rect{640, subp.y + subp.h + 34, 500, 70}
+	host := ops.Rect{40, 86, 500, diagram.group_height(len(HOST_CHIPS))}
+	subp := ops.Rect{640, 86, 500, diagram.group_height(len(SUB_CHIPS))}
+	watch := ops.Rect{640, subp.y + subp.h + 34, 500, 70}
 
 	diagram.group(gtx, host, "HOST PROCESS", "owns the OS window - stays up across every rebuild", HOST_COLOR, HOST_CHIPS)
 	diagram.group(gtx, subp, "UI SUBPROCESS", "killed and relaunched whenever the source changes", SUB_COLOR, SUB_CHIPS)
 
-	diagram.fill_rrect(ops, watch, 8, th.surface, th.outline, th.stroke)
+	diagram.fill_rrect(sc, watch, 8, th.surface, th.outline, th.stroke)
 	ui.text(gtx, "file watcher / build supervisor", {watch.x + 20, watch.y + 12}, {size = 14})
 	ui.text(gtx, "runs `odin build`; respawns the subprocess on success", {watch.x + 20, watch.y + 34}, {size = 11, color = th.muted})
 

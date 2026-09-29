@@ -1,6 +1,7 @@
 package material
 
 import "core:math"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -160,7 +161,7 @@ ICON_ONLY_LEADING :: f32(16)
 // Button_Colors are one button kind's resolved colours and elevations.
 @(private)
 Button_Colors :: struct {
-	container, content, outline: ui.Color,
+	container, content, outline: ops.Color,
 	level, hover_level:          int, // elevation at rest and on hover
 	focus_level, press_level:    int,
 }
@@ -245,31 +246,31 @@ button_colors :: proc(kind: Button_Kind, toggle := false, on := false) -> Button
 // outlined outline has a disabled colour token and no opacity one, so it
 // paints at full strength.
 @(private)
-button_disabled_colors :: proc(kind: Button_Kind, toggle := false, on := false) -> (container, content, outline: ui.Color) {
+button_disabled_colors :: proc(kind: Button_Kind, toggle := false, on := false) -> (container, content, outline: ops.Color) {
 	switch kind {
 	case .Filled:
-		container = ui.with_alpha(color(tok.FILLED_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_BUTTON_DISABLED_CONTAINER_OPACITY)
-		content = ui.with_alpha(color(tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+		container = ops.with_alpha(color(tok.FILLED_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_BUTTON_DISABLED_CONTAINER_OPACITY)
+		content = ops.with_alpha(color(tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 	case .Tonal:
 		if toggle {
-			container = ui.with_alpha(color(tok.TONAL_BUTTON_DISABLED_CONTAINER_COLOR), tok.TONAL_BUTTON_DISABLED_CONTAINER_OPACITY)
-			content = ui.with_alpha(color(tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+			container = ops.with_alpha(color(tok.TONAL_BUTTON_DISABLED_CONTAINER_COLOR), tok.TONAL_BUTTON_DISABLED_CONTAINER_OPACITY)
+			content = ops.with_alpha(color(tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 		} else {
-			container = ui.with_alpha(color(tok.FILLED_TONAL_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_TONAL_BUTTON_DISABLED_CONTAINER_OPACITY)
-			content = ui.with_alpha(color(tok.FILLED_TONAL_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.FILLED_TONAL_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+			container = ops.with_alpha(color(tok.FILLED_TONAL_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_TONAL_BUTTON_DISABLED_CONTAINER_OPACITY)
+			content = ops.with_alpha(color(tok.FILLED_TONAL_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.FILLED_TONAL_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 		}
 	case .Outlined:
 		if toggle && on {
-			container = ui.with_alpha(color(tok.OUTLINED_BUTTON_SELECTED_DISABLED_CONTAINER_COLOR), tok.OUTLINED_BUTTON_DISABLED_CONTAINER_OPACITY)
+			container = ops.with_alpha(color(tok.OUTLINED_BUTTON_SELECTED_DISABLED_CONTAINER_COLOR), tok.OUTLINED_BUTTON_DISABLED_CONTAINER_OPACITY)
 		} else {
 			outline = color(toggle ? tok.OUTLINED_BUTTON_UNSELECTED_DISABLED_OUTLINE_COLOR : tok.OUTLINED_BUTTON_DISABLED_OUTLINE_COLOR)
 		}
-		content = ui.with_alpha(color(tok.OUTLINED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.OUTLINED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+		content = ops.with_alpha(color(tok.OUTLINED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.OUTLINED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 	case .Text:
-		content = ui.with_alpha(color(tok.TEXT_BUTTON_DISABLED_LABEL_COLOR), tok.TEXT_BUTTON_DISABLED_LABEL_OPACITY)
+		content = ops.with_alpha(color(tok.TEXT_BUTTON_DISABLED_LABEL_COLOR), tok.TEXT_BUTTON_DISABLED_LABEL_OPACITY)
 	case .Elevated:
-		container = ui.with_alpha(color(tok.ELEVATED_BUTTON_DISABLED_CONTAINER_COLOR), tok.ELEVATED_BUTTON_DISABLED_CONTAINER_OPACITY)
-		content = ui.with_alpha(color(tok.ELEVATED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.ELEVATED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+		container = ops.with_alpha(color(tok.ELEVATED_BUTTON_DISABLED_CONTAINER_COLOR), tok.ELEVATED_BUTTON_DISABLED_CONTAINER_OPACITY)
+		content = ops.with_alpha(color(tok.ELEVATED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.ELEVATED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 	}
 	return
 }
@@ -331,7 +332,7 @@ button :: proc(
 		w += mt.icon + (label == "" ? 0 : mt.gap)
 	}
 	sz := ui.constrain_min(gtx.constraints, {max(w, BUTTON_MIN_WIDTH), mt.height})
-	area := ui.Rect{0, 0, sz.x, sz.y}
+	area := ops.Rect{0, 0, sz.x, sz.y}
 	hit := touch_target(area)
 
 	c := control(gtx, p.id, hit, state)
@@ -359,7 +360,7 @@ button :: proc(
 	}
 	if ui.painted(container) {
 		paint_elevation(gtx, {area, k.tl}, level)
-		ui.fill(gtx.ops, path, container)
+		ops.fill(gtx.scene, path, container)
 	}
 	if ui.painted(outline) {
 		stroke_inside_corners(gtx, area, k, outline, mt.outline)
@@ -378,7 +379,7 @@ button :: proc(
 	}
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -490,26 +491,26 @@ icon_button_metrics :: proc(size: Button_Size, width: Icon_Button_Width) -> (m: 
 // unchecked, enabled or disabled. Every style's hovered/focused/pressed
 // colour token equals its enabled one.
 @(private)
-icon_button_colors :: proc(kind: Icon_Button_Kind, toggle, on, disabled: bool) -> (container, content, outline: ui.Color) {
+icon_button_colors :: proc(kind: Icon_Button_Kind, toggle, on, disabled: bool) -> (container, content, outline: ops.Color) {
 	switch kind {
 	case .Standard:
 		content = color(!toggle ? tok.STANDARD_ICON_BUTTON_COLOR : on ? tok.STANDARD_ICON_BUTTON_SELECTED_COLOR : tok.STANDARD_ICON_BUTTON_UNSELECTED_COLOR)
 		if disabled {
-			content = ui.with_alpha(color(tok.STANDARD_ICON_BUTTON_DISABLED_COLOR), tok.STANDARD_ICON_BUTTON_DISABLED_OPACITY)
+			content = ops.with_alpha(color(tok.STANDARD_ICON_BUTTON_DISABLED_COLOR), tok.STANDARD_ICON_BUTTON_DISABLED_OPACITY)
 		}
 	case .Filled:
 		container = color(!toggle ? tok.FILLED_ICON_BUTTON_CONTAINER_COLOR : on ? tok.FILLED_ICON_BUTTON_SELECTED_CONTAINER_COLOR : tok.FILLED_ICON_BUTTON_UNSELECTED_CONTAINER_COLOR)
 		content = color(!toggle ? tok.FILLED_ICON_BUTTON_COLOR : on ? tok.FILLED_ICON_BUTTON_SELECTED_COLOR : tok.FILLED_ICON_BUTTON_UNSELECTED_COLOR)
 		if disabled {
-			container = ui.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_OPACITY)
-			content = ui.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_OPACITY)
+			container = ops.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_OPACITY)
+			content = ops.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_OPACITY)
 		}
 	case .Tonal:
 		container = color(!toggle ? tok.FILLED_TONAL_ICON_BUTTON_CONTAINER_COLOR : on ? tok.FILLED_TONAL_ICON_BUTTON_SELECTED_CONTAINER_COLOR : tok.FILLED_TONAL_ICON_BUTTON_UNSELECTED_CONTAINER_COLOR)
 		content = color(!toggle ? tok.FILLED_TONAL_ICON_BUTTON_COLOR : on ? tok.FILLED_TONAL_ICON_BUTTON_SELECTED_COLOR : tok.FILLED_TONAL_ICON_BUTTON_UNSELECTED_COLOR)
 		if disabled {
-			container = ui.with_alpha(color(tok.FILLED_TONAL_ICON_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_TONAL_ICON_BUTTON_DISABLED_CONTAINER_OPACITY)
-			content = ui.with_alpha(color(tok.FILLED_TONAL_ICON_BUTTON_DISABLED_COLOR), tok.FILLED_TONAL_ICON_BUTTON_DISABLED_OPACITY)
+			container = ops.with_alpha(color(tok.FILLED_TONAL_ICON_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_TONAL_ICON_BUTTON_DISABLED_CONTAINER_OPACITY)
+			content = ops.with_alpha(color(tok.FILLED_TONAL_ICON_BUTTON_DISABLED_COLOR), tok.FILLED_TONAL_ICON_BUTTON_DISABLED_OPACITY)
 		}
 	case .Outlined:
 		// Checked, the outline gives way to an inverse-surface fill. The
@@ -519,18 +520,18 @@ icon_button_colors :: proc(kind: Icon_Button_Kind, toggle, on, disabled: bool) -
 			container = color(tok.OUTLINED_ICON_BUTTON_SELECTED_CONTAINER_COLOR)
 			content = color(tok.OUTLINED_ICON_BUTTON_SELECTED_COLOR)
 			if disabled {
-				container = ui.with_alpha(color(tok.OUTLINED_ICON_BUTTON_SELECTED_DISABLED_CONTAINER_COLOR), tok.OUTLINED_ICON_BUTTON_SELECTED_DISABLED_CONTAINER_OPACITY)
+				container = ops.with_alpha(color(tok.OUTLINED_ICON_BUTTON_SELECTED_DISABLED_CONTAINER_COLOR), tok.OUTLINED_ICON_BUTTON_SELECTED_DISABLED_CONTAINER_OPACITY)
 			}
 		} else {
 			content = color(toggle ? tok.OUTLINED_ICON_BUTTON_UNSELECTED_COLOR : tok.OUTLINED_ICON_BUTTON_COLOR)
 			outline = color(toggle ? tok.OUTLINED_ICON_BUTTON_UNSELECTED_OUTLINE_COLOR : tok.OUTLINED_ICON_BUTTON_OUTLINE_COLOR)
 			if disabled {
 				dis := toggle ? tok.OUTLINED_ICON_BUTTON_UNSELECTED_DISABLED_OUTLINE_COLOR : tok.OUTLINED_ICON_BUTTON_DISABLED_OUTLINE_COLOR
-				outline = ui.with_alpha(color(dis), tok.OUTLINED_ICON_BUTTON_DISABLED_OPACITY)
+				outline = ops.with_alpha(color(dis), tok.OUTLINED_ICON_BUTTON_DISABLED_OPACITY)
 			}
 		}
 		if disabled {
-			content = ui.with_alpha(color(tok.OUTLINED_ICON_BUTTON_DISABLED_COLOR), tok.OUTLINED_ICON_BUTTON_DISABLED_OPACITY)
+			content = ops.with_alpha(color(tok.OUTLINED_ICON_BUTTON_DISABLED_COLOR), tok.OUTLINED_ICON_BUTTON_DISABLED_OPACITY)
 		}
 	}
 	return
@@ -568,7 +569,7 @@ icon_button :: proc(
 	size := Button_Size.Small,
 	width := Icon_Button_Width.Uniform,
 	shape := Button_Shape.Round,
-	content := ui.Color{},
+	content := ops.Color{},
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -576,7 +577,7 @@ icon_button :: proc(
 	p := ui.widget_open(gtx, key, loc)
 	mt := icon_button_metrics(size, width)
 	sz := ui.constrain_min(gtx.constraints, {mt.leading + mt.icon + mt.trailing, mt.height})
-	area := ui.Rect{0, 0, sz.x, sz.y}
+	area := ops.Rect{0, 0, sz.x, sz.y}
 	hit := touch_target(area)
 	c := control(gtx, p.id, hit, state)
 	if c.clicked && selected != nil {
@@ -605,7 +606,7 @@ icon_button :: proc(
 		container, fg, outline = icon_button_colors(kind, toggle, on, true)
 	}
 	if ui.painted(container) {
-		ui.fill(gtx.ops, path, container)
+		ops.fill(gtx.scene, path, container)
 	}
 	if ui.painted(outline) {
 		stroke_inside_corners(gtx, area, k, outline, mt.outline)
@@ -618,7 +619,7 @@ icon_button :: proc(
 	if c.st != nil {
 		hover_tooltip(gtx, c.st.hovered, &ui.widget_data(gtx, p.id, Tooltip_Timer).seconds, tooltip, sz)
 	}
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, tooltip != "" ? tooltip : "icon_button"))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, tooltip != "" ? tooltip : "icon_button"))
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -645,7 +646,7 @@ Fab_Color :: enum u8 {
 // fab_colors is color's container and content. Tertiary has no token
 // group (fab.json variants): it is the tertiary-container pair.
 @(private)
-fab_colors :: proc(c: Fab_Color) -> (container, content: ui.Color) {
+fab_colors :: proc(c: Fab_Color) -> (container, content: ops.Color) {
 	switch c {
 	case .Primary_Container:
 		return color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR), color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR)
@@ -685,7 +686,7 @@ fab_level :: proc(c: Control, lowered: bool) -> int {
 // (FloatingActionButton.kt:1010); fab.json notes comp.fab-large.icon-size
 // (32) as stale.
 @(private)
-fab_metrics :: proc(size: Fab_Size) -> (box: ui.Size, icon_size: f32, sh: tok.Shape) {
+fab_metrics :: proc(size: Fab_Size) -> (box: ops.Size, icon_size: f32, sh: tok.Shape) {
 	switch size {
 	case .Small:
 		return {tok.FAB_SMALL_CONTAINER_WIDTH, tok.FAB_SMALL_CONTAINER_HEIGHT}, tok.FAB_SMALL_ICON_SIZE, tok.FAB_SMALL_CONTAINER_SHAPE
@@ -718,7 +719,7 @@ fab :: proc(
 	p := ui.widget_open(gtx, key, loc)
 	box, isz, sh := fab_metrics(size)
 	sz := ui.constrain_min(gtx.constraints, box)
-	area := ui.Rect{0, 0, sz.x, sz.y}
+	area := ops.Rect{0, 0, sz.x, sz.y}
 	hit := touch_target(area)
 	st := state == .Disabled ? Interaction.Enabled : state
 	c := control(gtx, p.id, hit, st)
@@ -726,12 +727,12 @@ fab :: proc(
 	k := corners(sh, area)
 	path := rounded(gtx, area, k)
 	paint_elevation(gtx, {area, k.tl}, fab_level(c, lowered))
-	ui.fill(gtx.ops, path, container)
+	ops.fill(gtx.scene, path, container)
 	paint_state_layer(gtx, c, path, content)
 	icon(gtx, glyph, {(sz.x - isz) / 2, (sz.y - isz) / 2}, isz, content)
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "fab"))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "fab"))
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -812,14 +813,14 @@ extended_fab :: proc(
 		alpha = animate(gtx, c, 1, expanded ? 1 : 0, .Fast_Effects)
 	}
 	sz := ui.constrain_min(gtx.constraints, {max(collapsed + (full - collapsed) * te, 0), h})
-	area := ui.Rect{0, 0, sz.x, sz.y}
+	area := ops.Rect{0, 0, sz.x, sz.y}
 	container, content := fab_colors(color)
 	k := corners(sh, area)
 	path := rounded(gtx, area, k)
 	paint_elevation(gtx, {area, k.tl}, fab_level(c, lowered))
-	ui.fill(gtx.ops, path, container)
+	ops.fill(gtx.scene, path, container)
 	paint_state_layer(gtx, c, path, content)
-	ui.clip_push(gtx.ops, path)
+	ops.clip_push(gtx.scene, path)
 	// Collapsed, the icon centres in the square; expanded it sits at lead.
 	// The two agree for every size (the square's margin is lead), so this
 	// lerp only matters if a caller stretches the FAB.
@@ -833,10 +834,10 @@ extended_fab :: proc(
 	if alpha > 0 {
 		draw_text(gtx, t, {x, (sz.y - t.height) / 2}, fade(content, alpha))
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, touch_target(area))
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -889,15 +890,15 @@ segmented_button :: proc(
 	}
 	size := ui.constrain_min(gtx.constraints, {total, tok.OUTLINED_SEGMENTED_BUTTON_CONTAINER_HEIGHT})
 	extra := (size.x - total) / f32(n)
-	whole := ui.Rect{0, 0, size.x, size.y}
+	whole := ops.Rect{0, 0, size.x, size.y}
 	outer := corners(tok.OUTLINED_SEGMENTED_BUTTON_SHAPE, whole)
 	disabled := state == .Disabled
 
-	ui.clip_push(gtx.ops, rounded(gtx, whole, outer))
+	ops.clip_push(gtx.scene, rounded(gtx, whole, outer))
 	x: f32
 	for i in 0 ..< n {
 		w := widths[i] + extra
-		seg := ui.Rect{x, 0, w, size.y}
+		seg := ops.Rect{x, 0, w, size.y}
 		// Only the ends round: the first segment's start, the last's end.
 		k: Corners
 		if i == 0 {
@@ -926,10 +927,10 @@ segmented_button :: proc(
 		icon_color := color(on ? tok.OUTLINED_SEGMENTED_BUTTON_SELECTED_ICON_COLOR : tok.OUTLINED_SEGMENTED_BUTTON_UNSELECTED_ICON_COLOR)
 		layer := content
 		if c.disabled {
-			content = ui.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
-			icon_color = ui.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_ICON_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_ICON_OPACITY)
+			content = ops.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+			icon_color = ops.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_ICON_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_ICON_OPACITY)
 		} else if on {
-			ui.fill(gtx.ops, seg, color(tok.OUTLINED_SEGMENTED_BUTTON_SELECTED_CONTAINER_COLOR))
+			ops.fill(gtx.scene, seg, color(tok.OUTLINED_SEGMENTED_BUTTON_SELECTED_CONTAINER_COLOR))
 		}
 		paint_state_layer(gtx, c, seg, layer)
 		g := max(grow, 0)
@@ -945,19 +946,19 @@ segmented_button :: proc(
 			paint_focus_ring_corners(gtx, c, seg, k, inward = true)
 		}
 		listen(gtx, c, id, touch_target(seg))
-		ui.tag(gtx.ops, id, ui.frame_string(gtx, labels[i]))
+		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
 		x += w
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	edge := color(tok.OUTLINED_SEGMENTED_BUTTON_OUTLINE_COLOR)
 	if disabled {
-		edge = ui.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_OUTLINE_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_OUTLINE_OPACITY)
+		edge = ops.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_OUTLINE_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_OUTLINE_OPACITY)
 	}
 	stroke_inside_corners(gtx, whole, outer, edge, LINE)
 	x = 0
 	for i in 0 ..< n - 1 {
 		x += widths[i] + extra
-		ui.fill(gtx.ops, ui.Rect{x - LINE / 2, 0, LINE, size.y}, edge)
+		ops.fill(gtx.scene, ops.Rect{x - LINE / 2, 0, LINE, size.y}, edge)
 	}
 	if state == .Focused {
 		paint_focus_ring_corners(gtx, {focused = true}, whole, outer)
@@ -968,11 +969,11 @@ segmented_button :: proc(
 
 // draw_icon_rotated is icon turned by turn half-turns about its centre.
 @(private)
-draw_icon_rotated :: proc(gtx: ^ui.Ctx, i: Icon, pos: ui.Point, size: f32, color: ui.Color, turn: f32) {
+draw_icon_rotated :: proc(gtx: ^ui.Ctx, i: Icon, pos: ops.Point, size: f32, color: ops.Color, turn: f32) {
 	cx, cy := pos.x + size / 2, pos.y + size / 2
-	ui.transform_push(gtx.ops, ui.mul(ui.mul(ui.translate(-cx, -cy), ui.rotate(math.PI * turn)), ui.translate(cx, cy)))
+	ops.transform_push(gtx.scene, ops.mul(ops.mul(ops.translate(-cx, -cy), ops.rotate(math.PI * turn)), ops.translate(cx, cy)))
 	icon(gtx, i, pos, size, color)
-	ui.transform_pop(gtx.ops)
+	ops.transform_pop(gtx.scene)
 }
 
 // Split_Metrics are one size's comp.split-button-<size> group.
@@ -1053,13 +1054,13 @@ split_metrics :: proc(size: Button_Size) -> Split_Metrics {
 // draw_split_half paints one half of a split button: elevation, fill, outline
 // and state layer over path, whose corners are k.
 @(private)
-draw_split_half :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, k: Corners, col: Button_Colors, container, outline: ui.Color, line: f32) {
+draw_split_half :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners, col: Button_Colors, container, outline: ops.Color, line: f32) {
 	path := rounded(gtx, r, k)
 	if ui.painted(container) {
 		// paint_elevation takes one radius; the outer one keeps the shadow
 		// inside the rounded end, and the inner edge's is hidden by the gap.
 		paint_elevation(gtx, {r, max(k.tl, k.tr, k.br, k.bl)}, button_elevation(col, c))
-		ui.fill(gtx.ops, path, container)
+		ops.fill(gtx.scene, path, container)
 	}
 	if ui.painted(outline) {
 		stroke_inside_corners(gtx, r, k, outline, line)
@@ -1107,13 +1108,13 @@ split_button :: proc(
 	trail_w := sm.trail_leading + sm.trail_icon + sm.trail_trailing
 	sz := ui.constrain_min(gtx.constraints, {lead_w + sm.between + trail_w, h})
 	lead_w = sz.x - sm.between - trail_w
-	lead := ui.Rect{0, 0, lead_w, h}
-	trail := ui.Rect{lead_w + sm.between, 0, trail_w, h}
+	lead := ops.Rect{0, 0, lead_w, h}
+	trail := ops.Rect{lead_w + sm.between, 0, trail_w, h}
 	lead_id, trail_id := ui.id_mix(p.id, 1), ui.id_mix(p.id, 2)
 	full := h / 2 // outer corners: SplitButton.kt:279,425,467
 
 	// colors resolves one half's paint, disabled or not.
-	colors :: proc(kind: Button_Kind, col: Button_Colors, disabled: bool) -> (container, content, outline: ui.Color) {
+	colors :: proc(kind: Button_Kind, col: Button_Colors, disabled: bool) -> (container, content, outline: ops.Color) {
 		if disabled {
 			return button_disabled_colors(kind)
 		}
@@ -1154,14 +1155,14 @@ split_button :: proc(
 	draw_split_half(gtx, tc, trail, tk, col, container, outline, bm.outline)
 	if expanded^ && !tc.disabled {
 		// SplitButton.kt:421,905-910: checked draws a pressed-opacity layer.
-		ui.fill(gtx.ops, rounded(gtx, trail, tk), ui.with_alpha(col.content, PRESSED_OPACITY))
+		ops.fill(gtx.scene, rounded(gtx, trail, tk), ops.with_alpha(col.content, PRESSED_OPACITY))
 	}
-	ip := ui.Point{trail.x + sm.trail_leading, (h - sm.trail_icon) / 2}
+	ip := ops.Point{trail.x + sm.trail_leading, (h - sm.trail_icon) / 2}
 	draw_icon_rotated(gtx, .Keyboard_Arrow_Down, ip, sm.trail_icon, content, turn)
 	paint_focus_ring_corners(gtx, tc, trail, tk, inward = true)
 	listen(gtx, tc, trail_id, touch_target(trail))
-	ui.tag(gtx.ops, lead_id, ui.frame_string(gtx, label))
-	ui.tag(gtx.ops, trail_id, ui.frame_string(gtx, menu_label))
+	ops.tag(gtx.scene, lead_id, ui.frame_string(gtx, label))
+	ops.tag(gtx.scene, trail_id, ui.frame_string(gtx, menu_label))
 	ui.widget_close(gtx, &p, {sz, (h - t.height) / 2 + baseline_of(t)})
 	return lc.clicked, tc.clicked
 }

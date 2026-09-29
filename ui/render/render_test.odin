@@ -1,6 +1,7 @@
 package render
 
 import "core:math"
+import "jm:ui/ops"
 import "core:testing"
 
 import "jm:ui"
@@ -9,9 +10,9 @@ import bl "jm:ui/blend2d"
 // RED, WHITE and SIZE are package-private, not file-private: diff_test.odin
 // shares them as its own test-fixture colors and dimension.
 @(private)
-RED :: ui.Color{255, 0, 0, 255}
+RED :: ops.Color{255, 0, 0, 255}
 @(private)
-WHITE :: ui.Color{255, 255, 255, 255}
+WHITE :: ops.Color{255, 255, 255, 255}
 when ODIN_OS == .Windows {
 	@(private = "file")
 	FONT :: "C:/Windows/Fonts/arial.ttf"
@@ -27,11 +28,11 @@ when ODIN_OS == .Windows {
 @(private)
 SIZE :: 64
 
-// Fixture is a renderer, an Ops, a Frame over it and a 64×64 target.
+// Fixture is a renderer, a Scene, a Frame over it and a 64×64 target.
 @(private = "file")
 Fixture :: struct {
 	r:     Renderer,
-	ops:   ui.Ops,
+	scene:   ops.Scene,
 	frame: ui.Frame,
 	img:   bl.ImageCore,
 }
@@ -39,9 +40,9 @@ Fixture :: struct {
 @(private = "file")
 setup :: proc(fx: ^Fixture) {
 	init(&fx.r)
-	ui.ops_init(&fx.ops)
+	ops.init(&fx.scene)
 	ui.frame_init(&fx.frame)
-	fx.frame.ops = &fx.ops
+	fx.frame.scene = &fx.scene
 	bl.image_init(&fx.img)
 	bl.image_create(&fx.img, SIZE, SIZE, .PRGB32)
 }
@@ -50,23 +51,23 @@ setup :: proc(fx: ^Fixture) {
 teardown :: proc(fx: ^Fixture) {
 	bl.image_destroy(&fx.img)
 	ui.frame_destroy(&fx.frame)
-	ui.ops_destroy(&fx.ops)
+	ops.destroy(&fx.scene)
 	destroy(&fx.r)
 }
 
 @(private = "file")
-clip :: proc(fx: ^Fixture, parent: ui.Clip_Id, shape: ui.Shape, m: ui.Affine) -> ui.Clip_Id {
+clip :: proc(fx: ^Fixture, parent: ui.Clip_Id, shape: ops.Shape, m: ops.Affine) -> ui.Clip_Id {
 	append(&fx.frame.clips, ui.Clip{parent, shape, m})
 	return ui.Clip_Id(len(fx.frame.clips) - 1)
 }
 
 @(private = "file")
-fill :: proc(fx: ^Fixture, m: ui.Affine, c: ui.Clip_Id, shape: ui.Shape, paint: ui.Paint) {
-	append(&fx.frame.draws, ui.Draw{m, c, ui.Fill{shape, paint}})
+fill :: proc(fx: ^Fixture, m: ops.Affine, c: ui.Clip_Id, shape: ops.Shape, paint: ops.Paint) {
+	append(&fx.frame.draws, ui.Draw{m, c, ops.Fill{shape, paint}})
 }
 
 @(private = "file")
-at :: proc(fx: ^Fixture, p: ui.Point) -> ui.Color {
+at :: proc(fx: ^Fixture, p: ops.Point) -> ops.Color {
 	return pixel(&fx.img, int(p.x), int(p.y))
 }
 
@@ -75,7 +76,7 @@ test_fill_identity :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	fill(&fx, ui.IDENTITY, ui.NO_CLIP, ui.Rect{10, 10, 20, 20}, RED)
+	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Rect{10, 10, 20, 20}, RED)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	testing.expect_value(t, at(&fx, {15, 15}), RED)
 	testing.expect_value(t, at(&fx, {29, 29}), RED)
@@ -88,10 +89,10 @@ test_fill_rotated :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	m := ui.mul(ui.rotate(math.PI / 2), ui.translate(32, 32))
-	fill(&fx, m, ui.NO_CLIP, ui.Rect{0, 0, 20, 4}, RED)
+	m := ops.mul(ops.rotate(math.PI / 2), ops.translate(32, 32))
+	fill(&fx, m, ui.NO_CLIP, ops.Rect{0, 0, 20, 4}, RED)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
-	p := ui.apply(m, {10, 2})
+	p := ops.apply(m, {10, 2})
 	testing.expect_value(t, at(&fx, p), RED)
 	// Where the rect would be without the rotation stays clear.
 	testing.expect_value(t, at(&fx, {42, 34}), WHITE)
@@ -102,8 +103,8 @@ test_rect_clip_fast_path :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	c := clip(&fx, ui.NO_CLIP, ui.Rect{0, 0, 20, 20}, ui.translate(10, 10))
-	fill(&fx, ui.IDENTITY, c, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	c := clip(&fx, ui.NO_CLIP, ops.Rect{0, 0, 20, 20}, ops.translate(10, 10))
+	fill(&fx, ops.IDENTITY, c, ops.Rect{0, 0, SIZE, SIZE}, RED)
 	_, fast := rect_chain(&fx.frame, c)
 	testing.expect(t, fast)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
@@ -119,8 +120,8 @@ test_round_rect_clip :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	c := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{8, 8, 48, 48}, 24}, ui.IDENTITY)
-	fill(&fx, ui.IDENTITY, c, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	c := clip(&fx, ui.NO_CLIP, ops.Round_Rect{{8, 8, 48, 48}, 24}, ops.IDENTITY)
+	fill(&fx, ops.IDENTITY, c, ops.Rect{0, 0, SIZE, SIZE}, RED)
 	_, fast := rect_chain(&fx.frame, c)
 	testing.expect(t, !fast)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
@@ -135,9 +136,9 @@ test_rotated_rect_clip :: proc(t: ^testing.T) {
 	setup(&fx)
 	defer teardown(&fx)
 	// A 20×20 square rotated 45° about (32, 32): a diamond reaching 14 px out.
-	m := ui.mul(ui.rotate(math.PI / 4), ui.translate(32, 32))
-	c := clip(&fx, ui.NO_CLIP, ui.Rect{-10, -10, 20, 20}, m)
-	fill(&fx, ui.IDENTITY, c, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	m := ops.mul(ops.rotate(math.PI / 4), ops.translate(32, 32))
+	c := clip(&fx, ui.NO_CLIP, ops.Rect{-10, -10, 20, 20}, m)
+	fill(&fx, ops.IDENTITY, c, ops.Rect{0, 0, SIZE, SIZE}, RED)
 	_, fast := rect_chain(&fx.frame, c)
 	testing.expect(t, !fast)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
@@ -152,9 +153,9 @@ test_nested_clip_intersects :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	left := clip(&fx, ui.NO_CLIP, ui.Rect{0, 0, 32, SIZE}, ui.IDENTITY)
-	circle := clip(&fx, left, ui.Ellipse{{8, 8, 48, 48}}, ui.IDENTITY)
-	fill(&fx, ui.IDENTITY, circle, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	left := clip(&fx, ui.NO_CLIP, ops.Rect{0, 0, 32, SIZE}, ops.IDENTITY)
+	circle := clip(&fx, left, ops.Ellipse{{8, 8, 48, 48}}, ops.IDENTITY)
+	fill(&fx, ops.IDENTITY, circle, ops.Rect{0, 0, SIZE, SIZE}, RED)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	testing.expect_value(t, at(&fx, {20, 32}), RED)
 	testing.expect_value(t, at(&fx, {40, 32}), WHITE)
@@ -166,8 +167,8 @@ test_text :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	font := ui.add_font(&fx.ops, FONT)
-	s := shaper(&fx.r, fx.ops.fonts[:])
+	font := ops.add_font(&fx.scene, FONT)
+	s := shaper(&fx.r, fx.scene.fonts[:])
 	run := ui.shape(s, font, 32, "Hi", context.allocator)
 	defer delete(run.glyphs)
 	testing.expect_value(t, len(run.glyphs), 2)
@@ -175,9 +176,9 @@ test_text :: proc(t: ^testing.T) {
 	fm := ui.metrics(s, font, 32)
 	testing.expect(t, fm.ascent > 0 && fm.descent > 0)
 
-	id := ui.add_run(&fx.ops, run)
-	origin := ui.Point{4, 44}
-	append(&fx.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Glyphs{id, origin, {0, 0, 0, 255}}})
+	id := ops.add_run(&fx.scene, run)
+	origin := ops.Point{4, 44}
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	bl.image_write_to_file(&fx.img, "build/test/text.png", nil)
 
@@ -199,13 +200,13 @@ test_path_gradient_stroke :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	verbs := []ui.Path_Verb{.Move, .Line, .Line, .Close}
-	points := []ui.Point{{0, 0}, {30, 0}, {0, 30}}
-	tri := ui.add_path(&fx.ops, {verbs, points})
-	fill(&fx, ui.IDENTITY, ui.NO_CLIP, ui.Path_Ref{tri}, RED)
-	stops := []ui.Gradient_Stop{{0, {0, 0, 255, 255}}, {1, {0, 255, 0, 255}}}
-	fill(&fx, ui.IDENTITY, ui.NO_CLIP, ui.Rect{0, 40, SIZE, 10}, ui.Linear_Gradient{{0, 0}, {SIZE, 0}, stops})
-	append(&fx.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Stroke{ui.Rect{40, 4, 20, 20}, RED, {4, .Butt, .Miter}}})
+	verbs := []ops.Path_Verb{.Move, .Line, .Line, .Close}
+	points := []ops.Point{{0, 0}, {30, 0}, {0, 30}}
+	tri := ops.add_path(&fx.scene, {verbs, points})
+	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Path_Ref{tri}, RED)
+	stops := []ops.Gradient_Stop{{0, {0, 0, 255, 255}}, {1, {0, 255, 0, 255}}}
+	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Rect{0, 40, SIZE, 10}, ops.Linear_Gradient{{0, 0}, {SIZE, 0}, stops})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Stroke{ops.Rect{40, 4, 20, 20}, RED, {4, .Butt, .Miter}}})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	testing.expect_value(t, at(&fx, {5, 5}), RED)
 	testing.expect_value(t, at(&fx, {25, 25}), WHITE)
@@ -225,14 +226,14 @@ test_threads_match_sync :: proc(t: ^testing.T) {
 	N :: 256
 	bl.image_create(&fx.img, N, N, .PRGB32)
 
-	rr := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{8, 8, N - 16, N - 16}, 40}, ui.IDENTITY)
-	rot := clip(&fx, ui.NO_CLIP, ui.Rect{0, 0, 120, 60}, ui.mul(ui.rotate(0.4), ui.translate(90, 40)))
-	box := clip(&fx, ui.NO_CLIP, ui.Rect{20, 20, 100, 100}, ui.IDENTITY)
+	rr := clip(&fx, ui.NO_CLIP, ops.Round_Rect{{8, 8, N - 16, N - 16}, 40}, ops.IDENTITY)
+	rot := clip(&fx, ui.NO_CLIP, ops.Rect{0, 0, 120, 60}, ops.mul(ops.rotate(0.4), ops.translate(90, 40)))
+	box := clip(&fx, ui.NO_CLIP, ops.Rect{20, 20, 100, 100}, ops.IDENTITY)
 	for i in 0 ..< 64 {
 		x, y := f32(i % 8) * 32, f32(i / 8) * 32
 		c := [4]ui.Clip_Id{ui.NO_CLIP, rr, rot, box}[i % 4]
-		col := ui.Color{u8(i * 4), u8(255 - i * 3), u8(i * 9), 200}
-		fill(&fx, ui.translate(x, y), c, ui.Round_Rect{{0, 0, 40, 40}, 6}, col)
+		col := ops.Color{u8(i * 4), u8(255 - i * 3), u8(i * 9), 200}
+		fill(&fx, ops.translate(x, y), c, ops.Round_Rect{{0, 0, 40, 40}, 6}, col)
 	}
 
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
@@ -275,12 +276,12 @@ test_masked_group_edge_applies_once :: proc(t: ^testing.T) {
 	defer teardown(&once)
 	setup(&twice)
 	defer teardown(&twice)
-	rr := ui.Round_Rect{{6.5, 6.5, 50, 40}, 14}
-	c1 := clip(&once, ui.NO_CLIP, rr, ui.IDENTITY)
-	c2 := clip(&twice, ui.NO_CLIP, rr, ui.IDENTITY)
-	fill(&once, ui.IDENTITY, c1, ui.Rect{0, 0, SIZE, SIZE}, RED)
-	fill(&twice, ui.IDENTITY, c2, ui.Rect{0, 0, SIZE, SIZE}, RED)
-	fill(&twice, ui.IDENTITY, c2, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	rr := ops.Round_Rect{{6.5, 6.5, 50, 40}, 14}
+	c1 := clip(&once, ui.NO_CLIP, rr, ops.IDENTITY)
+	c2 := clip(&twice, ui.NO_CLIP, rr, ops.IDENTITY)
+	fill(&once, ops.IDENTITY, c1, ops.Rect{0, 0, SIZE, SIZE}, RED)
+	fill(&twice, ops.IDENTITY, c2, ops.Rect{0, 0, SIZE, SIZE}, RED)
+	fill(&twice, ops.IDENTITY, c2, ops.Rect{0, 0, SIZE, SIZE}, RED)
 	render(&once.r, &once.frame, &once.img, WHITE)
 	render(&twice.r, &twice.frame, &twice.img, WHITE)
 	differ := 0
@@ -301,10 +302,10 @@ test_masked_clip_off_target :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	part := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{-30, -30, 60, 60}, 20}, ui.IDENTITY)
-	gone := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{100, 100, 40, 40}, 10}, ui.IDENTITY)
-	fill(&fx, ui.IDENTITY, part, ui.Rect{-40, -40, 200, 200}, RED)
-	fill(&fx, ui.IDENTITY, gone, ui.Rect{0, 0, SIZE, SIZE}, RED)
+	part := clip(&fx, ui.NO_CLIP, ops.Round_Rect{{-30, -30, 60, 60}, 20}, ops.IDENTITY)
+	gone := clip(&fx, ui.NO_CLIP, ops.Round_Rect{{100, 100, 40, 40}, 10}, ops.IDENTITY)
+	fill(&fx, ops.IDENTITY, part, ops.Rect{-40, -40, 200, 200}, RED)
+	fill(&fx, ops.IDENTITY, gone, ops.Rect{0, 0, SIZE, SIZE}, RED)
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	testing.expect_value(t, at(&fx, {5, 5}), RED)
 	testing.expect_value(t, at(&fx, {40, 40}), WHITE)
@@ -318,17 +319,17 @@ test_masked_clip_off_target :: proc(t: ^testing.T) {
 test_clip_interior_is_opaque :: proc(t: ^testing.T) {
 	Case :: struct {
 		name:  string,
-		outer: ui.Shape,
-		inner: ui.Shape, // nil for a single-node chain
-		m:     ui.Affine,
+		outer: ops.Shape,
+		inner: ops.Shape, // nil for a single-node chain
+		m:     ops.Affine,
 		least: f32, // the interior area the case must find
 	}
 	cases := []Case {
-		{"fractional", ui.Round_Rect{{3.3, 4.7, 51.2, 49.9}, 9.6}, nil, ui.IDENTITY, 1500},
-		{"scaled", ui.Round_Rect{{2.25, 3.5, 20.5, 18.75}, 5}, nil, ui.mul(ui.scale(2.5, 2.25), ui.translate(0.3, 0.6)), 1500},
-		{"nested", ui.Rect{10.4, 0.5, 40.2, 63}, ui.Round_Rect{{1.5, 8.25, 60, 30.5}, 12}, ui.IDENTITY, 600},
-		{"big radius", ui.Round_Rect{{8.5, 8.5, 40, 20}, 30}, nil, ui.IDENTITY, 0},
-		{"past the target", ui.Round_Rect{{-20.5, 30.5, 120, 60}, 16}, nil, ui.IDENTITY, 1500},
+		{"fractional", ops.Round_Rect{{3.3, 4.7, 51.2, 49.9}, 9.6}, nil, ops.IDENTITY, 1500},
+		{"scaled", ops.Round_Rect{{2.25, 3.5, 20.5, 18.75}, 5}, nil, ops.mul(ops.scale(2.5, 2.25), ops.translate(0.3, 0.6)), 1500},
+		{"nested", ops.Rect{10.4, 0.5, 40.2, 63}, ops.Round_Rect{{1.5, 8.25, 60, 30.5}, 12}, ops.IDENTITY, 600},
+		{"big radius", ops.Round_Rect{{8.5, 8.5, 40, 20}, 30}, nil, ops.IDENTITY, 0},
+		{"past the target", ops.Round_Rect{{-20.5, 30.5, 120, 60}, 16}, nil, ops.IDENTITY, 1500},
 	}
 	for tc in cases {
 		fx: Fixture
@@ -343,11 +344,11 @@ test_clip_interior_is_opaque :: proc(t: ^testing.T) {
 		testing.expectf(t, inner.w * inner.h >= tc.least, "%s: interior %v is smaller than %v px", tc.name, inner, tc.least)
 		// The mask skips the interior, so rasterize each node's coverage
 		// over the whole box and check it there.
-		whole := []ui.Rect{{0, 0, m.box.w, m.box.h}}
+		whole := []ops.Rect{{0, 0, m.box.w, m.box.h}}
 		partial := 0
 		for c := id; c != ui.NO_CLIP; c = fx.frame.clips[c].parent {
 			node := fx.frame.clips[c]
-			node.transform = ui.mul(node.transform, ui.translate(-m.box.x, -m.box.y))
+			node.transform = ops.mul(node.transform, ops.translate(-m.box.x, -m.box.y))
 			cover: bl.ImageCore
 			bl.image_init(&cover)
 			defer bl.image_destroy(&cover)
@@ -376,9 +377,9 @@ test_clip_interior_no_seam :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)
 	defer teardown(&fx)
-	c := clip(&fx, ui.NO_CLIP, ui.Round_Rect{{2.5, 2.5, 59, 59}, 20}, ui.IDENTITY)
+	c := clip(&fx, ui.NO_CLIP, ops.Round_Rect{{2.5, 2.5, 59, 59}, 20}, ops.IDENTITY)
 	for i in 0 ..< 4 {
-		fill(&fx, ui.IDENTITY, c, ui.Rect{0, f32(i) * 8, SIZE, 30}, ui.Color{0, 80, 200, 90})
+		fill(&fx, ops.IDENTITY, c, ops.Rect{0, f32(i) * 8, SIZE, 30}, ops.Color{0, 80, 200, 90})
 	}
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	// Row 40 is under the same fills from x = 4, in the ring, across the

@@ -1,6 +1,7 @@
 package material
 
 import "core:fmt"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -33,8 +34,8 @@ INSET_NARROW :: f32(4)
 // Chip_Colors are one chip's resolved paint.
 @(private = "file")
 Chip_Colors :: struct {
-	container, outline:  ui.Color, // either may be unpainted
-	label, lead, trail:  ui.Color,
+	container, outline:  ops.Color, // either may be unpainted
+	label, lead, trail:  ops.Color,
 	elevation:           f32, // dp
 }
 
@@ -276,8 +277,8 @@ chip :: proc(
 	// The 32dp chip is centred in a 48dp touch target, as MDC's
 	// ensureAccessibleTouchTarget does (chips.json notes).
 	size := ui.constrain_min(gtx.constraints, {w, max(MIN_TOUCH, height)})
-	vis := ui.Rect{0, (size.y - height) / 2, size.x, height}
-	body := ui.Rect{0, 0, size.x, size.y}
+	vis := ops.Rect{0, (size.y - height) / 2, size.x, height}
+	body := ops.Rect{0, 0, size.x, size.y}
 	if trail != .None && kind == .Input {
 		body.w -= end + trail_size + ELEMENT_GAP / 2 // the close icon is its own target
 	}
@@ -318,7 +319,7 @@ chip :: proc(
 		}
 		radius = clamp(animate(gtx, c, 0, target, .Default_Effects, 0.1), 0, height / 2)
 	}
-	rr := ui.Round_Rect{vis, radius}
+	rr := ops.Round_Rect{vis, radius}
 
 	// Selection cross-fades the two looks rather than cutting.
 	col := chip_colors(kind, raised, on, c, dragged)
@@ -327,14 +328,14 @@ chip :: proc(
 		sel := chip_colors(kind, raised, true, c, dragged)
 		col.container = cross_fade(off.container, sel.container, sel_f)
 		col.outline = cross_fade(off.outline, sel.outline, sel_f)
-		col.label = ui.mix(off.label, sel.label, sel_f)
-		col.lead = ui.mix(off.lead, sel.lead, sel_f)
-		col.trail = ui.mix(off.trail, sel.trail, sel_f)
+		col.label = ops.mix(off.label, sel.label, sel_f)
+		col.lead = ops.mix(off.lead, sel.lead, sel_f)
+		col.trail = ops.mix(off.trail, sel.trail, sel_f)
 	}
 
 	paint_elevation(gtx, rr, elevation_level(col.elevation))
 	if ui.painted(col.container) {
-		ui.fill(gtx.ops, rr, col.container)
+		ops.fill(gtx.scene, rr, col.container)
 	}
 	if ui.painted(col.outline) {
 		stroke_inside(gtx, rr, col.outline, tok.CHIPS_UNSELECTED_OUTLINE_WIDTH)
@@ -343,13 +344,13 @@ chip :: proc(
 
 	x := start
 	if lead_w > 0 && glyph != .None {
-		ui.clip_push(gtx.ops, ui.Rect{x, vis.y, lead_w, height})
+		ops.clip_push(gtx.scene, ops.Rect{x, vis.y, lead_w, height})
 		gc := col.lead
 		if av != .None && c.disabled {
 			gc = token_color(tok.INPUT_CHIP_DISABLED_LEADING_ICON_COLOR, tok.INPUT_CHIP_DISABLED_AVATAR_OPACITY)
 		}
 		icon(gtx, glyph, {x, vis.y + (height - lead_size) / 2}, lead_size, fade(gc, lead_a))
-		ui.clip_pop(gtx.ops)
+		ops.clip_pop(gtx.scene)
 	}
 	x += lead_w + ELEMENT_GAP
 	draw_text(gtx, t, {x, vis.y + (height - t.height) / 2}, col.label)
@@ -362,16 +363,16 @@ chip :: proc(
 			// The remove control gets its own target and name (chips.json
 			// accessibility): from half the gap before it to the chip's end.
 			rid := ui.id_mix(p.id, 1)
-			hit := ui.Rect{body.w, 0, size.x - body.w, size.y}
+			hit := ops.Rect{body.w, 0, size.x - body.w, size.y}
 			rst := ui.widget_state(gtx, rid)
 			if ui.click_from_events(gtx, rid, rst, hit) && removed != nil {
 				removed^ = true
 			}
-			ui.input_area(gtx.ops, rid, hit, CLICK_KINDS)
-			ui.tag(gtx.ops, rid, fmt.aprintf("remove %s", label, allocator = gtx.allocator))
+			ops.input_area(gtx.scene, rid, hit, CLICK_KINDS)
+			ops.tag(gtx.scene, rid, fmt.aprintf("remove %s", label, allocator = gtx.allocator))
 		}
 	}
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
 	ui.widget_close(gtx, &p, {size, vis.y + (height - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -379,7 +380,7 @@ chip :: proc(
 // cross_fade blends a toward b by t, treating an unpainted end as b (or a)
 // at no alpha, so a colour fades in or out rather than through black.
 @(private = "file")
-cross_fade :: proc(a, b: ui.Color, t: f32) -> ui.Color {
+cross_fade :: proc(a, b: ops.Color, t: f32) -> ops.Color {
 	switch {
 	case !ui.painted(a) && !ui.painted(b):
 		return {}
@@ -388,5 +389,5 @@ cross_fade :: proc(a, b: ui.Color, t: f32) -> ui.Color {
 	case !ui.painted(b):
 		return fade(a, 1 - t)
 	}
-	return ui.mix(a, b, t)
+	return ops.mix(a, b, t)
 }

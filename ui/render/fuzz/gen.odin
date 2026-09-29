@@ -1,6 +1,7 @@
 package render_fuzz
 
 import "core:math"
+import "jm:ui/ops"
 
 import harness "jm:fuzz"
 import "jm:ui"
@@ -27,7 +28,7 @@ Clip_Kind :: enum u8 {
 Clip_Model :: struct {
 	parent: int, // -1 for none; always below this clip's index
 	kind:   Clip_Kind,
-	rect:   ui.Rect,
+	rect:   ops.Rect,
 	radius: f32,
 	angle:  f32,
 	scroll: [2]f32,
@@ -57,7 +58,7 @@ Item :: struct {
 	pos:    [2]f32,
 	angle:  f32,
 	paint:  Paint_Kind,
-	colors: [2]ui.Color,
+	colors: [2]ops.Color,
 	stroke: f32, // 0 fills
 	clip:   int, // -1 for none
 	seed:   u8, // picks the text, and bends the path
@@ -202,7 +203,7 @@ item :: proc(src: ^harness.Source, m: ^Model) -> Item {
 	return it
 }
 
-color :: proc(src: ^harness.Source) -> ui.Color {
+color :: proc(src: ^harness.Source) -> ops.Color {
 	return {u8(harness.integer_in(src, 0, 256)), u8(harness.integer_in(src, 0, 256)), u8(harness.integer_in(src, 0, 256)), 255}
 }
 
@@ -216,95 +217,95 @@ shift :: proc(m: ^Model, c: int) -> [2]f32 {
 	return s
 }
 
-// build writes m into frame, with its resources in ops, as flatten would:
+// build writes m into frame, with its resources in sc, as flatten would:
 // every clip after its parent, every draw after its clip.
-build :: proc(m: ^Model, ops: ^ui.Ops, frame: ^ui.Frame, shaper: ui.Shaper, font: ui.Font_Id) {
-	ui.ops_reset(ops)
+build :: proc(m: ^Model, sc: ^ops.Scene, frame: ^ui.Frame, shaper: ui.Shaper, font: ops.Font_Id) {
+	ops.reset(sc)
 	ui.frame_reset(frame)
-	frame.ops = ops
+	frame.scene = sc
 	for c in m.clips {
 		s := shift(m, c.parent)
-		t := ui.mul(ui.rotate(c.angle), ui.translate(c.rect.x - s.x, c.rect.y - s.y))
-		local := ui.Rect{0, 0, c.rect.w, c.rect.h}
-		shape: ui.Shape
+		t := ops.mul(ops.rotate(c.angle), ops.translate(c.rect.x - s.x, c.rect.y - s.y))
+		local := ops.Rect{0, 0, c.rect.w, c.rect.h}
+		shape: ops.Shape
 		switch c.kind {
 		case .Rect:
 			shape = local
 		case .Round_Rect:
-			shape = ui.Round_Rect{local, c.radius}
+			shape = ops.Round_Rect{local, c.radius}
 		case .Ellipse:
-			shape = ui.Ellipse{local}
+			shape = ops.Ellipse{local}
 		}
 		append(&frame.clips, ui.Clip{ui.Clip_Id(c.parent), shape, t})
 	}
 	for &it in m.items {
 		s := shift(m, it.clip)
-		t := ui.mul(ui.rotate(it.angle), ui.translate(it.pos.x - s.x, it.pos.y - s.y))
-		local := ui.Rect{0, 0, it.size.x, it.size.y}
+		t := ops.mul(ops.rotate(it.angle), ops.translate(it.pos.x - s.x, it.pos.y - s.y))
+		local := ops.Rect{0, 0, it.size.x, it.size.y}
 		paint := make_paint(&it)
 		cmd: ui.Draw_Cmd
-		shape: ui.Shape
+		shape: ops.Shape
 		switch it.kind {
 		case .Rect:
 			shape = local
 		case .Round_Rect:
-			shape = ui.Round_Rect{local, it.radius}
+			shape = ops.Round_Rect{local, it.radius}
 		case .Ellipse:
-			shape = ui.Ellipse{local}
+			shape = ops.Ellipse{local}
 		case .Path:
-			shape = ui.Path_Ref{ui.add_path(ops, bent_path(it.size, it.seed))}
+			shape = ops.Path_Ref{ops.add_path(sc, bent_path(it.size, it.seed))}
 		case .Text:
 			text := TEXTS[int(it.seed) % len(TEXTS)]
 			size := TEXT_SIZES[int(it.seed) % len(TEXT_SIZES)]
-			append(&ops.runs, ui.shape(shaper, font, size, text, context.allocator))
-			cmd = ui.Glyphs{ui.Run_Id(len(ops.runs) - 1), {0, size}, it.colors[0]}
+			append(&sc.runs, ui.shape(shaper, font, size, text, context.allocator))
+			cmd = ops.Glyphs{ops.Run_Id(len(sc.runs) - 1), {0, size}, it.colors[0]}
 		}
 		if cmd == nil {
 			if it.stroke > 0 {
-				cmd = ui.Stroke{shape, paint, {width = it.stroke}}
+				cmd = ops.Stroke{shape, paint, {width = it.stroke}}
 			} else {
-				cmd = ui.Fill{shape, paint}
+				cmd = ops.Fill{shape, paint}
 			}
 		}
 		append(&frame.draws, ui.Draw{t, ui.Clip_Id(it.clip), cmd})
 	}
 }
 
-make_paint :: proc(it: ^Item) -> ui.Paint {
+make_paint :: proc(it: ^Item) -> ops.Paint {
 	a, b := it.colors[0], it.colors[1]
 	switch it.paint {
 	case .Solid:
 		return a
 	case .Translucent:
-		return ui.Color{a.r, a.g, a.b, 120}
+		return ops.Color{a.r, a.g, a.b, 120}
 	case .Linear:
-		stops := make([]ui.Gradient_Stop, 2)
+		stops := make([]ops.Gradient_Stop, 2)
 		stops[0], stops[1] = {0, a}, {1, b}
-		return ui.Linear_Gradient{{0, 0}, it.size, stops}
+		return ops.Linear_Gradient{{0, 0}, it.size, stops}
 	case .Radial:
-		stops := make([]ui.Gradient_Stop, 2)
+		stops := make([]ops.Gradient_Stop, 2)
 		stops[0], stops[1] = {0, a}, {1, b}
-		return ui.Radial_Gradient{it.size / 2, max(it.size.x, it.size.y) / 2, stops}
+		return ops.Radial_Gradient{it.size / 2, max(it.size.x, it.size.y) / 2, stops}
 	}
 	return a
 }
 
 // bent_path is a closed path inside size: a triangle, with a curve on one
 // side when seed says so.
-bent_path :: proc(size: [2]f32, seed: u8) -> ui.Path {
-	verbs := make([dynamic]ui.Path_Verb)
-	points := make([dynamic]ui.Point)
-	append(&verbs, ui.Path_Verb.Move)
-	append(&points, ui.Point{0, size.y})
-	append(&verbs, ui.Path_Verb.Line)
-	append(&points, ui.Point{size.x / 2, 0})
+bent_path :: proc(size: [2]f32, seed: u8) -> ops.Path {
+	verbs := make([dynamic]ops.Path_Verb)
+	points := make([dynamic]ops.Point)
+	append(&verbs, ops.Path_Verb.Move)
+	append(&points, ops.Point{0, size.y})
+	append(&verbs, ops.Path_Verb.Line)
+	append(&points, ops.Point{size.x / 2, 0})
 	if seed % 2 == 1 {
-		append(&verbs, ui.Path_Verb.Cubic)
-		append(&points, ui.Point{size.x, 0}, ui.Point{size.x, size.y / 2}, ui.Point{size.x, size.y})
+		append(&verbs, ops.Path_Verb.Cubic)
+		append(&points, ops.Point{size.x, 0}, ops.Point{size.x, size.y / 2}, ops.Point{size.x, size.y})
 	} else {
-		append(&verbs, ui.Path_Verb.Line)
-		append(&points, ui.Point{size.x, size.y})
+		append(&verbs, ops.Path_Verb.Line)
+		append(&points, ops.Point{size.x, size.y})
 	}
-	append(&verbs, ui.Path_Verb.Close)
+	append(&verbs, ops.Path_Verb.Close)
 	return {verbs[:], points[:]}
 }

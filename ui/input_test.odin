@@ -1,15 +1,16 @@
 package ui
 
 import "core:math"
+import "jm:ui/ops"
 import "core:testing"
 
 @(private = "file")
 add_hit :: proc(
 	f: ^Frame,
-	area: Area_Id,
-	shape: Shape,
-	kinds: Event_Kinds,
-	m := IDENTITY,
+	area: ops.Area_Id,
+	shape: ops.Shape,
+	kinds: ops.Event_Kinds,
+	m := ops.IDENTITY,
 	clip := NO_CLIP,
 ) {
 	append(&f.hits, Hit{area, kinds, shape, m, clip, len(f.hits), 0})
@@ -29,9 +30,9 @@ route :: proc(r: ^Router, f: ^Frame, evs: ..Raw_Event) -> []Event {
 expect_event :: proc(
 	t: ^testing.T,
 	got: Event,
-	kind: Event_Kind,
-	area: Area_Id,
-	pos: Point = {},
+	kind: ops.Event_Kind,
+	area: ops.Area_Id,
+	pos: ops.Point = {},
 	loc := #caller_location,
 ) {
 	testing.expect_value(t, got.kind, kind, loc = loc)
@@ -44,8 +45,8 @@ input_hit_test_picks_top_most :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 	defer frame_destroy(&f)
-	add_hit(&f, 1, Rect{0, 0, 100, 100}, {.Press})
-	add_hit(&f, 2, Rect{50, 50, 100, 100}, {.Press})
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 100}, {.Press})
+	add_hit(&f, 2, ops.Rect{50, 50, 100, 100}, {.Press})
 
 	h, ok := hit_test(&f, {75, 75}, .Press)
 	testing.expect(t, ok)
@@ -62,16 +63,16 @@ input_hit_test_rotated_rect :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 	defer frame_destroy(&f)
-	r := Rect{0, 0, 100, 100}
-	m := mul(rotate(math.PI / 4), translate(200, 200))
+	r := ops.Rect{0, 0, 100, 100}
+	m := ops.mul(ops.rotate(math.PI / 4), ops.translate(200, 200))
 	add_hit(&f, 1, r, {.Press}, m)
 
-	_, ok := hit_test(&f, apply(m, {50, 50}), .Press)
+	_, ok := hit_test(&f, ops.apply(m, {50, 50}), .Press)
 	testing.expect(t, ok, "center of the rotated rect")
 	// The rect is a diamond on screen: its bounding box corners are outside.
-	b := transform_rect(m, r)
-	corner := Point{b.x + 2, b.y + 2}
-	testing.expect(t, rect_contains(b, corner))
+	b := ops.transform_rect(m, r)
+	corner := ops.Point{b.x + 2, b.y + 2}
+	testing.expect(t, ops.rect_contains(b, corner))
 	_, ok = hit_test(&f, corner, .Press)
 	testing.expect(t, !ok, "bounding box corner of the rotated rect")
 }
@@ -81,9 +82,9 @@ input_hit_test_respects_clip :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 	defer frame_destroy(&f)
-	append(&f.clips, Clip{parent = NO_CLIP, shape = Rect{0, 0, 200, 50}, transform = IDENTITY})
-	append(&f.clips, Clip{parent = 0, shape = Rect{0, 0, 50, 200}, transform = translate(10, 0)})
-	add_hit(&f, 1, Rect{0, 0, 100, 100}, {.Press}, IDENTITY, 1)
+	append(&f.clips, Clip{parent = NO_CLIP, shape = ops.Rect{0, 0, 200, 50}, transform = ops.IDENTITY})
+	append(&f.clips, Clip{parent = 0, shape = ops.Rect{0, 0, 50, 200}, transform = ops.translate(10, 0)})
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 100}, {.Press}, ops.IDENTITY, 1)
 
 	_, ok := hit_test(&f, {30, 25}, .Press)
 	testing.expect(t, ok, "inside both clips")
@@ -100,8 +101,8 @@ input_hit_test_shapes :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 	defer frame_destroy(&f)
-	add_hit(&f, 1, Round_Rect{{0, 0, 100, 100}, 20}, {.Press})
-	add_hit(&f, 2, Ellipse{{200, 0, 100, 50}}, {.Press})
+	add_hit(&f, 1, ops.Round_Rect{{0, 0, 100, 100}, 20}, {.Press})
+	add_hit(&f, 2, ops.Ellipse{{200, 0, 100, 50}}, {.Press})
 
 	_, ok := hit_test(&f, {1, 1}, .Press)
 	testing.expect(t, !ok, "rounded-off corner")
@@ -118,8 +119,8 @@ input_hit_test_filters_kinds :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 	defer frame_destroy(&f)
-	add_hit(&f, 1, Rect{0, 0, 100, 100}, {.Press})
-	add_hit(&f, 2, Rect{0, 0, 100, 100}, {.Move})
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 100}, {.Press})
+	add_hit(&f, 2, ops.Rect{0, 0, 100, 100}, {.Move})
 
 	h, ok := hit_test(&f, {10, 10}, .Press)
 	testing.expect(t, ok)
@@ -141,21 +142,21 @@ input_router_travel_is_local_and_ignores_where_the_area_moved :: proc(t: ^testin
 	a: Frame
 	frame_init(&a)
 	defer frame_destroy(&a)
-	add_hit(&a, 1, Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, mul(scale(2, 2), translate(10, 0)))
+	add_hit(&a, 1, ops.Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, ops.mul(ops.scale(2, 2), ops.translate(10, 0)))
 	evs := route(&r, &a, {kind = .Press, pos = {20, 20}}, {kind = .Move, pos = {30, 20}})
 	if !testing.expect_value(t, len(evs), 2) {
 		return
 	}
-	testing.expect_value(t, evs[1].travel, Point{5, 0})
+	testing.expect_value(t, evs[1].travel, ops.Point{5, 0})
 	b: Frame
 	frame_init(&b)
 	defer frame_destroy(&b)
-	add_hit(&b, 1, Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, mul(scale(2, 2), translate(50, 0)))
+	add_hit(&b, 1, ops.Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, ops.mul(ops.scale(2, 2), ops.translate(50, 0)))
 	evs = route(&r, &b, {kind = .Move, pos = {36, 20}})
 	if !testing.expect_value(t, len(evs), 1) {
 		return
 	}
-	testing.expect_value(t, evs[0].travel, Point{3, 0})
+	testing.expect_value(t, evs[0].travel, ops.Point{3, 0})
 }
 
 @(test)
@@ -166,7 +167,7 @@ input_router_grabs_until_release :: proc(t: ^testing.T) {
 	r: Router
 	router_init(&r)
 	defer router_destroy(&r)
-	add_hit(&f, 1, Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, translate(10, 10))
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 100}, {.Press, .Release, .Move}, ops.translate(10, 10))
 
 	evs := route(
 		&r,
@@ -196,9 +197,9 @@ input_router_hover_sequence :: proc(t: ^testing.T) {
 	r: Router
 	router_init(&r)
 	defer router_destroy(&r)
-	k := Event_Kinds{.Enter, .Leave, .Move}
-	add_hit(&f, 1, Rect{0, 0, 50, 50}, k)
-	add_hit(&f, 2, Rect{100, 0, 50, 50}, k)
+	k := ops.Event_Kinds{.Enter, .Leave, .Move}
+	add_hit(&f, 1, ops.Rect{0, 0, 50, 50}, k)
+	add_hit(&f, 2, ops.Rect{100, 0, 50, 50}, k)
 
 	evs := route(
 		&r,
@@ -209,8 +210,8 @@ input_router_hover_sequence :: proc(t: ^testing.T) {
 		{kind = .Move, pos = {300, 300}},
 	)
 	want := [?]struct {
-		kind: Event_Kind,
-		area: Area_Id,
+		kind: ops.Event_Kind,
+		area: ops.Area_Id,
 	}{{.Enter, 1}, {.Move, 1}, {.Move, 1}, {.Leave, 1}, {.Enter, 2}, {.Move, 2}, {.Leave, 2}}
 	if !testing.expect_value(t, len(evs), len(want)) {
 		return
@@ -238,8 +239,8 @@ input_router_focus :: proc(t: ^testing.T) {
 	r: Router
 	router_init(&r)
 	defer router_destroy(&r)
-	add_hit(&f, 1, Rect{0, 0, 100, 20}, {.Press, .Release, .Key, .Text, .Focus, .Blur})
-	add_hit(&f, 2, Rect{0, 50, 100, 20}, {.Press, .Release})
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 20}, {.Press, .Release, .Key, .Text, .Focus, .Blur})
+	add_hit(&f, 2, ops.Rect{0, 50, 100, 20}, {.Press, .Release})
 
 	evs := route(&r, &f, {kind = .Press, pos = {5, 5}}, {kind = .Release, pos = {5, 5}})
 	testing.expect_value(t, r.focus, 1)
@@ -284,8 +285,8 @@ input_router_scroll_passes_through :: proc(t: ^testing.T) {
 	r: Router
 	router_init(&r)
 	defer router_destroy(&r)
-	add_hit(&f, 1, Rect{0, 0, 100, 100}, {.Scroll})
-	add_hit(&f, 2, Rect{0, 0, 50, 50}, {.Press})
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 100}, {.Scroll})
+	add_hit(&f, 2, ops.Rect{0, 0, 50, 50}, {.Press})
 
 	evs := route(&r, &f, {kind = .Scroll, pos = {10, 10}, scroll = {0, 3}})
 	if testing.expect_value(t, len(evs), 1) {

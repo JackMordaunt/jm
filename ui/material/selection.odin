@@ -1,6 +1,7 @@
 package material
 
 import "core:math"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -57,8 +58,8 @@ label_width :: proc(gtx: ^ui.Ctx, label: string) -> f32 {
 // token_color is role r at a token's opacity: a disabled-*-color plus its
 // disabled-*-opacity.
 @(private)
-token_color :: proc(r: tok.Role, opacity: f32 = 1) -> ui.Color {
-	return ui.with_alpha(color(r), opacity)
+token_color :: proc(r: tok.Role, opacity: f32 = 1) -> ops.Color {
+	return ops.with_alpha(color(r), opacity)
 }
 
 // snap_spring puts spring slot of c at v with no motion, for the values a
@@ -144,17 +145,17 @@ checkbox :: proc(
 	}
 	// The border fades from the outline colour to the box colour, so a
 	// checked box is one filled shape (Checkbox.kt:675-698).
-	border := ui.mix(edge, sel_box, fill)
+	border := ops.mix(edge, sel_box, fill)
 
-	mid := ui.Point{MIN_TOUCH / 2, size.y / 2}
+	mid := ops.Point{MIN_TOUCH / 2, size.y / 2}
 	layer := ui.circle(mid, tok.CHECKBOX_STATE_LAYER_SIZE / 2)
 	paint_state_layer(gtx, c, layer, on ? sel_box : edge)
 
 	cs := tok.CHECKBOX_CONTAINER_SIZE
-	box := ui.Rect{mid.x - cs / 2, mid.y - cs / 2, cs, cs}
-	rr := ui.Round_Rect{box, tok.CHECKBOX_CONTAINER_SHAPE.radii[0]}
+	box := ops.Rect{mid.x - cs / 2, mid.y - cs / 2, cs, cs}
+	rr := ops.Round_Rect{box, tok.CHECKBOX_CONTAINER_SHAPE.radii[0]}
 	if fill > 0 {
-		ui.fill(gtx.ops, rr, fade(sel_box, fill))
+		ops.fill(gtx.scene, rr, fade(sel_box, fill))
 	}
 	outline_w := c.disabled ? tok.CHECKBOX_UNSELECTED_DISABLED_OUTLINE_WIDTH : tok.CHECKBOX_UNSELECTED_OUTLINE_WIDTH
 	stroke_inside(gtx, rr, border, outline_w)
@@ -164,8 +165,8 @@ checkbox :: proc(
 
 	selection_label(gtx, label, MIN_TOUCH, size.y, c.disabled)
 	paint_focus_ring(gtx, c, {{mid.x - 20, mid.y - 20, 40, 40}, 20})
-	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y})
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label == "" ? "checkbox" : label))
+	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y})
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label == "" ? "checkbox" : label))
 	ui.widget_close(gtx, &p, {size = size})
 	return c.clicked
 }
@@ -175,15 +176,15 @@ checkbox :: proc(
 // a dash at y 0.5 as shift rises, drawn along its length to fraction draw
 // (checkbox.json layout, Checkbox.kt:718-731).
 @(private = "file")
-paint_checkmark :: proc(gtx: ^ui.Ctx, box: ui.Rect, draw, shift: f32, col: ui.Color) {
+paint_checkmark :: proc(gtx: ^ui.Ctx, box: ops.Rect, draw, shift: f32, col: ops.Color) {
 	lerp :: proc(a, b, t: f32) -> f32 {return a + (b - a) * t}
-	at :: proc(box: ui.Rect, x, y: f32) -> ui.Point {return {box.x + x * box.w, box.y + y * box.h}}
+	at :: proc(box: ops.Rect, x, y: f32) -> ops.Point {return {box.x + x * box.w, box.y + y * box.h}}
 	a := at(box, 0.25, 0.5)
 	b := at(box, lerp(0.4, 0.5, shift), lerp(0.65, 0.5, shift))
 	e := at(box, 0.75, lerp(0.3, 0.5, shift))
 	l1, l2 := math.hypot_f32((b - a).x, (b - a).y), math.hypot_f32((e - b).x, (e - b).y)
 	d := clamp(draw, 0, 1) * (l1 + l2)
-	pts: [3]ui.Point
+	pts: [3]ops.Point
 	n := 2
 	pts[0] = a
 	if d <= l1 {
@@ -193,7 +194,7 @@ paint_checkmark :: proc(gtx: ^ui.Ctx, box: ui.Rect, draw, shift: f32, col: ui.Co
 		pts[2] = l2 > 0 ? b + (e - b) * ((d - l1) / l2) : b
 		n = 3
 	}
-	ui.stroke(gtx.ops, ui.polyline(gtx, pts[:n]), col, {width = STROKE, cap = .Square, join = .Miter})
+	ops.stroke(gtx.scene, ui.polyline(gtx, pts[:n]), col, {width = STROKE, cap = .Square, join = .Miter})
 }
 
 // radio_button is M3's radio (radio-button.json): a 20dp ring, 2dp, with a
@@ -234,20 +235,20 @@ radio_button :: proc(
 		sel = token_color(tok.RADIO_BUTTON_DISABLED_SELECTED_ICON_COLOR, tok.RADIO_BUTTON_DISABLED_SELECTED_ICON_OPACITY)
 		unsel = token_color(tok.RADIO_BUTTON_DISABLED_UNSELECTED_ICON_COLOR, tok.RADIO_BUTTON_DISABLED_UNSELECTED_ICON_OPACITY)
 	}
-	col := ui.mix(unsel, sel, f)
+	col := ops.mix(unsel, sel, f)
 
-	mid := ui.Point{MIN_TOUCH / 2, size.y / 2}
+	mid := ops.Point{MIN_TOUCH / 2, size.y / 2}
 	paint_state_layer(gtx, c, ui.circle(mid, tok.RADIO_BUTTON_STATE_LAYER_SIZE / 2), on ? sel : color(.On_Surface))
 	// Ring and dot both sit inside the icon box by half the stroke
 	// (RadioButton.kt:182-189).
-	ui.stroke(gtx.ops, ui.circle(mid, tok.RADIO_BUTTON_ICON_SIZE / 2 - STROKE / 2), col, {width = STROKE})
+	ops.stroke(gtx.scene, ui.circle(mid, tok.RADIO_BUTTON_ICON_SIZE / 2 - STROKE / 2), col, {width = STROKE})
 	if r := dot - STROKE / 2; r > 0 {
-		ui.fill(gtx.ops, ui.circle(mid, r), col)
+		ops.fill(gtx.scene, ui.circle(mid, r), col)
 	}
 	selection_label(gtx, label, MIN_TOUCH, size.y, c.disabled)
 	paint_focus_ring(gtx, c, {{mid.x - 20, mid.y - 20, 40, 40}, 20})
-	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y})
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label == "" ? "radio" : label))
+	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y})
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label == "" ? "radio" : label))
 	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }
@@ -275,7 +276,7 @@ switch_ :: proc(
 	TH :: tok.SWITCH_TRACK_HEIGHT
 	OUTLINE :: tok.SWITCH_TRACK_OUTLINE_WIDTH
 	size := ui.constrain_min(gtx.constraints, {TW + (lw > 0 ? lw + 12 : 0), MIN_TOUCH})
-	track := ui.Rect{0, (size.y - TH) / 2, TW, TH}
+	track := ops.Rect{0, (size.y - TH) / 2, TW, TH}
 	c := control(gtx, p.id, {0, 0, size.x, size.y}, state)
 	if c.clicked {
 		on^ = !on^
@@ -315,7 +316,7 @@ switch_ :: proc(
 	}
 
 	track_col := color(sel ? tok.SWITCH_SELECTED_TRACK_COLOR : tok.SWITCH_UNSELECTED_TRACK_COLOR)
-	outline := sel ? ui.Color{} : color(tok.SWITCH_UNSELECTED_TRACK_OUTLINE_COLOR)
+	outline := sel ? ops.Color{} : color(tok.SWITCH_UNSELECTED_TRACK_OUTLINE_COLOR)
 	handle := color(sel ? tok.SWITCH_SELECTED_HANDLE_COLOR : tok.SWITCH_UNSELECTED_HANDLE_COLOR)
 	icon_col := color(sel ? tok.SWITCH_SELECTED_ICON_COLOR : tok.SWITCH_UNSELECTED_ICON_COLOR)
 	if c.disabled {
@@ -331,16 +332,16 @@ switch_ :: proc(
 			icon_col = token_color(tok.SWITCH_DISABLED_UNSELECTED_ICON_COLOR, tok.SWITCH_DISABLED_UNSELECTED_ICON_OPACITY)
 		}
 	}
-	rr := ui.Round_Rect{track, TH / 2}
-	ui.fill(gtx.ops, rr, track_col)
+	rr := ops.Round_Rect{track, TH / 2}
+	ops.fill(gtx.scene, rr, track_col)
 	if ui.painted(outline) {
 		stroke_inside(gtx, rr, outline, OUTLINE)
 	}
-	centre := ui.Point{track.x + x + d / 2, track.y + TH / 2}
+	centre := ops.Point{track.x + x + d / 2, track.y + TH / 2}
 	// State layer and focus ring sit on the handle, not the track
 	// (switch.json accessibility).
 	paint_state_layer(gtx, c, ui.circle(centre, tok.SWITCH_STATE_LAYER_SIZE / 2), sel ? color(.Primary) : color(.On_Surface))
-	ui.fill(gtx.ops, ui.circle(centre, max(d, 0) / 2), handle)
+	ops.fill(gtx.scene, ui.circle(centre, max(d, 0) / 2), handle)
 	if icons {
 		is := sel ? tok.SWITCH_SELECTED_ICON_SIZE : tok.SWITCH_UNSELECTED_ICON_SIZE
 		icon(gtx, sel ? .Check : .Close, {centre.x - is / 2, centre.y - is / 2}, is, icon_col)
@@ -348,8 +349,8 @@ switch_ :: proc(
 	selection_label(gtx, label, TW + 12, size.y, c.disabled)
 	h := tok.SWITCH_STATE_LAYER_SIZE / 2
 	paint_focus_ring(gtx, c, {{centre.x - h, centre.y - h, 2 * h, 2 * h}, h})
-	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y})
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label == "" ? "switch" : label))
+	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y})
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label == "" ? "switch" : label))
 	ui.widget_close(gtx, &p, {size = size})
 	return c.clicked
 }

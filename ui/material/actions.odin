@@ -1,6 +1,7 @@
 package material
 
 import "core:reflect"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -186,9 +187,9 @@ button_group :: proc(
 			w = base[i] + ui.spring_update(&st.springs[0], gtx, delta[i], spring_params(.Fast_Spatial), 0.1)
 		}
 		w = max(w, 0)
-		r := ui.Rect{x, 0, w, H}
+		r := ops.Rect{x, 0, w, H}
 		// The hit area is at least 48dp tall, centred on the button (foundations touchTarget).
-		hit := ui.Rect{x, (H - 48) / 2, w, 48}
+		hit := ops.Rect{x, (H - 48) / 2, w, 48}
 		c := control(gtx, id, hit, cs)
 		if c.clicked {
 			changed = i
@@ -210,7 +211,7 @@ button_group :: proc(
 		k := lerp_corners(lerp_corners(group_rest_corners(r, i, shown, connected), group_selected_corners(r, connected), sel_t), group_pressed_corners(r, i, shown, connected), press_t)
 		shape := rounded(gtx, r, k)
 		container, content := group_colors(style, toggles, col_t, c.disabled)
-		ui.fill(gtx.ops, shape, container)
+		ops.fill(gtx.scene, shape, container)
 		paint_state_layer(gtx, c, shape, content)
 
 		g := len(icons) > i ? icons[i] : .None
@@ -233,7 +234,7 @@ button_group :: proc(
 		if name == "" {
 			name, _ = reflect.enum_name_from_value(g)
 		}
-		ui.tag(gtx.ops, id, ui.frame_string(gtx, name))
+		ops.tag(gtx.scene, id, ui.frame_string(gtx, name))
 		x += w + gap
 	}
 
@@ -241,22 +242,22 @@ button_group :: proc(
 		// The overflow indicator: a filled icon button with a "more" glyph
 		// (button-group.json anatomy), opening a menu of the rest.
 		id := ui.id_mix(p.id, 0xff)
-		r := ui.Rect{x, 0, ind_w, H}
-		hit := ui.Rect{x, (H - 48) / 2, ind_w, 48}
+		r := ops.Rect{x, 0, ind_w, H}
+		hit := ops.Rect{x, (H - 48) / 2, ind_w, 48}
 		c := control(gtx, id, hit, state == .Disabled ? .Disabled : .Live)
 		if c.clicked {
 			overflow^ = !overflow^
 		}
-		rr := ui.Round_Rect{r, H / 2}
-		container := c.disabled ? ui.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_OPACITY) : color(tok.FILLED_ICON_BUTTON_CONTAINER_COLOR)
-		content := c.disabled ? ui.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_OPACITY) : color(tok.FILLED_ICON_BUTTON_COLOR)
-		ui.fill(gtx.ops, rr, container)
+		rr := ops.Round_Rect{r, H / 2}
+		container := c.disabled ? ops.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_CONTAINER_OPACITY) : color(tok.FILLED_ICON_BUTTON_CONTAINER_COLOR)
+		content := c.disabled ? ops.with_alpha(color(tok.FILLED_ICON_BUTTON_DISABLED_COLOR), tok.FILLED_ICON_BUTTON_DISABLED_OPACITY) : color(tok.FILLED_ICON_BUTTON_COLOR)
+		ops.fill(gtx.scene, rr, container)
 		paint_state_layer(gtx, c, rr, content)
 		isz := tok.SMALL_ICON_BUTTON_ICON_SIZE
 		icon(gtx, .More_Vert, {r.x + (ind_w - isz) / 2, (H - isz) / 2}, isz, content)
 		paint_focus_ring(gtx, c, rr)
 		listen(gtx, c, id, hit)
-		ui.tag(gtx.ops, id, "More options")
+		ops.tag(gtx.scene, id, "More options")
 		x += ind_w + gap
 
 		items := make([]Menu_Item, n - shown, gtx.allocator)
@@ -281,7 +282,7 @@ button_group :: proc(
 		}
 	}
 
-	natural := ui.Size{max(x - gap, 0), H}
+	natural := ops.Size{max(x - gap, 0), H}
 	if width > 0 {
 		natural.x = width
 	}
@@ -295,7 +296,7 @@ button_group :: proc(
 // all round in the middle (ButtonGroup.kt:196-266; button-group.json notes
 // why not the md's inner size).
 @(private)
-group_rest_corners :: proc(r: ui.Rect, i, shown: int, connected: bool) -> Corners {
+group_rest_corners :: proc(r: ops.Rect, i, shown: int, connected: bool) -> Corners {
 	full := min(r.w, r.h) / 2
 	if !connected || shown == 1 {
 		return corners(tok.BUTTON_SMALL_CONTAINER_SHAPE_ROUND, r)
@@ -314,7 +315,7 @@ group_rest_corners :: proc(r: ui.Rect, i, shown: int, connected: bool) -> Corner
 // its button's pressed shape; a connected one swaps only its inward
 // corners to pressed-inner-corner-corner-size (ButtonGroup.kt:205-266).
 @(private)
-group_pressed_corners :: proc(r: ui.Rect, i, shown: int, connected: bool) -> Corners {
+group_pressed_corners :: proc(r: ops.Rect, i, shown: int, connected: bool) -> Corners {
 	if !connected || shown == 1 {
 		return corners(tok.BUTTON_SMALL_PRESSED_CONTAINER_SHAPE, r)
 	}
@@ -334,7 +335,7 @@ group_pressed_corners :: proc(r: ui.Rect, i, shown: int, connected: bool) -> Cor
 // hard-coded 50% rather than the dead selected-inner-corner-corner-size-
 // percent token (button-group.json states, ButtonGroup.kt:240).
 @(private)
-group_selected_corners :: proc(r: ui.Rect, connected: bool) -> Corners {
+group_selected_corners :: proc(r: ops.Rect, connected: bool) -> Corners {
 	if connected {
 		return corners_all(min(r.w, r.h) / 2)
 	}
@@ -345,26 +346,26 @@ group_selected_corners :: proc(r: ui.Rect, connected: bool) -> Corners {
 // t (0 unselected, 1 selected). A non-toggle child uses its style's plain
 // action colours.
 @(private)
-group_colors :: proc(style: Group_Style, toggles: bool, t: f32, disabled: bool) -> (container, content: ui.Color) {
+group_colors :: proc(style: Group_Style, toggles: bool, t: f32, disabled: bool) -> (container, content: ops.Color) {
 	switch style {
 	case .Filled:
 		if disabled {
-			return ui.with_alpha(color(tok.FILLED_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_BUTTON_DISABLED_CONTAINER_OPACITY), ui.with_alpha(color(tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+			return ops.with_alpha(color(tok.FILLED_BUTTON_DISABLED_CONTAINER_COLOR), tok.FILLED_BUTTON_DISABLED_CONTAINER_OPACITY), ops.with_alpha(color(tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.FILLED_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 		}
 		if !toggles {
 			return color(tok.FILLED_BUTTON_CONTAINER_COLOR), color(tok.FILLED_BUTTON_LABEL_TEXT_COLOR)
 		}
-		container = ui.mix(color(tok.FILLED_BUTTON_UNSELECTED_CONTAINER_COLOR), color(tok.FILLED_BUTTON_SELECTED_CONTAINER_COLOR), t)
-		content = ui.mix(color(tok.FILLED_BUTTON_LABEL_TEXT_UNSELECTED_COLOR), color(tok.FILLED_BUTTON_LABEL_TEXT_SELECTED_COLOR), t)
+		container = ops.mix(color(tok.FILLED_BUTTON_UNSELECTED_CONTAINER_COLOR), color(tok.FILLED_BUTTON_SELECTED_CONTAINER_COLOR), t)
+		content = ops.mix(color(tok.FILLED_BUTTON_LABEL_TEXT_UNSELECTED_COLOR), color(tok.FILLED_BUTTON_LABEL_TEXT_SELECTED_COLOR), t)
 	case .Tonal:
 		if disabled {
-			return ui.with_alpha(color(tok.TONAL_BUTTON_DISABLED_CONTAINER_COLOR), tok.TONAL_BUTTON_DISABLED_CONTAINER_OPACITY), ui.with_alpha(color(tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
+			return ops.with_alpha(color(tok.TONAL_BUTTON_DISABLED_CONTAINER_COLOR), tok.TONAL_BUTTON_DISABLED_CONTAINER_OPACITY), ops.with_alpha(color(tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_COLOR), tok.TONAL_BUTTON_DISABLED_LABEL_TEXT_OPACITY)
 		}
 		if !toggles {
 			return color(tok.TONAL_BUTTON_CONTAINER_COLOR), color(tok.TONAL_BUTTON_LABEL_TEXT_COLOR)
 		}
-		container = ui.mix(color(tok.TONAL_BUTTON_UNSELECTED_CONTAINER_COLOR), color(tok.TONAL_BUTTON_SELECTED_CONTAINER_COLOR), t)
-		content = ui.mix(color(tok.TONAL_BUTTON_UNSELECTED_LABEL_TEXT_COLOR), color(tok.TONAL_BUTTON_SELECTED_LABEL_TEXT_COLOR), t)
+		container = ops.mix(color(tok.TONAL_BUTTON_UNSELECTED_CONTAINER_COLOR), color(tok.TONAL_BUTTON_SELECTED_CONTAINER_COLOR), t)
+		content = ops.mix(color(tok.TONAL_BUTTON_UNSELECTED_LABEL_TEXT_COLOR), color(tok.TONAL_BUTTON_SELECTED_LABEL_TEXT_COLOR), t)
 	}
 	return
 }
@@ -446,7 +447,7 @@ toolbar :: proc(
 		DH :: tok.DOCKED_TOOLBAR_CONTAINER_HEIGHT
 		w := width > 0 ? width : (gtx.constraints.max.x < ui.INF ? gtx.constraints.max.x : 412)
 		size := ui.constrain(gtx.constraints, {w, DH})
-		ui.fill(gtx.ops, rounded(gtx, {0, 0, size.x, DH}, corners(tok.DOCKED_TOOLBAR_CONTAINER_SHAPE, {0, 0, size.x, DH})), col.container)
+		ops.fill(gtx.scene, rounded(gtx, {0, 0, size.x, DH}, corners(tok.DOCKED_TOOLBAR_CONTAINER_SHAPE, {0, 0, size.x, DH})), col.container)
 		inner := size.x - tok.DOCKED_TOOLBAR_CONTAINER_LEADING_SPACE - tok.DOCKED_TOOLBAR_CONTAINER_TRAILING_SPACE
 		g := tok.DOCKED_TOOLBAR_CONTAINER_MIN_SPACING
 		if n > 1 {
@@ -492,11 +493,11 @@ toolbar :: proc(
 	}
 	cross := max(H, fab_d)
 	main_len := bar_len + (with_fab ? TOOLBAR_FAB_GAP * shown + fab_d : 0)
-	size := vertical ? ui.Size{cross, main_len} : ui.Size{main_len, cross}
+	size := vertical ? ops.Size{cross, main_len} : ops.Size{main_len, cross}
 	size = ui.constrain_min(gtx.constraints, size)
 
 	// at maps a main-axis offset and cross-axis offset to a point.
-	at :: proc(vertical: bool, main, cross: f32) -> ui.Point {
+	at :: proc(vertical: bool, main, cross: f32) -> ops.Point {
 		return vertical ? {cross, main} : {main, cross}
 	}
 	bar0: f32 = with_fab && fab_leading ? fab_d + TOOLBAR_FAB_GAP * shown : 0
@@ -504,12 +505,12 @@ toolbar :: proc(
 	if bar_len > 0.5 {
 		o := at(vertical, bar0, cross0)
 		sz := at(vertical, bar_len, H)
-		br := ui.Rect{o.x, o.y, sz.x, sz.y}
+		br := ops.Rect{o.x, o.y, sz.x, sz.y}
 		pill := rounded(gtx, br, corners(tok.FLOATING_TOOLBAR_CONTAINER_SHAPE, br))
-		ui.fill(gtx.ops, pill, col.container)
+		ops.fill(gtx.scene, pill, col.container)
 		// The container clips its content while it resizes (toolbar.json
 		// floating-shape-fixed: only its size animates).
-		ui.clip_push(gtx.ops, pill)
+		ops.clip_push(gtx.scene, pill)
 		m := bar0 + lead * (with_fab ? shown : 1)
 		for g_, i in actions {
 			k := ext(i, n, leading, trailing, shown, with_fab)
@@ -526,7 +527,7 @@ toolbar :: proc(
 			}
 			m += ACTION_SLOT * k
 		}
-		ui.clip_pop(gtx.ops)
+		ops.clip_pop(gtx.scene)
 	}
 	if with_fab {
 		f0: f32 = fab_leading ? 0 : bar_len + TOOLBAR_FAB_GAP * shown
@@ -540,7 +541,7 @@ toolbar :: proc(
 		}
 		isz := tok.FAB_MEDIUM_ICON_SIZE + (tok.FAB_BASELINE_ICON_SIZE - tok.FAB_MEDIUM_ICON_SIZE) * e
 		// The FAB keeps baseline's corner: only its size animates.
-		fr := ui.Rect{fo.x, fo.y, fab_d, fab_d}
+		fr := ops.Rect{fo.x, fo.y, fab_d, fab_d}
 		if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, isz, fc, fi, tok.FAB_PRIMARY_CONTAINER_CONTAINER_ELEVATION, state == .Disabled ? .Disabled : .Live) {
 			clicked = TOOLBAR_FAB
 		}
@@ -564,7 +565,7 @@ action_state :: proc(state: Interaction, i, forced: int) -> Interaction {
 // Toolbar_Colors are a toolbar's container and its actions' colours.
 @(private)
 Toolbar_Colors :: struct {
-	container, content, sel_container, sel_content: ui.Color,
+	container, content, sel_container, sel_content: ops.Color,
 }
 
 // toolbar_colors picks standard or vibrant. Vibrant reads the floating
@@ -599,21 +600,21 @@ toolbar_colors :: proc(vibrant, docked: bool) -> Toolbar_Colors {
 // colour fades (fast-effects). alpha fades the whole action, for one
 // entering or leaving. Returns true on the frame it is clicked.
 @(private)
-toolbar_action :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, slot: ui.Rect, g: Icon, selected: bool, col: Toolbar_Colors, state: Interaction, alpha: f32) -> bool {
+toolbar_action :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, slot: ops.Rect, g: Icon, selected: bool, col: Toolbar_Colors, state: Interaction, alpha: f32) -> bool {
 	c := control(gtx, id, slot, state)
 	sel_t := animate(gtx, c, 0, selected ? 1 : 0, .Fast_Spatial)
 	press_t := animate(gtx, c, 1, c.pressed ? 1 : 0, .Fast_Spatial)
 	fill_t := animate(gtx, c, 2, selected ? 1 : 0, .Fast_Effects)
 	v := tok.SMALL_ICON_BUTTON_CONTAINER_HEIGHT
-	r := ui.Rect{slot.x + (slot.w - v) / 2, slot.y + (slot.h - v) / 2, v, v}
+	r := ops.Rect{slot.x + (slot.w - v) / 2, slot.y + (slot.h - v) / 2, v, v}
 	k := lerp_corners(lerp_corners(corners(tok.SMALL_ICON_BUTTON_CONTAINER_SHAPE_ROUND, r), corners(tok.SMALL_ICON_BUTTON_SELECTED_CONTAINER_SHAPE_ROUND, r), sel_t), corners(tok.SMALL_ICON_BUTTON_PRESSED_CONTAINER_SHAPE, r), press_t)
 	shape := rounded(gtx, r, k)
 	a := clamp(alpha, 0, 1)
-	content := ui.mix(col.content, col.sel_content, fill_t)
+	content := ops.mix(col.content, col.sel_content, fill_t)
 	if c.disabled {
-		content = ui.with_alpha(color(tok.STANDARD_ICON_BUTTON_DISABLED_COLOR), tok.STANDARD_ICON_BUTTON_DISABLED_OPACITY)
+		content = ops.with_alpha(color(tok.STANDARD_ICON_BUTTON_DISABLED_COLOR), tok.STANDARD_ICON_BUTTON_DISABLED_OPACITY)
 	} else if fill_t > 0 {
-		ui.fill(gtx.ops, shape, fade(col.sel_container, fill_t * a))
+		ops.fill(gtx.scene, shape, fade(col.sel_container, fill_t * a))
 	}
 	paint_state_layer(gtx, c, shape, content)
 	isz := tok.SMALL_ICON_BUTTON_ICON_SIZE
@@ -621,7 +622,7 @@ toolbar_action :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, slot: ui.Rect, g: Icon, sel
 	paint_focus_ring_corners(gtx, c, r, k, inward = true)
 	listen(gtx, c, id, slot)
 	name, _ := reflect.enum_name_from_value(g)
-	ui.tag(gtx.ops, id, name)
+	ops.tag(gtx.scene, id, name)
 	return c.clicked
 }
 
@@ -630,17 +631,17 @@ toolbar_action :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, slot: ui.Rect, g: Icon, sel
 // than lay one out. elevation_dp is its container-elevation token.
 // Returns true on the frame it is clicked.
 @(private)
-paint_fab_at :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, radius: f32, g: Icon, isz: f32, container, content: ui.Color, elevation_dp: f32, state: Interaction) -> bool {
+paint_fab_at :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, radius: f32, g: Icon, isz: f32, container, content: ops.Color, elevation_dp: f32, state: Interaction) -> bool {
 	c := control(gtx, id, r, state)
-	rr := ui.Round_Rect{r, min(radius, min(r.w, r.h) / 2)}
+	rr := ops.Round_Rect{r, min(radius, min(r.w, r.h) / 2)}
 	paint_elevation(gtx, rr, elevation_level(elevation_dp))
-	ui.fill(gtx.ops, rr, container)
+	ops.fill(gtx.scene, rr, container)
 	paint_state_layer(gtx, c, rr, content)
 	icon(gtx, g, {r.x + (r.w - isz) / 2, r.y + (r.h - isz) / 2}, isz, content)
 	paint_focus_ring(gtx, c, rr)
 	listen(gtx, c, id, r)
 	name, _ := reflect.enum_name_from_value(g)
-	ui.tag(gtx.ops, id, name)
+	ops.tag(gtx.scene, id, name)
 	return c.clicked
 }
 
@@ -703,7 +704,7 @@ fab_menu :: proc(
 
 	// The trigger's hit area is its closed box: the close button sits
 	// inside it, anchored to the aligned bottom corner.
-	area := ui.Rect{0, 0, closed_d, closed_d}
+	area := ops.Rect{0, 0, closed_d, closed_d}
 	c := control(gtx, p.id, area, state)
 	if c.clicked {
 		open^ = !open^
@@ -725,13 +726,13 @@ fab_menu :: proc(
 	// on-primary (FloatingActionButtonMenu.kt:581,612): the close button's
 	// roles have no fab-menu token.
 	ct := clamp(t, 0, 1)
-	container := ui.mix(color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR), color(.Primary), ct)
-	content := ui.mix(color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR), color(.On_Primary), ct)
+	container := ops.mix(color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR), color(.Primary), ct)
+	content := ops.mix(color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR), color(.On_Primary), ct)
 	tx := align_start ? 0 : closed_d - d
-	tr := ui.Rect{tx, closed_d - d, d, d}
-	rr := ui.Round_Rect{tr, radius}
+	tr := ops.Rect{tx, closed_d - d, d, d}
+	rr := ops.Round_Rect{tr, radius}
 	paint_elevation(gtx, rr, elevation_level(tok.FAB_PRIMARY_CONTAINER_CONTAINER_ELEVATION))
-	ui.fill(gtx.ops, rr, container)
+	ops.fill(gtx.scene, rr, container)
 	paint_state_layer(gtx, c, rr, content)
 	// The add → close swap at half progress is the icon slot's convention
 	// upstream (FloatingActionButtonMenu.kt:440); here the menu owns it.
@@ -740,7 +741,7 @@ fab_menu :: proc(
 	listen(gtx, c, p.id, area)
 	// The trigger names its action, since its icon and colour both change
 	// (fab-menu.json accessibility).
-	ui.tag(gtx.ops, p.id, open^ ? "Close menu" : "Open actions menu")
+	ops.tag(gtx.scene, p.id, open^ ? "Close menu" : "Open actions menu")
 
 	chosen := -1
 	if count > 0.01 || open^ {
@@ -767,26 +768,26 @@ fab_menu :: proc(
 			}
 			w := full_w * max(wt, 0)
 			if at > 0.01 && w > 1 {
-				r := ui.Rect{align_start ? 0 : closed_d - w, y, w, H}
+				r := ops.Rect{align_start ? 0 : closed_d - w, y, w, H}
 				ic := control(gtx, id, r, live && open^ ? .Live : .Enabled)
 				if ic.clicked {
 					chosen = i
 					open^ = false
 				}
 				pill := rounded(gtx, r, corners(tok.FAB_MENU_BASELINE_LIST_ITEM_CONTAINER_SHAPE, r))
-				ui.fill(gtx.ops, pill, fade(color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR), at))
+				ops.fill(gtx.scene, pill, fade(color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR), at))
 				paint_state_layer(gtx, ic, pill, color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR))
-				ui.clip_push(gtx.ops, pill)
+				ops.clip_push(gtx.scene, pill)
 				fg := fade(color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR), at)
 				// Content keeps its place from the aligned edge as the pill grows.
 				cx := align_start ? r.x : r.x + r.w - full_w
 				lisz := tok.FAB_MENU_BASELINE_LIST_ITEM_ICON_SIZE
 				icon(gtx, it.icon, {cx + tok.FAB_MENU_BASELINE_LIST_ITEM_LEADING_SPACE, y + (H - lisz) / 2}, lisz, fg)
 				draw_text(gtx, txt, {cx + tok.FAB_MENU_BASELINE_LIST_ITEM_LEADING_SPACE + lisz + tok.FAB_MENU_BASELINE_LIST_ITEM_ICON_LABEL_SPACE, y + (H - txt.height) / 2}, fg)
-				ui.clip_pop(gtx.ops)
+				ops.clip_pop(gtx.scene)
 				paint_focus_ring(gtx, ic, {r, H / 2})
 				listen(gtx, ic, id, r)
-				ui.tag(gtx.ops, id, ui.frame_string(gtx, it.label))
+				ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
 			}
 			y += H + between
 		}

@@ -1,4 +1,4 @@
-package ui
+package ops
 
 import "core:mem"
 import "core:mem/virtual"

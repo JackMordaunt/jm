@@ -1,6 +1,7 @@
 package render
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:mem"
 import "core:reflect"
 import "core:strconv"
@@ -16,9 +17,9 @@ import "jm:ui"
 Headless :: struct {
 	p:     ui.Probe,
 	r:     Renderer,
-	fonts: []ui.Font_Ref,
+	fonts: []ops.Font_Ref,
 	full:  bool, // laid out FULL_HEIGHT tall, and the PNG trimmed to its content
-	clear: ui.Color,
+	clear: ops.Color,
 }
 
 // FULL_HEIGHT is how tall a full session lays the ui out: tall enough that
@@ -33,12 +34,12 @@ headless_init :: proc(
 	h: ^Headless,
 	ui_proc: proc(gtx: ^ui.Ctx, user: rawptr),
 	user: rawptr,
-	size: ui.Size,
-	fonts: []ui.Font_Ref,
+	size: ops.Size,
+	fonts: []ops.Font_Ref,
 	debug: ui.Debug_Flags = {},
 	theme: Maybe(ui.Theme) = nil,
 	full := false,
-	clear: ui.Color = {255, 255, 255, 255},
+	clear: ops.Color = {255, 255, 255, 255},
 ) {
 	h.fonts, h.full, h.clear = fonts, full, clear
 	at := size
@@ -47,10 +48,10 @@ headless_init :: proc(
 	}
 	ui.probe_init(&h.p, ui_proc, user, at, theme = theme, debug = debug | ui.debug_from_env())
 	for f in fonts {
-		ui.add_font(&h.p.ops, f.path)
+		ops.add_font(&h.p.scene, f.path)
 	}
 	init(&h.r)
-	h.p.shaper = shaper(&h.r, h.p.ops.fonts[:])
+	h.p.shaper = shaper(&h.r, h.p.scene.fonts[:])
 	// probe_init's frame shaped with the stub; lay out again in real text.
 	ui.probe_frame(&h.p)
 }
@@ -133,7 +134,7 @@ inspecting :: proc(h: ^Headless) {
 //	-hover NAME        move the pointer to the middle of the area tagged NAME
 //	-advance N         run N frames at 1/60 s
 //	-png PATH          write the current frame
-//	-dump              print the current frame's ops as text
+//	-dump              print the current frame's sc as text
 //	-overflow          print what the window or a clip cuts off at the sides
 //	-layout            print every widget's box, constraints and call
 //	-stats             print the last frame's timings, counts and memory

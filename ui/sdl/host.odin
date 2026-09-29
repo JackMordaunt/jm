@@ -26,6 +26,7 @@
 package sdl
 
 import "base:runtime"
+import "jm:ui/ops"
 import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
@@ -62,8 +63,8 @@ Host_Loop :: struct {
 	child:       ipc.Child,
 	child_dead:  bool, // a round trip failed; stop trying until respawned
 	child_path:  string, // the path last spawned; compared each poll to Host_App.watch's current content
-	ops:         ui.Ops, // ui.decode rebuilds this from each reply
-	frame:       ui.Frame, // ui.flatten rebuilds this from ops each frame
+	scene:         ops.Scene, // ui.decode rebuilds this from each reply
+	frame:       ui.Frame, // ui.flatten rebuilds this from sc each frame
 	comp:        render.Compositor,
 	// This frame's batch. Both outlive host_step's free_all of
 	// context.temp_allocator: events is on the heap, and the Text strings
@@ -147,9 +148,9 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	}
 	l.child = child
 	l.child_path = strings.clone(path)
-	ui.ops_init(&l.ops)
+	ops.init(&l.scene)
 	ui.frame_init(&l.frame)
-	ui.flatten(&l.ops, &l.frame) // a valid, empty frame until the first reply
+	ui.flatten(&l.scene, &l.frame) // a valid, empty frame until the first reply
 	render.compositor_init(&l.comp, int(app.threads))
 	l.comp.damage.resize_in_place = true
 	l.events = make([dynamic]ui.Raw_Event)
@@ -171,7 +172,7 @@ host_loop_destroy :: proc(l: ^Host_Loop) {
 	virtual.arena_destroy(&l.text)
 	render.compositor_destroy(&l.comp)
 	ui.frame_destroy(&l.frame)
-	ui.ops_destroy(&l.ops)
+	ops.destroy(&l.scene)
 	close(&l.w)
 }
 
@@ -253,7 +254,7 @@ host_step :: proc(l: ^Host_Loop) {
 	l.last = now
 
 	w := &l.w
-	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
+	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats)
 	clear(&l.events)
 	virtual.arena_free_all(&l.text) // encode_input copied every Text string
@@ -275,12 +276,12 @@ host_step :: proc(l: ^Host_Loop) {
 	roundtrip_ms := ui.ms(trip_start)
 	dbg: ui.Reply_Debug
 	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg)
-	if !dok || !ui.decode(ops_bytes, &l.ops) {
+	if !dok || !ops.decode(ops_bytes, &l.scene) {
 		// Say why: the window just freezes on its last frame otherwise, which
 		// reads as a crash. A version mismatch is a host built before the
 		// child's jm:ui changed its ops.
-		if v, vok := ui.encoded_version(ops_bytes); dok && vok && v != ui.ENCODE_VERSION {
-			fmt.eprintfln("sdl: %s speaks ops version %d, this host %d: rebuild the host", l.child_path, v, ui.ENCODE_VERSION)
+		if v, vok := ops.encoded_version(ops_bytes); dok && vok && v != ops.ENCODE_VERSION {
+			fmt.eprintfln("sdl: %s speaks sc version %d, this host %d: rebuild the host", l.child_path, v, ops.ENCODE_VERSION)
 			if host_rebuilt(l) {
 				host_reexec(l)
 			}
@@ -291,7 +292,7 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame = false
 		return
 	}
-	ui.flatten(&l.ops, &l.frame)
+	ui.flatten(&l.scene, &l.frame)
 	present_start := time.tick_now()
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
 	// Sent with the next input, for the child's debug tray.

@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:strings"
 import "core:time"
 import "jm:ui"
@@ -18,7 +19,7 @@ Compose_State :: struct {
 
 compose_card :: proc(gtx: ^ui.Ctx, s: ^Compose_State, i: int, x, y: f32, text: string) {
 	outer := gtx.constraints
-	ui.transform_push(gtx.ops, ui.translate(x, y))
+	ops.transform_push(gtx.scene, ops.translate(x, y))
 	gtx.constraints = ui.loose({150, 44})
 	card := ui.box_open(gtx, key = u64(i))
 	r := ui.row_open(gtx, gap = 6, align = .Center, key = u64(i))
@@ -27,14 +28,14 @@ compose_card :: proc(gtx: ^ui.Ctx, s: ^Compose_State, i: int, x, y: f32, text: s
 	m3.button(gtx, "Go", key = u64(i))
 	ui.close(&r)
 	ui.close(&card)
-	ui.transform_pop(gtx.ops)
+	ops.transform_pop(gtx.scene)
 	gtx.constraints = outer
 }
 
 compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	s := (^Compose_State)(user)
 	size := gtx.constraints.max
-	ui.fill(gtx.ops, ui.Rect{0, 0, size.x, size.y}, ui.Color{246, 246, 248, 255})
+	ops.fill(gtx.scene, ops.Rect{0, 0, size.x, size.y}, ops.Color{246, 246, 248, 255})
 	switch s.kind {
 	case 0, 4:
 		// animate: 60 static cards, a ticking label and a rotating clipped badge.
@@ -42,21 +43,21 @@ compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		for i in 0 ..< 60 {
 			compose_card(gtx, s, i, 16 + f32(i % 5) * 160, 80 + f32(i / 5) * 52, fmt.tprintf("Item %d", i))
 		}
-		ui.transform_push(gtx.ops, ui.translate(16, 20))
+		ops.transform_push(gtx.scene, ops.translate(16, 20))
 		ui.label(gtx, fmt.tprintf("frame %d", s.step))
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 		w, h: f32 = 220, 70
-		m := ui.mul(ui.mul(ui.translate(-w / 2, -h / 2), ui.rotate(f32(s.step) * 0.02)), ui.translate(size.x - 150, 60))
-		ui.transform_push(gtx.ops, m)
-		rr := ui.Round_Rect{{0, 0, w, h}, 18}
-		ui.clip_push(gtx.ops, rr)
-		ui.fill(gtx.ops, rr, ui.Color{60, 90, 220, 255})
+		m := ops.mul(ops.mul(ops.translate(-w / 2, -h / 2), ops.rotate(f32(s.step) * 0.02)), ops.translate(size.x - 150, 60))
+		ops.transform_push(gtx.scene, m)
+		rr := ops.Round_Rect{{0, 0, w, h}, 18}
+		ops.clip_push(gtx.scene, rr)
+		ops.fill(gtx.scene, rr, ops.Color{60, 90, 220, 255})
 		for k in 0 ..< 8 {
-			ui.fill(gtx.ops, ui.Rect{f32(k) * 30, -10, 12, h + 20}, ui.Color{255, 255, 255, 60})
+			ops.fill(gtx.scene, ops.Rect{f32(k) * 30, -10, 12, h + 20}, ops.Color{255, 255, 255, 60})
 		}
 		ui.label(gtx, "affine + clip")
-		ui.clip_pop(gtx.ops)
-		ui.transform_pop(gtx.ops)
+		ops.clip_pop(gtx.scene)
+		ops.transform_pop(gtx.scene)
 	case 1:
 		// hover: 1000 cards, one of them changes.
 		for i in 0 ..< 1000 {
@@ -68,15 +69,15 @@ compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 	case 2:
 		// scroll: a clipped list filling the window moves 30 px a frame.
-		ui.clip_push(gtx.ops, ui.Rect{8, 8, size.x - 16, size.y - 16})
-		ui.transform_push(gtx.ops, ui.translate(0, -f32(s.step % 10) * 30))
+		ops.clip_push(gtx.scene, ops.Rect{8, 8, size.x - 16, size.y - 16})
+		ops.transform_push(gtx.scene, ops.translate(0, -f32(s.step % 10) * 30))
 		for i in 0 ..< int(size.y / 26) + 12 {
 			for c in 0 ..< int(size.x / 160) {
 				compose_card(gtx, s, i * 16 + c, f32(c) * 160, f32(i) * 26, fmt.tprintf("Row %d", i))
 			}
 		}
-		ui.transform_pop(gtx.ops)
-		ui.clip_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
+		ops.clip_pop(gtx.scene)
 	case 3:
 		// idle: nothing changes.
 		for i in 0 ..< 60 {
@@ -94,7 +95,7 @@ compose_bench :: proc(w, h: int, workers: []int, frames: int) {
 		"nothing changes",
 		"animate, whole target invalidated",
 	}
-	BG :: ui.Color{246, 246, 248, 255}
+	BG :: ops.Color{246, 246, 248, 255}
 
 	r: render.Renderer
 	render.init(&r)
@@ -118,8 +119,8 @@ compose_bench :: proc(w, h: int, workers: []int, frames: int) {
 		st := Compose_State{kind = kind}
 		p: ui.Probe
 		ui.probe_init(&p, compose_scene, &st, {f32(w), f32(h)})
-		ui.add_font(&p.ops, FONT)
-		p.shaper = render.shaper(&r, p.ops.fonts[:])
+		ops.add_font(&p.scene, FONT)
+		p.shaper = render.shaper(&r, p.scene.fonts[:])
 		ui.probe_frame(&p)
 		ui.probe_frame(&p)
 		f := ui.probe_current(&p)

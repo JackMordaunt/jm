@@ -31,6 +31,7 @@ scheme, faces and motion set, and passes what these procs need.
 package design
 
 import "jm:ui"
+import "jm:ui/ops"
 
 // Interaction is the state a component paints. Live follows real input;
 // the rest force one look and take no input, so a gallery can show every
@@ -60,13 +61,13 @@ Control :: struct {
 	disabled: bool,
 	state:    Interaction, // never Live: the strongest of the flags, by effective_state's order
 	press:    bool, // a left press or keyboard activation landed this frame, at press_at
-	press_at: ui.Point,
+	press_at: ops.Point,
 }
 
 // control resolves state for the component with id and bounds. Live reads
 // this frame's events, so a click or an Enter/Space while focused sets
 // clicked; the forced states only set what to paint.
-control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interaction) -> Control {
+control :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, bounds: ops.Rect, state: Interaction) -> Control {
 	c: Control
 	switch state {
 	case .Live:
@@ -106,13 +107,13 @@ effective_state :: proc(c: Control) -> Interaction {
 }
 
 // CLICK_KINDS is what a clickable component's input area asks for.
-CLICK_KINDS :: ui.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur}
+CLICK_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur}
 
 // listen registers id's input area when st is live (a Control's st, nil
 // for a forced state).
-listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ui.Area_Id, shape: ui.Shape, kinds := CLICK_KINDS) {
+listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS) {
 	if st != nil {
-		ui.input_area(gtx.ops, id, shape, kinds)
+		ops.input_area(gtx.scene, id, shape, kinds)
 	}
 }
 
@@ -129,12 +130,12 @@ animate :: proc(gtx: ^ui.Ctx, c: Control, slot: int, target: f32, p: ui.Spring_P
 }
 
 // fade is c with its alpha scaled by t, for content fading in or out.
-fade :: proc(c: ui.Color, t: f32) -> ui.Color {
-	return ui.with_alpha(c, f32(c[3]) / 255 * clamp(t, 0, 1))
+fade :: proc(c: ops.Color, t: f32) -> ops.Color {
+	return ops.with_alpha(c, f32(c[3]) / 255 * clamp(t, 0, 1))
 }
 
 // touch_target is r grown to at least min on each axis, about its centre.
-touch_target :: proc(r: ui.Rect, min_side: f32) -> ui.Rect {
+touch_target :: proc(r: ops.Rect, min_side: f32) -> ops.Rect {
 	dw, dh := max(min_side - r.w, 0), max(min_side - r.h, 0)
 	return {r.x - dw / 2, r.y - dh / 2, r.w + dw, r.h + dh}
 }
@@ -144,11 +145,11 @@ touch_target :: proc(r: ui.Rect, min_side: f32) -> ui.Rect {
 Focus_Ring :: struct {
 	width:  f32,
 	offset: f32,
-	color:  ui.Color,
+	color:  ops.Color,
 }
 
 // paint_focus_ring paints ring around rr when c is focused and enabled.
-paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ui.Round_Rect, ring: Focus_Ring, inward := false) {
+paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect, ring: Focus_Ring, inward := false) {
 	paint_focus_ring_corners(gtx, c, rr.rect, corners_all(rr.radius), ring, inward)
 }
 
@@ -158,34 +159,34 @@ paint_focus_ring :: proc(gtx: ^ui.Ctx, c: Control, rr: ui.Round_Rect, ring: Focu
 // the shape's: for controls packed closer than the ring's reach
 // (connected groups, segments, list and menu rows, tabs, calendar days),
 // where an outward ring would cross into the neighbours.
-paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, k: Corners, ring: Focus_Ring, inward := false) {
+paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners, ring: Focus_Ring, inward := false) {
 	if !c.focused || c.disabled {
 		return
 	}
 	o := inward ? -ring.width / 2 : ring.offset + ring.width / 2
-	rect := ui.Rect{r.x - o, r.y - o, r.w + 2 * o, r.h + 2 * o}
-	ui.stroke(gtx.ops, rounded(gtx, rect, grow_corners(k, o)), ring.color, {width = ring.width})
+	rect := ops.Rect{r.x - o, r.y - o, r.w + 2 * o, r.h + 2 * o}
+	ops.stroke(gtx.scene, rounded(gtx, rect, grow_corners(k, o)), ring.color, {width = ring.width})
 }
 
 // stroke_inside strokes the inside edge of rr at width w.
-stroke_inside :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, color: ui.Color, w: f32 = 1) {
+stroke_inside :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, color: ops.Color, w: f32 = 1) {
 	h := w / 2
 	r := rr.rect
-	ui.stroke(gtx.ops, ui.Round_Rect{{r.x + h, r.y + h, r.w - w, r.h - w}, max(rr.radius - h, 0)}, color, {width = w})
+	ops.stroke(gtx.scene, ops.Round_Rect{{r.x + h, r.y + h, r.w - w, r.h - w}, max(rr.radius - h, 0)}, color, {width = w})
 }
 
 // stroke_inside_corners strokes the inside edge of r with per-corner
 // radii k at width w: stroke_inside for a shape a Round_Rect cannot hold.
-stroke_inside_corners :: proc(gtx: ^ui.Ctx, r: ui.Rect, k: Corners, color: ui.Color, w: f32) {
+stroke_inside_corners :: proc(gtx: ^ui.Ctx, r: ops.Rect, k: Corners, color: ops.Color, w: f32) {
 	h := w / 2
-	ui.stroke(gtx.ops, rounded(gtx, {r.x + h, r.y + h, r.w - w, r.h - w}, grow_corners(k, -h)), color, {width = w})
+	ops.stroke(gtx.scene, rounded(gtx, {r.x + h, r.y + h, r.w - w, r.h - w}, grow_corners(k, -h)), color, {width = w})
 }
 
 // paint_shadow paints an approximate drop shadow of colour under rr for
 // an elevation of dp. jm:ui has no blur, so it is a stack of offset
 // translucent round rects: soft enough to read as a lift, not a true
 // blurred composite.
-paint_shadow :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, dp: f32, color: ui.Color) {
+paint_shadow :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, dp: f32, color: ops.Color) {
 	if dp <= 0 {
 		return
 	}
@@ -195,10 +196,10 @@ paint_shadow :: proc(gtx: ^ui.Ctx, rr: ui.Round_Rect, dp: f32, color: ui.Color) 
 		spread := dp * 0.5 * t
 		y := dp * 0.5 * t
 		r := rr.rect
-		ui.fill(
-			gtx.ops,
-			ui.Round_Rect{{r.x - spread + dp * 0.25, r.y - spread + y + dp * 0.25, r.w + 2 * spread - dp * 0.5, r.h + 2 * spread - dp * 0.5}, rr.radius + spread},
-			ui.with_alpha(color, 0.10 / f32(steps) * (2 - t)),
+		ops.fill(
+			gtx.scene,
+			ops.Round_Rect{{r.x - spread + dp * 0.25, r.y - spread + y + dp * 0.25, r.w + 2 * spread - dp * 0.5, r.h + 2 * spread - dp * 0.5}, rr.radius + spread},
+			ops.with_alpha(color, 0.10 / f32(steps) * (2 - t)),
 		)
 	}
 }

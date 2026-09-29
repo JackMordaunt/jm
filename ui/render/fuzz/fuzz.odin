@@ -22,6 +22,7 @@ enough to reach the paths the crew shares.
 package render_fuzz
 
 import "base:runtime"
+import "jm:ui/ops"
 import "core:fmt"
 
 import harness "jm:fuzz"
@@ -35,7 +36,7 @@ when ODIN_OS == .Windows {
 	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
 }
 
-BG :: ui.Color{240, 240, 244, 255}
+BG :: ops.Color{240, 240, 244, 255}
 
 // SEAM is how far a composed pixel may differ from a whole render. A band
 // renders its draws moved by its offset and clipped at its own edges, and
@@ -63,9 +64,9 @@ Rig :: struct {
 	buf_one:   bl.ImageCore, // what img_one views
 	buf_crew:  bl.ImageCore,
 	size:      [2]i32,
-	ops:       ui.Ops,
+	scene:       ops.Scene,
 	frame:     ui.Frame,
-	font:      ui.Font_Id,
+	font:      ops.Font_Id,
 }
 
 properties := []harness.Property(^Rig) {
@@ -96,9 +97,9 @@ setup :: proc() -> (^Rig, bool) {
 	for img in ([]^bl.ImageCore{&g.ref, &g.img_one, &g.img_crew, &g.buf_one, &g.buf_crew}) {
 		bl.image_init(img)
 	}
-	ui.ops_init(&g.ops)
+	ops.init(&g.scene)
 	ui.frame_init(&g.frame)
-	g.font = ui.add_font(&g.ops, FONT)
+	g.font = ops.add_font(&g.scene, FONT)
 	return g, true
 }
 
@@ -111,7 +112,7 @@ teardown :: proc(g: ^^Rig) {
 	render.compositor_destroy(&r.crew)
 	render.destroy(&r.r)
 	ui.frame_destroy(&r.frame)
-	ui.ops_destroy(&r.ops)
+	ops.destroy(&r.scene)
 	free(r)
 }
 
@@ -137,7 +138,7 @@ advance :: proc(g: ^Rig, src: ^harness.Source, m: ^Model, n: int) {
 			bl.image_create_from_data(v[0], m.size.x, m.size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil)
 		}
 	}
-	build(m, &g.ops, &g.frame, render.shaper(&g.r, g.ops.fonts[:]), g.font)
+	build(m, &g.scene, &g.frame, render.shaper(&g.r, g.scene.fonts[:]), g.font)
 }
 
 frames :: proc(src: ^harness.Source) -> int {
@@ -180,7 +181,7 @@ still_is_free :: proc(g: ^Rig, src: ^harness.Source) -> (string, bool) {
 		render.compose(&g.one, &g.frame, &g.img_one, BG)
 		// The same scene built again, not the same Frame: nothing may depend
 		// on memory the frame happens to reuse.
-		build(&m, &g.ops, &g.frame, render.shaper(&g.r, g.ops.fonts[:]), g.font)
+		build(&m, &g.scene, &g.frame, render.shaper(&g.r, g.scene.fonts[:]), g.font)
 		if again := render.compose(&g.one, &g.frame, &g.img_one, BG); len(again) > 0 {
 			return fmt.aprintf("frame %d (%v): composing it again changed %v", n, m.size, again), false
 		}

@@ -1,23 +1,12 @@
 package ui
 
 import "core:mem"
+import "jm:ui/ops"
 
 // Text is shaped in layout and rasterized in the renderer. The op buffer
 // carries glyph runs, never strings, so a renderer needs the font file and
 // nothing else. Shaper is the seam: ui/render implements it over Blend2D's
 // font_shape; tests use stub_shaper.
-
-Glyph :: struct {
-	id:   u32,
-	x, y: f32, // offset from the run origin, in pixels
-}
-
-Glyph_Run :: struct {
-	font:    Font_Id,
-	size:    f32,
-	glyphs:  []Glyph,
-	advance: f32, // total advance width in pixels
-}
 
 Font_Metrics :: struct {
 	ascent:   f32, // above the baseline, positive
@@ -27,15 +16,15 @@ Font_Metrics :: struct {
 
 Shaper :: struct {
 	data:    rawptr,
-	shape:   proc(data: rawptr, font: Font_Id, size: f32, text: string, allocator: mem.Allocator) -> Glyph_Run,
-	metrics: proc(data: rawptr, font: Font_Id, size: f32) -> Font_Metrics,
+	shape:   proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run,
+	metrics: proc(data: rawptr, font: ops.Font_Id, size: f32) -> Font_Metrics,
 }
 
-shape :: proc(s: Shaper, font: Font_Id, size: f32, text: string, allocator: mem.Allocator) -> Glyph_Run {
+shape :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {
 	return s.shape(s.data, font, size, text, allocator)
 }
 
-metrics :: proc(s: Shaper, font: Font_Id, size: f32) -> Font_Metrics {
+metrics :: proc(s: Shaper, font: ops.Font_Id, size: f32) -> Font_Metrics {
 	return s.metrics(s.data, font, size)
 }
 
@@ -49,12 +38,12 @@ line_height :: proc(m: Font_Metrics) -> f32 {
 // descent 0.2*size, no line gap.
 stub_shaper :: proc() -> Shaper {
 	return {
-		shape = proc(_: rawptr, font: Font_Id, size: f32, text: string, allocator: mem.Allocator) -> Glyph_Run {
+		shape = proc(_: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {
 			n := 0
 			for _ in text {
 				n += 1
 			}
-			gs := make([]Glyph, n, allocator)
+			gs := make([]ops.Glyph, n, allocator)
 			x: f32
 			i := 0
 			for r in text {
@@ -64,7 +53,7 @@ stub_shaper :: proc() -> Shaper {
 			}
 			return {font, size, gs, x}
 		},
-		metrics = proc(_: rawptr, _: Font_Id, size: f32) -> Font_Metrics {
+		metrics = proc(_: rawptr, _: ops.Font_Id, size: f32) -> Font_Metrics {
 			return {0.8 * size, 0.2 * size, 0}
 		},
 	}

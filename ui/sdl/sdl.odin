@@ -11,7 +11,7 @@ here knows how.
 			fonts  = {{0, "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"}},
 			clear  = {250, 250, 250, 255},
 			ui     = proc(gtx: ^ui.Ctx, _: rawptr) {
-				ui.fill(gtx.ops, ui.Rect{20, 20, 100, 40}, ui.Color{51, 102, 255, 255})
+				ops.fill(gtx.scene, ops.Rect{20, 20, 100, 40}, ops.Color{51, 102, 255, 255})
 			},
 		})
 	}
@@ -62,6 +62,7 @@ parallel.
 package sdl
 
 import "base:builtin"
+import "jm:ui/ops"
 import "base:runtime"
 import "core:fmt"
 import "core:mem/virtual"
@@ -81,9 +82,9 @@ Ui_Proc :: ui.Ui_Proc
 @(private)
 Theme :: ui.Theme
 @(private)
-Font_Ref :: ui.Font_Ref
+Font_Ref :: ops.Font_Ref
 @(private)
-Color :: ui.Color
+Color :: ops.Color
 
 // App describes a window and the ui proc that fills it.
 App :: struct {
@@ -92,7 +93,7 @@ App :: struct {
 	ui:            Ui_Proc,
 	user:          rawptr,
 	theme:         ^Theme, // nil uses ui.default_theme with the first font
-	fonts:         []Font_Ref, // registered into Ops in order before the first frame
+	fonts:         []Font_Ref, // registered into the Scene in order before the first frame
 	clear:         Color,
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 }
@@ -197,12 +198,12 @@ draw_flashes :: proc(w: ^Window) {
 // flash_outside adds a flash for each part of r outside every rect in
 // keep_out.
 @(private)
-flash_outside :: proc(w: ^Window, r: ui.Rect, keep_out: []ui.Rect, at: u64) {
+flash_outside :: proc(w: ^Window, r: ops.Rect, keep_out: []ops.Rect, at: u64) {
 	if r.w <= 0 || r.h <= 0 {
 		return
 	}
 	for k, i in keep_out {
-		cut := ui.rect_intersect(r, k)
+		cut := ops.rect_intersect(r, k)
 		if cut.w <= 0 || cut.h <= 0 {
 			continue
 		}
@@ -232,7 +233,7 @@ flashing :: proc(w: ^Window) -> bool {
 Loop :: struct {
 	app:           App,
 	w:             Window,
-	ops:           ui.Ops,
+	scene:           ops.Scene,
 	frames:        [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
 	router:        ui.Router,
 	layout:        ui.Layout,
@@ -241,7 +242,7 @@ Loop :: struct {
 	comp:          render.Compositor,
 	theme:         ^ui.Theme,
 	default_theme: ui.Theme,
-	arenas:        [2]ui.Frame_Arena, // frame allocators, alternating
+	arenas:        [2]ops.Frame_Arena, // frame allocators, alternating
 	events:        virtual.Arena, // text of the events the next frame routes
 	n:             u64,
 	last:          u64, // ticks, in ns, of the last frame
@@ -291,9 +292,9 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	if !open(&l.w, app) {
 		return false
 	}
-	ui.ops_init(&l.ops)
+	ops.init(&l.scene)
 	for ref in app.fonts {
-		if id := ui.add_font(&l.ops, ref.path); id != ref.id {
+		if id := ops.add_font(&l.scene, ref.path); id != ref.id {
 			fmt.eprintfln("sdl: font %q registered as %v, not %v", ref.path, id, ref.id)
 		}
 	}
@@ -302,7 +303,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	ui.router_init(&l.router)
 	ui.layout_init(&l.layout)
 	render.init(&l.r)
-	l.shaper = render.shaper(&l.r, l.ops.fonts[:])
+	l.shaper = render.shaper(&l.r, l.scene.fonts[:])
 	render.compositor_init(&l.comp, int(app.threads))
 	// The window's image is a view into one buffer that only reallocates
 	// when a resize outgrows it, and then present invalidates the damage.
@@ -310,7 +311,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	l.default_theme = ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
 	l.theme = app.theme if app.theme != nil else &l.default_theme
 	for &a in l.arenas {
-		if err := ui.frame_arena_init(&a); err != nil {
+		if err := ops.frame_arena_init(&a); err != nil {
 			fmt.eprintln("sdl: arena:", err)
 			return false
 		}
@@ -327,15 +328,15 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 @(private)
 loop_destroy :: proc(l: ^Loop) {
 	virtual.arena_destroy(&l.events)
-	ui.frame_arena_destroy(&l.arenas[0])
-	ui.frame_arena_destroy(&l.arenas[1])
+	ops.frame_arena_destroy(&l.arenas[0])
+	ops.frame_arena_destroy(&l.arenas[1])
 	render.compositor_destroy(&l.comp)
 	render.destroy(&l.r)
 	ui.layout_destroy(&l.layout)
 	ui.router_destroy(&l.router)
 	ui.frame_destroy(&l.frames[0])
 	ui.frame_destroy(&l.frames[1])
-	ui.ops_destroy(&l.ops)
+	ops.destroy(&l.scene)
 	close(&l.w)
 }
 
@@ -346,8 +347,8 @@ step :: proc(l: ^Loop) {
 	l.in_frame = true
 	defer l.in_frame = false
 	arena := &l.arenas[l.n % 2]
-	ui.frame_arena_reset(arena)
-	allocator := ui.frame_arena_allocator(arena)
+	ops.frame_arena_reset(arena)
+	allocator := ops.frame_arena_allocator(arena)
 	frame, prev := &l.frames[l.n % 2], &l.frames[(l.n + 1) % 2]
 
 	now := sdl3.GetTicksNS()
@@ -362,14 +363,14 @@ step :: proc(l: ^Loop) {
 	w := &l.w
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
 	ui.debug_tray_log(&l.tray, &l.router, prev if l.n > 0 else nil, l.n)
-	ui.ops_reset(&l.ops)
-	l.ops.debug = debug
+	ops.reset(&l.scene)
+	l.scene.outline_areas = .Bounds in debug
 	ui.frame_reset(frame)
 	ui.layout_reset(&l.layout)
 
-	logical := ui.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
+	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 	gtx := ui.Ctx {
-		ops         = &l.ops,
+		scene         = &l.scene,
 		constraints = ui.exact(logical),
 		theme       = l.theme,
 		shaper      = l.shaper,
@@ -383,7 +384,7 @@ step :: proc(l: ^Loop) {
 	}
 	scaled := w.density != 1
 	if scaled {
-		ui.transform_push(&l.ops, ui.scale(w.density, w.density))
+		ops.transform_push(&l.scene, ops.scale(w.density, w.density))
 	}
 	ui_start := time.tick_now()
 	if l.app.ui != nil {
@@ -391,23 +392,23 @@ step :: proc(l: ^Loop) {
 	}
 	ui_ms := ui.ms(ui_start)
 	if scaled {
-		ui.transform_pop(&l.ops)
+		ops.transform_pop(&l.scene)
 	}
 	ui.debug_inspect(&gtx, debug, &l.tray, prev if l.n > 0 else nil, l.router.pointer, w.density)
 	// The tray last, so it sits over the inspector's highlight too.
 	if scaled {
-		ui.transform_push(&l.ops, ui.scale(w.density, w.density))
+		ops.transform_push(&l.scene, ops.scale(w.density, w.density))
 	}
 	ui.debug_tray(&gtx, &l.tray)
 	if scaled {
-		ui.transform_pop(&l.ops)
+		ops.transform_pop(&l.scene)
 	}
 	build_start := time.tick_now()
-	ui.flatten(&l.ops, frame)
+	ui.flatten(&l.scene, frame)
 	build_ms := ui.ms(build_start)
 	present_start := time.tick_now()
 	host: ui.Host_Stats
-	keep_out: [2]ui.Rect
+	keep_out: [2]ops.Rect
 	l.shown, host.repaint_rects, host.repaint_px = present(
 		w,
 		&l.comp,
@@ -662,10 +663,10 @@ present :: proc(
 	w: ^Window,
 	c: ^render.Compositor,
 	f: ^ui.Frame,
-	clear: ui.Color,
+	clear: ops.Color,
 	full := false,
 	flash := false,
-	keep_out: []ui.Rect = nil,
+	keep_out: []ops.Rect = nil,
 ) -> (
 	shown: bool,
 	repaint_rects, repaint_px: int,
@@ -745,7 +746,7 @@ present :: proc(
 
 // upload copies r of the image into the same place in t.
 @(private)
-upload :: proc(t: ^sdl3.Texture, data: ^bl.ImageData, r: ui.Rect) {
+upload :: proc(t: ^sdl3.Texture, data: ^bl.ImageData, r: ops.Rect) {
 	area := sdl3.Rect{i32(r.x), i32(r.y), i32(r.w), i32(r.h)}
 	px := rawptr(uintptr(data.pixel_data) + uintptr(int(r.y) * int(data.stride) + int(r.x) * 4))
 	sdl3.UpdateTexture(t, &area, px, i32(data.stride))
@@ -804,7 +805,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			if !ok {
 				continue
 			}
-			kind: ui.Event_Kind = .Press if e.type == .MOUSE_BUTTON_DOWN else .Release
+			kind: ops.Event_Kind = .Press if e.type == .MOUSE_BUTTON_DOWN else .Release
 			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState())})
 		case .MOUSE_WHEEL:
 			// Positive y scrolls down (toward the user), like a scroll offset.

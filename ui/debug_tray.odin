@@ -1,6 +1,7 @@
 package ui
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:strings"
 import "core:time"
 
@@ -22,7 +23,7 @@ Frame_Stats :: struct {
 	dt:          f32, // seconds since the frame before
 	ui_ms:       f32, // the app's ui proc: layout and recording
 	build_ms:    f32, // flattening, and encoding for the host when there is one
-	ops:         int,
+	ops:        int,
 	draws:       int,
 	hits:        int,
 	boxes:       int, // Debug_Box records, under Debug_Flag.Inspect
@@ -37,12 +38,12 @@ Frame_Stats :: struct {
 // tag is copied into name, as the frame it came from is gone next frame.
 Logged_Event :: struct {
 	frame:    u64,
-	kind:     Event_Kind,
+	kind:     ops.Event_Kind,
 	key:      Key,
-	pos:      Point,
+	pos:      ops.Point,
 	name:     [32]u8,
 	name_len: u8,
-	area:     Area_Id,
+	area:     ops.Area_Id,
 }
 
 // EVENT_LOG_CAP is how many routed events the tray keeps; it shows the last
@@ -67,9 +68,9 @@ Debug_Tray :: struct {
 	history:     [TRAY_HISTORY]f32, // frame times in ms, newest at head - 1
 	head:        int,
 	count:       int,
-	rect:        Rect, // where it was drawn last, in the ui's own units, so the inspector can skip it
-	panel:       Rect, // the inspector's panel this frame, device space, or empty
-	offset:      Point, // where its title bar has dragged it from the bottom-right corner
+	rect:        ops.Rect, // where it was drawn last, in the ui's own units, so the inspector can skip it
+	panel:       ops.Rect, // the inspector's panel this frame, device space, or empty
+	offset:      ops.Point, // where its title bar has dragged it from the bottom-right corner
 	dragging:    bool,
 }
 
@@ -172,7 +173,7 @@ debug_tray_record :: proc(t: ^Debug_Tray, s: Frame_Stats) {
 	t.count = min(t.count + 1, TRAY_HISTORY)
 }
 
-// frame_stats gathers what gtx's frame left in its ops, layout and frame
+// frame_stats gathers what gtx's frame left in its sc, layout and frame
 // f, with the loop's timings and arena use.
 frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int, host: Host_Stats = {}) -> Frame_Stats {
 	s := Frame_Stats {
@@ -180,7 +181,7 @@ frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int
 		dt          = gtx.dt,
 		ui_ms       = ui_ms,
 		build_ms    = build_ms,
-		ops         = len(gtx.ops.ops),
+		ops         = len(gtx.scene.ops),
 		arena_bytes = arena_bytes,
 		rss_bytes   = process_rss(),
 		host        = host,
@@ -197,12 +198,12 @@ frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int
 // debug_inspect paints the inspector for device point p when flags ask for
 // it and p is not over the open tray t (which it would otherwise inspect).
 // density is the display scale; call it outside the scale transform.
-debug_inspect :: proc(gtx: ^Ctx, flags: Debug_Flags, t: ^Debug_Tray, prev: ^Frame, p: Point, density: f32) {
+debug_inspect :: proc(gtx: ^Ctx, flags: Debug_Flags, t: ^Debug_Tray, prev: ^Frame, p: ops.Point, density: f32) {
 	t.panel = {}
 	if .Inspect not_in flags || prev == nil {
 		return
 	}
-	if t.open && rect_contains(t.rect, p / density) {
+	if t.open && ops.rect_contains(t.rect, p / density) {
 		return
 	}
 	t.panel = paint_inspector(gtx, prev, p, density)
@@ -212,7 +213,7 @@ debug_inspect :: proc(gtx: ^Ctx, flags: Debug_Flags, t: ^Debug_Tray, prev: ^Fram
 // density density: the tray and the inspector's panel, both redrawn every
 // frame. The repaint flash leaves them out, or their own repaints would
 // tint them past reading. Empty rects are left out; the slice is into buf.
-debug_tray_overlays :: proc(t: ^Debug_Tray, density: f32, buf: ^[2]Rect) -> []Rect {
+debug_tray_overlays :: proc(t: ^Debug_Tray, density: f32, buf: ^[2]ops.Rect) -> []ops.Rect {
 	n := 0
 	if t.open {
 		r := t.rect
@@ -248,7 +249,7 @@ stats_lines :: proc(s: Frame_Stats, allocator := context.allocator) -> []string 
 	fps := s.dt > 0 ? 1 / s.dt : 0
 	append(&lines, fmt.aprintf("frame %d   %.1f ms   %.0f fps", s.frame, s.dt * 1000, fps, allocator = allocator))
 	append(&lines, fmt.aprintf("ui %.2f ms   build %.2f ms", s.ui_ms, s.build_ms, allocator = allocator))
-	append(&lines, fmt.aprintf("ops %d   draws %d   hits %d   boxes %d", s.ops, s.draws, s.hits, s.boxes, allocator = allocator))
+	append(&lines, fmt.aprintf("sc %d   draws %d   hits %d   boxes %d", s.ops, s.draws, s.hits, s.boxes, allocator = allocator))
 	append(&lines, fmt.aprintf("widget state %d   widget data %d", s.states, s.data, allocator = allocator))
 	rss := s.rss_bytes >= 0 ? fmt.tprintf("%.1f MiB", f64(s.rss_bytes) / (1 << 20)) : "n/a"
 	append(&lines, fmt.aprintf("frame arena %.1f KiB   resident %s", f64(s.arena_bytes) / 1024, rss, allocator = allocator))
@@ -282,9 +283,9 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	if !t.open {
 		return
 	}
-	saved, saved_ops := gtx.debug, gtx.ops.debug
-	gtx.debug, gtx.ops.debug = {}, {}
-	defer gtx.debug, gtx.ops.debug = saved, saved_ops
+	saved, saved_outline := gtx.debug, gtx.scene.outline_areas
+	gtx.debug, gtx.scene.outline_areas = {}, false
+	defer gtx.debug, gtx.scene.outline_areas = saved, saved_outline
 
 	TOGGLES :: [?]struct {
 		flag: Debug_Flag,
@@ -312,7 +313,7 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 		}
 	}
 	window := gtx.constraints.max
-	corner := Point{window.x - TRAY_WIDTH - 12, window.y - h - 12}
+	corner := ops.Point{window.x - TRAY_WIDTH - 12, window.y - h - 12}
 	at := corner + t.offset
 	at = {clamp(at.x, 0, max(window.x - TRAY_WIDTH, 0)), clamp(at.y, 0, max(window.y - h, 0))}
 	t.offset = at - corner // a drag past the edge does not bank distance to come back through
@@ -320,19 +321,19 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	o := overlay_open(gtx, at, exact({TRAY_WIDTH, h}))
 	defer close(&o)
 	t.rect = {at.x, at.y, TRAY_WIDTH, h}
-	fill(gtx.ops, Round_Rect{{0, 0, TRAY_WIDTH, h}, 8}, Color{24, 22, 30, 240})
+	ops.fill(gtx.scene, ops.Round_Rect{{0, 0, TRAY_WIDTH, h}, 8}, ops.Color{24, 22, 30, 240})
 	// Its own hit area, below the toggles: presses on the tray's padding
 	// reach nothing under it.
-	input_area(gtx.ops, scoped_id(gtx, 1), Rect{0, 0, TRAY_WIDTH, h}, {.Press, .Release, .Move, .Scroll})
+	ops.input_area(gtx.scene, scoped_id(gtx, 1), ops.Rect{0, 0, TRAY_WIDTH, h}, {.Press, .Release, .Move, .Scroll})
 	// The title bar: a name and a grip, darker, to drag by.
-	title := Rect{0, 0, TRAY_WIDTH, TRAY_TITLE}
-	title_color := Color{40, 37, 50, 255}
-	fill(gtx.ops, Round_Rect{title, 8}, title_color)
-	fill(gtx.ops, Rect{0, TRAY_TITLE / 2, TRAY_WIDTH, TRAY_TITLE / 2}, title_color) // square lower corners, flush with the body
-	tray_text(gtx, "Debug", {pad, TRAY_TITLE / 2 + 4}, 12, Color{235, 233, 242, 255})
-	tray_text(gtx, t.dragging ? "moving" : "drag to move", {TRAY_WIDTH - pad - 76, TRAY_TITLE / 2 + 4}, 11, Color{150, 148, 162, 255})
-	input_area(gtx.ops, grip, title, {.Press, .Release, .Move, .Enter, .Leave})
-	tag(gtx.ops, grip, "Debug tray")
+	title := ops.Rect{0, 0, TRAY_WIDTH, TRAY_TITLE}
+	title_color := ops.Color{40, 37, 50, 255}
+	ops.fill(gtx.scene, ops.Round_Rect{title, 8}, title_color)
+	ops.fill(gtx.scene, ops.Rect{0, TRAY_TITLE / 2, TRAY_WIDTH, TRAY_TITLE / 2}, title_color) // square lower corners, flush with the body
+	tray_text(gtx, "Debug", {pad, TRAY_TITLE / 2 + 4}, 12, ops.Color{235, 233, 242, 255})
+	tray_text(gtx, t.dragging ? "moving" : "drag to move", {TRAY_WIDTH - pad - 76, TRAY_TITLE / 2 + 4}, 11, ops.Color{150, 148, 162, 255})
+	ops.input_area(gtx.scene, grip, title, {.Press, .Release, .Move, .Enter, .Leave})
+	ops.tag(gtx.scene, grip, "Debug tray")
 
 	y := TRAY_TITLE + pad
 	for tg, i in TOGGLES {
@@ -352,28 +353,28 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	}
 	y += row + 6
 	for l in lines {
-		tray_text(gtx, l, {pad, y + text}, text, Color{220, 218, 228, 255})
+		tray_text(gtx, l, {pad, y + text}, text, ops.Color{220, 218, 228, 255})
 		y += text + 5
 	}
 	y += 6
 	// Frame times, oldest to newest, against a 16.7 ms (60 Hz) line.
 	gw := TRAY_WIDTH - 2 * pad
-	fill(gtx.ops, Rect{pad, y, gw, graph_h}, Color{40, 38, 48, 255})
+	ops.fill(gtx.scene, ops.Rect{pad, y, gw, graph_h}, ops.Color{40, 38, 48, 255})
 	budget := f32(1000.0 / 60)
 	top := budget * 2
 	line_y := y + graph_h - graph_h * budget / top
-	fill(gtx.ops, Rect{pad, line_y, gw, 1}, Color{255, 170, 0, 160})
+	ops.fill(gtx.scene, ops.Rect{pad, line_y, gw, 1}, ops.Color{255, 170, 0, 160})
 	bar := gw / TRAY_HISTORY
 	for k in 0 ..< t.count {
 		v := t.history[(t.head - t.count + k + TRAY_HISTORY) % TRAY_HISTORY]
 		bh := min(v / top, 1) * graph_h
-		c := v > budget * 1.05 ? Color{255, 90, 90, 255} : Color{120, 200, 140, 255} // a hair over, from rounding, is on time
-		fill(gtx.ops, Rect{pad + f32(TRAY_HISTORY - t.count + k) * bar, y + graph_h - bh, max(bar - 0.5, 0.5), bh}, c)
+		c := v > budget * 1.05 ? ops.Color{255, 90, 90, 255} : ops.Color{120, 200, 140, 255} // a hair over, from rounding, is on time
+		ops.fill(gtx.scene, ops.Rect{pad + f32(TRAY_HISTORY - t.count + k) * bar, y + graph_h - bh, max(bar - 0.5, 0.5), bh}, c)
 	}
 	// The event log, newest last, under the graph.
 	y += graph_h + 8
 	for l in log {
-		tray_text(gtx, l, {pad, y + text - 2}, text - 1, Color{180, 190, 230, 255})
+		tray_text(gtx, l, {pad, y + text - 2}, text - 1, ops.Color{180, 190, 230, 255})
 		y += text + 3
 	}
 }
@@ -382,34 +383,34 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 // toggle that is not enabled is drawn dimmed, unchecked, and takes no
 // input.
 @(private = "file")
-tray_toggle :: proc(gtx: ^Ctx, r: Rect, name: string, on: bool, key: u64, enabled := true) -> bool {
+tray_toggle :: proc(gtx: ^Ctx, r: ops.Rect, name: string, on: bool, key: u64, enabled := true) -> bool {
 	if !enabled {
-		box := Rect{r.x + 2, r.y + (r.h - 12) / 2, 12, 12}
-		stroke(gtx.ops, Round_Rect{box, 3}, Color{90, 88, 100, 255}, {width = 1})
-		tray_text(gtx, name, {r.x + 22, r.y + (r.h + 12) / 2 - 1}, 12, Color{120, 118, 130, 255})
+		box := ops.Rect{r.x + 2, r.y + (r.h - 12) / 2, 12, 12}
+		ops.stroke(gtx.scene, ops.Round_Rect{box, 3}, ops.Color{90, 88, 100, 255}, {width = 1})
+		tray_text(gtx, name, {r.x + 22, r.y + (r.h + 12) / 2 - 1}, 12, ops.Color{120, 118, 130, 255})
 		return false
 	}
 	id := scoped_id(gtx, key)
 	st := widget_state(gtx, id)
 	clicked := click_from_events(gtx, id, st, r)
 	if st.hovered {
-		fill(gtx.ops, Round_Rect{r, 4}, Color{255, 255, 255, 18})
+		ops.fill(gtx.scene, ops.Round_Rect{r, 4}, ops.Color{255, 255, 255, 18})
 	}
-	box := Rect{r.x + 2, r.y + (r.h - 12) / 2, 12, 12}
+	box := ops.Rect{r.x + 2, r.y + (r.h - 12) / 2, 12, 12}
 	if on {
-		fill(gtx.ops, Round_Rect{box, 3}, Color{120, 200, 140, 255})
+		ops.fill(gtx.scene, ops.Round_Rect{box, 3}, ops.Color{120, 200, 140, 255})
 	} else {
-		stroke(gtx.ops, Round_Rect{box, 3}, Color{160, 158, 170, 255}, {width = 1})
+		ops.stroke(gtx.scene, ops.Round_Rect{box, 3}, ops.Color{160, 158, 170, 255}, {width = 1})
 	}
-	tray_text(gtx, name, {r.x + 22, r.y + (r.h + 12) / 2 - 1}, 12, Color{235, 233, 242, 255})
-	input_area(gtx.ops, id, r, {.Press, .Release, .Enter, .Leave, .Move})
-	tag(gtx.ops, id, name)
+	tray_text(gtx, name, {r.x + 22, r.y + (r.h + 12) / 2 - 1}, 12, ops.Color{235, 233, 242, 255})
+	ops.input_area(gtx.scene, id, r, {.Press, .Release, .Enter, .Leave, .Move})
+	ops.tag(gtx.scene, id, name)
 	return clicked
 }
 
 // tray_text draws s with its baseline at pos, in the theme font.
 @(private = "file")
-tray_text :: proc(gtx: ^Ctx, s: string, pos: Point, size: f32, c: Color) {
+tray_text :: proc(gtx: ^Ctx, s: string, pos: ops.Point, size: f32, c: ops.Color) {
 	run := shape(gtx.shaper, gtx.theme.font, size, s, gtx.allocator)
-	glyphs(gtx.ops, add_run(gtx.ops, run), pos, c)
+	ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), pos, c)
 }

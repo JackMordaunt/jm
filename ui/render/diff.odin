@@ -1,10 +1,10 @@
 package render
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:slice"
 import "core:strings"
 
-import "jm:ui"
 import bl "jm:ui/blend2d"
 
 // diff_images, load_png and diff_files exist for one loop: an agent (or a
@@ -23,14 +23,14 @@ import bl "jm:ui/blend2d"
 // sized images are never identical and come back as one changed rect
 // covering the larger extent, tile ignored — there is no tile grid two
 // different sizes could share.
-diff_images :: proc(a, b: ^bl.ImageCore, tile: int = 32, allocator := context.allocator) -> (changed: []ui.Rect, identical: bool, ok: bool) {
+diff_images :: proc(a, b: ^bl.ImageCore, tile: int = 32, allocator := context.allocator) -> (changed: []ops.Rect, identical: bool, ok: bool) {
 	da, db: bl.ImageData
 	if bl.image_get_data(a, &da) != 0 || bl.image_get_data(b, &db) != 0 {
 		return nil, false, false
 	}
 	if da.size.w != db.size.w || da.size.h != db.size.h {
 		w, h := max(da.size.w, db.size.w), max(da.size.h, db.size.h)
-		out := make([]ui.Rect, 1, allocator)
+		out := make([]ops.Rect, 1, allocator)
 		out[0] = {0, 0, f32(w), f32(h)}
 		return out, false, true
 	}
@@ -39,13 +39,13 @@ diff_images :: proc(a, b: ^bl.ImageCore, tile: int = 32, allocator := context.al
 		return nil, true, true
 	}
 
-	out := make([dynamic]ui.Rect, allocator)
+	out := make([dynamic]ops.Rect, allocator)
 	for ty := 0; ty < h; ty += tile {
 		th := min(tile, h - ty)
 		for tx := 0; tx < w; tx += tile {
 			tw := min(tile, w - tx)
 			if tile_differs(&da, &db, tx, ty, tw, th) {
-				append(&out, ui.Rect{f32(tx), f32(ty), f32(tw), f32(th)})
+				append(&out, ops.Rect{f32(tx), f32(ty), f32(tw), f32(th)})
 			}
 		}
 	}
@@ -100,7 +100,7 @@ diff_files :: proc(
 	highlight: string = "",
 	allocator := context.allocator,
 ) -> (
-	changed: []ui.Rect,
+	changed: []ops.Rect,
 	identical: bool,
 	ok: bool,
 ) {
@@ -120,7 +120,7 @@ diff_files :: proc(
 }
 
 @(private = "file")
-write_highlight :: proc(img: ^bl.ImageCore, changed: []ui.Rect, path: string) -> bool {
+write_highlight :: proc(img: ^bl.ImageCore, changed: []ops.Rect, path: string) -> bool {
 	ctx: bl.ContextCore
 	bl.context_init(&ctx)
 	defer bl.context_destroy(&ctx)
@@ -130,7 +130,7 @@ write_highlight :: proc(img: ^bl.ImageCore, changed: []ui.Rect, path: string) ->
 	bl.context_set_stroke_width(&ctx, 2)
 	for r in changed {
 		rect := bl.Rect{f64(r.x), f64(r.y), f64(r.w), f64(r.h)}
-		bl.context_stroke_rect_d_rgba32(&ctx, &rect, rgba32(ui.Color{255, 32, 32, 255}))
+		bl.context_stroke_rect_d_rgba32(&ctx, &rect, rgba32(ops.Color{255, 32, 32, 255}))
 	}
 	bl.context_end(&ctx)
 	cpath := strings.clone_to_cstring(path, context.temp_allocator)
@@ -140,7 +140,7 @@ write_highlight :: proc(img: ^bl.ImageCore, changed: []ui.Rect, path: string) ->
 // diff_summary is changed and identical as one line per rect plus a
 // header, for printing straight to a terminal without opening either
 // image.
-diff_summary :: proc(changed: []ui.Rect, identical: bool, allocator := context.allocator) -> string {
+diff_summary :: proc(changed: []ops.Rect, identical: bool, allocator := context.allocator) -> string {
 	if identical {
 		return strings.clone("identical", allocator)
 	}

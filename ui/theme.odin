@@ -1,5 +1,7 @@
 package ui
 
+import "jm:ui/ops"
+
 // Styling. Theme is a plain value: palette, type scale, spacing, radii and
 // the font. Each widget takes an X_Style struct whose zero value means "take
 // it from the theme", so `label(gtx, "Delete", {color = th.danger})`
@@ -13,31 +15,31 @@ package ui
 
 // CLEAR is an explicit transparent colour, distinct from the zero Color
 // that means "use the theme".
-CLEAR :: Color{255, 255, 255, 0}
+CLEAR :: ops.Color{255, 255, 255, 0}
 
 Theme :: struct {
-	font:                    Font_Id,
+	font:                    ops.Font_Id,
 	text_size:               f32,
 	small_size:              f32,
 	heading_size:            f32,
-	bg:                      Color, // window background
-	surface:                 Color, // panels, fields, unchecked boxes
-	surface_hover:           Color,
-	surface_active:          Color,
-	fg:                      Color, // body text
-	muted:                   Color, // secondary text, placeholders
-	accent:                  Color, // buttons, checked boxes, slider fill, focus ring
-	on_accent:               Color, // text and marks drawn on accent
-	outline:                 Color, // borders, dividers, slider track
-	danger:                  Color,
-	success:                 Color,
+	bg:                      ops.Color, // window background
+	surface:                 ops.Color, // panels, fields, unchecked boxes
+	surface_hover:           ops.Color,
+	surface_active:          ops.Color,
+	fg:                      ops.Color, // body text
+	muted:                   ops.Color, // secondary text, placeholders
+	accent:                  ops.Color, // buttons, checked boxes, slider fill, focus ring
+	on_accent:               ops.Color, // text and marks drawn on accent
+	outline:                 ops.Color, // borders, dividers, slider track
+	danger:                  ops.Color,
+	success:                 ops.Color,
 	radius:                  f32,
 	spacing:                 f32, // base unit; paddings and gaps are multiples of it
 	stroke:                  f32, // outline width
 }
 
 // light_theme is a light palette on font.
-light_theme :: proc(font: Font_Id) -> Theme {
+light_theme :: proc(font: ops.Font_Id) -> Theme {
 	th := Theme {
 		font = font,
 		text_size = 14,
@@ -62,7 +64,7 @@ light_theme :: proc(font: Font_Id) -> Theme {
 }
 
 // dark_theme is a dark palette on font, with the same scale as light_theme.
-dark_theme :: proc(font: Font_Id) -> Theme {
+dark_theme :: proc(font: ops.Font_Id) -> Theme {
 	th := light_theme(font)
 	th.bg = {24, 24, 28, 255}
 	th.surface = {36, 36, 42, 255}
@@ -79,28 +81,8 @@ dark_theme :: proc(font: Font_Id) -> Theme {
 }
 
 // default_theme is light_theme.
-default_theme :: proc(font: Font_Id) -> Theme {
+default_theme :: proc(font: ops.Font_Id) -> Theme {
 	return light_theme(font)
-}
-
-// mix blends a toward b by t in [0, 1], channel by channel (alpha included).
-mix :: proc(a, b: Color, t: f32) -> Color {
-	out: Color
-	for i in 0 ..< 4 {
-		out[i] = u8(f32(a[i]) + (f32(b[i]) - f32(a[i])) * clamp(t, 0, 1) + 0.5)
-	}
-	return out
-}
-
-// with_alpha is c with its alpha channel set to t in [0, 1], RGB unchanged
-// — a real translucent colour, not a pre-mixed solid one. State layers and
-// disabled dimming both use this: painted on top of whatever is already
-// there, the way Material's own state layers and disabled scrims work,
-// rather than baking a flattened colour ahead of time per widget state.
-with_alpha :: proc(c: Color, t: f32) -> Color {
-	out := c
-	out[3] = u8(255 * clamp(t, 0, 1))
-	return out
 }
 
 // Padding is space inside an edge, per side.
@@ -125,7 +107,7 @@ pad :: proc {
 }
 
 // or_color is c, or def when c is the zero Color ("take the theme's").
-or_color :: proc(c, def: Color) -> Color {
+or_color :: proc(c, def: ops.Color) -> ops.Color {
 	return c == {} ? def : c
 }
 
@@ -150,12 +132,12 @@ or_padding :: proc(p, def: Padding) -> Padding {
 }
 
 // painted reports whether c has any alpha: a widget skips paint that has none.
-painted :: proc(c: Color) -> bool {
+painted :: proc(c: ops.Color) -> bool {
 	return c[3] != 0
 }
 
 Label_Style :: struct {
-	color: Color, // default fg
+	color: ops.Color, // default fg
 	size:  f32, // default text_size
 }
 
@@ -165,8 +147,8 @@ resolve_label :: proc(th: ^Theme, s: Label_Style) -> Label_Style {
 }
 
 Box_Style :: struct {
-	fill:    Color, // default surface
-	outline: Color, // default outline; CLEAR for none
+	fill:    ops.Color, // default surface
+	outline: ops.Color, // default outline; CLEAR for none
 	stroke:  f32, // outline width, default stroke
 	radius:  f32, // default radius
 	padding: Padding, // default spacing on every side
@@ -179,7 +161,7 @@ Box_Style :: struct {
 }
 
 // Box_Paint paints a box's background at size; id is the box's Area_Id.
-Box_Paint :: proc(gtx: ^Ctx, id: Area_Id, size: Size, user: rawptr)
+Box_Paint :: proc(gtx: ^Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr)
 
 // resolve_box fills s's zero fields from th.
 resolve_box :: proc(th: ^Theme, s: Box_Style) -> Box_Style {

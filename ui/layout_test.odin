@@ -1,24 +1,25 @@
 package ui
 
 import "core:strings"
+import "jm:ui/ops"
 import "core:testing"
 import "jm:ui/testutil"
 
-// Harness is one window's worth of ui state for tests: ops, layout, router
+// Harness is one window's worth of ui state for tests: sc, layout, router
 // and a light theme, over the stub shaper and the temp allocator.
 @(private)
 Harness :: struct {
-	ops:    Ops,
+	scene:    ops.Scene,
 	layout: Layout,
 	router: Router,
 	theme:  Theme,
 	gtx:    Ctx,
-	size:   Size,
+	size:   ops.Size,
 }
 
 @(private)
-harness_init :: proc(h: ^Harness, size := Size{400, 300}) {
-	ops_init(&h.ops)
+harness_init :: proc(h: ^Harness, size := ops.Size{400, 300}) {
+	ops.init(&h.scene)
 	layout_init(&h.layout)
 	router_init(&h.router)
 	h.theme = light_theme(0)
@@ -26,15 +27,15 @@ harness_init :: proc(h: ^Harness, size := Size{400, 300}) {
 	harness_frame(h)
 }
 
-// harness_frame starts a frame: empty ops, a fresh layout frame, root
+// harness_frame starts a frame: empty sc, a fresh layout frame, root
 // constraints loose up to the window size. Router events are left alone so
 // a test can push them first.
 @(private)
 harness_frame :: proc(h: ^Harness) {
-	ops_reset(&h.ops)
+	ops.reset(&h.scene)
 	layout_reset(&h.layout)
 	h.gtx = {
-		ops         = &h.ops,
+		scene         = &h.scene,
 		constraints = loose(h.size),
 		theme       = &h.theme,
 		shaper      = stub_shaper(),
@@ -46,7 +47,7 @@ harness_frame :: proc(h: ^Harness) {
 
 @(private)
 harness_destroy :: proc(h: ^Harness) {
-	ops_destroy(&h.ops)
+	ops.destroy(&h.scene)
 	layout_destroy(&h.layout)
 	router_destroy(&h.router)
 	free_all(context.temp_allocator)
@@ -59,18 +60,18 @@ near :: proc(a, b: f32) -> bool {
 
 // pushes lists the translation of every Push_Transform, in order.
 @(private)
-pushes :: proc(o: ^Ops) -> [dynamic]Point {
-	out := make([dynamic]Point, context.temp_allocator)
+pushes :: proc(o: ^ops.Scene) -> [dynamic]ops.Point {
+	out := make([dynamic]ops.Point, context.temp_allocator)
 	for op in o.ops {
-		if t, ok := op.(Push_Transform); ok {
-			append(&out, Point{f32(t.m.e), f32(t.m.f)})
+		if t, ok := op.(ops.Push_Transform); ok {
+			append(&out, ops.Point{f32(t.m.e), f32(t.m.f)})
 		}
 	}
 	return out
 }
 
 @(private)
-index_of :: proc(o: ^Ops, $T: typeid, from := 0) -> int {
+index_of :: proc(o: ^ops.Scene, $T: typeid, from := 0) -> int {
 	for i in from ..< len(o.ops) {
 		if _, ok := o.ops[i].(T); ok {
 			return i
@@ -94,13 +95,13 @@ test_column_places_second_label_below_first :: proc(t: ^testing.T) {
 		label(gtx, "Name")
 		label(gtx, "Ada")
 	}
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	testing.expect_value(t, len(p), 2)
-	testing.expect_value(t, p[0], Point{0, 0})
-	testing.expect_value(t, p[1], Point{0, 14 + 8})
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Pop_Transform), 2)
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Glyphs), 2)
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 0)
+	testing.expect_value(t, p[0], ops.Point{0, 0})
+	testing.expect_value(t, p[1], ops.Point{0, 14 + 8})
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Pop_Transform), 2)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Glyphs), 2)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Macro_Begin), 0)
 }
 
 @(test)
@@ -114,7 +115,7 @@ test_row_advances_on_x :: proc(t: ^testing.T) {
 		label(gtx, "ab")
 		label(gtx, "c")
 	}
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	testing.expect_value(t, len(p), 2)
 	testing.expect(t, near(p[1].x, 2 * W + 4))
 	testing.expect_value(t, p[1].y, 0)
@@ -135,11 +136,11 @@ test_inset_offsets_by_padding :: proc(t: ^testing.T) {
 		label(gtx, "after")
 	}
 	// column child 0 (the inset), inset child, column child 1.
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	testing.expect_value(t, len(p), 3)
-	testing.expect_value(t, p[0], Point{0, 0})
-	testing.expect_value(t, p[1], Point{10, 20})
-	testing.expect_value(t, p[2], Point{0, 20 + 14 + 40})
+	testing.expect_value(t, p[0], ops.Point{0, 0})
+	testing.expect_value(t, p[1], ops.Point{10, 20})
+	testing.expect_value(t, p[2], ops.Point{0, 20 + 14 + 40})
 }
 
 @(test)
@@ -152,25 +153,25 @@ test_box_records_macro_then_fill_then_call :: proc(t: ^testing.T) {
 		b := box_open(gtx); defer close(&b)
 		label(gtx, "card")
 	}
-	begin := index_of(&h.ops, Macro_Begin)
-	finish := index_of(&h.ops, Macro_End)
-	paint := index_of(&h.ops, Fill)
-	outline := index_of(&h.ops, Stroke)
-	run := index_of(&h.ops, Call)
+	begin := index_of(&h.scene, ops.Macro_Begin)
+	finish := index_of(&h.scene, ops.Macro_End)
+	paint := index_of(&h.scene, ops.Fill)
+	outline := index_of(&h.scene, ops.Stroke)
+	run := index_of(&h.scene, ops.Call)
 	testing.expect(
 		t,
 		begin >= 0 && begin < finish && finish < paint && paint < outline && outline < run,
 	)
-	f := h.ops.ops[paint].(Fill)
-	rr := f.shape.(Round_Rect)
+	f := h.scene.ops[paint].(ops.Fill)
+	rr := f.shape.(ops.Round_Rect)
 	testing.expect(t, near(rr.rect.w, 4 * W + 16))
 	testing.expect(t, near(rr.rect.h, 14 + 16))
 	testing.expect_value(t, rr.radius, h.theme.radius)
-	testing.expect_value(t, f.paint.(Color), h.theme.surface)
-	testing.expect_value(t, h.ops.ops[begin].(Macro_Begin).id, h.ops.ops[run].(Call).id)
+	testing.expect_value(t, f.paint.(ops.Color), h.theme.surface)
+	testing.expect_value(t, h.scene.ops[begin].(ops.Macro_Begin).id, h.scene.ops[run].(ops.Call).id)
 	// The label inside is offset by the padding.
-	p := pushes(&h.ops)
-	testing.expect_value(t, p[0], Point{8, 8})
+	p := pushes(&h.scene)
+	testing.expect_value(t, p[0], ops.Point{8, 8})
 }
 
 @(test)
@@ -185,16 +186,16 @@ test_align_center_offsets_narrow_child :: proc(t: ^testing.T) {
 		label(gtx, "wide")
 	}
 	// Both children are macros placed at end: narrow first, then wide.
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 2)
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Call), 2)
-	p := pushes(&h.ops)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Macro_Begin), 2)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Call), 2)
+	p := pushes(&h.scene)
 	testing.expect_value(t, len(p), 2)
 	testing.expect(t, near(p[0].x, (4 * W - W) / 2))
 	testing.expect_value(t, p[0].y, 0)
-	testing.expect_value(t, p[1], Point{0, 14})
+	testing.expect_value(t, p[1], ops.Point{0, 14})
 	// Each push wraps a call.
-	first := index_of(&h.ops, Push_Transform)
-	_, is_call := h.ops.ops[first + 1].(Call)
+	first := index_of(&h.scene, ops.Push_Transform)
+	_, is_call := h.scene.ops[first + 1].(ops.Call)
 	testing.expect(t, is_call)
 }
 
@@ -209,7 +210,7 @@ test_align_end_and_fill :: proc(t: ^testing.T) {
 		label(gtx, "i")
 		label(gtx, "wide")
 	}
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	testing.expect(t, near(p[0].x, 3 * W))
 
 	harness_frame(&h)
@@ -217,9 +218,9 @@ test_align_end_and_fill :: proc(t: ^testing.T) {
 	{
 		col := column_open(gtx, align = .Fill); defer close(&col)
 		d := divider(gtx)
-		testing.expect_value(t, d.size, Size{200, 1})
+		testing.expect_value(t, d.size, ops.Size{200, 1})
 	}
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 0)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Macro_Begin), 0)
 }
 
 @(test)
@@ -270,11 +271,11 @@ test_fill_space_pushes_the_rest_to_the_end :: proc(t: ^testing.T) {
 		label(gtx, "bc")
 	}
 	// "a" is placed directly; "bc" after the slot is a macro placed at end.
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	testing.expect_value(t, len(p), 2)
-	testing.expect_value(t, p[0], Point{0, 0})
+	testing.expect_value(t, p[0], ops.Point{0, 0})
 	testing.expect(t, near(p[1].x, 300 - 2 * W))
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), 1)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Macro_Begin), 1)
 }
 
 @(test)
@@ -287,9 +288,9 @@ test_stack_clip_and_centered :: proc(t: ^testing.T) {
 		c := clip_box_open(gtx); defer close(&c)
 		label(gtx, "clip")
 	}
-	i := index_of(&h.ops, Push_Clip)
-	testing.expect(t, i > index_of(&h.ops, Macro_End))
-	r := h.ops.ops[i].(Push_Clip).shape.(Rect)
+	i := index_of(&h.scene, ops.Push_Clip)
+	testing.expect(t, i > index_of(&h.scene, ops.Macro_End))
+	r := h.scene.ops[i].(ops.Push_Clip).shape.(ops.Rect)
 	testing.expect(t, near(r.w, 4 * W) && near(r.h, 14))
 
 	harness_frame(&h)
@@ -298,7 +299,7 @@ test_stack_clip_and_centered :: proc(t: ^testing.T) {
 		c := centered_open(gtx); defer close(&c)
 		label(gtx, "ab")
 	}
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	testing.expect_value(t, len(p), 1)
 	testing.expect(t, near(p[0].x, (100 - 2 * W) / 2) && near(p[0].y, (60 - 14) / 2.0))
 
@@ -313,9 +314,9 @@ test_stack_clip_and_centered :: proc(t: ^testing.T) {
 		}
 		label(gtx, "below")
 	}
-	p = pushes(&h.ops)
+	p = pushes(&h.scene)
 	testing.expect_value(t, len(p), 2) // stack children sit at the origin, unpushed
-	testing.expect_value(t, p[1], Point{0, 14})
+	testing.expect_value(t, p[1], ops.Point{0, 14})
 }
 
 @(test)
@@ -334,11 +335,11 @@ test_spacer_and_nesting :: proc(t: ^testing.T) {
 		}
 		label(gtx, "c")
 	}
-	p := pushes(&h.ops)
+	p := pushes(&h.scene)
 	// col child 0 (row), a, spacer, b, col child 1.
 	testing.expect_value(t, len(p), 5)
 	testing.expect(t, near(p[3].x, W + 20))
-	testing.expect_value(t, p[4], Point{0, 14})
+	testing.expect_value(t, p[4], ops.Point{0, 14})
 }
 
 @(test)
@@ -353,8 +354,8 @@ test_nil_layout_places_at_origin :: proc(t: ^testing.T) {
 		label(gtx, "a")
 		label(gtx, "b")
 	}
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Push_Transform), 0)
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Glyphs), 2)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Push_Transform), 0)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Glyphs), 2)
 }
 
 @(test)
@@ -372,7 +373,7 @@ test_state_is_pruned_after_a_frame_unseen :: proc(t: ^testing.T) {
 
 @(test)
 test_id_is_stable_per_site_and_key :: proc(t: ^testing.T) {
-	ids: [3]Area_Id
+	ids: [3]ops.Area_Id
 	for i in 0 ..< 2 {
 		ids[i] = id()
 	}
@@ -416,7 +417,7 @@ test_request_frame_soonest_wins :: proc(t: ^testing.T) {
 // scroll_frame lays a scroll_box over 300px of content in h's window and
 // returns the box's input area.
 @(private)
-scroll_frame :: proc(h: ^Harness) -> Input_Area {
+scroll_frame :: proc(h: ^Harness) -> ops.Input_Area {
 	gtx := &h.gtx
 	{
 		sb := scroll_box_open(gtx); defer close(&sb)
@@ -424,15 +425,15 @@ scroll_frame :: proc(h: ^Harness) -> Input_Area {
 		spacer(gtx, 300)
 		label(gtx, "last")
 	}
-	return h.ops.ops[index_of(&h.ops, Input_Area)].(Input_Area)
+	return h.scene.ops[index_of(&h.scene, ops.Input_Area)].(ops.Input_Area)
 }
 
 // scroll_offset is the y of the transform scroll_box pushes right after its
 // clip (the body's own transforms come earlier, inside its macro).
 @(private)
 scroll_offset :: proc(h: ^Harness) -> f64 {
-	i := index_of(&h.ops, Push_Clip)
-	return h.ops.ops[i + 1].(Push_Transform).m.f
+	i := index_of(&h.scene, ops.Push_Clip)
+	return h.scene.ops[i + 1].(ops.Push_Transform).m.f
 }
 
 @(test)
@@ -441,9 +442,9 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 	harness_init(&h, {200, 100})
 	defer harness_destroy(&h)
 	ia := scroll_frame(&h)
-	testing.expect_value(t, ia.kinds, Event_Kinds{.Scroll})
-	clip := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip)
-	testing.expect_value(t, clip.shape.(Rect).h, 100) // the offered height, not the content's
+	testing.expect_value(t, ia.kinds, ops.Event_Kinds{.Scroll})
+	clip := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip)
+	testing.expect_value(t, clip.shape.(ops.Rect).h, 100) // the offered height, not the content's
 	testing.expect_value(t, scroll_offset(&h), 0)
 
 	// One unit of scroll moves SCROLL_STEP pixels.
@@ -463,13 +464,13 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 // thumb_of is the scroll bar thumb scroll_box drew in the track starting
 // at x, if any: a Round_Rect fill inside the track's width.
 @(private)
-thumb_of :: proc(h: ^Harness, x: f32) -> (Rect, bool) {
-	for op in h.ops.ops {
-		f, is_fill := op.(Fill)
+thumb_of :: proc(h: ^Harness, x: f32) -> (ops.Rect, bool) {
+	for op in h.scene.ops {
+		f, is_fill := op.(ops.Fill)
 		if !is_fill {
 			continue
 		}
-		rr, is_rr := f.shape.(Round_Rect)
+		rr, is_rr := f.shape.(ops.Round_Rect)
 		if is_rr && rr.rect.x >= x - 0.01 && rr.rect.x + rr.rect.w <= x + SCROLL_BAR_THICKNESS + 0.01 && rr.rect.w <= SCROLL_BAR_THICKNESS {
 			return rr.rect, true
 		}
@@ -480,8 +481,8 @@ thumb_of :: proc(h: ^Harness, x: f32) -> (Rect, bool) {
 // scroll_frames runs n frames of scroll_frame at 60 Hz, pushing evs into
 // the first, and returns the box's input area.
 @(private)
-scroll_frames :: proc(h: ^Harness, n: int, evs: ..Event) -> Input_Area {
-	ia: Input_Area
+scroll_frames :: proc(h: ^Harness, n: int, evs: ..Event) -> ops.Input_Area {
+	ia: ops.Input_Area
 	for i in 0 ..< n {
 		clear(&h.router.events)
 		harness_frame(h)
@@ -503,7 +504,7 @@ test_scroll_box_bar_hides_until_used_and_expands_on_hover :: proc(t: ^testing.T)
 	defer harness_destroy(&h)
 	ia := scroll_frame(&h)
 	bar := id_mix(ia.id, 1)
-	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w // the box's width
+	w := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip).shape.(ops.Rect).w // the box's width
 	edge := w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
 	_, shown := thumb_of(&h, edge)
 	testing.expect(t, !shown) // nothing has happened yet
@@ -532,7 +533,7 @@ test_scroll_box_bar_drags_and_pages :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	ia := scroll_frame(&h)
 	bar := id_mix(ia.id, 1)
-	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w // the box's width
+	w := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip).shape.(ops.Rect).w // the box's width
 	edge := w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
 	// 314 of content in a 100 view: the thumb is 100/314 of the 96 track.
 	thumb_h := f32(96 * 100.0 / 314)
@@ -568,7 +569,7 @@ test_scroll_box_draws_no_bar_without_overflow :: proc(t: ^testing.T) {
 	harness_init(&h, {200, 400})
 	defer harness_destroy(&h)
 	scroll_frame(&h)
-	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w
+	w := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip).shape.(ops.Rect).w
 	_, ok := thumb_of(&h, w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET)
 	testing.expect(t, !ok)
 }
@@ -588,12 +589,12 @@ test_wrap_breaks_children_into_lines :: proc(t: ^testing.T) {
 		}
 	}
 	// Each placed child is a Push_Transform then its Call.
-	at: [dynamic]Point
+	at: [dynamic]ops.Point
 	defer delete(at)
-	for i in 0 ..< len(h.ops.ops) - 1 {
-		pt, is_pt := h.ops.ops[i].(Push_Transform)
-		if _, is_call := h.ops.ops[i + 1].(Call); is_pt && is_call {
-			append(&at, Point{f32(pt.m.e), f32(pt.m.f)})
+	for i in 0 ..< len(h.scene.ops) - 1 {
+		pt, is_pt := h.scene.ops[i].(ops.Push_Transform)
+		if _, is_call := h.scene.ops[i + 1].(ops.Call); is_pt && is_call {
+			append(&at, ops.Point{f32(pt.m.e), f32(pt.m.f)})
 		}
 	}
 	w, lh := d.size.x, d.size.y
@@ -601,7 +602,7 @@ test_wrap_breaks_children_into_lines :: proc(t: ^testing.T) {
 	if !testing.expect_value(t, len(at), 3) {
 		return
 	}
-	testing.expect_value(t, at[0], Point{0, 0})
+	testing.expect_value(t, at[0], ops.Point{0, 0})
 	testing.expect(t, near(at[1].x, w + 10) && at[1].y == 0)
 	testing.expect(t, at[2].x == 0 && near(at[2].y, lh + 4))
 }
@@ -609,14 +610,14 @@ test_wrap_breaks_children_into_lines :: proc(t: ^testing.T) {
 // wide_scroll_frame lays a scroll_box with min_width 500 over a 500px
 // wide, 300px tall column in h's 200x100 window.
 @(private)
-wide_scroll_frame :: proc(h: ^Harness) -> Input_Area {
+wide_scroll_frame :: proc(h: ^Harness) -> ops.Input_Area {
 	gtx := &h.gtx
 	{
 		sb := scroll_box_open(gtx, min_width = 500); defer close(&sb)
 		col := column_open(gtx); defer close(&col)
 		spacer(gtx, 300)
 	}
-	return h.ops.ops[index_of(&h.ops, Input_Area)].(Input_Area)
+	return h.scene.ops[index_of(&h.scene, ops.Input_Area)].(ops.Input_Area)
 }
 
 @(test)
@@ -625,10 +626,10 @@ test_scroll_box_min_width_scrolls_sideways :: proc(t: ^testing.T) {
 	harness_init(&h, {200, 100})
 	defer harness_destroy(&h)
 	ia := wide_scroll_frame(&h)
-	clip := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip)
-	testing.expect_value(t, clip.shape.(Rect).w, 200) // the box stays the window's width
+	clip := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip)
+	testing.expect_value(t, clip.shape.(ops.Rect).w, 200) // the box stays the window's width
 	x_offset :: proc(h: ^Harness) -> f64 {
-		return h.ops.ops[index_of(&h.ops, Push_Clip) + 1].(Push_Transform).m.e
+		return h.scene.ops[index_of(&h.scene, ops.Push_Clip) + 1].(ops.Push_Transform).m.e
 	}
 	testing.expect_value(t, x_offset(&h), 0)
 
@@ -659,21 +660,21 @@ test_box_paint_replaces_fill_and_outline :: proc(t: ^testing.T) {
 	harness_init(&h)
 	defer harness_destroy(&h)
 	gtx := &h.gtx
-	got: Size
-	painter :: proc(gtx: ^Ctx, id: Area_Id, size: Size, user: rawptr) {
-		(^Size)(user)^ = size
-		fill(gtx.ops, Rect{0, 0, size.x, size.y}, Color{1, 2, 3, 255})
+	got: ops.Size
+	painter :: proc(gtx: ^Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
+		(^ops.Size)(user)^ = size
+		ops.fill(gtx.scene, ops.Rect{0, 0, size.x, size.y}, ops.Color{1, 2, 3, 255})
 	}
 	{
 		b := box_open(gtx, {paint = painter, user = &got}); defer close(&b)
 		label(gtx, "card")
 	}
 	testing.expect(t, near(got.x, 4 * W + 16) && near(got.y, 14 + 16))
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Stroke), 0)
-	f := h.ops.ops[index_of(&h.ops, Fill)].(Fill)
-	testing.expect_value(t, f.paint.(Color), Color{1, 2, 3, 255})
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Stroke), 0)
+	f := h.scene.ops[index_of(&h.scene, ops.Fill)].(ops.Fill)
+	testing.expect_value(t, f.paint.(ops.Color), ops.Color{1, 2, 3, 255})
 	// The paint runs under the body.
-	testing.expect(t, index_of(&h.ops, Fill) < index_of(&h.ops, Call))
+	testing.expect(t, index_of(&h.scene, ops.Fill) < index_of(&h.scene, ops.Call))
 }
 
 @(test)
@@ -686,9 +687,9 @@ test_negative_padding_means_none :: proc(t: ^testing.T) {
 		b := box_open(gtx, {padding = pad_all(-1)}); defer close(&b)
 		label(gtx, "card")
 	}
-	rr := h.ops.ops[index_of(&h.ops, Fill)].(Fill).shape.(Round_Rect)
+	rr := h.scene.ops[index_of(&h.scene, ops.Fill)].(ops.Fill).shape.(ops.Round_Rect)
 	testing.expect(t, near(rr.rect.w, 4 * W) && near(rr.rect.h, 14))
-	testing.expect_value(t, len(pushes(&h.ops)), 0) // no offset for the body
+	testing.expect_value(t, len(pushes(&h.scene)), 0) // no offset for the body
 }
 
 @(test)
@@ -708,13 +709,13 @@ test_overlay_takes_no_space_and_draws_last :: proc(t: ^testing.T) {
 		label(gtx, "after")
 	}
 	// "after" sits right below "before": the overlay took no space.
-	p := pushes(&h.ops)
-	testing.expect_value(t, p[len(p) - 1], Point{0, 14})
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Defer), 1)
+	p := pushes(&h.scene)
+	testing.expect_value(t, p[len(p) - 1], ops.Point{0, 14})
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Defer), 1)
 
 	f: Frame
 	frame_init(&f, context.temp_allocator)
-	flatten(&h.ops, &f)
+	flatten(&h.scene, &f)
 	names := make([dynamic]string, context.temp_allocator)
 	for tg in f.tags {
 		append(&names, tg.name)
@@ -722,7 +723,7 @@ test_overlay_takes_no_space_and_draws_last :: proc(t: ^testing.T) {
 	testing.expect_value(t, names[len(names) - 1], "menu")
 	// At `at` from the enclosing column's origin, not from a slot in it.
 	last := f.draws[len(f.draws) - 1]
-	testing.expect_value(t, apply(last.transform, {0, 0}), Point{5, 6})
+	testing.expect_value(t, ops.apply(last.transform, {0, 0}), ops.Point{5, 6})
 }
 
 @(test)
@@ -736,10 +737,10 @@ test_discarded_overlay_is_never_drawn :: proc(t: ^testing.T) {
 		label(gtx, "gone")
 		o.discard = true
 	}
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Defer), 0)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Defer), 0)
 	f: Frame
 	frame_init(&f, context.temp_allocator)
-	flatten(&h.ops, &f)
+	flatten(&h.scene, &f)
 	testing.expect_value(t, len(f.draws), 0)
 }
 
@@ -763,7 +764,7 @@ test_scroll_box_bar_shows_at_once_when_revealing :: proc(t: ^testing.T) {
 	harness_frame(&h)
 	h.gtx.debug = {.Reveal}
 	scroll_frame(&h)
-	w := h.ops.ops[index_of(&h.ops, Push_Clip)].(Push_Clip).shape.(Rect).w
+	w := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip).shape.(ops.Rect).w
 	thumb, ok := thumb_of(&h, w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET)
 	testing.expect(t, ok) // nothing has happened, yet it draws
 	testing.expect(t, near(thumb.w, SCROLL_BAR_THIN))
@@ -775,12 +776,12 @@ test_bounds_flag_outlines_each_widget :: proc(t: ^testing.T) {
 	harness_init(&h)
 	defer harness_destroy(&h)
 	count :: proc(h: ^Harness) -> (n: int) {
-		for op in h.ops.ops {
-			s, is_stroke := op.(Stroke)
+		for op in h.scene.ops {
+			s, is_stroke := op.(ops.Stroke)
 			if !is_stroke {
 				continue
 			}
-			if c, is_color := s.paint.(Color); is_color && c == BOUNDS_COLOR {
+			if c, is_color := s.paint.(ops.Color); is_color && c == BOUNDS_COLOR {
 				n += 1
 			}
 		}
@@ -804,10 +805,10 @@ test_inspect_flag_records_each_widgets_box :: proc(t: ^testing.T) {
 	h: Harness
 	harness_init(&h)
 	defer harness_destroy(&h)
-	boxes :: proc(h: ^Harness) -> (out: [dynamic]Debug_Box) {
-		out = make([dynamic]Debug_Box, context.temp_allocator)
-		for op in h.ops.ops {
-			if b, ok := op.(Debug_Box); ok {
+	boxes :: proc(h: ^Harness) -> (out: [dynamic]ops.Debug_Box) {
+		out = make([dynamic]ops.Debug_Box, context.temp_allocator)
+		for op in h.scene.ops {
+			if b, ok := op.(ops.Debug_Box); ok {
 				append(&out, b)
 			}
 		}
@@ -836,7 +837,7 @@ test_widget_state_pointers_survive_the_map_growing :: proc(t: ^testing.T) {
 	first := widget_state(&h.gtx, 1)
 	first.springs[0].value = 42
 	for i in 2 ..< 2000 {
-		widget_state(&h.gtx, Area_Id(i))
+		widget_state(&h.gtx, ops.Area_Id(i))
 	}
 	testing.expect_value(t, first, widget_state(&h.gtx, 1))
 	testing.expect_value(t, first.springs[0].value, 42)
@@ -920,20 +921,20 @@ test_openers_push_complete_containers :: proc(t: ^testing.T) {
 		testing.expect(t, innermost(l).deferred) // End must know the total first
 	}
 	{
-		macros := testutil.count_ops(h.ops.ops[:], Macro_Begin)
+		macros := testutil.count_ops(h.scene.ops[:], ops.Macro_Begin)
 		b := box_open(gtx, {padding = {4, 8, 4, 8}}); defer close(&b)
 		c := innermost(l)
 		testing.expect(t, c.kind == .Box)
 		testing.expect_value(t, c.pad, Padding{4, 8, 4, 8})
-		testing.expect_value(t, c.offset, Point{4, 8})
+		testing.expect_value(t, c.offset, ops.Point{4, 8})
 		testing.expect_value(t, c.inner.max, c.cs.max - {8, 16}) // shrunk by the padding
-		testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), macros + 1) // its body records
+		testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Macro_Begin), macros + 1) // its body records
 	}
 	{
 		st := stack_open(gtx); defer close(&st)
 		c := innermost(l)
 		testing.expect(t, c.kind == .Stack)
-		testing.expect_value(t, c.inner.min, Size{0, 0}) // loose: children may be any size up to the max
+		testing.expect_value(t, c.inner.min, ops.Size{0, 0}) // loose: children may be any size up to the max
 		testing.expect_value(t, c.inner.max, c.cs.max)
 	}
 }
@@ -991,7 +992,7 @@ test_guards_close_what_they_open_at_the_end_of_their_if :: proc(t: ^testing.T) {
 @(test)
 test_guard_and_explicit_pair_lay_out_the_same :: proc(t: ^testing.T) {
 	// The same tree through guards and through open/close pairs produces
-	// the same ops, so a caller may pick either form.
+	// the same sc, so a caller may pick either form.
 	Draw :: proc(gtx: ^Ctx, guarded: bool) {
 		if guarded {
 			if column(gtx, gap = 8) {
@@ -1018,7 +1019,7 @@ test_guard_and_explicit_pair_lay_out_the_same :: proc(t: ^testing.T) {
 	Draw(&b.gtx, false)
 	// Widget ids come from the call site, so the two trees differ only in
 	// the ids their input areas carry; masked, the op streams must match.
-	testing.expect_value(t, mask_ids(dump(&a.ops, context.temp_allocator)), mask_ids(dump(&b.ops, context.temp_allocator)))
+	testing.expect_value(t, mask_ids(ops.dump(&a.scene, context.temp_allocator)), mask_ids(ops.dump(&b.scene, context.temp_allocator)))
 	testing.expect_value(t, len(a.layout.state), len(b.layout.state))
 }
 

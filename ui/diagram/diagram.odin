@@ -6,7 +6,7 @@ draws with plain ui calls — fill_rrect, group, arrow and dashed_arrow are
 all just ui.fill/ui.stroke/ui.text/ui.line/ui.polygon underneath — so a
 diagram it does not cover is still one ui proc away.
 
-Layout here is by explicit ui.Rect and ui.Point, not ui's flex containers:
+Layout here is by explicit ops.Rect and ops.Point, not ui's flex containers:
 a diagram's boxes and arrows are usually placed once, by whoever is
 deciding where things go, not measured and wrapped like a form.
 
@@ -17,6 +17,7 @@ deciding where things go, not measured and wrapped like a form.
 package diagram
 
 import "jm:ui"
+import "jm:ui/ops"
 
 // Chip is one labeled row in a group: a short title and subtitle.
 Chip :: struct {
@@ -25,11 +26,11 @@ Chip :: struct {
 
 // fill_rrect fills and outlines a round rect in one call; the outline is
 // skipped when stroke_w <= 0.
-fill_rrect :: proc(o: ^ui.Ops, r: ui.Rect, radius: f32, fill, outline: ui.Color, stroke_w: f32) {
-	rr := ui.Round_Rect{r, radius}
-	ui.fill(o, rr, fill)
+fill_rrect :: proc(o: ^ops.Scene, r: ops.Rect, radius: f32, fill, outline: ops.Color, stroke_w: f32) {
+	rr := ops.Round_Rect{r, radius}
+	ops.fill(o, rr, fill)
 	if stroke_w > 0 {
-		ui.stroke(o, rr, outline, {width = stroke_w})
+		ops.stroke(o, rr, outline, {width = stroke_w})
 	}
 }
 
@@ -38,11 +39,11 @@ fill_rrect :: proc(o: ^ui.Ops, r: ui.Rect, radius: f32, fill, outline: ui.Color,
 // background — the way examples/hotreload-diagram drew its two process
 // boxes. Size r to fit len(chips) chips at 74 logical units each below a
 // 74-unit header; group does not clip or scroll what does not fit.
-group :: proc(gtx: ^ui.Ctx, r: ui.Rect, title, subtitle: string, accent: ui.Color, chips: []Chip) {
+group :: proc(gtx: ^ui.Ctx, r: ops.Rect, title, subtitle: string, accent: ops.Color, chips: []Chip) {
 	th := gtx.theme
-	o := gtx.ops
+	o := gtx.scene
 	fill_rrect(o, r, 10, th.surface, accent, 2)
-	ui.fill(o, ui.Rect{r.x, r.y, r.w, 4}, accent)
+	ops.fill(o, ops.Rect{r.x, r.y, r.w, 4}, accent)
 	ui.text(gtx, title, {r.x + 20, r.y + 16}, {size = 16, color = accent})
 	ui.text(gtx, subtitle, {r.x + 20, r.y + 40}, {size = 11, color = th.muted})
 
@@ -50,10 +51,10 @@ group :: proc(gtx: ^ui.Ctx, r: ui.Rect, title, subtitle: string, accent: ui.Colo
 	chip_h: f32 = 62
 	gap: f32 = 10
 	for c, i in chips {
-		cr := ui.Rect{r.x + 20, y, r.w - 40, chip_h}
+		cr := ops.Rect{r.x + 20, y, r.w - 40, chip_h}
 		fill := i % 2 == 0 ? th.surface_hover : th.surface
 		fill_rrect(o, cr, 8, fill, th.outline, 1)
-		ui.fill(o, ui.Rect{cr.x, cr.y, 4, cr.h}, accent)
+		ops.fill(o, ops.Rect{cr.x, cr.y, 4, cr.h}, accent)
 		ui.text(gtx, c.title, {cr.x + 14, cr.y + 9}, {size = 13})
 		ui.text(gtx, c.subtitle, {cr.x + 14, cr.y + 30}, {size = 10.5, color = th.muted})
 		y += chip_h + gap
@@ -72,20 +73,20 @@ group_height :: proc(n: int) -> f32 {
 // arrow draws a straight line from p0 to p1 with a filled triangular
 // arrowhead at p1. p0 and p1 may come from a literal: arrow builds its
 // path through gtx.allocator, never a bare composite literal (see Path).
-arrow :: proc(gtx: ^ui.Ctx, p0, p1: ui.Point, color: ui.Color, width: f32) {
+arrow :: proc(gtx: ^ui.Ctx, p0, p1: ops.Point, color: ops.Color, width: f32) {
 	dir, ok := unit(p1 - p0)
 	if !ok {
 		return
 	}
-	shaft_end := ui.Point{p1.x - dir.x * 10, p1.y - dir.y * 10}
-	ui.stroke(gtx.ops, ui.line(gtx, p0, shaft_end), color, {width = width, cap = .Round})
+	shaft_end := ops.Point{p1.x - dir.x * 10, p1.y - dir.y * 10}
+	ops.stroke(gtx.scene, ui.line(gtx, p0, shaft_end), color, {width = width, cap = .Round})
 	arrow_head(gtx, p1, dir, color)
 }
 
 // dashed_arrow is arrow with a dashed shaft: the diagram kit's convention
 // for a signal that is out of band, not part of the per-frame flow a
 // solid arrow depicts.
-dashed_arrow :: proc(gtx: ^ui.Ctx, p0, p1: ui.Point, color: ui.Color, width, dash, gap: f32) {
+dashed_arrow :: proc(gtx: ^ui.Ctx, p0, p1: ops.Point, color: ops.Color, width, dash, gap: f32) {
 	d := p1 - p0
 	total := length(d)
 	dir, ok := unit(d)
@@ -95,10 +96,10 @@ dashed_arrow :: proc(gtx: ^ui.Ctx, p0, p1: ui.Point, color: ui.Color, width, das
 	head_room := f32(12)
 	at: f32 = 0
 	for at < total - head_room {
-		a := ui.Point{p0.x + dir.x * at, p0.y + dir.y * at}
+		a := ops.Point{p0.x + dir.x * at, p0.y + dir.y * at}
 		e := min(at + dash, total - head_room)
-		b := ui.Point{p0.x + dir.x * e, p0.y + dir.y * e}
-		ui.stroke(gtx.ops, ui.line(gtx, a, b), color, {width = width, cap = .Round})
+		b := ops.Point{p0.x + dir.x * e, p0.y + dir.y * e}
+		ops.stroke(gtx.scene, ui.line(gtx, a, b), color, {width = width, cap = .Round})
 		at = e + gap
 	}
 	arrow_head(gtx, p1, dir, color)
@@ -107,16 +108,16 @@ dashed_arrow :: proc(gtx: ^ui.Ctx, p0, p1: ui.Point, color: ui.Color, width, das
 // arrow_head fills a small triangle whose tip is at tip, pointing along
 // the unit vector dir.
 @(private = "file")
-arrow_head :: proc(gtx: ^ui.Ctx, tip, dir: ui.Point, color: ui.Color, size: f32 = 10) {
-	perp := ui.Point{-dir.y, dir.x}
-	base := ui.Point{tip.x - dir.x * size, tip.y - dir.y * size}
-	left := ui.Point{base.x + perp.x * size * 0.5, base.y + perp.y * size * 0.5}
-	right := ui.Point{base.x - perp.x * size * 0.5, base.y - perp.y * size * 0.5}
-	ui.fill(gtx.ops, ui.polygon(gtx, []ui.Point{tip, left, right}), color)
+arrow_head :: proc(gtx: ^ui.Ctx, tip, dir: ops.Point, color: ops.Color, size: f32 = 10) {
+	perp := ops.Point{-dir.y, dir.x}
+	base := ops.Point{tip.x - dir.x * size, tip.y - dir.y * size}
+	left := ops.Point{base.x + perp.x * size * 0.5, base.y + perp.y * size * 0.5}
+	right := ops.Point{base.x - perp.x * size * 0.5, base.y - perp.y * size * 0.5}
+	ops.fill(gtx.scene, ui.polygon(gtx, []ops.Point{tip, left, right}), color)
 }
 
 @(private = "file")
-length :: proc(v: ui.Point) -> f32 {
+length :: proc(v: ops.Point) -> f32 {
 	s := v.x * v.x + v.y * v.y
 	if s == 0 {
 		return 0
@@ -129,7 +130,7 @@ length :: proc(v: ui.Point) -> f32 {
 }
 
 @(private = "file")
-unit :: proc(v: ui.Point) -> (ui.Point, bool) {
+unit :: proc(v: ops.Point) -> (ops.Point, bool) {
 	l := length(v)
 	if l == 0 {
 		return {}, false

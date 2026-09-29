@@ -1,6 +1,7 @@
 package material
 
 import "core:math"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -53,13 +54,13 @@ BADGE_PADDING :: f32(4)
 // layout, Badge.kt:206-218): the badge's left edge sits x in from the
 // anchor's right edge, and its bottom edge y below the anchor's top.
 @(private = "file")
-BADGE_DOT_OFFSET :: ui.Point{6, 6}
+BADGE_DOT_OFFSET :: ops.Point{6, 6}
 @(private = "file")
-BADGE_NUMERAL_OFFSET :: ui.Point{12, 14}
+BADGE_NUMERAL_OFFSET :: ops.Point{12, 14}
 
 // badge_size is the size label's badge draws at: the dot for " ", else at
 // least comp.badge.large-size square, wider for a longer label.
-badge_size :: proc(gtx: ^ui.Ctx, label: string) -> ui.Size {
+badge_size :: proc(gtx: ^ui.Ctx, label: string) -> ops.Size {
 	switch label {
 	case "":
 		return {}
@@ -73,17 +74,17 @@ badge_size :: proc(gtx: ^ui.Ctx, label: string) -> ui.Size {
 // paint_badge draws label's badge with its top-left corner at at: the
 // comp.badge dot for " ", else the numeral badge (comp.badge.large-*).
 // "" draws nothing. Returns the badge's size.
-paint_badge :: proc(gtx: ^ui.Ctx, at: ui.Point, label: string) -> ui.Size {
+paint_badge :: proc(gtx: ^ui.Ctx, at: ops.Point, label: string) -> ops.Size {
 	size := badge_size(gtx, label)
 	if label == "" {
 		return size
 	}
-	r := ui.Rect{at.x, at.y, size.x, size.y}
+	r := ops.Rect{at.x, at.y, size.x, size.y}
 	if label == " " {
-		ui.fill(gtx.ops, rounded(gtx, r, corners(tok.BADGE_SHAPE, r)), color(tok.BADGE_COLOR))
+		ops.fill(gtx.scene, rounded(gtx, r, corners(tok.BADGE_SHAPE, r)), color(tok.BADGE_COLOR))
 		return size
 	}
-	ui.fill(gtx.ops, rounded(gtx, r, corners(tok.BADGE_LARGE_SHAPE, r)), color(tok.BADGE_LARGE_COLOR))
+	ops.fill(gtx.scene, rounded(gtx, r, corners(tok.BADGE_LARGE_SHAPE, r)), color(tok.BADGE_LARGE_COLOR))
 	t := shape_style(gtx, label, tok.BADGE_LARGE_LABEL_TEXT_FONT)
 	draw_text(gtx, t, {r.x + (r.w - t.width) / 2, r.y + (r.h - t.height) / 2}, color(tok.BADGE_LARGE_LABEL_TEXT_COLOR))
 	return size
@@ -92,7 +93,7 @@ paint_badge :: proc(gtx: ^ui.Ctx, at: ui.Point, label: string) -> ui.Size {
 // paint_badge_on draws label's badge over anchor's top-trailing corner, at
 // the dot's or the numeral's own offset (Compose places it at x = anchor
 // width - offset.x, y = offset.y - badge height).
-paint_badge_on :: proc(gtx: ^ui.Ctx, anchor: ui.Rect, label: string) {
+paint_badge_on :: proc(gtx: ^ui.Ctx, anchor: ops.Rect, label: string) {
 	if label == "" {
 		return
 	}
@@ -233,31 +234,31 @@ navigation_drawer :: proc(
 	if v == .Modal {
 		o = ui.overlay_open(gtx)
 		scrim_id := ui.id_mix(p.id, 0xffff)
-		ui.fill(gtx.ops, ui.Rect{-1e5, -1e5, 2e5, 2e5}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(prog, 0, 1)))
+		ops.fill(gtx.scene, ops.Rect{-1e5, -1e5, 2e5, 2e5}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(prog, 0, 1)))
 		if shown && open != nil {
 			for e in ui.events(gtx, scrim_id) {
 				if e.kind == .Press {
 					open^ = false
 				}
 			}
-			ui.input_area(gtx.ops, scrim_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+			ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 	}
 
-	sheet := ui.Rect{-(1 - prog) * w, 0, w, h}
+	sheet := ops.Rect{-(1 - prog) * w, 0, w, h}
 	k := v == .Permanent ? Corners{} : corners(tok.NAVIGATION_DRAWER_CONTAINER_SHAPE, sheet)
 	// The modal sheet's token elevation is 1dp, but the spec (layout
 	// elevation, NavigationDrawer.kt) draws it at level 0: the scrim is its
 	// depth cue. So neither variant casts a shadow.
 	fill := v == .Modal ? tok.NAVIGATION_DRAWER_MODAL_CONTAINER_COLOR : tok.NAVIGATION_DRAWER_STANDARD_CONTAINER_COLOR
 	outline := rounded(gtx, sheet, k)
-	ui.fill(gtx.ops, outline, color(fill))
-	ui.input_area(gtx.ops, p.id, sheet, {.Scroll, .Press, .Release})
+	ops.fill(gtx.scene, outline, color(fill))
+	ops.input_area(gtx.scene, p.id, sheet, {.Scroll, .Press, .Release})
 
 	changed := false
 	// Clip to the sheet's own outline, not its bounds, so the items and the
 	// scroll bar along its edge stay inside its rounded corners.
-	ui.clip_push(gtx.ops, outline)
+	ops.clip_push(gtx.scene, outline)
 	// Items start a margin down, the same margin as their sides: the kit
 	// gives no top inset.
 	y := DRAWER_MARGIN - offset
@@ -273,7 +274,7 @@ navigation_drawer :: proc(
 			continue
 		}
 		ih := tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_HEIGHT
-		r := ui.Rect{sheet.x + DRAWER_MARGIN, y, item_w, ih}
+		r := ops.Rect{sheet.x + DRAWER_MARGIN, y, item_w, ih}
 		if y + ih > 0 && y < h {
 			id := ui.id_mix(p.id, u64(i))
 			if paint_drawer_item(gtx, id, r, it, selected^ == i, .Live) {
@@ -286,10 +287,10 @@ navigation_drawer :: proc(
 		}
 		y += ih
 	}
-	ui.transform_push(gtx.ops, ui.translate(sheet.x, 0))
+	ops.transform_push(gtx.scene, ops.translate(sheet.x, 0))
 	ui.scroll_bar_paint(gtx, bar_id, .Vertical, {w, h}, content, offset, ends = drawer_bar_ends(v))
-	ui.transform_pop(gtx.ops)
-	ui.clip_pop(gtx.ops)
+	ops.transform_pop(gtx.scene)
+	ops.clip_pop(gtx.scene)
 	if v == .Modal {
 		ui.close(&o)
 	}
@@ -299,7 +300,7 @@ navigation_drawer :: proc(
 
 // escape_pressed reports whether an Escape key reached id this frame.
 @(private = "file")
-escape_pressed :: proc(gtx: ^ui.Ctx, id: ui.Area_Id) -> bool {
+escape_pressed :: proc(gtx: ^ui.Ctx, id: ops.Area_Id) -> bool {
 	for e in ui.events(gtx, id) {
 		if e.kind == .Key && e.key == .Escape {
 			return true
@@ -334,7 +335,7 @@ drawer_item :: proc(
 // on-secondary-container. The state layer is the content colour over the
 // indicator's pill.
 @(private = "file")
-paint_drawer_item :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, it: Nav_Item, active: bool, state: Interaction) -> bool {
+paint_drawer_item :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, it: Nav_Item, active: bool, state: Interaction) -> bool {
 	c := control(gtx, id, r, it.disabled ? .Disabled : state)
 	shape := rounded(gtx, r, corners(tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_SHAPE, r))
 	ico, lab: tok.Role
@@ -359,7 +360,7 @@ paint_drawer_item :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, it: Nav_Item
 	icon_col, label_col := color(ico), color(lab)
 	badge_col := active ? label_col : color(tok.NAVIGATION_DRAWER_LARGE_BADGE_LABEL_COLOR)
 	if active {
-		ui.fill(gtx.ops, shape, color(tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_COLOR))
+		ops.fill(gtx.scene, shape, color(tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_COLOR))
 	}
 	if c.disabled {
 		icon_col, label_col, badge_col = disabled_content(), disabled_content(), disabled_content()
@@ -380,7 +381,7 @@ paint_drawer_item :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, it: Nav_Item
 	}
 	paint_focus_ring_corners(gtx, c, r, corners(tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_SHAPE, r), inward = true)
 	listen(gtx, c, id, r)
-	ui.tag(gtx.ops, id, ui.frame_string(gtx, it.label))
+	ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
 	return c.clicked
 }
 
@@ -392,7 +393,7 @@ paint_drawer_item :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, it: Nav_Item
 // groups.
 @(private = "file")
 Nav_Style :: struct {
-	v_indicator:    ui.Size, // vertical item's indicator
+	v_indicator:    ops.Size, // vertical item's indicator
 	v_gap:          f32, // indicator to label
 	v_font:         tok.Type_Style,
 	h_height:       f32, // horizontal item's indicator height
@@ -467,7 +468,7 @@ nav_item_width :: proc(gtx: ^ui.Ctx, sty: Nav_Style, label: string) -> f32 {
 }
 
 @(private = "file")
-lerp_rect :: proc(a, b: ui.Rect, t: f32) -> ui.Rect {
+lerp_rect :: proc(a, b: ops.Rect, t: f32) -> ops.Rect {
 	return {math.lerp(a.x, b.x, t), math.lerp(a.y, b.y, t), math.lerp(a.w, b.w, t), math.lerp(a.h, b.h, t)}
 }
 
@@ -488,8 +489,8 @@ lerp_rect :: proc(a, b: ui.Rect, t: f32) -> ui.Rect {
 @(private = "file")
 paint_nav_item :: proc(
 	gtx: ^ui.Ctx,
-	id: ui.Area_Id,
-	r: ui.Rect,
+	id: ops.Area_Id,
+	r: ops.Rect,
 	it: Nav_Item,
 	active: bool,
 	sty: Nav_Style,
@@ -508,34 +509,34 @@ paint_nav_item :: proc(
 
 	// Vertical: the indicator, then the label, as one block centred in r.
 	block := sty.v_indicator.y + (has_label ? (sty.v_gap + t.height) * shown : 0)
-	v_ind := ui.Rect{r.x + (r.w - sty.v_indicator.x) / 2, r.y + (r.h - block) / 2, sty.v_indicator.x, sty.v_indicator.y}
-	v_label := ui.Point{r.x + (r.w - t.width) / 2, v_ind.y + v_ind.h + sty.v_gap}
+	v_ind := ops.Rect{r.x + (r.w - sty.v_indicator.x) / 2, r.y + (r.h - block) / 2, sty.v_indicator.x, sty.v_indicator.y}
+	v_label := ops.Point{r.x + (r.w - t.width) / 2, v_ind.y + v_ind.h + sty.v_gap}
 	// Horizontal: the indicator wraps icon and label as one group.
 	hw := sty.h_leading + sty.icon + sty.h_trailing + (has_label ? sty.h_gap + t.width : 0)
 	hx := inset >= 0 ? r.x + inset : r.x + (r.w - hw) / 2
-	h_ind := ui.Rect{hx, r.y + (r.h - sty.h_height) / 2, hw, sty.h_height}
-	h_label := ui.Point{hx + sty.h_leading + sty.icon + sty.h_gap, h_ind.y + (h_ind.h - t.height) / 2}
+	h_ind := ops.Rect{hx, r.y + (r.h - sty.h_height) / 2, hw, sty.h_height}
+	h_label := ops.Point{hx + sty.h_leading + sty.icon + sty.h_gap, h_ind.y + (h_ind.h - t.height) / 2}
 
 	ind := lerp_rect(v_ind, h_ind, pos)
-	icon_at := ui.Point {
+	icon_at := ops.Point {
 		math.lerp(v_ind.x + (v_ind.w - sty.icon) / 2, h_ind.x + sty.h_leading, pos),
 		ind.y + (ind.h - sty.icon) / 2,
 	}
-	label_at := ui.Point{math.lerp(v_label.x, h_label.x, pos), math.lerp(v_label.y, h_label.y, pos)}
+	label_at := ops.Point{math.lerp(v_label.x, h_label.x, pos), math.lerp(v_label.y, h_label.y, pos)}
 
-	icon_col := ui.mix(s[sty.inactive_icon], s[sty.active_icon], tone)
-	label_col := ui.mix(s[sty.inactive_label], s[sty.active_label], tone)
+	icon_col := ops.mix(s[sty.inactive_icon], s[sty.active_icon], tone)
+	label_col := ops.mix(s[sty.inactive_label], s[sty.active_label], tone)
 	if c.disabled {
 		icon_col, label_col = disabled_content(), disabled_content()
 	}
 	if sel > 0.001 {
 		// Grow from the centre; the spring's overshoot widens it briefly.
 		gw := ind.w * sel
-		g := ui.Rect{ind.x + (ind.w - gw) / 2, ind.y, gw, ind.h}
-		ui.fill(gtx.ops, rounded(gtx, g, corners(tok.NAVIGATION_BAR_ITEM_ACTIVE_INDICATOR_SHAPE, g)), ui.with_alpha(s[sty.indicator], clamp(sel, 0, 1)))
+		g := ops.Rect{ind.x + (ind.w - gw) / 2, ind.y, gw, ind.h}
+		ops.fill(gtx.scene, rounded(gtx, g, corners(tok.NAVIGATION_BAR_ITEM_ACTIVE_INDICATOR_SHAPE, g)), ops.with_alpha(s[sty.indicator], clamp(sel, 0, 1)))
 	}
 	pill := corners(tok.NAVIGATION_BAR_ITEM_ACTIVE_INDICATOR_SHAPE, ind)
-	paint_state_layer(gtx, c, rounded(gtx, ind, pill), ui.mix(s[sty.inactive_layer], s[sty.active_layer], tone))
+	paint_state_layer(gtx, c, rounded(gtx, ind, pill), ops.mix(s[sty.inactive_layer], s[sty.active_layer], tone))
 	g := active && it.active_icon != .None ? it.active_icon : it.icon
 	icon(gtx, g, icon_at, sty.icon, icon_col)
 	paint_badge_on(gtx, {icon_at.x, icon_at.y, sty.icon, sty.icon}, it.badge)
@@ -545,7 +546,7 @@ paint_nav_item :: proc(
 	}
 	paint_focus_ring_corners(gtx, c, ind, pill)
 	listen(gtx, c, id, r)
-	ui.tag(gtx.ops, id, ui.frame_string(gtx, it.label))
+	ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
 	return c.clicked
 }
 
@@ -565,7 +566,7 @@ nav_destination :: proc(
 ) -> bool {
 	p := ui.widget_open(gtx, key, loc)
 	sty := bar ? BAR_STYLE : RAIL_STYLE
-	want := ui.Size{tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_WIDTH, tok.NAVIGATION_RAIL_BASELINE_ITEM_CONTAINER_HEIGHT}
+	want := ops.Size{tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_WIDTH, tok.NAVIGATION_RAIL_BASELINE_ITEM_CONTAINER_HEIGHT}
 	if bar {
 		want.y = tok.NAVIGATION_BAR_CONTAINER_HEIGHT
 	}
@@ -698,7 +699,7 @@ navigation_rail :: proc(
 	if modal {
 		o = ui.overlay_open(gtx)
 		if scrim > 0 {
-			ui.fill(gtx.ops, ui.Rect{-1e5, -1e5, 2e5, 2e5}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * scrim))
+			ops.fill(gtx.scene, ops.Rect{-1e5, -1e5, 2e5, 2e5}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * scrim))
 		}
 		if open {
 			scrim_id := ui.id_mix(p.id, 0xffff)
@@ -707,28 +708,28 @@ navigation_rail :: proc(
 					expanded^ = false
 				}
 			}
-			ui.input_area(gtx.ops, scrim_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+			ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 	}
 
 	x0: f32 = hide ? -(1 - prog) * expanded_w : 0
-	view := ui.Rect{x0, 0, w, h}
+	view := ops.Rect{x0, 0, w, h}
 	if modal {
 		// Collapsed, a modal rail is the flat docked rail; expanding, it
 		// takes the modal container's colour, shape and elevation.
 		k := lerp_corners({}, corners(tok.NAVIGATION_RAIL_EXPANDED_MODAL_CONTAINER_SHAPE, view), hide ? 1 : t)
-		col := ui.mix(color(tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_COLOR), color(tok.NAVIGATION_RAIL_EXPANDED_MODAL_CONTAINER_COLOR), hide ? 1 : t)
+		col := ops.mix(color(tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_COLOR), color(tok.NAVIGATION_RAIL_EXPANDED_MODAL_CONTAINER_COLOR), hide ? 1 : t)
 		if t > 0 {
 			paint_elevation(gtx, {view, k.tr}, elevation_level(tok.NAVIGATION_RAIL_EXPANDED_MODAL_CONTAINER_ELEVATION))
 		}
-		ui.fill(gtx.ops, rounded(gtx, view, k), col)
+		ops.fill(gtx.scene, rounded(gtx, view, k), col)
 		// The rail swallows presses on its own background, so they do not
 		// reach the scrim.
-		ui.input_area(gtx.ops, ui.id_mix(p.id, 0xfffe), view, {.Press, .Release})
+		ops.input_area(gtx.scene, ui.id_mix(p.id, 0xfffe), view, {.Press, .Release})
 	} else {
-		ui.fill(gtx.ops, view, color(tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_COLOR))
+		ops.fill(gtx.scene, view, color(tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_COLOR))
 	}
-	ui.clip_push(gtx.ops, view)
+	ops.clip_push(gtx.scene, view)
 
 	y := tok.NAVIGATION_RAIL_COLLAPSED_TOP_SPACE
 	if menu {
@@ -743,25 +744,25 @@ navigation_rail :: proc(
 	if fab_icon != .None {
 		fid := ui.id_mix(p.id, 999)
 		fw := math.lerp(tok.FAB_BASELINE_CONTAINER_WIDTH, ext_w, pos)
-		area := ui.Rect{x0 + inset, y, fw, tok.FAB_BASELINE_CONTAINER_HEIGHT}
+		area := ops.Rect{x0 + inset, y, fw, tok.FAB_BASELINE_CONTAINER_HEIGHT}
 		shape := rounded(gtx, area, corners(tok.FAB_BASELINE_CONTAINER_SHAPE, area))
 		c := control(gtx, fid, area, .Live)
 		fg := color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR)
 		// No shadow: the FAB sits flat on the rail, a chosen look, as the
 		// rail spec gives its header no elevation.
-		ui.fill(gtx.ops, shape, color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR))
+		ops.fill(gtx.scene, shape, color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR))
 		paint_state_layer(gtx, c, shape, fg)
 		isz := tok.FAB_BASELINE_ICON_SIZE
 		icon(gtx, fab_icon, {area.x + (tok.FAB_BASELINE_CONTAINER_WIDTH - isz) / 2 + (tok.EXTENDED_FAB_SMALL_LEADING_SPACE - (tok.FAB_BASELINE_CONTAINER_WIDTH - isz) / 2) * pos, area.y + (area.h - isz) / 2}, isz, fg)
 		if fab_label != "" && pos > 0.5 {
 			lt := shape_text(gtx, fab_label, .Title_Medium)
-			ui.clip_push(gtx.ops, area)
-			draw_text(gtx, lt, {area.x + tok.EXTENDED_FAB_SMALL_LEADING_SPACE + isz + tok.EXTENDED_FAB_SMALL_ICON_LABEL_SPACE, area.y + (area.h - lt.height) / 2}, ui.with_alpha(fg, (pos - 0.5) * 2))
-			ui.clip_pop(gtx.ops)
+			ops.clip_push(gtx.scene, area)
+			draw_text(gtx, lt, {area.x + tok.EXTENDED_FAB_SMALL_LEADING_SPACE + isz + tok.EXTENDED_FAB_SMALL_ICON_LABEL_SPACE, area.y + (area.h - lt.height) / 2}, ops.with_alpha(fg, (pos - 0.5) * 2))
+			ops.clip_pop(gtx.scene)
 		}
 		paint_focus_ring_corners(gtx, c, area, corners(tok.FAB_BASELINE_CONTAINER_SHAPE, area))
 		listen(gtx, c, fid, area)
-		ui.tag(gtx.ops, fid, fab_label != "" ? fab_label : "FAB")
+		ops.tag(gtx.scene, fid, fab_label != "" ? fab_label : "FAB")
 		fab_clicked = c.clicked
 		y += tok.FAB_BASELINE_CONTAINER_HEIGHT
 	}
@@ -786,7 +787,7 @@ navigation_rail :: proc(
 		}
 		y += item_h + item_gap
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	if modal {
 		ui.close(&o)
 	}
@@ -836,8 +837,8 @@ navigation_bar :: proc(
 	sty := BAR_STYLE
 	w := width > 0 ? width : (cs.max.x < ui.INF ? cs.max.x : 412)
 	size := ui.constrain(cs, {w, tok.NAVIGATION_BAR_CONTAINER_HEIGHT})
-	bar := ui.Rect{0, 0, size.x, size.y}
-	ui.fill(gtx.ops, rounded(gtx, bar, corners(tok.NAVIGATION_BAR_NAV_SHAPE, bar)), color(tok.NAVIGATION_BAR_CONTAINER_COLOR))
+	bar := ops.Rect{0, 0, size.x, size.y}
+	ops.fill(gtx.scene, rounded(gtx, bar, corners(tok.NAVIGATION_BAR_NAV_SHAPE, bar)), color(tok.NAVIGATION_BAR_CONTAINER_COLOR))
 
 	horizontal := false
 	if flexible {
@@ -898,7 +899,7 @@ navigation_bar :: proc(
 		if it.headline || k >= WIDTHS {
 			continue
 		}
-		r := ui.Rect{x, 0, widths[k], size.y}
+		r := ops.Rect{x, 0, widths[k], size.y}
 		if paint_nav_item(gtx, ui.id_mix(p.id, u64(i)), r, it, selected^ == i, sty, pos, -1, always_show_label, .Live) {
 			changed = selected^ != i
 			selected^ = i

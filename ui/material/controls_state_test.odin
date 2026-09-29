@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 
 // The controls group's caller-owned state: a tab row's and a drawer's
@@ -30,12 +31,12 @@ State_Model :: struct {
 
 // bounds is the device-space bounding rect of the area tagged name.
 @(private = "file")
-bounds :: proc(p: ^ui.Probe, name: string) -> ui.Rect {
+bounds :: proc(p: ^ui.Probe, name: string) -> ops.Rect {
 	h, ok := ui.probe_find(p, name)
 	if !ok {
 		return {}
 	}
-	return ui.transform_rect(h.transform, ui.shape_bounds(&p.ops, h.shape))
+	return ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape))
 }
 
 @(test)

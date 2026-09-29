@@ -1,6 +1,7 @@
 package render
 
 import "jm:ui"
+import "jm:ui/ops"
 
 // snapshot renders one frame of ui_proc(gtx, user) headlessly and writes it
 // to path as a PNG, in the one call that probe_init, per-font add_font, a
@@ -13,11 +14,11 @@ import "jm:ui"
 snapshot :: proc(
 	ui_proc: proc(gtx: ^ui.Ctx, user: rawptr),
 	user: rawptr,
-	size: ui.Size,
-	fonts: []ui.Font_Ref,
+	size: ops.Size,
+	fonts: []ops.Font_Ref,
 	path: string,
 	theme: Maybe(ui.Theme) = nil,
-	clear: ui.Color = {255, 255, 255, 255},
+	clear: ops.Color = {255, 255, 255, 255},
 	frames: int = 1,
 	dt: f32 = 1.0 / 60,
 	debug: ui.Debug_Flags = {},
@@ -26,12 +27,12 @@ snapshot :: proc(
 	ui.probe_init(&p, ui_proc, user, size, theme = theme, debug = debug | ui.debug_from_env())
 	defer ui.probe_destroy(&p)
 	for f in fonts {
-		ui.add_font(&p.ops, f.path)
+		ops.add_font(&p.scene, f.path)
 	}
 	r: Renderer
 	init(&r)
 	defer destroy(&r)
-	p.shaper = shaper(&r, p.ops.fonts[:])
+	p.shaper = shaper(&r, p.scene.fonts[:])
 	ui.probe_advance(&p, frames, dt)
 	return render_png(&r, ui.probe_current(&p), int(size.x), int(size.y), path, clear)
 }

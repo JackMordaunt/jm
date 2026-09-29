@@ -1,6 +1,7 @@
 package material
 
 import "core:mem/virtual"
+import "jm:ui/ops"
 import "core:strconv"
 import "jm:ui"
 
@@ -12,7 +13,7 @@ import "jm:ui"
 // scales that to the requested size.
 
 @(private = "file", thread_local)
-cache: [Icon]ui.Path
+cache: [Icon]ops.Path
 
 @(private = "file", thread_local)
 parsed: [Icon]bool
@@ -32,7 +33,7 @@ arena: virtual.Arena
 // top-left (box is 960 for current symbols, 24 for a few older ones).
 // Parsed on first use into a per-thread arena and kept for the life of
 // the thread, so the slices outlive every frame that adds them.
-icon_path :: proc(i: Icon) -> (path: ui.Path, box: f32) {
+icon_path :: proc(i: Icon) -> (path: ops.Path, box: f32) {
 	if !parsed[i] {
 		data, b := icon_svg(i)
 		cache[i], _ = parse_svg_path(data, virtual.arena_allocator(&arena)) // a partial path still draws; the test catches it
@@ -48,7 +49,7 @@ icon_path :: proc(i: Icon) -> (path: ui.Path, box: f32) {
 }
 
 // icon fills i at size pixels with its top-left at pos.
-icon :: proc(gtx: ^ui.Ctx, i: Icon, pos: ui.Point, size: f32, color: ui.Color) {
+icon :: proc(gtx: ^ui.Ctx, i: Icon, pos: ops.Point, size: f32, color: ops.Color) {
 	if i == .None || !ui.painted(color) {
 		return
 	}
@@ -57,9 +58,9 @@ icon :: proc(gtx: ^ui.Ctx, i: Icon, pos: ui.Point, size: f32, color: ui.Color) {
 		return
 	}
 	k := size / box
-	ui.transform_push(gtx.ops, ui.mul(ui.scale(k, k), ui.translate(pos.x, pos.y)))
-	ui.fill(gtx.ops, ui.Path_Ref{ui.add_path(gtx.ops, p)}, color)
-	ui.transform_pop(gtx.ops)
+	ops.transform_push(gtx.scene, ops.mul(ops.scale(k, k), ops.translate(pos.x, pos.y)))
+	ops.fill(gtx.scene, ops.Path_Ref{ops.add_path(gtx.scene, p)}, color)
+	ops.transform_pop(gtx.scene)
 }
 
 // parse_svg_path turns SVG path data into a ui.Path. It handles M L H V
@@ -67,10 +68,10 @@ icon :: proc(gtx: ^ui.Ctx, i: Icon, pos: ui.Point, size: f32, color: ui.Color) {
 // (test_every_icon_parses checks each one); quadratics become cubics. ok
 // is false when it met anything else, such as an A (arc), and stopped
 // there.
-parse_svg_path :: proc(d: string, allocator := context.allocator) -> (path: ui.Path, ok: bool) {
+parse_svg_path :: proc(d: string, allocator := context.allocator) -> (path: ops.Path, ok: bool) {
 	b := Svg_Builder {
-		verbs  = make([dynamic]ui.Path_Verb, allocator),
-		points = make([dynamic]ui.Point, allocator),
+		verbs  = make([dynamic]ops.Path_Verb, allocator),
+		points = make([dynamic]ops.Point, allocator),
 	}
 	i := 0
 	cmd: u8 = 0
@@ -83,7 +84,7 @@ parse_svg_path :: proc(d: string, allocator := context.allocator) -> (path: ui.P
 			cmd = ch
 			i += 1
 			if cmd == 'Z' || cmd == 'z' {
-				append(&b.verbs, ui.Path_Verb.Close)
+				append(&b.verbs, ops.Path_Verb.Close)
 				b.cur = b.start
 				b.last = cmd
 				continue
@@ -98,9 +99,9 @@ parse_svg_path :: proc(d: string, allocator := context.allocator) -> (path: ui.P
 
 @(private = "file")
 Svg_Builder :: struct {
-	verbs:             [dynamic]ui.Path_Verb,
-	points:            [dynamic]ui.Point,
-	cur, start, ctrl:  ui.Point, // ctrl: the last control point, for S and T
+	verbs:             [dynamic]ops.Path_Verb,
+	points:            [dynamic]ops.Point,
+	cur, start, ctrl:  ops.Point, // ctrl: the last control point, for S and T
 	last:              u8, // the previous command
 }
 
@@ -111,29 +112,29 @@ Svg_Builder :: struct {
 read_svg_command :: proc(b: ^Svg_Builder, d: string, i: ^int, cmd: ^u8) -> bool {
 	c := cmd^
 	rel := c >= 'a' && c <= 'z'
-	base := rel ? b.cur : ui.Point{}
+	base := rel ? b.cur : ops.Point{}
 	switch c {
 	case 'M', 'm':
 		p := svg_point(d, i) or_return
 		b.cur = base + p
 		b.start = b.cur
-		append(&b.verbs, ui.Path_Verb.Move)
+		append(&b.verbs, ops.Path_Verb.Move)
 		append(&b.points, b.cur)
 		cmd^ = rel ? 'l' : 'L'
 	case 'L', 'l':
 		p := svg_point(d, i) or_return
 		b.cur = base + p
-		append(&b.verbs, ui.Path_Verb.Line)
+		append(&b.verbs, ops.Path_Verb.Line)
 		append(&b.points, b.cur)
 	case 'H', 'h':
 		x := svg_number(d, i) or_return
 		b.cur.x = base.x + x
-		append(&b.verbs, ui.Path_Verb.Line)
+		append(&b.verbs, ops.Path_Verb.Line)
 		append(&b.points, b.cur)
 	case 'V', 'v':
 		y := svg_number(d, i) or_return
 		b.cur.y = base.y + y
-		append(&b.verbs, ui.Path_Verb.Line)
+		append(&b.verbs, ops.Path_Verb.Line)
 		append(&b.points, b.cur)
 	case 'C', 'c':
 		c1 := svg_point(d, i) or_return
@@ -149,7 +150,7 @@ read_svg_command :: proc(b: ^Svg_Builder, d: string, i: ^int, cmd: ^u8) -> bool 
 		}
 		append_svg_cubic(b, c1, base + c2, base + p)
 	case 'Q', 'q', 'T', 't':
-		q: ui.Point
+		q: ops.Point
 		if c == 'Q' || c == 'q' {
 			q = base + (svg_point(d, i) or_return)
 		} else {
@@ -170,8 +171,8 @@ read_svg_command :: proc(b: ^Svg_Builder, d: string, i: ^int, cmd: ^u8) -> bool 
 
 // append_svg_cubic appends a cubic to p, remembering c2 for a following S.
 @(private = "file")
-append_svg_cubic :: proc(b: ^Svg_Builder, c1, c2, p: ui.Point) {
-	append(&b.verbs, ui.Path_Verb.Cubic)
+append_svg_cubic :: proc(b: ^Svg_Builder, c1, c2, p: ops.Point) {
+	append(&b.verbs, ops.Path_Verb.Cubic)
 	append(&b.points, c1, c2, p)
 	b.ctrl = c2
 	b.cur = p
@@ -216,7 +217,7 @@ svg_number :: proc(d: string, i: ^int) -> (f32, bool) {
 }
 
 @(private = "file")
-svg_point :: proc(d: string, i: ^int) -> (p: ui.Point, ok: bool) {
+svg_point :: proc(d: string, i: ^int) -> (p: ops.Point, ok: bool) {
 	p.x = svg_number(d, i) or_return
 	p.y = svg_number(d, i) or_return
 	return p, true

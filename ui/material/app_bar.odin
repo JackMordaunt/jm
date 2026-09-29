@@ -1,6 +1,7 @@
 package material
 
 import "jm:ui"
+import "jm:ui/ops"
 import tok "jm:ui/material/tokens"
 
 // Top app bars and tabs (m3e-kit components/app-bar.json and tabs.json).
@@ -112,8 +113,8 @@ top_app_bar :: proc(
 	if !two_row {
 		tint = clamp(animate(gtx, bc, 0, scrolled ? 1 : 0, .Default_Effects), 0, 1)
 	}
-	view := ui.Rect{0, 0, size.x, size.y}
-	ui.fill(gtx.ops, rounded(gtx, view, corners(tok.APP_BAR_CONTAINER_SHAPE, view)), ui.mix(color(tok.APP_BAR_CONTAINER_COLOR), color(tok.APP_BAR_ON_SCROLL_CONTAINER_COLOR), tint))
+	view := ops.Rect{0, 0, size.x, size.y}
+	ops.fill(gtx.scene, rounded(gtx, view, corners(tok.APP_BAR_CONTAINER_SHAPE, view)), ops.mix(color(tok.APP_BAR_CONTAINER_COLOR), color(tok.APP_BAR_ON_SCROLL_CONTAINER_COLOR), tint))
 
 	// The top row: icons in 48dp targets, leading-space and trailing-space
 	// from the edges, icon-button-space apart.
@@ -153,15 +154,15 @@ top_app_bar :: proc(
 			st := shape_style(gtx, subtitle, tok.APP_BAR_SMALL_SUBTITLE_FONT)
 			block := t.height + (subtitle != "" ? st.height : 0)
 			y := (small_h - block) / 2
-			draw_text(gtx, t, {title_x(t.width, size.x, left, right, centre), y}, ui.with_alpha(title_col, top_alpha))
+			draw_text(gtx, t, {title_x(t.width, size.x, left, right, centre), y}, ops.with_alpha(title_col, top_alpha))
 			if subtitle != "" {
-				draw_text(gtx, st, {title_x(st.width, size.x, left, right, centre), y + t.height}, ui.with_alpha(sub_col, top_alpha))
+				draw_text(gtx, st, {title_x(st.width, size.x, left, right, centre), y + t.height}, ops.with_alpha(sub_col, top_alpha))
 			}
 		}
 		if two_row && f < 0.99 {
 			// The expanded row, below the top one, clipped as it shrinks;
 			// its last line's baseline sits bottom above the bar's bottom.
-			ui.clip_push(gtx.ops, ui.Rect{0, small_h, size.x, max(size.y - small_h, 0)})
+			ops.clip_push(gtx.scene, ops.Rect{0, small_h, size.x, max(size.y - small_h, 0)})
 			t := shape_style(gtx, title, title_font)
 			st := shape_style(gtx, subtitle, sub_font)
 			last := subtitle != "" ? st : t
@@ -169,14 +170,14 @@ top_app_bar :: proc(
 			title_top := subtitle != "" ? last_top - t.height : last_top
 			a := 1 - f
 			edge := tok.APP_BAR_LEADING_SPACE + APP_BAR_TITLE_INSET
-			draw_text(gtx, t, {title_x(t.width, size.x, edge, size.x - edge, centre), title_top}, ui.with_alpha(title_col, a))
+			draw_text(gtx, t, {title_x(t.width, size.x, edge, size.x - edge, centre), title_top}, ops.with_alpha(title_col, a))
 			if subtitle != "" {
-				draw_text(gtx, st, {title_x(st.width, size.x, edge, size.x - edge, centre), last_top}, ui.with_alpha(sub_col, a))
+				draw_text(gtx, st, {title_x(st.width, size.x, edge, size.x - edge, centre), last_top}, ops.with_alpha(sub_col, a))
 			}
-			ui.clip_pop(gtx.ops)
+			ops.clip_pop(gtx.scene)
 		}
 	}
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, title))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, title))
 	ui.widget_close(gtx, &p, {size = size})
 	return res
 }
@@ -197,21 +198,21 @@ title_x :: proc(w, bar_w, left, right: f32, centre: bool) -> f32 {
 // an input: a click reports true so the caller can open a search view,
 // as MDC's search app bar does (app-bar.json search-app-bar-composition).
 @(private = "file")
-paint_search_bar :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, hint: string) -> bool {
+paint_search_bar :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, hint: string) -> bool {
 	c := control(gtx, id, r, .Live)
 	shape := rounded(gtx, r, corners(tok.SEARCH_BAR_CONTAINER_SHAPE, r))
-	ui.fill(gtx.ops, shape, color(tok.SEARCH_BAR_CONTAINER_COLOR))
+	ops.fill(gtx.scene, shape, color(tok.SEARCH_BAR_CONTAINER_COLOR))
 	paint_state_layer(gtx, c, shape, color(tok.SEARCH_BAR_INPUT_TEXT_COLOR))
 	// The icon in a 48dp target at the pill's start, then the hint.
 	isz := tok.APP_BAR_ICON_SIZE
 	icon(gtx, .Search, {r.x + (BAR_ICON_TARGET - isz) / 2 + 4, r.y + (r.h - isz) / 2}, isz, color(tok.SEARCH_BAR_LEADING_ICON_COLOR))
 	t := shape_style(gtx, hint, tok.SEARCH_BAR_SUPPORTING_TEXT_FONT)
-	ui.clip_push(gtx.ops, r)
+	ops.clip_push(gtx.scene, r)
 	draw_text(gtx, t, {r.x + BAR_ICON_TARGET + 8, r.y + (r.h - t.height) / 2}, color(tok.SEARCH_BAR_SUPPORTING_TEXT_COLOR))
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	paint_focus_ring_corners(gtx, c, r, corners(tok.SEARCH_BAR_CONTAINER_SHAPE, r))
 	listen(gtx, c, id, r)
-	ui.tag(gtx.ops, id, ui.frame_string(gtx, hint))
+	ops.tag(gtx.scene, id, ui.frame_string(gtx, hint))
 	return c.clicked
 }
 
@@ -220,19 +221,19 @@ paint_search_bar :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, hint: string)
 // (comp.icon-button-small) as its state layer, for bars that lay out
 // their own icons. name, when set, tags it. Returns true when clicked.
 @(private)
-bar_icon_button :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, pos: ui.Point, g: Icon, tint: ui.Color, state := Interaction.Live, name := "") -> bool {
-	area := ui.Rect{pos.x, pos.y, BAR_ICON_TARGET, BAR_ICON_TARGET}
+bar_icon_button :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, pos: ops.Point, g: Icon, tint: ops.Color, state := Interaction.Live, name := "") -> bool {
+	area := ops.Rect{pos.x, pos.y, BAR_ICON_TARGET, BAR_ICON_TARGET}
 	c := control(gtx, id, area, state)
 	d := tok.SMALL_ICON_BUTTON_CONTAINER_HEIGHT
 	isz := tok.SMALL_ICON_BUTTON_ICON_SIZE
 	col := c.disabled ? disabled_content() : tint
-	ctr := ui.Point{pos.x + BAR_ICON_TARGET / 2, pos.y + BAR_ICON_TARGET / 2}
+	ctr := ops.Point{pos.x + BAR_ICON_TARGET / 2, pos.y + BAR_ICON_TARGET / 2}
 	paint_state_layer(gtx, c, ui.circle(ctr, d / 2), col)
 	icon(gtx, g, {ctr.x - isz / 2, ctr.y - isz / 2}, isz, col)
 	paint_focus_ring(gtx, c, {{ctr.x - d / 2, ctr.y - d / 2, d, d}, d / 2})
 	listen(gtx, c, id, area)
 	if name != "" {
-		ui.tag(gtx.ops, id, name)
+		ops.tag(gtx.scene, id, name)
 	}
 	return c.clicked
 }
@@ -304,12 +305,12 @@ tabs :: proc(
 	isz := secondary ? tok.SECONDARY_NAVIGATION_TAB_ICON_SIZE : tok.PRIMARY_NAVIGATION_TAB_ICON_SIZE
 	w := width > 0 ? width : (gtx.constraints.max.x < ui.INF ? gtx.constraints.max.x : 412)
 	size := ui.constrain(gtx.constraints, {w, h})
-	view := ui.Rect{0, 0, size.x, size.y}
-	ui.fill(gtx.ops, view, color(secondary ? tok.SECONDARY_NAVIGATION_TAB_CONTAINER_COLOR : tok.PRIMARY_NAVIGATION_TAB_CONTAINER_COLOR))
+	view := ops.Rect{0, 0, size.x, size.y}
+	ops.fill(gtx.scene, view, color(secondary ? tok.SECONDARY_NAVIGATION_TAB_CONTAINER_COLOR : tok.PRIMARY_NAVIGATION_TAB_CONTAINER_COLOR))
 	// The divider is the secondary group's (the primary has none), drawn
 	// under both rows as Compose's TabRow does (TabRow.kt:161,212).
 	dh := tok.SECONDARY_NAVIGATION_TAB_DIVIDER_HEIGHT
-	ui.fill(gtx.ops, ui.Rect{0, size.y - dh, size.x, dh}, color(tok.SECONDARY_NAVIGATION_TAB_DIVIDER_COLOR))
+	ops.fill(gtx.scene, ops.Rect{0, size.y - dh, size.x, dh}, color(tok.SECONDARY_NAVIGATION_TAB_DIVIDER_COLOR))
 	if n == 0 {
 		ui.widget_close(gtx, &p, {size = size})
 		return false
@@ -358,18 +359,18 @@ tabs :: proc(
 			}
 			sc.target = clamp(sc.target, 0, max_scroll)
 			off = clamp(ui.spring_update(&sc.offset, gtx, sc.target, spring_params(.Default_Spatial), 0.1), 0, max_scroll)
-			ui.input_area(gtx.ops, p.id, view, {.Scroll})
+			ops.input_area(gtx.scene, p.id, view, {.Scroll})
 		}
 		ind_x = animate(gtx, rc, 0, target_x, .Default_Spatial, 0.1)
 		ind_w = animate(gtx, rc, 1, target_w, .Default_Spatial, 0.1)
 	}
 	if scrollable {
-		ui.clip_push(gtx.ops, view)
+		ops.clip_push(gtx.scene, view)
 	}
 
 	changed := false
 	for i in 0 ..< n {
-		r := ui.Rect{xs[i] - off, 0, ws[i], h}
+		r := ops.Rect{xs[i] - off, 0, ws[i], h}
 		id := ui.id_mix(p.id, u64(i))
 		st := state_tab == i ? state : (state == .Live ? Interaction.Live : Interaction.Enabled)
 		c := control(gtx, id, r, st)
@@ -379,11 +380,11 @@ tabs :: proc(
 			selected^ = i
 			changed = true
 		}
-		content := ui.mix(color(tab_role(secondary, false, c)), color(tab_role(secondary, true, c)), tone)
+		content := ops.mix(color(tab_role(secondary, false, c)), color(tab_role(secondary, true, c)), tone)
 		if c.disabled {
 			content = disabled_content()
 		}
-		layer := secondary ? color(tok.SECONDARY_NAVIGATION_TAB_HOVER_LABEL_TEXT_COLOR) : ui.mix(color(tok.PRIMARY_NAVIGATION_TAB_INACTIVE_HOVER_LABEL_TEXT_COLOR), color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_HOVER_LABEL_TEXT_COLOR), tone)
+		layer := secondary ? color(tok.SECONDARY_NAVIGATION_TAB_HOVER_LABEL_TEXT_COLOR) : ops.mix(color(tok.PRIMARY_NAVIGATION_TAB_INACTIVE_HOVER_LABEL_TEXT_COLOR), color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_HOVER_LABEL_TEXT_COLOR), tone)
 		paint_state_layer(gtx, c, r, layer)
 		t := texts[i]
 		switch {
@@ -404,20 +405,20 @@ tabs :: proc(
 		gap := FOCUS_RING_OFFSET + FOCUS_RING_WIDTH
 		paint_focus_ring_corners(gtx, c, {r.x + gap, r.y + gap, r.w - 2 * gap, r.h - 2 * gap}, {}, inward = true)
 		listen(gtx, c, id, r)
-		ui.tag(gtx.ops, id, ui.frame_string(gtx, labels[i]))
+		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
 	}
 
 	ih := tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_HEIGHT
-	bar := ui.Rect{ind_x - off, h - ih, ind_w, ih}
+	bar := ops.Rect{ind_x - off, h - ih, ind_w, ih}
 	if secondary {
 		// The secondary group has no indicator tokens, so this reuses the
 		// primary's height and colour, square.
-		ui.fill(gtx.ops, bar, color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_COLOR))
+		ops.fill(gtx.scene, bar, color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_COLOR))
 	} else {
-		ui.fill(gtx.ops, rounded(gtx, bar, corners(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_SHAPE, bar)), color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_COLOR))
+		ops.fill(gtx.scene, rounded(gtx, bar, corners(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_SHAPE, bar)), color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_COLOR))
 	}
 	if scrollable {
-		ui.clip_pop(gtx.ops)
+		ops.clip_pop(gtx.scene)
 		if changed && sc != nil {
 			// Bring the new tab to the centre; the offset springs there.
 			s := selected^

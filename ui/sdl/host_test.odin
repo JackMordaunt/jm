@@ -1,6 +1,7 @@
 package sdl
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:mem/virtual"
 import "core:os"
 import "core:testing"
@@ -51,44 +52,44 @@ test_host_child_round_trip_moves_a_click_across_the_pipe :: proc(t: ^testing.T) 
 	testing.expect(t, ok)
 	defer ipc.kill(&c)
 
-	// ops holds a Reply's decoded strings and slices for as long as this
+	// sc holds a Reply's decoded strings and slices for as long as this
 	// test reads them, same as ui/sdl and ui/child hold theirs for a
 	// frame: a wholesale-freed arena, not one leak-tracked allocation per
 	// decode that nothing here would otherwise individually free.
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)
-	size := ui.Size{360, 200}
-	ops: ui.Ops
-	ui.ops_init(&ops, virtual.arena_allocator(&arena))
+	size := ops.Size{360, 200}
+	sc: ops.Scene
+	ops.init(&sc, virtual.arena_allocator(&arena))
 
-	ask :: proc(t: ^testing.T, c: ^ipc.Child, size: ui.Size, events: []ui.Raw_Event, ops: ^ui.Ops) -> ^ui.Frame {
+	ask :: proc(t: ^testing.T, c: ^ipc.Child, size: ops.Size, events: []ui.Raw_Event, sc: ^ops.Scene) -> ^ui.Frame {
 		input := ui.encode_input(size, 1, 1.0 / 60, events, context.temp_allocator)
 		testing.expect(t, ipc.write_frame(c.stdin, input))
 		reply, rok := ipc.read_frame(c.stdout, context.temp_allocator)
 		testing.expect(t, rok)
 		_, _, ops_bytes, dok := ui.decode_reply(reply)
 		testing.expect(t, dok)
-		testing.expect(t, ui.decode(ops_bytes, ops))
+		testing.expect(t, ops.decode(ops_bytes, sc))
 		f := new(ui.Frame, context.temp_allocator)
 		ui.frame_init(f, context.temp_allocator)
-		ui.flatten(ops, f)
+		ui.flatten(sc, f)
 		return f
 	}
 
-	f := ask(t, &c, size, nil, &ops)
+	f := ask(t, &c, size, nil, &sc)
 	before := shows_label(f, "count 0")
 	testing.expect(t, before)
 
-	plus, found := find_center(f, &ops, "+")
+	plus, found := find_center(f, &sc, "+")
 	testing.expect(t, found)
 
-	f = ask(t, &c, size, []ui.Raw_Event{{kind = .Move, pos = plus}, {kind = .Press, pos = plus}}, &ops)
-	f = ask(t, &c, size, []ui.Raw_Event{{kind = .Release, pos = plus}}, &ops)
+	f = ask(t, &c, size, []ui.Raw_Event{{kind = .Move, pos = plus}, {kind = .Press, pos = plus}}, &sc)
+	f = ask(t, &c, size, []ui.Raw_Event{{kind = .Release, pos = plus}}, &sc)
 	// The click landed during this very frame's ui(): counter_ui's label
 	// reads m.count before the "+" button that increments it, so this
 	// frame still renders the pre-click value — one more, with no new
 	// input, is what shows the click actually took.
-	f = ask(t, &c, size, nil, &ops)
+	f = ask(t, &c, size, nil, &sc)
 	testing.expect(t, shows_label(f, "count 1"))
 }
 
@@ -151,7 +152,7 @@ test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
 }
 
 @(private = "file")
-find_center :: proc(f: ^ui.Frame, ops: ^ui.Ops, name: string) -> (p: ui.Point, ok: bool) {
+find_center :: proc(f: ^ui.Frame, sc: ^ops.Scene, name: string) -> (p: ops.Point, ok: bool) {
 	for tg in f.tags {
 		if tg.name != name {
 			continue
@@ -160,7 +161,7 @@ find_center :: proc(f: ^ui.Frame, ops: ^ui.Ops, name: string) -> (p: ui.Point, o
 			if h.area != tg.id {
 				continue
 			}
-			r := ui.transform_rect(h.transform, ui.shape_bounds(ops, h.shape))
+			r := ops.transform_rect(h.transform, ops.shape_bounds(sc, h.shape))
 			return {r.x + r.w / 2, r.y + r.h / 2}, true
 		}
 	}

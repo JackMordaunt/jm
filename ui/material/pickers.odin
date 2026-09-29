@@ -1,6 +1,7 @@
 package material
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:math"
 import "core:strconv"
 import "jm:timefmt"
@@ -154,12 +155,12 @@ date_picker :: proc(
 	h := animate(gtx, c, 0, target_h, .Default_Spatial, 0.1)
 	mf := clamp(animate(gtx, c, 1, m == .Input ? 1 : 0, .Default_Effects), 0, 1)
 	size := ui.constrain(gtx.constraints, {W, h})
-	area := ui.Rect{0, 0, size.x, size.y}
+	area := ops.Rect{0, 0, size.x, size.y}
 	k := corners(tok.DATE_PICKER_MODAL_CONTAINER_SHAPE, area)
 	card := rounded(gtx, area, k)
 	paint_elevation(gtx, {area, k.tl}, elevation_level(tok.DATE_PICKER_MODAL_CONTAINER_ELEVATION))
-	ui.fill(gtx.ops, card, color(tok.DATE_PICKER_MODAL_CONTAINER_COLOR))
-	ui.clip_push(gtx.ops, card) // the resize is a clipped size transform
+	ops.fill(gtx.scene, card, color(tok.DATE_PICKER_MODAL_CONTAINER_COLOR))
+	ops.clip_push(gtx.scene, card) // the resize is a clipped size transform
 
 	// Header: supporting text, headline, mode toggle (layout header padding,
 	// DatePicker.kt:2623-2626).
@@ -189,18 +190,18 @@ date_picker :: proc(
 			}
 		}
 	}
-	ui.fill(gtx.ops, ui.Rect{0, header_h, size.x, 1}, color(.Outline_Variant))
+	ops.fill(gtx.scene, ops.Rect{0, header_h, size.x, 1}, color(.Outline_Variant))
 	y0 := header_h + 1
 
 	// The picker's body fades out, and slides in from DATE_ENTER_OFFSET, as
 	// mf moves; the input body the other way round.
 	if mf < 0.99 {
-		ui.transform_push(gtx.ops, ui.translate(0, DATE_ENTER_OFFSET * mf))
+		ops.transform_push(gtx.scene, ops.translate(0, DATE_ENTER_OFFSET * mf))
 		live := m == .Picker
 		// Month bar: the year menu button, then previous and next.
 		label := fmt.tprintf("%s %d", timefmt.MONTHS[view.month - 1], view.year)
 		lt := shape_text(gtx, label, .Label_Large)
-		yb := ui.Rect{DATE_GRID_PADDING, y0 + 4, 12 + lt.width + 4 + 18 + 12, 48}
+		yb := ops.Rect{DATE_GRID_PADDING, y0 + 4, 12 + lt.width + 4 + 18 + 12, 48}
 		yid := ui.id_mix(p.id, 3)
 		yc := control(gtx, yid, yb, live ? .Live : .Enabled)
 		if yc.clicked {
@@ -210,15 +211,15 @@ date_picker :: proc(
 			year_scroll = max(row - 2, 0) * (tok.DATE_PICKER_MODAL_SELECTION_YEAR_CONTAINER_HEIGHT + DATE_YEAR_GUTTER)
 		}
 		fg := fade(color(.On_Surface_Variant), 1 - mf)
-		yr := ui.Rect{yb.x, yb.y + 4, yb.w, 40}
-		paint_state_layer(gtx, yc, ui.Round_Rect{yr, 20}, color(.On_Surface_Variant))
+		yr := ops.Rect{yb.x, yb.y + 4, yb.w, 40}
+		paint_state_layer(gtx, yc, ops.Round_Rect{yr, 20}, color(.On_Surface_Variant))
 		draw_text(gtx, lt, {yb.x + 12, yb.y + (48 - lt.height) / 2}, fg)
 		// The chevron flips 180 degrees while the year grid is open.
 		icon(gtx, year_open ? .Arrow_Drop_Up : .Arrow_Drop_Down, {yb.x + 12 + lt.width + 4, yb.y + 15}, 18, fg)
 		paint_focus_ring(gtx, yc, {yr, 20})
 		if live {
 			listen(gtx, yc, yid, yb)
-			ui.tag(gtx.ops, yid, "year menu")
+			ops.tag(gtx.scene, yid, "year menu")
 		}
 		if !year_open {
 			if picker_icon_button(gtx, ui.id_mix(p.id, 4), {size.x - DATE_GRID_PADDING - 96, y0 + 4}, .Chevron_Left, live ? "previous month" : "") {
@@ -240,14 +241,14 @@ date_picker :: proc(
 		} else {
 			changed = day_grid(gtx, p.id, selected, range_end, view^, today, selectable, min_year, max_year, gy, live, 1 - mf)
 		}
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 	if mf > 0.01 && input != nil {
-		ui.transform_push(gtx.ops, ui.translate(0, DATE_ENTER_OFFSET * (1 - mf)))
+		ops.transform_push(gtx.scene, ops.translate(0, DATE_ENTER_OFFSET * (1 - mf)))
 		changed |= date_field(gtx, ui.id_mix(p.id, 6), input, selected, view, selectable, min_year, max_year, {24, y0 + 10, size.x - 48, 56}, m == .Input, mf)
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 
 	ds.year_open, ds.year_scroll = year_open, year_scroll
 	if mode != nil {
@@ -301,7 +302,7 @@ date_short :: proc(d: Date, none: string) -> string {
 @(private)
 day_grid :: proc(
 	gtx: ^ui.Ctx,
-	pid: ui.Area_Id,
+	pid: ops.Area_Id,
 	selected, range_end: ^Date,
 	view, today: Date,
 	selectable: proc(d: Date) -> bool,
@@ -322,7 +323,7 @@ day_grid :: proc(
 	ranged := range_end != nil
 	for day in 1 ..= n {
 		cell := first + day - 1
-		r := ui.Rect{x0 + f32(cell % 7) * DATE_CELL, gy + f32(cell / 7) * DATE_CELL, DATE_CELL, DATE_CELL}
+		r := ops.Rect{x0 + f32(cell % 7) * DATE_CELL, gy + f32(cell / 7) * DATE_CELL, DATE_CELL, DATE_CELL}
 		this := Date{view.year, view.month, day}
 		disabled := this.year < min_year || this.year > max_year || (selectable != nil && !selectable(this))
 		band := Day_Band.None
@@ -360,7 +361,7 @@ day_grid :: proc(
 		paint_day(gtx, c, r, day, on, today == this, band, alpha)
 		if live && !disabled {
 			listen(gtx, c, id, r)
-			ui.tag(gtx.ops, id, fmt.aprintf("%04d-%02d-%02d", this.year, this.month, this.day, allocator = gtx.allocator))
+			ops.tag(gtx.scene, id, fmt.aprintf("%04d-%02d-%02d", this.year, this.month, this.day, allocator = gtx.allocator))
 		}
 	}
 	return changed
@@ -379,21 +380,21 @@ Day_Band :: enum u8 {
 // circle (selected: filled, fading in on a default-effects spring as it
 // becomes selected; today: a 1dp outline), the state layer and the label.
 @(private)
-paint_day :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, day: int, selected, today: bool, band: Day_Band, alpha: f32) {
+paint_day :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, day: int, selected, today: bool, band: Day_Band, alpha: f32) {
 	DW, DH :: tok.DATE_PICKER_MODAL_DATE_CONTAINER_WIDTH, tok.DATE_PICKER_MODAL_DATE_CONTAINER_HEIGHT
 	cx, cy := r.x + r.w / 2, r.y + r.h / 2
-	dot := ui.Rect{cx - DW / 2, cy - DH / 2, DW, DH}
+	dot := ops.Rect{cx - DW / 2, cy - DH / 2, DW, DH}
 	dk := corners(tok.DATE_PICKER_MODAL_DATE_CONTAINER_SHAPE, dot)
 	bh := tok.DATE_PICKER_MODAL_RANGE_SELECTION_ACTIVE_INDICATOR_CONTAINER_HEIGHT
 	band_c := fade(color(tok.DATE_PICKER_MODAL_RANGE_SELECTION_ACTIVE_INDICATOR_CONTAINER_COLOR), alpha)
 	switch band {
 	case .None:
 	case .Start:
-		ui.fill(gtx.ops, ui.Rect{cx, cy - bh / 2, r.w / 2, bh}, band_c)
+		ops.fill(gtx.scene, ops.Rect{cx, cy - bh / 2, r.w / 2, bh}, band_c)
 	case .Middle:
-		ui.fill(gtx.ops, ui.Rect{r.x, cy - bh / 2, r.w, bh}, band_c)
+		ops.fill(gtx.scene, ops.Rect{r.x, cy - bh / 2, r.w, bh}, band_c)
 	case .End:
-		ui.fill(gtx.ops, ui.Rect{r.x, cy - bh / 2, r.w / 2, bh}, band_c)
+		ops.fill(gtx.scene, ops.Rect{r.x, cy - bh / 2, r.w / 2, bh}, band_c)
 	}
 	sel := selected ? f32(1) : 0
 	if c.st != nil {
@@ -411,7 +412,7 @@ paint_day :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, day: int, selected, toda
 	if sel > 0 {
 		// Disabled, the selected fill keeps its colour at the disabled content opacity.
 		a := sel * alpha * (c.disabled ? DISABLED_CONTENT_OPACITY : 1)
-		ui.fill(gtx.ops, rounded(gtx, dot, dk), fade(color(tok.DATE_PICKER_MODAL_DATE_SELECTED_CONTAINER_COLOR), a))
+		ops.fill(gtx.scene, rounded(gtx, dot, dk), fade(color(tok.DATE_PICKER_MODAL_DATE_SELECTED_CONTAINER_COLOR), a))
 	}
 	if selected {
 		label = color(tok.DATE_PICKER_MODAL_DATE_SELECTED_LABEL_TEXT_COLOR)
@@ -419,7 +420,7 @@ paint_day :: proc(gtx: ^ui.Ctx, c: Control, r: ui.Rect, day: int, selected, toda
 	if c.disabled {
 		label = disabled_content()
 	}
-	layer := ui.Rect{cx - tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_WIDTH / 2, cy - tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_HEIGHT / 2, tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_WIDTH, tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_HEIGHT}
+	layer := ops.Rect{cx - tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_WIDTH / 2, cy - tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_HEIGHT / 2, tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_WIDTH, tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_HEIGHT}
 	lk := corners(tok.DATE_PICKER_MODAL_DATE_STATE_LAYER_SHAPE, layer)
 	paint_state_layer(gtx, c, rounded(gtx, layer, lk), selected ? color(tok.DATE_PICKER_MODAL_DATE_SELECTED_LABEL_TEXT_COLOR) : color(.On_Surface_Variant))
 	t := shape_style(gtx, fmt.tprintf("%d", day), tok.DATE_PICKER_MODAL_DATE_LABEL_TEXT_FONT)
@@ -441,7 +442,7 @@ date_cell :: proc(
 	loc := #caller_location,
 ) -> bool {
 	p := ui.widget_open(gtx, key, loc)
-	r := ui.Rect{0, 0, DATE_CELL, DATE_CELL}
+	r := ops.Rect{0, 0, DATE_CELL, DATE_CELL}
 	c := control(gtx, p.id, r, state)
 	paint_day(gtx, c, r, day, selected, today, in_range ? .Middle : .None, 1)
 	listen(gtx, c, p.id, r)
@@ -455,10 +456,10 @@ date_cell :: proc(
 @(private)
 year_grid :: proc(
 	gtx: ^ui.Ctx,
-	pid: ui.Area_Id,
+	pid: ops.Area_Id,
 	view: ^Date,
 	today: Date,
-	r: ui.Rect,
+	r: ops.Rect,
 	scroll: f32,
 	min_year, max_year: int,
 	live: bool,
@@ -484,9 +485,9 @@ year_grid :: proc(
 	bar_id := ui.id_mix(pid, 8)
 	if live {
 		sc = ui.scroll_bar_handle(gtx, bar_id, .Vertical, {r.w, r.h}, content, sc)
-		ui.input_area(gtx.ops, sid, r, {.Scroll})
+		ops.input_area(gtx.scene, sid, r, {.Scroll})
 	}
-	ui.clip_push(gtx.ops, r)
+	ops.clip_push(gtx.scene, r)
 	first := int(sc / pitch)
 	last := min(rows, first + int(r.h / pitch) + 2)
 	for row in first ..< last {
@@ -497,7 +498,7 @@ year_grid :: proc(
 			}
 			cx := r.x + DATE_GRID_PADDING + f32(col) * col_w + col_w / 2
 			cy := r.y + DATE_YEAR_GUTTER / 2 + f32(row) * pitch - sc + YH / 2
-			chip := ui.Rect{cx - YW / 2, cy - YH / 2, YW, YH}
+			chip := ops.Rect{cx - YW / 2, cy - YH / 2, YW, YH}
 			k := corners(tok.DATE_PICKER_MODAL_SELECTION_YEAR_STATE_LAYER_SHAPE, chip)
 			id := ui.id_mix(pid, u64(1000 + y))
 			c := control(gtx, id, chip, live ? .Live : .Enabled)
@@ -508,7 +509,7 @@ year_grid :: proc(
 			on := y == view.year
 			label := color(tok.DATE_PICKER_MODAL_SELECTION_YEAR_UNSELECTED_LABEL_TEXT_COLOR)
 			if on {
-				ui.fill(gtx.ops, rounded(gtx, chip, k), fade(color(tok.DATE_PICKER_MODAL_SELECTION_YEAR_SELECTED_CONTAINER_COLOR), alpha))
+				ops.fill(gtx.scene, rounded(gtx, chip, k), fade(color(tok.DATE_PICKER_MODAL_SELECTION_YEAR_SELECTED_CONTAINER_COLOR), alpha))
 				label = color(tok.DATE_PICKER_MODAL_SELECTION_YEAR_SELECTED_LABEL_TEXT_COLOR)
 			} else if y == today.year {
 				// The current year is ringed as today is in the grid.
@@ -521,16 +522,16 @@ year_grid :: proc(
 			paint_focus_ring_corners(gtx, c, chip, k, inward = true)
 			if live {
 				listen(gtx, c, id, chip)
-				ui.tag(gtx.ops, id, ui.frame_string(gtx, fmt.tprintf("year %d", y)))
+				ops.tag(gtx.scene, id, ui.frame_string(gtx, fmt.tprintf("year %d", y)))
 			}
 		}
 	}
 	if live {
-		ui.transform_push(gtx.ops, ui.translate(r.x, r.y))
+		ops.transform_push(gtx.scene, ops.translate(r.x, r.y))
 		ui.scroll_bar_paint(gtx, bar_id, .Vertical, {r.w, r.h}, content, sc)
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	return sc
 }
 
@@ -542,12 +543,12 @@ year_grid :: proc(
 @(private)
 date_field :: proc(
 	gtx: ^ui.Ctx,
-	id: ui.Area_Id,
+	id: ops.Area_Id,
 	s: ^ui.Text_State,
 	selected, view: ^Date,
 	selectable: proc(d: Date) -> bool,
 	min_year, max_year: int,
-	r: ui.Rect,
+	r: ops.Rect,
 	live: bool,
 	alpha: f32,
 ) -> bool {
@@ -632,21 +633,21 @@ date_field :: proc(
 	// The label always sits floated in a notch cut from the outline.
 	lt := shape_text(gtx, "Date", .Body_Small)
 	stroke_inside(gtx, {r, k.tl}, fade(outline, alpha), ow)
-	notch := ui.Rect{r.x + 12, r.y - 2, lt.width + 8, 4}
-	ui.fill(gtx.ops, notch, color(tok.DATE_PICKER_MODAL_CONTAINER_COLOR))
+	notch := ops.Rect{r.x + 12, r.y - 2, lt.width + 8, 4}
+	ops.fill(gtx.scene, notch, color(tok.DATE_PICKER_MODAL_CONTAINER_COLOR))
 	draw_text(gtx, lt, {r.x + 16, r.y - lt.height / 2}, fade(lab, alpha))
 	body := tok.OUTLINED_TEXT_FIELD_CONTAINER_HEIGHT
 	if n > 0 {
 		t := shape_text(gtx, string(shown[:n]), .Body_Large)
 		draw_text(gtx, t, {r.x + 16, r.y + (body - t.height) / 2}, fade(color(tok.OUTLINED_TEXT_FIELD_INPUT_COLOR), alpha))
 		if focused {
-			ui.fill(gtx.ops, ui.Rect{r.x + 16 + t.width + 1, r.y + 16, 2, 24}, color(tok.OUTLINED_TEXT_FIELD_CARET_COLOR))
+			ops.fill(gtx.scene, ops.Rect{r.x + 16 + t.width + 1, r.y + 16, 2, 24}, color(tok.OUTLINED_TEXT_FIELD_CARET_COLOR))
 		}
 	} else {
 		t := shape_text(gtx, "MM/DD/YYYY", .Body_Large)
 		draw_text(gtx, t, {r.x + 16, r.y + (body - t.height) / 2}, fade(color(.On_Surface_Variant), alpha))
 		if focused {
-			ui.fill(gtx.ops, ui.Rect{r.x + 16, r.y + 16, 2, 24}, color(tok.OUTLINED_TEXT_FIELD_CARET_COLOR))
+			ops.fill(gtx.scene, ops.Rect{r.x + 16, r.y + 16, 2, 24}, color(tok.OUTLINED_TEXT_FIELD_CARET_COLOR))
 		}
 	}
 	if err != "" {
@@ -654,8 +655,8 @@ date_field :: proc(
 		draw_text(gtx, et, {r.x + 16, r.y + body + 4}, fade(color(tok.OUTLINED_TEXT_FIELD_ERROR_SUPPORTING_COLOR), alpha))
 	}
 	if live {
-		ui.input_area(gtx.ops, id, r, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
-		ui.tag(gtx.ops, id, "date input")
+		ops.input_area(gtx.scene, id, r, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
+		ops.tag(gtx.scene, id, "date input")
 	}
 	return changed
 }
@@ -664,8 +665,8 @@ date_field :: proc(
 // picker (48dp target, 40dp state layer, 24dp icon in on-surface-variant).
 // name, when set, tags it. Returns true when clicked.
 @(private)
-picker_icon_button :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, pos: ui.Point, g: Icon, name: string) -> bool {
-	area := ui.Rect{pos.x, pos.y, 48, 48}
+picker_icon_button :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, pos: ops.Point, g: Icon, name: string) -> bool {
+	area := ops.Rect{pos.x, pos.y, 48, 48}
 	c := control(gtx, id, area, name != "" ? .Live : .Enabled)
 	S :: tok.SMALL_ICON_BUTTON_CONTAINER_HEIGHT
 	layer := ui.circle({pos.x + 24, pos.y + 24}, S / 2)
@@ -676,7 +677,7 @@ picker_icon_button :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, pos: ui.Point, g: Icon,
 	paint_focus_ring(gtx, c, {{pos.x + 4, pos.y + 4, S, S}, S / 2})
 	if name != "" {
 		listen(gtx, c, id, area)
-		ui.tag(gtx.ops, id, name)
+		ops.tag(gtx.scene, id, name)
 	}
 	return c.clicked
 }
@@ -772,18 +773,18 @@ time_picker :: proc(
 		h = top + CH + TIME_DIAL_GAP + DIAL + TIME_BOTTOM
 	}
 	size := ui.constrain(gtx.constraints, {w, h})
-	area := ui.Rect{0, 0, size.x, size.y}
+	area := ops.Rect{0, 0, size.x, size.y}
 	shape_tok := input ? tok.TIME_INPUT_CONTAINER_SHAPE : tok.TIME_PICKER_CONTAINER_SHAPE
 	k := corners(shape_tok, area)
 	paint_elevation(gtx, {area, k.tl}, elevation_level(tok.TIME_PICKER_CONTAINER_ELEVATION))
-	ui.fill(gtx.ops, rounded(gtx, area, k), color(input ? tok.TIME_INPUT_CONTAINER_COLOR : tok.TIME_PICKER_CONTAINER_COLOR))
+	ops.fill(gtx.scene, rounded(gtx, area, k), color(input ? tok.TIME_INPUT_CONTAINER_COLOR : tok.TIME_PICKER_CONTAINER_COLOR))
 	draw_style_text(gtx, input ? "Enter time" : "Select time", {TIME_PADDING, TIME_PADDING}, head, color(input ? tok.TIME_INPUT_HEADLINE_COLOR : tok.TIME_PICKER_HEADLINE_COLOR))
 
 	// The time selector: hour and minute chips (or fields) and the colon.
 	h12 := t.hour % 12 == 0 ? 12 : t.hour % 12
 	x := TIME_PADDING
 	for k in 0 ..< 2 {
-		box := ui.Rect{x, top, CW, CH}
+		box := ops.Rect{x, top, CW, CH}
 		id := ui.id_mix(p.id, u64(10 + k))
 		minute := k == 1
 		active := editing_minute^ == minute
@@ -804,7 +805,7 @@ time_picker :: proc(
 			if c.disabled {
 				container, label = disabled_container(), disabled_content()
 			}
-			ui.fill(gtx.ops, shape, container)
+			ops.fill(gtx.scene, shape, container)
 			paint_state_layer(gtx, c, shape, label)
 			v := minute ? t.minute : (is_24h ? t.hour : h12)
 			digits := shape_style(gtx, fmt.tprintf("%02d", v), tok.TIME_PICKER_TIME_SELECTOR_LABEL_TEXT_FONT)
@@ -812,7 +813,7 @@ time_picker :: proc(
 			paint_focus_ring_corners(gtx, c, box, bk)
 			if live {
 				listen(gtx, c, id, box)
-				ui.tag(gtx.ops, id, minute ? "minute" : "hour")
+				ops.tag(gtx.scene, id, minute ? "minute" : "hour")
 			}
 		}
 		x += CW
@@ -833,7 +834,7 @@ time_picker :: proc(
 	// The period toggle: one segmented control, beside the chips (below
 	// them in the horizontal layout).
 	if !is_24h {
-		pr: ui.Rect
+		pr: ops.Rect
 		if horizontal {
 			pr = {TIME_PADDING, top + CH + 12, tok.TIME_PICKER_PERIOD_SELECTOR_HORIZONTAL_CONTAINER_WIDTH, tok.TIME_PICKER_PERIOD_SELECTOR_HORIZONTAL_CONTAINER_HEIGHT}
 		} else if input {
@@ -845,7 +846,7 @@ time_picker :: proc(
 	}
 
 	if !input {
-		dc: ui.Point
+		dc: ops.Point
 		if horizontal {
 			dc = {size.x - TIME_PADDING - DIAL / 2, top + DIAL / 2}
 		} else {
@@ -862,10 +863,10 @@ time_picker :: proc(
 // 2770-2911), the current half on tertiary-container. Clicking the other
 // half moves the time 12 hours; clicking the current one does nothing.
 @(private)
-period_toggle :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, r: ui.Rect, t: ^Time, horizontal, live: bool, state: Interaction) {
+period_toggle :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, r: ops.Rect, t: ^Time, horizontal, live: bool, state: Interaction) {
 	k := corners(tok.TIME_PICKER_PERIOD_SELECTOR_CONTAINER_SHAPE, r)
 	for half in 0 ..< 2 {
-		hr: ui.Rect
+		hr: ops.Rect
 		hk: Corners
 		if horizontal {
 			hr = {r.x + f32(half) * r.w / 2, r.y, r.w / 2, r.h}
@@ -884,7 +885,7 @@ period_toggle :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, r: ui.Rect, t: ^Time, horiz
 		shape := rounded(gtx, hr, hk)
 		label := color(on ? tok.TIME_PICKER_PERIOD_SELECTOR_SELECTED_LABEL_TEXT_COLOR : tok.TIME_PICKER_PERIOD_SELECTOR_UNSELECTED_LABEL_TEXT_COLOR)
 		if on {
-			ui.fill(gtx.ops, shape, c.disabled ? disabled_container() : color(tok.TIME_PICKER_PERIOD_SELECTOR_SELECTED_CONTAINER_COLOR))
+			ops.fill(gtx.scene, shape, c.disabled ? disabled_container() : color(tok.TIME_PICKER_PERIOD_SELECTOR_SELECTED_CONTAINER_COLOR))
 		}
 		if c.disabled {
 			label = disabled_content()
@@ -895,7 +896,7 @@ period_toggle :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, r: ui.Rect, t: ^Time, horiz
 		paint_focus_ring_corners(gtx, c, hr, hk)
 		if live {
 			listen(gtx, c, id, hr)
-			ui.tag(gtx.ops, id, half == 0 ? "AM" : "PM")
+			ops.tag(gtx.scene, id, half == 0 ? "AM" : "PM")
 		}
 	}
 	ow := tok.TIME_PICKER_PERIOD_SELECTOR_OUTLINE_WIDTH
@@ -905,9 +906,9 @@ period_toggle :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, r: ui.Rect, t: ^Time, horiz
 	}
 	stroke_inside(gtx, {r, k.tl}, oc, ow)
 	if horizontal {
-		ui.fill(gtx.ops, ui.Rect{r.x + r.w / 2 - ow / 2, r.y, ow, r.h}, oc)
+		ops.fill(gtx.scene, ops.Rect{r.x + r.w / 2 - ow / 2, r.y, ow, r.h}, oc)
 	} else {
-		ui.fill(gtx.ops, ui.Rect{r.x, r.y + r.h / 2 - ow / 2, r.w, ow}, oc)
+		ops.fill(gtx.scene, ops.Rect{r.x, r.y + r.h / 2 - ow / 2, r.w, ow}, oc)
 	}
 }
 
@@ -917,7 +918,7 @@ period_toggle :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, r: ui.Rect, t: ^Time, horiz
 // primary-container with a 2dp primary outline. Returns true when it took
 // focus this frame.
 @(private)
-time_field :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, t: ^Time, minute, is_24h, live: bool, state: Interaction) -> bool {
+time_field :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, t: ^Time, minute, is_24h, live: bool, state: Interaction) -> bool {
 	focused_now := false
 	hovered, focused: bool
 	if live {
@@ -977,9 +978,9 @@ time_field :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, t: ^Time, minute, i
 	if state == .Disabled {
 		container, label = disabled_container(), disabled_content()
 	}
-	ui.fill(gtx.ops, shape, container)
+	ops.fill(gtx.scene, shape, container)
 	if hovered && !focused {
-		ui.fill(gtx.ops, shape, ui.with_alpha(label, HOVER_OPACITY))
+		ops.fill(gtx.scene, shape, ops.with_alpha(label, HOVER_OPACITY))
 	}
 	if focused {
 		ow := tok.TIME_INPUT_TIME_FIELD_FOCUS_OUTLINE_WIDTH
@@ -989,8 +990,8 @@ time_field :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, t: ^Time, minute, i
 	digits := shape_style(gtx, fmt.tprintf("%02d", v), tok.TIME_INPUT_TIME_FIELD_LABEL_TEXT_FONT)
 	draw_text(gtx, digits, {r.x + (r.w - digits.width) / 2, r.y + (r.h - digits.height) / 2}, label)
 	if live {
-		ui.input_area(gtx.ops, id, shape, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
-		ui.tag(gtx.ops, id, minute ? "minute" : "hour")
+		ops.input_area(gtx.scene, id, shape, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
+		ops.tag(gtx.scene, id, minute ? "minute" : "hour")
 	}
 	return focused_now
 }
@@ -998,10 +999,10 @@ time_field :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, t: ^Time, minute, i
 // clock_dial is the dial centred on dc: its face, the hour or minute
 // labels on the ring (and the 24-hour inner ring), and the selector.
 @(private)
-clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editing_minute: ^bool, is_24h, live: bool) {
+clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, editing_minute: ^bool, is_24h, live: bool) {
 	DIAL :: tok.TIME_PICKER_CLOCK_DIAL_CONTAINER_SIZE
 	face := ui.circle(dc, DIAL / 2)
-	ui.fill(gtx.ops, face, color(tok.TIME_PICKER_CLOCK_DIAL_COLOR))
+	ops.fill(gtx.scene, face, color(tok.TIME_PICKER_CLOCK_DIAL_COLOR))
 	outer := DIAL * TIME_OUTER_RING
 	inner := DIAL * TIME_INNER_RING
 	id := ui.id_mix(pid, 30)
@@ -1048,8 +1049,8 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 				}
 			}
 		}
-		ui.input_area(gtx.ops, id, face, {.Press, .Release, .Move})
-		ui.tag(gtx.ops, id, "clock dial")
+		ops.input_area(gtx.scene, id, face, {.Press, .Release, .Move})
+		ops.tag(gtx.scene, id, "clock dial")
 	}
 	dragging := st.pressed && grab.moved
 
@@ -1073,15 +1074,15 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 	on_inner := is_24h && !editing_minute^ && (t.hour == 0 || t.hour > 12)
 	R := on_inner ? inner : outer
 	a := turn * 2 * math.PI
-	hand := dc + R * ui.Point{math.sin(a), -math.cos(a)}
+	hand := dc + R * ops.Point{math.sin(a), -math.cos(a)}
 	HS :: tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_HANDLE_CONTAINER_SIZE
 
 	// Labels: hours and minutes cross-fade; the handle covers one, which
 	// is drawn again, clipped to the handle, on-primary.
-	labels :: proc(gtx: ^ui.Ctx, dc: ui.Point, outer, inner: f32, ring_m: f32, is_24h: bool, col: ui.Color) {
+	labels :: proc(gtx: ^ui.Ctx, dc: ops.Point, outer, inner: f32, ring_m: f32, is_24h: bool, col: ops.Color) {
 		for i in 0 ..< 12 {
 			na := f32(i) / 12 * 2 * math.PI
-			dir := ui.Point{math.sin(na), -math.cos(na)}
+			dir := ops.Point{math.sin(na), -math.cos(na)}
 			if ring_m < 1 {
 				at := dc + outer * dir
 				lt := shape_style(gtx, fmt.tprintf("%d", i == 0 ? 12 : i), tok.TIME_PICKER_CLOCK_DIAL_LABEL_TEXT_FONT)
@@ -1101,13 +1102,13 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 	}
 	labels(gtx, dc, outer, inner, ring_m, is_24h, color(tok.TIME_PICKER_CLOCK_DIAL_UNSELECTED_LABEL_TEXT_COLOR))
 	sel := color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_TRACK_CONTAINER_COLOR)
-	ui.stroke(gtx.ops, ui.line(gtx, dc, hand), sel, {width = tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_TRACK_CONTAINER_WIDTH})
-	ui.fill(gtx.ops, ui.circle(dc, tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_CENTER_CONTAINER_SIZE / 2), color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_CENTER_CONTAINER_COLOR))
+	ops.stroke(gtx.scene, ui.line(gtx, dc, hand), sel, {width = tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_TRACK_CONTAINER_WIDTH})
+	ops.fill(gtx.scene, ui.circle(dc, tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_CENTER_CONTAINER_SIZE / 2), color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_CENTER_CONTAINER_COLOR))
 	handle := ui.circle(hand, HS / 2)
-	ui.fill(gtx.ops, handle, color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_HANDLE_CONTAINER_COLOR))
-	ui.clip_push(gtx.ops, handle)
+	ops.fill(gtx.scene, handle, color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_HANDLE_CONTAINER_COLOR))
+	ops.clip_push(gtx.scene, handle)
 	labels(gtx, dc, outer, inner, ring_m, is_24h, color(tok.TIME_PICKER_CLOCK_DIAL_SELECTED_LABEL_TEXT_COLOR))
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 }
 
 // Dial_Grab is the clock dial's grab: whether the pointer has moved since
@@ -1122,7 +1123,7 @@ Dial_Grab :: struct {
 // for an image, and a label.
 Carousel_Item :: struct {
 	label: string,
-	a, b:  ui.Color,
+	a, b:  ops.Color,
 }
 
 // Carousel_Strategy is the keyline arrangement (carousel.json inputs.strategy).
@@ -1242,10 +1243,10 @@ carousel :: proc(
 	}
 	pos := cs.position
 	focused := st.focused
-	view := ui.Rect{0, 0, size.x, size.y}
-	ui.input_area(gtx.ops, p.id, view, {.Scroll, .Press, .Release, .Move, .Key, .Focus, .Blur})
-	ui.tag(gtx.ops, p.id, "carousel")
-	ui.clip_push(gtx.ops, view)
+	view := ops.Rect{0, 0, size.x, size.y}
+	ops.input_area(gtx.scene, p.id, view, {.Scroll, .Press, .Release, .Move, .Key, .Focus, .Blur})
+	ops.tag(gtx.scene, p.id, "carousel")
+	ops.clip_push(gtx.scene, view)
 	on := color(.On_Primary)
 	for i in 0 ..< n {
 		r, ok := carousel_item_rect(kl, pos, i, n, item_spacing, size.y)
@@ -1256,19 +1257,19 @@ carousel :: proc(
 		mk := corners(tok.SYS_SHAPE_CORNER_EXTRA_LARGE, r)
 		mask := rounded(gtx, r, mk)
 		// The content is the large width, centred on the mask: parallax.
-		content := ui.Rect{r.x + r.w / 2 - kl.large / 2, 0, kl.large, size.y}
-		ui.clip_push(gtx.ops, mask)
-		ui.fill(gtx.ops, content, ui.Linear_Gradient{{content.x, 0}, {content.x + content.w, content.h}, gradient_stops(gtx, it.a, it.b)})
-		ui.clip_pop(gtx.ops)
+		content := ops.Rect{r.x + r.w / 2 - kl.large / 2, 0, kl.large, size.y}
+		ops.clip_push(gtx.scene, mask)
+		ops.fill(gtx.scene, content, ops.Linear_Gradient{{content.x, 0}, {content.x + content.w, content.h}, gradient_stops(gtx, it.a, it.b)})
+		ops.clip_pop(gtx.scene)
 		a := kl.large > kl.small ? clamp((r.w - kl.small) / (kl.large - kl.small), 0, 1) : 1
 		if a > 0.3 {
 			t := shape_text(gtx, it.label, .Title_Medium)
-			ui.clip_push(gtx.ops, mask)
+			ops.clip_push(gtx.scene, mask)
 			draw_text(gtx, t, {r.x + 16, r.h - 16 - t.height}, fade(on, (a - 0.3) / 0.7))
-			ui.clip_pop(gtx.ops)
+			ops.clip_pop(gtx.scene)
 		}
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	if focused {
 		paint_focus_ring(gtx, {focused = true}, {view, CORNER_EXTRA_LARGE})
 	}
@@ -1406,7 +1407,7 @@ carousel_size :: proc(k: Carousel_Keylines, s: f32) -> f32 {
 // laid end to end from the one leaving at the start, which slides out
 // past x = 0 as it shrinks to the leaving keyline.
 @(private)
-carousel_item_rect :: proc(k: Carousel_Keylines, pos: f32, i, n: int, spacing, h: f32) -> (ui.Rect, bool) {
+carousel_item_rect :: proc(k: Carousel_Keylines, pos: f32, i, n: int, spacing, h: f32) -> (ops.Rect, bool) {
 	first := int(math.floor(pos))
 	frac := pos - f32(first)
 	// Keylines between the leaving one and the focal one hold items too
@@ -1437,8 +1438,8 @@ carousel_hit :: proc(k: Carousel_Keylines, pos: f32, n: int, x, spacing: f32) ->
 }
 
 @(private)
-gradient_stops :: proc(gtx: ^ui.Ctx, a, b: ui.Color) -> []ui.Gradient_Stop {
-	stops := make([]ui.Gradient_Stop, 2, gtx.allocator)
+gradient_stops :: proc(gtx: ^ui.Ctx, a, b: ops.Color) -> []ops.Gradient_Stop {
+	stops := make([]ops.Gradient_Stop, 2, gtx.allocator)
 	stops[0] = {0, a}
 	stops[1] = {1, b}
 	return stops

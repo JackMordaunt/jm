@@ -1,6 +1,7 @@
 package render
 
 import "core:testing"
+import "jm:ui/ops"
 
 import "jm:ui"
 import bl "jm:ui/blend2d"
@@ -36,18 +37,18 @@ test_damage_text_bounds :: proc(t: ^testing.T) {
 	bl.image_create(&img, 400, 200, .PRGB32)
 	for path in fonts {
 		for text in ([]string{"Wafgjy", "ÅÉÎ ǅ fff", "Thq"}) {
-			ops: ui.Ops
-			ui.ops_init(&ops)
-			defer ui.ops_destroy(&ops)
-			id := ui.add_font(&ops, path)
-			run := ui.shape(shaper(&r, ops.fonts[:]), id, 48, text, context.allocator)
+			sc: ops.Scene
+			ops.init(&sc)
+			defer ops.destroy(&sc)
+			id := ops.add_font(&sc, path)
+			run := ui.shape(shaper(&r, sc.fonts[:]), id, 48, text, context.allocator)
 			defer delete(run.glyphs)
-			append(&ops.runs, run)
+			append(&sc.runs, run)
 			f: ui.Frame
 			ui.frame_init(&f)
 			defer ui.frame_destroy(&f)
-			f.ops = &ops
-			append(&f.draws, ui.Draw{ui.translate(60, 100), ui.NO_CLIP, ui.Glyphs{0, {0, 0}, {0, 0, 0, 255}}})
+			f.scene = &sc
+			append(&f.draws, ui.Draw{ops.translate(60, 100), ui.NO_CLIP, ops.Glyphs{0, {0, 0}, {0, 0, 0, 255}}})
 			render(&r, &f, &img, {0, 0, 0, 0})
 
 			d: Damage

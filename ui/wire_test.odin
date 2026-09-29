@@ -1,6 +1,7 @@
 package ui
 
 import "core:math/rand"
+import "jm:ui/ops"
 import "core:mem/virtual"
 import "core:slice"
 import "core:testing"
@@ -24,7 +25,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 	size, density, dt, got, got_host, ok := decode_input(data)
 	testing.expect_value(t, got_host, host)
 	testing.expect(t, ok)
-	testing.expect_value(t, size, Size{800, 600})
+	testing.expect_value(t, size, ops.Size{800, 600})
 	testing.expect_value(t, density, f32(2))
 	testing.expect_value(t, dt, f32(1.0 / 60))
 	testing.expect_value(t, len(got), len(events))
@@ -41,7 +42,7 @@ test_encode_input_no_events :: proc(t: ^testing.T) {
 	data := encode_input({0, 0}, 1, 0, nil, context.temp_allocator)
 	size, density, dt, events, _, ok := decode_input(data, context.temp_allocator)
 	testing.expect(t, ok)
-	testing.expect_value(t, size, Size{0, 0})
+	testing.expect_value(t, size, ops.Size{0, 0})
 	testing.expect_value(t, density, f32(1))
 	testing.expect_value(t, dt, f32(0))
 	testing.expect_value(t, len(events), 0)
@@ -53,10 +54,10 @@ test_encode_reply_round_trip :: proc(t: ^testing.T) {
 	defer virtual.arena_destroy(&arena)
 	context.allocator = virtual.arena_allocator(&arena)
 
-	src: Ops
-	ops_init(&src)
+	src: ops.Scene
+	ops.init(&src)
 	golden_scene(&src)
-	ops_bytes := encode(&src)
+	ops_bytes := ops.encode(&src)
 
 	data := encode_reply(true, 0.25, ops_bytes)
 	dbg: Reply_Debug
@@ -64,18 +65,18 @@ test_encode_reply_round_trip :: proc(t: ^testing.T) {
 	testing.expect(t, !dbg.flash && !dbg.full_frames)
 	testing.expect(t, ok)
 	testing.expect(t, wants_frame)
-	keep := []Rect{{10, 20, 30, 40}, {1, 2, 3, 4}}
+	keep := []ops.Rect{{10, 20, 30, 40}, {1, 2, 3, 4}}
 	_, _, again, ok2 := decode_reply(encode_reply(false, 0, ops_bytes, full_frames = true, flash = true, keep_out = keep), &dbg)
 	testing.expect(t, ok2 && dbg.full_frames && dbg.flash)
 	testing.expect(t, slice.equal(reply_keep_out(&dbg), keep))
-	testing.expect(t, slice.equal(again, ops_bytes)) // the rects sit before the ops, not in them
+	testing.expect(t, slice.equal(again, ops_bytes)) // the rects sit before the sc, not in them
 	testing.expect_value(t, frame_after, f32(0.25))
 	testing.expect(t, slice.equal(got_ops, ops_bytes))
 
-	dst: Ops
-	ops_init(&dst)
-	testing.expect(t, decode(got_ops, &dst))
-	testing.expect_value(t, dump(&dst), dump(&src))
+	dst: ops.Scene
+	ops.init(&dst)
+	testing.expect(t, ops.decode(got_ops, &dst))
+	testing.expect_value(t, ops.dump(&dst), ops.dump(&src))
 }
 
 @(test)
@@ -123,7 +124,7 @@ test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) 
 	for cut, i in ([]int{len(full) - 24, len(full) - 8}) {
 		size, _, dt, _, host, ok := decode_input(full[:cut], context.temp_allocator)
 		testing.expect(t, ok)
-		testing.expect_value(t, size, Size{800, 600})
+		testing.expect_value(t, size, ops.Size{800, 600})
 		testing.expect_value(t, dt, f32(0.5))
 		testing.expect_value(t, host.rss_bytes, 0)
 		testing.expect_value(t, host.present_ms, i == 0 ? 0 : 2) // the timings, when sent, still read

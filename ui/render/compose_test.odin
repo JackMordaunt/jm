@@ -1,6 +1,7 @@
 package render
 
 import "base:runtime"
+import "jm:ui/ops"
 import "core:fmt"
 import "core:mem"
 import "core:testing"
@@ -10,7 +11,7 @@ import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 
 @(private = "file")
-BG :: ui.Color{240, 240, 244, 255}
+BG :: ops.Color{240, 240, 244, 255}
 @(private = "file")
 CW :: 320
 @(private = "file")
@@ -20,28 +21,28 @@ CH :: 256
 // round-rect clip; moved shifts one card and turns the clip.
 @(private = "file")
 Scene :: struct {
-	ops:   ui.Ops,
+	scene:   ops.Scene,
 	frame: ui.Frame,
 }
 
 @(private = "file")
 scene_build :: proc(s: ^Scene, moved: bool) {
-	ui.ops_reset(&s.ops)
+	ops.reset(&s.scene)
 	ui.frame_reset(&s.frame)
-	s.frame.ops = &s.ops
-	append(&s.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, CW, CH}, BG}})
+	s.frame.scene = &s.scene
+	append(&s.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, CW, CH}, BG}})
 	for i in 0 ..< 20 {
 		x, y := f32(i % 5) * 60 + 10, f32(i / 5) * 60 + 10
 		if moved && i == 7 {
 			x += 23
 		}
-		col := ui.Color{u8(i * 12), 120, u8(255 - i * 10), 255}
-		append(&s.frame.draws, ui.Draw{ui.translate(x, y), ui.NO_CLIP, ui.Fill{ui.Round_Rect{{0, 0, 44, 44}, 8}, col}})
+		col := ops.Color{u8(i * 12), 120, u8(255 - i * 10), 255}
+		append(&s.frame.draws, ui.Draw{ops.translate(x, y), ui.NO_CLIP, ops.Fill{ops.Round_Rect{{0, 0, 44, 44}, 8}, col}})
 	}
 	angle: f32 = 0.5 if moved else 0.3
-	m := ui.mul(ui.rotate(angle), ui.translate(200, 150))
-	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Round_Rect{{0, 0, 90, 40}, 12}, m})
-	append(&s.frame.draws, ui.Draw{m, 0, ui.Fill{ui.Rect{-10, -10, 110, 60}, ui.Color{200, 60, 60, 255}}})
+	m := ops.mul(ops.rotate(angle), ops.translate(200, 150))
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Round_Rect{{0, 0, 90, 40}, 12}, m})
+	append(&s.frame.draws, ui.Draw{m, 0, ops.Fill{ops.Rect{-10, -10, 110, 60}, ops.Color{200, 60, 60, 255}}})
 }
 
 @(private = "file")
@@ -56,7 +57,7 @@ Rig :: struct {
 
 @(private = "file")
 rig_init :: proc(g: ^Rig, workers: int) {
-	ui.ops_init(&g.scene.ops)
+	ops.init(&g.scene.scene)
 	ui.frame_init(&g.scene.frame)
 	compositor_init(&g.c, workers)
 	init(&g.r)
@@ -73,7 +74,7 @@ rig_destroy :: proc(g: ^Rig) {
 	destroy(&g.r)
 	compositor_destroy(&g.c)
 	ui.frame_destroy(&g.scene.frame)
-	ui.ops_destroy(&g.scene.ops)
+	ops.destroy(&g.scene.scene)
 }
 
 // max_delta is the largest channel difference between two same-size images.
@@ -96,7 +97,7 @@ max_delta :: proc(a, b: ^bl.ImageCore) -> int {
 }
 
 @(private = "file")
-area :: proc(rects: []ui.Rect) -> f32 {
+area :: proc(rects: []ops.Rect) -> f32 {
 	a: f32
 	for r in rects {
 		a += r.w * r.h
@@ -183,7 +184,7 @@ test_compose_resize_paints_all :: proc(t: ^testing.T) {
 // gradient beneath the rows; over draws a panel across them.
 @(private = "file")
 List :: struct {
-	origin: ui.Point,
+	origin: ops.Point,
 	offset: f32,
 	under:  bool,
 	over:   bool,
@@ -191,36 +192,36 @@ List :: struct {
 }
 
 @(private = "file")
-list_stops := [2]ui.Gradient_Stop{{0, {255, 200, 200, 255}}, {1, {200, 200, 255, 255}}}
+list_stops := [2]ops.Gradient_Stop{{0, {255, 200, 200, 255}}, {1, {200, 200, 255, 255}}}
 
 @(private = "file")
 list_build :: proc(s: ^Scene, l: List) {
-	ui.ops_reset(&s.ops)
+	ops.reset(&s.scene)
 	ui.frame_reset(&s.frame)
-	s.frame.ops = &s.ops
-	draw :: proc(s: ^Scene, t: ui.Affine, clip: ui.Clip_Id, cmd: ui.Draw_Cmd) {
+	s.frame.scene = &s.scene
+	draw :: proc(s: ^Scene, t: ops.Affine, clip: ui.Clip_Id, cmd: ui.Draw_Cmd) {
 		append(&s.frame.draws, ui.Draw{t, clip, cmd})
 	}
-	draw(s, ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, CW, CH}, BG})
-	box := ui.translate(l.origin.x, l.origin.y)
-	draw(s, box, ui.NO_CLIP, ui.Fill{ui.Round_Rect{{0, 0, 200, 200}, 6}, ui.Color{255, 255, 255, 255}})
-	draw(s, box, ui.NO_CLIP, ui.Stroke{ui.Round_Rect{{0.5, 0.5, 199, 199}, 6}, ui.Color{180, 180, 190, 255}, {width = 1}})
+	draw(s, ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, CW, CH}, BG})
+	box := ops.translate(l.origin.x, l.origin.y)
+	draw(s, box, ui.NO_CLIP, ops.Fill{ops.Round_Rect{{0, 0, 200, 200}, 6}, ops.Color{255, 255, 255, 255}})
+	draw(s, box, ui.NO_CLIP, ops.Stroke{ops.Round_Rect{{0.5, 0.5, 199, 199}, 6}, ops.Color{180, 180, 190, 255}, {width = 1}})
 	if l.under {
-		draw(s, box, ui.NO_CLIP, ui.Fill{ui.Rect{8, 8, 184, 184}, ui.Linear_Gradient{{0, 0}, {0, 184}, list_stops[:]}})
+		draw(s, box, ui.NO_CLIP, ops.Fill{ops.Rect{8, 8, 184, 184}, ops.Linear_Gradient{{0, 0}, {0, 184}, list_stops[:]}})
 	}
-	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{8, 8, 184, 184}, box})
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Rect{8, 8, 184, 184}, box})
 	cols := max(l.cols, 1)
 	for i in 0 ..< 40 {
 		for c in 0 ..< cols {
 			cw := 184 / f32(cols)
-			row := ui.mul(ui.translate(8 + f32(c) * cw, 8 + f32(i) * 22 - l.offset), box)
-			col := ui.Color{u8(i * 6), u8(200 - i * 4), u8(60 + i * 4), 255}
-			draw(s, row, 0, ui.Fill{ui.Round_Rect{{1, 2, cw * 0.65, 18}, 4}, col})
-			draw(s, row, 0, ui.Fill{ui.Rect{cw * 0.75, 6, cw * 0.2, 10}, ui.Color{40, 40, 50, 255}})
+			row := ops.mul(ops.translate(8 + f32(c) * cw, 8 + f32(i) * 22 - l.offset), box)
+			col := ops.Color{u8(i * 6), u8(200 - i * 4), u8(60 + i * 4), 255}
+			draw(s, row, 0, ops.Fill{ops.Round_Rect{{1, 2, cw * 0.65, 18}, 4}, col})
+			draw(s, row, 0, ops.Fill{ops.Rect{cw * 0.75, 6, cw * 0.2, 10}, ops.Color{40, 40, 50, 255}})
 		}
 	}
 	if l.over {
-		draw(s, box, ui.NO_CLIP, ui.Fill{ui.Round_Rect{{60, 60, 90, 50}, 8}, ui.Color{250, 180, 40, 230}})
+		draw(s, box, ui.NO_CLIP, ops.Fill{ops.Round_Rect{{60, 60, 90, 50}, 8}, ops.Color{250, 180, 40, 230}})
 	}
 }
 
@@ -238,7 +239,7 @@ step :: proc(t: ^testing.T, g: ^Rig, l: List, loc := #caller_location) -> f32 {
 
 @(test)
 test_compose_scroll_moves_pixels :: proc(t: ^testing.T) {
-	for origin in ([]ui.Point{{40, 20}, {40.3, 20.6}}) {
+	for origin in ([]ops.Point{{40, 20}, {40.3, 20.6}}) {
 		g: Rig
 		rig_init(&g, 2)
 		defer rig_destroy(&g)
@@ -318,16 +319,16 @@ test_compose_shared_hashing :: proc(t: ^testing.T) {
 	rig_init(&four, 4)
 	defer rig_destroy(&four)
 	build :: proc(s: ^Scene, moved: int) {
-		ui.ops_reset(&s.ops)
+		ops.reset(&s.scene)
 		ui.frame_reset(&s.frame)
-		s.frame.ops = &s.ops
-		append(&s.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, CW, CH}, BG}})
+		s.frame.scene = &s.scene
+		append(&s.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, CW, CH}, BG}})
 		for i in 0 ..< 3000 {
 			x, y := f32(i % 60) * 5, f32(i / 60) * 5
 			if i == moved {
 				x += 3
 			}
-			append(&s.frame.draws, ui.Draw{ui.translate(x, y), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 4, 4}, ui.Color{u8(i), u8(i >> 3), 90, 255}}})
+			append(&s.frame.draws, ui.Draw{ops.translate(x, y), ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, 4, 4}, ops.Color{u8(i), u8(i >> 3), 90, 255}}})
 		}
 	}
 	for moved in ([]int{-1, 1234, 2999, -1}) {
@@ -389,8 +390,8 @@ test_compose_list_widget_scrolls :: proc(t: ^testing.T) {
 	p: ui.Probe
 	ui.probe_init(&p, widgets_ui, &w, {CW, CH})
 	defer ui.probe_destroy(&p)
-	ui.add_font(&p.ops, LIST_FONT)
-	p.shaper = shaper(&g.r, p.ops.fonts[:])
+	ops.add_font(&p.scene, LIST_FONT)
+	p.shaper = shaper(&g.r, p.scene.fonts[:])
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
 	compose(&g.c, ui.probe_current(&p), &g.img, BG)
@@ -497,16 +498,16 @@ test_compose_scroll_repeated_columns :: proc(t: ^testing.T) {
 test_compose_large_scroll_shared :: proc(t: ^testing.T) {
 	W, H :: 800, 600
 	grid :: proc(s: ^Scene, off: [2]f32) {
-		ui.ops_reset(&s.ops)
+		ops.reset(&s.scene)
 		ui.frame_reset(&s.frame)
-		s.frame.ops = &s.ops
-		append(&s.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, W, H}, BG}})
-		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{10, 10, W - 20, H - 20}, ui.IDENTITY})
+		s.frame.scene = &s.scene
+		append(&s.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, W, H}, BG}})
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Rect{10, 10, W - 20, H - 20}, ops.IDENTITY})
 		for i in 0 ..< 60 {
 			for c in 0 ..< 20 {
-				m := ui.translate(10 + f32(c) * 48 - off.x, 10 + f32(i) * 24 - off.y)
-				col := ui.Color{u8(i * 4), u8(c * 12), u8(255 - i * 3), 255}
-				append(&s.frame.draws, ui.Draw{m, 0, ui.Fill{ui.Round_Rect{{2, 2, 42, 18}, 5}, col}})
+				m := ops.translate(10 + f32(c) * 48 - off.x, 10 + f32(i) * 24 - off.y)
+				col := ops.Color{u8(i * 4), u8(c * 12), u8(255 - i * 3), 255}
+				append(&s.frame.draws, ui.Draw{m, 0, ops.Fill{ops.Round_Rect{{2, 2, 42, 18}, 5}, col}})
 			}
 		}
 	}
@@ -517,14 +518,14 @@ test_compose_large_scroll_shared :: proc(t: ^testing.T) {
 	init(&r)
 	defer destroy(&r)
 	for i in 0 ..< 2 {
-		ui.ops_init(&scenes[i].ops)
+		ops.init(&scenes[i].scene)
 		ui.frame_init(&scenes[i].frame)
 		compositor_init(&comps[i], 1 if i == 0 else 4)
 	}
 	defer for i in 0 ..< 2 {
 		compositor_destroy(&comps[i])
 		ui.frame_destroy(&scenes[i].frame)
-		ui.ops_destroy(&scenes[i].ops)
+		ops.destroy(&scenes[i].scene)
 	}
 	for &img in imgs {
 		bl.image_init(&img)
@@ -563,9 +564,9 @@ SEAM :: 3
 
 @(private = "file")
 reset :: proc(s: ^Scene) {
-	ui.ops_reset(&s.ops)
+	ops.reset(&s.scene)
 	ui.frame_reset(&s.frame)
-	s.frame.ops = &s.ops
+	s.frame.scene = &s.scene
 }
 
 // Draws A and C, translucent under a turned round-rect clip, overlap along
@@ -574,10 +575,10 @@ reset :: proc(s: ^Scene) {
 @(private = "file")
 split_groups :: proc(s: ^Scene, b_between: bool) {
 	reset(s)
-	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Round_Rect{{0, 0, 200, 120}, 6}, ui.mul(ui.rotate(0.1), ui.translate(100, 80))})
-	a := ui.Draw{ui.translate(150, 70), 0, ui.Fill{ui.Rect{0, 0, 60, 40}, ui.Color{200, 40, 40, 150}}}
-	b := ui.Draw{ui.translate(10, 10), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 30, 20}, ui.Color{40, 40, 200, 255}}}
-	c := ui.Draw{ui.translate(170, 75), 0, ui.Fill{ui.Rect{0, 0, 60, 40}, ui.Color{40, 180, 40, 150}}}
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Round_Rect{{0, 0, 200, 120}, 6}, ops.mul(ops.rotate(0.1), ops.translate(100, 80))})
+	a := ui.Draw{ops.translate(150, 70), 0, ops.Fill{ops.Rect{0, 0, 60, 40}, ops.Color{200, 40, 40, 150}}}
+	b := ui.Draw{ops.translate(10, 10), ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, 30, 20}, ops.Color{40, 40, 200, 255}}}
+	c := ui.Draw{ops.translate(170, 75), 0, ops.Fill{ops.Rect{0, 0, 60, 40}, ops.Color{40, 180, 40, 150}}}
 	if b_between {
 		append(&s.frame.draws, a, b, c)
 	} else {
@@ -620,8 +621,8 @@ test_compose_draw_reaches_clip_edge :: proc(t: ^testing.T) {
 	rig_init(&g, 1)
 	defer rig_destroy(&g)
 	reset(&g.scene)
-	append(&g.scene.frame.clips, ui.Clip{ui.NO_CLIP, ui.Round_Rect{{0, 0, 78, 24}, 3}, ui.translate(48.25, 15.5)})
-	append(&g.scene.frame.draws, ui.Draw{ui.translate(-27.75, -10.7), 0, ui.Fill{ui.Rect{0, 0, 76, 41}, ui.Color{60, 220, 5, 255}}})
+	append(&g.scene.frame.clips, ui.Clip{ui.NO_CLIP, ops.Round_Rect{{0, 0, 78, 24}, 3}, ops.translate(48.25, 15.5)})
+	append(&g.scene.frame.draws, ui.Draw{ops.translate(-27.75, -10.7), 0, ops.Fill{ops.Rect{0, 0, 76, 41}, ops.Color{60, 220, 5, 255}}})
 	compose(&g.c, &g.scene.frame, &g.img, BG)
 	d := off_render(&g)
 	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
@@ -633,12 +634,12 @@ test_compose_draw_reaches_clip_edge :: proc(t: ^testing.T) {
 @(private = "file")
 scrolled_grid :: proc(s: ^Scene, dx: f32) {
 	reset(s)
-	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{0, 0, 100, 200}, ui.translate(20, 20)})
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Rect{0, 0, 100, 200}, ops.translate(20, 20)})
 	for i in 0 ..< 18 {
-		col := ui.Color{u8(i * 13), u8(200 - i * 9), 90, 255}
-		append(&s.frame.draws, ui.Draw{ui.translate(22 + dx, 22 + f32(i) * 11), 0, ui.Fill{ui.Rect{0, 0, 60, 9}, col}})
+		col := ops.Color{u8(i * 13), u8(200 - i * 9), 90, 255}
+		append(&s.frame.draws, ui.Draw{ops.translate(22 + dx, 22 + f32(i) * 11), 0, ops.Fill{ops.Rect{0, 0, 60, 9}, col}})
 	}
-	append(&s.frame.draws, ui.Draw{ui.translate(2, 2), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 10, 10}, ui.Color{u8(dx * 5), 0, 0, 255}}})
+	append(&s.frame.draws, ui.Draw{ops.translate(2, 2), ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, 10, 10}, ops.Color{u8(dx * 5), 0, 0, 255}}})
 }
 
 // Workers paint the rects to repaint at once, so no two may overlap, even
@@ -656,7 +657,7 @@ test_compose_repaints_do_not_overlap :: proc(t: ^testing.T) {
 	rects := g.c.damage.rects[:]
 	for a, i in rects {
 		for b in rects[i + 1:] {
-			o := ui.rect_intersect(a, b)
+			o := ops.rect_intersect(a, b)
 			testing.expectf(t, o.w <= 0 || o.h <= 0, "%v and %v overlap", a, b)
 		}
 	}
@@ -673,10 +674,10 @@ test_compose_repeats_do_not_scroll :: proc(t: ^testing.T) {
 	defer rig_destroy(&g)
 	grid :: proc(s: ^Scene) {
 		reset(s)
-		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Rect{0, 0, 300, 230}, ui.translate(10, 10)})
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Rect{0, 0, 300, 230}, ops.translate(10, 10)})
 		for i in 0 ..< 200 {
 			x, y := f32(i % 10) * 30, f32(i / 10) * 12
-			append(&s.frame.draws, ui.Draw{ui.translate(12 + x, 12 + y), 0, ui.Fill{ui.Rect{0, 0, 26, 9}, ui.Color{u8(i % 10) * 25, 120, 200, 255}}})
+			append(&s.frame.draws, ui.Draw{ops.translate(12 + x, 12 + y), 0, ops.Fill{ops.Rect{0, 0, 26, 9}, ops.Color{u8(i % 10) * 25, 120, 200, 255}}})
 		}
 	}
 	grid(&g.scene)
@@ -788,12 +789,12 @@ test_compose_no_scroll_under_masked_clip :: proc(t: ^testing.T) {
 	defer rig_destroy(&g)
 	build :: proc(s: ^Scene, off: f32) {
 		reset(s)
-		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ui.Ellipse{{0, 0, 153, 51}}, ui.mul(ui.rotate(0.3), ui.translate(80.3, 28.25))})
-		append(&s.frame.clips, ui.Clip{0, ui.Rect{0, 0, 129, 68}, ui.translate(16.3, 41)})
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Ellipse{{0, 0, 153, 51}}, ops.mul(ops.rotate(0.3), ops.translate(80.3, 28.25))})
+		append(&s.frame.clips, ui.Clip{0, ops.Rect{0, 0, 129, 68}, ops.translate(16.3, 41)})
 		for i in 0 ..< 6 {
-			col := ui.Color{u8(40 * i), 160, u8(200 - 30 * i), 255}
-			m := ui.translate(96 + f32(i % 2) * 20, 30 + f32(i) * 14 - off)
-			append(&s.frame.draws, ui.Draw{m, 1, ui.Fill{ui.Round_Rect{{0, 0, 34, 12}, 5}, col}})
+			col := ops.Color{u8(40 * i), 160, u8(200 - 30 * i), 255}
+			m := ops.translate(96 + f32(i % 2) * 20, 30 + f32(i) * 14 - off)
+			append(&s.frame.draws, ui.Draw{m, 1, ops.Fill{ops.Round_Rect{{0, 0, 34, 12}, 5}, col}})
 		}
 	}
 	build(&g.scene, 0)
@@ -828,8 +829,8 @@ test_compose_background_follows_resize :: proc(t: ^testing.T) {
 		defer bl.image_destroy(&view)
 		bl.image_create_from_data(&view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil)
 		reset(&g.scene)
-		append(&g.scene.frame.draws, ui.Draw{ui.IDENTITY, ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, f32(size.x), f32(size.y)}, ui.Color{30, 60, 90, 255}}})
-		append(&g.scene.frame.draws, ui.Draw{ui.translate(20, 20), ui.NO_CLIP, ui.Fill{ui.Rect{0, 0, 40, 30}, ui.Color{220, 40, 40, 255}}})
+		append(&g.scene.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, f32(size.x), f32(size.y)}, ops.Color{30, 60, 90, 255}}})
+		append(&g.scene.frame.draws, ui.Draw{ops.translate(20, 20), ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, 40, 30}, ops.Color{220, 40, 40, 255}}})
 		painted := area(compose(&g.c, &g.scene.frame, &view, BG))
 		if i > 0 {
 			// Only the last column of tiles, and after the second resize the

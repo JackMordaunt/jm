@@ -1,6 +1,7 @@
 package ui
 
 import "core:math"
+import "jm:ui/ops"
 import "core:mem/virtual"
 import "core:strings"
 import "core:testing"
@@ -8,39 +9,39 @@ import "core:testing"
 // golden_scene records a small scene touching every dump form. Shared with
 // encode_test.odin.
 @(private)
-golden_scene :: proc(ops: ^Ops) {
-	font := add_font(ops, "inter.ttf")
-	img := add_image(ops, "logo.png")
-	run := add_run(ops, shape(stub_shaper(), font, 14, "Save", ops.allocator))
-	verbs := make([]Path_Verb, 4, ops.allocator)
-	copy(verbs, []Path_Verb{.Move, .Line, .Cubic, .Close})
-	points := make([]Point, 5, ops.allocator)
-	copy(points, []Point{{0, 0}, {10, 0}, {10, 5}, {5, 10}, {0, 10}})
-	path := add_path(ops, {verbs, points})
-	stops := make([]Gradient_Stop, 2, ops.allocator)
-	copy(stops, []Gradient_Stop{{0, {0, 0, 0, 255}}, {1, {255, 255, 255, 255}}})
+golden_scene :: proc(sc: ^ops.Scene) {
+	font := ops.add_font(sc, "inter.ttf")
+	img := ops.add_image(sc, "logo.png")
+	run := ops.add_run(sc, shape(stub_shaper(), font, 14, "Save", sc.allocator))
+	verbs := make([]ops.Path_Verb, 4, sc.allocator)
+	copy(verbs, []ops.Path_Verb{.Move, .Line, .Cubic, .Close})
+	points := make([]ops.Point, 5, sc.allocator)
+	copy(points, []ops.Point{{0, 0}, {10, 0}, {10, 5}, {5, 10}, {0, 10}})
+	path := ops.add_path(sc, {verbs, points})
+	stops := make([]ops.Gradient_Stop, 2, sc.allocator)
+	copy(stops, []ops.Gradient_Stop{{0, {0, 0, 0, 255}}, {1, {255, 255, 255, 255}}})
 
-	transform_push(ops, translate(16, 16))
-	clip_push(ops, Round_Rect{{0, 0, 200, 40}, 6})
-	fill(ops, Round_Rect{{0, 0, 200, 40}, 6}, Color{0x33, 0x66, 0xff, 255})
-	glyphs(ops, run, {8, 27}, Color{255, 255, 255, 255})
-	input_area(ops, 12, Rect{0, 0, 200, 40}, {.Press, .Release})
-	tag(ops, 12, "Save")
-	clip_pop(ops)
-	transform_pop(ops)
-	m := macro_open(ops)
-	fill(ops, Ellipse{{0, 0, 10, 10}}, Color{255, 0, 0, 128})
-	stroke(ops, Rect{0, 0, 10, 10}, Color{0, 0, 0, 255}, {1.5, .Round, .Bevel})
-	macro_close(ops, m)
-	transform_push(ops, translate(0, 50.25))
-	call(ops, m)
-	transform_pop(ops)
-	clip_push(ops, Path_Ref{path})
-	fill(ops, Rect{0, 0, 1, 2}, Linear_Gradient{{0, 0}, {1, 0}, stops})
-	fill(ops, Path_Ref{path}, Radial_Gradient{{5, 5}, 2.5, stops[:1]})
-	fill(ops, Rect{0, 0, 32, 32}, Image_Paint{img})
-	clip_pop(ops)
-	image(ops, img, {0, 0, 32, 32})
+	ops.transform_push(sc, ops.translate(16, 16))
+	ops.clip_push(sc, ops.Round_Rect{{0, 0, 200, 40}, 6})
+	ops.fill(sc, ops.Round_Rect{{0, 0, 200, 40}, 6}, ops.Color{0x33, 0x66, 0xff, 255})
+	ops.glyphs(sc, run, {8, 27}, ops.Color{255, 255, 255, 255})
+	ops.input_area(sc, 12, ops.Rect{0, 0, 200, 40}, {.Press, .Release})
+	ops.tag(sc, 12, "Save")
+	ops.clip_pop(sc)
+	ops.transform_pop(sc)
+	m := ops.macro_open(sc)
+	ops.fill(sc, ops.Ellipse{{0, 0, 10, 10}}, ops.Color{255, 0, 0, 128})
+	ops.stroke(sc, ops.Rect{0, 0, 10, 10}, ops.Color{0, 0, 0, 255}, {1.5, .Round, .Bevel})
+	ops.macro_close(sc, m)
+	ops.transform_push(sc, ops.translate(0, 50.25))
+	ops.call(sc, m)
+	ops.transform_pop(sc)
+	ops.clip_push(sc, ops.Path_Ref{path})
+	ops.fill(sc, ops.Rect{0, 0, 1, 2}, ops.Linear_Gradient{{0, 0}, {1, 0}, stops})
+	ops.fill(sc, ops.Path_Ref{path}, ops.Radial_Gradient{{5, 5}, 2.5, stops[:1]})
+	ops.fill(sc, ops.Rect{0, 0, 32, 32}, ops.Image_Paint{img})
+	ops.clip_pop(sc)
+	ops.image(sc, img, {0, 0, 32, 32})
 }
 
 @(test)
@@ -48,9 +49,9 @@ test_dump_golden :: proc(t: ^testing.T) {
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)
 	context.allocator = virtual.arena_allocator(&arena)
-	ops: Ops
-	ops_init(&ops)
-	golden_scene(&ops)
+	sc: ops.Scene
+	ops.init(&sc)
+	golden_scene(&sc)
 
 	want := `transform 1 0 0 1 16 16
   clip rrect 0 0 200 40 6
@@ -69,7 +70,7 @@ clip path#0
   fill rect 0 0 32 32 image#0
 image#0 dst 0 0 32 32 src 0 0 0 0
 `
-	got := dump(&ops)
+	got := ops.dump(&sc)
 	testing.expectf(t, got == want, "dump:\n%s\nwant:\n%s", got, want)
 }
 
@@ -78,12 +79,12 @@ test_dump_frame_golden :: proc(t: ^testing.T) {
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)
 	context.allocator = virtual.arena_allocator(&arena)
-	ops: Ops
-	ops_init(&ops)
-	golden_scene(&ops)
+	sc: ops.Scene
+	ops.init(&sc)
+	golden_scene(&sc)
 	f: Frame
 	frame_init(&f)
-	flatten(&ops, &f)
+	flatten(&sc, &f)
 
 	want := `draws
   draw 0 clip=0 [1 0 0 1 16 16] fill rrect 0 0 200 40 6 #3366ff
@@ -111,16 +112,16 @@ test_dump_rotated_matrix_has_no_negative_zero :: proc(t: ^testing.T) {
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)
 	context.allocator = virtual.arena_allocator(&arena)
-	ops: Ops
-	ops_init(&ops)
-	transform_push(&ops, rotate(math.PI / 2))
-	transform_push(&ops, rotate(math.PI))
-	transform_pop(&ops)
-	transform_pop(&ops)
-	transform_pop(&ops) // unbalanced: dump clamps rather than failing
-	input_area(&ops, 1, Rect{}, {})
+	sc: ops.Scene
+	ops.init(&sc)
+	ops.transform_push(&sc, ops.rotate(math.PI / 2))
+	ops.transform_push(&sc, ops.rotate(math.PI))
+	ops.transform_pop(&sc)
+	ops.transform_pop(&sc)
+	ops.transform_pop(&sc) // unbalanced: dump clamps rather than failing
+	ops.input_area(&sc, 1, ops.Rect{}, {})
 	want := "transform 0 1 -1 0 0 0\n  transform -1 0 0 -1 0 0\ninput 1 rect 0 0 0 0 kinds=\n"
-	testing.expect_value(t, dump(&ops), want)
+	testing.expect_value(t, ops.dump(&sc), want)
 }
 
 @(test)
@@ -151,7 +152,7 @@ test_fnum :: proc(t: ^testing.T) {
 	}
 	for c in cases {
 		sb := strings.builder_make(context.temp_allocator)
-		write_num(&sb, c.v)
+		ops.write_num(&sb, c.v)
 		got := strings.to_string(sb)
 		testing.expectf(t, got == c.want, "write_num(%v) = %q, want %q", c.v, got, c.want)
 	}

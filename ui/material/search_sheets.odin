@@ -1,6 +1,7 @@
 package material
 
 import "core:strings"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -64,7 +65,7 @@ search_bar :: proc(
 	width: f32 = SEARCH_MIN_WIDTH,
 	view := Search_View.Docked,
 	expanded: ^bool = nil,
-	window := ui.Size{},
+	window := ops.Size{},
 	submitted: ^bool = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
@@ -73,7 +74,7 @@ search_bar :: proc(
 	p := ui.widget_open(gtx, key, loc)
 	H :: tok.SEARCH_BAR_CONTAINER_HEIGHT
 	size := ui.constrain(gtx.constraints, {clamp(width, SEARCH_MIN_WIDTH, SEARCH_MAX_WIDTH), H})
-	bar := ui.Rect{0, 0, size.x, H}
+	bar := ops.Rect{0, 0, size.x, H}
 	mode := view
 	if window == {} && (mode == .Full_Screen || mode == .Full_Screen_Contained) {
 		mode = .Docked
@@ -129,11 +130,11 @@ search_bar :: proc(
 		r := gtx.router
 		switch {
 		case r.pressed == p.id:
-			vs.origin = ui.apply(r.pressed_hit.transform, {})
+			vs.origin = ops.apply(r.pressed_hit.transform, {})
 		case r.focus == p.id:
-			vs.origin = ui.apply(r.focus_hit.transform, {})
+			vs.origin = ops.apply(r.focus_hit.transform, {})
 		case r.hover == p.id:
-			vs.origin = ui.apply(r.hover_hit.transform, {})
+			vs.origin = ops.apply(r.hover_hit.transform, {})
 		}
 	}
 
@@ -159,9 +160,9 @@ search_bar :: proc(
 		paint_focus_ring_corners(gtx, fc, bar, bar_k)
 	}
 	if live {
-		ui.input_area(gtx.ops, p.id, bar, SEARCH_KINDS)
+		ops.input_area(gtx.scene, p.id, bar, SEARCH_KINDS)
 	}
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, placeholder))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, placeholder))
 
 	picked := -1
 	if t > 0.001 {
@@ -184,7 +185,7 @@ search_bar :: proc(
 }
 
 @(private)
-SEARCH_KINDS :: ui.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur}
+SEARCH_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur}
 
 // Search_View_State is what a search bar keeps for its view between
 // frames, beside the Widget_State its input uses.
@@ -200,7 +201,7 @@ Search_View_State :: struct {
 	scroll:    f32,
 	// origin is the bar's window origin as last hit-tested while fully
 	// collapsed: where a full-screen view grows from.
-	origin:    ui.Point,
+	origin:    ops.Point,
 }
 
 // search_padding is the input text's start and end inset: an icon sits
@@ -234,7 +235,7 @@ search_spring :: proc(v: Search_View, expanding: bool) -> Spring {
 @(private)
 search_text_events :: proc(
 	gtx: ^ui.Ctx,
-	id: ui.Area_Id,
+	id: ops.Area_Id,
 	st: ^ui.Widget_State,
 	s: ^ui.Text_State,
 	pad_l: f32,
@@ -286,7 +287,7 @@ search_text_events :: proc(
 @(private)
 paint_search_field :: proc(
 	gtx: ^ui.Ctx,
-	r: ui.Rect,
+	r: ops.Rect,
 	k: Corners,
 	s: ^ui.Text_State,
 	str, placeholder: string,
@@ -302,7 +303,7 @@ paint_search_field :: proc(
 		if !header {
 			paint_elevation(gtx, {r, k.tl}, elevation_level(tok.SEARCH_BAR_CONTAINER_ELEVATION))
 		}
-		ui.fill(gtx.ops, shape, color(header ? tok.SEARCH_VIEW_CONTAINER_COLOR : tok.SEARCH_BAR_CONTAINER_COLOR))
+		ops.fill(gtx.scene, shape, color(header ? tok.SEARCH_VIEW_CONTAINER_COLOR : tok.SEARCH_BAR_CONTAINER_COLOR))
 	}
 	paint_state_layer(gtx, c, shape, color(tok.SEARCH_BAR_INPUT_TEXT_COLOR))
 	lead := color(header ? tok.SEARCH_VIEW_HEADER_LEADING_ICON_COLOR : tok.SEARCH_BAR_LEADING_ICON_COLOR)
@@ -319,7 +320,7 @@ paint_search_field :: proc(
 		icon(gtx, leading, {r.x + SEARCH_ICON_INSET, cy - ICON / 2}, ICON, lead)
 	}
 	inner := max(r.w - pad_l - pad_r, 0)
-	ui.clip_push(gtx.ops, ui.Rect{r.x + pad_l, r.y, inner, r.h})
+	ops.clip_push(gtx.scene, ops.Rect{r.x + pad_l, r.y, inner, r.h})
 	font := header ? tok.SEARCH_VIEW_HEADER_INPUT_TEXT_FONT : tok.SEARCH_BAR_INPUT_TEXT_FONT
 	if len(str) > 0 {
 		t := shape_style(gtx, str, font)
@@ -331,9 +332,9 @@ paint_search_field :: proc(
 	if show_caret && !c.disabled {
 		// The caret is the focus indicator colour; the kit tokens no caret for the bar.
 		lh := font.line_height
-		ui.fill(gtx.ops, ui.Rect{r.x + pad_l + caret - scroll, cy - lh / 2, 2, lh}, color(tok.SEARCH_BAR_FOCUS_INDICATOR_COLOR))
+		ops.fill(gtx.scene, ops.Rect{r.x + pad_l + caret - scroll, cy - lh / 2, 2, lh}, color(tok.SEARCH_BAR_FOCUS_INDICATOR_COLOR))
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	if trailing != .None {
 		icon(gtx, trailing, {r.x + r.w - SEARCH_ICON_INSET - ICON, cy - ICON / 2}, ICON, trail)
 	}
@@ -344,15 +345,15 @@ paint_search_field :: proc(
 @(private)
 search_view :: proc(
 	gtx: ^ui.Ctx,
-	id: ui.Area_Id,
+	id: ops.Area_Id,
 	mode: Search_View,
 	s: ^ui.Text_State,
 	str, placeholder: string,
 	leading, trailing: Icon,
 	suggestions: []string,
 	w: f32,
-	window: ui.Size,
-	origin: ui.Point,
+	window: ops.Size,
+	origin: ops.Point,
 	t: f32,
 	open, live: bool,
 	scroll, caret: f32,
@@ -383,14 +384,14 @@ search_view :: proc(
 	}
 	defer ui.close(&o)
 	catch_id := ui.id_mix(id, 2)
-	bar_from := full_screen ? ui.Rect{origin.x, origin.y, w, H} : ui.Rect{0, 0, w, H}
+	bar_from := full_screen ? ops.Rect{origin.x, origin.y, w, H} : ops.Rect{0, 0, w, H}
 	bar_k := corners(tok.SEARCH_BAR_CONTAINER_SHAPE, bar_from)
 
 	// Container, header and the results area, per presentation.
-	cont: ui.Rect
+	cont: ops.Rect
 	k: Corners
-	header: ui.Rect
-	results: ui.Rect
+	header: ops.Rect
+	results: ops.Rect
 	divider := true
 	color_role := tok.SEARCH_VIEW_CONTAINER_COLOR
 	switch mode {
@@ -409,7 +410,7 @@ search_view :: proc(
 		results = {0, cont.y + 8, w, res_h - 16}
 		divider = false
 	case .Full_Screen:
-		to := ui.Rect{0, 0, window.x, window.y}
+		to := ops.Rect{0, 0, window.x, window.y}
 		cont = search_lerp_rect(bar_from, to, t)
 		k = lerp_corners(bar_k, corners(tok.SEARCH_VIEW_FULL_SCREEN_CONTAINER_SHAPE, to), fade)
 		// The bar's top padding shrinks to 0 as the header grows to its
@@ -418,7 +419,7 @@ search_view :: proc(
 		header = {cont.x, cont.y, cont.w, hh}
 		results = {cont.x, cont.y + hh + 1, cont.w, max(cont.h - hh - 1, 0)}
 	case .Full_Screen_Contained:
-		to := ui.Rect{0, 0, window.x, window.y}
+		to := ops.Rect{0, 0, window.x, window.y}
 		cont = search_lerp_rect(bar_from, to, t)
 		k = lerp_corners(bar_k, corners(tok.SEARCH_VIEW_FULL_SCREEN_CONTAINER_SHAPE, to), fade)
 		color_role = .Surface
@@ -430,7 +431,7 @@ search_view :: proc(
 
 	if full_screen {
 		// Full screen only: a scrim dims the page during the transition.
-		ui.fill(gtx.ops, ui.Rect{0, 0, window.x, window.y}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * fade))
+		ops.fill(gtx.scene, ops.Rect{0, 0, window.x, window.y}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * fade))
 	}
 	if live && open {
 		// A press anywhere outside the view collapses it, and reaches nothing else.
@@ -439,14 +440,14 @@ search_view :: proc(
 				ui.widget_data(gtx, id, Search_View_State).close = true
 			}
 		}
-		ui.input_area(gtx.ops, catch_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+		ops.input_area(gtx.scene, catch_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	}
 	shape := rounded(gtx, cont, k)
 	if cont.h > 0 {
 		paint_elevation(gtx, {cont, k.tl}, elevation_level(tok.SEARCH_VIEW_CONTAINER_ELEVATION))
-		ui.fill(gtx.ops, shape, color(color_role))
+		ops.fill(gtx.scene, shape, color(color_role))
 		if live && open {
-			ui.input_area(gtx.ops, ui.id_mix(id, 3), shape, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+			ops.input_area(gtx.scene, ui.id_mix(id, 3), shape, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 	}
 
@@ -465,37 +466,37 @@ search_view :: proc(
 	}
 	if live && open && mode != .Docked_With_Gap {
 		// The header takes the bar's own input: the same id, on top.
-		ui.transform_push(gtx.ops, ui.translate(header.x, header.y + (header.h - H) / 2))
-		ui.input_area(gtx.ops, id, ui.Rect{0, 0, header.w, H}, SEARCH_KINDS)
-		ui.transform_pop(gtx.ops)
+		ops.transform_push(gtx.scene, ops.translate(header.x, header.y + (header.h - H) / 2))
+		ops.input_area(gtx.scene, id, ops.Rect{0, 0, header.w, H}, SEARCH_KINDS)
+		ops.transform_pop(gtx.scene)
 	} else if live && open {
-		ui.input_area(gtx.ops, id, ui.Rect{0, 0, w, H}, SEARCH_KINDS)
+		ops.input_area(gtx.scene, id, ops.Rect{0, 0, w, H}, SEARCH_KINDS)
 	}
 	if back && live {
 		bid := ui.id_mix(id, 4)
-		bc := control(gtx, bid, ui.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, .Live)
+		bc := control(gtx, bid, ops.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, .Live)
 		if bc.clicked {
 			ui.widget_data(gtx, id, Search_View_State).close = true
 		}
-		listen(gtx, bc, bid, ui.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {.Press, .Release, .Enter, .Leave, .Move})
-		ui.tag(gtx.ops, bid, "search back")
+		listen(gtx, bc, bid, ops.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {.Press, .Release, .Enter, .Leave, .Move})
+		ops.tag(gtx.scene, bid, "search back")
 	}
 	if divider && fade > 0 {
-		ui.fill(gtx.ops, ui.Rect{cont.x, header.y + header.h, cont.w, 1}, ui.with_alpha(color(tok.SEARCH_VIEW_DIVIDER_COLOR), fade))
+		ops.fill(gtx.scene, ops.Rect{cont.x, header.y + header.h, cont.w, 1}, ops.with_alpha(color(tok.SEARCH_VIEW_DIVIDER_COLOR), fade))
 	}
 
 	// Results, clipped to the container; the contained view fades them in.
 	picked := -1
-	ui.clip_push(gtx.ops, shape)
+	ops.clip_push(gtx.scene, shape)
 	rows := min(n, int(max(results.h, 0) / ROW))
 	text_c := color(tok.LIST_ITEM_LABEL_TEXT_COLOR)
 	icon_c := color(tok.LIST_ITEM_LEADING_ICON_COLOR)
 	if mode == .Full_Screen_Contained {
-		text_c, icon_c = ui.with_alpha(text_c, fade), ui.with_alpha(icon_c, fade)
+		text_c, icon_c = ops.with_alpha(text_c, fade), ops.with_alpha(icon_c, fade)
 	}
 	for row in 0 ..< rows {
 		mi := matches[row]
-		r := ui.Rect{results.x, results.y + f32(row) * ROW, results.w, ROW}
+		r := ops.Rect{results.x, results.y + f32(row) * ROW, results.w, ROW}
 		rid := ui.id_mix(id, u64(100 + mi))
 		c := control(gtx, rid, r, open && live ? .Live : .Enabled)
 		if c.clicked {
@@ -509,16 +510,16 @@ search_view :: proc(
 			// Pointer only: an area wanting Key takes focus on a press, which
 			// would blur the bar and close the view before the click lands.
 			listen(gtx, c, rid, r, {.Press, .Release, .Enter, .Leave, .Move})
-			ui.tag(gtx.ops, rid, ui.frame_string(gtx, suggestions[mi]))
+			ops.tag(gtx.scene, rid, ui.frame_string(gtx, suggestions[mi]))
 		}
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 	return picked
 }
 
 // lerp_rect is the rect between a and b at t, per edge.
 @(private)
-search_lerp_rect :: proc(a, b: ui.Rect, t: f32) -> ui.Rect {
+search_lerp_rect :: proc(a, b: ops.Rect, t: f32) -> ops.Rect {
 	return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, max(a.w + (b.w - a.w) * t, 0), max(a.h + (b.h - a.h) * t, 0)}
 }
 
@@ -551,7 +552,7 @@ Sheet_Kind :: enum u8 {
 Sheet_Paint :: struct {
 	kind:    Sheet_Kind,
 	left:    bool, // side sheets: anchored to the left edge
-	drag_id: ui.Area_Id, // the area the sheet registers for drags and Escape
+	drag_id: ops.Area_Id, // the area the sheet registers for drags and Escape
 	state:   ^Sheet_State, // bottom sheets: where paint records the measured height
 }
 
@@ -592,7 +593,7 @@ SHEET_HANDLE_PADDING :: f32(22) // layout bottom-drag-handle-shape, SheetDefault
 bottom_sheet_open :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
-	window: ui.Size,
+	window: ops.Size,
 	modal := true,
 	handle := true,
 	value: ^Sheet_Value = nil,
@@ -624,7 +625,7 @@ bottom_sheet_open :: proc(
 	// Drags: from the sheet body and from its handle, one gesture state.
 	d := &ss.drag
 	settle, clicked, escape := false, false, false
-	areas := [2]ui.Area_Id{drag_id, handle_id}
+	areas := [2]ops.Area_Id{drag_id, handle_id}
 	for area in areas {
 		for e in ui.events(gtx, area) {
 			s, c, esc := sheet_drag_event(d, e, area == handle_id, gtx.dt)
@@ -690,9 +691,9 @@ bottom_sheet_open :: proc(
 				open^ = false
 			}
 		}
-		ui.fill(gtx.ops, ui.Rect{0, 0, window.x, window.y}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(scrim, 0, 1)))
+		ops.fill(gtx.scene, ops.Rect{0, 0, window.x, window.y}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(scrim, 0, 1)))
 		if open^ {
-			ui.input_area(gtx.ops, scrim_id, ui.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+			ops.input_area(gtx.scene, scrim_id, ops.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 		ui.close(&so)
 	}
@@ -803,12 +804,12 @@ sheet_settle :: proc(a: Sheet_Value, delta, velocity, partial_at, hidden_at: f32
 // is 48dp tall, the touch target MDC enforces (sheets.json
 // accessibility.semantics).
 @(private)
-sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_location) {
+sheet_handle :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, w: f32, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	HW, HH :: tok.SHEET_BOTTOM_DOCKED_DRAG_HANDLE_WIDTH, tok.SHEET_BOTTOM_DOCKED_DRAG_HANDLE_HEIGHT
-	slot := ui.Rect{0, 0, w, 2 * SHEET_HANDLE_PADDING + HH}
-	pill := ui.Rect{(w - HW) / 2, SHEET_HANDLE_PADDING, HW, HH}
-	ui.fill(gtx.ops, rounded(gtx, pill, corners(tok.SYS_SHAPE_CORNER_EXTRA_LARGE, pill)), color(tok.SHEET_BOTTOM_DOCKED_DRAG_HANDLE_COLOR))
+	slot := ops.Rect{0, 0, w, 2 * SHEET_HANDLE_PADDING + HH}
+	pill := ops.Rect{(w - HW) / 2, SHEET_HANDLE_PADDING, HW, HH}
+	ops.fill(gtx.scene, rounded(gtx, pill, corners(tok.SYS_SHAPE_CORNER_EXTRA_LARGE, pill)), color(tok.SHEET_BOTTOM_DOCKED_DRAG_HANDLE_COLOR))
 	st := ui.widget_state(gtx, id)
 	if st.focused {
 		paint_focus_ring(gtx, {focused = true}, {pill, HH / 2})
@@ -821,9 +822,9 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_locati
 			st.focused = false
 		}
 	}
-	hit := ui.Rect{(w - 48) / 2, 0, 48, slot.h}
-	ui.input_area(gtx.ops, id, hit, {.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur})
-	ui.tag(gtx.ops, id, "drag handle")
+	hit := ops.Rect{(w - 48) / 2, 0, 48, slot.h}
+	ops.input_area(gtx.scene, id, hit, {.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur})
+	ops.tag(gtx.scene, id, "drag handle")
 	ui.widget_close(gtx, &p, {size = {w, slot.h}})
 }
 
@@ -842,7 +843,7 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_locati
 side_sheet_open :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
-	window: ui.Size,
+	window: ops.Size,
 	modal := true,
 	width: f32 = tok.NAVIGATION_DRAWER_CONTAINER_WIDTH,
 	left := false,
@@ -876,9 +877,9 @@ side_sheet_open :: proc(
 				open^ = false
 			}
 		}
-		ui.fill(gtx.ops, ui.Rect{0, 0, window.x, window.y}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(scrim, 0, 1)))
+		ops.fill(gtx.scene, ops.Rect{0, 0, window.x, window.y}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(scrim, 0, 1)))
 		if open^ {
-			ui.input_area(gtx.ops, scrim_id, ui.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+			ops.input_area(gtx.scene, scrim_id, ops.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 		ui.close(&so)
 		sh.overlay = ui.overlay_open(gtx, {left ? -slide : slide, 0.001}, ui.exact(window), root = true)
@@ -923,7 +924,7 @@ sheet_headline :: proc(gtx: ^ui.Ctx, s: string, loc := #caller_location) -> Text
 	p := ui.widget_open(gtx, 0, loc)
 	t := shape_text(gtx, s, .Title_Large)
 	draw_text(gtx, t, {}, color(tok.NAVIGATION_DRAWER_HEADLINE_COLOR))
-	ui.widget_close(gtx, &p, {ui.Size{t.width, t.height}, baseline_of(t)})
+	ui.widget_close(gtx, &p, {ops.Size{t.width, t.height}, baseline_of(t)})
 	return t
 }
 
@@ -948,16 +949,16 @@ sheet_close :: proc(sh: ^Sheet) {
 }
 
 @(private)
-paint_sheet :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
+paint_sheet :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
 	sp := (^Sheet_Paint)(user)
-	r := ui.Rect{0, 0, size.x, size.y}
-	shape: ui.Shape
+	r := ops.Rect{0, 0, size.x, size.y}
+	shape: ops.Shape
 	switch sp.kind {
 	case .Bottom:
 		k := corners(tok.SHEET_BOTTOM_DOCKED_CONTAINER_SHAPE, r)
 		shape = rounded(gtx, r, k)
 		paint_elevation(gtx, {r, k.tl}, elevation_level(tok.SHEET_BOTTOM_DOCKED_MODAL_CONTAINER_ELEVATION))
-		ui.fill(gtx.ops, shape, color(tok.SHEET_BOTTOM_DOCKED_CONTAINER_COLOR))
+		ops.fill(gtx.scene, shape, color(tok.SHEET_BOTTOM_DOCKED_CONTAINER_COLOR))
 		// The measured height, for next frame's anchors.
 		sp.state.height = size.y
 	case .Side_Modal:
@@ -968,17 +969,17 @@ paint_sheet :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
 		}
 		shape = rounded(gtx, r, k)
 		paint_elevation(gtx, {r, max(k.tl, k.tr)}, elevation_level(tok.NAVIGATION_DRAWER_MODAL_CONTAINER_ELEVATION))
-		ui.fill(gtx.ops, shape, color(tok.NAVIGATION_DRAWER_MODAL_CONTAINER_COLOR))
+		ops.fill(gtx.scene, shape, color(tok.NAVIGATION_DRAWER_MODAL_CONTAINER_COLOR))
 	case .Side_Standard:
 		shape = r
-		ui.fill(gtx.ops, r, color(tok.NAVIGATION_DRAWER_STANDARD_CONTAINER_COLOR))
+		ops.fill(gtx.scene, r, color(tok.NAVIGATION_DRAWER_STANDARD_CONTAINER_COLOR))
 		// The optional divider (anatomy divider), on the edge facing the content.
-		ui.fill(gtx.ops, ui.Rect{sp.left ? size.x - 1 : 0, 0, 1, size.y}, color(.Outline_Variant))
+		ops.fill(gtx.scene, ops.Rect{sp.left ? size.x - 1 : 0, 0, 1, size.y}, color(.Outline_Variant))
 	}
 	// The sheet swallows its own presses so they do not reach the scrim,
 	// takes drags, and takes focus on a press so Escape reaches it.
-	ui.input_area(gtx.ops, sp.drag_id, shape, {.Press, .Release, .Move, .Enter, .Leave, .Scroll, .Key, .Focus, .Blur})
-	ui.tag(gtx.ops, sp.drag_id, "sheet")
+	ops.input_area(gtx.scene, sp.drag_id, shape, {.Press, .Release, .Move, .Enter, .Leave, .Scroll, .Key, .Focus, .Blur})
+	ops.tag(gtx.scene, sp.drag_id, "sheet")
 }
 
 // drag_handle is M3 Expressive's drag handle (comp.drag-handle): the
@@ -994,7 +995,7 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	p := ui.widget_open(gtx, key, loc)
 	W :: tok.DRAG_HANDLE_CONTAINER_WIDTH
 	H := max(tok.DRAG_HANDLE_PRESSED_HEIGHT, tok.DRAG_HANDLE_DRAGGED_HEIGHT)
-	hit := ui.Rect{(W - 48) / 2, 0, 48, H}
+	hit := ops.Rect{(W - 48) / 2, 0, 48, H}
 	c := Control{}
 	dx: f32
 	dragged := state == .Dragged
@@ -1042,19 +1043,19 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	w := animate(gtx, c, 0, active ? pw : tok.DRAG_HANDLE_WIDTH, .Fast_Spatial, 0.1)
 	h := animate(gtx, c, 1, active ? ph : tok.DRAG_HANDLE_HEIGHT, .Fast_Spatial, 0.1)
 	k := animate(gtx, c, 2, active ? 1 : 0, .Fast_Effects)
-	pill := ui.Rect{(W - w) / 2, (H - h) / 2, w, h}
+	pill := ops.Rect{(W - w) / 2, (H - h) / 2, w, h}
 	shape_to := dragged ? tok.DRAG_HANDLE_DRAGGED_SHAPE : tok.DRAG_HANDLE_PRESSED_SHAPE
 	ks := lerp_corners(corners(tok.DRAG_HANDLE_SHAPE, pill), corners(shape_to, pill), clamp(k, 0, 1))
-	col := ui.mix(color(tok.DRAG_HANDLE_COLOR), color(dragged ? tok.DRAG_HANDLE_DRAGGED_COLOR : tok.DRAG_HANDLE_PRESSED_COLOR), clamp(k, 0, 1))
+	col := ops.mix(color(tok.DRAG_HANDLE_COLOR), color(dragged ? tok.DRAG_HANDLE_DRAGGED_COLOR : tok.DRAG_HANDLE_PRESSED_COLOR), clamp(k, 0, 1))
 	if c.disabled {
 		col = disabled_content()
 	}
-	ui.fill(gtx.ops, rounded(gtx, pill, ks), col)
+	ops.fill(gtx.scene, rounded(gtx, pill, ks), col)
 	paint_focus_ring_corners(gtx, c, pill, ks)
 	if state == .Live {
-		ui.input_area(gtx.ops, p.id, hit, CLICK_KINDS)
+		ops.input_area(gtx.scene, p.id, hit, CLICK_KINDS)
 	}
-	ui.tag(gtx.ops, p.id, "drag_handle")
+	ops.tag(gtx.scene, p.id, "drag_handle")
 	ui.widget_close(gtx, &p, {size = {W, H}})
 	return dx
 }

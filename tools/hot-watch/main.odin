@@ -17,7 +17,7 @@ only when its own main.odin does.
 
 -host SRC OUT also rebuilds the host, SRC, to OUT whenever one of those
 further directories changes, before the child: a host built before a
-change to jm:ui's ops encoding cannot read the new child, and on seeing
+change to jm:ui's sc encoding cannot read the new child, and on seeing
 that, ui/sdl's host restarts itself from OUT. It builds beside OUT and
 renames over it, so the running host's image is untouched. Not on
 Windows, which will not rename over a running executable.

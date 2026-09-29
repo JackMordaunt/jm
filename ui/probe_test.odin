@@ -1,6 +1,7 @@
 package ui
 
 import "core:strings"
+import "jm:ui/ops"
 import "core:testing"
 
 @(private = "file")
@@ -12,21 +13,21 @@ Probe_Model :: struct {
 }
 
 @(private = "file")
-SAVE :: Area_Id(1)
+SAVE :: ops.Area_Id(1)
 @(private = "file")
-FIELD :: Area_Id(2)
+FIELD :: ops.Area_Id(2)
 
 // probe_model_ui is a hand-recorded ui: a Save button under a translate
 // and a text field below it.
 @(private = "file")
 probe_model_ui :: proc(gtx: ^Ctx, user: rawptr) {
 	m := (^Probe_Model)(user)
-	transform_push(gtx.ops, translate(40, 30))
-	input_area(gtx.ops, SAVE, Rect{0, 0, 80, 20}, {.Press, .Release})
-	tag(gtx.ops, SAVE, "Save")
-	transform_pop(gtx.ops)
-	input_area(gtx.ops, FIELD, Rect{0, 100, 200, 20}, {.Press, .Key, .Text, .Focus, .Blur})
-	tag(gtx.ops, FIELD, "Name")
+	ops.transform_push(gtx.scene, ops.translate(40, 30))
+	ops.input_area(gtx.scene, SAVE, ops.Rect{0, 0, 80, 20}, {.Press, .Release})
+	ops.tag(gtx.scene, SAVE, "Save")
+	ops.transform_pop(gtx.scene)
+	ops.input_area(gtx.scene, FIELD, ops.Rect{0, 100, 200, 20}, {.Press, .Key, .Text, .Focus, .Blur})
+	ops.tag(gtx.scene, FIELD, "Name")
 
 	for e in events(gtx, SAVE) {
 		if e.kind == .Release {
@@ -61,7 +62,7 @@ probe_click_by_name :: proc(t: ^testing.T) {
 
 	c, ok := probe_center(&p, "Save")
 	testing.expect(t, ok)
-	testing.expect_value(t, c, Point{80, 40})
+	testing.expect_value(t, c, ops.Point{80, 40})
 
 	testing.expect(t, probe_click(&p, "Save"))
 	testing.expect_value(t, m.saved, 1)

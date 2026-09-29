@@ -1,4 +1,4 @@
-package ui
+package ops
 
 // Geometry shared by every stage.
 
@@ -41,7 +41,7 @@ Shape :: union {
 }
 
 // Path is a flat verb/point encoding. Move and Line take one point, Cubic
-// three, Close none. It lives in Ops.paths and is referenced by Path_Ref.
+// three, Close none. It lives in Scene.paths and is referenced by Path_Ref.
 Path_Verb :: enum u8 {
 	Move,
 	Line,
@@ -126,55 +126,6 @@ Event_Kind :: enum u8 {
 
 Event_Kinds :: bit_set[Event_Kind;u16]
 
-Button :: enum u8 {
-	Left,
-	Right,
-	Middle,
-}
-
-Key :: enum u8 {
-	None,
-	Enter,
-	Escape,
-	Tab,
-	Backspace,
-	Delete,
-	Left,
-	Right,
-	Up,
-	Down,
-	Home,
-	End,
-	Page_Up,
-	Page_Down,
-	Space,
-	A, B, C, D, E, F, G, H, I, J, K, L, M,
-	N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9,
-	F11, // DEBUG_TOGGLE_KEY: the frame loops take it before routing
-}
-
-Mod :: enum u8 {
-	Shift,
-	Ctrl,
-	Alt,
-	Super,
-}
-
-Mods :: bit_set[Mod;u8]
-
-Event :: struct {
-	kind:   Event_Kind,
-	area:   Area_Id,
-	pos:    Point, // local to the area for pointer kinds
-	travel: Point, // pointer kinds: how far the pointer moved since the previous pointer event, in local units. Unlike differences of pos, it does not change when the area itself moves between frames, so a drag that moves its own widget adds it up without feeding back.
-	button: Button,
-	scroll: [2]f32,
-	key:    Key,
-	mods:   Mods,
-	text:   string, // Text kind: the inserted UTF-8
-}
-
 // rect_contains reports whether p lies inside r (half-open on max edges).
 rect_contains :: proc(r: Rect, p: Point) -> bool {
 	return p.x >= r.x && p.y >= r.y && p.x < r.x + r.w && p.y < r.y + r.h
@@ -193,7 +144,7 @@ rect_intersect :: proc(a, b: Rect) -> Rect {
 }
 
 // shape_bounds is the axis-aligned bounding rect of s in its own space.
-shape_bounds :: proc(ops: ^Ops, s: Shape) -> Rect {
+shape_bounds :: proc(ops: ^Scene, s: Shape) -> Rect {
 	switch v in s {
 	case Rect:
 		return v
@@ -214,17 +165,4 @@ shape_bounds :: proc(ops: ^Ops, s: Shape) -> Rect {
 		return {lo.x, lo.y, hi.x - lo.x, hi.y - lo.y}
 	}
 	return {}
-}
-
-// Raw_Event is what a platform (ui/sdl, the probe) feeds the router: the
-// same fields as Event but with pos in device pixels and no area. The router
-// resolves the area and converts pos to local space.
-Raw_Event :: struct {
-	kind:   Event_Kind,
-	pos:    Point,
-	button: Button,
-	scroll: [2]f32,
-	key:    Key,
-	mods:   Mods,
-	text:   string,
 }

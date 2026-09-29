@@ -1,6 +1,7 @@
 package material
 
 import "core:math"
+import "jm:ui/ops"
 import "core:testing"
 import "jm:ui"
 
@@ -20,20 +21,20 @@ has :: proc(p: ^ui.Probe, name: string) -> bool {
 // press_at, move_to and release_at push one raw pointer event at device
 // point pt and run a frame.
 @(private = "file")
-press_at :: proc(p: ^ui.Probe, pt: ui.Point) {
+press_at :: proc(p: ^ui.Probe, pt: ops.Point) {
 	ui.router_push(&p.router, {kind = .Move, pos = pt})
 	ui.router_push(&p.router, {kind = .Press, pos = pt})
 	ui.probe_frame(p)
 }
 
 @(private = "file")
-move_to :: proc(p: ^ui.Probe, pt: ui.Point) {
+move_to :: proc(p: ^ui.Probe, pt: ops.Point) {
 	ui.router_push(&p.router, {kind = .Move, pos = pt})
 	ui.probe_frame(p)
 }
 
 @(private = "file")
-release_at :: proc(p: ^ui.Probe, pt: ui.Point) {
+release_at :: proc(p: ^ui.Probe, pt: ops.Point) {
 	ui.router_push(&p.router, {kind = .Release, pos = pt})
 	ui.probe_frame(p)
 }
@@ -357,7 +358,7 @@ test_time_picker_selectors_period_and_dial :: proc(t: ^testing.T) {
 	testing.expect(t, m.em)
 	// A tap at 7 minutes snaps to 5; a drag there keeps the whole minute.
 	a := f32(7) / 60 * 2 * math.PI
-	at := c + R * ui.Point{math.sin(a), -math.cos(a)}
+	at := c + R * ops.Point{math.sin(a), -math.cos(a)}
 	press_at(&p, at)
 	release_at(&p, at)
 	testing.expect_value(t, m.t.minute, 5)
@@ -436,7 +437,7 @@ test_carousel_steps_by_key_and_reports_clicks :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
 	c, ok := ui.probe_center(&p, "carousel")
 	testing.expect(t, ok)
-	left := ui.Point{c.x - 190, c.y}
+	left := ops.Point{c.x - 190, c.y}
 	press_at(&p, left)
 	release_at(&p, left)
 	testing.expect_value(t, m.hit, 0)

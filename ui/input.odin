@@ -1,6 +1,7 @@
 package ui
 
 import "core:mem"
+import "jm:ui/ops"
 
 // Input routing. A platform (ui/sdl, the probe) pushes device events with
 // router_push; once per frame, before the ui proc runs, router_route
@@ -46,20 +47,20 @@ import "core:mem"
 Router :: struct {
 	queue:       [dynamic]Raw_Event, // device events since the last route
 	events:      [dynamic]Event, // this frame's routed events
-	focus:       Area_Id,
-	hover:       Area_Id,
-	pressed:     Area_Id, // the area holding the pointer grab; 0 is none
+	focus:       ops.Area_Id,
+	hover:       ops.Area_Id,
+	pressed:     ops.Area_Id, // the area holding the pointer grab; 0 is none
 	allocator:   mem.Allocator,
 
 	// Last seen hit of focus, hover and pressed, refreshed each route.
 	focus_hit:   Hit,
 	hover_hit:   Hit,
 	pressed_hit: Hit,
-	pointer:     Point, // the device position of the last pointer event, for Event.travel
+	pointer:     ops.Point, // the device position of the last pointer event, for Event.travel
 }
 
 @(private = "file")
-HOVER_KINDS :: Event_Kinds{.Move, .Enter, .Leave}
+HOVER_KINDS :: ops.Event_Kinds{.Move, .Enter, .Leave}
 
 // router_init prepares r; allocator backs the queue, the routed events and
 // the copies of Text strings.
@@ -142,7 +143,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 // Handling an event can change state that widgets drawn earlier in the
 // frame already read, such as a theme, so any area given events asks for
 // one more frame to redraw them.
-events :: proc(gtx: ^Ctx, area: Area_Id) -> []Event {
+events :: proc(gtx: ^Ctx, area: ops.Area_Id) -> []Event {
 	if gtx.router == nil {
 		return nil
 	}
@@ -160,13 +161,13 @@ events :: proc(gtx: ^Ctx, area: Area_Id) -> []Event {
 
 // hit_test returns the top-most hit in f under device point p whose kinds
 // contain kind, or false when there is none. f may be nil.
-hit_test :: proc(f: ^Frame, p: Point, kind: Event_Kind) -> (Hit, bool) {
+hit_test :: proc(f: ^Frame, p: ops.Point, kind: ops.Event_Kind) -> (Hit, bool) {
 	return hit_test_any(f, p, {kind})
 }
 
 // hit_test_any is hit_test for the top-most hit wanting any of kinds.
 @(private = "file")
-hit_test_any :: proc(f: ^Frame, p: Point, kinds: Event_Kinds) -> (Hit, bool) {
+hit_test_any :: proc(f: ^Frame, p: ops.Point, kinds: ops.Event_Kinds) -> (Hit, bool) {
 	if f == nil {
 		return {}, false
 	}
@@ -181,8 +182,8 @@ hit_test_any :: proc(f: ^Frame, p: Point, kinds: Event_Kinds) -> (Hit, bool) {
 // hit_contains reports whether device point p lies in h's shape and inside
 // every clip on h's chain.
 @(private)
-hit_contains :: proc(f: ^Frame, h: Hit, p: Point) -> bool {
-	if f == nil || !shape_contains_device(f.ops, h.shape, h.transform, p) {
+hit_contains :: proc(f: ^Frame, h: Hit, p: ops.Point) -> bool {
+	if f == nil || !shape_contains_device(f.scene, h.shape, h.transform, p) {
 		return false
 	}
 	c := h.clip
@@ -191,7 +192,7 @@ hit_contains :: proc(f: ^Frame, h: Hit, p: Point) -> bool {
 			return false
 		}
 		clip := f.clips[c]
-		if !shape_contains_device(f.ops, clip.shape, clip.transform, p) {
+		if !shape_contains_device(f.scene, clip.shape, clip.transform, p) {
 			return false
 		}
 		c = clip.parent
@@ -202,35 +203,35 @@ hit_contains :: proc(f: ^Frame, h: Hit, p: Point) -> bool {
 // shape_contains_device maps device point p into the local space of m and
 // tests it against s. A singular transform contains nothing.
 @(private = "file")
-shape_contains_device :: proc(ops: ^Ops, s: Shape, m: Affine, p: Point) -> bool {
-	inv, ok := invert(m)
+shape_contains_device :: proc(sc: ^ops.Scene, s: ops.Shape, m: ops.Affine, p: ops.Point) -> bool {
+	inv, ok := ops.invert(m)
 	if !ok {
 		return false
 	}
-	return shape_contains(ops, s, apply(inv, p))
+	return shape_contains(sc, s, ops.apply(inv, p))
 }
 
 // shape_contains tests local point p against s. Round_Rect cuts its
 // corners; Ellipse uses the normalized distance; Path_Ref tests only the
-// path's bounding rect in v1, and a nil ops contains nothing for it.
+// path's bounding rect in v1, and a nil sc contains nothing for it.
 @(private = "file")
-shape_contains :: proc(ops: ^Ops, s: Shape, p: Point) -> bool {
+shape_contains :: proc(sc: ^ops.Scene, s: ops.Shape, p: ops.Point) -> bool {
 	switch v in s {
-	case Rect:
-		return rect_contains(v, p)
-	case Round_Rect:
+	case ops.Rect:
+		return ops.rect_contains(v, p)
+	case ops.Round_Rect:
 		r := v.rect
-		if !rect_contains(r, p) {
+		if !ops.rect_contains(r, p) {
 			return false
 		}
 		rad := min(v.radius, r.w / 2, r.h / 2)
 		if rad <= 0 {
 			return true
 		}
-		c := Point{clamp(p.x, r.x + rad, r.x + r.w - rad), clamp(p.y, r.y + rad, r.y + r.h - rad)}
+		c := ops.Point{clamp(p.x, r.x + rad, r.x + r.w - rad), clamp(p.y, r.y + rad, r.y + r.h - rad)}
 		d := p - c
 		return d.x * d.x + d.y * d.y <= rad * rad
-	case Ellipse:
+	case ops.Ellipse:
 		r := v.rect
 		if r.w <= 0 || r.h <= 0 {
 			return false
@@ -239,29 +240,29 @@ shape_contains :: proc(ops: ^Ops, s: Shape, p: Point) -> bool {
 		dx := (p.x - (r.x + rx)) / rx
 		dy := (p.y - (r.y + ry)) / ry
 		return dx * dx + dy * dy <= 1
-	case Path_Ref:
-		if ops == nil || int(v.id) >= len(ops.paths) {
+	case ops.Path_Ref:
+		if sc == nil || int(v.id) >= len(sc.paths) {
 			return false
 		}
-		return rect_contains(shape_bounds(ops, v), p)
+		return ops.rect_contains(ops.shape_bounds(sc, v), p)
 	}
 	return false
 }
 
 // local maps device point p into h's local space; zero when singular.
 @(private = "file")
-to_local :: proc(h: Hit, p: Point) -> Point {
-	inv, ok := invert(h.transform)
+to_local :: proc(h: Hit, p: ops.Point) -> ops.Point {
+	inv, ok := ops.invert(h.transform)
 	if !ok {
 		return {}
 	}
-	return apply(inv, p)
+	return ops.apply(inv, p)
 }
 
 // refresh replaces last with area's hit in f when f still has it; the
 // top-most one wins when an id is recorded twice.
 @(private = "file")
-refresh :: proc(f: ^Frame, area: Area_Id, last: ^Hit) {
+refresh :: proc(f: ^Frame, area: ops.Area_Id, last: ^Hit) {
 	if f == nil || area == 0 {
 		return
 	}
@@ -275,7 +276,7 @@ refresh :: proc(f: ^Frame, area: Area_Id, last: ^Hit) {
 
 // deliver appends e for h's area with pos, when h's kinds contain e's kind.
 @(private = "file")
-deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: Point) -> bool {
+deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: ops.Point) -> bool {
 	if e.kind not_in h.kinds {
 		return false
 	}
@@ -307,7 +308,7 @@ deliver_pointer :: proc(r: ^Router, h: Hit, e: Raw_Event) {
 
 // synth delivers a router-made event of kind to h.
 @(private = "file")
-synth :: proc(r: ^Router, h: Hit, kind: Event_Kind, pos: Point) {
+synth :: proc(r: ^Router, h: Hit, kind: ops.Event_Kind, pos: ops.Point) {
 	deliver(r, h, Raw_Event{kind = kind}, pos)
 }
 
@@ -346,7 +347,7 @@ route_release :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 
 // update_hover moves hover to the area under p, sending Leave and Enter.
 @(private = "file")
-update_hover :: proc(r: ^Router, f: ^Frame, p: Point) {
+update_hover :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 	h: Hit
 	ok: bool
 	if r.pressed != 0 {
@@ -409,7 +410,7 @@ clone_string :: proc(s: string, allocator: mem.Allocator) -> string {
 // free; one that doesn't (checkbox) sees no Key or Focus/Blur events at
 // all, since the router only delivers what an area registered. Exported
 // for widgets built outside this package (jm:ui/material's controls).
-click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: Rect) -> bool {
+click_from_events :: proc(gtx: ^Ctx, area: ops.Area_Id, st: ^Widget_State, bounds: ops.Rect) -> bool {
 	return activate_from_events(gtx, area, st, bounds).clicked
 }
 
@@ -420,11 +421,11 @@ click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: R
 Activation :: struct {
 	clicked: bool,
 	press:   bool,
-	at:      Point,
+	at:      ops.Point,
 }
 
 // activate_from_events is click_from_events with the press it saw.
-activate_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: Rect) -> (a: Activation) {
+activate_from_events :: proc(gtx: ^Ctx, area: ops.Area_Id, st: ^Widget_State, bounds: ops.Rect) -> (a: Activation) {
 	for e in events(gtx, area) {
 		#partial switch e.kind {
 		case .Enter:
@@ -442,7 +443,7 @@ activate_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds
 			}
 		case .Release:
 			if e.button == .Left {
-				if st.pressed && rect_contains(bounds, e.pos) {
+				if st.pressed && ops.rect_contains(bounds, e.pos) {
 					a.clicked = true
 				}
 				st.pressed = false

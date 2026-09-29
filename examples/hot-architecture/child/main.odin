@@ -1,16 +1,17 @@
 // jm:ui's own pipeline, drawn with jm:ui: input becomes routed events,
-// layout records them into Ops, and Ops either flattens straight into a
+// layout records them into a Scene, which either flattens straight into a
 // render call (one process) or gets tunneled through ui/ipc to a second
 // process that flattens and renders it there instead — the same seam this
 // file's own diagram is being pushed across as you edit it, if you're
 // running it under tools/hot-watch and examples/hot-architecture/host.
 //
 //	hot-architecture-child                          run as the subprocess
-//	hot-architecture-child -dump                    the scene ops as text
+//	hot-architecture-child -dump                    the scene sc as text
 //	hot-architecture-child -png build/arch.png      render it headlessly
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:os"
 import "jm:ui"
 import "jm:ui/child"
@@ -20,10 +21,10 @@ import "jm:ui/render"
 WIDTH :: 1360
 HEIGHT :: 650
 
-INPUT_COLOR :: ui.Color{51, 102, 255, 255} // blue
-LAYOUT_COLOR :: ui.Color{20, 160, 160, 255} // teal — was amber, edited live for the hot-reload demo
-RENDER_COLOR :: ui.Color{32, 150, 80, 255} // green
-IPC_COLOR :: ui.Color{155, 89, 182, 255} // purple
+INPUT_COLOR :: ops.Color{51, 102, 255, 255} // blue
+LAYOUT_COLOR :: ops.Color{20, 160, 160, 255} // teal — was amber, edited live for the hot-reload demo
+RENDER_COLOR :: ops.Color{32, 150, 80, 255} // green
+IPC_COLOR :: ops.Color{155, 89, 182, 255} // purple
 
 INPUT_CHIPS :: []diagram.Chip {
 	{"poll()", "SDL events, or a host-forwarded ui/wire Input over ipc"},
@@ -37,7 +38,7 @@ LAYOUT_CHIPS :: []diagram.Chip {
 	{"Ctx + widgets", "column/row/box/button/label - widget_open/end"},
 	{"records into Ops", "transforms, clips, fills, glyph runs, input areas, tags"},
 	{"Layout", "retained state: hover, press, focus, flex measurements"},
-	{"flatten(ops, frame)", "Ops -> device-space draws + a hit list"},
+	{"flatten(sc, frame)", "Ops -> device-space draws + a hit list"},
 	{"Frame", "what next frame's router_route hit-tests against"},
 }
 
@@ -60,16 +61,16 @@ new_model :: proc() -> Model {
 architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	th := gtx.theme
-	ops := gtx.ops
-	ui.fill(ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
+	sc := gtx.scene
+	ops.fill(sc, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
 
 	ui.text(gtx, "jm:ui's own pipeline: input, layout, render (edited live, hot-reloaded)", {40, 18}, {size = 22})
 	ui.text(gtx, "the layout/render seam (Ops) either flattens in place or tunnels through ui/ipc to a second process", {40, 46}, {size = 12, color = th.muted})
 
 	stage_h := diagram.group_height(len(INPUT_CHIPS))
-	input := ui.Rect{30, 86, 330, stage_h}
-	layout := ui.Rect{430, 86, 330, stage_h}
-	render_box := ui.Rect{1000, 86, 330, stage_h}
+	input := ops.Rect{30, 86, 330, stage_h}
+	layout := ops.Rect{430, 86, 330, stage_h}
+	render_box := ops.Rect{1000, 86, 330, stage_h}
 
 	diagram.group(gtx, input, "INPUT", "device events become routed, per-widget events", INPUT_COLOR, INPUT_CHIPS)
 	diagram.group(gtx, layout, "LAYOUT", "widgets describe the frame; flatten makes it device-space", LAYOUT_COLOR, LAYOUT_CHIPS)
@@ -79,7 +80,7 @@ architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	diagram.arrow(gtx, {input.x + input.w + 5, 170}, {layout.x - 5, 170}, INPUT_COLOR, 2.5)
 	ui.text(gtx, "Raw_Event", {input.x + input.w + 10, 145}, {size = 11})
 
-	// The seam: the same Ops, two routes. Solid is the direct call this
+	// The seam: the same Scene, two routes. Solid is the direct call this
 	// package's own sdl.run takes; dashed is sdl.run_host's, through the
 	// ipc box, tunneling to wherever the render side actually lives.
 	seam_y :: 170
@@ -87,7 +88,7 @@ architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	ui.text(gtx, "Ops", {layout.x + layout.w + 10, seam_y - 25}, {size = 11})
 	ui.text(gtx, "(same process)", {layout.x + layout.w + 10, seam_y - 11}, {size = 10, color = th.muted})
 
-	ipc := ui.Rect{830, 300, 100, diagram.group_height(0)}
+	ipc := ops.Rect{830, 300, 100, diagram.group_height(0)}
 	diagram.group(gtx, ipc, "ui/ipc", "encode -> pipe -> decode", IPC_COLOR, nil)
 	pulse_width := ui.tween_update(&m.flow, gtx)
 	diagram.dashed_arrow(gtx, {layout.x + layout.w + 5, ipc.y + ipc.h / 2 - 3}, {ipc.x, ipc.y + ipc.h / 2 - 3}, IPC_COLOR, pulse_width, 8, 6)

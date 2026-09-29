@@ -1,6 +1,9 @@
 package ui
 
-// Frame is the flattened form of Ops: every draw carries its own device
+
+import "jm:ui/ops"
+
+// Frame is the flattened form of an ops.Scene: every draw carries its own device
 // transform and a clip reference, so an executor never nests. Hits are the
 // input areas in the same terms. Both are produced by flatten (flatten.odin)
 // and consumed by ui/render and the router.
@@ -15,28 +18,28 @@ NO_CLIP :: Clip_Id(-1)
 // back to a mask layer otherwise.
 Clip :: struct {
 	parent:    Clip_Id,
-	shape:     Shape,
-	transform: Affine,
+	shape:     ops.Shape,
+	transform: ops.Affine,
 }
 
 Draw_Cmd :: union {
-	Fill,
-	Stroke,
-	Glyphs,
-	Image,
+	ops.Fill,
+	ops.Stroke,
+	ops.Glyphs,
+	ops.Image,
 }
 
 Draw :: struct {
-	transform: Affine,
+	transform: ops.Affine,
 	clip:      Clip_Id,
 	cmd:       Draw_Cmd,
 }
 
 Hit :: struct {
-	area:      Area_Id,
-	kinds:     Event_Kinds,
-	shape:     Shape,
-	transform: Affine,
+	area:      ops.Area_Id,
+	kinds:     ops.Event_Kinds,
+	shape:     ops.Shape,
+	transform: ops.Affine,
 	clip:      Clip_Id,
 	order:     int, // recording order; later areas are on top
 	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
@@ -44,9 +47,9 @@ Hit :: struct {
 
 // Layout_Box is a Debug_Box placed on the frame: its rect in device space.
 Layout_Box :: struct {
-	id:        Area_Id,
-	rect:      Rect,
-	min, max:  Size,
+	id:        ops.Area_Id,
+	rect:      ops.Rect,
+	min, max:  ops.Size,
 	depth:     i32,
 	file:      string,
 	line:      i32,
@@ -59,16 +62,16 @@ Frame :: struct {
 	draws: [dynamic]Draw,
 	clips: [dynamic]Clip,
 	hits:  [dynamic]Hit,
-	tags:  [dynamic]Tag,
+	tags:  [dynamic]ops.Tag,
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
-	ops:   ^Ops, // resources: paths, runs, fonts, images
+	scene:   ^ops.Scene, // resources: paths, runs, fonts, images
 }
 
 frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.draws = make([dynamic]Draw, allocator)
 	f.clips = make([dynamic]Clip, allocator)
 	f.hits = make([dynamic]Hit, allocator)
-	f.tags = make([dynamic]Tag, allocator)
+	f.tags = make([dynamic]ops.Tag, allocator)
 	f.boxes = make([dynamic]Layout_Box, allocator)
 }
 
@@ -78,7 +81,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.hits)
 	clear(&f.tags)
 	clear(&f.boxes)
-	f.ops = nil
+	f.scene = nil
 }
 
 frame_destroy :: proc(f: ^Frame) {

@@ -1,6 +1,7 @@
 package material
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:math"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
@@ -112,11 +113,11 @@ card :: proc(
 }
 
 @(private)
-paint_card :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
+paint_card :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
 	cp := (^Card_Paint)(user)
 	t := card_tokens(cp.kind)
-	area := ui.Rect{0, 0, size.x, size.y}
-	rr := ui.Round_Rect{area, corners(t.shape, area).tl}
+	area := ops.Rect{0, 0, size.x, size.y}
+	rr := ops.Round_Rect{area, corners(t.shape, area).tl}
 	c: Control
 	if cp.clickable {
 		c = control(gtx, id, area, cp.state)
@@ -146,19 +147,19 @@ paint_card :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
 		dp = elevation_tween(gtx, ui.widget_data(gtx, id, Elevation_Tween), target, t.rest, t.hover)
 	}
 	container := color(t.container)
-	edge: ui.Color
+	edge: ops.Color
 	if cp.kind == .Outlined {
 		edge = color(tok.OUTLINED_CARD_OUTLINE_COLOR)
 	}
 	if c.disabled {
 		if cp.kind == .Outlined {
-			edge = ui.mix(container, color(tok.OUTLINED_CARD_DISABLED_OUTLINE_COLOR), tok.OUTLINED_CARD_DISABLED_OUTLINE_OPACITY)
+			edge = ops.mix(container, color(tok.OUTLINED_CARD_DISABLED_OUTLINE_COLOR), tok.OUTLINED_CARD_DISABLED_OUTLINE_OPACITY)
 		} else {
-			container = ui.mix(container, color(t.disabled_container), t.disabled_opacity)
+			container = ops.mix(container, color(t.disabled_container), t.disabled_opacity)
 		}
 	}
 	paint_elevation_dp(gtx, rr, dp)
-	ui.fill(gtx.ops, rr, container)
+	ops.fill(gtx.scene, rr, container)
 	if ui.painted(edge) {
 		stroke_inside(gtx, rr, edge, tok.OUTLINED_CARD_OUTLINE_WIDTH)
 	}
@@ -256,8 +257,8 @@ spring_progress :: proc(s: Spring, t: f32) -> f32 {
 
 // scale_about is a scale by k about point c.
 @(private)
-scale_about :: proc(c: ui.Point, k: f32) -> ui.Affine {
-	return ui.mul(ui.mul(ui.translate(-c.x, -c.y), ui.scale(k, k)), ui.translate(c.x, c.y))
+scale_about :: proc(c: ops.Point, k: f32) -> ops.Affine {
+	return ops.mul(ops.mul(ops.translate(-c.x, -c.y), ops.scale(k, k)), ops.translate(c.x, c.y))
 }
 
 // List_Selection is list.json's selectionMode: how a row takes a click.
@@ -320,7 +321,7 @@ List_Item :: struct {
 // List_Colors are one row's resolved content colours.
 @(private)
 List_Colors :: struct {
-	container, label, overline, supporting, leading, trailing, trailing_text: ui.Color,
+	container, label, overline, supporting, leading, trailing, trailing_text: ops.Color,
 }
 
 // list_colors resolves comp.list's colour tokens for c. selected picks
@@ -329,20 +330,20 @@ List_Colors :: struct {
 list_colors :: proc(c: Control, selected, dragged: bool) -> (col: List_Colors) {
 	if c.disabled {
 		if selected {
-			col.container = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_CONTAINER_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_CONTAINER_OPACITY)
-			col.label = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_LABEL_TEXT_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
-			col.overline = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_OVERLINE_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_OVERLINE_OPACITY)
-			col.supporting = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_SUPPORTING_TEXT_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_SUPPORTING_TEXT_OPACITY)
-			col.leading = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_LEADING_ICON_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_LEADING_ICON_OPACITY)
-			col.trailing = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_ICON_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_ICON_OPACITY)
-			col.trailing_text = ui.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
+			col.container = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_CONTAINER_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_CONTAINER_OPACITY)
+			col.label = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_LABEL_TEXT_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
+			col.overline = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_OVERLINE_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_OVERLINE_OPACITY)
+			col.supporting = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_SUPPORTING_TEXT_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_SUPPORTING_TEXT_OPACITY)
+			col.leading = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_LEADING_ICON_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_LEADING_ICON_OPACITY)
+			col.trailing = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_ICON_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_ICON_OPACITY)
+			col.trailing_text = ops.with_alpha(color(tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.LIST_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
 			return
 		}
-		col.label = ui.with_alpha(color(tok.LIST_ITEM_DISABLED_LABEL_TEXT_COLOR), tok.LIST_ITEM_DISABLED_LABEL_TEXT_OPACITY)
-		col.overline = ui.with_alpha(color(tok.LIST_ITEM_DISABLED_OVERLINE_COLOR), tok.LIST_ITEM_DISABLED_OVERLINE_OPACITY)
-		col.supporting = ui.with_alpha(color(tok.LIST_ITEM_DISABLED_SUPPORTING_TEXT_COLOR), tok.LIST_ITEM_DISABLED_SUPPORTING_TEXT_OPACITY)
-		col.leading = ui.with_alpha(color(tok.LIST_ITEM_DISABLED_LEADING_ICON_COLOR), tok.LIST_ITEM_DISABLED_LEADING_ICON_OPACITY)
-		col.trailing = ui.with_alpha(color(tok.LIST_ITEM_DISABLED_TRAILING_ICON_COLOR), tok.LIST_ITEM_DISABLED_TRAILING_ICON_OPACITY)
+		col.label = ops.with_alpha(color(tok.LIST_ITEM_DISABLED_LABEL_TEXT_COLOR), tok.LIST_ITEM_DISABLED_LABEL_TEXT_OPACITY)
+		col.overline = ops.with_alpha(color(tok.LIST_ITEM_DISABLED_OVERLINE_COLOR), tok.LIST_ITEM_DISABLED_OVERLINE_OPACITY)
+		col.supporting = ops.with_alpha(color(tok.LIST_ITEM_DISABLED_SUPPORTING_TEXT_COLOR), tok.LIST_ITEM_DISABLED_SUPPORTING_TEXT_OPACITY)
+		col.leading = ops.with_alpha(color(tok.LIST_ITEM_DISABLED_LEADING_ICON_COLOR), tok.LIST_ITEM_DISABLED_LEADING_ICON_OPACITY)
+		col.trailing = ops.with_alpha(color(tok.LIST_ITEM_DISABLED_TRAILING_ICON_COLOR), tok.LIST_ITEM_DISABLED_TRAILING_ICON_OPACITY)
 		col.trailing_text = col.supporting
 		return
 	}
@@ -421,13 +422,13 @@ mix_list_colors :: proc(a, b: List_Colors, t: f32) -> List_Colors {
 		return b
 	}
 	return {
-		ui.mix(a.container, b.container, t),
-		ui.mix(a.label, b.label, t),
-		ui.mix(a.overline, b.overline, t),
-		ui.mix(a.supporting, b.supporting, t),
-		ui.mix(a.leading, b.leading, t),
-		ui.mix(a.trailing, b.trailing, t),
-		ui.mix(a.trailing_text, b.trailing_text, t),
+		ops.mix(a.container, b.container, t),
+		ops.mix(a.label, b.label, t),
+		ops.mix(a.overline, b.overline, t),
+		ops.mix(a.supporting, b.supporting, t),
+		ops.mix(a.leading, b.leading, t),
+		ops.mix(a.trailing, b.trailing, t),
+		ops.mix(a.trailing_text, b.trailing_text, t),
 	}
 }
 
@@ -481,7 +482,7 @@ DRAG_SLOP :: f32(8)
 // setting reveal.target.
 List_Item_State :: struct {
 	drag:   f32, // the pointer's travel along the row's drag axis since the press, once past DRAG_SLOP; 0 when not dragging
-	grab:   ui.Point, // where that press landed, local to the row
+	grab:   ops.Point, // where that press landed, local to the row
 	reveal: ui.Spring, // a reveal row's offset (dp, 0 or less); its target is where it rests: 0 closed, minus the actions' width open
 }
 
@@ -535,7 +536,7 @@ list_item :: proc(
 		w = gtx.constraints.max.x < ui.INF ? gtx.constraints.max.x : 360
 	}
 	size := ui.constrain(gtx.constraints, {w, h})
-	area := ui.Rect{0, 0, size.x, size.y}
+	area := ops.Rect{0, 0, size.x, size.y}
 
 	st := state
 	if it.selection == .None && st != .Disabled {
@@ -641,10 +642,10 @@ list_item :: proc(
 	// case, so a plain row paints it only once it differs (selected,
 	// lifted) — a row laid on a sheet or card then takes that surface, as
 	// Compose's ListItem would only if given the sheet's colour.
-	container := ui.with_alpha(col.container, sel)
+	container := ops.with_alpha(col.container, sel)
 	if it.segment_count > 0 || it.kind == .Reveal {
 		base := it.segment_count > 0 ? color(tok.LIST_ITEM_SEGMENTED_CONTAINER_COLOR) : color(tok.REVEAL_LIST_ITEM_CONTAINER_COLOR)
-		container = ui.mix(base, col.container, sel)
+		container = ops.mix(base, col.container, sel)
 		if c.disabled {
 			container = selected ? col.container : base
 		}
@@ -674,7 +675,7 @@ list_item :: proc(
 	case it.kind == .Reorder && drag != 0:
 		// Lifted: a drop zone holds the row's place, and the row follows
 		// the pointer in an overlay so the rows after it pass beneath.
-		ui.fill(gtx.ops, rounded(gtx, area, corners(tok.REORDER_LIST_ITEM_SHAPE, area)), color(tok.REORDER_LIST_ITEM_DROP_ZONE_COLOR))
+		ops.fill(gtx.scene, rounded(gtx, area, corners(tok.REORDER_LIST_ITEM_SHAPE, area)), color(tok.REORDER_LIST_ITEM_DROP_ZONE_COLOR))
 		o := ui.overlay_open(gtx, {0, drag})
 		paint_list_body(gtx, body, c)
 		ui.close(&o)
@@ -686,26 +687,26 @@ list_item :: proc(
 				offset = ui.spring_update(&gs.reveal, gtx, gs.reveal.target, spring_params(.Fast_Spatial), 0.5)
 			}
 		}
-		ui.clip_push(gtx.ops, area)
+		ops.clip_push(gtx.scene, area)
 		paint_reveal_actions(gtx, it, p.id, size, offset, c, gs)
 		open := reveal_w > 0 ? -offset / reveal_w : 0
 		body.corners = lerp_corners(k, corners(tok.REVEAL_LIST_ITEM_CONTAINER_SHAPE, area), open)
-		ui.transform_push(gtx.ops, ui.translate(offset, 0))
+		ops.transform_push(gtx.scene, ops.translate(offset, 0))
 		paint_list_body(gtx, body, c)
-		ui.transform_pop(gtx.ops)
-		ui.clip_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
+		ops.clip_pop(gtx.scene)
 		// Only the row's visible part takes presses, so the uncovered
 		// actions take their own.
 		if c.st != nil {
-			ui.input_area(gtx.ops, p.id, ui.Rect{0, 0, max(size.x + offset, 0), size.y}, CLICK_KINDS)
+			ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, max(size.x + offset, 0), size.y}, CLICK_KINDS)
 		}
 	case:
 		paint_list_body(gtx, body, c)
 	}
 	if it.divider {
-		ui.fill(
-			gtx.ops,
-			ui.Rect{tok.LIST_DIVIDER_LEADING_SPACE, size.y - tok.DIVIDER_THICKNESS, max(size.x - tok.LIST_DIVIDER_LEADING_SPACE - tok.LIST_DIVIDER_TRAILING_SPACE, 0), tok.DIVIDER_THICKNESS},
+		ops.fill(
+			gtx.scene,
+			ops.Rect{tok.LIST_DIVIDER_LEADING_SPACE, size.y - tok.DIVIDER_THICKNESS, max(size.x - tok.LIST_DIVIDER_LEADING_SPACE - tok.LIST_DIVIDER_TRAILING_SPACE, 0), tok.DIVIDER_THICKNESS},
 			color(tok.DIVIDER_COLOR),
 		)
 	}
@@ -713,7 +714,7 @@ list_item :: proc(
 	if it.kind != .Reveal {
 		listen(gtx, c, p.id, area)
 	}
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, it.headline))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, it.headline))
 	ui.widget_close(gtx, &p, {size = size})
 	return activated && it.selection != .None
 }
@@ -722,12 +723,12 @@ list_item :: proc(
 @(private)
 List_Body :: struct {
 	it:        List_Item,
-	size:      ui.Size,
+	size:      ops.Size,
 	lines:     int,
 	pad_y:     f32,
 	col:       List_Colors,
 	corners:   Corners,
-	container: ui.Color,
+	container: ops.Color,
 	expand:    f32, // Expanded: 0 collapsed to 1 expanded
 	elevation: f32, // dp
 }
@@ -737,13 +738,13 @@ List_Body :: struct {
 @(private)
 paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 	it, size := b.it, b.size
-	area := ui.Rect{0, 0, size.x, size.y}
+	area := ops.Rect{0, 0, size.x, size.y}
 	shape := rounded(gtx, area, b.corners)
 	if b.elevation > 0 {
 		paint_elevation_dp(gtx, {area, b.corners.tl}, b.elevation)
 	}
 	if b.container[3] > 0 {
-		ui.fill(gtx.ops, shape, b.container)
+		ops.fill(gtx.scene, shape, b.container)
 	}
 	if it.selection != .None {
 		paint_state_layer(gtx, c, shape, b.col.label)
@@ -759,8 +760,8 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 		mw, mh := list_media_size(it.leading_media)
 		y := slot_y(top, b.pad_y, size.y, mh)
 		sh := it.leading_media == .Image ? tok.LIST_ITEM_LEADING_IMAGE_EXPRESSIVE_SHAPE : tok.LIST_ITEM_LEADING_VIDEO_SHAPE
-		r := ui.Rect{x, y, mw, mh}
-		ui.fill(gtx.ops, rounded(gtx, r, corners(sh, r)), color(.Surface_Container_Highest))
+		r := ops.Rect{x, y, mw, mh}
+		ops.fill(gtx.scene, rounded(gtx, r, corners(sh, r)), color(.Surface_Container_Highest))
 		g := it.leading_icon != .None ? it.leading_icon : (it.leading_media == .Image ? Icon.Image : Icon.Movie)
 		ICON :: tok.LIST_ITEM_LEADING_ICON_SIZE
 		icon(gtx, g, {x + (mw - ICON) / 2, y + (mh - ICON) / 2}, ICON, b.col.leading)
@@ -773,7 +774,7 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 		if c.disabled {
 			fill, ink = disabled_container(), b.col.leading
 		}
-		ui.fill(gtx.ops, ui.circle({x + AV / 2, y + AV / 2}, AV / 2), fill)
+		ops.fill(gtx.scene, ui.circle({x + AV / 2, y + AV / 2}, AV / 2), fill)
 		t := shape_style(gtx, it.leading_avatar, tok.LIST_ITEM_LEADING_AVATAR_LABEL_FONT)
 		draw_text(gtx, t, {x + (AV - t.width) / 2, y + (AV - t.height) / 2}, ink)
 		x += AV + tok.LIST_ITEM_BETWEEN_SPACE
@@ -793,17 +794,17 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 		ICON :: tok.X_SMALL_ICON_BUTTON_ICON_SIZE
 		right -= BOX
 		y := slot_y(top, b.pad_y, size.y, BOX)
-		ctr := ui.Point{right + BOX / 2, y + BOX / 2}
-		fill := ui.mix(color(tok.EXPANDED_LIST_COLLAPSED_ITEM_TRAILING_ICON_CONTAINER_COLOR), color(tok.EXPANDED_LIST_EXPANDED_ITEM_TRAILING_ICON_CONTAINER_COLOR), b.expand)
-		ink := ui.mix(color(tok.EXPANDED_LIST_COLLAPSED_ITEM_TRAILING_ICON_ICON_COLOR), color(tok.EXPANDED_LIST_EXPANDED_ITEM_TRAILING_ICON_ICON_COLOR), b.expand)
+		ctr := ops.Point{right + BOX / 2, y + BOX / 2}
+		fill := ops.mix(color(tok.EXPANDED_LIST_COLLAPSED_ITEM_TRAILING_ICON_CONTAINER_COLOR), color(tok.EXPANDED_LIST_EXPANDED_ITEM_TRAILING_ICON_CONTAINER_COLOR), b.expand)
+		ink := ops.mix(color(tok.EXPANDED_LIST_COLLAPSED_ITEM_TRAILING_ICON_ICON_COLOR), color(tok.EXPANDED_LIST_EXPANDED_ITEM_TRAILING_ICON_ICON_COLOR), b.expand)
 		if c.disabled {
 			ink = b.col.trailing
 		}
-		ui.fill(gtx.ops, ui.circle(ctr, BOX / 2), fill)
-		turn := ui.mul(ui.mul(ui.translate(-ctr.x, -ctr.y), ui.rotate(-math.PI * b.expand)), ui.translate(ctr.x, ctr.y))
-		ui.transform_push(gtx.ops, turn)
+		ops.fill(gtx.scene, ui.circle(ctr, BOX / 2), fill)
+		turn := ops.mul(ops.mul(ops.translate(-ctr.x, -ctr.y), ops.rotate(-math.PI * b.expand)), ops.translate(ctr.x, ctr.y))
+		ops.transform_push(gtx.scene, turn)
 		icon(gtx, .Expand_More, {ctr.x - ICON / 2, ctr.y - ICON / 2}, ICON, ink)
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 		right -= tok.LIST_ITEM_BETWEEN_SPACE
 	case .Reorder:
 		ICON :: tok.LIST_ITEM_TRAILING_ICON_SIZE
@@ -827,7 +828,7 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 
 	tw := max(right - x, 0)
 	y := slot_y(top, b.pad_y, size.y, list_text_height(it, b.lines))
-	ui.clip_push(gtx.ops, ui.Rect{x, 0, tw, size.y})
+	ops.clip_push(gtx.scene, ops.Rect{x, 0, tw, size.y})
 	if it.overline != "" {
 		y += draw_style_text(gtx, it.overline, {x, y}, tok.LIST_ITEM_OVERLINE_FONT, b.col.overline).height
 	}
@@ -836,7 +837,7 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 		max_lines := b.lines == 3 && it.overline == "" ? 2 : 1
 		paint_wrapped(gtx, it.supporting, tok.LIST_ITEM_SUPPORTING_TEXT_FONT, b.col.supporting, {x, y}, tw, max_lines)
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 }
 
 // list_text_height is the height of a row's text block.
@@ -889,7 +890,7 @@ list_reveal_width :: proc(n: int) -> f32 {
 // action (primary container, rounded square); the rest are secondary
 // containers, full shape (comp.reveal-list).
 @(private)
-paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size: ui.Size, offset: f32, rc: Control, gs: ^List_Item_State) {
+paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ops.Area_Id, size: ops.Size, offset: f32, rc: Control, gs: ^List_Item_State) {
 	n := len(it.actions)
 	if n == 0 {
 		return
@@ -900,7 +901,7 @@ paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size:
 	y := (size.y - BOX) / 2
 	open := -offset > 1
 	for g, i in it.actions {
-		r := ui.Rect{x, y, BOX, BOX}
+		r := ops.Rect{x, y, BOX, BOX}
 		primary := i == n - 1
 		sh := primary ? tok.REVEAL_LIST_ITEM_ICON_BUTTON_ACTION_CONTAINER_SHAPE : tok.REVEAL_LIST_ITEM_ICON_BUTTON_CONTAINER_SHAPE
 		fill := color(primary ? tok.REVEAL_LIST_ITEM_ACTION_ICON_BUTTON_CONTAINER_COLOR : tok.REVEAL_LIST_ITEM_ICON_BUTTON_CONTAINER_COLOR)
@@ -914,13 +915,13 @@ paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size:
 				gs.reveal.target = 0
 			}
 		}
-		ui.fill(gtx.ops, shape, fill)
+		ops.fill(gtx.scene, shape, fill)
 		paint_state_layer(gtx, ac, shape, ink)
 		icon(gtx, g, {x + (BOX - ICON) / 2, y + (BOX - ICON) / 2}, ICON, ink)
 		paint_focus_ring_corners(gtx, ac, r, corners(sh, r))
 		listen(gtx, ac, id, r)
 		if ac.st != nil {
-			ui.tag(gtx.ops, id, fmt.aprintf("%s action %d", it.headline, i, allocator = gtx.allocator))
+			ops.tag(gtx.scene, id, fmt.aprintf("%s action %d", it.headline, i, allocator = gtx.allocator))
 		}
 		x += BOX + REVEAL_GAP
 	}
@@ -929,13 +930,13 @@ paint_reveal_actions :: proc(gtx: ^ui.Ctx, it: List_Item, row: ui.Area_Id, size:
 // paint_drag_handle draws a size-px drag handle, two columns of three
 // dots: the icon set has no drag_indicator glyph.
 @(private)
-paint_drag_handle :: proc(gtx: ^ui.Ctx, at: ui.Point, size: f32, ink: ui.Color) {
+paint_drag_handle :: proc(gtx: ^ui.Ctx, at: ops.Point, size: f32, ink: ops.Color) {
 	r := size / 12
 	for col in 0 ..< 2 {
 		for row in 0 ..< 3 {
 			cx := at.x + size * (col == 0 ? 0.375 : 0.625)
 			cy := at.y + size * (0.25 + 0.25 * f32(row))
-			ui.fill(gtx.ops, ui.circle({cx, cy}, r), ink)
+			ops.fill(gtx.scene, ui.circle({cx, cy}, r), ink)
 		}
 	}
 }
@@ -955,7 +956,7 @@ divider :: proc(
 	inset_end: f32 = 0,
 	vertical := false,
 	thickness: f32 = tok.DIVIDER_THICKNESS,
-	line_color := ui.Color{},
+	line_color := ops.Color{},
 	length: f32 = 0,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -963,13 +964,13 @@ divider :: proc(
 	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	ink := ui.painted(line_color) ? line_color : color(tok.DIVIDER_COLOR)
-	size: ui.Size
+	size: ops.Size
 	if vertical {
 		size = {thickness, cs.max.y < ui.INF ? cs.max.y : max(cs.min.y, length)}
-		ui.fill(gtx.ops, ui.Rect{0, inset, thickness, max(size.y - inset - inset_end, 0)}, ink)
+		ops.fill(gtx.scene, ops.Rect{0, inset, thickness, max(size.y - inset - inset_end, 0)}, ink)
 	} else {
 		size = {cs.max.x < ui.INF ? cs.max.x : max(cs.min.x, length), thickness}
-		ui.fill(gtx.ops, ui.Rect{inset, 0, max(size.x - inset - inset_end, 0), thickness}, ink)
+		ops.fill(gtx.scene, ops.Rect{inset, 0, max(size.x - inset - inset_end, 0), thickness}, ink)
 	}
 	ui.widget_close(gtx, &p, {size = ui.constrain(cs, size)})
 }

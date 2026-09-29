@@ -1,6 +1,7 @@
 package material
 
 import "core:strings"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -65,7 +66,7 @@ MENU_CLOSED_SCALE :: f32(0.8)
 // Menu_Colors are one menu item's resolved colours.
 @(private)
 Menu_Colors :: struct {
-	container, label, supporting, leading, trailing, trailing_text: ui.Color,
+	container, label, supporting, leading, trailing, trailing_text: ops.Color,
 }
 
 // menu_colors resolves an item's colours for style, from the style's own
@@ -87,7 +88,7 @@ menu_colors :: proc(style: Menu_Style, c: Control, selected: bool) -> (col: Menu
 			d := disabled_content()
 			col.label, col.supporting, col.leading, col.trailing, col.trailing_text = d, d, d, d, d
 			if selected {
-				col.container = ui.with_alpha(col.container, DISABLED_CONTENT_OPACITY)
+				col.container = ops.with_alpha(col.container, DISABLED_CONTENT_OPACITY)
 			}
 		}
 	case .Standard:
@@ -101,11 +102,11 @@ menu_colors :: proc(style: Menu_Style, c: Control, selected: bool) -> (col: Menu
 				color(tok.STANDARD_MENU_ITEM_SELECTED_TRAILING_SUPPORTING_TEXT_COLOR),
 			}
 			if c.disabled {
-				col.container = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_CONTAINER_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_CONTAINER_OPACITY)
-				col.label = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
-				col.leading = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LEADING_ICON_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LEADING_ICON_OPACITY)
-				col.trailing = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_TRAILING_ICON_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_TRAILING_ICON_OPACITY)
-				col.supporting, col.trailing_text = col.label, ui.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
+				col.container = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_CONTAINER_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_CONTAINER_OPACITY)
+				col.label = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
+				col.leading = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LEADING_ICON_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LEADING_ICON_OPACITY)
+				col.trailing = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_TRAILING_ICON_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_TRAILING_ICON_OPACITY)
+				col.supporting, col.trailing_text = col.label, ops.with_alpha(color(tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.STANDARD_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
 			}
 			return
 		}
@@ -119,11 +120,11 @@ menu_colors :: proc(style: Menu_Style, c: Control, selected: bool) -> (col: Menu
 		}
 		switch {
 		case c.disabled:
-			col.label = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_LABEL_TEXT_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_LABEL_TEXT_OPACITY)
-			col.supporting = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_SUPPORTING_TEXT_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_SUPPORTING_TEXT_OPACITY)
-			col.leading = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_LEADING_ICON_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_LEADING_ICON_OPACITY)
-			col.trailing = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_ICON_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_ICON_OPACITY)
-			col.trailing_text = ui.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
+			col.label = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_LABEL_TEXT_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_LABEL_TEXT_OPACITY)
+			col.supporting = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_SUPPORTING_TEXT_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_SUPPORTING_TEXT_OPACITY)
+			col.leading = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_LEADING_ICON_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_LEADING_ICON_OPACITY)
+			col.trailing = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_ICON_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_ICON_OPACITY)
+			col.trailing_text = ops.with_alpha(color(tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.STANDARD_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
 		case c.pressed:
 			col.label = color(tok.STANDARD_MENU_ITEM_PRESSED_LABEL_TEXT_COLOR)
 			col.leading = color(tok.STANDARD_MENU_ITEM_PRESSED_LEADING_ICON_COLOR)
@@ -151,11 +152,11 @@ menu_colors :: proc(style: Menu_Style, c: Control, selected: bool) -> (col: Menu
 			case c.disabled:
 				// comp.vibrant-menu has no selected-disabled container: keep the
 				// selected container, dim the content (menu.json notes).
-				col.label = ui.with_alpha(col.label, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
-				col.supporting = ui.with_alpha(col.supporting, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_SUPPORTING_TEXT_OPACITY)
-				col.leading = ui.with_alpha(col.leading, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_LEADING_ICON_OPACITY)
-				col.trailing = ui.with_alpha(col.trailing, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_TRAILING_ICON_OPACITY)
-				col.trailing_text = ui.with_alpha(col.trailing_text, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
+				col.label = ops.with_alpha(col.label, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_LABEL_TEXT_OPACITY)
+				col.supporting = ops.with_alpha(col.supporting, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_SUPPORTING_TEXT_OPACITY)
+				col.leading = ops.with_alpha(col.leading, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_LEADING_ICON_OPACITY)
+				col.trailing = ops.with_alpha(col.trailing, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_TRAILING_ICON_OPACITY)
+				col.trailing_text = ops.with_alpha(col.trailing_text, tok.VIBRANT_MENU_ITEM_SELECTED_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
 			case c.pressed:
 				col.label = color(tok.VIBRANT_MENU_ITEM_SELECTED_PRESSED_LABEL_TEXT_COLOR)
 			case c.focused:
@@ -175,11 +176,11 @@ menu_colors :: proc(style: Menu_Style, c: Control, selected: bool) -> (col: Menu
 		}
 		switch {
 		case c.disabled:
-			col.label = ui.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_LABEL_TEXT_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_LABEL_TEXT_OPACITY)
-			col.supporting = ui.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_SUPPORTING_TEXT_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_SUPPORTING_TEXT_OPACITY)
-			col.leading = ui.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_LEADING_ICON_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_LEADING_ICON_OPACITY)
-			col.trailing = ui.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_ICON_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_ICON_OPACITY)
-			col.trailing_text = ui.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
+			col.label = ops.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_LABEL_TEXT_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_LABEL_TEXT_OPACITY)
+			col.supporting = ops.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_SUPPORTING_TEXT_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_SUPPORTING_TEXT_OPACITY)
+			col.leading = ops.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_LEADING_ICON_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_LEADING_ICON_OPACITY)
+			col.trailing = ops.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_ICON_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_ICON_OPACITY)
+			col.trailing_text = ops.with_alpha(color(tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_COLOR), tok.VIBRANT_MENU_ITEM_DISABLED_TRAILING_SUPPORTING_TEXT_OPACITY)
 		case c.pressed:
 			col.label = color(tok.VIBRANT_MENU_ITEM_PRESSED_LABEL_TEXT_COLOR)
 			col.leading = color(tok.VIBRANT_MENU_ITEM_PRESSED_LEADING_ICON_COLOR)
@@ -199,7 +200,7 @@ menu_colors :: proc(style: Menu_Style, c: Control, selected: bool) -> (col: Menu
 
 // menu_container_color is the popup (or group) surface for style.
 @(private)
-menu_container_color :: proc(style: Menu_Style) -> ui.Color {
+menu_container_color :: proc(style: Menu_Style) -> ops.Color {
 	switch style {
 	case .Legacy:
 		return color(tok.MENU_CONTAINER_COLOR)
@@ -252,7 +253,7 @@ menu :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
 	items: []Menu_Item,
-	offset := ui.Point{0, 40},
+	offset := ops.Point{0, 40},
 	modal := true,
 	style := Menu_Style.Legacy,
 	grouped := false,
@@ -338,7 +339,7 @@ menu :: proc(
 		case !live && st == .Live:
 			st = .Enabled
 		}
-		r := ui.Rect{0, rows[i].y, w, rows[i].h}
+		r := ops.Rect{0, rows[i].y, w, rows[i].h}
 		ctrl[i] = control(gtx, ui.id_mix(menu_id, u64(i)), r, st)
 		if ctrl[i].clicked {
 			chosen = i
@@ -374,7 +375,7 @@ menu_paint :: proc(
 	items: []Menu_Item,
 	rows: []Menu_Row,
 	ctrl: []Control,
-	menu_id, scrim_id: ui.Area_Id,
+	menu_id, scrim_id: ops.Area_Id,
 	w, h: f32,
 	group: int,
 	shown, alpha: f32,
@@ -385,11 +386,11 @@ menu_paint :: proc(
 	expressive := style != .Legacy
 	// Grow from the top start, the edge nearest an anchor above it.
 	k := MENU_CLOSED_SCALE + (1 - MENU_CLOSED_SCALE) * shown
-	ui.transform_push(gtx.ops, scale_about({}, k))
-	defer ui.transform_pop(gtx.ops)
+	ops.transform_push(gtx.scene, scale_about({}, k))
+	defer ops.transform_pop(gtx.scene)
 	if live && modal {
 		// Scrim: an invisible catch-all under the menu; a press on it closes.
-		ui.input_area(gtx.ops, scrim_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+		ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	}
 
 	// Containers: one popup, or one surface per group.
@@ -405,24 +406,24 @@ menu_paint :: proc(
 					bottom = r.y + r.h + MENU_GROUP_PAD_Y
 				}
 			}
-			gr := ui.Rect{0, top, w, max(bottom - top, MENU_GROUP_MIN_H)}
+			gr := ops.Rect{0, top, w, max(bottom - top, MENU_GROUP_MIN_H)}
 			gk := menu_group_corners(g, group + 1, gr)
 			paint_elevation_dp(gtx, {gr, gk.tl}, tok.SEGMENTED_MENU_CONTAINER_ELEVATION * alpha)
-			ui.fill(gtx.ops, rounded(gtx, gr, gk), fade(fill, alpha))
+			ops.fill(gtx.scene, rounded(gtx, gr, gk), fade(fill, alpha))
 			if live {
-				ui.input_area(gtx.ops, ui.id_mix(menu_id, 0xfff0 + u64(g)), rounded(gtx, gr, gk), {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+				ops.input_area(gtx.scene, ui.id_mix(menu_id, 0xfff0 + u64(g)), rounded(gtx, gr, gk), {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 			}
 		}
 	} else {
 		sh := expressive ? tok.SEGMENTED_MENU_CONTAINER_SHAPE : tok.MENU_CONTAINER_SHAPE
 		elev := expressive ? tok.SEGMENTED_MENU_CONTAINER_ELEVATION : tok.MENU_CONTAINER_ELEVATION
-		area := ui.Rect{0, 0, w, h}
-		rr := ui.Round_Rect{area, corners(sh, area).tl}
+		area := ops.Rect{0, 0, w, h}
+		rr := ops.Round_Rect{area, corners(sh, area).tl}
 		paint_elevation_dp(gtx, rr, elev * alpha)
-		ui.fill(gtx.ops, rr, fade(fill, alpha))
+		ops.fill(gtx.scene, rr, fade(fill, alpha))
 		// Block presses on the menu's own padding from reaching the scrim.
 		if live {
-			ui.input_area(gtx.ops, ui.id_mix(menu_id, 0xfffe), rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+			ops.input_area(gtx.scene, ui.id_mix(menu_id, 0xfffe), rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 	}
 
@@ -437,13 +438,13 @@ menu_paint :: proc(
 		}
 		paint_menu_item(gtx, it, row, w, style, c, alpha)
 		if live {
-			listen(gtx, c, id, ui.Rect{0, row.y, w, row.h})
+			listen(gtx, c, id, ops.Rect{0, row.y, w, row.h})
 		}
-		ui.tag(gtx.ops, id, ui.frame_string(gtx, it.label))
+		ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
 		if row.divider_after {
-			ui.fill(
-				gtx.ops,
-				ui.Rect{MENU_DIVIDER_PAD.x, row.y + row.h + MENU_DIVIDER_PAD.y, w - 2 * MENU_DIVIDER_PAD.x, tok.DIVIDER_THICKNESS},
+			ops.fill(
+				gtx.scene,
+				ops.Rect{MENU_DIVIDER_PAD.x, row.y + row.h + MENU_DIVIDER_PAD.y, w - 2 * MENU_DIVIDER_PAD.x, tok.DIVIDER_THICKNESS},
 				fade(color(tok.DIVIDER_COLOR), alpha),
 			)
 		}
@@ -454,7 +455,7 @@ menu_paint :: proc(
 // edge, small between groups (MenuDefaults.kt:104-127); a lone group is
 // the whole container's shape.
 @(private)
-menu_group_corners :: proc(g, n: int, r: ui.Rect) -> Corners {
+menu_group_corners :: proc(g, n: int, r: ops.Rect) -> Corners {
 	if n == 1 {
 		return corners(tok.SEGMENTED_MENU_CONTAINER_SHAPE, r)
 	}
@@ -537,7 +538,7 @@ paint_menu_item :: proc(gtx: ^ui.Ctx, it: Menu_Item, row: Menu_Row, w: f32, styl
 	m := menu_metrics(style)
 	col := menu_colors(style, c, it.selected)
 	inset: f32 = style == .Legacy ? 0 : tok.SEGMENTED_MENU_GROUP_PADDING
-	r := ui.Rect{inset, row.y, w - 2 * inset, row.h}
+	r := ops.Rect{inset, row.y, w - 2 * inset, row.h}
 	k: Corners
 	if style != .Legacy {
 		// Outer corners of a group's first and last items take the medium
@@ -559,7 +560,7 @@ paint_menu_item :: proc(gtx: ^ui.Ctx, it: Menu_Item, row: Menu_Row, w: f32, styl
 	}
 	shape := rounded(gtx, r, k)
 	if ui.painted(col.container) {
-		ui.fill(gtx.ops, shape, fade(col.container, alpha))
+		ops.fill(gtx.scene, shape, fade(col.container, alpha))
 	}
 	paint_state_layer(gtx, c, shape, col.label)
 	x := r.x + m.lead
@@ -615,7 +616,7 @@ PLAIN_TIP_MAX_W :: f32(200)
 @(private)
 PLAIN_TIP_PAD :: [2]f32{8, 4}
 @(private)
-TIP_MIN :: ui.Size{40, 24}
+TIP_MIN :: ops.Size{40, 24}
 // TOOLTIP_GAP is the space between a tooltip and its anchor (Tooltip.kt:1449).
 @(private)
 TOOLTIP_GAP :: f32(4)
@@ -634,15 +635,15 @@ plain_tooltip :: proc(gtx: ^ui.Ctx, label: string, caret := Tooltip_Caret.None, 
 // paint_plain_tooltip draws a plain tooltip with its top-left (caret
 // included) at at and returns its size. alpha fades it and scale grows it
 // about its centre, for the show animation.
-paint_plain_tooltip :: proc(gtx: ^ui.Ctx, at: ui.Point, label: string, caret := Tooltip_Caret.None, alpha: f32 = 1, scale: f32 = 1) -> ui.Size {
+paint_plain_tooltip :: proc(gtx: ^ui.Ctx, at: ops.Point, label: string, caret := Tooltip_Caret.None, alpha: f32 = 1, scale: f32 = 1) -> ops.Size {
 	lines := wrap_lines(gtx, label, tok.PLAIN_TOOLTIP_SUPPORTING_TEXT_FONT, PLAIN_TIP_MAX_W - 2 * PLAIN_TIP_PAD.x)
 	tw, th := lines_size(lines)
-	box := ui.Size{max(tw + 2 * PLAIN_TIP_PAD.x, TIP_MIN.x), max(th + 2 * PLAIN_TIP_PAD.y, TIP_MIN.y)}
+	box := ops.Size{max(tw + 2 * PLAIN_TIP_PAD.x, TIP_MIN.x), max(th + 2 * PLAIN_TIP_PAD.y, TIP_MIN.y)}
 	r, size := caret_layout(at, box, caret)
-	ctr := ui.Point{at.x + size.x / 2, at.y + size.y / 2}
-	ui.transform_push(gtx.ops, scale_about(ctr, scale))
+	ctr := ops.Point{at.x + size.x / 2, at.y + size.y / 2}
+	ops.transform_push(gtx.scene, scale_about(ctr, scale))
 	fill := fade(color(tok.PLAIN_TOOLTIP_CONTAINER_COLOR), alpha)
-	ui.fill(gtx.ops, rounded(gtx, r, corners(tok.PLAIN_TOOLTIP_CONTAINER_SHAPE, r)), fill)
+	ops.fill(gtx.scene, rounded(gtx, r, corners(tok.PLAIN_TOOLTIP_CONTAINER_SHAPE, r)), fill)
 	paint_caret(gtx, r, caret, fill)
 	y := r.y + (r.h - th) / 2
 	for t in lines {
@@ -650,14 +651,14 @@ paint_plain_tooltip :: proc(gtx: ^ui.Ctx, at: ui.Point, label: string, caret := 
 		draw_text(gtx, t, {r.x + (r.w - tw) / 2, y}, fade(color(tok.PLAIN_TOOLTIP_SUPPORTING_TEXT_COLOR), alpha))
 		y += t.height
 	}
-	ui.transform_pop(gtx.ops)
+	ops.transform_pop(gtx.scene)
 	return size
 }
 
 // caret_layout places a box-sized container inside the whole tooltip at
 // at, leaving room on the caret's side; size is the whole.
 @(private)
-caret_layout :: proc(at: ui.Point, box: ui.Size, caret: Tooltip_Caret) -> (r: ui.Rect, size: ui.Size) {
+caret_layout :: proc(at: ops.Point, box: ops.Size, caret: Tooltip_Caret) -> (r: ops.Rect, size: ops.Size) {
 	r = {at.x, at.y, box.x, box.y}
 	size = box
 	switch caret {
@@ -678,10 +679,10 @@ caret_layout :: proc(at: ui.Point, box: ui.Size, caret: Tooltip_Caret) -> (r: ui
 
 // paint_caret fills the caret on r's caret side, centred on that edge.
 @(private)
-paint_caret :: proc(gtx: ^ui.Ctx, r: ui.Rect, caret: Tooltip_Caret, fill: ui.Color) {
+paint_caret :: proc(gtx: ^ui.Ctx, r: ops.Rect, caret: Tooltip_Caret, fill: ops.Color) {
 	cx, cy := r.x + r.w / 2, r.y + r.h / 2
 	hw := CARET_W / 2
-	pts: [3]ui.Point
+	pts: [3]ops.Point
 	switch caret {
 	case .None:
 		return
@@ -694,7 +695,7 @@ paint_caret :: proc(gtx: ^ui.Ctx, r: ui.Rect, caret: Tooltip_Caret, fill: ui.Col
 	case .Right:
 		pts = {{r.x + r.w, cy - hw}, {r.x + r.w, cy + hw}, {r.x + r.w + CARET_H, cy}}
 	}
-	ui.fill(gtx.ops, ui.polygon(gtx, pts[:]), fill)
+	ops.fill(gtx.scene, ui.polygon(gtx, pts[:]), fill)
 }
 
 // TOOLTIP_DELAY is how long hover must rest before a tooltip shows: none,
@@ -712,7 +713,7 @@ TOOLTIP_DISMISS :: f32(1.5)
 // when not hovered. It hides at once on leave: a timer alone cannot play
 // the fade out.
 @(private)
-hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string, box: ui.Size) {
+hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string, box: ops.Size) {
 	if !hovered || label == "" {
 		hover_t^ = 0
 		return
@@ -827,7 +828,7 @@ rich_tooltip :: proc(
 }
 
 @(private)
-paint_rich_tooltip :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
+paint_rich_tooltip :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
 	rp := (^Rich_Tip_Paint)(user)
 	box := size
 	if rp.caret == .Up || rp.caret == .Down {
@@ -836,25 +837,25 @@ paint_rich_tooltip :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: ra
 		box.x -= CARET_H
 	}
 	r, _ := caret_layout({}, box, rp.caret)
-	rr := ui.Round_Rect{r, corners(tok.RICH_TOOLTIP_CONTAINER_SHAPE, r).tl}
+	rr := ops.Round_Rect{r, corners(tok.RICH_TOOLTIP_CONTAINER_SHAPE, r).tl}
 	fill := color(tok.RICH_TOOLTIP_CONTAINER_COLOR)
 	paint_elevation_dp(gtx, rr, tok.RICH_TOOLTIP_CONTAINER_ELEVATION)
-	ui.fill(gtx.ops, rr, fill)
+	ops.fill(gtx.scene, rr, fill)
 	paint_caret(gtx, r, rp.caret, fill)
 }
 
 // label_widget places a shaped Text as a widget of its own size.
 @(private)
-label_widget :: proc(gtx: ^ui.Ctx, t: Text, color: ui.Color, loc := #caller_location) {
+label_widget :: proc(gtx: ^ui.Ctx, t: Text, color: ops.Color, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	draw_text(gtx, t, {}, color)
-	ui.widget_close(gtx, &p, {ui.Size{t.width, t.height}, baseline_of(t)})
+	ui.widget_close(gtx, &p, {ops.Size{t.width, t.height}, baseline_of(t)})
 }
 
 // lines_widget places wrapped lines as one widget at least width wide,
 // each line start-aligned or, with centre, centred in that width.
 @(private)
-lines_widget :: proc(gtx: ^ui.Ctx, lines: []Text, color: ui.Color, width: f32 = 0, centre := false, loc := #caller_location) {
+lines_widget :: proc(gtx: ^ui.Ctx, lines: []Text, color: ops.Color, width: f32 = 0, centre := false, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	w, h := lines_size(lines)
 	w = max(w, width)
@@ -868,7 +869,7 @@ lines_widget :: proc(gtx: ^ui.Ctx, lines: []Text, color: ui.Color, width: f32 = 
 	if len(lines) > 0 {
 		base = baseline_of(lines[0])
 	}
-	ui.widget_close(gtx, &p, {ui.Size{w, h}, base})
+	ui.widget_close(gtx, &p, {ops.Size{w, h}, base})
 }
 
 // DIALOG_* are the dialog's hard-coded metrics (dialog.json layout,
@@ -916,7 +917,7 @@ Dialog_Paint :: struct {
 dialog :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
-	window: ui.Size,
+	window: ops.Size,
 	headline: string,
 	supporting: string,
 	actions: []string,
@@ -937,8 +938,8 @@ dialog :: proc(
 			open^ = false
 		}
 	}
-	ui.fill(gtx.ops, ui.Rect{0, 0, window.x, window.y}, ui.with_alpha(color(.Scrim), DIALOG_SCRIM))
-	ui.input_area(gtx.ops, id, ui.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+	ops.fill(gtx.scene, ops.Rect{0, 0, window.x, window.y}, ops.with_alpha(color(.Scrim), DIALOG_SCRIM))
+	ops.input_area(gtx.scene, id, ops.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 
 	// Width: the content's, within 280-560 and the window.
 	max_w := clamp(window.x - 2 * DIALOG_PAD, DIALOG_MIN_W, DIALOG_MAX_W)
@@ -1000,20 +1001,20 @@ dialog :: proc(
 }
 
 @(private)
-paint_dialog :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
+paint_dialog :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
 	dp := (^Dialog_Paint)(user)
-	area := ui.Rect{0, 0, size.x, size.y}
-	rr := ui.Round_Rect{area, corners(tok.DIALOG_CONTAINER_SHAPE, area).tl}
+	area := ops.Rect{0, 0, size.x, size.y}
+	rr := ops.Round_Rect{area, corners(tok.DIALOG_CONTAINER_SHAPE, area).tl}
 	for e in ui.events(gtx, id) {
 		if e.kind == .Key && e.key == .Escape {
 			dp.open^ = false
 		}
 	}
 	paint_elevation_dp(gtx, rr, tok.DIALOG_CONTAINER_ELEVATION)
-	ui.fill(gtx.ops, rr, color(tok.DIALOG_CONTAINER_COLOR))
+	ops.fill(gtx.scene, rr, color(tok.DIALOG_CONTAINER_COLOR))
 	// The dialog swallows its own presses so they do not reach the scrim,
 	// and takes focus on one so Escape reaches it.
-	ui.input_area(gtx.ops, id, rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll, .Key})
+	ops.input_area(gtx.scene, id, rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll, .Key})
 }
 
 // actions_width is a row of text-button actions' width.
@@ -1030,7 +1031,7 @@ actions_width :: proc(gtx: ^ui.Ctx, actions: []string) -> f32 {
 }
 
 // icon_widget places a size-px icon as a widget.
-icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ui.Color, loc := #caller_location) {
+icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ops.Color, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	icon(gtx, g, {}, size, color)
 	ui.widget_close(gtx, &p, {size = {size, size}})
@@ -1038,7 +1039,7 @@ icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ui.Color, loc := #c
 
 // wrapped_text lays s out in lines no wider than width, breaking at
 // spaces (jm:ui's label does not wrap), as one widget.
-wrapped_text :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ui.Color, width: f32, loc := #caller_location) {
+wrapped_text :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32, loc := #caller_location) {
 	lines_widget(gtx, wrap_lines(gtx, s, TYPE_STYLES[role], width), color, loc = loc)
 }
 
@@ -1092,7 +1093,7 @@ lines_size :: proc(lines: []Text) -> (w, h: f32) {
 // paint_wrapped draws s wrapped to width from at, at most max_lines
 // lines (0 for any), and returns the height drawn.
 @(private)
-paint_wrapped :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ui.Color, at: ui.Point, width: f32, max_lines := 0) -> f32 {
+paint_wrapped :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Color, at: ops.Point, width: f32, max_lines := 0) -> f32 {
 	y := at.y
 	for t in wrap_lines(gtx, s, st, width, max_lines) {
 		draw_text(gtx, t, {at.x, y}, color)
@@ -1218,12 +1219,12 @@ snackbar :: proc(
 		text_y = (h - th) / 2
 		button_y = (h - SNACK_BUTTON_H) / 2
 	}
-	size := ui.Size{w, h}
-	area := ui.Rect{0, 0, size.x, size.y}
-	ui.transform_push(gtx.ops, scale_about({size.x / 2, size.y / 2}, scale))
-	rr := ui.Round_Rect{area, corners(tok.SNACKBAR_CONTAINER_SHAPE, area).tl}
+	size := ops.Size{w, h}
+	area := ops.Rect{0, 0, size.x, size.y}
+	ops.transform_push(gtx.scene, scale_about({size.x / 2, size.y / 2}, scale))
+	rr := ops.Round_Rect{area, corners(tok.SNACKBAR_CONTAINER_SHAPE, area).tl}
 	paint_elevation_dp(gtx, rr, tok.SNACKBAR_CONTAINER_ELEVATION * alpha)
-	ui.fill(gtx.ops, rr, fade(color(tok.SNACKBAR_CONTAINER_COLOR), alpha))
+	ops.fill(gtx.scene, rr, fade(color(tok.SNACKBAR_CONTAINER_COLOR), alpha))
 	y := text_y
 	for t in lines {
 		draw_text(gtx, t, {SNACK_PAD_X, y}, fade(color(tok.SNACKBAR_SUPPORTING_TEXT_COLOR), alpha))
@@ -1233,7 +1234,7 @@ snackbar :: proc(
 	if closable {
 		right -= SNACK_CLOSE
 		cid := ui.id_mix(p.id, 2)
-		r := ui.Rect{right, (beside || action == "" ? (h - SNACK_CLOSE) / 2 : 0), SNACK_CLOSE, SNACK_CLOSE}
+		r := ops.Rect{right, (beside || action == "" ? (h - SNACK_CLOSE) / 2 : 0), SNACK_CLOSE, SNACK_CLOSE}
 		c := control(gtx, cid, r, state)
 		ink := color(tok.SNACKBAR_ICON_COLOR)
 		switch {
@@ -1245,9 +1246,9 @@ snackbar :: proc(
 			ink = color(tok.SNACKBAR_HOVER_ICON_COLOR)
 		}
 		if c.disabled {
-			ink = ui.with_alpha(ink, DISABLED_CONTENT_OPACITY)
+			ink = ops.with_alpha(ink, DISABLED_CONTENT_OPACITY)
 		}
-		ctr := ui.Point{r.x + r.w / 2, r.y + r.h / 2}
+		ctr := ops.Point{r.x + r.w / 2, r.y + r.h / 2}
 		half := tok.SMALL_ICON_BUTTON_CONTAINER_HEIGHT / 2
 		ring := ui.circle(ctr, half)
 		paint_state_layer(gtx, c, ring, ink)
@@ -1255,13 +1256,13 @@ snackbar :: proc(
 		icon(gtx, .Close, {ctr.x - ICON / 2, ctr.y - ICON / 2}, ICON, fade(ink, alpha))
 		paint_focus_ring(gtx, c, {{ctr.x - half, ctr.y - half, 2 * half, 2 * half}, half})
 		listen(gtx, c, cid, r)
-		ui.tag(gtx.ops, cid, "close snackbar")
+		ops.tag(gtx.scene, cid, "close snackbar")
 		closed = closed || c.clicked
 	}
 	if action != "" {
 		ax := beside ? right - aw : size.x - SNACK_PAD_BUTTON - aw
 		aid := ui.id_mix(p.id, 1)
-		r := ui.Rect{ax, button_y, aw, SNACK_BUTTON_H}
+		r := ops.Rect{ax, button_y, aw, SNACK_BUTTON_H}
 		c := control(gtx, aid, r, state)
 		ink := color(tok.SNACKBAR_ACTION_LABEL_TEXT_COLOR)
 		switch {
@@ -1273,17 +1274,17 @@ snackbar :: proc(
 			ink = color(tok.SNACKBAR_ACTION_HOVER_LABEL_TEXT_COLOR)
 		}
 		if c.disabled {
-			ink = ui.with_alpha(ink, DISABLED_CONTENT_OPACITY)
+			ink = ops.with_alpha(ink, DISABLED_CONTENT_OPACITY)
 		}
-		pill := ui.Round_Rect{r, r.h / 2}
+		pill := ops.Round_Rect{r, r.h / 2}
 		paint_state_layer(gtx, c, pill, ink)
 		draw_text(gtx, at, {ax + 12, button_y + (SNACK_BUTTON_H - at.height) / 2}, fade(ink, alpha))
 		paint_focus_ring(gtx, c, pill)
 		listen(gtx, c, aid, r)
-		ui.tag(gtx.ops, aid, ui.frame_string(gtx, action))
+		ops.tag(gtx.scene, aid, ui.frame_string(gtx, action))
 		acted = c.clicked
 	}
-	ui.transform_pop(gtx.ops)
+	ops.transform_pop(gtx.scene)
 	ui.widget_close(gtx, &p, {size = size})
 	return
 }

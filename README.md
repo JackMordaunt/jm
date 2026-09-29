@@ -44,7 +44,8 @@ binary.
 | `tar`     | `read`, `extract`: `git archive` output without a tar program |
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
-| `ui`      | immediate-mode UI: ops → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
+| `ui/ops`  | the recorded drawing: geometry, colour, paint, shapes, glyph runs and the scene ops a ui proc emits into a `Scene`, with their wire form (`encode`) and text form (`dump`); everything above shares these types |
+| `ui`      | immediate-mode UI: `ops.Scene` → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
 | `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`), shapes text with it, and `snapshot`s a `ui` proc straight to a PNG |
 | `ui/sdl`  | the SDL3 window and event loop for a `ui` app; `run_host` runs the same window against a subprocess instead of a local ui proc |
 | `ui/ipc`  | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/sdl`'s host/subprocess split |

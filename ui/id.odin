@@ -1,6 +1,7 @@
 package ui
 
 import "core:mem"
+import "jm:ui/ops"
 
 // Identity. A widget's Area_Id is a hash of where it was called from plus a
 // caller key, so the same call site yields the same id every frame without
@@ -13,18 +14,18 @@ FNV_PRIME  :: u64(0x100000001b3)
 
 // id hashes the call site and key with FNV-1a 64. Stable across frames and
 // runs of the same binary.
-id :: proc(key: u64 = 0, loc := #caller_location) -> Area_Id {
+id :: proc(key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
 	h := fnv_bytes(FNV_OFFSET, transmute([]u8)loc.file_path)
 	h = fnv_u64(h, u64(u32(loc.line)))
 	h = fnv_u64(h, u64(u32(loc.column)))
 	h = fnv_u64(h, key)
-	return Area_Id(h)
+	return ops.Area_Id(h)
 }
 
 // id_mix derives a child id from a parent id and a key, for ids that must
 // be distinct per parent (list items) rather than per call site.
-id_mix :: proc(parent: Area_Id, key: u64) -> Area_Id {
-	return Area_Id(fnv_u64(fnv_u64(FNV_OFFSET, u64(parent)), key))
+id_mix :: proc(parent: ops.Area_Id, key: u64) -> ops.Area_Id {
+	return ops.Area_Id(fnv_u64(fnv_u64(FNV_OFFSET, u64(parent)), key))
 }
 
 @(private)

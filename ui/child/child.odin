@@ -15,6 +15,7 @@ pipe, ui/ipc the framing underneath that.
 package child
 
 import "core:os"
+import "jm:ui/ops"
 import t "core:time"
 
 import "jm:ui"
@@ -29,7 +30,7 @@ Ui_Proc :: ui.Ui_Proc
 @(private)
 Theme :: ui.Theme
 @(private)
-Font_Ref :: ui.Font_Ref
+Font_Ref :: ops.Font_Ref
 
 // App describes the ui proc to run and what it needs. size and density
 // come from the host with every Input, not from App: the subprocess never
@@ -38,17 +39,17 @@ App :: struct {
 	ui:    Ui_Proc,
 	user:  rawptr,
 	theme: ^Theme, // nil uses ui.default_theme with the first font
-	fonts: []Font_Ref, // registered into Ops in order before the first frame
+	fonts: []Font_Ref, // registered into the Scene in order before the first frame
 }
 
 // run drives app until the host closes stdin, then returns. It is meant
 // to be the whole of a subprocess's main.
 run :: proc(app: App) {
-	ops: ui.Ops
-	ui.ops_init(&ops)
-	defer ui.ops_destroy(&ops)
+	sc: ops.Scene
+	ops.init(&sc)
+	defer ops.destroy(&sc)
 	for ref in app.fonts {
-		ui.add_font(&ops, ref.path)
+		ops.add_font(&sc, ref.path)
 	}
 
 	frames: [2]ui.Frame
@@ -71,7 +72,7 @@ run :: proc(app: App) {
 	r: render.Renderer
 	render.init(&r)
 	defer render.destroy(&r)
-	shaper := render.shaper(&r, ops.fonts[:])
+	shaper := render.shaper(&r, sc.fonts[:])
 
 	theme := app.theme
 	default_theme := ui.default_theme(app.fonts[0].id if len(app.fonts) > 0 else 0)
@@ -79,14 +80,14 @@ run :: proc(app: App) {
 		theme = &default_theme
 	}
 
-	arenas: [2]ui.Frame_Arena
+	arenas: [2]ops.Frame_Arena
 	for &a in arenas {
-		if err := ui.frame_arena_init(&a); err != nil {
+		if err := ops.frame_arena_init(&a); err != nil {
 			return
 		}
 	}
-	defer ui.frame_arena_destroy(&arenas[0])
-	defer ui.frame_arena_destroy(&arenas[1])
+	defer ops.frame_arena_destroy(&arenas[0])
+	defer ops.frame_arena_destroy(&arenas[1])
 
 	env_debug := ui.debug_from_env()
 	tray: ui.Debug_Tray // ui.DEBUG_TOGGLE_KEY opens it
@@ -94,8 +95,8 @@ run :: proc(app: App) {
 	time: f64
 	for n: u64 = 0;; n += 1 {
 		arena := &arenas[n % 2]
-		ui.frame_arena_reset(arena)
-		allocator := ui.frame_arena_allocator(arena)
+		ops.frame_arena_reset(arena)
+		allocator := ops.frame_arena_allocator(arena)
 
 		payload, ok := ipc.read_frame(os.stdin, allocator)
 		if !ok {
@@ -117,13 +118,13 @@ run :: proc(app: App) {
 		time += f64(dt)
 		ui.router_route(&router, prev if n > 0 else nil)
 		ui.debug_tray_log(&tray, &router, prev if n > 0 else nil, n)
-		ui.ops_reset(&ops)
-		ops.debug = debug
+		ops.reset(&sc)
+		sc.outline_areas = .Bounds in debug
 		ui.frame_reset(frame)
 		ui.layout_reset(&layout)
 
 		gtx := ui.Ctx {
-			ops         = &ops,
+			scene         = &sc,
 			constraints = ui.exact(size),
 			theme       = theme,
 			shaper      = shaper,
@@ -137,7 +138,7 @@ run :: proc(app: App) {
 		}
 		scaled := density != 1
 		if scaled {
-			ui.transform_push(&ops, ui.scale(density, density))
+			ops.transform_push(&sc, ops.scale(density, density))
 		}
 		ui_start := t.tick_now()
 		if app.ui != nil {
@@ -145,24 +146,24 @@ run :: proc(app: App) {
 		}
 		ui_ms := ui.ms(ui_start)
 		if scaled {
-			ui.transform_pop(&ops)
+			ops.transform_pop(&sc)
 		}
 		ui.debug_inspect(&gtx, debug, &tray, prev if n > 0 else nil, router.pointer, density)
 		// The tray last, so it sits over the inspector's highlight too.
 		if scaled {
-			ui.transform_push(&ops, ui.scale(density, density))
+			ops.transform_push(&sc, ops.scale(density, density))
 		}
 		ui.debug_tray(&gtx, &tray)
 		if scaled {
-			ui.transform_pop(&ops)
+			ops.transform_pop(&sc)
 		}
 		build_start := t.tick_now()
-		ui.flatten(&ops, frame)
+		ui.flatten(&sc, frame)
 
-		ops_bytes := ui.encode(&ops, allocator)
+		ops_bytes := ops.encode(&sc, allocator)
 		// host is what the host said presenting the frame before cost.
 		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used), host))
-		keep_out: [2]ui.Rect
+		keep_out: [2]ops.Rect
 		reply := ui.encode_reply(
 			gtx.wants_frame || tray.open,
 			gtx.frame_after,

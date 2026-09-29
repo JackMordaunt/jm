@@ -1,6 +1,7 @@
 package ui
 
 import "core:strings"
+import "jm:ui/ops"
 import "core:testing"
 
 @(test)
@@ -55,8 +56,8 @@ test_inspector_skips_the_open_tray :: proc(t: ^testing.T) {
 	probe_move(&p, r.x + r.w / 2, r.y + r.h / 2)
 	probe_frame(&p)
 	deferred := 0
-	for op in p.ops.ops {
-		if d, ok := op.(Defer); ok && d.root {
+	for op in p.scene.ops {
+		if d, ok := op.(ops.Defer); ok && d.root {
 			deferred += 1
 		}
 	}
@@ -67,8 +68,8 @@ test_inspector_skips_the_open_tray :: proc(t: ^testing.T) {
 test_event_log_names_each_target_and_skips_moves :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^Ctx, user: rawptr) {
 		p := widget_open(gtx, 1)
-		input_area(gtx.ops, p.id, Rect{0, 0, 80, 30}, {.Press, .Release, .Move, .Enter, .Leave})
-		tag(gtx.ops, p.id, frame_string(gtx, "Save"))
+		ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 80, 30}, {.Press, .Release, .Move, .Enter, .Leave})
+		ops.tag(gtx.scene, p.id, frame_string(gtx, "Save"))
 		widget_close(gtx, &p, {size = {80, 30}})
 	}
 	p: Probe
@@ -77,7 +78,7 @@ test_event_log_names_each_target_and_skips_moves :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
 	testing.expect(t, probe_click(&p, "Save"))
 	lines := event_log_lines(&p.tray, EVENT_LOG_CAP, context.temp_allocator)
-	kinds: [dynamic]Event_Kind
+	kinds: [dynamic]ops.Event_Kind
 	defer delete(kinds)
 	testing.expect(t, p.tray.events_n >= 2) // so the loop below asserts something
 	for i in 0 ..< p.tray.events_n {
@@ -132,7 +133,7 @@ test_debug_tray_drags_by_its_title_and_stays_in_the_window :: proc(t: ^testing.T
 	probe_frame(&p)
 	router_push(&p.router, {kind = .Release, pos = grip - {300, 200}, button = .Left})
 	probe_frame(&p)
-	testing.expect_value(t, Point{p.tray.rect.x, p.tray.rect.y}, Point{start.x - 300, start.y - 200})
+	testing.expect_value(t, ops.Point{p.tray.rect.x, p.tray.rect.y}, ops.Point{start.x - 300, start.y - 200})
 
 	// Dragged far past the top-left, it stops at the window's edge.
 	grip, _ = probe_center(&p, "Debug tray")
@@ -143,5 +144,5 @@ test_debug_tray_drags_by_its_title_and_stays_in_the_window :: proc(t: ^testing.T
 	probe_frame(&p)
 	router_push(&p.router, {kind = .Release, pos = grip - {5000, 5000}, button = .Left})
 	probe_frame(&p)
-	testing.expect_value(t, Point{p.tray.rect.x, p.tray.rect.y}, Point{0, 0})
+	testing.expect_value(t, ops.Point{p.tray.rect.x, p.tray.rect.y}, ops.Point{0, 0})
 }

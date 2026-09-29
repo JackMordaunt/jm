@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 import tok "jm:ui/material/tokens"
 
@@ -23,22 +24,22 @@ Nav_Model :: struct {
 	clicked:  int,
 	result:   App_Bar_Result,
 	tab:      int,
-	sizes:    [3]ui.Size,
+	sizes:    [3]ops.Size,
 }
 
 // bounds is the device-space bounding rect of the area tagged name.
 @(private = "file")
-bounds :: proc(p: ^ui.Probe, name: string) -> (ui.Rect, bool) {
+bounds :: proc(p: ^ui.Probe, name: string) -> (ops.Rect, bool) {
 	h, ok := ui.probe_find(p, name)
 	if !ok {
 		return {}, false
 	}
-	return ui.transform_rect(h.transform, ui.shape_bounds(&p.ops, h.shape)), true
+	return ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape)), true
 }
 
 // click_at presses and releases at pt, as probe_click does at a tag.
 @(private = "file")
-click_at :: proc(p: ^ui.Probe, pt: ui.Point) {
+click_at :: proc(p: ^ui.Probe, pt: ops.Point) {
 	ui.router_push(&p.router, {kind = .Move, pos = pt})
 	ui.router_push(&p.router, {kind = .Press, pos = pt, button = .Left})
 	ui.probe_frame(p)
@@ -273,7 +274,7 @@ test_badge_sizes_follow_their_label :: proc(t: ^testing.T) {
 	ui.probe_init(&p, view, &m, {100, 100}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&p)
 	defer free_all(context.temp_allocator)
-	testing.expect_value(t, m.sizes[0], ui.Size{tok.BADGE_SIZE, tok.BADGE_SIZE})
-	testing.expect_value(t, m.sizes[1], ui.Size{tok.BADGE_LARGE_SIZE, tok.BADGE_LARGE_SIZE})
+	testing.expect_value(t, m.sizes[0], ops.Size{tok.BADGE_SIZE, tok.BADGE_SIZE})
+	testing.expect_value(t, m.sizes[1], ops.Size{tok.BADGE_LARGE_SIZE, tok.BADGE_LARGE_SIZE})
 	testing.expect(t, m.sizes[2].x > tok.BADGE_LARGE_SIZE && m.sizes[2].y == tok.BADGE_LARGE_SIZE)
 }

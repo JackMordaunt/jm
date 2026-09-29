@@ -1,6 +1,7 @@
 package material
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 
 // Behaviour of the containment group — cards, list items, menus,
@@ -45,7 +46,7 @@ rows :: proc(gtx: ^ui.Ctx, user: rawptr) {
 }
 
 @(private = "file")
-drag :: proc(p: ^ui.Probe, name: string, d: ui.Point) {
+drag :: proc(p: ^ui.Probe, name: string, d: ops.Point) {
 	c, ok := ui.probe_center(p, name)
 	assert(ok)
 	ui.router_push(&p.router, {kind = .Move, pos = c})
@@ -206,7 +207,7 @@ test_dialog_closes_on_escape_once_focused :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	// A press on the dialog's own surface focuses it and keeps it open.
 	c, _ := ui.probe_center(&p, "OK")
-	at := ui.Point{200, c.y - 40}
+	at := ops.Point{200, c.y - 40}
 	ui.router_push(&p.router, {kind = .Press, pos = at, button = .Left})
 	ui.probe_frame(&p)
 	ui.router_push(&p.router, {kind = .Release, pos = at, button = .Left})

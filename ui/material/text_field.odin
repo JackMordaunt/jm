@@ -8,6 +8,7 @@ Caret_Scroll :: struct {
 }
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:math"
 import "core:strings"
 import "core:unicode/utf8"
@@ -70,7 +71,7 @@ CARET_W :: f32(2)
 // Field_Colors are one field's resolved paint in one look.
 @(private = "file")
 Field_Colors :: struct {
-	container, indicator, label, input, leading, trailing, supporting, caret, placeholder, prefix, suffix: ui.Color,
+	container, indicator, label, input, leading, trailing, supporting, caret, placeholder, prefix, suffix: ops.Color,
 }
 
 @(private = "file")
@@ -170,17 +171,17 @@ lerp_field_colors :: proc(a, b: Field_Colors, t: f32) -> (f: Field_Colors) {
 	if t >= 1 {
 		return b
 	}
-	f.container = ui.mix(a.container, b.container, t)
-	f.indicator = ui.mix(a.indicator, b.indicator, t)
-	f.label = ui.mix(a.label, b.label, t)
-	f.input = ui.mix(a.input, b.input, t)
-	f.leading = ui.mix(a.leading, b.leading, t)
-	f.trailing = ui.mix(a.trailing, b.trailing, t)
-	f.supporting = ui.mix(a.supporting, b.supporting, t)
-	f.caret = ui.mix(a.caret, b.caret, t)
-	f.placeholder = ui.mix(a.placeholder, b.placeholder, t)
-	f.prefix = ui.mix(a.prefix, b.prefix, t)
-	f.suffix = ui.mix(a.suffix, b.suffix, t)
+	f.container = ops.mix(a.container, b.container, t)
+	f.indicator = ops.mix(a.indicator, b.indicator, t)
+	f.label = ops.mix(a.label, b.label, t)
+	f.input = ops.mix(a.input, b.input, t)
+	f.leading = ops.mix(a.leading, b.leading, t)
+	f.trailing = ops.mix(a.trailing, b.trailing, t)
+	f.supporting = ops.mix(a.supporting, b.supporting, t)
+	f.caret = ops.mix(a.caret, b.caret, t)
+	f.placeholder = ops.mix(a.placeholder, b.placeholder, t)
+	f.prefix = ops.mix(a.prefix, b.prefix, t)
+	f.suffix = ops.mix(a.suffix, b.suffix, t)
 	return
 }
 
@@ -227,16 +228,16 @@ Field_Result :: struct {
 	changed, pressed: bool, // the text was edited; the field was pressed
 	nav:              [8]ui.Key, // with Field_Opts.menu, this frame's menu keys
 	n_nav:            int,
-	size:             ui.Size,
-	field:            ui.Rect, // the container, in the widget's space
+	size:             ops.Size,
+	field:            ops.Rect, // the container, in the widget's space
 	focused:          bool,
 }
 
 // Field_Geom is where a field's parts sit, in the widget's space.
 @(private = "file")
 Field_Geom :: struct {
-	size:                   ui.Size,
-	field:                  ui.Rect, // the container
+	size:                   ops.Size,
+	field:                  ops.Rect, // the container
 	text_x, text_r:         f32, // the text area, between the icons
 	in_x, inner:            f32, // the input itself, after the prefix and before the suffix
 	pre, suf:               Text,
@@ -292,7 +293,7 @@ Field_Input :: struct {
 // field_input reads the field's events (Live) or its forced state, edits s,
 // and records into r what happened.
 @(private = "file")
-field_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, s: ^ui.Text_State, o: Field_Opts, g: Field_Geom, r: ^Field_Result) -> (fi: Field_Input) {
+field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_Opts, g: Field_Geom, r: ^Field_Result) -> (fi: Field_Input) {
 	s.cursor = clamp(s.cursor, 0, len(s.buf))
 	if o.state != .Live {
 		fi.hovered = o.state == .Hovered
@@ -359,7 +360,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	if o.state == .Live {
 		// Registered before the trailing icon's, which sits over it and
 		// must win its hits.
-		ui.input_area(gtx.ops, p.id, g.field, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
+		ops.input_area(gtx.scene, p.id, g.field, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
 	}
 	filled := o.kind == .Filled
 	field := g.field
@@ -404,7 +405,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 
 	// The label: shaped at its current point between rest and float.
 	lab: Text
-	lab_pos: ui.Point
+	lab_pos: ops.Point
 	if g.inside {
 		lab = shape_style(gtx, o.label, lerp_style(g.label_font, small, clamp(float_t, 0, 1)))
 		rest_y := field.y + (FIELD_H - g.label_font.line_height) / 2
@@ -418,8 +419,8 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	// Container, then indicator or outline.
 	switch o.kind {
 	case .Filled:
-		ui.fill(gtx.ops, rounded(gtx, field, corners(tok.FILLED_TEXT_FIELD_CONTAINER_SHAPE, field)), col.container)
-		ui.fill(gtx.ops, ui.Rect{field.x, field.y + field.h - thick, field.w, thick}, col.indicator)
+		ops.fill(gtx.scene, rounded(gtx, field, corners(tok.FILLED_TEXT_FIELD_CONTAINER_SHAPE, field)), col.container)
+		ops.fill(gtx.scene, ops.Rect{field.x, field.y + field.h - thick, field.w, thick}, col.indicator)
 	case .Outlined:
 		gap0, gap1: f32
 		if g.inside && float_t > 0 {
@@ -448,7 +449,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	if o.suffix != "" {
 		draw_text(gtx, g.suf, {g.text_r - g.suf.width, input_y}, fade(col.suffix, affix_a))
 	}
-	ui.clip_push(gtx.ops, ui.Rect{g.in_x, field.y, g.inner, field.h})
+	ops.clip_push(gtx.scene, ops.Rect{g.in_x, field.y, g.inner, field.h})
 	if len(str) > 0 {
 		draw_text(gtx, shape_style(gtx, str, g.input_font), {g.in_x - fi.scroll, input_y}, col.input)
 	}
@@ -457,9 +458,9 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	}
 	if fi.focused && !fi.disabled && !o.read_only {
 		cw := shape_style(gtx, str[:s.cursor], g.input_font).width
-		ui.fill(gtx.ops, ui.Rect{g.in_x + cw - fi.scroll, input_y + 2, CARET_W, g.input_font.line_height - 4}, col.caret)
+		ops.fill(gtx.scene, ops.Rect{g.in_x + cw - fi.scroll, input_y + 2, CARET_W, g.input_font.line_height - 4}, col.caret)
 	}
-	ui.clip_pop(gtx.ops)
+	ops.clip_pop(gtx.scene)
 
 	if o.leading != .None {
 		icon(gtx, o.leading, {(ICON_SLOT - g.lead_size) / 2, field.y + (FIELD_H - g.lead_size) / 2}, g.lead_size, col.leading)
@@ -471,16 +472,16 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 		draw_field_row(gtx, o, g, str, col.supporting, fi.disabled)
 	}
 	name := o.label != "" ? o.label : (o.placeholder != "" ? o.placeholder : "text field")
-	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, name))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
 	return
 }
 
 // draw_field_trailing draws the trailing icon centred in its slot, turned by
 // turn half-circles, and, with o.trailing_action set, makes it a button.
 @(private = "file")
-draw_field_trailing :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, o: Field_Opts, g: Field_Geom, col: ui.Color, disabled: bool, turn: f32) {
-	slot := ui.Rect{g.size.x - ICON_SLOT, g.field.y + (FIELD_H - ICON_SLOT) / 2, ICON_SLOT, ICON_SLOT}
-	ctr := ui.Point{slot.x + ICON_SLOT / 2, slot.y + ICON_SLOT / 2}
+draw_field_trailing :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, o: Field_Opts, g: Field_Geom, col: ops.Color, disabled: bool, turn: f32) {
+	slot := ops.Rect{g.size.x - ICON_SLOT, g.field.y + (FIELD_H - ICON_SLOT) / 2, ICON_SLOT, ICON_SLOT}
+	ctr := ops.Point{slot.x + ICON_SLOT / 2, slot.y + ICON_SLOT / 2}
 	if o.trailing_action != nil {
 		// An actionable trailing icon is an icon button: its own 48dp
 		// target, a 40dp state layer, and a name (text-field.json
@@ -492,22 +493,22 @@ draw_field_trailing :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, o: Field_Opts, g: Fiel
 		}
 		paint_state_layer(gtx, tc, ui.circle(ctr, 20), col)
 		listen(gtx, tc, rid, slot)
-		ui.tag(gtx.ops, rid, fmt.aprintf("%s trailing", o.label, allocator = gtx.allocator))
+		ops.tag(gtx.scene, rid, fmt.aprintf("%s trailing", o.label, allocator = gtx.allocator))
 	}
 	// The autocomplete arrow turns half a circle as the menu opens.
 	if turn != 0 {
-		ui.transform_push(gtx.ops, ui.mul(ui.mul(ui.translate(-ctr.x, -ctr.y), ui.rotate(turn * math.PI)), ui.translate(ctr.x, ctr.y)))
+		ops.transform_push(gtx.scene, ops.mul(ops.mul(ops.translate(-ctr.x, -ctr.y), ops.rotate(turn * math.PI)), ops.translate(ctr.x, ctr.y)))
 	}
 	icon(gtx, o.trailing, {ctr.x - g.trail_size / 2, ctr.y - g.trail_size / 2}, g.trail_size, col)
 	if turn != 0 {
-		ui.transform_pop(gtx.ops)
+		ops.transform_pop(gtx.scene)
 	}
 }
 
 // draw_field_row draws the supporting row: helper or error text at the start,
 // the counter at the end.
 @(private = "file")
-draw_field_row :: proc(gtx: ^ui.Ctx, o: Field_Opts, g: Field_Geom, str: string, col: ui.Color, disabled: bool) {
+draw_field_row :: proc(gtx: ^ui.Ctx, o: Field_Opts, g: Field_Geom, str: string, col: ops.Color, disabled: bool) {
 	y := g.field.y + g.field.h + SUPPORT_GAP
 	if o.supporting != "" {
 		draw_style_text(gtx, o.supporting, {INSET, y}, g.sup_font, col)
@@ -728,18 +729,18 @@ autocomplete :: proc(
 				expanded^ = false
 			}
 		}
-		ui.input_area(gtx.ops, scrim_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+		ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		filled := kind == .Filled
 		w := r.field.w // the menu matches the field's width (ExposedDropdownMenu.kt:204-213)
 		h := 2 * MENU_PAD + MENU_ITEM_H * f32(len(matches))
-		box := ui.Rect{0, 0, w, h}
+		box := ops.Rect{0, 0, w, h}
 		shape := corners(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_SHAPE : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_SHAPE, box)
-		rr := ui.Round_Rect{box, shape.tl}
+		rr := ops.Round_Rect{box, shape.tl}
 		paint_elevation(gtx, rr, elevation_level(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_ELEVATION : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_ELEVATION))
-		ui.fill(gtx.ops, rr, color(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_COLOR : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_COLOR))
-		ui.input_area(gtx.ops, ui.id_mix(menu_id, 0xfffe), rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+		ops.fill(gtx.scene, rr, color(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_COLOR : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_COLOR))
+		ops.input_area(gtx.scene, ui.id_mix(menu_id, 0xfffe), rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		for oi, row in matches {
-			item := ui.Rect{0, MENU_PAD + MENU_ITEM_H * f32(row), w, MENU_ITEM_H}
+			item := ops.Rect{0, MENU_PAD + MENU_ITEM_H * f32(row), w, MENU_ITEM_H}
 			id := ui.id_mix(menu_id, u64(oi) + 1)
 			c := control(gtx, id, item, .Live)
 			if c.clicked {
@@ -747,7 +748,7 @@ autocomplete :: proc(
 			}
 			label_col := color(.On_Surface)
 			if strings.equal_fold(options[oi], str) {
-				ui.fill(gtx.ops, item, color(tok.MENU_LIST_ITEM_SELECTED_CONTAINER_COLOR))
+				ops.fill(gtx.scene, item, color(tok.MENU_LIST_ITEM_SELECTED_CONTAINER_COLOR))
 				label_col = color(tok.MENU_LIST_ITEM_SELECTED_LABEL_TEXT_COLOR)
 			}
 			if row == hl && c.layer == 0 {
@@ -759,7 +760,7 @@ autocomplete :: proc(
 			// No key kinds, so a press here leaves focus on the field
 			// (text-field.json behaviour: picking returns focus to it).
 			listen(gtx, c, id, item, {.Press, .Release, .Enter, .Leave, .Move})
-			ui.tag(gtx.ops, id, ui.frame_string(gtx, options[oi]))
+			ops.tag(gtx.scene, id, ui.frame_string(gtx, options[oi]))
 		}
 	}
 	if pick >= 0 {
@@ -776,31 +777,31 @@ autocomplete :: proc(
 // edge open between x = gap0 and gap1 (none when they are equal) — the
 // outlined text field's notch behind its floated label.
 @(private)
-stroke_outline_with_gap :: proc(gtx: ^ui.Ctx, r: ui.Rect, radius, gap0, gap1: f32, color: ui.Color, w: f32) {
+stroke_outline_with_gap :: proc(gtx: ^ui.Ctx, r: ops.Rect, radius, gap0, gap1: f32, color: ops.Color, w: f32) {
 	h := w / 2
 	x0, y0, x1, y1 := r.x + h, r.y + h, r.x + r.w - h, r.y + r.h - h
 	rad := max(radius - h, 0)
 	k := rad * KAPPA
-	verbs := make([dynamic]ui.Path_Verb, gtx.allocator)
-	pts := make([dynamic]ui.Point, gtx.allocator)
+	verbs := make([dynamic]ops.Path_Verb, gtx.allocator)
+	pts := make([dynamic]ops.Point, gtx.allocator)
 	open := gap1 > gap0
 	start := open ? gap1 : x0 + rad
-	append(&verbs, ui.Path_Verb.Move)
-	append(&pts, ui.Point{start, y0})
-	append(&verbs, ui.Path_Verb.Line, ui.Path_Verb.Cubic)
-	append(&pts, ui.Point{x1 - rad, y0}, ui.Point{x1 - rad + k, y0}, ui.Point{x1, y0 + rad - k}, ui.Point{x1, y0 + rad})
-	append(&verbs, ui.Path_Verb.Line, ui.Path_Verb.Cubic)
-	append(&pts, ui.Point{x1, y1 - rad}, ui.Point{x1, y1 - rad + k}, ui.Point{x1 - rad + k, y1}, ui.Point{x1 - rad, y1})
-	append(&verbs, ui.Path_Verb.Line, ui.Path_Verb.Cubic)
-	append(&pts, ui.Point{x0 + rad, y1}, ui.Point{x0 + rad - k, y1}, ui.Point{x0, y1 - rad + k}, ui.Point{x0, y1 - rad})
-	append(&verbs, ui.Path_Verb.Line, ui.Path_Verb.Cubic)
-	append(&pts, ui.Point{x0, y0 + rad}, ui.Point{x0, y0 + rad - k}, ui.Point{x0 + rad - k, y0}, ui.Point{x0 + rad, y0})
+	append(&verbs, ops.Path_Verb.Move)
+	append(&pts, ops.Point{start, y0})
+	append(&verbs, ops.Path_Verb.Line, ops.Path_Verb.Cubic)
+	append(&pts, ops.Point{x1 - rad, y0}, ops.Point{x1 - rad + k, y0}, ops.Point{x1, y0 + rad - k}, ops.Point{x1, y0 + rad})
+	append(&verbs, ops.Path_Verb.Line, ops.Path_Verb.Cubic)
+	append(&pts, ops.Point{x1, y1 - rad}, ops.Point{x1, y1 - rad + k}, ops.Point{x1 - rad + k, y1}, ops.Point{x1 - rad, y1})
+	append(&verbs, ops.Path_Verb.Line, ops.Path_Verb.Cubic)
+	append(&pts, ops.Point{x0 + rad, y1}, ops.Point{x0 + rad - k, y1}, ops.Point{x0, y1 - rad + k}, ops.Point{x0, y1 - rad})
+	append(&verbs, ops.Path_Verb.Line, ops.Path_Verb.Cubic)
+	append(&pts, ops.Point{x0, y0 + rad}, ops.Point{x0, y0 + rad - k}, ops.Point{x0 + rad - k, y0}, ops.Point{x0 + rad, y0})
 	if open {
-		append(&verbs, ui.Path_Verb.Line)
-		append(&pts, ui.Point{gap0, y0})
+		append(&verbs, ops.Path_Verb.Line)
+		append(&pts, ops.Point{gap0, y0})
 	} else {
-		append(&verbs, ui.Path_Verb.Close)
+		append(&verbs, ops.Path_Verb.Close)
 	}
-	path := ui.Path_Ref{ui.add_path(gtx.ops, {verbs[:], pts[:]})}
-	ui.stroke(gtx.ops, path, color, {width = w})
+	path := ops.Path_Ref{ops.add_path(gtx.scene, {verbs[:], pts[:]})}
+	ops.stroke(gtx.scene, path, color, {width = w})
 }

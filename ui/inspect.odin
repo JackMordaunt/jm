@@ -1,6 +1,7 @@
 package ui
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:path/filepath"
 import "core:strings"
 
@@ -12,7 +13,7 @@ Inspection :: struct {
 	box:      Layout_Box,
 	has_box:  bool,
 	hit:      Hit,
-	hit_rect: Rect, // the hit's shape's device bounds
+	hit_rect: ops.Rect, // the hit's shape's device bounds
 	has_hit:  bool,
 	name:     string, // the tag on the hit's area, or on the box's
 }
@@ -21,9 +22,9 @@ Inspection :: struct {
 // and clips contain p, one on the top layer (an open menu's, over the page
 // beneath it), the deepest there, the smallest of equals; and the top-most
 // hit area of any kind.
-inspect_at :: proc(f: ^Frame, p: Point) -> (got: Inspection) {
+inspect_at :: proc(f: ^Frame, p: ops.Point) -> (got: Inspection) {
 	for b in f.boxes {
-		if !rect_contains(b.rect, p) || !rect_contains(clip_chain_bounds(f, b.clip), p) {
+		if !ops.rect_contains(b.rect, p) || !ops.rect_contains(clip_chain_bounds(f, b.clip), p) {
 			continue
 		}
 		better := !got.has_box || b.layer > got.box.layer
@@ -37,7 +38,7 @@ inspect_at :: proc(f: ^Frame, p: Point) -> (got: Inspection) {
 	#reverse for h in f.hits {
 		if hit_contains(f, h, p) {
 			got.hit, got.has_hit = h, true
-			got.hit_rect = transform_rect(h.transform, shape_bounds(f.ops, h.shape))
+			got.hit_rect = ops.transform_rect(h.transform, ops.shape_bounds(f.scene, h.shape))
 			break
 		}
 	}
@@ -66,7 +67,7 @@ inspect_lines :: proc(got: Inspection, layout: ^Layout, allocator := context.all
 	if got.has_box {
 		b := got.box
 		append(&lines, fmt.aprintf("from %s at %s:%d", b.procedure, filepath.base(b.file), b.line, allocator = allocator))
-		append(&lines, fmt.aprintf("box  %s at %.0f,%.0f  depth %d", size_text(Size{b.rect.w, b.rect.h}), b.rect.x, b.rect.y, b.depth, allocator = allocator))
+		append(&lines, fmt.aprintf("box  %s at %.0f,%.0f  depth %d", size_text(ops.Size{b.rect.w, b.rect.h}), b.rect.x, b.rect.y, b.depth, allocator = allocator))
 		append(&lines, fmt.aprintf("min  %s", size_text(b.min), allocator = allocator))
 		append(&lines, fmt.aprintf("max  %s", size_text(b.max), allocator = allocator))
 		if shared > 0 {
@@ -78,7 +79,7 @@ inspect_lines :: proc(got: Inspection, layout: ^Layout, allocator := context.all
 	}
 	if got.has_hit {
 		h := got.hit
-		append(&lines, fmt.aprintf("hit  %s at %.0f,%.0f  %s", size_text(Size{got.hit_rect.w, got.hit_rect.h}), got.hit_rect.x, got.hit_rect.y, kinds_text(h.kinds), allocator = allocator))
+		append(&lines, fmt.aprintf("hit  %s at %.0f,%.0f  %s", size_text(ops.Size{got.hit_rect.w, got.hit_rect.h}), got.hit_rect.x, got.hit_rect.y, kinds_text(h.kinds), allocator = allocator))
 		if s := state_text(layout, h.area); s != "" && (!got.has_box || h.area != got.box.id) {
 			append(&lines, fmt.aprintf("hit state  %s", s, allocator = allocator))
 		}
@@ -88,7 +89,7 @@ inspect_lines :: proc(got: Inspection, layout: ^Layout, allocator := context.all
 
 // inspect_report is inspect_at's result at p as text for a reader without
 // a window: "nothing at x,y" when p is over neither a widget nor an area.
-inspect_report :: proc(f: ^Frame, layout: ^Layout, p: Point, allocator := context.allocator) -> string {
+inspect_report :: proc(f: ^Frame, layout: ^Layout, p: ops.Point, allocator := context.allocator) -> string {
 	got := inspect_at(f, p)
 	if !got.has_box && !got.has_hit {
 		return fmt.aprintf("nothing at %.0f,%.0f\n", p.x, p.y, allocator = allocator)
@@ -108,15 +109,15 @@ layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	if len(f.boxes) == 0 {
 		return strings.clone("no layout boxes: record the frame with Debug_Flag.Inspect\n", allocator)
 	}
-	tags := make(map[Area_Id]string, context.temp_allocator)
+	tags := make(map[ops.Area_Id]string, context.temp_allocator)
 	for t in f.tags {
 		tags[t.id] = t.name
 	}
-	uses := make(map[Area_Id]int, context.temp_allocator)
+	uses := make(map[ops.Area_Id]int, context.temp_allocator)
 	for x in f.boxes {
 		uses[x.id] += 1
 	}
-	interactive := make(map[Area_Id]bool, context.temp_allocator)
+	interactive := make(map[ops.Area_Id]bool, context.temp_allocator)
 	for hit in f.hits {
 		interactive[hit.area] = true
 	}
@@ -125,7 +126,7 @@ layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 		for _ in 0 ..< x.depth {
 			strings.write_string(&b, "  ")
 		}
-		fmt.sbprintf(&b, "from %s at %s:%d  %s at %.0f,%.0f  min %s max %s", x.procedure, filepath.base(x.file), x.line, size_text(Size{x.rect.w, x.rect.h}), x.rect.x, x.rect.y, size_text(x.min), size_text(x.max))
+		fmt.sbprintf(&b, "from %s at %s:%d  %s at %.0f,%.0f  min %s max %s", x.procedure, filepath.base(x.file), x.line, size_text(ops.Size{x.rect.w, x.rect.h}), x.rect.x, x.rect.y, size_text(x.min), size_text(x.max))
 		if name, ok := tags[x.id]; ok {
 			fmt.sbprintf(&b, "  %q", name)
 		}
@@ -140,8 +141,8 @@ layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 // INSPECT_MAX_COLOR and INSPECT_MIN_COLOR outline the inspected widget's
 // max and min constraints from its origin, beside BOUNDS_COLOR's box, so
 // the three read apart at a glance.
-INSPECT_MAX_COLOR :: Color{255, 170, 0, 220}
-INSPECT_MIN_COLOR :: Color{40, 200, 90, 220}
+INSPECT_MAX_COLOR :: ops.Color{255, 170, 0, 220}
+INSPECT_MIN_COLOR :: ops.Color{40, 200, 90, 220}
 
 // paint_inspector draws, above everything, what f (the frame this one's
 // input was routed against) has under device point p: the widget's box
@@ -150,7 +151,7 @@ INSPECT_MIN_COLOR :: Color{40, 200, 90, 220}
 // call it after the app's ui, outside any transform; scale is the display
 // density, for the panel's text. It returns the panel's rect, in device
 // space, or an empty one when nothing is under p.
-paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) -> (panel: Rect) {
+paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: ops.Point, scale: f32 = 1) -> (panel: ops.Rect) {
 	if f == nil {
 		return
 	}
@@ -158,35 +159,35 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) -> (pane
 	if !got.has_box && !got.has_hit {
 		return
 	}
-	o := gtx.ops
-	m := macro_open(o)
+	o := gtx.scene
+	m := ops.macro_open(o)
 	if got.has_box {
 		r := got.box.rect
-		fill(o, r, Color{255, 0, 255, 40})
-		stroke(o, r, BOUNDS_COLOR, {width = 2})
+		ops.fill(o, r, ops.Color{255, 0, 255, 40})
+		ops.stroke(o, r, BOUNDS_COLOR, {width = 2})
 		limit :: proc(v, room: f32) -> f32 {
 			return is_finite(v) ? v : room // an unbounded max runs to the window's edge
 		}
 		room := gtx.constraints.max * scale
-		mx := Rect{r.x, r.y, limit(got.box.max.x * scale, room.x - r.x), limit(got.box.max.y * scale, room.y - r.y)}
-		stroke(o, mx, INSPECT_MAX_COLOR, {width = 1})
-		stroke(o, Rect{r.x, r.y, got.box.min.x * scale, got.box.min.y * scale}, INSPECT_MIN_COLOR, {width = 1})
+		mx := ops.Rect{r.x, r.y, limit(got.box.max.x * scale, room.x - r.x), limit(got.box.max.y * scale, room.y - r.y)}
+		ops.stroke(o, mx, INSPECT_MAX_COLOR, {width = 1})
+		ops.stroke(o, ops.Rect{r.x, r.y, got.box.min.x * scale, got.box.min.y * scale}, INSPECT_MIN_COLOR, {width = 1})
 	}
 	if got.has_hit {
-		stroke(o, got.hit_rect, HIT_BOUNDS_COLOR, {width = 2})
+		ops.stroke(o, got.hit_rect, ops.HIT_BOUNDS_COLOR, {width = 2})
 	}
 	// The panel: one run a line, on a dark card beside the pointer.
 	lines := inspect_lines(got, gtx.layout, gtx.allocator, id_sharers(f, got))
 	size := 12 * scale
 	lh := size * 1.4
 	pad := 8 * scale
-	runs := make([]Glyph_Run, len(lines), gtx.allocator)
+	runs := make([]ops.Glyph_Run, len(lines), gtx.allocator)
 	w: f32
 	for l, i in lines {
 		runs[i] = shape(gtx.shaper, gtx.theme.font, size, l, gtx.allocator)
 		w = max(w, runs[i].advance)
 	}
-	card := Rect{p.x + 16 * scale, p.y + 16 * scale, w + 2 * pad, f32(len(lines)) * lh + 2 * pad}
+	card := ops.Rect{p.x + 16 * scale, p.y + 16 * scale, w + 2 * pad, f32(len(lines)) * lh + 2 * pad}
 	window := gtx.constraints.max * scale
 	if card.x + card.w > window.x {
 		card.x = max(p.x - 16 * scale - card.w, 0)
@@ -194,20 +195,20 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) -> (pane
 	if card.y + card.h > window.y {
 		card.y = max(p.y - 16 * scale - card.h, 0)
 	}
-	fill(o, Round_Rect{card, 6 * scale}, Color{24, 22, 30, 235})
+	ops.fill(o, ops.Round_Rect{card, 6 * scale}, ops.Color{24, 22, 30, 235})
 	for run, i in runs {
-		glyphs(o, add_run(o, run), {card.x + pad, card.y + pad + f32(i) * lh + size}, Color{240, 238, 245, 255})
+		ops.glyphs(o, ops.add_run(o, run), {card.x + pad, card.y + pad + f32(i) * lh + size}, ops.Color{240, 238, 245, 255})
 	}
-	macro_close(o, m)
-	defer_call(o, m, root = true)
+	ops.macro_close(o, m)
+	ops.defer_call(o, m, root = true)
 	return card
 }
 
 // kinds_text is ks as their names, space separated.
 @(private = "file")
-kinds_text :: proc(ks: Event_Kinds) -> string {
+kinds_text :: proc(ks: ops.Event_Kinds) -> string {
 	b := strings.builder_make(context.temp_allocator)
-	for k in Event_Kind {
+	for k in ops.Event_Kind {
 		if k in ks {
 			if strings.builder_len(b) > 0 {
 				strings.write_byte(&b, ' ')
@@ -244,13 +245,13 @@ id_sharers :: proc(f: ^Frame, got: Inspection) -> (n: int) {
 }
 
 @(private = "file")
-area :: proc(r: Rect) -> f32 {
+area :: proc(r: ops.Rect) -> f32 {
 	return r.w * r.h
 }
 
 // size_text is s as WxH, an unbounded side as inf.
 @(private = "file")
-size_text :: proc(s: Size) -> string {
+size_text :: proc(s: ops.Size) -> string {
 	side :: proc(v: f32) -> string {
 		return is_finite(v) ? fmt.tprintf("%.0f", v) : "inf"
 	}
@@ -260,7 +261,7 @@ size_text :: proc(s: Size) -> string {
 // state_text is the widget state layout keeps for id, the flags that are
 // set and any moving springs, or "".
 @(private = "file")
-state_text :: proc(layout: ^Layout, id: Area_Id) -> string {
+state_text :: proc(layout: ^Layout, id: ops.Area_Id) -> string {
 	if layout == nil {
 		return ""
 	}

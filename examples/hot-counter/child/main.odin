@@ -5,11 +5,12 @@
 // hot-counter/host) respawns it, per ui/sdl's run_host.
 //
 //	hot-counter-child                          run as the subprocess
-//	hot-counter-child -dump                    the scene ops as text
+//	hot-counter-child -dump                    the scene sc as text
 //	hot-counter-child -png build/counter.png    render it headlessly
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:os"
 import "jm:ui"
 import m3 "jm:ui/material"
@@ -26,7 +27,7 @@ Model :: struct {
 counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	th := gtx.theme
-	ui.fill(gtx.ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
+	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
 
 	pad := ui.inset_open(gtx, ui.pad_all(24))
 	defer ui.close(&pad)

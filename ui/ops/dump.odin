@@ -1,16 +1,16 @@
-package ui
+package ops
 
 import "core:fmt"
 import "core:math"
 import "core:strings"
 
-// Canonical text forms of Ops and Frame. Tests compare against these and the
-// probe prints them, so the format is part of the contract: one op per line,
+// Canonical text form of Scene (ui's dump_frame does Frame). Tests compare
+// against these and the probe prints them, so the format is part of the contract: one op per line,
 // two spaces per open push or macro, numbers via write_num.
 
 // dump renders ops one per line. Pops and macro ends print nothing and
 // dedent; a macro body is indented under its `macro N` line.
-dump :: proc(ops: ^Ops, allocator := context.allocator) -> string {
+dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 	sb := strings.builder_make(allocator)
 	depth := 0
 	for op in ops.ops {
@@ -63,61 +63,6 @@ dump :: proc(ops: ^Ops, allocator := context.allocator) -> string {
 	return strings.to_string(sb)
 }
 
-// dump_frame renders f in four sections, draws, clips, hits and tags, one
-// entry per line indented under its section. Transforms print in brackets;
-// a missing clip prints as clip=none.
-dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
-	sb := strings.builder_make(allocator)
-	strings.write_string(&sb, "draws\n")
-	for d, i in f.draws {
-		fmt.sbprintf(&sb, "  draw %d clip=", i)
-		write_clip_id(&sb, d.clip)
-		strings.write_string(&sb, " [")
-		write_affine(&sb, d.transform)
-		strings.write_string(&sb, "] ")
-		switch v in d.cmd {
-		case Fill:
-			write_draw(&sb, f.ops, v)
-		case Stroke:
-			write_draw(&sb, f.ops, v)
-		case Glyphs:
-			write_draw(&sb, f.ops, v)
-		case Image:
-			write_draw(&sb, f.ops, v)
-		}
-		strings.write_byte(&sb, '\n')
-	}
-	strings.write_string(&sb, "clips\n")
-	for c, i in f.clips {
-		fmt.sbprintf(&sb, "  clip %d parent=", i)
-		write_clip_id(&sb, c.parent)
-		strings.write_string(&sb, " [")
-		write_affine(&sb, c.transform)
-		strings.write_string(&sb, "] ")
-		write_shape(&sb, c.shape)
-		strings.write_byte(&sb, '\n')
-	}
-	strings.write_string(&sb, "hits\n")
-	for h, i in f.hits {
-		fmt.sbprintf(&sb, "  hit %d area=%d order=%d clip=", i, h.area, h.order)
-		write_clip_id(&sb, h.clip)
-		strings.write_string(&sb, " [")
-		write_affine(&sb, h.transform)
-		strings.write_string(&sb, "] ")
-		write_shape(&sb, h.shape)
-		strings.write_string(&sb, " kinds=")
-		write_kinds(&sb, h.kinds)
-		strings.write_byte(&sb, '\n')
-	}
-	strings.write_string(&sb, "tags\n")
-	for t in f.tags {
-		strings.write_string(&sb, "  ")
-		write_tag(&sb, t)
-		strings.write_byte(&sb, '\n')
-	}
-	return strings.to_string(sb)
-}
-
 // write_num writes v compactly: rounded to 3 decimals, integers without a
 // decimal point, trailing zeros trimmed, never "-0". NaN and infinities
 // print as nan, inf and -inf.
@@ -152,7 +97,6 @@ write_num :: proc(sb: ^strings.Builder, v: f64) {
 	strings.write_string(sb, s)
 }
 
-@(private = "file")
 write_affine :: proc(sb: ^strings.Builder, m: Affine) {
 	for v, i in ([6]f64{m.a, m.b, m.c, m.d, m.e, m.f}) {
 		if i > 0 {
@@ -162,7 +106,6 @@ write_affine :: proc(sb: ^strings.Builder, m: Affine) {
 	}
 }
 
-@(private = "file")
 write_nums :: proc(sb: ^strings.Builder, vs: ..f32) {
 	for v, i in vs {
 		if i > 0 {
@@ -172,12 +115,10 @@ write_nums :: proc(sb: ^strings.Builder, vs: ..f32) {
 	}
 }
 
-@(private = "file")
 write_rect :: proc(sb: ^strings.Builder, r: Rect) {
 	write_nums(sb, r.x, r.y, r.w, r.h)
 }
 
-@(private = "file")
 write_color :: proc(sb: ^strings.Builder, c: Color) {
 	if c.a == 255 {
 		fmt.sbprintf(sb, "#%02x%02x%02x", c.r, c.g, c.b)
@@ -186,7 +127,6 @@ write_color :: proc(sb: ^strings.Builder, c: Color) {
 	}
 }
 
-@(private = "file")
 write_shape :: proc(sb: ^strings.Builder, s: Shape) {
 	switch v in s {
 	case Rect:
@@ -205,7 +145,6 @@ write_shape :: proc(sb: ^strings.Builder, s: Shape) {
 	}
 }
 
-@(private = "file")
 write_paint :: proc(sb: ^strings.Builder, p: Paint) {
 	switch v in p {
 	case Color:
@@ -225,7 +164,6 @@ write_paint :: proc(sb: ^strings.Builder, p: Paint) {
 	}
 }
 
-@(private = "file")
 write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 	first := true
 	for k in Event_Kind {
@@ -240,26 +178,15 @@ write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 	}
 }
 
-@(private = "file")
-write_clip_id :: proc(sb: ^strings.Builder, c: Clip_Id) {
-	if c == NO_CLIP {
-		strings.write_string(sb, "none")
-	} else {
-		fmt.sbprintf(sb, "%d", c)
-	}
-}
-
-@(private = "file")
 write_tag :: proc(sb: ^strings.Builder, t: Tag) {
 	fmt.sbprintf(sb, "tag %d ", t.id)
 	strings.write_quoted_string(sb, t.name)
 }
 
-// write_draw prints the four drawing ops, shared by dump and dump_frame.
-// ops may be nil or lack the run a Glyphs names; the run fields then print ?.
-@(private = "file")
-write_draw :: proc(sb: ^strings.Builder, ops: ^Ops, cmd: Draw_Cmd) {
-	switch v in cmd {
+// write_draw writes a draw op — a Fill, Stroke, Glyphs or Image — as dump
+// prints one; ui's dump_frame prints a Frame's Draw_Cmd through it too.
+write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
+	#partial switch v in cmd {
 	case Fill:
 		strings.write_string(sb, "fill ")
 		write_shape(sb, v.shape)
@@ -276,8 +203,8 @@ write_draw :: proc(sb: ^strings.Builder, ops: ^Ops, cmd: Draw_Cmd) {
 		join := strings.to_lower(fmt.tprint(v.style.join), context.temp_allocator)
 		fmt.sbprintf(sb, " cap=%s join=%s", cap, join)
 	case Glyphs:
-		if ops != nil && int(v.run) < len(ops.runs) {
-			r := ops.runs[v.run]
+		if o != nil && int(v.run) < len(o.runs) {
+			r := o.runs[v.run]
 			fmt.sbprintf(sb, "glyphs font=%d size=", r.font)
 			write_num(sb, f64(r.size))
 			fmt.sbprintf(sb, " run#%d n=%d adv=", v.run, len(r.glyphs))

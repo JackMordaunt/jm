@@ -1,22 +1,23 @@
 package diagram
 
 import "core:testing"
+import "jm:ui/ops"
 import "jm:ui"
 import "jm:ui/testutil"
 
 @(private = "file")
 Harness :: struct {
-	ops:   ui.Ops,
+	scene:   ops.Scene,
 	theme: ui.Theme,
 	gtx:   ui.Ctx,
 }
 
 @(private = "file")
 harness_init :: proc(h: ^Harness) {
-	ui.ops_init(&h.ops)
+	ops.init(&h.scene)
 	h.theme = ui.light_theme(0)
 	h.gtx = {
-		ops         = &h.ops,
+		scene         = &h.scene,
 		constraints = ui.exact({800, 600}),
 		theme       = &h.theme,
 		shaper      = ui.stub_shaper(),
@@ -26,7 +27,7 @@ harness_init :: proc(h: ^Harness) {
 
 @(private = "file")
 harness_destroy :: proc(h: ^Harness) {
-	ui.ops_destroy(&h.ops)
+	ops.destroy(&h.scene)
 	free_all(context.temp_allocator)
 }
 
@@ -37,14 +38,14 @@ test_group_draws_the_header_and_every_chip :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 
 	chips := []Chip{{"A", "a"}, {"B", "b"}, {"C", "c"}}
-	r := ui.Rect{0, 0, 300, group_height(len(chips))}
-	group(&h.gtx, r, "Title", "Subtitle", ui.Color{0, 0, 255, 255}, chips)
+	r := ops.Rect{0, 0, 300, group_height(len(chips))}
+	group(&h.gtx, r, "Title", "Subtitle", ops.Color{0, 0, 255, 255}, chips)
 
 	// One background fill and one accent stripe for the card itself, plus
 	// one background fill and one accent stripe per chip.
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], ui.Fill), 2+2*len(chips))
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Fill), 2+2*len(chips))
 	// Title, subtitle, and title+subtitle per chip.
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], ui.Glyphs), 2+2*len(chips))
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Glyphs), 2+2*len(chips))
 }
 
 @(test)
@@ -64,9 +65,9 @@ test_arrow_draws_a_shaft_and_a_head :: proc(t: ^testing.T) {
 	harness_init(&h)
 	defer harness_destroy(&h)
 
-	arrow(&h.gtx, {0, 0}, {100, 0}, ui.Color{255, 0, 0, 255}, 2)
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], ui.Stroke), 1) // the shaft
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], ui.Fill), 1) // the head
+	arrow(&h.gtx, {0, 0}, {100, 0}, ops.Color{255, 0, 0, 255}, 2)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Stroke), 1) // the shaft
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Fill), 1) // the head
 }
 
 @(test)
@@ -75,8 +76,8 @@ test_arrow_degenerate_points_draw_nothing :: proc(t: ^testing.T) {
 	harness_init(&h)
 	defer harness_destroy(&h)
 
-	arrow(&h.gtx, {5, 5}, {5, 5}, ui.Color{255, 0, 0, 255}, 2)
-	testing.expect_value(t, len(h.ops.ops), 0)
+	arrow(&h.gtx, {5, 5}, {5, 5}, ops.Color{255, 0, 0, 255}, 2)
+	testing.expect_value(t, len(h.scene.ops), 0)
 }
 
 @(test)
@@ -85,7 +86,7 @@ test_dashed_arrow_draws_several_segments_and_one_head :: proc(t: ^testing.T) {
 	harness_init(&h)
 	defer harness_destroy(&h)
 
-	dashed_arrow(&h.gtx, {0, 0}, {0, 100}, ui.Color{0, 0, 0, 255}, 2, 8, 6)
-	testing.expect(t, testutil.count_ops(h.ops.ops[:], ui.Stroke) > 1)
-	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], ui.Fill), 1) // the head
+	dashed_arrow(&h.gtx, {0, 0}, {0, 100}, ops.Color{0, 0, 0, 255}, 2, 8, 6)
+	testing.expect(t, testutil.count_ops(h.scene.ops[:], ops.Stroke) > 1)
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Fill), 1) // the head
 }

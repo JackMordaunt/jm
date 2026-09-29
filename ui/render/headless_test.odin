@@ -1,6 +1,7 @@
 package render
 
 import "core:os"
+import "jm:ui/ops"
 import "core:strings"
 import "core:testing"
 
@@ -11,7 +12,7 @@ import "jm:ui"
 @(private = "file")
 headless_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	(^int)(user)^ += 1
-	ui.fill(gtx.ops, ui.Rect{0, 0, gtx.constraints.max.x, 50}, ui.Color{200, 0, 0, 255})
+	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, 50}, ops.Color{200, 0, 0, 255})
 }
 
 @(test)

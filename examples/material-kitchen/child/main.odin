@@ -6,7 +6,7 @@
 //
 //	material-kitchen-child                                run as the hot-reload subprocess
 //	material-kitchen-child -page Buttons -png out.png     render one page headlessly
-//	material-kitchen-child -page Buttons -dump            that page's ops as text
+//	material-kitchen-child -page Buttons -dump            that page's sc as text
 //	material-kitchen-child -dark ...                      the dark scheme
 //	material-kitchen-child -size 950x1040 ...             at another window size
 //	material-kitchen-child -reveal ...                    show what hides until used
@@ -28,6 +28,7 @@
 package main
 
 import "core:fmt"
+import "jm:ui/ops"
 import "core:os"
 import "core:strings"
 import "jm:ui"
@@ -74,7 +75,7 @@ Model :: struct {
 	tab_a:     int,
 	tab_b:     int,
 	tab_c:     int,
-	window:    ui.Size,
+	window:    ops.Size,
 	menu_open: bool,
 	menu_pick: string,
 	split_menu: bool,
@@ -235,7 +236,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	gtx.theme^ = m3.theme_for(&m.scheme, gtx.theme.font)
 	s := &m.scheme
 	m.window = gtx.constraints.max
-	ui.fill(gtx.ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Surface])
+	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Surface])
 
 	items := make([]m3.Nav_Item, len(PAGES), gtx.allocator)
 	for p, i in PAGES {
@@ -465,12 +466,12 @@ parse_int :: proc(s: string) -> int {
 
 // kitchen_fonts is Noto Sans at 400, 500 and 700 (font ids 0, 1, 2) for
 // the type scale's weights, or jm:ui's default font for all three.
-kitchen_fonts :: proc() -> []ui.Font_Ref {
+kitchen_fonts :: proc() -> []ops.Font_Ref {
 	NOTO :: "/usr/share/fonts/noto/NotoSans-"
 	paths := [3]string{NOTO + "Regular.ttf", NOTO + "Medium.ttf", NOTO + "Bold.ttf"}
-	fonts := make([]ui.Font_Ref, 3)
+	fonts := make([]ops.Font_Ref, 3)
 	for p, i in paths {
-		fonts[i] = {ui.Font_Id(i), os.exists(p) ? p : ui.default_font()}
+		fonts[i] = {ops.Font_Id(i), os.exists(p) ? p : ui.default_font()}
 	}
 	return fonts
 }
@@ -487,7 +488,7 @@ main :: proc() {
 		return
 	}
 	args := os.args[1:]
-	size := ui.Size{WIDTH, HEIGHT}
+	size := ops.Size{WIDTH, HEIGHT}
 	debug: ui.Debug_Flags
 	full := false
 	// One headless session runs every step (see render.headless_step), so
