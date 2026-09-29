@@ -301,6 +301,7 @@ STATES :: design.STATES
 Control :: struct {
 	using base: design.Control,
 	layer:      f32,
+	ripple:     ^Ripple, // nil unless Live
 }
 
 // control resolves state for the component with id and bounds (see
@@ -308,6 +309,12 @@ Control :: struct {
 control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interaction) -> (c: Control) {
 	c.base = design.control(gtx, id, bounds, state)
 	c.layer = state_layer(c.state)
+	if c.st != nil {
+		c.ripple = ui.widget_data(gtx, id, Ripple)
+		if c.press {
+			start_ripple(c.ripple, c.press_at)
+		}
+	}
 	return
 }
 
@@ -342,9 +349,44 @@ paint_state_layer :: proc(gtx: ^ui.Ctx, c: Control, shape: ui.Shape, color: ui.C
 	if c.layer > 0 {
 		ui.fill(gtx.ops, shape, ui.with_alpha(color, c.layer))
 	}
-	if c.st != nil {
-		ui.paint_ripple(gtx, c.st, shape, color)
+	if c.ripple != nil {
+		paint_ripple(gtx, c.ripple, shape, color)
 	}
+}
+
+// Ripple is a component's ink ripple: the tween since the last press and
+// where that press landed, local to the widget. It is the component's
+// own widget_data, started by control on a press.
+Ripple :: struct {
+	tween:  ui.Tween,
+	origin: ui.Point,
+}
+
+// RIPPLE_DURATION is how long the ripple takes to fill the shape; it
+// peaks at the pressed state-layer opacity and fades as it grows.
+RIPPLE_DURATION :: 0.5
+RIPPLE_PEAK_OPACITY :: PRESSED_OPACITY
+
+// start_ripple (re)starts r from origin, overwriting whatever ripple was
+// already running: a second click restarts the animation rather than
+// showing two ripples at once.
+start_ripple :: proc(r: ^Ripple, origin: ui.Point) {
+	r.tween = {to = 1, duration = RIPPLE_DURATION}
+	r.origin = origin
+}
+
+// paint_ripple draws r, if it is still running, as an expanding circle of
+// tint clipped to shape, fading as it grows.
+paint_ripple :: proc(gtx: ^ui.Ctx, r: ^Ripple, shape: ui.Shape, tint: ui.Color) {
+	if r.tween.t >= r.tween.duration {
+		return
+	}
+	t := ui.tween_update(&r.tween, gtx)
+	bounds := ui.shape_bounds(gtx.ops, shape)
+	rad := t * (bounds.w + bounds.h) // a cheap, safely-oversized bound on the origin-to-farthest-corner distance, without a sqrt
+	ui.push_clip(gtx.ops, shape)
+	ui.fill(gtx.ops, ui.Ellipse{{r.origin.x - rad, r.origin.y - rad, rad * 2, rad * 2}}, ui.with_alpha(tint, (1 - t) * RIPPLE_PEAK_OPACITY))
+	ui.pop_clip(gtx.ops)
 }
 
 // FOCUS_RING_WIDTH and FOCUS_RING_OFFSET are the focus ring's stroke and

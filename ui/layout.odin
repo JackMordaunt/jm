@@ -55,22 +55,40 @@ Align :: enum u8 {
 	Fill,
 }
 
-// Widget_State is what a widget keeps between frames, keyed by its id.
+// Widget_State is what every widget keeps between frames, keyed by its
+// id: whether it is being pointed at, pressed or focused, and four spring
+// slots for whatever it animates. Anything one widget alone needs — a
+// container's layout memo, a text field's caret scroll, a design
+// system's ripple — is its own type in widget_data, not a field here.
 Widget_State :: struct {
-	seen:          u64,
-	hovered:       bool,
-	pressed:       bool,
-	focused:       bool,
-	scroll:        f32, // text field: horizontal scroll to keep the caret visible
-	scroll_x:      f32, // scroll_box: horizontal offset, when its content is wider than it
-	flex_valid:    bool, // flex: the fields below hold last frame's totals
-	flex_rigid:    f32,
-	flex_weight:   f32,
-	flex_count:    int,
-	ripple:        Tween, // button family: ink-ripple progress since the last Press; ripple.t < ripple.duration means still animating
-	ripple_origin: Point, // where that Press landed, local to the widget
-	springs:       [4]Spring, // a component's own animated properties, one slot each, numbered by the component
-	root:          Area_Id, // the root scope it was last seen under, for retain
+	seen:    u64,
+	hovered: bool,
+	pressed: bool,
+	focused: bool,
+	springs: [4]Spring, // a component's own animated properties, one slot each, numbered by the component
+	root:    Area_Id, // the root scope it was last seen under, for retain
+}
+
+// Flex_Memo is a flex container's totals from the frame before, so a
+// weighted child on the next frame is offered its share of what the
+// rigid children leave.
+@(private)
+Flex_Memo :: struct {
+	rigid, weights: f32,
+	count:          int,
+}
+
+// Scroll_Offset is a scroll container's offset into its content.
+@(private)
+Scroll_Offset :: struct {
+	x, y: f32,
+}
+
+// Scroll_Bar_Memo is a scroll bar's own memory: the seconds since the
+// last activity, and the offset it last drew at.
+@(private)
+Scroll_Bar_Memo :: struct {
+	idle, offset: f32,
 }
 
 @(private)
@@ -564,11 +582,10 @@ flex_child_constraints :: proc(l: ^Layout, c: ^Container, weight: f32) -> Constr
 		rigid := c.rigid
 		weights := c.weights + weight
 		count := c.count + 1
-		if memo, ok := l.state[c.place.id]; ok && memo.flex_valid {
-			rigid = max(rigid, memo.flex_rigid)
-			weights = max(weights, memo.flex_weight)
-			count = max(count, memo.flex_count)
-		}
+		memo := (^Flex_Memo)(data_slot(l, Data_Key{c.place.id, Flex_Memo}, size_of(Flex_Memo), align_of(Flex_Memo)))
+		rigid = max(rigid, memo.rigid)
+		weights = max(weights, memo.weights)
+		count = max(count, memo.count)
 		free := max(main_max - rigid - c.gap * f32(count - 1), 0)
 		lo = free * weight / weights
 		hi = lo
@@ -656,11 +673,10 @@ end_flex :: proc(f: ^Flex) {
 		}
 		at += main_of(c.axis, k.size)
 	}
-	memo := widget_state(gtx, c.place.id)
-	memo.flex_valid = true
-	memo.flex_rigid = c.rigid
-	memo.flex_weight = c.weights
-	memo.flex_count = c.count
+	memo := widget_data(gtx, c.place.id, Flex_Memo)
+	memo.rigid = c.rigid
+	memo.weights = c.weights
+	memo.count = c.count
 	done := container_pop(gtx, f.index)
 	widget_end(gtx, &done.place, {size, baseline})
 	f.index = -1
@@ -1069,24 +1085,24 @@ scroll_bar_paint :: proc(gtx: ^Ctx, id: Area_Id, axis: Axis, size: Size, content
 	if !ok {
 		return
 	}
-	// The bar's own widget state: scroll holds the seconds since the last
-	// activity, ripple_origin.x the offset it last drew at, springs 0 and
-	// 1 the expand and the fade. A bar starts idle, so it stays hidden
-	// until something happens.
+	// The bar's own widget state: springs 0 and 1 are the expand and the
+	// fade; its memo holds the idle time and the offset it last drew at.
+	// A bar starts idle, so it stays hidden until something happens.
 	st := widget_state(gtx, id)
+	m := widget_data(gtx, id, Scroll_Bar_Memo)
 	held := st.hovered || st.pressed
 	switch {
 	case !st.springs[1].started:
-		st.scroll = SCROLL_BAR_LINGER
-	case held || offset != st.ripple_origin.x:
-		st.scroll = 0
+		m.idle = SCROLL_BAR_LINGER
+	case held || offset != m.offset:
+		m.idle = 0
 	case:
-		st.scroll += gtx.dt
+		m.idle += gtx.dt
 	}
-	st.ripple_origin.x = offset
-	shown := st.scroll < SCROLL_BAR_LINGER || revealing(gtx)
+	m.offset = offset
+	shown := m.idle < SCROLL_BAR_LINGER || revealing(gtx)
 	if shown && !held {
-		request_frame(gtx, SCROLL_BAR_LINGER - st.scroll)
+		request_frame(gtx, SCROLL_BAR_LINGER - m.idle)
 	}
 	vis := spring_update(&st.springs[1], gtx, shown ? 1 : 0, SCROLL_BAR_FADE)
 	grow := spring_update(&st.springs[0], gtx, held ? 1 : 0, SCROLL_BAR_FADE)
@@ -1151,38 +1167,34 @@ overlay_close :: proc(gtx: ^Ctx, index: ^int) {
 	case .Scroll:
 		macro_end(o, c.body)
 		size = constrain(c.cs, {content.x, is_finite(c.cs.max.y) ? c.cs.max.y : content.y})
-		st := widget_state(gtx, c.place.id)
+		sc := widget_data(gtx, c.place.id, Scroll_Offset)
 		for e in events(gtx, c.place.id) {
 			if e.kind != .Scroll {
 				continue
 			}
 			if .Shift in e.mods && e.scroll.x == 0 {
-				st.scroll_x += e.scroll.y * SCROLL_STEP
+				sc.x += e.scroll.y * SCROLL_STEP
 			} else {
-				st.scroll += e.scroll.y * SCROLL_STEP
-				st.scroll_x += e.scroll.x * SCROLL_STEP
+				sc.y += e.scroll.y * SCROLL_STEP
+				sc.x += e.scroll.x * SCROLL_STEP
 			}
 		}
-		st.scroll = clamp(st.scroll, 0, max(content.y - size.y, 0))
-		st.scroll_x = clamp(st.scroll_x, 0, max(content.x - size.x, 0))
+		sc.y = clamp(sc.y, 0, max(content.y - size.y, 0))
+		sc.x = clamp(sc.x, 0, max(content.x - size.x, 0))
 		// The bars take their input before the body is placed, so a drag
-		// moves the content this frame. Each bar has its own widget state,
-		// which may grow the state map, so st is read into locals first and
-		// written back after.
-		y, x := st.scroll, st.scroll_x
+		// moves the content this frame. Each bar has its own data slot;
+		// the slots live on the heap, so sc stays valid while they are made.
 		both := content.y > size.y && content.x > size.x
-		y = scroll_bar_handle(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, y, both)
-		x = scroll_bar_handle(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, x, both)
-		st = widget_state(gtx, c.place.id)
-		st.scroll, st.scroll_x = y, x
+		sc.y = scroll_bar_handle(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, sc.y, both)
+		sc.x = scroll_bar_handle(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
 		view := Rect{0, 0, size.x, size.y}
 		input_area(o, c.place.id, view, {.Scroll})
 		push_clip(o, view)
-		push_transform(o, translate(-x, -y))
+		push_transform(o, translate(-sc.x, -sc.y))
 		call(o, c.body)
 		pop_transform(o)
-		scroll_bar_paint(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, y, both)
-		scroll_bar_paint(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, x, both)
+		scroll_bar_paint(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, sc.y, both)
+		scroll_bar_paint(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
 		pop_clip(o)
 		baseline = 0
 	case .Center:

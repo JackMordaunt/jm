@@ -106,7 +106,6 @@ segmented_button :: proc(
 			fill(gtx.ops, seg, with_alpha(content, layers[i]))
 		}
 		if states[i] != nil {
-			paint_ripple(gtx, states[i], seg, content)
 		}
 		// The check mark's slot (check_w + gap) is reserved whether or not
 		// this segment is selected, so the label always starts at the same

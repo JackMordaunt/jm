@@ -1,5 +1,12 @@
 package material
 
+// Caret_Scroll is a text field's horizontal scroll, kept so the caret
+// stays in view.
+@(private = "file")
+Caret_Scroll :: struct {
+	x: f32,
+}
+
 import "core:fmt"
 import "core:math"
 import "core:strings"
@@ -295,6 +302,7 @@ field_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, s: ^ui.Text_State, o: Field_Op
 	}
 	st := ui.widget_state(gtx, id)
 	fi.st = st
+	cs := ui.widget_data(gtx, id, Caret_Scroll)
 	for e in ui.events(gtx, id) {
 		#partial switch e.kind {
 		case .Enter:
@@ -307,7 +315,7 @@ field_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, s: ^ui.Text_State, o: Field_Op
 			st.focused = false
 		case .Press:
 			r.pressed = true
-			s.cursor = ui.text_hit(gtx, s, g.input_font.size, e.pos.x - g.in_x + st.scroll)
+			s.cursor = ui.text_hit(gtx, s, g.input_font.size, e.pos.x - g.in_x + cs.x)
 		case .Text:
 			if len(e.text) > 0 && !o.read_only {
 				inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
@@ -333,9 +341,9 @@ field_input :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, s: ^ui.Text_State, o: Field_Op
 	str := string(s.buf[:])
 	full := shape_style(gtx, str, g.input_font).width
 	caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], g.input_font).width : full
-	st.scroll = min(st.scroll, max(full + CARET_W - g.inner, 0))
-	st.scroll = max(clamp(st.scroll, caret + CARET_W - g.inner, caret), 0)
-	fi.scroll = st.scroll
+	cs.x = min(cs.x, max(full + CARET_W - g.inner, 0))
+	cs.x = max(clamp(cs.x, caret + CARET_W - g.inner, caret), 0)
+	fi.scroll = cs.x
 	return
 }
 

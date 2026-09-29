@@ -208,16 +208,6 @@ STATE_PRESSED_OPACITY :: 0.12
 STATE_DISABLED_CONTAINER_OPACITY :: 0.12
 STATE_DISABLED_CONTENT_OPACITY :: 0.38
 
-// RIPPLE_DURATION and RIPPLE_PEAK_OPACITY drive the button family's
-// click/tap ink ripple (see start_ripple/paint_ripple in widget_button.odin)
-// — an expanding, fading circle of the content colour from wherever the
-// Press landed. Unlike STATE_*_OPACITY above these are not read from an M3
-// token: Material's motion spec for ripple is a curve, not one number, so
-// this is a deliberate, reasonable approximation (peaking at the same
-// intensity as the pressed state layer, over half a second) rather than a
-// verified value.
-RIPPLE_DURATION :: 0.5
-RIPPLE_PEAK_OPACITY :: STATE_PRESSED_OPACITY
 
 // Button_Kind selects which of M3's five common buttons to resolve
 // defaults from — the type is what picks the colour roles (container vs.

@@ -150,3 +150,32 @@ test_small_buttons_take_a_48dp_touch_target :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.clicks, 10)
 }
+
+// ellipse_fills counts the ellipse fills in p's last frame: a ripple is
+// the only ellipse the buttons page paints.
+@(private = "file")
+ellipse_fills :: proc(p: ^ui.Probe) -> (n: int) {
+	for op in p.ops.ops {
+		if f, ok := op.(ui.Fill); ok {
+			if _, e := f.shape.(ui.Ellipse); e {
+				n += 1
+			}
+		}
+	}
+	return
+}
+
+@(test)
+test_a_press_starts_a_ripple_that_fades_out :: proc(t: ^testing.T) {
+	m: Buttons_Model
+	p: ui.Probe
+	ui.probe_init(&p, buttons, &m, {600, 1000}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect_value(t, ellipse_fills(&p), 0)
+	testing.expect(t, ui.probe_click(&p, "Tiny"))
+	testing.expect_value(t, ellipse_fills(&p), 1) // still expanding a frame after release
+	ui.probe_advance(&p, 60, 1.0 / 60) // a second: past RIPPLE_DURATION
+	testing.expect_value(t, ellipse_fills(&p), 0)
+}

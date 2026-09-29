@@ -52,7 +52,6 @@ icon_button :: proc(
 		fill(gtx.ops, rr, with_alpha(content, layer_opacity))
 	}
 	if st != nil {
-		paint_ripple(gtx, st, rr, content)
 	}
 	origin := Point{(size.x - run.advance) / 2, (size.y - lh) / 2 + m.ascent}
 	if painted(content) {

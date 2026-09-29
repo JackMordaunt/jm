@@ -6,11 +6,9 @@ package ui
 // paint style.text over the container at STATE_*_OPACITY (see with_alpha
 // in theme.odin) rather than a pre-mixed colour, so the same code paints
 // every kind's state layer regardless of its container colour — including
-// Outlined and Text, whose container is transparent. A Press or a
-// keyboard activation also starts an ink ripple (see paint_ripple) from
-// wherever it landed. A disabled button dims container, outline and text
+// Outlined and Text, whose container is transparent. A disabled button dims container, outline and text
 // by STATE_DISABLED_*_OPACITY, tracks no pointer or focus state and shows
-// no ripple, and never returns true. Buttons made in a loop need a
+// and never returns true. Buttons made in a loop need a
 // distinct key each.
 button :: proc(
 	gtx: ^Ctx,
@@ -69,7 +67,6 @@ button :: proc(
 		fill(gtx.ops, rr, with_alpha(s.text, layer_opacity))
 	}
 	if st != nil {
-		paint_ripple(gtx, st, rr, s.text)
 	}
 	origin := Point{(size.x - run.advance) / 2, (size.y - lh) / 2 + m.ascent}
 	if painted(content) {
@@ -91,7 +88,21 @@ button :: proc(
 // all, since the router only delivers what an area registered. Exported
 // for widgets built outside this package (jm:ui/material's controls).
 click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: Rect) -> bool {
-	clicked := false
+	return activate_from_events(gtx, area, st, bounds).clicked
+}
+
+// Activation is what activate_from_events saw for a widget this frame: a
+// click, and any left press or keyboard activation with where it landed
+// (the pointer, or the widget's centre for a key), for a design system
+// that animates outward from the touch point.
+Activation :: struct {
+	clicked: bool,
+	press:   bool,
+	at:      Point,
+}
+
+// activate_from_events is click_from_events with the press it saw.
+activate_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: Rect) -> (a: Activation) {
 	for e in events(gtx, area) {
 		#partial switch e.kind {
 		case .Enter:
@@ -105,51 +116,22 @@ click_from_events :: proc(gtx: ^Ctx, area: Area_Id, st: ^Widget_State, bounds: R
 		case .Press:
 			if e.button == .Left {
 				st.pressed = true
-				start_ripple(st, e.pos)
+				a.press, a.at = true, e.pos
 			}
 		case .Release:
 			if e.button == .Left {
 				if st.pressed && rect_contains(bounds, e.pos) {
-					clicked = true
+					a.clicked = true
 				}
 				st.pressed = false
 			}
 		case .Key:
 			if e.key == .Enter || e.key == .Space {
-				clicked = true
-				start_ripple(st, {bounds.x + bounds.w / 2, bounds.y + bounds.h / 2}) // no pointer position for a keyboard activation
+				a.clicked = true
+				a.press, a.at = true, {bounds.x + bounds.w / 2, bounds.y + bounds.h / 2} // no pointer position for a keyboard activation
 			}
 		}
 	}
-	return clicked
+	return
 }
 
-// start_ripple (re)starts st's ink-ripple tween from origin, overwriting
-// whatever ripple was already running — a second click restarts the
-// animation rather than queuing or blending with the first. Simpler than
-// tracking multiple concurrent ripples per widget; revisit if a rapid
-// double-click ever needs to show two overlapping ripples at once.
-start_ripple :: proc(st: ^Widget_State, origin: Point) {
-	st.ripple = {to = 1, duration = RIPPLE_DURATION}
-	st.ripple_origin = origin
-}
-
-// paint_ripple draws st's ink-ripple, if one is still running, as an
-// expanding, fading circle of tint at alpha, clipped to shape — the
-// button family's click feedback. Not M3-token-sourced like the state-
-// layer opacities: Material's motion spec doesn't reduce to one number,
-// so RIPPLE_DURATION and RIPPLE_PEAK_OPACITY are a deliberate, reasonable
-// choice (the same intensity as the pressed state layer, fading out),
-// not a verified value.
-paint_ripple :: proc(gtx: ^Ctx, st: ^Widget_State, shape: Shape, tint: Color) {
-	if st.ripple.t >= st.ripple.duration {
-		return
-	}
-	t := tween_update(&st.ripple, gtx)
-	bounds := shape_bounds(gtx.ops, shape)
-	r := t * (bounds.w + bounds.h) // a cheap, safely-oversized bound on the
-	// origin-to-farthest-corner distance, without a sqrt
-	push_clip(gtx.ops, shape)
-	fill(gtx.ops, Ellipse{{st.ripple_origin.x - r, st.ripple_origin.y - r, r * 2, r * 2}}, with_alpha(tint, (1 - t) * RIPPLE_PEAK_OPACITY))
-	pop_clip(gtx.ops)
-}

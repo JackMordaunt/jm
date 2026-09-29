@@ -59,6 +59,8 @@ Control :: struct {
 	focused:  bool, // paint a focus ring
 	disabled: bool,
 	state:    Interaction, // never Live: the strongest of the flags, by effective_state's order
+	press:    bool, // a left press or keyboard activation landed this frame, at press_at
+	press_at: ui.Point,
 }
 
 // control resolves state for the component with id and bounds. Live reads
@@ -69,7 +71,8 @@ control :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, bounds: ui.Rect, state: Interactio
 	switch state {
 	case .Live:
 		c.st = ui.widget_state(gtx, id)
-		c.clicked = ui.click_from_events(gtx, id, c.st, bounds)
+		a := ui.activate_from_events(gtx, id, c.st, bounds)
+		c.clicked, c.press, c.press_at = a.clicked, a.press, a.at
 		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
 	case .Enabled:
 	case .Hovered:

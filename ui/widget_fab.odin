@@ -39,7 +39,6 @@ fab :: proc(
 	if layer_opacity > 0 {
 		fill(gtx.ops, rr, with_alpha(s.icon, layer_opacity))
 	}
-	paint_ripple(gtx, st, rr, s.icon)
 	origin := Point{(sz.x - run.advance) / 2, (sz.y - lh) / 2 + m.ascent}
 	if painted(s.icon) {
 		glyphs(gtx.ops, add_run(gtx.ops, run), origin, s.icon)
@@ -93,7 +92,6 @@ extended_fab :: proc(
 	if layer_opacity > 0 {
 		fill(gtx.ops, rr, with_alpha(s.text, layer_opacity))
 	}
-	paint_ripple(gtx, st, rr, s.text)
 	iy := (size.y - line_height(im)) / 2 + im.ascent
 	if painted(s.icon) {
 		glyphs(gtx.ops, add_run(gtx.ops, irun), {pad_x, iy}, s.icon)

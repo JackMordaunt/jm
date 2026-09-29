@@ -278,12 +278,6 @@ state_text :: proc(layout: ^Layout, id: Area_Id) -> string {
 	if st.focused {
 		strings.write_string(&b, "focused ")
 	}
-	if st.scroll != 0 {
-		fmt.sbprintf(&b, "scroll=%.1f ", st.scroll)
-	}
-	if st.scroll_x != 0 {
-		fmt.sbprintf(&b, "scroll_x=%.1f ", st.scroll_x)
-	}
 	for s, i in st.springs {
 		if s.started && (s.value != 0 || s.target != 0) {
 			fmt.sbprintf(&b, "spring%d=%.2f->%.2f ", i, s.value, s.target)

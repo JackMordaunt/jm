@@ -69,7 +69,7 @@ test_retain_keeps_a_page_state_while_it_is_not_drawn :: proc(t: ^testing.T) {
 	draw :: proc(gtx: ^Ctx, page: ^Page) {
 		s := scope(gtx, page)
 		defer end(&s)
-		widget_state(gtx, scoped_id(gtx)).scroll = 9
+		widget_state(gtx, scoped_id(gtx)).springs[0].value = 9
 	}
 	draw(&h.gtx, &page)
 	for _ in 0 ..< 5 {

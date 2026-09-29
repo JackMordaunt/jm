@@ -97,10 +97,8 @@ split_button :: proc(
 		fill(gtx.ops, trail_rect, with_alpha(trail_content, trail_layer))
 	}
 	if lst != nil {
-		paint_ripple(gtx, lst, lead_rect, lead_content)
 	}
 	if tst != nil {
-		paint_ripple(gtx, tst, trail_rect, trail_content)
 	}
 	pop_clip(gtx.ops)
 

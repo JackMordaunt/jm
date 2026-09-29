@@ -1,5 +1,12 @@
 package ui
 
+// Caret_Scroll is a text field's horizontal scroll, kept so the caret
+// stays in view.
+@(private = "file")
+Caret_Scroll :: struct {
+	x: f32,
+}
+
 import "core:unicode/utf8"
 
 // Text_State is a single-line text buffer and its cursor, a byte offset
@@ -51,6 +58,7 @@ text_field :: proc(
 	inner := max(size.x - pd.left - pd.right, 0)
 
 	st := widget_state(gtx, p.id)
+	cs := widget_data(gtx, p.id, Caret_Scroll)
 	s.cursor = clamp(s.cursor, 0, len(s.buf))
 	changed := false
 	for e in events(gtx, p.id) {
@@ -60,7 +68,7 @@ text_field :: proc(
 		case .Blur:
 			st.focused = false
 		case .Press:
-			s.cursor = text_hit(gtx, s, fs.size, e.pos.x - pd.left + st.scroll)
+			s.cursor = text_hit(gtx, s, fs.size, e.pos.x - pd.left + cs.x)
 		case .Text:
 			if len(e.text) > 0 {
 				inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
@@ -80,9 +88,9 @@ text_field :: proc(
 	}
 	// Keep the caret (1px wide) inside the field, and don't scroll past the
 	// end of the text.
-	st.scroll = min(st.scroll, max(run.advance + 1 - inner, 0))
-	st.scroll = clamp(st.scroll, caret + 1 - inner, caret)
-	st.scroll = max(st.scroll, 0)
+	cs.x = min(cs.x, max(run.advance + 1 - inner, 0))
+	cs.x = clamp(cs.x, caret + 1 - inner, caret)
+	cs.x = max(cs.x, 0)
 
 	o := gtx.ops
 	rr := Round_Rect{{0, 0, size.x, size.y}, fs.radius}
@@ -101,10 +109,10 @@ text_field :: proc(
 	}
 	push_clip(o, Rect{pd.left, 0, inner, size.y})
 	if painted(fs.text) && len(str) > 0 {
-		glyphs(o, add_run(o, run), {pd.left - st.scroll, pd.top + m.ascent}, fs.text)
+		glyphs(o, add_run(o, run), {pd.left - cs.x, pd.top + m.ascent}, fs.text)
 	}
 	if st.focused && painted(fs.caret) {
-		fill(o, Rect{pd.left + caret - st.scroll, pd.top, 1, lh}, fs.caret)
+		fill(o, Rect{pd.left + caret - cs.x, pd.top, 1, lh}, fs.caret)
 	}
 	pop_clip(o)
 	input_area(o, p.id, rr, {.Press, .Release, .Key, .Text, .Focus, .Blur})

@@ -90,15 +90,15 @@ search_bar :: proc(
 	scroll: f32
 	if live {
 		st = ui.widget_state(gtx, p.id)
-		changed, enter, escape, blurred, pressed = search_text_events(gtx, p.id, st, s, pad_l)
+		changed, enter, escape, blurred, pressed = search_text_events(gtx, p.id, st, s, pad_l, vs.scroll)
 		focused, hovered, bar_pressed = st.focused, st.hovered, st.pressed
 	}
 	str := string(s.buf[:])
 	full := shape_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT).width
 	caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], tok.SEARCH_BAR_INPUT_TEXT_FONT).width : full
 	if live {
-		st.scroll = max(clamp(min(st.scroll, max(full + 2 - inner, 0)), caret + 2 - inner, caret), 0)
-		scroll = st.scroll
+		vs.scroll = max(clamp(min(vs.scroll, max(full + 2 - inner, 0)), caret + 2 - inner, caret), 0)
+		scroll = vs.scroll
 	}
 
 	// Expanded: the caller's, or focus unless a pick dismissed it.
@@ -196,6 +196,8 @@ Search_View_State :: struct {
 	// close is the view's own areas (the outside catcher, the back arrow)
 	// asking search_bar to collapse, set and read in the same frame.
 	close:     bool,
+	// scroll is the input's horizontal scroll, kept so the caret stays in view.
+	scroll:    f32,
 	// origin is the bar's window origin as last hit-tested while fully
 	// collapsed: where a full-screen view grows from.
 	origin:    ui.Point,
@@ -236,6 +238,7 @@ search_text_events :: proc(
 	st: ^ui.Widget_State,
 	s: ^ui.Text_State,
 	pad_l: f32,
+	scroll: f32, // the input's caret scroll, for hit-testing a press
 ) -> (
 	changed, enter, escape, blurred, pressed: bool,
 ) {
@@ -253,7 +256,7 @@ search_text_events :: proc(
 		case .Press:
 			st.pressed = true
 			pressed = true
-			s.cursor = ui.text_hit(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT.size, e.pos.x - pad_l + st.scroll)
+			s.cursor = ui.text_hit(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT.size, e.pos.x - pad_l + scroll)
 		case .Release:
 			st.pressed = false
 		case .Text:
