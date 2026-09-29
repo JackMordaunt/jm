@@ -67,23 +67,25 @@ jobs:
           sudo ln -sf /usr/share/fonts/truetype/liberation/*.ttf /usr/share/fonts/liberation/
           mkdir -p "$RUNNER_TEMP/stubs"
           for l in mbedtls mbedx509 mbedcrypto; do ar rcs "$RUNNER_TEMP/stubs/lib$l.a"; done
-          echo "LINK=-extra-linker-flags:-L$RUNNER_TEMP/stubs" >> "$GITHUB_ENV"
+          echo "LINKFLAGS=-L$RUNNER_TEMP/stubs" >> "$GITHUB_ENV"
           echo "/usr/lib/postgresql/$(ls /usr/lib/postgresql | sort -V | tail -1)/bin" >> "$GITHUB_PATH"
           echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
       - name: platform packages (macos)
         if: runner.os == 'macOS'
         run: |
-          brew install --quiet postgresql@17 ninja
-          prefix="$(brew --prefix postgresql@17)"
-          echo "$prefix/bin" >> "$GITHUB_PATH"
-          echo "LINK=-extra-linker-flags:-L$prefix/lib" >> "$GITHUB_ENV"
+          brew install --quiet postgresql@17 libpq ninja
+          echo "$(brew --prefix postgresql@17)/bin" >> "$GITHUB_PATH"
+          # Homebrew keeps libpq keg-only, and postgresql@17's own copy
+          # sits under lib/postgresql@17; the libpq formula's lib is the
+          # plain path to link.
+          echo "LINKFLAGS=-L$(brew --prefix libpq)/lib" >> "$GITHUB_ENV"
           echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
       - name: platform packages (windows)
         if: runner.os == 'Windows'
         run: |
           if [ -n "${PGROOT:-}" ] && [ -f "$PGROOT/lib/libpq.lib" ]; then
             echo "$PGBIN" >> "$GITHUB_PATH"
-            echo "LINK=-extra-linker-flags:/LIBPATH:$(cygpath -w "$PGROOT/lib")" >> "$GITHUB_ENV"
+            echo "LINKFLAGS=/LIBPATH:$(cygpath -w "$PGROOT/lib")" >> "$GITHUB_ENV"
             echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
           else
             echo "no PostgreSQL on this image: pq is left out"
@@ -107,7 +109,8 @@ jobs:
           mkdir -p sqlite3/lib wasm/lib/obj pg_query/lib/obj
           cl -nologo -O2 -c sqlite3/vendor/sqlite3.c -Fosqlite3/lib/sqlite3.obj $sqlite_defines
           lib -nologo -OUT:sqlite3/lib/sqlite3.lib sqlite3/lib/sqlite3.obj
-          for f in wasm/vendor/*.c; do cl -nologo -O2 -I wasm/vendor $wasm_defines -c "$f" -Fowasm/lib/obj/ || exit 1; done
+          # wasm3 is C11 that MSVC's cl rejects (m3_exec.h); clang-cl takes it.
+          for f in wasm/vendor/*.c; do clang-cl -nologo -O2 -I wasm/vendor $wasm_defines -c "$f" -Fowasm/lib/obj/ || exit 1; done
           lib -nologo -OUT:wasm/lib/wasm3.lib wasm/lib/obj/*.obj
           find pg_query/vendor/src pg_query/vendor/protobuf pg_query/vendor/vendor -name '*.c' | while read -r f; do
             cl -nologo -O2 $pg_query_flags -I pg_query/vendor/src/postgres/include/port/win32 -c "$f" -Fopg_query/lib/obj/ > /dev/null || exit 1
@@ -163,8 +166,12 @@ jobs:
         env:
           MSYS_NO_PATHCONV: 1
         run: |
-          flags="-vet -strict-style -collection:jm=$PWD $LINK"
-          cxx=""; [ "$RUNNER_OS" = Windows ] || cxx='-extra-linker-flags:-lstdc++'
+          flags="-vet -strict-style -collection:jm=$PWD"
+          # Odin takes -extra-linker-flags once, so the platform's flags and
+          # the C++ runtime Blend2D needs travel in one value.
+          link=""; [ -z "${LINKFLAGS:-}" ] || link="-extra-linker-flags:$LINKFLAGS"
+          cxx=""
+          if [ "$RUNNER_OS" != Windows ]; then cxx="-extra-linker-flags:${LINKFLAGS:+$LINKFLAGS }-lstdc++"; else cxx="$link"; fi
           exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
           packages=$(sed -n 's/^packages := "\(.*\)"$/\1/p' justfile | sed 's| pq pq/testdb pq/fuzz||')
           mkdir -p build/test build/debug
@@ -173,11 +180,11 @@ jobs:
             threads=""
             case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac
             echo "::group::odin test $p"
-            odin test "$p" $flags $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            odin test "$p" $flags $link $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
             echo "::endgroup::"
           done
           echo "::group::odin test tools/wasm-bench"
-          odin test tools/wasm-bench $flags -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::tools/wasm-bench failed"; failed=1; }
+          odin test tools/wasm-bench $flags $link -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::tools/wasm-bench failed"; failed=1; }
           echo "::endgroup::"
           for p in ui/render ui/render/fuzz ui/child; do
             echo "::group::odin test $p"
@@ -186,7 +193,7 @@ jobs:
           done
           echo "::group::build the hot-reload child and the probe"
           odin build examples/hot-counter/child -debug $flags $cxx -out:build/debug/hot-counter-child$exe || failed=1
-          odin build tools/git-probe $flags -out:build/debug/git-probe$exe || failed=1
+          odin build tools/git-probe $flags $link -out:build/debug/git-probe$exe || failed=1
           echo "::endgroup::"
           exit $failed
 
