@@ -52,7 +52,7 @@ group :: proc(gtx: ^ui.Ctx, r: ops.Rect, title, subtitle: string, accent: ops.Co
 	gap: f32 = 10
 	for c, i in chips {
 		cr := ops.Rect{r.x + 20, y, r.w - 40, chip_h}
-		fill := i % 2 == 0 ? th.surface_hover : th.surface
+		fill := i % 2 == 0 ? th.bg : th.surface
 		fill_rrect(o, cr, 8, fill, th.outline, 1)
 		ops.fill(o, ops.Rect{cr.x, cr.y, 4, cr.h}, accent)
 		ui.text(gtx, c.title, {cr.x + 14, cr.y + 9}, {size = 13})

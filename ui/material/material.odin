@@ -102,14 +102,9 @@ theme_for :: proc(s: ^Scheme, font: ops.Font_Id) -> ui.Theme {
 	th := ui.light_theme(font)
 	th.bg = s[.Surface]
 	th.surface = s[.Surface_Container]
-	th.surface_hover = s[.Surface_Container_High]
-	th.surface_active = s[.Surface_Container_Highest]
 	th.fg = s[.On_Surface]
 	th.muted = s[.On_Surface_Variant]
-	th.accent = s[.Primary]
-	th.on_accent = s[.On_Primary]
 	th.outline = s[.Outline_Variant]
-	th.danger = s[.Error]
 	th.text_size = 14
 	return th
 }

@@ -387,15 +387,17 @@ test_id_is_stable_per_site_and_key :: proc(t: ^testing.T) {
 @(test)
 test_style_zero_means_theme :: proc(t: ^testing.T) {
 	th := light_theme(0)
+	th.fg, th.text_size = {1, 2, 3, 255}, 17 // values no palette uses, so a match is the theme's
 	s := resolve_label(&th, {})
-	testing.expect_value(t, s.color, th.fg)
-	testing.expect_value(t, s.size, th.text_size)
-	o := resolve_label(&th, {color = th.danger})
-	testing.expect_value(t, o.color, th.danger) // an override stays
-	testing.expect_value(t, o.size, th.text_size) // the rest is the theme's
+	testing.expect_value(t, s.color, ops.Color{1, 2, 3, 255})
+	testing.expect_value(t, s.size, 17)
+	o := resolve_label(&th, {color = {9, 8, 7, 255}})
+	testing.expect_value(t, o.color, ops.Color{9, 8, 7, 255}) // an override stays
+	testing.expect_value(t, o.size, 17) // the rest is the theme's
+	th.surface, th.outline = {4, 5, 6, 255}, {7, 8, 9, 255}
 	b := resolve_box(&th, {})
-	testing.expect_value(t, b.fill, th.surface)
-	testing.expect_value(t, b.outline, th.outline)
+	testing.expect_value(t, b.fill, ops.Color{4, 5, 6, 255})
+	testing.expect_value(t, b.outline, ops.Color{7, 8, 9, 255})
 }
 
 // Of several frame requests the soonest wins, whatever the order, and a

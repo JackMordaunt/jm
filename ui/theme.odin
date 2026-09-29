@@ -2,9 +2,11 @@ package ui
 
 import "jm:ui/ops"
 
-// Styling. Theme is a plain value: palette, type scale, spacing, radii and
-// the font. Each widget takes an X_Style struct whose zero value means "take
-// it from the theme", so `label(gtx, "Delete", {color = th.danger})`
+// Styling. Theme is what ui's own widgets and chrome read: a font and two
+// text sizes, six colours and three measures. A design system keeps its own
+// scheme and tokens, and maps them onto this so label, divider and box
+// sit in its palette (material.theme_for). Each widget takes an X_Style struct whose zero value means "take
+// it from the theme", so `label(gtx, "Note", {color = th.muted})`
 // overrides one field and inherits the rest. resolve_x fills the zero fields.
 // No cascade, no selectors: a style is a value, scoped by being passed.
 //
@@ -20,21 +22,14 @@ CLEAR :: ops.Color{255, 255, 255, 0}
 Theme :: struct {
 	font:                    ops.Font_Id,
 	text_size:               f32,
-	small_size:              f32,
 	heading_size:            f32,
 	bg:                      ops.Color, // window background
 	surface:                 ops.Color, // panels, fields, unchecked boxes
-	surface_hover:           ops.Color,
-	surface_active:          ops.Color,
 	fg:                      ops.Color, // body text
 	muted:                   ops.Color, // secondary text, placeholders
-	accent:                  ops.Color, // buttons, checked boxes, slider fill, focus ring
-	on_accent:               ops.Color, // text and marks drawn on accent
-	outline:                 ops.Color, // borders, dividers, slider track
-	danger:                  ops.Color,
-	success:                 ops.Color,
+	outline:                 ops.Color, // borders, dividers
 	radius:                  f32,
-	spacing:                 f32, // base unit; paddings and gaps are multiples of it
+	spacing:                 f32, // base unit: a box's default padding
 	stroke:                  f32, // outline width
 }
 
@@ -43,19 +38,12 @@ light_theme :: proc(font: ops.Font_Id) -> Theme {
 	th := Theme {
 		font = font,
 		text_size = 14,
-		small_size = 12,
 		heading_size = 20,
 		bg = {246, 246, 248, 255},
 		surface = {255, 255, 255, 255},
-		surface_hover = {240, 240, 244, 255},
-		surface_active = {226, 226, 232, 255},
 		fg = {28, 28, 32, 255},
 		muted = {110, 110, 120, 255},
-		accent = {51, 102, 255, 255},
-		on_accent = {255, 255, 255, 255},
 		outline = {200, 200, 208, 255},
-		danger = {214, 48, 49, 255},
-		success = {32, 150, 80, 255},
 		radius = 6,
 		spacing = 8,
 		stroke = 1,
@@ -68,15 +56,9 @@ dark_theme :: proc(font: ops.Font_Id) -> Theme {
 	th := light_theme(font)
 	th.bg = {24, 24, 28, 255}
 	th.surface = {36, 36, 42, 255}
-	th.surface_hover = {46, 46, 54, 255}
-	th.surface_active = {58, 58, 68, 255}
 	th.fg = {232, 232, 238, 255}
 	th.muted = {150, 150, 162, 255}
-	th.accent = {92, 136, 255, 255}
-	th.on_accent = {255, 255, 255, 255}
 	th.outline = {70, 70, 82, 255}
-	th.danger = {240, 90, 90, 255}
-	th.success = {70, 190, 120, 255}
 	return th
 }
 
