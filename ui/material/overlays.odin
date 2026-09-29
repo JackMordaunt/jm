@@ -243,9 +243,10 @@ Menu_Row :: struct {
 // container, instead of as an overlay: for a menu pinned open as a
 // specimen, which must not draw over popups opened near it.
 //
-// Not done, for want of jm:ui support: placement that flips to fit the
-// window (a menu goes where offset puts it), a pivot other than the top
-// start, and keyboard travel between items — jm:ui moves focus only by
+// Placement is ui.popup_open's: the menu opens offset below its origin,
+// flips above the origin when below would leave the window, and shifts
+// sideways to stay inside it; it grows from the corner nearest the
+// anchor. Not done, for want of jm:ui support: keyboard travel between items — jm:ui moves focus only by
 // pointer press, so arrow keys cannot. A focused item still takes
 // Enter/Space, and Escape on it closes the menu. comp.segmented-menu's
 // horizontal icon-only row has no Compose consumer and is not built.
@@ -358,11 +359,18 @@ menu :: proc(
 	if inline {
 		p := ui.widget_open(gtx, key, loc)
 		defer ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
-		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups)
+		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, .Below)
 	} else {
-		o := ui.overlay_open(gtx, offset)
-		defer ui.close(&o)
-		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups)
+		// The anchor runs from the menu's origin down to offset, as wide as
+		// the menu, so the menu opens at offset below it, or flips above
+		// the origin when below would leave the window (ui.popup_open). It
+		// must have area: placement leaves a popup whose anchor is off
+		// screen where it asked to be, and a zero-width one never shows.
+		anchor := ops.Rect{offset.x, min(offset.y, 0), w, abs(offset.y)}
+		o := ui.popup_open(gtx, anchor, menu_id)
+		side := ui.placed_side(gtx, menu_id, .Below)
+		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, side)
+		ui.popup_close(&o, {w, h})
 	}
 	return chosen
 }
@@ -382,11 +390,14 @@ menu_paint :: proc(
 	live, modal: bool,
 	style: Menu_Style,
 	groups: bool,
+	side: ops.Side,
 ) {
 	expressive := style != .Legacy
-	// Grow from the top start, the edge nearest an anchor above it.
+	// Grow from the start corner nearest the anchor: the top when the menu
+	// opened below it, the bottom when placement flipped it above.
 	k := MENU_CLOSED_SCALE + (1 - MENU_CLOSED_SCALE) * shown
-	ops.transform_push(gtx.scene, scale_about({}, k))
+	pivot := side == .Above ? ops.Point{0, h} : ops.Point{}
+	ops.transform_push(gtx.scene, scale_about(pivot, k))
 	defer ops.transform_pop(gtx.scene)
 	if live && modal {
 		// Scrim: an invisible catch-all under the menu; a press on it closes.
@@ -712,8 +723,11 @@ TOOLTIP_DISMISS :: f32(1.5)
 // is the caller's timer (seconds hovered); it is advanced here and reset
 // when not hovered. It hides at once on leave: a timer alone cannot play
 // the fade out.
+//
+// It is placed by ui.popup_open under the anchor, flipping above it or
+// shifting sideways to stay in the window; key names it.
 @(private)
-hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string, box: ops.Size) {
+hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string, box: ops.Size, key: ops.Area_Id) {
 	if !hovered || label == "" {
 		hover_t^ = 0
 		return
@@ -734,12 +748,9 @@ hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string,
 	} else {
 		ui.request_frame(gtx, TOOLTIP_DISMISS - t)
 	}
-	lines := wrap_lines(gtx, label, tok.PLAIN_TOOLTIP_SUPPORTING_TEXT_FONT, PLAIN_TIP_MAX_W - 2 * PLAIN_TIP_PAD.x)
-	tw, _ := lines_size(lines)
-	w := max(tw + 2 * PLAIN_TIP_PAD.x, TIP_MIN.x)
-	o := ui.overlay_open(gtx, {(box.x - w) / 2, box.y + TOOLTIP_GAP})
-	defer ui.close(&o)
-	paint_plain_tooltip(gtx, {}, label, .None, a, k)
+	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, key, .Below, .Center, TOOLTIP_GAP)
+	size := paint_plain_tooltip(gtx, {}, label, .None, a, k)
+	ui.popup_close(&o, size)
 }
 
 // Rich tooltip metrics (tooltip.json layout, Tooltip.kt:538,1460-1471):

@@ -282,3 +282,45 @@ test_date_picker_selects_a_clicked_day :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "2026-09-01"))
 	testing.expect_value(t, m.sel, Date{2026, 9, 1})
 }
+
+@(private = "file")
+Low_Menu_Model :: struct {
+	open: bool,
+}
+
+// low_menu puts a menu's anchor button near the bottom of the window.
+@(private = "file")
+low_menu :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Low_Menu_Model)(user)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
+	ui.spacer(gtx, 250)
+	st := ui.stack_open(gtx)
+	defer ui.close(&st)
+	if button(gtx, "Edit") {
+		m.open = true
+	}
+	ITEMS := [?]Menu_Item{{label = "Cut"}, {label = "Copy"}, {label = "Paste"}}
+	menu(gtx, &m.open, ITEMS[:])
+}
+
+@(test)
+test_menu_near_the_bottom_opens_above_its_anchor :: proc(t: ^testing.T) {
+	m: Low_Menu_Model
+	p: ui.Probe
+	ui.probe_init(&p, low_menu, &m, {400, 320}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, ui.probe_click(&p, "Edit"))
+	ui.probe_advance(&p, 60, 0.016) // the open springs settle
+	edit := ui.probe_bounds(&p, "Edit")
+	for name in ([]string{"Cut", "Copy", "Paste"}) {
+		r := ui.probe_bounds(&p, name)
+		testing.expectf(t, r.h > 0, "%s is not laid out", name)
+		testing.expectf(t, r.y >= 0 && r.y + r.h <= 320, "%s at %v leaves the 320px window", name, r)
+		testing.expectf(t, r.y + r.h <= edit.y, "%s at %v is not above Edit at %v", name, r, edit)
+	}
+	// The items still pick.
+	testing.expect(t, ui.probe_click(&p, "Copy"))
+	testing.expect(t, !m.open)
+}

@@ -576,12 +576,11 @@ paint_value_indicator :: proc(gtx: ^ui.Ctx, g: Slider_Geom, hr: ops.Rect, v, spa
 	h := t.height + 2 * pad.y
 	w := max(t.width + 2 * pad.x, h)
 	space := tok.SLIDER_VALUE_INDICATOR_ACTIVE_BOTTOM_SPACE
-	at := ops.Point{hr.x + hr.w / 2 - w / 2, hr.y - space - h}
-	if g.vertical {
-		at = {hr.x - space - w, hr.y + hr.h / 2 - h / 2}
-	}
-	o := ui.overlay_open(gtx, at)
-	defer ui.close(&o)
+	// Centred above the handle (to its start when vertical), flipped to the
+	// other side or shifted when that would leave the window. It draws
+	// nothing toward the handle, so it needs no key to follow a flip.
+	o := ui.popup_open(gtx, hr, 0, g.vertical ? .Before : .Above, .Center, space)
+	defer ui.popup_close(&o, {w, h})
 	ops.fill(gtx.scene, ops.Round_Rect{{0, 0, w, h}, h / 2}, color(tok.SLIDER_VALUE_INDICATOR_CONTAINER_COLOR))
 	draw_text(gtx, t, {(w - t.width) / 2, pad.y}, color(tok.SLIDER_VALUE_INDICATOR_LABEL_TEXT_COLOR))
 }

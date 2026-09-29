@@ -617,7 +617,7 @@ icon_button :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
 	if c.st != nil {
-		hover_tooltip(gtx, c.st.hovered, &ui.widget_data(gtx, p.id, Tooltip_Timer).seconds, tooltip, sz)
+		hover_tooltip(gtx, c.st.hovered, &ui.widget_data(gtx, p.id, Tooltip_Timer).seconds, tooltip, sz, ui.id_mix(p.id, 0x746f6f6c))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, tooltip != "" ? tooltip : "icon_button"))
 	ui.widget_close(gtx, &p, {size = sz})

@@ -719,8 +719,11 @@ autocomplete :: proc(
 
 	if expanded^ && len(matches) > 0 {
 		menu_id := ui.id_mix(p.id, 0x6d656e75)
-		o := ui.overlay_open(gtx, {0, r.field.y + r.field.h})
-		defer ui.close(&o)
+		w := r.field.w // the menu matches the field's width (ExposedDropdownMenu.kt:204-213)
+		h := 2 * MENU_PAD + MENU_ITEM_H * f32(len(matches))
+		// Below the field, or above it when below would leave the window.
+		o := ui.popup_open(gtx, {0, r.field.y, r.field.w, r.field.h}, menu_id)
+		defer ui.popup_close(&o, {w, h})
 		defer o.discard = !expanded^ // closed this frame: draw nothing, catch nothing
 		// Scrim: a press outside the menu closes it and reaches nothing else.
 		scrim_id := ui.id_mix(menu_id, 0xffff)
@@ -731,8 +734,6 @@ autocomplete :: proc(
 		}
 		ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		filled := kind == .Filled
-		w := r.field.w // the menu matches the field's width (ExposedDropdownMenu.kt:204-213)
-		h := 2 * MENU_PAD + MENU_ITEM_H * f32(len(matches))
 		box := ops.Rect{0, 0, w, h}
 		shape := corners(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_SHAPE : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_SHAPE, box)
 		rr := ops.Round_Rect{box, shape.tl}

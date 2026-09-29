@@ -232,3 +232,42 @@ test_autocomplete_opens_filters_and_picks :: proc(t: ^testing.T) {
 	ui.probe_key(&p, .Escape)
 	testing.expect(t, !m.open)
 }
+
+@(private = "file")
+Low_Field_Model :: struct {
+	fruit: ui.Text_State,
+	open:  bool,
+}
+
+// low_field puts an autocomplete near the bottom of the window.
+@(private = "file")
+low_field :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Low_Field_Model)(user)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
+	ui.spacer(gtx, 300)
+	OPTIONS := [?]string{"Apple", "Apricot", "Banana", "Cherry"}
+	autocomplete(gtx, &m.fruit, "Fruit", OPTIONS[:], &m.open)
+}
+
+@(test)
+test_autocomplete_near_the_bottom_opens_above_its_field :: proc(t: ^testing.T) {
+	m: Low_Field_Model
+	defer ui.text_destroy(&m.fruit)
+	p: ui.Probe
+	ui.probe_init(&p, low_field, &m, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, ui.probe_click(&p, "Fruit"))
+	ui.probe_frame(&p)
+	testing.expect(t, m.open)
+	field := ui.probe_bounds(&p, "Fruit")
+	for name in ([]string{"Apple", "Apricot", "Banana", "Cherry"}) {
+		r := ui.probe_bounds(&p, name)
+		testing.expectf(t, r.h > 0, "%s is not laid out", name)
+		testing.expectf(t, r.y >= 0 && r.y + r.h <= 400, "%s at %v leaves the 400px window", name, r)
+		testing.expectf(t, r.y + r.h <= field.y, "%s at %v is not above the field at %v", name, r, field)
+	}
+	testing.expect(t, ui.probe_click(&p, "Banana"))
+	testing.expect_value(t, ui.text_string(&m.fruit), "Banana")
+}
