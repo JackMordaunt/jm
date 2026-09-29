@@ -287,27 +287,46 @@ globals_read_and_write :: proc(t: ^testing.T) {
 	testing.expect_value(t, v2.(i32), 9)
 }
 
-// Every trap is the guest's fault and sorts as one, whatever wasm3 called it.
-@(test)
-traps_are_sorted_by_kind :: proc(t: ^testing.T) {
-	context.allocator = context.temp_allocator
-	vm, _ := open()
-	defer close(&vm)
-	mod, lerr := load(vm, TRAPS_WASM)
+// Every trap is the guest's fault and sorts as one, whatever wasm3 called
+// it. One test per trap, so a platform where one of them faults instead of
+// trapping names it (Windows did, under clang-cl).
+@(private = "file")
+trap_module :: proc(t: ^testing.T) -> (vm: Vm, mod: Module) {
+	vm, _ = open()
+	lerr: Error
+	mod, lerr = load(vm, TRAPS_WASM)
 	testing.expect_value(t, lerr, nil)
+	return
+}
 
+@(test)
+trap_unreachable :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	vm, mod := trap_module(t)
+	defer close(&vm)
 	boom, _ := find(mod, "boom")
 	_, berr := call(boom)
 	testing.expect_value(t, kind_of(berr), Kind.Trap)
+}
 
+@(test)
+trap_out_of_bounds :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	vm, mod := trap_module(t)
+	defer close(&vm)
 	oob, _ := find(mod, "oob")
 	_, oerr := call(oob)
 	testing.expect_value(t, kind_of(oerr), Kind.Trap)
+}
 
+@(test)
+trap_division_by_zero :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	vm, mod := trap_module(t)
+	defer close(&vm)
 	div, _ := find(mod, "divzero")
 	_, derr := call(div, i32(1), i32(0))
 	testing.expect_value(t, kind_of(derr), Kind.Trap)
-
 	// The text says which trap it was, so a log line is worth reading.
 	if f, ok := derr.(Fault); ok {
 		testing.expect(t, strings.contains(f.text, "divide"), f.text)

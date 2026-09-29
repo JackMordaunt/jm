@@ -1,0 +1,84 @@
+# The iteration loop for jm:wasm on Windows, where the main workflow
+# leaves it out: build wasm3 with clang-cl at two optimisation levels,
+# run the wasm tests, and when one faults, run the kept test binary
+# under cdb so the log holds the faulting stack with wasm3's symbols.
+# A few minutes a round, against the ten the full matrix takes.
+name: wasm-windows
+on:
+  push:
+    paths:
+      - "wasm/**"
+      - ".github/workflows/wasm-windows.yml"
+  workflow_dispatch:
+concurrency:
+  group: wasm-windows-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  ODIN_RELEASE: dev-2026-09
+jobs:
+  wasm:
+    strategy:
+      fail-fast: false
+      matrix:
+        opt: ["-O2", "-Od"]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      MSYS_NO_PATHCONV: 1
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: laytan/setup-odin@v2.12.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release: ${{ env.ODIN_RELEASE }}
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: wasm3 with clang-cl ${{ matrix.opt }}
+        run: |
+          defines=$(sed -n '/^wasm_defines :=/,/[^\\]$/p' justfile | grep -o '"[^"]*"' | tr -d '"' | tr -d '\n')
+          mkdir -p wasm/lib/obj
+          # -Z7 keeps debug records in the objects, so cdb names wasm3's
+          # frames; -Wno-deprecated-declarations quiets the CRT's fopen notes.
+          for f in wasm/vendor/*.c; do
+            clang-cl -nologo ${{ matrix.opt }} -Z7 -Wno-deprecated-declarations -I wasm/vendor $defines -c "$f" -Fowasm/lib/obj/ || exit 1
+          done
+          lib -nologo -OUT:wasm/lib/wasm3.lib wasm/lib/obj/*.obj
+          clang-cl --version | head -1
+
+      # The trap tests first, one process each and kept on disk, so a fault
+      # names its test; then the whole package.
+      - name: trap tests, one at a time
+        id: traps
+        run: |
+          flags="-vet -strict-style -debug -collection:jm=$GITHUB_WORKSPACE -define:ODIN_TEST_THREADS=1"
+          mkdir -p build/test
+          faulted=""
+          for t in trap_unreachable trap_out_of_bounds trap_division_by_zero; do
+            echo "::group::$t"
+            if ! odin test wasm $flags -keep-executable -define:ODIN_TEST_NAMES=wasm.$t -out:build/test/$t.exe; then
+              echo "::error::$t failed"; faulted="$faulted $t"
+            fi
+            echo "::endgroup::"
+          done
+          echo "faulted=$faulted" >> "$GITHUB_OUTPUT"
+          [ -z "$faulted" ]
+      - name: faulting stacks under cdb
+        if: failure() && steps.traps.outputs.faulted != ''
+        run: |
+          cdb=$(ls "/c/Program Files (x86)/Windows Kits/10/Debuggers/x64/cdb.exe" 2>/dev/null | head -1)
+          [ -n "$cdb" ] || { echo "no cdb on this image"; exit 0; }
+          for t in ${{ steps.traps.outputs.faulted }}; do
+            echo "::group::cdb $t"
+            "$cdb" -g -G -o -lines -c "sxe av; g; .lastevent; !analyze -v; ~*k 40; q" "$(cygpath -w "build/test/$t.exe")" | grep -v '^\*\*\*' | tail -150
+            echo "::endgroup::"
+          done
+      - name: whole wasm suite
+        if: always()
+        run: |
+          flags="-vet -strict-style -collection:jm=$GITHUB_WORKSPACE -define:ODIN_TEST_THREADS=1"
+          odin test wasm $flags -out:build/test/wasm.exe
+          odin test wasm/fuzz $flags -out:build/test/wasm-fuzz.exe
+          odin test tools/wasm-bench $flags -out:build/test/wasm-bench.exe
