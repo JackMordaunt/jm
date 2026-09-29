@@ -18,7 +18,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Key, key = .Enter, mods = {.Alt}},
 		{kind = .Text, text = "héllo\nworld"},
 	}
-	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000}
+	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
 	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
 
 	size, density, dt, got, got_host, ok := decode_input(data)
@@ -113,4 +113,21 @@ test_decode_reply_survives_random_bytes :: proc(t: ^testing.T) {
 		}
 		_, _, _, _ = decode_reply(b)
 	}
+}
+
+@(test)
+test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) {
+	full := encode_input({800, 600}, 1, 0.5, nil, context.temp_allocator, Host_Stats{present_ms = 2, rss_bytes = 1 << 20})
+	// The same input as a host from before the stats sent it, and from
+	// before the resident memory.
+	for cut, i in ([]int{len(full) - 24, len(full) - 8}) {
+		size, _, dt, _, host, ok := decode_input(full[:cut], context.temp_allocator)
+		testing.expect(t, ok)
+		testing.expect_value(t, size, Size{800, 600})
+		testing.expect_value(t, dt, f32(0.5))
+		testing.expect_value(t, host.rss_bytes, 0)
+		testing.expect_value(t, host.present_ms, i == 0 ? 0 : 2) // the timings, when sent, still read
+	}
+	_, _, _, _, host, ok := decode_input(full, context.temp_allocator)
+	testing.expect(t, ok && host.rss_bytes == 1 << 20 && host.present_ms == 2)
 }

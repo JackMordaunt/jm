@@ -296,6 +296,7 @@ host_step :: proc(l: ^Host_Loop) {
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
 	// Sent with the next input, for the child's debug tray.
 	l.host_stats.present_ms, l.host_stats.roundtrip_ms = ui.ms(present_start), roundtrip_ms
+	l.host_stats.rss_bytes = ui.process_rss()
 	l.wants_frame, l.frame_after = wants_frame || flashing(w), frame_after
 	l.n += 1
 }

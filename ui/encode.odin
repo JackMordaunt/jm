@@ -216,7 +216,7 @@ put_u32 :: proc(w: ^[dynamic]byte, v: u32) {
 	append(w, ..b[:])
 }
 
-@(private = "file")
+@(private)
 put_u64 :: proc(w: ^[dynamic]byte, v: u64) {
 	b: [8]byte
 	endian.put_u64(b[:], .Little, v)
@@ -417,7 +417,7 @@ get_u32 :: proc(r: ^Reader) -> (v: u32, ok: bool) {
 	return endian.get_u32(b, .Little)
 }
 
-@(private = "file")
+@(private)
 get_u64 :: proc(r: ^Reader) -> (v: u64, ok: bool) {
 	b := take(r, 8) or_return
 	return endian.get_u64(b, .Little)

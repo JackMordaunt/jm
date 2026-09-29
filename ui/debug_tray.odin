@@ -12,6 +12,7 @@ Host_Stats :: struct {
 	roundtrip_ms:  f32, // host only: sending the input to getting the reply
 	repaint_rects: int, // rects the compositor redrew
 	repaint_px:    int, // their area in device pixels
+	rss_bytes:     int, // host only: the host process's resident memory, 0 where unknown
 }
 
 // Frame_Stats is what a frame loop measured of one frame: for the debug
@@ -251,6 +252,11 @@ stats_lines :: proc(s: Frame_Stats, allocator := context.allocator) -> []string 
 	append(&lines, fmt.aprintf("widget state %d   widget data %d", s.states, s.data, allocator = allocator))
 	rss := s.rss_bytes >= 0 ? fmt.tprintf("%.1f MiB", f64(s.rss_bytes) / (1 << 20)) : "n/a"
 	append(&lines, fmt.aprintf("frame arena %.1f KiB   resident %s", f64(s.arena_bytes) / 1024, rss, allocator = allocator))
+	if s.host.rss_bytes > 0 {
+		// Hot reload: resident above is this ui process's; the host holds
+		// the window, the renderer's textures and the compositor's image.
+		append(&lines, fmt.aprintf("host resident %.1f MiB", f64(s.host.rss_bytes) / (1 << 20), allocator = allocator))
+	}
 	h := s.host
 	rt := h.roundtrip_ms > 0 ? fmt.tprintf("   round trip %.2f ms", h.roundtrip_ms) : ""
 	append(&lines, fmt.aprintf("present %.2f ms%s", h.present_ms, rt, allocator = allocator))

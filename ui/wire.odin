@@ -28,10 +28,12 @@ encode_input :: proc(size: Size, density, dt: f32, events: []Raw_Event, allocato
 		encode_raw_event(&w, e)
 	}
 	// What presenting the child's last frame cost the host, for its tray.
+	// Trailing and optional: a reader from before a field reads the rest.
 	put_f32(&w, host.present_ms)
 	put_f32(&w, host.roundtrip_ms)
 	put_u32(&w, u32(host.repaint_rects))
 	put_u32(&w, u32(host.repaint_px))
+	put_u64(&w, u64(max(host.rss_bytes, 0)))
 	return w[:]
 }
 
@@ -63,10 +65,18 @@ decode_input :: proc(
 	for &e in out {
 		e = decode_raw_event(&r) or_return
 	}
-	host.present_ms = get_f32(&r) or_return
-	host.roundtrip_ms = get_f32(&r) or_return
-	host.repaint_rects = int(get_u32(&r) or_return)
-	host.repaint_px = int(get_u32(&r) or_return)
+	// The host's stats are trailing and optional, so a child and a host
+	// built either side of a new field still talk: each is read only if
+	// the input still has bytes.
+	if r.pos < len(r.data) {
+		host.present_ms = get_f32(&r) or_return
+		host.roundtrip_ms = get_f32(&r) or_return
+		host.repaint_rects = int(get_u32(&r) or_return)
+		host.repaint_px = int(get_u32(&r) or_return)
+	}
+	if r.pos < len(r.data) {
+		host.rss_bytes = int(get_u64(&r) or_return)
+	}
 	if r.pos != len(r.data) {
 		return {}, 0, 0, nil, {}, false
 	}
