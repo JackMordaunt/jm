@@ -156,6 +156,12 @@ Flash :: struct {
 // FLASH_MS is how long a repaint flash takes to fade.
 FLASH_MS :: 400
 
+// FLASH_FILL_ALPHA and FLASH_EDGE_ALPHA are a fresh flash's fill and
+// outline opacity, out of 255: faint enough over the fill to read the ui
+// beneath it, strong enough at the edge to see where the repaint ended.
+FLASH_FILL_ALPHA :: 45
+FLASH_EDGE_ALPHA :: 140
+
 // draw_flashes tints each live flash's rect over the presented frame,
 // fading with age, and drops the ones that have faded. It draws on the
 // renderer, over the texture, never into w.view: render.Compositor keeps
@@ -174,9 +180,14 @@ draw_flashes :: proc(w: ^Window) {
 		if age >= 1 {
 			continue
 		}
-		sdl3.SetRenderDrawColor(w.renderer, 255, 40, 160, u8(110 * (1 - age)))
+		// A faint fill and a stronger edge: the ui stays readable under a
+		// region that repaints every frame, whose flash never gets to fade.
+		fade := 1 - age
 		r := fl.r
+		sdl3.SetRenderDrawColor(w.renderer, 255, 40, 160, u8(FLASH_FILL_ALPHA * fade))
 		sdl3.RenderFillRect(w.renderer, &r)
+		sdl3.SetRenderDrawColor(w.renderer, 255, 40, 160, u8(FLASH_EDGE_ALPHA * fade))
+		sdl3.RenderRect(w.renderer, &r)
 		w.flashes[kept] = fl
 		kept += 1
 	}
