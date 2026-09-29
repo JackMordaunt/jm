@@ -38,8 +38,8 @@ Group_Model :: struct {
 @(private = "file")
 groups_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Group_Model)(user)
-	col := ui.column(gtx, gap = 16)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 16)
+	defer ui.close(&col)
 	LABELS := [?]string{"A", "B", "C"}
 	button_group(gtx, LABELS[:], m.sel[:])
 	MULTI := [?]string{"Bold", "Italic", "Strike"}
@@ -127,8 +127,8 @@ test_toolbar_clicks_actions_fab_and_collapses :: proc(t: ^testing.T) {
 	}
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^M)(user)
-		col := ui.column(gtx, gap = 16)
-		defer ui.end(&col)
+		col := ui.column_open(gtx, gap = 16)
+		defer ui.close(&col)
 		DOCKED := [?]Icon{.Undo, .Redo}
 		if i := toolbar(gtx, DOCKED[:], .Docked, width = 300); i != -1 {
 			m.picked = i
@@ -170,8 +170,8 @@ test_fab_menu_opens_staggers_and_picks :: proc(t: ^testing.T) {
 	}
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^M)(user)
-		in_ := ui.inset(gtx, {300, 400, 0, 0})
-		defer ui.end(&in_)
+		in_ := ui.inset_open(gtx, {300, 400, 0, 0})
+		defer ui.close(&in_)
 		ITEMS := [?]Fab_Menu_Item{{"Mail", .Mail}, {"Chat", .Chat_Bubble}, {"Photo", .Photo}}
 		if i := fab_menu(gtx, .Add, ITEMS[:], &m.open); i >= 0 {
 			m.picked = i
@@ -208,8 +208,8 @@ test_bottom_app_bar_clicks_and_hides :: proc(t: ^testing.T) {
 	}
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^M)(user)
-		col := ui.column(gtx, gap = 16)
-		defer ui.end(&col)
+		col := ui.column_open(gtx, gap = 16)
+		defer ui.close(&col)
 		ACTIONS := [?]Icon{.Check, .Mic}
 		if i := bottom_app_bar(gtx, ACTIONS[:], .Add, width = 400, height_offset = -m.hide); i != -1 {
 			m.picked = i

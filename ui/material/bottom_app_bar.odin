@@ -53,7 +53,7 @@ bottom_app_bar :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	h := tok.BOTTOM_APP_BAR_CONTAINER_HEIGHT
 	if flexible {
 		h = height > 0 ? height : tok.DOCKED_TOOLBAR_CONTAINER_HEIGHT
@@ -64,12 +64,12 @@ bottom_app_bar :: proc(
 	w = size.x
 	clicked := -1
 	if shown <= 0 {
-		ui.widget_end(gtx, &p, {size = size})
+		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
 	bar := ui.Rect{0, 0, w, h}
-	// Clip to what shows; popped before widget_end, inside its transform.
-	ui.push_clip(gtx.ops, ui.Rect{0, 0, w, shown})
+	// Clip to what shows; popped before widget_close, inside its transform.
+	ui.clip_push(gtx.ops, ui.Rect{0, 0, w, shown})
 	ui.fill(gtx.ops, rounded(gtx, bar, corners(tok.BOTTOM_APP_BAR_CONTAINER_SHAPE, bar)), color(tok.BOTTOM_APP_BAR_CONTAINER_COLOR))
 
 	// The actions are standard icon buttons: no container of their own.
@@ -104,8 +104,8 @@ bottom_app_bar :: proc(
 				clicked = TOOLBAR_FAB
 			}
 		}
-		ui.pop_clip(gtx.ops)
-		ui.widget_end(gtx, &p, {size = size})
+		ui.clip_pop(gtx.ops)
+		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
 
@@ -148,7 +148,7 @@ bottom_app_bar :: proc(
 		}
 		x += e + g
 	}
-	ui.pop_clip(gtx.ops)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.clip_pop(gtx.ops)
+	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }

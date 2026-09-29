@@ -6,8 +6,8 @@ import m3 "jm:ui/material"
 import tok "jm:ui/material/tokens"
 
 page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Cards", "corner 12; elevated 1dp on surface-container-low, filled on surface-container-highest, outlined 1dp outline-variant; elevation per state")
 	state_header(gtx)
 	NAMES := [?]string{"Elevated", "Filled", "Outlined"}
@@ -17,30 +17,30 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Dragged", "elevated 8dp, filled and outlined 6dp: the lift a host drag gives")
 	{
-		r := ui.wrap(gtx, gap = 16)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 16)
+		defer ui.close(&r)
 		for i in 0 ..< len(m3.Card_Kind) {
 			card_cell(gtx, m, .Dragged, u64(16 * (i + 1)) + 5)
 		}
 	}
 	section(gtx, "Live", fmt.tprintf("cards hold any widgets; clicked %d times", m.card_hits))
-	r := ui.wrap(gtx, gap = 16)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 16)
+	defer ui.close(&r)
 	for kind, i in m3.Card_Kind {
 		hit: bool
 		{
 			c := m3.card(gtx, kind, clickable = true, clicked = &hit, key = u64(200 + i))
-			defer ui.end(&c)
-			cc := ui.column(gtx, gap = 8)
-			defer ui.end(&cc)
+			defer ui.close(&c)
+			cc := ui.column_open(gtx, gap = 8)
+			defer ui.close(&cc)
 			m3.card_icon(gtx, .Photo, kind)
 			ui.label(gtx, "Glass souls' world", {size = 22, color = m3.scheme()[.On_Surface]})
 			ui.label(gtx, "Deep ocean exploration", {size = 14, color = m3.scheme()[.On_Surface_Variant]})
 			gap(gtx, 8)
-			br := ui.row(gtx, gap = 8)
+			br := ui.row_open(gtx, gap = 8)
 			m3.button(gtx, "Explore", .Filled, key = u64(210 + i))
 			m3.button(gtx, "Save", .Outlined, key = u64(220 + i))
-			ui.end(&br)
+			ui.close(&br)
 		}
 		if hit {
 			m.card_hits += 1
@@ -51,9 +51,9 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // card_cell is one card of kind key/16 - 1 in state st.
 card_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
 	c := m3.card(gtx, m3.Card_Kind(key / 16 - 1), clickable = true, state = st, key = key)
-	defer ui.end(&c)
-	cc := ui.column(gtx, gap = 4)
-	defer ui.end(&cc)
+	defer ui.close(&c)
+	cc := ui.column_open(gtx, gap = 4)
+	defer ui.close(&cc)
 	dim := st == .Disabled
 	on := m3.scheme()[.On_Surface]
 	ui.label(gtx, "Headline", {size = 16, color = dim ? m3.disabled_content() : on})
@@ -61,8 +61,8 @@ card_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
 }
 
 page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	s := m3.scheme()
 	section(gtx, "List items", "one line 56, two 72, three 88; corners morph from 4 to 12 hovered, 16 focused, pressed or selected")
 	LINES := [?]m3.List_Item {
@@ -80,8 +80,8 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	list_state_rows(gtx, SEL[:], 100)
 	section(gtx, "Leading media and wrapping", "image 56×56 corner 8; small video 100×56, large video 114×64; the row grows to fit. Three lines without an overline wrap the supporting text")
 	{
-		r := ui.wrap(gtx, gap = 16)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 16)
+		defer ui.close(&r)
 		MEDIA := [?]m3.List_Item {
 			{headline = "Image", supporting = "56 × 56", leading_media = .Image},
 			{headline = "Small video", supporting = "100 × 56", leading_media = .Small_Video},
@@ -96,9 +96,9 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Segmented", "rows 2dp apart on the segmented colour; the run's first and last take the 16dp outer corners. Single select")
 	{
 		bg := segmented_bg(gtx, 300)
-		defer ui.end(&bg)
-		lc := ui.column(gtx, gap = tok.LIST_SEGMENTED_GAP)
-		defer ui.end(&lc)
+		defer ui.close(&bg)
+		lc := ui.column_open(gtx, gap = tok.LIST_SEGMENTED_GAP)
+		defer ui.close(&lc)
 		NAMES := [?]string{"Wi-Fi", "Bluetooth", "Airplane mode", "Hotspot"}
 		GLYPHS := [?]m3.Icon{.Wifi, .Bolt, .Flight, .Share}
 		for n, i in NAMES {
@@ -118,13 +118,13 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Multi-select and expanded", "multi-select flips checked; an expanded row turns its disclosure and shows its children")
 	{
-		r := ui.wrap(gtx, gap = 24)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 24)
+		defer ui.close(&r)
 		{
 			bg := segmented_bg(gtx, 801)
-			defer ui.end(&bg)
-			lc := ui.column(gtx, gap = tok.LIST_SEGMENTED_GAP)
-			defer ui.end(&lc)
+			defer ui.close(&bg)
+			lc := ui.column_open(gtx, gap = tok.LIST_SEGMENTED_GAP)
+			defer ui.close(&lc)
 			TOPPINGS := [?]string{"Cheese", "Olives", "Basil", "Chilli"}
 			for n, i in TOPPINGS {
 				it := m3.List_Item {
@@ -140,9 +140,9 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		{
 			bg := segmented_bg(gtx, 802)
-			defer ui.end(&bg)
-			lc := ui.column(gtx, gap = tok.LIST_SEGMENTED_GAP)
-			defer ui.end(&lc)
+			defer ui.close(&bg)
+			lc := ui.column_open(gtx, gap = tok.LIST_SEGMENTED_GAP)
+			defer ui.close(&lc)
 			GROUPS := [?]string{"Inbox", "Archive"}
 			CHILDREN := [2][2]string{{"From Ali", "From Sandra"}, {"Last week", "Last month"}}
 			n := 0
@@ -173,13 +173,13 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Reorder", "drag a row by any point, or focus it and press Up/Down; a lifted row is tertiary at 8dp over a drop zone")
 	{
-		r := ui.wrap(gtx, gap = 24)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 24)
+		defer ui.close(&r)
 		{
 			bg := segmented_bg(gtx, 803)
-			defer ui.end(&bg)
-			lc := ui.column(gtx, gap = tok.LIST_SEGMENTED_GAP)
-			defer ui.end(&lc)
+			defer ui.close(&bg)
+			lc := ui.column_open(gtx, gap = tok.LIST_SEGMENTED_GAP)
+			defer ui.close(&lc)
 			if m.list_order == {} {
 				m.list_order = {0, 1, 2, 3, 4}
 			}
@@ -204,8 +204,8 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			}
 		}
 		{
-			lc := ui.column(gtx, gap = 8)
-			defer ui.end(&lc)
+			lc := ui.column_open(gtx, gap = 8)
+			defer ui.close(&lc)
 			ui.label(gtx, "Dragged (forced)", {size = 12, color = s[.On_Surface_Variant]})
 			m3.list_item(gtx, {headline = "Lifted row", supporting = "reorder-list item", leading_icon = .Label, kind = .Reorder}, 320, .Dragged, key = 520)
 		}
@@ -213,10 +213,10 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 	section(gtx, "Reveal", fmt.tprintf("drag a row left, or focus it and press Left, to uncover its actions; last picked: %s", m.reveal_pick == "" ? "none" : m.reveal_pick))
 	{
-		r := ui.wrap(gtx, gap = 24)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 24)
+		defer ui.close(&r)
 		bg := segmented_bg(gtx, 810)
-		lc := ui.column(gtx, gap = tok.LIST_SEGMENTED_GAP)
+		lc := ui.column_open(gtx, gap = tok.LIST_SEGMENTED_GAP)
 		MAIL := [?]string{"Brunch this weekend?", "Summer BBQ", "Order confirmation"}
 		ACTIONS := [?]m3.Icon{.Archive, .Delete}
 		ACTION_NAMES := [?]string{"archive", "delete"}
@@ -237,21 +237,21 @@ page_lists :: proc(gtx: ^ui.Ctx, m: ^Model) {
 				m.reveal_pick = ACTION_NAMES[picked]
 			}
 		}
-		ui.end(&lc)
-		ui.end(&bg)
-		oc := ui.column(gtx, gap = 8)
-		defer ui.end(&oc)
+		ui.close(&lc)
+		ui.close(&bg)
+		oc := ui.column_open(gtx, gap = 8)
+		defer ui.close(&oc)
 		ui.label(gtx, "Revealed (forced)", {size = 12, color = s[.On_Surface_Variant]})
 		rb := segmented_bg(gtx, 811)
 		m3.list_item(gtx, {headline = "Brunch this weekend?", supporting = "Swipe for actions", leading_avatar = "B", kind = .Reveal, actions = ACTIONS[:], revealed = true}, 420, .Enabled, key = 620)
-		ui.end(&rb)
+		ui.close(&rb)
 	}
 
 	section(gtx, "Live", "a list in an outlined card; click to select")
 	c := m3.card(gtx, .Outlined, padding = 0, key = 700)
-	defer ui.end(&c)
-	lc := ui.column(gtx)
-	defer ui.end(&lc)
+	defer ui.close(&c)
+	lc := ui.column_open(gtx)
+	defer ui.close(&lc)
 	PEOPLE := [?]string{"Ali Connors", "Alex Scott", "Sandra Adams", "Trevor Hansen", "Britta Holt"}
 	SUBJ := [?]string{"Brunch this weekend?", "Summer BBQ", "Oui oui", "Order confirmation", "Recipe to try"}
 	for name, i in PEOPLE {
@@ -279,12 +279,12 @@ segmented_bg :: proc(gtx: ^ui.Ctx, key: u64) -> ui.Box {
 // list_state_rows lays items out once per forced state, a row each.
 list_state_rows :: proc(gtx: ^ui.Ctx, items: []m3.List_Item, base: u64) {
 	for st, i in m3.STATES {
-		r := ui.row(gtx, gap = 16, align = .Center, key = base + u64(i))
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = base + u64(i))
+		defer ui.close(&r)
 		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
-		wr := ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
-		defer ui.end(&wr)
+		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
+		defer ui.close(&wr)
 		for it, j in items {
 			m3.list_item(gtx, it, 300, st, key = base + u64(10 * i + j + 10))
 		}
@@ -303,13 +303,13 @@ ordered_remove_insert :: proc(a: []int, from, to: int, v: int) {
 }
 
 page_divider :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	s := m3.scheme()
 	section(gtx, "Divider", "1dp outline-variant: full width, inset 16, middle inset 16/16; insets are the caller's layout in Compose")
 	{
-		cc := ui.column(gtx, gap = 16)
-		defer ui.end(&cc)
+		cc := ui.column_open(gtx, gap = 16)
+		defer ui.close(&cc)
 		ui.label(gtx, "Full width", {size = 12, color = s[.On_Surface_Variant]})
 		m3.divider(gtx)
 		ui.label(gtx, "Inset", {size = 12, color = s[.On_Surface_Variant]})
@@ -322,8 +322,8 @@ page_divider :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		m3.divider(gtx, line_color = s[.Primary])
 	}
 	section(gtx, "Vertical, in a row", "the row's height is unbounded in this scroll view, so each takes length 24")
-	r := ui.row(gtx, gap = 16, align = .Fill)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, gap = 16, align = .Fill)
+	defer ui.close(&r)
 	ui.label(gtx, "Left")
 	m3.divider(gtx, vertical = true, length = 24)
 	ui.label(gtx, "Middle")
@@ -356,15 +356,15 @@ MENU_GROUPED := [?]m3.Menu_Item {
 }
 
 page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Menu", "legacy: surface-container, corner 4, 48dp label-large items; Expressive standard and vibrant: 16dp corners, body-large, tertiary selection")
 	{
-		r := ui.wrap(gtx, gap = 24, line_gap = 12)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 24, line_gap = 12)
+		defer ui.close(&r)
 		{
-			st := ui.stack(gtx)
-			defer ui.end(&st)
+			st := ui.stack_open(gtx)
+			defer ui.close(&st)
 			if m3.button(gtx, "Edit", .Outlined, .Edit, key = 1) {
 				m.menu_open = !m.menu_open
 			}
@@ -373,8 +373,8 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			}
 		}
 		{
-			st := ui.stack(gtx)
-			defer ui.end(&st)
+			st := ui.stack_open(gtx)
+			defer ui.close(&st)
 			m3.split_button(gtx, "Save", &m.split_menu, .Filled, .Edit, key = 3)
 			SAVE := [?]m3.Menu_Item{{label = "Save as..."}, {label = "Save a copy"}, {label = "Export PDF", leading = .Download}}
 			if i := m3.menu(gtx, &m.split_menu, SAVE[:], {0, 44}, key = 4); i >= 0 {
@@ -384,8 +384,8 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		STYLES := [?]m3.Menu_Style{.Standard, .Vibrant, .Vibrant}
 		NAMES := [?]string{"Standard", "Vibrant", "Grouped"}
 		for style, i in STYLES {
-			st := ui.stack(gtx, key = u64(10 + i))
-			defer ui.end(&st)
+			st := ui.stack_open(gtx, key = u64(10 + i))
+			defer ui.close(&st)
 			if m3.button(gtx, NAMES[i], .Tonal, key = u64(20 + i)) {
 				m.menu_styles[i] = !m.menu_styles[i]
 			}
@@ -409,8 +409,8 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Always open", "each style pinned open, its items in every state, a selected item and a submenu arrow; then a grouped menu")
 	// Pinned open inline, in the layout, so the live popups above draw
 	// over them rather than under.
-	r := ui.wrap(gtx, gap = 24, align = .Start)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 24, align = .Start)
+	defer ui.close(&r)
 	pinned := true
 	m3.menu(gtx, &pinned, MENU_STATES[:], modal = false, inline = true, key = 40)
 	m3.menu(gtx, &pinned, MENU_STATES[:], modal = false, style = .Standard, inline = true, key = 41)
@@ -419,10 +419,10 @@ page_menus :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_dialogs :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Basic dialog", "surface-container-high, corner 28, 6dp, 24dp padding, headline-small; 280-560dp wide; a 32% scrim behind")
-	r := ui.row(gtx, gap = 12)
+	r := ui.row_open(gtx, gap = 12)
 	if m3.button(gtx, "Open dialog", .Filled, key = 1) {
 		m.dialog = true
 	}
@@ -432,7 +432,7 @@ page_dialogs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	if m3.button(gtx, "Stacked actions", .Outlined, key = 5) {
 		m.dialog3 = true
 	}
-	ui.end(&r)
+	ui.close(&r)
 	if m.dialog_msg != "" {
 		ui.label(gtx, fmt.tprintf("Chose %s", m.dialog_msg), {color = m3.scheme()[.On_Surface_Variant]})
 	}
@@ -452,12 +452,12 @@ page_dialogs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_tooltips :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Plain tooltip", "inverse-surface, body-small, corner 4, 8×4dp padding, wraps at 200dp; a 16×8dp caret points at the anchor")
 	{
-		r := ui.wrap(gtx, gap = 16, align = .Center)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
 		m3.plain_tooltip(gtx, "Save to favourites", key = 1)
 		m3.plain_tooltip(gtx, "Caret up", .Up, key = 2)
 		m3.plain_tooltip(gtx, "Caret down", .Down, key = 3)
@@ -467,15 +467,15 @@ page_tooltips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Rich tooltip", "surface-container, 3dp, corner 12, 320dp max; subhead baseline 28dp down, body 24dp under it")
 	{
-		r := ui.wrap(gtx, gap = 16)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 16)
+		defer ui.close(&r)
 		m3.rich_tooltip(gtx, "Rich tooltip", "Rich tooltips bring attention to a particular element or feature that warrants the user's focus.", "Learn more", key = 10)
 		m3.rich_tooltip(gtx, "No action", "Without an action the body gets 16dp below it.", key = 11)
 		m3.rich_tooltip(gtx, "", "Body only, with a caret pointing up at its anchor.", caret = .Up, key = 12)
 	}
 	section(gtx, "Live", "hover an icon button: the tooltip shows at once and hides after 1.5s")
-	r := ui.wrap(gtx, gap = 8)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 8)
+	defer ui.close(&r)
 	TIPS := [?]string{"Favourite", "Share", "Bookmark", "Delete"}
 	GLYPHS := [?]m3.Icon{.Favorite, .Share, .Bookmark, .Delete}
 	for tip, i in TIPS {
@@ -484,8 +484,8 @@ page_tooltips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Snackbar", "inverse-surface, body-medium, corner 4, 6dp; 48dp one line, 68dp two; inverse-primary action; 600dp max")
 	m3.snackbar(gtx, "Photo saved", key = 1)
 	m3.snackbar(gtx, "Connection lost", "Retry", key = 2)
@@ -497,8 +497,8 @@ page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	state_row(gtx, m, "Snackbar", snackbar_cell, 6, SNACKBAR_CELL_W)
 	section(gtx, "Live", "shows at the bottom of the window; with an action it stays until acted on or closed (indefinite)")
 	{
-		r := ui.wrap(gtx, gap = 12)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 12)
+		defer ui.close(&r)
 		if m3.button(gtx, "Archive", .Tonal, .Archive, key = 10) {
 			m.snack = true
 			m.snack_n += 1
@@ -512,12 +512,12 @@ page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	if m.snack {
-		o := ui.overlay(gtx, cs = ui.loose(m.window), root = true)
-		defer ui.end(&o)
-		c := ui.centered(gtx)
-		defer ui.end(&c)
-		cc := ui.column(gtx)
-		defer ui.end(&cc)
+		o := ui.overlay_open(gtx, cs = ui.loose(m.window), root = true)
+		defer ui.close(&o)
+		c := ui.centered_open(gtx)
+		defer ui.close(&c)
+		cc := ui.column_open(gtx)
+		defer ui.close(&cc)
 		ui.spacer(gtx, m.window.y - 48 - 24)
 		acted, closed: bool
 		if m.snack_short {

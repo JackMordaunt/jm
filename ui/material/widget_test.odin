@@ -21,8 +21,8 @@ Model :: struct {
 @(private = "file")
 controls :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
-	col := ui.column(gtx, gap = 8)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 8)
+	defer ui.close(&col)
 	checkbox(gtx, &m.agree, "Agree")
 	radio_button(gtx, &m.radio, 0, "Small")
 	radio_button(gtx, &m.radio, 1, "Large")
@@ -96,8 +96,8 @@ test_text_field_takes_focus_and_text :: proc(t: ^testing.T) {
 test_forced_states_take_no_input :: proc(t: ^testing.T) {
 	forced :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Model)(user)
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		checkbox(gtx, &m.agree, "Agree", state = .Hovered)
 		checkbox(gtx, &m.on, "Live")
 	}
@@ -138,11 +138,11 @@ Overlay_Model :: struct {
 overlays :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Overlay_Model)(user)
 	// A row, so "Under" is beside the menu, not beneath one of its items.
-	r := ui.row(gtx, gap = 8)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, gap = 8)
+	defer ui.close(&r)
 	{
-		st := ui.stack(gtx)
-		defer ui.end(&st)
+		st := ui.stack_open(gtx)
+		defer ui.close(&st)
 		if button(gtx, "Edit") {
 			m.menu_open = true
 		}
@@ -204,8 +204,8 @@ test_slider_steps_by_key_and_button_group_selects_one :: proc(t: ^testing.T) {
 	}
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^M)(user)
-		col := ui.column(gtx, gap = 8)
-		defer ui.end(&col)
+		col := ui.column_open(gtx, gap = 8)
+		defer ui.close(&col)
 		slider(gtx, &m.v, 0, 100, 10)
 		LABELS := [?]string{"A", "B", "C"}
 		button_group(gtx, LABELS[:], m.sel[:])

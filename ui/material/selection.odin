@@ -98,7 +98,7 @@ checkbox :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	lw := label_width(gtx, label)
 	size := ui.constrain_min(gtx.constraints, {MIN_TOUCH + lw, MIN_TOUCH})
 	c := control(gtx, p.id, {0, 0, size.x, size.y}, state)
@@ -166,7 +166,7 @@ checkbox :: proc(
 	paint_focus_ring(gtx, c, {{mid.x - 20, mid.y - 20, 40, 40}, 20})
 	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y})
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label == "" ? "checkbox" : label))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return c.clicked
 }
 
@@ -215,7 +215,7 @@ radio_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	lw := label_width(gtx, label)
 	size := ui.constrain_min(gtx.constraints, {MIN_TOUCH + lw, MIN_TOUCH})
 	c := control(gtx, p.id, {0, 0, size.x, size.y}, state)
@@ -248,7 +248,7 @@ radio_button :: proc(
 	paint_focus_ring(gtx, c, {{mid.x - 20, mid.y - 20, 40, 40}, 20})
 	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y})
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label == "" ? "radio" : label))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }
 
@@ -269,7 +269,7 @@ switch_ :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	lw := label_width(gtx, label)
 	TW :: tok.SWITCH_TRACK_WIDTH
 	TH :: tok.SWITCH_TRACK_HEIGHT
@@ -350,6 +350,6 @@ switch_ :: proc(
 	paint_focus_ring(gtx, c, {{centre.x - h, centre.y - h, 2 * h, 2 * h}, h})
 	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y})
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label == "" ? "switch" : label))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return c.clicked
 }

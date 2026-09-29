@@ -21,12 +21,12 @@ segmented_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_segmented_button(gtx.theme, style)
 	n := min(len(labels), len(selected))
 	changed := -1
 	if n == 0 {
-		widget_end(gtx, &p, {})
+		widget_close(gtx, &p, {})
 		return changed
 	}
 
@@ -93,7 +93,7 @@ segmented_button :: proc(
 
 	// Pass 2: paint, clipped to the shared pill silhouette so square segment
 	// fills never poke past the rounded ends.
-	push_clip(gtx.ops, rr)
+	clip_push(gtx.ops, rr)
 	x = 0
 	for i in 0 ..< n {
 		w := widths[i]
@@ -129,7 +129,7 @@ segmented_button :: proc(
 		}
 		x += w
 	}
-	pop_clip(gtx.ops)
+	clip_pop(gtx.ops)
 
 	// Pass 3: input areas and tags, unclipped.
 	x = 0
@@ -154,6 +154,6 @@ segmented_button :: proc(
 		}
 	}
 
-	widget_end(gtx, &p, {size, (size.y - lh) / 2 + m.ascent})
+	widget_close(gtx, &p, {size, (size.y - lh) / 2 + m.ascent})
 	return changed
 }

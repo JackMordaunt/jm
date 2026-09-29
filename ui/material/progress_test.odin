@@ -48,8 +48,8 @@ Slider_Model :: struct {
 @(private = "file")
 slider_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Slider_Model)(user)
-	col := ui.column(gtx) // the root is the whole window; a column lets the slider take its own size
-	defer ui.end(&col)
+	col := ui.column_open(gtx) // the root is the whole window; a column lets the slider take its own size
+	defer ui.close(&col)
 	if m.range {
 		range_slider(gtx, &m.lo, &m.hi, 0, 100, m.step, width = SLIDER_W)
 		return
@@ -157,8 +157,8 @@ test_indicators_animate_only_when_indeterminate_or_live :: proc(t: ^testing.T) {
 		Loading,
 	}
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		switch (^Mode)(user)^ {
 		case .Determinate:
 			linear_progress(gtx, 0.5)

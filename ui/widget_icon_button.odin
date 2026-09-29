@@ -18,7 +18,7 @@ icon_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_icon_button(gtx.theme, style)
 	run, m := shape_line(gtx, glyph, s.size)
 	lh := line_height(m)
@@ -61,6 +61,6 @@ icon_button :: proc(
 		input_area(gtx.ops, p.id, rr, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur})
 	}
 	tag(gtx.ops, p.id, frame_string(gtx, glyph))
-	widget_end(gtx, &p, {size, origin.y})
+	widget_close(gtx, &p, {size, origin.y})
 	return toggled
 }

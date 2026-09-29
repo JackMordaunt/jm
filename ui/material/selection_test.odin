@@ -27,8 +27,8 @@ FRUIT := [?]string{"Apple", "Apricot", "Banana", "Cherry"}
 @(private = "file")
 sel_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Sel_Model)(user)
-	col := ui.column(gtx, gap = 8)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 8)
+	defer ui.close(&col)
 	checkbox(gtx, &m.agree, "Agree")
 	checkbox(gtx, &m.mixed, "Parent", indeterminate = true)
 	if radio_button(gtx, &m.size, 0, "Small") {

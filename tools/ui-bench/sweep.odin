@@ -29,7 +29,7 @@ grid_cell :: proc(gtx: ^ui.Ctx, i, n: int, size: ui.Size) -> ui.Size {
 	cols := max(1, int(math.ceil(math.sqrt(f32(n) * size.x / size.y))))
 	rows := max(1, (n + cols - 1) / cols)
 	cw, ch := size.x / f32(cols), size.y / f32(rows)
-	ui.push_transform(gtx.ops, ui.translate(f32(i % cols) * cw, f32(i / cols) * ch))
+	ui.transform_push(gtx.ops, ui.translate(f32(i % cols) * cw, f32(i / cols) * ch))
 	return {cw, ch}
 }
 
@@ -39,7 +39,7 @@ sweep_rect :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
 		ui.fill(gtx.ops, ui.Rect{0, 0, c.x - 1, c.y - 1}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 
@@ -49,7 +49,7 @@ sweep_rrect :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
 		ui.fill(gtx.ops, ui.Round_Rect{{0, 0, c.x - 1, c.y - 1}, 4}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 
@@ -59,7 +59,7 @@ sweep_stroke :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
 		ui.stroke(gtx.ops, ui.Round_Rect{{0.5, 0.5, c.x - 2, c.y - 2}, 4}, ui.Color{60, 60, 70, 255}, {width = 1})
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 
@@ -71,7 +71,7 @@ sweep_label :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		c := grid_cell(gtx, i, s.n, size)
 		gtx.constraints = ui.loose(c)
 		ui.label(gtx, fmt.tprintf("label %d", i))
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 	gtx.constraints = outer
 }
@@ -84,7 +84,7 @@ sweep_button :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		c := grid_cell(gtx, i, s.n, size)
 		gtx.constraints = ui.loose(c)
 		ui.button(gtx, "Pick", key = u64(i))
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 	gtx.constraints = outer
 }
@@ -98,14 +98,14 @@ sweep_panel :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
 		gtx.constraints = ui.loose(c)
-		card := ui.box(gtx, key = u64(i))
-		r := ui.row(gtx, gap = 8, align = .Center, key = u64(i))
+		card := ui.box_open(gtx, key = u64(i))
+		r := ui.row_open(gtx, gap = 8, align = .Center, key = u64(i))
 		ui.label(gtx, fmt.tprintf("Item %d", i))
 		ui.checkbox(gtx, "on", &s.toggle, key = u64(i))
 		ui.button(gtx, "Pick", key = u64(i))
-		ui.end(&r)
-		ui.end(&card)
-		ui.pop_transform(gtx.ops)
+		ui.close(&r)
+		ui.close(&card)
+		ui.transform_pop(gtx.ops)
 	}
 	gtx.constraints = outer
 }
@@ -115,13 +115,13 @@ sweep_panel :: proc(gtx: ^ui.Ctx, user: rawptr) {
 sweep_clip_shared :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	s := (^Sweep_State)(user)
 	size := gtx.constraints.max
-	ui.push_clip(gtx.ops, ui.Round_Rect{{0, 0, size.x, size.y}, 24})
+	ui.clip_push(gtx.ops, ui.Round_Rect{{0, 0, size.x, size.y}, 24})
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
 		ui.fill(gtx.ops, ui.Round_Rect{{0, 0, c.x - 1, c.y - 1}, 4}, ui.Color{u8(i), u8(i * 3), u8(i * 7), 255})
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 }
 
 // sweep_clip_each gives every fill its own rotated clip: a mask per draw.
@@ -130,12 +130,12 @@ sweep_clip_each :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	size := gtx.constraints.max
 	for i in 0 ..< s.n {
 		c := grid_cell(gtx, i, s.n, size)
-		ui.push_transform(gtx.ops, ui.rotate(0.1))
-		ui.push_clip(gtx.ops, ui.Rect{0, 0, c.x - 1, c.y - 1})
+		ui.transform_push(gtx.ops, ui.rotate(0.1))
+		ui.clip_push(gtx.ops, ui.Rect{0, 0, c.x - 1, c.y - 1})
 		ui.fill(gtx.ops, ui.Rect{-4, -4, c.x + 8, c.y + 8}, ui.Color{u8(i), 120, 200, 255})
-		ui.pop_clip(gtx.ops)
-		ui.pop_transform(gtx.ops)
-		ui.pop_transform(gtx.ops)
+		ui.clip_pop(gtx.ops)
+		ui.transform_pop(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 

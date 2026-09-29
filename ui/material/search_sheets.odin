@@ -70,7 +70,7 @@ search_bar :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	H :: tok.SEARCH_BAR_CONTAINER_HEIGHT
 	size := ui.constrain(gtx.constraints, {clamp(width, SEARCH_MIN_WIDTH, SEARCH_MAX_WIDTH), H})
 	bar := ui.Rect{0, 0, size.x, H}
@@ -179,7 +179,7 @@ search_bar :: proc(
 			vs.dismissed = true
 		}
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return picked
 }
 
@@ -319,7 +319,7 @@ paint_search_field :: proc(
 		icon(gtx, leading, {r.x + SEARCH_ICON_INSET, cy - ICON / 2}, ICON, lead)
 	}
 	inner := max(r.w - pad_l - pad_r, 0)
-	ui.push_clip(gtx.ops, ui.Rect{r.x + pad_l, r.y, inner, r.h})
+	ui.clip_push(gtx.ops, ui.Rect{r.x + pad_l, r.y, inner, r.h})
 	font := header ? tok.SEARCH_VIEW_HEADER_INPUT_TEXT_FONT : tok.SEARCH_BAR_INPUT_TEXT_FONT
 	if len(str) > 0 {
 		t := shape_style(gtx, str, font)
@@ -333,7 +333,7 @@ paint_search_field :: proc(
 		lh := font.line_height
 		ui.fill(gtx.ops, ui.Rect{r.x + pad_l + caret - scroll, cy - lh / 2, 2, lh}, color(tok.SEARCH_BAR_FOCUS_INDICATOR_COLOR))
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	if trailing != .None {
 		icon(gtx, trailing, {r.x + r.w - SEARCH_ICON_INSET - ICON, cy - ICON / 2}, ICON, trail)
 	}
@@ -377,11 +377,11 @@ search_view :: proc(
 	full_screen := mode == .Full_Screen || mode == .Full_Screen_Contained
 	o: ui.Overlay
 	if full_screen {
-		o = ui.overlay(gtx, cs = ui.exact(window), root = true)
+		o = ui.overlay_open(gtx, cs = ui.exact(window), root = true)
 	} else {
-		o = ui.overlay(gtx)
+		o = ui.overlay_open(gtx)
 	}
-	defer ui.end(&o)
+	defer ui.close(&o)
 	catch_id := ui.id_mix(id, 2)
 	bar_from := full_screen ? ui.Rect{origin.x, origin.y, w, H} : ui.Rect{0, 0, w, H}
 	bar_k := corners(tok.SEARCH_BAR_CONTAINER_SHAPE, bar_from)
@@ -465,9 +465,9 @@ search_view :: proc(
 	}
 	if live && open && mode != .Docked_With_Gap {
 		// The header takes the bar's own input: the same id, on top.
-		ui.push_transform(gtx.ops, ui.translate(header.x, header.y + (header.h - H) / 2))
+		ui.transform_push(gtx.ops, ui.translate(header.x, header.y + (header.h - H) / 2))
 		ui.input_area(gtx.ops, id, ui.Rect{0, 0, header.w, H}, SEARCH_KINDS)
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	} else if live && open {
 		ui.input_area(gtx.ops, id, ui.Rect{0, 0, w, H}, SEARCH_KINDS)
 	}
@@ -486,7 +486,7 @@ search_view :: proc(
 
 	// Results, clipped to the container; the contained view fades them in.
 	picked := -1
-	ui.push_clip(gtx.ops, shape)
+	ui.clip_push(gtx.ops, shape)
 	rows := min(n, int(max(results.h, 0) / ROW))
 	text_c := color(tok.LIST_ITEM_LABEL_TEXT_COLOR)
 	icon_c := color(tok.LIST_ITEM_LEADING_ICON_COLOR)
@@ -512,7 +512,7 @@ search_view :: proc(
 			ui.tag(gtx.ops, rid, ui.frame_string(gtx, suggestions[mi]))
 		}
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	return picked
 }
 
@@ -562,13 +562,13 @@ SHEET_VELOCITY_THRESHOLD :: f32(125) // dp/s, the same
 SHEET_HANDLE_PADDING :: f32(22) // layout bottom-drag-handle-shape, SheetDefaults.kt:575,788
 
 // bottom_sheet opens M3 Expressive's bottom sheet while open^ (sheets.json
-// comp.sheet-bottom): the widgets up to end_sheet sit on a
+// comp.sheet-bottom): the widgets up to sheet_close sit on a
 // surface-container-low sheet with 28dp top corners, anchored to the bottom
 // of window (SHEET_MAX_WIDTH at most, centred). modal adds a scrim that
 // fades in with a default-effects spring and closes the sheet on a press;
 // standard coexists with the page. The sheet enters on a default-spatial
 // spring and leaves on a fast-effects one (states enter, dismiss), staying
-// visible until it is off screen, so call end_sheet whatever visible says
+// visible until it is off screen, so call sheet_close whatever visible says
 // and draw content while visible.
 //
 // value, when given, is the caller's anchor (Hidden, Partially_Expanded,
@@ -589,7 +589,7 @@ SHEET_HANDLE_PADDING :: f32(22) // layout bottom-drag-handle-shape, SheetDefault
 // Departures: the fling's velocity only picks the anchor; the settle
 // spring starts from rest, so the boundary damping near Hidden (layout
 // bottom-boundary-damping) has nothing to damp. No predictive back.
-bottom_sheet :: proc(
+bottom_sheet_open :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
 	window: ui.Size,
@@ -683,7 +683,7 @@ bottom_sheet :: proc(
 	w := min(window.x, max_width)
 	sh.width = w - 2 * tok.LIST_ITEM_LEADING_SPACE
 	if modal {
-		so := ui.overlay(gtx, cs = ui.exact(window), root = true)
+		so := ui.overlay_open(gtx, cs = ui.exact(window), root = true)
 		scrim_id := ui.id_mix(id, 5)
 		for e in ui.events(gtx, scrim_id) {
 			if e.kind == .Press {
@@ -694,19 +694,19 @@ bottom_sheet :: proc(
 		if open^ {
 			ui.input_area(gtx.ops, scrim_id, ui.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
-		ui.end(&so)
+		ui.close(&so)
 	}
-	sh.overlay = ui.overlay(gtx, {0, max(offset, 0)}, ui.exact(window), root = true)
-	col := ui.column(gtx, align = .Center)
+	sh.overlay = ui.overlay_open(gtx, {0, max(offset, 0)}, ui.exact(window), root = true)
+	col := ui.column_open(gtx, align = .Center)
 	sh.flexes[0] = col
 	sh.nflex = 1
 	ui.fill_space(gtx)
 	sp := new(Sheet_Paint, gtx.allocator)
 	sp^ = {kind = .Bottom, drag_id = drag_id, state = ss}
-	b := ui.box(gtx, {padding = {tok.LIST_ITEM_LEADING_SPACE, 0, tok.LIST_ITEM_LEADING_SPACE, 24}, paint = paint_sheet, user = sp}, key = 1)
+	b := ui.box_open(gtx, {padding = {tok.LIST_ITEM_LEADING_SPACE, 0, tok.LIST_ITEM_LEADING_SPACE, 24}, paint = paint_sheet, user = sp}, key = 1)
 	sh.boxes[0] = b
 	sh.nbox = 1
-	inner := ui.column(gtx)
+	inner := ui.column_open(gtx)
 	sh.flexes[1] = inner
 	sh.nflex = 2
 	if handle {
@@ -804,7 +804,7 @@ sheet_settle :: proc(a: Sheet_Value, delta, velocity, partial_at, hidden_at: f32
 // accessibility.semantics).
 @(private)
 sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_location) {
-	p := ui.widget_begin(gtx, 0, loc)
+	p := ui.widget_open(gtx, 0, loc)
 	HW, HH :: tok.SHEET_BOTTOM_DOCKED_DRAG_HANDLE_WIDTH, tok.SHEET_BOTTOM_DOCKED_DRAG_HANDLE_HEIGHT
 	slot := ui.Rect{0, 0, w, 2 * SHEET_HANDLE_PADDING + HH}
 	pill := ui.Rect{(w - HW) / 2, SHEET_HANDLE_PADDING, HW, HH}
@@ -824,7 +824,7 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_locati
 	hit := ui.Rect{(w - 48) / 2, 0, 48, slot.h}
 	ui.input_area(gtx.ops, id, hit, {.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur})
 	ui.tag(gtx.ops, id, "drag handle")
-	ui.widget_end(gtx, &p, {size = {w, slot.h}})
+	ui.widget_close(gtx, &p, {size = {w, slot.h}})
 }
 
 // side_sheet opens a side sheet (sheets.json side-standard, side-modal).
@@ -837,9 +837,9 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, w: f32, loc := #caller_locati
 // press on the scrim, its close button or Escape; standard sits inline
 // with a divider on its inner edge, and ignores open. headline, when set,
 // heads the sheet with a close icon button (modal) at its end. Call
-// end_sheet whatever visible says. The spec gives no width;
+// sheet_close whatever visible says. The spec gives no width;
 // MDC's example uses 256 (layout side-sheet-width, mdc:SideSheet.md).
-side_sheet :: proc(
+side_sheet_open :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
 	window: ui.Size,
@@ -869,7 +869,7 @@ side_sheet :: proc(
 			return sh
 		}
 		sh.visible = true
-		so := ui.overlay(gtx, cs = ui.exact(window), root = true)
+		so := ui.overlay_open(gtx, cs = ui.exact(window), root = true)
 		scrim_id := ui.id_mix(id, 2)
 		for e in ui.events(gtx, scrim_id) {
 			if e.kind == .Press {
@@ -880,9 +880,9 @@ side_sheet :: proc(
 		if open^ {
 			ui.input_area(gtx.ops, scrim_id, ui.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
-		ui.end(&so)
-		sh.overlay = ui.overlay(gtx, {left ? -slide : slide, 0.001}, ui.exact(window), root = true)
-		r := ui.row(gtx, align = .Fill)
+		ui.close(&so)
+		sh.overlay = ui.overlay_open(gtx, {left ? -slide : slide, 0.001}, ui.exact(window), root = true)
+		r := ui.row_open(gtx, align = .Fill)
 		sh.flexes[0] = r
 		sh.nflex = 1
 		if !left {
@@ -893,15 +893,15 @@ side_sheet :: proc(
 		sh.flexes[0] = {index = -1} // no placement wrapper inline
 		sh.nflex = 1
 	}
-	b := ui.box(gtx, {padding = ui.pad_all(24), paint = paint_sheet, user = sp}, key = 1)
+	b := ui.box_open(gtx, {padding = ui.pad_all(24), paint = paint_sheet, user = sp}, key = 1)
 	sh.boxes[0] = b
 	sh.nbox = 1
-	inner := ui.column(gtx, gap = 16)
+	inner := ui.column_open(gtx, gap = 16)
 	sh.flexes[1] = inner
 	sh.nflex = 2
 	strut(gtx, sh.width) // the sheet's width
 	if headline != "" {
-		hr := ui.row(gtx, align = .Center)
+		hr := ui.row_open(gtx, align = .Center)
 		t := sheet_headline(gtx, headline)
 		if modal {
 			// The close button sits at the end: the row's width is the sheet's.
@@ -910,7 +910,7 @@ side_sheet :: proc(
 		if modal && icon_button(gtx, .Close, key = 7) {
 			open^ = false
 		}
-		ui.end(&hr)
+		ui.close(&hr)
 	}
 	return sh
 }
@@ -920,29 +920,29 @@ side_sheet :: proc(
 // so this uses title-large.
 @(private)
 sheet_headline :: proc(gtx: ^ui.Ctx, s: string, loc := #caller_location) -> Text {
-	p := ui.widget_begin(gtx, 0, loc)
+	p := ui.widget_open(gtx, 0, loc)
 	t := shape_text(gtx, s, .Title_Large)
 	draw_text(gtx, t, {}, color(tok.NAVIGATION_DRAWER_HEADLINE_COLOR))
-	ui.widget_end(gtx, &p, {ui.Size{t.width, t.height}, baseline_of(t)})
+	ui.widget_close(gtx, &p, {ui.Size{t.width, t.height}, baseline_of(t)})
 	return t
 }
 
-// end_sheet closes a sheet opened by bottom_sheet or side_sheet.
-end_sheet :: proc(sh: ^Sheet) {
+// sheet_close closes a sheet opened by bottom_sheet or side_sheet.
+sheet_close :: proc(sh: ^Sheet) {
 	if !sh.visible {
 		return
 	}
 	for i := sh.nflex - 1; i >= 1; i -= 1 {
-		ui.end(&sh.flexes[i])
+		ui.close(&sh.flexes[i])
 	}
 	for i := sh.nbox - 1; i >= 0; i -= 1 {
-		ui.end(&sh.boxes[i])
+		ui.close(&sh.boxes[i])
 	}
 	if sh.nflex >= 1 {
-		ui.end(&sh.flexes[0])
+		ui.close(&sh.flexes[0])
 	}
 	if sh.overlay.active {
-		ui.end(&sh.overlay)
+		ui.close(&sh.overlay)
 	}
 	sh.visible = false
 }
@@ -991,7 +991,7 @@ paint_sheet :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: rawptr) {
 // this frame while it holds the handle: move the handle by it each frame
 // and the grip stays under the pointer. state forces a look (Dragged included).
 drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc := #caller_location) -> f32 {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	W :: tok.DRAG_HANDLE_CONTAINER_WIDTH
 	H := max(tok.DRAG_HANDLE_PRESSED_HEIGHT, tok.DRAG_HANDLE_DRAGGED_HEIGHT)
 	hit := ui.Rect{(W - 48) / 2, 0, 48, H}
@@ -1055,7 +1055,7 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 		ui.input_area(gtx.ops, p.id, hit, CLICK_KINDS)
 	}
 	ui.tag(gtx.ops, p.id, "drag_handle")
-	ui.widget_end(gtx, &p, {size = {W, H}})
+	ui.widget_close(gtx, &p, {size = {W, H}})
 	return dx
 }
 
@@ -1069,6 +1069,6 @@ Handle_Grab :: struct {
 // strut is an empty widget w wide and 0 tall: a minimum width for the
 // column it sits in (spacer only runs along a flex's main axis).
 strut :: proc(gtx: ^ui.Ctx, w: f32, loc := #caller_location) {
-	p := ui.widget_begin(gtx, 0, loc)
-	ui.widget_end(gtx, &p, {size = {w, 0}})
+	p := ui.widget_open(gtx, 0, loc)
+	ui.widget_close(gtx, &p, {size = {w, 0}})
 }

@@ -86,7 +86,7 @@ test_decode_rejects_bad_header_and_tags :: proc(t: ^testing.T) {
 	context.allocator = virtual.arena_allocator(&arena)
 	src: Ops
 	ops_init(&src)
-	pop_clip(&src)
+	clip_pop(&src)
 	data := encode(&src)
 	dst: Ops
 	ops_init(&dst)

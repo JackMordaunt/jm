@@ -317,8 +317,8 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	at = {clamp(at.x, 0, max(window.x - TRAY_WIDTH, 0)), clamp(at.y, 0, max(window.y - h, 0))}
 	t.offset = at - corner // a drag past the edge does not bank distance to come back through
 
-	o := overlay(gtx, at, exact({TRAY_WIDTH, h}))
-	defer end(&o)
+	o := overlay_open(gtx, at, exact({TRAY_WIDTH, h}))
+	defer close(&o)
 	t.rect = {at.x, at.y, TRAY_WIDTH, h}
 	fill(gtx.ops, Round_Rect{{0, 0, TRAY_WIDTH, h}, 8}, Color{24, 22, 30, 240})
 	// Its own hit area, below the toggles: presses on the tray's padding

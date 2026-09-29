@@ -25,8 +25,8 @@ slider_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key
 
 page_sliders :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_progress_values(m)
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Continuous", "16dp track, 4dp handle that halves while pressed or focused; the gaps widen with it; value label while pressed")
 	state_header(gtx)
 	cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
@@ -102,8 +102,8 @@ FROZEN :: [?]f32{0.3, 0.7, 1.1, 1.5, -1}
 
 page_progress :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_progress_values(m)
-	col := ui.column(gtx, gap = 12)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 12)
+	defer ui.close(&col)
 	for style in m3.Progress_Style {
 		wavy := style == .Wavy
 		section(gtx, wavy ? "Linear, wavy" : "Linear", wavy ? "10dp tall; the wave flattens below 10% and above 95%, and travels a wavelength a second" : "4dp: the indicator and track split by a 4dp gap plus the round caps, a stop dot at the end")
@@ -122,14 +122,14 @@ page_progress :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for style in m3.Progress_Style {
 		wavy := style == .Wavy
 		section(gtx, wavy ? "Circular, wavy" : "Circular", wavy ? "48dp: 0, 5, 25, 60 and 100%, then the 6000ms indeterminate loop at 0.3s, 1.8s, 3.3s and live" : "40dp, 4dp stroke: 0, 5, 25, 60 and 100%, then indeterminate (no track) at 0.3s, 1.8s, 3.3s and live")
-		r := ui.wrap(gtx, gap = 24, align = .Center)
+		r := ui.wrap_open(gtx, gap = 24, align = .Center)
 		for v, i in ([?]f32{0, 0.05, 0.25, 0.6, 1}) {
 			m3.circular_progress(gtx, v, style = style, at = 0.25, key = u64(300 + 100 * int(style) + i))
 		}
 		for at, i in ([?]f32{0.3, 1.8, 3.3, -1}) {
 			m3.circular_progress(gtx, -1, style = style, at = at, key = u64(300 + 100 * int(style) + 10 + i))
 		}
-		ui.end(&r)
+		ui.close(&r)
 	}
 
 	section(gtx, "Live", "the slider drives the determinate indicators below it")
@@ -138,39 +138,39 @@ page_progress :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	m3.slider(gtx, &m.progress, width = 320, key = 500)
 	m3.linear_progress(gtx, m.progress, 320, key = 501)
 	m3.linear_progress(gtx, m.progress, 320, style = .Wavy, key = 502)
-	r := ui.wrap(gtx, gap = 24, align = .Center)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 24, align = .Center)
+	defer ui.close(&r)
 	m3.circular_progress(gtx, m.progress, key = 503)
 	m3.circular_progress(gtx, m.progress, style = .Wavy, key = 504)
 }
 
 page_loading :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_progress_values(m)
-	col := ui.column(gtx, gap = 16)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 16)
+	defer ui.close(&col)
 	for contained in ([?]bool{false, true}) {
 		section(gtx, contained ? "Indeterminate, contained" : "Indeterminate", "each of the 7 morphs, frozen 0.5s into it (soft-burst to cookie-9 first), then live")
-		r := ui.wrap(gtx, gap = 24, align = .Center)
+		r := ui.wrap_open(gtx, gap = 24, align = .Center)
 		for k in 0 ..< 7 {
 			m3.loading_indicator(gtx, contained, at = f32(k) * 0.65 + 0.5, key = u64(10 * int(contained) + k))
 		}
 		m3.loading_indicator(gtx, contained, key = u64(10 * int(contained) + 9))
-		ui.end(&r)
+		ui.close(&r)
 	}
 	for contained in ([?]bool{false, true}) {
 		section(gtx, contained ? "Determinate, contained" : "Determinate", "circle to soft-burst as progress runs 0, 25, 50, 75 and 100%, turning back 180°")
-		r := ui.wrap(gtx, gap = 24, align = .Center)
+		r := ui.wrap_open(gtx, gap = 24, align = .Center)
 		for v, i in ([?]f32{0, 0.25, 0.5, 0.75, 1}) {
 			m3.loading_indicator(gtx, contained, progress = v, key = u64(20 + 10 * int(contained) + i))
 		}
-		ui.end(&r)
+		ui.close(&r)
 	}
 	section(gtx, "Live", "the slider drives the determinate pair")
 	s := m3.scheme()
 	ui.label(gtx, fmt.tprintf("Progress %.0f%%", m.progress * 100), {color = s[.On_Surface_Variant]})
 	m3.slider(gtx, &m.progress, width = 320, key = 40)
-	r := ui.wrap(gtx, gap = 24, align = .Center)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 24, align = .Center)
+	defer ui.close(&r)
 	m3.loading_indicator(gtx, progress = m.progress, key = 41)
 	m3.loading_indicator(gtx, true, progress = m.progress, key = 42)
 }

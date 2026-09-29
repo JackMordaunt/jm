@@ -21,10 +21,10 @@ FIELD :: Area_Id(2)
 @(private = "file")
 probe_model_ui :: proc(gtx: ^Ctx, user: rawptr) {
 	m := (^Probe_Model)(user)
-	push_transform(gtx.ops, translate(40, 30))
+	transform_push(gtx.ops, translate(40, 30))
 	input_area(gtx.ops, SAVE, Rect{0, 0, 80, 20}, {.Press, .Release})
 	tag(gtx.ops, SAVE, "Save")
-	pop_transform(gtx.ops)
+	transform_pop(gtx.ops)
 	input_area(gtx.ops, FIELD, Rect{0, 100, 200, 20}, {.Press, .Key, .Text, .Focus, .Blur})
 	tag(gtx.ops, FIELD, "Name")
 

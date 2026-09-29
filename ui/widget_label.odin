@@ -12,7 +12,7 @@ label :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Dims {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_label(gtx.theme, style)
 	run, m := shape_line(gtx, text, s.size)
 	size := constrain(gtx.constraints, {run.advance, line_height(m)})
@@ -20,7 +20,7 @@ label :: proc(
 		glyphs(gtx.ops, add_run(gtx.ops, run), {0, m.ascent}, s.color)
 	}
 	tag(gtx.ops, p.id, frame_string(gtx, text))
-	return widget_end(gtx, &p, {size, m.ascent})
+	return widget_close(gtx, &p, {size, m.ascent})
 }
 
 // text draws one line of s with its top-left at pos: font, size and colour

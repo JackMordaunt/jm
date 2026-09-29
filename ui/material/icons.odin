@@ -57,9 +57,9 @@ icon :: proc(gtx: ^ui.Ctx, i: Icon, pos: ui.Point, size: f32, color: ui.Color) {
 		return
 	}
 	k := size / box
-	ui.push_transform(gtx.ops, ui.mul(ui.scale(k, k), ui.translate(pos.x, pos.y)))
+	ui.transform_push(gtx.ops, ui.mul(ui.scale(k, k), ui.translate(pos.x, pos.y)))
 	ui.fill(gtx.ops, ui.Path_Ref{ui.add_path(gtx.ops, p)}, color)
-	ui.pop_transform(gtx.ops)
+	ui.transform_pop(gtx.ops)
 }
 
 // parse_svg_path turns SVG path data into a ui.Path. It handles M L H V

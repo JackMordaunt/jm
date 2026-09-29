@@ -159,7 +159,7 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 	}
 
 	// Worker 0 is this thread, so its font cache is safe to use here.
-	damage_begin(&c.damage, f, data.size.w, data.size.h, bg, &c.workers[0].r)
+	damage_open(&c.damage, f, data.size.w, data.size.h, bg, &c.workers[0].r)
 	c.count = len(f.draws)
 	if len(c.threads) > 0 && c.count > HASH_SHARED {
 		run_phase(c, .Hash)
@@ -172,7 +172,7 @@ compose :: proc(c: ^Compositor, f: ^ui.Frame, target: ^bl.ImageCore, bg: ui.Colo
 	} else {
 		damage_model(&c.damage, 0, c.count)
 	}
-	rects, scrolls := damage_finish(&c.damage)
+	rects, scrolls := damage_close(&c.damage)
 
 	clear(&c.changed)
 	c.pixels = data
@@ -283,7 +283,7 @@ drain :: proc(c: ^Compositor, w: ^Worker) {
 		if i >= len(c.jobs) {
 			return
 		}
-		// damage_finish has already filed this frame's records as the old ones.
+		// damage_close has already filed this frame's records as the old ones.
 		band := c.jobs[i]
 		row := clamp(int(band.y) / TILE, 0, len(c.row_start) - 2)
 		picks := c.row_draws[c.row_start[row]:c.row_start[row + 1]]

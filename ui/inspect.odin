@@ -159,7 +159,7 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) -> (pane
 		return
 	}
 	o := gtx.ops
-	m := macro_begin(o)
+	m := macro_open(o)
 	if got.has_box {
 		r := got.box.rect
 		fill(o, r, Color{255, 0, 255, 40})
@@ -198,7 +198,7 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: Point, scale: f32 = 1) -> (pane
 	for run, i in runs {
 		glyphs(o, add_run(o, run), {card.x + pad, card.y + pad + f32(i) * lh + size}, Color{240, 238, 245, 255})
 	}
-	macro_end(o, m)
+	macro_close(o, m)
 	defer_call(o, m, root = true)
 	return card
 }

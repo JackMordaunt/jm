@@ -66,10 +66,10 @@ test_inspector_skips_the_open_tray :: proc(t: ^testing.T) {
 @(test)
 test_event_log_names_each_target_and_skips_moves :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^Ctx, user: rawptr) {
-		p := widget_begin(gtx, 1)
+		p := widget_open(gtx, 1)
 		input_area(gtx.ops, p.id, Rect{0, 0, 80, 30}, {.Press, .Release, .Move, .Enter, .Leave})
 		tag(gtx.ops, p.id, frame_string(gtx, "Save"))
-		widget_end(gtx, &p, {size = {80, 30}})
+		widget_close(gtx, &p, {size = {80, 30}})
 	}
 	p: Probe
 	probe_init(&p, view, nil, {200, 100}, allocator = context.temp_allocator)
@@ -79,6 +79,7 @@ test_event_log_names_each_target_and_skips_moves :: proc(t: ^testing.T) {
 	lines := event_log_lines(&p.tray, EVENT_LOG_CAP, context.temp_allocator)
 	kinds: [dynamic]Event_Kind
 	defer delete(kinds)
+	testing.expect(t, p.tray.events_n >= 2) // so the loop below asserts something
 	for i in 0 ..< p.tray.events_n {
 		e := p.tray.events[i]
 		append(&kinds, e.kind)

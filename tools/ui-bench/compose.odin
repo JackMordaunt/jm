@@ -17,16 +17,16 @@ Compose_State :: struct {
 
 compose_card :: proc(gtx: ^ui.Ctx, s: ^Compose_State, i: int, x, y: f32, text: string) {
 	outer := gtx.constraints
-	ui.push_transform(gtx.ops, ui.translate(x, y))
+	ui.transform_push(gtx.ops, ui.translate(x, y))
 	gtx.constraints = ui.loose({150, 44})
-	card := ui.box(gtx, key = u64(i))
-	r := ui.row(gtx, gap = 6, align = .Center, key = u64(i))
+	card := ui.box_open(gtx, key = u64(i))
+	r := ui.row_open(gtx, gap = 6, align = .Center, key = u64(i))
 	ui.label(gtx, text)
 	ui.checkbox(gtx, "", &s.toggle, key = u64(i))
 	ui.button(gtx, "Go", key = u64(i))
-	ui.end(&r)
-	ui.end(&card)
-	ui.pop_transform(gtx.ops)
+	ui.close(&r)
+	ui.close(&card)
+	ui.transform_pop(gtx.ops)
 	gtx.constraints = outer
 }
 
@@ -41,21 +41,21 @@ compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		for i in 0 ..< 60 {
 			compose_card(gtx, s, i, 16 + f32(i % 5) * 160, 80 + f32(i / 5) * 52, fmt.tprintf("Item %d", i))
 		}
-		ui.push_transform(gtx.ops, ui.translate(16, 20))
+		ui.transform_push(gtx.ops, ui.translate(16, 20))
 		ui.label(gtx, fmt.tprintf("frame %d", s.step))
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 		w, h: f32 = 220, 70
 		m := ui.mul(ui.mul(ui.translate(-w / 2, -h / 2), ui.rotate(f32(s.step) * 0.02)), ui.translate(size.x - 150, 60))
-		ui.push_transform(gtx.ops, m)
+		ui.transform_push(gtx.ops, m)
 		rr := ui.Round_Rect{{0, 0, w, h}, 18}
-		ui.push_clip(gtx.ops, rr)
+		ui.clip_push(gtx.ops, rr)
 		ui.fill(gtx.ops, rr, ui.Color{60, 90, 220, 255})
 		for k in 0 ..< 8 {
 			ui.fill(gtx.ops, ui.Rect{f32(k) * 30, -10, 12, h + 20}, ui.Color{255, 255, 255, 60})
 		}
 		ui.label(gtx, "affine + clip")
-		ui.pop_clip(gtx.ops)
-		ui.pop_transform(gtx.ops)
+		ui.clip_pop(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	case 1:
 		// hover: 1000 cards, one of them changes.
 		for i in 0 ..< 1000 {
@@ -67,15 +67,15 @@ compose_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 	case 2:
 		// scroll: a clipped list filling the window moves 30 px a frame.
-		ui.push_clip(gtx.ops, ui.Rect{8, 8, size.x - 16, size.y - 16})
-		ui.push_transform(gtx.ops, ui.translate(0, -f32(s.step % 10) * 30))
+		ui.clip_push(gtx.ops, ui.Rect{8, 8, size.x - 16, size.y - 16})
+		ui.transform_push(gtx.ops, ui.translate(0, -f32(s.step % 10) * 30))
 		for i in 0 ..< int(size.y / 26) + 12 {
 			for c in 0 ..< int(size.x / 160) {
 				compose_card(gtx, s, i * 16 + c, f32(c) * 160, f32(i) * 26, fmt.tprintf("Row %d", i))
 			}
 		}
-		ui.pop_transform(gtx.ops)
-		ui.pop_clip(gtx.ops)
+		ui.transform_pop(gtx.ops)
+		ui.clip_pop(gtx.ops)
 	case 3:
 		// idle: nothing changes.
 		for i in 0 ..< 60 {

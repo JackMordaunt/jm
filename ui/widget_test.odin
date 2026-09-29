@@ -27,7 +27,7 @@ tag_names :: proc(o: ^Ops) -> [dynamic]string {
 }
 
 @(private)
-push_event :: proc(h: ^Harness, e: Event) {
+event_push :: proc(h: ^Harness, e: Event) {
 	append(&h.router.events, e)
 }
 
@@ -58,7 +58,7 @@ test_label_clamps_to_constraints :: proc(t: ^testing.T) {
 
 @(private)
 save_ui :: proc(gtx: ^Ctx) -> bool {
-	col := column(gtx, gap = 8); defer end(&col)
+	col := column_open(gtx, gap = 8); defer close(&col)
 	label(gtx, "Name")
 	return button(gtx, "Save")
 }
@@ -80,8 +80,8 @@ test_button_clicks_on_press_then_release :: proc(t: ^testing.T) {
 	testing.expect(t, near(rr.rect.w, 4 * W + 24) && near(rr.rect.h, 14 + 12))
 
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = area, pos = {5, 5}})
-	push_event(&h, {kind = .Release, area = area, pos = {5, 5}})
+	event_push(&h, {kind = .Press, area = area, pos = {5, 5}})
+	event_push(&h, {kind = .Release, area = area, pos = {5, 5}})
 	testing.expect(t, save_ui(&h.gtx))
 	again, _ := find_tag(&h.ops, "Save")
 	testing.expect_value(t, again, area)
@@ -100,9 +100,9 @@ test_button_hover_and_release_outside :: proc(t: ^testing.T) {
 	area, _ := find_tag(&h.ops, "Go")
 
 	harness_frame(&h)
-	push_event(&h, {kind = .Enter, area = area})
-	push_event(&h, {kind = .Press, area = area, pos = {1, 1}})
-	push_event(&h, {kind = .Release, area = area, pos = {-5, 1}})
+	event_push(&h, {kind = .Enter, area = area})
+	event_push(&h, {kind = .Press, area = area, pos = {1, 1}})
+	event_push(&h, {kind = .Release, area = area, pos = {-5, 1}})
 	testing.expect(t, !go_button(&h))
 	// Two fills: the container, then the hover state layer on top of it.
 	container := index_of(&h.ops, Fill)
@@ -141,8 +141,8 @@ test_checkbox_toggles :: proc(t: ^testing.T) {
 	testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Stroke), 1) // unchecked outline
 
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = area, pos = {1, 1}})
-	push_event(&h, {kind = .Release, area = area, pos = {1, 1}})
+	event_push(&h, {kind = .Press, area = area, pos = {1, 1}})
+	event_push(&h, {kind = .Release, area = area, pos = {1, 1}})
 	testing.expect(t, agree(&h, &on))
 	testing.expect(t, on)
 	// Checked: accent fill and a stroked three-point path.
@@ -163,20 +163,20 @@ test_slider_follows_press_and_drag :: proc(t: ^testing.T) {
 
 	// Usable track is 118 - 18 = 100 wide, starting at x = 9.
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = area, pos = {59, 9}})
+	event_push(&h, {kind = .Press, area = area, pos = {59, 9}})
 	testing.expect(t, volume(&h, &v))
 	testing.expect(t, near(v, 5))
 
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Move, area = area, pos = {500, 9}})
+	event_push(&h, {kind = .Move, area = area, pos = {500, 9}})
 	testing.expect(t, volume(&h, &v))
 	testing.expect_value(t, v, 10)
 
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Release, area = area, pos = {500, 9}})
-	push_event(&h, {kind = .Move, area = area, pos = {9, 9}})
+	event_push(&h, {kind = .Release, area = area, pos = {500, 9}})
+	event_push(&h, {kind = .Move, area = area, pos = {9, 9}})
 	testing.expect(t, !volume(&h, &v))
 	testing.expect_value(t, v, 10)
 }
@@ -195,8 +195,8 @@ test_text_field_edits_at_cursor :: proc(t: ^testing.T) {
 	testing.expect(t, ok)
 
 	harness_frame(&h)
-	push_event(&h, {kind = .Focus, area = area})
-	push_event(&h, {kind = .Text, area = area, text = "bé"})
+	event_push(&h, {kind = .Focus, area = area})
+	event_push(&h, {kind = .Text, area = area, text = "bé"})
 	testing.expect(t, name_field(&h, &s))
 	testing.expect_value(t, text_string(&s), "abéc")
 	testing.expect_value(t, s.cursor, 4)
@@ -214,26 +214,26 @@ test_text_field_edits_at_cursor :: proc(t: ^testing.T) {
 
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Key, area = area, key = .Backspace})
-	push_event(&h, {kind = .Key, area = area, key = .Left})
-	push_event(&h, {kind = .Key, area = area, key = .Delete})
+	event_push(&h, {kind = .Key, area = area, key = .Backspace})
+	event_push(&h, {kind = .Key, area = area, key = .Left})
+	event_push(&h, {kind = .Key, area = area, key = .Delete})
 	testing.expect(t, name_field(&h, &s))
 	testing.expect_value(t, text_string(&s), "ac")
 	testing.expect_value(t, s.cursor, 1)
 
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Key, area = area, key = .End})
-	push_event(&h, {kind = .Key, area = area, key = .Home})
-	push_event(&h, {kind = .Key, area = area, key = .Right})
-	push_event(&h, {kind = .Blur, area = area})
+	event_push(&h, {kind = .Key, area = area, key = .End})
+	event_push(&h, {kind = .Key, area = area, key = .Home})
+	event_push(&h, {kind = .Key, area = area, key = .Right})
+	event_push(&h, {kind = .Blur, area = area})
 	testing.expect(t, !name_field(&h, &s))
 	testing.expect_value(t, s.cursor, 1)
 
 	// A press puts the cursor at the nearest rune boundary.
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = area, pos = {8 + 1.9 * W, 5}})
+	event_push(&h, {kind = .Press, area = area, pos = {8 + 1.9 * W, 5}})
 	name_field(&h, &s)
 	testing.expect_value(t, s.cursor, 2)
 }
@@ -275,7 +275,7 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 
 	harness_frame(&h)
 	clear(&m.laid)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 700}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 700}})
 	item_list(&h, &s, &m)
 	testing.expect_value(t, s.offset, 700)
 	// Item 0 is always measured; then rows 50..53.
@@ -286,7 +286,7 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
 	item_list(&h, &s, &m)
 	testing.expect_value(t, s.offset, 100 * 14 - 50)
 }
@@ -297,9 +297,9 @@ test_divider_in_row_is_vertical :: proc(t: ^testing.T) {
 	harness_init(&h, {200, 40})
 	defer harness_destroy(&h)
 	gtx := &h.gtx
-	r := row(gtx)
+	r := row_open(gtx)
 	d := divider(gtx)
-	end(&r)
+	close(&r)
 	testing.expect_value(t, d.size, Size{1, 40})
 	f := h.ops.ops[index_of(&h.ops, Fill)].(Fill)
 	testing.expect_value(t, f.paint.(Color), h.theme.outline)
@@ -314,7 +314,7 @@ Model :: struct {
 
 @(private)
 model_ui :: proc(gtx: ^Ctx, m: ^Model) {
-	col := column(gtx, gap = 8); defer end(&col)
+	col := column_open(gtx, gap = 8); defer close(&col)
 	label(gtx, "Name")
 	text_field(gtx, &m.name)
 	if button(gtx, "Save") {
@@ -339,8 +339,8 @@ test_sample_ui :: proc(t: ^testing.T) {
 	testing.expect_value(t, p[2].y, 14 + 8 + (14 + 8) + 8)
 
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = save, pos = {2, 2}})
-	push_event(&h, {kind = .Release, area = save, pos = {2, 2}})
+	event_push(&h, {kind = .Press, area = save, pos = {2, 2}})
+	event_push(&h, {kind = .Release, area = save, pos = {2, 2}})
 	model_ui(&h.gtx, &m)
 	testing.expect(t, m.saved)
 	clear(&h.router.events)

@@ -34,35 +34,35 @@ RAIL_H :: 480
 // wide and h tall, naming the selection.
 demo_pane :: proc(gtx: ^ui.Ctx, title: string, w: f32, h: f32 = DRAWER_H, key: u64 = 0, loc := #caller_location) {
 	c := m3.card(gtx, .Filled, key = key, loc = loc)
-	defer ui.end(&c)
-	r := ui.row(gtx)
-	defer ui.end(&r)
+	defer ui.close(&c)
+	r := ui.row_open(gtx)
+	defer ui.close(&r)
 	{
-		col := ui.column(gtx, gap = 8)
-		defer ui.end(&col)
+		col := ui.column_open(gtx, gap = 8)
+		defer ui.close(&col)
 		ui.label(gtx, title, {size = 18, color = m3.scheme()[.On_Surface]})
 		ui.spacer(gtx, 0)
-		wide := ui.row(gtx)
-		defer ui.end(&wide)
+		wide := ui.row_open(gtx)
+		defer ui.close(&wide)
 		ui.spacer(gtx, w - 32)
 	}
 	ui.spacer(gtx, 0)
-	tall := ui.column(gtx)
-	defer ui.end(&tall)
+	tall := ui.column_open(gtx)
+	defer ui.close(&tall)
 	ui.spacer(gtx, h - 32)
 }
 
 page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Destinations", "deprecated in Expressive (the expanded rail replaces it); 56dp items, active on a secondary-container pill; inactive content turns on-surface under hover, focus and press")
 	for st, i in m3.STATES {
-		r := ui.row(gtx, gap = 16, align = .Center, key = u64(i))
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		defer ui.close(&r)
 		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - label_width(gtx, STATE_NAMES[i]), 0))
-		wr := ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
-		defer ui.end(&wr)
+		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
+		defer ui.close(&wr)
 		m3.drawer_item(gtx, {label = "Inbox", icon = .Inbox, badge = "24"}, false, 280, st, key = u64(10 + i))
 		m3.drawer_item(gtx, {label = "Inbox", icon = .Inbox, active_icon = .Inbox_Fill1, badge = "24"}, true, 280, st, key = u64(20 + i))
 	}
@@ -70,33 +70,33 @@ page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		m.drawer_sel = 1 // the model starts at 0, a headline: start on Inbox
 	}
 	section(gtx, "Variants", "permanent: square, beside the content; dismissible: slides in and out and the content reflows; modal: over a scrim, closed by the scrim or Escape")
-	r := ui.wrap(gtx, gap = 32)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 32)
+	defer ui.close(&r)
 	{
-		c := ui.column(gtx, gap = 8, key = 1)
-		defer ui.end(&c)
+		c := ui.column_open(gtx, gap = 8, key = 1)
+		defer ui.close(&c)
 		ui.label(gtx, "Permanent", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		m3.navigation_drawer(gtx, DRAWER_ITEMS[:], &m.drawer_sel, width = 300, height = DRAWER_H, key = 1)
 	}
 	{
-		c := ui.column(gtx, gap = 8, key = 2)
-		defer ui.end(&c)
+		c := ui.column_open(gtx, gap = 8, key = 2)
+		defer ui.close(&c)
 		if m3.button(gtx, m.drawer_open ? "Close dismissible" : "Open dismissible", .Tonal, .Menu, key = 2) {
 			m.drawer_open = !m.drawer_open
 		}
-		rr := ui.row(gtx, key = 2)
-		defer ui.end(&rr)
+		rr := ui.row_open(gtx, key = 2)
+		defer ui.close(&rr)
 		m3.navigation_drawer(gtx, DRAWER_ITEMS[:], &m.drawer_sel, width = 300, height = DRAWER_H, variant = .Dismissible, open = &m.drawer_open, key = 2)
 		demo_pane(gtx, "Content", 200, key = 2)
 	}
 	{
-		c := ui.column(gtx, gap = 8, key = 3)
-		defer ui.end(&c)
+		c := ui.column_open(gtx, gap = 8, key = 3)
+		defer ui.close(&c)
 		if m3.button(gtx, "Open modal", .Tonal, .Menu, key = 3) {
 			m.drawer_modal = true
 		}
-		rr := ui.row(gtx, key = 3)
-		defer ui.end(&rr)
+		rr := ui.row_open(gtx, key = 3)
+		defer ui.close(&rr)
 		m3.navigation_drawer(gtx, DRAWER_ITEMS[:], &m.drawer_sel, width = 300, height = DRAWER_H, variant = .Modal, open = &m.drawer_modal, key = 3)
 		demo_pane(gtx, "Content", 300, key = 3)
 	}
@@ -124,36 +124,36 @@ destination_states :: proc(gtx: ^ui.Ctx, m: ^Model, bar: bool) {
 }
 
 page_rail :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Destinations", "vertical (collapsed) items: 56x32 indicator, 12sp label; horizontal (expanded) items: 56dp pill around icon and 14sp label; active label in secondary")
 	destination_states(gtx, m, false)
 	section(gtx, "Live", "plain 80dp rail; expandable 96dp rail whose menu widens it to hug its items and extends the FAB; modal rail expanding over its content behind a scrim")
-	r := ui.wrap(gtx, gap = 32)
-	defer ui.end(&r)
+	r := ui.wrap_open(gtx, gap = 32)
+	defer ui.close(&r)
 	{
-		rr := ui.row(gtx, key = 1)
-		defer ui.end(&rr)
+		rr := ui.row_open(gtx, key = 1)
+		defer ui.close(&rr)
 		m3.navigation_rail(gtx, NAV_ITEMS[:], &m.rail_plain, height = RAIL_H, key = 1)
 		demo_pane(gtx, NAV_ITEMS[m.rail_plain].label, 160, RAIL_H, key = 1)
 	}
 	{
-		rr := ui.row(gtx, key = 2)
-		defer ui.end(&rr)
+		rr := ui.row_open(gtx, key = 2)
+		defer ui.close(&rr)
 		m3.navigation_rail(gtx, NAV_ITEMS[:], &m.rail_sel, .Edit, true, &m.rail_expanded, fab_label = "Compose", height = RAIL_H, key = 2)
 		demo_pane(gtx, NAV_ITEMS[m.rail_sel].label, 200, RAIL_H, key = 2)
 	}
 	{
-		rr := ui.row(gtx, key = 3)
-		defer ui.end(&rr)
+		rr := ui.row_open(gtx, key = 3)
+		defer ui.close(&rr)
 		m3.navigation_rail(gtx, NAV_ITEMS[:], &m.rail_modal_sel, .Edit, true, &m.rail_modal, modal = true, fab_label = "Compose", height = RAIL_H, key = 3)
 		demo_pane(gtx, NAV_ITEMS[m.rail_modal_sel].label, 280, RAIL_H, key = 3)
 	}
 }
 
 page_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Destinations", "vertical items: 56x32 indicator; horizontal items: 40dp pill around icon and label; 12sp label, active in secondary")
 	destination_states(gtx, m, true)
 	section(gtx, "Standard", "64dp on surface-container, equal shares, vertical items; the indicator grows on the fast-spatial spring")
@@ -167,12 +167,12 @@ page_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_badges :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	section(gtx, "Badges", "small: 6dp error dot; large: 16dp min, 11sp on-error, 4dp side padding once the label outgrows the circle")
 	{
-		r := ui.wrap(gtx, gap = 24, align = .Center)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 24, align = .Center)
+		defer ui.close(&r)
 		m3.badge(gtx, " ", key = 1)
 		m3.badge(gtx, "3", key = 2)
 		m3.badge(gtx, "42", key = 3)
@@ -180,8 +180,8 @@ page_badges :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "On icons", "over the anchor's top-trailing corner: the dot 6dp in and down, a numeral 12dp in and 14dp down less its height; the badge takes no space")
 	{
-		r := ui.wrap(gtx, gap = 32, align = .Center)
-		defer ui.end(&r)
+		r := ui.wrap_open(gtx, gap = 32, align = .Center)
+		defer ui.close(&r)
 		ui.spacer(gtx, 8)
 		m3.badged_icon(gtx, .Notifications, " ", key = 1)
 		m3.badged_icon(gtx, .Mail, "3", key = 2)
@@ -194,8 +194,8 @@ page_badges :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_app_bars :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	ACTIONS := [?]m3.Icon{.Attach_File, .Event, .More_Vert}
 	W :: 600
 	section(gtx, "Small", "64dp, 22sp title, optional 12sp subtitle; leading icon on-surface, trailing on-surface-variant, 4dp from the edges")
@@ -226,19 +226,19 @@ page_app_bars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_tabs :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column(gtx, gap = 10)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
 	LABELS := [?]string{"Video", "Photos", "Audio"}
 	ICONS := [?]m3.Icon{.Movie, .Photo, .Music_Note}
 	W :: 420
 	section(gtx, "Primary tabs, state of the first tab", "48dp (64 with icons), 14sp label; 3dp primary indicator as wide as the content; inactive content on-surface under hover, focus and press")
 	for st, i in m3.STATES {
-		r := ui.row(gtx, gap = 16, align = .Center, key = u64(i))
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		defer ui.close(&r)
 		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
-		wr := ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
-		defer ui.end(&wr)
+		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
+		defer ui.close(&wr)
 		sel := 0
 		m3.tabs(gtx, LABELS[:], &sel, width = W, state = st, state_tab = 0, key = u64(10 + i))
 		sel2 := 1
@@ -246,12 +246,12 @@ page_tabs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Secondary tabs", "indicator across the tab; on-surface active label; icons beside the label")
 	for st, i in m3.STATES {
-		r := ui.row(gtx, gap = 16, align = .Center, key = u64(30 + i))
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(30 + i))
+		defer ui.close(&r)
 		ui.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
-		wr := ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
-		defer ui.end(&wr)
+		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
+		defer ui.close(&wr)
 		sel := 0
 		m3.tabs(gtx, LABELS[:], &sel, secondary = true, width = W, state = st, state_tab = 0, key = u64(40 + i))
 		sel2 := 1

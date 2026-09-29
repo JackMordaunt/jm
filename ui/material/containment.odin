@@ -108,7 +108,7 @@ card :: proc(
 	cp := new(Card_Paint, gtx.allocator)
 	cp^ = {kind, clickable, state, clicked}
 	// ui's zero padding means "theme default"; negative means exactly 0.
-	return ui.box(gtx, {padding = ui.pad_all(padding > 0 ? padding : -1), paint = paint_card, user = cp}, key, loc)
+	return ui.box_open(gtx, {padding = ui.pad_all(padding > 0 ? padding : -1), paint = paint_card, user = cp}, key, loc)
 }
 
 @(private)
@@ -517,7 +517,7 @@ list_item :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	lines := 1
 	if it.supporting != "" || it.overline != "" {
 		lines = 2
@@ -675,9 +675,9 @@ list_item :: proc(
 		// Lifted: a drop zone holds the row's place, and the row follows
 		// the pointer in an overlay so the rows after it pass beneath.
 		ui.fill(gtx.ops, rounded(gtx, area, corners(tok.REORDER_LIST_ITEM_SHAPE, area)), color(tok.REORDER_LIST_ITEM_DROP_ZONE_COLOR))
-		o := ui.overlay(gtx, {0, drag})
+		o := ui.overlay_open(gtx, {0, drag})
 		paint_list_body(gtx, body, c)
-		ui.end(&o)
+		ui.close(&o)
 	case it.kind == .Reveal:
 		offset: f32 = it.revealed ? -reveal_w : 0
 		if gs != nil {
@@ -686,14 +686,14 @@ list_item :: proc(
 				offset = ui.spring_update(&gs.reveal, gtx, gs.reveal.target, spring_params(.Fast_Spatial), 0.5)
 			}
 		}
-		ui.push_clip(gtx.ops, area)
+		ui.clip_push(gtx.ops, area)
 		paint_reveal_actions(gtx, it, p.id, size, offset, c, gs)
 		open := reveal_w > 0 ? -offset / reveal_w : 0
 		body.corners = lerp_corners(k, corners(tok.REVEAL_LIST_ITEM_CONTAINER_SHAPE, area), open)
-		ui.push_transform(gtx.ops, ui.translate(offset, 0))
+		ui.transform_push(gtx.ops, ui.translate(offset, 0))
 		paint_list_body(gtx, body, c)
-		ui.pop_transform(gtx.ops)
-		ui.pop_clip(gtx.ops)
+		ui.transform_pop(gtx.ops)
+		ui.clip_pop(gtx.ops)
 		// Only the row's visible part takes presses, so the uncovered
 		// actions take their own.
 		if c.st != nil {
@@ -714,7 +714,7 @@ list_item :: proc(
 		listen(gtx, c, p.id, area)
 	}
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, it.headline))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return activated && it.selection != .None
 }
 
@@ -801,9 +801,9 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 		}
 		ui.fill(gtx.ops, ui.circle(ctr, BOX / 2), fill)
 		turn := ui.mul(ui.mul(ui.translate(-ctr.x, -ctr.y), ui.rotate(-math.PI * b.expand)), ui.translate(ctr.x, ctr.y))
-		ui.push_transform(gtx.ops, turn)
+		ui.transform_push(gtx.ops, turn)
 		icon(gtx, .Expand_More, {ctr.x - ICON / 2, ctr.y - ICON / 2}, ICON, ink)
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 		right -= tok.LIST_ITEM_BETWEEN_SPACE
 	case .Reorder:
 		ICON :: tok.LIST_ITEM_TRAILING_ICON_SIZE
@@ -827,7 +827,7 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 
 	tw := max(right - x, 0)
 	y := slot_y(top, b.pad_y, size.y, list_text_height(it, b.lines))
-	ui.push_clip(gtx.ops, ui.Rect{x, 0, tw, size.y})
+	ui.clip_push(gtx.ops, ui.Rect{x, 0, tw, size.y})
 	if it.overline != "" {
 		y += draw_style_text(gtx, it.overline, {x, y}, tok.LIST_ITEM_OVERLINE_FONT, b.col.overline).height
 	}
@@ -836,7 +836,7 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 		max_lines := b.lines == 3 && it.overline == "" ? 2 : 1
 		paint_wrapped(gtx, it.supporting, tok.LIST_ITEM_SUPPORTING_TEXT_FONT, b.col.supporting, {x, y}, tw, max_lines)
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 }
 
 // list_text_height is the height of a row's text block.
@@ -960,7 +960,7 @@ divider :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	ink := ui.painted(line_color) ? line_color : color(tok.DIVIDER_COLOR)
 	size: ui.Size
@@ -971,5 +971,5 @@ divider :: proc(
 		size = {cs.max.x < ui.INF ? cs.max.x : max(cs.min.x, length), thickness}
 		ui.fill(gtx.ops, ui.Rect{inset, 0, max(size.x - inset - inset_end, 0), thickness}, ink)
 	}
-	ui.widget_end(gtx, &p, {size = ui.constrain(cs, size)})
+	ui.widget_close(gtx, &p, {size = ui.constrain(cs, size)})
 }

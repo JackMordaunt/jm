@@ -25,9 +25,9 @@ TILE :: 64
 // Zero it, or damage_init it to choose the allocator. Its buffers keep their
 // capacity between frames, so a steady stream of similar frames allocates
 // nothing. damage_update does one frame. To share the per-draw work out,
-// call damage_begin, damage_draws over disjoint ranges from any threads,
+// call damage_open, damage_draws over disjoint ranges from any threads,
 // damage_find, damage_model over disjoint ranges of what it returns from
-// any threads, then damage_finish.
+// any threads, then damage_close.
 Damage :: struct {
 	size:       [2]i32,
 	cols, rows: int,
@@ -211,15 +211,15 @@ damage_invalidate :: proc(d: ^Damage) {
 // size change or a new bg yields the whole target and no scrolls. Results
 // are valid until the next update.
 damage_update :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^Renderer = nil) -> ([]ui.Rect, []Scroll) {
-	damage_begin(d, f, w, h, bg, fonts)
+	damage_open(d, f, w, h, bg, fonts)
 	damage_draws(d, f, 0, len(f.draws))
 	damage_model(d, 0, damage_find(d))
-	return damage_finish(d)
+	return damage_close(d)
 }
 
-// damage_begin records f's clips, looks up the metrics of every font f's
+// damage_open records f's clips, looks up the metrics of every font f's
 // text uses (see damage_update) and sizes the per-draw records.
-damage_begin :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^Renderer = nil) {
+damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^Renderer = nil) {
 	if d.clear != bg {
 		d.valid = false
 	}
@@ -296,7 +296,7 @@ damage_begin :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ui.Color, fonts: ^
 }
 
 // damage_draws records draws lo ..< hi. Calls on disjoint ranges may run on
-// different threads between damage_begin and damage_find.
+// different threads between damage_open and damage_find.
 damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
 	s := &d.scratch
 	for i in lo ..< hi {
@@ -385,9 +385,9 @@ damage_find :: proc(d: ^Damage) -> int {
 	return len(d.old_draws)
 }
 
-// damage_finish works out what to repaint and files the recorded frame as
+// damage_close works out what to repaint and files the recorded frame as
 // the previous one; see damage_update for the results.
-damage_finish :: proc(d: ^Damage) -> ([]ui.Rect, []Scroll) {
+damage_close :: proc(d: ^Damage) -> ([]ui.Rect, []Scroll) {
 	s := &d.scratch
 	if !d.valid {
 		append(&d.rects, ui.Rect{0, 0, f32(d.size.x), f32(d.size.y)})
@@ -1026,7 +1026,7 @@ model_clips :: proc(d: ^Damage) {
 
 // damage_model moves the previous frame's draws lo ..< hi with the found
 // scrolls. Calls on disjoint ranges may run on different threads between
-// damage_find and damage_finish.
+// damage_find and damage_close.
 damage_model :: proc(d: ^Damage, lo, hi: int) {
 	s := &d.scratch
 	for i in lo ..< hi {

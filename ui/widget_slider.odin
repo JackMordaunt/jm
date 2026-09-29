@@ -14,7 +14,7 @@ slider :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_slider(gtx.theme, style)
 	size := constrain(gtx.constraints, {s.width, s.knob_size})
 	r := min(s.knob_size, size.y) / 2
@@ -74,6 +74,6 @@ slider :: proc(
 	if len(name) > 0 {
 		tag(o, p.id, frame_string(gtx, name))
 	}
-	widget_end(gtx, &p, {size = size})
+	widget_close(gtx, &p, {size = size})
 	return changed
 }

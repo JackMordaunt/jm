@@ -10,11 +10,11 @@ test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
 	gtx := &h.gtx
 	ids: [3]Area_Id
 	for i in 0 ..< 3 {
-		s := scope(gtx, i)
-		defer end(&s)
-		p := widget_begin(gtx) // one call site, three iterations
+		s := scope_open(gtx, i)
+		defer close(&s)
+		p := widget_open(gtx) // one call site, three iterations
 		ids[i] = p.id
-		widget_end(gtx, &p, {})
+		widget_close(gtx, &p, {})
 	}
 	testing.expect(t, ids[0] != ids[1] && ids[1] != ids[2] && ids[0] != ids[2])
 	testing.expect_value(t, h.layout.scope, Area_Id(0)) // every scope ended
@@ -22,10 +22,10 @@ test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
 	// Nested: a page, then a row; the same row index under another page
 	// is another id.
 	row_under :: proc(gtx: ^Ctx, page: string) -> Area_Id {
-		ps := scope(gtx, page)
-		defer end(&ps)
-		rs := scope(gtx, 7)
-		defer end(&rs)
+		ps := scope_open(gtx, page)
+		defer close(&ps)
+		rs := scope_open(gtx, 7)
+		defer close(&rs)
 		return scoped_id(gtx)
 	}
 	testing.expect(t, row_under(gtx, "inbox") != row_under(gtx, "sent"))
@@ -67,8 +67,8 @@ test_retain_keeps_a_page_state_while_it_is_not_drawn :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	page: Page
 	draw :: proc(gtx: ^Ctx, page: ^Page) {
-		s := scope(gtx, page)
-		defer end(&s)
+		s := scope_open(gtx, page)
+		defer close(&s)
 		widget_state(gtx, scoped_id(gtx)).springs[0].value = 9
 	}
 	draw(&h.gtx, &page)

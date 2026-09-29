@@ -42,8 +42,8 @@ bounds :: proc(p: ^ui.Probe, name: string) -> ui.Rect {
 test_tabs_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^State_Model)(user)
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		tabs(gtx, LABELS[:], &m.tab, width = 400, scrollable = true, scroll = m.own ? &m.tabs : nil)
 	}
 	// A caller's target places the row from the first frame.
@@ -76,8 +76,8 @@ test_tabs_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 test_drawer_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^State_Model)(user)
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		navigation_drawer(gtx, ITEMS[:], &m.selected, width = 300, height = 150, scroll = m.own ? &m.drawer : nil)
 	}
 	m := State_Model{own = true, selected = 1, drawer = {offset = 40}}

@@ -18,8 +18,8 @@ Buttons_Model :: struct {
 @(private = "file")
 buttons :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Buttons_Model)(user)
-	col := ui.column(gtx, gap = 16)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 16)
+	defer ui.close(&col)
 	button(gtx, "Like", .Tonal, .Favorite, checked = &m.liked)
 	button(gtx, "Plain", .Text, checked = &m.texted)
 	icon_button(gtx, .Star, .Filled, &m.starred, tooltip = "Star", size = .Large, width = .Wide, shape = .Square)

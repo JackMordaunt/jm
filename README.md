@@ -613,7 +613,7 @@ build/debug/ui-kitchen -click name -type Ada -png out.png
 Widgets nest through containers with no per-child boilerplate:
 
 ```odin
-col := ui.column(gtx, gap = 8); defer ui.end(&col)
+col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
 ui.label(gtx, "Name")
 ui.text_field(gtx, &m.name)
 if ui.button(gtx, "Save") { save(m) }

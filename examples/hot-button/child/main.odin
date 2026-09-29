@@ -36,10 +36,10 @@ hot_button_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	ops := gtx.ops
 	ui.fill(ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
 
-	page := ui.inset(gtx, ui.pad_all(20))
-	defer ui.end(&page)
-	col := ui.column(gtx, gap = 14)
-	defer ui.end(&col)
+	page := ui.inset_open(gtx, ui.pad_all(20))
+	defer ui.close(&page)
+	col := ui.column_open(gtx, gap = 14)
+	defer ui.close(&col)
 
 	ui.label(gtx, "M3 all-buttons stress test", {size = th.heading_size})
 	ui.label(gtx, "edit ui/widget_button.odin, widget_icon_button.odin, widget_fab.odin or theme.odin and save", {size = 11, color = th.muted})
@@ -51,37 +51,37 @@ hot_button_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	kind_row(gtx, "Text", .Text, m, 50)
 
 	{
-		r := ui.row(gtx, gap = 16, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
 		ui.label(gtx, "Icon button", {size = 11, color = th.muted})
 		ui.icon_button(gtx, "♥", &m.icon_off, key = 60)
 		ui.icon_button(gtx, "♥", &m.icon_on, key = 61)
 		ui.icon_button(gtx, "♥", &m.icon_off, disabled = true, key = 62)
 	}
 	{
-		r := ui.row(gtx, gap = 16, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
 		ui.label(gtx, "FAB", {size = 11, color = th.muted})
 		if ui.fab(gtx, "+", .Small, key = 70) {}
 		if ui.fab(gtx, "+", .Regular, key = 71) {}
 		if ui.fab(gtx, "+", .Large, key = 72) {}
 	}
 	{
-		r := ui.row(gtx, gap = 16, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
 		ui.label(gtx, "Extended FAB", {size = 11, color = th.muted})
 		if ui.extended_fab(gtx, "+", "Compose", key = 80) {}
 	}
 	{
-		r := ui.row(gtx, gap = 16, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
 		ui.label(gtx, "Segmented", {size = 11, color = th.muted})
 		labels := [3]string{"Day", "Week", "Month"}
 		ui.segmented_button(gtx, labels[:], m.segmented[:], key = 90)
 	}
 	{
-		r := ui.row(gtx, gap = 16, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
 		ui.label(gtx, "Split", {size = 11, color = th.muted})
 		ui.split_button(gtx, "Save", &m.split_expanded, key = 100)
 	}
@@ -92,8 +92,8 @@ hot_button_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // count) and a live disabled twin, side by side.
 kind_row :: proc(gtx: ^ui.Ctx, label: string, kind: ui.Button_Kind, m: ^Model, key: u64) {
 	th := gtx.theme
-	r := ui.row(gtx, gap = 16, align = .Center)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, gap = 16, align = .Center)
+	defer ui.close(&r)
 	ui.label(gtx, label, {size = 11, color = th.muted})
 	if ui.button(gtx, fmt.tprintf("Click %d", m.count), {kind = kind}, key = key) {
 		m.count += 1

@@ -15,8 +15,8 @@ Owned_Rows :: struct {
 @(private = "file")
 owned_rows :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Owned_Rows)(user)
-	col := ui.column(gtx)
-	defer ui.end(&col)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
 	ACTIONS := [?]Icon{.Archive, .Delete}
 	list_item(gtx, {headline = "Owned", kind = .Reveal, actions = ACTIONS[:], action = &m.action}, 300, row_state = &m.owned, key = 1)
 	list_item(gtx, {headline = "Kept", kind = .Reveal, actions = ACTIONS[:], action = &m.action}, 300, key = 2)

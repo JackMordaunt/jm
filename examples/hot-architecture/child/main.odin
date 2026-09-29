@@ -34,7 +34,7 @@ INPUT_CHIPS :: []diagram.Chip {
 }
 
 LAYOUT_CHIPS :: []diagram.Chip {
-	{"Ctx + widgets", "column/row/box/button/label - widget_begin/end"},
+	{"Ctx + widgets", "column/row/box/button/label - widget_open/end"},
 	{"records into Ops", "transforms, clips, fills, glyph runs, input areas, tags"},
 	{"Layout", "retained state: hover, press, focus, flex measurements"},
 	{"flatten(ops, frame)", "Ops -> device-space draws + a hit list"},

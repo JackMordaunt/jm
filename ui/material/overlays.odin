@@ -355,12 +355,12 @@ menu :: proc(
 	live = open^
 
 	if inline {
-		p := ui.widget_begin(gtx, key, loc)
-		defer ui.widget_end(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
+		p := ui.widget_open(gtx, key, loc)
+		defer ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
 		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups)
 	} else {
-		o := ui.overlay(gtx, offset)
-		defer ui.end(&o)
+		o := ui.overlay_open(gtx, offset)
+		defer ui.close(&o)
 		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups)
 	}
 	return chosen
@@ -385,8 +385,8 @@ menu_paint :: proc(
 	expressive := style != .Legacy
 	// Grow from the top start, the edge nearest an anchor above it.
 	k := MENU_CLOSED_SCALE + (1 - MENU_CLOSED_SCALE) * shown
-	ui.push_transform(gtx.ops, scale_about({}, k))
-	defer ui.pop_transform(gtx.ops)
+	ui.transform_push(gtx.ops, scale_about({}, k))
+	defer ui.transform_pop(gtx.ops)
 	if live && modal {
 		// Scrim: an invisible catch-all under the menu; a press on it closes.
 		ui.input_area(gtx.ops, scrim_id, ui.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
@@ -626,9 +626,9 @@ TOOLTIP_GAP :: f32(4)
 // pointer on that side. See icon_button's tooltip for one that follows
 // hover.
 plain_tooltip :: proc(gtx: ^ui.Ctx, label: string, caret := Tooltip_Caret.None, key: u64 = 0, loc := #caller_location) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	size := paint_plain_tooltip(gtx, {}, label, caret)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 }
 
 // paint_plain_tooltip draws a plain tooltip with its top-left (caret
@@ -640,7 +640,7 @@ paint_plain_tooltip :: proc(gtx: ^ui.Ctx, at: ui.Point, label: string, caret := 
 	box := ui.Size{max(tw + 2 * PLAIN_TIP_PAD.x, TIP_MIN.x), max(th + 2 * PLAIN_TIP_PAD.y, TIP_MIN.y)}
 	r, size := caret_layout(at, box, caret)
 	ctr := ui.Point{at.x + size.x / 2, at.y + size.y / 2}
-	ui.push_transform(gtx.ops, scale_about(ctr, scale))
+	ui.transform_push(gtx.ops, scale_about(ctr, scale))
 	fill := fade(color(tok.PLAIN_TOOLTIP_CONTAINER_COLOR), alpha)
 	ui.fill(gtx.ops, rounded(gtx, r, corners(tok.PLAIN_TOOLTIP_CONTAINER_SHAPE, r)), fill)
 	paint_caret(gtx, r, caret, fill)
@@ -650,7 +650,7 @@ paint_plain_tooltip :: proc(gtx: ^ui.Ctx, at: ui.Point, label: string, caret := 
 		draw_text(gtx, t, {r.x + (r.w - tw) / 2, y}, fade(color(tok.PLAIN_TOOLTIP_SUPPORTING_TEXT_COLOR), alpha))
 		y += t.height
 	}
-	ui.pop_transform(gtx.ops)
+	ui.transform_pop(gtx.ops)
 	return size
 }
 
@@ -736,8 +736,8 @@ hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string,
 	lines := wrap_lines(gtx, label, tok.PLAIN_TOOLTIP_SUPPORTING_TEXT_FONT, PLAIN_TIP_MAX_W - 2 * PLAIN_TIP_PAD.x)
 	tw, _ := lines_size(lines)
 	w := max(tw + 2 * PLAIN_TIP_PAD.x, TIP_MIN.x)
-	o := ui.overlay(gtx, {(box.x - w) / 2, box.y + TOOLTIP_GAP})
-	defer ui.end(&o)
+	o := ui.overlay_open(gtx, {(box.x - w) / 2, box.y + TOOLTIP_GAP})
+	defer ui.close(&o)
 	paint_plain_tooltip(gtx, {}, label, .None, a, k)
 }
 
@@ -800,10 +800,10 @@ rich_tooltip :: proc(
 	}
 	rp := new(Rich_Tip_Paint, gtx.allocator)
 	rp.caret = caret
-	b := ui.box(gtx, {padding = pad, paint = paint_rich_tooltip, user = rp}, key, loc)
-	defer ui.end(&b)
-	col := ui.column(gtx)
-	defer ui.end(&col)
+	b := ui.box_open(gtx, {padding = pad, paint = paint_rich_tooltip, user = rp}, key, loc)
+	defer ui.close(&b)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
 	body := wrap_lines(gtx, supporting, tok.RICH_TOOLTIP_SUPPORTING_TEXT_FONT, RICH_TIP_MAX_W - 2 * RICH_TIP_PAD_X)
 	if subhead != "" {
 		t := shape_style(gtx, subhead, tok.RICH_TOOLTIP_SUBHEAD_FONT)
@@ -846,16 +846,16 @@ paint_rich_tooltip :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, size: ui.Size, user: ra
 // label_widget places a shaped Text as a widget of its own size.
 @(private)
 label_widget :: proc(gtx: ^ui.Ctx, t: Text, color: ui.Color, loc := #caller_location) {
-	p := ui.widget_begin(gtx, 0, loc)
+	p := ui.widget_open(gtx, 0, loc)
 	draw_text(gtx, t, {}, color)
-	ui.widget_end(gtx, &p, {ui.Size{t.width, t.height}, baseline_of(t)})
+	ui.widget_close(gtx, &p, {ui.Size{t.width, t.height}, baseline_of(t)})
 }
 
 // lines_widget places wrapped lines as one widget at least width wide,
 // each line start-aligned or, with centre, centred in that width.
 @(private)
 lines_widget :: proc(gtx: ^ui.Ctx, lines: []Text, color: ui.Color, width: f32 = 0, centre := false, loc := #caller_location) {
-	p := ui.widget_begin(gtx, 0, loc)
+	p := ui.widget_open(gtx, 0, loc)
 	w, h := lines_size(lines)
 	w = max(w, width)
 	y: f32
@@ -868,7 +868,7 @@ lines_widget :: proc(gtx: ^ui.Ctx, lines: []Text, color: ui.Color, width: f32 = 
 	if len(lines) > 0 {
 		base = baseline_of(lines[0])
 	}
-	ui.widget_end(gtx, &p, {ui.Size{w, h}, base})
+	ui.widget_close(gtx, &p, {ui.Size{w, h}, base})
 }
 
 // DIALOG_* are the dialog's hard-coded metrics (dialog.json layout,
@@ -929,8 +929,8 @@ dialog :: proc(
 	}
 	chosen := -1
 	id := ui.scoped_id(gtx, key, loc)
-	o := ui.overlay(gtx, cs = ui.loose(window), root = true)
-	defer ui.end(&o)
+	o := ui.overlay_open(gtx, cs = ui.loose(window), root = true)
+	defer ui.close(&o)
 	defer o.discard = !open^ // closed this frame: draw nothing, catch nothing
 	for e in ui.events(gtx, id) {
 		if e.kind == .Press {
@@ -952,14 +952,14 @@ dialog :: proc(
 	inner = w - 2 * DIALOG_PAD
 	stacked := aw > inner
 
-	c := ui.centered(gtx)
-	defer ui.end(&c)
+	c := ui.centered_open(gtx)
+	defer ui.close(&c)
 	dp := new(Dialog_Paint, gtx.allocator)
 	dp.open = open
-	d := ui.box(gtx, {padding = ui.pad_all(DIALOG_PAD), paint = paint_dialog, user = dp}, key = 1)
-	defer ui.end(&d)
-	col := ui.column(gtx, align = glyph != .None ? .Center : .Start)
-	defer ui.end(&col)
+	d := ui.box_open(gtx, {padding = ui.pad_all(DIALOG_PAD), paint = paint_dialog, user = dp}, key = 1)
+	defer ui.close(&d)
+	col := ui.column_open(gtx, align = glyph != .None ? .Center : .Start)
+	defer ui.close(&col)
 	if glyph != .None {
 		icon_widget(gtx, glyph, tok.DIALOG_ICON_SIZE, color(tok.DIALOG_ICON_COLOR))
 		ui.spacer(gtx, DIALOG_ICON_GAP)
@@ -974,20 +974,20 @@ dialog :: proc(
 		ui.spacer(gtx, DIALOG_TEXT_GAP)
 	}
 	if stacked {
-		ac := ui.column(gtx, gap = DIALOG_ACTION_GAP)
-		defer ui.end(&ac)
+		ac := ui.column_open(gtx, gap = DIALOG_ACTION_GAP)
+		defer ui.close(&ac)
 		for i := len(actions) - 1; i >= 0; i -= 1 {
-			r := ui.row(gtx, key = u64(i))
+			r := ui.row_open(gtx, key = u64(i))
 			ui.spacer(gtx, max(inner - actions_width(gtx, actions[i:i + 1]), 0))
 			if button(gtx, actions[i], .Text, key = u64(i)) {
 				chosen = i
 				open^ = false
 			}
-			ui.end(&r)
+			ui.close(&r)
 		}
 	} else {
-		r := ui.row(gtx, gap = DIALOG_ACTION_GAP)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = DIALOG_ACTION_GAP)
+		defer ui.close(&r)
 		ui.spacer(gtx, max(inner - aw - DIALOG_ACTION_GAP, 0))
 		for a, i in actions {
 			if button(gtx, a, .Text, key = u64(i)) {
@@ -1031,9 +1031,9 @@ actions_width :: proc(gtx: ^ui.Ctx, actions: []string) -> f32 {
 
 // icon_widget places a size-px icon as a widget.
 icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ui.Color, loc := #caller_location) {
-	p := ui.widget_begin(gtx, 0, loc)
+	p := ui.widget_open(gtx, 0, loc)
 	icon(gtx, g, {}, size, color)
-	ui.widget_end(gtx, &p, {size = {size, size}})
+	ui.widget_close(gtx, &p, {size = {size, size}})
 }
 
 // wrapped_text lays s out in lines no wider than width, breaking at
@@ -1169,7 +1169,7 @@ snackbar :: proc(
 	acted: bool,
 	closed: bool,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	alpha, scale := f32(1), f32(1)
 	if timer != nil {
 		timer^ += gtx.dt
@@ -1220,7 +1220,7 @@ snackbar :: proc(
 	}
 	size := ui.Size{w, h}
 	area := ui.Rect{0, 0, size.x, size.y}
-	ui.push_transform(gtx.ops, scale_about({size.x / 2, size.y / 2}, scale))
+	ui.transform_push(gtx.ops, scale_about({size.x / 2, size.y / 2}, scale))
 	rr := ui.Round_Rect{area, corners(tok.SNACKBAR_CONTAINER_SHAPE, area).tl}
 	paint_elevation_dp(gtx, rr, tok.SNACKBAR_CONTAINER_ELEVATION * alpha)
 	ui.fill(gtx.ops, rr, fade(color(tok.SNACKBAR_CONTAINER_COLOR), alpha))
@@ -1283,7 +1283,7 @@ snackbar :: proc(
 		ui.tag(gtx.ops, aid, ui.frame_string(gtx, action))
 		acted = c.clicked
 	}
-	ui.pop_transform(gtx.ops)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.transform_pop(gtx.ops)
+	ui.widget_close(gtx, &p, {size = size})
 	return
 }

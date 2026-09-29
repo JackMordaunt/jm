@@ -45,14 +45,14 @@ kitchen :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	th := gtx.theme
 	ui.fill(gtx.ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
 
-	page := ui.inset(gtx, ui.pad_all(16))
-	defer ui.end(&page)
-	col := ui.column(gtx, gap = 12)
-	defer ui.end(&col)
+	page := ui.inset_open(gtx, ui.pad_all(16))
+	defer ui.close(&page)
+	col := ui.column_open(gtx, gap = 12)
+	defer ui.close(&col)
 
 	{
-		hdr := ui.row(gtx, gap = 12, align = .Center)
-		defer ui.end(&hdr)
+		hdr := ui.row_open(gtx, gap = 12, align = .Center)
+		defer ui.close(&hdr)
 		ui.label(gtx, "jm:ui kitchen", {size = th.heading_size})
 		ui.fill_space(gtx)
 		ui.label(gtx, fmt.tprintf("frame %d", gtx.frame), {color = th.muted})
@@ -64,14 +64,14 @@ kitchen :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	}
 	ui.divider(gtx)
 	{
-		body := ui.row(gtx, gap = 16)
-		defer ui.end(&body)
+		body := ui.row_open(gtx, gap = 16)
+		defer ui.close(&body)
 		form(gtx, m)
 		ui.flexible(gtx, 1)
 		rows(gtx, m)
 		{
-			side := ui.column(gtx, gap = 12)
-			defer ui.end(&side)
+			side := ui.column_open(gtx, gap = 12)
+			defer ui.close(&side)
 			badge(gtx, "affine + clip", m.angle)
 			if ui.button(gtx, "Spin" if m.still else "Stop") {
 				m.still = !m.still
@@ -89,24 +89,24 @@ kitchen :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // form is the left panel: every input widget and a save round-trip.
 form :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	th := gtx.theme
-	card := ui.box(gtx)
-	defer ui.end(&card)
-	col := ui.column(gtx, gap = 8)
-	defer ui.end(&col)
+	card := ui.box_open(gtx)
+	defer ui.close(&card)
+	col := ui.column_open(gtx, gap = 8)
+	defer ui.close(&col)
 
 	ui.label(gtx, "Name")
 	ui.text_field(gtx, &m.name, name = "name")
 	ui.checkbox(gtx, "Subscribe", &m.subscribe)
 	{
-		r := ui.row(gtx, gap = 8, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 8, align = .Center)
+		defer ui.close(&r)
 		ui.label(gtx, "Volume")
 		ui.slider(gtx, &m.volume, 0, 100, name = "volume")
 		ui.label(gtx, fmt.tprintf("%.0f", m.volume), {color = th.muted})
 	}
 	{
-		r := ui.row(gtx, gap = 8, align = .Center)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 8, align = .Center)
+		defer ui.close(&r)
 		if ui.button(gtx, "-") {
 			m.count -= 1
 		}
@@ -116,8 +116,8 @@ form :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		r := ui.row(gtx, gap = 8)
-		defer ui.end(&r)
+		r := ui.row_open(gtx, gap = 8)
+		defer ui.close(&r)
 		if ui.button(gtx, "Save") {
 			m.saved = fmt.aprintf("Saved %s", ui.text_string(&m.name))
 		}
@@ -136,15 +136,15 @@ form :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 // rows is the middle panel: a virtualised list with a button per row.
 rows :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	card := ui.box(gtx)
-	defer ui.end(&card)
+	card := ui.box_open(gtx)
+	defer ui.close(&card)
 	ui.list(gtx, &m.list, ROWS, row_item, m)
 }
 
 row_item :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 	m := (^Model)(user)
-	r := ui.row(gtx, gap = 8, align = .Center)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, gap = 8, align = .Center)
+	defer ui.close(&r)
 	ui.label(gtx, fmt.tprintf("Row %d", i))
 	ui.fill_space(gtx)
 	if ui.button(gtx, "Pick") {
@@ -156,15 +156,15 @@ row_item :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 // round-rect clip, stripes that the clip cuts, an outline, text, the whole
 // thing rotated about its centre. It is what a custom widget costs.
 badge :: proc(gtx: ^ui.Ctx, text: string, angle: f32, loc := #caller_location) -> ui.Dims {
-	p := ui.widget_begin(gtx, 0, loc)
+	p := ui.widget_open(gtx, 0, loc)
 	th := gtx.theme
 	ops := gtx.ops
 	w, h: f32 = 200, 64
 	rr := ui.Round_Rect{{0, 0, w, h}, 18}
 
 	about_center := ui.mul(ui.mul(ui.translate(-w / 2, -h / 2), ui.rotate(angle)), ui.translate(w / 2, h / 2))
-	ui.push_transform(ops, about_center)
-	ui.push_clip(ops, rr)
+	ui.transform_push(ops, about_center)
+	ui.clip_push(ops, rr)
 	stops := make([]ui.Gradient_Stop, 2, gtx.allocator)
 	stops[0] = {0, th.accent}
 	stops[1] = {1, th.danger}
@@ -172,15 +172,15 @@ badge :: proc(gtx: ^ui.Ctx, text: string, angle: f32, loc := #caller_location) -
 	for x: f32 = 8; x < w; x += 28 {
 		ui.fill(ops, ui.Ellipse{{x, -12, 14, h + 24}}, ui.Color{255, 255, 255, 48})
 	}
-	ui.pop_clip(ops)
+	ui.clip_pop(ops)
 	ui.stroke(ops, rr, th.fg, {width = 2})
 	run := ui.shape(gtx.shaper, th.font, th.text_size, text, gtx.allocator)
 	mt := ui.metrics(gtx.shaper, th.font, th.text_size)
 	origin := ui.Point{(w - run.advance) / 2, (h - ui.line_height(mt)) / 2 + mt.ascent}
 	ui.glyphs(ops, ui.add_run(ops, run), origin, th.on_accent)
-	ui.pop_transform(ops)
+	ui.transform_pop(ops)
 	ui.tag(ops, p.id, "badge")
-	return ui.widget_end(gtx, &p, {{w, h}, 0})
+	return ui.widget_close(gtx, &p, {{w, h}, 0})
 }
 
 main :: proc() {

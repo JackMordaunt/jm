@@ -24,7 +24,7 @@ split_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (clicked: bool, toggled: bool) {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_button(gtx.theme, style)
 	run, m := shape_line(gtx, text, s.size)
 	lh := line_height(m)
@@ -83,7 +83,7 @@ split_button :: proc(
 		}
 	}
 
-	push_clip(gtx.ops, rr)
+	clip_push(gtx.ops, rr)
 	if painted(lead_container) {
 		fill(gtx.ops, lead_rect, lead_container)
 	}
@@ -100,7 +100,7 @@ split_button :: proc(
 	}
 	if tst != nil {
 	}
-	pop_clip(gtx.ops)
+	clip_pop(gtx.ops)
 
 	if painted(lead_outline) {
 		sw := max(gtx.theme.stroke, 1)
@@ -130,6 +130,6 @@ split_button :: proc(
 	}
 	tag(gtx.ops, lead_id, frame_string(gtx, text))
 	tag(gtx.ops, trail_id, frame_string(gtx, "chevron"))
-	widget_end(gtx, &p, {size, origin.y})
+	widget_close(gtx, &p, {size, origin.y})
 	return
 }

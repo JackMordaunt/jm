@@ -3,7 +3,7 @@ package ui
 import "base:intrinsics"
 import "core:mem"
 
-// Scope is an open ui.scope; end it with end(&s), usually deferred.
+// Scope is an open ui.scope; end it with close(&s), usually deferred.
 Scope :: struct {
 	gtx:       ^Ctx,
 	prev:      Area_Id,
@@ -22,7 +22,7 @@ Scope :: struct {
 // A scope opened with no scope around it is a root, such as a page: state
 // kept for widgets under it can outlive frames the page is not drawn in,
 // with retain.
-scope :: proc(gtx: ^Ctx, v: $T) -> Scope {
+scope_open :: proc(gtx: ^Ctx, v: $T) -> Scope {
 	l := gtx.layout
 	if l == nil {
 		return {}
@@ -35,8 +35,8 @@ scope :: proc(gtx: ^Ctx, v: $T) -> Scope {
 	return s
 }
 
-// end_scope closes s: ids stop mixing its value.
-end_scope :: proc(s: ^Scope) {
+// scope_close closes s: ids stop mixing its value.
+scope_close :: proc(s: ^Scope) {
 	if !s.active {
 		return
 	}
@@ -47,7 +47,7 @@ end_scope :: proc(s: ^Scope) {
 }
 
 // retain keeps the state of widgets under the root scope of v (a page
-// scoped with ui.scope(gtx, v) at the top) through this frame whether or
+// scoped with ui.scope_open(gtx, v) at the top) through this frame whether or
 // not they are drawn, so a page switched away from keeps its scroll
 // offsets, animations and gestures for when it comes back. Call it every
 // frame the page should live, drawn or not.
@@ -58,7 +58,7 @@ retain :: proc(gtx: ^Ctx, v: $T) {
 }
 
 // scoped_id is id(key, loc) mixed with the open scopes, for a widget that
-// makes its id without widget_begin (an overlay's own state, say).
+// makes its id without widget_open (an overlay's own state, say).
 scoped_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Area_Id {
 	i := id(key, loc)
 	if l := gtx.layout; l != nil && l.scope != 0 {

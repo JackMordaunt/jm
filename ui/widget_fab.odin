@@ -12,7 +12,7 @@ fab :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_fab(gtx.theme, style)
 	box, radius, icon_size := fab_box(size)
 	run, m := shape_line(gtx, glyph, icon_size)
@@ -45,7 +45,7 @@ fab :: proc(
 	}
 	input_area(gtx.ops, p.id, rr, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur})
 	tag(gtx.ops, p.id, frame_string(gtx, glyph))
-	widget_end(gtx, &p, {sz, origin.y})
+	widget_close(gtx, &p, {sz, origin.y})
 	return clicked
 }
 
@@ -60,7 +60,7 @@ extended_fab :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_fab(gtx.theme, style)
 	_, radius, icon_size := fab_box(.Regular)
 	height: f32 = 56
@@ -102,6 +102,6 @@ extended_fab :: proc(
 	}
 	input_area(gtx.ops, p.id, rr, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur})
 	tag(gtx.ops, p.id, frame_string(gtx, text))
-	widget_end(gtx, &p, {size, ty})
+	widget_close(gtx, &p, {size, ty})
 	return clicked
 }

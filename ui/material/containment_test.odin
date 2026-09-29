@@ -21,12 +21,12 @@ Rows :: struct {
 @(private = "file")
 rows :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Rows)(user)
-	col := ui.column(gtx)
-	defer ui.end(&col)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
 	{
 		c := card(gtx, .Filled, clickable = true, clicked = &m.card_hit, key = 1)
 		ui.spacer(gtx, 40)
-		ui.end(&c)
+		ui.close(&c)
 		if m.card_hit {
 			m.card_hits += 1
 		}
@@ -145,11 +145,11 @@ Menus :: struct {
 @(private = "file")
 menus :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Menus)(user)
-	r := ui.row(gtx, gap = 8)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, gap = 8)
+	defer ui.close(&r)
 	{
-		st := ui.stack(gtx)
-		defer ui.end(&st)
+		st := ui.stack_open(gtx)
+		defer ui.close(&st)
 		if button(gtx, "Open") {
 			m.open = true
 		}

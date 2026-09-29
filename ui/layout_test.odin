@@ -1,5 +1,6 @@
 package ui
 
+import "core:strings"
 import "core:testing"
 import "jm:ui/testutil"
 
@@ -89,7 +90,7 @@ test_column_places_second_label_below_first :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		col := column(gtx, gap = 8); defer end(&col)
+		col := column_open(gtx, gap = 8); defer close(&col)
 		label(gtx, "Name")
 		label(gtx, "Ada")
 	}
@@ -109,7 +110,7 @@ test_row_advances_on_x :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		r := row(gtx, gap = 4); defer end(&r)
+		r := row_open(gtx, gap = 4); defer close(&r)
 		label(gtx, "ab")
 		label(gtx, "c")
 	}
@@ -126,9 +127,9 @@ test_inset_offsets_by_padding :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		col := column(gtx); defer end(&col)
+		col := column_open(gtx); defer close(&col)
 		{
-			in_ := inset(gtx, {10, 20, 30, 40}); defer end(&in_)
+			in_ := inset_open(gtx, {10, 20, 30, 40}); defer close(&in_)
 			label(gtx, "x")
 		}
 		label(gtx, "after")
@@ -148,7 +149,7 @@ test_box_records_macro_then_fill_then_call :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		b := box(gtx); defer end(&b)
+		b := box_open(gtx); defer close(&b)
 		label(gtx, "card")
 	}
 	begin := index_of(&h.ops, Macro_Begin)
@@ -179,7 +180,7 @@ test_align_center_offsets_narrow_child :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		col := column(gtx, align = .Center); defer end(&col)
+		col := column_open(gtx, align = .Center); defer close(&col)
 		label(gtx, "i")
 		label(gtx, "wide")
 	}
@@ -204,7 +205,7 @@ test_align_end_and_fill :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		col := column(gtx, align = .End); defer end(&col)
+		col := column_open(gtx, align = .End); defer close(&col)
 		label(gtx, "i")
 		label(gtx, "wide")
 	}
@@ -214,7 +215,7 @@ test_align_end_and_fill :: proc(t: ^testing.T) {
 	harness_frame(&h)
 	gtx = &h.gtx
 	{
-		col := column(gtx, align = .Fill); defer end(&col)
+		col := column_open(gtx, align = .Fill); defer close(&col)
 		d := divider(gtx)
 		testing.expect_value(t, d.size, Size{200, 1})
 	}
@@ -228,7 +229,7 @@ test_weighted_child_gets_remaining_space :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		r := row(gtx, gap = 10); defer end(&r)
+		r := row_open(gtx, gap = 10); defer close(&r)
 		label(gtx, "ab")
 		flexible(gtx, 1)
 		d := label(gtx, "x")
@@ -245,11 +246,11 @@ test_weighted_child_before_rigid_converges_next_frame :: proc(t: ^testing.T) {
 	for frame in 0 ..< 2 {
 		harness_frame(&h)
 		gtx := &h.gtx
-		r := row(gtx)
+		r := row_open(gtx)
 		flexible(gtx, 1)
 		sizes[frame] = label(gtx, "x").size.x
 		label(gtx, "abcd")
-		end(&r)
+		close(&r)
 	}
 	// Frame 1 cannot know the rigid child after it; frame 2 uses frame 1's.
 	testing.expect(t, near(sizes[0], 300))
@@ -263,7 +264,7 @@ test_fill_space_pushes_the_rest_to_the_end :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		r := row(gtx); defer end(&r)
+		r := row_open(gtx); defer close(&r)
 		label(gtx, "a")
 		fill_space(gtx)
 		label(gtx, "bc")
@@ -283,7 +284,7 @@ test_stack_clip_and_centered :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		c := clip_box(gtx); defer end(&c)
+		c := clip_box_open(gtx); defer close(&c)
 		label(gtx, "clip")
 	}
 	i := index_of(&h.ops, Push_Clip)
@@ -294,7 +295,7 @@ test_stack_clip_and_centered :: proc(t: ^testing.T) {
 	harness_frame(&h)
 	gtx = &h.gtx
 	{
-		c := centered(gtx); defer end(&c)
+		c := centered_open(gtx); defer close(&c)
 		label(gtx, "ab")
 	}
 	p := pushes(&h.ops)
@@ -304,9 +305,9 @@ test_stack_clip_and_centered :: proc(t: ^testing.T) {
 	harness_frame(&h)
 	gtx = &h.gtx
 	{
-		col := column(gtx); defer end(&col)
+		col := column_open(gtx); defer close(&col)
 		{
-			s := stack(gtx); defer end(&s)
+			s := stack_open(gtx); defer close(&s)
 			label(gtx, "abc")
 			label(gtx, "a")
 		}
@@ -324,9 +325,9 @@ test_spacer_and_nesting :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		col := column(gtx); defer end(&col)
+		col := column_open(gtx); defer close(&col)
 		{
-			r := row(gtx); defer end(&r)
+			r := row_open(gtx); defer close(&r)
 			label(gtx, "a")
 			spacer(gtx, 20)
 			label(gtx, "b")
@@ -348,7 +349,7 @@ test_nil_layout_places_at_origin :: proc(t: ^testing.T) {
 	gtx := &h.gtx
 	gtx.layout = nil
 	{
-		col := column(gtx, gap = 8); defer end(&col)
+		col := column_open(gtx, gap = 8); defer close(&col)
 		label(gtx, "a")
 		label(gtx, "b")
 	}
@@ -431,8 +432,8 @@ test_request_frame_soonest_wins :: proc(t: ^testing.T) {
 scroll_frame :: proc(h: ^Harness) -> Input_Area {
 	gtx := &h.gtx
 	{
-		sb := scroll_box(gtx); defer end(&sb)
-		col := column(gtx); defer end(&col)
+		sb := scroll_box_open(gtx); defer close(&sb)
+		col := column_open(gtx); defer close(&col)
 		spacer(gtx, 300)
 		label(gtx, "last")
 	}
@@ -460,14 +461,14 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 
 	// One unit of scroll moves SCROLL_STEP pixels.
 	harness_frame(&h)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}})
 	scroll_frame(&h)
 	testing.expect_value(t, scroll_offset(&h), f64(-SCROLL_STEP))
 
 	// Scrolling past the end clamps to the overflow: 300 + 14 - 100.
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
 	scroll_frame(&h)
 	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
 }
@@ -500,7 +501,7 @@ scroll_frames :: proc(h: ^Harness, n: int, evs: ..Event) -> Input_Area {
 		h.gtx.dt = 1.0 / 60
 		if i == 0 {
 			for e in evs {
-				push_event(h, e)
+				event_push(h, e)
 			}
 		}
 		ia = scroll_frame(h)
@@ -554,8 +555,8 @@ test_scroll_box_bar_drags_and_pages :: proc(t: ^testing.T) {
 	travel := 96 - thumb_h
 	harness_frame(&h)
 	h.gtx.dt = 1.0 / 60 // so the bar can start to fade in
-	push_event(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 4}})
-	push_event(&h, {kind = .Move, area = bar, travel = {0, travel / 2}})
+	event_push(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 4}})
+	event_push(&h, {kind = .Move, area = bar, travel = {0, travel / 2}})
 	scroll_frame(&h)
 	testing.expect(t, near(f32(-scroll_offset(&h)), (314 - 100) / 2.0))
 	thumb, ok := thumb_of(&h, edge)
@@ -563,13 +564,13 @@ test_scroll_box_bar_drags_and_pages :: proc(t: ^testing.T) {
 	testing.expect(t, near(thumb.h, thumb_h))
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Release, area = bar})
+	event_push(&h, {kind = .Release, area = bar})
 	scroll_frame(&h)
 
 	// A press on the track above the thumb moves back a page.
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 1}})
+	event_push(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 1}})
 	scroll_frame(&h)
 	testing.expect(t, near(f32(-scroll_offset(&h)), (314 - 100) / 2.0 - 100))
 }
@@ -593,8 +594,8 @@ test_wrap_breaks_children_into_lines :: proc(t: ^testing.T) {
 	gtx := &h.gtx
 	d: Dims
 	{
-		wr := wrap(gtx, gap = 10, line_gap = 4)
-		defer end(&wr)
+		wr := wrap_open(gtx, gap = 10, line_gap = 4)
+		defer close(&wr)
 		for _ in 0 ..< 3 {
 			d = label(gtx, "aaaaa")
 		}
@@ -624,8 +625,8 @@ test_wrap_breaks_children_into_lines :: proc(t: ^testing.T) {
 wide_scroll_frame :: proc(h: ^Harness) -> Input_Area {
 	gtx := &h.gtx
 	{
-		sb := scroll_box(gtx, min_width = 500); defer end(&sb)
-		col := column(gtx); defer end(&col)
+		sb := scroll_box_open(gtx, min_width = 500); defer close(&sb)
+		col := column_open(gtx); defer close(&col)
 		spacer(gtx, 300)
 	}
 	return h.ops.ops[index_of(&h.ops, Input_Area)].(Input_Area)
@@ -646,13 +647,13 @@ test_scroll_box_min_width_scrolls_sideways :: proc(t: ^testing.T) {
 
 	// A horizontal wheel moves it sideways; Shift turns a vertical one.
 	harness_frame(&h)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {1, 0}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {1, 0}})
 	wide_scroll_frame(&h)
 	testing.expect_value(t, x_offset(&h), f64(-SCROLL_STEP))
 	testing.expect_value(t, scroll_offset(&h), 0)
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}, mods = {.Shift}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}, mods = {.Shift}})
 	wide_scroll_frame(&h)
 	testing.expect_value(t, x_offset(&h), f64(-2 * SCROLL_STEP))
 	testing.expect_value(t, scroll_offset(&h), 0)
@@ -660,7 +661,7 @@ test_scroll_box_min_width_scrolls_sideways :: proc(t: ^testing.T) {
 	// It clamps to the overflow: 500 - 200.
 	clear(&h.router.events)
 	harness_frame(&h)
-	push_event(&h, {kind = .Scroll, area = ia.id, scroll = {1e6, 0}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {1e6, 0}})
 	wide_scroll_frame(&h)
 	testing.expect_value(t, x_offset(&h), -300)
 }
@@ -677,7 +678,7 @@ test_box_paint_replaces_fill_and_outline :: proc(t: ^testing.T) {
 		fill(gtx.ops, Rect{0, 0, size.x, size.y}, Color{1, 2, 3, 255})
 	}
 	{
-		b := box(gtx, {paint = painter, user = &got}); defer end(&b)
+		b := box_open(gtx, {paint = painter, user = &got}); defer close(&b)
 		label(gtx, "card")
 	}
 	testing.expect(t, near(got.x, 4 * W + 16) && near(got.y, 14 + 16))
@@ -695,7 +696,7 @@ test_negative_padding_means_none :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		b := box(gtx, {padding = pad_all(-1)}); defer end(&b)
+		b := box_open(gtx, {padding = pad_all(-1)}); defer close(&b)
 		label(gtx, "card")
 	}
 	rr := h.ops.ops[index_of(&h.ops, Fill)].(Fill).shape.(Round_Rect)
@@ -710,11 +711,11 @@ test_overlay_takes_no_space_and_draws_last :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		col := column(gtx); defer end(&col)
+		col := column_open(gtx); defer close(&col)
 		label(gtx, "before")
 		{
-			o := overlay(gtx, {5, 6}); defer end(&o)
-			inner := column(gtx); defer end(&inner)
+			o := overlay_open(gtx, {5, 6}); defer close(&o)
+			inner := column_open(gtx); defer close(&inner)
 			label(gtx, "menu")
 		}
 		label(gtx, "after")
@@ -744,7 +745,7 @@ test_discarded_overlay_is_never_drawn :: proc(t: ^testing.T) {
 	defer harness_destroy(&h)
 	gtx := &h.gtx
 	{
-		o := overlay(gtx); defer end(&o)
+		o := overlay_open(gtx); defer close(&o)
 		label(gtx, "gone")
 		o.discard = true
 	}
@@ -801,7 +802,7 @@ test_bounds_flag_outlines_each_widget :: proc(t: ^testing.T) {
 	frame :: proc(h: ^Harness, debug: Debug_Flags) {
 		harness_frame(h)
 		h.gtx.debug = debug
-		col := column(&h.gtx); defer end(&col)
+		col := column_open(&h.gtx); defer close(&col)
 		label(&h.gtx, "a")
 		label(&h.gtx, "b")
 	}
@@ -866,7 +867,7 @@ test_layout_accessors_name_the_open_containers :: proc(t: ^testing.T) {
 	testing.expect_value(t, depth(nil), 0) // without a layout there is nothing open
 	testing.expect(t, innermost(nil) == nil)
 	{
-		col := column(gtx); defer end(&col)
+		col := column_open(gtx); defer close(&col)
 		testing.expect_value(t, depth(l), 1)
 		c := innermost(l)
 		testing.expect(t, c != nil && c.kind == .Flex && c.axis == .Vertical)
@@ -882,7 +883,7 @@ test_layout_accessors_name_the_open_containers :: proc(t: ^testing.T) {
 		}
 		// A nested row is innermost while open and the column's child once ended.
 		{
-			r := row(gtx); defer end(&r)
+			r := row_open(gtx); defer close(&r)
 			testing.expect_value(t, depth(l), 2)
 			testing.expect(t, innermost(l) != c) // the row is innermost now
 			testing.expect(t, innermost(l).axis == .Horizontal)
@@ -892,7 +893,7 @@ test_layout_accessors_name_the_open_containers :: proc(t: ^testing.T) {
 			// An overlay lays out on its own stack: nothing is open inside it,
 			// and the column and row come back when it ends.
 			{
-				o := overlay(gtx); defer end(&o)
+				o := overlay_open(gtx); defer close(&o)
 				testing.expect_value(t, depth(l), 0)
 				testing.expect(t, innermost(l) == nil)
 			}
@@ -914,7 +915,7 @@ test_openers_push_complete_containers :: proc(t: ^testing.T) {
 	gtx := &h.gtx
 	l := &h.layout
 	{
-		w := wrap(gtx, gap = 6); defer end(&w)
+		w := wrap_open(gtx, gap = 6); defer close(&w)
 		c := innermost(l)
 		testing.expect(t, c.kind == .Flex && c.axis == .Horizontal && c.wrap)
 		testing.expect_value(t, c.gap, 6)
@@ -922,18 +923,18 @@ test_openers_push_complete_containers :: proc(t: ^testing.T) {
 		testing.expect(t, c.deferred)
 	}
 	{
-		w := wrap(gtx, gap = 6, line_gap = 2); defer end(&w)
+		w := wrap_open(gtx, gap = 6, line_gap = 2); defer close(&w)
 		testing.expect_value(t, innermost(l).line_gap, 2)
 	}
 	{
-		col := column(gtx, align = .Fill); defer end(&col)
+		col := column_open(gtx, align = .Fill); defer close(&col)
 		testing.expect(t, !innermost(l).deferred) // Fill places as it goes
-		r := row(gtx, align = .End); defer end(&r)
+		r := row_open(gtx, align = .End); defer close(&r)
 		testing.expect(t, innermost(l).deferred) // End must know the total first
 	}
 	{
 		macros := testutil.count_ops(h.ops.ops[:], Macro_Begin)
-		b := box(gtx, {padding = {4, 8, 4, 8}}); defer end(&b)
+		b := box_open(gtx, {padding = {4, 8, 4, 8}}); defer close(&b)
 		c := innermost(l)
 		testing.expect(t, c.kind == .Box)
 		testing.expect_value(t, c.pad, Padding{4, 8, 4, 8})
@@ -942,10 +943,120 @@ test_openers_push_complete_containers :: proc(t: ^testing.T) {
 		testing.expect_value(t, testutil.count_ops(h.ops.ops[:], Macro_Begin), macros + 1) // its body records
 	}
 	{
-		st := stack(gtx); defer end(&st)
+		st := stack_open(gtx); defer close(&st)
 		c := innermost(l)
 		testing.expect(t, c.kind == .Stack)
 		testing.expect_value(t, c.inner.min, Size{0, 0}) // loose: children may be any size up to the max
 		testing.expect_value(t, c.inner.max, c.cs.max)
 	}
+}
+
+@(test)
+test_guards_close_what_they_open_at_the_end_of_their_if :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	l := &h.layout
+	{
+		opened := column(gtx) // a guard reports true, so its if body runs
+		testing.expect(t, opened)
+		testing.expect_value(t, depth(l), 1)
+	}
+	testing.expect_value(t, depth(l), 0) // and closed with the block
+	if column(gtx, gap = 8) {
+		testing.expect_value(t, depth(l), 1)
+		testing.expect(t, innermost(l).kind == .Flex && innermost(l).axis == .Vertical)
+		label(gtx, "one")
+		if row(gtx, align = .End) {
+			testing.expect_value(t, depth(l), 2)
+			testing.expect(t, innermost(l).axis == .Horizontal)
+		}
+		testing.expect_value(t, depth(l), 1) // the row closed with its if
+		if box(gtx, {padding = {4, 4, 4, 4}}) {
+			testing.expect(t, innermost(l).kind == .Box)
+			if stack(gtx) {
+				testing.expect(t, innermost(l).kind == .Stack)
+			}
+			testing.expect(t, innermost(l).kind == .Box)
+		}
+		testing.expect_value(t, depth(l), 1)
+	}
+	testing.expect_value(t, depth(l), 0)
+	if wrap(gtx, gap = 6) {
+		testing.expect(t, innermost(l).wrap)
+	}
+	if inset(gtx, {2, 2, 2, 2}) {
+		testing.expect(t, innermost(l).kind == .Inset)
+	}
+	if scroll_box(gtx) {
+		testing.expect(t, innermost(l).kind == .Scroll)
+	}
+	if centered(gtx) {
+		testing.expect(t, innermost(l).kind == .Center)
+	}
+	if clip_box(gtx) {
+		testing.expect(t, innermost(l).kind == .Clip)
+	}
+	testing.expect_value(t, depth(l), 0)
+}
+
+@(test)
+test_guard_and_explicit_pair_lay_out_the_same :: proc(t: ^testing.T) {
+	// The same tree through guards and through open/close pairs produces
+	// the same ops, so a caller may pick either form.
+	Draw :: proc(gtx: ^Ctx, guarded: bool) {
+		if guarded {
+			if column(gtx, gap = 8) {
+				label(gtx, "a")
+				if row(gtx, gap = 4) {
+					label(gtx, "b")
+					label(gtx, "c")
+				}
+			}
+		} else {
+			col := column_open(gtx, gap = 8); defer close(&col)
+			label(gtx, "a")
+			r := row_open(gtx, gap = 4); defer close(&r)
+			label(gtx, "b")
+			label(gtx, "c")
+		}
+	}
+	a, b: Harness
+	harness_init(&a)
+	harness_init(&b)
+	defer harness_destroy(&a)
+	defer harness_destroy(&b)
+	Draw(&a.gtx, true)
+	Draw(&b.gtx, false)
+	// Widget ids come from the call site, so the two trees differ only in
+	// the ids their input areas carry; masked, the op streams must match.
+	testing.expect_value(t, mask_ids(dump(&a.ops, context.temp_allocator)), mask_ids(dump(&b.ops, context.temp_allocator)))
+	testing.expect_value(t, len(a.layout.state), len(b.layout.state))
+}
+
+// mask_ids replaces every run of 12 or more digits (an Area_Id) with #.
+@(private = "file")
+mask_ids :: proc(s: string) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	run := 0
+	for i := 0; i < len(s); i += 1 {
+		if s[i] >= '0' && s[i] <= '9' {
+			run += 1
+			continue
+		}
+		if run >= 12 {
+			strings.write_byte(&b, '#')
+		} else {
+			strings.write_string(&b, s[i - run:i])
+		}
+		run = 0
+		strings.write_byte(&b, s[i])
+	}
+	if run >= 12 {
+		strings.write_byte(&b, '#')
+	} else {
+		strings.write_string(&b, s[len(s) - run:])
+	}
+	return strings.to_string(b)
 }

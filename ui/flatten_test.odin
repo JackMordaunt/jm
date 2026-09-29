@@ -19,12 +19,12 @@ test_flatten_transforms_compose_child_first :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 
-	push_transform(&ops, translate(10, 20))
-	push_transform(&ops, rotate(math.PI / 2))
+	transform_push(&ops, translate(10, 20))
+	transform_push(&ops, rotate(math.PI / 2))
 	fill(&ops, Rect{0, 0, 1, 1}, Color{255, 0, 0, 255})
-	pop_transform(&ops)
+	transform_pop(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, Color{0, 255, 0, 255})
-	pop_transform(&ops)
+	transform_pop(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, Color{0, 0, 255, 255})
 	flatten(&ops, &f)
 
@@ -53,20 +53,20 @@ test_flatten_clip_chain :: proc(t: ^testing.T) {
 	frame_init(&f)
 	red := Color{255, 0, 0, 255}
 
-	push_clip(&ops, Rect{0, 0, 100, 100}) // clip 0
-	push_transform(&ops, translate(5, 5))
-	push_clip(&ops, Round_Rect{{0, 0, 50, 50}, 4}) // clip 1, under the translate
+	clip_push(&ops, Rect{0, 0, 100, 100}) // clip 0
+	transform_push(&ops, translate(5, 5))
+	clip_push(&ops, Round_Rect{{0, 0, 50, 50}, 4}) // clip 1, under the translate
 	fill(&ops, Rect{0, 0, 1, 1}, red)
-	pop_clip(&ops)
-	pop_transform(&ops)
-	push_clip(&ops, Ellipse{{0, 0, 20, 20}}) // clip 2, sibling of 1
+	clip_pop(&ops)
+	transform_pop(&ops)
+	clip_push(&ops, Ellipse{{0, 0, 20, 20}}) // clip 2, sibling of 1
 	fill(&ops, Rect{0, 0, 1, 1}, red)
-	pop_clip(&ops)
+	clip_pop(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, red)
-	pop_clip(&ops)
-	push_clip(&ops, Rect{0, 0, 10, 10}) // clip 3, a new root
+	clip_pop(&ops)
+	clip_push(&ops, Rect{0, 0, 10, 10}) // clip 3, a new root
 	fill(&ops, Rect{0, 0, 1, 1}, red)
-	pop_clip(&ops)
+	clip_pop(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, red)
 	flatten(&ops, &f)
 
@@ -99,24 +99,24 @@ test_flatten_macro_runs_at_each_call :: proc(t: ^testing.T) {
 	frame_init(&f)
 
 	// inner is recorded inside outer's body: skipped there, called from it.
-	outer := macro_begin(&ops)
+	outer := macro_open(&ops)
 	fill(&ops, Rect{0, 0, 10, 10}, Color{1, 1, 1, 255})
-	inner := macro_begin(&ops)
+	inner := macro_open(&ops)
 	fill(&ops, Rect{0, 0, 2, 2}, Color{2, 2, 2, 255})
-	macro_end(&ops, inner)
-	push_transform(&ops, translate(1, 1))
+	macro_close(&ops, inner)
+	transform_push(&ops, translate(1, 1))
 	call(&ops, inner)
-	pop_transform(&ops)
-	macro_end(&ops, outer)
+	transform_pop(&ops)
+	macro_close(&ops, outer)
 
-	push_clip(&ops, Rect{0, 0, 500, 500})
-	push_transform(&ops, translate(100, 0))
+	clip_push(&ops, Rect{0, 0, 500, 500})
+	transform_push(&ops, translate(100, 0))
 	call(&ops, outer)
-	pop_transform(&ops)
-	pop_clip(&ops)
-	push_transform(&ops, translate(0, 200))
+	transform_pop(&ops)
+	clip_pop(&ops)
+	transform_push(&ops, translate(0, 200))
 	call(&ops, outer)
-	pop_transform(&ops)
+	transform_pop(&ops)
 	flatten(&ops, &f)
 
 	// Nothing inline; two calls of outer, each drawing its fill and inner's.
@@ -146,18 +146,18 @@ test_flatten_hits_and_tags :: proc(t: ^testing.T) {
 	f: Frame
 	frame_init(&f)
 
-	m := macro_begin(&ops)
+	m := macro_open(&ops)
 	input_area(&ops, 30, Rect{0, 0, 5, 5}, {.Press})
-	macro_end(&ops, m)
+	macro_close(&ops, m)
 	input_area(&ops, 10, Rect{0, 0, 100, 20}, {.Press, .Release})
 	tag(&ops, 10, "Save")
-	push_transform(&ops, translate(0, 30))
-	push_clip(&ops, Rect{0, 0, 100, 20})
+	transform_push(&ops, translate(0, 30))
+	clip_push(&ops, Rect{0, 0, 100, 20})
 	input_area(&ops, 20, Ellipse{{0, 0, 100, 20}}, {.Move})
 	tag(&ops, 20, "Cancel")
 	call(&ops, m)
-	pop_clip(&ops)
-	pop_transform(&ops)
+	clip_pop(&ops)
+	transform_pop(&ops)
 	flatten(&ops, &f)
 
 	testing.expect_value(t, len(f.hits), 3)
@@ -194,21 +194,21 @@ test_flatten_defer_runs_last_under_its_transform_unclipped :: proc(t: ^testing.T
 	RED :: Color{255, 0, 0, 255}
 	GREEN :: Color{0, 255, 0, 255}
 	BLUE :: Color{0, 0, 255, 255}
-	push_clip(&ops, Rect{0, 0, 5, 5})
-	push_transform(&ops, translate(10, 20))
-	menu := macro_begin(&ops)
+	clip_push(&ops, Rect{0, 0, 5, 5})
+	transform_push(&ops, translate(10, 20))
+	menu := macro_open(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, RED)
 	input_area(&ops, 7, Rect{0, 0, 1, 1}, {.Press})
-	inner := macro_begin(&ops)
+	inner := macro_open(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, BLUE)
-	macro_end(&ops, inner)
-	push_transform(&ops, translate(1, 1))
+	macro_close(&ops, inner)
+	transform_push(&ops, translate(1, 1))
 	defer_call(&ops, inner) // a defer from inside a deferred macro
-	pop_transform(&ops)
-	macro_end(&ops, menu)
+	transform_pop(&ops)
+	macro_close(&ops, menu)
 	defer_call(&ops, menu)
-	pop_transform(&ops)
-	pop_clip(&ops)
+	transform_pop(&ops)
+	clip_pop(&ops)
 	fill(&ops, Rect{0, 0, 1, 1}, GREEN) // recorded after the defer, drawn before it
 	input_area(&ops, 8, Rect{0, 0, 1, 1}, {.Press})
 	flatten(&ops, &f)

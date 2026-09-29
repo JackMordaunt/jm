@@ -384,9 +384,9 @@ paint_ripple :: proc(gtx: ^ui.Ctx, r: ^Ripple, shape: ui.Shape, tint: ui.Color) 
 	t := ui.tween_update(&r.tween, gtx)
 	bounds := ui.shape_bounds(gtx.ops, shape)
 	rad := t * (bounds.w + bounds.h) // a cheap, safely-oversized bound on the origin-to-farthest-corner distance, without a sqrt
-	ui.push_clip(gtx.ops, shape)
+	ui.clip_push(gtx.ops, shape)
 	ui.fill(gtx.ops, ui.Ellipse{{r.origin.x - rad, r.origin.y - rad, rad * 2, rad * 2}}, ui.with_alpha(tint, (1 - t) * RIPPLE_PEAK_OPACITY))
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 }
 
 // FOCUS_RING_WIDTH and FOCUS_RING_OFFSET are the focus ring's stroke and

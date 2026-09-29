@@ -312,7 +312,7 @@ button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	mt := button_metrics(size)
 	t := shape_text(gtx, label, mt.role)
 	lead := label == "" && leading != .None ? ICON_ONLY_LEADING : mt.leading
@@ -372,7 +372,7 @@ button :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label))
-	ui.widget_end(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
 
@@ -566,7 +566,7 @@ icon_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	mt := icon_button_metrics(size, width)
 	sz := ui.constrain_min(gtx.constraints, {mt.leading + mt.icon + mt.trailing, mt.height})
 	area := ui.Rect{0, 0, sz.x, sz.y}
@@ -612,7 +612,7 @@ icon_button :: proc(
 		hover_tooltip(gtx, c.st.hovered, &ui.widget_data(gtx, p.id, Tooltip_Timer).seconds, tooltip, sz)
 	}
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, tooltip != "" ? tooltip : "icon_button"))
-	ui.widget_end(gtx, &p, {size = sz})
+	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
 
@@ -710,7 +710,7 @@ fab :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	box, isz, sh := fab_metrics(size)
 	sz := ui.constrain_min(gtx.constraints, box)
 	area := ui.Rect{0, 0, sz.x, sz.y}
@@ -727,7 +727,7 @@ fab :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "fab"))
-	ui.widget_end(gtx, &p, {size = sz})
+	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
 
@@ -762,7 +762,7 @@ extended_fab :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	h, lead, trail, gap, isz, min_w, collapsed: f32
 	sh: tok.Shape
 	font: tok.Type_Style
@@ -814,7 +814,7 @@ extended_fab :: proc(
 	paint_elevation(gtx, {area, k.tl}, fab_level(c, lowered))
 	ui.fill(gtx.ops, path, container)
 	paint_state_layer(gtx, c, path, content)
-	ui.push_clip(gtx.ops, path)
+	ui.clip_push(gtx.ops, path)
 	// Collapsed, the icon centres in the square; expanded it sits at lead.
 	// The two agree for every size (the square's margin is lead), so this
 	// lerp only matters if a caller stretches the FAB.
@@ -828,11 +828,11 @@ extended_fab :: proc(
 	if alpha > 0 {
 		draw_text(gtx, t, {x, (sz.y - t.height) / 2}, fade(content, alpha))
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, touch_target(area))
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label))
-	ui.widget_end(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
 
@@ -864,11 +864,11 @@ segmented_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	n := min(len(labels), len(selected))
 	changed := -1
 	if n == 0 {
-		ui.widget_end(gtx, &p, {})
+		ui.widget_close(gtx, &p, {})
 		return changed
 	}
 	ICON :: tok.OUTLINED_SEGMENTED_BUTTON_ICON_SIZE
@@ -888,7 +888,7 @@ segmented_button :: proc(
 	outer := corners(tok.OUTLINED_SEGMENTED_BUTTON_SHAPE, whole)
 	disabled := state == .Disabled
 
-	ui.push_clip(gtx.ops, rounded(gtx, whole, outer))
+	ui.clip_push(gtx.ops, rounded(gtx, whole, outer))
 	x: f32
 	for i in 0 ..< n {
 		w := widths[i] + extra
@@ -943,7 +943,7 @@ segmented_button :: proc(
 		ui.tag(gtx.ops, id, ui.frame_string(gtx, labels[i]))
 		x += w
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	edge := color(tok.OUTLINED_SEGMENTED_BUTTON_OUTLINE_COLOR)
 	if disabled {
 		edge = ui.with_alpha(color(tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_OUTLINE_COLOR), tok.OUTLINED_SEGMENTED_BUTTON_DISABLED_OUTLINE_OPACITY)
@@ -957,7 +957,7 @@ segmented_button :: proc(
 	if state == .Focused {
 		paint_focus_ring_corners(gtx, {focused = true}, whole, outer)
 	}
-	ui.widget_end(gtx, &p, {size, (size.y - texts[0].height) / 2 + baseline_of(texts[0])})
+	ui.widget_close(gtx, &p, {size, (size.y - texts[0].height) / 2 + baseline_of(texts[0])})
 	return changed
 }
 
@@ -965,9 +965,9 @@ segmented_button :: proc(
 @(private)
 draw_icon_rotated :: proc(gtx: ^ui.Ctx, i: Icon, pos: ui.Point, size: f32, color: ui.Color, turn: f32) {
 	cx, cy := pos.x + size / 2, pos.y + size / 2
-	ui.push_transform(gtx.ops, ui.mul(ui.mul(ui.translate(-cx, -cy), ui.rotate(math.PI * turn)), ui.translate(cx, cy)))
+	ui.transform_push(gtx.ops, ui.mul(ui.mul(ui.translate(-cx, -cy), ui.rotate(math.PI * turn)), ui.translate(cx, cy)))
 	icon(gtx, i, pos, size, color)
-	ui.pop_transform(gtx.ops)
+	ui.transform_pop(gtx.ops)
 }
 
 // Split_Metrics are one size's comp.split-button-<size> group.
@@ -1089,7 +1089,7 @@ split_button :: proc(
 	clicked: bool,
 	toggled: bool,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	sm := split_metrics(size)
 	bm := button_metrics(size)
 	col := button_colors(kind)
@@ -1157,6 +1157,6 @@ split_button :: proc(
 	listen(gtx, tc, trail_id, touch_target(trail))
 	ui.tag(gtx.ops, lead_id, ui.frame_string(gtx, label))
 	ui.tag(gtx.ops, trail_id, ui.frame_string(gtx, menu_label))
-	ui.widget_end(gtx, &p, {sz, (h - t.height) / 2 + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, (h - t.height) / 2 + baseline_of(t)})
 	return lc.clicked, tc.clicked
 }

@@ -64,7 +64,7 @@ slider :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	g := slider_geom(width, vertical, top_to_bottom, lo, hi, step)
 	size := ui.constrain(gtx.constraints, g.vertical ? ui.Size{g.cross, g.length} : ui.Size{g.length, g.cross})
 	g = slider_geom(vertical ? size.y : size.x, vertical, top_to_bottom, lo, hi, step)
@@ -79,7 +79,7 @@ slider :: proc(
 	paint_slider(gtx, c, g, lo, hi, {value^, value^}, false, track == .Centered, 1, icons, indicator)
 	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "slider"))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return value^ != old
 }
 
@@ -101,7 +101,7 @@ range_slider :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	g := slider_geom(width, false, true, lo, hi, step)
 	size := ui.constrain(gtx.constraints, {g.length, g.cross})
 	g = slider_geom(size.x, false, true, lo, hi, step)
@@ -120,7 +120,7 @@ range_slider :: proc(
 	paint_slider(gtx, c, g, lo, hi, {lo_value^, hi_value^}, true, false, active, {}, indicator)
 	listen(gtx, c, p.id, ui.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, "range slider"))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return old != {lo_value^, hi_value^}
 }
 
@@ -579,8 +579,8 @@ paint_value_indicator :: proc(gtx: ^ui.Ctx, g: Slider_Geom, hr: ui.Rect, v, span
 	if g.vertical {
 		at = {hr.x - space - w, hr.y + hr.h / 2 - h / 2}
 	}
-	o := ui.overlay(gtx, at)
-	defer ui.end(&o)
+	o := ui.overlay_open(gtx, at)
+	defer ui.close(&o)
 	ui.fill(gtx.ops, ui.Round_Rect{{0, 0, w, h}, h / 2}, color(tok.SLIDER_VALUE_INDICATOR_CONTAINER_COLOR))
 	draw_text(gtx, t, {(w - t.width) / 2, pad.y}, color(tok.SLIDER_VALUE_INDICATOR_LABEL_TEXT_COLOR))
 }
@@ -617,7 +617,7 @@ linear_progress :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	wavy := style == .Wavy
 	size := ui.constrain(gtx.constraints, {width, wavy ? tok.LINEAR_PROGRESS_INDICATOR_WAVE_HEIGHT : tok.LINEAR_PROGRESS_INDICATOR_HEIGHT})
 	st := at < 0 ? ui.widget_state(gtx, p.id) : nil
@@ -663,7 +663,7 @@ linear_progress :: proc(
 		lambda = indeterminate ? tok.LINEAR_PROGRESS_INDICATOR_INDETERMINATE_ACTIVE_WAVE_WAVELENGTH : tok.LINEAR_PROGRESS_INDICATOR_ACTIVE_WAVE_WAVELENGTH
 	}
 	paint_linear_progress(gtx, size, segs[:count], wavy, amp, lambda, math.mod(t, 1), square, indeterminate)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 }
 
 // paint_linear_progress draws the track right to left around the active
@@ -795,7 +795,7 @@ circular_progress :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	wavy := style == .Wavy
 	d := size
 	if d <= 0 {
@@ -830,7 +830,7 @@ circular_progress :: proc(
 		}
 	}
 	paint_circular_progress(gtx, sz, rot, sweep, wavy, amp, wavelength, t, square, indeterminate)
-	ui.widget_end(gtx, &p, {size = sz})
+	ui.widget_close(gtx, &p, {size = sz})
 }
 
 // circular_indeterminate is the indeterminate ring's rotation (degrees) and
@@ -939,7 +939,7 @@ loading_indicator :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	box := ui.Size{tok.LOADING_INDICATOR_CONTAINER_WIDTH, tok.LOADING_INDICATOR_CONTAINER_HEIGHT}
 	if size > 0 {
 		box = {size, size}
@@ -987,7 +987,7 @@ loading_indicator :: proc(
 		rot = -pr * 180
 	}
 	paint_morph(gtx, seq.morphs[morph], t, sz / 2, min(sz.x, sz.y) * seq.draw_scale, rot, col)
-	ui.widget_end(gtx, &p, {size = sz})
+	ui.widget_close(gtx, &p, {size = sz})
 }
 
 // morph_spring is the indeterminate loading indicator's morph progress tau

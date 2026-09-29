@@ -46,24 +46,24 @@ State :: struct {
 // widgets: a virtualised list of label+button rows, rect clips only.
 widgets :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	s := (^State)(user)
-	page := ui.inset(gtx, ui.pad_all(16))
-	defer ui.end(&page)
+	page := ui.inset_open(gtx, ui.pad_all(16))
+	defer ui.close(&page)
 	if s.rrect {
 		// A round-rect clip over the whole page: every draw takes the mask path.
-		ui.push_clip(gtx.ops, ui.Round_Rect{{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, 24})
+		ui.clip_push(gtx.ops, ui.Round_Rect{{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, 24})
 	}
-	card := ui.box(gtx)
+	card := ui.box_open(gtx)
 	ui.list(gtx, &s.list, s.rows, row, s)
-	ui.end(&card)
+	ui.close(&card)
 	if s.rrect {
-		ui.pop_clip(gtx.ops)
+		ui.clip_pop(gtx.ops)
 	}
 }
 
 row :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 	s := (^State)(user)
-	r := ui.row(gtx, gap = 8, align = .Center)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, gap = 8, align = .Center)
+	defer ui.close(&r)
 	ui.label(gtx, fmt.tprintf("Row %d", i))
 	ui.checkbox(gtx, "on", &s.toggle)
 	ui.fill_space(gtx)
@@ -102,9 +102,9 @@ text :: proc(gtx: ^ui.Ctx, _: rawptr) {
 		if y > gtx.constraints.max.y {
 			break
 		}
-		ui.push_transform(gtx.ops, ui.translate(x, y))
+		ui.transform_push(gtx.ops, ui.translate(x, y))
 		ui.label(gtx, fmt.tprintf("label %d", i))
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 
@@ -115,11 +115,11 @@ masked :: proc(gtx: ^ui.Ctx, _: rawptr) {
 	for i in 0 ..< 200 {
 		x := f32(i % 20) * (w / 20)
 		y := f32(i / 20) * (h / 10)
-		ui.push_transform(gtx.ops, ui.mul(ui.rotate(0.3), ui.translate(x, y)))
-		ui.push_clip(gtx.ops, ui.Rect{0, 0, w / 20, h / 10})
+		ui.transform_push(gtx.ops, ui.mul(ui.rotate(0.3), ui.translate(x, y)))
+		ui.clip_push(gtx.ops, ui.Rect{0, 0, w / 20, h / 10})
 		ui.fill(gtx.ops, ui.Rect{-10, -10, w / 20 + 20, h / 10 + 20}, ui.Color{u8(i), 120, 200, 255})
-		ui.pop_clip(gtx.ops)
-		ui.pop_transform(gtx.ops)
+		ui.clip_pop(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 

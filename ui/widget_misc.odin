@@ -6,7 +6,7 @@ package ui
 // min. color defaults to the theme outline.
 divider :: proc(gtx: ^Ctx, color := Color{}, key: u64 = 0, loc := #caller_location) -> Dims {
 	axis, _ := parent_axis(gtx)
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	c := or_color(color, gtx.theme.outline)
 	t := max(gtx.theme.stroke, 1)
 	cs := gtx.constraints
@@ -20,5 +20,5 @@ divider :: proc(gtx: ^Ctx, color := Color{}, key: u64 = 0, loc := #caller_locati
 	if painted(c) {
 		fill(gtx.ops, Rect{0, 0, size.x, size.y}, c)
 	}
-	return widget_end(gtx, &p, {size = size})
+	return widget_close(gtx, &p, {size = size})
 }

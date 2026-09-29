@@ -53,8 +53,8 @@ flatten :: proc(ops: ^Ops, f: ^Frame) {
 		flatten_range(&st, m.first, m.last, 1)
 	}
 	delete(st.deferred)
-	assert(len(st.transforms) == 0, "flatten: push_transform without pop_transform")
-	assert(len(st.clips) == 0, "flatten: push_clip without pop_clip")
+	assert(len(st.transforms) == 0, "flatten: transform_push without transform_pop")
+	assert(len(st.clips) == 0, "flatten: clip_push without clip_pop")
 	delete(st.transforms)
 	delete(st.clips)
 }
@@ -72,17 +72,17 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			append(&st.transforms, st.transform)
 			st.transform = mul(op.m, st.transform)
 		case Pop_Transform:
-			assert(len(st.transforms) > base_t, "flatten: pop_transform with nothing pushed")
+			assert(len(st.transforms) > base_t, "flatten: transform_pop with nothing pushed")
 			st.transform = pop(&st.transforms)
 		case Push_Clip:
 			append(&st.clips, st.clip)
 			append(&st.f.clips, Clip{parent = st.clip, shape = op.shape, transform = st.transform})
 			st.clip = Clip_Id(len(st.f.clips) - 1)
 		case Pop_Clip:
-			assert(len(st.clips) > base_c, "flatten: pop_clip with nothing pushed")
+			assert(len(st.clips) > base_c, "flatten: clip_pop with nothing pushed")
 			st.clip = pop(&st.clips)
 		case Macro_Begin:
-			assert(int(op.id) < len(st.ops.macros), "flatten: macro_begin names an unknown macro")
+			assert(int(op.id) < len(st.ops.macros), "flatten: macro_open names an unknown macro")
 			last := st.ops.macros[op.id].last
 			// An unterminated macro swallows the rest of the range.
 			i = hi if last < 0 else max(i, min(last, hi))
@@ -130,6 +130,6 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 		}
 		i += 1
 	}
-	assert(len(st.transforms) == base_t, "flatten: push_transform without pop_transform")
-	assert(len(st.clips) == base_c, "flatten: push_clip without pop_clip")
+	assert(len(st.transforms) == base_t, "flatten: transform_push without transform_pop")
+	assert(len(st.clips) == base_c, "flatten: clip_push without clip_pop")
 }

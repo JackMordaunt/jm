@@ -27,10 +27,10 @@ counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	th := gtx.theme
 	ui.fill(gtx.ops, ui.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, th.bg)
 
-	pad := ui.inset(gtx, ui.pad_all(24))
-	defer ui.end(&pad)
-	row := ui.row(gtx, gap = 12, align = .Center)
-	defer ui.end(&row)
+	pad := ui.inset_open(gtx, ui.pad_all(24))
+	defer ui.close(&pad)
+	row := ui.row_open(gtx, gap = 12, align = .Center)
+	defer ui.close(&row)
 	if ui.button(gtx, "-") {
 		m.count -= 1
 	}

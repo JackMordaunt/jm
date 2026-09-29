@@ -103,19 +103,19 @@ paint_badge_on :: proc(gtx: ^ui.Ctx, anchor: ui.Rect, label: string) {
 
 // badge is a badge on its own, as a widget of its own size.
 badge :: proc(gtx: ^ui.Ctx, label: string, key: u64 = 0, loc := #caller_location) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	size := paint_badge(gtx, {}, label)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 }
 
 // badged_icon is a size-dp icon anchoring label's badge. The widget is the
 // icon's size: the badge overhangs it and takes no space, as in Compose's
 // BadgedBox.
 badged_icon :: proc(gtx: ^ui.Ctx, g: Icon, label: string, size: f32 = 24, tint := tok.Role.On_Surface_Variant, key: u64 = 0, loc := #caller_location) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	icon(gtx, g, {}, size, color(tint))
 	paint_badge_on(gtx, {0, 0, size, size}, label)
-	ui.widget_end(gtx, &p, {size = {size, size}})
+	ui.widget_close(gtx, &p, {size = {size, size}})
 }
 
 // Navigation drawer (navigation-drawer.json). Deprecated in Expressive:
@@ -186,7 +186,7 @@ navigation_drawer :: proc(
 	loc := #caller_location,
 ) -> bool {
 	v := modal ? Drawer_Kind.Modal : variant
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	w := min(width, tok.NAVIGATION_DRAWER_CONTAINER_WIDTH)
 	content: f32 = 2 * DRAWER_MARGIN
@@ -225,13 +225,13 @@ navigation_drawer :: proc(
 	}
 	size := ui.constrain(cs, {layout_w, h})
 	if !shown && prog <= 0 {
-		ui.widget_end(gtx, &p, {size = size})
+		ui.widget_close(gtx, &p, {size = size})
 		return false
 	}
 
 	o: ui.Overlay
 	if v == .Modal {
-		o = ui.overlay(gtx)
+		o = ui.overlay_open(gtx)
 		scrim_id := ui.id_mix(p.id, 0xffff)
 		ui.fill(gtx.ops, ui.Rect{-1e5, -1e5, 2e5, 2e5}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(prog, 0, 1)))
 		if shown && open != nil {
@@ -257,7 +257,7 @@ navigation_drawer :: proc(
 	changed := false
 	// Clip to the sheet's own outline, not its bounds, so the items and the
 	// scroll bar along its edge stay inside its rounded corners.
-	ui.push_clip(gtx.ops, outline)
+	ui.clip_push(gtx.ops, outline)
 	// Items start a margin down, the same margin as their sides: the kit
 	// gives no top inset.
 	y := DRAWER_MARGIN - offset
@@ -286,14 +286,14 @@ navigation_drawer :: proc(
 		}
 		y += ih
 	}
-	ui.push_transform(gtx.ops, ui.translate(sheet.x, 0))
+	ui.transform_push(gtx.ops, ui.translate(sheet.x, 0))
 	ui.scroll_bar_paint(gtx, bar_id, .Vertical, {w, h}, content, offset, ends = drawer_bar_ends(v))
-	ui.pop_transform(gtx.ops)
-	ui.pop_clip(gtx.ops)
+	ui.transform_pop(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	if v == .Modal {
-		ui.end(&o)
+		ui.close(&o)
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }
 
@@ -320,10 +320,10 @@ drawer_item :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	size := ui.constrain(gtx.constraints, {width, tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_HEIGHT})
 	clicked := paint_drawer_item(gtx, p.id, {0, 0, size.x, size.y}, item, active, state)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
 
@@ -563,7 +563,7 @@ nav_destination :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	sty := bar ? BAR_STYLE : RAIL_STYLE
 	want := ui.Size{tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_WIDTH, tok.NAVIGATION_RAIL_BASELINE_ITEM_CONTAINER_HEIGHT}
 	if bar {
@@ -577,7 +577,7 @@ nav_destination :: proc(
 	}
 	size := ui.constrain(gtx.constraints, want)
 	clicked := paint_nav_item(gtx, p.id, {0, 0, size.x, size.y}, it, active, sty, horizontal ? 1 : 0, -1, true, state)
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
 
@@ -624,7 +624,7 @@ navigation_rail :: proc(
 	changed: bool,
 	fab_clicked: bool,
 ) {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	s := scheme()
 	cs := gtx.constraints
 	sty := RAIL_STYLE
@@ -690,13 +690,13 @@ navigation_rail :: proc(
 	}
 	size := ui.constrain(cs, {layout_w, h})
 	if hide && !open && prog <= 0.001 {
-		ui.widget_end(gtx, &p, {size = size})
+		ui.widget_close(gtx, &p, {size = size})
 		return
 	}
 
 	o: ui.Overlay
 	if modal {
-		o = ui.overlay(gtx)
+		o = ui.overlay_open(gtx)
 		if scrim > 0 {
 			ui.fill(gtx.ops, ui.Rect{-1e5, -1e5, 2e5, 2e5}, ui.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * scrim))
 		}
@@ -728,7 +728,7 @@ navigation_rail :: proc(
 	} else {
 		ui.fill(gtx.ops, view, color(tok.NAVIGATION_RAIL_COLLAPSED_CONTAINER_COLOR))
 	}
-	ui.push_clip(gtx.ops, view)
+	ui.clip_push(gtx.ops, view)
 
 	y := tok.NAVIGATION_RAIL_COLLAPSED_TOP_SPACE
 	if menu {
@@ -755,9 +755,9 @@ navigation_rail :: proc(
 		icon(gtx, fab_icon, {area.x + (tok.FAB_BASELINE_CONTAINER_WIDTH - isz) / 2 + (tok.EXTENDED_FAB_SMALL_LEADING_SPACE - (tok.FAB_BASELINE_CONTAINER_WIDTH - isz) / 2) * pos, area.y + (area.h - isz) / 2}, isz, fg)
 		if fab_label != "" && pos > 0.5 {
 			lt := shape_text(gtx, fab_label, .Title_Medium)
-			ui.push_clip(gtx.ops, area)
+			ui.clip_push(gtx.ops, area)
 			draw_text(gtx, lt, {area.x + tok.EXTENDED_FAB_SMALL_LEADING_SPACE + isz + tok.EXTENDED_FAB_SMALL_ICON_LABEL_SPACE, area.y + (area.h - lt.height) / 2}, ui.with_alpha(fg, (pos - 0.5) * 2))
-			ui.pop_clip(gtx.ops)
+			ui.clip_pop(gtx.ops)
 		}
 		paint_focus_ring_corners(gtx, c, area, corners(tok.FAB_BASELINE_CONTAINER_SHAPE, area))
 		listen(gtx, c, fid, area)
@@ -786,11 +786,11 @@ navigation_rail :: proc(
 		}
 		y += item_h + item_gap
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	if modal {
-		ui.end(&o)
+		ui.close(&o)
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return
 }
 
@@ -831,7 +831,7 @@ navigation_bar :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	sty := BAR_STYLE
 	w := width > 0 ? width : (cs.max.x < ui.INF ? cs.max.x : 412)
@@ -863,7 +863,7 @@ navigation_bar :: proc(
 	}
 	changed := false
 	if n == 0 {
-		ui.widget_end(gtx, &p, {size = size})
+		ui.widget_close(gtx, &p, {size = size})
 		return false
 	}
 	// Item widths: equal shares, or (centered) at least an equal share of
@@ -906,6 +906,6 @@ navigation_bar :: proc(
 		x += widths[k]
 		k += 1
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }

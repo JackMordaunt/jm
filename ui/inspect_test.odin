@@ -6,13 +6,13 @@ import "core:testing"
 // inspect_view is a 200x100 column of two labels, the second tagged.
 @(private = "file")
 inspect_view :: proc(gtx: ^Ctx, user: rawptr) {
-	col := column(gtx, key = 1)
-	defer end(&col)
+	col := column_open(gtx, key = 1)
+	defer close(&col)
 	label(gtx, "first", key = 2)
-	p := widget_begin(gtx, 3)
+	p := widget_open(gtx, 3)
 	input_area(gtx.ops, p.id, Rect{0, 0, 60, 20}, {.Press})
 	tag(gtx.ops, p.id, "second")
-	widget_end(gtx, &p, {size = {60, 20}})
+	widget_close(gtx, &p, {size = {60, 20}})
 }
 
 @(test)
@@ -83,16 +83,16 @@ test_inspect_prefers_an_overlay_over_the_page_beneath :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^Ctx, user: rawptr) {
 		// A deep page widget, then a shallow one in an overlay over it: a
 		// menu open above the page.
-		outer := column(gtx, key = 1)
-		inner := column(gtx, key = 2)
-		p := widget_begin(gtx, 3)
-		widget_end(gtx, &p, {size = {100, 100}})
-		end(&inner)
-		end(&outer)
-		o := overlay(gtx, {10, 10})
-		m := widget_begin(gtx, 4)
-		widget_end(gtx, &m, {size = {50, 50}})
-		end(&o)
+		outer := column_open(gtx, key = 1)
+		inner := column_open(gtx, key = 2)
+		p := widget_open(gtx, 3)
+		widget_close(gtx, &p, {size = {100, 100}})
+		close(&inner)
+		close(&outer)
+		o := overlay_open(gtx, {10, 10})
+		m := widget_open(gtx, 4)
+		widget_close(gtx, &m, {size = {50, 50}})
+		close(&o)
 	}
 	p: Probe
 	probe_init(&p, view, nil, {200, 200}, debug = {.Inspect}, allocator = context.temp_allocator)

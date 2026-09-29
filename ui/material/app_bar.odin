@@ -72,7 +72,7 @@ top_app_bar :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> App_Bar_Result {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	res := App_Bar_Result {
 		action = -1,
 	}
@@ -161,7 +161,7 @@ top_app_bar :: proc(
 		if two_row && f < 0.99 {
 			// The expanded row, below the top one, clipped as it shrinks;
 			// its last line's baseline sits bottom above the bar's bottom.
-			ui.push_clip(gtx.ops, ui.Rect{0, small_h, size.x, max(size.y - small_h, 0)})
+			ui.clip_push(gtx.ops, ui.Rect{0, small_h, size.x, max(size.y - small_h, 0)})
 			t := shape_style(gtx, title, title_font)
 			st := shape_style(gtx, subtitle, sub_font)
 			last := subtitle != "" ? st : t
@@ -173,11 +173,11 @@ top_app_bar :: proc(
 			if subtitle != "" {
 				draw_text(gtx, st, {title_x(st.width, size.x, edge, size.x - edge, centre), last_top}, ui.with_alpha(sub_col, a))
 			}
-			ui.pop_clip(gtx.ops)
+			ui.clip_pop(gtx.ops)
 		}
 	}
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, title))
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return res
 }
 
@@ -206,9 +206,9 @@ paint_search_bar :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, r: ui.Rect, hint: string)
 	isz := tok.APP_BAR_ICON_SIZE
 	icon(gtx, .Search, {r.x + (BAR_ICON_TARGET - isz) / 2 + 4, r.y + (r.h - isz) / 2}, isz, color(tok.SEARCH_BAR_LEADING_ICON_COLOR))
 	t := shape_style(gtx, hint, tok.SEARCH_BAR_SUPPORTING_TEXT_FONT)
-	ui.push_clip(gtx.ops, r)
+	ui.clip_push(gtx.ops, r)
 	draw_text(gtx, t, {r.x + BAR_ICON_TARGET + 8, r.y + (r.h - t.height) / 2}, color(tok.SEARCH_BAR_SUPPORTING_TEXT_COLOR))
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	paint_focus_ring_corners(gtx, c, r, corners(tok.SEARCH_BAR_CONTAINER_SHAPE, r))
 	listen(gtx, c, id, r)
 	ui.tag(gtx.ops, id, ui.frame_string(gtx, hint))
@@ -295,7 +295,7 @@ tabs :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	n := min(len(labels), MAX_TABS)
 	with_icons := len(icons) >= n && n > 0
 	stacked := with_icons && !secondary
@@ -311,7 +311,7 @@ tabs :: proc(
 	dh := tok.SECONDARY_NAVIGATION_TAB_DIVIDER_HEIGHT
 	ui.fill(gtx.ops, ui.Rect{0, size.y - dh, size.x, dh}, color(tok.SECONDARY_NAVIGATION_TAB_DIVIDER_COLOR))
 	if n == 0 {
-		ui.widget_end(gtx, &p, {size = size})
+		ui.widget_close(gtx, &p, {size = size})
 		return false
 	}
 
@@ -364,7 +364,7 @@ tabs :: proc(
 		ind_w = animate(gtx, rc, 1, target_w, .Default_Spatial, 0.1)
 	}
 	if scrollable {
-		ui.push_clip(gtx.ops, view)
+		ui.clip_push(gtx.ops, view)
 	}
 
 	changed := false
@@ -417,14 +417,14 @@ tabs :: proc(
 		ui.fill(gtx.ops, rounded(gtx, bar, corners(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_SHAPE, bar)), color(tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_COLOR))
 	}
 	if scrollable {
-		ui.pop_clip(gtx.ops)
+		ui.clip_pop(gtx.ops)
 		if changed && sc != nil {
 			// Bring the new tab to the centre; the offset springs there.
 			s := selected^
 			sc.target = clamp(xs[s] + ws[s] / 2 - size.x / 2, 0, max_scroll)
 		}
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }
 

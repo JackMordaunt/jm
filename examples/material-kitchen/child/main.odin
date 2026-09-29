@@ -249,8 +249,8 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	// page the whole width: the drawer becomes a modal one, opened from
 	// the app bar and closed once a page is picked.
 	docked := m.window.x >= DOCKED_NAV_MIN
-	r := ui.row(gtx, align = .Fill)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, align = .Fill)
+	defer ui.close(&r)
 	if docked {
 		m3.navigation_drawer(gtx, items, &m.page, width = 300)
 	} else if m.nav_open {
@@ -259,8 +259,8 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 	}
 	ui.flexible(gtx, 1)
-	body := ui.column(gtx)
-	defer ui.end(&body)
+	body := ui.column_open(gtx)
+	defer ui.close(&body)
 	app_bar(gtx, m, docked)
 	ui.flexible(gtx, 1)
 	{
@@ -272,12 +272,12 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			ui.retain(gtx, i)
 		}
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
-		ps := ui.scope(gtx, m.page)
-		defer ui.end(&ps)
-		sb := ui.scroll_box(gtx)
-		defer ui.end(&sb)
-		page := ui.inset(gtx, {24, 8, 24, 48})
-		defer ui.end(&page)
+		ps := ui.scope_open(gtx, m.page)
+		defer ui.close(&ps)
+		sb := ui.scroll_box_open(gtx)
+		defer ui.close(&sb)
+		page := ui.inset_open(gtx, {24, 8, 24, 48})
+		defer ui.close(&page)
 		if p.draw != nil {
 			p.draw(gtx, m)
 		} else {
@@ -292,10 +292,10 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // Undocked, it leads with a menu button that opens the modal drawer.
 app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
 	s := m3.scheme()
-	bar := ui.inset(gtx, {docked ? 24 : 8, 8, 16, 8})
-	defer ui.end(&bar)
-	r := ui.row(gtx, align = .Center)
-	defer ui.end(&r)
+	bar := ui.inset_open(gtx, {docked ? 24 : 8, 8, 16, 8})
+	defer ui.close(&bar)
+	r := ui.row_open(gtx, align = .Center)
+	defer ui.close(&r)
 	if !docked {
 		if m3.icon_button(gtx, .Menu, tooltip = "Pages") {
 			m.nav_open = true
@@ -347,14 +347,14 @@ state_header :: proc(gtx: ^ui.Ctx, cell_w := CELL_W) {
 		return
 	}
 	s := m3.scheme()
-	r := ui.row(gtx)
-	defer ui.end(&r)
+	r := ui.row_open(gtx)
+	defer ui.close(&r)
 	cell_fixed(gtx, LABEL_W)
 	for name in STATE_NAMES {
 		ui.flexible(gtx, 1)
-		c := ui.stack(gtx)
+		c := ui.stack_open(gtx)
 		ui.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
-		ui.end(&c)
+		ui.close(&c)
 	}
 }
 
@@ -373,32 +373,32 @@ State_Cell :: proc(gtx: ^ui.Ctx, m: ^Model, state: m3.Interaction, key: u64)
 state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key: u64, cell_w := CELL_W) {
 	s := m3.scheme()
 	if grid_stacked(gtx, cell_w) {
-		col := ui.column(gtx, gap = 8, key = key)
-		defer ui.end(&col)
+		col := ui.column_open(gtx, gap = 8, key = key)
+		defer ui.close(&col)
 		ui.label(gtx, label, {size = 12, color = s[.On_Surface]})
-		wr := ui.wrap(gtx, gap = 24, line_gap = 12, align = .End)
-		defer ui.end(&wr)
+		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .End)
+		defer ui.close(&wr)
 		for st, i in m3.STATES {
-			c := ui.column(gtx, gap = 4, key = u64(i))
+			c := ui.column_open(gtx, gap = 4, key = u64(i))
 			ui.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface_Variant]})
 			cell(gtx, m, st, key * 16 + u64(i))
-			ui.end(&c)
+			ui.close(&c)
 		}
 		return
 	}
-	r := ui.row(gtx, align = .Center, key = key)
-	defer ui.end(&r)
+	r := ui.row_open(gtx, align = .Center, key = key)
+	defer ui.close(&r)
 	{
-		c := ui.stack(gtx)
+		c := ui.stack_open(gtx)
 		ui.label(gtx, label, {size = 12, color = s[.On_Surface_Variant]})
-		ui.end(&c)
+		ui.close(&c)
 	}
 	ui.spacer(gtx, max(LABEL_W - label_width(gtx, label), 0))
 	for st, i in m3.STATES {
 		ui.flexible(gtx, 1)
-		c := ui.stack(gtx, key = u64(i))
+		c := ui.stack_open(gtx, key = u64(i))
 		cell(gtx, m, st, key * 16 + u64(i))
-		ui.end(&c)
+		ui.close(&c)
 	}
 }
 
@@ -412,8 +412,8 @@ gap :: proc(gtx: ^ui.Ctx, h: f32 = 20, loc := #caller_location) {
 
 page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
 	s := m3.scheme()
-	col := ui.column(gtx, gap = 8)
-	defer ui.end(&col)
+	col := ui.column_open(gtx, gap = 8)
+	defer ui.close(&col)
 	if p.icon == .None {
 		ui.label(gtx, fmt.tprintf("%s: pick a component below this heading.", p.name), {color = s[.On_Surface_Variant]})
 		return

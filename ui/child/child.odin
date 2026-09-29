@@ -137,7 +137,7 @@ run :: proc(app: App) {
 		}
 		scaled := density != 1
 		if scaled {
-			ui.push_transform(&ops, ui.scale(density, density))
+			ui.transform_push(&ops, ui.scale(density, density))
 		}
 		ui_start := t.tick_now()
 		if app.ui != nil {
@@ -145,16 +145,16 @@ run :: proc(app: App) {
 		}
 		ui_ms := ui.ms(ui_start)
 		if scaled {
-			ui.pop_transform(&ops)
+			ui.transform_pop(&ops)
 		}
 		ui.debug_inspect(&gtx, debug, &tray, prev if n > 0 else nil, router.pointer, density)
 		// The tray last, so it sits over the inspector's highlight too.
 		if scaled {
-			ui.push_transform(&ops, ui.scale(density, density))
+			ui.transform_push(&ops, ui.scale(density, density))
 		}
 		ui.debug_tray(&gtx, &tray)
 		if scaled {
-			ui.pop_transform(&ops)
+			ui.transform_pop(&ops)
 		}
 		build_start := t.tick_now()
 		ui.flatten(&ops, frame)

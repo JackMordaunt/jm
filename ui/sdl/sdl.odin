@@ -383,7 +383,7 @@ step :: proc(l: ^Loop) {
 	}
 	scaled := w.density != 1
 	if scaled {
-		ui.push_transform(&l.ops, ui.scale(w.density, w.density))
+		ui.transform_push(&l.ops, ui.scale(w.density, w.density))
 	}
 	ui_start := time.tick_now()
 	if l.app.ui != nil {
@@ -391,16 +391,16 @@ step :: proc(l: ^Loop) {
 	}
 	ui_ms := ui.ms(ui_start)
 	if scaled {
-		ui.pop_transform(&l.ops)
+		ui.transform_pop(&l.ops)
 	}
 	ui.debug_inspect(&gtx, debug, &l.tray, prev if l.n > 0 else nil, l.router.pointer, w.density)
 	// The tray last, so it sits over the inspector's highlight too.
 	if scaled {
-		ui.push_transform(&l.ops, ui.scale(w.density, w.density))
+		ui.transform_push(&l.ops, ui.scale(w.density, w.density))
 	}
 	ui.debug_tray(&gtx, &l.tray)
 	if scaled {
-		ui.pop_transform(&l.ops)
+		ui.transform_pop(&l.ops)
 	}
 	build_start := time.tick_now()
 	ui.flatten(&l.ops, frame)

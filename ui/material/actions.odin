@@ -66,7 +66,7 @@ button_group :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	toggles := selected != nil
 	n := min(toggles ? min(len(labels), len(selected)) : len(labels), GROUP_MAX)
 	// The group's height tokens are dead (button-group.json notes): the
@@ -285,7 +285,7 @@ button_group :: proc(
 	if width > 0 {
 		natural.x = width
 	}
-	ui.widget_end(gtx, &p, {size = ui.constrain_min(gtx.constraints, natural)})
+	ui.widget_close(gtx, &p, {size = ui.constrain_min(gtx.constraints, natural)})
 	return changed
 }
 
@@ -425,7 +425,7 @@ toolbar :: proc(
 	state := Interaction.Live,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	n := len(actions)
 	docked := kind == .Docked || kind == .Docked_Vibrant
 	vibrant := kind == .Floating_Vibrant || kind == .Docked_Vibrant
@@ -461,7 +461,7 @@ toolbar :: proc(
 			}
 			x += ACTION_SLOT + g
 		}
-		ui.widget_end(gtx, &p, {size = size})
+		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
 
@@ -509,7 +509,7 @@ toolbar :: proc(
 		ui.fill(gtx.ops, pill, col.container)
 		// The container clips its content while it resizes (toolbar.json
 		// floating-shape-fixed: only its size animates).
-		ui.push_clip(gtx.ops, pill)
+		ui.clip_push(gtx.ops, pill)
 		m := bar0 + lead * (with_fab ? shown : 1)
 		for g_, i in actions {
 			k := ext(i, n, leading, trailing, shown, with_fab)
@@ -526,7 +526,7 @@ toolbar :: proc(
 			}
 			m += ACTION_SLOT * k
 		}
-		ui.pop_clip(gtx.ops)
+		ui.clip_pop(gtx.ops)
 	}
 	if with_fab {
 		f0: f32 = fab_leading ? 0 : bar_len + TOOLBAR_FAB_GAP * shown
@@ -545,7 +545,7 @@ toolbar :: proc(
 			clicked = TOOLBAR_FAB
 		}
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
 
@@ -686,7 +686,7 @@ fab_menu :: proc(
 	state := Interaction.Live,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	// Closed-state size, corner and icon per trigger size. The corners
 	// (16/20/28) and large's 36dp icon are hard-coded upstream, not the
 	// FAB's shape tokens (fab-menu.json layout, FloatingActionButtonMenu.kt:715-729).
@@ -744,8 +744,8 @@ fab_menu :: proc(
 
 	chosen := -1
 	if count > 0.01 || open^ {
-		o := ui.overlay(gtx)
-		defer ui.end(&o)
+		o := ui.overlay_open(gtx)
+		defer ui.close(&o)
 		H := tok.FAB_MENU_BASELINE_LIST_ITEM_CONTAINER_HEIGHT
 		between := tok.FAB_MENU_BASELINE_LIST_ITEM_BETWEEN_SPACE
 		// The bottom item sits close-button-between-space above the
@@ -776,14 +776,14 @@ fab_menu :: proc(
 				pill := rounded(gtx, r, corners(tok.FAB_MENU_BASELINE_LIST_ITEM_CONTAINER_SHAPE, r))
 				ui.fill(gtx.ops, pill, fade(color(tok.FAB_PRIMARY_CONTAINER_CONTAINER_COLOR), at))
 				paint_state_layer(gtx, ic, pill, color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR))
-				ui.push_clip(gtx.ops, pill)
+				ui.clip_push(gtx.ops, pill)
 				fg := fade(color(tok.FAB_PRIMARY_CONTAINER_ICON_COLOR), at)
 				// Content keeps its place from the aligned edge as the pill grows.
 				cx := align_start ? r.x : r.x + r.w - full_w
 				lisz := tok.FAB_MENU_BASELINE_LIST_ITEM_ICON_SIZE
 				icon(gtx, it.icon, {cx + tok.FAB_MENU_BASELINE_LIST_ITEM_LEADING_SPACE, y + (H - lisz) / 2}, lisz, fg)
 				draw_text(gtx, txt, {cx + tok.FAB_MENU_BASELINE_LIST_ITEM_LEADING_SPACE + lisz + tok.FAB_MENU_BASELINE_LIST_ITEM_ICON_LABEL_SPACE, y + (H - txt.height) / 2}, fg)
-				ui.pop_clip(gtx.ops)
+				ui.clip_pop(gtx.ops)
 				paint_focus_ring(gtx, ic, {r, H / 2})
 				listen(gtx, ic, id, r)
 				ui.tag(gtx.ops, id, ui.frame_string(gtx, it.label))
@@ -791,6 +791,6 @@ fab_menu :: proc(
 			y += H + between
 		}
 	}
-	ui.widget_end(gtx, &p, {size = box})
+	ui.widget_close(gtx, &p, {size = box})
 	return chosen
 }

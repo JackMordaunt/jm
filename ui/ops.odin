@@ -183,19 +183,19 @@ ops_destroy :: proc(o: ^Ops) {
 
 // Recorders. Each appends one op; the widget layer builds on these.
 
-push_transform :: proc(o: ^Ops, m: Affine) {
+transform_push :: proc(o: ^Ops, m: Affine) {
 	append(&o.ops, Push_Transform{m})
 }
 
-pop_transform :: proc(o: ^Ops) {
+transform_pop :: proc(o: ^Ops) {
 	append(&o.ops, Pop_Transform{})
 }
 
-push_clip :: proc(o: ^Ops, shape: Shape) {
+clip_push :: proc(o: ^Ops, shape: Shape) {
 	append(&o.ops, Push_Clip{shape})
 }
 
-pop_clip :: proc(o: ^Ops) {
+clip_pop :: proc(o: ^Ops) {
 	append(&o.ops, Pop_Clip{})
 }
 
@@ -231,16 +231,16 @@ tag :: proc(o: ^Ops, id: Area_Id, name: string) {
 	append(&o.ops, Tag{id, name})
 }
 
-// macro_begin opens a macro; ops recorded until macro_end are not run
-// inline. Returns the id to macro_end and call.
-macro_begin :: proc(o: ^Ops) -> Macro_Id {
+// macro_open opens a macro; ops recorded until macro_close are not run
+// inline. Returns the id to macro_close and call.
+macro_open :: proc(o: ^Ops) -> Macro_Id {
 	id := Macro_Id(len(o.macros))
 	append(&o.macros, Macro{first = len(o.ops) + 1, last = -1})
 	append(&o.ops, Macro_Begin{id})
 	return id
 }
 
-macro_end :: proc(o: ^Ops, id: Macro_Id) {
+macro_close :: proc(o: ^Ops, id: Macro_Id) {
 	o.macros[id].last = len(o.ops)
 	append(&o.ops, Macro_End{id})
 }

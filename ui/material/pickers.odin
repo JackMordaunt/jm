@@ -125,9 +125,9 @@ date_picker :: proc(
 ) -> bool {
 	stack: ui.Stack
 	if len(actions) > 0 {
-		stack = ui.stack(gtx, key ~ 0x57ac, loc)
+		stack = ui.stack_open(gtx, key ~ 0x57ac, loc)
 	}
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	W :: tok.DATE_PICKER_MODAL_CONTAINER_WIDTH
 	if view.month < 1 || view.month > 12 {
 		base := selected^ != {} ? selected^ : today
@@ -159,7 +159,7 @@ date_picker :: proc(
 	card := rounded(gtx, area, k)
 	paint_elevation(gtx, {area, k.tl}, elevation_level(tok.DATE_PICKER_MODAL_CONTAINER_ELEVATION))
 	ui.fill(gtx.ops, card, color(tok.DATE_PICKER_MODAL_CONTAINER_COLOR))
-	ui.push_clip(gtx.ops, card) // the resize is a clipped size transform
+	ui.clip_push(gtx.ops, card) // the resize is a clipped size transform
 
 	// Header: supporting text, headline, mode toggle (layout header padding,
 	// DatePicker.kt:2623-2626).
@@ -195,7 +195,7 @@ date_picker :: proc(
 	// The picker's body fades out, and slides in from DATE_ENTER_OFFSET, as
 	// mf moves; the input body the other way round.
 	if mf < 0.99 {
-		ui.push_transform(gtx.ops, ui.translate(0, DATE_ENTER_OFFSET * mf))
+		ui.transform_push(gtx.ops, ui.translate(0, DATE_ENTER_OFFSET * mf))
 		live := m == .Picker
 		// Month bar: the year menu button, then previous and next.
 		label := fmt.tprintf("%s %d", timefmt.MONTHS[view.month - 1], view.year)
@@ -240,14 +240,14 @@ date_picker :: proc(
 		} else {
 			changed = day_grid(gtx, p.id, selected, range_end, view^, today, selectable, min_year, max_year, gy, live, 1 - mf)
 		}
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 	if mf > 0.01 && input != nil {
-		ui.push_transform(gtx.ops, ui.translate(0, DATE_ENTER_OFFSET * (1 - mf)))
+		ui.transform_push(gtx.ops, ui.translate(0, DATE_ENTER_OFFSET * (1 - mf)))
 		changed |= date_field(gtx, ui.id_mix(p.id, 6), input, selected, view, selectable, min_year, max_year, {24, y0 + 10, size.x - 48, 56}, m == .Input, mf)
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 
 	ds.year_open, ds.year_scroll = year_open, year_scroll
 	if mode != nil {
@@ -255,7 +255,7 @@ date_picker :: proc(
 	} else {
 		ds.mode = m
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 
 	if len(actions) > 0 {
 		// Text buttons at the bottom end, in the stack over the card.
@@ -263,16 +263,16 @@ date_picker :: proc(
 		for a, i in actions {
 			aw += shape_text(gtx, a, .Label_Large).width + 24 + (i > 0 ? 8 : 0)
 		}
-		pad := ui.inset(gtx, {max(size.x - 12 - aw, 0), size.y - DATE_ACTIONS_HEIGHT + 8, 0, 0})
-		r := ui.row(gtx, gap = 8)
+		pad := ui.inset_open(gtx, {max(size.x - 12 - aw, 0), size.y - DATE_ACTIONS_HEIGHT + 8, 0, 0})
+		r := ui.row_open(gtx, gap = 8)
 		for a, i in actions {
 			if button(gtx, a, .Text, key = u64(i)) && action != nil {
 				action^ = i
 			}
 		}
-		ui.end(&r)
-		ui.end(&pad)
-		ui.end(&stack)
+		ui.close(&r)
+		ui.close(&pad)
+		ui.close(&stack)
 	}
 	return changed
 }
@@ -440,12 +440,12 @@ date_cell :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	r := ui.Rect{0, 0, DATE_CELL, DATE_CELL}
 	c := control(gtx, p.id, r, state)
 	paint_day(gtx, c, r, day, selected, today, in_range ? .Middle : .None, 1)
 	listen(gtx, c, p.id, r)
-	ui.widget_end(gtx, &p, {size = {DATE_CELL, DATE_CELL}})
+	ui.widget_close(gtx, &p, {size = {DATE_CELL, DATE_CELL}})
 	return c.clicked
 }
 
@@ -486,7 +486,7 @@ year_grid :: proc(
 		sc = ui.scroll_bar_handle(gtx, bar_id, .Vertical, {r.w, r.h}, content, sc)
 		ui.input_area(gtx.ops, sid, r, {.Scroll})
 	}
-	ui.push_clip(gtx.ops, r)
+	ui.clip_push(gtx.ops, r)
 	first := int(sc / pitch)
 	last := min(rows, first + int(r.h / pitch) + 2)
 	for row in first ..< last {
@@ -526,11 +526,11 @@ year_grid :: proc(
 		}
 	}
 	if live {
-		ui.push_transform(gtx.ops, ui.translate(r.x, r.y))
+		ui.transform_push(gtx.ops, ui.translate(r.x, r.y))
 		ui.scroll_bar_paint(gtx, bar_id, .Vertical, {r.w, r.h}, content, sc)
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	return sc
 }
 
@@ -742,7 +742,7 @@ time_picker :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	old := t^
 	live := state == .Live
 	input := mode == .Input
@@ -853,7 +853,7 @@ time_picker :: proc(
 		}
 		clock_dial(gtx, p.id, dc, t, editing_minute, is_24h, live)
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return t^ != old
 }
 
@@ -1105,9 +1105,9 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ui.Area_Id, dc: ui.Point, t: ^Time, editin
 	ui.fill(gtx.ops, ui.circle(dc, tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_CENTER_CONTAINER_SIZE / 2), color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_CENTER_CONTAINER_COLOR))
 	handle := ui.circle(hand, HS / 2)
 	ui.fill(gtx.ops, handle, color(tok.TIME_PICKER_CLOCK_DIAL_SELECTOR_HANDLE_CONTAINER_COLOR))
-	ui.push_clip(gtx.ops, handle)
+	ui.clip_push(gtx.ops, handle)
 	labels(gtx, dc, outer, inner, ring_m, is_24h, color(tok.TIME_PICKER_CLOCK_DIAL_SELECTED_LABEL_TEXT_COLOR))
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 }
 
 // Dial_Grab is the clock dial's grab: whether the pointer has moved since
@@ -1176,7 +1176,7 @@ carousel :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> int {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	size := ui.constrain(gtx.constraints, {width, height})
 	kl := carousel_keylines(strategy, size.x, item_width, item_spacing, min_small, max_small)
 	n := len(items)
@@ -1245,7 +1245,7 @@ carousel :: proc(
 	view := ui.Rect{0, 0, size.x, size.y}
 	ui.input_area(gtx.ops, p.id, view, {.Scroll, .Press, .Release, .Move, .Key, .Focus, .Blur})
 	ui.tag(gtx.ops, p.id, "carousel")
-	ui.push_clip(gtx.ops, view)
+	ui.clip_push(gtx.ops, view)
 	on := color(.On_Primary)
 	for i in 0 ..< n {
 		r, ok := carousel_item_rect(kl, pos, i, n, item_spacing, size.y)
@@ -1257,22 +1257,22 @@ carousel :: proc(
 		mask := rounded(gtx, r, mk)
 		// The content is the large width, centred on the mask: parallax.
 		content := ui.Rect{r.x + r.w / 2 - kl.large / 2, 0, kl.large, size.y}
-		ui.push_clip(gtx.ops, mask)
+		ui.clip_push(gtx.ops, mask)
 		ui.fill(gtx.ops, content, ui.Linear_Gradient{{content.x, 0}, {content.x + content.w, content.h}, gradient_stops(gtx, it.a, it.b)})
-		ui.pop_clip(gtx.ops)
+		ui.clip_pop(gtx.ops)
 		a := kl.large > kl.small ? clamp((r.w - kl.small) / (kl.large - kl.small), 0, 1) : 1
 		if a > 0.3 {
 			t := shape_text(gtx, it.label, .Title_Medium)
-			ui.push_clip(gtx.ops, mask)
+			ui.clip_push(gtx.ops, mask)
 			draw_text(gtx, t, {r.x + 16, r.h - 16 - t.height}, fade(on, (a - 0.3) / 0.7))
-			ui.pop_clip(gtx.ops)
+			ui.clip_pop(gtx.ops)
 		}
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 	if focused {
 		paint_focus_ring(gtx, {focused = true}, {view, CORNER_EXTRA_LARGE})
 	}
-	ui.widget_end(gtx, &p, {size = size})
+	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
 

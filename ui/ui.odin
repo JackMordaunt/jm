@@ -7,7 +7,7 @@ Every stage is a plain array with a text dump, so a frame can be asserted on,
 serialized, or driven by a probe without a window.
 
 	ui :: proc(gtx: ^ui.Ctx, m: ^Model) {
-		col := ui.column(gtx, gap = 8); defer ui.end(&col)
+		col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
 		ui.label(gtx, "Name")
 		ui.text_field(gtx, &m.name)
 		if ui.button(gtx, "Save") { save(m) }

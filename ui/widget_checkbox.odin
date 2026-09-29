@@ -10,7 +10,7 @@ checkbox :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	s := resolve_checkbox(gtx.theme, style)
 	run, m := shape_line(gtx, text, s.size)
 	lh := line_height(m)
@@ -69,6 +69,6 @@ checkbox :: proc(
 	}
 	input_area(o, p.id, area, {.Press, .Release, .Enter, .Leave, .Move})
 	tag(o, p.id, frame_string(gtx, text))
-	widget_end(gtx, &p, {size, origin.y})
+	widget_close(gtx, &p, {size, origin.y})
 	return changed
 }

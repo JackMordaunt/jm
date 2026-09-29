@@ -216,7 +216,7 @@ chip :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	selectable := kind == .Filter || kind == .Input
 	morph := shape_morph && selectable
 	raised := elevated && kind != .Input
@@ -343,13 +343,13 @@ chip :: proc(
 
 	x := start
 	if lead_w > 0 && glyph != .None {
-		ui.push_clip(gtx.ops, ui.Rect{x, vis.y, lead_w, height})
+		ui.clip_push(gtx.ops, ui.Rect{x, vis.y, lead_w, height})
 		gc := col.lead
 		if av != .None && c.disabled {
 			gc = token_color(tok.INPUT_CHIP_DISABLED_LEADING_ICON_COLOR, tok.INPUT_CHIP_DISABLED_AVATAR_OPACITY)
 		}
 		icon(gtx, glyph, {x, vis.y + (height - lead_size) / 2}, lead_size, fade(gc, lead_a))
-		ui.pop_clip(gtx.ops)
+		ui.clip_pop(gtx.ops)
 	}
 	x += lead_w + ELEMENT_GAP
 	draw_text(gtx, t, {x, vis.y + (height - t.height) / 2}, col.label)
@@ -372,7 +372,7 @@ chip :: proc(
 		}
 	}
 	ui.tag(gtx.ops, p.id, ui.frame_string(gtx, label))
-	ui.widget_end(gtx, &p, {size, vis.y + (height - t.height) / 2 + baseline_of(t)})
+	ui.widget_close(gtx, &p, {size, vis.y + (height - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
 

@@ -26,11 +26,11 @@ Sheet_State_Model :: struct {
 @(private = "file")
 sheet_state_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Sheet_State_Model)(user)
-	sh := bottom_sheet(gtx, &m.open, {400, 600}, state = m.owned ? &m.state : nil)
+	sh := bottom_sheet_open(gtx, &m.open, {400, 600}, state = m.owned ? &m.state : nil)
 	if sh.visible {
 		button(gtx, "Inside")
 	}
-	end_sheet(&sh)
+	sheet_close(&sh)
 }
 
 @(test)

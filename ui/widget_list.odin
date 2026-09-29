@@ -28,10 +28,10 @@ list :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Dims {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	l := gtx.layout
 	if l == nil || count <= 0 {
-		return widget_end(gtx, &p, {size = gtx.constraints.min})
+		return widget_close(gtx, &p, {size = gtx.constraints.min})
 	}
 	cs := gtx.constraints
 	width := is_finite(cs.max.x) ? cs.max.x : 0
@@ -40,9 +40,9 @@ list :: proc(
 
 	o := gtx.ops
 	l.scope = id_mix(p.id, 0)
-	first_item := macro_begin(o)
+	first_item := macro_open(o)
 	item(gtx, 0, user)
-	macro_end(o, first_item)
+	macro_close(o, first_item)
 	measured := container_at(l, idx).extent
 	row := max(measured.y, 1)
 	if !is_finite(cs.max.x) {
@@ -60,22 +60,22 @@ list :: proc(
 	size := constrain(cs, {width, view})
 
 	input_area(o, p.id, Rect{0, 0, size.x, size.y}, {.Scroll})
-	push_clip(o, Rect{0, 0, size.x, size.y})
+	clip_push(o, Rect{0, 0, size.x, size.y})
 	lo := int(s.offset / row)
 	hi := min(count, int(math.ceil((s.offset + size.y) / row)))
 	for i in lo ..< hi {
-		push_transform(o, translate(0, f32(i) * row - s.offset))
+		transform_push(o, translate(0, f32(i) * row - s.offset))
 		if i == 0 {
 			call(o, first_item)
 		} else {
 			l.scope = id_mix(p.id, u64(i))
 			item(gtx, i, user)
 		}
-		pop_transform(o)
+		transform_pop(o)
 	}
-	pop_clip(o)
+	clip_pop(o)
 
 	l.scope = saved
 	container_pop(gtx, idx)
-	return widget_end(gtx, &p, {size = size})
+	return widget_close(gtx, &p, {size = size})
 }

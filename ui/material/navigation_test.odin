@@ -56,8 +56,8 @@ tagged :: proc(p: ^ui.Probe, name: string) -> bool {
 test_rail_expands_on_its_spring_and_selects :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)
-		r := ui.row(gtx)
-		defer ui.end(&r)
+		r := ui.row_open(gtx)
+		defer ui.close(&r)
 		navigation_rail(gtx, ITEMS[:], &m.selected, .Edit, true, &m.open, modal = m.modal, height = 500)
 	}
 	m: Nav_Model
@@ -93,8 +93,8 @@ test_rail_expands_on_its_spring_and_selects :: proc(t: ^testing.T) {
 test_modal_rail_collapses_on_scrim_and_escape :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)
-		r := ui.row(gtx)
-		defer ui.end(&r)
+		r := ui.row_open(gtx)
+		defer ui.close(&r)
 		navigation_rail(gtx, ITEMS[:], &m.selected, menu = true, expanded = &m.open, modal = true, height = 500)
 		ui.spacer(gtx, 0)
 		if button(gtx, "Under") {
@@ -128,8 +128,8 @@ test_modal_rail_collapses_on_scrim_and_escape :: proc(t: ^testing.T) {
 test_drawer_variants_open_close_and_select :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)
-		r := ui.row(gtx)
-		defer ui.end(&r)
+		r := ui.row_open(gtx)
+		defer ui.close(&r)
 		if navigation_drawer(gtx, ITEMS[:], &m.selected, width = 300, height = 400, variant = m.variant, open = &m.open) {
 			m.clicked += 1
 		}
@@ -178,8 +178,8 @@ test_drawer_variants_open_close_and_select :: proc(t: ^testing.T) {
 test_flexible_bar_goes_horizontal_and_centres :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		navigation_bar(gtx, ITEMS[:], &m.selected, 800, flexible = true, arrangement = .Centered)
 	}
 	m: Nav_Model
@@ -203,8 +203,8 @@ test_scrollable_tabs_scroll_and_centre_the_selection :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)
 		LABELS := [?]string{"Overview", "Specifications", "Reviews", "Accessories", "Support", "Warranty", "Downloads"}
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		tabs(gtx, LABELS[:], &m.tab, width = 400, scrollable = true)
 	}
 	m: Nav_Model
@@ -234,8 +234,8 @@ test_scrollable_tabs_scroll_and_centre_the_selection :: proc(t: ^testing.T) {
 test_app_bar_reports_navigation_and_search :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)
-		col := ui.column(gtx)
-		defer ui.end(&col)
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
 		ACTIONS := [?]Icon{.More_Vert}
 		if res := top_app_bar(gtx, "Title", .Medium_Flexible, .Arrow_Back, ACTIONS[:], subtitle = "Sub", width = 400); res.navigation {
 			m.clicked += 1

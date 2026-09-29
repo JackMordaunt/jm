@@ -115,21 +115,21 @@ Sheet_Model :: struct {
 @(private = "file")
 sheet_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Sheet_Model)(user)
-	col := ui.column(gtx)
-	defer ui.end(&col)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
 	if button(gtx, "Under") {
 		m.under += 1
 	}
-	sh := bottom_sheet(gtx, &m.open, {400, 600}, value = &m.value)
+	sh := bottom_sheet_open(gtx, &m.open, {400, 600}, value = &m.value)
 	if sh.visible {
 		button(gtx, "Inside")
 	}
-	end_sheet(&sh)
-	ss := side_sheet(gtx, &m.side, {400, 600}, width = 300)
+	sheet_close(&sh)
+	ss := side_sheet_open(gtx, &m.side, {400, 600}, width = 300)
 	if ss.visible {
 		button(gtx, "Side inside")
 	}
-	end_sheet(&ss)
+	sheet_close(&ss)
 }
 
 @(test)
@@ -205,8 +205,8 @@ test_drag_handle_reports_the_pull_from_its_grab :: proc(t: ^testing.T) {
 	}
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^M)(user)
-		r := ui.row(gtx)
-		defer ui.end(&r)
+		r := ui.row_open(gtx)
+		defer ui.close(&r)
 		ui.spacer(gtx, m.pane)
 		m.pane += drag_handle(gtx)
 	}

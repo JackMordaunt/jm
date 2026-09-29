@@ -49,7 +49,7 @@ text_field :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := widget_begin(gtx, key, loc)
+	p := widget_open(gtx, key, loc)
 	fs := resolve_text_field(gtx.theme, style)
 	m := metrics(gtx.shaper, gtx.theme.font, fs.size)
 	lh := line_height(m)
@@ -107,17 +107,17 @@ text_field :: proc(
 			{width = fs.stroke},
 		)
 	}
-	push_clip(o, Rect{pd.left, 0, inner, size.y})
+	clip_push(o, Rect{pd.left, 0, inner, size.y})
 	if painted(fs.text) && len(str) > 0 {
 		glyphs(o, add_run(o, run), {pd.left - cs.x, pd.top + m.ascent}, fs.text)
 	}
 	if st.focused && painted(fs.caret) {
 		fill(o, Rect{pd.left + caret - cs.x, pd.top, 1, lh}, fs.caret)
 	}
-	pop_clip(o)
+	clip_pop(o)
 	input_area(o, p.id, rr, {.Press, .Release, .Key, .Text, .Focus, .Blur})
 	tag(o, p.id, frame_string(gtx, len(name) > 0 ? name : "text field"))
-	widget_end(gtx, &p, {size, pd.top + m.ascent})
+	widget_close(gtx, &p, {size, pd.top + m.ascent})
 	return changed
 }
 

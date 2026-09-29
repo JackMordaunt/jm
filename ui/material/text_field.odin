@@ -448,7 +448,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	if o.suffix != "" {
 		draw_text(gtx, g.suf, {g.text_r - g.suf.width, input_y}, fade(col.suffix, affix_a))
 	}
-	ui.push_clip(gtx.ops, ui.Rect{g.in_x, field.y, g.inner, field.h})
+	ui.clip_push(gtx.ops, ui.Rect{g.in_x, field.y, g.inner, field.h})
 	if len(str) > 0 {
 		draw_text(gtx, shape_style(gtx, str, g.input_font), {g.in_x - fi.scroll, input_y}, col.input)
 	}
@@ -459,7 +459,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 		cw := shape_style(gtx, str[:s.cursor], g.input_font).width
 		ui.fill(gtx.ops, ui.Rect{g.in_x + cw - fi.scroll, input_y + 2, CARET_W, g.input_font.line_height - 4}, col.caret)
 	}
-	ui.pop_clip(gtx.ops)
+	ui.clip_pop(gtx.ops)
 
 	if o.leading != .None {
 		icon(gtx, o.leading, {(ICON_SLOT - g.lead_size) / 2, field.y + (FIELD_H - g.lead_size) / 2}, g.lead_size, col.leading)
@@ -496,11 +496,11 @@ draw_field_trailing :: proc(gtx: ^ui.Ctx, id: ui.Area_Id, o: Field_Opts, g: Fiel
 	}
 	// The autocomplete arrow turns half a circle as the menu opens.
 	if turn != 0 {
-		ui.push_transform(gtx.ops, ui.mul(ui.mul(ui.translate(-ctr.x, -ctr.y), ui.rotate(turn * math.PI)), ui.translate(ctr.x, ctr.y)))
+		ui.transform_push(gtx.ops, ui.mul(ui.mul(ui.translate(-ctr.x, -ctr.y), ui.rotate(turn * math.PI)), ui.translate(ctr.x, ctr.y)))
 	}
 	icon(gtx, o.trailing, {ctr.x - g.trail_size / 2, ctr.y - g.trail_size / 2}, g.trail_size, col)
 	if turn != 0 {
-		ui.pop_transform(gtx.ops)
+		ui.transform_pop(gtx.ops)
 	}
 }
 
@@ -565,7 +565,7 @@ text_field :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_begin(gtx, key, loc)
+	p := ui.widget_open(gtx, key, loc)
 	r := draw_field(
 		gtx,
 		&p,
@@ -588,7 +588,7 @@ text_field :: proc(
 			trailing_action = trailing_action,
 		},
 	)
-	ui.widget_end(gtx, &p, {size = r.size})
+	ui.widget_close(gtx, &p, {size = r.size})
 	return r.changed
 }
 
@@ -644,9 +644,9 @@ autocomplete :: proc(
 	loc := #caller_location,
 ) -> int {
 	chosen := -1
-	stk := ui.stack(gtx, key, loc)
-	defer ui.end(&stk)
-	p := ui.widget_begin(gtx, key ~ 0x6175746f636f6d70, loc)
+	stk := ui.stack_open(gtx, key, loc)
+	defer ui.close(&stk)
+	p := ui.widget_open(gtx, key ~ 0x6175746f636f6d70, loc)
 	r := draw_field(
 		gtx,
 		&p,
@@ -665,7 +665,7 @@ autocomplete :: proc(
 			open = expanded^,
 		},
 	)
-	ui.widget_end(gtx, &p, {size = r.size})
+	ui.widget_close(gtx, &p, {size = r.size})
 	if state != .Live {
 		return chosen
 	}
@@ -718,8 +718,8 @@ autocomplete :: proc(
 
 	if expanded^ && len(matches) > 0 {
 		menu_id := ui.id_mix(p.id, 0x6d656e75)
-		o := ui.overlay(gtx, {0, r.field.y + r.field.h})
-		defer ui.end(&o)
+		o := ui.overlay_open(gtx, {0, r.field.y + r.field.h})
+		defer ui.close(&o)
 		defer o.discard = !expanded^ // closed this frame: draw nothing, catch nothing
 		// Scrim: a press outside the menu closes it and reaches nothing else.
 		scrim_id := ui.id_mix(menu_id, 0xffff)
