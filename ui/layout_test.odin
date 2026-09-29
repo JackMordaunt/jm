@@ -853,3 +853,54 @@ test_widget_state_pointers_survive_the_map_growing :: proc(t: ^testing.T) {
 	testing.expect_value(t, first, widget_state(&h.gtx, 1))
 	testing.expect_value(t, first.springs[0].value, 42)
 }
+
+@(test)
+test_layout_accessors_name_the_open_containers :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	l := &h.layout
+	testing.expect_value(t, depth(l), 0)
+	testing.expect(t, innermost(l) == nil)
+	testing.expect_value(t, depth(nil), 0) // without a layout there is nothing open
+	testing.expect(t, innermost(nil) == nil)
+	{
+		col := column(gtx); defer end(&col)
+		testing.expect_value(t, depth(l), 1)
+		c := innermost(l)
+		testing.expect(t, c != nil && c.kind == .Flex && c.axis == .Vertical)
+		testing.expect(t, c == container_at(l, col.index)) // the handle's index is the innermost
+		testing.expect_value(t, len(children_of(l, c)), 0)
+		one := label(gtx, "one")
+		two := label(gtx, "two, wider")
+		kids := children_of(l, c)
+		testing.expect_value(t, len(kids), 2)
+		if len(kids) == 2 {
+			testing.expect_value(t, kids[0].size, one.size) // the labels, in order, at the size they took
+			testing.expect_value(t, kids[1].size, two.size)
+		}
+		{
+			r := row(gtx); defer end(&r)
+			testing.expect_value(t, depth(l), 2)
+			testing.expect(t, innermost(l) != c) // the row is innermost now
+			testing.expect(t, innermost(l).axis == .Horizontal)
+			testing.expect_value(t, len(children_of(l, innermost(l))), 0) // and has placed nothing yet
+			testing.expect(t, container_at(l, col.index) == c) // the column is still there by index
+			testing.expect_value(t, len(children_of(l, c)), 2) // the row joins it only when it ends
+			// An overlay lays out on its own stack: nothing is open inside it,
+			// and the column and row come back when it ends.
+			{
+				o := overlay(gtx); defer end(&o)
+				testing.expect_value(t, depth(l), 0)
+				testing.expect(t, innermost(l) == nil)
+			}
+			testing.expect_value(t, depth(l), 2)
+			testing.expect(t, innermost(l).axis == .Horizontal)
+		}
+		testing.expect_value(t, depth(l), 1)
+		testing.expect(t, innermost(l) == c)
+		testing.expect_value(t, len(children_of(l, c)), 3) // the row, placed
+	}
+	testing.expect_value(t, depth(l), 0)
+}

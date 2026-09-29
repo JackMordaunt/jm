@@ -36,7 +36,7 @@ list :: proc(
 	cs := gtx.constraints
 	idx := container_push(gtx, .List, p)
 	width := is_finite(cs.max.x) ? cs.max.x : 0
-	l.stack[idx].inner = {
+	container_at(l, idx).inner = {
 		min = {width, 0},
 		max = {cs.max.x, INF},
 	}
@@ -47,7 +47,7 @@ list :: proc(
 	first_item := macro_begin(o)
 	item(gtx, 0, user)
 	macro_end(o, first_item)
-	measured := l.stack[idx].extent
+	measured := container_at(l, idx).extent
 	row := max(measured.y, 1)
 	if !is_finite(cs.max.x) {
 		width = measured.x

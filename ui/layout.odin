@@ -264,11 +264,11 @@ widget_begin :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Placem
 	if l.scope != 0 {
 		p.id = id_mix(l.scope, u64(p.id))
 	}
-	if len(l.stack) == 0 {
+	c := innermost(l)
+	if c == nil {
 		return p
 	}
-	p.parent = len(l.stack) - 1
-	c := &l.stack[p.parent]
+	p.parent = depth(l) - 1
 	switch c.kind {
 	case .Flex:
 		p.weight = c.next
@@ -308,7 +308,7 @@ widget_end :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 		stroke(gtx.ops, Rect{0, 0, d.size.x, d.size.y}, BOUNDS_COLOR, {width = 1})
 	}
 	if .Inspect in gtx.debug {
-		depth := gtx.layout != nil ? i32(len(gtx.layout.stack)) : 0
+		depth := i32(depth(gtx.layout))
 		append(
 			&gtx.ops.ops,
 			Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure},
@@ -325,8 +325,8 @@ widget_end :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 	if l == nil || p.parent < 0 {
 		return d
 	}
-	assert(p.parent == len(l.stack) - 1, "ui: widget ended inside a container it began outside")
-	c := &l.stack[p.parent]
+	assert(p.parent == depth(l) - 1, "ui: widget ended inside a container it began outside")
+	c := container_at(l, p.parent)
 	switch c.kind {
 	case .Flex:
 		flex_add(
@@ -476,6 +476,56 @@ container_pop :: proc(gtx: ^Ctx, index: int) -> Container {
 	return c
 }
 
+// The layout's stack is the containers open right now, innermost last,
+// and children every child placed in them, each container's run starting
+// at its first. Nothing else in the package indexes them: these are the
+// ways in, each named for what the access means.
+
+// depth is how many containers are open; 0 at the root or without a layout.
+@(private)
+depth :: proc(l: ^Layout) -> int {
+	return l == nil ? 0 : len(l.stack)
+}
+
+// container_at is the open container that a handle's index (a Flex,
+// Stack or Placement.parent) names.
+@(private)
+container_at :: proc(l: ^Layout, index: int) -> ^Container {
+	return &l.stack[index]
+}
+
+// innermost is the container a widget made now is placed in, or nil at
+// the root or without a layout.
+@(private)
+innermost :: proc(l: ^Layout) -> ^Container {
+	if l == nil || len(l.stack) == 0 {
+		return nil
+	}
+	return &l.stack[len(l.stack) - 1]
+}
+
+// children_of is every child placed in c so far, in order.
+@(private)
+children_of :: proc(l: ^Layout, c: ^Container) -> []Child {
+	return l.children[c.first:]
+}
+
+// stack_detach gives l an empty container stack, so what is laid out
+// next is at the root whatever was open, and returns the stack it had;
+// stack_attach puts that back once the detached run is ended.
+@(private)
+stack_detach :: proc(l: ^Layout, allocator: mem.Allocator) -> [dynamic]Container {
+	saved := l.stack
+	l.stack = make([dynamic]Container, allocator)
+	return saved
+}
+
+@(private)
+stack_attach :: proc(l: ^Layout, saved: [dynamic]Container) {
+	assert(len(l.stack) == 0, "ui: a container inside an overlay was not ended")
+	l.stack = saved
+}
+
 // column lays children top to bottom, gap apart. See Align for the cost of
 // each alignment; a flexible child or fill_space makes it measure first.
 column :: proc(
@@ -510,7 +560,7 @@ flex_open :: proc(
 ) -> Flex {
 	i := container_open(gtx, .Flex, key, loc)
 	if i >= 0 {
-		c := &gtx.layout.stack[i]
+		c := container_at(gtx.layout, i)
 		c.axis = axis
 		c.gap = gap
 		c.align = align
@@ -536,7 +586,7 @@ wrap :: proc(
 ) -> Flex {
 	f := flex_open(gtx, .Horizontal, gap, align, key, loc)
 	if f.index >= 0 {
-		c := &gtx.layout.stack[f.index]
+		c := container_at(gtx.layout, f.index)
 		c.wrap = true
 		c.deferred = true
 		c.line_gap = line_gap < 0 ? gap : line_gap
@@ -551,12 +601,7 @@ wrap :: proc(
 // been seen before; the first frame is exact only when every weighted child
 // comes after every unweighted one. Outside a flex it does nothing.
 flexible :: proc(gtx: ^Ctx, weight: f32) {
-	l := gtx.layout
-	if l == nil || len(l.stack) == 0 {
-		return
-	}
-	c := &l.stack[len(l.stack) - 1]
-	if c.kind == .Flex {
+	if c := innermost(gtx.layout); c != nil && c.kind == .Flex {
 		c.next = weight
 	}
 }
@@ -616,12 +661,12 @@ end_flex :: proc(f: ^Flex) {
 		return
 	}
 	l := gtx.layout
-	c := &l.stack[f.index]
+	c := container_at(l, f.index)
 	if c.wrap {
 		end_wrap(f)
 		return
 	}
-	kids := l.children[c.first:]
+	kids := children_of(l, c)
 	gaps := c.gap * f32(max(len(kids) - 1, 0))
 	fixed, slot_weight: f32
 	for k in kids {
@@ -688,8 +733,8 @@ end_flex :: proc(f: ^Flex) {
 end_wrap :: proc(f: ^Flex) {
 	gtx := f.gtx
 	l := gtx.layout
-	c := &l.stack[f.index]
-	kids := l.children[c.first:]
+	c := container_at(l, f.index)
+	kids := children_of(l, c)
 	limit := is_finite(c.cs.max.x) ? c.cs.max.x : INF
 	// Two passes over the lines: measure one, then place it, so a child
 	// can be aligned across its line's height.
@@ -756,13 +801,10 @@ spacer :: proc(gtx: ^Ctx, size: f32, loc := #caller_location) -> Dims {
 // the minimum constraints.
 fill_space :: proc(gtx: ^Ctx, weight: f32 = 1, loc := #caller_location) {
 	l := gtx.layout
-	if l != nil && len(l.stack) > 0 {
-		c := &l.stack[len(l.stack) - 1]
-		if c.kind == .Flex {
-			c.deferred = true
-			flex_add(l, c, {weight = max(weight, 1e-6), slot = true})
-			return
-		}
+	if c := innermost(l); c != nil && c.kind == .Flex {
+		c.deferred = true
+		flex_add(l, c, {weight = max(weight, 1e-6), slot = true})
+		return
 	}
 	p := widget_begin(gtx, 0, loc)
 	widget_end(gtx, &p, {size = gtx.constraints.min})
@@ -771,11 +813,10 @@ fill_space :: proc(gtx: ^Ctx, weight: f32 = 1, loc := #caller_location) {
 // parent_axis reports the innermost container's main axis if it is a flex.
 @(private)
 parent_axis :: proc(gtx: ^Ctx) -> (Axis, bool) {
-	l := gtx.layout
-	if l == nil || len(l.stack) == 0 {
+	c := innermost(gtx.layout)
+	if c == nil {
 		return .Vertical, false
 	}
-	c := &l.stack[len(l.stack) - 1]
 	return c.axis, c.kind == .Flex
 }
 
@@ -793,7 +834,7 @@ overlay_open :: proc(
 	if i < 0 {
 		return i, nil
 	}
-	return i, &gtx.layout.stack[i]
+	return i, container_at(gtx.layout, i)
 }
 
 // stack overlays its children at the origin with loose constraints; its
@@ -916,9 +957,8 @@ overlay :: proc(gtx: ^Ctx, at: Point = {}, cs := Constraints{max = {INF, INF}}, 
 		o.pushed = true
 	}
 	if l := gtx.layout; l != nil {
-		o.stack = l.stack
+		o.stack = stack_detach(l, gtx.allocator)
 		o.scope = l.scope
-		l.stack = make([dynamic]Container, gtx.allocator)
 	}
 	gtx.constraints = cs
 	return o
@@ -932,8 +972,7 @@ end_overlay :: proc(o: ^Overlay) {
 	o.active = false
 	gtx := o.gtx
 	if l := gtx.layout; l != nil {
-		assert(len(l.stack) == 0, "ui: a container inside an overlay was not ended")
-		l.stack = o.stack
+		stack_attach(l, o.stack)
 		l.scope = o.scope
 	}
 	gtx.constraints = o.saved
