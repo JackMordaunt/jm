@@ -18,7 +18,9 @@ Allocation policy: a growing virtual arena is context.allocator. Scripts never
 free; the process exit reclaims everything. Set Options.debug (or ODIN_DEBUG,
 or the environment variable ODIN_SCRIPT_DEBUG=1) to swap in the debug
 allocator from jm:debug, which reports overflow, double free, and write after
-free at exit.
+free at exit, and to wrap context.temp_allocator in a jm:debug Arena, so temp
+memory kept past a free_all reads as 0xDD (or traps under -sanitize:address)
+and a temp allocator that keeps growing is reported.
 
 Logging: one logfmt line per record in <log_dir>/<name>/<name>.log, plus a
 human line on stderr for warning and above. die appends one line to
@@ -72,6 +74,9 @@ State :: struct {
 	name:          string,
 	arena:         virtual.Arena,
 	dbg:           debug.Allocator,
+	temp:          debug.Arena, // wraps the temp allocator when debugging
+	temp_wrapped:  bool,
+	wrapped_temp:  mem.Allocator,
 	debugging:     bool,
 	report_clean:  bool,
 	allocator:     mem.Allocator, // what the script runs under
@@ -109,6 +114,7 @@ init :: proc(opts := Options{}, loc := #caller_location) -> runtime.Context {
 	if state.debugging {
 		debug.init(&state.dbg, state.internals, state.internals)
 		state.allocator = debug.allocator(&state.dbg)
+		state.wrapped_temp, state.temp_wrapped = debug.temp_init(&state.temp, &state.dbg)
 	} else {
 		if err := virtual.arena_init_growing(&state.arena); err != nil {
 			// No arena: fall back to the heap rather than fail before main starts.
@@ -128,6 +134,9 @@ init :: proc(opts := Options{}, loc := #caller_location) -> runtime.Context {
 
 	ctx := context
 	ctx.allocator = state.allocator
+	if state.temp_wrapped {
+		ctx.temp_allocator = state.wrapped_temp
+	}
 	ctx.logger = log.Logger {
 		procedure    = logger_proc,
 		data         = &state,
@@ -264,6 +273,9 @@ finish_with_code :: proc(code: int) {
 		state.log_file = nil
 	}
 	if state.debugging {
+		if state.temp_wrapped {
+			debug.temp_destroy(&state.temp)
+		}
 		if debug.issue_count(&state.dbg) > 0 || state.report_clean {
 			debug.report(&state.dbg)
 		}

@@ -411,7 +411,7 @@ step :: proc(l: ^Loop) {
 		ui.debug_tray_overlays(&l.tray, w.density, &keep_out),
 	)
 	host.present_ms = ui.ms(present_start)
-	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, int(arena.arena.total_used), host))
+	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host))
 	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
 	free_all(context.temp_allocator)
 	// Every event polled before this frame was routed in it.

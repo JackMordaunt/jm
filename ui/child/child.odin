@@ -156,7 +156,7 @@ run :: proc(app: App) {
 
 		ops_bytes := ops.encode(&sc, allocator)
 		// host is what the host said presenting the frame before cost.
-		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), int(arena.arena.total_used), host))
+		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), ops.frame_arena_used(arena), host))
 		keep_out: [2]ops.Rect
 		reply := ui.encode_reply(
 			gtx.wants_frame || tray.open,

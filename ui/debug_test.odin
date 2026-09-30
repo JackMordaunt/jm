@@ -1,6 +1,8 @@
 package ui
 
+import "base:sanitizer"
 import "core:os"
+import jdebug "jm:debug"
 import "jm:ui/ops"
 import "core:testing"
 
@@ -64,6 +66,11 @@ test_frame_memory_kept_past_its_frame_reads_as_poison :: proc(t: ^testing.T) {
 	defer probe_destroy(&p)
 	testing.expect_value(t, m.kept, "kept")
 	probe_frame(&p) // resets the arena the string was in
+	if jdebug.ASAN {
+		// Reading it would trap, which is the point.
+		testing.expect(t, sanitizer.address_is_poisoned(raw_data(m.kept)))
+		return
+	}
 	for b in transmute([]u8)m.kept {
 		testing.expect_value(t, b, u8(ops.FRAME_POISON))
 	}

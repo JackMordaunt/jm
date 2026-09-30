@@ -122,7 +122,7 @@ probe_frame :: proc(p: ^Probe) {
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	build_start := time.tick_now()
 	flatten(&p.scene, &p.frame, {0, 0, p.size.x, p.size.y})
-	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), int(p.arena.arena.total_used)))
+	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), ops.frame_arena_used(&p.arena)))
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
 }

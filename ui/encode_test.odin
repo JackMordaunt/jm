@@ -174,14 +174,14 @@ test_decode_frees_the_frame_before :: proc(t: ^testing.T) {
 	ops.init(&dst, mem.tracking_allocator(&track))
 	testing.expect(t, ops.decode(data, &dst))
 	after_one := track.current_memory_allocated
-	used, reserved := dst.decoded.arena.total_used, dst.decoded.arena.total_reserved
+	used, reserved := ops.frame_arena_used(&dst.decoded), ops.frame_arena_reserved(&dst.decoded)
 	testing.expect(t, used > 0) // the decoded data is in the arena, where the heap does not see it
 	for _ in 0 ..< 50 {
 		testing.expect(t, ops.decode(data, &dst))
 	}
 	testing.expect_value(t, track.current_memory_allocated, after_one) // nothing piled up on the heap
-	testing.expect_value(t, dst.decoded.arena.total_used, used) // each decode reused the last one's space
-	testing.expect_value(t, dst.decoded.arena.total_reserved, reserved)
+	testing.expect_value(t, ops.frame_arena_used(&dst.decoded), used) // each decode reused the last one's space
+	testing.expect_value(t, ops.frame_arena_reserved(&dst.decoded), reserved)
 	ops.destroy(&dst)
 	testing.expect_value(t, len(track.allocation_map), 0) // and destroy frees it all
 }

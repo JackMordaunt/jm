@@ -22,6 +22,17 @@ What it detects, and when:
                          surfaces as WRITE_AFTER_FREE or DOUBLE_FREE naming the resize.
   LEAK                   blocks still live at exit, grouped by allocation site.
 
+What it checks when asked to, so a claim about memory becomes a test:
+
+  SCOPE_LEAK             expect_released: a block allocated since a snapshot is still
+                         live. sweep_failures makes every allocation a procedure
+                         performs fail in turn, and reports what each failure path
+                         leaked, naming the allocation that failed.
+  FORBIDDEN_ALLOC        an allocation, from this allocator or an Arena that names it,
+                         inside a forbid_alloc scope.
+  ARENA_GROWTH           an Arena (arena.odin) holds more than its warning threshold:
+                         something allocates from it in a loop without resetting.
+
 Every issue is printed in full the moment it is detected, because a corrupted heap
 may crash the program before any exit report. The exit report indexes the issues,
 lists leak groups, and prints per-site lifetime statistics: how many allocations a
@@ -61,12 +72,28 @@ Usage (debug builds only, compile with -debug so call chains symbolize):
 	debug.set_phase(&da, "scan")     // label program stages; each change is a checkpoint
 	debug.check(&da)                 // verify every live and quarantined block right now
 
+In tests:
+
+	s := debug.snapshot(&da)
+	parse(input)
+	testing.expect(t, debug.expect_released(&da, s))    // parse cleaned up after itself
+
+	runs, ok := debug.sweep_failures(&da, proc(data: rawptr) { parse((^Input)(data)^) }, &input)
+	testing.expect(t, ok)                              // no failure path leaks
+
+	{
+		debug.forbid_alloc(&da)
+		step(&state)                                   // must not allocate
+	}
+
 Compile-time knobs:
 
 	-define:DEBUG_ALLOC_FAIL_FAST=true     panic at the first issue, after printing it
 	-define:DEBUG_ALLOC_QUARANTINE=<bytes> freed memory held back (default 16 MiB)
 	-define:DEBUG_ALLOC_GUARD=<bytes>      guard size each side of a block (default 16)
 	-define:DEBUG_ALLOC_BACKTRACES=false   skip call-chain capture in allocation-heavy programs
+	-define:DEBUG_ALLOC_FAIL_AT=<n>        fail the nth allocation or resize with .Out_Of_Memory
+	-define:DEBUG_ALLOC_ARENA_WARN=<bytes> an Arena's growth warning threshold (default 64 MiB)
 
 Phase names must outlive the allocator; pass string literals.
 */
@@ -86,6 +113,7 @@ GUARD            :: #config(DEBUG_ALLOC_GUARD, 16)
 QUARANTINE_BYTES :: #config(DEBUG_ALLOC_QUARANTINE, 16 * 1024 * 1024)
 FAIL_FAST        :: #config(DEBUG_ALLOC_FAIL_FAST, false)
 BACKTRACES       :: #config(DEBUG_ALLOC_BACKTRACES, true)
+FAIL_AT          :: #config(DEBUG_ALLOC_FAIL_AT, 0)
 
 // True when the program was built with -sanitize:address.
 ASAN :: .Address in ODIN_SANITIZER_FLAGS
@@ -107,6 +135,9 @@ Issue_Kind :: enum {
 	Bad_Free,
 	Bad_Resize,
 	Size_Mismatch,
+	Scope_Leak,
+	Forbidden_Alloc,
+	Arena_Growth,
 }
 
 // Where and when something happened to a block.
@@ -160,6 +191,20 @@ Issue :: struct {
 	stage:          string, // "free", "resize", "phase change", "checkpoint", "quarantine", "exit"
 	corruption:     Corruption,
 	given_size:     int, // Size_Mismatch
+	scope:          runtime.Source_Code_Location, // Scope_Leak: the snapshot; Forbidden_Alloc: the guard
+	blocks:         int, // Scope_Leak: blocks still live; size is their total
+	injected:       Site, // Scope_Leak in a failure sweep: the allocation made to fail
+	has_injected:   bool,
+	arena:          string, // Forbidden_Alloc from an Arena, Arena_Growth
+	limit:          int, // Arena_Growth: the threshold
+	since:          u64, // Scope_Leak: the snapshot's allocation tick
+}
+
+// A point to compare the allocator against later; see expect_released.
+Snapshot :: struct {
+	seq: u64, // allocation tick
+	ops: u64, // allocations and resizes
+	loc: runtime.Source_Code_Location,
 }
 
 @(private)
@@ -202,6 +247,13 @@ Allocator :: struct {
 	live_bytes:   int,
 	peak_bytes:   int,
 	fail_fast:    bool,
+	ops:          u64, // allocations and resizes, the operations an injected failure counts
+	fail_in:      int, // the allocation or resize that many from now fails; 0 is off
+	injected:     Site,
+	has_injected: bool, // the armed failure has happened
+	no_alloc:     int, // forbid_alloc depth
+	no_alloc_at:  runtime.Source_Code_Location,
+	arenas:       [dynamic]^Arena,
 	mutex:        sync.Mutex,
 	root:         string, // directory of the file that called init; paths print relative to it
 }
@@ -220,9 +272,11 @@ init :: proc(
 	da.sites.allocator = internals
 	da.issues.allocator = internals
 	da.phases.allocator = internals
+	da.arenas.allocator = internals
 	da.phase = "startup"
 	append(&da.phases, da.phase)
 	da.fail_fast = FAIL_FAST
+	da.fail_in = FAIL_AT
 	da.root = normalize(filepath.dir(loc.file_path), internals)
 	when ASAN {
 		asan_owner = da
@@ -250,6 +304,7 @@ destroy :: proc(da: ^Allocator) {
 	delete(da.sites)
 	delete(da.issues)
 	delete(da.phases)
+	delete(da.arenas)
 	delete(da.root, da.internals)
 	da^ = {}
 }
@@ -281,6 +336,178 @@ issue_count :: proc(da: ^Allocator) -> int {
 	return len(da.issues)
 }
 
+// ---- lifetime assertions ----------------------------------------------------------
+
+// Mark a point to check against with expect_released.
+snapshot :: proc(da: ^Allocator, loc := #caller_location) -> Snapshot {
+	sync.guard(&da.mutex)
+	return {seq = da.seq, ops = da.ops, loc = loc}
+}
+
+// Report SCOPE_LEAK, and return false, if any block allocated since s is still live.
+// Blocks allocated before s and resized since are not counted: they are not new.
+expect_released :: proc(da: ^Allocator, s: Snapshot, loc := #caller_location) -> bool {
+	context.allocator = da.internals
+	sync.guard(&da.mutex)
+	return report_unreleased(da, s, "scope check", false, loc)
+}
+
+// Make the nth allocation or resize from now fail with .Out_Of_Memory; 0 disarms.
+fail_at :: proc(da: ^Allocator, n: int) {
+	sync.guard(&da.mutex)
+	da.fail_in = max(n, 0)
+	da.has_injected = false
+}
+
+/*
+Run body once cleanly, counting its allocations and resizes, then once more for each
+of them with that one failing. After every run, whatever body allocated and left live
+is a SCOPE_LEAK that names the allocation made to fail: an error path that forgot to
+free what came before it. body must be repeatable, and must not hand what it
+allocates to anything that outlives it.
+
+runs is how many failures were injected; ok is false if any run leaked. Stops early
+once a run finishes without reaching its armed failure.
+*/
+sweep_failures :: proc(
+	da: ^Allocator,
+	body: proc(data: rawptr),
+	data: rawptr = nil,
+	loc := #caller_location,
+) -> (
+	runs: int,
+	ok: bool,
+) {
+	fail_at(da, 0)
+	s := snapshot(da, loc)
+	body(data)
+	n: int
+	n, ok = settle(da, s, "failure sweep, clean run", loc)
+	for i in 1 ..= n {
+		s = snapshot(da, loc)
+		fail_at(da, i)
+		body(data)
+		_, clean := settle(da, s, "failure sweep", loc)
+		ok = clean && ok
+		if !hit_injection(da) {
+			break
+		}
+		runs += 1
+	}
+	return
+}
+
+// After one sweep run: disarm, count its operations, and check what it left live.
+@(private)
+settle :: proc(
+	da: ^Allocator,
+	s: Snapshot,
+	stage: string,
+	loc: runtime.Source_Code_Location,
+) -> (
+	ops: int,
+	clean: bool,
+) {
+	context.allocator = da.internals
+	sync.guard(&da.mutex)
+	da.fail_in = 0
+	return int(da.ops - s.ops), report_unreleased(da, s, stage, da.has_injected, loc)
+}
+
+@(private)
+hit_injection :: proc(da: ^Allocator) -> bool {
+	sync.guard(&da.mutex)
+	return da.has_injected
+}
+
+// Open a scope in which any allocation or resize, from this allocator or an Arena
+// that names it, is FORBIDDEN_ALLOC. Closes when the calling scope ends. The scope
+// is the allocator's, not the thread's.
+@(deferred_in = forbid_alloc_end)
+forbid_alloc :: proc(da: ^Allocator, loc := #caller_location) {
+	forbid_alloc_begin(da, loc)
+}
+
+forbid_alloc_begin :: proc(da: ^Allocator, loc := #caller_location) {
+	sync.guard(&da.mutex)
+	if da.no_alloc == 0 {
+		da.no_alloc_at = loc
+	}
+	da.no_alloc += 1
+}
+
+forbid_alloc_end :: proc(da: ^Allocator, loc := #caller_location) {
+	sync.guard(&da.mutex)
+	assert(da.no_alloc > 0, "forbid_alloc_end without forbid_alloc_begin", loc)
+	da.no_alloc -= 1
+}
+
+// Count an allocation or resize, flag it inside a no-allocation scope, and say
+// whether it may go ahead: false when it is the one an armed failure is waiting for.
+@(private)
+admit :: proc(da: ^Allocator, size: int, loc: runtime.Source_Code_Location) -> bool {
+	da.ops += 1
+	if da.no_alloc > 0 {
+		raise(
+			da,
+			Issue {
+				kind = .Forbidden_Alloc,
+				size = size,
+				op = make_site(da, loc),
+				scope = da.no_alloc_at,
+				stage = "allocation",
+			},
+		)
+	}
+	if da.fail_in == 0 {
+		return true
+	}
+	da.fail_in -= 1
+	if da.fail_in > 0 {
+		return true
+	}
+	da.injected = make_site(da, loc)
+	da.has_injected = true
+	return false
+}
+
+// Raise SCOPE_LEAK for the blocks allocated since s that are still live.
+@(private)
+report_unreleased :: proc(
+	da: ^Allocator,
+	s: Snapshot,
+	stage: string,
+	injected: bool,
+	loc: runtime.Source_Code_Location,
+) -> bool {
+	iss := Issue {
+		kind         = .Scope_Leak,
+		op           = make_site(da, loc),
+		scope        = s.loc,
+		stage        = stage,
+		has_injected = injected,
+		injected     = da.injected,
+	}
+	for user, l in da.live {
+		if l.alloc.seq <= s.seq {
+			continue
+		}
+		if !iss.has_alloc || l.alloc.seq < iss.alloc.seq {
+			iss.ptr = user
+			iss.alloc = l.alloc
+			iss.has_alloc = true
+		}
+		iss.blocks += 1
+		iss.size += l.size
+	}
+	if iss.blocks == 0 {
+		return true
+	}
+	iss.since = s.seq
+	raise(da, iss)
+	return false
+}
+
 // ---- allocator ------------------------------------------------------------------
 
 allocator_proc :: proc(
@@ -301,6 +528,9 @@ allocator_proc :: proc(
 
 	switch mode {
 	case .Alloc, .Alloc_Non_Zeroed:
+		if !admit(da, size, loc) {
+			return nil, .Out_Of_Memory
+		}
 		return do_alloc(da, size, alignment, mode == .Alloc, loc)
 	case .Free:
 		return nil, do_free(da, old_memory, old_size, loc)
@@ -308,6 +538,10 @@ allocator_proc :: proc(
 		do_free_all(da, loc)
 		return nil, nil
 	case .Resize, .Resize_Non_Zeroed:
+		// A resize to zero is a free, which never fails.
+		if size > 0 && !admit(da, size, loc) {
+			return nil, .Out_Of_Memory
+		}
 		return do_resize(da, old_memory, old_size, size, alignment, mode == .Resize, loc)
 	case .Query_Features:
 		if set := (^mem.Allocator_Mode_Set)(old_memory); set != nil {
@@ -893,10 +1127,48 @@ asan_death :: proc "c" (
 		}
 		return
 	}
+	for ar in da.arenas {
+		if describe_arena(da, ar, a) {
+			return
+		}
+	}
 	fmt.eprintln(
 		"   not inside any block this allocator has handed out or is holding in quarantine",
 	)
 	fmt.eprintfln("   phase=%s  tick=%d  issues so far=%d", da.phase, da.seq, len(da.issues))
+}
+
+// Describe the address if it lies in one of the arena's blocks.
+@(private)
+describe_arena :: proc(da: ^Allocator, ar: ^Arena, a: uintptr) -> bool {
+	for b := curr(ar); b != nil; {
+		base, used, limit, prev := view(ar, b)
+		lo := uintptr(base)
+		if a < lo || a >= lo + uintptr(limit) {
+			b = prev
+			continue
+		}
+		fmt.eprintfln(
+			"   %d byte(s) into a block of arena '%s', which has handed out its first %d",
+			a - lo,
+			ar.name,
+			used,
+		)
+		if ar.resets > 0 {
+			print_site(da, "reset     ", ar.last_reset)
+		}
+		if a >= lo + uintptr(used) {
+			fmt.eprintln(
+				"   meaning    this memory is not handed out: a reset released it, or it never was. A pointer into the arena outlived the reset above (a string or slice kept in a longer-lived struct); clone it into an allocator that lives as long as its holder.",
+			)
+		} else {
+			fmt.eprintln(
+				"   meaning    memory the arena has handed out and not reset; the arena did not poison it, so look at what else poisons this range.",
+			)
+		}
+		return true
+	}
+	return false
 }
 
 @(private)
@@ -934,6 +1206,12 @@ kind_name :: proc(k: Issue_Kind) -> string {
 		return "BAD_RESIZE"
 	case .Size_Mismatch:
 		return "SIZE_MISMATCH"
+	case .Scope_Leak:
+		return "SCOPE_LEAK"
+	case .Forbidden_Alloc:
+		return "FORBIDDEN_ALLOC"
+	case .Arena_Growth:
+		return "ARENA_GROWTH"
 	}
 	return "UNKNOWN"
 }
@@ -955,6 +1233,9 @@ print_issue :: proc(da: ^Allocator, iss: Issue) {
 		label := "moved by  " if iss.by_resize else "freed     "
 		print_site(da, label, iss.first_free)
 	}
+	if iss.has_injected {
+		print_site(da, "failed    ", iss.injected)
+	}
 	op_label := "detected  "
 	#partial switch iss.kind {
 	case .Double_Free, .Bad_Free:
@@ -963,6 +1244,8 @@ print_issue :: proc(da: ^Allocator, iss: Issue) {
 		op_label = "this resize"
 	case .Size_Mismatch:
 		op_label = "freed at  "
+	case .Forbidden_Alloc, .Arena_Growth:
+		op_label = "allocated "
 	}
 	print_site(da, op_label, iss.op)
 
@@ -1029,6 +1312,41 @@ print_issue :: proc(da: ^Allocator, iss: Issue) {
 		)
 		fmt.eprintln(
 			"   meaning    delete() was given a slice whose length differs from the allocation, usually a re-sliced or truncated slice. Delete the original slice, or keep the original length.",
+		)
+	case .Scope_Leak:
+		fmt.eprintfln("   snapshot   %s:%d", display_path(da, iss.scope.file_path), iss.scope.line)
+		fmt.eprintfln(
+			"   damage     %d block(s), %d b, allocated after the snapshot are still live:",
+			iss.blocks,
+			iss.size,
+		)
+		print_leak_groups(da, iss.since, 10, 8)
+		if iss.has_injected {
+			fmt.eprintln(
+				"   meaning    the error path taken when the allocation at 'failed' returned .Out_Of_Memory leaks what was allocated before it. On that path free, in reverse order, everything already allocated, or defer the cleanup and cancel it once construction succeeds.",
+			)
+		} else {
+			fmt.eprintln(
+				"   meaning    blocks allocated between the snapshot and this check outlived it. Free them before the scope ends; if the caller is meant to own them, take the snapshot around a call that also releases them.",
+			)
+		}
+	case .Forbidden_Alloc:
+		fmt.eprintfln("   guard      %s:%d", display_path(da, iss.scope.file_path), iss.scope.line)
+		if iss.arena != "" {
+			fmt.eprintfln("   arena      '%s'", iss.arena)
+		}
+		fmt.eprintln(
+			"   meaning    this path is declared allocation-free by the guard above, but it allocated here. Use a fixed or caller-provided buffer, reserve capacity before the guard, or move the allocation out of the guarded scope.",
+		)
+	case .Arena_Growth:
+		fmt.eprintfln(
+			"   damage     arena '%s' holds %d b, past its warning threshold of %d b",
+			iss.arena,
+			iss.size,
+			iss.limit,
+		)
+		fmt.eprintln(
+			"   meaning    an arena's memory comes back only at a reset, so something allocates from it in a loop without resetting. Reset per iteration (runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD() for the temp allocator, free_all otherwise), or raise warn_bytes if this size is expected.",
 		)
 	}
 }
@@ -1124,6 +1442,17 @@ report :: proc(
 		fmt.eprint(p)
 	}
 	fmt.eprintln()
+	for a in da.arenas {
+		fmt.eprintf("arena %s: resets=%d peak_bytes=%d", a.name, a.resets, a.peak)
+		if a.resets > 0 {
+			fmt.eprintf(
+				" last_reset=%s:%d",
+				display_path(da, a.last_reset.loc.file_path),
+				a.last_reset.loc.line,
+			)
+		}
+		fmt.eprintln()
+	}
 
 	if len(da.issues) > 0 {
 		fmt.eprintfln(
@@ -1164,9 +1493,19 @@ report :: proc(
 
 @(private)
 print_leaks :: proc(da: ^Allocator, max_groups, max_frames: int) {
+	fmt.eprintfln("-- leaks (%d block(s)) --", len(da.live))
+	print_leak_groups(da, 0, max_groups, max_frames)
+}
+
+// Group the live blocks allocated after tick `since` by site and print them.
+@(private)
+print_leak_groups :: proc(da: ^Allocator, since: u64, max_groups, max_frames: int) {
 	groups := make(map[Site_Key]Leak_Group, da.internals)
 	defer delete(groups)
 	for _, l in da.live {
+		if l.alloc.seq <= since {
+			continue
+		}
 		key := Site_Key {
 			file = l.alloc.loc.file_path,
 			line = l.alloc.loc.line,
@@ -1207,7 +1546,6 @@ print_leaks :: proc(da: ^Allocator, max_groups, max_frames: int) {
 		return a.bytes > b.bytes
 	})
 
-	fmt.eprintfln("-- leaks (%d group(s), %d block(s)) --", len(list), len(da.live))
 	for g, i in list {
 		if i >= max_groups {
 			fmt.eprintfln(
