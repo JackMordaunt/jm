@@ -96,8 +96,9 @@ just's own release, and SDL3 has to be built from source there.
 | `ui/render/fuzz` | the `jm:ui/render` suite for `jm:fuzz`: composed frames checked against whole renders |
 | `git/fuzz` | the `jm:git` suite for `jm:fuzz`: random operation sequences over two clones of a hub, held against a model that knows no merges |
 
-`tools/odin-run` is the runner. Every package reads on its own; the doc
-comment at the top of each file is the reference.
+`tools/odin-run` is the runner. `tools/mkpatch` makes the compressed asset
+and the patches `jm:selfupdate` looks for, in a release's CI. Every package
+reads on its own; the doc comment at the top of each file is the reference.
 
 ## Conventions
 
