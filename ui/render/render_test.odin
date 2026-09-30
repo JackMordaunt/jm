@@ -176,6 +176,14 @@ test_text :: proc(t: ^testing.T) {
 	fm := ui.metrics(s, font, 32)
 	testing.expect(t, fm.ascent > 0 && fm.descent > 0)
 
+	// Clusters are byte offsets into the UTF-8 text: é is 2 bytes, € 3.
+	multi := ui.shape(s, font, 32, "é€a", context.allocator)
+	defer delete(multi.glyphs)
+	testing.expect_value(t, len(multi.glyphs), 3)
+	for want, i in ([]u32{0, 2, 5}) {
+		testing.expect_value(t, multi.glyphs[i].cluster, want)
+	}
+
 	id := ops.add_run(&fx.scene, run)
 	origin := ops.Point{4, 44}
 	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}})

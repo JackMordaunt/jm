@@ -39,6 +39,7 @@ shape :: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocato
 	n := int(bl.glyph_buffer_get_size(&gb))
 	ids := bl.glyph_buffer_get_content(&gb)
 	place := bl.glyph_buffer_get_placement_data(&gb)
+	info := bl.glyph_buffer_get_info_data(&gb)
 	if n == 0 || ids == nil {
 		return run
 	}
@@ -58,7 +59,11 @@ shape :: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocato
 			off = {f64(p.placement.x) * fm.m00, f64(p.placement.y) * fm.m11}
 			adv = {f64(p.advance.x) * fm.m00, f64(p.advance.y) * fm.m11}
 		}
-		run.glyphs[i] = {id, f32(pen.x + off.x), f32(pen.y + off.y)}
+		cluster: u32
+		if info != nil {
+			cluster = mem.ptr_offset(info, i).cluster
+		}
+		run.glyphs[i] = {id, cluster, f32(pen.x + off.x), f32(pen.y + off.y)}
 		pen += adv
 	}
 	run.advance = f32(pen.x)

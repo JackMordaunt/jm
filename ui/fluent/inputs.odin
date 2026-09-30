@@ -273,7 +273,7 @@ input :: proc(
 	r.focused = c.focused && !c.disabled
 	str := string(s.buf[:])
 	t := shape_style(gtx, str, m.style)
-	caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], m.style).width : t.width
+	caret := ui.caret_x(t.run, str, s.cursor)
 	scroll: f32
 	if sc != nil {
 		sc.x = min(sc.x, max(t.width + CARET_W - inner, 0))
@@ -415,19 +415,15 @@ line_of :: proc(lines: []Line, cursor: int) -> int {
 @(private = "file")
 line_hit :: proc(gtx: ^ui.Ctx, str: string, l: Line, st: tok.Type_Style, x: f32) -> int {
 	line := str[l.start:l.end]
-	best, best_d := 0, abs(x)
-	for _, i in line {
-		if i == 0 {
-			continue
-		}
-		if d := abs(x - shape_style(gtx, line[:i], st).width); d < best_d {
-			best, best_d = i, d
-		}
-	}
-	if abs(x - shape_style(gtx, line, st).width) < best_d {
-		best = len(line)
-	}
-	return l.start + best
+	return l.start + ui.caret_at(shape_style(gtx, line, st).run, line, x)
+}
+
+// line_caret_x is the x of byte offset cursor within line l of str, as
+// ui.caret_x for one line at a style.
+@(private = "file")
+line_caret_x :: proc(gtx: ^ui.Ctx, str: string, l: Line, st: tok.Type_Style, cursor: int) -> f32 {
+	line := str[l.start:l.end]
+	return ui.caret_x(shape_style(gtx, line, st).run, line, cursor - l.start)
 }
 
 // Textarea_Scroll is a textarea's vertical scroll, kept so the caret
@@ -505,7 +501,7 @@ textarea :: proc(
 					r.changed = true
 				case .Up, .Down:
 					li := line_of(lines, s.cursor)
-					x := shape_style(gtx, str[lines[li].start:s.cursor], m.style).width
+					x := line_caret_x(gtx, str, lines[li], m.style, s.cursor)
 					to := li + (e.key == .Up ? -1 : 1)
 					if to >= 0 && to < len(lines) {
 						s.cursor = line_hit(gtx, str, lines[to], m.style, x)
@@ -572,7 +568,7 @@ textarea :: proc(
 		}
 	}
 	if r.focused {
-		cx := shape_style(gtx, str[lines[li].start:s.cursor], m.style).width
+		cx := line_caret_x(gtx, str, lines[li], m.style, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{text_x + cx, text_y + f32(li) * lh - scroll + 2, CARET_W, lh - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)

@@ -97,8 +97,9 @@ search_bar :: proc(
 		focused, hovered, bar_pressed = st.focused, st.hovered, st.pressed
 	}
 	str := string(s.buf[:])
-	full := shape_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT).width
-	caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], tok.SEARCH_BAR_INPUT_TEXT_FONT).width : full
+	typed := shape_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT)
+	full := typed.width
+	caret := ui.caret_x(typed.run, str, s.cursor)
 	if live {
 		vs.scroll = max(clamp(min(vs.scroll, max(full + 2 - inner, 0)), caret + 2 - inner, caret), 0)
 		scroll = vs.scroll

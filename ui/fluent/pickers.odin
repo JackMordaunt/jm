@@ -578,7 +578,7 @@ combobox :: proc(
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {m.pad_start, y_text}, k.placeholder)
 	}
 	if typed && c.focused && !c.disabled {
-		caret := s.cursor < len(s.buf) ? shape_style(gtx, query[:s.cursor], m.style).width : t.width
+		caret := ui.caret_x(t.run, query, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{m.pad_start + caret, y_text + 2, 1, m.style.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
@@ -1158,7 +1158,7 @@ search_box :: proc(
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {left, y_text}, k.placeholder)
 	}
 	if r.focused {
-		caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], tst).width : t.width
+		caret := ui.caret_x(t.run, str, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{left + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
@@ -1373,7 +1373,7 @@ tag_picker :: proc(
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {x, y_text}, k.placeholder)
 	}
 	if c.focused && !c.disabled {
-		caret := s.cursor < len(s.buf) ? shape_style(gtx, query[:s.cursor], tst).width : t.width
+		caret := ui.caret_x(t.run, query, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{x + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)

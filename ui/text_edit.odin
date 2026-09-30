@@ -67,23 +67,9 @@ text_key :: proc(s: ^Text_State, k: Key) -> bool {
 	return false
 }
 
-// text_hit returns the rune boundary nearest x (in text space). It shapes
-// each prefix, which is exact for any shaper and cheap for one line.
+// text_hit returns the rune boundary nearest x (in text space), from one
+// shape of the whole line (see caret_at).
 text_hit :: proc(gtx: ^Ctx, s: ^Text_State, size: f32, x: f32) -> int {
 	str := string(s.buf[:])
-	best, best_d := 0, abs(x)
-	for _, i in str {
-		if i == 0 {
-			continue
-		}
-		adv := shape(gtx.shaper, gtx.font, size, str[:i], gtx.allocator).advance
-		if d := abs(x - adv); d < best_d {
-			best, best_d = i, d
-		}
-	}
-	end := shape(gtx.shaper, gtx.font, size, str, gtx.allocator).advance
-	if abs(x - end) < best_d {
-		best = len(str)
-	}
-	return best
+	return caret_at(shape(gtx.shaper, gtx.font, size, str, gtx.allocator), str, x)
 }

@@ -340,8 +340,9 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 	fi.hovered, fi.focused = st.hovered, st.focused
 	// Horizontal scroll that keeps the caret in view, as ui.text_field.
 	str := string(s.buf[:])
-	full := shape_style(gtx, str, g.input_font).width
-	caret := s.cursor < len(s.buf) ? shape_style(gtx, str[:s.cursor], g.input_font).width : full
+	t := shape_style(gtx, str, g.input_font)
+	full := t.width
+	caret := ui.caret_x(t.run, str, s.cursor)
 	cs.x = min(cs.x, max(full + CARET_W - g.inner, 0))
 	cs.x = max(clamp(cs.x, caret + CARET_W - g.inner, caret), 0)
 	fi.scroll = cs.x
@@ -450,14 +451,15 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 		draw_text(gtx, g.suf, {g.text_r - g.suf.width, input_y}, fade(col.suffix, affix_a))
 	}
 	ops.clip_push(gtx.scene, ops.Rect{g.in_x, field.y, g.inner, field.h})
+	t := shape_style(gtx, str, g.input_font)
 	if len(str) > 0 {
-		draw_text(gtx, shape_style(gtx, str, g.input_font), {g.in_x - fi.scroll, input_y}, col.input)
+		draw_text(gtx, t, {g.in_x - fi.scroll, input_y}, col.input)
 	}
 	if ph_a > 0 && o.placeholder != "" {
 		draw_text(gtx, shape_style(gtx, o.placeholder, g.input_font), {g.in_x, input_y}, fade(col.placeholder, ph_a))
 	}
 	if fi.focused && !fi.disabled && !o.read_only {
-		cw := shape_style(gtx, str[:s.cursor], g.input_font).width
+		cw := ui.caret_x(t.run, str, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{g.in_x + cw - fi.scroll, input_y + 2, CARET_W, g.input_font.line_height - 4}, col.caret)
 	}
 	ops.clip_pop(gtx.scene)
