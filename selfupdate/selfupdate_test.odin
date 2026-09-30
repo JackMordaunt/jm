@@ -1,5 +1,6 @@
 package selfupdate
 
+import "core:bytes"
 import "core:crypto/ed25519"
 import "core:crypto/hash"
 import "core:encoding/hex"
@@ -9,6 +10,7 @@ import "core:testing"
 import "core:time"
 
 import "jm:path"
+import "jm:zstd"
 
 // The tests run `run` under the runner's tracking allocator on purpose: a
 // leak in the package fails the test. The helpers' own scratch goes on the
@@ -228,4 +230,185 @@ key_from_hex_fills_a_caller_buffer :: proc(t: ^testing.T) {
 	testing.expect_value(t, key[1], 0xff)
 	testing.expect_value(t, key[31], 0xab)
 	testing.expect(t, !key_from_hex("zz", key[:]), "wrong length")
+}
+
+// ---- routes: patch, compressed asset, full download ---------------------
+
+File :: struct {
+	name: string,
+	body: []byte,
+}
+
+// publish writes files beside the asset and signs sums over all of them.
+publish :: proc(t: ^testing.T, r: ^Release, asset, body: string, files: ..File) {
+	ta := context.temp_allocator
+	b := strings.builder_make(ta)
+	all := make([dynamic]File, ta)
+	append(&all, File{asset, transmute([]byte)body})
+	append(&all, ..files)
+	for f in all {
+		testing.expect_value(t, path.write(path.join(r.dir, f.name, allocator = ta), string(f.body)), nil)
+		digest := hash.hash_bytes(.SHA256, f.body, ta)
+		strings.write_string(&b, string(hex.encode(digest, ta)))
+		strings.write_string(&b, "  ")
+		strings.write_string(&b, f.name)
+		strings.write_byte(&b, '\n')
+	}
+	sign_sums(t, r, strings.to_string(b))
+}
+
+// binary is a stand-in executable large enough that a patch is small beside
+// it: seeded noise, which does not compress on its own.
+binary :: proc(n: int, seed: u64) -> string {
+	b := make([]byte, n, context.temp_allocator)
+	x := seed
+	for &c in b {
+		x = x * 6364136223846793005 + 1442695040888963407
+		c = byte(x >> 56)
+	}
+	return string(b)
+}
+
+// rebuilt is old with a stretch changed in the middle, as the next build is.
+rebuilt :: proc(old: string) -> string {
+	mid := len(old) / 2
+	return strings.concatenate({old[:mid], binary(2000, 77), old[mid + 1000:]}, context.temp_allocator)
+}
+
+zst_of :: proc(t: ^testing.T, body: string) -> File {
+	buf := make([]byte, zstd.compress_bound(len(body)), context.temp_allocator)
+	packed, err := zstd.compress(buf, transmute([]byte)body, {level = 19})
+	testing.expect_value(t, err, nil)
+	return {"tool" + ZST_EXT, packed}
+}
+
+patch_of :: proc(t: ^testing.T, old, new: string, from := "") -> File {
+	out: bytes.Buffer
+	bytes.buffer_init_allocator(&out, 0, 0, context.temp_allocator)
+	testing.expect_value(t, zstd.diff(bytes.buffer_to_stream(&out), transmute([]byte)old, transmute([]byte)new), nil)
+	from_hex := from
+	if from_hex == "" {
+		from_hex = string(hex.encode(hash.hash_string(.SHA256, old, context.temp_allocator), context.temp_allocator))
+	}
+	name := make([]byte, PATH_CAP, context.temp_allocator)
+	return {patch_name(name, "tool", from_hex), bytes.buffer_to_bytes(&out)}
+}
+
+// expect_update runs Apply and checks the swap happened by the route expected and
+// left no download behind.
+expect_update :: proc(t: ^testing.T, r: Release, exe, new: string, via: Via, loc := #caller_location) -> Result {
+	res := run(config(r, exe, "", .Apply))
+	testing.expect_value(t, res.outcome, Outcome.Applied, loc = loc)
+	testing.expect_value(t, res.via, via, loc = loc)
+	testing.expect(t, read(exe) == new, "the new binary is installed", loc = loc)
+	testing.expect(t, !os.exists(strings.concatenate({exe, ".dl"}, context.temp_allocator)), "no download left", loc = loc)
+	testing.expect(t, !os.exists(strings.concatenate({exe, ".new"}, context.temp_allocator)), "no temp file left", loc = loc)
+	return res
+}
+
+@(test)
+apply_prefers_the_patch_from_this_build :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old := binary(200_000, 1)
+	new := rebuilt(old)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	p := patch_of(t, old, new)
+	testing.expectf(t, len(p.body) < 8000, "patch is %d bytes", len(p.body))
+	publish(t, &r, "tool", new, zst_of(t, new), p)
+	exe := exe_file(t, root, old)
+	res := expect_update(t, r, exe, new, .Patch)
+	testing.expect_value(t, message(&res), "updated via patch")
+}
+
+@(test)
+a_patch_for_another_build_is_not_fetched :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old := binary(100_000, 2)
+	new := rebuilt(old)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	other := binary(100_000, 3)
+	publish(t, &r, "tool", new, zst_of(t, new), patch_of(t, other, new))
+	exe := exe_file(t, root, old)
+	res := expect_update(t, r, exe, new, .Compressed)
+	testing.expect_value(t, message(&res), "updated via compressed asset")
+}
+
+@(test)
+a_tampered_patch_is_never_decoded :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old := binary(100_000, 4)
+	new := rebuilt(old)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	p := patch_of(t, old, new)
+	publish(t, &r, "tool", new, zst_of(t, new), p)
+	// Rewritten after signing: zstd must not be handed it.
+	testing.expect_value(t, path.write(path.join(r.dir, p.name, allocator = context.temp_allocator), "not a patch"), nil)
+	exe := exe_file(t, root, old)
+	res := expect_update(t, r, exe, new, .Compressed)
+	testing.expect_value(t, message(&res), "updated via compressed asset (patch: does not match its published hash)")
+}
+
+@(test)
+a_signed_patch_that_does_not_decode_falls_back :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old := binary(100_000, 5)
+	new := rebuilt(old)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	p := patch_of(t, old, new)
+	p.body = transmute([]byte)binary(len(p.body), 6)
+	publish(t, &r, "tool", new, zst_of(t, new), p)
+	exe := exe_file(t, root, old)
+	res := expect_update(t, r, exe, new, .Compressed)
+	testing.expect_value(t, message(&res), "updated via compressed asset (patch: does not decode)")
+}
+
+@(test)
+a_patch_to_the_wrong_binary_falls_back :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old := binary(100_000, 7)
+	new := rebuilt(old)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	// Signed and decodable, but to something other than the asset.
+	p := patch_of(t, old, rebuilt(new))
+	publish(t, &r, "tool", new, p)
+	exe := exe_file(t, root, old)
+	res := expect_update(t, r, exe, new, .Full)
+	testing.expect_value(t, message(&res), "updated via full download (patch: decodes to the wrong binary)")
+}
+
+@(test)
+a_damaged_compressed_asset_falls_back_to_the_full_one :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	new := binary(50_000, 8)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	zst := zst_of(t, new)
+	zst.body = zst.body[:len(zst.body) / 2]
+	publish(t, &r, "tool", new, zst)
+	exe := exe_file(t, root, "old binary")
+	res := expect_update(t, r, exe, new, .Full)
+	testing.expect_value(t, message(&res), "updated via full download (compressed asset: does not decode)")
+}
+
+@(test)
+every_route_failing_leaves_the_executable :: proc(t: ^testing.T) {
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old := binary(50_000, 9)
+	new := rebuilt(old)
+	r := make_release(t, root, "tool", "placeholder", "v1.1.0")
+	publish(t, &r, "tool", new, zst_of(t, new), patch_of(t, old, new))
+	for name in ([]string{"tool", "tool" + ZST_EXT, patch_of(t, old, new).name}) {
+		testing.expect_value(t, os.remove(path.join(r.dir, name, allocator = context.temp_allocator)), nil)
+	}
+	exe := exe_file(t, root, old)
+	res := run(config(r, exe, "", .Apply))
+	testing.expect_value(t, res.outcome, Outcome.Failed)
+	testing.expect_value(t, message(&res), "cannot update tool: download failed")
+	testing.expect(t, read(exe) == old, "the old binary stays")
 }

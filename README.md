@@ -67,6 +67,7 @@ just's own release, and SDL3 has to be built from source there.
 | `tar`     | `read`, `extract`: `git archive` output without a tar program |
 | `sqlite3` | `open`, `exec`, `exec_args`, `query`/`next`, `prepare`, `transact` over a statically linked SQLite |
 | `zstd`    | `compress`, `decompress`, their `_stream` forms, and binary patches with `diff` and `patch`, over a statically linked zstd |
+| `selfupdate` | `run`: a distributed binary checks a signed release and replaces itself, by patch, compressed asset or full download |
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
 | `ui/ops`  | the recorded drawing: geometry, colour, paint, shapes, glyph runs and the scene ops a ui proc emits into a `Scene`, with their wire form (`encode`) and text form (`dump`); everything above shares these types |
 | `ui`      | immediate-mode UI: `ops.Scene` → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
