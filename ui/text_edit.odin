@@ -15,6 +15,20 @@ Text_State :: struct {
 	buf:    [dynamic]u8,
 	cursor: int,
 	anchor: int,
+	drag:   Text_Drag, // the pointer gesture in progress, see text_follow_pointer
+}
+
+// Text_Drag is a press-and-drag on text: what unit a double or triple
+// click selects by, and the span the press first selected, which the drag
+// keeps selected as it extends either way.
+Text_Drag :: struct {
+	active: bool,
+	unit:   enum u8 {
+		Grapheme,
+		Word,
+		Line,
+	},
+	lo, hi: int,
 }
 
 // text_string views the buffer as a string; valid until the next edit.
@@ -364,4 +378,74 @@ text_word_at :: proc(words: []int, i: int) -> (lo, hi: int) {
 		return words[len(words) - 2], words[len(words) - 1]
 	}
 	return i, i
+}
+
+// text_follow_pointer applies a pointer event on s laid out as p, at pt in p's
+// space (the widget maps its own coordinates, scroll included):
+//
+//	Press         the caret to the nearest stop; Shift extends the selection
+//	double press  the word there (text_word_at), a run of spaces being one
+//	triple press  the line: the paragraph between newlines in a textarea
+//	Move          while pressed, extends the selection from the press, by
+//	              the unit it selected: a drag after a double click grows
+//	              whole words
+//	Release       ends the drag
+//
+// Only the left button selects. Stops come from text_stops.
+text_follow_pointer :: proc(s: ^Text_State, p: Paragraph, e: Event, pt: ops.Point, stops: Text_Stops) {
+	text_clamp(s)
+	#partial switch e.kind {
+	case .Press:
+		if e.button != .Left {
+			return
+		}
+		i := paragraph_hit(p, pt)
+		switch {
+		case e.clicks >= 3:
+			lo, hi := line_at(s, i)
+			text_select(s, lo, hi)
+			s.drag = {true, .Line, lo, hi}
+		case e.clicks == 2:
+			lo, hi := text_word_at(stops.words, i)
+			text_select(s, lo, hi)
+			s.drag = {true, .Word, lo, hi}
+		case:
+			text_move(s, i, .Shift in e.mods)
+			s.drag = {true, .Grapheme, s.anchor, s.anchor}
+		}
+	case .Move:
+		if !s.drag.active {
+			return
+		}
+		i := paragraph_hit(p, pt)
+		lo, hi := i, i
+		switch s.drag.unit {
+		case .Grapheme:
+		case .Word:
+			lo, hi = text_word_at(stops.words, i)
+		case .Line:
+			lo, hi = line_at(s, i)
+		}
+		// Keep what the press selected, and grow toward the pointer.
+		if lo < s.drag.lo {
+			text_select(s, s.drag.hi, lo)
+		} else {
+			text_select(s, s.drag.lo, max(hi, s.drag.hi))
+		}
+	case .Release:
+		s.drag.active = false
+	}
+}
+
+// line_at is the span between the newlines around byte offset i.
+@(private = "file")
+line_at :: proc(s: ^Text_State, i: int) -> (lo, hi: int) {
+	lo, hi = i, i
+	for lo > 0 && s.buf[lo - 1] != '\n' {
+		lo -= 1
+	}
+	for hi < len(s.buf) && s.buf[hi] != '\n' {
+		hi += 1
+	}
+	return
 }

@@ -314,9 +314,11 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 			st.focused = true
 		case .Blur:
 			st.focused = false
-		case .Press:
-			r.pressed = true
-			ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), g.input_font), {e.pos.x - g.in_x + cs.x, 0}))
+		case .Press, .Move, .Release:
+			if e.kind == .Press {
+				r.pressed = true
+			}
+			ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), g.input_font), e, {e.pos.x - g.in_x + cs.x, 0}, text_stops(gtx, s, g.input_font))
 		case .Text, .Paste:
 			r.changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, g.input_font), o.read_only)
 		case .Key:

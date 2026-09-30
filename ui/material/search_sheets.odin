@@ -257,12 +257,15 @@ search_text_events :: proc(
 		case .Blur:
 			st.focused = false
 			blurred = true
-		case .Press:
-			st.pressed = true
-			pressed = true
-			ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tok.SEARCH_BAR_INPUT_TEXT_FONT), {e.pos.x - pad_l + scroll, 0}))
-		case .Release:
-			st.pressed = false
+		case .Press, .Move, .Release:
+			if e.kind == .Press {
+				st.pressed = true
+				pressed = true
+			} else if e.kind == .Release {
+				st.pressed = false
+			}
+			font := tok.SEARCH_BAR_INPUT_TEXT_FONT
+			ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), font), e, {e.pos.x - pad_l + scroll, 0}, text_stops(gtx, s, font))
 		case .Text, .Paste:
 			changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT))
 		case .Key:

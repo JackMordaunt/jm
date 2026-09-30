@@ -252,8 +252,8 @@ input :: proc(
 	if c.st != nil {
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
-			case .Press:
-				ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - left + sc.x, 0}))
+			case .Press, .Move, .Release:
+				ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), m.style), e, {e.pos.x - left + sc.x, 0}, text_stops(gtx, s, m.style))
 			case .Text, .Paste:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:
@@ -394,8 +394,8 @@ textarea :: proc(
 	if c.st != nil {
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
-			case .Press:
-				ui.text_move(s, ui.paragraph_hit(para, {e.pos.x - text_x, e.pos.y - text_y + sc.y}))
+			case .Press, .Move, .Release:
+				ui.text_follow_pointer(s, para, e, {e.pos.x - text_x, e.pos.y - text_y + sc.y}, text_stops(gtx, s, m.style))
 			case .Scroll:
 				sc.y += e.scroll.y * ui.SCROLL_STEP
 			case .Text, .Paste:

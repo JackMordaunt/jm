@@ -1,6 +1,7 @@
 package ui
 
 import "core:testing"
+import "jm:ui/ops"
 
 @(private = "file")
 state :: proc(text: string, cursor: int) -> Text_State {
@@ -204,4 +205,60 @@ test_word_at_a_point :: proc(t: ^testing.T) {
 	testing.expect_value(t, string(s.buf[lo:hi]), " ") // a space is its own span
 	lo, hi = text_word_at(words, 14)
 	testing.expect_value(t, string(s.buf[lo:hi]), "three")
+}
+
+// send_pointer sends a pointer event at x (6px a rune through the stub) to s.
+@(private = "file")
+send_pointer :: proc(g: ^Rig, s: ^Text_State, kind: ops.Event_Kind, x: f32, clicks: u8 = 1, mods: Mods = {}, button := Button.Left) {
+	text := text_string(s)
+	p := paragraph_layout(g.gtx.shaper, 0, 10, text, 0, context.temp_allocator)
+	stops := text_stops(&g.gtx, s, 0, 10)
+	text_follow_pointer(s, p, Event{kind = kind, clicks = clicks, mods = mods, button = button}, {x, 5}, stops)
+}
+
+@(test)
+test_press_drag_and_shift_press :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("one two three", 0)
+	defer text_destroy(&s)
+	send_pointer(&g, &s, .Press, 31) // inside "two", nearest the stop at 5
+	testing.expect_value(t, [2]int{s.anchor, s.cursor}, [2]int{5, 5})
+	send_pointer(&g, &s, .Move, 61)
+	testing.expect_value(t, text_selected(&s), "wo th")
+	send_pointer(&g, &s, .Move, 13) // back past the press: the press point stays the anchor
+	testing.expect_value(t, [2]int{s.anchor, s.cursor}, [2]int{5, 2})
+	send_pointer(&g, &s, .Release, 13)
+	send_pointer(&g, &s, .Move, 70) // no longer pressed: moves select nothing
+	testing.expect_value(t, [2]int{s.anchor, s.cursor}, [2]int{5, 2})
+	send_pointer(&g, &s, .Press, 67, mods = {.Shift}) // extends from the anchor, to 11
+	testing.expect_value(t, text_selected(&s), "wo thr")
+	send_pointer(&g, &s, .Press, 0, button = .Right)
+	testing.expect_value(t, text_selected(&s), "wo thr")
+}
+
+@(test)
+test_double_and_triple_press :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("one two three", 0)
+	defer text_destroy(&s)
+	send_pointer(&g, &s, .Press, 31, clicks = 2)
+	testing.expect_value(t, text_selected(&s), "two")
+	send_pointer(&g, &s, .Move, 70) // dragging after a double click grows by words
+	testing.expect_value(t, text_selected(&s), "two three")
+	send_pointer(&g, &s, .Move, 2)
+	testing.expect_value(t, text_selected(&s), "one two")
+	testing.expect_value(t, s.anchor, 7) // the double-clicked word's end holds
+	send_pointer(&g, &s, .Release, 2)
+	send_pointer(&g, &s, .Press, 31, clicks = 3)
+	testing.expect_value(t, text_selected(&s), "one two three")
+
+	para := state("first\nsecond line\nthird", 0)
+	defer text_destroy(&para)
+	p := paragraph_layout(g.gtx.shaper, 0, 10, text_string(&para), 0, context.temp_allocator)
+	text_follow_pointer(&para, p, Event{kind = .Press, clicks = 3}, {10, 15}, text_stops(&g.gtx, &para, 0, 10))
+	testing.expect_value(t, text_selected(&para), "second line") // the paragraph, not its newlines
 }

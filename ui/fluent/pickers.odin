@@ -497,13 +497,17 @@ combobox :: proc(
 			case .Press:
 				if e.button == .Left && !c.disabled {
 					if typed {
-						ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - m.pad_start, 0}))
+						ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), m.style), e, {e.pos.x - m.pad_start, 0}, text_stops(gtx, s, m.style))
 					}
 					if !typed || e.pos.x >= sz.x - m.pad_end - m.icon - m.gap {
 						flag^ = !flag^
 					} else {
 						flag^ = true
 					}
+				}
+			case .Move, .Release:
+				if typed && !c.disabled {
+					ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), m.style), e, {e.pos.x - m.pad_start, 0}, text_stops(gtx, s, m.style))
 				}
 			case .Text, .Paste:
 				if typed && !c.disabled && ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style)) {
@@ -1111,8 +1115,8 @@ search_box :: proc(
 	if c.st != nil && !c.disabled {
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
-			case .Press:
-				ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tst), {e.pos.x - left, 0}))
+			case .Press, .Move, .Release:
+				ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), tst), e, {e.pos.x - left, 0}, text_stops(gtx, s, tst))
 			case .Text, .Paste:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, tst))
 			case .Key:

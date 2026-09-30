@@ -251,3 +251,31 @@ test_a_selection_is_highlighted_and_its_text_recoloured :: proc(t: ^testing.T) {
 	// "Off" input shares m.name and shows the same selection, inactive.
 	testing.expect_value(t, c1 - c0, 2)
 }
+
+@(test)
+test_drag_and_triple_click_select_in_an_input :: proc(t: ^testing.T) {
+	m: Inputs_Model
+	p: ui.Probe
+	ui.probe_init(&p, inputs, &m, {600, 500}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	defer ui.text_destroy(&m.name)
+	defer ui.text_destroy(&m.notes)
+	testing.expect(t, ui.probe_click(&p, "First and last"))
+	ui.probe_type(&p, "grace hopper")
+	b := ui.probe_bounds(&p, "First and last")
+	y := b.y + b.h / 2
+	// Press just inside the left padding, drag past the end, release.
+	ui.router_push(&p.router, {kind = .Press, pos = {b.x + 2, y}, clicks = 1})
+	ui.router_push(&p.router, {kind = .Move, pos = {b.x + b.w - 2, y}})
+	ui.router_push(&p.router, {kind = .Release, pos = {b.x + b.w - 2, y}})
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.text_selected(&m.name), "grace hopper")
+
+	ui.probe_key(&p, .End)
+	testing.expect_value(t, ui.text_selected(&m.name), "")
+	ui.router_push(&p.router, {kind = .Press, pos = {b.x + b.w / 2, y}, clicks = 3})
+	ui.router_push(&p.router, {kind = .Release, pos = {b.x + b.w / 2, y}, clicks = 3})
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.text_selected(&m.name), "grace hopper")
+}
