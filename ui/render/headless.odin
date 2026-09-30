@@ -47,9 +47,7 @@ headless_init :: proc(
 		at.y = FULL_HEIGHT
 	}
 	ui.probe_init(&h.p, ui_proc, user, at, debug = debug | ui.debug_from_env())
-	for f in fonts {
-		ops.add_font(&h.p.scene, f.path)
-	}
+	ops.add_fonts(&h.p.scene, fonts)
 	init(&h.r)
 	h.p.shaper = shaper(&h.r, h.p.scene.fonts[:], fallbacks)
 	// probe_init's frame shaped with the stub; lay out again in real text.

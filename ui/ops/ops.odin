@@ -353,14 +353,22 @@ add_run :: proc(o: ^Scene, r: Glyph_Run) -> Run_Id {
 
 // add_font registers a font file once; ids are stable for the life of Scene.
 add_font :: proc(o: ^Scene, path: string) -> Font_Id {
+	next := Font_Id(0)
 	for f in o.fonts {
 		if f.path == path {
 			return f.id
 		}
+		next = max(next, f.id + 1)
 	}
-	id := Font_Id(len(o.fonts))
-	append(&o.fonts, Font_Ref{id, path})
-	return id
+	append(&o.fonts, Font_Ref{next, path})
+	return next
+}
+
+// add_fonts registers each ref under its own id, even when refs share a
+// path: an app that falls back to one file for several weights still
+// draws with every id it asked for.
+add_fonts :: proc(o: ^Scene, refs: []Font_Ref) {
+	append(&o.fonts, ..refs)
 }
 
 add_image :: proc(o: ^Scene, path: string) -> Image_Id {

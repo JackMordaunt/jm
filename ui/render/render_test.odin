@@ -1,6 +1,8 @@
 package render
 
 import "core:math"
+import "core:os"
+import "core:strings"
 import "jm:ui/ops"
 import "core:testing"
 
@@ -201,6 +203,41 @@ test_text :: proc(t: ^testing.T) {
 	testing.expectf(t, dark > 20, "dark pixels in glyph box: %d", dark)
 	// Nothing is drawn left of the origin.
 	testing.expect_value(t, at(&fx, {1, 30}), WHITE)
+}
+
+// second_font_view draws a line of text in font id 1.
+@(private = "file")
+second_font_view :: proc(gtx: ^ui.Ctx, _: rawptr) {
+	gtx.font = 1
+	ui.draw_text(gtx, "Hg", {4, 4}, 32, {0, 0, 0, 255})
+}
+
+// Two ids naming one file, as when an app falls back to one face for
+// several weights, must both draw: id 1 is not folded into id 0.
+@(test)
+test_fonts_sharing_a_file_keep_their_ids :: proc(t: ^testing.T) {
+	os.make_directory("build/test")
+	path := "build/test/shared_font.png"
+	defer os.remove(path)
+	h: Headless
+	headless_init(&h, second_font_view, nil, {SIZE, SIZE}, {{0, FONT}, {1, FONT}})
+	defer headless_destroy(&h)
+	testing.expect(t, headless_png(&h, path))
+
+	img: bl.ImageCore
+	bl.image_init(&img)
+	defer bl.image_destroy(&img)
+	cpath := strings.clone_to_cstring(path, context.temp_allocator)
+	testing.expect_value(t, bl.image_read_from_file(&img, cpath, nil), bl.Result(0))
+	dark := 0
+	for y in 0 ..< SIZE {
+		for x in 0 ..< SIZE {
+			if pixel(&img, x, y).r < 64 {
+				dark += 1
+			}
+		}
+	}
+	testing.expectf(t, dark > 20, "dark pixels drawn in font id 1: %d", dark)
 }
 
 @(test)

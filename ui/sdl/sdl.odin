@@ -90,7 +90,7 @@ App :: struct {
 	width, height: int, // initial size in logical units
 	ui:            Ui_Proc,
 	user:          rawptr,
-	fonts:         []Font_Ref, // registered into the Scene in order before the first frame
+	fonts:         []Font_Ref, // registered into the Scene under their own ids before the first frame
 	fallbacks:     []ops.Font_Id, // font ids tried in order for a rune the font asked for lacks
 	clear:         Color,
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
@@ -290,11 +290,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 		return false
 	}
 	ops.init(&l.scene)
-	for ref in app.fonts {
-		if id := ops.add_font(&l.scene, ref.path); id != ref.id {
-			fmt.eprintfln("sdl: font %q registered as %v, not %v", ref.path, id, ref.id)
-		}
-	}
+	ops.add_fonts(&l.scene, app.fonts)
 	ui.frame_init(&l.frames[0])
 	ui.frame_init(&l.frames[1])
 	ui.router_init(&l.router)

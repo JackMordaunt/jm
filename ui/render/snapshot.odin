@@ -25,9 +25,7 @@ snapshot :: proc(
 	p: ui.Probe
 	ui.probe_init(&p, ui_proc, user, size, debug = debug | ui.debug_from_env())
 	defer ui.probe_destroy(&p)
-	for f in fonts {
-		ops.add_font(&p.scene, f.path)
-	}
+	ops.add_fonts(&p.scene, fonts)
 	r: Renderer
 	init(&r)
 	defer destroy(&r)

@@ -36,7 +36,7 @@ Font_Ref :: ops.Font_Ref
 App :: struct {
 	ui:    Ui_Proc,
 	user:  rawptr,
-	fonts: []Font_Ref, // registered into the Scene in order before the first frame
+	fonts: []Font_Ref, // registered into the Scene under their own ids before the first frame
 	// fallbacks are font ids, of fonts, tried in order for a rune the font
 	// asked for lacks.
 	fallbacks: []ops.Font_Id,
@@ -48,9 +48,7 @@ run :: proc(app: App) {
 	sc: ops.Scene
 	ops.init(&sc)
 	defer ops.destroy(&sc)
-	for ref in app.fonts {
-		ops.add_font(&sc, ref.path)
-	}
+	ops.add_fonts(&sc, app.fonts)
 
 	frames: [2]ui.Frame
 	ui.frame_init(&frames[0])
