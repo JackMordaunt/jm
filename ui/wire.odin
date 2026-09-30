@@ -176,6 +176,9 @@ encode_reply :: proc(
 			case Clipboard_Read:
 				append(&w, 2)
 				ops.put_str(&w, v.mime)
+			case Open_Url:
+				append(&w, 3)
+				ops.put_str(&w, v.url)
 			}
 		}
 	}
@@ -230,6 +233,8 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 				q = Clipboard_Write{mime, data}
 			case 2:
 				q = Clipboard_Read{ops.get_str(&r) or_return}
+			case 3:
+				q = Open_Url{ops.get_str(&r) or_return}
 			case:
 				return false, 0, nil, false
 			}

@@ -1,12 +1,13 @@
 package sdl
 
+import "core:log"
 import "core:strings"
 import "jm:ui"
 import "jm:ui/ops"
 import "vendor:sdl3"
 
 // What a frame asks of the platform beyond pixels (ui/request.odin): the
-// pointer's cursor and the clipboard. A single-process App takes both
+// pointer's cursor, the clipboard and URLs to open. A single-process App takes both
 // from its own Router; a host takes them from the child's Reply. Either
 // way they come here once the frame is done.
 
@@ -14,6 +15,7 @@ import "vendor:sdl3"
 // requests: a clipboard write goes to the system clipboard, and a read is
 // answered at once with a Paste pushed through sink for the next frame,
 // its text in allocator, which must last until sink's events are used.
+// A URL goes to SDL_OpenURL, the system's handler for its scheme.
 @(private)
 apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: []ui.Request, sink: Event_Sink, user: rawptr, allocator := context.temp_allocator) {
 	if changed {
@@ -38,6 +40,10 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 			}
 			// Answered even when empty, so the askers stop waiting.
 			sink(user, {kind = .Paste, text = text, mime = strings.clone(v.mime, allocator)})
+		case ui.Open_Url:
+			if !sdl3.OpenURL(strings.clone_to_cstring(v.url, context.temp_allocator)) {
+				log.warnf("ui/sdl: cannot open %q: %s", v.url, sdl3.GetError())
+			}
 		}
 	}
 }
