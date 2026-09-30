@@ -462,9 +462,9 @@ layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0
 	return design.layout_style(gtx, s, st, font_for(gtx, st.weight), width)
 }
 
-// text_stops is s's caret stops at a style, for ui.text_key.
-text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> []int {
-	return ui.text_graphemes(gtx, s, font_for(gtx, st.weight), st.size)
+// text_stops is s's caret and word stops at a style, for ui.text_edit.
+text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> ui.Text_Stops {
+	return ui.text_stops(gtx, s, font_for(gtx, st.weight), st.size)
 }
 
 // draw_role_text is shape_text then draw_text of s at role, in one call.

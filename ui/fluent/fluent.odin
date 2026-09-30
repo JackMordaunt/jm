@@ -292,9 +292,9 @@ layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0
 	return design.layout_style(gtx, s, st, design.font_for(font_faces(), st.weight, gtx.font), width)
 }
 
-// text_stops is s's caret stops at a style, for ui.text_key.
-text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> []int {
-	return ui.text_graphemes(gtx, s, design.font_for(font_faces(), st.weight, gtx.font), st.size)
+// text_stops is s's caret and word stops at a style, for ui.text_edit.
+text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> ui.Text_Stops {
+	return ui.text_stops(gtx, s, design.font_for(font_faces(), st.weight, gtx.font), st.size)
 }
 
 // Interaction and STATES are design's: Live follows real input; the rest

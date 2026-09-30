@@ -294,7 +294,7 @@ Field_Input :: struct {
 // and records into r what happened.
 @(private = "file")
 field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_Opts, g: Field_Geom, r: ^Field_Result) -> (fi: Field_Input) {
-	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	ui.text_clamp(s)
 	if o.state != .Live {
 		fi.hovered = o.state == .Hovered
 		fi.focused = o.state == .Focused || o.state == .Pressed // a field has no pressed look
@@ -316,13 +316,9 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 			st.focused = false
 		case .Press:
 			r.pressed = true
-			s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), g.input_font), {e.pos.x - g.in_x + cs.x, 0})
-		case .Text:
-			if len(e.text) > 0 && !o.read_only {
-				inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-				s.cursor += len(e.text)
-				r.changed = true
-			}
+			ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), g.input_font), {e.pos.x - g.in_x + cs.x, 0}))
+		case .Text, .Paste:
+			r.changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, g.input_font), o.read_only)
 		case .Key:
 			if o.menu && (e.key == .Up || e.key == .Down || e.key == .Enter || e.key == .Escape) {
 				if r.n_nav < len(r.nav) {
@@ -331,10 +327,7 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 				}
 				continue
 			}
-			if o.read_only && (e.key == .Backspace || e.key == .Delete) {
-				continue
-			}
-			r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, g.input_font))
+			r.changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, g.input_font), o.read_only)
 		}
 	}
 	fi.hovered, fi.focused = st.hovered, st.focused

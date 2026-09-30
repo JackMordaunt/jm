@@ -260,6 +260,9 @@ shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, alloc
 		if .Line_Hard in cp.breaks {
 			kinds += {.Line_Hard}
 		}
+		if .Word in cp.breaks {
+			kinds += {.Word}
+		}
 		if kinds != {} {
 			append(&breaks, ui.Text_Break{int(cp.user_id), kinds})
 		}

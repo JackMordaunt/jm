@@ -242,7 +242,7 @@ input :: proc(
 	sz := ui.constrain(cs, {w, m.min_h})
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	c := control(gtx, p.id, area, state)
-	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	ui.text_clamp(s)
 
 	// The text's inset: the whole pad with no slot, the split beside one.
 	left := before != .None ? m.root_pad + m.icon + m.gap + m.inner_pad : m.pad
@@ -253,18 +253,14 @@ input :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
-				s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - left + sc.x, 0})
-			case .Text:
-				if len(e.text) > 0 {
-					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-					s.cursor += len(e.text)
-					r.changed = true
-				}
+				ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - left + sc.x, 0}))
+			case .Text, .Paste:
+				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:
 				if e.key == .Enter {
 					r.submitted = true
 				} else {
-					r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
+					r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 				}
 			}
 		}
@@ -376,7 +372,7 @@ textarea :: proc(
 	if w <= 0 {
 		w = ui.is_finite(cs.max.x) ? cs.max.x : DEFAULT_WIDTH
 	}
-	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	ui.text_clamp(s)
 	str := string(s.buf[:])
 	inner_w := max(w - 2 * BORDER - 2 * m.pad_h, 1)
 	lh := m.style.line_height
@@ -399,33 +395,31 @@ textarea :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
-				s.cursor = ui.paragraph_hit(para, {e.pos.x - text_x, e.pos.y - text_y + sc.y})
+				ui.text_move(s, ui.paragraph_hit(para, {e.pos.x - text_x, e.pos.y - text_y + sc.y}))
 			case .Scroll:
 				sc.y += e.scroll.y * ui.SCROLL_STEP
-			case .Text:
-				if len(e.text) > 0 {
-					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-					s.cursor += len(e.text)
-					r.changed = true
-				}
+			case .Text, .Paste:
+				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:
+				// Lines are the textarea's: moves along them extend with
+				// Shift like text_edit's own; the rest is text_edit's.
+				extend := .Shift in e.mods
 				#partial switch e.key {
 				case .Enter:
-					inject_at_elems(&s.buf, s.cursor, '\n')
-					s.cursor += 1
+					ui.text_replace(s, "\n")
 					r.changed = true
 				case .Up, .Down:
 					li, x := ui.paragraph_caret(para, s.cursor)
 					to := li + (e.key == .Up ? -1 : 1)
 					if to >= 0 && to < len(para.lines) {
-						s.cursor = ui.paragraph_hit(para, {x, (f32(to) + 0.5) * para.pitch})
+						ui.text_move(s, ui.paragraph_hit(para, {x, (f32(to) + 0.5) * para.pitch}), extend)
 					}
 				case .Home:
-					s.cursor = para.lines[ui.paragraph_line_of(para, s.cursor)].start
+					ui.text_move(s, para.lines[ui.paragraph_line_of(para, s.cursor)].start, extend)
 				case .End:
-					s.cursor = ui.paragraph_line_end(para, ui.paragraph_line_of(para, s.cursor))
+					ui.text_move(s, ui.paragraph_line_end(para, ui.paragraph_line_of(para, s.cursor)), extend)
 				case:
-					r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
+					r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 				}
 			}
 		}

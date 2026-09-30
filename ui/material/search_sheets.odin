@@ -82,7 +82,7 @@ search_bar :: proc(
 		mode = .Docked
 	}
 	live := state == .Live
-	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	ui.text_clamp(s)
 	pad_l, pad_r := search_padding(leading, trailing)
 	inner := max(size.x - pad_l - pad_r, 0)
 
@@ -260,15 +260,11 @@ search_text_events :: proc(
 		case .Press:
 			st.pressed = true
 			pressed = true
-			s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tok.SEARCH_BAR_INPUT_TEXT_FONT), {e.pos.x - pad_l + scroll, 0})
+			ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tok.SEARCH_BAR_INPUT_TEXT_FONT), {e.pos.x - pad_l + scroll, 0}))
 		case .Release:
 			st.pressed = false
-		case .Text:
-			if len(e.text) > 0 {
-				inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-				s.cursor += len(e.text)
-				changed = true
-			}
+		case .Text, .Paste:
+			changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT))
 		case .Key:
 			#partial switch e.key {
 			case .Enter:
@@ -276,7 +272,7 @@ search_text_events :: proc(
 			case .Escape:
 				escape = true
 			case:
-				changed |= ui.text_key(s, e.key, text_stops(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT))
+				changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT))
 			}
 		}
 	}

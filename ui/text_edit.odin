@@ -1,18 +1,20 @@
 package ui
 
-// Single-line text editing: the buffer and cursor a text input keeps,
-// and the key and pointer edits any text input applies to it. The
-// widgets that draw one live in the design systems (ui/material).
+// Text editing: the buffer, caret and selection a text input keeps, and
+// the key, text and paste edits any text input applies to it. The widgets
+// that draw one live in the design systems (ui/material, ui/fluent).
 
 import "core:unicode/utf8"
 import "jm:ui/ops"
 
-// Text_State is a text buffer and its cursor, a byte offset that always
-// sits on a caret stop (a grapheme boundary, given text_key's graphemes). The caller owns it; text_destroy
-// frees the buffer.
+// Text_State is a text buffer, its caret and its selection. cursor is the
+// caret, anchor the other end of the selection: equal when nothing is
+// selected. Both are byte offsets on caret stops. The caller owns it;
+// text_destroy frees the buffer.
 Text_State :: struct {
 	buf:    [dynamic]u8,
 	cursor: int,
+	anchor: int,
 }
 
 // text_string views the buffer as a string; valid until the next edit.
@@ -20,11 +22,13 @@ text_string :: proc(s: ^Text_State) -> string {
 	return string(s.buf[:])
 }
 
-// text_set replaces the buffer with str and puts the cursor at its end.
+// text_set replaces the buffer with str and puts the caret at its end,
+// selecting nothing.
 text_set :: proc(s: ^Text_State, str: string) {
 	clear(&s.buf)
 	append(&s.buf, str)
 	s.cursor = len(s.buf)
+	s.anchor = s.cursor
 }
 
 // text_destroy frees the buffer.
@@ -33,58 +37,239 @@ text_destroy :: proc(s: ^Text_State) {
 	s^ = {}
 }
 
-// text_key applies an editing key to s; true when the text changed.
-// Exported for text inputs built outside this package.
+// text_selection is the selected byte range, lo <= hi; empty when the
+// caret is all there is.
+text_selection :: proc(s: ^Text_State) -> (lo, hi: int) {
+	return min(s.cursor, s.anchor), max(s.cursor, s.anchor)
+}
+
+// text_selected is the selected text; valid until the next edit.
+text_selected :: proc(s: ^Text_State) -> string {
+	lo, hi := text_selection(s)
+	return string(s.buf[lo:hi])
+}
+
+// text_move puts the caret at i, extending the selection from its anchor
+// when extend is set and dropping it otherwise.
+text_move :: proc(s: ^Text_State, i: int, extend := false) {
+	s.cursor = clamp(i, 0, len(s.buf))
+	if !extend {
+		s.anchor = s.cursor
+	}
+}
+
+// text_select selects bytes lo to hi, the caret at hi.
+text_select :: proc(s: ^Text_State, lo, hi: int) {
+	s.anchor = clamp(lo, 0, len(s.buf))
+	s.cursor = clamp(hi, 0, len(s.buf))
+}
+
+// text_clamp brings caret and anchor back inside the buffer, after the
+// caller edited buf directly.
+text_clamp :: proc(s: ^Text_State) {
+	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	s.anchor = clamp(s.anchor, 0, len(s.buf))
+}
+
+// text_replace puts text in place of the selection (at the caret when
+// nothing is selected) and leaves the caret after it.
+text_replace :: proc(s: ^Text_State, text: string) {
+	lo, hi := text_selection(s)
+	remove_range(&s.buf, lo, hi)
+	inject_at_elems(&s.buf, lo, ..transmute([]u8)text)
+	s.cursor = lo + len(text)
+	s.anchor = s.cursor
+}
+
+// Text_Stops are where a caret may stop in a text and where its words
+// change, ascending. graphemes starts after 0 and ends at the text's
+// length; words starts at 0 and ends at the length, and each span between
+// two is a word or a run of spaces or punctuation (kb_text_shape's
+// KBTS_BREAK_FLAG_WORD, its Unicode word segmentation).
+Text_Stops :: struct {
+	graphemes: []int,
+	words:     []int,
+}
+
+// text_stops shapes s in font at size and returns its stops for
+// text_edit, into the frame allocator. Take them afresh for each event:
+// an edit moves every stop after it.
+text_stops :: proc(gtx: ^Ctx, s: ^Text_State, font: ops.Font_Id, size: f32) -> Text_Stops {
+	str := string(s.buf[:])
+	st := shape_text(gtx.shaper, font, size, str, gtx.allocator)
+	g := make([dynamic]int, 0, len(st.breaks) + 1, gtx.allocator)
+	w := make([dynamic]int, 0, 8, gtx.allocator)
+	append(&w, 0)
+	for b in st.breaks {
+		if b.at == 0 {
+			continue
+		}
+		if .Grapheme in b.kinds {
+			append(&g, b.at)
+		}
+		if .Word in b.kinds {
+			append(&w, b.at)
+		}
+	}
+	append(&g, len(str))
+	if w[len(w) - 1] != len(str) {
+		append(&w, len(str))
+	}
+	return {g[:], w[:]}
+}
+
+// text_edit applies e to s and reports whether the text changed. It
+// takes Text and Paste (replacing the selection), and editing keys with
+// the platform's modifiers (SHORTCUT, WORD_MOD, Shift):
 //
-// graphemes are s's caret stops, ascending and ending at len(s.buf), as
-// text_graphemes gives them: arrows move a grapheme at a time and Delete
-// and Backspace remove one, so a base and its combining marks go as a unit
-// (test_text_key_moves_by_grapheme). Without them every rune is a stop.
-// Movement is logical: Right goes toward the end of the text whichever
-// way a run of it reads.
-text_key :: proc(s: ^Text_State, k: Key, graphemes: []int = nil) -> bool {
-	#partial switch k {
-	case .Backspace:
-		if s.cursor > 0 {
-			at := stop_before(s, graphemes)
-			remove_range(&s.buf, at, s.cursor)
-			s.cursor = at
-			return true
+//	Left, Right             a grapheme; with a selection, collapse to its side
+//	WORD_MOD+Left, Right    a word (to its start; Right to the next word's
+//	                        end on macOS, start elsewhere, as each OS does)
+//	Home, End               the text's ends; SHORTCUT+Left, Right on macOS too
+//	Shift+any move          extends the selection instead
+//	Backspace, Delete       the selection, else a grapheme; WORD_MOD for a word
+//	SHORTCUT+A              select all
+//	SHORTCUT+C, X           copy, cut (clipboard_write)
+//	SHORTCUT+V              paste: asks for the clipboard for area id, whose
+//	                        Paste event a later frame passes back here
+//
+// A read-only s takes the moves, select all and copy, and nothing that
+// would change it. Keys it does not know (Enter, Up, Down, Escape) are
+// left to the widget, which handles them before or instead of calling
+// this. Stops come from text_stops; without them every rune is a stop and
+// words are not known, so word moves go by grapheme.
+//
+// The macOS rows follow Apple's "Mac keyboard shortcuts" (Option-Right:
+// end of the next word; Command-Left/Right: start or end of the line);
+// elsewhere Ctrl+Right goes to the start of the next word, as Windows and
+// GTK text fields do.
+text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: Text_Stops, read_only := false) -> bool {
+	text_clamp(s)
+	#partial switch e.kind {
+	case .Text:
+		if read_only {
+			return false
 		}
-	case .Delete:
-		if s.cursor < len(s.buf) {
-			remove_range(&s.buf, s.cursor, stop_after(s, graphemes))
-			return true
+		text_replace(s, e.text)
+		return true
+	case .Paste:
+		if read_only || e.mime != TEXT_MIME {
+			return false
 		}
-	case .Left:
-		s.cursor = stop_before(s, graphemes)
-	case .Right:
-		s.cursor = stop_after(s, graphemes)
-	case .Home:
-		s.cursor = 0
-	case .End:
-		s.cursor = len(s.buf)
+		text_replace(s, e.text)
+		return true
+	case .Key:
+		return edit_key(gtx, s, id, e.key, e.mods, stops, read_only)
 	}
 	return false
 }
 
-// text_graphemes shapes s in font at size and returns its caret stops for
-// text_key, into the frame allocator. Call it for each key: an edit moves
-// every stop after it.
-text_graphemes :: proc(gtx: ^Ctx, s: ^Text_State, font: ops.Font_Id, size: f32) -> []int {
-	str := string(s.buf[:])
-	st := shape_text(gtx.shaper, font, size, str, gtx.allocator)
-	out := make([dynamic]int, 0, len(st.breaks) + 1, gtx.allocator)
-	for b in st.breaks {
-		if .Grapheme in b.kinds && b.at > 0 {
-			append(&out, b.at)
+@(private = "file")
+edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods, stops: Text_Stops, read_only: bool) -> bool {
+	extend := .Shift in mods
+	chord := mods - {.Shift}
+	lo, hi := text_selection(s)
+	if chord == {SHORTCUT} {
+		#partial switch k {
+		case .A:
+			text_select(s, 0, len(s.buf))
+			return false
+		case .C:
+			if lo < hi {
+				clipboard_write(gtx, string(s.buf[lo:hi]))
+			}
+			return false
+		case .X:
+			if lo < hi && !read_only {
+				clipboard_write(gtx, string(s.buf[lo:hi]))
+				text_replace(s, "")
+				return true
+			}
+			return false
+		case .V:
+			if !read_only {
+				clipboard_read(gtx, id)
+			}
+			return false
+		}
+		when ODIN_OS == .Darwin {
+			// Cmd+arrows go to the ends of the line; this is one line.
+			#partial switch k {
+			case .Left, .Up:
+				text_move(s, 0, extend)
+				return false
+			case .Right, .Down:
+				text_move(s, len(s.buf), extend)
+				return false
+			case .Backspace:
+				if read_only {
+					return false
+				}
+				text_select(s, 0, hi)
+				text_replace(s, "")
+				return true
+			}
 		}
 	}
-	append(&out, len(str))
-	return out[:]
+	by_word := chord == {WORD_MOD} && len(stops.words) > 0
+	#partial switch k {
+	case .Left:
+		switch {
+		case by_word:
+			text_move(s, word_before(s, stops.words), extend)
+		case lo < hi && !extend:
+			text_move(s, lo)
+		case:
+			text_move(s, stop_before(s, stops.graphemes), extend)
+		}
+	case .Right:
+		switch {
+		case by_word:
+			text_move(s, word_after(s, stops.words), extend)
+		case lo < hi && !extend:
+			text_move(s, hi)
+		case:
+			text_move(s, stop_after(s, stops.graphemes), extend)
+		}
+	case .Home:
+		text_move(s, 0, extend)
+	case .End:
+		text_move(s, len(s.buf), extend)
+	case .Backspace:
+		if read_only {
+			return false
+		}
+		if lo == hi {
+			text_select(s, word_before(s, stops.words) if by_word else stop_before(s, stops.graphemes), s.cursor)
+		}
+		if text_selection_empty(s) {
+			return false
+		}
+		text_replace(s, "")
+		return true
+	case .Delete:
+		if read_only {
+			return false
+		}
+		if lo == hi {
+			text_select(s, s.cursor, word_after(s, stops.words) if by_word else stop_after(s, stops.graphemes))
+		}
+		if text_selection_empty(s) {
+			return false
+		}
+		text_replace(s, "")
+		return true
+	}
+	return false
 }
 
-// stop_before is the caret stop before s's cursor, 0 at the start.
+@(private = "file")
+text_selection_empty :: proc(s: ^Text_State) -> bool {
+	return s.cursor == s.anchor
+}
+
+// stop_before is the caret stop before s's cursor, 0 at the start; every
+// rune is a stop when graphemes is nil.
 @(private = "file")
 stop_before :: proc(s: ^Text_State, graphemes: []int) -> int {
 	if graphemes == nil {
@@ -120,4 +305,63 @@ stop_after :: proc(s: ^Text_State, graphemes: []int) -> int {
 		}
 	}
 	return len(s.buf)
+}
+
+// word_is is whether the span of words starting at words[i] is a word,
+// not spaces or punctuation.
+@(private = "file")
+word_is :: proc(s: ^Text_State, words: []int, i: int) -> bool {
+	if i + 1 >= len(words) || words[i] >= len(s.buf) {
+		return false
+	}
+	r, _ := utf8.decode_rune(s.buf[words[i]:])
+	return is_word_rune(r)
+}
+
+// word_before is the start of the word the caret is in or after: where
+// every OS's word-left lands. 0 when no word precedes it.
+@(private = "file")
+word_before :: proc(s: ^Text_State, words: []int) -> int {
+	#reverse for w, i in words {
+		if w < s.cursor && word_is(s, words, i) {
+			return w
+		}
+	}
+	return 0
+}
+
+// word_after is where word-right lands: the end of the next word on
+// macOS, the start of the word after it elsewhere; the end of the text
+// when there is none.
+@(private = "file")
+word_after :: proc(s: ^Text_State, words: []int) -> int {
+	for w, i in words {
+		if w <= s.cursor {
+			continue
+		}
+		when ODIN_OS == .Darwin {
+			if i > 0 && word_is(s, words, i - 1) {
+				return w
+			}
+		} else {
+			if word_is(s, words, i) {
+				return w
+			}
+		}
+	}
+	return len(s.buf)
+}
+
+// text_word_at is the word span of words holding byte offset i (a run of
+// spaces or punctuation is a span too), for a double-click.
+text_word_at :: proc(words: []int, i: int) -> (lo, hi: int) {
+	for k in 0 ..< len(words) - 1 {
+		if words[k] <= i && i < words[k + 1] {
+			return words[k], words[k + 1]
+		}
+	}
+	if len(words) >= 2 {
+		return words[len(words) - 2], words[len(words) - 1]
+	}
+	return i, i
 }

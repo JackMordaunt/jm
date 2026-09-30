@@ -1,6 +1,7 @@
 package ui
 
 import "core:mem"
+import "core:unicode"
 import "core:unicode/utf8"
 import "jm:ui/ops"
 
@@ -42,6 +43,7 @@ Break_Kind :: enum u8 {
 	Grapheme, // a caret may stop here
 	Line_Soft, // a line may wrap here
 	Line_Hard, // a line must end here
+	Word, // a word, or a run of spaces or punctuation, starts here (UAX #29)
 }
 Break_Kinds :: bit_set[Break_Kind;u8]
 
@@ -53,8 +55,9 @@ Text_Break :: struct {
 
 // shape_text shapes text as a paragraph through s, or, for a Shaper
 // without shape_text, through shape: then the paragraph is one
-// left-to-right run, every rune a grapheme, and lines may break after a
-// space or tab and must after a newline.
+// left-to-right run, every rune a grapheme, words change where letters and
+// digits meet anything else, and lines may break after a space or tab and
+// must after a newline.
 shape_text :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> Shaped_Text {
 	if s.shape_text != nil {
 		return s.shape_text(s.data, font, size, text, allocator)
@@ -78,6 +81,9 @@ shaped_from_run :: proc(run: ops.Glyph_Run, text: string, allocator: mem.Allocat
 	i := 0
 	for r, at in text {
 		kinds := Break_Kinds{.Grapheme}
+		if at == 0 || is_word_rune(r) != is_word_rune(prev) {
+			kinds += {.Word}
+		}
 		switch prev {
 		case '\n':
 			kinds += {.Line_Hard}
@@ -91,4 +97,10 @@ shaped_from_run :: proc(run: ops.Glyph_Run, text: string, allocator: mem.Allocat
 		i += 1
 	}
 	return st
+}
+
+// is_word_rune reports whether r belongs inside a word: a letter, a digit,
+// a combining mark or a connector such as the underscore.
+is_word_rune :: proc(r: rune) -> bool {
+	return unicode.is_letter(r) || unicode.is_number(r) || unicode.is_combining(r) || r == '_'
 }

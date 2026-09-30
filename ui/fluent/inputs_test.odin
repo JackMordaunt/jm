@@ -181,3 +181,29 @@ test_inputs_show_the_i_beam_and_links_the_hand :: proc(t: ^testing.T) {
 	ui.probe_move(&p, 590, 490) // nothing there
 	testing.expect_value(t, ui.probe_cursor(&p), ops.Cursor.Default)
 }
+
+@(test)
+test_copy_from_an_input_and_paste_into_a_textarea :: proc(t: ^testing.T) {
+	m: Inputs_Model
+	p: ui.Probe
+	ui.probe_init(&p, inputs, &m, {600, 500}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	defer ui.text_destroy(&m.name)
+	defer ui.text_destroy(&m.notes)
+	testing.expect(t, ui.probe_click(&p, "First and last"))
+	ui.probe_type(&p, "Ada Lovelace")
+	// Shift+Left twice selects "ce"; typing replaces it.
+	ui.probe_key(&p, .Left, {.Shift})
+	ui.probe_key(&p, .Left, {.Shift})
+	ui.probe_type(&p, "k")
+	testing.expect_value(t, ui.text_string(&m.name), "Ada Lovelak")
+	ui.probe_key(&p, .A, {ui.SHORTCUT})
+	ui.probe_key(&p, .C, {ui.SHORTCUT})
+	testing.expect_value(t, ui.probe_clipboard(&p), "Ada Lovelak")
+
+	testing.expect(t, ui.probe_click(&p, "Notes"))
+	ui.probe_key(&p, .V, {ui.SHORTCUT})
+	ui.probe_frame(&p) // the Paste lands the frame after the read
+	testing.expect_value(t, ui.text_string(&m.notes), "Ada Lovelak")
+}

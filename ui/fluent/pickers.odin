@@ -490,14 +490,14 @@ combobox :: proc(
 
 	if c.st != nil {
 		if typed {
-			s.cursor = clamp(s.cursor, 0, len(s.buf))
+			ui.text_clamp(s)
 		}
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
 				if e.button == .Left && !c.disabled {
 					if typed {
-						s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - m.pad_start, 0})
+						ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - m.pad_start, 0}))
 					}
 					if !typed || e.pos.x >= sz.x - m.pad_end - m.icon - m.gap {
 						flag^ = !flag^
@@ -505,10 +505,8 @@ combobox :: proc(
 						flag^ = true
 					}
 				}
-			case .Text:
-				if typed && len(e.text) > 0 && !c.disabled {
-					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-					s.cursor += len(e.text)
+			case .Text, .Paste:
+				if typed && !c.disabled && ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style)) {
 					r.edited = true
 					flag^ = true
 				}
@@ -529,8 +527,7 @@ combobox :: proc(
 					}
 				case .Enter, .Space:
 					if e.key == .Space && typed {
-						inject_at_elems(&s.buf, s.cursor, ' ')
-						s.cursor += 1
+						ui.text_replace(s, " ")
 						r.edited = true
 						continue
 					}
@@ -544,11 +541,11 @@ combobox :: proc(
 					if flag^ && !typed {
 						step_listbox(gtx, p.id, e.key, len(shown))
 					} else if typed {
-						r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
+						r.edited |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 					}
 				case:
 					if typed {
-						r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
+						r.edited |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 					}
 				}
 			}
@@ -1100,7 +1097,7 @@ search_box :: proc(
 	sz := ui.constrain(cs, {w, h})
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	c := control(gtx, p.id, area, state)
-	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	ui.text_clamp(s)
 	left := pad + icon_size + tok.SPACING_HORIZONTAL_SNUDGE
 	// The dismiss control shows while the box, or the control itself,
 	// has focus or the pointer down, and there is text.
@@ -1114,13 +1111,9 @@ search_box :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
-				s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tst), {e.pos.x - left, 0})
-			case .Text:
-				if len(e.text) > 0 {
-					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-					s.cursor += len(e.text)
-					r.changed = true
-				}
+				ui.text_move(s, ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tst), {e.pos.x - left, 0}))
+			case .Text, .Paste:
+				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, tst))
 			case .Key:
 				#partial switch e.key {
 				case .Enter:
@@ -1131,7 +1124,7 @@ search_box :: proc(
 						r.changed = true
 					}
 				case:
-					r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, tst))
+					r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, tst))
 				}
 			}
 		}
@@ -1260,7 +1253,7 @@ tag_picker :: proc(
 	if c.disabled {
 		flag^ = false
 	}
-	s.cursor = clamp(s.cursor, 0, len(s.buf))
+	ui.text_clamp(s)
 	query := string(s.buf[:])
 
 	// The unpicked options containing the text.
@@ -1296,12 +1289,10 @@ tag_picker :: proc(
 			case .Press:
 				if e.button == .Left {
 					flag^ = true
-					s.cursor = len(s.buf)
+					ui.text_move(s, len(s.buf))
 				}
-			case .Text:
-				if len(e.text) > 0 {
-					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
-					s.cursor += len(e.text)
+			case .Text, .Paste:
+				if ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, style(.Body1))) {
 					r.edited = true
 					flag^ = true
 				}
@@ -1333,10 +1324,10 @@ tag_picker :: proc(
 							}
 						}
 					} else {
-						r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, style(.Body1)))
+						r.edited |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, style(.Body1)))
 					}
 				case:
-					r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, style(.Body1)))
+					r.edited |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, style(.Body1)))
 				}
 			}
 		}

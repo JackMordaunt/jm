@@ -548,7 +548,7 @@ date_field :: proc(
 			}
 		}
 	}
-	s.cursor = len(s.buf)
+	ui.text_move(s, len(s.buf))
 	digits := string(s.buf[:])
 	err := ""
 	changed := false
