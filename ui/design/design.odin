@@ -19,7 +19,8 @@ parts:
     is painted is the system's: Material overlays a translucent layer,
     Fluent binds a colour role per state. Both read the same Control.
   - Geometry: per-corner radii (Corners, rounded), arcs, inside strokes,
-    focus rings, touch targets, a blur-free drop shadow and CSS easing.
+    focus rings, touch targets, box-shadow layers, a blur-free drop
+    shadow and CSS easing.
   - Text: a composite type style, a weight-to-face lookup, and shaping
     and drawing a run inside a line box.
   - Theme and check: the generic binding table, axioms and the colour
@@ -234,30 +235,27 @@ bezier_ease :: proc(b: Bezier, x: f32) -> f32 {
 	return curve(b[1], b[3], (lo + hi) / 2)
 }
 
-// paint_shadow_layer paints one layer of a box shadow under rr: the
-// shape offset by (x, y) and blurred over blur px, in color. jm:ui has no
-// blur, so it is a stack of translucent round rects from blur/2 inside
-// the offset edge to blur/2 outside it, each carrying a share of the
-// colour's alpha: solid under the shape, fading to a quarter share at
-// the blur's edge. A system's shadow token is one or more such layers.
-paint_shadow_layer :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, x, y, blur: f32, color: ops.Color) {
-	if color[3] == 0 {
+// Box_Shadow is one layer of a CSS box-shadow: offset by x and y, blurred
+// by blur (the CSS blur radius), grown by spread, in color. A system's
+// shadow or elevation token is one or more of these.
+Box_Shadow :: struct {
+	x, y, blur, spread: f32,
+	color:              ops.Color,
+}
+
+// paint_box_shadow paints layer s of rr's shadow: rr offset and spread,
+// corners growing with the spread, as an ops.Shadow the renderer computes
+// exactly.
+paint_box_shadow :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, s: Box_Shadow) {
+	if s.color[3] == 0 {
 		return
 	}
 	r := rr.rect
-	if blur <= 0 {
-		ops.fill(gtx.scene, ops.Round_Rect{{r.x + x, r.y + y, r.w, r.h}, rr.radius}, color)
-		return
-	}
-	steps := 4
-	share := f32(color[3]) / 255 / f32(steps)
-	for i in 0 ..< steps {
-		// Spread runs from -blur/2 (the innermost rect) to +blur/2.
-		spread := blur * (f32(i) / f32(steps - 1) - 0.5)
-		ops.fill(
-			gtx.scene,
-			ops.Round_Rect{{r.x + x - spread, r.y + y - spread, r.w + 2 * spread, r.h + 2 * spread}, max(rr.radius + spread, 0)},
-			ops.with_alpha(color, share),
-		)
-	}
+	e := s.spread
+	ops.shadow(gtx.scene, {r.x + s.x - e, r.y + s.y - e, r.w + 2 * e, r.h + 2 * e}, max(rr.radius + e, 0), max(s.blur, 0), s.color)
+}
+
+// paint_shadow_layer is paint_box_shadow for a layer with no spread.
+paint_shadow_layer :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, x, y, blur: f32, color: ops.Color) {
+	paint_box_shadow(gtx, rr, {x, y, blur, 0, color})
 }
