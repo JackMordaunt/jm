@@ -36,6 +36,9 @@ import "core:c"
 
 when ODIN_OS == .Windows {
 	foreign import lib "lib/pg_query.lib"
+} else when ODIN_OS == .Darwin {
+	// libm and libpthread are libSystem, which Odin links already.
+	foreign import lib "lib/pg_query.a"
 } else {
 	@(extra_linker_flags = "-lpthread -lm")
 	foreign import lib "lib/pg_query.a"

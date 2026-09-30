@@ -23,6 +23,9 @@ when ODIN_OS == .Windows {
 	// wasm3's WASI random_get calls SystemFunction036 (RtlGenRandom).
 	@(extra_linker_flags = "advapi32.lib")
 	foreign import lib "lib/wasm3.lib"
+} else when ODIN_OS == .Darwin {
+	// libm is part of libSystem, which Odin links already.
+	foreign import lib "lib/wasm3.a"
 } else {
 	@(extra_linker_flags = "-lm")
 	foreign import lib "lib/wasm3.a"
