@@ -27,12 +27,14 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: laytan/setup-odin@v2.12.2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: laytan/setup-odin@8536d8fa450ec6f1bd9ddc84bbaaf16296c0051d  # v2.12.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: ${{ env.ODIN_RELEASE }}
-      - uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b  # v3.1.0
       - run: just check
 
   test:
@@ -51,13 +53,15 @@ jobs:
       - name: keep line endings as committed (windows)
         if: runner.os == 'Windows'
         run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
-      - uses: laytan/setup-odin@v2.12.2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: laytan/setup-odin@8536d8fa450ec6f1bd9ddc84bbaaf16296c0051d  # v2.12.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: ${{ env.ODIN_RELEASE }}
-      - uses: extractions/setup-just@v3
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b  # v3.1.0
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1.13.0
         if: runner.os == 'Windows'
 
       # What each platform needs beyond its compilers: libcurl for jm:http,
@@ -142,7 +146,7 @@ jobs:
 
       # libgit2, static, from the tag the binding was written against, with
       # the platform's HTTPS and ssh through the platform's binary.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         id: libgit2
         with:
           path: git/lib
@@ -164,7 +168,7 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/libgit2/build/git2.lib" git/lib/; else cp "$RUNNER_TEMP/libgit2/build/libgit2.a" git/lib/; fi
 
       # Blend2D, static, with asmjit beside it as its build expects.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         id: blend2d
         with:
           path: ui/blend2d/lib

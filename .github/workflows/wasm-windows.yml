@@ -29,12 +29,14 @@ jobs:
       MSYS_NO_PATHCONV: 1
     steps:
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
-      - uses: laytan/setup-odin@v2.12.2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: laytan/setup-odin@8536d8fa450ec6f1bd9ddc84bbaaf16296c0051d  # v2.12.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: ${{ env.ODIN_RELEASE }}
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1.13.0
 
       - name: wasm3 with clang-cl ${{ matrix.opt }}
         run: |
