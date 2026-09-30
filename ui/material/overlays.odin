@@ -1048,12 +1048,6 @@ icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ops.Color, loc := #
 	ui.widget_close(gtx, &p, {size = {size, size}})
 }
 
-// wrapped_text lays s out in lines no wider than width, breaking at
-// spaces (jm:ui's label does not wrap), as one widget.
-wrapped_text :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32, loc := #caller_location) {
-	lines_widget(gtx, wrap_lines(gtx, s, TYPE_STYLES[role], width), color, loc = loc)
-}
-
 // wrap_lines breaks s at spaces into shaped lines no wider than width —
 // a word wider than width keeps a line to itself — on gtx.allocator. With
 // max_lines, the last line takes the rest of s, for the caller to clip.

@@ -319,7 +319,7 @@ section :: proc(gtx: ^ui.Ctx, title: string, note := "") {
 	if note != "" {
 		// Wrapped, not a one-line label: notes run long, and a narrow
 		// window must not cut them off.
-		m3.wrapped_text(gtx, note, .Body_Small, s[.On_Surface_Variant], gtx.constraints.max.x)
+		m3.text(gtx, note, .Body_Small, s[.On_Surface_Variant])
 	}
 }
 
