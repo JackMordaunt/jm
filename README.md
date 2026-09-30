@@ -123,6 +123,8 @@ just fluent-icons-fetch  fetch the icons tools/fluent-icons/icons.txt names into
 just fluent-kitchen    build and open the hot-reloaded Fluent 2 kitchen
 just fluent-png page=Button  render one Fluent kitchen page to build/
 just fluent-fonts      fetch Selawik, the kitchen's stand-in for Segoe UI, into ~/.local/share/fonts
+just text-lab          build and open the hot-reloaded text lab: scripts, bidi, emoji, carets
+just text-png page=Scripts  render one text-lab page, whole, to build/
 just material-shapes   regenerate ui/material/shape_data.odin from the m3e-kit's morphs
 just bench-ui  ms per frame for layout and the Blend2D executor
 just hot-counter-child  build the subprocess `just test`'s own host/child test spawns
@@ -650,9 +652,11 @@ overwriting a running executable in place, which Windows refuses.
 pipeline), `examples/material-kitchen` (every `ui/material`
 component, a page each, in all its spec states) and
 `examples/fluent-kitchen` (the same for `ui/fluent`, in all five themes)
-are the demos; `just hot-architecture` builds its own host and prints the
-two commands that run it, and `just material-kitchen` and `just
-fluent-kitchen` build and open their own. `tools/hot-watch`
+and `examples/text-lab` (text specimens in many scripts and directions,
+with the shaper's clusters and caret stops drawn over them) are the
+demos; `just hot-architecture` builds its own host and prints the two
+commands that run it, and `just material-kitchen`, `just fluent-kitchen`
+and `just text-lab` build and open their own. `tools/hot-watch`
 takes extra directories to watch after the pointer file, so a child
 rebuilds when the `ui` package it imports is edited too, and with `-host`
 it rebuilds the host as well, which restarts itself when the ops

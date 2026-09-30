@@ -292,6 +292,8 @@ check:
       {{odin}} check examples/material-kitchen/host {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/fluent-kitchen/child {{flags}} -target:$t || exit 1; \
       {{odin}} check examples/fluent-kitchen/host {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/text-lab/child {{flags}} -target:$t || exit 1; \
+      {{odin}} check examples/text-lab/host {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
       {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
@@ -466,6 +468,29 @@ fluent-kitchen: blend2d sdl3
     host=$!
     trap 'kill $watch $host 2>/dev/null' EXIT
     wait $host
+
+# examples/text-lab: specimens of every text feature the shaper must
+# handle (Latin features, complex scripts, bidi, emoji) with the shaper's
+# clusters and caret stops drawn over them, plus live inputs. Hot-reloads
+# like material-kitchen, watching ui and ui/fluent too.
+text-lab: blend2d sdl3
+    #!/usr/bin/env bash
+    set -eu
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/text-lab/host -debug {{flags}} {{cxx_link}} -out:build/debug/text-lab-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/text-lab/child build/debug/text-lab.watch -host examples/text-lab/host build/debug/text-lab-host{{exe}} ui ui/fluent &
+    watch=$!
+    build/debug/text-lab-host{{exe}} build/debug/text-lab.watch &
+    host=$!
+    trap 'kill $watch $host 2>/dev/null' EXIT
+    wait $host
+
+# Render one text-lab page, whole, to build/text-<page>.png, no window
+text-png page="Scripts": blend2d
+    mkdir -p build/debug
+    {{odin}} build examples/text-lab/child -debug {{flags}} {{cxx_link}} -out:build/debug/text-lab-child{{exe}}
+    build/debug/text-lab-child{{exe}} -full -page "{{page}}" -png "build/text-{{page}}.png"
 
 # Render one fluent-kitchen page to build/fluent-<page>.png, no window
 fluent-png page="Button": blend2d
