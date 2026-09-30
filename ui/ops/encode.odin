@@ -9,7 +9,7 @@ import "core:mem"
 //	fonts   u32 n, n × (u32 id, str path)
 //	images  u32 n, n × (u32 id, str path)
 //	paths   u32 n, n × (u32 n, n × u8 verb; u32 n, n × (f32 x, f32 y))
-//	runs    u32 n, n × (u32 font, f32 size, u32 n, n × (u32 id, u32 cluster, f32 x, f32 y), f32 advance)
+//	runs    u32 n, n × (u32 font, f32 size, u32 n, n × (u32 id, u32 cluster, f32 x, f32 y, u32 font), f32 advance)
 //	macros  u32 n, n × (i64 first, i64 last)
 //	ops     u32 n, n × (u8 tag, payload)
 //
@@ -22,8 +22,8 @@ ENCODE_MAGIC :: "UIOP"
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
 // Defer; 8 gave Defer its Placement; 9 added Shadow; 10 gave Glyph its
-// cluster.
-ENCODE_VERSION :: u8(10)
+// cluster; 11 its font.
+ENCODE_VERSION :: u8(11)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -73,6 +73,7 @@ encode :: proc(ops: ^Scene, allocator := context.allocator) -> []byte {
 			put_u32(&w, g.cluster)
 			put_f32(&w, g.x)
 			put_f32(&w, g.y)
+			put_u32(&w, u32(g.font))
 		}
 		put_f32(&w, r.advance)
 	}
@@ -167,13 +168,14 @@ decode :: proc(data: []byte, ops: ^Scene) -> bool {
 		run: Glyph_Run
 		run.font = Font_Id(get_u32(&r) or_return)
 		run.size = get_f32(&r) or_return
-		ng := get_count(&r, 16) or_return
+		ng := get_count(&r, 20) or_return
 		run.glyphs = make([]Glyph, ng, a)
 		for &g in run.glyphs {
 			g.id = get_u32(&r) or_return
 			g.cluster = get_u32(&r) or_return
 			g.x = get_f32(&r) or_return
 			g.y = get_f32(&r) or_return
+			g.font = Font_Id(get_u32(&r) or_return)
 		}
 		run.advance = get_f32(&r) or_return
 		append(&ops.runs, run)

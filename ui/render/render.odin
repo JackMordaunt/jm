@@ -606,28 +606,37 @@ draw_glyphs :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, g: ops.Gly
 	if n == 0 {
 		return
 	}
-	font := font_for(r, run.font, run.size, f.scene.fonts[:])
-	if font == nil {
-		return
-	}
 	ids := make([]u32, n, context.temp_allocator)
 	pts := make([]bl.Point, n, context.temp_allocator)
 	for gl, i in run.glyphs {
 		ids[i] = gl.id
 		pts[i] = {f64(gl.x), f64(gl.y)}
 	}
-	// USER_UNITS: each placement is a bl.Point position relative to the
-	// origin, mapped by the user transform only (not the font matrix).
-	gr := bl.GlyphRun {
-		glyph_data        = raw_data(ids),
-		placement_data    = raw_data(pts),
-		size              = uint(n),
-		placement_type    = u8(bl.GlyphPlacementType.USER_UNITS),
-		glyph_advance     = size_of(u32),
-		placement_advance = size_of(bl.Point),
-	}
 	origin := bl.Point{f64(g.origin.x), f64(g.origin.y)}
-	bl.context_fill_glyph_run_d_rgba32(ctx, &origin, font, &gr, rgba32(g.color))
+	// One fill per stretch of glyphs in one font: a fallback's glyph ids
+	// index its own face.
+	for i := 0; i < n; {
+		j := i + 1
+		for j < n && run.glyphs[j].font == run.glyphs[i].font {
+			j += 1
+		}
+		font := font_for(r, run.glyphs[i].font, run.size, f.scene.fonts[:])
+		if font != nil {
+			// USER_UNITS: each placement is a bl.Point position relative to
+			// the origin, mapped by the user transform only (not the font
+			// matrix).
+			gr := bl.GlyphRun {
+				glyph_data        = raw_data(ids[i:]),
+				placement_data    = raw_data(pts[i:]),
+				size              = uint(j - i),
+				placement_type    = u8(bl.GlyphPlacementType.USER_UNITS),
+				glyph_advance     = size_of(u32),
+				placement_advance = size_of(bl.Point),
+			}
+			bl.context_fill_glyph_run_d_rgba32(ctx, &origin, font, &gr, rgba32(g.color))
+		}
+		i = j
+	}
 }
 
 @(private)

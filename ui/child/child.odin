@@ -37,6 +37,9 @@ App :: struct {
 	ui:    Ui_Proc,
 	user:  rawptr,
 	fonts: []Font_Ref, // registered into the Scene in order before the first frame
+	// fallbacks are font ids, of fonts, tried in order for a rune the font
+	// asked for lacks.
+	fallbacks: []ops.Font_Id,
 }
 
 // run drives app until the host closes stdin, then returns. It is meant
@@ -69,7 +72,7 @@ run :: proc(app: App) {
 	r: render.Renderer
 	render.init(&r)
 	defer render.destroy(&r)
-	shaper := render.shaper(&r, sc.fonts[:])
+	shaper := render.shaper(&r, sc.fonts[:], app.fallbacks)
 
 	font := app.fonts[0].id if len(app.fonts) > 0 else 0
 

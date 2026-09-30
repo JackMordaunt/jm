@@ -435,7 +435,7 @@ place_run :: proc(l: ^Layout_State, r: Shaped_Run, x: f32) -> Line_Run {
 	for v in 0 ..< n {
 		k := r.first + (n - 1 - v if r.rtl else v) // logical index of the v-th glyph from the left
 		g := l.st.glyphs[k]
-		out.glyphs.glyphs[v] = {g.id, g.cluster, pen + g.offset.x, g.offset.y}
+		out.glyphs.glyphs[v] = {g.id, g.cluster, pen + g.offset.x, g.offset.y, g.font}
 		pen += g.advance
 	}
 	out.glyphs.advance = pen

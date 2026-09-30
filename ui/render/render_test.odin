@@ -204,6 +204,39 @@ test_text :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_text_draws_each_glyph_in_its_font :: proc(t: ^testing.T) {
+	// "HH" with the second H put in font 7, which the scene lacks: each
+	// glyph draws in its own font, so the second draws nothing.
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	font := ops.add_font(&fx.scene, FONT)
+	run := ui.shape(shaper(&fx.r, fx.scene.fonts[:]), font, 24, "HH", context.allocator)
+	defer delete(run.glyphs)
+	testing.expect_value(t, len(run.glyphs), 2)
+	run.glyphs[1].font = 7
+	half := run.glyphs[1].x
+	id := ops.add_run(&fx.scene, run)
+	origin := ops.Point{4, 40}
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}})
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+
+	dark :: proc(fx: ^Fixture, x0, x1, y0, y1: f32) -> int {
+		n := 0
+		for y in int(y0) ..< int(y1) {
+			for x in int(x0) ..< int(x1) {
+				if at(fx, {f32(x), f32(y)}).r < 64 {
+					n += 1
+				}
+			}
+		}
+		return n
+	}
+	testing.expect(t, dark(&fx, origin.x, origin.x + half, 20, 40) > 10, "the first H drawn")
+	testing.expect_value(t, dark(&fx, origin.x + half + 1, min(origin.x + run.advance, SIZE), 20, 40), 0)
+}
+
+@(test)
 test_path_gradient_stroke :: proc(t: ^testing.T) {
 	fx: Fixture
 	setup(&fx)

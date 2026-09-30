@@ -18,10 +18,13 @@ SHAPER_ENV :: "JM_UI_SHAPER"
 // the same whichever engine shapes. It loads fonts from fonts (typically
 // sc.fonts[:] after add_font), so it works before any frame exists; glyph
 // ids index the same files render draws from. fonts must outlive the
-// shaper.
-shaper :: proc(r: ^Renderer, fonts: []ops.Font_Ref) -> ui.Shaper {
+// shaper. fallbacks are fonts' ids to try in order for a rune the font
+// asked for lacks (see shape.set_fallbacks); shape_blend2d does not use
+// them.
+shaper :: proc(r: ^Renderer, fonts: []ops.Font_Ref, fallbacks: []ops.Font_Id = nil) -> ui.Shaper {
 	r.font_refs = fonts
 	r.text.refs = fonts
+	shape.set_fallbacks(&r.text, fallbacks)
 	buf: [64]u8
 	if os.get_env(buf[:], SHAPER_ENV) == "blend2d" {
 		return {data = r, shape = shape_blend2d, metrics = metrics}
@@ -87,7 +90,7 @@ shape_blend2d :: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, 
 		if info != nil {
 			cluster = mem.ptr_offset(info, i).cluster
 		}
-		run.glyphs[i] = {id, cluster, f32(pen.x + off.x), f32(pen.y + off.y)}
+		run.glyphs[i] = {id, cluster, f32(pen.x + off.x), f32(pen.y + off.y), font}
 		pen += adv
 	}
 	run.advance = f32(pen.x)

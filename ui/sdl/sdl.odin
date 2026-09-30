@@ -91,6 +91,7 @@ App :: struct {
 	ui:            Ui_Proc,
 	user:          rawptr,
 	fonts:         []Font_Ref, // registered into the Scene in order before the first frame
+	fallbacks:     []ops.Font_Id, // font ids tried in order for a rune the font asked for lacks
 	clear:         Color,
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 }
@@ -299,7 +300,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	ui.router_init(&l.router)
 	ui.layout_init(&l.layout)
 	render.init(&l.r)
-	l.shaper = render.shaper(&l.r, l.scene.fonts[:])
+	l.shaper = render.shaper(&l.r, l.scene.fonts[:], app.fallbacks)
 	render.compositor_init(&l.comp, int(app.threads))
 	// The window's image is a view into one buffer that only reallocates
 	// when a resize outgrows it, and then present invalidates the damage.

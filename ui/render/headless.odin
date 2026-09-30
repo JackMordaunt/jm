@@ -39,6 +39,7 @@ headless_init :: proc(
 	debug: ui.Debug_Flags = {},
 	full := false,
 	clear: ops.Color = {255, 255, 255, 255},
+	fallbacks: []ops.Font_Id = nil,
 ) {
 	h.fonts, h.full, h.clear = fonts, full, clear
 	at := size
@@ -50,7 +51,7 @@ headless_init :: proc(
 		ops.add_font(&h.p.scene, f.path)
 	}
 	init(&h.r)
-	h.p.shaper = shaper(&h.r, h.p.scene.fonts[:])
+	h.p.shaper = shaper(&h.r, h.p.scene.fonts[:], fallbacks)
 	// probe_init's frame shaped with the stub; lay out again in real text.
 	ui.probe_frame(&h.p)
 }

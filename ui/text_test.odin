@@ -24,7 +24,7 @@ test_caret_ligature :: proc(t: ^testing.T) {
 	// "ffi" as one 30px ligature glyph then "x": the caret splits the
 	// ligature's width in thirds, one per rune.
 	text := "ffix"
-	gs := []ops.Glyph{{1, 0, 0, 0}, {2, 3, 30, 0}}
+	gs := []ops.Glyph{{1, 0, 0, 0, 0}, {2, 3, 30, 0, 0}}
 	run := ops.Glyph_Run{0, 10, gs, 40}
 	testing.expect_value(t, caret_x(run, text, 1), 10)
 	testing.expect_value(t, caret_x(run, text, 2), 20)
@@ -38,7 +38,7 @@ test_caret_marks :: proc(t: ^testing.T) {
 	// "e" + U+0301 (two bytes) drawn as a base and a nudged mark glyph in
 	// one cluster, then "z": the mark's offset does not move the caret.
 	text := "éz"
-	gs := []ops.Glyph{{1, 0, 0, 0}, {2, 0, 3, -4}, {3, 3, 10, 0}}
+	gs := []ops.Glyph{{1, 0, 0, 0, 0}, {2, 0, 3, -4, 0}, {3, 3, 10, 0, 0}}
 	run := ops.Glyph_Run{0, 10, gs, 18}
 	testing.expect_value(t, caret_x(run, text, 0), 0)
 	testing.expect_value(t, caret_x(run, text, 1), 5) // between e and its mark

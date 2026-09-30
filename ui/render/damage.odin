@@ -258,22 +258,26 @@ damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ops.Color, fonts: ^
 		d.clips[i] = rec
 	}
 	if fonts != nil {
+		// A box for every font a glyph is drawn in: a fallback's glyphs
+		// reach as far as its own face's box, not the run's.
 		last := Font_Key{max(ops.Font_Id), -1}
 		for run in f.scene.runs {
-			key := Font_Key{run.font, run.size}
-			if key == last || key in d.glyph_box {
-				last = key
-				continue
-			}
-			last = key
-			box: ops.Rect
-			if fnt := font_for(fonts, run.font, run.size, f.scene.fonts[:]); fnt != nil {
-				m: bl.FontMetrics
-				if bl.font_get_metrics(fnt, &m) == 0 {
-					box = {m.x_min, m.y_min, m.x_max - m.x_min, m.y_max - m.y_min}
+			for g in run.glyphs {
+				key := Font_Key{g.font, run.size}
+				if key == last || key in d.glyph_box {
+					last = key
+					continue
 				}
+				last = key
+				box: ops.Rect
+				if fnt := font_for(fonts, g.font, run.size, f.scene.fonts[:]); fnt != nil {
+					m: bl.FontMetrics
+					if bl.font_get_metrics(fnt, &m) == 0 {
+						box = {m.x_min, m.y_min, m.x_max - m.x_min, m.y_max - m.y_min}
+					}
+				}
+				d.glyph_box[key] = box
 			}
-			d.glyph_box[key] = box
 		}
 	}
 	resize(&d.draws, len(f.draws))
@@ -525,24 +529,27 @@ draw_rec :: proc(f: ^ui.Frame, clips: []Clip_Rec, glyph_box: ^map[Font_Key]ops.R
 	return rec
 }
 
-// glyphs_bounds is where a run drawn at origin can paint: the font's glyph
-// box at every glyph position. A font without metrics falls back to a
-// size-relative box around the advance.
+// glyphs_bounds is where a run drawn at origin can paint: each glyph's
+// font's glyph box at the glyph's position. A run with a glyph whose font
+// has no metrics falls back to a size-relative box around the advance.
 @(private)
 glyphs_bounds :: proc(run: ops.Glyph_Run, origin: ops.Point, glyph_box: ^map[Font_Key]ops.Rect) -> ops.Rect {
-	box, ok := glyph_box[Font_Key{run.font, run.size}]
-	if !ok || box.w <= 0 || box.h <= 0 || len(run.glyphs) == 0 {
-		s := run.size
-		return {origin.x - s * 0.5, origin.y - s * 1.5, run.advance + s, s * 2.2}
+	s := run.size
+	loose := ops.Rect{origin.x - s * 0.5, origin.y - s * 1.5, run.advance + s, s * 2.2}
+	if len(run.glyphs) == 0 {
+		return loose
 	}
-	lo := [2]f32{run.glyphs[0].x, run.glyphs[0].y}
-	hi := lo
-	for g in run.glyphs[1:] {
-		lo = {min(lo.x, g.x), min(lo.y, g.y)}
-		hi = {max(hi.x, g.x), max(hi.y, g.y)}
+	lo := [2]f32{max(f32), max(f32)}
+	hi := [2]f32{min(f32), min(f32)}
+	for g in run.glyphs {
+		box, ok := glyph_box[Font_Key{g.font, s}]
+		if !ok || box.w <= 0 || box.h <= 0 {
+			return loose
+		}
+		lo = {min(lo.x, g.x + box.x), min(lo.y, g.y + box.y)}
+		hi = {max(hi.x, g.x + box.x + box.w), max(hi.y, g.y + box.y + box.h)}
 	}
-	x0, y0 := origin.x + lo.x + box.x, origin.y + lo.y + box.y
-	return {x0, y0, origin.x + hi.x + box.x + box.w - x0, origin.y + hi.y + box.y + box.h - y0}
+	return {origin.x + lo.x, origin.y + lo.y, hi.x - lo.x, hi.y - lo.y}
 }
 
 // box_inside is the part of a Rect or Round_Rect at least margin inside its

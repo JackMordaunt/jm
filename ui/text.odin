@@ -128,7 +128,7 @@ stub_shaper :: proc() -> Shaper {
 			x: f32
 			i := 0
 			for r, at in text {
-				gs[i] = {u32(r), u32(at), x, 0}
+				gs[i] = {u32(r), u32(at), x, 0, font}
 				x += 0.6 * size
 				i += 1
 			}

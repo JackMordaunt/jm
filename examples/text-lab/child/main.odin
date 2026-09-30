@@ -5,9 +5,9 @@
 // stop. The Editing and Paragraph pages put the same text in live inputs
 // to poke carets, hit-testing and wrapping by hand.
 //
-// There is no font fallback yet, so each specimen names the one font it
-// is shaped in; text outside that font's coverage shows as missing glyphs
-// on purpose, as does any right-to-left run drawn in logical order.
+// Each specimen names the font it asks for; every other script's font
+// stands behind it as a fallback, so a rune that font lacks comes from the
+// first one that has it.
 //
 //	text-lab-child                              run as the hot-reload subprocess
 //	text-lab-child -page Bidi -png out.png      render one page headlessly
@@ -21,6 +21,7 @@ package main
 
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "jm:ui"
@@ -251,7 +252,7 @@ page_scripts :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_bidi :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	specimens(gtx, m, BIDI[:], "Runs reordered per line (UAX #9 L2 from run directions); one font per line until fallback lands.")
+	specimens(gtx, m, BIDI[:], "Runs reordered per line (UAX #9 L2 from run directions); fonts fall back per grapheme.")
 }
 
 page_emoji :: proc(gtx: ^ui.Ctx, m: ^Model) {
@@ -450,6 +451,19 @@ lab_fonts :: proc(m: ^Model) -> []ops.Font_Ref {
 	return sc.fonts[:]
 }
 
+// lab_fallbacks is every script's font, in Script order, each once: the
+// fallback chain behind whichever font a sample asks for.
+lab_fallbacks :: proc(m: ^Model) -> []ops.Font_Id {
+	out := make([dynamic]ops.Font_Id)
+	for script in Script {
+		id := m.font[script]
+		if !slice.contains(out[:], id) {
+			append(&out, id)
+		}
+	}
+	return out[:]
+}
+
 // State that survives a respawn.
 
 persist :: proc(m: ^Model) {
@@ -487,7 +501,7 @@ main :: proc() {
 	fonts := lab_fonts(&m)
 	if len(os.args) == 1 {
 		restore(&m)
-		child.run({ui = lab_ui, user = &m, fonts = fonts})
+		child.run({ui = lab_ui, user = &m, fonts = fonts, fallbacks = lab_fallbacks(&m)})
 		return
 	}
 	args := os.args[1:]
@@ -545,7 +559,7 @@ main :: proc() {
 			}
 		case:
 			if !open {
-				render.headless_init(&h, lab_ui, &m, size, fonts, debug, full = full)
+				render.headless_init(&h, lab_ui, &m, size, fonts, debug, full = full, fallbacks = lab_fallbacks(&m))
 				open = true
 			}
 			handled, ok := render.headless_step(&h, args, &i)

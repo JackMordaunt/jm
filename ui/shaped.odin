@@ -19,12 +19,14 @@ Shaped_Text :: struct {
 
 // Shaped_Glyph is a glyph and its pen movement, in pixels. offset is where
 // it sits from the pen, y down; advance is how far it moves the pen along
-// its run's direction.
+// its run's direction. font is the face id indexes, a fallback's where
+// the font asked for lacks the rune.
 Shaped_Glyph :: struct {
 	id:      u32,
 	cluster: u32, // byte offset where its cluster starts
 	advance: f32,
 	offset:  [2]f32,
+	font:    ops.Font_Id,
 }
 
 // Shaped_Run is glyphs[first:last], shaped from text[start:end] in one
@@ -67,7 +69,7 @@ shaped_from_run :: proc(run: ops.Glyph_Run, text: string, allocator: mem.Allocat
 	st.glyphs = make([]Shaped_Glyph, len(run.glyphs), allocator)
 	for g, i in run.glyphs {
 		next := run.advance if i + 1 == len(run.glyphs) else run.glyphs[i + 1].x
-		st.glyphs[i] = {g.id, g.cluster, next - g.x, {0, g.y}}
+		st.glyphs[i] = {g.id, g.cluster, next - g.x, {0, g.y}, g.font}
 	}
 	st.runs = make([]Shaped_Run, 1, allocator)
 	st.runs[0] = {0, len(st.glyphs), 0, len(text), false}
