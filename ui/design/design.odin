@@ -19,8 +19,7 @@ parts:
     is painted is the system's: Material overlays a translucent layer,
     Fluent binds a colour role per state. Both read the same Control.
   - Geometry: per-corner radii (Corners, rounded), arcs, inside strokes,
-    focus rings, touch targets, box-shadow layers, a blur-free drop
-    shadow and CSS easing.
+    focus rings, touch targets, box-shadow layers and CSS easing.
   - Text: a composite type style, a weight-to-face lookup, and shaping
     and drawing a run inside a line box.
   - Theme and check: the generic binding table, axioms and the colour
@@ -181,28 +180,6 @@ stroke_inside :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, color: ops.Color, w: f32
 stroke_inside_corners :: proc(gtx: ^ui.Ctx, r: ops.Rect, k: Corners, color: ops.Color, w: f32) {
 	h := w / 2
 	ops.stroke(gtx.scene, rounded(gtx, {r.x + h, r.y + h, r.w - w, r.h - w}, grow_corners(k, -h)), color, {width = w})
-}
-
-// paint_shadow paints an approximate drop shadow of colour under rr for
-// an elevation of dp. jm:ui has no blur, so it is a stack of offset
-// translucent round rects: soft enough to read as a lift, not a true
-// blurred composite.
-paint_shadow :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, dp: f32, color: ops.Color) {
-	if dp <= 0 {
-		return
-	}
-	steps := 4
-	for i in 0 ..< steps {
-		t := f32(i + 1) / f32(steps)
-		spread := dp * 0.5 * t
-		y := dp * 0.5 * t
-		r := rr.rect
-		ops.fill(
-			gtx.scene,
-			ops.Round_Rect{{r.x - spread + dp * 0.25, r.y - spread + y + dp * 0.25, r.w + 2 * spread - dp * 0.5, r.h + 2 * spread - dp * 0.5}, rr.radius + spread},
-			ops.with_alpha(color, 0.10 / f32(steps) * (2 - t)),
-		)
-	}
 }
 
 // Bezier is a CSS-style cubic-bezier easing, [x1, y1, x2, y2].
