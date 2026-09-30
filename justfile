@@ -139,10 +139,13 @@ fetch dir url rev:
         git -C {{dir}} checkout -qf FETCH_HEAD || exit 1; \
     fi
 
-# Remove build/ and the compiled SQLite, wasm3, libpg_query and Blend2D archives
+# Every artefact the recipes build, the same list as .gitignore: a new
+# package's archive joins both.
+#
+# Remove build/ and every package's compiled C library
 [group('general')]
 clean:
-    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib
+    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib git/lib ui/kb/lib
 
 # ============================================================================
 # odin-run: tools/odin-run, the `#!/usr/bin/env odin-run` script runner.

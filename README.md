@@ -135,7 +135,7 @@ the cached binary.
 general      check    3-target type-check of every package and program
              test     every package's tests
              link     build every program into build/debug
-             clean    drop build/ and the compiled archives
+             clean    drop build/ and every package's compiled C library
 odin-run     build    debug odin-run         release  optimised odin-run
              install  odin-run -> ~/.local/bin (BINDIR overrides)
              example  run examples/hello.odin
