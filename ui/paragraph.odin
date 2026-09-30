@@ -27,6 +27,7 @@ Paragraph :: struct {
 	rtl:       bool,
 	width:     f32, // the widest line, hanging whitespace excluded
 	height:    f32,
+	pitch:     f32, // from one line's top to the next
 	lines:     []Text_Line,
 	graphemes: []int, // where a caret may stop, ascending, len(text) included
 }
@@ -64,13 +65,17 @@ Cluster_Span :: struct {
 
 // paragraph_layout shapes text through s and breaks it into lines no wider
 // than max_width (no limit when max_width <= 0), allocating from allocator.
-paragraph_layout :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, max_width: f32, allocator: mem.Allocator) -> Paragraph {
-	return paragraph_from_shaped(shape_text(s, font, size, text, allocator), metrics(s, font, size), text, max_width, allocator)
+// Lines are the font's line_height apart, its ascent from the top of each
+// line to the baseline; a line_pitch > 0 instead makes each line that
+// tall with the font's ascent and descent centred in it, as a type style's
+// line box is.
+paragraph_layout :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, max_width: f32, allocator: mem.Allocator, line_pitch: f32 = 0) -> Paragraph {
+	return paragraph_from_shaped(shape_text(s, font, size, text, allocator), metrics(s, font, size), text, max_width, allocator, line_pitch)
 }
 
 // paragraph_from_shaped lays out text already shaped as st; see
 // paragraph_layout.
-paragraph_from_shaped :: proc(st: Shaped_Text, m: Font_Metrics, text: string, max_width: f32, allocator: mem.Allocator) -> Paragraph {
+paragraph_from_shaped :: proc(st: Shaped_Text, m: Font_Metrics, text: string, max_width: f32, allocator: mem.Allocator, line_pitch: f32 = 0) -> Paragraph {
 	p := Paragraph{text = text, font = st.font, size = st.size, metrics = m, rtl = st.rtl}
 	l := Layout_State{st = st, text = text, max = max_width, allocator = allocator}
 	l.sums = make([]f32, len(st.glyphs) + 1, context.temp_allocator)
@@ -103,12 +108,13 @@ paragraph_from_shaped :: proc(st: Shaped_Text, m: Font_Metrics, text: string, ma
 	}
 	p.lines = lines[:]
 
-	lh := line_height(m)
+	p.pitch = line_pitch if line_pitch > 0 else line_height(m)
+	above := (p.pitch - m.ascent - m.descent) / 2 + m.ascent if line_pitch > 0 else m.ascent
 	for &ln, i in p.lines {
 		p.width = max(p.width, ln.width)
-		ln.baseline = f32(i) * lh + m.ascent
+		ln.baseline = f32(i) * p.pitch + above
 	}
-	p.height = f32(len(p.lines)) * lh
+	p.height = f32(len(p.lines)) * p.pitch
 	aligned := max_width if max_width > 0 else p.width
 	if p.rtl {
 		for &ln in p.lines {
@@ -147,6 +153,21 @@ paragraph_line_of :: proc(p: Paragraph, i: int) -> int {
 	return 0
 }
 
+// paragraph_line_end is the last caret stop on line k, where End puts the
+// caret: the text's end on the last line, before the newline on a line a
+// newline ends, and before the hanging whitespace on a wrapped line, whose
+// end is already the next line's start.
+paragraph_line_end :: proc(p: Paragraph, k: int) -> int {
+	ln := p.lines[k]
+	if k == len(p.lines) - 1 {
+		return ln.end
+	}
+	if e := line_content_end(p.text, ln); e < ln.end {
+		return e
+	}
+	return ln.hang
+}
+
 // paragraph_hit is the caret stop nearest pos, a point from the
 // paragraph's top-left: on the line pos is level with, clamped to the
 // first or last.
@@ -154,8 +175,7 @@ paragraph_hit :: proc(p: Paragraph, pos: ops.Point) -> int {
 	if len(p.lines) == 0 {
 		return 0
 	}
-	lh := line_height(p.metrics)
-	k := clamp(int(pos.y / lh) if lh > 0 else 0, 0, len(p.lines) - 1)
+	k := clamp(int(pos.y / p.pitch) if p.pitch > 0 else 0, 0, len(p.lines) - 1)
 	ln := p.lines[k]
 	last := ln.end if k == len(p.lines) - 1 else line_content_end(p.text, ln)
 	best, best_d := ln.start, max(f32)

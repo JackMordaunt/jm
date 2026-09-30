@@ -135,7 +135,7 @@ test_link_activates_unless_disabled :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_wrap_lines_breaks_at_spaces_and_newlines :: proc(t: ^testing.T) {
+test_textarea_wraps_at_spaces_and_newlines :: proc(t: ^testing.T) {
 	sc: ui.Probe // only for its shaper
 	m: Inputs_Model
 	ui.probe_init(&sc, inputs, &m, {600, 500}, allocator = context.temp_allocator)
@@ -147,14 +147,15 @@ test_wrap_lines_breaks_at_spaces_and_newlines :: proc(t: ^testing.T) {
 	gtx := &ctx
 	st := style(.Body1)
 	one := shape_style(gtx, "word", st).width
-	lines := wrap_lines(gtx, "word word word\nnext", st, one * 2.5, context.temp_allocator)
-	testing.expect_value(t, len(lines), 3)
-	testing.expect_value(t, lines[0], Line{0, 9}) // "word word"
-	testing.expect_value(t, lines[1], Line{10, 14}) // "word"
-	testing.expect_value(t, lines[2], Line{15, 19}) // "next", after the newline
-	// A word wider than the box breaks at the overflowing rune.
-	long := wrap_lines(gtx, "abcdefgh", st, one, context.temp_allocator)
-	testing.expect(t, len(long) >= 2)
+	p := layout_style(gtx, "word word word\nnext", st, one * 2.5)
+	testing.expect_value(t, len(p.lines), 3)
+	testing.expect_value(t, [2]int{p.lines[0].start, p.lines[0].end}, [2]int{0, 10}) // "word word ", its space hanging
+	testing.expect_value(t, [2]int{p.lines[1].start, p.lines[1].end}, [2]int{10, 15}) // "word" and the newline
+	testing.expect_value(t, [2]int{p.lines[2].start, p.lines[2].end}, [2]int{15, 19}) // "next"
+	testing.expect_value(t, p.pitch, st.line_height)
+	// A word wider than the box breaks between graphemes.
+	long := layout_style(gtx, "abcdefgh", st, one)
+	testing.expect(t, len(long.lines) >= 2)
 	// The empty string is one empty line, so the caret has a home.
-	testing.expect_value(t, len(wrap_lines(gtx, "", st, one, context.temp_allocator)), 1)
+	testing.expect_value(t, len(layout_style(gtx, "", st, one).lines), 1)
 }

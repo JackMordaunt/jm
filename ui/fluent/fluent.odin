@@ -284,6 +284,19 @@ shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
 	return design.shape_style(gtx, s, st, design.font_for(font_faces(), st.weight, gtx.font))
 }
 
+draw_paragraph :: design.draw_paragraph
+
+// layout_style lays s out at a style in the face nearest its weight,
+// wrapped at width when width > 0; see design.layout_style.
+layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0) -> ui.Paragraph {
+	return design.layout_style(gtx, s, st, design.font_for(font_faces(), st.weight, gtx.font), width)
+}
+
+// text_stops is s's caret stops at a style, for ui.text_key.
+text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> []int {
+	return ui.text_graphemes(gtx, s, design.font_for(font_faces(), st.weight, gtx.font), st.size)
+}
+
 // Interaction and STATES are design's: Live follows real input; the rest
 // force one look and take no input.
 Interaction :: design.Interaction

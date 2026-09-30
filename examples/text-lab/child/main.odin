@@ -394,7 +394,7 @@ draw_specimen :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, width: f32, overlays: bool,
 // draw_line_boxes draws, under the text, each line's box and baseline and
 // a rule at each cluster's logical start edge.
 draw_line_boxes :: proc(gtx: ^ui.Ctx, p: ui.Paragraph) {
-	lh := ui.line_height(p.metrics)
+	lh := p.pitch
 	h := p.metrics.ascent + p.metrics.descent
 	for ln, k in p.lines {
 		top := f32(k) * lh
@@ -418,7 +418,7 @@ draw_glyph_marks :: proc(gtx: ^ui.Ctx, p: ui.Paragraph) {
 			}
 		}
 	}
-	lh := ui.line_height(p.metrics)
+	lh := p.pitch
 	h := p.metrics.ascent + p.metrics.descent
 	for g in p.graphemes {
 		k, x := ui.paragraph_caret(p, g)

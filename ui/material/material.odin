@@ -454,6 +454,19 @@ shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
 	return design.shape_style(gtx, s, st, font_for(gtx, st.weight))
 }
 
+draw_paragraph :: design.draw_paragraph
+
+// layout_style lays s out at a style in the face for its weight, wrapped
+// at width when width > 0; see design.layout_style.
+layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0) -> ui.Paragraph {
+	return design.layout_style(gtx, s, st, font_for(gtx, st.weight), width)
+}
+
+// text_stops is s's caret stops at a style, for ui.text_key.
+text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> []int {
+	return ui.text_graphemes(gtx, s, font_for(gtx, st.weight), st.size)
+}
+
 // draw_role_text is shape_text then draw_text of s at role, in one call.
 draw_role_text :: proc(gtx: ^ui.Ctx, s: string, pos: ops.Point, role: Type_Role, color: ops.Color) -> Text {
 	t := shape_text(gtx, s, role)

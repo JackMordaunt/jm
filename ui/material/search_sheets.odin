@@ -97,9 +97,9 @@ search_bar :: proc(
 		focused, hovered, bar_pressed = st.focused, st.hovered, st.pressed
 	}
 	str := string(s.buf[:])
-	typed := shape_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT)
+	typed := layout_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT)
 	full := typed.width
-	caret := ui.caret_x(typed.run, str, s.cursor)
+	_, caret := ui.paragraph_caret(typed, s.cursor)
 	if live {
 		vs.scroll = max(clamp(min(vs.scroll, max(full + 2 - inner, 0)), caret + 2 - inner, caret), 0)
 		scroll = vs.scroll
@@ -260,7 +260,7 @@ search_text_events :: proc(
 		case .Press:
 			st.pressed = true
 			pressed = true
-			s.cursor = ui.text_hit(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT.size, e.pos.x - pad_l + scroll)
+			s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tok.SEARCH_BAR_INPUT_TEXT_FONT), {e.pos.x - pad_l + scroll, 0})
 		case .Release:
 			st.pressed = false
 		case .Text:
@@ -276,7 +276,7 @@ search_text_events :: proc(
 			case .Escape:
 				escape = true
 			case:
-				changed |= ui.text_key(s, e.key)
+				changed |= ui.text_key(s, e.key, text_stops(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT))
 			}
 		}
 	}
@@ -326,8 +326,7 @@ paint_search_field :: proc(
 	ops.clip_push(gtx.scene, ops.Rect{r.x + pad_l, r.y, inner, r.h})
 	font := header ? tok.SEARCH_VIEW_HEADER_INPUT_TEXT_FONT : tok.SEARCH_BAR_INPUT_TEXT_FONT
 	if len(str) > 0 {
-		t := shape_style(gtx, str, font)
-		draw_text(gtx, t, {r.x + pad_l - scroll, cy - t.height / 2}, input)
+		draw_paragraph(gtx, layout_style(gtx, str, font), {r.x + pad_l - scroll, cy - font.line_height / 2}, input)
 	} else {
 		t := shape_style(gtx, placeholder, header ? tok.SEARCH_VIEW_HEADER_SUPPORTING_TEXT_FONT : tok.SEARCH_BAR_SUPPORTING_TEXT_FONT)
 		draw_text(gtx, t, {r.x + pad_l, cy - t.height / 2}, hint)

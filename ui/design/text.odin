@@ -67,3 +67,19 @@ draw_text :: proc(gtx: ^ui.Ctx, t: Text, pos: ops.Point, color: ops.Color) {
 baseline_of :: proc(t: Text) -> f32 {
 	return (t.height - t.metrics.ascent - t.metrics.descent) / 2 + t.metrics.ascent
 }
+
+// layout_style lays s out at st in font as a paragraph wrapped at width
+// (not at all when width <= 0), each line st's line height tall, into the
+// frame allocator.
+layout_style :: proc(gtx: ^ui.Ctx, s: string, st: Type_Style, font: ops.Font_Id, width: f32 = 0) -> ui.Paragraph {
+	return ui.paragraph_layout(gtx.shaper, font, st.size, s, width, gtx.allocator, line_pitch = st.line_height)
+}
+
+// draw_paragraph draws p with its first line box's top-left at pos, in
+// visual order, right-to-left runs and all.
+draw_paragraph :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, color: ops.Color) {
+	if color[3] == 0 {
+		return
+	}
+	ui.paragraph_draw(gtx.scene, p, pos, color)
+}

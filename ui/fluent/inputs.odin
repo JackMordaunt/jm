@@ -1,7 +1,6 @@
 package fluent
 
 import "base:runtime"
-import "core:unicode/utf8"
 import "jm:ui"
 import "jm:ui/ops"
 import tok "jm:ui/fluent/tokens"
@@ -254,7 +253,7 @@ input :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
-				s.cursor = ui.text_hit(gtx, s, m.style.size, e.pos.x - left + sc.x)
+				s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - left + sc.x, 0})
 			case .Text:
 				if len(e.text) > 0 {
 					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
@@ -265,15 +264,15 @@ input :: proc(
 				if e.key == .Enter {
 					r.submitted = true
 				} else {
-					r.changed |= ui.text_key(s, e.key)
+					r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
 				}
 			}
 		}
 	}
 	r.focused = c.focused && !c.disabled
 	str := string(s.buf[:])
-	t := shape_style(gtx, str, m.style)
-	caret := ui.caret_x(t.run, str, s.cursor)
+	t := layout_style(gtx, str, m.style)
+	_, caret := ui.paragraph_caret(t, s.cursor)
 	scroll: f32
 	if sc != nil {
 		sc.x = min(sc.x, max(t.width + CARET_W - inner, 0))
@@ -307,7 +306,7 @@ input :: proc(
 	}
 	ops.clip_push(gtx.scene, ops.Rect{left, BORDER, inner, sz.y - 2 * BORDER})
 	if len(str) > 0 {
-		draw_text(gtx, t, {left - scroll, y_text}, k.text)
+		draw_paragraph(gtx, t, {left - scroll, y_text}, k.text)
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {left, y_text}, k.placeholder)
 	}
@@ -318,7 +317,7 @@ input :: proc(
 	paint_focus_line(gtx, area, underline ? 0 : BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
 	listen(gtx, c.st, p.id, area, EDIT_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
-	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
 
@@ -341,89 +340,6 @@ textarea_metrics :: proc(size: Size) -> Textarea_Metrics {
 		return {64, 320, tok.SPACING_VERTICAL_S, tok.SPACING_HORIZONTAL_M + tok.SPACING_HORIZONTAL_XXS, style(.Body2)}
 	}
 	return {52, 260, tok.SPACING_VERTICAL_SNUDGE, tok.SPACING_HORIZONTAL_MNUDGE + tok.SPACING_HORIZONTAL_XXS, style(.Body1)}
-}
-
-// Line is one laid-out line of a textarea: a byte range of the buffer,
-// end excluding any newline that ended it.
-Line :: struct {
-	start, end: int,
-}
-
-// wrap_lines breaks str into lines no wider than width at st: at every
-// newline, then at the last space that fits, else at the rune that
-// overflows. Widths come from shaping each prefix, exact for any shaper
-// and fine for a textarea's worth of text.
-wrap_lines :: proc(gtx: ^ui.Ctx, str: string, st: tok.Type_Style, width: f32, allocator := context.allocator) -> []Line {
-	out := make([dynamic]Line, allocator)
-	start := 0
-	for start <= len(str) {
-		end := len(str)
-		if nl := index_byte_from(str, '\n', start); nl >= 0 {
-			end = nl
-		}
-		line_start := start
-		last_space := -1
-		i := line_start
-		for i < end {
-			r, n := utf8.decode_rune(str[i:])
-			if r == ' ' {
-				last_space = i
-			}
-			if i > line_start && shape_style(gtx, str[line_start:i + n], st).width > width {
-				cut := last_space > line_start ? last_space : i
-				append(&out, Line{line_start, cut})
-				line_start = cut
-				if last_space > line_start - 1 && str[line_start] == ' ' {
-					line_start += 1
-				}
-				last_space = -1
-				i = line_start
-				continue
-			}
-			i += n
-		}
-		append(&out, Line{line_start, end})
-		start = end + 1
-	}
-	return out[:]
-}
-
-@(private = "file")
-index_byte_from :: proc(s: string, b: u8, from: int) -> int {
-	for i in from ..< len(s) {
-		if s[i] == b {
-			return i
-		}
-	}
-	return -1
-}
-
-// line_of is the index of the line the cursor sits on: the first whose
-// range holds it, a soft-wrapped line keeping the caret at its end.
-@(private = "file")
-line_of :: proc(lines: []Line, cursor: int) -> int {
-	for l, i in lines {
-		if cursor <= l.end {
-			return i
-		}
-	}
-	return max(len(lines) - 1, 0)
-}
-
-// line_hit is the rune boundary of line l in str nearest x, as
-// ui.text_hit for one line at a style.
-@(private = "file")
-line_hit :: proc(gtx: ^ui.Ctx, str: string, l: Line, st: tok.Type_Style, x: f32) -> int {
-	line := str[l.start:l.end]
-	return l.start + ui.caret_at(shape_style(gtx, line, st).run, line, x)
-}
-
-// line_caret_x is the x of byte offset cursor within line l of str, as
-// ui.caret_x for one line at a style.
-@(private = "file")
-line_caret_x :: proc(gtx: ^ui.Ctx, str: string, l: Line, st: tok.Type_Style, cursor: int) -> f32 {
-	line := str[l.start:l.end]
-	return ui.caret_x(shape_style(gtx, line, st).run, line, cursor - l.start)
 }
 
 // Textarea_Scroll is a textarea's vertical scroll, kept so the caret
@@ -464,7 +380,7 @@ textarea :: proc(
 	str := string(s.buf[:])
 	inner_w := max(w - 2 * BORDER - 2 * m.pad_h, 1)
 	lh := m.style.line_height
-	lines := wrap_lines(gtx, str, m.style, inner_w, gtx.allocator)
+	para := layout_style(gtx, str, m.style, inner_w)
 	// The text area's height: its lines plus padding, between the size's
 	// bounds; the root adds the borders and FOCUS_LINE of bottom padding
 	// (useTextareaStyles.styles.ts:17-26). Sized again after this frame's
@@ -475,7 +391,7 @@ textarea :: proc(
 		box = {0, 0, sz.x, sz.y - FOCUS_LINE}
 		return
 	}
-	sz, box := box_for(cs, w, len(lines), m)
+	sz, box := box_for(cs, w, len(para.lines), m)
 	c := control(gtx, p.id, box, state)
 	sc := c.st != nil ? ui.widget_data(gtx, p.id, Textarea_Scroll) : nil
 	text_x, text_y := BORDER + m.pad_h, BORDER + m.pad_v
@@ -483,8 +399,7 @@ textarea :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
-				li := clamp(int((e.pos.y - text_y + sc.y) / lh), 0, len(lines) - 1)
-				s.cursor = line_hit(gtx, str, lines[li], m.style, e.pos.x - text_x)
+				s.cursor = ui.paragraph_hit(para, {e.pos.x - text_x, e.pos.y - text_y + sc.y})
 			case .Scroll:
 				sc.y += e.scroll.y * ui.SCROLL_STEP
 			case .Text:
@@ -500,31 +415,30 @@ textarea :: proc(
 					s.cursor += 1
 					r.changed = true
 				case .Up, .Down:
-					li := line_of(lines, s.cursor)
-					x := line_caret_x(gtx, str, lines[li], m.style, s.cursor)
+					li, x := ui.paragraph_caret(para, s.cursor)
 					to := li + (e.key == .Up ? -1 : 1)
-					if to >= 0 && to < len(lines) {
-						s.cursor = line_hit(gtx, str, lines[to], m.style, x)
+					if to >= 0 && to < len(para.lines) {
+						s.cursor = ui.paragraph_hit(para, {x, (f32(to) + 0.5) * para.pitch})
 					}
 				case .Home:
-					s.cursor = lines[line_of(lines, s.cursor)].start
+					s.cursor = para.lines[ui.paragraph_line_of(para, s.cursor)].start
 				case .End:
-					s.cursor = lines[line_of(lines, s.cursor)].end
+					s.cursor = ui.paragraph_line_end(para, ui.paragraph_line_of(para, s.cursor))
 				case:
-					r.changed |= ui.text_key(s, e.key)
+					r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
 				}
 			}
 		}
 		if r.changed {
 			str = string(s.buf[:])
-			lines = wrap_lines(gtx, str, m.style, inner_w, gtx.allocator)
-			sz, box = box_for(cs, w, len(lines), m)
+			para = layout_style(gtx, str, m.style, inner_w)
+			sz, box = box_for(cs, w, len(para.lines), m)
 		}
 	}
 	text_h := box.h - 2 * BORDER
 	r.focused = c.focused && !c.disabled
-	li := line_of(lines, s.cursor)
-	content_h := f32(len(lines)) * lh
+	li, cx := ui.paragraph_caret(para, s.cursor)
+	content_h := para.height
 	view_h := text_h - 2 * m.pad_v
 	scroll: f32
 	if sc != nil {
@@ -558,24 +472,15 @@ textarea :: proc(
 	if len(str) == 0 && placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {text_x, text_y}, k.placeholder)
 	}
-	for l, i in lines {
-		y := text_y + f32(i) * lh - scroll
-		if y + lh < text_y || y > text_y + view_h {
-			continue
-		}
-		if l.end > l.start {
-			draw_text(gtx, shape_style(gtx, str[l.start:l.end], m.style), {text_x, y}, k.text)
-		}
-	}
+	draw_paragraph(gtx, para, {text_x, text_y - scroll}, k.text)
 	if r.focused {
-		cx := line_caret_x(gtx, str, lines[li], m.style, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{text_x + cx, text_y + f32(li) * lh - scroll + 2, CARET_W, lh - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, box, BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
 	listen(gtx, c.st, p.id, box, EDIT_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
-	ui.widget_close(gtx, &p, {sz, text_y + baseline_of(shape_style(gtx, "", m.style))})
+	ui.widget_close(gtx, &p, {sz, text_y + para.lines[0].baseline})
 	return
 }
 

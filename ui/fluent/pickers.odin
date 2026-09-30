@@ -497,7 +497,7 @@ combobox :: proc(
 			case .Press:
 				if e.button == .Left && !c.disabled {
 					if typed {
-						s.cursor = ui.text_hit(gtx, s, m.style.size, e.pos.x - m.pad_start)
+						s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), m.style), {e.pos.x - m.pad_start, 0})
 					}
 					if !typed || e.pos.x >= sz.x - m.pad_end - m.icon - m.gap {
 						flag^ = !flag^
@@ -544,11 +544,11 @@ combobox :: proc(
 					if flag^ && !typed {
 						step_listbox(gtx, p.id, e.key, len(shown))
 					} else if typed {
-						r.edited |= ui.text_key(s, e.key)
+						r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
 					}
 				case:
 					if typed {
-						r.edited |= ui.text_key(s, e.key)
+						r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, m.style))
 					}
 				}
 			}
@@ -568,17 +568,17 @@ combobox :: proc(
 	rad := paint_field(gtx, area, appearance, k)
 	// The text: typed, or the selection's, else the placeholder.
 	shown_text := typed ? query : sel_text
-	t := shape_style(gtx, shown_text, m.style)
+	t := layout_style(gtx, shown_text, m.style)
 	inner_w := sz.x - m.pad_start - m.pad_end - m.icon - m.gap
 	y_text := (sz.y - m.style.line_height) / 2
 	ops.clip_push(gtx.scene, ops.Rect{m.pad_start, tok.STROKE_WIDTH_THIN, max(inner_w, 0), sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	if shown_text != "" {
-		draw_text(gtx, t, {m.pad_start, y_text}, k.text)
+		draw_paragraph(gtx, t, {m.pad_start, y_text}, k.text)
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {m.pad_start, y_text}, k.placeholder)
 	}
 	if typed && c.focused && !c.disabled {
-		caret := ui.caret_x(t.run, query, s.cursor)
+		_, caret := ui.paragraph_caret(t, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{m.pad_start + caret, y_text + 2, 1, m.style.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
@@ -617,7 +617,7 @@ combobox :: proc(
 		}
 	}
 	r.opened = flag^
-	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
 
@@ -1114,7 +1114,7 @@ search_box :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press:
-				s.cursor = ui.text_hit(gtx, s, tst.size, e.pos.x - left)
+				s.cursor = ui.paragraph_hit(layout_style(gtx, string(s.buf[:]), tst), {e.pos.x - left, 0})
 			case .Text:
 				if len(e.text) > 0 {
 					inject_at_elems(&s.buf, s.cursor, ..transmute([]u8)e.text)
@@ -1131,7 +1131,7 @@ search_box :: proc(
 						r.changed = true
 					}
 				case:
-					r.changed |= ui.text_key(s, e.key)
+					r.changed |= ui.text_key(s, e.key, text_stops(gtx, s, tst))
 				}
 			}
 		}
@@ -1149,16 +1149,16 @@ search_box :: proc(
 	right := showing_dismiss ? pad + icon_size + tok.SPACING_HORIZONTAL_M : pad
 	inner := max(sz.x - left - right, 0)
 	str := string(s.buf[:])
-	t := shape_style(gtx, str, tst)
+	t := layout_style(gtx, str, tst)
 	y_text := (sz.y - tst.line_height) / 2
 	ops.clip_push(gtx.scene, ops.Rect{left, tok.STROKE_WIDTH_THIN, inner, sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	if len(str) > 0 {
-		draw_text(gtx, t, {left, y_text}, k.text)
+		draw_paragraph(gtx, t, {left, y_text}, k.text)
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {left, y_text}, k.placeholder)
 	}
 	if r.focused {
-		caret := ui.caret_x(t.run, str, s.cursor)
+		_, caret := ui.paragraph_caret(t, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{left + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
@@ -1170,7 +1170,7 @@ search_box :: proc(
 	}
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id), k.line)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
-	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
 
@@ -1333,10 +1333,10 @@ tag_picker :: proc(
 							}
 						}
 					} else {
-						r.edited |= ui.text_key(s, e.key)
+						r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, style(.Body1)))
 					}
 				case:
-					r.edited |= ui.text_key(s, e.key)
+					r.edited |= ui.text_key(s, e.key, text_stops(gtx, s, style(.Body1)))
 				}
 			}
 		}
@@ -1363,17 +1363,17 @@ tag_picker :: proc(
 	}
 	// The text slot takes the rest, at least TAG_INPUT_MIN_WIDTH.
 	tst := style(.Body1)
-	t := shape_style(gtx, query, tst)
+	t := layout_style(gtx, query, tst)
 	y_text := (sz.y - tst.line_height) / 2
 	slot_w := max(sz.x - end_pad - x, TAG_INPUT_MIN_WIDTH)
 	ops.clip_push(gtx.scene, ops.Rect{x, tok.STROKE_WIDTH_THIN, slot_w, sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	if query != "" {
-		draw_text(gtx, t, {x, y_text}, k.text)
+		draw_paragraph(gtx, t, {x, y_text}, k.text)
 	} else if placeholder != "" && x == tok.SPACING_HORIZONTAL_M {
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {x, y_text}, k.placeholder)
 	}
 	if c.focused && !c.disabled {
-		caret := ui.caret_x(t.run, query, s.cursor)
+		_, caret := ui.paragraph_caret(t, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{x + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
@@ -1386,7 +1386,7 @@ tag_picker :: proc(
 		pick(chosen, s, idx[pk.picked], &r)
 	}
 	r.opened = flag^
-	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
+	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
 
