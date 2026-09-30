@@ -29,8 +29,10 @@ test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
 		defer close(&rs)
 		return claim_id(gtx)
 	}
-	testing.expect(t, row_under(gtx, "inbox") != row_under(gtx, "sent"))
-	testing.expect_value(t, row_under(gtx, "inbox"), row_under(gtx, "inbox"))
+	inbox := row_under(gtx, "inbox")
+	testing.expect(t, inbox != row_under(gtx, "sent"))
+	harness_frame(&h)
+	testing.expect_value(t, row_under(gtx, "inbox"), inbox) // the same row next frame
 }
 
 @(test)

@@ -150,6 +150,8 @@ Layout :: struct {
 	data:      map[Data_Key]Data_Entry, // widget_data's typed values
 	retained:  map[ops.Area_Id]u64, // root scope -> the last frame retain kept it
 	held:      [dynamic]Held, // guard handles between guard_hold and guard_take
+	claims:    map[Claim_Key]u64, // this frame's unkeyed claims per call site and parent
+	root_parent: ops.Area_Id, // what a widget with no container open claims under: 0, or an overlay's opener
 	scope:     ops.Area_Id, // mixed into widget ids; scope and list set it
 	scope_root: ops.Area_Id, // the outermost open scope, which state records as its root
 	frame:     u64,
@@ -177,6 +179,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.stack = make([dynamic]Container, allocator)
 	l.children = make([dynamic]Child, allocator)
 	l.held = make([dynamic]Held, allocator)
+	l.claims = make(map[Claim_Key]u64, allocator)
 	l.state = make(map[ops.Area_Id]^Widget_State, allocator)
 	l.data = make(map[Data_Key]Data_Entry, allocator)
 	l.retained = make(map[ops.Area_Id]u64, allocator)
@@ -187,6 +190,7 @@ layout_destroy :: proc(l: ^Layout) {
 	delete(l.stack)
 	delete(l.children)
 	delete(l.held)
+	delete(l.claims)
 	for _, v in l.state {
 		free(v, l.allocator)
 	}
@@ -208,7 +212,8 @@ layout_reset :: proc(l: ^Layout) {
 	assert(len(l.held) == 0, "ui: a guard's handle was held and never taken")
 	clear(&l.stack)
 	clear(&l.children)
-	l.scope, l.scope_root = 0, 0
+	clear(&l.claims)
+	l.scope, l.scope_root, l.root_parent = 0, 0, 0
 	l.frame += 1
 	stale := make([dynamic]ops.Area_Id, context.temp_allocator)
 	for k, v in l.state {
@@ -259,14 +264,14 @@ widget_state :: proc(gtx: ^Ctx, area: ops.Area_Id) -> ^Widget_State {
 // a column's is column_open, trimmed to column. A private helper that
 // opens on an opener's behalf passes its own self through, as flex_open
 // does, so the name stays the opener's.
-// widget_open opens a widget: it derives the widget's id from key and loc,
+// widget_open opens a widget: it claims the widget's id (see claim_id),
 // sets gtx.constraints to what the innermost container offers, and places
 // the widget (a pushed translate, or a macro the container places later).
 widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location, self := #caller_location) -> Placement {
 	p := Placement {
 		loc    = loc,
 		kind   = strings.trim_suffix(self.procedure, "_open"),
-		id     = id(key, loc),
+		id     = claim(gtx.layout, key, loc),
 		parent = -1,
 		saved  = gtx.constraints,
 		given  = gtx.constraints,
@@ -274,9 +279,6 @@ widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location, self := #c
 	l := gtx.layout
 	if l == nil {
 		return p
-	}
-	if l.scope != 0 {
-		p.id = id_mix(l.scope, u64(p.id))
 	}
 	c := innermost(l)
 	if c == nil {
@@ -917,6 +919,7 @@ Overlay :: struct {
 	stack:  [dynamic]Container, // the enclosing containers, set aside
 	saved:  Constraints,
 	scope:  ops.Area_Id,
+	parent: ops.Area_Id, // the layout's root_parent, set aside
 	root:   bool,
 	pushed: bool, // at was non-zero: a translate to pop
 	active: bool,
@@ -946,6 +949,10 @@ overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF
 		o.pushed = true
 	}
 	if l := gtx.layout; l != nil {
+		o.parent = l.root_parent
+		if c := innermost(l); c != nil {
+			l.root_parent = c.place.id
+		}
 		o.stack = containers_detach(l, gtx.allocator)
 		o.scope = l.scope
 	}
@@ -963,6 +970,7 @@ overlay_close :: proc(o: ^Overlay) {
 	if l := gtx.layout; l != nil {
 		containers_attach(l, o.stack)
 		l.scope = o.scope
+		l.root_parent = o.parent
 	}
 	gtx.constraints = o.saved
 	if o.pushed {
@@ -997,6 +1005,9 @@ popup_open :: proc(
 	cs := Constraints{max = {INF, INF}},
 ) -> Overlay {
 	o := overlay_open(gtx, cs = cs)
+	if l := gtx.layout; l != nil {
+		l.root_parent = key
+	}
 	o.place = {
 		set    = true,
 		key    = key,

@@ -12,13 +12,15 @@ Scope :: struct {
 	active:    bool,
 }
 
-// scope mixes v into the id of every widget recorded until end, so the same
-// call site in a loop, a helper drawn twice, or a page drawn beside another
-// gets its own ids without a key threaded through each widget. Scopes nest:
-// each mixes into the one around it. v is what the region is: a pointer to
-// its state (the widget then follows its data when a list reorders), an
-// index, an enum, or a string such as a record's id. A pointer into a slice
-// that grows moves, and its ids with it; scope by a stable id there.
+// scope mixes v into the id of every widget recorded until end: a key for a
+// whole region at once. Widgets need no scope to be told apart (see claim_id
+// in ui/id.odin); a scope makes a region's state follow its data, so a row
+// drawn from a record keeps its hover, focus and animations when the list
+// reorders or filters, where by position it would take its neighbour's.
+// Scopes nest: each mixes into the one around it. v is what the region is: a
+// pointer to its state, an index, an enum, or a string such as a record's
+// id. A pointer into a slice that grows moves, and its ids with it; scope by
+// a stable id there.
 //
 // A scope opened with no scope around it is a root, such as a page: state
 // kept for widgets under it can outlive frames the page is not drawn in,
@@ -63,11 +65,7 @@ retain :: proc(gtx: ^Ctx, v: $T) {
 // per widget per frame and derive every further id the widget needs from
 // the result with id_mix: a second claim is a second widget.
 claim_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
-	i := id(key, loc)
-	if l := gtx.layout; l != nil && l.scope != 0 {
-		i = id_mix(l.scope, u64(i))
-	}
-	return i
+	return claim(gtx.layout, key, loc)
 }
 
 // widget_data is the retained value of type T kept for widget id: zero the
