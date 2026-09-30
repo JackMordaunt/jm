@@ -32,6 +32,9 @@ flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
 packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/ops ui/kb ui/shape ui/testutil ui/design ui/base ui/diagram ui/ipc ui/material ui/material/tokens ui/fluent ui/fluent/tokens pq pq/testdb pq/fuzz git git/fuzz"
+# Every program: each builds to an executable where a package builds to its
+# tests. CI reads this line to link them all on each platform.
+programs := "tools/odin-run tools/jm-fuzz pg_query/gen tools/wasm-bench examples/hotreload-diagram examples/hot-counter/child examples/hot-counter/host examples/hot-architecture/child examples/hot-architecture/host examples/material-kitchen/child examples/material-kitchen/host examples/fluent-kitchen/child examples/fluent-kitchen/host examples/text-lab/child examples/text-lab/host tools/ui-bench tools/hot-watch tools/img-diff tools/design-tokens tools/fluent-icons tools/git-probe tools/material-shapes"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
@@ -327,33 +330,12 @@ test: sqlite wasm pg_query blend2d kb libgit2 hot-counter-child
 check:
     for t in {{targets}}; do \
       for p in {{packages}}; do {{odin}} check $p {{flags}} -no-entry-point -target:$t || exit 1; done; \
-      {{odin}} check tools/odin-run {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/jm-fuzz {{flags}} -target:$t || exit 1; \
-      {{odin}} check pg_query/gen {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/wasm-bench {{flags}} -target:$t || exit 1; \
+      for p in {{programs}}; do {{odin}} check $p {{flags}} -target:$t || exit 1; done; \
       {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
       {{odin}} check ui/render {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/render/fuzz {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/child {{flags}} -no-entry-point -target:$t || exit 1; \
       {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
-      {{odin}} check examples/hotreload-diagram {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/hot-counter/child {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/hot-counter/host {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/hot-architecture/child {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/hot-architecture/host {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/material-kitchen/child {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/material-kitchen/host {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/fluent-kitchen/child {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/fluent-kitchen/host {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/text-lab/child {{flags}} -target:$t || exit 1; \
-      {{odin}} check examples/text-lab/host {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/ui-bench {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/hot-watch {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/img-diff {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/design-tokens {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/fluent-icons {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/git-probe {{flags}} -target:$t || exit 1; \
-      {{odin}} check tools/material-shapes {{flags}} -target:$t || exit 1; \
     done
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
