@@ -477,6 +477,7 @@ draw_paragraph :: design.draw_paragraph
 // selection_paint is a Text_State's selection in the base theme's
 // selection colours, which this system maps in base_theme.
 selection_paint :: base.selection_paint
+selectable_paragraph :: base.selectable_paragraph
 
 // layout_style lays s out at a style in the face for its weight, wrapped
 // at width when width > 0; see design.layout_style.

@@ -121,3 +121,25 @@ test_message_bar_actions_dismiss_and_reflow :: proc(t: ^testing.T) {
 	retry, dismiss = ui.probe_bounds(&q, "Retry"), ui.probe_bounds(&q, "Dismiss")
 	testing.expect(t, retry.y > dismiss.y + dismiss.h)
 }
+
+@(test)
+test_a_toasts_text_selects_yet_the_toast_still_dismisses :: proc(t: ^testing.T) {
+	m: Notify_Model
+	defer toasts_destroy(&m.toasts)
+	p: ui.Probe
+	ui.probe_init(&p, notify_ui, &m, NOTIFY_WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, ui.probe_click(&p, "Sticky"))
+	ui.probe_advance(&p, 40, 0.02)
+	b := ui.probe_bounds(&p, "Pinned")
+	at := ops.Point{b.x + 45, b.y + 20} // in the title, past the 37px of padding and icon
+	ui.router_push(&p.router, {kind = .Press, pos = at, clicks = 2})
+	ui.router_push(&p.router, {kind = .Release, pos = at, clicks = 2})
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	ctx := ui.Ctx{layout = &p.layout}
+	testing.expect_value(t, ui.label_selection(&ctx), "Pinned")
+	testing.expect(t, ui.probe_click(&p, "Dismiss Pinned"))
+	testing.expect(t, m.dismissed != 0)
+}

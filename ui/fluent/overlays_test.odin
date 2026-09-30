@@ -302,3 +302,33 @@ test_tooltip_at_the_top_opens_below_its_anchor :: proc(t: ^testing.T) {
 	testing.expect(t, tip.h > 0 && inside_window(tip, WINDOW))
 	testing.expectf(t, tip.y >= a.y + a.h, "tooltip at %v is not below the anchor at %v", tip, a)
 }
+
+// drag_across presses just inside the left of the text tagged s, drags past
+// its right end and releases.
+@(private = "file")
+drag_across :: proc(p: ^ui.Probe, s: string) {
+	b := ui.probe_bounds(p, s)
+	y := b.y + b.h / 2
+	ui.router_push(&p.router, {kind = .Press, pos = {b.x + 1, y}, clicks = 1})
+	ui.router_push(&p.router, {kind = .Move, pos = {b.x + b.w + 5, y}})
+	ui.router_push(&p.router, {kind = .Release, pos = {b.x + b.w + 5, y}, clicks = 1})
+	ui.probe_frame(p)
+	ui.probe_frame(p)
+}
+
+@(test)
+test_a_dialogs_text_block_selects_and_copies :: proc(t: ^testing.T) {
+	m: Overlay_Model
+	p: ui.Probe
+	ui.probe_init(&p, overlays, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, ui.probe_click(&p, "Open dialog"))
+	ui.probe_advance(&p, 40, 0.02)
+	drag_across(&p, "Your edits will be lost.")
+	ctx := ui.Ctx{layout = &p.layout}
+	testing.expect_value(t, ui.label_selection(&ctx), "Your edits will be lost.")
+	ui.probe_key(&p, .C, {ui.SHORTCUT})
+	testing.expect_value(t, ui.probe_clipboard(&p), "Your edits will be lost.")
+	testing.expect(t, m.dialog, "selecting in the dialog leaves it open")
+}

@@ -29,16 +29,23 @@ label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, 
 		width = max(width, p.width + c.x1) // trailing spaces count, as a run's advance did
 	}
 	size := ui.constrain(gtx.constraints, {width, p.height})
-	sel: design.Selection_Paint
 	if selectable {
-		lo, hi, focused := ui.selectable_text(gtx, w.id, p, {}, {0, 0, size.x, size.y})
-		sel = selection_colors(lo, hi, focused)
-	}
-	if ui.painted(s.color) || sel.lo < sel.hi {
-		design.draw_paragraph(gtx, p, {}, s.color, sel)
+		selectable_paragraph(gtx, w.id, p, {}, s.color, {0, 0, size.x, size.y})
+	} else if ui.painted(s.color) {
+		design.draw_paragraph(gtx, p, {}, s.color)
 	}
 	ops.tag(gtx.scene, w.id, ui.frame_string(gtx, text))
 	return ui.widget_close(gtx, &w, {size, p.metrics.ascent})
+}
+
+// selectable_paragraph draws p with its top-left at at in color, selectable
+// (ui.selectable_text) through an area over bounds that id names, its
+// selection in the theme's selection colours. Content text in any design
+// system draws through it; bounds is usually the widget's own box, and id
+// its own Area_Id or one mixed from it.
+selectable_paragraph :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, p: ui.Paragraph, at: ops.Point, color: ops.Color, bounds: ops.Rect) {
+	lo, hi, focused := ui.selectable_text(gtx, id, p, at, bounds)
+	design.draw_paragraph(gtx, p, at, color, selection_colors(lo, hi, focused))
 }
 
 // text draws one line of s with its top-left at pos, styled like label

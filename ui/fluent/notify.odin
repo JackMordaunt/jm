@@ -306,21 +306,26 @@ toast_content_width :: proc() -> f32 {
 
 @(private)
 toast_height :: proc(gtx: ^ui.Ctx, t: Toast) -> f32 {
-	w := toast_content_width()
-	h := 2 * (TOAST_PAD + tok.STROKE_WIDTH_THIN)
-	title := wrap(gtx, t.title, control_style(.Medium, tok.FONT_WEIGHT_SEMIBOLD), w)
-	h += f32(max(len(title), 1)) * TOAST_TITLE_LINE
+	title, body, subtitle := toast_texts(gtx, t)
+	h := 2 * (TOAST_PAD + tok.STROKE_WIDTH_THIN) + title.height
 	if t.body != "" {
-		_, bh := lines_size(wrap(gtx, t.body, style(.Body1), w))
-		h += TOAST_BODY_PAD + bh
+		h += TOAST_BODY_PAD + body.height
 	}
 	if t.subtitle != "" {
-		sub := control_style(.Small, tok.FONT_WEIGHT_REGULAR)
-		sub.line_height = tok.FONT_SIZE_BASE200 // the subtitle's line is its font size (toast.json notes)
-		_, sh := lines_size(wrap(gtx, t.subtitle, sub, w))
-		h += TOAST_SUBTITLE_PAD + sh
+		h += TOAST_SUBTITLE_PAD + subtitle.height
 	}
 	return h
+}
+
+// toast_texts lays out t's title, body and subtitle at the content width.
+@(private)
+toast_texts :: proc(gtx: ^ui.Ctx, t: Toast) -> (title, body, subtitle: ui.Paragraph) {
+	w := toast_content_width()
+	head := control_style(.Medium, tok.FONT_WEIGHT_SEMIBOLD)
+	head.line_height = TOAST_TITLE_LINE
+	sub := control_style(.Small, tok.FONT_WEIGHT_REGULAR)
+	sub.line_height = tok.FONT_SIZE_BASE200 // the subtitle's line is its font size (toast.json notes)
+	return layout_style(gtx, t.title, head, w), layout_style(gtx, t.body, style(.Body1), w), layout_style(gtx, t.subtitle, sub, w)
 }
 
 // paint_toast draws t at pos in the column with its full height, faded
@@ -359,27 +364,20 @@ paint_toast :: proc(gtx: ^ui.Ctx, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_St
 	y := pos.y + pad
 	icon(gtx, intent_icon(t.intent), {x, y + TOAST_MEDIA_PAD_TOP}, TOAST_MEDIA, fade(media, alpha))
 	x += TOAST_MEDIA + TOAST_MEDIA_PAD_RIGHT
+	// Each text selectable over the toast, which it yields to: a click
+	// still reaches the toast.
 	w := toast_content_width()
-	title := wrap(gtx, t.title, control_style(.Medium, tok.FONT_WEIGHT_SEMIBOLD), w)
-	for l in title {
-		draw_text(gtx, l, {x, y}, fade(fg, alpha))
-		y += TOAST_TITLE_LINE
-	}
+	title, body, subtitle := toast_texts(gtx, t^)
+	selectable_paragraph(gtx, ui.id_mix(tid, 0x72), title, {x, y}, fade(fg, alpha), {x, y, w, title.height})
+	y += title.height
 	if t.body != "" {
 		y += TOAST_BODY_PAD
-		for l in wrap(gtx, t.body, style(.Body1), w) {
-			draw_text(gtx, l, {x, y}, fade(fg, alpha))
-			y += l.height
-		}
+		selectable_paragraph(gtx, ui.id_mix(tid, 0x73), body, {x, y}, fade(fg, alpha), {x, y, w, body.height})
+		y += body.height
 	}
 	if t.subtitle != "" {
 		y += TOAST_SUBTITLE_PAD
-		sub := control_style(.Small, tok.FONT_WEIGHT_REGULAR)
-		sub.line_height = tok.FONT_SIZE_BASE200
-		for l in wrap(gtx, t.subtitle, sub, w) {
-			draw_text(gtx, l, {x, y}, fade(sub_fg, alpha))
-			y += l.height
-		}
+		selectable_paragraph(gtx, ui.id_mix(tid, 0x74), subtitle, {x, y}, fade(sub_fg, alpha), {x, y, w, subtitle.height})
 	}
 	// The dismiss button in the last column, padded 12px from the text.
 	dx := pos.x + TOAST_WIDTH - pad - TOAST_DISMISS

@@ -128,3 +128,15 @@ test_a_press_elsewhere_clears_a_label_selection :: proc(t: ^testing.T) {
 	testing.expect_value(t, ui.label_selection(&ctx), "")
 }
 
+
+@(test)
+test_a_card_keeps_its_hover_over_its_own_text :: proc(t: ^testing.T) {
+	pg: Page
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	c, _ := ui.probe_center(&p, "card title words")
+	ui.probe_move(&p, c.x, c.y)
+	testing.expect_value(t, p.router.hover, pg.card)
+	testing.expect_value(t, ui.probe_cursor(&p), ops.Cursor.Text) // yet the pointer shows the text
+}

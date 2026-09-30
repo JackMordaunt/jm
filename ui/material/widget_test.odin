@@ -324,3 +324,25 @@ test_menu_near_the_bottom_opens_above_its_anchor :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Copy"))
 	testing.expect(t, !m.open)
 }
+
+@(test)
+test_a_dialogs_supporting_text_selects :: proc(t: ^testing.T) {
+	m := Overlay_Model{picked = -1, chose = -1, dialog_open = true}
+	p: ui.Probe
+	ui.probe_init(&p, overlays, &m, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	ui.probe_frame(&p)
+	for s in ([]string{"Title", "Body"}) {
+		b := ui.probe_bounds(&p, s)
+		y := b.y + b.h / 2
+		ui.router_push(&p.router, {kind = .Press, pos = {b.x + 1, y}, clicks = 1})
+		ui.router_push(&p.router, {kind = .Move, pos = {b.x + b.w + 5, y}})
+		ui.router_push(&p.router, {kind = .Release, pos = {b.x + b.w + 5, y}, clicks = 1})
+		ui.probe_frame(&p)
+		ui.probe_frame(&p)
+		ctx := ui.Ctx{layout = &p.layout}
+		testing.expect_value(t, ui.label_selection(&ctx), s)
+	}
+	testing.expect(t, m.dialog_open, "selecting leaves the dialog open")
+}

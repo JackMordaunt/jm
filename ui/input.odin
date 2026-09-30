@@ -33,8 +33,12 @@ import "jm:ui/ops"
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
 // - A focus_request moves focus before the queued events are routed.
-// - A Press whose top-most target yields (ops.Input_Area.yields, selectable
-//   text) goes to the next area under it that wants Press and does not
+// - A yielding area (ops.Input_Area.yields, selectable text) is never
+//   hovered and gets no Move while nothing is pressed: hover and free
+//   moves go to what lies under it, so a card keeps its hover over its
+//   own text. It still gets Move while it holds the grab.
+// - A Press whose top-most target yields goes to the next area under it
+//   that wants Press and does not
 //   yield, when there is one. If the pointer then drags past YIELD_DRAG
 //   device pixels while held, or the press was a double or triple click,
 //   the yielding area takes over: the other gets Cancel, the yielder the
@@ -168,7 +172,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 			if r.pressed != 0 {
 				deliver_pointer(r, r.pressed_hit, e)
-			} else if h, ok := hit_test(f, e.pos, .Move); ok {
+			} else if h, ok := hit_test_any(f, e.pos, {.Move}, past_yields = true); ok {
 				deliver_pointer(r, h, e)
 			}
 		case .Scroll:
@@ -252,12 +256,17 @@ hit_test :: proc(f: ^Frame, p: ops.Point, kind: ops.Event_Kind) -> (Hit, bool) {
 }
 
 // hit_test_any is hit_test for the top-most hit wanting any of kinds.
+// With past_yields, a yielding area (selectable text) is passed over: it
+// takes neither hover nor a free Move from what lies under it.
 @(private = "file")
-hit_test_any :: proc(f: ^Frame, p: ops.Point, kinds: ops.Event_Kinds) -> (Hit, bool) {
+hit_test_any :: proc(f: ^Frame, p: ops.Point, kinds: ops.Event_Kinds, past_yields := false) -> (Hit, bool) {
 	if f == nil {
 		return {}, false
 	}
 	#reverse for h in f.hits {
+		if past_yields && h.yields {
+			continue
+		}
 		if h.kinds & kinds != {} && hit_contains(f, h, p) {
 			return h, true
 		}
@@ -490,7 +499,7 @@ update_hover :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 		h = r.pressed_hit
 		ok = h.kinds & HOVER_KINDS != {} && hit_contains(f, h, p)
 	} else {
-		h, ok = hit_test_any(f, p, HOVER_KINDS)
+		h, ok = hit_test_any(f, p, HOVER_KINDS, past_yields = true)
 	}
 	next := h.area if ok else 0
 	if next == r.hover {

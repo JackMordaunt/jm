@@ -816,16 +816,16 @@ rich_tooltip :: proc(
 	defer ui.close(&b)
 	col := ui.column_open(gtx)
 	defer ui.close(&col)
-	body := wrap_lines(gtx, supporting, tok.RICH_TOOLTIP_SUPPORTING_TEXT_FONT, RICH_TIP_MAX_W - 2 * RICH_TIP_PAD_X)
+	body := layout_style(gtx, supporting, tok.RICH_TOOLTIP_SUPPORTING_TEXT_FONT, RICH_TIP_MAX_W - 2 * RICH_TIP_PAD_X)
 	if subhead != "" {
 		t := shape_style(gtx, subhead, tok.RICH_TOOLTIP_SUBHEAD_FONT)
 		ui.spacer(gtx, RICH_TIP_SUBHEAD_BASELINE - baseline_of(t))
 		label_widget(gtx, t, color(tok.RICH_TOOLTIP_SUBHEAD_COLOR))
-		ui.spacer(gtx, RICH_TIP_BODY_BASELINE - (t.height - baseline_of(t)) - baseline_of(body[0]))
+		ui.spacer(gtx, RICH_TIP_BODY_BASELINE - (t.height - baseline_of(t)) - body.lines[0].baseline)
 	} else {
 		ui.spacer(gtx, RICH_TIP_TOP)
 	}
-	lines_widget(gtx, body, color(tok.RICH_TOOLTIP_SUPPORTING_TEXT_COLOR))
+	paragraph_widget(gtx, body, color(tok.RICH_TOOLTIP_SUPPORTING_TEXT_COLOR))
 	if action != "" {
 		// The action row: at least 36dp, 8dp under it; the button's own
 		// 12dp label padding sits it in from the text's edge, as in Compose.
@@ -863,24 +863,22 @@ label_widget :: proc(gtx: ^ui.Ctx, t: Text, color: ops.Color, loc := #caller_loc
 	ui.widget_close(gtx, &p, {ops.Size{t.width, t.height}, baseline_of(t)})
 }
 
-// lines_widget places wrapped lines as one widget at least width wide,
-// each line start-aligned or, with centre, centred in that width.
+// paragraph_widget places laid-out text as one selectable widget at least
+// width wide, each line start-aligned or, with centre, centred in that
+// width.
 @(private)
-lines_widget :: proc(gtx: ^ui.Ctx, lines: []Text, color: ops.Color, width: f32 = 0, centre := false, loc := #caller_location) {
+paragraph_widget :: proc(gtx: ^ui.Ctx, para: ui.Paragraph, color: ops.Color, width: f32 = 0, centre := false, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
-	w, h := lines_size(lines)
-	w = max(w, width)
-	y: f32
-	for t in lines {
-		x := centre ? (w - t.width) / 2 : 0
-		draw_text(gtx, t, {x, y}, color)
-		y += t.height
+	para := para
+	w := max(para.width, width)
+	if centre {
+		for &ln in para.lines {
+			ln.x = (w - ln.width) / 2
+		}
 	}
-	base: f32
-	if len(lines) > 0 {
-		base = baseline_of(lines[0])
-	}
-	ui.widget_close(gtx, &p, {ops.Size{w, h}, base})
+	selectable_paragraph(gtx, p.id, para, {}, color, {0, 0, w, para.height})
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, para.text))
+	ui.widget_close(gtx, &p, {ops.Size{w, para.height}, para.lines[0].baseline})
 }
 
 // DIALOG_* are the dialog's hard-coded metrics (dialog.json layout,
@@ -955,10 +953,9 @@ dialog :: proc(
 	// Width: the content's, within 280-560 and the window.
 	max_w := clamp(window.x - 2 * DIALOG_PAD, DIALOG_MIN_W, DIALOG_MAX_W)
 	inner := max_w - 2 * DIALOG_PAD
-	head := wrap_lines(gtx, headline, tok.DIALOG_HEADLINE_FONT, inner)
-	text := wrap_lines(gtx, supporting, tok.DIALOG_SUPPORTING_TEXT_FONT, inner)
-	hw, _ := lines_size(head)
-	sw, _ := lines_size(text)
+	head := layout_style(gtx, headline, tok.DIALOG_HEADLINE_FONT, inner)
+	text := layout_style(gtx, supporting, tok.DIALOG_SUPPORTING_TEXT_FONT, inner)
+	hw, sw := head.width, text.width
 	aw := actions_width(gtx, actions)
 	w := clamp(max(hw, sw, aw) + 2 * DIALOG_PAD, DIALOG_MIN_W, max_w)
 	inner = w - 2 * DIALOG_PAD
@@ -977,12 +974,12 @@ dialog :: proc(
 		ui.spacer(gtx, DIALOG_ICON_GAP)
 	}
 	if headline != "" {
-		lines_widget(gtx, head, color(tok.DIALOG_HEADLINE_COLOR), glyph != .None ? inner : 0, glyph != .None)
+		paragraph_widget(gtx, head, color(tok.DIALOG_HEADLINE_COLOR), glyph != .None ? inner : 0, glyph != .None)
 		ui.spacer(gtx, DIALOG_HEADLINE_GAP)
 	}
 	if supporting != "" {
 		// Supporting text is start-aligned even under an icon.
-		lines_widget(gtx, text, color(tok.DIALOG_SUPPORTING_TEXT_COLOR), inner)
+		paragraph_widget(gtx, text, color(tok.DIALOG_SUPPORTING_TEXT_COLOR), inner)
 		ui.spacer(gtx, DIALOG_TEXT_GAP)
 	}
 	if stacked {
@@ -1048,10 +1045,10 @@ icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ops.Color, loc := #
 	ui.widget_close(gtx, &p, {size = {size, size}})
 }
 
-// wrapped_text lays s out in lines no wider than width, breaking at
-// spaces (jm:ui's label does not wrap), as one widget.
+// wrapped_text lays s out in lines no wider than width (jm:ui's label
+// does not wrap), as one selectable widget.
 wrapped_text :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32, loc := #caller_location) {
-	lines_widget(gtx, wrap_lines(gtx, s, TYPE_STYLES[role], width), color, loc = loc)
+	paragraph_widget(gtx, layout_style(gtx, s, TYPE_STYLES[role], width), color, loc = loc)
 }
 
 // wrap_lines breaks s at spaces into shaped lines no wider than width —
@@ -1214,16 +1211,15 @@ snackbar :: proc(
 	w = max(w, gtx.constraints.min.x)
 	beside := action != "" && !action_on_new_line
 	text_w := w - SNACK_PAD_X - end - SNACK_PAD_BUTTON - (beside ? aw : 0)
-	lines := wrap_lines(gtx, message, tok.SNACKBAR_SUPPORTING_TEXT_FONT, text_w)
-	_, th := lines_size(lines)
-	two := len(lines) > 1 || (action != "" && !beside)
+	msg := layout_style(gtx, message, tok.SNACKBAR_SUPPORTING_TEXT_FONT, text_w)
+	th := msg.height
+	two := len(msg.lines) > 1 || (action != "" && !beside)
 	h: f32
 	text_y: f32
 	button_y: f32
 	if action != "" && !beside {
-		text_y = SNACK_FIRST_BASELINE - baseline_of(lines[0])
-		last := lines[len(lines) - 1]
-		button_y = text_y + th - last.height + baseline_of(last) + SNACK_BUTTON_OFFSET
+		text_y = SNACK_FIRST_BASELINE - msg.lines[0].baseline
+		button_y = text_y + msg.lines[len(msg.lines) - 1].baseline + SNACK_BUTTON_OFFSET
 		h = button_y + SNACK_BUTTON_H + SNACK_BUTTON_EXTRA
 	} else {
 		h = max(two ? tok.SNACKBAR_TWO_LINES_CONTAINER_HEIGHT : tok.SNACKBAR_SINGLE_LINE_CONTAINER_HEIGHT, th + 2 * SNACK_PAD_Y)
@@ -1236,11 +1232,8 @@ snackbar :: proc(
 	rr := ops.Round_Rect{area, corners(tok.SNACKBAR_CONTAINER_SHAPE, area).tl}
 	paint_elevation_dp(gtx, rr, tok.SNACKBAR_CONTAINER_ELEVATION * alpha)
 	ops.fill(gtx.scene, rr, fade(color(tok.SNACKBAR_CONTAINER_COLOR), alpha))
-	y := text_y
-	for t in lines {
-		draw_text(gtx, t, {SNACK_PAD_X, y}, fade(color(tok.SNACKBAR_SUPPORTING_TEXT_COLOR), alpha))
-		y += t.height
-	}
+	// The message selectable over the snackbar, which it yields to.
+	selectable_paragraph(gtx, ui.id_mix(p.id, 3), msg, {SNACK_PAD_X, text_y}, fade(color(tok.SNACKBAR_SUPPORTING_TEXT_COLOR), alpha), {SNACK_PAD_X, text_y, text_w, th})
 	right := size.x - SNACK_PAD_BUTTON
 	if closable {
 		right -= SNACK_CLOSE

@@ -389,7 +389,7 @@ paint_popover :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawpt
 // popover_text is a paragraph inside a popover: body1 (or role) in the
 // popover's text colour, wrapped to width when it is non-zero.
 popover_text :: proc(gtx: ^ui.Ctx, s: string, role := Type_Role.Body1, width: f32 = 0, key: u64 = 0, loc := #caller_location) -> ui.Dims {
-	return text_block(gtx, s, role, popover_fg(), width, key, loc)
+	return text_block(gtx, s, role, popover_fg(), width, key, loc = loc)
 }
 
 // Teaching popovers.

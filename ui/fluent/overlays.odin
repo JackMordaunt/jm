@@ -746,27 +746,18 @@ lines_size :: proc(lines: []Text) -> (w, h: f32) {
 
 // text_block lays s out wrapped to width (or unwrapped when 0) at a type
 // role, as one widget: dialog content, a card's body. Lines are
-// start-aligned.
-text_block :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32 = 0, key: u64 = 0, loc := #caller_location) -> ui.Dims {
+// start-aligned. The text is selectable unless selectable is false.
+text_block :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32 = 0, key: u64 = 0, selectable := true, loc := #caller_location) -> ui.Dims {
 	p := ui.widget_open(gtx, key, loc)
-	st := style(role)
-	lines: []Text
-	if width > 0 {
-		lines = wrap(gtx, s, st, width)
+	para := layout_style(gtx, s, style(role), width)
+	sz := ui.constrain(gtx.constraints, {width > 0 ? max(width, para.width) : para.width, para.height})
+	if selectable {
+		selectable_paragraph(gtx, p.id, para, {}, color, {0, 0, sz.x, sz.y})
 	} else {
-		lines = make([]Text, 1, gtx.allocator)
-		lines[0] = shape_style(gtx, s, st)
-	}
-	tw, th := lines_size(lines)
-	sz := ui.constrain(gtx.constraints, {width > 0 ? max(width, tw) : tw, th})
-	y: f32
-	for l in lines {
-		draw_text(gtx, l, {0, y}, color)
-		y += l.height
+		draw_paragraph(gtx, para, {}, color)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
-	base := len(lines) > 0 ? baseline_of(lines[0]) : 0
-	return ui.widget_close(gtx, &p, {sz, base})
+	return ui.widget_close(gtx, &p, {sz, para.lines[0].baseline})
 }
 
 // scale_about is a scale by k about point c: the scale, then the shift
