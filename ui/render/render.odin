@@ -549,6 +549,8 @@ draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) 
 			origin := bl.Point{f64(cmd.dst.x), f64(cmd.dst.y)}
 			bl.context_blit_image_d(ctx, &origin, img, src)
 		}
+	case ops.Shadow:
+	// Not rendered yet.
 	}
 }
 

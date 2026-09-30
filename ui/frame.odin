@@ -27,6 +27,7 @@ Draw_Cmd :: union {
 	ops.Stroke,
 	ops.Glyphs,
 	ops.Image,
+	ops.Shadow,
 }
 
 Draw :: struct {

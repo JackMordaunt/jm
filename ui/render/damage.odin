@@ -486,6 +486,8 @@ draw_rec :: proc(f: ^ui.Frame, clips: []Clip_Rec, glyph_box: ^map[Font_Key]ops.R
 	case ops.Image:
 		h = hash_value(hash_value(h, 4), c)
 		rec.local = c.dst if c.dst.w > 0 && c.dst.h > 0 else EVERYWHERE
+	case ops.Shadow:
+	// Not rendered yet, so it damages nothing.
 	}
 	rec.content = h
 	clip_key, clip_box, clip_reach, clip_rects := ui.FNV_OFFSET, EVERYWHERE, EVERYWHERE, true

@@ -28,6 +28,8 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 			ops.write_draw(&sb, f.scene, v)
 		case ops.Image:
 			ops.write_draw(&sb, f.scene, v)
+		case ops.Shadow:
+			ops.write_draw(&sb, f.scene, v)
 		}
 		strings.write_byte(&sb, '\n')
 	}

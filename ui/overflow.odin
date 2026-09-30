@@ -96,6 +96,8 @@ draw_bounds :: proc(sc: ^ops.Scene, cmd: Draw_Cmd) -> (ops.Rect, string) {
 		}
 	case ops.Image:
 		return c.dst, "image"
+	case ops.Shadow:
+		return ops.shadow_bounds(c), "shadow"
 	}
 	return {}, ""
 }
