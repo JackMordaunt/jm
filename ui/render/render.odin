@@ -1,6 +1,6 @@
 /*
-Package render executes a ui.Frame on Blend2D and shapes text with Blend2D's
-own font_shape. It is the only place that knows how a draw becomes pixels:
+Package render executes a ui.Frame on Blend2D and hands out a Shaper that
+shapes text with jm:ui/shape (kb_text_shape). It is the only place that knows how a draw becomes pixels:
 ui records and flattens, render rasterizes, a platform (ui/sdl) presents.
 
 	r: render.Renderer
@@ -27,8 +27,8 @@ keyed by the ids in Ops, so an Ops must keep its ids stable (add_font and
 add_image do). Masks live for one render call; their pixels are buffers the
 Renderer reuses from call to call. Everything is released by destroy.
 
-Threads: a Renderer is not thread-safe. The Shaper it hands out shares the
-font cache, so shape and render must happen on the same thread. Setting
+Threads: a Renderer is not thread-safe. The Shaper it hands out shares its
+font caches, so shape and render must happen on the same thread. Setting
 Renderer.threads renders the target on that many Blend2D workers; render
 still returns only once every pixel is written.
 */
@@ -41,6 +41,7 @@ import "core:strings"
 
 import "jm:ui"
 import bl "jm:ui/blend2d"
+import "jm:ui/shape"
 
 // Font_Key names one Blend2D font instance: a face at a pixel size.
 Font_Key :: struct {
@@ -66,6 +67,7 @@ Renderer :: struct {
 	layer_size: [2]i32,
 	path:       bl.PathCore,
 	font_refs:  []ops.Font_Ref, // what the shaper loads from
+	text:       shape.Shaper, // shapes for shaper, see shaper.odin
 	allocator:  mem.Allocator,
 	// threads > 0 makes the target context asynchronous with that many
 	// workers (1 = the calling thread only). Layer and mask contexts stay
@@ -98,6 +100,7 @@ init :: proc(r: ^Renderer, allocator := context.allocator) {
 	r.shadows = make(map[Shadow_Key]bl.ImageCore, allocator)
 	r.masks = make(map[ui.Clip_Id]Mask, allocator)
 	r.pool = make([dynamic][]u8, allocator)
+	shape.init(&r.text, allocator)
 }
 
 // destroy releases every Blend2D object and cache r holds.
@@ -127,6 +130,7 @@ destroy :: proc(r: ^Renderer) {
 	bl.context_destroy(&r.ctx)
 	bl.context_destroy(&r.layer_ctx)
 	bl.context_destroy(&r.mask_ctx)
+	shape.destroy(&r.text)
 	r^ = {}
 }
 

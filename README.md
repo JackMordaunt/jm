@@ -46,7 +46,9 @@ binary.
 | `wasm`    | `open`, `load`, `find`, `call`, `link`, `run`: WebAssembly through a statically linked wasm3 |
 | `ui/ops`  | the recorded drawing: geometry, colour, paint, shapes, glyph runs and the scene ops a ui proc emits into a `Scene`, with their wire form (`encode`) and text form (`dump`); everything above shares these types |
 | `ui`      | immediate-mode UI: `ops.Scene` → `flatten` → draw and hit lists; layout, theme, widgets, a `Probe` that clicks and types without a window |
-| `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`), shapes text with it, and `snapshot`s a `ui` proc straight to a PNG |
+| `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`), hands out a `ui/shape` shaper with Blend2D's line metrics, and `snapshot`s a `ui` proc straight to a PNG |
+| `ui/shape` | text to glyph runs with kb_text_shape: OpenType shaping for complex scripts, normalisation, per-run direction, clusters as byte offsets |
+| `ui/kb`   | the binding to kb_text_shape, vendored in `ui/kb/vendor` and statically linked |
 | `ui/sdl`  | the SDL3 window and event loop for a `ui` app; `run_host` runs the same window against a subprocess instead of a local ui proc |
 | `ui/ipc`  | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/sdl`'s host/subprocess split |
 | `ui/child` | the subprocess half of that split: owns the Model, the ui proc, `Router` and `Layout`, and speaks `ui`'s wire format over its own stdin/stdout |
@@ -114,6 +116,7 @@ just sqlite    compile the vendored SQLite  just wasm      compile wasm3
 just pg_query  compile the vendored libpg_query
 just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
 just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
+just kb        compile the vendored kb_text_shape into ui/kb/lib
 just material-kitchen  build and open the hot-reloaded M3 kitchen
 just material-png page=Chips  render one M3 kitchen page to build/
 just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
@@ -637,7 +640,10 @@ A zero field in a style struct takes the theme's value. Clipping is exact for
 any shape under any affine: Blend2D clips only to rectangles, so a path or
 rotated clip renders through an A8 mask. The Blend2D binding is copied from
 `odin-blend2d`; `just blend2d` builds its archive from that checkout's source
-(`BLEND2D_SRC`), and anything linking it needs `-lstdc++`.
+(`BLEND2D_SRC`), and anything linking it needs `-lstdc++`. Text is shaped
+by kb_text_shape, vendored upstream at a pinned commit in `ui/kb/vendor`
+(zlib licence); `just kb` builds it, and `JM_UI_SHAPER=blend2d` shapes
+with Blend2D's own shaper instead, to compare.
 `examples/material-kitchen` is the demo, `just material-kitchen` opens it.
 
 That "serialized for a renderer in another process" is `ui/sdl.run_host`:

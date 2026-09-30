@@ -31,7 +31,7 @@ root  := replace(justfile_directory(), "\\", "/")
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/ops ui/testutil ui/design ui/base ui/diagram ui/ipc ui/material ui/material/tokens ui/fluent ui/fluent/tokens pq pq/testdb pq/fuzz git git/fuzz"
+packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/ops ui/kb ui/shape ui/testutil ui/design ui/base ui/diagram ui/ipc ui/material ui/material/tokens ui/fluent ui/fluent/tokens pq pq/testdb pq/fuzz git git/fuzz"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
@@ -39,6 +39,7 @@ wasm_lib   := if os() == "windows" { "wasm/lib/wasm3.lib" } else { "wasm/lib/was
 pg_query_lib := if os() == "windows" { "pg_query/lib/pg_query.lib" } else { "pg_query/lib/pg_query.a" }
 blend2d_lib := if os() == "windows" { "ui/blend2d/lib/blend2d.lib" } else { "ui/blend2d/lib/libblend2d.a" }
 libgit2_lib := if os() == "windows" { "git/lib/git2.lib" } else { "git/lib/libgit2.a" }
+kb_lib := if os() == "windows" { "ui/kb/lib/kb_text_shape.lib" } else { "ui/kb/lib/kb_text_shape.a" }
 # Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
 # vendored here: 29 MB of source is the sibling checkout's job. Anything that
 # links it needs libstdc++, except on Windows where the MSVC linker finds the
@@ -112,6 +113,28 @@ sqlite:
     @if (!(Test-Path {{sqlite_lib}}) -or (Get-Item sqlite3/vendor/sqlite3.c).LastWriteTime -gt (Get-Item {{sqlite_lib}}).LastWriteTime) { \
         cl /nologo /O2 /c sqlite3/vendor/sqlite3.c /Fosqlite3/lib/sqlite3.obj {{sqlite_defines}}; \
         lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj \
+    }
+
+# Compile the vendored kb_text_shape (ui/kb, jm:ui/shape's shaper) into
+# ui/kb/lib if it is stale. C11 for the layout asserts in kb_text_shape.c.
+# kb byte-swaps font tables by writing a run of u16 from a struct's first
+# field on through the ones after it, which GCC's object-size check reads
+# as overflowing that first field: -Wno-stringop-overflow.
+[unix]
+kb:
+    @mkdir -p ui/kb/lib
+    @if [ ! -f {{kb_lib}} ] || [ ui/kb/vendor/kb_text_shape.c -nt {{kb_lib}} ] || [ ui/kb/vendor/kb_text_shape.h -nt {{kb_lib}} ]; then \
+        echo "{{cc}} kb_text_shape -> {{kb_lib}}"; \
+        {{cc}} -std=c11 -O2 -fPIC -Wno-stringop-overflow -c ui/kb/vendor/kb_text_shape.c -o ui/kb/lib/kb_text_shape.o; \
+        ar rcs {{kb_lib}} ui/kb/lib/kb_text_shape.o; \
+    fi
+
+[windows]
+kb:
+    @New-Item -ItemType Directory -Force ui/kb/lib | Out-Null
+    @if (!(Test-Path {{kb_lib}}) -or (Get-Item ui/kb/vendor/kb_text_shape.c).LastWriteTime -gt (Get-Item {{kb_lib}}).LastWriteTime -or (Get-Item ui/kb/vendor/kb_text_shape.h).LastWriteTime -gt (Get-Item {{kb_lib}}).LastWriteTime) { \
+        cl /nologo /std:c11 /O2 /c ui/kb/vendor/kb_text_shape.c /Foui/kb/lib/kb_text_shape.obj; \
+        lib /nologo /OUT:{{kb_lib}} ui/kb/lib/kb_text_shape.obj \
     }
 
 # Unlike SQLite this is a tree rather than one amalgamated file, so the objects
@@ -248,12 +271,12 @@ pg_query-gen:
 # examples/hot-counter/child, the real subprocess ui/sdl's own test
 # spawns to prove the host/child protocol against a real process, not a
 # stub. blend2d only: the child never links SDL.
-hot-counter-child: blend2d
+hot-counter-child: blend2d kb
     mkdir -p build/debug
     {{odin}} build examples/hot-counter/child -debug {{flags}} {{cxx_link}} -out:build/debug/hot-counter-child{{exe}}
 
 # Run every package's tests
-test: sqlite wasm pg_query blend2d libgit2 hot-counter-child
+test: sqlite wasm pg_query blend2d kb libgit2 hot-counter-child
     mkdir -p build/test
     for p in {{packages}}; do \
       threads=""; \
@@ -312,20 +335,20 @@ install: release
 # `just fuzz "sqlite3 -seed=12345"`, `just fuzz "-corpus=build/corpus"`.
 
 # Run every jm:fuzz suite until something gives
-fuzz args="-for=30s": sqlite wasm pg_query blend2d libgit2
+fuzz args="-for=30s": sqlite wasm pg_query blend2d kb libgit2
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} {{args}}
 
 # A child process per case: a crash or a hang is reported, not fatal
-fuzz-isolate args="-for=5m": sqlite wasm pg_query blend2d libgit2
+fuzz-isolate args="-for=5m": sqlite wasm pg_query blend2d kb libgit2
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} -isolate {{args}}
 
 # The same, under AddressSanitizer
 [unix]
-fuzz-asan args="-for=30s": sqlite wasm pg_query blend2d libgit2
+fuzz-asan args="-for=30s": sqlite wasm pg_query blend2d kb libgit2
     mkdir -p build/debug
     {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz-asan
     build/debug/jm-fuzz-asan {{args}}
@@ -342,7 +365,7 @@ bench args="": wasm
 # `just bench-ui "-w 1800 -h 1200"` measures at another size.
 #
 # Time jm:ui layout and the Blend2D executor per frame
-bench-ui args="": blend2d
+bench-ui args="": blend2d kb
     mkdir -p build/release
     {{odin}} build tools/ui-bench -o:speed {{flags}} {{cxx_link}} -out:build/release/ui-bench{{exe}}
     build/release/ui-bench{{exe}} {{args}}
@@ -384,7 +407,7 @@ sdl3:
 # Prints the two commands to run it (in separate terminals) rather than
 # launching them itself: backgrounding a long-running process portably
 # from one just recipe is more trouble than it is worth.
-hot-architecture: blend2d sdl3
+hot-architecture: blend2d kb sdl3
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
     {{odin}} build examples/hot-architecture/host -debug {{flags}} {{cxx_link}} -out:build/debug/hot-architecture-host{{exe}}
@@ -398,7 +421,7 @@ hot-architecture: blend2d sdl3
 # component rebuilds and respawns it, and a change there rebuilds the host,
 # which restarts itself if the ops encoding changed. Ending the recipe,
 # however it ends, stops both.
-material-kitchen: blend2d sdl3
+material-kitchen: blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
@@ -448,7 +471,7 @@ material-shapes:
     {{odin}} run tools/material-shapes {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/shapes/morphs.json" ui/material/shape_data.odin
 
 # Render one material-kitchen page to build/material-<page>.png, no window
-material-png page="Buttons": blend2d
+material-png page="Buttons": blend2d kb
     mkdir -p build/debug
     {{odin}} build examples/material-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-child{{exe}}
     build/debug/material-kitchen-child{{exe}} -page "{{page}}" -png "build/material-{{page}}.png"
@@ -456,7 +479,7 @@ material-png page="Buttons": blend2d
 # examples/fluent-kitchen: every jm:ui/fluent component, one page each,
 # hot-reloaded like material-kitchen. Selawik, the kit's stand-in for
 # Segoe UI, is read from ~/.local/share/fonts/selawik (just fluent-fonts).
-fluent-kitchen: blend2d sdl3
+fluent-kitchen: blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
@@ -473,7 +496,7 @@ fluent-kitchen: blend2d sdl3
 # handle (Latin features, complex scripts, bidi, emoji) with the shaper's
 # clusters and caret stops drawn over them, plus live inputs. Hot-reloads
 # like material-kitchen, watching ui and ui/fluent too.
-text-lab: blend2d sdl3
+text-lab: blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
@@ -487,13 +510,13 @@ text-lab: blend2d sdl3
     wait $host
 
 # Render one text-lab page, whole, to build/text-<page>.png, no window
-text-png page="Scripts": blend2d
+text-png page="Scripts": blend2d kb
     mkdir -p build/debug
     {{odin}} build examples/text-lab/child -debug {{flags}} {{cxx_link}} -out:build/debug/text-lab-child{{exe}}
     build/debug/text-lab-child{{exe}} -full -page "{{page}}" -png "build/text-{{page}}.png"
 
 # Render one fluent-kitchen page to build/fluent-<page>.png, no window
-fluent-png page="Button": blend2d
+fluent-png page="Button": blend2d kb
     mkdir -p build/debug
     {{odin}} build examples/fluent-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-child{{exe}}
     build/debug/fluent-kitchen-child{{exe}} -page "{{page}}" -png "build/fluent-{{page}}.png"
