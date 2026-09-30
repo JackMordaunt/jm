@@ -189,6 +189,11 @@ page_skeleton :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.close(&col)
 	section(gtx, "Wave", "Stencil 1 with a Stencil 2 band sliding across over 3s on ease-in-out")
 	card :: proc(gtx: ^ui.Ctx, anim: fluent.Skeleton_Animation, translucent: bool, key: u64) {
+		// A scope per card: the items share call sites, and a row's key
+		// does not tell them apart, so without it the three cards' items
+		// share one motion and the pulse's period resets the wave's.
+		sc := ui.scope_open(gtx, key)
+		defer ui.close(&sc)
 		r := ui.row_open(gtx, gap = 12, key = key)
 		defer ui.close(&r)
 		fluent.skeleton_item(gtx, 48, .Circle, animation = anim, translucent = translucent)
