@@ -151,6 +151,7 @@ Layout :: struct {
 	retained:  map[ops.Area_Id]u64, // root scope -> the last frame retain kept it
 	held:      [dynamic]Held, // guard handles between guard_hold and guard_take
 	claims:    map[Claim_Key]u64, // this frame's unkeyed claims per call site and parent
+	claimed:   map[ops.Area_Id]runtime.Source_Code_Location, // this frame's ids and who claimed them
 	root_parent: ops.Area_Id, // what a widget with no container open claims under: 0, or an overlay's opener
 	scope:     ops.Area_Id, // mixed into widget ids; scope and list set it
 	scope_root: ops.Area_Id, // the outermost open scope, which state records as its root
@@ -180,6 +181,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.children = make([dynamic]Child, allocator)
 	l.held = make([dynamic]Held, allocator)
 	l.claims = make(map[Claim_Key]u64, allocator)
+	l.claimed = make(map[ops.Area_Id]runtime.Source_Code_Location, allocator)
 	l.state = make(map[ops.Area_Id]^Widget_State, allocator)
 	l.data = make(map[Data_Key]Data_Entry, allocator)
 	l.retained = make(map[ops.Area_Id]u64, allocator)
@@ -191,6 +193,7 @@ layout_destroy :: proc(l: ^Layout) {
 	delete(l.children)
 	delete(l.held)
 	delete(l.claims)
+	delete(l.claimed)
 	for _, v in l.state {
 		free(v, l.allocator)
 	}
@@ -213,6 +216,7 @@ layout_reset :: proc(l: ^Layout) {
 	clear(&l.stack)
 	clear(&l.children)
 	clear(&l.claims)
+	clear(&l.claimed)
 	l.scope, l.scope_root, l.root_parent = 0, 0, 0
 	l.frame += 1
 	stale := make([dynamic]ops.Area_Id, context.temp_allocator)

@@ -1,6 +1,7 @@
 package ui
 
 import "base:runtime"
+import "core:fmt"
 import "core:mem"
 import "jm:ui/ops"
 
@@ -54,7 +55,10 @@ fnv_u64 :: proc(h: u64, v: u64) -> u64 {
 }
 
 // claim is the id of a widget made now at loc under l, counting it as its
-// call site's next occurrence in its parent when key is 0.
+// call site's next occurrence in its parent when key is 0. Two claims of
+// one id in a frame are two widgets sharing hover, focus and state, which
+// only equal keys at one call site in one parent can cause: that fails
+// loudly with both call sites.
 @(private)
 claim :: proc(l: ^Layout, key: u64, loc: runtime.Source_Code_Location) -> ops.Area_Id {
 	if l == nil {
@@ -75,7 +79,22 @@ claim :: proc(l: ^Layout, key: u64, loc: runtime.Source_Code_Location) -> ops.Ar
 		l.claims[k] = n + 1
 		which = fnv_u64(fnv_u64(site, 0), n)
 	}
-	return id_mix(parent, which)
+	got := id_mix(parent, which)
+	if first, dup := l.claimed[got]; dup {
+		fmt.assertf(
+			false,
+			"ui: two widgets claimed one id this frame, with key %v: %s:%d:%d and %s:%d:%d; give each its own key",
+			key,
+			first.file_path,
+			first.line,
+			first.column,
+			loc.file_path,
+			loc.line,
+			loc.column,
+		)
+	}
+	l.claimed[got] = loc
+	return got
 }
 
 // Claim_Key is a call site in a parent, whose unkeyed claims claim counts.
