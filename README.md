@@ -115,7 +115,7 @@ just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just sqlite    compile the vendored SQLite  just wasm      compile wasm3
 just pg_query  compile the vendored libpg_query
 just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
-just blend2d   compile Blend2D into ui/blend2d/lib (BLEND2D_SRC overrides)
+just blend2d   fetch and compile Blend2D into ui/blend2d/lib
 just kb        compile the vendored kb_text_shape into ui/kb/lib
 just material-kitchen  build and open the hot-reloaded M3 kitchen
 just material-png page=Chips  render one M3 kitchen page to build/
@@ -373,7 +373,7 @@ fixtures. `just fuzz "pg_query -for=1m"` runs it.
 ## libgit2
 
 `jm:git` is the git a shipped program carries with it: `just libgit2`
-builds libgit2 from a sibling checkout (`LIBGIT2_SRC`, v1.9.7) into
+fetches libgit2 v1.9.7 into `build/src` and builds it into
 `git/lib`, and the package links that archive when it exists and the
 system libgit2 otherwise, so a machine with the distribution's package
 tests without the CMake step. The archive is built with the platform's
@@ -639,11 +639,11 @@ the shared `ui/design` layer.
 A zero field in a style struct takes the theme's value. Clipping is exact for
 any shape under any affine: Blend2D clips only to rectangles, so a path or
 rotated clip renders through an A8 mask. The Blend2D binding is copied from
-`odin-blend2d`; `just blend2d` builds its archive from that checkout's source
-(`BLEND2D_SRC`), and anything linking it needs `-lstdc++`. Text is shaped
-by kb_text_shape, vendored upstream at a pinned commit in `ui/kb/vendor`
-(zlib licence); `just kb` builds it, and `JM_UI_SHAPER=blend2d` shapes
-with Blend2D's own shaper instead, to compare.
+`odin-blend2d`; `just blend2d` fetches the upstream Blend2D and asmjit commits
+it was generated from and builds the archive, and anything linking it needs
+`-lstdc++`. Text is shaped by kb_text_shape, vendored upstream at a pinned
+commit in `ui/kb/vendor` (zlib licence); `just kb` builds it, and
+`JM_UI_SHAPER=blend2d` shapes with Blend2D's own shaper instead, to compare.
 `examples/material-kitchen` is the demo, `just material-kitchen` opens it.
 
 That "serialized for a renderer in another process" is `ui/sdl.run_host`:

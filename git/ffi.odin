@@ -7,8 +7,8 @@ is laid out exactly as those headers lay it out on a 64-bit target, and
 ffi_test.odin pins the sizes and offsets so a header change is caught
 before it corrupts a stack.
 
-Linking: `just libgit2` builds a static libgit2 into git/lib from
-LIBGIT2_SRC, the way `just blend2d` builds Blend2D, and this file links it
+Linking: `just libgit2` fetches libgit2 and builds a static archive into
+git/lib, the way `just blend2d` builds Blend2D, and this file links it
 when it is there. Without it the system libgit2 is linked instead, so a
 machine with the distribution's package builds and tests without the CMake
 step, and `odin check` (which opens no library) type-checks every target

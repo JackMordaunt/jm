@@ -8,8 +8,8 @@
 #   just wasm      compile the vendored wasm3 interpreter into wasm/lib
 #   just pg_query  compile the vendored libpg_query parser into pg_query/lib
 #   just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
-#   just blend2d   compile Blend2D into ui/blend2d/lib from BLEND2D_SRC
-#   just libgit2   compile libgit2 into git/lib from LIBGIT2_SRC
+#   just blend2d   fetch and compile Blend2D into ui/blend2d/lib
+#   just libgit2   fetch and compile libgit2 into git/lib
 #   just material-kitchen  build and open the hot-reloaded Material 3 kitchen
 #   just material-png  render one material-kitchen page headlessly
 #   just fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
@@ -41,19 +41,22 @@ blend2d_lib := if os() == "windows" { "ui/blend2d/lib/blend2d.lib" } else { "ui/
 libgit2_lib := if os() == "windows" { "git/lib/git2.lib" } else { "git/lib/libgit2.a" }
 kb_lib := if os() == "windows" { "ui/kb/lib/kb_text_shape.lib" } else { "ui/kb/lib/kb_text_shape.a" }
 # Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
-# vendored here: 29 MB of source is the sibling checkout's job. Anything that
-# links it needs libstdc++, except on Windows where the MSVC linker finds the
-# C++ runtime itself.
-blend2d_src := env("BLEND2D_SRC", home_directory() / "Source" / "Personal" / "odin-blend2d" / "blend2d")
-# libgit2 is C with its own CMake tree, a sibling checkout at the tag the
+# vendored here: 29 MB of source is fetched into build/src instead, at the
+# upstream commits the binding in ui/blend2d was generated from (Blend2D
+# 0.21.1). Anything that links it needs libstdc++, except on Windows where
+# the MSVC linker finds the C++ runtime itself.
+blend2d_rev := "3525b5fc1506cf1845901f0c2469d7d13758f573"
+asmjit_rev  := "5134d396bd00c1b63259387acdbb12dfdf009f9b"
+# libgit2 is C with its own CMake tree, fetched into build/src at the tag the
 # binding was written against (v1.9.7). HTTPS uses the platform: WinHTTP,
 # SecureTransport, and on Linux OpenSSL loaded at run time, so the archive
 # links against no distribution's libssl. SSH runs the platform's ssh
 # binary (USE_SSH=exec). zlib, the regex engine and the HTTP parser are the
 # bundled ones, so nothing else is needed on the machine.
-libgit2_src := env("LIBGIT2_SRC", home_directory() / "Source" / "Vendor" / "libgit2")
+libgit2_rev := "49e408b3208bc3093757a1c2db938d3590f3f412"
 libgit2_https := if os() == "macos" { "SecureTransport" } else { "OpenSSL-Dynamic" }
 cxx_link := if os() == "windows" { "" } else { "-extra-linker-flags:\"-lstdc++\"" }
+just := quote(just_executable())
 
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
 # three deliberate changes: THREADSAFE=1 rather than 0, so a connection per
@@ -195,13 +198,28 @@ pg_query:
         lib /nologo /OUT:{{pg_query_lib}} pg_query/lib/obj/*.obj \
     }
 
+# Check out a repository at one commit into dir, unless it is there already.
+# GitHub serves any reachable commit by hash, so a shallow fetch of the pin
+# needs no tag or branch.
+[private]
+fetch dir url rev:
+    @if [ "$(git -C {{dir}} rev-parse -q --verify HEAD 2>/dev/null)" != "{{rev}}" ]; then \
+        echo "fetch {{url}} @ {{rev}} -> {{dir}}"; \
+        mkdir -p {{dir}} && git -C {{dir}} init -q && \
+        git -C {{dir}} fetch -q --depth 1 {{url}} {{rev}} && \
+        git -C {{dir}} checkout -qf FETCH_HEAD || exit 1; \
+    fi
+
 # Compile Blend2D into ui/blend2d/lib if it is missing
 [unix]
 blend2d:
     @mkdir -p ui/blend2d/lib build
     @if [ ! -f {{blend2d_lib}} ]; then \
-        echo "cmake blend2d ({{blend2d_src}}) -> {{blend2d_lib}}"; \
-        cmake -S {{blend2d_src}} -B build/blend2d -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit 1; \
+        {{just}} fetch build/src/blend2d https://github.com/blend2d/blend2d {{blend2d_rev}} || exit 1; \
+        {{just}} fetch build/src/asmjit https://github.com/asmjit/asmjit {{asmjit_rev}} || exit 1; \
+        echo "cmake blend2d -> {{blend2d_lib}}"; \
+        cmake --fresh -S build/src/blend2d -B build/blend2d -DASMJIT_DIR="{{root}}/build/src/asmjit" \
+            -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit 1; \
         cmake --build build/blend2d --config Release --parallel >> build/blend2d.log 2>&1 || exit 1; \
         cp build/blend2d/libblend2d.a {{blend2d_lib}}; \
     fi
@@ -216,8 +234,11 @@ blend2d:
 blend2d:
     @mkdir -p ui/blend2d/lib build
     @if [ ! -f {{blend2d_lib}} ]; then \
-        echo "cmake blend2d ({{blend2d_src}}) -> {{blend2d_lib}}"; \
-        cmake -S {{blend2d_src}} -B build/blend2d -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
+        {{just}} fetch build/src/blend2d https://github.com/blend2d/blend2d {{blend2d_rev}} || exit 1; \
+        {{just}} fetch build/src/asmjit https://github.com/asmjit/asmjit {{asmjit_rev}} || exit 1; \
+        echo "cmake blend2d -> {{blend2d_lib}}"; \
+        cmake --fresh -S build/src/blend2d -B build/blend2d -DASMJIT_DIR="{{root}}/build/src/asmjit" \
+            -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
             -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
             -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit 1; \
         cmake --build build/blend2d --parallel >> build/blend2d.log 2>&1 || exit 1; \
@@ -229,8 +250,9 @@ blend2d:
 libgit2:
     @mkdir -p git/lib build
     @if [ ! -f {{libgit2_lib}} ]; then \
-        echo "cmake libgit2 ({{libgit2_src}}) -> {{libgit2_lib}}"; \
-        cmake -S {{libgit2_src}} -B build/libgit2 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+        {{just}} fetch build/src/libgit2 https://github.com/libgit2/libgit2 {{libgit2_rev}} || exit 1; \
+        echo "cmake libgit2 -> {{libgit2_lib}}"; \
+        cmake --fresh -S build/src/libgit2 -B build/libgit2 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_SSH=exec -DUSE_HTTPS={{libgit2_https}} \
             -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin \
             -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1 || exit 1; \
@@ -243,8 +265,9 @@ libgit2:
 libgit2:
     @mkdir -p git/lib build
     @if [ ! -f {{libgit2_lib}} ]; then \
-        echo "cmake libgit2 ({{libgit2_src}}) -> {{libgit2_lib}}"; \
-        cmake -S {{libgit2_src}} -B build/libgit2 -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
+        {{just}} fetch build/src/libgit2 https://github.com/libgit2/libgit2 {{libgit2_rev}} || exit 1; \
+        echo "cmake libgit2 -> {{libgit2_lib}}"; \
+        cmake --fresh -S build/src/libgit2 -B build/libgit2 -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
             -DCMAKE_C_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_CLI=OFF \
             -DUSE_SSH=exec -DUSE_HTTPS=WinHTTP -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin \
