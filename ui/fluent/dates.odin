@@ -335,12 +335,12 @@ calendar :: proc(
 		view^ = {d.cursor.year, d.cursor.month, 1}
 		ui.request_frame(gtx)
 	}
-	if focused_any {
+	if focused_any && ui.focus_visible(gtx) {
 		off := week_of(first, d.cursor)
 		if off >= 0 && off < weeks * 7 {
 			cell := ops.Rect{grid.x + f32(off % 7) * CALENDAR_CELL, grid.y + f32(off / 7) * CALENDAR_CELL + slide, CALENDAR_CELL, CALENDAR_CELL}
 			fc: Control
-			fc.focused = true
+			fc.focus_visible = true
 			paint_focus_outline(gtx, fc, {cell, tok.BORDER_RADIUS_MEDIUM})
 		}
 	}

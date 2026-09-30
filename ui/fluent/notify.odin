@@ -390,6 +390,7 @@ paint_toast :: proc(gtx: ^ui.Ctx, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_St
 	dc := Control{}
 	dc.st = dst
 	dc.hovered, dc.pressed, dc.focused = dst.hovered, dst.pressed, dst.focused
+	dc.focus_visible = dc.focused && ui.focus_visible(gtx)
 	dc.state = design.effective_state(dc.base)
 	dfg := color_for({inverted ? .Neutral_Foreground_Inverted : .Neutral_Foreground2, .Neutral_Foreground2_Brand_Hover, .Neutral_Foreground2_Brand_Pressed, .Neutral_Foreground_Disabled}, dc)
 	icon(gtx, .Dismiss, {dismiss.x + 2, dismiss.y + 2}, 16, fade(dfg, alpha))
@@ -398,7 +399,7 @@ paint_toast :: proc(gtx: ^ui.Ctx, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_St
 	ops.tag(gtx.scene, did, ui.frame_string(gtx, fmt.tprintf("Dismiss %s", t.title)))
 	c := Control{}
 	c.st = st
-	c.focused = st.focused
+	c.focus_visible = st.focused && ui.focus_visible(gtx)
 	paint_focus_outline(gtx, c, rr)
 	return act.clicked
 }
@@ -651,7 +652,7 @@ message_bar_button :: proc(gtx: ^ui.Ctx, owner: ops.Area_Id, key: u64, name: str
 	roles := appearance_roles(appearance)
 	k := corners_all(tok.BORDER_RADIUS_MEDIUM)
 	ops.fill(gtx.scene, rounded(gtx, r, k), color_for(roles.bg, c))
-	border := c.focused ? color(.Stroke_Focus2) : color_for(roles.border, c)
+	border := c.focused && ui.focus_visible(gtx) ? color(.Stroke_Focus2) : color_for(roles.border, c)
 	stroke_inside_corners(gtx, r, k, border, tok.STROKE_WIDTH_THIN)
 	if ic != .None {
 		icon(gtx, ic, {r.x + (r.w - 20) / 2, r.y + (r.h - 20) / 2}, 20, color_for(roles.icon, c))

@@ -198,7 +198,7 @@ paint_card :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) 
 	if ui.painted(border) {
 		stroke_inside(gtx, rr, border, tok.STROKE_WIDTH_THIN)
 	}
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		stroke_inside(gtx, rr, color(.Stroke_Focus2), tok.STROKE_WIDTH_THICK)
 	}
 	if live {
@@ -629,7 +629,7 @@ tab_list :: proc(
 				ops.fill(gtx.scene, ops.Round_Rect{bar, min(bar.w, bar.h) / 2}, k.hover_bar)
 			}
 		}
-		if c.focused && !c.disabled {
+		if c.focus_visible && !c.disabled {
 			paint_focus_outline(gtx, c, rr)
 			if circular {
 				stroke_inside(gtx, rr, color(.Neutral_Stroke_On_Brand), tok.STROKE_WIDTH_THIN)

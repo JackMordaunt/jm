@@ -192,3 +192,50 @@ test_toolbar_sizes_its_items :: proc(t: ^testing.T) {
 	testing.expect_value(t, italic.x - (bold.x + bold.w), 25)
 	testing.expect_value(t, toolbar_item_size(), Size.Medium) // none open now
 }
+
+// focus_strokes counts the scene's paints in the focus colour.
+@(private = "file")
+focus_strokes :: proc(p: ^ui.Probe) -> (n: int) {
+	fc := color(.Stroke_Focus2)
+	for op in p.scene.ops {
+		#partial switch v in op {
+		case ops.Fill:
+			if c, ok := v.paint.(ops.Color); ok && c == fc {
+				n += 1
+			}
+		case ops.Stroke:
+			if c, ok := v.paint.(ops.Color); ok && c == fc {
+				n += 1
+			}
+		}
+	}
+	return
+}
+
+@(test)
+test_focus_outline_shows_for_keys_not_clicks :: proc(t: ^testing.T) {
+	m: Containers_Model
+	p: ui.Probe
+	ui.probe_init(&p, containers, &m, {600, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect_value(t, focus_strokes(&p), 0)
+	// A click focuses the header, and Enter reaches it, but no outline shows.
+	testing.expect(t, ui.probe_click(&p, "Section"))
+	testing.expect(t, m.open)
+	testing.expect_value(t, focus_strokes(&p), 0)
+	ui.probe_frame(&p)
+	testing.expect_value(t, focus_strokes(&p), 0)
+	// A key shows it on the focused header, and it stays.
+	ui.probe_key(&p, .Enter)
+	testing.expect(t, !m.open)
+	testing.expect_value(t, focus_strokes(&p), 1)
+	ui.probe_frame(&p)
+	testing.expect_value(t, focus_strokes(&p), 1)
+	// The next press hides it again, on the button it focuses.
+	testing.expect(t, ui.probe_click(&p, "Bold"))
+	testing.expect_value(t, focus_strokes(&p), 0)
+	ui.probe_key(&p, .Tab)
+	testing.expect(t, focus_strokes(&p) > 0)
+}

@@ -285,7 +285,7 @@ paint_table_row :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: raw
 	if rp.size != .Extra_Small {
 		ops.fill(gtx.scene, ops.Rect{0, size.y - tok.STROKE_WIDTH_THIN, size.x, tok.STROKE_WIDTH_THIN}, color(.Neutral_Stroke2))
 	}
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		stroke_inside(gtx, {area, tok.BORDER_RADIUS_MEDIUM}, color(.Stroke_Focus2), FOCUS_OUTLINE_WIDTH)
 	}
 	if !rp.header {
@@ -478,7 +478,7 @@ table_header_cell :: proc(
 			ic = .Arrow_Sort
 		}
 		icon(gtx, ic, {content.x + t.width + tok.SPACING_HORIZONTAL_XS, (sz.y - icon_px) / 2 + tok.SPACING_VERTICAL_XXS / 2}, icon_px, fg)
-		if c.focused && !c.disabled {
+		if c.focus_visible && !c.disabled {
 			stroke_inside(gtx, {area, tok.BORDER_RADIUS_MEDIUM}, color(.Stroke_Focus2), FOCUS_OUTLINE_WIDTH)
 		}
 		listen(gtx, c.st, p.id, area)
@@ -532,7 +532,7 @@ table_selection_cell :: proc(
 		case .Radio:
 			paint_radio_dot(gtx, c, box, checked^)
 		}
-		if c.focused && !c.disabled {
+		if c.focus_visible && !c.disabled {
 			stroke_inside(gtx, {{0, 0, sz.x, sz.y}, tok.BORDER_RADIUS_MEDIUM}, color(.Stroke_Focus2), FOCUS_OUTLINE_WIDTH)
 		}
 		listen(gtx, c.st, p.id, ops.Rect{0, 0, sz.x, sz.y})
@@ -720,7 +720,7 @@ list_item :: proc(
 	}
 	y := (sz.y - t.height) / 2
 	draw_clipped_line(gtx, t, {x, y}, max(sz.x - x - tok.SPACING_HORIZONTAL_S, 0), fg)
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		stroke_inside(gtx, {area, tok.BORDER_RADIUS_MEDIUM}, color(.Stroke_Focus2), tok.STROKE_WIDTH_THICK)
 	}
 	if selectable || navigable {
@@ -1057,11 +1057,11 @@ interaction_tag :: proc(
 		div := color(sc.disabled ? .Neutral_Stroke_Disabled : r.divider)
 		ops.fill(gtx.scene, ops.Rect{second.x, 0, tok.STROKE_WIDTH_THIN, sz.y}, div)
 		icon(gtx, .Dismiss, {second.x + tok.STROKE_WIDTH_THIN + mt.secondary_pad, (sz.y - mt.icon) / 2}, mt.icon, sicon)
-		design.paint_focus_ring_corners(gtx, sc.base, second, sk, focus_outline())
+		paint_focus_outline_corners(gtx, sc, second, sk)
 		listen(gtx, sc.st, sid, second)
 		ops.tag(gtx.scene, sid, ui.frame_string(gtx, "dismiss"))
 	}
-	design.paint_focus_ring_corners(gtx, pc.base, primary, pk, focus_outline())
+	paint_focus_outline_corners(gtx, pc, primary, pk)
 	listen(gtx, pc.st, p.id, primary)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
 	ui.widget_close(gtx, &p, {sz, (sz.y - k.primary.height) / 2 + baseline_of(k.primary)})
@@ -1472,7 +1472,7 @@ avatar_group :: proc(
 		}
 		ops.fill(gtx.scene, ops.Ellipse{r}, bg)
 		bw := overflow_border(px)
-		if c.focused && !c.disabled {
+		if c.focus_visible && !c.disabled {
 			border, bw = color(.Stroke_Focus2), tok.STROKE_WIDTH_THICK
 		}
 		ops.stroke(gtx.scene, ops.Ellipse{{r.x + bw / 2, r.y + bw / 2, px - bw, px - bw}}, border, {width = bw})
