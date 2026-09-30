@@ -65,6 +65,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			if v.yields {
 				strings.write_string(&sb, " yields")
 			}
+			if v.observes {
+				strings.write_string(&sb, " observes")
+			}
 		case Tag:
 			write_tag(&sb, v)
 		case Debug_Box:

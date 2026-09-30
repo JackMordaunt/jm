@@ -23,8 +23,9 @@ ENCODE_MAGIC :: "UIOP"
 // encoded_version) rather than failing on the first unknown tag. 2 added
 // Defer; 8 gave Defer its Placement; 9 added Shadow; 10 gave Glyph its
 // cluster; 11 its font; 12 gave Input_Area a cursor and Event_Kind Paste;
-// 13 Input_Area yields and Event_Kind Cancel.
-ENCODE_VERSION :: u8(13)
+// 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
+// flags byte, bit 0 yields and bit 1 observes.
+ENCODE_VERSION :: u8(14)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -363,7 +364,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_shape(w, v.shape)
 		put_u32(w, u32(transmute(u16)v.kinds))
 		append(w, u8(v.cursor))
-		append(w, u8(v.yields))
+		append(w, u8(v.yields) | u8(v.observes) << 1)
 	case Tag:
 		append(w, 13)
 		put_u64(w, u64(v.id))
@@ -614,11 +615,11 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			return nil, false
 		}
 		v.cursor = Cursor(c)
-		y := get_u8(r) or_return
-		if y > 1 {
+		flags := get_u8(r) or_return
+		if flags > 3 {
 			return nil, false
 		}
-		v.yields = y == 1
+		v.yields, v.observes = flags & 1 != 0, flags & 2 != 0
 		return v, true
 	case 13:
 		v: Tag
