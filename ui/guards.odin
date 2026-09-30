@@ -71,6 +71,12 @@ inset :: proc(gtx: ^Ctx, padding: Padding, key: u64 = 0, loc := #caller_location
 	return true
 }
 
+@(deferred_in = sized_guard_close)
+sized :: proc(gtx: ^Ctx, limits: Size_Limits, key: u64 = 0, loc := #caller_location) -> bool {
+	sized_open(gtx, limits, key, loc)
+	return true
+}
+
 @(deferred_in = box_guard_close)
 box :: proc(gtx: ^Ctx, style := Box_Style{}, key: u64 = 0, loc := #caller_location) -> bool {
 	box_open(gtx, style, key, loc)
@@ -130,6 +136,11 @@ wrap_guard_close :: proc(
 	loc: runtime.Source_Code_Location,
 ) {
 	innermost_close(gtx, .Flex)
+}
+
+@(private = "file")
+sized_guard_close :: proc(gtx: ^Ctx, limits: Size_Limits, key: u64, loc: runtime.Source_Code_Location) {
+	innermost_close(gtx, .Inset)
 }
 
 @(private = "file")

@@ -909,6 +909,43 @@ inset_open :: proc(gtx: ^Ctx, padding: Padding, key: u64 = 0, loc := #caller_loc
 	return {gtx, container_push(gtx, c, p)}
 }
 
+// Size_Limits bound a sized box: min and max per axis. A zero max leaves
+// that axis uncapped; min equal to max fixes it.
+Size_Limits :: struct {
+	min, max: ops.Size,
+}
+
+// sized bounds its children and itself by limits within what it is
+// offered: children get the narrowed constraints, and the box is its
+// content's size clamped into them, so a min holds even around a small
+// body. The offered constraints win a conflict (a max below the offered
+// min, a min above the offered max), and a min wins over a max, as in
+// CSS. It paints nothing; put a box inside it for a surface.
+sized_open :: proc(gtx: ^Ctx, limits: Size_Limits, key: u64 = 0, loc := #caller_location) -> Inset {
+	p := widget_open(gtx, key, loc)
+	cs := limit(gtx.constraints, limits)
+	i := container_push(gtx, {kind = .Inset, inner = cs}, p)
+	if i >= 0 {
+		gtx.layout.stack[i].cs = cs
+	}
+	return {gtx, i}
+}
+
+// limit narrows cs by limits (see sized_open).
+@(private = "file")
+limit :: proc(cs: Constraints, limits: Size_Limits) -> Constraints {
+	out: Constraints
+	for a in 0 ..< 2 {
+		lo := clamp(limits.min[a], cs.min[a], cs.max[a])
+		hi := cs.max[a]
+		if limits.max[a] > 0 {
+			hi = max(clamp(limits.max[a], cs.min[a], cs.max[a]), lo)
+		}
+		out.min[a], out.max[a] = lo, hi
+	}
+	return out
+}
+
 // inset_close reports the inset's size.
 inset_close :: proc(s: ^Inset) {
 	container_close(s.gtx, &s.index)
