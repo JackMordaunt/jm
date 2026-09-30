@@ -1,6 +1,7 @@
 package ui
 
 import "core:math"
+import "core:mem"
 import "jm:ui/ops"
 import "core:mem/virtual"
 import "core:testing"
@@ -224,4 +225,33 @@ test_flatten_defer_runs_last_under_its_transform_unclipped :: proc(t: ^testing.T
 	// The deferred hit is after (above) the one recorded later inline.
 	testing.expect_value(t, f.hits[0].area, ops.Area_Id(8))
 	testing.expect_value(t, f.hits[1].area, ops.Area_Id(7))
+}
+
+@(test)
+test_flatten_reuses_its_stacks_once_grown :: proc(t: ^testing.T) {
+	sc: ops.Scene
+	ops.init(&sc)
+	defer ops.destroy(&sc)
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+
+	menu := ops.macro_open(&sc)
+	ops.fill(&sc, ops.Rect{0, 0, 5, 5}, ops.Color{0, 0, 255, 255})
+	ops.macro_close(&sc, menu)
+	ops.transform_push(&sc, ops.translate(10, 20))
+	ops.clip_push(&sc, ops.Rect{0, 0, 50, 50})
+	ops.transform_push(&sc, ops.translate(1, 1))
+	ops.fill(&sc, ops.Rect{0, 0, 1, 1}, ops.Color{255, 0, 0, 255})
+	ops.defer_call(&sc, menu)
+	ops.transform_pop(&sc)
+	ops.clip_pop(&sc)
+	ops.transform_pop(&sc)
+	flatten(&sc, &f) // grows the frame's arrays and stacks
+
+	// Flattened again, the same scene needs no new memory from anywhere.
+	context.allocator = mem.panic_allocator()
+	flatten(&sc, &f)
+	testing.expect_value(t, len(f.draws), 2)
+	testing.expect_value(t, f.draws[1].transform, ops.translate(11, 21)) // the deferred menu, under the push it met
 }

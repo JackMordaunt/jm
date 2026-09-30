@@ -11,21 +11,11 @@ MAX_CALL_DEPTH :: 64
 Flattener :: struct {
 	scene:        ^ops.Scene,
 	f:          ^Frame,
-	transforms: [dynamic]ops.Affine,
-	clips:      [dynamic]Clip_Id,
+	using stacks: ^Flatten_Stacks, // f's, reused frame to frame
 	transform:  ops.Affine,
 	clip:       Clip_Id,
-	deferred:   [dynamic]Deferred,
 	layer:      i32, // 0 for the frame, then 1, 2, ... for each deferred macro in the order run
 	viewport:   ops.Rect, // device space; zero leaves popups where they ask to be
-}
-
-// Deferred is a Defer met during the pass: its macro and the transform to
-// run it under once everything else is flattened.
-@(private = "file")
-Deferred :: struct {
-	id:        ops.Macro_Id,
-	transform: ops.Affine,
 }
 
 // flatten turns the scene sc into f: every draw and hit carries its device
@@ -41,11 +31,9 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
 	st := Flattener {
 		scene        = sc,
 		f          = f,
-		transforms = make([dynamic]ops.Affine, context.allocator),
-		clips      = make([dynamic]Clip_Id, context.allocator),
+		stacks     = &f.stacks,
 		transform  = ops.IDENTITY,
 		clip       = NO_CLIP,
-		deferred   = make([dynamic]Deferred, context.allocator),
 		viewport   = viewport,
 	}
 	flatten_range(&st, 0, len(sc.ops), 0)
@@ -59,11 +47,8 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
 		st.layer = i32(i + 1)
 		flatten_range(&st, m.first, m.last, 1)
 	}
-	delete(st.deferred)
 	assert(len(st.transforms) == 0, "flatten: transform_push without transform_pop")
 	assert(len(st.clips) == 0, "flatten: clip_push without clip_pop")
-	delete(st.transforms)
-	delete(st.clips)
 }
 
 // flatten_range runs sc[lo:hi]. Pops may not reach below the stack depths

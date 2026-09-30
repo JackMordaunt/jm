@@ -81,6 +81,25 @@ Frame :: struct {
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
 	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images
+	stacks:  Flatten_Stacks, // flatten's scratch, not part of the result
+}
+
+// Flatten_Stacks are flatten's working stacks. They live on the Frame so
+// a steady frame reuses their capacity instead of allocating: flatten
+// touches no allocator once the frame's arrays have grown to fit.
+@(private)
+Flatten_Stacks :: struct {
+	transforms: [dynamic]ops.Affine, // the transforms pushed so far, innermost last
+	clips:      [dynamic]Clip_Id, // likewise the clips
+	deferred:   [dynamic]Deferred, // the Defers met, run after everything else
+}
+
+// Deferred is a Defer met during flatten: its macro and the transform to
+// run it under once everything else is flattened.
+@(private)
+Deferred :: struct {
+	id:        ops.Macro_Id,
+	transform: ops.Affine,
 }
 
 frame_init :: proc(f: ^Frame, allocator := context.allocator) {
@@ -90,6 +109,9 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.tags = make([dynamic]ops.Tag, allocator)
 	f.boxes = make([dynamic]Layout_Box, allocator)
 	f.placed = make([dynamic]Placed, allocator)
+	f.stacks.transforms = make([dynamic]ops.Affine, allocator)
+	f.stacks.clips = make([dynamic]Clip_Id, allocator)
+	f.stacks.deferred = make([dynamic]Deferred, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -99,6 +121,9 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.tags)
 	clear(&f.boxes)
 	clear(&f.placed)
+	clear(&f.stacks.transforms)
+	clear(&f.stacks.clips)
+	clear(&f.stacks.deferred)
 	f.scene = nil
 }
 
@@ -109,5 +134,8 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.tags)
 	delete(f.boxes)
 	delete(f.placed)
+	delete(f.stacks.transforms)
+	delete(f.stacks.clips)
+	delete(f.stacks.deferred)
 	f^ = {}
 }
