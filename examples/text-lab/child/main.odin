@@ -270,7 +270,7 @@ page_editing :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		c := ui.column_open(gtx, gap = 4, key = u64(i))
 		base.label(gtx, e.label, {size = 12, color = s[.Neutral_Foreground2]})
 		prev := swap_font(gtx, m.font[e.script])
-		fluent.input(gtx, &m.edits[i], width = 480, key = u64(i))
+		fluent.input(gtx, &m.edits[i], width = 480, name = e.label, key = u64(i))
 		swap_font(gtx, prev)
 		ui.close(&c)
 	}

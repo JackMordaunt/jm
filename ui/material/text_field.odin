@@ -445,7 +445,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	}
 	ops.clip_push(gtx.scene, ops.Rect{g.in_x, field.y, g.inner, field.h})
 	t := layout_style(gtx, str, g.input_font)
-	draw_paragraph(gtx, t, {g.in_x - fi.scroll, input_y}, col.input)
+	draw_paragraph(gtx, t, {g.in_x - fi.scroll, input_y}, col.input, selection_paint(s, fi.focused))
 	if ph_a > 0 && o.placeholder != "" {
 		draw_text(gtx, shape_style(gtx, o.placeholder, g.input_font), {g.in_x, input_y}, fade(col.placeholder, ph_a))
 	}

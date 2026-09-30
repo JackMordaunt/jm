@@ -153,6 +153,14 @@ base_theme :: proc(s: ^Scheme, mode: base.Mode = .Light) -> base.Theme {
 		.Fg      = s[.Neutral_Foreground1],
 		.Muted   = s[.Neutral_Foreground2],
 		.Outline = s[.Neutral_Stroke1],
+		// The fluent-kit tokens no text selection (ui/fluent/tokens has no
+		// selection role). Our choice, after Windows' accent highlight: the
+		// brand background with its on-brand foreground. Unfocused, the
+		// text's own colour at 16% over the canvas: a grey in every theme.
+		.Selection             = s[.Brand_Background],
+		.On_Selection          = s[.Neutral_Foreground_On_Brand],
+		.Selection_Inactive    = ops.mix(s[.Neutral_Background2], s[.Neutral_Foreground1], 0.16),
+		.On_Selection_Inactive = s[.Neutral_Foreground1],
 	}
 	th.text_size = tok.FONT_SIZE_BASE300
 	th.heading_size = tok.FONT_SIZE_BASE500
@@ -285,6 +293,10 @@ shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
 }
 
 draw_paragraph :: design.draw_paragraph
+
+// selection_paint is a Text_State's selection in the base theme's
+// selection colours, which this system maps in base_theme.
+selection_paint :: base.selection_paint
 
 // layout_style lays s out at a style in the face nearest its weight,
 // wrapped at width when width > 0; see design.layout_style.

@@ -143,3 +143,48 @@ test_paragraph_rtl_paragraph :: proc(t: ^testing.T) {
 	_, x = paragraph_caret(p, 0)
 	testing.expect_value(t, x, 100)
 }
+
+@(test)
+test_selection_rects_on_one_line :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p := lay("aaa bbb", 0)
+	rs := paragraph_selection_rects(p, 1, 5)
+	testing.expect_value(t, len(rs), 1)
+	testing.expect_value(t, rs[0], ops.Rect{6, 0, 24, 10})
+	testing.expect_value(t, len(paragraph_selection_rects(p, 3, 3)), 0)
+}
+
+@(test)
+test_selection_rects_across_a_wrap :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// Lines "aaa bbb " (its space hanging past 42) and "ccc".
+	p := lay("aaa bbb ccc", 50)
+	rs := paragraph_selection_rects(p, 2, 9)
+	testing.expect_value(t, len(rs), 2)
+	testing.expect_value(t, rs[0], ops.Rect{12, 0, 36, 10}) // to the hanging space's end
+	testing.expect_value(t, rs[1], ops.Rect{0, 10, 6, 10})
+}
+
+@(test)
+test_selection_rects_split_at_a_change_of_direction :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// "ab CD ef" with CD right to left: selecting "b C" lights b and the
+	// space, then C, which sits right of D.
+	text := "ab CD ef"
+	st := fake_shaped(text, false, {{0, 3, 0, 3, false}, {3, 5, 3, 5, true}, {5, 8, 5, 8, false}})
+	p := paragraph_from_shaped(st, metrics(stub_shaper(), 0, SIZE), text, 0, context.temp_allocator)
+	rs := paragraph_selection_rects(p, 1, 4)
+	testing.expect_value(t, len(rs), 2)
+	testing.expect_value(t, rs[0], ops.Rect{6, 0, 12, 10})
+	testing.expect_value(t, rs[1], ops.Rect{24, 0, 6, 10})
+}
+
+@(test)
+test_selection_rects_show_a_selected_newline :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p := lay("ab\ncd", 0)
+	rs := paragraph_selection_rects(p, 1, 4)
+	testing.expect_value(t, len(rs), 2)
+	testing.expect_value(t, rs[0], ops.Rect{6, 0, 6 + SIZE * 0.25, 10})
+	testing.expect_value(t, rs[1], ops.Rect{0, 10, 6, 10})
+}

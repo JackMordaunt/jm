@@ -207,3 +207,47 @@ test_copy_from_an_input_and_paste_into_a_textarea :: proc(t: ^testing.T) {
 	ui.probe_frame(&p) // the Paste lands the frame after the read
 	testing.expect_value(t, ui.text_string(&m.notes), "Ada Lovelak")
 }
+
+@(test)
+test_a_selection_is_highlighted_and_its_text_recoloured :: proc(t: ^testing.T) {
+	m: Inputs_Model
+	p: ui.Probe
+	ui.probe_init(&p, inputs, &m, {600, 500}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	defer ui.text_destroy(&m.name)
+	defer ui.text_destroy(&m.notes)
+	count :: proc(p: ^ui.Probe) -> (fills, clips, recoloured: int) {
+		sel := selection_paint(&ui.Text_State{anchor = 0, cursor = 1}, true)
+		for op in p.scene.ops {
+			#partial switch v in op {
+			case ops.Fill:
+				if c, ok := v.paint.(ops.Color); ok && c == sel.bg {
+					fills += 1
+				}
+			case ops.Push_Clip:
+				clips += 1
+			case ops.Glyphs:
+				if v.color == sel.fg {
+					recoloured += 1
+				}
+			}
+		}
+		return
+	}
+	ui.probe_click(&p, "First and last")
+	ui.probe_type(&p, "Ada")
+	f0, c0, r0 := count(&p)
+	ui.probe_key(&p, .A, {ui.SHORTCUT})
+	f1, c1, r1 := count(&p)
+	testing.expect_value(t, r0, 0)
+	// Both inputs showing m.name redraw their selected text: the palette
+	// here, base's light one, gives the inactive selection the same text
+	// colour as the focused one.
+	testing.expect_value(t, r1, 2)
+	testing.expect_value(t, f0, 0)
+	testing.expect_value(t, f1 - f0, 1) // one line, one highlight in the focused colour
+	// The selected text drawn again inside it — twice, since the disabled
+	// "Off" input shares m.name and shows the same selection, inactive.
+	testing.expect_value(t, c1 - c0, 2)
+}

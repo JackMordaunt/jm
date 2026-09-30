@@ -322,7 +322,7 @@ paint_search_field :: proc(
 	ops.clip_push(gtx.scene, ops.Rect{r.x + pad_l, r.y, inner, r.h})
 	font := header ? tok.SEARCH_VIEW_HEADER_INPUT_TEXT_FONT : tok.SEARCH_BAR_INPUT_TEXT_FONT
 	if len(str) > 0 {
-		draw_paragraph(gtx, layout_style(gtx, str, font), {r.x + pad_l - scroll, cy - font.line_height / 2}, input)
+		draw_paragraph(gtx, layout_style(gtx, str, font), {r.x + pad_l - scroll, cy - font.line_height / 2}, input, selection_paint(s, show_caret))
 	} else {
 		t := shape_style(gtx, placeholder, header ? tok.SEARCH_VIEW_HEADER_SUPPORTING_TEXT_FONT : tok.SEARCH_BAR_SUPPORTING_TEXT_FONT)
 		draw_text(gtx, t, {r.x + pad_l, cy - t.height / 2}, hint)

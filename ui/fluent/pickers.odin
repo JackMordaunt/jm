@@ -570,7 +570,8 @@ combobox :: proc(
 	y_text := (sz.y - m.style.line_height) / 2
 	ops.clip_push(gtx.scene, ops.Rect{m.pad_start, tok.STROKE_WIDTH_THIN, max(inner_w, 0), sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	if shown_text != "" {
-		draw_paragraph(gtx, t, {m.pad_start, y_text}, k.text)
+		// Only typed text has a selection; a picked option's text has none.
+		draw_paragraph(gtx, t, {m.pad_start, y_text}, k.text, selection_paint(s, c.focused) if typed else {})
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {m.pad_start, y_text}, k.placeholder)
 	}
@@ -1146,7 +1147,7 @@ search_box :: proc(
 	y_text := (sz.y - tst.line_height) / 2
 	ops.clip_push(gtx.scene, ops.Rect{left, tok.STROKE_WIDTH_THIN, inner, sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	if len(str) > 0 {
-		draw_paragraph(gtx, t, {left, y_text}, k.text)
+		draw_paragraph(gtx, t, {left, y_text}, k.text, selection_paint(s, r.focused))
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {left, y_text}, k.placeholder)
 	}
@@ -1359,7 +1360,7 @@ tag_picker :: proc(
 	slot_w := max(sz.x - end_pad - x, TAG_INPUT_MIN_WIDTH)
 	ops.clip_push(gtx.scene, ops.Rect{x, tok.STROKE_WIDTH_THIN, slot_w, sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	if query != "" {
-		draw_paragraph(gtx, t, {x, y_text}, k.text)
+		draw_paragraph(gtx, t, {x, y_text}, k.text, selection_paint(s, c.focused))
 	} else if placeholder != "" && x == tok.SPACING_HORIZONTAL_M {
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {x, y_text}, k.placeholder)
 	}

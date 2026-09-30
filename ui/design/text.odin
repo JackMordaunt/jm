@@ -75,11 +75,35 @@ layout_style :: proc(gtx: ^ui.Ctx, s: string, st: Type_Style, font: ops.Font_Id,
 	return ui.paragraph_layout(gtx.shaper, font, st.size, s, width, gtx.allocator, line_pitch = st.line_height)
 }
 
+// Selection_Paint is a selected byte range of a paragraph and its colours:
+// bg under the text, fg for the text over it. A zero value selects nothing.
+Selection_Paint :: struct {
+	lo, hi: int,
+	bg, fg: ops.Color,
+}
+
 // draw_paragraph draws p with its first line box's top-left at pos, in
-// visual order, right-to-left runs and all.
-draw_paragraph :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, color: ops.Color) {
-	if color[3] == 0 {
+// visual order, right-to-left runs and all. With a selection, its
+// highlight goes under the text and the selected stretch is drawn again in
+// sel.fg, clipped to the highlight, so the colour changes exactly at the
+// selection's edge even inside a ligature.
+draw_paragraph :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, color: ops.Color, sel := Selection_Paint{}) {
+	rects: []ops.Rect
+	if sel.lo < sel.hi {
+		rects = ui.paragraph_selection_rects(p, sel.lo, sel.hi, gtx.allocator)
+		for r in rects {
+			ops.fill(gtx.scene, ops.Rect{pos.x + r.x, pos.y + r.y, r.w, r.h}, sel.bg)
+		}
+	}
+	if color[3] != 0 {
+		ui.paragraph_draw(gtx.scene, p, pos, color)
+	}
+	if sel.fg == color || sel.fg[3] == 0 {
 		return
 	}
-	ui.paragraph_draw(gtx.scene, p, pos, color)
+	for r in rects {
+		ops.clip_push(gtx.scene, ops.Rect{pos.x + r.x, pos.y + r.y, r.w, r.h})
+		ui.paragraph_draw(gtx.scene, p, pos, sel.fg)
+		ops.clip_pop(gtx.scene)
+	}
 }

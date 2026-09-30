@@ -120,6 +120,15 @@ base_theme :: proc(s: ^Scheme, mode: base.Mode = .Light) -> base.Theme {
 		.Fg      = s[.On_Surface],
 		.Muted   = s[.On_Surface_Variant],
 		.Outline = s[.Outline_Variant],
+		// M3 tokens no text selection. This follows Compose Material 3's
+		// default TextSelectionColors as remembered (primary at 40% over the
+		// text's surface, text unchanged; check androidx.compose.material3
+		// before relying on the figure), mixed to a solid colour so the
+		// axioms can measure it. Unfocused, on-surface at 16%: a grey.
+		.Selection             = ops.mix(s[.Surface], s[.Primary], 0.4),
+		.On_Selection          = s[.On_Surface],
+		.Selection_Inactive    = ops.mix(s[.Surface], s[.On_Surface], 0.16),
+		.On_Selection_Inactive = s[.On_Surface],
 	}
 	return th
 }
@@ -455,6 +464,10 @@ shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
 }
 
 draw_paragraph :: design.draw_paragraph
+
+// selection_paint is a Text_State's selection in the base theme's
+// selection colours, which this system maps in base_theme.
+selection_paint :: base.selection_paint
 
 // layout_style lays s out at a style in the face for its weight, wrapped
 // at width when width > 0; see design.layout_style.

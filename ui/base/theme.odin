@@ -26,6 +26,10 @@ Role :: enum u8 {
 	Fg, // text and marks
 	Muted, // secondary text
 	Outline, // borders and dividers
+	Selection, // selected text's highlight, where the text has focus
+	On_Selection, // selected text over it; Fg keeps the text's colour
+	Selection_Inactive, // the highlight where the text has lost focus
+	On_Selection_Inactive,
 }
 
 // Mode is the context a binding is chosen for.
@@ -57,6 +61,15 @@ AXIOMS := []design.Axiom(Role) {
 	{.Ratio_Min, .Muted, .Bg, 3},
 	{.Ratio_Min, .Muted, .Surface, 3},
 	{.Ratio_Min, .Outline, .Surface, 1.5},
+	// Selected text reads on its highlight, focused or not, and the
+	// highlight shows against the window and panels. 1.15 is this palette's
+	// floor for a tint that is seen but does not shout.
+	{.Ratio_Min, .On_Selection, .Selection, 4.5},
+	{.Ratio_Min, .On_Selection_Inactive, .Selection_Inactive, 4.5},
+	{.Ratio_Min, .Selection, .Bg, 1.15},
+	{.Ratio_Min, .Selection, .Surface, 1.15},
+	{.Ratio_Min, .Selection_Inactive, .Bg, 1.15},
+	{.Ratio_Min, .Selection_Inactive, .Surface, 1.15},
 }
 
 // palette is jm's own binding: a cool grey in both modes.
@@ -67,6 +80,11 @@ palette :: proc() -> (t: design.Theme(Role, Mode)) {
 		.Fg      = {28, 28, 32, 255},
 		.Muted   = {110, 110, 120, 255},
 		.Outline = {200, 200, 208, 255},
+		// A light blue under unchanged text.
+		.Selection             = {179, 215, 255, 255},
+		.On_Selection          = {28, 28, 32, 255},
+		.Selection_Inactive    = {214, 214, 222, 255},
+		.On_Selection_Inactive = {28, 28, 32, 255},
 	}
 	t.bind[.Dark] = {
 		.Bg      = {24, 24, 28, 255},
@@ -74,6 +92,10 @@ palette :: proc() -> (t: design.Theme(Role, Mode)) {
 		.Fg      = {232, 232, 238, 255},
 		.Muted   = {150, 150, 162, 255},
 		.Outline = {70, 70, 82, 255},
+		.Selection             = {38, 79, 120, 255},
+		.On_Selection          = {232, 232, 238, 255},
+		.Selection_Inactive    = {68, 68, 80, 255},
+		.On_Selection_Inactive = {232, 232, 238, 255},
 	}
 	return
 }
@@ -124,4 +146,15 @@ font :: proc(gtx: ^ui.Ctx) -> ops.Font_Id {
 		return f
 	}
 	return gtx.font
+}
+
+// selection_paint is s's selection in the active theme's selection
+// colours, for design.draw_paragraph: the focused pair while the text has
+// focus, the inactive pair when it has not.
+selection_paint :: proc(s: ^ui.Text_State, focused: bool) -> design.Selection_Paint {
+	lo, hi := ui.text_selection(s)
+	if focused {
+		return {lo, hi, color(.Selection), color(.On_Selection)}
+	}
+	return {lo, hi, color(.Selection_Inactive), color(.On_Selection_Inactive)}
 }

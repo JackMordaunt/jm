@@ -302,7 +302,7 @@ input :: proc(
 	}
 	ops.clip_push(gtx.scene, ops.Rect{left, BORDER, inner, sz.y - 2 * BORDER})
 	if len(str) > 0 {
-		draw_paragraph(gtx, t, {left - scroll, y_text}, k.text)
+		draw_paragraph(gtx, t, {left - scroll, y_text}, k.text, selection_paint(s, r.focused))
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {left, y_text}, k.placeholder)
 	}
@@ -466,7 +466,7 @@ textarea :: proc(
 	if len(str) == 0 && placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {text_x, text_y}, k.placeholder)
 	}
-	draw_paragraph(gtx, para, {text_x, text_y - scroll}, k.text)
+	draw_paragraph(gtx, para, {text_x, text_y - scroll}, k.text, selection_paint(s, r.focused))
 	if r.focused {
 		ops.fill(gtx.scene, ops.Rect{text_x + cx, text_y + f32(li) * lh - scroll + 2, CARET_W, lh - 4}, k.text)
 	}

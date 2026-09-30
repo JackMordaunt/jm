@@ -127,7 +127,9 @@ inspecting :: proc(h: ^Headless) {
 //
 //	-click NAME        press and release the area tagged NAME
 //	-scroll NAME DY    scroll DY notches over NAME (positive is down)
-//	-key KEY           press KEY (a ui.Key name: Enter, Tab, Down, A, ...)
+//	-key KEY           press KEY (a ui.Key name: Enter, Tab, Down, A, ...),
+//	                   with modifiers before it joined by +: Shift+Left,
+//	                   Shortcut+A (Cmd on macOS, Ctrl elsewhere), Word+Right
 //	-move X Y          move the pointer to X, Y
 //	-hover NAME        move the pointer to the middle of the area tagged NAME
 //	-advance N         run N frames at 1/60 s
@@ -177,12 +179,12 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 			return true, false
 		}
 		i^ += 1
-		key, key_ok := reflect.enum_from_name(ui.Key, args[i^])
+		key, mods, key_ok := parse_chord(args[i^])
 		if !key_ok {
 			fmt.eprintfln("-key: no key %q", args[i^])
 			return true, false
 		}
-		ui.probe_key(&h.p, key)
+		ui.probe_key(&h.p, key, mods)
 	case "-move":
 		if !need(args, i, 2, flag) {
 			return true, false
@@ -254,4 +256,27 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		return false, true
 	}
 	return true, true
+}
+
+// parse_chord reads a -key argument: a ui.Key name, after any modifiers
+// joined by +, each a ui.Mod name or Shortcut or Word for ui.SHORTCUT and
+// ui.WORD_MOD.
+@(private = "file")
+parse_chord :: proc(arg: string) -> (key: ui.Key, mods: ui.Mods, ok: bool) {
+	rest := arg
+	for {
+		part, _, after := strings.partition(rest, "+")
+		if after == "" && !strings.contains(rest, "+") {
+			return reflect.enum_from_name(ui.Key, part) or_return, mods, true
+		}
+		switch part {
+		case "Shortcut":
+			mods += {ui.SHORTCUT}
+		case "Word":
+			mods += {ui.WORD_MOD}
+		case:
+			mods += {reflect.enum_from_name(ui.Mod, part) or_return}
+		}
+		rest = after
+	}
 }

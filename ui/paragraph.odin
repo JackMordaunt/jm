@@ -143,6 +143,83 @@ paragraph_caret :: proc(p: Paragraph, i: int) -> (line: int, x: f32) {
 	return line, line_caret_x(p, line, i)
 }
 
+// paragraph_selection_rects is where to highlight the text between byte
+// offsets lo and hi, as rects from the paragraph's top-left, each a whole
+// line box tall: per line, one rect per visually contiguous stretch, so a
+// selection across a change of direction is split as it reads. A partly
+// selected ligature is cut at its runes' share of its width. Selected
+// whitespace hanging past a line's edge is included, and a selected
+// newline shows as a quarter-em stub at the line's end edge, so selecting
+// across a line end is visible. Allocated from allocator.
+paragraph_selection_rects :: proc(p: Paragraph, lo, hi: int, allocator := context.temp_allocator) -> []ops.Rect {
+	out := make([dynamic]ops.Rect, 0, 4, allocator)
+	if hi <= lo {
+		return out[:]
+	}
+	spans := make([dynamic][2]f32, 0, 8, context.temp_allocator)
+	for ln, k in p.lines {
+		if hi <= ln.start || lo >= max(ln.end, ln.start + 1) {
+			continue
+		}
+		clear(&spans)
+		for r in ln.runs {
+			for c in r.clusters {
+				a, b := max(lo, c.start), min(hi, c.end)
+				if a >= b {
+					continue
+				}
+				fa := cluster_fraction(p.text[c.start:c.end], a - c.start)
+				fb := cluster_fraction(p.text[c.start:c.end], b - c.start)
+				x0, x1 := c.x0 + (c.x1 - c.x0) * fa, c.x0 + (c.x1 - c.x0) * fb
+				if r.rtl {
+					x0, x1 = c.x1 - (c.x1 - c.x0) * fb, c.x1 - (c.x1 - c.x0) * fa
+				}
+				append(&spans, [2]f32{ln.x + x0, ln.x + x1})
+			}
+		}
+		// Hanging whitespace, measured out from the end edge.
+		for c in ln.hanging {
+			a, b := max(lo, c.start), min(hi, c.end)
+			if a >= b {
+				continue
+			}
+			d0 := c.x0 + (c.x1 - c.x0) * cluster_fraction(p.text[c.start:c.end], a - c.start)
+			d1 := c.x0 + (c.x1 - c.x0) * cluster_fraction(p.text[c.start:c.end], b - c.start)
+			if p.rtl {
+				append(&spans, [2]f32{ln.x - d1, ln.x - d0})
+			} else {
+				append(&spans, [2]f32{ln.x + ln.width + d0, ln.x + ln.width + d1})
+			}
+		}
+		// A selected newline: a stub past everything else on the line.
+		if e := line_content_end(p.text, ln); e < ln.end && lo < ln.end && hi > e {
+			stub := p.size * 0.25
+			hang: f32
+			for c in ln.hanging {
+				hang = max(hang, c.x1)
+			}
+			if p.rtl {
+				append(&spans, [2]f32{ln.x - hang - stub, ln.x - hang})
+			} else {
+				append(&spans, [2]f32{ln.x + ln.width + hang, ln.x + ln.width + hang + stub})
+			}
+		}
+		slice.sort_by(spans[:], proc(a, b: [2]f32) -> bool {return a[0] < b[0]})
+		top := f32(k) * p.pitch
+		i := 0
+		for i < len(spans) {
+			x0, x1 := spans[i][0], spans[i][1]
+			i += 1
+			for i < len(spans) && spans[i][0] <= x1 + 0.5 {
+				x1 = max(x1, spans[i][1])
+				i += 1
+			}
+			append(&out, ops.Rect{x0, top, x1 - x0, p.pitch})
+		}
+	}
+	return out[:]
+}
+
 // paragraph_line_of is the line a caret at byte offset i is on.
 paragraph_line_of :: proc(p: Paragraph, i: int) -> int {
 	for ln, k in p.lines {
