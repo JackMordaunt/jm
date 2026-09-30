@@ -1,18 +1,26 @@
-# Type-checks every package for every target, then runs the test suite on
-# Linux, macOS and Windows. The native libraries the tests link are built
-# here the way the justfile builds them: the vendored SQLite, wasm3 and
-# libpg_query with the platform's C compiler, libgit2 and Blend2D with
-# CMake from pinned upstream checkouts, cached between runs.
+# Type-checks every package for every target, then on Linux, macOS and
+# Windows links every program the justfile lists and runs the test suite.
+# The native libraries are built here the way the justfile builds them: the
+# vendored SQLite, wasm3 and libpg_query with the platform's C compiler,
+# libgit2 and Blend2D with CMake from pinned upstream checkouts, cached
+# between runs.
 #
-# Not run here: ui/sdl (needs SDL3 and a display). The pq tests skip
-# themselves on a runner where the PostgreSQL server binaries are not on
-# PATH; the package still has to link libpq, so pq is left out where
-# there is no libpq to link. wasm-windows.yml is the shorter loop for
-# jm:wasm on Windows alone.
+# It runs on a push to main, and on a push to any ci/<name> branch, so a
+# throwaway branch gets the three platforms during development without
+# every feature branch paying for them; `gh workflow run test.yml --ref
+# <branch>` runs it on any other branch.
+#
+# SDL3 comes from Homebrew on macOS and with Odin on Windows; Ubuntu has no
+# package, so it is built here, console-only, which links and runs ui/sdl's
+# tests because they drive a child process rather than open a window. The
+# pq tests skip themselves on a runner where the PostgreSQL server binaries
+# are not on PATH; the package still has to link libpq, so pq and jm-fuzz
+# are left out where there is no libpq to link. wasm-windows.yml is the
+# shorter loop for jm:wasm on Windows alone.
 name: test
 on:
   push:
-    branches: ["**"]
+    branches: [main, "ci/**"]
   pull_request:
   workflow_dispatch:
 concurrency:
@@ -23,6 +31,8 @@ env:
   LIBGIT2_TAG: v1.9.7
   BLEND2D_REF: 58ca9460b4138af6e793184682e9324e0a8053b2
   ASMJIT_REF: 0d7f01052f2d3f6d6b9bb6714ef32bd7b80177eb
+  # The release vendor:sdl3 in ODIN_RELEASE is bound against.
+  SDL3_TAG: release-3.4.2
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -84,7 +94,7 @@ jobs:
       - name: platform packages (macos)
         if: runner.os == 'macOS'
         run: |
-          brew install --quiet postgresql@17 libpq ninja
+          brew install --quiet postgresql@17 libpq ninja sdl3
           echo "$(brew --prefix postgresql@17)/bin" >> "$GITHUB_PATH"
           # Homebrew keeps libpq keg-only, and postgresql@17's own copy
           # sits under lib/postgresql@17; the libpq formula's lib is the
@@ -110,6 +120,30 @@ jobs:
             echo "no PostgreSQL on this image: pq is left out"
           fi
           echo "LINKFLAGS=$link" >> "$GITHUB_ENV"
+
+      # SDL3 for ui/sdl and the demo hosts on Linux, shared so the tests
+      # load it through LD_LIBRARY_PATH. Console-only: no X11 or Wayland
+      # headers are installed, and nothing here opens a window.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        if: runner.os == 'Linux'
+        id: sdl3
+        with:
+          path: ${{ runner.temp }}/sdl3
+          key: sdl3-${{ env.SDL3_TAG }}-${{ runner.os }}-${{ runner.arch }}-v1
+      - name: sdl3 (linux)
+        if: runner.os == 'Linux' && steps.sdl3.outputs.cache-hit != 'true'
+        run: |
+          git -c advice.detachedHead=false clone -q --depth 1 --branch "$SDL3_TAG" https://github.com/libsdl-org/SDL "$RUNNER_TEMP/sdl3-src"
+          cmake -S "$RUNNER_TEMP/sdl3-src" -B "$RUNNER_TEMP/sdl3-src/build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/sdl3" -DSDL_UNIX_CONSOLE_BUILD=ON -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+          cmake --build "$RUNNER_TEMP/sdl3-src/build" --parallel
+          cmake --install "$RUNNER_TEMP/sdl3-src/build"
+      - name: sdl3 on the linker path (linux)
+        if: runner.os == 'Linux'
+        run: |
+          lib=$(dirname "$(find "$RUNNER_TEMP/sdl3" -name 'libSDL3.so' -print -quit)")
+          echo "LINKFLAGS=$LINKFLAGS -L$lib" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$lib" >> "$GITHUB_ENV"
 
       # The vendored C libraries, compiled as the justfile compiles them.
       # On Windows the recipes are written for PowerShell and just's parser
@@ -187,9 +221,10 @@ jobs:
           mkdir -p ui/blend2d/lib
           if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/blend2d/build/blend2d.lib" ui/blend2d/lib/; else cp "$RUNNER_TEMP/blend2d/build/libblend2d.a" ui/blend2d/lib/; fi
 
-      # The suite: the justfile's package list, plus the packages that link
-      # Blend2D, each as `just test` runs it. pq joins where libpq exists.
-      - name: test
+      # Every program the justfile lists, linked; then the suite: the
+      # justfile's package list plus the packages that link Blend2D or
+      # SDL3, each as `just test` runs it. pq joins where libpq exists.
+      - name: build and test
         env:
           MSYS_NO_PATHCONV: 1
         run: |
@@ -204,9 +239,21 @@ jobs:
           if [ "$RUNNER_OS" != Windows ]; then cxx=("-extra-linker-flags:${LINKFLAGS:+$LINKFLAGS }-lstdc++"); else cxx=("${link[@]}"); fi
           exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
           packages=$(sed -n 's/^packages := "\(.*\)"$/\1/p' justfile | sed 's| pq pq/testdb pq/fuzz||')
-          bench=tools/wasm-bench
+          programs=$(sed -n 's/^programs := "\(.*\)"$/\1/p' justfile)
           mkdir -p build/test build/debug
+          # vendor:sdl3 loads SDL3.dll at start-up on Windows, so the
+          # ui/sdl test binary needs it beside it.
+          [ "$RUNNER_OS" = Windows ] && cp "$(odin root)/vendor/sdl3/SDL3.dll" build/test/
           failed=0
+          for p in $programs; do
+            if [ "$p" = tools/jm-fuzz ] && [ -z "${PQ:-}" ]; then echo "no libpq: $p is left out"; continue; fi
+            echo "::group::odin build $p"
+            odin build "$p" $flags "${cxx[@]}" -out:"build/debug/$(echo "$p" | tr / -)$exe" || { echo "::error::$p did not build"; failed=1; }
+            echo "::endgroup::"
+          done
+          odin build examples/hello.odin -file $flags "${link[@]}" -out:build/debug/hello$exe || { echo "::error::examples/hello.odin did not build"; failed=1; }
+          # The child ui/sdl's tests spawn, at the path they expect.
+          odin build examples/hot-counter/child -debug $flags "${cxx[@]}" -out:build/debug/hot-counter-child$exe || failed=1
           for p in $packages $PQ; do
             threads=""
             case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac
@@ -214,21 +261,23 @@ jobs:
             odin test "$p" $flags "${link[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
             echo "::endgroup::"
           done
-          echo "::group::odin test $bench"
-          odin test "$bench" $flags "${link[@]}" -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench$exe || { echo "::error::$bench failed"; failed=1; }
-          echo "::endgroup::"
-          for p in ui/render ui/render/fuzz ui/child; do
+          for p in tools/wasm-bench tools/design-tokens tools/fluent-icons; do
+            threads=""; [ "$p" = tools/wasm-bench ] && threads="-define:ODIN_TEST_THREADS=1"
             echo "::group::odin test $p"
-            odin test "$p" $flags "${cxx[@]}" -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            odin test "$p" $flags "${link[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
             echo "::endgroup::"
           done
-          echo "::group::build the hot-reload child and the probe"
-          odin build examples/hot-counter/child -debug $flags "${cxx[@]}" -out:build/debug/hot-counter-child$exe || failed=1
-          odin build tools/git-probe $flags "${link[@]}" -out:build/debug/git-probe$exe || failed=1
-          echo "::endgroup::"
+          # ui/sdl on one thread: its tests spawn hot-counter-child copies
+          # sharing one exe path, as `just test` runs it.
+          for p in ui/render ui/render/fuzz ui/child ui/sdl; do
+            threads=""; [ "$p" = ui/sdl ] && threads="-define:ODIN_TEST_THREADS=1"
+            echo "::group::odin test $p"
+            odin test "$p" $flags "${cxx[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
+            echo "::endgroup::"
+          done
           exit $failed
 
       # The one network step: an anonymous HTTPS clone through the static
       # libgit2 and the platform's own TLS.
       - name: git-probe (anonymous https)
-        run: build/debug/git-probe https://github.com/octocat/Hello-World.git
+        run: build/debug/tools-git-probe https://github.com/octocat/Hello-World.git

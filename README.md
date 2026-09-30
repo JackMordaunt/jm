@@ -161,16 +161,20 @@ just clean     drop build/ and the four archives
 `just install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.
 
-GitHub Actions runs `just check` and the same test suite on Linux, macOS
-and Windows on every push (`.github/workflows/test.yml`), building the
-vendored C libraries, libgit2 and Blend2D there the way the recipes do
-and caching the two CMake builds. `ui/sdl` stays out, for want of SDL3
-and a display on a runner; `pq` runs on all three, each runner having
-libpq and a PostgreSQL server. `wasm-windows.yml` is the shorter loop for
-jm:wasm on Windows alone: wasm3 with clang-cl at two optimisation levels,
-the trap tests one process each, and a faulting one rerun under cdb for
-its stack. The recipe's own cl build of wasm3 does not compile; clang-cl
-is what Windows uses.
+GitHub Actions runs `just check`, links every program in the justfile's
+`programs` list, and runs the same test suite on Linux, macOS and Windows
+(`.github/workflows/test.yml`), building the vendored C libraries, libgit2
+and Blend2D there the way the recipes do and caching the CMake builds. It
+runs on a push to `main` or to any `ci/<name>` branch, so pushing a
+throwaway `ci/` branch checks all three platforms during development;
+`gh workflow run test.yml --ref <branch>` runs it on any other branch.
+`ui/sdl` runs too: Linux builds SDL3 console-only, which is enough because
+its tests drive a child process rather than open a window. `pq` runs on
+all three, each runner having libpq and a PostgreSQL server.
+`wasm-windows.yml` is the shorter loop for jm:wasm on Windows alone: wasm3
+with clang-cl at two optimisation levels, the trap tests one process each,
+and a faulting one rerun under cdb for its stack. The recipe's own cl
+build of wasm3 does not compile; clang-cl is what Windows uses.
 
 
 ## SQLite
