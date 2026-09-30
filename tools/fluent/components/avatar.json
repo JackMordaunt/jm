@@ -1,0 +1,911 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "avatar",
+  "name": "Avatar",
+  "status": "stable",
+  "summary": "A picture of a person or entity: their image, else their initials, else a person icon, on a coloured disc or square, with an optional presence badge and an active ring or shadow. Use it wherever a person is named in a list, header or card; size it to the line it sits beside, and use colorful to tell many initials apart.",
+  "tokenGroups": [
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusSmall",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusLarge",
+    "tokens.borderRadiusXLarge",
+    "tokens.fontFamilyBase",
+    "tokens.fontWeightSemibold",
+    "tokens.fontSizeBase100",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.fontSizeBase500",
+    "tokens.fontSizeBase600",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.strokeWidthThicker",
+    "tokens.strokeWidthThickest",
+    "tokens.colorTransparentStroke",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralBackground6",
+    "tokens.colorNeutralForegroundStaticInverted",
+    "tokens.colorBrandBackgroundStatic",
+    "tokens.colorBrandStroke1",
+    "tokens.shadow4",
+    "tokens.shadow8",
+    "tokens.shadow16",
+    "tokens.shadow28",
+    "tokens.durationUltraSlow",
+    "tokens.durationSlower",
+    "tokens.durationFaster",
+    "tokens.curveEasyEaseMax",
+    "tokens.curveLinear",
+    "tokens.curveDecelerateMin",
+    "tokens.colorPaletteDarkRedForeground2",
+    "tokens.colorPaletteDarkRedBackground2",
+    "tokens.colorPaletteDarkRedBorderActive",
+    "tokens.colorPaletteCranberryForeground2",
+    "tokens.colorPaletteCranberryBackground2",
+    "tokens.colorPaletteCranberryBorderActive",
+    "tokens.colorPaletteRedForeground2",
+    "tokens.colorPaletteRedBackground2",
+    "tokens.colorPaletteRedBorderActive",
+    "tokens.colorPalettePumpkinForeground2",
+    "tokens.colorPalettePumpkinBackground2",
+    "tokens.colorPalettePumpkinBorderActive",
+    "tokens.colorPalettePeachForeground2",
+    "tokens.colorPalettePeachBackground2",
+    "tokens.colorPalettePeachBorderActive",
+    "tokens.colorPaletteMarigoldForeground2",
+    "tokens.colorPaletteMarigoldBackground2",
+    "tokens.colorPaletteMarigoldBorderActive",
+    "tokens.colorPaletteGoldForeground2",
+    "tokens.colorPaletteGoldBackground2",
+    "tokens.colorPaletteGoldBorderActive",
+    "tokens.colorPaletteBrassForeground2",
+    "tokens.colorPaletteBrassBackground2",
+    "tokens.colorPaletteBrassBorderActive",
+    "tokens.colorPaletteBrownForeground2",
+    "tokens.colorPaletteBrownBackground2",
+    "tokens.colorPaletteBrownBorderActive",
+    "tokens.colorPaletteForestForeground2",
+    "tokens.colorPaletteForestBackground2",
+    "tokens.colorPaletteForestBorderActive",
+    "tokens.colorPaletteSeafoamForeground2",
+    "tokens.colorPaletteSeafoamBackground2",
+    "tokens.colorPaletteSeafoamBorderActive",
+    "tokens.colorPaletteDarkGreenForeground2",
+    "tokens.colorPaletteDarkGreenBackground2",
+    "tokens.colorPaletteDarkGreenBorderActive",
+    "tokens.colorPaletteLightTealForeground2",
+    "tokens.colorPaletteLightTealBackground2",
+    "tokens.colorPaletteLightTealBorderActive",
+    "tokens.colorPaletteTealForeground2",
+    "tokens.colorPaletteTealBackground2",
+    "tokens.colorPaletteTealBorderActive",
+    "tokens.colorPaletteSteelForeground2",
+    "tokens.colorPaletteSteelBackground2",
+    "tokens.colorPaletteSteelBorderActive",
+    "tokens.colorPaletteBlueForeground2",
+    "tokens.colorPaletteBlueBackground2",
+    "tokens.colorPaletteBlueBorderActive",
+    "tokens.colorPaletteRoyalBlueForeground2",
+    "tokens.colorPaletteRoyalBlueBackground2",
+    "tokens.colorPaletteRoyalBlueBorderActive",
+    "tokens.colorPaletteCornflowerForeground2",
+    "tokens.colorPaletteCornflowerBackground2",
+    "tokens.colorPaletteCornflowerBorderActive",
+    "tokens.colorPaletteNavyForeground2",
+    "tokens.colorPaletteNavyBackground2",
+    "tokens.colorPaletteNavyBorderActive",
+    "tokens.colorPaletteLavenderForeground2",
+    "tokens.colorPaletteLavenderBackground2",
+    "tokens.colorPaletteLavenderBorderActive",
+    "tokens.colorPalettePurpleForeground2",
+    "tokens.colorPalettePurpleBackground2",
+    "tokens.colorPalettePurpleBorderActive",
+    "tokens.colorPaletteGrapeForeground2",
+    "tokens.colorPaletteGrapeBackground2",
+    "tokens.colorPaletteGrapeBorderActive",
+    "tokens.colorPaletteLilacForeground2",
+    "tokens.colorPaletteLilacBackground2",
+    "tokens.colorPaletteLilacBorderActive",
+    "tokens.colorPalettePinkForeground2",
+    "tokens.colorPalettePinkBackground2",
+    "tokens.colorPalettePinkBorderActive",
+    "tokens.colorPaletteMagentaForeground2",
+    "tokens.colorPaletteMagentaBackground2",
+    "tokens.colorPaletteMagentaBorderActive",
+    "tokens.colorPalettePlumForeground2",
+    "tokens.colorPalettePlumBackground2",
+    "tokens.colorPalettePlumBorderActive",
+    "tokens.colorPaletteBeigeForeground2",
+    "tokens.colorPaletteBeigeBackground2",
+    "tokens.colorPaletteBeigeBorderActive",
+    "tokens.colorPaletteMinkForeground2",
+    "tokens.colorPaletteMinkBackground2",
+    "tokens.colorPaletteMinkBorderActive",
+    "tokens.colorPalettePlatinumForeground2",
+    "tokens.colorPalettePlatinumBackground2",
+    "tokens.colorPalettePlatinumBorderActive",
+    "tokens.colorPaletteAnchorForeground2",
+    "tokens.colorPaletteAnchorBackground2",
+    "tokens.colorPaletteAnchorBorderActive"
+  ],
+  "references": {
+    "react": [
+      "useAvatarStyles.styles.ts",
+      "Avatar.types.ts"
+    ],
+    "fluent2": [
+      "avatar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": "The person's or entity's name: gives the initials, the colorful hash and the accessible name. Always supply it when known."
+    },
+    {
+      "name": "image",
+      "type": "slot",
+      "required": false,
+      "description": "An img covering the whole avatar; initials show while it loads or when absent."
+    },
+    {
+      "name": "initials",
+      "type": "slot",
+      "required": false,
+      "description": "Custom initials; by default derived from name. At size 16 only the first initial renders."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "Shown when there is neither image nor initials; defaults to a person icon sized with the avatar."
+    },
+    {
+      "name": "badge",
+      "type": "slot",
+      "required": false,
+      "description": "A PresenceBadge (see badge.json) pinned to the bottom-right corner, with a transparent gap cut around it."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "16",
+        "20",
+        "24",
+        "28",
+        "32",
+        "36",
+        "40",
+        "48",
+        "56",
+        "64",
+        "72",
+        "96",
+        "120",
+        "128"
+      ],
+      "required": false,
+      "default": "32",
+      "description": "Width and height in px. For another size, use the next smaller supported size and override width and height."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "circular",
+        "square"
+      ],
+      "required": false,
+      "default": "circular",
+      "description": "circular is a disc; square rounds its corners by a radius that grows with size."
+    },
+    {
+      "name": "color",
+      "type": "enum",
+      "values": [
+        "neutral",
+        "brand",
+        "colorful",
+        "dark-red",
+        "cranberry",
+        "red",
+        "pumpkin",
+        "peach",
+        "marigold",
+        "gold",
+        "brass",
+        "brown",
+        "forest",
+        "seafoam",
+        "dark-green",
+        "light-teal",
+        "teal",
+        "steel",
+        "blue",
+        "royal-blue",
+        "cornflower",
+        "navy",
+        "lavender",
+        "purple",
+        "grape",
+        "lilac",
+        "pink",
+        "magenta",
+        "plum",
+        "beige",
+        "mink",
+        "platinum",
+        "anchor"
+      ],
+      "required": false,
+      "default": "neutral",
+      "description": "Background and text of the initials or icon. neutral is grey; brand the static brand colour; colorful picks one of the 30 named colours by hashing name (or idForColor); a named colour pins one."
+    },
+    {
+      "name": "idForColor",
+      "type": "string",
+      "required": false,
+      "description": "Hashed instead of name to choose the colorful colour."
+    },
+    {
+      "name": "active",
+      "type": "enum",
+      "values": [
+        "unset",
+        "active",
+        "inactive"
+      ],
+      "required": false,
+      "default": "unset",
+      "description": "unset draws nothing extra; active adds the activeAppearance decoration; inactive shrinks and fades the avatar."
+    },
+    {
+      "name": "activeAppearance",
+      "type": "enum",
+      "values": [
+        "ring",
+        "shadow",
+        "ring-shadow"
+      ],
+      "required": false,
+      "default": "ring",
+      "description": "The decoration active shows: a ring outside the avatar, a shadow, or both."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Avatar",
+      "description": "An inline-block box of the size, circular by default, holding one of image, initials or icon, and the ring (::before) and shadow (::after) layers behind them.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "image",
+      "name": "Image",
+      "description": "An img filling the root, object-fit cover, inheriting its radius.",
+      "optional": true
+    },
+    {
+      "id": "initials",
+      "name": "Initials",
+      "description": "Centred semibold letters on the colour's background, filling the root with a transparent strokeWidthThin border.",
+      "optional": true,
+      "tokens": [
+        "tokens.fontWeightSemibold",
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A centred glyph on the colour's background, sized by the avatar's size; same box as the initials.",
+      "optional": true
+    },
+    {
+      "id": "ring",
+      "name": "Active ring",
+      "description": "A border of ringWidth drawn around the avatar with a ringWidth gap, in the colour's ring token, shown when active with ring or ring-shadow.",
+      "optional": true
+    },
+    {
+      "id": "shadow",
+      "name": "Active shadow",
+      "description": "A layer the avatar's shape casting a shadow token by size, shown when active with shadow or ring-shadow.",
+      "optional": true
+    },
+    {
+      "id": "badge",
+      "name": "Presence badge",
+      "description": "A PresenceBadge absolutely positioned at the bottom-right corner (bottom-left in RTL).",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "color",
+      "value": "neutral",
+      "default": true,
+      "description": "colorNeutralForeground3 on colorNeutralBackground6; ring colorBrandStroke1.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.colorNeutralBackground6",
+        "tokens.colorBrandStroke1"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "brand",
+      "description": "colorNeutralForegroundStaticInverted on colorBrandBackgroundStatic; ring colorBrandStroke1.",
+      "tokens": [
+        "tokens.colorNeutralForegroundStaticInverted",
+        "tokens.colorBrandBackgroundStatic",
+        "tokens.colorBrandStroke1"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "named",
+      "description": "Each of the 30 named colours (dark-red to anchor) reads colorPalette<Name>Foreground2 on colorPalette<Name>Background2, with ring colorPalette<Name>BorderActive; colorful resolves to one of these.",
+      "tokens": [
+        "tokens.colorPaletteDarkRedForeground2",
+        "tokens.colorPaletteDarkRedBackground2",
+        "tokens.colorPaletteDarkRedBorderActive",
+        "tokens.colorPaletteCranberryForeground2",
+        "tokens.colorPaletteCranberryBackground2",
+        "tokens.colorPaletteCranberryBorderActive",
+        "tokens.colorPaletteRedForeground2",
+        "tokens.colorPaletteRedBackground2",
+        "tokens.colorPaletteRedBorderActive",
+        "tokens.colorPalettePumpkinForeground2",
+        "tokens.colorPalettePumpkinBackground2",
+        "tokens.colorPalettePumpkinBorderActive",
+        "tokens.colorPalettePeachForeground2",
+        "tokens.colorPalettePeachBackground2",
+        "tokens.colorPalettePeachBorderActive",
+        "tokens.colorPaletteMarigoldForeground2",
+        "tokens.colorPaletteMarigoldBackground2",
+        "tokens.colorPaletteMarigoldBorderActive",
+        "tokens.colorPaletteGoldForeground2",
+        "tokens.colorPaletteGoldBackground2",
+        "tokens.colorPaletteGoldBorderActive",
+        "tokens.colorPaletteBrassForeground2",
+        "tokens.colorPaletteBrassBackground2",
+        "tokens.colorPaletteBrassBorderActive",
+        "tokens.colorPaletteBrownForeground2",
+        "tokens.colorPaletteBrownBackground2",
+        "tokens.colorPaletteBrownBorderActive",
+        "tokens.colorPaletteForestForeground2",
+        "tokens.colorPaletteForestBackground2",
+        "tokens.colorPaletteForestBorderActive",
+        "tokens.colorPaletteSeafoamForeground2",
+        "tokens.colorPaletteSeafoamBackground2",
+        "tokens.colorPaletteSeafoamBorderActive",
+        "tokens.colorPaletteDarkGreenForeground2",
+        "tokens.colorPaletteDarkGreenBackground2",
+        "tokens.colorPaletteDarkGreenBorderActive",
+        "tokens.colorPaletteLightTealForeground2",
+        "tokens.colorPaletteLightTealBackground2",
+        "tokens.colorPaletteLightTealBorderActive",
+        "tokens.colorPaletteTealForeground2",
+        "tokens.colorPaletteTealBackground2",
+        "tokens.colorPaletteTealBorderActive",
+        "tokens.colorPaletteSteelForeground2",
+        "tokens.colorPaletteSteelBackground2",
+        "tokens.colorPaletteSteelBorderActive",
+        "tokens.colorPaletteBlueForeground2",
+        "tokens.colorPaletteBlueBackground2",
+        "tokens.colorPaletteBlueBorderActive",
+        "tokens.colorPaletteRoyalBlueForeground2",
+        "tokens.colorPaletteRoyalBlueBackground2",
+        "tokens.colorPaletteRoyalBlueBorderActive",
+        "tokens.colorPaletteCornflowerForeground2",
+        "tokens.colorPaletteCornflowerBackground2",
+        "tokens.colorPaletteCornflowerBorderActive",
+        "tokens.colorPaletteNavyForeground2",
+        "tokens.colorPaletteNavyBackground2",
+        "tokens.colorPaletteNavyBorderActive",
+        "tokens.colorPaletteLavenderForeground2",
+        "tokens.colorPaletteLavenderBackground2",
+        "tokens.colorPaletteLavenderBorderActive",
+        "tokens.colorPalettePurpleForeground2",
+        "tokens.colorPalettePurpleBackground2",
+        "tokens.colorPalettePurpleBorderActive",
+        "tokens.colorPaletteGrapeForeground2",
+        "tokens.colorPaletteGrapeBackground2",
+        "tokens.colorPaletteGrapeBorderActive",
+        "tokens.colorPaletteLilacForeground2",
+        "tokens.colorPaletteLilacBackground2",
+        "tokens.colorPaletteLilacBorderActive",
+        "tokens.colorPalettePinkForeground2",
+        "tokens.colorPalettePinkBackground2",
+        "tokens.colorPalettePinkBorderActive",
+        "tokens.colorPaletteMagentaForeground2",
+        "tokens.colorPaletteMagentaBackground2",
+        "tokens.colorPaletteMagentaBorderActive",
+        "tokens.colorPalettePlumForeground2",
+        "tokens.colorPalettePlumBackground2",
+        "tokens.colorPalettePlumBorderActive",
+        "tokens.colorPaletteBeigeForeground2",
+        "tokens.colorPaletteBeigeBackground2",
+        "tokens.colorPaletteBeigeBorderActive",
+        "tokens.colorPaletteMinkForeground2",
+        "tokens.colorPaletteMinkBackground2",
+        "tokens.colorPaletteMinkBorderActive",
+        "tokens.colorPalettePlatinumForeground2",
+        "tokens.colorPalettePlatinumBackground2",
+        "tokens.colorPalettePlatinumBorderActive",
+        "tokens.colorPaletteAnchorForeground2",
+        "tokens.colorPaletteAnchorBackground2",
+        "tokens.colorPaletteAnchorBorderActive"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "default": true,
+      "description": "borderRadiusCircular at every size.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "borderRadiusSmall up to 24px, borderRadiusMedium up to 48px, borderRadiusLarge up to 72px, borderRadiusXLarge above.",
+      "tokens": [
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusLarge",
+        "tokens.borderRadiusXLarge"
+      ]
+    },
+    {
+      "axis": "active",
+      "value": "ring",
+      "default": true,
+      "description": "A ring of strokeWidthThick up to 48px, strokeWidthThicker up to 64px, strokeWidthThickest above.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ]
+    },
+    {
+      "axis": "active",
+      "value": "shadow",
+      "description": "shadow4 up to 28px, shadow8 up to 48px, shadow16 up to 64px, shadow28 above.",
+      "tokens": [
+        "tokens.shadow4",
+        "tokens.shadow8",
+        "tokens.shadow16",
+        "tokens.shadow28"
+      ]
+    },
+    {
+      "axis": "active",
+      "value": "ring-shadow",
+      "description": "Both the ring and the shadow."
+    },
+    {
+      "axis": "active",
+      "value": "inactive",
+      "description": "Opacity 0.8 and scaled to 0.875, ring and shadow hidden."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The root is an inline-block, non-shrinking, relatively positioned box, vertically aligned middle, width and height equal to size (32px default), radius borderRadiusCircular, text fontFamilyBase semibold at fontSizeBase300.",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.fontFamilyBase",
+        "tokens.fontWeightSemibold",
+        "tokens.fontSizeBase300"
+      ],
+      "values": [
+        {
+          "name": "defaultSize",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarStyles.styles.ts:24-35,235-250,493"
+    },
+    {
+      "id": "sizes",
+      "part": "root",
+      "text": "Supported sizes are 16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96, 120 and 128px square.",
+      "values": [
+        {
+          "name": "s16",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "s20",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "s24",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "s28",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "s32",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "s36",
+          "value": 36,
+          "unit": "px"
+        },
+        {
+          "name": "s40",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "s48",
+          "value": 48,
+          "unit": "px"
+        },
+        {
+          "name": "s56",
+          "value": 56,
+          "unit": "px"
+        },
+        {
+          "name": "s64",
+          "value": 64,
+          "unit": "px"
+        },
+        {
+          "name": "s72",
+          "value": 72,
+          "unit": "px"
+        },
+        {
+          "name": "s96",
+          "value": 96,
+          "unit": "px"
+        },
+        {
+          "name": "s120",
+          "value": 120,
+          "unit": "px"
+        },
+        {
+          "name": "s128",
+          "value": 128,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarStyles.styles.ts:235-250; Avatar.types.ts:12"
+    },
+    {
+      "id": "text-size",
+      "part": "initials",
+      "text": "Initials' font size steps with size: fontSizeBase100 up to 24px, fontSizeBase200 at 28px, fontSizeBase300 at 32 to 40px, fontSizeBase400 at 48 and 56px, fontSizeBase500 at 64 to 96px, fontSizeBase600 at 120 and 128px; always semibold, line height 1.",
+      "tokens": [
+        "tokens.fontSizeBase100",
+        "tokens.fontSizeBase200",
+        "tokens.fontSizeBase300",
+        "tokens.fontSizeBase400",
+        "tokens.fontSizeBase500",
+        "tokens.fontSizeBase600"
+      ],
+      "source": "useAvatarStyles.styles.ts:79,113-117,499-511"
+    },
+    {
+      "id": "icon-size",
+      "part": "icon",
+      "text": "The icon's glyph is 12px up to 16, 16px up to 24, 20px up to 40, 24px at 48, 28px at 56, 32px up to 72 and 48px above.",
+      "values": [
+        {
+          "name": "i12",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "i16",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "i20",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "i24",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "i28",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "i32",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "i48",
+          "value": 48,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarStyles.styles.ts:226-232,592-608"
+    },
+    {
+      "id": "fill",
+      "part": "initials",
+      "text": "Image, initials and icon each fill the root absolutely and inherit its radius; initials and icon centre their content and carry a strokeWidthThin transparent border inside the box.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useAvatarStyles.styles.ts:60-89"
+    },
+    {
+      "id": "square-radius",
+      "part": "root",
+      "text": "A square avatar's radius is borderRadiusSmall up to 24px, borderRadiusMedium up to 48px, borderRadiusLarge up to 72px and borderRadiusXLarge above.",
+      "tokens": [
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusLarge",
+        "tokens.borderRadiusXLarge"
+      ],
+      "source": "useAvatarStyles.styles.ts:119-122,513-523"
+    },
+    {
+      "id": "ring",
+      "part": "ring",
+      "text": "The ring is a layer behind the avatar extending 2 x ringWidth beyond it on every side with a solid ringWidth border in the ring colour, leaving a ringWidth gap between avatar and ring; ringWidth is strokeWidthThick up to 48px, strokeWidthThicker up to 64px and strokeWidthThickest above.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ],
+      "source": "useAvatarStyles.styles.ts:36-57,135-150,528-541"
+    },
+    {
+      "id": "shadow",
+      "part": "shadow",
+      "text": "The shadow layer has the same inset as the ring and casts shadow4 up to 28px, shadow8 up to 48px, shadow16 up to 64px and shadow28 above.",
+      "tokens": [
+        "tokens.shadow4",
+        "tokens.shadow8",
+        "tokens.shadow16",
+        "tokens.shadow28"
+      ],
+      "source": "useAvatarStyles.styles.ts:152-167,543-554"
+    },
+    {
+      "id": "badge",
+      "part": "badge",
+      "text": "The badge sits at the root's bottom-right corner (flipping in RTL). The image, initials or icon, and the ring, are masked with a transparent circle centred on the badge, of the badge's radius plus a gap: radius 3, 5, 6, 8, 10 and 14px for badge sizes tiny to extra-large, gap strokeWidthThin up to medium and strokeWidthThick for large and extra-large. The mask edge fades over 0.5px.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThick"
+      ],
+      "values": [
+        {
+          "name": "badgeRadiusTiny",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "badgeRadiusExtraSmall",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "badgeRadiusSmall",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "badgeRadiusMedium",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "badgeRadiusLarge",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "badgeRadiusExtraLarge",
+          "value": 14,
+          "unit": "px"
+        },
+        {
+          "name": "maskFeather",
+          "value": 0.5,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarStyles.styles.ts:91-110,139-141,181-224,495-497,530-532"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "active unset: the avatar alone, no ring, no shadow, no transform.",
+      "source": "useAvatarStyles.styles.ts:24-58,525"
+    },
+    {
+      "state": "other",
+      "label": "active",
+      "part": "ring",
+      "text": "active draws the ring (in the colour's ring token: colorBrandStroke1 for neutral and brand, colorPalette<Name>BorderActive otherwise), the shadow, or both, by activeAppearance; moving from inactive to active grows the ring and shadow out from the avatar's edge and fades them in while the avatar scales back to full size.",
+      "tokens": [
+        "tokens.colorBrandStroke1"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationUltraSlow",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "transform",
+          "margin"
+        ]
+      },
+      "source": "useAvatarStyles.styles.ts:124-167,383-480,525-554"
+    },
+    {
+      "state": "other",
+      "label": "inactive",
+      "part": "root",
+      "text": "inactive fades the avatar to opacity 0.8 and scales it to 0.875, and collapses the ring and shadow onto the avatar (margin 0) at opacity 0; transform eases with curveDecelerateMin over durationUltraSlow, opacity is linear over durationFaster.",
+      "tokens": [
+        "tokens.curveDecelerateMin",
+        "tokens.curveLinear",
+        "tokens.durationFaster"
+      ],
+      "values": [
+        {
+          "name": "opacity",
+          "value": 0.8,
+          "unit": "ratio"
+        },
+        {
+          "name": "scale",
+          "value": 0.875,
+          "unit": "ratio"
+        }
+      ],
+      "motion": {
+        "durationToken": "tokens.durationUltraSlow",
+        "easing": "tokens.curveDecelerateMin",
+        "properties": [
+          "transform",
+          "opacity"
+        ]
+      },
+      "source": "useAvatarStyles.styles.ts:124-133,169-179,556-559"
+    },
+    {
+      "state": "focused",
+      "text": "None: the avatar is not focusable and declares no focus indicator, neither createFocusOutlineStyle nor a custom one; wrap it in a focusable element to make it interactive.",
+      "source": "useAvatarStyles.styles.ts:24-58"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "fallback",
+      "text": "Show the image when it loads; until then, or without one, show initials from name (only the first at size 16); without initials, show the icon.",
+      "source": "Avatar.types.ts:22-44,146-152"
+    },
+    {
+      "id": "colorful",
+      "text": "color colorful hashes name, or idForColor when given, to pick one of the 30 named colours, so the same person always gets the same colour.",
+      "source": "Avatar.types.ts:115-130"
+    },
+    {
+      "id": "active-transition",
+      "text": "Between active states the root transitions transform over durationUltraSlow with curveEasyEaseMax and opacity over durationFaster linearly (curveDecelerateMin for transform when becoming inactive); the ring and shadow transition margin over durationUltraSlow with curveEasyEaseMax and opacity over durationSlower linearly. Under reduced motion every duration is 0.01ms.",
+      "tokens": [
+        "tokens.durationUltraSlow",
+        "tokens.durationFaster",
+        "tokens.durationSlower",
+        "tokens.curveEasyEaseMax",
+        "tokens.curveLinear",
+        "tokens.curveDecelerateMin"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationUltraSlow",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "transform",
+          "margin",
+          "opacity"
+        ]
+      },
+      "source": "useAvatarStyles.styles.ts:47-52,124-133,169-179"
+    },
+    {
+      "id": "odd-size",
+      "text": "For an unsupported size, set size to the next smaller supported one and override width and height; text, icon, ring and shadow keep that size's values.",
+      "source": "Avatar.types.ts:146-162"
+    }
+  ],
+  "accessibility": {
+    "role": "img",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "the accessible name is name; when a badge is present its status is added to the label",
+      "active and inactive are announced through a hidden label element included in aria-labelledby",
+      "an avatar with no name and an image needs alt text on the image"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "All 14 sizes, the seven icon glyph sizes, the badge cutout radii (3 to 14px), the 0.25px mask feathering, the inactive opacity 0.8 and scale 0.875 are constants in the styles file.",
+      "source": "useAvatarStyles.styles.ts:101-104,169-171,201-250"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The text-size classes are named after typography styles (textCaption2Strong, textSubtitle2, textTitle3) but set only fontSize; the weight stays semibold and the line height 1 at every size, so do not apply the full typographyStyles.",
+      "tokens": [
+        "tokens.fontWeightSemibold"
+      ],
+      "source": "useAvatarStyles.styles.ts:31,79,113-117"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The ring's colour comes through the CSS color property and the border's currentColor, not borderColor; and the ring sits a full ringWidth away from the avatar, so the decorated avatar occupies size + 4 x ringWidth.",
+      "source": "useAvatarStyles.styles.ts:45,54-57,385"
+    },
+    {
+      "kind": "contradiction",
+      "text": "foundations.json lists shadow4 for the avatar ring; in the styles file the ring casts no shadow, and shadow4 is the active shadow for avatars up to 28px.",
+      "tokens": [
+        "tokens.shadow4"
+      ],
+      "source": "useAvatarStyles.styles.ts:135-167,543-554"
+    },
+    {
+      "kind": "gotcha",
+      "text": "colorNeutralForegroundStaticInverted and colorBrandBackgroundStatic keep the brand avatar the same in light and dark themes by design.",
+      "tokens": [
+        "tokens.colorNeutralForegroundStaticInverted",
+        "tokens.colorBrandBackgroundStatic"
+      ],
+      "source": "useAvatarStyles.styles.ts:257-260"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The avatar file has no forced-colors rule. The initials and icon keep a transparent strokeWidthThin border so that forced colours, which repaint borders in a system colour, still outline the disc once its background is dropped; the shadow layer does not render there, so shadow-only active state is invisible under forced colours.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useAvatarStyles.styles.ts:36-57,80"
+    },
+    {
+      "kind": "inferred",
+      "text": "The hash that maps a name to one of the 30 colours, the initials algorithm and the hidden active label live in the component hook, not the styles or types files; the Fluent 2 page describes colorful as consistent per person.",
+      "source": "Avatar.types.ts:115-130,177-180; fluent2:avatar"
+    }
+  ]
+}

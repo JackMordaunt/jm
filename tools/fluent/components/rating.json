@@ -1,0 +1,416 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "rating",
+  "name": "Rating",
+  "status": "stable",
+  "summary": "A row of stars that collects a rating (Rating) or shows one with its value and count (RatingDisplay). Choose Rating for input, RatingDisplay for a read-only score, and its compact form for a single star with the number beside it.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorBrandForeground1",
+    "tokens.colorBrandBackground2",
+    "tokens.colorPaletteMarigoldBorderActive",
+    "tokens.colorPaletteMarigoldBackground2",
+    "tokens.colorNeutralBackground6",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalS",
+    "tokens.fontSizeBase300",
+    "tokens.lineHeightBase300",
+    "tokens.fontSizeBase400",
+    "tokens.lineHeightBase400",
+    "tokens.fontWeightSemibold",
+    "typographyStyles.caption1"
+  ],
+  "references": {
+    "react": [
+      "useRatingStyles.styles.ts",
+      "Rating.types.ts",
+      "useRating.tsx",
+      "useRatingItemStyles.styles.ts",
+      "RatingItem.types.ts",
+      "useRatingItem.tsx",
+      "useRatingDisplayStyles.styles.ts",
+      "RatingDisplay.types.ts",
+      "useRatingDisplay.tsx"
+    ],
+    "fluent2": [
+      "rating"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "The rating, rounded to the nearest 0.5 for display; a RatingDisplay with no value shows every star unfilled and no value text."
+    },
+    {
+      "name": "max",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "description": "How many stars, a whole number greater than 1."
+    },
+    {
+      "name": "step",
+      "type": "enum",
+      "values": [
+        "0.5",
+        "1"
+      ],
+      "required": false,
+      "default": "1",
+      "description": "On a Rating: whether each star also offers a half value, as a second radio over its left half."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "extra-large"
+      ],
+      "required": false,
+      "default": "extra-large",
+      "description": "The star size: 12, 16, 20 or 28px. Rating defaults to extra-large, RatingDisplay to medium."
+    },
+    {
+      "name": "color",
+      "type": "enum",
+      "values": [
+        "neutral",
+        "brand",
+        "marigold"
+      ],
+      "required": false,
+      "default": "neutral",
+      "description": "The colour of the filled stars."
+    },
+    {
+      "name": "iconFilled",
+      "type": "icon",
+      "required": false,
+      "description": "The filled star; the default is Star filled."
+    },
+    {
+      "name": "iconOutline",
+      "type": "icon",
+      "required": false,
+      "description": "On a Rating: the unfilled star; the default is Star regular."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "On a Rating: called with the new value when a star, or a half star, is chosen."
+    },
+    {
+      "name": "itemLabel",
+      "type": "callback",
+      "required": false,
+      "description": "On a Rating: the accessible name of each radio from its value; the default is the number as text."
+    },
+    {
+      "name": "compact",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "On a RatingDisplay: one filled star with the value written beside it, instead of the whole row."
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "required": false,
+      "description": "On a RatingDisplay: how many ratings the value represents, written after the value with a thousands separator."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Row",
+      "description": "The stars in a wrapping row, a radio group on a Rating and an image on a RatingDisplay; a RatingDisplay centres the texts on the stars."
+    },
+    {
+      "id": "item",
+      "name": "Star",
+      "description": "One square of the size, holding the filled and unfilled icons layered at its full box, and on a Rating the invisible radio inputs that cover it."
+    },
+    {
+      "id": "selected-icon",
+      "name": "Filled star",
+      "description": "The filled icon, shown when the displayed value reaches the star's value; clipped to its left half for a half value.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorBrandForeground1",
+        "tokens.colorPaletteMarigoldBorderActive"
+      ]
+    },
+    {
+      "id": "unselected-icon",
+      "name": "Unfilled star",
+      "description": "The outline icon on a Rating, or the filled icon in the muted fill on a RatingDisplay, shown when the displayed value is below the star's value; clipped to the right half for a half value.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralBackground6",
+        "tokens.colorTransparentStroke",
+        "tokens.colorBrandBackground2",
+        "tokens.colorPaletteMarigoldBackground2"
+      ]
+    },
+    {
+      "id": "value-text",
+      "name": "Value",
+      "description": "On a RatingDisplay with a value: the number in semibold caption1 to the right of the stars.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.fontWeightSemibold"
+      ]
+    },
+    {
+      "id": "count-text",
+      "name": "Count",
+      "description": "On a RatingDisplay with a count: the formatted count in caption1 after the value, preceded by a middle dot when both show.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "12px stars."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "description": "16px stars; the RatingDisplay default."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "20px stars; a RatingDisplay's texts grow to fontSizeBase300 and sit spacingHorizontalSNudge from the stars.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-large",
+      "default": true,
+      "description": "28px stars, the Rating default; a RatingDisplay's texts grow to fontSizeBase400 and sit spacingHorizontalS from the stars.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "neutral",
+      "default": true,
+      "description": "Filled stars in Neutral_Foreground1; a RatingDisplay's unfilled stars in Neutral_Background6.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralBackground6"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "brand",
+      "description": "Filled stars in Brand_Foreground1; a RatingDisplay's unfilled stars in Brand_Background2.",
+      "tokens": [
+        "tokens.colorBrandForeground1",
+        "tokens.colorBrandBackground2"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "marigold",
+      "description": "Filled stars in Palette_Marigold_Border_Active; a RatingDisplay's unfilled stars in Palette_Marigold_Background2.",
+      "tokens": [
+        "tokens.colorPaletteMarigoldBorderActive",
+        "tokens.colorPaletteMarigoldBackground2"
+      ]
+    },
+    {
+      "axis": "kind",
+      "value": "rating",
+      "default": true,
+      "description": "Interactive: unfilled stars are the outline icon, each star is a radio and hover previews the value."
+    },
+    {
+      "axis": "kind",
+      "value": "display",
+      "description": "Read-only: unfilled stars are the filled icon in the muted fill with a Transparent_Stroke, and value and count texts follow the row.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "kind",
+      "value": "compact",
+      "description": "A RatingDisplay with one filled star followed by the texts."
+    }
+  ],
+  "layout": [
+    {
+      "id": "row",
+      "text": "The stars sit in a wrapping row with no gap; a RatingDisplay aligns the texts to the stars' vertical centre.",
+      "source": "useRatingStyles.styles.ts:15-18; useRatingDisplayStyles.styles.ts:18-22"
+    },
+    {
+      "id": "star",
+      "part": "item",
+      "text": "A star is a square of its size, 12, 16, 20 or 28px, and its icons draw at that font size filling the box.",
+      "values": [
+        {
+          "name": "small",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "extraLarge",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "useRatingItemStyles.styles.ts:20-48"
+    },
+    {
+      "id": "half",
+      "part": "selected-icon",
+      "text": "For a half value the filled icon is clipped to the left half of the box and the unfilled icon to the right half, each drawn at the full size so the two halves meet at the centre.",
+      "source": "useRatingItemStyles.styles.ts:85-95; useRatingItem.tsx:53-60"
+    },
+    {
+      "id": "texts",
+      "part": "value-text",
+      "text": "The value and count texts are caption1 in Neutral_Foreground1, spacingHorizontalXS after the stars at small and medium, spacingHorizontalSNudge at large and spacingHorizontalS at extra-large; the value is semibold, and the count is prefixed with a middle dot and a space when a value shows.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground1",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.fontWeightSemibold"
+      ],
+      "source": "useRatingDisplayStyles.styles.ts:24-49,62-83"
+    },
+    {
+      "id": "radios",
+      "part": "item",
+      "text": "On a Rating each star is covered by an invisible radio for its whole value, and with step 0.5 a second radio over its left half for the half value, the full radio then covering the right half.",
+      "source": "useRatingItemStyles.styles.ts:50-70; useRatingItem.tsx:92-127"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "A star whose value is at or below the displayed value shows the filled icon in the colour's foreground; above it, a Rating shows the outline icon in the same colour and a RatingDisplay the filled icon in the colour's muted background.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorBrandForeground1",
+        "tokens.colorPaletteMarigoldBorderActive",
+        "tokens.colorNeutralBackground6",
+        "tokens.colorBrandBackground2",
+        "tokens.colorPaletteMarigoldBackground2"
+      ],
+      "source": "useRatingItemStyles.styles.ts:72-116,152-175; useRatingItem.tsx:51-60"
+    },
+    {
+      "state": "hovered",
+      "text": "On a Rating, hovering a star's radio previews that value: every star up to it fills and the rest empty, until the pointer leaves the row.",
+      "source": "useRating.tsx:106-116; useRatingItem.tsx:47-49"
+    },
+    {
+      "state": "focused",
+      "part": "item",
+      "text": "Keyboard focus within a star draws the default outline around its box, 2px Stroke_Focus2 at borderRadiusMedium.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useRatingItemStyles.styles.ts:20-24; createFocusOutlineStyle.ts:100-112"
+    },
+    {
+      "state": "selected",
+      "text": "The chosen radio is checked; the displayed value rounds the rating to the nearest 0.5, and a star at exactly half is drawn as a half.",
+      "source": "useRatingItem.tsx:47,96-118"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "choose",
+      "text": "Clicking a star, or its left half with step 0.5, checks that radio and reports its value; the radios share one name so arrow keys move between them as a radio group.",
+      "source": "useRating.tsx:58-105; useRatingItem.tsx:92-127"
+    },
+    {
+      "id": "display",
+      "text": "A RatingDisplay is an image labelled by its value and count texts, with no input; compact shows a single star that is always filled.",
+      "source": "useRatingDisplay.tsx:23-50,60-102; useRatingItem.tsx:54-55"
+    },
+    {
+      "id": "count-format",
+      "text": "The count is written with the locale's thousands separator.",
+      "source": "useRatingDisplay.tsx:92-96"
+    }
+  ],
+  "accessibility": {
+    "role": "radiogroup",
+    "minTargetPx": 12,
+    "keyboard": [
+      "Tab moves to the checked star, or the first",
+      "Arrow keys move the checked radio between stars and half stars",
+      "Space checks the focused star"
+    ],
+    "semantics": [
+      "each star is a radio named by itemLabel, its value as text by default",
+      "a RatingDisplay is role img labelled by its value and count",
+      "the icons are aria-hidden"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The star sizes 12, 16, 20 and 28px and the caption sizes at large and extra-large are constants in the styles files; no token names them.",
+      "source": "useRatingItemStyles.styles.ts:25-47; useRatingDisplayStyles.styles.ts:30-40"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Rating and RatingDisplay default to different sizes, extra-large and medium, and to different unfilled looks: outline icons on the input, muted filled icons on the display.",
+      "source": "useRating.tsx:26-33; useRatingDisplay.tsx:27; useRatingItem.tsx:51"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The smallest star is 12px, under the 24px the foundations give as the minimum target; a small Rating is a small target by design.",
+      "source": "useRatingItemStyles.styles.ts:25-29"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a RatingDisplay's unfilled stars are Canvas with a CanvasText stroke; everything else follows the theme's bindings.",
+      "source": "useRatingItemStyles.styles.ts:102-109"
+    }
+  ]
+}

@@ -1,0 +1,493 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "switch",
+  "name": "Switch",
+  "status": "stable",
+  "summary": "A binary on/off toggle whose change takes effect at once, like a physical switch. Choose it over a checkbox when there is no submit step, and over a toggle button when the setting has a persistent on/off meaning rather than an action.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorCompoundBrandBackgroundHover",
+    "tokens.colorCompoundBrandBackgroundPressed",
+    "tokens.colorNeutralForegroundInverted",
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentStrokeInteractive",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorTransparentStrokeDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingVerticalS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingVerticalXS",
+    "tokens.fontSizeBase200",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase300",
+    "tokens.durationNormal",
+    "tokens.curveEasyEase"
+  ],
+  "references": {
+    "react": [
+      "useSwitchStyles.styles.ts",
+      "Switch.types.ts"
+    ],
+    "fluent2": [
+      "switch"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "label",
+      "type": "slot",
+      "required": false,
+      "description": "The label text."
+    },
+    {
+      "name": "checked",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Controlled on/off state; when given, defaultChecked is ignored."
+    },
+    {
+      "name": "defaultChecked",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Initial state when uncontrolled."
+    },
+    {
+      "name": "labelPosition",
+      "type": "enum",
+      "values": [
+        "after",
+        "before",
+        "above"
+      ],
+      "required": false,
+      "default": "after",
+      "description": "Where the label sits relative to the track."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "medium",
+        "small"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Track 40 × 20px (medium) or 32 × 16px (small); small also shrinks the label to caption size."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Native input attribute: draws the disabled colours and takes no input."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Looks disabled and ignores toggling but stays in the tab order, reported through aria-disabled."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new checked boolean."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "An inline-flex row (a column when the label is above), aligned to the start, carrying the focus outline."
+    },
+    {
+      "id": "input",
+      "name": "Hidden input",
+      "description": "A transparent native checkbox over the track column (track plus spacingHorizontalS each side, full height); with the label above it spans the full width. It takes focus, native attributes and the pointer cursor."
+    },
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "The indicator slot: a pill with a 1px border whose colour, fill and thumb colour carry every state."
+    },
+    {
+      "id": "thumb",
+      "name": "Thumb",
+      "description": "A circle icon inside the track, sized by the track's font size and coloured currentColor; it slides to the end when checked."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The text, centred on the track's line.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Track 40 × 20px, thumb 18px travelling 20px; row 36px tall; label reads the Label default (body1).",
+      "tokens": [
+        "tokens.lineHeightBase300"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Track 32 × 16px, thumb 14px travelling 16px; row 32px tall; label fontSizeBase200 on lineHeightBase200.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200"
+      ]
+    },
+    {
+      "axis": "labelPosition",
+      "value": "after",
+      "default": true,
+      "description": "Label after the track, its start padding trimmed to spacingHorizontalXS.",
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "labelPosition",
+      "value": "before",
+      "description": "Label before the track, its end padding trimmed to spacingHorizontalXS; the input covers the end column.",
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "labelPosition",
+      "value": "above",
+      "description": "The root becomes a column; the label pads spacingVerticalXS above and below at full width and the track drops its top margin.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The root is a relative inline-flex box aligned flex-start, a column when the label is above.",
+      "source": "useSwitchStyles.styles.ts:32-45"
+    },
+    {
+      "id": "track",
+      "part": "track",
+      "text": "The track is a borderRadiusCircular pill with a 1px solid border, margin spacingVerticalS above and below and spacingHorizontalS either side, never shrinking and ignoring the pointer. Medium is 40 × 20px (a 36px row with its margins); small 32 × 16px (a 32px row).",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "trackWidthMedium",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "trackHeightMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "trackWidthSmall",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "trackHeightSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "rowHeightMedium",
+          "value": 36,
+          "unit": "px"
+        },
+        {
+          "name": "rowHeightSmall",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useSwitchStyles.styles.ts:21-30,47-61,85-94"
+    },
+    {
+      "id": "thumb",
+      "part": "thumb",
+      "text": "The thumb is the track height minus 2px: 18px medium, 14px small, set as the track's font size with line height 0. Checked, it translates along the inline axis by track width − thumb − 2px: 20px medium, 16px small.",
+      "values": [
+        {
+          "name": "thumbGap",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "thumbMedium",
+          "value": 18,
+          "unit": "px"
+        },
+        {
+          "name": "thumbSmall",
+          "value": 14,
+          "unit": "px"
+        },
+        {
+          "name": "travelMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "travelSmall",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "useSwitchStyles.styles.ts:22-30,50,54,90,108-115,247-256"
+    },
+    {
+      "id": "hit-column",
+      "part": "input",
+      "text": "The hidden input is absolute, full height and track width plus 2 × spacingHorizontalS wide (56px medium, 48px small), at the track's side of the row; with the label above it spans the full width and the track height plus spacingVerticalS at the bottom.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingVerticalS"
+      ],
+      "values": [
+        {
+          "name": "widthMedium",
+          "value": 56,
+          "unit": "px"
+        },
+        {
+          "name": "widthSmall",
+          "value": 48,
+          "unit": "px"
+        }
+      ],
+      "source": "useSwitchStyles.styles.ts:96-106,233-257"
+    },
+    {
+      "id": "label",
+      "part": "label",
+      "text": "The label pads spacingVerticalS by spacingHorizontalS (trimmed to spacingHorizontalXS toward the track) and takes a negative vertical margin of (track height − line height) / 2 so the first line centres on the track: lineHeightBase300 at medium, lineHeightBase200 at small.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.lineHeightBase300",
+        "tokens.lineHeightBase200"
+      ],
+      "source": "useSwitchStyles.styles.ts:260-287"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Off at rest: track border and thumb colorNeutralStrokeAccessible on no fill; label colorNeutralForeground1.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useSwitchStyles.styles.ts:132-140"
+    },
+    {
+      "state": "hovered",
+      "text": "Off: border and thumb colorNeutralStrokeAccessibleHover. On: fill colorCompoundBrandBackgroundHover and border colorTransparentStrokeInteractive. The label does not change.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorTransparentStrokeInteractive"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useSwitchStyles.styles.ts:142-147,165-170"
+    },
+    {
+      "state": "pressed",
+      "text": "While hovered and pressed. Off: border and thumb colorNeutralStrokeAccessiblePressed. On: fill colorCompoundBrandBackgroundPressed, border colorTransparentStrokeInteractive.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandBackgroundPressed",
+        "tokens.colorTransparentStrokeInteractive"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useSwitchStyles.styles.ts:149-154,172-177"
+    },
+    {
+      "state": "checked",
+      "text": "On: the track fills colorCompoundBrandBackground with a colorTransparentStroke border, the thumb turns colorNeutralForegroundInverted and slides to the end.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorTransparentStroke",
+        "tokens.colorNeutralForegroundInverted"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color",
+          "transform"
+        ]
+      },
+      "source": "useSwitchStyles.styles.ts:108-115,158-163"
+    },
+    {
+      "state": "focused",
+      "part": "root",
+      "text": "Keyboard focus draws the default createFocusOutlineStyle outline around the whole root (track and label): 2px colorStrokeFocus2 just outside it, rounded borderRadiusMedium; selector focus-within, following the input.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useSwitchStyles.styles.ts:38; createFocusOutlineStyle.ts:89-112"
+    },
+    {
+      "state": "disabled",
+      "text": "Disabled or aria-disabled: thumb and label colorNeutralForegroundDisabled, default cursor. Off: track border colorNeutralStrokeDisabled, no fill. On: track fill colorNeutralBackgroundDisabled with a colorTransparentStrokeDisabled border; the thumb stays at the end.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorTransparentStrokeDisabled"
+      ],
+      "source": "useSwitchStyles.styles.ts:117-129,180-193"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "A click on the track column or the label, or Space while focused, flips checked and calls onChange with the new value; the change is meant to apply immediately.",
+      "source": "Switch.types.ts:44-52,83-87"
+    },
+    {
+      "id": "transition",
+      "text": "The track transitions background, border and color, and the thumb transitions transform, both over durationNormal with curveEasyEase; under reduced motion both run in 0.01ms.",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color",
+          "transform"
+        ]
+      },
+      "values": [
+        {
+          "name": "reducedMotionDuration",
+          "value": 0.01,
+          "unit": "ms"
+        }
+      ],
+      "source": "useSwitchStyles.styles.ts:58-65,74-82"
+    },
+    {
+      "id": "disabled-focusable",
+      "text": "disabledFocusable styles exactly like disabled (the rules match aria-disabled) but the input stays focusable and shows the focus outline.",
+      "source": "useSwitchStyles.styles.ts:118; Switch.types.ts:54-60"
+    },
+    {
+      "id": "focus-visible",
+      "text": "The focus outline appears only for keyboard focus, never after a pointer press.",
+      "source": "createCustomFocusIndicatorStyle.ts; constants.ts"
+    }
+  ],
+  "accessibility": {
+    "role": "switch",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Space toggles it"
+    ],
+    "semantics": [
+      "a native input type=checkbox with role switch, so checked reads as on/off",
+      "aria-disabled when disabledFocusable",
+      "the label slot is a <label> bound to the input; a switch without one needs aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Track sizes (40 × 20, 32 × 16px), the 2px thumb gap, the thumb sizes and travel, and the 1px track border are constants in the styles file; the border does not read strokeWidthThin.",
+      "source": "useSwitchStyles.styles.ts:21-30,49"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A medium switch row is 36px tall, not 32: the 20px track plus two spacingVerticalS margins. Only the small switch fits a 32px row.",
+      "tokens": [
+        "tokens.spacingVerticalS"
+      ],
+      "source": "useSwitchStyles.styles.ts:55-56,91"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "With labelPosition above, the input's height uses the medium track height even at small size, so a small switch's hit area is 4px taller than its track row.",
+      "source": "useSwitchStyles.styles.ts:242-246"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The off thumb is coloured by the stroke token (colorNeutralStrokeAccessible), the same as the border, not by a foreground token.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useSwitchStyles.styles.ts:133-136"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours: the thumb is CanvasText (the icon opts out of forced adjustment); on is a Highlight track with a Canvas thumb, unchanged by hover and press; disabled turns thumb, border and label GrayText; the focus outline turns Highlight.",
+      "source": "useSwitchStyles.styles.ts:67-72,195-230; createFocusOutlineStyle.ts:59-64"
+    },
+    {
+      "kind": "inferred",
+      "text": "The thumb is a circle icon supplied by the render function (not vendored); the styles only size it by font size and colour it with currentColor.",
+      "source": "fluent2:switch"
+    }
+  ]
+}

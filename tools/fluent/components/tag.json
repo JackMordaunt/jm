@@ -1,0 +1,649 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tag",
+  "name": "Tag",
+  "status": "stable",
+  "summary": "A compact label for an item the user has picked or that categorises content: text with an optional icon or avatar, a secondary line, and a dismiss icon. Tag is one static or dismissible unit; InteractionTag splits into a primary action button and a secondary dismiss button; TagGroup lays several out with a shared size and dismiss handling. Use a Badge for a status the user does not act on.",
+  "tokenGroups": [
+    "typographyStyles.body1",
+    "typographyStyles.caption1",
+    "typographyStyles.caption2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusNone",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentStrokeDisabled",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorNeutralBackground3Hover",
+    "tokens.colorNeutralBackground3Pressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2BrandHover",
+    "tokens.colorNeutralForeground2BrandPressed",
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorBrandBackground2",
+    "tokens.colorBrandBackground2Hover",
+    "tokens.colorBrandBackground2Pressed",
+    "tokens.colorBrandForeground2",
+    "tokens.colorBrandStroke2",
+    "tokens.colorCompoundBrandForeground1Hover",
+    "tokens.colorCompoundBrandForeground1Pressed",
+    "tokens.colorBrandBackground",
+    "tokens.colorBrandBackgroundHover",
+    "tokens.colorBrandBackgroundPressed",
+    "tokens.colorBrandStroke1",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorNeutralStrokeOnBrand2",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorNeutralForegroundDisabled"
+  ],
+  "references": {
+    "react": [
+      "useTagStyles.styles.ts",
+      "Tag.types.ts",
+      "useInteractionTagStyles.styles.ts",
+      "InteractionTag.types.ts",
+      "useInteractionTagPrimaryStyles.styles.ts",
+      "InteractionTagPrimary.types.ts",
+      "useInteractionTagSecondaryStyles.styles.ts",
+      "InteractionTagSecondary.types.ts",
+      "useTagGroupStyles.styles.ts",
+      "TagGroup.types.ts"
+    ],
+    "fluent2": [
+      "tag"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "primaryText",
+      "type": "slot",
+      "required": true,
+      "description": "The label; one line, never wrapping."
+    },
+    {
+      "name": "secondaryText",
+      "type": "slot",
+      "required": false,
+      "description": "A second, caption2 line under the label; the label drops to caption1 when it is present."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "A leading icon in the media area: 20px at medium, 16 at small, 12 at extra-small."
+    },
+    {
+      "name": "media",
+      "type": "slot",
+      "required": false,
+      "description": "A leading avatar in the media area, sized and shaped by the tag through its avatar context; icon and media share the area."
+    },
+    {
+      "name": "dismissible",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shows a dismiss icon at the end; a Tag dismisses as one button, an InteractionTag through its secondary button."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "filled",
+        "outline",
+        "brand"
+      ],
+      "required": false,
+      "default": "filled",
+      "description": "filled is Background 3 with Foreground 2 text; outline is Subtle with a Stroke 1 border; brand is Brand Background 2 with Brand Foreground 2."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "circular"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "borderRadiusMedium or a pill."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "medium",
+        "small",
+        "extra-small"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "32, 24 or 20px tall; sets padding, icon size and text style together."
+    },
+    {
+      "name": "selected",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Paints the tag brand-filled with on-brand text; a TagGroup with onTagSelect manages it."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The Disabled tokens; no dismiss or selection."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "What a TagGroup reports on dismiss or select."
+    },
+    {
+      "name": "onDismiss",
+      "type": "callback",
+      "required": false,
+      "description": "On the TagGroup: runs with the dismissed tag's value; the group also moves focus to the next tag."
+    },
+    {
+      "name": "onTagSelect",
+      "type": "callback",
+      "required": false,
+      "description": "On the TagGroup: runs with the selected values when a tag is picked; the group becomes a toolbar of toggles."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Tag",
+      "description": "An inline grid of areas media | primary | dismissIcon over media | secondary | dismissIcon, border-box, fit-content wide, with a strokeWidthThin Transparent Stroke border and the shape's radius; a button when dismissible or selectable, else a span.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "id": "media",
+      "name": "Media",
+      "description": "The avatar slot in the media area, 1px in from the left, with S (medium) or SNudge (small, extra-small) space to the text.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "The icon in the media area: content-box of the size's icon width with the tag's left spacing before it and XS (medium) or XXS space after.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "id": "primary-text",
+      "name": "Primary text",
+      "description": "The label with XXS padding either side; body1 at medium, caption1 at small and extra-small, and caption1 with a -2px top margin whenever a secondary line follows.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.caption1",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "id": "secondary-text",
+      "name": "Secondary text",
+      "description": "caption2 with XXS padding either side, never wrapping.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption2"
+      ]
+    },
+    {
+      "id": "dismiss-icon",
+      "name": "Dismiss icon",
+      "description": "The end icon at the size's icon size, XS (medium) or XXS before it and the tag's spacing after; turns Compound Brand Foreground 1 Hover and Pressed under the pointer.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorCompoundBrandForeground1Hover",
+        "tokens.colorCompoundBrandForeground1Pressed"
+      ]
+    },
+    {
+      "id": "interaction-tag",
+      "name": "InteractionTag",
+      "description": "An inline flex row of the size's height with the shape's radius that holds a primary and, optionally, a secondary button."
+    },
+    {
+      "id": "interaction-primary",
+      "name": "InteractionTagPrimary",
+      "description": "The primary button: Tag's grid without the dismiss area, full height, its own border, and with a secondary button present no right radius or right border and S (medium) or SNudge right padding."
+    },
+    {
+      "id": "interaction-secondary",
+      "name": "InteractionTagSecondary",
+      "description": "The dismiss button: a flex box of full height whose left border is the divider (Stroke 1, Brand Stroke 2 for brand, Neutral Stroke On Brand 2 when selected) with no left radius, the shape's right radius, the size's icon size and 5/3/5px side padding.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorBrandStroke2",
+        "tokens.colorNeutralStrokeOnBrand2"
+      ]
+    },
+    {
+      "id": "group",
+      "name": "TagGroup",
+      "description": "An inline flex row with a column gap of S (medium), SNudge (small) or XS (extra-small).",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalXS"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "filled",
+      "default": true,
+      "description": "Neutral Background 3 with Foreground 2 text over the transparent border; an InteractionTag's buttons step to Background 3 Hover and Pressed with Foreground 2 Hover and Pressed.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorNeutralBackground3Hover",
+        "tokens.colorNeutralBackground3Pressed",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2Pressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "Subtle background with Foreground 2 text and a Stroke 1 border; an InteractionTag's buttons step to Subtle Hover and Pressed, the primary swapping its icon for the filled twin in Foreground 2 Brand Hover and Pressed.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralForeground2BrandHover",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "brand",
+      "description": "Brand Background 2 with Brand Foreground 2 text; an InteractionTag's buttons step to Brand Background 2 Hover and Pressed with Compound Brand Foreground 1 Hover and Pressed, and the secondary's divider is Brand Stroke 2.",
+      "tokens": [
+        "tokens.colorBrandBackground2",
+        "tokens.colorBrandBackground2Hover",
+        "tokens.colorBrandBackground2Pressed",
+        "tokens.colorBrandForeground2",
+        "tokens.colorCompoundBrandForeground1Hover",
+        "tokens.colorCompoundBrandForeground1Pressed",
+        "tokens.colorBrandStroke2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px tall, 7px side spacing, 20px icons, body1 label.",
+      "tokens": [
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px tall, 5px side spacing, 16px icons, caption1 label.",
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-small",
+      "description": "20px tall, 5px side spacing, 12px icons, caption1 label, and 2px invisible bands above and below to reach a 24px target.",
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "default": true,
+      "description": "borderRadiusMedium on the root and the focus ring.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "description": "borderRadiusCircular on the root and the focus ring.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "kind",
+      "value": "tag",
+      "default": true,
+      "description": "One element: dismissing is the whole tag's click."
+    },
+    {
+      "axis": "kind",
+      "value": "interaction-tag",
+      "description": "Two buttons: the primary carries the content and the action, the secondary the dismiss, joined by a divider."
+    }
+  ],
+  "layout": [
+    {
+      "id": "heights",
+      "text": "A tag is 32px tall at medium, 24 at small and 20 at extra-small; an InteractionTag's row and both its buttons take the same heights.",
+      "values": [
+        {
+          "name": "medium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "small",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "extraSmall",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagStyles.styles.ts:127-136; useInteractionTagStyles.styles.ts:23-31"
+    },
+    {
+      "id": "spacing",
+      "text": "The inner side spacing is 7px at medium and 5px at small and extra-small: it becomes the left padding when there is no media or icon and the right padding when there is no dismiss icon; otherwise the media, icon and dismiss slots carry it themselves.",
+      "values": [
+        {
+          "name": "spacingMedium",
+          "value": 7,
+          "unit": "px"
+        },
+        {
+          "name": "spacingSmall",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "spacingExtraSmall",
+          "value": 5,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagStyles.styles.ts:22-24,181-205,213-230,267-281"
+    },
+    {
+      "id": "icons",
+      "text": "Icons are 20px at medium, 16 at small and 12 at extra-small, for the leading icon and the dismiss icon alike.",
+      "values": [
+        {
+          "name": "iconMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconExtraSmall",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagStyles.styles.ts:26-28,207-231,251-282"
+    },
+    {
+      "id": "media",
+      "text": "The media slot sits 1px in from the left and leaves S (medium) or SNudge (small, extra-small) before the text; the avatar's size and shape follow the tag's size and shape through its avatar context.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "values": [
+        {
+          "name": "mediaInset",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagStyles.styles.ts:233-249; Tag.types.ts:92-94"
+    },
+    {
+      "id": "text",
+      "text": "The label has XXS padding either side and XXS below when alone; with a secondary line it is caption1 pulled up by 2px, and the secondary is caption2 with XXS padding.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "typographyStyles.caption1",
+        "typographyStyles.caption2"
+      ],
+      "values": [
+        {
+          "name": "secondaryPullUp",
+          "value": -2,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagStyles.styles.ts:320-357"
+    },
+    {
+      "id": "extra-small-target",
+      "text": "An extra-small tag or button grows its hit area with 2px pseudo-element bands above and below, so the 20px visual reaches WCAG's 24px target; they are not drawn.",
+      "values": [
+        {
+          "name": "band",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "target",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagStyles.styles.ts:133-154; useInteractionTagPrimaryStyles.styles.ts:229-250; useInteractionTagSecondaryStyles.styles.ts:166-187"
+    },
+    {
+      "id": "secondary-button",
+      "text": "The secondary button's left border is the divider, it has no left radius and takes the shape's right radius; filled and brand drop its top and bottom borders, and it pads 5px (medium), 3px (small) or 5px (extra-small) each side of the icon.",
+      "tokens": [
+        "tokens.borderRadiusNone",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusCircular"
+      ],
+      "values": [
+        {
+          "name": "padMedium",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "padSmall",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "padExtraSmall",
+          "value": 5,
+          "unit": "px"
+        }
+      ],
+      "source": "useInteractionTagSecondaryStyles.styles.ts:17-41,44-48,91-96,147-170"
+    },
+    {
+      "id": "group-gap",
+      "text": "A TagGroup separates its tags by a column gap of S at medium, SNudge at small and XS at extra-small, and passes its size, appearance, disabled and dismissible to every tag.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalXS"
+      ],
+      "source": "useTagGroupStyles.styles.ts:15-28; TagGroup.types.ts:24-45"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's background, text and border; a plain Tag has no hover or pressed look of its own, only its dismiss icon reacts.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useTagStyles.styles.ts:102-115"
+    },
+    {
+      "state": "hovered",
+      "text": "On an InteractionTag, the button under the pointer steps to its appearance's Hover background and text (filled: Background 3 Hover, Foreground 2 Hover; outline: Subtle Hover, Foreground 2 Hover with the icon filled in Foreground 2 Brand Hover; brand: Brand Background 2 Hover, Compound Brand Foreground 1 Hover); the secondary's icon turns Foreground 2 Brand Hover on filled and outline. On a Tag only the dismiss icon turns Compound Brand Foreground 1 Hover.",
+      "tokens": [
+        "tokens.colorNeutralBackground3Hover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralForeground2BrandHover",
+        "tokens.colorBrandBackground2Hover",
+        "tokens.colorCompoundBrandForeground1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useInteractionTagPrimaryStyles.styles.ts:110-189; useInteractionTagSecondaryStyles.styles.ts:44-116; useTagStyles.styles.ts:283-309"
+    },
+    {
+      "state": "pressed",
+      "text": "The Pressed twins of the hover tokens on the button held down.",
+      "tokens": [
+        "tokens.colorNeutralBackground3Pressed",
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground2BrandPressed",
+        "tokens.colorBrandBackground2Pressed",
+        "tokens.colorCompoundBrandForeground1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useInteractionTagPrimaryStyles.styles.ts:118-121,148-159,177-180; useInteractionTagSecondaryStyles.styles.ts:54-57,78-81,102-105"
+    },
+    {
+      "state": "focused",
+      "text": "The default outline, strokeWidthThick solid colorStrokeFocus2 following the shape's radius, on the Tag, or on whichever InteractionTag button has focus (the primary raises itself above the secondary so its ring is not covered); with a secondary present the primary's ring has no right radius.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusCircular"
+      ],
+      "source": "useTagStyles.styles.ts:53-56,79-82; useInteractionTagPrimaryStyles.styles.ts:44-47,290-298; useInteractionTagSecondaryStyles.styles.ts:31-33"
+    },
+    {
+      "state": "selected",
+      "text": "Brand Background with on-brand text and a Brand Stroke 1 border on the tag or both buttons; hovered or pressed the background steps to Brand Background Hover and Pressed while the text stays on-brand, the dismiss icon stays on-brand, and the secondary's divider is Neutral Stroke On Brand 2.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.colorBrandStroke1",
+        "tokens.colorNeutralStrokeOnBrand2"
+      ],
+      "source": "useTagStyles.styles.ts:116-126,310-317; useInteractionTagPrimaryStyles.styles.ts:190-222; useInteractionTagSecondaryStyles.styles.ts:117-145"
+    },
+    {
+      "state": "disabled",
+      "text": "filled and brand take Neutral Background Disabled with Foreground Disabled text and a Transparent Stroke Disabled border; outline keeps Subtle with Foreground Disabled text and a Stroke Disabled border; the secondary's divider is Stroke Disabled; the pointer is not-allowed and nothing reacts.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorTransparentStrokeDisabled",
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralStrokeDisabled"
+      ],
+      "source": "useTagStyles.styles.ts:157-176; useInteractionTagPrimaryStyles.styles.ts:252-271; useInteractionTagSecondaryStyles.styles.ts:189-210"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "dismiss",
+      "text": "A dismissible Tag is a button: a click, or Enter, Space, Delete or Backspace while focused, dismisses it; an InteractionTag dismisses through its secondary button, and the same keys on its primary dismiss too. The TagGroup's onDismiss receives the value and focus moves to the next tag, or the previous when it was last.",
+      "source": "TagGroup.types.ts:24-32; InteractionTag.types.ts:69-90"
+    },
+    {
+      "id": "select",
+      "text": "With onTagSelect on the group, clicking a tag toggles it in selectedValues and the group reports the set; the group becomes a toolbar of toggle buttons.",
+      "source": "TagGroup.types.ts:33-56"
+    },
+    {
+      "id": "transition",
+      "text": "No property transitions on a tag; hover and press swap tokens at once.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTagStyles.styles.ts:30-47"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab reaches a dismissible or selectable tag, or each button of an InteractionTag",
+      "Enter or Space activates; Delete or Backspace dismisses",
+      "Arrow keys move between tags in a group"
+    ],
+    "semantics": [
+      "a static tag is a span; a dismissible one a button whose label is its text plus a dismiss hint",
+      "an InteractionTag's secondary button is labelled by the primary through aria-labelledby",
+      "a selectable group is a toolbar whose tags report aria-pressed"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Heights (32, 24, 20px), side spacing (7, 5, 5px), icon sizes (20, 16, 12px), the 1px media inset, the -2px secondary pull-up, the 2px target bands and the secondary button's 5/3/5px padding are constants; no token gives them.",
+      "source": "useTagStyles.styles.ts:22-28,127-154,238,347; useInteractionTagSecondaryStyles.styles.ts:156-170"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a pseudo-element draws the top border (and, on a circular tag, the sides) because the label's negative margin covers the real border; a selected tag is Highlight with HighlightText; hovered and pressed buttons are HighlightText and the dismiss icon Highlight; the extra-small target bands are dropped.",
+      "source": "useTagStyles.styles.ts:58-72,84-99,121-125,257-265; useInteractionTagPrimaryStyles.styles.ts:54-68,122-129"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A Tag's root itself does not change colour on hover or press; only an InteractionTag's buttons do. Building a Tag with a hover background is wrong.",
+      "source": "useTagStyles.styles.ts:102-115"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A circular InteractionTag whose primary has no secondary button rounds its right side too; with a secondary the primary's right corners are square and its right border is dropped so the divider is drawn once, by the secondary.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ],
+      "source": "useInteractionTagPrimaryStyles.styles.ts:96-107,290-304,341-349"
+    }
+  ]
+}

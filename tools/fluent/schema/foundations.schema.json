@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluent-kit.local/schema/foundations.schema.json",
+  "title": "Fluent 2 foundations",
+  "description": "System rules every component spec assumes. Each section is prose with machine fields; every token path in it is checked to exist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "tokens",
+    "color",
+    "typography",
+    "shape",
+    "spacing",
+    "elevation",
+    "interaction",
+    "motion",
+    "layout",
+    "highContrast",
+    "provenance"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "tokens": {
+      "type": "object",
+      "required": [
+        "resolvedFile",
+        "dtcgFile",
+        "tiers",
+        "themes",
+        "naming",
+        "rules",
+        "units",
+        "stateVocabulary"
+      ]
+    },
+    "color": {
+      "type": "object",
+      "required": [
+        "families",
+        "pairing",
+        "levels",
+        "strokes",
+        "brand",
+        "status",
+        "shadowColors"
+      ]
+    },
+    "typography": {
+      "type": "object",
+      "required": [
+        "ramp",
+        "weights",
+        "fontFamilies",
+        "standIn",
+        "rules"
+      ]
+    },
+    "shape": {
+      "type": "object",
+      "required": [
+        "scale",
+        "rules"
+      ]
+    },
+    "spacing": {
+      "type": "object",
+      "required": [
+        "scale",
+        "rules"
+      ]
+    },
+    "elevation": {
+      "type": "object",
+      "required": [
+        "tokens",
+        "uses",
+        "rules"
+      ]
+    },
+    "interaction": {
+      "type": "object",
+      "required": [
+        "states",
+        "disabled",
+        "focus",
+        "selection",
+        "targetSize"
+      ]
+    },
+    "motion": {
+      "type": "object",
+      "required": [
+        "durations",
+        "curves",
+        "rules",
+        "reducedMotion"
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "required": [
+        "controlHeights",
+        "grid",
+        "rtl"
+      ]
+    },
+    "highContrast": {
+      "type": "object",
+      "required": [
+        "text",
+        "systemColors",
+        "rules"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "text",
+        "values",
+        "aliases",
+        "sources"
+      ]
+    }
+  }
+}

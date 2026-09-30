@@ -1,0 +1,304 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "progress-bar",
+  "name": "ProgressBar",
+  "status": "stable",
+  "summary": "A thin horizontal bar showing how much of a task is done (determinate) or that work is under way with no known end (indeterminate). Choose it over a spinner when the task has measurable progress or runs long enough to warrant a bar in the layout.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground6",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorTransparentBackground",
+    "tokens.colorPaletteRedBackground3",
+    "tokens.colorPaletteDarkOrangeBackground3",
+    "tokens.colorPaletteGreenBackground3",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusNone"
+  ],
+  "references": {
+    "react": [
+      "useProgressBarStyles.styles.ts",
+      "ProgressBar.types.ts"
+    ],
+    "fluent2": [
+      "progress-bar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "number",
+      "required": false,
+      "description": "Progress from 0 to max. Omitted, the bar is indeterminate."
+    },
+    {
+      "name": "max",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "The value at which the bar is full."
+    },
+    {
+      "name": "thickness",
+      "type": "enum",
+      "values": [
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "2px or 4px tall."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "Corner treatment of track and bar."
+    },
+    {
+      "name": "color",
+      "type": "enum",
+      "values": [
+        "brand",
+        "success",
+        "warning",
+        "error"
+      ],
+      "required": false,
+      "default": "brand",
+      "description": "The bar's colour; applies only to a determinate bar."
+    },
+    {
+      "name": "indeterminateMotion",
+      "type": "slot",
+      "required": false,
+      "description": "The indeterminate animation; pass null to disable it."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "The root: a full-width block in colorNeutralBackground6 that clips the bar."
+    },
+    {
+      "id": "bar",
+      "name": "Bar",
+      "description": "The filled portion, full height, inheriting the track's radius; its width is the value's percentage, or a moving 33% segment when indeterminate."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "thickness",
+      "value": "medium",
+      "default": true,
+      "description": "2px tall."
+    },
+    {
+      "axis": "thickness",
+      "value": "large",
+      "description": "4px tall."
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "default": true,
+      "description": "Track and bar round by borderRadiusMedium.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "No rounding.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "brand",
+      "default": true,
+      "description": "Bar colorCompoundBrandBackground; also the only colour of an indeterminate bar.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "success",
+      "description": "Bar colorPaletteGreenBackground3.",
+      "tokens": [
+        "tokens.colorPaletteGreenBackground3"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "warning",
+      "description": "Bar colorPaletteDarkOrangeBackground3.",
+      "tokens": [
+        "tokens.colorPaletteDarkOrangeBackground3"
+      ]
+    },
+    {
+      "axis": "color",
+      "value": "error",
+      "description": "Bar colorPaletteRedBackground3.",
+      "tokens": [
+        "tokens.colorPaletteRedBackground3"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "track",
+      "part": "track",
+      "text": "The track is a block, 100% of its container's width, colorNeutralBackground6, clipping its content; 2px tall at medium, 4px at large.",
+      "tokens": [
+        "tokens.colorNeutralBackground6"
+      ],
+      "values": [
+        {
+          "name": "heightMedium",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useProgressBarStyles.styles.ts:17-20,26-47"
+    },
+    {
+      "id": "bar",
+      "part": "bar",
+      "text": "The bar is full height with the track's radius. Determinate, its width is value ÷ max as a percentage, clamped to 0–100%.",
+      "source": "useProgressBarStyles.styles.ts:54-60,126-132"
+    },
+    {
+      "id": "indeterminate",
+      "part": "bar",
+      "text": "Indeterminate, the bar is at most 33% of the track and fills with a horizontal gradient colorNeutralBackground6 → colorTransparentBackground → colorNeutralBackground6 over the brand colour, so the segment fades in and out at its ends. Under reduced motion it is full width instead.",
+      "tokens": [
+        "tokens.colorNeutralBackground6",
+        "tokens.colorTransparentBackground",
+        "tokens.colorCompoundBrandBackground"
+      ],
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 33,
+          "unit": "percent"
+        }
+      ],
+      "source": "useProgressBarStyles.styles.ts:66-79"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Determinate: the bar in its colour (brand by default) from the start of the track to the value.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground"
+      ],
+      "source": "useProgressBarStyles.styles.ts:81-93,113-124"
+    },
+    {
+      "state": "loading",
+      "label": "indeterminate",
+      "text": "No value: a 33% faded brand segment that moves across the track; the color prop is ignored.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorNeutralBackground6",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useProgressBarStyles.styles.ts:66-79,118-121"
+    },
+    {
+      "state": "focused",
+      "text": "None: the progress bar is not focusable and draws no focus indicator.",
+      "source": "useProgressBarStyles.styles.ts:25-94"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "width-transition",
+      "text": "A determinate bar above 1% of the way animates width changes over 300ms with the CSS ease curve; at or below that threshold it jumps, so a reset to 0 is not animated.",
+      "motion": {
+        "durationMs": 300,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "values": [
+        {
+          "name": "duration",
+          "value": 300,
+          "unit": "ms"
+        },
+        {
+          "name": "zeroThreshold",
+          "value": 0.01,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useProgressBarStyles.styles.ts:13-15,61-65,120"
+    },
+    {
+      "id": "indeterminate-motion",
+      "text": "The indeterminate segment's travel is supplied by the indeterminateMotion slot, not the styles file; under reduced motion the segment is full width and that motion pulses its opacity instead.",
+      "source": "ProgressBar.types.ts:13-16; useProgressBarStyles.styles.ts:75-78"
+    },
+    {
+      "id": "color-determinate-only",
+      "text": "The color prop applies only when a value is given; an indeterminate bar is always brand.",
+      "source": "useProgressBarStyles.styles.ts:117-121"
+    }
+  ],
+  "accessibility": {
+    "role": "progressbar",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "aria-valuemin 0, aria-valuemax max and aria-valuenow value when determinate; no aria-valuenow when indeterminate",
+      "label it through a Field label or aria-label; a Field's validation message can describe an error bar"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Thicknesses (2, 4px), the 33% indeterminate width and the 300ms ease width transition are constants in the styles file; the transition reads no duration or curve token.",
+      "source": "useProgressBarStyles.styles.ts:17-20,61-67"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The status colours read palette tokens, not the status aliases: error is colorPaletteRedBackground3 (not the cranberry-mapped danger family) and warning colorPaletteDarkOrangeBackground3 (not the orange-mapped warning family).",
+      "tokens": [
+        "tokens.colorPaletteRedBackground3",
+        "tokens.colorPaletteDarkOrangeBackground3",
+        "tokens.colorPaletteGreenBackground3"
+      ],
+      "source": "useProgressBarStyles.styles.ts:85-93"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the track is CanvasText and the bar Highlight, whatever its colour.",
+      "source": "useProgressBarStyles.styles.ts:32-34,55-57"
+    },
+    {
+      "kind": "inferred",
+      "text": "Pair the bar with a label above and a description below (Field) when the task needs explaining; the component itself has no text slot.",
+      "source": "fluent2:progress-bar"
+    }
+  ]
+}

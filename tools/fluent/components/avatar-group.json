@@ -1,0 +1,523 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "avatar-group",
+  "name": "AvatarGroup",
+  "status": "stable",
+  "summary": "Several people as one unit: avatars overlapped in a stack, spread in a row, or cut into a pie, with the overflow behind a button that opens a popover list. Use it for a set of participants; a single Avatar is one person and a Persona a person with text.",
+  "tokenGroups": [
+    "tokens.colorTransparentStroke",
+    "tokens.colorNeutralBackground2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.strokeWidthThicker",
+    "tokens.strokeWidthThickest",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingHorizontalL",
+    "tokens.spacingHorizontalXL",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalS",
+    "tokens.borderRadiusCircular",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralForeground1Pressed",
+    "tokens.colorNeutralForeground1Selected",
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralBackground1Selected",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStroke1Selected",
+    "tokens.colorTransparentBackground",
+    "tokens.colorStrokeFocus2",
+    "typographyStyles.body1",
+    "typographyStyles.caption2Strong",
+    "typographyStyles.caption1Strong",
+    "typographyStyles.body1Strong",
+    "typographyStyles.subtitle2",
+    "typographyStyles.subtitle1",
+    "typographyStyles.title3"
+  ],
+  "references": {
+    "react": [
+      "useAvatarGroupStyles.styles.ts",
+      "AvatarGroup.types.ts",
+      "useAvatarGroupItemStyles.styles.ts",
+      "AvatarGroupItem.types.ts",
+      "useAvatarGroupPopoverStyles.styles.ts",
+      "AvatarGroupPopover.types.ts",
+      "useAvatarStyles.styles.ts"
+    ],
+    "fluent2": [
+      "avatar-group"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The AvatarGroupItems shown inline, then an AvatarGroupPopover holding the rest."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "spread",
+        "stack",
+        "pie"
+      ],
+      "required": false,
+      "default": "spread",
+      "description": "spread lays the avatars in a row with a gap; stack overlaps them with a Background 2 ring around each; pie clips two or three into slices of one circle."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "16",
+        "20",
+        "24",
+        "28",
+        "32",
+        "36",
+        "40",
+        "48",
+        "56",
+        "64",
+        "72",
+        "96",
+        "120",
+        "128"
+      ],
+      "required": false,
+      "default": "32",
+      "description": "The Avatar size, in px, shared by every item and the overflow button; it also picks the overlap, ring and font."
+    },
+    {
+      "name": "indicator",
+      "type": "enum",
+      "values": [
+        "count",
+        "icon"
+      ],
+      "required": false,
+      "default": "count",
+      "description": "What the overflow button shows: the count of hidden people, or an icon."
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "required": false,
+      "description": "The overflow count; defaults to the number of popover children."
+    },
+    {
+      "name": "overflowLabel",
+      "type": "slot",
+      "required": false,
+      "description": "An item's name shown beside its avatar in the popover list."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "AvatarGroup",
+      "description": "An inline flex row, relatively positioned; as a pie it is the avatar size on both axes, clipped to a circle and filled Transparent Stroke as the divider colour between slices.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "AvatarGroupItem",
+      "description": "One person: an inline flex box of the avatar size, circular, holding an absolutely positioned Avatar; in the popover it is a list row with XS padding and a body1 Foreground 1 label after the avatar.",
+      "tokens": [
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalXS",
+        "typographyStyles.body1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "id": "overflow-button",
+      "name": "Overflow button",
+      "description": "The trigger for the popover: a circle of the avatar size with a Stroke 1 border of the size's width, Background 1 and Foreground 1, showing the count in the size's strong style or an icon of the size's icon step; laid out as one more child of the group.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "popover",
+      "name": "Popover surface",
+      "description": "The overflow list's surface: 220px wide, 80 to 220px tall with vertical scrolling, S padding, holding a column list of items.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "id": "tooltip",
+      "name": "Tooltip",
+      "description": "A tooltip on the overflow button naming the hidden people.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "layout",
+      "value": "spread",
+      "default": true,
+      "description": "Each child after the first is set off by a left margin: S below 20px, MNudge below 32, L below 64, XL from 64 up.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXL"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "stack",
+      "description": "Each child after the first overlaps by a negative left margin (XXS below 24px, XS below 48, S below 96, L from 96 up) and every child wears a Background 2 ring of strokeWidthThick below 56px, Thicker below 72, Thickest from 72.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalL",
+        "tokens.colorNeutralBackground2",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "pie",
+      "description": "The group is one circle; two items are its left and right halves, three items a left half and two right quarters (scaled 0.5), separated by a divider of the size's stroke width in the group's Transparent Stroke fill; the avatars lose their radius and the overflow button is transparent.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentBackground",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ]
+    },
+    {
+      "axis": "indicator",
+      "value": "count",
+      "default": true,
+      "description": "The overflow count in caption2Strong up to 24px, caption1Strong to 28, body1Strong to 40, subtitle2 to 56, subtitle1 to 96, title3 above.",
+      "tokens": [
+        "typographyStyles.caption2Strong",
+        "typographyStyles.caption1Strong",
+        "typographyStyles.body1Strong",
+        "typographyStyles.subtitle2",
+        "typographyStyles.subtitle1",
+        "typographyStyles.title3"
+      ]
+    },
+    {
+      "axis": "indicator",
+      "value": "icon",
+      "description": "An icon at 12px up to 16, 16 to 24, 20 to 40, 24 to 48, 28 to 56, 32 to 72, 48 above."
+    }
+  ],
+  "layout": [
+    {
+      "id": "item",
+      "text": "An inline item is the avatar size on both axes (the Avatar's size classes), circular, and its avatar is absolutely positioned inside so the ring and overlap are the item's, not the avatar's.",
+      "source": "useAvatarGroupItemStyles.styles.ts:23-42,177-181"
+    },
+    {
+      "id": "stack",
+      "text": "In a stack every child but the first pulls left by XXS below 24px, XS below 48, S below 96 and L at 96 and above, and every child draws a box-shadow ring of Background 2 at strokeWidthThick below 56px, Thicker below 72 and Thickest from 72, so each avatar reads against the next.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalL",
+        "tokens.colorNeutralBackground2",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ],
+      "values": [
+        {
+          "name": "thickBelow",
+          "value": 56,
+          "unit": "px"
+        },
+        {
+          "name": "thickerBelow",
+          "value": 72,
+          "unit": "px"
+        },
+        {
+          "name": "xxsBelow",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "xsBelow",
+          "value": 48,
+          "unit": "px"
+        },
+        {
+          "name": "sBelow",
+          "value": 96,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarGroupItemStyles.styles.ts:58-72,230-253"
+    },
+    {
+      "id": "spread",
+      "text": "In a spread every child but the first has a left margin of S below 20px, MNudge below 32, L below 64 and XL from 64.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXL"
+      ],
+      "values": [
+        {
+          "name": "sBelow",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "mNudgeBelow",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "lBelow",
+          "value": 64,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarGroupItemStyles.styles.ts:77-83,254-263"
+    },
+    {
+      "id": "pie",
+      "text": "A pie group is the avatar size, clipped to a circle and filled Transparent Stroke; items are absolute. Two items: each clipped to a half, the first shifted left 25% and clipped to its middle half plus half the divider, the second the mirror. Three: the first as before, the second and third scaled 0.5 at the top-right and bottom-right, each clipped by a divider's width on the sides they meet. The divider is strokeWidthThick below 56px, Thicker below 72, Thickest from 72; the avatars lose their radius.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ],
+      "values": [
+        {
+          "name": "halfShift",
+          "value": 25,
+          "unit": "percent"
+        },
+        {
+          "name": "quarterScale",
+          "value": 0.5,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useAvatarGroupStyles.styles.ts:16-27,38-45; useAvatarGroupItemStyles.styles.ts:88-127,155-158,182-198,210"
+    },
+    {
+      "id": "overflow-button",
+      "text": "The overflow button is a circle of the avatar size (through the Avatar's size classes) with a solid Stroke 1 border of strokeWidthThin below 36px, Thick below 56, Thicker below 72, Thickest from 72, Background 1 fill, Foreground 1 text, no padding, and it takes the layout's child spacing like any item.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest",
+        "tokens.borderRadiusCircular"
+      ],
+      "values": [
+        {
+          "name": "thinBelow",
+          "value": 36,
+          "unit": "px"
+        },
+        {
+          "name": "thickBelow",
+          "value": 56,
+          "unit": "px"
+        },
+        {
+          "name": "thickerBelow",
+          "value": 72,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarGroupPopoverStyles.styles.ts:48-66,111-114,128-138,172-184"
+    },
+    {
+      "id": "overflow-text",
+      "text": "With indicator count the number reads caption2Strong at sizes up to 24, caption1Strong to 28, body1Strong to 40, subtitle2 to 56, subtitle1 to 96 and title3 above; with icon the glyph is 12px to 16, 16 to 24, 20 to 40, 24 to 48, 28 to 56, 32 to 72 and 48 above.",
+      "tokens": [
+        "typographyStyles.caption2Strong",
+        "typographyStyles.caption1Strong",
+        "typographyStyles.body1Strong",
+        "typographyStyles.subtitle2",
+        "typographyStyles.subtitle1",
+        "typographyStyles.title3"
+      ],
+      "source": "useAvatarGroupPopoverStyles.styles.ts:98-110,140-170"
+    },
+    {
+      "id": "popover",
+      "text": "The popover surface is 220px wide, at least 80 and at most 220px tall, scrolling vertically, padded S; its list is a plain column and each row is an item with XS padding and a body1 Foreground 1 label S after the avatar.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalXS",
+        "typographyStyles.body1",
+        "tokens.colorNeutralForeground1"
+      ],
+      "values": [
+        {
+          "name": "width",
+          "value": 220,
+          "unit": "px"
+        },
+        {
+          "name": "minHeight",
+          "value": 80,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeight",
+          "value": 220,
+          "unit": "px"
+        }
+      ],
+      "source": "useAvatarGroupPopoverStyles.styles.ts:22-43; useAvatarGroupItemStyles.styles.ts:30,47-53,199-201"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: items are their avatars; the overflow button is Background 1, Foreground 1, Stroke 1.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralStroke1"
+      ],
+      "source": "useAvatarGroupPopoverStyles.styles.ts:48-60"
+    },
+    {
+      "state": "hovered",
+      "part": "overflow-button",
+      "text": "The overflow button steps to Background 1 Hover, Foreground 1 Hover and Stroke 1 Hover, except in a pie, where it stays transparent.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralStroke1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useAvatarGroupPopoverStyles.styles.ts:79-84,180"
+    },
+    {
+      "state": "pressed",
+      "part": "overflow-button",
+      "text": "The Pressed twins while held.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralForeground1Pressed",
+        "tokens.colorNeutralStroke1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useAvatarGroupPopoverStyles.styles.ts:85-89"
+    },
+    {
+      "state": "focused",
+      "part": "overflow-button",
+      "text": "Keyboard focus turns the button's border into a strokeWidthThick colorStrokeFocus2 ring with no outline.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useAvatarGroupPopoverStyles.styles.ts:74-77,179"
+    },
+    {
+      "state": "open",
+      "part": "overflow-button",
+      "text": "While the popover is open the button reads the Selected tokens: Background 1 Selected, Foreground 1 Selected, Stroke 1 Selected (not in a pie).",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralForeground1Selected",
+        "tokens.colorNeutralStroke1Selected"
+      ],
+      "source": "useAvatarGroupPopoverStyles.styles.ts:92-96,181"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "overflow",
+      "text": "The caller decides how many items show inline; the rest go in the AvatarGroupPopover, whose button shows their count (or an icon) and opens a popover listing them with names.",
+      "source": "AvatarGroupPopover.types.ts:35-52"
+    },
+    {
+      "id": "pie-limit",
+      "text": "A pie shows at most three items; more belong in the popover.",
+      "source": "useAvatarGroupItemStyles.styles.ts:92-127"
+    },
+    {
+      "id": "open",
+      "text": "Click, Enter or Space on the overflow button opens the popover; Escape or a press outside closes it, and the button reads selected while it is open.",
+      "source": "AvatarGroupPopover.types.ts:59-64; useAvatarGroupPopoverStyles.styles.ts:181"
+    }
+  ],
+  "accessibility": {
+    "role": "group",
+    "minTargetPx": 16,
+    "keyboard": [
+      "Tab reaches the overflow button",
+      "Enter or Space opens the popover; Escape closes it"
+    ],
+    "semantics": [
+      "the group is labelled by the caller (aria-label); each avatar carries its name",
+      "the overflow button's tooltip names the hidden people and the popover is a list of them"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The size thresholds for overlap, ring and border width, the 25% pie shift, the 0.5 quarter scale, the popover's 220/80/220px and the overflow font and icon steps are constants in the styles files; no token gives them.",
+      "source": "useAvatarGroupItemStyles.styles.ts:88-158,230-268; useAvatarGroupPopoverStyles.styles.ts:35-43,128-170"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the pie's divider fill is CanvasText and the overflow button's border CanvasText, matching the Avatar's outline.",
+      "source": "useAvatarGroupStyles.styles.ts:24-26; useAvatarGroupPopoverStyles.styles.ts:62-65"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The stack ring is a box-shadow of Background 2, the page colour, not a stroke: on Background 1 surfaces the ring reads as a slightly grey gap. A renderer draws a ring in Background 2 around each item.",
+      "tokens": [
+        "tokens.colorNeutralBackground2"
+      ],
+      "source": "useAvatarGroupItemStyles.styles.ts:58-67"
+    },
+    {
+      "kind": "inferred",
+      "text": "The Avatar size ramp the group shares is avatar.json's; the item's own size classes are the Avatar's useSizeStyles.",
+      "source": "useAvatarStyles.styles.ts; AvatarGroup.types.ts:16-22"
+    }
+  ]
+}

@@ -1,0 +1,713 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tree",
+  "name": "Tree",
+  "status": "stable",
+  "summary": "A hierarchy of items that expand and collapse, navigated with arrow keys and optionally selectable with checkboxes or radios: Tree nests subtrees in the markup, FlatTree takes a flat list with parent values and is the choice for large or virtualised data. Use a nav for app navigation and a list for a flat set.",
+  "tokenGroups": [
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorSubtleBackgroundLightAlphaHover",
+    "tokens.colorSubtleBackgroundLightAlphaPressed",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForeground3Hover",
+    "tokens.colorNeutralForeground3Pressed",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingVerticalXXS",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalMNudge",
+    "tokens.spacingHorizontalNone",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingHorizontalXXL",
+    "tokens.fontSizeBase500",
+    "tokens.lineHeightBase500",
+    "typographyStyles.body1",
+    "typographyStyles.caption1",
+    "tokens.durationNormal",
+    "tokens.durationFast",
+    "tokens.curveDecelerateMid",
+    "tokens.curveAccelerateMin"
+  ],
+  "references": {
+    "react": [
+      "Tree.types.ts",
+      "useTreeStyles.styles.ts",
+      "FlatTree.types.ts",
+      "useFlatTreeStyles.styles.ts",
+      "TreeItem.types.ts",
+      "useTreeItemStyles.styles.ts",
+      "TreeItemLayout.types.ts",
+      "useTreeItemLayoutStyles.styles.ts",
+      "TreeItemPersonaLayout.types.ts",
+      "useTreeItemPersonaLayoutStyles.styles.ts",
+      "useTreeNavigation.ts",
+      "Collapse.ts"
+    ],
+    "fluent2": [
+      "tree"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "subtle",
+        "subtle-alpha",
+        "transparent"
+      ],
+      "required": false,
+      "default": "subtle",
+      "description": "Tree and FlatTree: the rows' hover and press fills; subtle-alpha is lighter, transparent has no fill at all."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Tree and FlatTree: 32px rows in body1, or 24px rows in caption1."
+    },
+    {
+      "name": "openItems",
+      "type": "list",
+      "required": false,
+      "description": "Tree and FlatTree: the values of the open branches, when the caller controls them; ignored on a subtree."
+    },
+    {
+      "name": "defaultOpenItems",
+      "type": "list",
+      "required": false,
+      "description": "Tree: the branches open at first when the tree controls itself."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Tree and FlatTree: runs when a branch opens or closes, with the value, the new open set and whether a chevron click, a row click, Enter or an arrow caused it."
+    },
+    {
+      "name": "selectionMode",
+      "type": "enum",
+      "values": [
+        "single",
+        "multiselect"
+      ],
+      "required": false,
+      "description": "Tree and FlatTree: none by default; single renders a radio in each row's selector slot, multiselect a checkbox."
+    },
+    {
+      "name": "checkedItems",
+      "type": "list",
+      "required": false,
+      "description": "Tree and FlatTree: the checked values (or value and checked-state pairs, mixed included), when the caller controls them."
+    },
+    {
+      "name": "onCheckedChange",
+      "type": "callback",
+      "required": false,
+      "description": "Tree and FlatTree: runs when a selector changes, with the value, its new checked state and the whole checked map."
+    },
+    {
+      "name": "navigationMode",
+      "type": "enum",
+      "values": [
+        "tree",
+        "treegrid"
+      ],
+      "required": false,
+      "default": "tree",
+      "description": "Tree and FlatTree: whether Right arrow moves into a branch's children (tree) or into the row's actions (treegrid)."
+    },
+    {
+      "name": "onNavigation",
+      "type": "callback",
+      "required": false,
+      "description": "Tree and FlatTree: runs on every keyboard or click navigation with the target row and the key, and can prevent the scroll."
+    },
+    {
+      "name": "itemType",
+      "type": "enum",
+      "values": [
+        "leaf",
+        "branch"
+      ],
+      "required": true,
+      "description": "TreeItem: a leaf has no children and no chevron; a branch opens and closes."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "TreeItem: what identifies the item in the open and checked sets; inferred when absent, required on a FlatTree item."
+    },
+    {
+      "name": "parentValue",
+      "type": "string",
+      "required": false,
+      "description": "TreeItem: the parent's value, inferred in a nested tree and required in a flat one."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "description": "TreeItem: overrides the tree's open set for this branch alone."
+    },
+    {
+      "name": "iconBefore",
+      "type": "icon",
+      "required": false,
+      "description": "TreeItemLayout: a 20px icon before the main content."
+    },
+    {
+      "name": "iconAfter",
+      "type": "icon",
+      "required": false,
+      "description": "TreeItemLayout: a 20px icon after the main content."
+    },
+    {
+      "name": "aside",
+      "type": "slot",
+      "required": false,
+      "description": "TreeItemLayout and TreeItemPersonaLayout: non-interactive content (a badge) at the row's end, always visible."
+    },
+    {
+      "name": "actions",
+      "type": "slot",
+      "required": false,
+      "description": "TreeItemLayout and TreeItemPersonaLayout: buttons at the row's end, in the aside's place, visible only while the row is hovered or focused unless forced visible."
+    },
+    {
+      "name": "media",
+      "type": "slot",
+      "required": true,
+      "description": "TreeItemPersonaLayout: the avatar, 32px at medium and 24px at small."
+    },
+    {
+      "name": "description",
+      "type": "slot",
+      "required": false,
+      "description": "TreeItemPersonaLayout: a caption1 second line under the main content."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "Tree: TreeItems; TreeItem: a TreeItemLayout or TreeItemPersonaLayout, then for a branch a nested Tree; the layouts: the main content."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Tree",
+      "description": "A flex column of items spacingVerticalXXS apart; a nested subtree pads spacingVerticalXXS above. FlatTree is the same column with no nesting.",
+      "tokens": [
+        "tokens.spacingVerticalXXS"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "TreeItem",
+      "description": "A row holding its layout and, for an open branch, its subtree: a flex column in Subtle Background with Foreground 2 text, carrying its level for the layout's indent.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "layout",
+      "name": "TreeItemLayout",
+      "description": "The visible row: a flex row at least 32px tall (24px at small) centring its expand icon, icons, main content and aside or actions, indented by level.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "id": "expand-icon",
+      "name": "Expand icon",
+      "description": "A branch's chevron in Foreground 3, centred in a box at least 24px wide, pointing right when closed and down when open; a leaf has none but keeps the indent.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "id": "selector",
+      "name": "Selector",
+      "description": "The checkbox (multiselect) or radio (single) before the content when the tree selects.",
+      "optional": true
+    },
+    {
+      "id": "icon-before",
+      "name": "Icon before",
+      "description": "A 20px Foreground 2 icon before the main content with spacingHorizontalXS after it (spacingHorizontalXXS at small).",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500"
+      ]
+    },
+    {
+      "id": "main",
+      "name": "Main",
+      "description": "The row's content, padded spacingHorizontalXXS on each side.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "id": "icon-after",
+      "name": "Icon after",
+      "description": "A 20px Foreground 2 icon after the main content with spacingHorizontalXS before it (spacingHorizontalXXS at small).",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "aside",
+      "name": "Aside",
+      "description": "End-aligned content padded spacingHorizontalM on each side with spacingHorizontalXS between its children, under the actions.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "Actions",
+      "description": "End-aligned buttons padded spacingHorizontalS on each side, above the aside in the same place, shown while the row is active.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "id": "persona-layout",
+      "name": "TreeItemPersonaLayout",
+      "description": "A grid row of expand icon, 32px media, main content over an optional caption1 description, and aside or actions, for people or files.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "id": "subtree",
+      "name": "Subtree",
+      "description": "An open branch's nested Tree, laid out under the row and collapsing with the shared Collapse motion.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "kind",
+      "value": "tree",
+      "default": true,
+      "description": "Nested: each branch item holds its own Tree of children and levels are inferred."
+    },
+    {
+      "axis": "kind",
+      "value": "flat",
+      "description": "FlatTree: one column of items with explicit value, parentValue and level, no nesting and no subtree padding; suited to virtualisation."
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "default": true,
+      "description": "Rows hover colorSubtleBackgroundHover and press colorSubtleBackgroundPressed.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle-alpha",
+      "description": "Rows hover colorSubtleBackgroundLightAlphaHover and press colorSubtleBackgroundLightAlphaPressed, a lighter emphasis.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundLightAlphaHover",
+        "tokens.colorSubtleBackgroundLightAlphaPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "description": "Rows are colorTransparentBackground at rest and read the Transparent hover and press tokens.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px rows in body1, spacingHorizontalXS beside icons, 32px avatars in the persona layout.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px rows in caption1, spacingHorizontalXXS beside icons, 24px avatars in the persona layout.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "axis": "selectionMode",
+      "value": "single",
+      "description": "Each row's selector is a radio; checking one clears the others."
+    },
+    {
+      "axis": "selectionMode",
+      "value": "multiselect",
+      "description": "Each row's selector is a checkbox; a branch's checkbox reads mixed while only some of its children are checked."
+    },
+    {
+      "axis": "navigationMode",
+      "value": "tree",
+      "default": true,
+      "description": "Right arrow on an open branch moves to its first child."
+    },
+    {
+      "axis": "navigationMode",
+      "value": "treegrid",
+      "description": "Right arrow moves focus into the row's actions, and Left from the actions returns to the row."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "A tree is a flex column with spacingVerticalXXS between rows; a subtree (level above 1) pads spacingVerticalXXS above as well. A flat tree is the column without the subtree padding.",
+      "tokens": [
+        "tokens.spacingVerticalXXS"
+      ],
+      "source": "useTreeStyles.styles.ts:12-35; useFlatTreeStyles.styles.ts:12-22"
+    },
+    {
+      "id": "item",
+      "part": "item",
+      "text": "An item is a relatively positioned border-box flex column, filled colorSubtleBackground with colorNeutralForeground2 text, spacingHorizontalNone right padding and a pointer cursor; it sets its level (1 to 10 as classes, deeper inline) for the layout to read.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralForeground2",
+        "tokens.spacingHorizontalNone"
+      ],
+      "values": [
+        {
+          "name": "staticLevels",
+          "value": 10,
+          "unit": "count"
+        }
+      ],
+      "source": "useTreeItemStyles.styles.ts:17-25,50-96"
+    },
+    {
+      "id": "row",
+      "part": "layout",
+      "text": "The layout is a flex row centring its children, at least 32px tall in body1 at medium and 24px in caption1 at small.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.caption1"
+      ],
+      "values": [
+        {
+          "name": "minHeightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightSmall",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:22-27,56-62"
+    },
+    {
+      "id": "indent",
+      "part": "layout",
+      "text": "A leaf row pads level times spacingHorizontalXXL on the left and a branch row (level minus 1) times spacingHorizontalXXL, so a branch's chevron takes the indent step a leaf leaves empty.",
+      "tokens": [
+        "tokens.spacingHorizontalXXL"
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:49-55; useTreeItemPersonaLayoutStyles.styles.ts:53-59"
+    },
+    {
+      "id": "expand-icon",
+      "part": "expand-icon",
+      "text": "The expand icon is a flex box at least 24px wide centring its glyph, colorNeutralForeground3, padded spacingVerticalXS above and below, never growing or shrinking.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.spacingVerticalXS"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:111-120"
+    },
+    {
+      "id": "main",
+      "part": "main",
+      "text": "The main content pads spacingHorizontalXXS on each side.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS"
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:125-127"
+    },
+    {
+      "id": "icons",
+      "part": "icon-before",
+      "text": "The before and after icons are flex boxes centring a glyph at fontSizeBase500 on lineHeightBase500 in colorNeutralForeground2; the before icon pads spacingHorizontalXS on its right and the after icon the same on its left, spacingHorizontalXXS at small.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500",
+        "tokens.colorNeutralForeground2",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:132-156"
+    },
+    {
+      "id": "aside",
+      "part": "aside",
+      "text": "The aside is pushed to the end with an auto left margin, its children centred with spacingHorizontalXS between, padded spacingHorizontalM on each side; the actions occupy the same place, padded spacingHorizontalS, stacked above it.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:87-106"
+    },
+    {
+      "id": "persona",
+      "part": "persona-layout",
+      "text": "The persona layout is a grid of columns expand icon, media, main (growing) and aside, with main over description in the rows; the media is 32px square padded spacingHorizontalXS on the right and spacingHorizontalXXS on the left, the main pads spacingVerticalMNudge above and below, spacingHorizontalS on the left and spacingHorizontalXS on the right (no bottom padding with a description), and the description is caption1 padded spacingVerticalMNudge below with the same sides.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingVerticalMNudge",
+        "tokens.spacingHorizontalS",
+        "typographyStyles.caption1"
+      ],
+      "values": [
+        {
+          "name": "mediaSize",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "avatarMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "avatarSmall",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTreeItemPersonaLayoutStyles.styles.ts:22-31,92-116; tokens.ts:6-9"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "layout",
+      "text": "Rest: colorSubtleBackground (colorTransparentBackground for the transparent appearance) with colorNeutralForeground2 text and a colorNeutralForeground3 chevron.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useTreeItemStyles.styles.ts:23-24; useTreeItemLayoutStyles.styles.ts:73-75,117"
+    },
+    {
+      "state": "hovered",
+      "part": "layout",
+      "text": "The row fills the appearance's hover token, its text turns colorNeutralForeground2Hover and its chevron colorNeutralForeground3Hover; nothing transitions.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundLightAlphaHover",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground3Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTreeItemLayoutStyles.styles.ts:28-35,65-68,75-77"
+    },
+    {
+      "state": "pressed",
+      "part": "layout",
+      "text": "The row fills the appearance's pressed token, its text turns colorNeutralForeground2Pressed and its chevron colorNeutralForeground3Pressed.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorSubtleBackgroundLightAlphaPressed",
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorNeutralForeground3Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTreeItemLayoutStyles.styles.ts:36-43,69-71,78-80"
+    },
+    {
+      "state": "focused",
+      "part": "layout",
+      "text": "Keyboard focus on an item draws a 2px solid colorStrokeFocus2 outline with borderRadiusMedium around its layout row (not the whole item with its subtree).",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useTreeItemStyles.styles.ts:26-47"
+    },
+    {
+      "state": "expanded",
+      "part": "subtree",
+      "text": "Opening a branch turns its chevron to point down and runs the shared Collapse motion on the subtree, height and opacity growing over durationNormal on curveDecelerateMid; closing shrinks them over durationFast on curveAccelerateMin.",
+      "tokens": [
+        "tokens.durationNormal",
+        "tokens.curveDecelerateMid",
+        "tokens.durationFast",
+        "tokens.curveAccelerateMin"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "height",
+          "opacity"
+        ]
+      },
+      "source": "Collapse.ts; Tree.types.ts:15-18"
+    },
+    {
+      "state": "checked",
+      "part": "selector",
+      "text": "With a selection mode the selector shows the checkbox or radio's checked look; in multiselect a branch reads mixed while only some descendants are checked.",
+      "source": "Tree.types.ts:148-171"
+    },
+    {
+      "state": "other",
+      "label": "actions visible",
+      "part": "actions",
+      "text": "The actions show while the row is hovered or holds focus, or when forced visible, hiding the aside beneath them; otherwise the aside shows.",
+      "source": "TreeItemLayout.types.ts:53-63"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "Clicking a branch row or its chevron, or pressing Enter on it, toggles the branch in the open set and runs onOpenChange; Right arrow opens a closed branch and Left closes an open one.",
+      "source": "Tree.types.ts:39-56; TreeItem.types.ts:21-31"
+    },
+    {
+      "id": "navigate",
+      "text": "Up and Down move to the previous and next visible row, Home and End to the first and last, Right on an open branch to its first child (or into the actions in treegrid mode), Left to the parent, and typing a character moves to the next row starting with it; focus roves so the tree is one tab stop.",
+      "source": "useTreeNavigation.ts:39-87"
+    },
+    {
+      "id": "select",
+      "text": "With selectionMode the selector toggles the row's checked state and runs onCheckedChange with the new checked map; single mode keeps one radio checked.",
+      "source": "Tree.types.ts:70-85,148-171"
+    },
+    {
+      "id": "item-open",
+      "text": "An item's own open input overrides the tree's open set for that branch without changing its children.",
+      "source": "TreeItem.types.ts:48-56"
+    }
+  ],
+  "accessibility": {
+    "role": "tree",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab enters the tree at its current row",
+      "Up and Down move between visible rows",
+      "Right opens a branch or moves to its first child",
+      "Left closes a branch or moves to its parent",
+      "Home and End move to the first and last row",
+      "Enter toggles a branch",
+      "typing moves to the next row starting with that character"
+    ],
+    "semantics": [
+      "the root is role tree and each item role treeitem with aria-level",
+      "a branch reports aria-expanded",
+      "a selectable row reports aria-checked or aria-selected through its selector",
+      "in treegrid navigation the root is role treegrid"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The row heights (32, 24px), the chevron box's 24px, the 2px focus outline, the persona media's 32px and the avatar sizes (32, 24) are constants in the styles and tokens files; only the indent step and spacing are tokens.",
+      "source": "useTreeItemLayoutStyles.styles.ts:25,60,115; useTreeItemStyles.styles.ts:40; useTreeItemPersonaLayoutStyles.styles.ts:95-96; tokens.ts:6-9"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The focus outline width is written as a 2px literal with a FIXME saying strokeWidthThick caused bugs; the value is the same as the token's.",
+      "tokens": [
+        "tokens.strokeWidthThick"
+      ],
+      "source": "useTreeItemStyles.styles.ts:39-40"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The item's own background is colorSubtleBackground but the hover and press fills are set on the layout row, so a branch's subtree keeps the rest colour while its header row is hovered.",
+      "tokens": [
+        "tokens.colorSubtleBackground"
+      ],
+      "source": "useTreeItemStyles.styles.ts:23; useTreeItemLayoutStyles.styles.ts:28-43"
+    },
+    {
+      "kind": "inferred",
+      "text": "The chevron glyph and its turn from right to down come from the component's render, not the styles; an implementation rotates its chevron icon when the branch is open.",
+      "source": "useTreeItemLayoutStyles.styles.ts:111-120; fluent2:tree"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles add no forced-colours rules; under high contrast rows read the theme's bindings of the subtle and transparent families, and the focus outline is the theme's colorStrokeFocus2.",
+      "tokens": [
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useTreeItemLayoutStyles.styles.ts:22-44"
+    }
+  ]
+}

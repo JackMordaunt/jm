@@ -1,0 +1,581 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "drawer",
+  "name": "Drawer",
+  "status": "stable",
+  "summary": "A panel anchored to the start, end or bottom edge of the screen or of a region, holding secondary content or navigation: an overlay drawer floats over the page behind a backdrop and is dismissed, an inline drawer takes its space in the layout beside the content. Use a dialog for a decision that blocks the page.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentBackground",
+    "tokens.colorBackgroundOverlay",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.shadow64",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalL",
+    "tokens.spacingHorizontalXXL",
+    "tokens.spacingVerticalS",
+    "tokens.spacingVerticalL",
+    "tokens.spacingVerticalXXL",
+    "typographyStyles.subtitle1",
+    "tokens.durationGentle",
+    "tokens.durationSlow",
+    "tokens.durationSlower",
+    "tokens.durationUltraSlow",
+    "tokens.durationNormal",
+    "tokens.curveDecelerateMid",
+    "tokens.curveAccelerateMin",
+    "tokens.curveLinear",
+    "tokens.curveEasyEase"
+  ],
+  "references": {
+    "react": [
+      "Drawer.types.ts",
+      "useDrawer.ts",
+      "useDrawerStyles.styles.ts",
+      "DrawerBase.types.ts",
+      "useDrawerDefaultProps.ts",
+      "useDrawerBaseStyles.styles.ts",
+      "drawerMotions.ts",
+      "drawerSeparatorStyles.ts",
+      "OverlayDrawer.types.ts",
+      "useOverlayDrawerStyles.styles.ts",
+      "InlineDrawer.types.ts",
+      "useInlineDrawerStyles.styles.ts",
+      "DrawerHeader.types.ts",
+      "useDrawerHeaderStyles.styles.ts",
+      "DrawerHeaderTitle.types.ts",
+      "useDrawerHeaderTitleStyles.styles.ts",
+      "useDrawerHeaderNavigationStyles.styles.ts",
+      "DrawerBody.types.ts",
+      "useDrawerBodyStyles.styles.ts",
+      "useDrawerFooterStyles.styles.ts"
+    ],
+    "fluent2": [
+      "drawer"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "overlay",
+        "inline"
+      ],
+      "required": false,
+      "default": "overlay",
+      "description": "Drawer: which kind it renders as; the two kinds share position, size, open and the header, body and footer parts."
+    },
+    {
+      "name": "position",
+      "type": "enum",
+      "values": [
+        "start",
+        "end",
+        "bottom"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "The edge the drawer is anchored to; start and end mirror under right-to-left."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "full"
+      ],
+      "required": false,
+      "default": "small",
+      "description": "The drawer's width (its height when position is bottom): 320, 592, 940px or the whole viewport."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the drawer shows; the overlay drawer is always controlled by it."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "OverlayDrawer: runs when the backdrop is clicked or Escape is pressed, asking the caller to close, as the dialog's does."
+    },
+    {
+      "name": "modalType",
+      "type": "enum",
+      "values": [
+        "modal",
+        "non-modal",
+        "alert"
+      ],
+      "required": false,
+      "default": "modal",
+      "description": "OverlayDrawer: the dialog behaviour it wraps: modal shows the backdrop and traps focus, non-modal has no backdrop, alert ignores backdrop clicks and Escape."
+    },
+    {
+      "name": "unmountOnClose",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Whether a closed drawer is removed entirely or kept, hidden, so its content's state survives."
+    },
+    {
+      "name": "separator",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "InlineDrawer: draws a 1px line on the edge that meets the content."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "Drawer: a DrawerHeader, a DrawerBody and a DrawerFooter, in that order, each optional."
+    },
+    {
+      "name": "heading",
+      "type": "slot",
+      "required": false,
+      "description": "DrawerHeaderTitle: the title text, an h2 by default."
+    },
+    {
+      "name": "action",
+      "type": "slot",
+      "required": false,
+      "description": "DrawerHeaderTitle: the close button at the title's end, pulled spacingHorizontalS into the header's padding."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "surface",
+      "name": "Drawer surface",
+      "description": "A border-box flex column, Background 1 with Foreground 1 text, as wide as its size (or as tall, at the bottom), clipping its overflow, holding the header, body and footer.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "id": "backdrop",
+      "name": "Backdrop",
+      "description": "OverlayDrawer, modal only: the dialog's colorBackgroundOverlay scrim behind the surface, fading in and out with it.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorBackgroundOverlay"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "DrawerHeader",
+      "description": "A full-width flex column padded spacingVerticalXXL and spacingHorizontalXXL above and beside, spacingVerticalS below, spacingHorizontalS between its children; when the body scrolls it draws a Stroke 1 line along its bottom.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalXXL",
+        "tokens.spacingHorizontalXXL",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS",
+        "tokens.colorNeutralStroke1"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "DrawerHeaderTitle",
+      "description": "A row spacing its heading and action apart with spacingHorizontalS between: the heading in the dialog title's subtitle1, the action pulled spacingHorizontalS to the end.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.subtitle1",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "id": "navigation",
+      "name": "DrawerHeaderNavigation",
+      "description": "A toolbar row above the title, pulled spacingVerticalS up and spacingHorizontalL out on each side so its buttons align with the header's padding.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalL"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "DrawerBody",
+      "description": "The scrolling middle: flex 1, padded spacingHorizontalXXL on each side, plus spacingHorizontalXXL and 1px above when it is the first child and below when it is the last.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalXXL"
+      ]
+    },
+    {
+      "id": "footer",
+      "name": "DrawerFooter",
+      "description": "A full-width row of actions aligned to the start, spacingHorizontalS apart, padded spacingVerticalL above, spacingHorizontalXXL beside and spacingVerticalXXL below; when the body scrolls it draws a Stroke 1 line along its top.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXXL",
+        "tokens.spacingVerticalXXL",
+        "tokens.spacingHorizontalS",
+        "tokens.colorNeutralStroke1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "type",
+      "value": "overlay",
+      "default": true,
+      "description": "Fixed to the viewport (or its mount region), above the page, entering with shadow64 and a backdrop; it is a dialog underneath, so it is modal by default.",
+      "tokens": [
+        "tokens.shadow64",
+        "tokens.colorBackgroundOverlay"
+      ]
+    },
+    {
+      "axis": "type",
+      "value": "inline",
+      "description": "In the flow of the layout, relatively positioned, with an optional 1px Background 3 separator on the edge facing the content and no shadow or backdrop.",
+      "tokens": [
+        "tokens.colorNeutralBackground3"
+      ]
+    },
+    {
+      "axis": "position",
+      "value": "start",
+      "default": true,
+      "description": "Anchored to the start edge with a strokeWidthThin transparent border on its end side.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "position",
+      "value": "end",
+      "description": "Anchored to the end edge with a strokeWidthThin transparent border on its start side.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "position",
+      "value": "bottom",
+      "description": "Anchored to the bottom edge, the full viewport width (overlay) or 100% (inline), the size setting its height instead of its width."
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "default": true,
+      "description": "320px, entering over durationGentle."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "description": "592px, entering over durationSlow."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "940px, entering over durationSlower."
+    },
+    {
+      "axis": "size",
+      "value": "full",
+      "description": "The whole viewport width (100% at the bottom), entering over durationUltraSlow."
+    }
+  ],
+  "layout": [
+    {
+      "id": "surface",
+      "part": "surface",
+      "text": "The surface is a border-box flex column, its children aligned to the start on both axes, overflow hidden, width the size variable capped at the viewport width, height auto capped at the viewport height, filled colorNeutralBackground1 with colorNeutralForeground1 text.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useDrawerBaseStyles.styles.ts:18-32"
+    },
+    {
+      "id": "sizes",
+      "part": "surface",
+      "text": "The size variable is 320px for small, 592px for medium, 940px for large and the viewport width for full; at the bottom the same three numbers become the height and full becomes 100%.",
+      "values": [
+        {
+          "name": "small",
+          "value": 320,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 592,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 940,
+          "unit": "px"
+        },
+        {
+          "name": "full",
+          "value": 100,
+          "unit": "percent"
+        }
+      ],
+      "source": "useDrawerBaseStyles.styles.ts:56-96; DrawerBase.types.ts:46-56"
+    },
+    {
+      "id": "position",
+      "part": "surface",
+      "text": "Start pins the surface to the left with a strokeWidthThin colorTransparentStroke right border, end to the right with the border on the left, and bottom to the bottom with no border; the overlay kind is position fixed from top to bottom (or top auto at the bottom, 100vw wide), the inline kind position relative.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useDrawerBaseStyles.styles.ts:37-54; useOverlayDrawerStyles.styles.ts:20-40; useInlineDrawerStyles.styles.ts:14-35"
+    },
+    {
+      "id": "separator",
+      "part": "surface",
+      "text": "An inline drawer with separator draws a 1px solid colorNeutralBackground3 border on the edge that meets the content: the right edge at start, the left at end, the top at bottom.",
+      "tokens": [
+        "tokens.colorNeutralBackground3"
+      ],
+      "values": [
+        {
+          "name": "separatorWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useInlineDrawerStyles.styles.ts:22-27,52-70"
+    },
+    {
+      "id": "header",
+      "part": "header",
+      "text": "The header is a full-width border-box flex column padded spacingVerticalXXL on top, spacingHorizontalXXL on each side and spacingVerticalS below, with spacingHorizontalS between its children, stretched across the surface and stacked above the body.",
+      "tokens": [
+        "tokens.spacingVerticalXXL",
+        "tokens.spacingHorizontalXXL",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useDrawerHeaderStyles.styles.ts:18-29"
+    },
+    {
+      "id": "title",
+      "part": "title",
+      "text": "The title is a flex row with its heading and action pushed apart, centred vertically, spacingHorizontalS between them; the action carries a negative spacingHorizontalS end margin so a subtle close button's edge meets the header's padding, and the heading takes the dialog title's styles.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "typographyStyles.subtitle1"
+      ],
+      "source": "useDrawerHeaderTitleStyles.styles.ts:19-30,49-56"
+    },
+    {
+      "id": "navigation",
+      "part": "navigation",
+      "text": "The header navigation carries a negative spacingVerticalS block margin and a negative spacingHorizontalL inline margin, pulling its toolbar back into the header's padding.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalL"
+      ],
+      "source": "useDrawerHeaderNavigationStyles.styles.ts:16-18"
+    },
+    {
+      "id": "body",
+      "part": "body",
+      "text": "The body takes the remaining height (flex 1), stretches across, scrolls its overflow and pads spacingHorizontalXXL on each side; as the first child it also pads spacingHorizontalXXL plus 1px on top, and as the last child the same below.",
+      "tokens": [
+        "tokens.spacingHorizontalXXL"
+      ],
+      "values": [
+        {
+          "name": "edgeExtra",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useDrawerBodyStyles.styles.ts:16-31"
+    },
+    {
+      "id": "footer",
+      "part": "footer",
+      "text": "The footer is a full-width border-box flex row, its items aligned to the start and centred vertically with spacingHorizontalS between, padded spacingVerticalL on top, spacingHorizontalXXL on each side and spacingVerticalXXL below.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXXL",
+        "tokens.spacingVerticalXXL",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useDrawerFooterStyles.styles.ts:18-29"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "part": "surface",
+      "text": "Opening slides the surface in from its edge (the size's distance) while its opacity rises from 0 to 1, over the size's duration on curveDecelerateMid; the overlay kind also grows its shadow from none to shadow64 and fades the backdrop in on curveLinear over the same duration.",
+      "tokens": [
+        "tokens.shadow64",
+        "tokens.colorTransparentBackground",
+        "tokens.durationGentle",
+        "tokens.durationSlow",
+        "tokens.durationSlower",
+        "tokens.durationUltraSlow",
+        "tokens.curveDecelerateMid",
+        "tokens.curveLinear"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform",
+          "opacity",
+          "box-shadow"
+        ]
+      },
+      "source": "drawerMotions.ts:14-19,24-46,51-80,85-116,121-129"
+    },
+    {
+      "state": "collapsed",
+      "part": "surface",
+      "text": "Closing plays the same keyframes backwards on curveAccelerateMin over the same duration; an inline drawer's width (height at the bottom) goes to 0 and its border is dropped while it exits.",
+      "tokens": [
+        "tokens.curveAccelerateMin"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "easing": "tokens.curveAccelerateMin",
+        "properties": [
+          "transform",
+          "opacity",
+          "box-shadow"
+        ]
+      },
+      "source": "drawerMotions.ts:74-79,110-115; useInlineDrawerStyles.styles.ts:37-50,72-86,103"
+    },
+    {
+      "state": "scrolled",
+      "part": "header",
+      "text": "While the body can scroll, the header's bottom and the footer's top carry a 1px colorNeutralStroke1 line whose opacity is 1 when content is scrolled past that edge (the header once scrolled from the top, the footer until scrolled to the bottom) and 0 otherwise, easing over durationNormal on curveEasyEase.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.durationNormal",
+        "tokens.curveEasyEase"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "opacity"
+        ]
+      },
+      "source": "drawerSeparatorStyles.ts:4-15; useDrawerHeaderStyles.styles.ts:31-60; useDrawerFooterStyles.styles.ts:31-60"
+    },
+    {
+      "state": "focused",
+      "part": "surface",
+      "text": "An overlay drawer's surface takes the default focus outline (2px colorStrokeFocus2 outside, borderRadiusMedium) when focus lands on it, as a dialog surface does.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useOverlayDrawerStyles.styles.ts:20-26"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "kinds",
+      "text": "Drawer renders an OverlayDrawer or an InlineDrawer by type, passing everything else through; both share position, size, open and unmountOnClose with the same defaults.",
+      "source": "useDrawer.ts:17-28; useDrawerDefaultProps.ts:3-17"
+    },
+    {
+      "id": "overlay-dialog",
+      "text": "An overlay drawer is a dialog: modal by default with the backdrop, focus trapped inside and a backdrop click or Escape asking to close through onOpenChange; non-modal drops the backdrop; alert ignores both dismissals.",
+      "source": "OverlayDrawer.types.ts:42-50"
+    },
+    {
+      "id": "controlled",
+      "text": "The overlay drawer only opens and closes through open; it has no uncontrolled mode.",
+      "source": "OverlayDrawer.types.ts:45-49"
+    },
+    {
+      "id": "unmount",
+      "text": "With unmountOnClose false a closed drawer stays mounted and hidden so the state of its content survives; by default it is removed once its exit motion ends.",
+      "source": "DrawerBase.types.ts:65-72"
+    },
+    {
+      "id": "rtl",
+      "text": "Under right-to-left the start and end edges swap and the slide reverses direction.",
+      "source": "drawerMotions.ts:24-46"
+    }
+  ],
+  "accessibility": {
+    "role": "dialog",
+    "minTargetPx": null,
+    "keyboard": [
+      "Escape closes a modal or non-modal overlay drawer",
+      "Tab cycles inside a modal overlay drawer",
+      "the close button in the title is a button"
+    ],
+    "semantics": [
+      "an overlay drawer is a dialog, aria-modal when modal, labelled by its heading",
+      "an inline drawer is an aside or a plain region with no dialog semantics",
+      "the heading is an h2 by default; a div heading needs role heading and aria-level"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The widths 320, 592 and 940px, the separator's 1px, the body's extra 1px edge padding and the separator lines' 1px are constants in the styles files; the per-size durations map onto duration tokens in the motion file.",
+      "source": "useDrawerBaseStyles.styles.ts:56-85; useInlineDrawerStyles.styles.ts:22; useDrawerBodyStyles.styles.ts:24-30; drawerSeparatorStyles.ts:5; drawerMotions.ts:14-19"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The overlay drawer's shadow64 exists only in its motion keyframes: the surface's styles set no box-shadow, so a renderer that skips the motion must still paint shadow64 in the open state.",
+      "tokens": [
+        "tokens.shadow64"
+      ],
+      "source": "drawerMotions.ts:85-101; useDrawerBaseStyles.styles.ts:18-32"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The header and footer separator lines are drawn only while the body reports a scroll state other than none, that is when its content overflows; a body that fits shows no lines at all.",
+      "source": "useDrawerHeaderStyles.styles.ts:57-58; useDrawerFooterStyles.styles.ts:57-58"
+    },
+    {
+      "kind": "inferred",
+      "text": "The backdrop colour and the dialog behaviours come from the dialog spec, which the overlay drawer composes; the drawer files set no backdrop colour of their own.",
+      "tokens": [
+        "tokens.colorBackgroundOverlay"
+      ],
+      "source": "OverlayDrawer.types.ts:32-37; useOverlayDrawerStyles.styles.ts:63-66"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the transparent side border becomes visible (the theme binds colorTransparentStroke to CanvasText) and the shadow vanishes, so the drawer's edge still reads.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useDrawerBaseStyles.styles.ts:39-50"
+    }
+  ]
+}

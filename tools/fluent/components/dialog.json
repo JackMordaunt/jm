@@ -1,0 +1,613 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "dialog",
+  "name": "Dialog",
+  "status": "stable",
+  "summary": "A window over the page that asks for a decision or holds a short focused task, with a title, content and a row of actions. Use modal to block the page until it is dismissed, alert when the user must choose an action, non-modal to let the page stay usable; use a drawer for long or side-anchored work.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorTransparentStroke",
+    "tokens.colorBackgroundOverlay",
+    "tokens.colorTransparentBackground",
+    "tokens.borderRadiusXLarge",
+    "tokens.borderRadiusMedium",
+    "tokens.shadow64",
+    "tokens.strokeWidthThick",
+    "tokens.colorStrokeFocus2",
+    "typographyStyles.subtitle1",
+    "typographyStyles.body1",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase500",
+    "tokens.lineHeightBase500",
+    "tokens.fontWeightSemibold",
+    "tokens.fontSizeBase300",
+    "tokens.lineHeightBase300",
+    "tokens.fontWeightRegular",
+    "tokens.durationGentle",
+    "tokens.curveDecelerateMid",
+    "tokens.curveAccelerateMin",
+    "tokens.curveEasyEase"
+  ],
+  "references": {
+    "react": [
+      "Dialog.types.ts",
+      "DialogTrigger.types.ts",
+      "useDialogSurfaceStyles.styles.ts",
+      "DialogSurface.types.ts",
+      "useDialogBodyStyles.styles.ts",
+      "DialogBody.types.ts",
+      "useDialogTitleStyles.styles.ts",
+      "DialogTitle.types.ts",
+      "useDialogContentStyles.styles.ts",
+      "DialogContent.types.ts",
+      "useDialogActionsStyles.styles.ts",
+      "DialogActions.types.ts",
+      "constants.ts",
+      "DialogSurfaceMotion.ts",
+      "DialogBackdropMotion.ts",
+      "Scale.ts",
+      "Fade.ts"
+    ],
+    "fluent2": [
+      "dialog"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "modalType",
+      "type": "enum",
+      "values": [
+        "modal",
+        "non-modal",
+        "alert"
+      ],
+      "required": false,
+      "default": "modal",
+      "description": "Dialog: modal dims the page, traps Tab and closes on a backdrop click; alert is modal but ignores the backdrop, so an action must close it; non-modal leaves the page usable, has no backdrop and gets a close button in its title."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Dialog: controls visibility from outside."
+    },
+    {
+      "name": "defaultOpen",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Dialog: the initial visibility when the dialog controls itself."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Dialog: runs when a trigger, Escape or a backdrop click asks to open or close, with the new open value and which of the three caused it."
+    },
+    {
+      "name": "unmountOnClose",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Dialog: removes the surface when closed; false keeps it mounted, hidden and inert, so its content keeps its state."
+    },
+    {
+      "name": "inertTrapFocus",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Dialog: traps focus by making everything outside inert, as the HTML dialog's showModal does."
+    },
+    {
+      "name": "action",
+      "type": "enum",
+      "values": [
+        "open",
+        "close"
+      ],
+      "required": false,
+      "description": "DialogTrigger: whether its child opens or closes the dialog; defaults to open outside the surface and close inside it."
+    },
+    {
+      "name": "backdrop",
+      "type": "enum",
+      "values": [
+        "dimmed",
+        "transparent"
+      ],
+      "required": false,
+      "description": "DialogSurface: the backdrop's appearance; dimmed by default, transparent by default for a dialog nested in another."
+    },
+    {
+      "name": "title",
+      "type": "slot",
+      "required": true,
+      "description": "DialogTitle: the heading, an h2 by default; its action slot holds a control at the title's end, by default a close button on a non-modal dialog."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": false,
+      "description": "DialogContent: the body text or form; it scrolls when the dialog is taller than the viewport."
+    },
+    {
+      "name": "position",
+      "type": "enum",
+      "values": [
+        "end",
+        "start"
+      ],
+      "required": false,
+      "default": "end",
+      "description": "DialogActions: whether a row of actions sits at the end (the usual place for the primary action) or the start of the body; two rows can be used at once."
+    },
+    {
+      "name": "fluid",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "DialogActions: stretches the actions row across the full width of the body."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "trigger",
+      "name": "DialogTrigger",
+      "description": "Wraps one button that opens (or, inside the surface, closes) the dialog; it adds aria-haspopup=dialog and no styling.",
+      "optional": true
+    },
+    {
+      "id": "backdrop",
+      "name": "Backdrop",
+      "description": "A full-viewport fixed layer in colorBackgroundOverlay behind the surface; present for modal and alert dialogs.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorBackgroundOverlay"
+      ]
+    },
+    {
+      "id": "surface",
+      "name": "DialogSurface",
+      "description": "The window: a fixed, centred box with the XLarge radius, 24px padding, a 1px transparent border and the shadow64 lift.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.borderRadiusXLarge",
+        "tokens.shadow64"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "DialogBody",
+      "description": "The grid inside the surface that places title, title action, content and actions, 8px apart."
+    },
+    {
+      "id": "title",
+      "name": "DialogTitle",
+      "description": "The heading in subtitle1, spanning the first two grid columns.",
+      "tokens": [
+        "typographyStyles.subtitle1"
+      ]
+    },
+    {
+      "id": "title-action",
+      "name": "Title action",
+      "description": "A control at the top-end corner beside the title, typically a close button; rendered by default for non-modal dialogs.",
+      "optional": true
+    },
+    {
+      "id": "content",
+      "name": "DialogContent",
+      "description": "The scrollable body text in body1, the full width of the grid.",
+      "tokens": [
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "DialogActions",
+      "description": "A flex row of buttons, 8px apart, aligned to the end (or start) of the grid's last row.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "modalType",
+      "value": "modal",
+      "default": true,
+      "description": "Backdrop dimmed with colorBackgroundOverlay; Tab is trapped in the surface; Escape and a backdrop click close it.",
+      "tokens": [
+        "tokens.colorBackgroundOverlay"
+      ]
+    },
+    {
+      "axis": "modalType",
+      "value": "alert",
+      "description": "As modal, but a backdrop click does nothing; only an action (or Escape) closes it.",
+      "tokens": [
+        "tokens.colorBackgroundOverlay"
+      ]
+    },
+    {
+      "axis": "modalType",
+      "value": "non-modal",
+      "description": "No backdrop and no focus trap; the title gets a default close button in its action slot."
+    },
+    {
+      "axis": "backdrop",
+      "value": "transparent",
+      "description": "The backdrop keeps catching clicks but paints colorTransparentBackground; the default for a dialog opened from inside another, so overlays do not stack their dimming.",
+      "tokens": [
+        "tokens.colorTransparentBackground"
+      ]
+    },
+    {
+      "axis": "actionsPosition",
+      "value": "end",
+      "default": true,
+      "description": "The actions occupy the grid's last two columns and hug the end edge."
+    },
+    {
+      "axis": "actionsPosition",
+      "value": "start",
+      "description": "The actions occupy the first column and hug the start edge; used for a secondary row (such as a checkbox or tertiary link) opposite the end actions."
+    },
+    {
+      "axis": "actionsWidth",
+      "value": "fluid",
+      "description": "The actions row spans every column instead of its usual share."
+    }
+  ],
+  "layout": [
+    {
+      "id": "surface-box",
+      "part": "surface",
+      "text": "The surface is a fixed-position block with inset 0 and auto margins, so it centres in the viewport; it is as wide as the viewport up to a 600px maximum, as tall as its content up to the viewport height, border-box.",
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 600,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:24-41"
+    },
+    {
+      "id": "surface-skin",
+      "part": "surface",
+      "text": "It pads SURFACE_PADDING on every side inside a SURFACE_BORDER_WIDTH border of colorTransparentStroke, rounds to borderRadiusXLarge, fills colorNeutralBackground1 with colorNeutralForeground1 text and casts shadow64.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusXLarge",
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.shadow64"
+      ],
+      "values": [
+        {
+          "name": "padding",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:27-32,42-46; constants.ts:3,5"
+    },
+    {
+      "id": "narrow",
+      "part": "surface",
+      "text": "At a viewport 480px wide or less the surface's maximum width becomes the full viewport width.",
+      "values": [
+        {
+          "name": "breakpointMaxWidth",
+          "value": 480,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:48-50; constants.ts:1"
+    },
+    {
+      "id": "short",
+      "part": "surface",
+      "text": "On a viewport 359px tall or less the whole surface scrolls instead of the content: overflowY auto on the surface, and the right padding shrinks by the 4px scrollbar offset while the top, right and bottom borders widen to it, so the scrollbar clears the rounded corners.",
+      "values": [
+        {
+          "name": "shortScreenMaxHeight",
+          "value": 359,
+          "unit": "px"
+        },
+        {
+          "name": "scrollbarOffset",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:52-60; constants.ts:2,6"
+    },
+    {
+      "id": "backdrop",
+      "part": "backdrop",
+      "text": "The backdrop is a fixed layer at inset 0 filled with colorBackgroundOverlay; transparent appearance, or a nested dialog without an explicit appearance, paints colorTransparentBackground instead.",
+      "tokens": [
+        "tokens.colorBackgroundOverlay",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:63-72,88,100-108"
+    },
+    {
+      "id": "body-grid",
+      "part": "body",
+      "text": "The body is a grid with DIALOG_GAP between cells, columns 1fr 1fr auto and rows auto then 1fr (actions fall into an implicit third row); its maximum height is the viewport less twice SURFACE_PADDING.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "surfacePadding",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogBodyStyles.styles.ts:20-27; constants.ts:3-4"
+    },
+    {
+      "id": "body-narrow",
+      "part": "body",
+      "text": "Below the breakpoint the body is at most the viewport wide and its rows become auto, 1fr, auto; on a short viewport it drops its maximum height and lets the surface scroll.",
+      "source": "useDialogBodyStyles.styles.ts:29-36; constants.ts:1-2"
+    },
+    {
+      "id": "title",
+      "part": "title",
+      "text": "The title has no margin, sets subtitle1, and sits in row 1 across columns 1 and 2; without an action it spans all three columns.",
+      "tokens": [
+        "typographyStyles.subtitle1"
+      ],
+      "source": "useDialogTitleStyles.styles.ts:17-30,76"
+    },
+    {
+      "id": "title-action",
+      "part": "title-action",
+      "text": "The action sits in row 1, column 3, aligned to the end and top of its cell. The default close button is an unpadded, borderless content-box button inheriting the title's colours with line height 0, so only its icon sizes it.",
+      "values": [
+        {
+          "name": "padding",
+          "value": 0,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogTitleStyles.styles.ts:35-41,47-62"
+    },
+    {
+      "id": "content",
+      "part": "content",
+      "text": "Content fills row 2 across all columns in body1, scrolls vertically when too tall, and is at least 32px high; it pads strokeWidthThick and pulls back by the same negative margin, so children's focus outlines are not clipped by its scroll box.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.strokeWidthThick"
+      ],
+      "values": [
+        {
+          "name": "minHeight",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogContentStyles.styles.ts:16-31"
+    },
+    {
+      "id": "actions",
+      "part": "actions",
+      "text": "Actions are a flex row DIALOG_GAP apart in row 3, as tall as their content. End actions span columns 2 to 3 and justify to the end; start actions sit in column 1 and justify to the start; fluid stretches either across all columns.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogActionsStyles.styles.ts:15-21,28-55,64-72; constants.ts:4"
+    },
+    {
+      "id": "actions-narrow",
+      "part": "actions",
+      "text": "Below the breakpoint actions stack vertically and stretch to the full width; start actions take row 3 and end actions row 4, so the primary end actions end up last.",
+      "source": "useDialogActionsStyles.styles.ts:22-25,33-47; constants.ts:1"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "part": "surface",
+      "text": "Open: the surface enters by scaling from 0.85 to 1 while fading in, over durationGentle with curveDecelerateMid, ending on its shadow64; the backdrop fades in over durationGentle with curveEasyEase.",
+      "tokens": [
+        "tokens.shadow64"
+      ],
+      "source": "DialogSurfaceMotion.ts:4-7; Scale.ts:20-31,44-45; useDialogSurfaceStyles.styles.ts:44-46",
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform",
+          "opacity"
+        ]
+      },
+      "values": [
+        {
+          "name": "outScale",
+          "value": 0.85,
+          "unit": "ratio"
+        }
+      ]
+    },
+    {
+      "state": "other",
+      "label": "closed, kept mounted",
+      "part": "surface",
+      "text": "With unmountOnClose false, a closed dialog's surface and backdrop stay in the tree but ignore the pointer.",
+      "source": "useDialogSurfaceStyles.styles.ts:74-76,90,96,105; Dialog.types.ts:111-118"
+    },
+    {
+      "state": "focused",
+      "part": "surface",
+      "text": "The surface itself carries createFocusOutlineStyle: when focus lands on it (it holds no focusable element), a 2px colorStrokeFocus2 outline is drawn just outside it with borderRadiusMedium corners. The default close button draws the same outline around itself.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:25; useDialogTitleStyles.styles.ts:47-48; createFocusOutlineStyle.ts:55-112"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open-close",
+      "text": "A DialogTrigger outside the surface opens the dialog; one inside closes it; onOpenChange reports each request with its type (triggerClick, escapeKeyDown or backdropClick).",
+      "source": "DialogTrigger.types.ts:7-22; Dialog.types.ts:23-38"
+    },
+    {
+      "id": "escape",
+      "text": "Escape closes every modal type.",
+      "source": "Dialog.types.ts:23-28"
+    },
+    {
+      "id": "backdrop-click",
+      "text": "A backdrop click closes a modal dialog but not an alert dialog.",
+      "source": "Dialog.types.ts:29-33,60-79"
+    },
+    {
+      "id": "focus-trap",
+      "text": "Modal and alert trap Tab inside the surface; inertTrapFocus instead makes the rest of the page inert. Non-modal lets Tab leave the surface.",
+      "source": "Dialog.types.ts:60-79,104-110"
+    },
+    {
+      "id": "initial-focus",
+      "text": "Opening moves focus to the first focusable element in the surface, or the surface itself if it has none; closing returns focus to the trigger.",
+      "source": "fluent2:dialog"
+    },
+    {
+      "id": "surface-enter",
+      "part": "surface",
+      "text": "The surface enters by scaling from 0.85 to 1 and fading from 0 to 1 together, over durationGentle with curveDecelerateMid.",
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform",
+          "opacity"
+        ]
+      },
+      "values": [
+        {
+          "name": "outScale",
+          "value": 0.85,
+          "unit": "ratio"
+        }
+      ],
+      "source": "Dialog.types.ts:9-15; DialogSurfaceMotion.ts:4-7; Scale.ts:20-31,44-45"
+    },
+    {
+      "id": "surface-exit",
+      "part": "surface",
+      "text": "The surface exits by scaling back to 0.85 and fading out, over durationGentle with curveAccelerateMin.",
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "easing": "tokens.curveAccelerateMin",
+        "properties": [
+          "transform",
+          "opacity"
+        ]
+      },
+      "values": [
+        {
+          "name": "outScale",
+          "value": 0.85,
+          "unit": "ratio"
+        }
+      ],
+      "source": "DialogSurfaceMotion.ts:4-10; Scale.ts:32-47"
+    },
+    {
+      "id": "backdrop-fade",
+      "part": "backdrop",
+      "text": "The backdrop fades from 0 to 1 opacity on open and back on close, over durationGentle with curveEasyEase both ways.",
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "opacity"
+        ]
+      },
+      "source": "DialogSurface.types.ts:40-44; DialogBackdropMotion.ts:1-3; Fade.ts:18-39,46"
+    },
+    {
+      "id": "nested",
+      "text": "A dialog opened from inside another shows a transparent backdrop by default so the dimming is not doubled; backdrop appearance dimmed overrides this.",
+      "source": "DialogSurface.types.ts:8-20,70-75; useDialogSurfaceStyles.styles.ts:88"
+    }
+  ],
+  "accessibility": {
+    "role": "dialog",
+    "minTargetPx": null,
+    "keyboard": [
+      "Escape closes the dialog",
+      "Tab and Shift+Tab cycle within the surface for modal and alert",
+      "Enter or Space on a DialogTrigger opens or closes it"
+    ],
+    "semantics": [
+      "role dialog, or alertdialog for modalType alert",
+      "aria-modal true for modal and alert",
+      "aria-labelledby names the dialog by its DialogTitle",
+      "the trigger reports aria-haspopup dialog",
+      "the backdrop is aria-hidden"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The surface's 600px maximum width and the content's 32px minimum height are constants in the styles files; the 24px surface padding, 1px surface border, 8px grid gap, 4px scrollbar offset and the 480px-wide and 359px-tall breakpoints are constants in the dialog's constants.ts. No token gives any of them.",
+      "source": "useDialogSurfaceStyles.styles.ts:39; useDialogContentStyles.styles.ts:21; constants.ts:1-6"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The surface's focus outline keeps createFocusOutlineStyle's default borderRadiusMedium corners while the surface itself is rounded to borderRadiusXLarge, so the ring's corners are tighter than the surface's; this breaks the foundation rule that a focus outline follows the component's radius.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusXLarge"
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:25,32; createFocusOutlineStyle.ts:89-112"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The surface is not sized to its content's width: fixed positioning with inset 0 stretches it to the viewport, capped at 600px. A dialog wider than 600px needs the caller to override maxWidth.",
+      "source": "useDialogSurfaceStyles.styles.ts:26-28,37-39"
+    },
+    {
+      "kind": "inferred",
+      "text": "Which modal types render a backdrop, the default close button on non-modal titles, and the role and aria wiring are set in hooks that are not vendored; the types file's descriptions and the Fluent 2 page state them.",
+      "source": "Dialog.types.ts:60-79; DialogTitle.types.ts:9-12; fluent2:dialog"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles files have no forced-colors rules of their own. The surface's 1px colorTransparentStroke border becomes visible under the high-contrast theme and outlines the window while shadow64 vanishes; the focus outline turns Highlight through createFocusOutlineStyle.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useDialogSurfaceStyles.styles.ts:31; createFocusOutlineStyle.ts:60-64"
+    }
+  ]
+}

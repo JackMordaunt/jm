@@ -1,0 +1,577 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "input",
+  "name": "Input",
+  "status": "stable",
+  "summary": "A single-line text entry control with optional content (usually an icon) before and after the text. Choose it over Textarea for one line of text; wrap it in a Field for its label, hint and validation message.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorTransparentBackground",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentStrokeInteractive",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.shadow2",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "typographyStyles.body2",
+    "tokens.durationUltraFast",
+    "tokens.durationNormal",
+    "tokens.curveAccelerateMid",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "useInputStyles.styles.ts",
+      "Input.types.ts"
+    ],
+    "fluent2": [
+      "input"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter",
+        "filled-darker-shadow",
+        "filled-lighter-shadow"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "Colour and border treatment. outline is a full border with a stronger bottom edge; underline a bottom border only; filled-darker and filled-lighter a borderless fill. The two -shadow values are deprecated."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Selects minimum height (24, 32, 40), text style, padding and icon size together."
+    },
+    {
+      "name": "contentBefore",
+      "type": "slot",
+      "required": false,
+      "description": "Content inside the border before the text, usually one icon."
+    },
+    {
+      "name": "contentAfter",
+      "type": "slot",
+      "required": false,
+      "description": "Content inside the border after the text, usually one icon or a small button."
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "text",
+        "email",
+        "password",
+        "search",
+        "tel",
+        "url",
+        "date",
+        "datetime-local",
+        "month",
+        "number",
+        "time",
+        "week"
+      ],
+      "required": false,
+      "default": "text",
+      "description": "The native text-like input type. No type gets custom styling; some trigger browser chrome that does not match Fluent."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The current value, for a controlled input; mutually exclusive with defaultValue."
+    },
+    {
+      "name": "defaultValue",
+      "type": "string",
+      "required": false,
+      "description": "The initial value, for an uncontrolled input."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Native placeholder text, drawn in colorNeutralForeground4."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Native disabled on the input element: disabled colours, no focus line, no input."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the new value each time the user edits the text."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "The inline-flex wrapper that looks like the field: background, border, radius, the bottom focus line, and the horizontal padding beside any content slots. It receives className and style."
+    },
+    {
+      "id": "input",
+      "name": "Text",
+      "description": "The native input element: borderless, transparent, growing to fill the row, inheriting the root's typography. Native props and the ref go here."
+    },
+    {
+      "id": "content-before",
+      "name": "Content before",
+      "description": "A flex slot before the text inside the border, coloured as an icon.",
+      "optional": true
+    },
+    {
+      "id": "content-after",
+      "name": "Content after",
+      "description": "A flex slot after the text inside the border, coloured as an icon.",
+      "optional": true
+    },
+    {
+      "id": "focus-line",
+      "name": "Focus line",
+      "description": "A 2px bottom line drawn by the root's ::after pseudo-element, scaled from zero width to full width while focus is within the field."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "Background 1 fill; a 1px Stroke 1 border whose bottom edge is StrokeAccessible; hover and press step both colours.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "underline",
+      "description": "Transparent background, no radius and only the bottom border, in StrokeAccessible; the focus line spans exactly the border's width with square ends.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker",
+      "description": "Background 3 fill with a transparent border that turns TransparentStrokeInteractive on hover and focus. For inputs on a Background 1 surface.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "Background 1 fill with the same transparent border as filled-darker. For inputs on a darker surface.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker-shadow",
+      "description": "Deprecated: filled-darker plus shadow2.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.shadow2"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter-shadow",
+      "description": "Deprecated: filled-lighter plus shadow2.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.shadow2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px minimum height, caption1 text, 16px icons, 2px gap.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px minimum height, body1 text, 20px icons, 2px gap.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalMNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px minimum height, body2 text, 24px icons, spacingHorizontalSNudge gap.",
+      "tokens": [
+        "typographyStyles.body2",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "part": "root",
+      "text": "The root is an inline-flex row, vertically centred, not wrapping, with a spacingHorizontalXXS gap, borderRadiusMedium corners (all appearances but underline) and a 1px solid border on every side; it is position relative so the focus line can be placed against it.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useInputStyles.styles.ts:42-59"
+    },
+    {
+      "id": "heights",
+      "part": "root",
+      "text": "The size sets a minimum height, not a height: 24px small, 32px medium, 40px large. Content taller than that grows the field.",
+      "values": [
+        {
+          "name": "small",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useInputStyles.styles.ts:16-20,53,119-130"
+    },
+    {
+      "id": "typography",
+      "text": "The root carries the size's text style (caption1 small, body1 medium, body2 large) and the input inherits font family, size, weight and line height from it.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "typographyStyles.body1",
+        "typographyStyles.body2"
+      ],
+      "source": "useInputStyles.styles.ts:54,121,128,256-260"
+    },
+    {
+      "id": "padding-no-content",
+      "part": "input",
+      "text": "With no content slots the root has no padding and the input carries the whole horizontal inset, so its hit area reaches the border: spacingHorizontalS small, spacingHorizontalM medium, spacingHorizontalM plus spacingHorizontalSNudge large. Vertical padding is 0.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "source": "useInputStyles.styles.ts:22-40,244,264-274"
+    },
+    {
+      "id": "padding-with-content",
+      "text": "On a side with a content slot the inset splits: the root pads spacingHorizontalSNudge small, spacingHorizontalMNudge medium, spacingHorizontalM large, and the input pads spacingHorizontalXXS small and medium, spacingHorizontalSNudge large, so the text starts where it would without content plus the slot and gap.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "source": "useInputStyles.styles.ts:24-34,218-235,275-292"
+    },
+    {
+      "id": "input-box",
+      "part": "input",
+      "text": "The input stretches to the root's height, grows to fill the row and may shrink to zero width; it has no border, no outline and a literal transparent background so the root's fill shows through.",
+      "source": "useInputStyles.styles.ts:238-254"
+    },
+    {
+      "id": "content",
+      "part": "content-before",
+      "text": "Each content slot is a flex box in colorNeutralForeground3; an svg child is sized 16px at small, 20px at medium, 24px at large. content-after follows the same rule.",
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ],
+      "values": [
+        {
+          "name": "iconSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useInputStyles.styles.ts:303-326"
+    },
+    {
+      "id": "focus-line",
+      "part": "focus-line",
+      "text": "The focus line is the root's ::after: absolutely placed 1px outside the left, right and bottom edges (0 inset for underline), as tall as borderRadiusMedium (at least 2px) with that radius on its bottom corners (none for underline), drawing a 2px colorCompoundBrandStroke bottom border clipped to its last 2px so the ends are flat.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "values": [
+        {
+          "name": "outset",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "thickness",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "minHeight",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useInputStyles.styles.ts:61-85,153-156,166-169"
+    },
+    {
+      "id": "underline-shape",
+      "text": "Underline removes the top, left and right borders and the radius, and paints no background.",
+      "tokens": [
+        "tokens.colorTransparentBackground"
+      ],
+      "values": [
+        {
+          "name": "borderRadius",
+          "value": 0,
+          "unit": "px"
+        }
+      ],
+      "source": "useInputStyles.styles.ts:145-157"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's fill and border; the text is colorNeutralForeground1 and the placeholder colorNeutralForeground4 at full opacity; the focus line is scaled to zero width.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useInputStyles.styles.ts:56-59,87,245-252"
+    },
+    {
+      "state": "hovered",
+      "text": "Outline: the border turns colorNeutralStroke1Hover and its bottom edge colorNeutralStrokeAccessibleHover. Underline: the bottom border turns colorNeutralStrokeAccessibleHover. Filled: the transparent border turns colorTransparentStrokeInteractive. The fill never changes on hover, and nothing transitions.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorTransparentStrokeInteractive"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useInputStyles.styles.ts:134-138,158-161,174-180"
+    },
+    {
+      "state": "pressed",
+      "text": "While the pointer is down, and for as long as focus is inside, outline's border is colorNeutralStroke1Pressed with a colorNeutralStrokeAccessiblePressed bottom and underline's bottom is colorNeutralStrokeAccessiblePressed; clicking an already focused field turns the focus line colorCompoundBrandStrokePressed.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandStrokePressed"
+      ],
+      "source": "useInputStyles.styles.ts:109-112,140-143,163-165"
+    },
+    {
+      "state": "focused",
+      "part": "focus-line",
+      "text": "A custom indicator, not createFocusOutlineStyle: while focus is within the root (any focus, pointer included, not only focus-visible) the 2px colorCompoundBrandStroke focus line grows from the centre to full width over durationNormal, and shrinks back on blur over durationUltraFast. The border meanwhile shows the pressed colours, and the root gains a 2px transparent outline.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.durationNormal",
+        "tokens.durationUltraFast"
+      ],
+      "values": [
+        {
+          "name": "thickness",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useInputStyles.styles.ts:83-115,140-143"
+    },
+    {
+      "state": "error",
+      "text": "When the input has aria-invalid true and is enabled, every border turns colorPaletteRedBorder2 at rest and on hover; while focus is within, the pressed border and focus line take over.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2"
+      ],
+      "source": "useInputStyles.styles.ts:181-185,334,353"
+    },
+    {
+      "state": "disabled",
+      "text": "The root's background turns transparent (every appearance) and its border colorNeutralStrokeDisabled; the text, placeholder and content slots turn colorNeutralForegroundDisabled; the pointer shows not-allowed; the focus line and focus outline are removed and no hover or pressed colours apply.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useInputStyles.styles.ts:202-217,293-300,313-315,349-354"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "edit",
+      "text": "Typing changes the value and calls onChange with the new string; a caller supplies value to control it or defaultValue to leave it uncontrolled.",
+      "source": "Input.types.ts:60-81"
+    },
+    {
+      "id": "focus-line-motion",
+      "part": "focus-line",
+      "text": "The focus line animates only transform (scaleX 0 to 1): entering over durationNormal, leaving over durationUltraFast; the intended curves are curveDecelerateMid in and curveAccelerateMid out. Under reduced motion both take 0.01ms.",
+      "tokens": [
+        "tokens.curveAccelerateMid"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationUltraFast",
+        "easing": "tokens.curveAccelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useInputStyles.styles.ts:86-108"
+    },
+    {
+      "id": "props-routing",
+      "text": "Native props and the ref go to the input element; className and style go to the root.",
+      "source": "Input.types.ts:4-21"
+    }
+  ],
+  "accessibility": {
+    "role": "textbox",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves focus into the text",
+      "Typing edits the value; native caret and selection keys apply"
+    ],
+    "semantics": [
+      "aria-invalid true announces the error and draws the red border",
+      "needs an accessible name: a Field label or aria-label, since placeholder is not a label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The border width (1px, not strokeWidthThin), the focus line's 2px thickness and 1px outset, the minimum heights (24, 32, 40px) and the icon sizes (16, 20, 24px) are constants in the styles file. Textarea spells the same widths with strokeWidthThin and strokeWidthThick.",
+      "source": "useInputStyles.styles.ts:16-20,58,67-69,83-84,309-325"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The focus line assigns its curve tokens to transitionDelay instead of transitionTimingFunction. A cubic-bezier is not a valid delay, so browsers drop the declaration and the line animates with no delay on the default ease curve. Build it with curveDecelerateMid (in) and curveAccelerateMid (out) as the timing function, which is plainly the intent.",
+      "tokens": [
+        "tokens.curveDecelerateMid",
+        "tokens.curveAccelerateMid"
+      ],
+      "source": "useInputStyles.styles.ts:86-91,98-102"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus line shows on :focus-within, not on focus-visible: unlike buttons, an input shows its indicator after a pointer click too, since the caret needs a visible home.",
+      "source": "useInputStyles.styles.ts:97-108"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Outline's bottom edge is a different token (colorNeutralStrokeAccessible and its Hover and Pressed) from the other three edges, so the field reads as underlined even at rest.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useInputStyles.styles.ts:58-59,134-143"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Only disabled has a forced-colours rule: its border turns GrayText. Otherwise the high-contrast theme's aliases apply, and the 2px transparent outline added while focus is within is the hook forced colours paint visibly, so the focused field gains a system-coloured ring.",
+      "source": "useInputStyles.styles.ts:113-115,206-208"
+    },
+    {
+      "kind": "inferred",
+      "text": "The anatomy names (container, content before and after, focus line) follow the design site; the code names the slots root, input, contentBefore, contentAfter.",
+      "source": "fluent2:input"
+    }
+  ]
+}

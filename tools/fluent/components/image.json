@@ -1,0 +1,229 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "image",
+  "name": "Image",
+  "status": "stable",
+  "summary": "A bitmap in a box: an img element with a shape, an optional border and shadow, and a fit rule for how the source fills the box. Use it for pictures and logos; an Avatar draws a person, a Skeleton a placeholder.",
+  "tokenGroups": [
+    "tokens.colorNeutralStroke1",
+    "tokens.strokeWidthThin",
+    "tokens.borderRadiusNone",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.shadow4"
+  ],
+  "references": {
+    "react": [
+      "useImageStyles.styles.ts",
+      "Image.types.ts"
+    ],
+    "fluent2": [
+      "image"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "src",
+      "type": "string",
+      "required": true,
+      "description": "The image source; the native img attribute."
+    },
+    {
+      "name": "alt",
+      "type": "string",
+      "required": false,
+      "description": "The alternative text; an empty string marks a decorative image."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "square",
+        "circular",
+        "rounded"
+      ],
+      "required": false,
+      "default": "square",
+      "description": "square has no rounding, rounded borderRadiusMedium, circular borderRadiusCircular."
+    },
+    {
+      "name": "fit",
+      "type": "enum",
+      "values": [
+        "default",
+        "none",
+        "center",
+        "contain",
+        "cover"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "How the source fills the box: default leaves the native sizing; none draws it at natural size from the top left; center at natural size centred; contain scaled to fit centred; cover scaled to fill centred."
+    },
+    {
+      "name": "bordered",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A strokeWidthThin Stroke 1 border."
+    },
+    {
+      "name": "shadow",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "shadow4 under the image."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The image takes the full width of its container."
+    },
+    {
+      "name": "width",
+      "type": "number",
+      "required": false,
+      "description": "An explicit width in px; with height, sizes the box."
+    },
+    {
+      "name": "height",
+      "type": "number",
+      "required": false,
+      "description": "An explicit height in px."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Image",
+      "description": "The img element, inline-block with border-box sizing, its border colour Stroke 1 whether or not a border is drawn.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "shape",
+      "value": "square",
+      "default": true,
+      "description": "borderRadiusNone, the base.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "description": "borderRadiusMedium.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "description": "borderRadiusCircular, a circle when the box is square.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "fit",
+      "value": "default",
+      "default": true,
+      "description": "No object-fit rule; the box is the source's size unless width or height say otherwise."
+    },
+    {
+      "axis": "fit",
+      "value": "none",
+      "description": "object-fit none from the left top: the source at natural size, clipped from the top-left corner."
+    },
+    {
+      "axis": "fit",
+      "value": "center",
+      "description": "object-fit none centred: the source at natural size, clipped around the centre."
+    },
+    {
+      "axis": "fit",
+      "value": "contain",
+      "description": "Scaled down or up to fit inside the box, centred, keeping its ratio."
+    },
+    {
+      "axis": "fit",
+      "value": "cover",
+      "description": "Scaled to cover the box, centred, keeping its ratio and clipping the rest."
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "text": "The root is inline-block, border-box, with Stroke 1 as its border colour and no radius; bordered gives it a strokeWidthThin solid border, shadow gives it shadow4.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.strokeWidthThin",
+        "tokens.shadow4"
+      ],
+      "source": "useImageStyles.styles.ts:14-38"
+    },
+    {
+      "id": "fit-fill",
+      "text": "Any fit but default with no explicit width or height makes the element 100% of its container in both axes, so the fit rule has a box to work against; with a width or height the element is that size.",
+      "values": [
+        {
+          "name": "fill",
+          "value": 100,
+          "unit": "percent"
+        }
+      ],
+      "source": "useImageStyles.styles.ts:61-66,77-80,90"
+    },
+    {
+      "id": "block",
+      "text": "block sets the width to 100% of the container.",
+      "source": "useImageStyles.styles.ts:68-72,86"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "An image has no interaction states.",
+      "source": "useImageStyles.styles.ts:74-96"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "static",
+      "text": "Nothing animates; the browser's image loading applies.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useImageStyles.styles.ts:74-96"
+    }
+  ],
+  "accessibility": {
+    "role": "img",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "alt text names the image, or an empty alt hides a decorative one from assistive technology"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The border colour is set on the base even when bordered is false; only the border style and width are conditional, so a renderer must not draw a stroke unless bordered.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ],
+      "source": "useImageStyles.styles.ts:14-26"
+    },
+    {
+      "kind": "inferred",
+      "text": "A renderer without bitmap decoding cannot draw the image itself; the box, border, radius and shadow are still specified and a placeholder fill in the parent's surface colour is the honest stand-in.",
+      "source": "fluent2:image"
+    }
+  ]
+}

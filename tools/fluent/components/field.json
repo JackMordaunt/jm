@@ -1,0 +1,395 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "field",
+  "name": "Field",
+  "status": "stable",
+  "summary": "The wrapper that gives one form control its label, hint and validation message and wires their ids onto the control. Use it around every Input, Textarea, Checkbox group, RadioGroup or Switch that needs a visible label or a message; it draws nothing of its own.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground3",
+    "tokens.colorPaletteRedForeground1",
+    "tokens.colorPaletteDarkOrangeForeground1",
+    "tokens.colorPaletteGreenForeground1",
+    "tokens.spacingVerticalXXS",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalSNudge",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalM",
+    "tokens.lineHeightBase400",
+    "typographyStyles.caption1"
+  ],
+  "references": {
+    "react": [
+      "useFieldStyles.styles.ts",
+      "Field.types.ts"
+    ],
+    "fluent2": [
+      "field"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "label",
+      "type": "slot",
+      "required": false,
+      "description": "The control's label, rendered as a Label whose for points at the control."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "One form control, or a render function that receives the id and aria props to spread on a custom control."
+    },
+    {
+      "name": "hint",
+      "type": "slot",
+      "required": false,
+      "description": "Secondary help text below the control."
+    },
+    {
+      "name": "validationMessage",
+      "type": "slot",
+      "required": false,
+      "description": "A message about the value, below the control; an error by default."
+    },
+    {
+      "name": "validationMessageIcon",
+      "type": "slot",
+      "required": false,
+      "description": "The 12px icon before the message; defaults by validationState (error circle, warning, checkmark circle, none)."
+    },
+    {
+      "name": "validationState",
+      "type": "enum",
+      "values": [
+        "error",
+        "warning",
+        "success",
+        "none"
+      ],
+      "required": false,
+      "description": "Colours the message icon and, for error, the message text; error also sets aria-invalid on the control. Defaults to error when validationMessage is set, else none."
+    },
+    {
+      "name": "orientation",
+      "type": "enum",
+      "values": [
+        "vertical",
+        "horizontal"
+      ],
+      "required": false,
+      "default": "vertical",
+      "description": "Label above the control, or in a column to its left. Hint and message are always below the control."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Appends the label's required asterisk and sets aria-required on the control."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "The label's size; also sets the label padding that aligns it with a control of the same size."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Field",
+      "description": "A grid holding the label, the control, the validation message and the hint, in that order."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "A Label component, sized to max-content.",
+      "optional": true
+    },
+    {
+      "id": "control",
+      "name": "Control",
+      "description": "The wrapped form control, styled by its own spec."
+    },
+    {
+      "id": "validation-message",
+      "name": "Validation message",
+      "description": "Caption text below the control, with an optional leading icon hung in a gutter.",
+      "optional": true
+    },
+    {
+      "id": "validation-icon",
+      "name": "Validation icon",
+      "description": "A 12px inline icon at the start of the validation message, coloured by validationState.",
+      "optional": true
+    },
+    {
+      "id": "hint",
+      "name": "Hint",
+      "description": "Caption text below the control and any validation message.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "default": true,
+      "description": "One column: label, control, message, hint stacked.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingVerticalXS"
+      ]
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "description": "Two columns, 33% and the rest: the label fills the first column down every row; control, message and hint stack in the second.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "axis": "validationState",
+      "value": "error",
+      "description": "Red icon and red message text.",
+      "tokens": [
+        "tokens.colorPaletteRedForeground1"
+      ]
+    },
+    {
+      "axis": "validationState",
+      "value": "warning",
+      "description": "Dark orange icon, neutral message text.",
+      "tokens": [
+        "tokens.colorPaletteDarkOrangeForeground1",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "axis": "validationState",
+      "value": "success",
+      "description": "Green icon, neutral message text.",
+      "tokens": [
+        "tokens.colorPaletteGreenForeground1",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "axis": "validationState",
+      "value": "none",
+      "description": "No icon, neutral message text.",
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "grid",
+      "part": "root",
+      "text": "The root is a CSS grid. Vertical: one column, rows in source order. Horizontal: columns 33% and 1fr, rows auto auto auto 1fr, the last row slack in case the label is taller than the control and its text.",
+      "values": [
+        {
+          "name": "labelColumn",
+          "value": 33,
+          "unit": "percent"
+        }
+      ],
+      "source": "useFieldStyles.styles.ts:22-32"
+    },
+    {
+      "id": "horizontal-no-label",
+      "part": "root",
+      "text": "Horizontal with no label pads the root's start by 33% and uses one column, so labelled and unlabelled fields line up.",
+      "values": [
+        {
+          "name": "paddingStart",
+          "value": 33,
+          "unit": "percent"
+        }
+      ],
+      "source": "useFieldStyles.styles.ts:34-39,135"
+    },
+    {
+      "id": "label-vertical",
+      "part": "label",
+      "text": "Vertical: the label pads spacingVerticalXXS top and bottom with a spacingVerticalXXS gap below it; at large, 1px top and bottom with a spacingVerticalXS gap. Its width and height are max-content, so only the text is clickable.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingVerticalXS"
+      ],
+      "values": [
+        {
+          "name": "largePadding",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useFieldStyles.styles.ts:43-58,148-149"
+    },
+    {
+      "id": "label-horizontal",
+      "part": "label",
+      "text": "Horizontal: the label spans every row and pads so its text centres on a control of the same size: spacingVerticalSNudge top and bottom at medium, spacingVerticalXS at small, 9px at large ((40px minus lineHeightBase400) / 2); spacingHorizontalM separates it from the control.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalM",
+        "tokens.lineHeightBase400"
+      ],
+      "values": [
+        {
+          "name": "largePadding",
+          "value": 9,
+          "unit": "px"
+        }
+      ],
+      "source": "useFieldStyles.styles.ts:60-78,145-147"
+    },
+    {
+      "id": "secondary-text",
+      "part": "hint",
+      "text": "Hint and validation message share one style: caption1 in colorNeutralForeground3 with spacingVerticalXXS above.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground3",
+        "tokens.spacingVerticalXXS"
+      ],
+      "source": "useFieldStyles.styles.ts:81-85,166-181"
+    },
+    {
+      "id": "icon-gutter",
+      "part": "validation-icon",
+      "text": "With an icon the message pads its start by 12px plus spacingHorizontalXS and the icon is pulled into that gutter by an equal negative margin, with spacingHorizontalXS after it, so wrapped lines align under the first line's text. The icon is inline-block, 12px, line height 0 and shifted 1px down.",
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ],
+      "values": [
+        {
+          "name": "iconSize",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "verticalAlign",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "useFieldStyles.styles.ts:16-17,92-108"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Field has no interactive states of its own; hover, press and disabled belong to the control and its Label.",
+      "source": "useFieldStyles.styles.ts:125-185"
+    },
+    {
+      "state": "focused",
+      "text": "Field draws no focus indicator; the control draws its own. Clicking the label focuses the control through the label's for.",
+      "source": "useFieldStyles.styles.ts:125-185; Field.types.ts:110-111"
+    },
+    {
+      "state": "error",
+      "part": "validation-message",
+      "text": "validationState error turns the message text and its icon colorPaletteRedForeground1, and the control receives aria-invalid, which draws its own red border.",
+      "tokens": [
+        "tokens.colorPaletteRedForeground1"
+      ],
+      "source": "useFieldStyles.styles.ts:87-90,110-113,173; Field.types.ts:74-86"
+    },
+    {
+      "state": "other",
+      "label": "warning",
+      "part": "validation-icon",
+      "text": "validationState warning colours only the icon, colorPaletteDarkOrangeForeground1; the text stays colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorPaletteDarkOrangeForeground1",
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useFieldStyles.styles.ts:114-116,161"
+    },
+    {
+      "state": "other",
+      "label": "success",
+      "part": "validation-icon",
+      "text": "validationState success colours only the icon, colorPaletteGreenForeground1; the text stays colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorPaletteGreenForeground1",
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useFieldStyles.styles.ts:117-119,161"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "wiring",
+      "text": "Field generates an id for the control and gives it aria-labelledby (the label), aria-describedby (message and hint), aria-invalid (error) and aria-required (required); a custom control receives these through the children render function.",
+      "source": "Field.types.ts:5-11,50-63,108-129"
+    },
+    {
+      "id": "orientation-scope",
+      "text": "orientation moves only the label; the validation message and hint always sit below the control.",
+      "source": "Field.types.ts:65-71"
+    },
+    {
+      "id": "default-state",
+      "text": "validationState defaults to error whenever a validationMessage is given, so a neutral note needs validationState none.",
+      "source": "Field.types.ts:73-86"
+    }
+  ],
+  "accessibility": {
+    "role": "generic",
+    "minTargetPx": null,
+    "keyboard": [
+      "None of its own; Tab reaches the control"
+    ],
+    "semantics": [
+      "The label names the control through aria-labelledby and for",
+      "Message and hint describe it through aria-describedby",
+      "An error or warning message has role alert and is announced when it appears",
+      "required sets aria-required on the control"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 33% label column, the 12px validation icon, its -1px vertical shift, the 1px large vertical label padding and the 9px horizontal large label padding (no 9px token exists) are constants in the styles file.",
+      "source": "useFieldStyles.styles.ts:17,30,37,55-56,74-77,107"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Field reads Palette tokens, not Status ones: error is colorPaletteRedForeground1 and warning colorPaletteDarkOrangeForeground1, though the foundations map warning to orange. Use the tokens named here, not colorStatus*.",
+      "tokens": [
+        "tokens.colorPaletteRedForeground1",
+        "tokens.colorPaletteDarkOrangeForeground1"
+      ],
+      "source": "useFieldStyles.styles.ts:87-120"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Field's size sizes the label only; the control's own size must be set to match, or the horizontal label's padding misaligns with it.",
+      "source": "Field.types.ts:94-99; useFieldStyles.styles.ts:68-78"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles file has no forced-colours rules; the label, message and icon colours come from the high-contrast theme's aliases, where the red, orange and green all resolve to the same white as the neutral text, so the icon shape alone carries the state.",
+      "source": "useFieldStyles.styles.ts:87-120"
+    },
+    {
+      "kind": "inferred",
+      "text": "The root is a plain div with no role, so assistive technology meets the control, not the field. The anatomy name control for the wrapped child is this kit's; the design site calls the whole a field.",
+      "source": "fluent2:field"
+    }
+  ]
+}

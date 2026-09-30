@@ -1,0 +1,430 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "slider",
+  "name": "Slider",
+  "status": "stable",
+  "summary": "Picks one number from a continuous or stepped range by dragging a thumb along a rail. Choose it when the relative position matters more than the exact value (volume, brightness); use a spin button or input when the user must type an exact number.",
+  "tokenGroups": [
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorCompoundBrandBackgroundHover",
+    "tokens.colorCompoundBrandBackgroundPressed",
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusXLarge",
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusMedium"
+  ],
+  "references": {
+    "react": [
+      "useSliderStyles.styles.ts",
+      "Slider.types.ts"
+    ],
+    "fluent2": [
+      "slider"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "number",
+      "required": false,
+      "description": "The current value, when controlled; exclusive with defaultValue."
+    },
+    {
+      "name": "defaultValue",
+      "type": "number",
+      "required": false,
+      "description": "The starting value, when uncontrolled."
+    },
+    {
+      "name": "min",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "The smallest value."
+    },
+    {
+      "name": "max",
+      "type": "number",
+      "required": false,
+      "default": 100,
+      "description": "The largest value."
+    },
+    {
+      "name": "step",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "The increment the value snaps to; a positive number. Given a step, the rail shows a tick at each one."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Thumb 16 or 20px, rail 2 or 4px thick."
+    },
+    {
+      "name": "vertical",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Runs the rail bottom (min) to top (max)."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the disabled colours and takes no input."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new value on every step change, including during a drag."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "An inline 3 × 3 grid: the rail and thumb share the centre cell, the hidden input spans all nine; it carries the colour variables and the focus outline."
+    },
+    {
+      "id": "rail",
+      "name": "Rail",
+      "description": "The track, painted as one gradient: the progress colour from the start to the value, the rail colour after it."
+    },
+    {
+      "id": "progress",
+      "name": "Progress",
+      "description": "The filled part of the rail from min to the value; not an element, the first stop of the rail's gradient."
+    },
+    {
+      "id": "steps",
+      "name": "Step marks",
+      "description": "The rail's ::before: 1px gaps cut into the rail at each step, in colorNeutralBackground1.",
+      "optional": true
+    },
+    {
+      "id": "thumb",
+      "name": "Thumb",
+      "description": "A circle at the value: a brand dot inside a ring of colorNeutralBackground1, edged by a thin colorNeutralStroke1 border. It carries role slider."
+    },
+    {
+      "id": "input",
+      "name": "Hidden input",
+      "description": "A transparent native range input over the whole grid; it takes pointer, keyboard and focus."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Thumb 20px, rail 4px, thumb centre held 6px from each rail end, root at least 32px tall."
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Thumb 16px, rail 2px, thumb centre held 5px from each rail end, root at least 24px tall."
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "default": true,
+      "description": "Rail full width at the rail thickness; root at least 120px wide; the thumb centres on its position with translateX(−50%)."
+    },
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "description": "Rail full height at the rail thickness; root at least 120px tall; min at the bottom; the thumb centres with translateY(50%)."
+    }
+  ],
+  "layout": [
+    {
+      "id": "grid",
+      "part": "root",
+      "text": "The root is a relative inline-grid, items centred, touch-action none. Horizontal: rows 1fr, thumb size, 1fr and columns 1fr, 100% − thumb size, 1fr, so the rail is inset half a thumb from each end; vertical transposes the tracks.",
+      "source": "useSliderStyles.styles.ts:36-42,58-70"
+    },
+    {
+      "id": "sizes",
+      "text": "Medium sets thumb 20px, inner thumb radius 6px, rail 4px and a 32px minimum height; small sets 16px, 5px, 2px and 24px. Horizontal adds a 120px minimum width, vertical a 120px minimum height.",
+      "values": [
+        {
+          "name": "thumbMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "innerRadiusMedium",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "railMedium",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "thumbSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "innerRadiusSmall",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "railSmall",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightSmall",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "minLength",
+          "value": 120,
+          "unit": "px"
+        }
+      ],
+      "source": "useSliderStyles.styles.ts:44-56,59,66"
+    },
+    {
+      "id": "rail",
+      "part": "rail",
+      "text": "The rail rounds by borderRadiusXLarge and paints a linear gradient along the slider's direction: the progress colour from 0 to the value's percentage, the rail colour from there on. It has a 1px colorTransparentStroke outline (visible only under forced colours) and ignores the pointer.",
+      "tokens": [
+        "tokens.borderRadiusXLarge",
+        "tokens.colorTransparentStroke"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useSliderStyles.styles.ts:121-139,164-182"
+    },
+    {
+      "id": "steps",
+      "part": "steps",
+      "text": "With a step, the rail's ::before repeats a gradient that is transparent for each step's length less 1px and colorNeutralBackground1 for the last 1px, overhanging each rail end by 1px, so ticks read as notches.",
+      "tokens": [
+        "tokens.colorNeutralBackground1"
+      ],
+      "values": [
+        {
+          "name": "tickWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useSliderStyles.styles.ts:140-150,167-181"
+    },
+    {
+      "id": "thumb",
+      "part": "thumb",
+      "text": "The thumb is a borderRadiusCircular circle of the thumb size filled with the thumb colour, with an inset ring of colorNeutralBackground1 20% of its size wide (4px medium) and a ::before border of colorNeutralStroke1 5% of its size wide (1px medium).",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1"
+      ],
+      "values": [
+        {
+          "name": "innerRingRatio",
+          "value": 0.2,
+          "unit": "ratio"
+        },
+        {
+          "name": "borderRatio",
+          "value": 0.05,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useSliderStyles.styles.ts:189-218"
+    },
+    {
+      "id": "thumb-position",
+      "part": "thumb",
+      "text": "The thumb's centre sits at the value's percentage along the rail, clamped between the inner thumb radius and 100% minus it, so it never overhangs the rail's rounded ends.",
+      "source": "useSliderStyles.styles.ts:190-193,224-231"
+    },
+    {
+      "id": "input",
+      "part": "input",
+      "text": "The hidden input spans every grid cell; horizontally it is full width and the thumb size tall, vertically full height and the thumb size wide, using a vertical writing mode where supported.",
+      "source": "useSliderStyles.styles.ts:237-269"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rail colorNeutralStrokeAccessible; progress and thumb colorCompoundBrandBackground.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorCompoundBrandBackground"
+      ],
+      "source": "useSliderStyles.styles.ts:72-75"
+    },
+    {
+      "state": "hovered",
+      "text": "Thumb and progress step to colorCompoundBrandBackgroundHover; the rail does not change. Instant.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackgroundHover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSliderStyles.styles.ts:76-79"
+    },
+    {
+      "state": "pressed",
+      "text": "While pressed or dragging, thumb and progress are colorCompoundBrandBackgroundPressed.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackgroundPressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSliderStyles.styles.ts:80-83"
+    },
+    {
+      "state": "focused",
+      "part": "root",
+      "text": "Keyboard focus draws createFocusOutlineStyle (2px colorStrokeFocus2, borderRadiusMedium) around the root with custom offsets that pull it inward. Horizontal: flush with the root's top and bottom edges and 2px inside its start and end. Vertical: flush top and bottom, 6px outside each side.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "offsetVertical",
+          "value": -2,
+          "unit": "px"
+        },
+        {
+          "name": "offsetHorizontalH",
+          "value": -4,
+          "unit": "px"
+        },
+        {
+          "name": "offsetHorizontalV",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useSliderStyles.styles.ts:106-114; createFocusOutlineStyle.ts:35-112"
+    },
+    {
+      "state": "disabled",
+      "text": "Thumb and progress colorNeutralForegroundDisabled, rail colorNeutralBackgroundDisabled, thumb border colorNeutralForegroundDisabled; default cursor, no hover or press.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralBackgroundDisabled"
+      ],
+      "source": "useSliderStyles.styles.ts:95-98,219-223,248-250"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "drag",
+      "text": "Pressing anywhere on the input jumps the value there; dragging moves it, snapping to the nearest step; onChange fires on every step.",
+      "source": "Slider.types.ts:75-80,94-98"
+    },
+    {
+      "id": "orientation",
+      "text": "Vertical runs min at the bottom to max at the top.",
+      "source": "Slider.types.ts:88-92"
+    },
+    {
+      "id": "no-transition",
+      "text": "No transition is declared: colour changes and the thumb's movement are instant.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useSliderStyles.styles.ts:35-232"
+    },
+    {
+      "id": "focus-visible",
+      "text": "The focus outline appears only for keyboard focus, never after a pointer press.",
+      "source": "createCustomFocusIndicatorStyle.ts; constants.ts"
+    }
+  ],
+  "accessibility": {
+    "role": "slider",
+    "minTargetPx": 16,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Arrow Left/Down decrease and Arrow Right/Up increase by one step",
+      "Page Up and Page Down move by a larger increment",
+      "Home and End go to min and max"
+    ],
+    "semantics": [
+      "a native input type=range, so value, min, max and orientation come from the platform",
+      "label it with a Field label or aria-label; give aria-valuetext when the number alone is not meaningful"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Thumb sizes (16, 20px), inner radii (5, 6px), rail thicknesses (2, 4px), minimum heights (24, 32px), the 120px minimum length, the 20% thumb ring, the 5% thumb border and the 1px step tick are constants in the styles file.",
+      "source": "useSliderStyles.styles.ts:44-66,146-149,205,216"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The hit area is the input's cross size, which equals the thumb size (16px small, 20px medium), not the root's 24 or 32px minimum height.",
+      "source": "useSliderStyles.styles.ts:251-257"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The step ticks and the thumb's inner ring are painted in colorNeutralBackground1, assuming the slider sits on that surface; on another background they show as light notches and a light ring.",
+      "tokens": [
+        "tokens.colorNeutralBackground1"
+      ],
+      "source": "useSliderStyles.styles.ts:148-149,205"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus outline is pulled inside the root horizontally but pushed outside it vertically: the vertical orientation flips the sign of the side offsets rather than swapping axes.",
+      "source": "useSliderStyles.styles.ts:106-114"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the rail is CanvasText and the thumb and progress Highlight (also on hover); step ticks are HighlightText; disabled turns rail, thumb and progress GrayText. The rail and thumb opt out of forced adjustment so their gradients survive; the focus outline turns Highlight.",
+      "source": "useSliderStyles.styles.ts:84-92,99-103,129,151-160,203; createFocusOutlineStyle.ts:59-64"
+    },
+    {
+      "kind": "inferred",
+      "text": "Keyboard increments are the native range input's; the styles file does not state them.",
+      "source": "fluent2:slider"
+    }
+  ]
+}

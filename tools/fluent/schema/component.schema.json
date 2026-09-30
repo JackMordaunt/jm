@@ -1,0 +1,508 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fluent-kit.local/schema/component.schema.json",
+  "title": "Fluent 2 component spec",
+  "description": "What an implementor needs to build one Fluent 2 component beyond its token values. Values live in tokens/fluent.resolved.json; a spec names token paths (tokens.<name>, typographyStyles.<name>), never restates their values. Fluent has no component token tier: the sizes a component hard-codes in its styles file are given in `values`, with the styles file cited.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "status",
+    "summary",
+    "tokenGroups",
+    "references",
+    "inputs",
+    "anatomy",
+    "variants",
+    "layout",
+    "states",
+    "behaviour",
+    "accessibility",
+    "notes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "#/$defs/id",
+      "description": "Kebab-case; equals the file name."
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "stable",
+        "preview"
+      ],
+      "description": "stable: shipped in @fluentui/react-components. preview: only in a *-preview package."
+    },
+    "statusNote": {
+      "type": "string",
+      "description": "What is preview or partial, when status is preview."
+    },
+    "deprecated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replacedBy",
+        "source"
+      ],
+      "properties": {
+        "replacedBy": {
+          "$ref": "#/$defs/id",
+          "description": "The component id to build instead."
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "What it is for and when to choose it over its neighbours. One or two sentences."
+    },
+    "tokenGroups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tokenPath"
+      },
+      "uniqueItems": true,
+      "description": "Every token this component reads, colour and otherwise. A reader gets the palette of a component from this list alone."
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "react",
+        "fluent2"
+      ],
+      "properties": {
+        "react": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z]+(\\.[A-Za-z]+)*\\.tsx?$"
+          },
+          "description": "The Fluent UI React v9 files this spec was read from: use<Name>Styles.styles.ts and <Name>.types.ts under source/components."
+        },
+        "fluent2": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "description": "Page slugs on fluent2.microsoft.design, e.g. button."
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "The component's API surface, independent of any framework: what a caller supplies.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "type",
+          "required",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          "type": {
+            "enum": [
+              "boolean",
+              "number",
+              "string",
+              "enum",
+              "slot",
+              "callback",
+              "list",
+              "icon"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The allowed values, for type enum."
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "default": {
+            "type": [
+              "boolean",
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "anatomy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens"
+          }
+        }
+      }
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "axis",
+          "value",
+          "description"
+        ],
+        "properties": {
+          "axis": {
+            "type": "string",
+            "description": "What varies, e.g. size, style, color, layout, width, shape."
+          },
+          "value": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens",
+            "description": "The tokens this variant reads that others do not."
+          }
+        }
+      }
+    },
+    "layout": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "description": "Geometry the tokens do not give: hard-coded measurements, sizing and placement rules."
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "text"
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "enabled",
+              "hovered",
+              "focused",
+              "pressed",
+              "dragged",
+              "disabled",
+              "selected",
+              "checked",
+              "indeterminate",
+              "error",
+              "open",
+              "expanded",
+              "collapsed",
+              "scrolled",
+              "loading",
+              "other"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "description": "Names the state when state is other."
+          },
+          "part": {
+            "$ref": "#/$defs/id",
+            "description": "An anatomy id, when the change is local to one part."
+          },
+          "text": {
+            "type": "string"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens"
+          },
+          "values": {
+            "$ref": "#/$defs/values"
+          },
+          "motion": {
+            "$ref": "#/$defs/motion"
+          },
+          "source": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      }
+    },
+    "behaviour": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "description": "Interaction, scroll, selection and animation rules."
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "minTargetPx",
+        "keyboard",
+        "semantics"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "WAI-ARIA role or nearest equivalent, e.g. button, checkbox, tablist, dialog."
+        },
+        "keyboard": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "semantics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What assistive technology is told: state, labels, live regions."
+        },
+        "minTargetPx": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The smallest hit area the component offers, in px; Fluent controls are their visual size, with no invisible touch target. Null when not interactive."
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "text"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "upstream-bug",
+              "hard-coded",
+              "dead-token",
+              "contradiction",
+              "inferred",
+              "gotcha",
+              "high-contrast"
+            ],
+            "description": "upstream-bug: the React code looks wrong. hard-coded: a value only exists in the styles file, with no token. dead-token: a token no component reads. contradiction: code and the design site disagree. inferred: not in the code, taken from the Fluent 2 site or analogy. gotcha: easy to get wrong. high-contrast: what changes under forced colours."
+          },
+          "text": {
+            "type": "string"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens"
+          },
+          "source": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "tokenPath": {
+      "type": "string",
+      "pattern": "^(tokens|typographyStyles)\\.[A-Za-z0-9]+$"
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tokenPath"
+      },
+      "uniqueItems": true
+    },
+    "source": {
+      "type": "string",
+      "description": "Where a fact comes from: one or more citations separated by \"; \". A citation is a file vendored under source/ with optional lines (useButtonStyles.styles.ts:120-140, Button.types.ts:32, constants.ts:5, DialogSurfaceMotion.ts:10-30, Collapse.ts), or a Fluent 2 design page (fluent2:button). tools/check.sh verifies the file exists.",
+      "pattern": "^(fluent2:[a-z0-9-]+|[A-Za-z]+(\\.[A-Za-z]+)*\\.tsx?(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?)(; (fluent2:[a-z0-9-]+|[A-Za-z]+(\\.[A-Za-z]+)*\\.tsx?(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?))*$"
+    },
+    "values": {
+      "type": "array",
+      "description": "Hard-coded numbers the rule depends on, not available as tokens.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "enum": [
+              "px",
+              "ms",
+              "deg",
+              "percent",
+              "ratio",
+              "count",
+              "em"
+            ]
+          }
+        }
+      }
+    },
+    "motion": {
+      "description": "How a change animates: a time-based transition on a duration token and a curve token, or none. Fluent has no springs.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "durationToken"
+          ],
+          "properties": {
+            "durationToken": {
+              "$ref": "#/$defs/tokenPath"
+            },
+            "easing": {
+              "$ref": "#/$defs/tokenPath"
+            },
+            "properties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "What transitions, as the styles file lists them: background, border, color, transform, opacity."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "durationMs"
+          ],
+          "properties": {
+            "durationMs": {
+              "type": "number"
+            },
+            "easing": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/tokenPath"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instant"
+          ],
+          "properties": {
+            "instant": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "text": {
+          "type": "string",
+          "description": "One rule, imperative or declarative, self-contained."
+        },
+        "part": {
+          "$ref": "#/$defs/id"
+        },
+        "tokens": {
+          "$ref": "#/$defs/tokens"
+        },
+        "values": {
+          "$ref": "#/$defs/values"
+        },
+        "motion": {
+          "$ref": "#/$defs/motion"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    }
+  }
+}

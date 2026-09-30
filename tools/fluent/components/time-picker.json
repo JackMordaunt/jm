@@ -1,0 +1,296 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "time-picker",
+  "name": "TimePicker",
+  "status": "stable",
+  "statusNote": "Shipped as @fluentui/react-timepicker-compat: a Combobox whose options are generated times, with no styles of its own beyond the list's height.",
+  "summary": "A form field for one time of day: a Combobox listing times at a fixed increment between a start and an end hour, optionally typed freeform. Use it beside date-picker for a time; use combobox itself for any other list.",
+  "tokenGroups": [],
+  "references": {
+    "react": [
+      "useTimePickerStyles.styles.ts",
+      "TimePicker.types.ts",
+      "timeMath.ts"
+    ],
+    "fluent2": [
+      "time-picker"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "selectedTime",
+      "type": "string",
+      "required": false,
+      "description": "The selected time as a date; null for none when the caller controls it."
+    },
+    {
+      "name": "defaultSelectedTime",
+      "type": "string",
+      "required": false,
+      "description": "The initial selection when the picker controls itself."
+    },
+    {
+      "name": "onTimeChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when an option is picked, or in freeform when typed text is submitted, with the time, its text and an error type of invalid-input, out-of-bounds or required-input when the text did not parse."
+    },
+    {
+      "name": "startHour",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "The first hour listed, 0 to 24, inclusive."
+    },
+    {
+      "name": "endHour",
+      "type": "number",
+      "required": false,
+      "default": 24,
+      "description": "The hour the list stops before, 0 to 24, exclusive; an end at or before the start wraps to the next day."
+    },
+    {
+      "name": "increment",
+      "type": "number",
+      "required": false,
+      "default": 30,
+      "description": "Minutes between listed times."
+    },
+    {
+      "name": "dateAnchor",
+      "type": "string",
+      "required": false,
+      "description": "The date the listed times fall on; the selected time's date, else today."
+    },
+    {
+      "name": "hourCycle",
+      "type": "enum",
+      "values": [
+        "h11",
+        "h12",
+        "h23",
+        "h24"
+      ],
+      "required": false,
+      "description": "12-hour (h11, h12) or 24-hour (h23, h24) formatting of the listed and typed times; the locale's default when unset."
+    },
+    {
+      "name": "showSeconds",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shows seconds in the listed times and expects them when parsing."
+    },
+    {
+      "name": "freeform",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lets a time be typed that is not in the list; it is parsed and validated on Enter and blur."
+    },
+    {
+      "name": "formatDateToTimeString",
+      "type": "callback",
+      "required": false,
+      "description": "Formats a listed time; the default uses the locale's time format with hourCycle and seconds as set."
+    },
+    {
+      "name": "parseTimeStringToDate",
+      "type": "callback",
+      "required": false,
+      "description": "Parses freeform text to a time and an error type; the default accepts h:mm, h:mm:ss and a 12-hour meridiem per hourCycle."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "The Combobox's appearance."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "The Combobox's size."
+    },
+    {
+      "name": "clearable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shows the Combobox's clear icon while a time is selected."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "The Combobox's placeholder."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "description": "The Combobox's controlled open state; defaultOpen, onOpenChange, positioning, inlinePopup and value pass through likewise."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "The Combobox: its input, expand icon, optional clear icon and listbox, each with a time-picker class added."
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "The Combobox input showing the selected time's text, editable only in freeform."
+    },
+    {
+      "id": "expand-icon",
+      "name": "Expand icon",
+      "description": "The Combobox's chevron that opens the list."
+    },
+    {
+      "id": "clear-icon",
+      "name": "Clear icon",
+      "description": "The Combobox's clear button, shown with clearable.",
+      "optional": true
+    },
+    {
+      "id": "listbox",
+      "name": "Listbox",
+      "description": "The Combobox listbox holding one option per generated time, capped in height."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "entry",
+      "value": "list",
+      "default": true,
+      "description": "Only listed times can be chosen; text that matches no option is cleared as the Combobox does."
+    },
+    {
+      "axis": "entry",
+      "value": "freeform",
+      "description": "Any typed time is accepted, parsed with parseTimeStringToDate on Enter and blur, and reported with an error type when it does not parse."
+    },
+    {
+      "axis": "hourCycle",
+      "value": "12-hour",
+      "description": "h11 or h12: times show a meridiem and typed text must carry one."
+    },
+    {
+      "axis": "hourCycle",
+      "value": "24-hour",
+      "description": "h23 or h24: times show 0 to 23 or 1 to 24 and typed text takes none."
+    }
+  ],
+  "layout": [
+    {
+      "id": "combobox",
+      "part": "root",
+      "text": "Every measure and colour is the Combobox's (combobox.json); the picker adds only class names and a listbox height cap.",
+      "source": "useTimePickerStyles.styles.ts:25-52; TimePicker.types.ts:62,98-115"
+    },
+    {
+      "id": "listbox",
+      "part": "listbox",
+      "text": "The listbox is at most 416px tall, twelve items, or 80% of the viewport height, whichever is less.",
+      "values": [
+        {
+          "name": "maxHeight",
+          "value": 416,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightViewport",
+          "value": 80,
+          "unit": "percent"
+        },
+        {
+          "name": "itemsShown",
+          "value": 12,
+          "unit": "count"
+        }
+      ],
+      "source": "useTimePickerStyles.styles.ts:16-20"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "root",
+      "text": "Rest, hovered, focused, pressed, open and disabled are the Combobox's own; nothing is added.",
+      "source": "useTimePickerStyles.styles.ts:49"
+    },
+    {
+      "state": "error",
+      "part": "input",
+      "text": "In freeform, submitted text that does not parse reports invalid-input, a parsed time outside the start and end anchors out-of-bounds, and an empty required field required-input; the picker draws nothing for it and a wrapping Field shows the message.",
+      "source": "TimePicker.types.ts:53-60,147-150"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "options",
+      "text": "The options are every time from the start anchor (dateAnchor at startHour) stepping by increment minutes while before the end anchor (dateAnchor at endHour, the next day when endHour is not after startHour), each formatted with formatDateToTimeString; an increment of 0 or less yields none.",
+      "source": "TimePicker.types.ts:117-135; timeMath.ts:62-112"
+    },
+    {
+      "id": "select",
+      "text": "Picking an option sets the selected time and calls onTimeChange with its date and text; the clear icon clears it.",
+      "source": "TimePicker.types.ts:65-78,137-150"
+    },
+    {
+      "id": "freeform-submit",
+      "text": "In freeform, Enter or blur submits the input's text when it changed since the last submit: it is parsed against the hour cycle (with or without seconds) and reported with the parsed time or an error; text matching no option is kept rather than cleared.",
+      "source": "TimePicker.types.ts:53-60,113,156-160,166-172; timeMath.ts:115-118,140-166"
+    },
+    {
+      "id": "parse",
+      "text": "The default parser accepts h:mm or hh:mm, with :ss when showSeconds, and a trailing AM or PM in 12-hour cycles; hours run 0 to 12 in 12-hour and 0 to 24 in 24-hour cycles, and the time is placed on the start anchor's day, or the next when it falls before the start hour.",
+      "source": "timeMath.ts:115-118,140-190; TimePicker.types.ts:80-93"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox",
+    "minTargetPx": 32,
+    "keyboard": [
+      "the Combobox's keys: ArrowDown opens and moves, Enter picks, Escape closes",
+      "in freeform Enter submits the typed text"
+    ],
+    "semantics": [
+      "the Combobox's semantics: role combobox with aria-expanded and a listbox of options",
+      "each option's text is the formatted time",
+      "errors reach onTimeChange's errorType for a wrapping Field to show"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The listbox cap of min(80vh, 416px) and the defaults startHour 0, endHour 24, increment 30 and showSeconds false are constants; the defaults sit in useTimePicker.tsx, which the kit's source pattern cannot cite, so they are stated here from that file.",
+      "source": "useTimePickerStyles.styles.ts:16-20; TimePicker.types.ts:117-129"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Hour 24 is a valid endHour but not a listed hour: the end is exclusive, and an end at or before the start wraps the range to the next day.",
+      "source": "TimePicker.types.ts:5-30,117-124; timeMath.ts:62-86"
+    },
+    {
+      "kind": "inferred",
+      "text": "The picker has no page on the design site; its look is the Combobox's and the list of times is the only addition.",
+      "source": "fluent2:combobox"
+    }
+  ]
+}

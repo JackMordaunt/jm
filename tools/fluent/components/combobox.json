@@ -1,0 +1,857 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "combobox",
+  "name": "Combobox",
+  "status": "stable",
+  "summary": "A field that opens a listbox of options: Combobox is a text input the user can type into (filtering, or freeform values), Dropdown a button that only picks from the list. Both share the Listbox, Option and OptionGroup parts and one look. Choose Select for a native single pick with no custom option content, a TagPicker for many picks shown as tags.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorTransparentBackground",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStroke2",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorTransparentStroke",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralForeground1Pressed",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralForegroundInverted",
+    "tokens.colorStrokeFocus2",
+    "tokens.shadow16",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusSmall",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalSNudge",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.fontSizeBase500",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase300",
+    "tokens.fontWeightSemibold",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "typographyStyles.body2",
+    "tokens.durationUltraFast",
+    "tokens.durationNormal",
+    "tokens.curveAccelerateMid",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "useComboboxStyles.styles.ts",
+      "Combobox.types.ts",
+      "useDropdownStyles.styles.ts",
+      "Dropdown.types.ts",
+      "useListboxStyles.styles.ts",
+      "Listbox.types.ts",
+      "useOptionStyles.styles.ts",
+      "Option.types.ts",
+      "useOptionGroupStyles.styles.ts",
+      "OptionGroup.types.ts",
+      "ComboboxBase.types.ts",
+      "Selection.types.ts",
+      "internalTokens.ts"
+    ],
+    "fluent2": [
+      "combobox",
+      "dropdown"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "kind",
+      "type": "enum",
+      "values": [
+        "combobox",
+        "dropdown"
+      ],
+      "required": false,
+      "default": "combobox",
+      "description": "combobox is an editable text input trigger; dropdown a read-only button trigger. The listbox and options are the same."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "The trigger's colour and border treatment, the same four as Input."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Trigger height (24, 32, 40), text style, padding and icon size together."
+    },
+    {
+      "name": "options",
+      "type": "list",
+      "required": true,
+      "description": "The options, each with a value (defaults to its text), display text, optional disabled flag and optional non-text content; optionally grouped with a label."
+    },
+    {
+      "name": "selectedOptions",
+      "type": "list",
+      "required": false,
+      "description": "The selected option values; one at most unless multiselect."
+    },
+    {
+      "name": "multiselect",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Several options may be selected; options show a checkbox mark and the listbox stays open on select."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The text the trigger shows; for a dropdown the selected options' text joined by \", \"."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Shown in colorNeutralForeground4 when nothing is selected or typed."
+    },
+    {
+      "name": "freeform",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Combobox only: typed text that matches no option is kept as the value instead of being cleared on blur."
+    },
+    {
+      "name": "clearable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shows a clear icon (combobox) or clear button (dropdown) in place of the expand icon while a single selection exists."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the listbox shows; reported through onOpenChange."
+    },
+    {
+      "name": "inlinePopup",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lays the listbox out in flow below the trigger rather than as a floating surface."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disabled colours, no input, no listbox."
+    },
+    {
+      "name": "invalid",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "aria-invalid: the border reads colorPaletteRedBorder2 while focus is not within."
+    },
+    {
+      "name": "onOptionSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the option's value and text and the new selection whenever an option is selected or deselected."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when the listbox opens or closes."
+    },
+    {
+      "name": "onActiveOptionChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when keyboard navigation moves the highlighted option."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "The trigger's box: an inline grid (combobox) or inline flex (dropdown) of the text and the icon column, with the appearance's fill and border, borderRadiusMedium, a 250px minimum width, and the bottom focus line drawn by ::after.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "Combobox only: the editable text with role combobox, borderless and transparent, in the size's text style, placeholder in colorNeutralForeground4.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4"
+      ]
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "description": "Dropdown only: the read-only trigger with role combobox, a full-width grid of the value text and the icon, transparent over the root's fill, text left-aligned.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4"
+      ]
+    },
+    {
+      "id": "expand-icon",
+      "name": "Expand icon",
+      "description": "The chevron at the end, in colorNeutralStrokeAccessible, 16, 20 or 24px by size; hidden while the clear control shows.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "id": "clear",
+      "name": "Clear",
+      "description": "With clearable and one selection: a dismiss icon (combobox) or an unstyled button with the default focus outline (dropdown) where the expand icon was, in the same colour and size.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "id": "listbox",
+      "name": "Listbox",
+      "description": "The popup surface with role listbox: colorNeutralBackground1, shadow16, borderRadiusMedium, a 1px colorTransparentStroke outline, spacingHorizontalXS padding, a column of options spacingHorizontalXXS apart, 160px minimum width, at most 80% of the viewport tall and scrolling.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.shadow16",
+        "tokens.borderRadiusMedium",
+        "tokens.colorTransparentStroke",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "id": "option",
+      "name": "Option",
+      "description": "One row with role option: a check icon column then the content, body-sized text in colorNeutralForeground1, borderRadiusMedium, padded spacingVerticalSNudge by spacingHorizontalS.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.borderRadiusMedium",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300"
+      ]
+    },
+    {
+      "id": "check-icon",
+      "name": "Check icon",
+      "description": "The option's leading mark: a fontSizeBase400 checkmark, space-keeping and invisible until the option is selected; under multiselect a 16px box with a colorNeutralStrokeAccessible border and borderRadiusSmall that fills colorCompoundBrandBackground with a colorNeutralForegroundInverted 12px check when selected.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.borderRadiusSmall",
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorNeutralForegroundInverted"
+      ]
+    },
+    {
+      "id": "option-group",
+      "name": "Option group",
+      "description": "A column of options under a label, followed (except for the last group) by a 1px colorNeutralStroke2 rule that bleeds to the listbox padding.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStroke2"
+      ]
+    },
+    {
+      "id": "group-label",
+      "name": "Group label",
+      "description": "The group's heading: fontSizeBase200 semibold in colorNeutralForeground3, padded spacingHorizontalS by spacingHorizontalSNudge.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200",
+        "tokens.fontWeightSemibold"
+      ]
+    },
+    {
+      "id": "focus-line",
+      "name": "Focus line",
+      "description": "The root's ::after: a 2px colorCompoundBrandStroke bottom line, scaled from zero to full width while focus is within, as on Input."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "kind",
+      "value": "combobox",
+      "default": true,
+      "description": "An input trigger the user types into; typing filters or, with freeform, becomes the value.",
+      "tokens": [
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "axis": "kind",
+      "value": "dropdown",
+      "description": "A button trigger that shows the selection's text or the placeholder and only picks from the list; its clear control is a real button with the default focus outline."
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "Background 1 fill; a strokeWidthThin Stroke 1 border whose bottom edge is StrokeAccessible; hover, press and focus step both.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "underline",
+      "description": "Transparent background, no radius, only a strokeWidthThin StrokeAccessible bottom border; it does not step on hover.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker",
+      "description": "Background 3 fill with a strokeWidthThin transparent border; nothing steps on hover.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "Background 1 fill with a strokeWidthThin transparent border; nothing steps on hover.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px tall, caption1 text, 16px icon, spacingHorizontalSNudge end padding.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px tall, body1 text, 20px icon, spacingHorizontalMNudge end padding.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingHorizontalMNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px tall, body2 text, 24px icon, spacingHorizontalM end padding and a spacingHorizontalSNudge column gap.",
+      "tokens": [
+        "typographyStyles.body2",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "root-box",
+      "part": "root",
+      "text": "The combobox root is an inline grid of two columns, the text taking the free width and the icon its own, items centred, spacingHorizontalXXS apart, at least 250px wide and exactly 24, 32 or 40px tall by size; the dropdown root is an inline flex row at least 250px wide whose button fills it.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 250,
+          "unit": "px"
+        },
+        {
+          "name": "heightSmall",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "heightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useComboboxStyles.styles.ts:17-38,103-116; useDropdownStyles.styles.ts:21-28,100-113"
+    },
+    {
+      "id": "input-padding",
+      "part": "input",
+      "text": "The combobox input has no vertical padding and a start padding of spacingHorizontalSNudge plus spacingHorizontalXXS at small, spacingHorizontalMNudge plus spacingHorizontalXXS at medium, spacingHorizontalM plus spacingHorizontalSNudge at large; the root pads the end by spacingHorizontalSNudge, MNudge or M.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useComboboxStyles.styles.ts:104-116,192-204"
+    },
+    {
+      "id": "button-padding",
+      "part": "button",
+      "text": "The dropdown button pads 3px vertically and spacingHorizontalSNudge at the end at small, 5px and spacingHorizontalMNudge at medium, 7px and spacingHorizontalM at large, with the same start padding as the combobox input; its grid puts the content first and the icon last, spacingHorizontalXXS apart (SNudge at large).",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "values": [
+        {
+          "name": "paddingVerticalSmall",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVerticalMedium",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVerticalLarge",
+          "value": 7,
+          "unit": "px"
+        }
+      ],
+      "source": "useDropdownStyles.styles.ts:100-143"
+    },
+    {
+      "id": "icon",
+      "part": "expand-icon",
+      "text": "The expand and clear icons are 16, 20 or 24px by size with a start margin of spacingHorizontalXXS (spacingHorizontalSNudge at large); on the combobox the icon's hit area extends over the root's end padding so a click between icon and border still reaches it.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "values": [
+        {
+          "name": "iconSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useComboboxStyles.styles.ts:215-282; useDropdownStyles.styles.ts:209-242; internalTokens.ts:1-5"
+    },
+    {
+      "id": "listbox-box",
+      "part": "listbox",
+      "text": "The listbox is a column with spacingHorizontalXS padding and spacingHorizontalXXS row gap, at least 160px wide, at most 80% of the viewport height with vertical scrolling, shadow16 and borderRadiusMedium; inline it sits in flow with z-index 1.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalXXS",
+        "tokens.shadow16",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 160,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightViewport",
+          "value": 80,
+          "unit": "percent"
+        }
+      ],
+      "source": "useListboxStyles.styles.ts:15-27; useComboboxStyles.styles.ts:86-101"
+    },
+    {
+      "id": "option-box",
+      "part": "option",
+      "text": "An option is a flex row, items centred, spacingHorizontalXS apart, padded spacingVerticalSNudge vertically and spacingHorizontalS horizontally, fontSizeBase300 on lineHeightBase300 in fontFamilyBase, with borderRadiusMedium.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontFamilyBase",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useOptionStyles.styles.ts:18-30"
+    },
+    {
+      "id": "check-icon-box",
+      "part": "check-icon",
+      "text": "The check icon slot is fontSizeBase400 with a negative spacingHorizontalXXS start margin and a spacingHorizontalXXS end margin, so content gains space without an extra node; under multiselect it is a 16px square box with a strokeWidthThin border, borderRadiusSmall and a 12px glyph.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.spacingHorizontalXXS",
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusSmall"
+      ],
+      "values": [
+        {
+          "name": "multiselectBox",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "multiselectGlyph",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useOptionStyles.styles.ts:74-106"
+    },
+    {
+      "id": "group",
+      "part": "option-group",
+      "text": "A group is a column with spacingHorizontalXXS row gap; every group but the last ends in a strokeWidthThin colorNeutralStroke2 rule padded spacingHorizontalXS below, pulled out by spacingHorizontalXS on each side and followed by a spacingVerticalXS margin.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke2",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingVerticalXS"
+      ],
+      "source": "useOptionGroupStyles.styles.ts:17-29"
+    },
+    {
+      "id": "group-label-box",
+      "part": "group-label",
+      "text": "The group label is a block padded spacingHorizontalS vertically and spacingHorizontalSNudge horizontally with borderRadiusMedium, fontSizeBase200 semibold on lineHeightBase200.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.borderRadiusMedium",
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightSemibold",
+        "tokens.lineHeightBase200"
+      ],
+      "source": "useOptionGroupStyles.styles.ts:31-39"
+    },
+    {
+      "id": "focus-line",
+      "part": "focus-line",
+      "text": "The focus line is placed 1px outside the root's left, right and bottom edges, as tall as the larger of 2px and borderRadiusMedium with that radius on its bottom corners, drawing a strokeWidthThick colorCompoundBrandStroke bottom border clipped to its last 2px.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.strokeWidthThick",
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "values": [
+        {
+          "name": "outset",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "thickness",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useComboboxStyles.styles.ts:47-59; useDropdownStyles.styles.ts:37-49"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's fill and border, text colorNeutralForeground1, placeholder colorNeutralForeground4, icon colorNeutralStrokeAccessible, the focus line scaled to zero.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useComboboxStyles.styles.ts:119-123,174-190,215-221"
+    },
+    {
+      "state": "hovered",
+      "text": "Outline only: the border turns colorNeutralStroke1Hover and its bottom edge colorNeutralStrokeAccessibleHover; the other appearances do not change.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStrokeAccessibleHover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useComboboxStyles.styles.ts:124-128"
+    },
+    {
+      "state": "pressed",
+      "text": "Outline only: while pressed the border turns colorNeutralStroke1Pressed and its bottom edge colorNeutralStrokeAccessiblePressed; a press while focused turns the focus line colorCompoundBrandStrokePressed.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandStrokePressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useComboboxStyles.styles.ts:81-83,130-133"
+    },
+    {
+      "state": "focused",
+      "text": "While focus is within the root the focus line scales from 0 to full width over durationNormal on curveDecelerateMid and outline's border takes its Pressed colours; on focus leaving it scales back over durationUltraFast on curveAccelerateMid. The dropdown suppresses the line while its clear button has focus, which shows the default outline instead.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useComboboxStyles.styles.ts:60-83,135-138; useDropdownStyles.styles.ts:50-80,244-256"
+    },
+    {
+      "state": "error",
+      "text": "aria-invalid: while focus is not within, the border (the bottom border for underline) reads colorPaletteRedBorder2, hovered or not.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2"
+      ],
+      "source": "useComboboxStyles.styles.ts:153-162"
+    },
+    {
+      "state": "disabled",
+      "text": "The root reads a transparent background and colorNeutralStrokeDisabled border; text, placeholder and icons colorNeutralForegroundDisabled; the pointer is not-allowed and the listbox never opens.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useComboboxStyles.styles.ts:164-171,205-212,278-281"
+    },
+    {
+      "state": "open",
+      "text": "The listbox shows below the trigger (positioning default below); closed it is display none, so it has no enter or exit motion.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useComboboxStyles.styles.ts:93-95,317-326; ComboboxBase.types.ts:69-76"
+    },
+    {
+      "state": "hovered",
+      "part": "option",
+      "text": "An enabled option's background turns colorNeutralBackground1Hover, its text colorNeutralForeground1Hover and its multiselect box border the same.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralForeground1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useOptionStyles.styles.ts:32-37"
+    },
+    {
+      "state": "pressed",
+      "part": "option",
+      "text": "While pressed an option reads colorNeutralBackground1Pressed and colorNeutralForeground1Pressed.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralForeground1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useOptionStyles.styles.ts:39-43"
+    },
+    {
+      "state": "focused",
+      "part": "option",
+      "text": "The keyboard-active option (aria-activedescendant, focus never leaves the trigger) draws a 2px colorStrokeFocus2 ring 2px outside itself with borderRadiusMedium, only while keyboard navigation made it active.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "ringWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "ringOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useOptionStyles.styles.ts:46-61"
+    },
+    {
+      "state": "selected",
+      "part": "option",
+      "text": "A selected option shows its check icon; under multiselect the box fills colorCompoundBrandBackground with a matching border and a colorNeutralForegroundInverted check. Nothing else about the row changes.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorNeutralForegroundInverted"
+      ],
+      "source": "useOptionStyles.styles.ts:72,88-112,141-153"
+    },
+    {
+      "state": "disabled",
+      "part": "option",
+      "text": "A disabled option reads colorNeutralForegroundDisabled for text and check, its multiselect box border the same, and a default pointer; it stays keyboard-navigable but cannot be selected.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useOptionStyles.styles.ts:63-70,114-121; Option.types.ts:16-20"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "Clicking the trigger or its expand icon, or ArrowDown, ArrowUp, Enter or Space on it (Enter and Space only on the dropdown), opens the listbox; typing into a combobox opens it too.",
+      "source": "ComboboxBase.types.ts:52-62; fluent2:combobox"
+    },
+    {
+      "id": "select",
+      "text": "Clicking an option or pressing Enter on the active one selects it, sets the trigger's value to its text and closes the listbox; under multiselect it toggles the option and the listbox stays open, the combobox input clearing to type again.",
+      "source": "Selection.types.ts:11-29; ComboboxBase.types.ts:136-142"
+    },
+    {
+      "id": "filter",
+      "text": "A combobox does not filter by itself: the caller decides which options to render from the typed value; on blur a non-freeform combobox reverts typed text that matches no selection, a freeform one keeps it as the value.",
+      "source": "Combobox.types.ts:36; ComboboxBase.types.ts:84-88"
+    },
+    {
+      "id": "clear",
+      "text": "With clearable and exactly one selected option, the clear control replaces the expand icon; activating it clears the selection and value and, on the combobox, keeps focus in the input.",
+      "source": "ComboboxBase.types.ts:24-27; useComboboxStyles.styles.ts:328-350; useDropdownStyles.styles.ts:302-325"
+    },
+    {
+      "id": "close",
+      "text": "Escape, Tab, a click outside and (single-select) a selection close the listbox; onOpenChange reports the new state.",
+      "source": "ComboboxBase.types.ts:52-62; fluent2:combobox"
+    },
+    {
+      "id": "active-descendant",
+      "text": "Keyboard navigation highlights an option without moving DOM focus: ArrowDown and ArrowUp step, Home and End jump, PageUp and PageDown move by page, and typing in a dropdown jumps to the next option whose text starts with the typed characters.",
+      "source": "ComboboxBase.types.ts:144-145,166-173; fluent2:dropdown"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox",
+    "minTargetPx": 24,
+    "keyboard": [
+      "ArrowDown or ArrowUp opens the listbox and moves the active option",
+      "Enter selects the active option; Space selects it in a dropdown",
+      "Home and End jump to the first and last option; PageUp and PageDown move by a page",
+      "Escape closes the listbox; Tab closes it and moves on",
+      "typed characters filter a combobox or jump a dropdown to a matching option"
+    ],
+    "semantics": [
+      "the trigger has role combobox with aria-expanded, aria-haspopup listbox and aria-controls the listbox",
+      "the listbox has role listbox, aria-multiselectable under multiselect; options role option with aria-selected",
+      "the active option is reported through aria-activedescendant on the trigger",
+      "a disabled option reports aria-disabled and remains navigable",
+      "a group is role group labelled by its label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Trigger heights (24, 32, 40px), the 250px minimum trigger width, the listbox's 160px minimum width and 80vh maximum height, the dropdown button's 3, 5 and 7px vertical padding, the icon sizes (16, 20, 24px), the multiselect box (16px, 12px glyph) and the active ring (2px at 2px offset) are constants in the styles files.",
+      "source": "useComboboxStyles.styles.ts:17-22,36,89; useDropdownStyles.styles.ts:26,87,125-143; useListboxStyles.styles.ts:21; useOptionStyles.styles.ts:53-59,102-104; internalTokens.ts:1-5"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus line's curves are written to transitionDelay, not transitionTimingFunction, in all three styles files; read them as the easing (the same upstream bug as Input).",
+      "tokens": [
+        "tokens.curveAccelerateMid",
+        "tokens.curveDecelerateMid"
+      ],
+      "source": "useComboboxStyles.styles.ts:60-74; useDropdownStyles.styles.ts:50-64"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Only the outline appearance reacts to hover, press and focus on its border; underline and the filled appearances keep their rest border in every state except invalid and disabled.",
+      "source": "useComboboxStyles.styles.ts:124-152,296-306"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Option rows read colorNeutralBackground1Hover and Pressed, not the Subtle family menu items use, and an option's text is Foreground 1 where a menu item's is Foreground 2.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useOptionStyles.styles.ts:21,32-43"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a disabled trigger's border and a disabled option's text and check read the system GrayText; the trigger declares a 2px transparent outline while focus is within so the platform draws its own focus indicator.",
+      "source": "useComboboxStyles.styles.ts:40-45,168-170; useOptionStyles.styles.ts:67-69,117-119"
+    },
+    {
+      "kind": "inferred",
+      "text": "Which keys open, select and close, and the type-to-find behaviour, come from the base hook and the design site rather than the styles or types files; the types only name the open, select and active-option callbacks.",
+      "source": "ComboboxBase.types.ts:52-62,144; fluent2:combobox; fluent2:dropdown"
+    }
+  ]
+}

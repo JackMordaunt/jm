@@ -1,0 +1,339 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "info-label",
+  "name": "InfoLabel",
+  "status": "stable",
+  "summary": "A Label followed by a small information button that opens a popover of explanatory text. Use it on a field whose name needs a sentence of help; use a tooltip when the help is one short line and a link when it leads elsewhere.",
+  "tokenGroups": [
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorTransparentBackgroundSelected",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2BrandHover",
+    "tokens.colorNeutralForeground2BrandPressed",
+    "tokens.colorNeutralForeground2BrandSelected",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingVerticalXXS",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "tokens.colorStrokeFocus2"
+  ],
+  "references": {
+    "react": [
+      "useInfoLabelStyles.styles.ts",
+      "InfoLabel.types.ts",
+      "useInfoButtonStyles.styles.ts",
+      "InfoButton.types.ts",
+      "useInfoLabel.ts"
+    ],
+    "fluent2": [
+      "info-label"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The label text."
+    },
+    {
+      "name": "info",
+      "type": "slot",
+      "required": false,
+      "description": "The popover's content; without it no info button renders."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Passed to both the label and the info button: the button's icon is 12, 16 or 20px and the popover's text caption1 at small and medium, body1 at large."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Passed to the label, which appends its asterisk."
+    },
+    {
+      "name": "weight",
+      "type": "enum",
+      "values": [
+        "regular",
+        "semibold"
+      ],
+      "required": false,
+      "default": "regular",
+      "description": "Passed to the label."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "The info button's popover renders in DOM order rather than a portal."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "InfoLabel",
+      "description": "An inline span holding the label and the button; it adds no styles."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The Label component, aligned to the top and inheriting the cursor and colour."
+    },
+    {
+      "id": "info-button",
+      "name": "InfoButton",
+      "description": "A transparent icon button after the label, aligned to the top and pulled up and down by spacingVerticalXXS (1px at large) so its icon lines up with the text.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground2",
+        "tokens.borderRadiusMedium",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingVerticalXXS"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Info icon",
+      "description": "The default info circle at 12, 16 or 20px by size, regular at rest and filled while hovered, pressed or open.",
+      "optional": true
+    },
+    {
+      "id": "popover",
+      "name": "Info popover",
+      "description": "A Popover above-start of the button with an arrow, size small (medium at large) and a note role; its surface is at most 264px wide.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1",
+        "typographyStyles.body1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "12px icon; popover text caption1.",
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "16px icon; popover text caption1.",
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "20px icon in a button padded spacingVerticalXXS, pulled 1px up and down; popover size medium with body1 text.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingVerticalXXS"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "button-box",
+      "part": "info-button",
+      "text": "The button is an inline flex box with no border, borderRadiusMedium corners, no margin and spacingVerticalXS by spacingHorizontalXS padding; at large the padding is spacingVerticalXXS on every side.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingVerticalXXS"
+      ],
+      "source": "useInfoButtonStyles.styles.ts:20-36,94-96"
+    },
+    {
+      "id": "alignment",
+      "part": "info-button",
+      "text": "Both label and button align to the top of the line; the button takes negative top and bottom margins of spacingVerticalXXS (1px at large) so it does not stretch the line.",
+      "tokens": [
+        "tokens.spacingVerticalXXS"
+      ],
+      "values": [
+        {
+          "name": "largeMargin",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useInfoLabelStyles.styles.ts:14-36"
+    },
+    {
+      "id": "icon-size",
+      "part": "icon",
+      "text": "The default icon is 12px at small, 16px at medium and 20px at large.",
+      "values": [
+        {
+          "name": "iconSmall",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useInfoButtonStyles.styles.ts:110-133; fluent2:info-label"
+    },
+    {
+      "id": "popover",
+      "part": "popover",
+      "text": "The popover opens above-start of the button with an arrow, at size small for small and medium buttons and medium for large; its surface is at most 264px wide in caption1 (body1 at large).",
+      "tokens": [
+        "typographyStyles.caption1",
+        "typographyStyles.body1"
+      ],
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 264,
+          "unit": "px"
+        }
+      ],
+      "source": "useInfoButtonStyles.styles.ts:99-105,117-122; InfoButton.types.ts:21-40"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "info-button",
+      "text": "Transparent background with a Foreground 2 regular icon.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useInfoButtonStyles.styles.ts:30-43"
+    },
+    {
+      "state": "hovered",
+      "part": "info-button",
+      "text": "Transparent Background Hover with the icon in Foreground 2 Brand Hover, swapped to its filled twin; the pointer is a hand.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorNeutralForeground2BrandHover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useInfoButtonStyles.styles.ts:45-56"
+    },
+    {
+      "state": "pressed",
+      "part": "info-button",
+      "text": "Transparent Background Pressed with Foreground 2 Brand Pressed.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ],
+      "source": "useInfoButtonStyles.styles.ts:57-60"
+    },
+    {
+      "state": "selected",
+      "part": "info-button",
+      "text": "While its popover is open the button reads Transparent Background Selected with Foreground 2 Brand Selected and the filled icon.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ],
+      "source": "useInfoButtonStyles.styles.ts:63-72,130"
+    },
+    {
+      "state": "focused",
+      "part": "info-button",
+      "text": "The default 2px colorStrokeFocus2 outline outside the button (createFocusOutlineStyle).",
+      "tokens": [
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useInfoButtonStyles.styles.ts:92,129"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "A click, Enter or Space on the button opens its popover; a second toggles it closed, as do Escape and a click outside.",
+      "source": "InfoButton.types.ts:7-15; fluent2:info-label"
+    },
+    {
+      "id": "blur",
+      "text": "Focus leaving both the button and the popover closes the popover.",
+      "source": "InfoButton.types.ts:7-15; fluent2:info-label"
+    },
+    {
+      "id": "no-hover-open",
+      "text": "The popover never opens on hover; openOnHover is withheld from the popover slot.",
+      "source": "InfoButton.types.ts:7-15"
+    },
+    {
+      "id": "label-owns",
+      "text": "While open, the root reports aria-owns of the popover so the label and its help read as one.",
+      "source": "useInfoLabel.ts:70-86"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 20,
+    "keyboard": [
+      "Tab to the info button",
+      "Enter or Space opens and closes the popover",
+      "Escape closes it"
+    ],
+    "semantics": [
+      "the button's aria-label is information and it is labelled by the label and itself",
+      "the popover surface is a note labelled by its own id",
+      "the root owns the popover while it is open"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 264px popover maximum width, the 12/16/20px icons and the 1px large-size margins are constants; the padding and alignment margins are tokens.",
+      "source": "useInfoButtonStyles.styles.ts:101; useInfoLabelStyles.styles.ts:33-34"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The pressed state does not swap to the filled icon by itself; only hover and the open (selected) state do, so a keyboard press shows the regular icon until the popover opens.",
+      "source": "useInfoButtonStyles.styles.ts:45-72"
+    },
+    {
+      "kind": "inferred",
+      "text": "The icon sizes, the popover's above-start placement, arrow, size mapping and note role are set in useInfoButton.tsx, which the kit's citation pattern cannot name; the styles file's line references stand in.",
+      "source": "useInfoButtonStyles.styles.ts:110-133"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the button's icon is CanvasText, hover and press paint Highlight with Canvas text, and the open state paints Highlight with Canvas text.",
+      "source": "useInfoButtonStyles.styles.ts:74-90"
+    }
+  ]
+}

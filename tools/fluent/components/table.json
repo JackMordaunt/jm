@@ -1,0 +1,645 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "table",
+  "name": "Table",
+  "status": "stable",
+  "summary": "Rows and columns of data: a header row of sortable cells over body rows of cells, with an optional selection cell per row, cell layouts for media and two-line content, hover actions and column resize handles. Table is the presentational set; DataGrid composes the same parts over column definitions with sorting, selection, resizing and cell or row focus built in. Use a List for one column of like items.",
+  "tokenGroups": [
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorSubtleBackgroundSelected",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralForeground1Pressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke2",
+    "tokens.colorNeutralStrokeOnBrand",
+    "tokens.colorTransparentStrokeInteractive",
+    "tokens.colorBrandBackground2",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingVerticalXXS",
+    "tokens.fontWeightRegular",
+    "tokens.fontWeightSemibold",
+    "tokens.fontSizeBase200",
+    "typographyStyles.caption1"
+  ],
+  "references": {
+    "react": [
+      "useTableStyles.styles.ts",
+      "Table.types.ts",
+      "useTableHeaderStyles.styles.ts",
+      "useTableHeaderCellStyles.styles.ts",
+      "TableHeaderCell.types.ts",
+      "useTableBodyStyles.styles.ts",
+      "useTableRowStyles.styles.ts",
+      "TableRow.types.ts",
+      "useTableCellStyles.styles.ts",
+      "TableCell.types.ts",
+      "useTableCellLayoutStyles.styles.ts",
+      "TableCellLayout.types.ts",
+      "useTableCellActionsStyles.styles.ts",
+      "useTableSelectionCellStyles.styles.ts",
+      "TableSelectionCell.types.ts",
+      "useTableResizeHandleStyles.styles.ts",
+      "useDataGridStyles.styles.ts",
+      "DataGrid.types.ts",
+      "useDataGridRowStyles.styles.ts",
+      "DataGridRow.types.ts",
+      "useDataGridHeaderCellStyles.styles.ts",
+      "useDataGridSelectionCellStyles.styles.ts"
+    ],
+    "fluent2": [
+      "table",
+      "data-grid"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "A TableHeader of one row of TableHeaderCells, then a TableBody of TableRows of TableCells; a DataGrid builds these from items and columns."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "medium",
+        "small",
+        "extra-small"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Row height 44, 34 or 24px; extra-small also drops the text to fontSizeBase200."
+    },
+    {
+      "name": "noNativeElements",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Renders divs in a flex layout instead of table elements; cells then flex equally with a minimum height rather than a height."
+    },
+    {
+      "name": "sortable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Header cells become sort buttons with a sort icon."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "none",
+        "brand",
+        "neutral"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "A TableRow's selected look: none paints nothing, brand Brand Background 2, neutral Subtle Selected."
+    },
+    {
+      "name": "sortDirection",
+      "type": "enum",
+      "values": [
+        "ascending",
+        "descending"
+      ],
+      "required": false,
+      "description": "A header cell's current sort, shown by its icon."
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "checkbox",
+        "radio"
+      ],
+      "required": false,
+      "default": "checkbox",
+      "description": "A selection cell's control."
+    },
+    {
+      "name": "checked",
+      "type": "enum",
+      "values": [
+        "true",
+        "false",
+        "mixed"
+      ],
+      "required": false,
+      "default": "false",
+      "description": "A selection cell's state; mixed on the header cell means some rows."
+    },
+    {
+      "name": "subtle",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "An unchecked selection cell hides until its row is hovered or focused."
+    },
+    {
+      "name": "hidden",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A selection cell keeps its width but draws nothing, for single-select tables that reserve the column."
+    },
+    {
+      "name": "truncate",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A cell layout clips its main text to one line with an ellipsis."
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": false,
+      "description": "DataGrid: the rows' data; columns define how each renders a cell, with a getRowId."
+    },
+    {
+      "name": "selectionMode",
+      "type": "enum",
+      "values": [
+        "single",
+        "multiselect"
+      ],
+      "required": false,
+      "description": "DataGrid: row selection, adding a selection cell to every row and the header."
+    },
+    {
+      "name": "subtleSelection",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "DataGrid: selection cells show only on hover or focus of their row."
+    },
+    {
+      "name": "selectionAppearance",
+      "type": "enum",
+      "values": [
+        "none",
+        "brand",
+        "neutral"
+      ],
+      "required": false,
+      "default": "brand",
+      "description": "DataGrid: the appearance selected rows take."
+    },
+    {
+      "name": "focusMode",
+      "type": "enum",
+      "values": [
+        "none",
+        "cell",
+        "row_unstable",
+        "composite"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "DataGrid: whether arrow keys move between cells, rows, or through the content of each cell."
+    },
+    {
+      "name": "resizableColumns",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "DataGrid: header cells grow a resize handle on their right edge."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Table",
+      "description": "A table of fixed layout, full width, collapsed borders, vertically middle-aligned, on the Subtle background; or a block when noNativeElements.",
+      "tokens": [
+        "tokens.colorSubtleBackground"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "TableHeader",
+      "description": "A row group (or block) holding the header row."
+    },
+    {
+      "id": "header-cell",
+      "name": "TableHeaderCell",
+      "description": "A cell padded S each side at fontWeightRegular, relatively positioned, holding a full-width button of at least 32px height with XS gap, and a sort icon and an aside (the resize handle) slot.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.fontWeightRegular"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "TableBody",
+      "description": "A row group (or block) holding the body rows."
+    },
+    {
+      "id": "row",
+      "name": "TableRow",
+      "description": "A table row (or a centred flex row) in Foreground 1, border-box, with a strokeWidthThin Stroke 2 bottom border at medium and small.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke2"
+      ]
+    },
+    {
+      "id": "cell",
+      "name": "TableCell",
+      "description": "A cell padded S each side, relatively positioned, 44/34/24px tall by size (a minimum height when flexing).",
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "id": "cell-layout",
+      "name": "TableCellLayout",
+      "description": "A flex row with S gap: a media slot (icon or avatar, 20px at small and medium, 16 at extra-small, 24 when primary), then a column of main text and a caption1 Foreground 2 description.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "cell-actions",
+      "name": "TableCellActions",
+      "description": "Actions pinned to a cell's right edge, vertically centred, invisible until the row is hovered, pressed or focused within.",
+      "optional": true
+    },
+    {
+      "id": "selection-cell",
+      "name": "TableSelectionCell",
+      "description": "A 44px-wide centred cell with no padding holding a Checkbox or Radio indicator; subtle ones are invisible until the row is hovered or focused, hidden ones always invisible.",
+      "optional": true
+    },
+    {
+      "id": "resize-handle",
+      "name": "TableResizeHandle",
+      "description": "A 16px-wide strip straddling a header cell's right edge (8px each side) with a col-resize cursor, invisible until hovered or focused, drawing a 1px Stroke 1 line down its centre.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "44px cells, Stroke 2 row borders."
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "34px cells, Stroke 2 row borders."
+    },
+    {
+      "axis": "size",
+      "value": "extra-small",
+      "description": "24px cells, fontSizeBase200 text, no row border.",
+      "tokens": [
+        "tokens.fontSizeBase200"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "none",
+      "default": true,
+      "description": "A row paints only its hover and pressed Subtle tokens."
+    },
+    {
+      "axis": "appearance",
+      "value": "brand",
+      "description": "A selected row is Brand Background 2 with a Transparent Stroke Interactive border, staying Brand Background 2 in Foreground 1 when pressed.",
+      "tokens": [
+        "tokens.colorBrandBackground2",
+        "tokens.colorTransparentStrokeInteractive"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "neutral",
+      "description": "A selected row is Subtle Selected with Foreground 1 Hover text and a Neutral Stroke On Brand border, staying Subtle Selected when pressed.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralStrokeOnBrand"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "table",
+      "default": true,
+      "description": "Native table elements with display table, table-row-group, table-row and table-cell."
+    },
+    {
+      "axis": "layout",
+      "value": "flex",
+      "description": "noNativeElements: block containers and flex rows whose cells flex 1 1 0 with a minimum width of 0."
+    },
+    {
+      "axis": "kind",
+      "value": "data-grid",
+      "description": "DataGrid, DataGridHeader, DataGridRow, DataGridCell and the rest reuse these styles unchanged and add their own class names; a DataGridRow under subtleSelection reveals its selection cell on hover or focus-within."
+    }
+  ],
+  "layout": [
+    {
+      "id": "table",
+      "text": "The table is display table with fixed layout, 100% wide, collapsed borders and middle vertical alignment on the Subtle background; noNativeElements makes it a block.",
+      "tokens": [
+        "tokens.colorSubtleBackground"
+      ],
+      "source": "useTableStyles.styles.ts:13-35,48-53"
+    },
+    {
+      "id": "cells",
+      "text": "Cells are 44px tall at medium, 34 at small and 24 at extra-small (minimum heights when flexing), padded S left and right, relatively positioned; header cells pad the same at fontWeightRegular and hold a button that fills them with at least 32px height and an XS gap between its label and the sort icon.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.fontWeightRegular"
+      ],
+      "values": [
+        {
+          "name": "medium",
+          "value": 44,
+          "unit": "px"
+        },
+        {
+          "name": "small",
+          "value": 34,
+          "unit": "px"
+        },
+        {
+          "name": "extraSmall",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "headerButtonMinHeight",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useTableCellStyles.styles.ts:14-66; useTableHeaderCellStyles.styles.ts:35-44,71-82"
+    },
+    {
+      "id": "rows",
+      "text": "A row is Foreground 1 text and border-box; medium and small draw a strokeWidthThin Stroke 2 bottom border, extra-small none but sets fontSizeBase200.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke2",
+        "tokens.fontSizeBase200"
+      ],
+      "source": "useTableRowStyles.styles.ts:32-35,91-97"
+    },
+    {
+      "id": "cell-layout",
+      "text": "A cell layout is a flex row with S gap and flex 1 1 0; its media is 20px at small and medium and 16 at extra-small, 24 when the layout is primary; primary also makes the main text semibold; the description is caption1 Foreground 2 under the main text; truncate clips the main text to one line with an ellipsis and hides the overflow of the layout and content.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.fontWeightSemibold",
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground2"
+      ],
+      "values": [
+        {
+          "name": "mediaSmallMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "mediaExtraSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "mediaPrimary",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTableCellLayoutStyles.styles.ts:20-72,88-105"
+    },
+    {
+      "id": "selection-cell",
+      "text": "A selection cell is 44px wide (fixed in both layouts), centred, unpadded, no-wrap; its radio indicator fills and centres; the checkbox is the Checkbox component's indicator.",
+      "values": [
+        {
+          "name": "width",
+          "value": 44,
+          "unit": "px"
+        }
+      ],
+      "source": "useTableSelectionCellStyles.styles.ts:9,17-53"
+    },
+    {
+      "id": "cell-actions",
+      "text": "Cell actions sit absolutely at a cell's right edge, centred vertically by a -50% translate, inheriting the row's background so they cover the text under them.",
+      "source": "useTableCellActionsStyles.styles.ts:14-27"
+    },
+    {
+      "id": "resize-handle",
+      "text": "A resize handle is absolute at a header cell's right, 16px wide with -8px side margins so it straddles the column line, full height, z-index 1, drawing a 1px Stroke 1 line at its centre.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ],
+      "values": [
+        {
+          "name": "width",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "overhang",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "line",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useTableResizeHandleStyles.styles.ts:17-52"
+    },
+    {
+      "id": "sort-icon",
+      "text": "The sort icon is a flex box with XXS top padding after the header label.",
+      "tokens": [
+        "tokens.spacingVerticalXXS"
+      ],
+      "source": "useTableHeaderCellStyles.styles.ts:88-92"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: rows and cells paint nothing over the table's Subtle background beyond the row's bottom border; selection cells and cell actions that are subtle are at opacity 0.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralStroke2"
+      ],
+      "source": "useTableRowStyles.styles.ts:32-35,91-93; useTableSelectionCellStyles.styles.ts:55-68; useTableCellActionsStyles.styles.ts:14-23"
+    },
+    {
+      "state": "hovered",
+      "part": "row",
+      "text": "A body row (not the header row) hovered reads Subtle Hover with Foreground 1 Hover text, and its cell actions and selection cell become visible; a sortable header cell hovered reads Subtle Hover with Foreground 1 Hover.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralForeground1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTableRowStyles.styles.ts:72-81; useTableHeaderCellStyles.styles.ts:46-50"
+    },
+    {
+      "state": "pressed",
+      "part": "row",
+      "text": "Pressed, a body row reads Subtle Pressed with Foreground 1 Pressed, its actions and selection cell visible; a brand or neutral selected row keeps its selected background when pressed.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground1Pressed",
+        "tokens.colorBrandBackground2",
+        "tokens.colorSubtleBackgroundSelected"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTableRowStyles.styles.ts:62-71,102-105,129-131; useTableHeaderCellStyles.styles.ts:51-54"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus on a row, a cell, a header cell (focus-within) or a selection cell draws a 2px colorStrokeFocus2 outline with borderRadiusMedium; a focused row also reveals its selection cell and actions.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outline",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useTableRowStyles.styles.ts:36-50,54-61; useTableCellStyles.styles.ts:62-65; useTableHeaderCellStyles.styles.ts:39-42; useTableSelectionCellStyles.styles.ts:42-45"
+    },
+    {
+      "state": "selected",
+      "part": "row",
+      "text": "A row's appearance paints its selection: brand is Brand Background 2 with a Transparent Stroke Interactive border, neutral is Subtle Selected with Foreground 1 Hover text and a Neutral Stroke On Brand border, none paints nothing; the selection cell's control is checked.",
+      "tokens": [
+        "tokens.colorBrandBackground2",
+        "tokens.colorTransparentStrokeInteractive",
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralStrokeOnBrand"
+      ],
+      "source": "useTableRowStyles.styles.ts:99-136; TableRow.types.ts:17"
+    },
+    {
+      "state": "other",
+      "label": "resizing",
+      "part": "resize-handle",
+      "text": "The handle fades to opacity 1 over 0.2s while hovered or focused and drags the column edge; otherwise it is invisible.",
+      "motion": {
+        "durationMs": 200
+      },
+      "source": "useTableResizeHandleStyles.styles.ts:26-40"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "sort",
+      "text": "A sortable header cell is a button: a click or Enter sorts by its column, cycling ascending and descending, and its icon shows the direction.",
+      "source": "TableHeaderCell.types.ts:23-33; useTableHeaderCellStyles.styles.ts:84-86,110,120"
+    },
+    {
+      "id": "select",
+      "text": "A selection cell's checkbox or radio selects its row; the header's checkbox selects all and reads mixed when some are selected; subtle selection cells appear only on hover or focus of the row, hidden ones keep the column's width and never draw.",
+      "source": "TableSelectionCell.types.ts:21-60; useTableSelectionCellStyles.styles.ts:80-86"
+    },
+    {
+      "id": "resize",
+      "text": "With resizableColumns a DataGrid's header cells carry a resize handle; dragging it, or arrow keys while it is focused, changes the column's width and reports onColumnResize.",
+      "source": "DataGrid.types.ts:54,80-106; useTableResizeHandleStyles.styles.ts:17-52"
+    },
+    {
+      "id": "focus-mode",
+      "text": "A DataGrid's focusMode decides what arrow keys move between: nothing, cells, rows, or the content within cells (composite).",
+      "source": "DataGrid.types.ts:17,31"
+    },
+    {
+      "id": "reveal",
+      "text": "Cell actions and subtle selection cells go from opacity 0 to 1 when their row is hovered, pressed or focused within; the change is instant.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTableRowStyles.styles.ts:36-81; useDataGridRowStyles.styles.ts:16-33"
+    }
+  ],
+  "accessibility": {
+    "role": "grid",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab reaches the grid; arrow keys move by cell or row per focusMode",
+      "Enter or Space on a header sorts; on a selection cell selects",
+      "Arrow keys on a focused resize handle resize the column"
+    ],
+    "semantics": [
+      "a Table is a table with rowgroups, rows, columnheaders and cells; a DataGrid is a grid",
+      "a sortable column header reports aria-sort",
+      "selected rows report aria-selected through their selection cell's control; the header checkbox is mixed when some rows are selected"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Row heights (44, 34, 24px), the 32px header button minimum, the 44px selection column, the 16px handle with 8px overhang and its 0.2s fade, the 2px focus outline and the media sizes (20, 16, 24px) are constants; no token gives them.",
+      "source": "useTableCellStyles.styles.ts:20-30,41-51; useTableHeaderCellStyles.styles.ts:79; useTableSelectionCellStyles.styles.ts:9; useTableResizeHandleStyles.styles.ts:23-29; useTableCellLayoutStyles.styles.ts:46-56"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The table's background is Subtle (transparent), so rows show whatever surface the table sits on; hover and selection tint that surface rather than a white table.",
+      "tokens": [
+        "tokens.colorSubtleBackground"
+      ],
+      "source": "useTableStyles.styles.ts:31-35"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The header row never takes the interactive row styles: its hover and press belong to the sortable header cells, not the row.",
+      "source": "useTableRowStyles.styles.ts:152"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a hovered row reads Highlight text and border; brand and neutral selected rows draw a 2px transparent border with borderRadiusMedium and pull the focus outline in by 4px so the selection shows as an outline.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useTableRowStyles.styles.ts:82-89,107-115,118-125"
+    },
+    {
+      "kind": "inferred",
+      "text": "DataGrid adds no styles of its own: every DataGrid part calls the Table part's styles hook and appends its class, so one implementation serves both and the DataGrid features (sorting, selection, focus, resizing) are behaviour over the same look.",
+      "source": "useDataGridStyles.styles.ts:15-21; useDataGridRowStyles.styles.ts:38-55; useDataGridHeaderCellStyles.styles.ts:18-39; useDataGridSelectionCellStyles.styles.ts:17-41"
+    }
+  ]
+}

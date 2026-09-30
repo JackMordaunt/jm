@@ -1,0 +1,477 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "compound-button",
+  "name": "CompoundButton",
+  "status": "stable",
+  "summary": "A tall button with a large icon, a label and a line of secondary text describing the action, for choices that need a sentence of explanation, such as the options on a start page. Use a plain button when the label says enough.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2BrandHover",
+    "tokens.colorNeutralForeground2BrandPressed",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingHorizontalL",
+    "tokens.spacingHorizontalXL",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.lineHeightBase300",
+    "tokens.lineHeightBase400",
+    "tokens.fontWeightRegular",
+    "tokens.fontWeightSemibold"
+  ],
+  "references": {
+    "react": [
+      "useCompoundButtonStyles.styles.ts",
+      "CompoundButton.types.ts"
+    ],
+    "fluent2": [
+      "button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "secondaryContent",
+      "type": "slot",
+      "required": false,
+      "description": "The second line: a short description of what the button does."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "A 40px icon before or after the text block."
+    },
+    {
+      "name": "iconPosition",
+      "type": "enum",
+      "values": [
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "before",
+      "description": "As button."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "secondary",
+        "primary",
+        "outline",
+        "subtle",
+        "transparent"
+      ],
+      "required": false,
+      "default": "secondary",
+      "description": "As button; also sets the secondary text's colour."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Padding and text sizes; the height is set by content, not fixed."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "circular",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "As button."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "As button."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "The label, the first line."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "As button, but as tall as its content, with larger vertical padding."
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A 40px square icon beside the text block.",
+      "optional": true
+    },
+    {
+      "id": "content-container",
+      "name": "Content container",
+      "description": "A column holding the label over the secondary text, left-aligned."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The first line, in the size's text style.",
+      "optional": true
+    },
+    {
+      "id": "secondary-content",
+      "name": "Secondary content",
+      "description": "The second line, regular weight, one step smaller than the label (same size at large), in Foreground 2.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.fontWeightRegular"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "secondary",
+      "default": true,
+      "description": "As button; secondary text Foreground 2, stepping to Foreground2Hover and Pressed.",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2Pressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "As button; secondary text as secondary."
+    },
+    {
+      "axis": "appearance",
+      "value": "primary",
+      "description": "As button; secondary text colorNeutralForegroundOnBrand in every state.",
+      "tokens": [
+        "tokens.colorNeutralForegroundOnBrand"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "As button; secondary text Foreground 2, Hover, Pressed (not the brand hover the label's icon gets).",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2Pressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "description": "As button; secondary text Foreground 2 turning Foreground2BrandHover and BrandPressed, like the label.",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground2BrandHover",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Padding spacingHorizontalS top and sides, spacingHorizontalMNudge bottom; label fontSizeBase300 on lineHeightBase300 at button small's regular weight; secondary text fontSizeBase200.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontSizeBase200"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Padding 14px top, spacingHorizontalM sides, spacingHorizontalL bottom; label fontSizeBase300 semibold; secondary text fontSizeBase200.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalL",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontWeightSemibold",
+        "tokens.fontSizeBase200"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "Padding 18px top, spacingHorizontalL sides, spacingHorizontalXL bottom; label fontSizeBase400 on lineHeightBase400 semibold; secondary text fontSizeBase300.",
+      "tokens": [
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXL",
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.fontWeightSemibold",
+        "tokens.fontSizeBase300"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded | circular | square",
+      "description": "As button."
+    }
+  ],
+  "layout": [
+    {
+      "id": "height",
+      "part": "root",
+      "text": "The root's height is auto: it grows with the icon and the two text lines instead of holding button's 24, 32 or 40px. Border, radius, minimum widths and the colour transition are as button.",
+      "source": "useCompoundButtonStyles.styles.ts:18-19,318"
+    },
+    {
+      "id": "padding-small",
+      "part": "root",
+      "text": "Small pads spacingHorizontalS on top, start and end and spacingHorizontalMNudge at the bottom.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:134-139"
+    },
+    {
+      "id": "padding-medium",
+      "part": "root",
+      "text": "Medium pads 14px on top, spacingHorizontalM at start and end and spacingHorizontalL at the bottom.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalL"
+      ],
+      "values": [
+        {
+          "name": "paddingTop",
+          "value": 14,
+          "unit": "px"
+        }
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:140-145"
+    },
+    {
+      "id": "padding-large",
+      "part": "root",
+      "text": "Large pads 18px on top, spacingHorizontalL at start and end and spacingHorizontalXL at the bottom.",
+      "tokens": [
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXL"
+      ],
+      "values": [
+        {
+          "name": "paddingTop",
+          "value": 18,
+          "unit": "px"
+        }
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:146-151"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon is 40px square at every size, with spacingHorizontalM between it and the text block on the side the text is, only when there is a label.",
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ],
+      "values": [
+        {
+          "name": "size",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:216-231,298-306"
+    },
+    {
+      "id": "content",
+      "part": "content-container",
+      "text": "The content container is a flex column, label over secondary text, text-aligned left.",
+      "source": "useCompoundButtonStyles.styles.ts:233-240"
+    },
+    {
+      "id": "secondary-text",
+      "part": "secondary-content",
+      "text": "The secondary text sets its line height to 100% of its font size, regular weight, at fontSizeBase200 for small and medium and fontSizeBase300 for large.",
+      "tokens": [
+        "tokens.fontWeightRegular",
+        "tokens.fontSizeBase200",
+        "tokens.fontSizeBase300"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 100,
+          "unit": "percent"
+        }
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:242-259"
+    },
+    {
+      "id": "icon-only",
+      "part": "root",
+      "text": "Icon-only compound buttons are a fixed 48, 52 or 56px wide (small, medium, large) with spacingHorizontalXS, SNudge or S padding on every side.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "widthSmall",
+          "value": 48,
+          "unit": "px"
+        },
+        {
+          "name": "widthMedium",
+          "value": 52,
+          "unit": "px"
+        },
+        {
+          "name": "widthLarge",
+          "value": 56,
+          "unit": "px"
+        }
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:194-214,285"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "secondary-content",
+      "text": "Rest: secondary text colorNeutralForeground2 (on-brand on primary); the root is as button.",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:21-23,59-62"
+    },
+    {
+      "state": "hovered",
+      "part": "secondary-content",
+      "text": "Secondary text turns colorNeutralForeground2Hover (Foreground2BrandHover on transparent, on-brand on primary); the root is as button.",
+      "tokens": [
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2BrandHover",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:25-29,64-68,90-94,120-124"
+    },
+    {
+      "state": "pressed",
+      "part": "secondary-content",
+      "text": "Pointer down, or active while focus-visible: secondary text turns colorNeutralForeground2Pressed (Foreground2BrandPressed on transparent, on-brand on primary).",
+      "tokens": [
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorNeutralForeground2BrandPressed",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:31-35,70-74,96-100,126-130"
+    },
+    {
+      "state": "focused",
+      "text": "As button: the inset colorStrokeFocus2 ring, following the root's radius.",
+      "source": "useCompoundButtonStyles.styles.ts:318"
+    },
+    {
+      "state": "disabled",
+      "part": "secondary-content",
+      "text": "Secondary text is colorNeutralForegroundDisabled in every state; the root is as a disabled button.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:153-170,281"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "as-button",
+      "text": "Activation, focus visibility, disabledFocusable, the icon swap and the colour transition are as button.",
+      "source": "useCompoundButtonStyles.styles.ts:318"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 40,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Enter and Space activate it"
+    ],
+    "semantics": [
+      "the accessible name is the label and the secondary text together",
+      "aria-disabled when disabled or disabledFocusable"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 14px and 18px top paddings, the 40px icon, the 100% secondary line height and the 48, 52 and 56px icon-only widths are constants in the styles file.",
+      "source": "useCompoundButtonStyles.styles.ts:141,147,219-221,245,199-212"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Vertical padding reads horizontal spacing tokens (spacingHorizontalS, MNudge, L, XL for top and bottom), so a theme that makes the two axes differ changes compound-button heights through the horizontal tokens.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXL"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:135,141,147"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Small raises the label to fontSizeBase300 (button small uses 200) but inherits button small's regular weight, so a small compound label is 14px regular while medium is 14px semibold.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.fontWeightRegular",
+        "tokens.fontWeightSemibold"
+      ],
+      "source": "useCompoundButtonStyles.styles.ts:134-145,318"
+    },
+    {
+      "kind": "inferred",
+      "text": "minTargetPx 40 is the smallest content-sized box: small with a label only, 8px top, a 20px line, 10px bottom and two 1px borders. With the 40px icon every size is taller.",
+      "source": "useCompoundButtonStyles.styles.ts:134-139,219-221"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours secondary text turns Highlight on hover and press, HighlightText on primary, Canvas on hovered or pressed subtle, and GrayText when disabled; the root follows button's forced-colours rules.",
+      "source": "useCompoundButtonStyles.styles.ts:39-53,76-80,102-113,173-191"
+    }
+  ]
+}

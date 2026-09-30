@@ -1,0 +1,478 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "date-picker",
+  "name": "DatePicker",
+  "status": "stable",
+  "statusNote": "Shipped as @fluentui/react-datepicker-compat, a v8-derived compat package over the v9 Input and Calendar; its API predates the v9 slot conventions.",
+  "summary": "A form field for one date: an Input showing the formatted date with a calendar icon, and a Calendar that pops up under it. Use it where a date belongs in a form; use calendar alone where the grid is the content, and time-picker for a time.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorTransparentStroke",
+    "tokens.shadow16",
+    "tokens.borderRadiusMedium",
+    "typographyStyles.body1"
+  ],
+  "references": {
+    "react": [
+      "useDatePickerStyles.styles.ts",
+      "DatePicker.types.ts",
+      "defaults.ts",
+      "usePopupPositioning.ts"
+    ],
+    "fluent2": [
+      "date-picker"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The selected date; null for none when the caller controls it."
+    },
+    {
+      "name": "onSelectDate",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the picked date, or null when the text is cleared or fails to parse."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "The input's placeholder while no date is set."
+    },
+    {
+      "name": "formatDate",
+      "type": "callback",
+      "required": false,
+      "description": "Formats the selected date for the input; the default is the platform's date string."
+    },
+    {
+      "name": "parseDateFromString",
+      "type": "callback",
+      "required": false,
+      "description": "Parses typed text to a date when allowTextInput is set; the default is the platform's parser."
+    },
+    {
+      "name": "allowTextInput",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lets the date be typed; otherwise the input is read-only and only the calendar sets it."
+    },
+    {
+      "name": "openOnClick",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Opens the calendar when the input is clicked."
+    },
+    {
+      "name": "disableAutoFocus",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Stops the calendar opening when the input takes focus; the types warn this is an accessibility violation."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Controls the calendar's visibility from outside."
+    },
+    {
+      "name": "defaultOpen",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The initial visibility when the picker controls itself."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when the calendar opens or closes, with the new value."
+    },
+    {
+      "name": "onValidationResult",
+      "type": "callback",
+      "required": false,
+      "description": "Runs after the text is validated on blur, Enter or close, with no error or one of invalid-input, out-of-bounds and required-input."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Makes an empty value a required-input validation error; a wrapping Field sets it."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disables the input and never opens the calendar."
+    },
+    {
+      "name": "underlined",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the input in its underline appearance."
+    },
+    {
+      "name": "borderless",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the input in its filled-lighter appearance, with no border."
+    },
+    {
+      "name": "inlinePopup",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lays the popup out in place under the input instead of in a portal."
+    },
+    {
+      "name": "positioning",
+      "type": "enum",
+      "values": [
+        "below",
+        "above",
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "below",
+      "description": "Where the popup sits relative to the input, aligned to its start by default; it flips to stay in the viewport."
+    },
+    {
+      "name": "today",
+      "type": "string",
+      "required": false,
+      "description": "The date the calendar marks as today."
+    },
+    {
+      "name": "initialPickerDate",
+      "type": "string",
+      "required": false,
+      "description": "The date the calendar opens on when nothing is selected."
+    },
+    {
+      "name": "minDate",
+      "type": "string",
+      "required": false,
+      "description": "The earliest allowed date; earlier typed dates are out-of-bounds."
+    },
+    {
+      "name": "maxDate",
+      "type": "string",
+      "required": false,
+      "description": "The latest allowed date; later typed dates are out-of-bounds."
+    },
+    {
+      "name": "isMonthPickerVisible",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Passed to the calendar: shows the month picker beside the day grid."
+    },
+    {
+      "name": "showMonthPickerAsOverlay",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Passed to the calendar: the month picker overlays the day grid."
+    },
+    {
+      "name": "showGoToToday",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Passed to the calendar: shows the go-to-today button."
+    },
+    {
+      "name": "showWeekNumbers",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Passed to the calendar: shows week numbers."
+    },
+    {
+      "name": "showCloseButton",
+      "type": "boolean",
+      "required": false,
+      "description": "Passed to the calendar: shows a close button in the day header."
+    },
+    {
+      "name": "firstDayOfWeek",
+      "type": "enum",
+      "values": [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+      ],
+      "required": false,
+      "default": "sunday",
+      "description": "Passed to the calendar."
+    },
+    {
+      "name": "firstWeekOfYear",
+      "type": "enum",
+      "values": [
+        "firstDay",
+        "firstFullWeek",
+        "firstFourDayWeek"
+      ],
+      "required": false,
+      "default": "firstFullWeek",
+      "description": "Passed to the calendar; note the default differs from the calendar's own."
+    },
+    {
+      "name": "highlightCurrentMonth",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Passed to the calendar."
+    },
+    {
+      "name": "highlightSelectedMonth",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Passed to the calendar."
+    },
+    {
+      "name": "allFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Passed to the calendar: disabled days take focus."
+    },
+    {
+      "name": "strings",
+      "type": "list",
+      "required": false,
+      "description": "The calendar's strings; the picker's defaults reword the navigation and close labels (go to previous month, close date picker) and add the three validation messages."
+    },
+    {
+      "name": "dateTimeFormatter",
+      "type": "list",
+      "required": false,
+      "description": "Passed to the calendar."
+    },
+    {
+      "name": "calendar",
+      "type": "slot",
+      "required": false,
+      "description": "Further Calendar props."
+    },
+    {
+      "name": "popupSurface",
+      "type": "slot",
+      "required": false,
+      "description": "The popup's surface element."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "The Input: the picker's field, positioned relative so an inline popup can hang under it, with a pointer cursor over it and its text."
+    },
+    {
+      "id": "icon",
+      "name": "Calendar icon",
+      "description": "The input's contentAfter slot holding the calendar-month icon, a button that opens the calendar."
+    },
+    {
+      "id": "popup-surface",
+      "name": "Popup surface",
+      "description": "The floating surface the calendar sits in, present only while open.",
+      "optional": true
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar",
+      "description": "The Calendar inside the surface, opened on the selected date or initialPickerDate."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "The Input's outline appearance."
+    },
+    {
+      "axis": "appearance",
+      "value": "underline",
+      "description": "The Input's underline appearance, from the underlined prop."
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "The Input's filled-lighter appearance, from the borderless prop; underlined wins when both are set."
+    },
+    {
+      "axis": "textInput",
+      "value": "read-only",
+      "default": true,
+      "description": "The input shows the formatted date and cannot be typed in; the calendar sets the value."
+    },
+    {
+      "axis": "textInput",
+      "value": "typed",
+      "description": "With allowTextInput the date can be typed and is parsed and validated on blur, Enter or close."
+    },
+    {
+      "axis": "popup",
+      "value": "portal",
+      "default": true,
+      "description": "The surface floats in a portal, positioned below the input's start."
+    },
+    {
+      "axis": "popup",
+      "value": "inline",
+      "description": "With inlinePopup the surface lays out in place under the input, above later siblings."
+    }
+  ],
+  "layout": [
+    {
+      "id": "input",
+      "part": "root",
+      "text": "The field is the Input component in the chosen appearance with the calendar-month icon as contentAfter; its size, padding and colours are input.json's.",
+      "source": "DatePicker.types.ts:8-12,33-38,183-186; useDatePickerStyles.styles.ts:14-33"
+    },
+    {
+      "id": "surface",
+      "part": "popup-surface",
+      "text": "The popup surface is an inline-flex box filling colorNeutralBackground1 with colorNeutralForeground1 body1 text, a 1px colorTransparentStroke border, borderRadiusMedium corners and shadow16, sized by the calendar inside it.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "typographyStyles.body1",
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusMedium",
+        "tokens.shadow16"
+      ],
+      "values": [
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useDatePickerStyles.styles.ts:35-45"
+    },
+    {
+      "id": "position",
+      "part": "popup-surface",
+      "text": "The surface is positioned below the input aligned to its start unless positioning says otherwise; inline, it stacks above its later siblings.",
+      "source": "usePopupPositioning.ts:14-29; useDatePickerStyles.styles.ts:28-32; DatePicker.types.ts:104-109"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "root",
+      "text": "Rest is the Input's rest look with a pointer cursor over the field and its text.",
+      "source": "useDatePickerStyles.styles.ts:15-21"
+    },
+    {
+      "state": "open",
+      "part": "popup-surface",
+      "text": "While open the surface shows with the calendar focused on the selected day; the input reports expanded.",
+      "motion": {
+        "instant": true
+      },
+      "source": "DatePicker.types.ts:79-83; useDatePickerStyles.styles.ts:63-71"
+    },
+    {
+      "state": "disabled",
+      "part": "root",
+      "text": "Disabled is the Input's disabled look with the default cursor over the field and its text; the calendar never opens.",
+      "source": "useDatePickerStyles.styles.ts:22-27; DatePicker.types.ts:29-32"
+    },
+    {
+      "state": "error",
+      "part": "root",
+      "text": "A validation error is reported to onValidationResult (invalid-input, out-of-bounds or required-input, with default messages) and a wrapping Field shows it; the picker itself draws nothing for it.",
+      "source": "DatePicker.types.ts:92-95,230-240; defaults.ts:14-18"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "The calendar opens when the input takes focus (unless disableAutoFocus), when the input is clicked (openOnClick), when the calendar icon is clicked, and on ArrowDown or Enter in the input; a disabled picker never opens.",
+      "source": "DatePicker.types.ts:58-69; useDatePickerStyles.styles.ts:14-21"
+    },
+    {
+      "id": "select",
+      "text": "Picking a day in the calendar sets the value, formats it into the input with formatDate, calls onSelectDate, closes the popup and returns focus to the input.",
+      "source": "DatePicker.types.ts:17-20,130-133"
+    },
+    {
+      "id": "close",
+      "text": "Escape, the calendar's close button and a click outside close the popup; with allowTextInput, closing also validates the typed text.",
+      "source": "DatePicker.types.ts:86-89,215-217"
+    },
+    {
+      "id": "text-input",
+      "text": "With allowTextInput, typed text is parsed with parseDateFromString on blur, Enter and close: an unparsable string is invalid-input, a date before minDate or after maxDate is out-of-bounds, and an empty required field is required-input; a valid date becomes the value.",
+      "source": "DatePicker.types.ts:53-56,92-95,136-139,194-201,232-240"
+    },
+    {
+      "id": "icon-click",
+      "text": "Clicking the calendar icon toggles the popup; with allowTextInput it first commits the typed text.",
+      "source": "DatePicker.types.ts:8-12"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab moves focus to the input, which opens the calendar unless disableAutoFocus",
+      "ArrowDown and Enter open the calendar; Enter with allowTextInput commits the text",
+      "Escape closes the calendar and returns focus to the input",
+      "inside the calendar the arrow keys, Home, End, PageUp and PageDown move and Enter picks"
+    ],
+    "semantics": [
+      "the input is role combobox with aria-haspopup dialog and aria-expanded, and aria-controls the surface while open",
+      "the calendar icon is role button labelled by the input's label, with aria-expanded",
+      "the surface is a modal dialog labelled Calendar",
+      "the input is read-only unless allowTextInput",
+      "validation errors reach onValidationResult, and a wrapping Field's message shows them"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "borderless does not remove the border of the outline appearance; it switches the Input to filled-lighter, and underlined wins over it.",
+      "source": "DatePicker.types.ts:33-38,183-186"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The picker's firstWeekOfYear default is firstFullWeek where the calendar's is firstDay, so the same setup numbers weeks differently through the two APIs.",
+      "source": "DatePicker.types.ts:171-175; Calendar.types.ts:75-79"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The surface border is a 1px constant; the popup's below-start placement is the positioning hook's default. The hook file useDatePicker.tsx (open, validation and slot wiring) is not citable by the kit's source pattern, so those rules cite the types.",
+      "source": "useDatePickerStyles.styles.ts:39; usePopupPositioning.ts:20-24"
+    },
+    {
+      "kind": "inferred",
+      "text": "The default formatDate and parseDateFromString are the platform's Date string and Date.parse, as the types document; the design site describes the field as a date input with a calendar affordance.",
+      "source": "DatePicker.types.ts:130-139; fluent2:date-picker"
+    }
+  ]
+}

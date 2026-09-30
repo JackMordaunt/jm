@@ -1,0 +1,687 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tab-list",
+  "name": "TabList",
+  "status": "stable",
+  "summary": "A row or column of tabs that switches between views of one surface, marking the selected tab with a brand indicator bar (transparent, subtle) or a filled pill (subtle-circular, filled-circular). Choose it over a segmented set of toggle buttons when each option is a whole view, and keep the appearance, size and orientation on the list, never per tab.",
+  "tokenGroups": [
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralForeground1Pressed",
+    "tokens.colorCompoundBrandForeground1",
+    "tokens.colorCompoundBrandForeground1Hover",
+    "tokens.colorCompoundBrandForeground1Pressed",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokeHover",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorTransparentStroke",
+    "tokens.colorBrandBackground2",
+    "tokens.colorBrandBackground2Hover",
+    "tokens.colorBrandBackground2Pressed",
+    "tokens.colorBrandForeground2",
+    "tokens.colorBrandForeground2Hover",
+    "tokens.colorBrandForeground2Pressed",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorNeutralBackground3Hover",
+    "tokens.colorNeutralBackground3Pressed",
+    "tokens.colorBrandBackground",
+    "tokens.colorBrandBackgroundHover",
+    "tokens.colorBrandBackgroundPressed",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.colorNeutralStrokeOnBrand",
+    "tokens.shadow4",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.strokeWidthThicker",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingVerticalNone",
+    "tokens.spacingVerticalXXS",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalSNudge",
+    "tokens.spacingVerticalS",
+    "tokens.spacingVerticalMNudge",
+    "tokens.spacingVerticalM",
+    "tokens.spacingVerticalL",
+    "tokens.fontFamilyBase",
+    "tokens.lineHeightBase300",
+    "typographyStyles.body1",
+    "typographyStyles.body1Strong",
+    "typographyStyles.body2",
+    "typographyStyles.subtitle2",
+    "tokens.durationSlow",
+    "tokens.curveDecelerateMax"
+  ],
+  "references": {
+    "react": [
+      "useTabListStyles.styles.ts",
+      "TabList.types.ts",
+      "useTabStyles.styles.ts",
+      "Tab.types.ts",
+      "useTabAnimatedIndicator.styles.ts"
+    ],
+    "fluent2": [
+      "tabs"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "transparent",
+        "subtle",
+        "subtle-circular",
+        "filled-circular"
+      ],
+      "required": false,
+      "default": "transparent",
+      "description": "Set on the list, applied to every tab. transparent: no background at any state but the Transparent family's tint; subtle: the Subtle family's hover tint; both mark selection with an indicator bar. subtle-circular: pill tabs with a border on hover and a brand-tinted selected pill; filled-circular: grey pills with a brand-filled selected pill."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Set on the list: padding, icon size, text style and indicator thickness."
+    },
+    {
+      "name": "vertical",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Stacks tabs in a column, left-aligns their content and moves the indicator to the tab's left edge."
+    },
+    {
+      "name": "selectedValue",
+      "type": "string",
+      "required": false,
+      "description": "Controlled selection: the value of the selected tab (any value; compared by identity)."
+    },
+    {
+      "name": "defaultSelectedValue",
+      "type": "string",
+      "required": false,
+      "description": "Initial selection when uncontrolled."
+    },
+    {
+      "name": "onTabSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with {value} when a tab is selected by click, key or, with selectTabOnFocus, focus."
+    },
+    {
+      "name": "selectTabOnFocus",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Selects a tab as soon as arrow keys move focus to it, instead of on Enter or Space."
+    },
+    {
+      "name": "reserveSelectedTabSpace",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Renders a hidden copy of each tab's label in the selected (heavier) text style so a tab keeps one width whether selected or not."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disables every tab in the list."
+    },
+    {
+      "name": "tabs",
+      "type": "list",
+      "required": true,
+      "description": "The Tab children, each with a required value, an optional icon, a label (content) and its own disabled flag."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "list",
+      "name": "TabList",
+      "description": "A non-wrapping flex row (or column when vertical) that stretches its tabs on the cross axis; circular appearances put a gap between tabs."
+    },
+    {
+      "id": "tab",
+      "name": "Tab",
+      "description": "A button laid out as a single-row grid of icon then label, radius borderRadiusMedium (borderRadiusCircular for the circular appearances), clipping its content.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A square slot before the label, 20px at small and medium, 24px at large; shows the regular icon at rest and the filled twin when selected.",
+      "optional": true
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The content span in body1 (body2 at large), with a 2px horizontal inset; heavier when selected.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.body2"
+      ]
+    },
+    {
+      "id": "label-reserved",
+      "name": "Reserved label",
+      "description": "An invisible copy of the label in the selected text style occupying the same grid cell, so the tab's width does not change on selection.",
+      "optional": true
+    },
+    {
+      "id": "indicator",
+      "name": "Selection indicator",
+      "description": "A pill-ended bar on the selected tab's bottom edge (left edge when vertical), inset from the tab's ends; transparent and subtle appearances only.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "pending-indicator",
+      "name": "Hover indicator",
+      "description": "The same bar in a neutral stroke colour, shown on any tab while hovered or pressed; transparent and subtle appearances only.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStroke1Pressed"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "default": true,
+      "description": "Transparent background stepping through the Transparent family on hover and press; icon and label Foreground 2 stepping to Hover and Pressed; the selected tab shows the brand indicator bar.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "As transparent, but hover and press tint through the Subtle family.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle-circular",
+      "description": "Pill tabs with a transparent strokeWidthThin border that turns Stroke 1 Hover and Pressed; the selected pill is Brand Background 2 with a Compound Brand Stroke border and Brand Foreground 2 text. No indicator bar.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorBrandBackground2",
+        "tokens.colorBrandBackground2Hover",
+        "tokens.colorBrandBackground2Pressed",
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorCompoundBrandStrokeHover",
+        "tokens.colorCompoundBrandStrokePressed",
+        "tokens.colorBrandForeground2",
+        "tokens.colorBrandForeground2Hover",
+        "tokens.colorBrandForeground2Pressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-circular",
+      "description": "Pill tabs on Background 3 with Foreground 2 text; the selected pill is the brand fill with on-brand text. No indicator bar.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorNeutralBackground3Hover",
+        "tokens.colorNeutralBackground3Pressed",
+        "tokens.colorBrandBackground",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundOnBrand"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "20px icon, body1 label, spacingHorizontalXXS icon gap; horizontal padding spacingVerticalSNudge by spacingHorizontalSNudge (32px tall); indicator strokeWidthThick thick when horizontal.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.strokeWidthThick"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "20px icon, body1 label, spacingHorizontalSNudge icon gap; horizontal padding spacingVerticalM by spacingHorizontalMNudge (44px tall); indicator strokeWidthThicker.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingVerticalM",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.strokeWidthThicker"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "24px icon, body2 label (subtitle2 selected), spacingHorizontalSNudge icon gap; horizontal padding spacingVerticalL by spacingHorizontalMNudge (56px tall with an icon); indicator strokeWidthThicker.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalMNudge",
+        "typographyStyles.body2",
+        "typographyStyles.subtitle2",
+        "tokens.strokeWidthThicker"
+      ]
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "default": true,
+      "description": "Tabs in a row, content centred, indicator along the bottom edge."
+    },
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "description": "Tabs in a column, content start-aligned, less vertical padding (spacingVerticalXXS, SNudge, S by size), indicator along the left edge.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "list",
+      "part": "list",
+      "text": "The list is a flex row, or a column when vertical, that never wraps or shrinks and stretches each tab across its cross axis. The circular appearances add a gap between tabs: spacingHorizontalSNudge at small, spacingHorizontalS otherwise; the indicator appearances have none.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useTabListStyles.styles.ts:15-37,47-54"
+    },
+    {
+      "id": "tab-box",
+      "part": "tab",
+      "text": "A tab is a borderless button laid out as a one-row grid (icon in column 1, label in column 2, or the label alone in column 1), items centred vertically, content centred horizontally when horizontal and start-aligned when vertical; fontFamilyBase, lineHeightBase300, radius borderRadiusMedium, overflow hidden, no shrinking.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.lineHeightBase300",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useTabStyles.styles.ts:30-63,584-591"
+    },
+    {
+      "id": "padding-horizontal",
+      "part": "tab",
+      "text": "In a horizontal list, padding is spacingVerticalSNudge by spacingHorizontalSNudge at small, spacingVerticalM by spacingHorizontalMNudge at medium and spacingVerticalL by spacingHorizontalMNudge at large; the icon gap is spacingHorizontalXXS at small and spacingHorizontalSNudge otherwise. With the 20px row (24px at large) that gives 32, 44 and 56px tall.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingVerticalM",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "values": [
+        {
+          "name": "heightSmall",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "heightMedium",
+          "value": 44,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 56,
+          "unit": "px"
+        }
+      ],
+      "source": "useTabStyles.styles.ts:64-90"
+    },
+    {
+      "id": "padding-vertical",
+      "part": "tab",
+      "text": "In a vertical list, padding is spacingVerticalXXS by spacingHorizontalSNudge at small, spacingVerticalSNudge by spacingHorizontalMNudge at medium and spacingVerticalS by spacingHorizontalMNudge at large, giving rows 24, 32 and 40px tall.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalMNudge"
+      ],
+      "values": [
+        {
+          "name": "heightSmall",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "heightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useTabStyles.styles.ts:68-90"
+    },
+    {
+      "id": "circular-box",
+      "part": "tab",
+      "text": "Circular appearances round the tab with borderRadiusCircular, give it a strokeWidthThin border (transparent at rest) and replace the block padding with the vertical list's values minus strokeWidthThin, so a circular tab is 24, 32 or 40px tall in either orientation.",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke",
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS"
+      ],
+      "source": "useTabStyles.styles.ts:180-199"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon slot is an inline-flex square, 20px at small and medium and 24px at large, its glyph the same size.",
+      "values": [
+        {
+          "name": "iconSmallMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTabStyles.styles.ts:523-554"
+    },
+    {
+      "id": "label",
+      "part": "label",
+      "text": "The label is body1 (body2 at large) with spacingVerticalNone by spacingHorizontalXXS padding at every size and orientation, clipped.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.body2",
+        "tokens.spacingVerticalNone",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "source": "useTabStyles.styles.ts:568-580"
+    },
+    {
+      "id": "reserved",
+      "part": "label-reserved",
+      "text": "With reserveSelectedTabSpace, a hidden duplicate of the label in body1Strong (subtitle2 at large) shares the label's grid cell, so the tab is always as wide as its selected text.",
+      "tokens": [
+        "typographyStyles.body1Strong",
+        "typographyStyles.subtitle2"
+      ],
+      "source": "useTabStyles.styles.ts:754-769; TabList.types.ts:53-60"
+    },
+    {
+      "id": "indicator-horizontal",
+      "part": "indicator",
+      "text": "In a horizontal list the indicator sits on the tab's bottom edge with pill ends: strokeWidthThick tall and inset spacingHorizontalSNudge from each end at small; strokeWidthThicker tall and inset spacingHorizontalM at medium and large.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.borderRadiusCircular"
+      ],
+      "source": "useTabStyles.styles.ts:434-442,470-509"
+    },
+    {
+      "id": "indicator-vertical",
+      "part": "indicator",
+      "text": "In a vertical list the indicator sits on the tab's left edge, strokeWidthThicker wide at every size, inset from top and bottom by spacingVerticalXS, spacingVerticalS or spacingVerticalMNudge by size.",
+      "tokens": [
+        "tokens.strokeWidthThicker",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingVerticalS",
+        "tokens.spacingVerticalMNudge"
+      ],
+      "source": "useTabStyles.styles.ts:478-485,494-501,510-517"
+    },
+    {
+      "id": "pending-indicator",
+      "part": "pending-indicator",
+      "text": "The hover indicator has the same geometry as the selection indicator for each size and orientation, drawn beneath it.",
+      "source": "useTabStyles.styles.ts:345-431"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest (transparent, subtle): transparent background, icon and label colorNeutralForeground2, regular icon, no indicator.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useTabStyles.styles.ts:91-144"
+    },
+    {
+      "state": "hovered",
+      "text": "Transparent and subtle tabs take their family's Hover background and Foreground 2 Hover icon and label, and show the hover indicator in colorNeutralStroke1Hover; a selected tab's indicator turns colorCompoundBrandStrokeHover over it. subtle-circular adds a Stroke 1 Hover border with Foreground 2 Hover text; filled-circular takes Background 3 Hover.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorCompoundBrandStrokeHover",
+        "tokens.colorNeutralBackground3Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTabStyles.styles.ts:93-95,102-104,111-113,120-122,203-207,247-250,347-352,447-449"
+    },
+    {
+      "state": "pressed",
+      "text": "As hovered with the Pressed tokens: family Pressed background, Foreground 2 Pressed, hover indicator colorNeutralStroke1Pressed, selected indicator colorCompoundBrandStrokePressed; subtle-circular border Stroke 1 Pressed; filled-circular Background 3 Pressed.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorCompoundBrandStrokePressed",
+        "tokens.colorNeutralBackground3Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTabStyles.styles.ts:96-98,105-107,114-116,208-212,251-254,353-358,450-452"
+    },
+    {
+      "state": "selected",
+      "text": "Transparent and subtle: the indicator appears in colorCompoundBrandStroke, the icon switches to its filled twin in colorCompoundBrandForeground1, the label becomes colorNeutralForeground1 in body1Strong (subtitle2 at large); each steps to its Hover and Pressed token. subtle-circular: Brand Background 2 pill, Compound Brand Stroke border, Brand Foreground 2 text. filled-circular: Brand Background pill with on-brand text.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorCompoundBrandForeground1",
+        "tokens.colorCompoundBrandForeground1Hover",
+        "tokens.colorCompoundBrandForeground1Pressed",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralForeground1Pressed",
+        "typographyStyles.body1Strong",
+        "typographyStyles.subtitle2",
+        "tokens.colorBrandBackground2",
+        "tokens.colorBrandForeground2",
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "source": "useTabStyles.styles.ts:158-177,217-234,271-281,443-452,555-562,575-583"
+    },
+    {
+      "state": "focused",
+      "text": "A custom indicator, not createFocusOutlineStyle (the tab's ::after already draws the selection bar): on keyboard focus the tab casts shadow4 plus a strokeWidthThick colorStrokeFocus2 box-shadow ring outside its edge, following its radius (borderRadiusMedium, or borderRadiusCircular), and rises to z-index 1; a transparent strokeWidthThick outline is also set. Circular tabs add a strokeWidthThin colorNeutralStrokeOnBrand ring inset inside the edge.",
+      "tokens": [
+        "tokens.shadow4",
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStrokeOnBrand",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusCircular"
+      ],
+      "source": "useTabStyles.styles.ts:309-342; createCustomFocusIndicatorStyle.ts"
+    },
+    {
+      "state": "disabled",
+      "text": "Transparent and subtle: transparent background, icon and label colorNeutralForegroundDisabled, no hover indicator, a selected disabled tab keeps its indicator in colorNeutralForegroundDisabled, not-allowed pointer. subtle-circular: Subtle background with disabled text, or when selected Background Disabled with a Stroke Disabled border. filled-circular: Background Disabled with disabled text, plus a Stroke Disabled border when selected.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorTransparentStroke",
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorNeutralStrokeDisabled"
+      ],
+      "source": "useTabStyles.styles.ts:145-157,235-243,295-303,368-374,465-469,721"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "indicator-slide",
+      "part": "indicator",
+      "text": "When selection moves, the new tab's indicator starts at the previous tab's position and length (translated by the offset between the tabs and scaled by their width ratio, height when vertical) and on the next frame slides and resizes to rest, animating transform over durationSlow with curveDecelerateMax; transform origin is the left edge (top when vertical). The indicator may overflow the tab while travelling. Disabled tabs never animate; under reduced motion it jumps.",
+      "tokens": [
+        "tokens.durationSlow",
+        "tokens.curveDecelerateMax"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationSlow",
+        "easing": "tokens.curveDecelerateMax",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useTabAnimatedIndicator.styles.ts:22-48,83-110; useTabStyles.styles.ts:8,658"
+    },
+    {
+      "id": "no-colour-transition",
+      "text": "Background, text and indicator colours change instantly between rest, hover, pressed and selected; the styles file declares no colour transition.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTabStyles.styles.ts:30-304"
+    },
+    {
+      "id": "select",
+      "text": "Clicking a tab, or Enter or Space on the focused tab, selects it and calls onTabSelect with its value; with selectTabOnFocus, moving focus selects.",
+      "source": "TabList.types.ts:19-28,78-89"
+    },
+    {
+      "id": "icon-swap",
+      "part": "icon",
+      "text": "A selected tab shows the filled variant of its icon, every other tab the regular one.",
+      "source": "useTabStyles.styles.ts:531-536,555-562"
+    },
+    {
+      "id": "hover-only-enabled",
+      "text": "Hover and pressed styles apply only while the tab's button is enabled; a disabled tab shows no hover tint or hover indicator.",
+      "source": "useTabStyles.styles.ts:93-98,368-374"
+    }
+  ],
+  "accessibility": {
+    "role": "tablist",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves focus into the list, onto the selected tab",
+      "Arrow keys (Left/Right, or Up/Down when vertical) move focus between tabs",
+      "Enter or Space selects the focused tab unless selectTabOnFocus already did"
+    ],
+    "semantics": [
+      "each tab has role tab and aria-selected",
+      "aria-orientation vertical when vertical",
+      "an icon-only tab needs an aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Icon sizes (20, 24px) are constants; paddings, gaps and the indicator's thickness and insets are all tokens. The indicator slide's offset and scale are measured from the tabs' rendered rectangles at run time.",
+      "source": "useTabStyles.styles.ts:540-554"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The vertical-list paddings use spacingVertical tokens for block and spacingHorizontal for inline, but circular tabs reuse the vertical list's block padding in both orientations, so a horizontal medium circular tab is 32px tall where a transparent one is 44px.",
+      "source": "useTabStyles.styles.ts:73-81,191-199"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The small horizontal indicator is strokeWidthThick; every other size and orientation uses strokeWidthThicker, including small vertical.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker"
+      ],
+      "source": "useTabStyles.styles.ts:470-509"
+    },
+    {
+      "kind": "inferred",
+      "text": "The appearance input also accepts filled-circular, which the Fluent 2 tabs page does not describe alongside subtle-circular; it is in the types and styles files.",
+      "source": "TabList.types.ts:51; fluent2:tabs"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the selected indicator is ButtonText and the hover indicator Highlight (transparent when disabled). subtle-circular draws a Canvas border, Highlight when selected. filled-circular hover is Highlight with HighlightText label and icons; a selected filled-circular tab is ButtonText with ButtonFace label and icon. Box-shadows vanish there, so the focus ring's box-shadow is gone; the file sets a transparent strokeWidthThick outline alongside it, which browsers repaint in a system colour under forced colours.",
+      "source": "useTabStyles.styles.ts:213-215,231-233,255-269,282-293,359-366,375-382,453-463"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The indicator animation is measured at run time: the previous tab's offset and the size ratio between the two tabs go into CSS variables, and the transition runs on transform from those values to rest. Under reduced motion the transition is 0.01ms.",
+      "tokens": [
+        "tokens.durationSlow",
+        "tokens.curveDecelerateMax"
+      ],
+      "source": "useTabAnimatedIndicator.styles.ts:22-48,83-110"
+    }
+  ]
+}

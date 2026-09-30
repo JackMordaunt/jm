@@ -1,0 +1,417 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "toggle-button",
+  "name": "ToggleButton",
+  "status": "stable",
+  "summary": "A button that stays pressed: it flips a single on/off setting, such as bold in a toolbar, and shows the on state with its Selected colours. Use a switch for a setting that takes effect like a form field, and a checkbox inside forms.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1Selected",
+    "tokens.colorNeutralForeground1Selected",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralForeground1Pressed",
+    "tokens.colorTransparentBackgroundSelected",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorTransparentBackground",
+    "tokens.colorBrandBackgroundSelected",
+    "tokens.colorBrandBackground",
+    "tokens.colorBrandBackgroundHover",
+    "tokens.colorBrandBackgroundPressed",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorSubtleBackgroundSelected",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorNeutralForeground2Selected",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2BrandSelected",
+    "tokens.colorNeutralForeground2BrandHover",
+    "tokens.colorNeutralForeground2BrandPressed",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThicker",
+    "tokens.strokeWidthThickest"
+  ],
+  "references": {
+    "react": [
+      "useToggleButtonStyles.styles.ts",
+      "ToggleButton.types.ts"
+    ],
+    "fluent2": [
+      "button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "checked",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Controls the on state from outside; when given, defaultChecked is ignored and the caller flips it in onClick."
+    },
+    {
+      "name": "defaultChecked",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The initial on state when the button controls itself."
+    },
+    {
+      "name": "isAccessible",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the on state as a brand fill on every appearance, which contrasts with rest far more than the default Selected tint."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "secondary",
+        "primary",
+        "outline",
+        "subtle",
+        "transparent"
+      ],
+      "required": false,
+      "default": "secondary",
+      "description": "As button."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "As button."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "circular",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "As button."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "As button; while checked the icon shows its filled variant."
+    },
+    {
+      "name": "iconPosition",
+      "type": "enum",
+      "values": [
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "before",
+      "description": "As button."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "As button; an uncontrolled toggle button also flips its checked state."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "As button: the label."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "As button: the box whose background, border and text change with the checked state."
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "As button; filled while checked, regular otherwise.",
+      "optional": true
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "As button.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "secondary",
+      "default": true,
+      "description": "Checked: colorNeutralBackground1Selected fill, Stroke 1 border and Foreground 1 Selected text.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralForeground1Selected"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "primary",
+      "description": "Checked: colorBrandBackgroundSelected fill, a transparent border and on-brand text.",
+      "tokens": [
+        "tokens.colorBrandBackgroundSelected",
+        "tokens.colorNeutralForegroundOnBrand"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "Checked: colorTransparentBackgroundSelected (transparent) fill with a strokeWidthThicker Stroke 1 border; the thick border is the on signal.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralStroke1",
+        "tokens.strokeWidthThicker"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "Checked: colorSubtleBackgroundSelected fill, transparent border, colorNeutralForeground2Selected text, and the icon in colorNeutralForeground2BrandSelected.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground2Selected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "description": "Checked: colorTransparentBackgroundSelected fill and colorNeutralForeground2BrandSelected text and icon.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ]
+    },
+    {
+      "axis": "checkedStyle",
+      "value": "accessible",
+      "description": "isAccessible: checked is colorBrandBackground with on-brand text and a transparent border on every appearance, stepping to BrandBackgroundHover and Pressed; outline keeps a thin border, primary adds a 1px on-brand inner outline, and subtle's hovered icon stays on-brand.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThicker"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small | medium | large",
+      "description": "As button."
+    },
+    {
+      "axis": "shape",
+      "value": "rounded | circular | square",
+      "description": "As button."
+    }
+  ],
+  "layout": [
+    {
+      "id": "as-button",
+      "text": "Geometry, padding, minimum widths, icon sizes and text are as button: the toggle's styles are merged ahead of the button's hook, which applies them all.",
+      "source": "useToggleButtonStyles.styles.ts:7,355"
+    },
+    {
+      "id": "checked-border",
+      "part": "root",
+      "text": "Checked sets the border width to strokeWidthThin explicitly; checked outline widens it to strokeWidthThicker (3px) inside the same border box, so the outer size does not change and the content area shrinks by 2px a side. isAccessible outline returns it to strokeWidthThin.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThicker"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:24,74-77,168-171"
+    },
+    {
+      "id": "accessible-primary-ring",
+      "part": "root",
+      "text": "isAccessible primary draws a strokeWidthThin colorNeutralForegroundOnBrand outline inset by strokeWidthThicker, an inner ring that marks it on; while focus-visible the ring is inset by strokeWidthThickest instead, clearing the focus ring.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:173-183"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Unchecked rest, hover, pressed and disabled are exactly as button.",
+      "source": "useToggleButtonStyles.styles.ts:318-340,355"
+    },
+    {
+      "state": "checked",
+      "text": "Checked swaps the appearance's rest colours for its Selected tokens (see variants) and shows the filled icon.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralForeground1Selected",
+        "tokens.colorBrandBackgroundSelected",
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground2Selected",
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:17-31,74-77,91-94,111-114,128-131,271-275,346-349"
+    },
+    {
+      "state": "hovered",
+      "text": "Checked and hovered reads the ordinary Hover tokens, not a selected-hover twin: secondary Background 1, Stroke 1 and Foreground 1 Hover; primary BrandBackgroundHover; outline and transparent TransparentBackgroundHover (transparent's text Foreground2BrandHover); subtle SubtleBackgroundHover with Foreground2Hover. The transition is as button.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2BrandHover"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:33-37,79-81,96-100,116-120,133-137"
+    },
+    {
+      "state": "pressed",
+      "text": "Checked and pressed (pointer down, or active while focus-visible) reads the ordinary Pressed tokens per appearance, as hover does with Hover.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralForeground1Pressed",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:39-43,83-85,102-106,122-126,139-143"
+    },
+    {
+      "state": "focused",
+      "text": "As button (the inset colorStrokeFocus2 ring), except checked outline, whose focused border stays colorNeutralStroke1 instead of turning colorStrokeFocus2.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.colorNeutralStroke1"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:87-89,355"
+    },
+    {
+      "state": "disabled",
+      "text": "Disabled overrides checked: Background, Stroke and Foreground Disabled on secondary and outline, a transparent border on primary, and a transparent background on subtle and transparent, whose hover and press still step to TransparentBackgroundHover and Pressed.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:203-269,334-336"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "Click, Enter or Space flips checked (uncontrolled) or runs onClick for the caller to flip it (controlled).",
+      "source": "ToggleButton.types.ts:3-19"
+    },
+    {
+      "id": "icon-swap",
+      "text": "While checked the icon shows its filled variant regardless of hover.",
+      "source": "useToggleButtonStyles.styles.ts:26-31"
+    },
+    {
+      "id": "as-button",
+      "text": "Activation, focus visibility, disabledFocusable and the colour transition are as button.",
+      "source": "useToggleButtonStyles.styles.ts:355"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Enter and Space toggle it"
+    ],
+    "semantics": [
+      "aria-pressed reports the checked state",
+      "aria-disabled when disabled or disabledFocusable",
+      "an icon-only toggle needs an aria-label that names the setting, not the state"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Default checked colours are low-contrast against rest (Background1Selected is a light grey; outline, transparent and primary change only a border width, a text colour or one brand step). isAccessible exists to fix this; prefer it wherever the on state must be obvious.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorBrandBackgroundSelected",
+        "tokens.colorTransparentBackgroundSelected"
+      ],
+      "source": "ToggleButton.types.ts:21-26; useToggleButtonStyles.styles.ts:17-31,147-165"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Hovering or pressing a checked button reads the same Hover and Pressed tokens as an unchecked one, so on and off look identical under the pointer.",
+      "source": "useToggleButtonStyles.styles.ts:33-43"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Disabled subtle and transparent toggles still tint to colorTransparentBackgroundHover and Pressed on hover and press, unlike the disabled button, which stays transparent.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ],
+      "source": "useToggleButtonStyles.styles.ts:241-268"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The high-contrast focus border is a literal 1px HighlightText; everything else reads tokens.",
+      "source": "useToggleButtonStyles.styles.ts:66-69"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a checked toggle is Highlight with HighlightText text and a Highlight border, inverting to HighlightText background and Highlight text on hover and press; focus is a 1px HighlightText border with a Highlight outline. Primary drops button's primary high-contrast look and is ButtonFace, ButtonBorder and ButtonText at rest, GrayText when disabled. The icon keeps forced colour adjustment on.",
+      "source": "useToggleButtonStyles.styles.ts:46-71,276-306,321-323,350"
+    }
+  ]
+}

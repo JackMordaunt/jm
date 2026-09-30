@@ -1,0 +1,397 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tooltip",
+  "name": "Tooltip",
+  "status": "stable",
+  "summary": "A short, non-interactive text bubble that labels or describes the element it is attached to, shown on hover and keyboard focus after a delay. Use it for an icon-only button's name or a one-line hint; use a popover for anything interactive or longer than a sentence.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralBackgroundStatic",
+    "tokens.colorNeutralForegroundStaticInverted",
+    "tokens.colorTransparentStroke",
+    "tokens.colorNeutralShadowAmbient",
+    "tokens.colorNeutralShadowKey",
+    "tokens.borderRadiusMedium",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase200",
+    "tokens.lineHeightBase200"
+  ],
+  "references": {
+    "react": [
+      "useTooltipStyles.styles.ts",
+      "Tooltip.types.ts",
+      "constants.ts"
+    ],
+    "fluent2": [
+      "tooltip"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "The tooltip's text or content; keep it to plain text, since the bubble cannot be focused or clicked."
+    },
+    {
+      "name": "relationship",
+      "type": "enum",
+      "values": [
+        "label",
+        "description",
+        "inaccessible"
+      ],
+      "required": true,
+      "description": "How the tooltip is exposed on its trigger: label sets the trigger's accessible name (icon-only buttons), description its accessible description, inaccessible sets nothing and is only for text available elsewhere."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "normal",
+        "inverted"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "normal uses the theme's surface colours; inverted is the dark static bubble with white text."
+    },
+    {
+      "name": "withArrow",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws an arrow on the bubble pointing at the trigger."
+    },
+    {
+      "name": "positioning",
+      "type": "enum",
+      "values": [
+        "above",
+        "below",
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "above",
+      "description": "Where the bubble sits relative to its trigger; the full positioning shorthand also takes an alignment and flips to stay inside the viewport."
+    },
+    {
+      "name": "showDelay",
+      "type": "number",
+      "required": false,
+      "default": 250,
+      "description": "Milliseconds between hover or focus and the bubble appearing."
+    },
+    {
+      "name": "hideDelay",
+      "type": "number",
+      "required": false,
+      "default": 250,
+      "description": "Milliseconds between the pointer leaving or focus leaving and the bubble disappearing."
+    },
+    {
+      "name": "visible",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Controls visibility from outside; when omitted the tooltip shows and hides itself from hover and focus."
+    },
+    {
+      "name": "onVisibleChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when the tooltip is about to show or hide, with the new visibility; for Escape it carries the document keyboard event instead of a trigger event."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The trigger: exactly one focusable element the tooltip attaches its hover, focus and aria handlers to."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "trigger",
+      "name": "Trigger",
+      "description": "The element the tooltip describes; it keeps its own look and gains the aria attribute the relationship names."
+    },
+    {
+      "id": "content",
+      "name": "Bubble",
+      "description": "The floating box: background, 1px border, radius, padding and a drop shadow; wraps its text at 240px.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "arrow",
+      "name": "Arrow",
+      "description": "A square rotated 45 degrees behind the bubble's edge, in the bubble's colour, pointing at the trigger.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "normal",
+      "default": true,
+      "description": "Background 1 with Foreground 1 text: the bubble matches the theme's top surface and relies on its shadow to stand off the page.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "inverted",
+      "description": "The static dark background with static inverted (white) text in every theme, for a bubble that must contrast with the page.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundStatic",
+        "tokens.colorNeutralForegroundStaticInverted"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "part": "content",
+      "text": "The bubble is a border-box block at most 240px wide whose text wraps at any character when a word would overflow; it has a 1px colorTransparentStroke border and borderRadiusMedium corners.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 240,
+          "unit": "px"
+        },
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useTooltipStyles.styles.ts:18-28"
+    },
+    {
+      "id": "padding",
+      "part": "content",
+      "text": "Padding is 4px top, 11px sides and 6px bottom inside the 1px border, so the text sits 5px, 12px and 7px from the outer edge; the extra bottom pixel optically centres the caption-sized text.",
+      "values": [
+        {
+          "name": "paddingTop",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingHorizontal",
+          "value": 11,
+          "unit": "px"
+        },
+        {
+          "name": "paddingBottom",
+          "value": 6,
+          "unit": "px"
+        }
+      ],
+      "source": "useTooltipStyles.styles.ts:29"
+    },
+    {
+      "id": "text",
+      "part": "content",
+      "text": "Text is fontFamilyBase at fontSizeBase200 and lineHeightBase200 (caption1 metrics, regular weight), and the cursor stays the default arrow over the bubble.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200"
+      ],
+      "source": "useTooltipStyles.styles.ts:22-25"
+    },
+    {
+      "id": "shadow",
+      "part": "content",
+      "text": "The bubble casts two drop shadows through a filter, so the arrow is shadowed with it: 0 0 2px in colorNeutralShadowAmbient, then 0 4px 8px in colorNeutralShadowKey. The geometry matches shadow8 but is written out, since a filter cannot read the box-shadow token.",
+      "tokens": [
+        "tokens.colorNeutralShadowAmbient",
+        "tokens.colorNeutralShadowKey"
+      ],
+      "values": [
+        {
+          "name": "ambientBlur",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "keyOffsetY",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "keyBlur",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useTooltipStyles.styles.ts:33-36"
+    },
+    {
+      "id": "arrow",
+      "part": "arrow",
+      "text": "With withArrow the arrow is drawn by the positioning library's arrow helper at arrowHeight 6px, inherits the bubble's background, and the bubble is offset from the trigger by that height so the arrow's tip reaches the trigger.",
+      "source": "useTooltipStyles.styles.ts:6,53,73; constants.ts:1-4; Tooltip.types.ts:117-122",
+      "values": [
+        {
+          "name": "arrowHeight",
+          "value": 6,
+          "unit": "px"
+        }
+      ]
+    },
+    {
+      "id": "placement",
+      "text": "The bubble is placed above its trigger by default, centred, and flips or shifts to stay within the viewport; it is rendered in a portal so no ancestor clips it.",
+      "source": "Tooltip.types.ts:80-85; fluent2:tooltip"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "content",
+      "text": "Hidden until shown: the bubble is not displayed at all (display none) while its tooltip is not visible, and appears as a block when it is.",
+      "source": "useTooltipStyles.styles.ts:19,39-41,67"
+    },
+    {
+      "state": "open",
+      "part": "content",
+      "text": "Visible: the appearance's background and text colours; the bubble has no hover, pressed or focus look of its own, since it never takes focus or pointer input as a control.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralBackgroundStatic",
+        "tokens.colorNeutralForegroundStaticInverted"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTooltipStyles.styles.ts:30-31,39-41,48-51"
+    },
+    {
+      "state": "focused",
+      "part": "trigger",
+      "text": "The tooltip draws no focus indicator; keyboard focus on the trigger shows the bubble, and the trigger draws its own indicator (createFocusOutlineStyle or the button's inset ring).",
+      "source": "useTooltipStyles.styles.ts:17-54; Tooltip.types.ts:19-32"
+    },
+    {
+      "state": "other",
+      "label": "clipped",
+      "part": "content",
+      "text": "When positioning reports that the trigger or bubble has left its clipping boundary (the trigger scrolled out of view), the bubble stays in place but is made invisible and ignores the pointer.",
+      "source": "useTooltipStyles.styles.ts:43-46,68; Tooltip.types.ts:135-138"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "show",
+      "text": "Pointer entering or keyboard focus arriving on the trigger shows the tooltip after showDelay (default 250ms).",
+      "values": [
+        {
+          "name": "showDelay",
+          "value": 250,
+          "unit": "ms"
+        }
+      ],
+      "source": "Tooltip.types.ts:98-103"
+    },
+    {
+      "id": "hide",
+      "text": "Pointer leaving or focus leaving the trigger hides it after hideDelay (default 250ms); moving the pointer onto the bubble within that delay keeps it open, so text can be read or selected.",
+      "values": [
+        {
+          "name": "hideDelay",
+          "value": 250,
+          "unit": "ms"
+        }
+      ],
+      "source": "Tooltip.types.ts:61-66; fluent2:tooltip"
+    },
+    {
+      "id": "escape",
+      "text": "Escape anywhere in the document hides a visible tooltip at once and reports the keyboard event through onVisibleChange.",
+      "source": "Tooltip.types.ts:34-45"
+    },
+    {
+      "id": "controlled",
+      "text": "When visible is supplied, the tooltip shows and hides only as told; onVisibleChange still reports the hover and focus requests so the caller can follow them.",
+      "source": "Tooltip.types.ts:105-115"
+    },
+    {
+      "id": "no-motion",
+      "text": "The styles file declares no enter or exit transition: the bubble switches between display none and block.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTooltipStyles.styles.ts:17-54"
+    },
+    {
+      "id": "one-at-a-time",
+      "text": "Only one tooltip is visible at a time; showing another hides the first immediately.",
+      "source": "fluent2:tooltip"
+    }
+  ],
+  "accessibility": {
+    "role": "tooltip",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab to the trigger shows it after showDelay",
+      "Escape hides it",
+      "Tab away hides it after hideDelay"
+    ],
+    "semantics": [
+      "relationship label sets the trigger's aria-label (plain text) or aria-labelledby to the bubble",
+      "relationship description sets aria-describedby (or aria-description) to the bubble",
+      "relationship inaccessible sets nothing; use only when the text is already on screen",
+      "the bubble holds no focusable content"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "maxWidth 240px, the 1px border, the 4/11/6px padding and the drop-shadow geometry (0 0 2px, 0 4px 8px) are constants in the styles file; the shadow is written out because Fluent has no filter version of shadow8 (a TODO in the file says so).",
+      "source": "useTooltipStyles.styles.ts:21,28-29,33-36"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The shadow is a filter drop-shadow, not a box-shadow, so it follows the arrow's outline too; a renderer using a box shadow on the rectangle leaves the arrow unshadowed.",
+      "source": "useTooltipStyles.styles.ts:33-36,53"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The inverted appearance reads the Static tokens, which do not change between light and dark themes: an inverted tooltip is the same dark grey bubble in dark mode, where it contrasts less with the page.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundStatic",
+        "tokens.colorNeutralForegroundStaticInverted"
+      ],
+      "source": "useTooltipStyles.styles.ts:48-51"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The arrow's height (6px) and the bubble's corner radius as the positioning engine sees it (4, the value of borderRadiusMedium) are numeric constants, because the positioning engine needs numbers rather than CSS. A theme that changes borderRadiusMedium must change tooltipBorderRadius too, or the arrow will not meet the rounded corner cleanly.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "constants.ts:1-13"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles file has no forced-colors rule. Under the high-contrast theme colorTransparentStroke resolves to a visible colour, so the always-present 1px border outlines the bubble while its shadow disappears; the background and text follow their tokens (Canvas and CanvasText in practice).",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useTooltipStyles.styles.ts:28"
+    }
+  ]
+}

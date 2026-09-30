@@ -1,0 +1,703 @@
+{
+  "$schema": "schema/foundations.schema.json",
+  "tokens": {
+    "resolvedFile": "tokens/fluent.resolved.json",
+    "dtcgFile": "tokens/fluent.tokens.json",
+    "tiers": [
+      {
+        "name": "global",
+        "holds": "Values: the grey and brand ramps, font sizes and families, spacing, radii, stroke widths, durations, curves and the shadow ramp.",
+        "readByComponents": "Yes, for everything but colour: a component reads its sizes, spacing, radius and motion from global tokens."
+      },
+      {
+        "name": "alias",
+        "holds": "Colour roles over the globals: color{Family}{Role}{Level}{State}. The only tier a component reads colour from.",
+        "readByComponents": true
+      }
+    ],
+    "themes": [
+      {
+        "key": "value",
+        "theme": "webLightTheme",
+        "text": "The default: web brand ramp, light."
+      },
+      {
+        "key": "dark",
+        "theme": "webDarkTheme",
+        "text": "Web brand ramp, dark."
+      },
+      {
+        "key": "highContrast",
+        "theme": "teamsHighContrastTheme",
+        "text": "Windows high contrast: the eight system colours only (see highContrast)."
+      },
+      {
+        "key": "teamsLight",
+        "theme": "teamsLightTheme",
+        "text": "The Teams brand ramp; differs from value only where brand enters."
+      },
+      {
+        "key": "teamsDark",
+        "theme": "teamsDarkTheme",
+        "text": "The Teams brand ramp, dark."
+      }
+    ],
+    "naming": {
+      "text": "A colour token reads color, family, role, level, state: colorNeutralBackground1Hover is the neutral family, background role, level 1, hover state. A token with no state suffix is the rest value.",
+      "families": [
+        "Neutral",
+        "Brand",
+        "Compound",
+        "Subtle",
+        "Transparent",
+        "Status",
+        "Palette",
+        "Scrollbar"
+      ],
+      "roles": [
+        "Foreground",
+        "Background",
+        "Stroke",
+        "Shadow"
+      ],
+      "modifiers": [
+        "Inverted",
+        "Static",
+        "Disabled",
+        "Accessible",
+        "Link",
+        "OnBrand",
+        "Alpha",
+        "Pressed",
+        "Hover",
+        "Selected"
+      ],
+      "states": [
+        "Hover",
+        "Pressed",
+        "Selected",
+        "Disabled"
+      ]
+    },
+    "rules": [
+      {
+        "text": "There are no component tokens. A component's styles file hard-codes its sizes, spacing choices and which alias tokens it reads; a spec carries those numbers in values and cites the file."
+      },
+      {
+        "text": "Interaction states are separate tokens, not layers over the rest colour: hover reads colorNeutralBackground1Hover, pressed colorNeutralBackground1Pressed. Never derive a state colour by blending.",
+        "tokens": [
+          "tokens.colorNeutralBackground1",
+          "tokens.colorNeutralBackground1Hover",
+          "tokens.colorNeutralBackground1Pressed"
+        ]
+      },
+      {
+        "text": "Theme by replacing alias values; the resolved file gives each theme's value under its key. A brand theme replaces the brand ramp, which the alias file reads as brand[10..160]."
+      },
+      {
+        "text": "In fluent.resolved.json a token is {tier, type, value, dark?, highContrast?, teamsLight?, teamsDark?, alias?}; a theme key appears only where that theme differs from value."
+      }
+    ],
+    "units": {
+      "dimension": "px, at 1x; scale by the display's device pixel ratio.",
+      "duration": "ms",
+      "cubicBezier": "[x1, y1, x2, y2] control points of a CSS cubic-bezier.",
+      "color": "#rrggbb, or #rrggbbaa where the source keeps an alpha colour; the source's rgba() and transparent are normalised to that.",
+      "shadow": "Layers of {x, y, blur, color}, ambient first, no spread; paint every layer.",
+      "typography": "{fontFamily token name, fontSize px, fontWeight, lineHeight px}; no letter spacing."
+    },
+    "stateVocabulary": [
+      "rest",
+      "hover",
+      "pressed",
+      "selected",
+      "disabled",
+      "focus"
+    ]
+  },
+  "color": {
+    "families": [
+      {
+        "name": "neutral",
+        "text": "Greys for surfaces, text and strokes. Foreground 1 is primary text, 2 secondary, 3 tertiary, 4 placeholder-weight; Background 1 is the top surface, 2 to 6 step down behind it.",
+        "tokens": [
+          "tokens.colorNeutralForeground1",
+          "tokens.colorNeutralForeground2",
+          "tokens.colorNeutralForeground3",
+          "tokens.colorNeutralForeground4",
+          "tokens.colorNeutralBackground1",
+          "tokens.colorNeutralBackground2",
+          "tokens.colorNeutralBackground3",
+          "tokens.colorNeutralBackground4",
+          "tokens.colorNeutralBackground5",
+          "tokens.colorNeutralBackground6"
+        ]
+      },
+      {
+        "name": "brand",
+        "text": "The accent: brand backgrounds for primary actions with colorNeutralForegroundOnBrand on them, brand foregrounds for links and selected marks, brand strokes for selection.",
+        "tokens": [
+          "tokens.colorBrandBackground",
+          "tokens.colorBrandBackgroundHover",
+          "tokens.colorBrandBackgroundPressed",
+          "tokens.colorNeutralForegroundOnBrand",
+          "tokens.colorBrandForeground1",
+          "tokens.colorBrandForeground2",
+          "tokens.colorBrandStroke1",
+          "tokens.colorBrandStroke2",
+          "tokens.colorCompoundBrandBackground",
+          "tokens.colorCompoundBrandForeground1",
+          "tokens.colorCompoundBrandStroke"
+        ]
+      },
+      {
+        "name": "subtle",
+        "text": "Transparent at rest, a neutral tint on hover and press: the family for subtle buttons and menu items.",
+        "tokens": [
+          "tokens.colorSubtleBackground",
+          "tokens.colorSubtleBackgroundHover",
+          "tokens.colorSubtleBackgroundPressed",
+          "tokens.colorSubtleBackgroundSelected"
+        ]
+      },
+      {
+        "name": "transparent",
+        "text": "Explicitly nothing, for a stroke or background a component must set but not show.",
+        "tokens": [
+          "tokens.colorTransparentBackground",
+          "tokens.colorTransparentStroke",
+          "tokens.colorTransparentStrokeInteractive",
+          "tokens.colorTransparentStrokeDisabled"
+        ]
+      },
+      {
+        "name": "status",
+        "text": "Success, warning and danger, each with a background, a foreground and a border, mapped onto the green, orange and cranberry palettes.",
+        "tokens": [
+          "tokens.colorStatusSuccessBackground1",
+          "tokens.colorStatusSuccessForeground1",
+          "tokens.colorStatusWarningBackground1",
+          "tokens.colorStatusWarningForeground1",
+          "tokens.colorStatusDangerBackground1",
+          "tokens.colorStatusDangerForeground1",
+          "tokens.colorStatusDangerBorder1"
+        ]
+      },
+      {
+        "name": "palette",
+        "text": "Named colours for badges, avatars and presence, each with Background 1 to 3, Foreground 1 to 3, Border. Not for chrome.",
+        "tokens": [
+          "tokens.colorPaletteRedBackground1",
+          "tokens.colorPaletteRedForeground1",
+          "tokens.colorPaletteBlueBackground2",
+          "tokens.colorPaletteGreenForeground3"
+        ]
+      }
+    ],
+    "pairing": "A foreground pairs with a background of the same family and level: colorNeutralForeground1 on colorNeutralBackground1, colorNeutralForegroundOnBrand on colorBrandBackground, colorStatusDangerForeground1 on colorStatusDangerBackground1. A level-2 foreground on a level-1 background is secondary text, still a valid pair.",
+    "levels": "Background levels are depth, 1 nearest the reader: cards and inputs sit on 1, the page on 2 or 3, recessed wells on 4 to 6. In dark themes the order is the same; the greys invert.",
+    "strokes": {
+      "text": "Stroke 1 is a control's resting border, 2 a lighter divider, 3 the lightest; StrokeAccessible passes 3:1 against Background 1 for controls that must be findable by their border alone (checkbox, radio, switch off).",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStroke2",
+        "tokens.colorNeutralStroke3",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorNeutralStrokeAccessibleSelected"
+      ]
+    },
+    "brand": {
+      "text": "Every brand alias resolves to one step of a 16-step ramp, brand 10 darkest to 160 lightest. Web light reads brand 80 as colorBrandBackground and brand 70 hover; dark reads 70 and 80. Teams supplies its own ramp; the alias mapping is the same.",
+      "ramp": [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80,
+        90,
+        100,
+        110,
+        120,
+        130,
+        140,
+        150,
+        160
+      ],
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorBrandBackgroundHover"
+      ]
+    },
+    "status": {
+      "success": "green",
+      "warning": "orange",
+      "danger": "cranberry",
+      "text": "statusColorMapping.ts binds each status to a shared palette; the status aliases copy that palette's tokens. A component may read a palette token directly instead: the progress bar's error is colorPaletteRedBackground3 and its warning colorPaletteDarkOrangeBackground3, not the status aliases.",
+      "tokens": [
+        "tokens.colorStatusDangerBackground1",
+        "tokens.colorPaletteRedBackground3",
+        "tokens.colorPaletteDarkOrangeBackground3"
+      ]
+    },
+    "shadowColors": {
+      "text": "Shadows are two layers, ambient then key, in the neutral shadow colours; brand-coloured surfaces use the brand pair through the shadow*Brand tokens.",
+      "tokens": [
+        "tokens.colorNeutralShadowAmbient",
+        "tokens.colorNeutralShadowKey",
+        "tokens.colorBrandShadowAmbient",
+        "tokens.colorBrandShadowKey"
+      ]
+    }
+  },
+  "typography": {
+    "ramp": {
+      "text": "Eleven sizes from caption2 to display, each a fixed size and line height; the Strong and Stronger twins keep both and raise the weight to semibold and bold.",
+      "styles": [
+        "typographyStyles.caption2",
+        "typographyStyles.caption2Strong",
+        "typographyStyles.caption1",
+        "typographyStyles.caption1Strong",
+        "typographyStyles.caption1Stronger",
+        "typographyStyles.body1",
+        "typographyStyles.body1Strong",
+        "typographyStyles.body1Stronger",
+        "typographyStyles.body2",
+        "typographyStyles.subtitle2",
+        "typographyStyles.subtitle2Stronger",
+        "typographyStyles.subtitle1",
+        "typographyStyles.title3",
+        "typographyStyles.title2",
+        "typographyStyles.title1",
+        "typographyStyles.largeTitle",
+        "typographyStyles.display"
+      ],
+      "defaultBody": "typographyStyles.body1",
+      "controlLabel": "Buttons and inputs set fontSizeBase300 with fontWeightSemibold (button) or fontWeightRegular (input) and lineHeightBase300 directly, not a named style.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontWeightSemibold",
+        "tokens.fontWeightRegular"
+      ]
+    },
+    "weights": {
+      "regular": "tokens.fontWeightRegular",
+      "medium": "tokens.fontWeightMedium",
+      "semibold": "tokens.fontWeightSemibold",
+      "bold": "tokens.fontWeightBold",
+      "text": "Semibold is the emphasis weight: button labels, strong styles, selected tabs. Medium is rarely read."
+    },
+    "fontFamilies": {
+      "base": "tokens.fontFamilyBase",
+      "monospace": "tokens.fontFamilyMonospace",
+      "numeric": "tokens.fontFamilyNumeric",
+      "text": "Segoe UI first, then the platform sans; Consolas for code; Bahnschrift for tabular numerals."
+    },
+    "standIn": {
+      "text": "Segoe UI is proprietary. Selawik, Microsoft's open Segoe-metric family under the SIL Open Font License, has the same widths and vertical metrics and is the honest stand-in where Segoe is absent; the ramp's line heights assume it.",
+      "family": "Selawik",
+      "license": "OFL-1.1",
+      "weights": {
+        "regular": "Selawik Regular",
+        "semibold": "Selawik Semibold",
+        "bold": "Selawik Bold"
+      }
+    },
+    "rules": [
+      {
+        "text": "Text sits in a line box of the style's lineHeight; centre the font's ascent plus descent in it."
+      },
+      {
+        "text": "There are no letter-spacing tokens; draw at the font's natural tracking."
+      }
+    ]
+  },
+  "shape": {
+    "scale": {
+      "text": "Uniform corner radii; no per-corner tokens. A component that rounds corners unequally (a split button's inner edge, a tab's indicator) says so in its spec.",
+      "tokens": [
+        "tokens.borderRadiusNone",
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusLarge",
+        "tokens.borderRadiusXLarge",
+        "tokens.borderRadius2XLarge",
+        "tokens.borderRadius3XLarge",
+        "tokens.borderRadius4XLarge",
+        "tokens.borderRadius5XLarge",
+        "tokens.borderRadius6XLarge",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    "rules": [
+      {
+        "text": "Controls (button, input, checkbox, menu, tooltip) use borderRadiusMedium; a rounded button reads borderRadiusLarge for large size, borderRadiusSmall for small; circular is borderRadiusCircular, 10000px, meaning a pill or a circle.",
+        "tokens": [
+          "tokens.borderRadiusMedium",
+          "tokens.borderRadiusCircular"
+        ]
+      },
+      {
+        "text": "Surfaces (card, dialog) use borderRadiusMedium to borderRadiusXLarge; the spec says which.",
+        "tokens": [
+          "tokens.borderRadiusXLarge"
+        ]
+      },
+      {
+        "text": "The focus outline follows the component's radius, never larger."
+      }
+    ]
+  },
+  "spacing": {
+    "scale": {
+      "text": "One scale in two axes, so a horizontal and a vertical token can differ per theme: none 0, XXS 2, XS 4, SNudge 6, S 8, MNudge 10, M 12, L 16, XL 20, XXL 24, XXXL 32.",
+      "horizontal": [
+        "tokens.spacingHorizontalNone",
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXL",
+        "tokens.spacingHorizontalXXL",
+        "tokens.spacingHorizontalXXXL"
+      ],
+      "vertical": [
+        "tokens.spacingVerticalNone",
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS",
+        "tokens.spacingVerticalMNudge",
+        "tokens.spacingVerticalM",
+        "tokens.spacingVerticalL",
+        "tokens.spacingVerticalXL",
+        "tokens.spacingVerticalXXL",
+        "tokens.spacingVerticalXXXL"
+      ]
+    },
+    "rules": [
+      {
+        "text": "Horizontal padding inside controls comes from the horizontal tokens; vertical padding is often a hard-coded pixel value chosen to hit the control height, and the spec gives it in values."
+      },
+      {
+        "text": "Gaps between an icon and its label use spacingHorizontalSNudge (6px) at medium size, XS at small, SNudge at large.",
+        "tokens": [
+          "tokens.spacingHorizontalSNudge",
+          "tokens.spacingHorizontalXS"
+        ]
+      }
+    ]
+  },
+  "elevation": {
+    "tokens": {
+      "text": "Six shadow tokens named by their key blur: shadow2, 4, 8, 16, 28, 64, each two layers, ambient (0 0 2px or 0 0 8px) then key (offset downward by half the blur). The Brand twins carry brand-tinted shadows for brand surfaces.",
+      "neutral": [
+        "tokens.shadow2",
+        "tokens.shadow4",
+        "tokens.shadow8",
+        "tokens.shadow16",
+        "tokens.shadow28",
+        "tokens.shadow64"
+      ],
+      "brand": [
+        "tokens.shadow2Brand",
+        "tokens.shadow4Brand",
+        "tokens.shadow8Brand",
+        "tokens.shadow16Brand",
+        "tokens.shadow28Brand",
+        "tokens.shadow64Brand"
+      ]
+    },
+    "uses": [
+      {
+        "token": "tokens.shadow2",
+        "uses": [
+          "secondary, outline and every button appearance when focused (composed into the focus style)",
+          "input and textarea (the deprecated -shadow appearances)",
+          "card when disabled"
+        ],
+        "source": "useButtonStyles.styles.ts; useInputStyles.styles.ts; useCardStyles.styles.ts"
+      },
+      {
+        "token": "tokens.shadow4",
+        "uses": [
+          "card at rest",
+          "selected tab on hover",
+          "avatar's active shadow up to 28px"
+        ],
+        "source": "useCardStyles.styles.ts; useTabStyles.styles.ts; useAvatarStyles.styles.ts"
+      },
+      {
+        "token": "tokens.shadow8",
+        "uses": [
+          "card hovered and pressed",
+          "avatar's active shadow at 32 to 56px"
+        ],
+        "source": "useCardStyles.styles.ts; useAvatarStyles.styles.ts"
+      },
+      {
+        "token": "tokens.shadow16",
+        "uses": [
+          "menu popover",
+          "avatar's active shadow at 64 to 96px"
+        ],
+        "source": "useMenuPopoverStyles.styles.ts; useAvatarStyles.styles.ts"
+      },
+      {
+        "token": "tokens.shadow28",
+        "uses": [
+          "avatar's active shadow at 120px and up"
+        ],
+        "source": "useAvatarStyles.styles.ts"
+      },
+      {
+        "token": "tokens.shadow64",
+        "uses": [
+          "dialog surface"
+        ],
+        "source": "useDialogSurfaceStyles.styles.ts"
+      }
+    ],
+    "rules": [
+      {
+        "text": "Depth is carried by shadow and by background level together: a popover is shadow16 on colorNeutralBackground1 over a page on Background 2 or 3."
+      },
+      {
+        "text": "Under forced colours shadows vanish; every floating surface must also have a visible border there (see highContrast)."
+      }
+    ]
+  },
+  "interaction": {
+    "states": {
+      "text": "A control paints its rest, hover, pressed and selected looks from four separate tokens per property (background, foreground, stroke). Pressed wins over hover; selected combines with hover and pressed through the SelectedHover-style tokens where they exist, else keeps its selected colour.",
+      "priority": [
+        "disabled",
+        "pressed",
+        "hover",
+        "selected",
+        "rest"
+      ],
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralForeground1Pressed",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStroke1Pressed"
+      ],
+      "transition": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ],
+        "source": "useButtonStyles.styles.ts"
+      }
+    },
+    "disabled": {
+      "text": "Disabled swaps every colour for the Disabled token of its role and takes no input; nothing is dimmed by opacity. Backgrounds go to colorNeutralBackgroundDisabled, text and icons to colorNeutralForegroundDisabled, borders to colorNeutralStrokeDisabled; a transparent or subtle control keeps its transparent background.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorTransparentStrokeDisabled",
+        "tokens.colorTransparentBackground"
+      ],
+      "highContrast": "Under forced colours disabled text and borders are the system GrayText.",
+      "source": "useButtonStyles.styles.ts"
+    },
+    "focus": {
+      "text": "Keyboard focus only: the indicator appears when tabster marks the element focus-visible, never after a pointer press. The default indicator is an outline drawn just outside the element by a pseudo-element: 2px solid colorStrokeFocus2 following borderRadiusMedium, its outer edge 2px beyond the element. Buttons draw it inside instead: a 1px colorStrokeFocus2 ring inset from the edge plus the border turned colorStrokeFocus2, so packed controls do not overlap rings. colorStrokeFocus1 (white on light) is the inner contrast ring where a component draws both.",
+      "outline": {
+        "widthPx": 2,
+        "color": "tokens.colorStrokeFocus2",
+        "radius": "tokens.borderRadiusMedium",
+        "offsetPx": 0,
+        "source": "createFocusOutlineStyle.ts"
+      },
+      "inset": {
+        "widthPx": 1,
+        "color": "tokens.colorStrokeFocus2",
+        "borderColor": "tokens.colorStrokeFocus2",
+        "outerWidth": "tokens.strokeWidthThick",
+        "outerColor": "tokens.colorTransparentStroke",
+        "source": "useButtonStyles.styles.ts"
+      },
+      "tokens": [
+        "tokens.colorStrokeFocus1",
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThick"
+      ],
+      "highContrast": "Under forced colours the outline is the system Highlight colour."
+    },
+    "selection": {
+      "text": "A selected control shows it by colour, not by a layer: checked checkboxes fill colorCompoundBrandBackground, selected tabs draw a colorCompoundBrandStroke indicator, subtle selected items read colorSubtleBackgroundSelected.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorCompoundBrandBackgroundPressed",
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorSubtleBackgroundSelected"
+      ]
+    },
+    "targetSize": {
+      "text": "Fluent draws no invisible touch target: the hit area is the visual. Medium controls are 32px tall, small 24, large 40; a 16px checkbox or radio box sits in a 32px row that is the target.",
+      "minPx": 24,
+      "heights": {
+        "small": 24,
+        "medium": 32,
+        "large": 40
+      }
+    }
+  },
+  "motion": {
+    "durations": {
+      "tokens": [
+        "tokens.durationUltraFast",
+        "tokens.durationFaster",
+        "tokens.durationFast",
+        "tokens.durationNormal",
+        "tokens.durationGentle",
+        "tokens.durationSlow",
+        "tokens.durationSlower",
+        "tokens.durationUltraSlow"
+      ],
+      "text": "50 to 500ms. Colour transitions on controls use durationFaster; surfaces entering use durationNormal; a switch thumb durationNormal; a spinner loop durationUltraSlow times three."
+    },
+    "curves": {
+      "tokens": [
+        "tokens.curveAccelerateMax",
+        "tokens.curveAccelerateMid",
+        "tokens.curveAccelerateMin",
+        "tokens.curveDecelerateMax",
+        "tokens.curveDecelerateMid",
+        "tokens.curveDecelerateMin",
+        "tokens.curveEasyEaseMax",
+        "tokens.curveEasyEase",
+        "tokens.curveLinear"
+      ],
+      "text": "easyEase for colour and small moves; decelerate for entering, accelerate for leaving; linear for loops."
+    },
+    "rules": [
+      {
+        "text": "A control transitions background, border and color together over durationFaster with curveEasyEase; nothing else animates on hover or press.",
+        "motion": {
+          "durationToken": "tokens.durationFaster",
+          "easing": "tokens.curveEasyEase",
+          "properties": [
+            "background",
+            "border",
+            "color"
+          ]
+        },
+        "source": "useButtonStyles.styles.ts"
+      },
+      {
+        "text": "There are no springs. Every animation is a duration and a curve."
+      }
+    ],
+    "reducedMotion": {
+      "text": "When the user prefers reduced motion, transitions run in 0.01ms: the end state appears at once.",
+      "durationMs": 0.01,
+      "source": "useButtonStyles.styles.ts"
+    }
+  },
+  "layout": {
+    "controlHeights": {
+      "small": 24,
+      "medium": 32,
+      "large": 40,
+      "text": "Every control comes in the three sizes; medium is the default. Widths are content plus padding, with a minimum on buttons (96px medium, 64 small)."
+    },
+    "grid": {
+      "px": 4,
+      "text": "Sizes and spacing fall on a 4px grid, with the SNudge and MNudge tokens off it for optical balance."
+    },
+    "rtl": "Mirror horizontal padding, icon order and directional icons under right-to-left; the tokens themselves are direction-free."
+  },
+  "highContrast": {
+    "text": "The teamsHighContrastTheme binds every colour alias to one of the eight Windows system colours, and the styles files add forced-colors rules that read the CSS system colour names directly. A renderer without CSS reproduces both: bind the highContrast theme, and apply these rules. A styles file may also name a CSS system colour the theme does not bind (ButtonBorder); the list says what to map it to.",
+    "systemColors": [
+      {
+        "name": "Canvas",
+        "hex": "#000000",
+        "use": "backgrounds"
+      },
+      {
+        "name": "CanvasText",
+        "hex": "#ffffff",
+        "use": "text"
+      },
+      {
+        "name": "Highlight",
+        "hex": "#1aebff",
+        "use": "hover and selected backgrounds, focus outlines, selected strokes"
+      },
+      {
+        "name": "HighlightText",
+        "hex": "#000000",
+        "use": "text on Highlight"
+      },
+      {
+        "name": "ButtonFace",
+        "hex": "#ffffff",
+        "use": "button backgrounds"
+      },
+      {
+        "name": "ButtonText",
+        "hex": "#000000",
+        "use": "button text and borders"
+      },
+      {
+        "name": "Hyperlink",
+        "hex": "#ffff00",
+        "use": "links"
+      },
+      {
+        "name": "GrayText",
+        "hex": "#3ff23f",
+        "use": "disabled text and borders"
+      },
+      {
+        "name": "ButtonBorder",
+        "hex": null,
+        "use": "an unchecked radio's border; a CSS system colour the styles name that the high-contrast theme does not bind, so a renderer maps it to ButtonText"
+      }
+    ],
+    "rules": [
+      {
+        "text": "Hover and press invert: background Highlight, text and border HighlightText, or the reverse as the spec says; forcedColorAdjust none keeps the swap."
+      },
+      {
+        "text": "Disabled reads GrayText for text and borders."
+      },
+      {
+        "text": "Focus is a Highlight outline."
+      },
+      {
+        "text": "Every surface that floated by shadow gets a CanvasText border, since shadows do not render."
+      }
+    ],
+    "source": "highContrastColor.ts; useButtonStyles.styles.ts"
+  },
+  "provenance": {
+    "text": "All facts derive from Fluent UI React v9 at one commit of microsoft/fluentui and the @fluentui/tokens package that commit publishes.",
+    "values": "tokens/fluent.resolved.json holds the values the published package gives each theme (tools/tokens.mjs reads source/npm/package), so they are what an app gets, not a re-derivation.",
+    "aliases": "The alias field comes from the generated alias files in source/tokens/alias, read for the global each light value names; 164 of 366 alias tokens name one, the rest are computed in code.",
+    "sources": "Component behaviour is read from each component's styles and types files in source/components; the Fluent 2 design site fills anatomy and usage where the code is silent, cited as fluent2:<page>."
+  }
+}

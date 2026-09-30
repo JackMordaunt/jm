@@ -1,0 +1,460 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "swatch-picker",
+  "name": "SwatchPicker",
+  "status": "stable",
+  "summary": "A row or grid of swatches, colour, image or empty, of which one is selected. Choose it for picking among a fixed set of colours or textures; choose ColorPicker for any colour.",
+  "tokenGroups": [
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentBackground",
+    "tokens.colorBrandStroke1",
+    "tokens.colorBrandStroke2Hover",
+    "tokens.colorBrandStroke2Pressed",
+    "tokens.colorCompoundBrandStrokeHover",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorStrokeFocus1",
+    "tokens.colorStrokeFocus2",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForegroundInverted",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.strokeWidthThicker",
+    "tokens.strokeWidthThickest",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusNone",
+    "tokens.spacingHorizontalNone",
+    "tokens.spacingVerticalNone"
+  ],
+  "references": {
+    "react": [
+      "useSwatchPickerStyles.styles.ts",
+      "SwatchPicker.types.ts",
+      "useSwatchPickerRowStyles.styles.ts",
+      "SwatchPickerRow.types.ts",
+      "useColorSwatchStyles.styles.ts",
+      "ColorSwatch.types.ts",
+      "useImageSwatchStyles.styles.ts",
+      "ImageSwatch.types.ts",
+      "useEmptySwatchStyles.styles.ts",
+      "EmptySwatch.types.ts"
+    ],
+    "fluent2": [
+      "swatch-picker"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "swatches",
+      "type": "list",
+      "required": true,
+      "description": "The swatches in order: each a colour (with an optional low-contrast border colour), an image, or empty, with a value; a grid gives them as rows."
+    },
+    {
+      "name": "selectedValue",
+      "type": "string",
+      "required": false,
+      "description": "The selected swatch's value."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "row",
+        "grid"
+      ],
+      "required": false,
+      "default": "row",
+      "description": "A single row, or a column of rows."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "extra-small",
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Swatch side: 20, 24, 28 or 32px."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "square",
+        "rounded",
+        "circular"
+      ],
+      "required": false,
+      "default": "square",
+      "description": "No radius, borderRadiusMedium, or a circle."
+    },
+    {
+      "name": "spacing",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "2 or 4px between swatches and rows."
+    },
+    {
+      "name": "focusMode",
+      "type": "enum",
+      "values": [
+        "arrow",
+        "tab"
+      ],
+      "required": false,
+      "default": "arrow",
+      "description": "Whether arrow keys or Tab move between swatches."
+    },
+    {
+      "name": "onSelectionChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the clicked swatch's value when the selection changes."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "A flex container with no padding: a row, or a column of rows for a grid, gapped by the spacing.",
+      "tokens": [
+        "tokens.spacingHorizontalNone",
+        "tokens.spacingVerticalNone"
+      ]
+    },
+    {
+      "id": "row",
+      "name": "Row",
+      "description": "A grid's row: a flex row of swatches with the spacing's column gap.",
+      "optional": true
+    },
+    {
+      "id": "color-swatch",
+      "name": "Colour swatch",
+      "description": "A button filled with its colour, a 1px border in its borderColor or colorTransparentStroke, clipped to the shape; an optional icon centred over it and a disabled icon when disabled.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "id": "image-swatch",
+      "name": "Image swatch",
+      "description": "A button showing its image as a cover background with a 1px colorTransparentStroke border.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "id": "empty-swatch",
+      "name": "Empty swatch",
+      "description": "A transparent button with a 1px dashed colorNeutralForeground4 border, standing for no colour.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground4"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "An optional glyph centred on a colour swatch, 16px at extra-small and small, 20px at medium, 24px at large.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "extra-small",
+      "description": "20px swatches with a 16px icon; hover and selection rings one step thinner."
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px swatches with a 16px icon; the selection rings one step thinner."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "28px swatches with a 20px icon."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "32px swatches with a 24px icon."
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "default": true,
+      "description": "borderRadiusNone, on the swatch and its focus ring.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "description": "borderRadiusMedium, on the swatch and its focus ring.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "description": "borderRadiusCircular, on the swatch and its focus ring.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "spacing",
+      "value": "small",
+      "description": "2px between swatches and rows."
+    },
+    {
+      "axis": "spacing",
+      "value": "medium",
+      "default": true,
+      "description": "4px between swatches and rows."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root-box",
+      "part": "root",
+      "text": "The root is a flex row (layout row) or column (grid) with no padding and a 2px (small) or 4px (medium) gap; a grid row is a flex row with the same column gap.",
+      "values": [
+        {
+          "name": "gapSmall",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "gapMedium",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useSwatchPickerStyles.styles.ts:14-27; useSwatchPickerRowStyles.styles.ts:14-26"
+    },
+    {
+      "id": "swatch-box",
+      "part": "color-swatch",
+      "text": "Every swatch kind is a square of 20, 24, 28 or 32px by size, an inline flex centring its icon, no padding, clipped to the shape's radius; the colour swatch's 1px border is its borderColor when given, else colorTransparentStroke, and the empty swatch's is dashed colorNeutralForeground4.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.colorNeutralForeground4"
+      ],
+      "values": [
+        {
+          "name": "extraSmall",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "small",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorSwatchStyles.styles.ts:21-30,104-147; useImageSwatchStyles.styles.ts:16-22,76-108; useEmptySwatchStyles.styles.ts:16-53"
+    },
+    {
+      "id": "icon-box",
+      "part": "icon",
+      "text": "The icon is absolutely centred on the swatch: 16px at extra-small and small, 20px at medium, 24px at large.",
+      "values": [
+        {
+          "name": "iconExtraSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorSwatchStyles.styles.ts:149-171"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the swatch's own colour or image inside its 1px border; no ring.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useColorSwatchStyles.styles.ts:21-30"
+    },
+    {
+      "state": "hovered",
+      "text": "The border gives way to two inset rings: colorBrandStroke1 strokeWidthThick wide inside a colorStrokeFocus1 ring one step wider (Thicker); at extra-small the rings are Thin and Thick. The pointer is a hand.",
+      "tokens": [
+        "tokens.colorBrandStroke1",
+        "tokens.colorStrokeFocus1",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThin"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useColorSwatchStyles.styles.ts:31-35,105-110; useImageSwatchStyles.styles.ts:23-27"
+    },
+    {
+      "state": "pressed",
+      "text": "While pressed the inner ring is colorCompoundBrandStrokePressed at Thicker inside a Focus1 ring at Thickest; at extra-small and small they are Thick and Thicker.",
+      "tokens": [
+        "tokens.colorCompoundBrandStrokePressed",
+        "tokens.colorStrokeFocus1",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest",
+        "tokens.strokeWidthThick"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useColorSwatchStyles.styles.ts:36-39,111-115,119-123"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws the same two inset rings in colorStrokeFocus2 (Thick) inside colorStrokeFocus1 (Thicker), following the shape's radius; no outline outside.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.colorStrokeFocus1",
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker"
+      ],
+      "source": "useColorSwatchStyles.styles.ts:40-50,134-147"
+    },
+    {
+      "state": "selected",
+      "text": "The selected swatch shows a colorBrandStroke1 ring at Thicker inside a 5px colorStrokeFocus1 ring; hovered it widens to Thickest colorCompoundBrandStrokeHover inside 6px, pressed to Thickest colorCompoundBrandStrokePressed inside 7px, and focused to Thicker colorStrokeFocus2 inside 5px. At small and extra-small the rings are Thick inside Thicker (hover the same in colorCompoundBrandStrokeHover, pressed Thicker inside Thickest).",
+      "tokens": [
+        "tokens.colorBrandStroke1",
+        "tokens.colorCompoundBrandStrokeHover",
+        "tokens.colorCompoundBrandStrokePressed",
+        "tokens.colorStrokeFocus1",
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest",
+        "tokens.strokeWidthThick"
+      ],
+      "values": [
+        {
+          "name": "outerRing",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "outerRingHover",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "outerRingPressed",
+          "value": 7,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorSwatchStyles.styles.ts:77-101,184-193; useImageSwatchStyles.styles.ts:57-74"
+    },
+    {
+      "state": "disabled",
+      "text": "A disabled colour swatch keeps its colour, shows no hover ring and a not-allowed pointer, and draws its disabled icon in colorNeutralForegroundInverted with a 1px black drop shadow so it reads on any colour.",
+      "tokens": [
+        "tokens.colorNeutralForegroundInverted"
+      ],
+      "source": "useColorSwatchStyles.styles.ts:66-76,150-153,198-206"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "select",
+      "text": "Clicking a swatch selects it and reports its value and the swatch through onSelectionChange; a disabled swatch cannot be selected.",
+      "source": "SwatchPicker.types.ts:9-14,43-51"
+    },
+    {
+      "id": "focus",
+      "text": "With focusMode arrow the picker is one tab stop and arrow keys cycle through its swatches (in a grid, in both directions); with tab each swatch is its own tab stop.",
+      "source": "SwatchPicker.types.ts:25-36"
+    }
+  ],
+  "accessibility": {
+    "role": "radiogroup",
+    "minTargetPx": 20,
+    "keyboard": [
+      "arrow keys move between swatches (focusMode arrow)",
+      "Enter or Space selects the focused swatch"
+    ],
+    "semantics": [
+      "each swatch is a button with aria-selected and an aria-label naming its colour or image",
+      "a disabled swatch reports aria-disabled",
+      "the root is a group; a grid's rows are rows"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Swatch sides (20, 24, 28, 32px), icon sizes (16, 16, 20, 24px), the 1px border, the 2 and 4px spacing and the 5, 6 and 7px selected outer rings are constants in the styles files.",
+      "source": "useColorSwatchStyles.styles.ts:27,79-84,104-131,159-170; useSwatchPickerStyles.styles.ts:25-26"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Every ring is an inset box-shadow that replaces the border, so a swatch never grows; a ring pair reads as an inner brand ring and an outer light ring painted over the swatch's own colour.",
+      "source": "useColorSwatchStyles.styles.ts:31-39"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The image swatch's hover and pressed rings do not shrink at small sizes as the colour swatch's do; only the colour swatch has size-specific ring widths.",
+      "source": "useImageSwatchStyles.styles.ts:23-31,76-93"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the swatches keep their own colours (forced-color-adjust none) and the hover and pressed inner rings read colorBrandStroke2Hover and Pressed, the selected ring colorBrandStroke2Pressed.",
+      "tokens": [
+        "tokens.colorBrandStroke2Hover",
+        "tokens.colorBrandStroke2Pressed"
+      ],
+      "source": "useColorSwatchStyles.styles.ts:52-62,89-91; useImageSwatchStyles.styles.ts:44-54,70-72"
+    }
+  ]
+}

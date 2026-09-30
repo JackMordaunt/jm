@@ -1,0 +1,431 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "text",
+  "name": "Text",
+  "status": "stable",
+  "summary": "Inline typography: one run of text at a size on the base ramp, in a weight and family, optionally block, italic, underlined, struck through, aligned or truncated. Use it, or its named presets (Body1, Caption1, Title1 and the rest of the ramp), wherever a component does not already set the type; a Label is for naming a control, a Link for navigation.",
+  "tokenGroups": [
+    "tokens.fontFamilyBase",
+    "tokens.fontFamilyMonospace",
+    "tokens.fontFamilyNumeric",
+    "tokens.fontSizeBase100",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.fontSizeBase500",
+    "tokens.fontSizeBase600",
+    "tokens.fontSizeHero700",
+    "tokens.fontSizeHero800",
+    "tokens.fontSizeHero900",
+    "tokens.fontSizeHero1000",
+    "tokens.lineHeightBase100",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase300",
+    "tokens.lineHeightBase400",
+    "tokens.lineHeightBase500",
+    "tokens.lineHeightBase600",
+    "tokens.lineHeightHero700",
+    "tokens.lineHeightHero800",
+    "tokens.lineHeightHero900",
+    "tokens.lineHeightHero1000",
+    "tokens.fontWeightRegular",
+    "tokens.fontWeightMedium",
+    "tokens.fontWeightSemibold",
+    "tokens.fontWeightBold",
+    "typographyStyles.caption2",
+    "typographyStyles.caption2Strong",
+    "typographyStyles.caption1",
+    "typographyStyles.caption1Strong",
+    "typographyStyles.caption1Stronger",
+    "typographyStyles.body1",
+    "typographyStyles.body1Strong",
+    "typographyStyles.body1Stronger",
+    "typographyStyles.body2",
+    "typographyStyles.subtitle2",
+    "typographyStyles.subtitle2Stronger",
+    "typographyStyles.subtitle1",
+    "typographyStyles.title3",
+    "typographyStyles.title2",
+    "typographyStyles.title1",
+    "typographyStyles.largeTitle",
+    "typographyStyles.display"
+  ],
+  "references": {
+    "react": [
+      "useTextStyles.styles.ts",
+      "Text.types.ts",
+      "createPreset.ts"
+    ],
+    "fluent2": [
+      "typography"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The text."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900",
+        "1000"
+      ],
+      "required": false,
+      "default": "300",
+      "description": "A step on the size ramp: 100 to 600 read fontSizeBase<n> with lineHeightBase<n>, 700 to 1000 the Hero pairs."
+    },
+    {
+      "name": "weight",
+      "type": "enum",
+      "values": [
+        "regular",
+        "medium",
+        "semibold",
+        "bold"
+      ],
+      "required": false,
+      "default": "regular",
+      "description": "The font weight token."
+    },
+    {
+      "name": "font",
+      "type": "enum",
+      "values": [
+        "base",
+        "monospace",
+        "numeric"
+      ],
+      "required": false,
+      "default": "base",
+      "description": "The family: fontFamilyBase, fontFamilyMonospace or fontFamilyNumeric."
+    },
+    {
+      "name": "align",
+      "type": "enum",
+      "values": [
+        "start",
+        "center",
+        "end",
+        "justify"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Text alignment within the box; only visible when the text is block or wraps."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lays the text out as a block that takes its own line instead of inline."
+    },
+    {
+      "name": "italic",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Italic style."
+    },
+    {
+      "name": "underline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "An underline; with strikethrough both lines draw."
+    },
+    {
+      "name": "strikethrough",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A line through the text."
+    },
+    {
+      "name": "truncate",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "With wrap false, ends an overflowing line with an ellipsis instead of clipping it."
+    },
+    {
+      "name": "wrap",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "False keeps the text on one line and clips what overflows."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Text",
+      "description": "One inline (or block) run of text in the base family, size 300, regular weight, start-aligned, wrapping, with visible overflow."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "100",
+      "description": "fontSizeBase100 with lineHeightBase100.",
+      "tokens": [
+        "tokens.fontSizeBase100",
+        "tokens.lineHeightBase100"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "200",
+      "description": "fontSizeBase200 with lineHeightBase200.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "300",
+      "default": true,
+      "description": "fontSizeBase300 with lineHeightBase300, the base style; no class is added for it.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "400",
+      "description": "fontSizeBase400 with lineHeightBase400.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "500",
+      "description": "fontSizeBase500 with lineHeightBase500.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "600",
+      "description": "fontSizeBase600 with lineHeightBase600.",
+      "tokens": [
+        "tokens.fontSizeBase600",
+        "tokens.lineHeightBase600"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "700",
+      "description": "fontSizeHero700 with lineHeightHero700.",
+      "tokens": [
+        "tokens.fontSizeHero700",
+        "tokens.lineHeightHero700"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "800",
+      "description": "fontSizeHero800 with lineHeightHero800.",
+      "tokens": [
+        "tokens.fontSizeHero800",
+        "tokens.lineHeightHero800"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "900",
+      "description": "fontSizeHero900 with lineHeightHero900.",
+      "tokens": [
+        "tokens.fontSizeHero900",
+        "tokens.lineHeightHero900"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "1000",
+      "description": "fontSizeHero1000 with lineHeightHero1000.",
+      "tokens": [
+        "tokens.fontSizeHero1000",
+        "tokens.lineHeightHero1000"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "regular",
+      "default": true,
+      "description": "fontWeightRegular, the base.",
+      "tokens": [
+        "tokens.fontWeightRegular"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "medium",
+      "description": "fontWeightMedium.",
+      "tokens": [
+        "tokens.fontWeightMedium"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "semibold",
+      "description": "fontWeightSemibold.",
+      "tokens": [
+        "tokens.fontWeightSemibold"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "bold",
+      "description": "fontWeightBold.",
+      "tokens": [
+        "tokens.fontWeightBold"
+      ]
+    },
+    {
+      "axis": "font",
+      "value": "base",
+      "default": true,
+      "description": "fontFamilyBase.",
+      "tokens": [
+        "tokens.fontFamilyBase"
+      ]
+    },
+    {
+      "axis": "font",
+      "value": "monospace",
+      "description": "fontFamilyMonospace.",
+      "tokens": [
+        "tokens.fontFamilyMonospace"
+      ]
+    },
+    {
+      "axis": "font",
+      "value": "numeric",
+      "description": "fontFamilyNumeric.",
+      "tokens": [
+        "tokens.fontFamilyNumeric"
+      ]
+    },
+    {
+      "axis": "preset",
+      "value": "typography-style",
+      "description": "A preset (Caption2, Caption2Strong, Caption1, Caption1Strong, Caption1Stronger, Body1, Body1Strong, Body1Stronger, Body2, Subtitle2, Subtitle2Stronger, Subtitle1, Title3, Title2, Title1, LargeTitle, Display) is Text with that typographyStyles entry merged over the root, so its size, weight and line height are the style's and every other prop still applies.",
+      "tokens": [
+        "typographyStyles.caption2",
+        "typographyStyles.caption2Strong",
+        "typographyStyles.caption1",
+        "typographyStyles.caption1Strong",
+        "typographyStyles.caption1Stronger",
+        "typographyStyles.body1",
+        "typographyStyles.body1Strong",
+        "typographyStyles.body1Stronger",
+        "typographyStyles.body2",
+        "typographyStyles.subtitle2",
+        "typographyStyles.subtitle2Stronger",
+        "typographyStyles.subtitle1",
+        "typographyStyles.title3",
+        "typographyStyles.title2",
+        "typographyStyles.title1",
+        "typographyStyles.largeTitle",
+        "typographyStyles.display"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "base",
+      "text": "The root is inline, fontFamilyBase at fontSizeBase300 and lineHeightBase300, fontWeightRegular, start-aligned, wrapping normally, overflow visible and clipped rather than ellipsised; it sets no colour, inheriting its parent's.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontWeightRegular"
+      ],
+      "source": "useTextStyles.styles.ts:15-26"
+    },
+    {
+      "id": "nowrap",
+      "text": "wrap false sets white-space nowrap with overflow hidden; truncate then adds an ellipsis, and does nothing while the text wraps.",
+      "source": "useTextStyles.styles.ts:27-33,121-122"
+    },
+    {
+      "id": "decoration",
+      "text": "Underline and strikethrough are text-decoration lines; both together set 'line-through underline' so neither cancels the other.",
+      "source": "useTextStyles.styles.ts:40-48,125-127"
+    },
+    {
+      "id": "block",
+      "text": "block makes the run display block, so align takes effect across the line box.",
+      "source": "useTextStyles.styles.ts:34-36,100-108,123,142-144"
+    },
+    {
+      "id": "presets",
+      "text": "createPreset wraps useText and useTextStyles and appends the preset's own class, whose one rule is the typographyStyles entry, so a preset keeps every Text prop (block, italic, truncate, align).",
+      "source": "createPreset.ts:9-28"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Text has no interaction states; it draws in the colour it inherits.",
+      "source": "useTextStyles.styles.ts:15-26"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "static",
+      "text": "Text neither takes input nor animates; an implementation shapes one run at the resolved style and draws it.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTextStyles.styles.ts:114-149"
+    }
+  ],
+  "accessibility": {
+    "role": "none",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "renders as a span by default, or as the heading, paragraph, pre, strong, b, em or i element the caller chooses; the element carries the semantics, the styles do not"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Text sets no colour token: it inherits, so on a coloured surface the parent must set the foreground (a card sets colorNeutralForeground1, a brand button colorNeutralForegroundOnBrand). A renderer without inheritance passes the colour explicitly.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "source": "useTextStyles.styles.ts:15-26"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Size 300 and weight regular add no class because the base already is them; every other size and weight is its own class over the base.",
+      "source": "useTextStyles.styles.ts:128-141"
+    },
+    {
+      "kind": "inferred",
+      "text": "The preset style files carry digits in their names (useBody1Styles.styles.ts) and fall outside this kit's citation pattern; each is one rule, root: typographyStyles.<name>, read at the kit's commit and vendored under react-text/presets.",
+      "source": "createPreset.ts:9-28"
+    }
+  ]
+}

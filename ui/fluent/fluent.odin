@@ -7,7 +7,7 @@ proc like jm:ui's own widgets.
 	fluent.use(&scheme) // once per frame, or never for the web light theme
 	if fluent.button(gtx, "Save", .Primary) { save(m) }
 
-Every value comes from the Fluent kit (~/Source/Personal/fluent-kit):
+Every value comes from the Fluent kit (tools/fluent):
 tokens from its fluent.resolved.json, generated into package tokens
 (imported as tok), and behaviour from its foundations.json and
 components/<id>.json specs, which cite Fluent UI React's styles files at

@@ -1,0 +1,91 @@
+# Files under packages/react-components/<pkg>/library/src/ the specs cite beyond
+# the styles and types files scripts/fetch.sh vendors by pattern. One per line: the
+# path it lands at under source/components/, then, when the repo path under
+# library/src/ differs from the part after the package name, that path.
+react-breadcrumb/components/Breadcrumb/useBreadcrumb.ts
+react-breadcrumb/components/BreadcrumbButton/useBreadcrumbButton.ts
+react-breadcrumb/utils/partitionBreadcrumbItems.ts
+react-breadcrumb/utils/truncateBreadcrumb.ts
+react-calendar-compat/components/Calendar/calendarNavigationIcons.tsx
+react-calendar-compat/components/Calendar/defaults.ts
+react-calendar-compat/components/CalendarDayGrid/useWeeks.ts
+react-calendar-compat/components/CalendarYear/CalendarYear.tsx
+react-calendar-compat/utils/animations.ts
+react-calendar-compat/utils/calendarMotions.tsx
+react-calendar-compat/utils/constants.ts
+react-calendar-compat/utils/dateFormatting/dateFormatting.defaults.ts
+react-carousel/Carousel/useCarousel.ts components/Carousel/useCarousel.ts
+react-carousel/CarouselAutoplayButton/useCarouselAutoplayButton.tsx components/CarouselAutoplayButton/useCarouselAutoplayButton.tsx
+react-carousel/useEmblaCarousel.ts components/useEmblaCarousel.ts
+react-color-picker/components/AlphaSlider/AlphaSlider.constants.ts
+react-color-picker/components/AlphaSlider/alphaSliderUtils.ts
+react-color-picker/components/AlphaSlider/useAlphaSlider.ts
+react-color-picker/components/AlphaSlider/useAlphaSliderState.ts
+react-color-picker/components/ColorArea/ColorArea.constants.ts
+react-color-picker/components/ColorArea/useColorArea.ts
+react-color-picker/components/ColorPicker/useColorPicker.ts
+react-color-picker/components/ColorSlider/ColorSlider.constants.ts
+react-color-picker/components/ColorSlider/useColorSlider.ts
+react-color-picker/contexts/colorPicker.ts
+react-color-picker/types/color.ts
+react-color-picker/utils/adjustChannel.ts
+react-color-picker/utils/constants.ts
+react-color-picker/utils/createHsvColor.ts
+react-color-picker/utils/getCoordinates.ts
+react-color-picker/utils/getPercent.ts
+react-combobox/utils/internalTokens.ts
+react-datepicker-compat/components/DatePicker/defaults.ts
+react-datepicker-compat/components/DatePicker/useDatePicker.tsx
+react-datepicker-compat/utils/usePopupPositioning.ts
+react-dialog/DialogSurface/DialogBackdropMotion.ts components/DialogBackdropMotion.ts
+react-dialog/DialogSurface/DialogSurfaceMotion.ts components/DialogSurfaceMotion.ts
+react-dialog/contexts/constants.ts
+react-drawer/components/Drawer/useDrawer.ts
+react-drawer/shared/drawerMotions.ts
+react-drawer/shared/drawerSeparatorStyles.ts
+react-drawer/shared/useDrawerDefaultProps.ts
+react-infolabel/InfoButton/useInfoButton.tsx components/InfoButton/useInfoButton.tsx
+react-infolabel/InfoLabel/useInfoLabel.ts components/InfoLabel/useInfoLabel.ts
+react-menu/Menu/MenuSurfaceMotion.ts components/Menu/MenuSurfaceMotion.ts
+react-message-bar/MessageBar/getIntentIcon.tsx components/MessageBar/getIntentIcon.tsx
+react-message-bar/MessageBar/useMessageBar.ts components/MessageBar/useMessageBar.ts
+react-message-bar/MessageBar/useMessageBarReflow.ts components/MessageBar/useMessageBarReflow.ts
+react-message-bar/MessageBarGroup/MessageBarGroup.motions.tsx components/MessageBarGroup/MessageBarGroup.motions.tsx
+react-nav/components/AppItem/useAppItem.ts
+react-nav/components/Nav/useNav.ts
+react-nav/components/NavCategory/useNavCategory.ts
+react-nav/components/NavCategoryItemContext.ts
+react-nav/components/NavContext.ts
+react-nav/components/NavDrawer/useNavDrawer.ts
+react-nav/components/NavItem/useNavItem.ts
+react-nav/components/NavSubItem/useNavSubItem.ts
+react-nav/components/sharedNavStyles.styles.ts
+react-popover/Popover/PopoverSurfaceMotion.ts components/Popover/PopoverSurfaceMotion.ts
+react-popover/Popover/constants.ts components/Popover/constants.ts
+react-popover/Popover/usePopover.ts components/Popover/usePopover.ts
+react-rating/components/Rating/useRating.tsx
+react-rating/components/RatingDisplay/useRatingDisplay.tsx
+react-rating/components/RatingItem/useRatingItem.tsx
+react-teaching-popover/TeachingPopover/useTeachingPopover.ts components/TeachingPopover/useTeachingPopover.ts
+react-teaching-popover/TeachingPopoverCarousel/constants.ts components/TeachingPopoverCarousel/Carousel/constants.ts
+react-text/presets/Body1/Body1.tsx components/presets/Body1/Body1.tsx
+react-text/presets/Title1/Title1.tsx components/presets/Title1/Title1.tsx
+react-text/presets/createPreset.ts components/presets/createPreset.ts
+react-timepicker-compat/components/TimePicker/timeMath.ts
+react-timepicker-compat/components/TimePicker/useTimePicker.tsx
+react-toast/Timer/Timer.tsx components/Timer/Timer.tsx
+react-toast/ToastContainer/ToastContainer.tsx components/ToastContainer/ToastContainer.tsx
+react-toast/ToastContainer/renderToastContainer.tsx components/ToastContainer/renderToastContainer.tsx
+react-toast/ToastContainer/useToastContainer.ts components/ToastContainer/useToastContainer.ts
+react-toast/Toaster/useToaster.tsx components/Toaster/useToaster.tsx
+react-toast/Toaster/useToasterFocusManagement.ts components/Toaster/useToasterFocusManagement.ts
+react-toast/state/constants.ts
+react-toast/state/createToaster.ts state/vanilla/createToaster.ts
+react-toast/state/getPositionStyles.ts state/vanilla/getPositionStyles.ts
+react-toast/state/types.ts
+react-toast/state/useToaster.ts
+react-tooltip/Tooltip/constants.ts components/Tooltip/private/constants.ts
+react-tree/components/Tree/useTree.ts
+react-tree/hooks/useRootTree.ts
+react-tree/hooks/useTreeNavigation.ts
+react-tree/utils/tokens.ts

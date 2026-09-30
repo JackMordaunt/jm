@@ -1,0 +1,513 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "breadcrumb",
+  "name": "Breadcrumb",
+  "status": "stable",
+  "summary": "A horizontal trail of links from the top of a hierarchy to the current page, so a user sees where they are and can jump up any number of levels. Use a nav for moving between peers and a tab list for views of one thing.",
+  "tokenGroups": [
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2BrandHover",
+    "tokens.colorNeutralForeground2BrandPressed",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusSmall",
+    "tokens.borderRadiusLarge",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalS",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase400",
+    "tokens.lineHeightBase600",
+    "typographyStyles.caption1",
+    "typographyStyles.caption1Strong",
+    "typographyStyles.body1",
+    "typographyStyles.body1Strong",
+    "typographyStyles.body2",
+    "typographyStyles.subtitle2",
+    "tokens.durationFaster",
+    "tokens.curveEasyEase"
+  ],
+  "references": {
+    "react": [
+      "useBreadcrumbStyles.styles.ts",
+      "Breadcrumb.types.ts",
+      "useBreadcrumb.ts",
+      "useBreadcrumbItemStyles.styles.ts",
+      "BreadcrumbItem.types.ts",
+      "useBreadcrumbButtonStyles.styles.ts",
+      "BreadcrumbButton.types.ts",
+      "useBreadcrumbButton.ts",
+      "useBreadcrumbDividerStyles.styles.ts",
+      "BreadcrumbDivider.types.ts",
+      "partitionBreadcrumbItems.ts",
+      "truncateBreadcrumb.ts"
+    ],
+    "fluent2": [
+      "breadcrumb"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Breadcrumb: the size every item, button and divider inside takes, through context."
+    },
+    {
+      "name": "focusMode",
+      "type": "enum",
+      "values": [
+        "tab",
+        "arrow"
+      ],
+      "required": false,
+      "default": "tab",
+      "description": "Breadcrumb: tab moves through every button and then leaves; arrow makes the trail one tab stop whose Left and Right arrows move between buttons, wrapping."
+    },
+    {
+      "name": "children",
+      "type": "list",
+      "required": true,
+      "description": "Breadcrumb: BreadcrumbItems, each holding a BreadcrumbButton, separated by BreadcrumbDividers the caller places."
+    },
+    {
+      "name": "current",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "BreadcrumbButton: marks the button as the current page; it reads aria-current=page, is aria-disabled, takes no hover or press look and is set in the size's strong style."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "BreadcrumbButton: an icon before the label, 12, 16 or 20px by size."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "BreadcrumbButton: a link target; with it the button is an anchor, else a button element."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "BreadcrumbButton: the button's disabled state, as Button's."
+    },
+    {
+      "name": "maxDisplayedItems",
+      "type": "number",
+      "required": false,
+      "default": 6,
+      "description": "partitionBreadcrumbItems: how many items show before the rest collapse into an overflow menu; the caller renders the menu."
+    },
+    {
+      "name": "overflowIndex",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "partitionBreadcrumbItems: the position the overflow menu takes, after that many leading items."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Breadcrumb",
+      "description": "A nav element labelled breadcrumb by default, holding the list."
+    },
+    {
+      "id": "list",
+      "name": "List",
+      "description": "An ordered list laid out as a flex row with its items vertically centred, no markers, no margin or padding."
+    },
+    {
+      "id": "item",
+      "name": "BreadcrumbItem",
+      "description": "One list item: a flex row centring its child, in Foreground 2, never wrapping its text.",
+      "tokens": [
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "button",
+      "name": "BreadcrumbButton",
+      "description": "A subtle, rounded Button of the trail's size with no minimum width; the current one is strong text with no interaction look.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "The button's icon slot, square at the size's icon size, spacingHorizontalXS before the label.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "BreadcrumbDivider",
+      "description": "A list item between two items showing a chevron glyph at the size's font size; the glyph is what the caller passes, a right chevron on the design site.",
+      "optional": true
+    },
+    {
+      "id": "overflow",
+      "name": "Overflow menu",
+      "description": "Where more items exist than maxDisplayedItems, a menu button standing in for the hidden middle items; the kit's menu and menu-button specs build it.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px buttons in caption1 (caption1Strong when current) padded spacingHorizontalSNudge, 12px icons and divider glyphs.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "typographyStyles.caption1Strong",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.lineHeightBase200"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px buttons in body1 (body1Strong when current) padded spacingHorizontalSNudge, 16px icons and divider glyphs.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.body1Strong",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.lineHeightBase400"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px buttons in body2 (subtitle2 when current) padded spacingHorizontalS, 20px icons and divider glyphs.",
+      "tokens": [
+        "typographyStyles.body2",
+        "typographyStyles.subtitle2",
+        "tokens.spacingHorizontalS",
+        "tokens.lineHeightBase600"
+      ]
+    },
+    {
+      "axis": "focusMode",
+      "value": "tab",
+      "default": true,
+      "description": "Every button is its own tab stop."
+    },
+    {
+      "axis": "focusMode",
+      "value": "arrow",
+      "description": "The trail is one tab stop; Left and Right move focus between buttons and wrap, and the trail remembers which button had focus."
+    }
+  ],
+  "layout": [
+    {
+      "id": "list",
+      "part": "list",
+      "text": "The list is a flex row with items centred on the cross axis, list markers, margin and padding all removed.",
+      "source": "useBreadcrumbStyles.styles.ts:12-18"
+    },
+    {
+      "id": "item",
+      "part": "item",
+      "text": "An item is a border-box flex row centring its content, in colorNeutralForeground2, with text-wrap nowrap.",
+      "tokens": [
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useBreadcrumbItemStyles.styles.ts:12-18"
+    },
+    {
+      "id": "button",
+      "part": "button",
+      "text": "A button is the button spec's subtle rounded appearance at the trail's size, with its minimum width removed and no text wrapping: small is 24px tall in caption1 padded spacingHorizontalSNudge on every side, medium 32px in body1 padded spacingHorizontalSNudge, large 40px in body2 padded spacingHorizontalS.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "typographyStyles.body1",
+        "typographyStyles.body2",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "heightSmall",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "heightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useBreadcrumbButtonStyles.styles.ts:67-86,122-129; useBreadcrumbButton.ts:31-36"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon is a square of 12px at small, 16px at medium and 20px at large, its line height lineHeightBase200, lineHeightBase400 or lineHeightBase600, with spacingHorizontalXS after it.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.lineHeightBase200",
+        "tokens.lineHeightBase400",
+        "tokens.lineHeightBase600"
+      ],
+      "values": [
+        {
+          "name": "iconSmall",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useBreadcrumbButtonStyles.styles.ts:26-46"
+    },
+    {
+      "id": "divider",
+      "part": "divider",
+      "text": "A divider is a flex list item whose glyph is set at 12px, 16px or 20px by size; it carries no colour of its own, so the glyph reads the item colour around it.",
+      "values": [
+        {
+          "name": "glyphSmall",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "glyphMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "glyphLarge",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useBreadcrumbDividerStyles.styles.ts:14-28"
+    },
+    {
+      "id": "truncation",
+      "part": "button",
+      "text": "A long name is cut to 30 characters plus an ellipsis, and its tooltip to 80, by the truncate helpers the caller applies.",
+      "values": [
+        {
+          "name": "maxNameLength",
+          "value": 30,
+          "unit": "count"
+        },
+        {
+          "name": "maxTooltipLength",
+          "value": 80,
+          "unit": "count"
+        }
+      ],
+      "source": "truncateBreadcrumb.ts:1-22"
+    },
+    {
+      "id": "overflow",
+      "part": "overflow",
+      "text": "With more items than maxDisplayedItems (6 by default), the items are split into the first overflowIndex (1 by default) shown, then the hidden run collapsed into the overflow menu, then the rest shown; an overflowIndex at or past the maximum is pulled back to one less than it.",
+      "values": [
+        {
+          "name": "maxDisplayedItems",
+          "value": 6,
+          "unit": "count"
+        },
+        {
+          "name": "overflowIndex",
+          "value": 1,
+          "unit": "count"
+        }
+      ],
+      "source": "partitionBreadcrumbItems.ts:1-60"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "button",
+      "text": "Rest: the subtle button's look, colorSubtleBackground with colorNeutralForeground2 text and a transparent border.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useBreadcrumbButton.ts:31-36"
+    },
+    {
+      "state": "hovered",
+      "part": "button",
+      "text": "The subtle button's hover: colorSubtleBackgroundHover, colorNeutralForeground2Hover text, the icon colorNeutralForeground2BrandHover and swapped to its filled twin, easing over durationFaster on curveEasyEase.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2BrandHover"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useBreadcrumbButton.ts:31-36"
+    },
+    {
+      "state": "pressed",
+      "part": "button",
+      "text": "The subtle button's press: colorSubtleBackgroundPressed, colorNeutralForeground2Pressed text and a colorNeutralForeground2BrandPressed filled icon.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useBreadcrumbButton.ts:31-36"
+    },
+    {
+      "state": "focused",
+      "part": "button",
+      "text": "The button's inset focus indicator, its ring radius borderRadiusMedium, or borderRadiusSmall at small and borderRadiusLarge at large.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThick",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusLarge"
+      ],
+      "source": "useBreadcrumbButtonStyles.styles.ts:136"
+    },
+    {
+      "state": "selected",
+      "part": "button",
+      "text": "Current: the size's strong style (caption1Strong, body1Strong or subtitle2), and hover, press and disabled all paint colorTransparentBackground with colorNeutralForeground2 text, the icon regular and unset, and an auto cursor, so it reads as text.",
+      "tokens": [
+        "typographyStyles.caption1Strong",
+        "typographyStyles.body1Strong",
+        "typographyStyles.subtitle2",
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useBreadcrumbButtonStyles.styles.ts:48-65,87-106"
+    },
+    {
+      "state": "disabled",
+      "part": "button",
+      "text": "The subtle button's disabled look: colorTransparentBackground, colorNeutralForegroundDisabled text and icon, no interaction.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "BreadcrumbButton.types.ts:10-19"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "activate",
+      "text": "A button activates as the button spec says; with href it navigates as an anchor.",
+      "source": "useBreadcrumbButton.ts:46-71"
+    },
+    {
+      "id": "current",
+      "text": "The current button is aria-current=page and aria-disabled, so it neither activates nor reads as a link, while staying in the tab order.",
+      "source": "useBreadcrumbButton.ts:50-66"
+    },
+    {
+      "id": "arrow-focus",
+      "text": "In arrow focus mode the trail is one tab stop: Left and Right move focus between buttons on the horizontal axis, wrapping at the ends, and the last focused button is remembered for the next Tab in.",
+      "source": "useBreadcrumb.ts:71-81"
+    },
+    {
+      "id": "overflow",
+      "text": "Items beyond maxDisplayedItems collapse into an overflow menu at overflowIndex, whose items navigate like the buttons they replace.",
+      "source": "partitionBreadcrumbItems.ts:23-56"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves between buttons (tab mode) or onto the trail (arrow mode)",
+      "Left and Right arrows move between buttons in arrow mode, wrapping",
+      "Enter and Space activate a button"
+    ],
+    "semantics": [
+      "the nav is labelled breadcrumb unless the caller labels it",
+      "the list has role list",
+      "the current button carries aria-current=page and aria-disabled=true",
+      "dividers are list items with no semantics of their own"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Button heights (24, 32, 40px), icon and glyph sizes (12, 16, 20px), the overflow defaults (6 items, index 1) and the truncation lengths (30, 80) are constants in the package's files; no token gives them.",
+      "source": "useBreadcrumbButtonStyles.styles.ts:26-46,72-86; useBreadcrumbDividerStyles.styles.ts:18-28; partitionBreadcrumbItems.ts:1-2; truncateBreadcrumb.ts:1-2"
+    },
+    {
+      "kind": "inferred",
+      "text": "The divider glyph itself is not in the styles: the styles size a font, and the rendered default is a right-pointing chevron per the design site; an implementation draws its chevron icon at the size's glyph size.",
+      "source": "useBreadcrumbDividerStyles.styles.ts:18-28; fluent2:breadcrumb"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The button's colours come from the Button component with appearance subtle forced by the hook; the breadcrumb's own styles only remove the minimum width, set the size and override the current look.",
+      "source": "useBreadcrumbButton.ts:31-36; useBreadcrumbButtonStyles.styles.ts:67-71"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the buttons follow the button spec's rules; the breadcrumb adds none of its own.",
+      "source": "useBreadcrumbButtonStyles.styles.ts:136"
+    }
+  ]
+}

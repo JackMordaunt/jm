@@ -1,0 +1,4222 @@
+{
+ "$schema": "schema/resolved.schema.json",
+ "source": {
+  "repo": "microsoft/fluentui",
+  "commit": "45af037915bae19733ffb8cb2123d8e6e216e881",
+  "package": "@fluentui/tokens",
+  "version": "1.0.0-alpha.24"
+ },
+ "modes": {
+  "value": "webLightTheme",
+  "dark": "webDarkTheme",
+  "highContrast": "teamsHighContrastTheme",
+  "teamsLight": "teamsLightTheme",
+  "teamsDark": "teamsDarkTheme"
+ },
+ "units": "px for dimensions, ms for durations, cubicBezier as [x1, y1, x2, y2], colours as #rrggbb or #rrggbbaa (the source's rgba() and transparent normalised), shadows as layers of {x, y, blur, color}",
+ "tokens": {
+  "tokens.borderRadiusNone": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 0
+  },
+  "tokens.borderRadiusSmall": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 2
+  },
+  "tokens.borderRadiusMedium": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 4
+  },
+  "tokens.borderRadiusLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 6
+  },
+  "tokens.borderRadiusXLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 8
+  },
+  "tokens.borderRadius2XLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 12
+  },
+  "tokens.borderRadius3XLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 16
+  },
+  "tokens.borderRadius4XLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 24
+  },
+  "tokens.borderRadius5XLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 32
+  },
+  "tokens.borderRadius6XLarge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 40
+  },
+  "tokens.borderRadiusCircular": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 10000
+  },
+  "tokens.fontSizeBase100": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 10
+  },
+  "tokens.fontSizeBase200": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 12
+  },
+  "tokens.fontSizeBase300": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 14
+  },
+  "tokens.fontSizeBase400": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 16
+  },
+  "tokens.fontSizeBase500": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 20
+  },
+  "tokens.fontSizeBase600": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 24
+  },
+  "tokens.fontSizeHero700": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 28
+  },
+  "tokens.fontSizeHero800": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 32
+  },
+  "tokens.fontSizeHero900": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 40
+  },
+  "tokens.fontSizeHero1000": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 68
+  },
+  "tokens.lineHeightBase100": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 14
+  },
+  "tokens.lineHeightBase200": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 16
+  },
+  "tokens.lineHeightBase300": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 20
+  },
+  "tokens.lineHeightBase400": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 22
+  },
+  "tokens.lineHeightBase500": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 28
+  },
+  "tokens.lineHeightBase600": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 32
+  },
+  "tokens.lineHeightHero700": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 36
+  },
+  "tokens.lineHeightHero800": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 40
+  },
+  "tokens.lineHeightHero900": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 52
+  },
+  "tokens.lineHeightHero1000": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 92
+  },
+  "tokens.fontFamilyBase": {
+   "tier": "global",
+   "type": "fontFamily",
+   "value": "'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif",
+   "highContrast": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, \"Apple Color Emoji\", \"Segoe UI Emoji\", sans-serif",
+   "teamsLight": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, \"Apple Color Emoji\", \"Segoe UI Emoji\", sans-serif",
+   "teamsDark": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, \"Apple Color Emoji\", \"Segoe UI Emoji\", sans-serif"
+  },
+  "tokens.fontFamilyMonospace": {
+   "tier": "global",
+   "type": "fontFamily",
+   "value": "Consolas, 'Courier New', Courier, monospace"
+  },
+  "tokens.fontFamilyNumeric": {
+   "tier": "global",
+   "type": "fontFamily",
+   "value": "Bahnschrift, 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif"
+  },
+  "tokens.fontWeightRegular": {
+   "tier": "global",
+   "type": "fontWeight",
+   "value": 400
+  },
+  "tokens.fontWeightMedium": {
+   "tier": "global",
+   "type": "fontWeight",
+   "value": 500
+  },
+  "tokens.fontWeightSemibold": {
+   "tier": "global",
+   "type": "fontWeight",
+   "value": 600
+  },
+  "tokens.fontWeightBold": {
+   "tier": "global",
+   "type": "fontWeight",
+   "value": 700
+  },
+  "tokens.strokeWidthThin": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 1
+  },
+  "tokens.strokeWidthThick": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 2
+  },
+  "tokens.strokeWidthThicker": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 3
+  },
+  "tokens.strokeWidthThickest": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 4
+  },
+  "tokens.spacingHorizontalNone": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 0
+  },
+  "tokens.spacingHorizontalXXS": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 2
+  },
+  "tokens.spacingHorizontalXS": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 4
+  },
+  "tokens.spacingHorizontalSNudge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 6
+  },
+  "tokens.spacingHorizontalS": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 8
+  },
+  "tokens.spacingHorizontalMNudge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 10
+  },
+  "tokens.spacingHorizontalM": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 12
+  },
+  "tokens.spacingHorizontalL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 16
+  },
+  "tokens.spacingHorizontalXL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 20
+  },
+  "tokens.spacingHorizontalXXL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 24
+  },
+  "tokens.spacingHorizontalXXXL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 32
+  },
+  "tokens.spacingVerticalNone": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 0
+  },
+  "tokens.spacingVerticalXXS": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 2
+  },
+  "tokens.spacingVerticalXS": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 4
+  },
+  "tokens.spacingVerticalSNudge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 6
+  },
+  "tokens.spacingVerticalS": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 8
+  },
+  "tokens.spacingVerticalMNudge": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 10
+  },
+  "tokens.spacingVerticalM": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 12
+  },
+  "tokens.spacingVerticalL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 16
+  },
+  "tokens.spacingVerticalXL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 20
+  },
+  "tokens.spacingVerticalXXL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 24
+  },
+  "tokens.spacingVerticalXXXL": {
+   "tier": "global",
+   "type": "dimension",
+   "value": 32
+  },
+  "tokens.durationUltraFast": {
+   "tier": "global",
+   "type": "duration",
+   "value": 50
+  },
+  "tokens.durationFaster": {
+   "tier": "global",
+   "type": "duration",
+   "value": 100
+  },
+  "tokens.durationFast": {
+   "tier": "global",
+   "type": "duration",
+   "value": 150
+  },
+  "tokens.durationNormal": {
+   "tier": "global",
+   "type": "duration",
+   "value": 200
+  },
+  "tokens.durationGentle": {
+   "tier": "global",
+   "type": "duration",
+   "value": 250
+  },
+  "tokens.durationSlow": {
+   "tier": "global",
+   "type": "duration",
+   "value": 300
+  },
+  "tokens.durationSlower": {
+   "tier": "global",
+   "type": "duration",
+   "value": 400
+  },
+  "tokens.durationUltraSlow": {
+   "tier": "global",
+   "type": "duration",
+   "value": 500
+  },
+  "tokens.curveAccelerateMax": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0.9,
+    0.1,
+    1,
+    0.2
+   ]
+  },
+  "tokens.curveAccelerateMid": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    1,
+    0,
+    1,
+    1
+   ]
+  },
+  "tokens.curveAccelerateMin": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0.8,
+    0,
+    0.78,
+    1
+   ]
+  },
+  "tokens.curveDecelerateMax": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0.1,
+    0.9,
+    0.2,
+    1
+   ]
+  },
+  "tokens.curveDecelerateMid": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "tokens.curveDecelerateMin": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0.33,
+    0,
+    0.1,
+    1
+   ]
+  },
+  "tokens.curveEasyEaseMax": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0.8,
+    0,
+    0.2,
+    1
+   ]
+  },
+  "tokens.curveEasyEase": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0.33,
+    0,
+    0.67,
+    1
+   ]
+  },
+  "tokens.curveLinear": {
+   "tier": "global",
+   "type": "cubicBezier",
+   "value": [
+    0,
+    0,
+    1,
+    1
+   ]
+  },
+  "tokens.colorNeutralForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground1Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground1Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground1Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#424242",
+   "dark": "#d6d6d6",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d6d6d6",
+   "alias": "global.grey.26"
+  },
+  "tokens.colorNeutralForeground2Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground2Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground2Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground2BrandHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#000000",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorNeutralForeground2BrandPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#2886de",
+   "highContrast": "#000000",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#7579eb",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorNeutralForeground2BrandSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#000000",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorNeutralForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#616161",
+   "dark": "#adadad",
+   "highContrast": "#ffffff",
+   "teamsDark": "#adadad",
+   "alias": "global.grey.38"
+  },
+  "tokens.colorNeutralForeground3Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#424242",
+   "dark": "#d6d6d6",
+   "highContrast": "#000000",
+   "teamsDark": "#d6d6d6",
+   "alias": "global.grey.26"
+  },
+  "tokens.colorNeutralForeground3Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#424242",
+   "dark": "#d6d6d6",
+   "highContrast": "#000000",
+   "teamsDark": "#d6d6d6",
+   "alias": "global.grey.26"
+  },
+  "tokens.colorNeutralForeground3Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#424242",
+   "dark": "#d6d6d6",
+   "highContrast": "#000000",
+   "teamsDark": "#d6d6d6",
+   "alias": "global.grey.26"
+  },
+  "tokens.colorNeutralForeground3BrandHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#000000",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorNeutralForeground3BrandPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#2886de",
+   "highContrast": "#000000",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#7579eb",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorNeutralForeground3BrandSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#000000",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorNeutralForeground4": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#707070",
+   "dark": "#999999",
+   "highContrast": "#ffffff",
+   "teamsDark": "#999999",
+   "alias": "global.grey.44"
+  },
+  "tokens.colorNeutralForeground5": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#616161",
+   "dark": "#adadad",
+   "highContrast": "#ffffff",
+   "teamsDark": "#adadad",
+   "alias": "global.grey.38"
+  },
+  "tokens.colorNeutralForeground5Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground5Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground5Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForegroundDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bdbdbd",
+   "dark": "#5c5c5c",
+   "highContrast": "#3ff23f",
+   "teamsDark": "#5c5c5c",
+   "alias": "global.grey.74"
+  },
+  "tokens.colorNeutralForegroundInvertedDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff66",
+   "highContrast": "#3ff23f",
+   "alias": "global.whiteAlpha.40"
+  },
+  "tokens.colorBrandForegroundLink": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#479ef5",
+   "highContrast": "#ffff00",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorBrandForegroundLinkHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "dark": "#62abf5",
+   "highContrast": "#ffff00",
+   "teamsLight": "#444791",
+   "teamsDark": "#9299f7",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorBrandForegroundLinkPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0c3b5e",
+   "dark": "#2886de",
+   "highContrast": "#ffff00",
+   "teamsLight": "#383966",
+   "teamsDark": "#7579eb",
+   "alias": "global.brand.40"
+  },
+  "tokens.colorBrandForegroundLinkSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#479ef5",
+   "highContrast": "#ffff00",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorNeutralForeground2Link": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#424242",
+   "dark": "#d6d6d6",
+   "highContrast": "#ffff00",
+   "teamsDark": "#d6d6d6",
+   "alias": "global.grey.26"
+  },
+  "tokens.colorNeutralForeground2LinkHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#ffff00",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground2LinkPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#ffff00",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForeground2LinkSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "dark": "#ffffff",
+   "highContrast": "#ffff00",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorCompoundBrandForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorCompoundBrandForeground1Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#62abf5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#9299f7",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorCompoundBrandForeground1Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "dark": "#2886de",
+   "highContrast": "#1aebff",
+   "teamsLight": "#444791",
+   "teamsDark": "#7579eb",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorBrandForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#ffffff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorBrandForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#62abf5",
+   "highContrast": "#ffffff",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#aab1fa",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorBrandForeground2Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "dark": "#96c6fa",
+   "highContrast": "#ffffff",
+   "teamsLight": "#444791",
+   "teamsDark": "#b6bcfa",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorBrandForeground2Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0a2e4a",
+   "dark": "#ebf3fc",
+   "highContrast": "#ffffff",
+   "teamsLight": "#333357",
+   "teamsDark": "#e8ebfa",
+   "alias": "global.brand.30"
+  },
+  "tokens.colorNeutralForeground1Static": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#242424",
+   "highContrast": "#000000",
+   "alias": "global.grey.14"
+  },
+  "tokens.colorNeutralForegroundStaticInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#242424",
+   "highContrast": "#000000",
+   "teamsDark": "#242424",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#242424",
+   "highContrast": "#000000",
+   "teamsDark": "#242424",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#242424",
+   "highContrast": "#000000",
+   "teamsDark": "#242424",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#242424",
+   "highContrast": "#000000",
+   "teamsDark": "#242424",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInverted2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#242424",
+   "teamsDark": "#242424",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundOnBrand": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "highContrast": "#000000",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedLink": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "highContrast": "#ffff00",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedLinkHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "highContrast": "#ffff00",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedLinkPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "highContrast": "#ffff00",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralForegroundInvertedLinkSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "highContrast": "#ffff00",
+   "alias": "global.white"
+  },
+  "tokens.colorBrandForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#479ef5",
+   "dark": "#0f6cbd",
+   "highContrast": "#ffffff",
+   "teamsLight": "#7f85f5",
+   "teamsDark": "#5b5fc7",
+   "alias": "global.brand.100"
+  },
+  "tokens.colorBrandForegroundInvertedHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#62abf5",
+   "dark": "#115ea3",
+   "highContrast": "#000000",
+   "teamsLight": "#9299f7",
+   "teamsDark": "#4f52b2",
+   "alias": "global.brand.110"
+  },
+  "tokens.colorBrandForegroundInvertedPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#479ef5",
+   "dark": "#0f548c",
+   "highContrast": "#000000",
+   "teamsLight": "#7f85f5",
+   "teamsDark": "#444791",
+   "alias": "global.brand.100"
+  },
+  "tokens.colorBrandForegroundOnLight": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "highContrast": "#000000",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#5b5fc7",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorBrandForegroundOnLightHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "highContrast": "#000000",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#4f52b2",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorBrandForegroundOnLightPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0e4775",
+   "highContrast": "#000000",
+   "teamsLight": "#3d3e78",
+   "teamsDark": "#3d3e78",
+   "alias": "global.brand.50"
+  },
+  "tokens.colorBrandForegroundOnLightSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "highContrast": "#000000",
+   "teamsLight": "#444791",
+   "teamsDark": "#444791",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorNeutralBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#292929",
+   "highContrast": "#000000",
+   "teamsDark": "#292929",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralBackground1Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f5f5f5",
+   "dark": "#3d3d3d",
+   "highContrast": "#1aebff",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.grey.96"
+  },
+  "tokens.colorNeutralBackground1Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#1f1f1f",
+   "highContrast": "#1aebff",
+   "teamsDark": "#1f1f1f",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorNeutralBackground1Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#383838",
+   "highContrast": "#1aebff",
+   "teamsDark": "#383838",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fafafa",
+   "dark": "#1f1f1f",
+   "highContrast": "#000000",
+   "teamsDark": "#242424",
+   "alias": "global.grey.98"
+  },
+  "tokens.colorNeutralBackground2Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f0f0f0",
+   "dark": "#333333",
+   "highContrast": "#1aebff",
+   "teamsDark": "#383838",
+   "alias": "global.grey.94"
+  },
+  "tokens.colorNeutralBackground2Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#dbdbdb",
+   "dark": "#141414",
+   "highContrast": "#1aebff",
+   "teamsDark": "#1a1a1a",
+   "alias": "global.grey.86"
+  },
+  "tokens.colorNeutralBackground2Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e6e6e6",
+   "dark": "#2e2e2e",
+   "highContrast": "#1aebff",
+   "teamsDark": "#333333",
+   "alias": "global.grey.90"
+  },
+  "tokens.colorNeutralBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f5f5f5",
+   "dark": "#141414",
+   "highContrast": "#000000",
+   "teamsDark": "#1f1f1f",
+   "alias": "global.grey.96"
+  },
+  "tokens.colorNeutralBackground3Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#292929",
+   "highContrast": "#1aebff",
+   "teamsDark": "#333333",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralBackground3Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d6d6d6",
+   "dark": "#0a0a0a",
+   "highContrast": "#1aebff",
+   "teamsDark": "#141414",
+   "alias": "global.grey.84"
+  },
+  "tokens.colorNeutralBackground3Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#242424",
+   "highContrast": "#1aebff",
+   "teamsDark": "#2e2e2e",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorNeutralBackground4": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f0f0f0",
+   "dark": "#0a0a0a",
+   "highContrast": "#000000",
+   "teamsDark": "#141414",
+   "alias": "global.grey.94"
+  },
+  "tokens.colorNeutralBackground4Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fafafa",
+   "dark": "#1f1f1f",
+   "highContrast": "#1aebff",
+   "teamsDark": "#292929",
+   "alias": "global.grey.98"
+  },
+  "tokens.colorNeutralBackground4Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f5f5f5",
+   "dark": "#000000",
+   "highContrast": "#1aebff",
+   "teamsDark": "#0a0a0a",
+   "alias": "global.grey.96"
+  },
+  "tokens.colorNeutralBackground4Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#1a1a1a",
+   "highContrast": "#1aebff",
+   "teamsDark": "#242424",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralBackground5": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#000000",
+   "highContrast": "#000000",
+   "teamsDark": "#0a0a0a",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralBackground5Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f5f5f5",
+   "dark": "#141414",
+   "highContrast": "#1aebff",
+   "teamsDark": "#1f1f1f",
+   "alias": "global.grey.96"
+  },
+  "tokens.colorNeutralBackground5Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f0f0f0",
+   "dark": "#050505",
+   "highContrast": "#1aebff",
+   "teamsDark": "#000000",
+   "alias": "global.grey.94"
+  },
+  "tokens.colorNeutralBackground5Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fafafa",
+   "dark": "#0f0f0f",
+   "highContrast": "#1aebff",
+   "teamsDark": "#1a1a1a",
+   "alias": "global.grey.98"
+  },
+  "tokens.colorNeutralBackground6": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e6e6e6",
+   "dark": "#333333",
+   "highContrast": "#000000",
+   "teamsDark": "#333333",
+   "alias": "global.grey.90"
+  },
+  "tokens.colorNeutralBackground7": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#000000"
+  },
+  "tokens.colorNeutralBackground7Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#1a1a1a",
+   "highContrast": "#1aebff",
+   "teamsDark": "#1a1a1a",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralBackground7Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d6d6d6",
+   "dark": "#0a0a0a",
+   "highContrast": "#1aebff",
+   "teamsDark": "#0a0a0a",
+   "alias": "global.grey.84"
+  },
+  "tokens.colorNeutralBackground7Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorNeutralBackground8": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fcfcfc",
+   "dark": "#292929",
+   "highContrast": "#000000",
+   "teamsDark": "#292929",
+   "alias": "global.grey.99"
+  },
+  "tokens.colorNeutralBackgroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#292929",
+   "dark": "#ffffff",
+   "highContrast": "#000000",
+   "teamsDark": "#ffffff",
+   "alias": "global.grey.16"
+  },
+  "tokens.colorNeutralBackgroundInvertedHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#3d3d3d",
+   "dark": "#f5f5f5",
+   "highContrast": "#1aebff",
+   "teamsDark": "#f5f5f5",
+   "alias": "global.grey.24"
+  },
+  "tokens.colorNeutralBackgroundInvertedPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#1f1f1f",
+   "dark": "#e0e0e0",
+   "highContrast": "#1aebff",
+   "teamsDark": "#e0e0e0",
+   "alias": "global.grey.12"
+  },
+  "tokens.colorNeutralBackgroundInvertedSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#383838",
+   "dark": "#ebebeb",
+   "highContrast": "#1aebff",
+   "teamsDark": "#ebebeb",
+   "alias": "global.grey.22"
+  },
+  "tokens.colorNeutralBackgroundStatic": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#333333",
+   "dark": "#3d3d3d",
+   "highContrast": "#000000",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.grey.20"
+  },
+  "tokens.colorNeutralBackgroundAlpha": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff80",
+   "dark": "#1a1a1a80",
+   "highContrast": "#000000",
+   "teamsDark": "#1a1a1a80",
+   "alias": "global.whiteAlpha.50"
+  },
+  "tokens.colorNeutralBackgroundAlpha2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffffcc",
+   "dark": "#1f1f1fb3",
+   "highContrast": "#000000",
+   "teamsDark": "#1f1f1fb3",
+   "alias": "global.whiteAlpha.80"
+  },
+  "tokens.colorSubtleBackground": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000"
+  },
+  "tokens.colorSubtleBackgroundHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f5f5f5",
+   "dark": "#383838",
+   "highContrast": "#1aebff",
+   "teamsDark": "#383838",
+   "alias": "global.grey.96"
+  },
+  "tokens.colorSubtleBackgroundPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#2e2e2e",
+   "highContrast": "#1aebff",
+   "teamsDark": "#2e2e2e",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorSubtleBackgroundSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#333333",
+   "highContrast": "#1aebff",
+   "teamsDark": "#333333",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorSubtleBackgroundLightAlphaHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffffb3",
+   "dark": "#242424cc",
+   "highContrast": "#1aebff",
+   "teamsDark": "#242424cc",
+   "alias": "global.whiteAlpha.70"
+  },
+  "tokens.colorSubtleBackgroundLightAlphaPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff80",
+   "dark": "#24242480",
+   "highContrast": "#1aebff",
+   "teamsDark": "#24242480",
+   "alias": "global.whiteAlpha.50"
+  },
+  "tokens.colorSubtleBackgroundLightAlphaSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorSubtleBackgroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000"
+  },
+  "tokens.colorSubtleBackgroundInvertedHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000001a",
+   "highContrast": "#1aebff",
+   "alias": "global.blackAlpha.10"
+  },
+  "tokens.colorSubtleBackgroundInvertedPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000004d",
+   "highContrast": "#1aebff",
+   "alias": "global.blackAlpha.30"
+  },
+  "tokens.colorSubtleBackgroundInvertedSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000033",
+   "highContrast": "#1aebff",
+   "alias": "global.blackAlpha.20"
+  },
+  "tokens.colorTransparentBackground": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000"
+  },
+  "tokens.colorTransparentBackgroundHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorTransparentBackgroundPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorTransparentBackgroundSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorNeutralBackgroundDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f0f0f0",
+   "dark": "#141414",
+   "highContrast": "#000000",
+   "teamsDark": "#141414",
+   "alias": "global.grey.94"
+  },
+  "tokens.colorNeutralBackgroundDisabled2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#292929",
+   "highContrast": "#3ff23f",
+   "teamsDark": "#292929",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralBackgroundInvertedDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff1a",
+   "highContrast": "#000000",
+   "alias": "global.whiteAlpha.10"
+  },
+  "tokens.colorNeutralStencil1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e6e6e6",
+   "dark": "#575757",
+   "highContrast": "#ffffff",
+   "teamsDark": "#575757",
+   "alias": "global.grey.90"
+  },
+  "tokens.colorNeutralStencil2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fafafa",
+   "dark": "#333333",
+   "highContrast": "#ffffff",
+   "teamsDark": "#333333",
+   "alias": "global.grey.98"
+  },
+  "tokens.colorNeutralStencil1Alpha": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000001a",
+   "dark": "#ffffff1a",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ffffff1a",
+   "alias": "global.blackAlpha.10"
+  },
+  "tokens.colorNeutralStencil2Alpha": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000000d",
+   "dark": "#ffffff0d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ffffff0d",
+   "alias": "global.blackAlpha.5"
+  },
+  "tokens.colorBackgroundOverlay": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000066",
+   "dark": "#00000080",
+   "highContrast": "#00000080",
+   "teamsDark": "#00000080",
+   "alias": "global.blackAlpha.40"
+  },
+  "tokens.colorScrollbarOverlay": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000080",
+   "dark": "#ffffff99",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ffffff99",
+   "alias": "global.blackAlpha.50"
+  },
+  "tokens.colorBrandBackground": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#115ea3",
+   "highContrast": "#ffffff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#4f52b2",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorBrandBackgroundHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#0f6cbd",
+   "highContrast": "#1aebff",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#5b5fc7",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorBrandBackgroundPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0c3b5e",
+   "highContrast": "#1aebff",
+   "teamsLight": "#383966",
+   "teamsDark": "#383966",
+   "alias": "global.brand.40"
+  },
+  "tokens.colorBrandBackgroundSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "highContrast": "#1aebff",
+   "teamsLight": "#444791",
+   "teamsDark": "#444791",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorCompoundBrandBackground": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorCompoundBrandBackgroundHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#62abf5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#9299f7",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorCompoundBrandBackgroundPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "dark": "#2886de",
+   "highContrast": "#1aebff",
+   "teamsLight": "#444791",
+   "teamsDark": "#7579eb",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorBrandBackgroundStatic": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "highContrast": "#000000",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#5b5fc7",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorBrandBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebf3fc",
+   "dark": "#082338",
+   "highContrast": "#000000",
+   "teamsLight": "#e8ebfa",
+   "teamsDark": "#2f2f4a",
+   "alias": "global.brand.160"
+  },
+  "tokens.colorBrandBackground2Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#cfe4fa",
+   "dark": "#0c3b5e",
+   "highContrast": "#000000",
+   "teamsLight": "#dce0fa",
+   "teamsDark": "#383966",
+   "alias": "global.brand.150"
+  },
+  "tokens.colorBrandBackground2Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#96c6fa",
+   "dark": "#061724",
+   "highContrast": "#000000",
+   "teamsLight": "#b6bcfa",
+   "teamsDark": "#2b2b40",
+   "alias": "global.brand.130"
+  },
+  "tokens.colorBrandBackground3Static": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "highContrast": "#000000",
+   "teamsLight": "#444791",
+   "teamsDark": "#444791",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorBrandBackground4Static": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0c3b5e",
+   "highContrast": "#000000",
+   "teamsLight": "#383966",
+   "teamsDark": "#383966",
+   "alias": "global.brand.40"
+  },
+  "tokens.colorBrandBackgroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "alias": "global.white"
+  },
+  "tokens.colorBrandBackgroundInvertedHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebf3fc",
+   "highContrast": "#1aebff",
+   "teamsLight": "#e8ebfa",
+   "teamsDark": "#e8ebfa",
+   "alias": "global.brand.160"
+  },
+  "tokens.colorBrandBackgroundInvertedPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b4d6fa",
+   "highContrast": "#1aebff",
+   "teamsLight": "#c5cbfa",
+   "teamsDark": "#c5cbfa",
+   "alias": "global.brand.140"
+  },
+  "tokens.colorBrandBackgroundInvertedSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#cfe4fa",
+   "highContrast": "#1aebff",
+   "teamsLight": "#dce0fa",
+   "teamsDark": "#dce0fa",
+   "alias": "global.brand.150"
+  },
+  "tokens.colorNeutralCardBackground": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fafafa",
+   "dark": "#333333",
+   "highContrast": "#000000",
+   "teamsDark": "#333333",
+   "alias": "global.grey.98"
+  },
+  "tokens.colorNeutralCardBackgroundHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#3d3d3d",
+   "highContrast": "#1aebff",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralCardBackgroundPressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f5f5f5",
+   "dark": "#2e2e2e",
+   "highContrast": "#1aebff",
+   "teamsDark": "#2e2e2e",
+   "alias": "global.grey.96"
+  },
+  "tokens.colorNeutralCardBackgroundSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#383838",
+   "highContrast": "#1aebff",
+   "teamsDark": "#383838",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralCardBackgroundDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f0f0f0",
+   "dark": "#141414",
+   "highContrast": "#000000",
+   "teamsDark": "#141414",
+   "alias": "global.grey.94"
+  },
+  "tokens.colorNeutralStrokeAccessible": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#616161",
+   "dark": "#adadad",
+   "highContrast": "#ffffff",
+   "teamsDark": "#adadad",
+   "alias": "global.grey.38"
+  },
+  "tokens.colorNeutralStrokeAccessibleHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#575757",
+   "dark": "#bdbdbd",
+   "highContrast": "#1aebff",
+   "teamsDark": "#bdbdbd",
+   "alias": "global.grey.34"
+  },
+  "tokens.colorNeutralStrokeAccessiblePressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#4d4d4d",
+   "dark": "#b3b3b3",
+   "highContrast": "#1aebff",
+   "teamsDark": "#b3b3b3",
+   "alias": "global.grey.30"
+  },
+  "tokens.colorNeutralStrokeAccessibleSelected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorNeutralStroke1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d1d1d1",
+   "dark": "#666666",
+   "highContrast": "#ffffff",
+   "teamsDark": "#666666",
+   "alias": "global.grey.82"
+  },
+  "tokens.colorNeutralStroke1Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c7c7c7",
+   "dark": "#757575",
+   "highContrast": "#1aebff",
+   "teamsDark": "#757575",
+   "alias": "global.grey.78"
+  },
+  "tokens.colorNeutralStroke1Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b3b3b3",
+   "dark": "#6b6b6b",
+   "highContrast": "#1aebff",
+   "teamsDark": "#6b6b6b",
+   "alias": "global.grey.70"
+  },
+  "tokens.colorNeutralStroke1Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bdbdbd",
+   "dark": "#707070",
+   "highContrast": "#1aebff",
+   "teamsDark": "#707070",
+   "alias": "global.grey.74"
+  },
+  "tokens.colorNeutralStroke2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#525252",
+   "highContrast": "#ffffff",
+   "teamsDark": "#525252",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorNeutralStroke3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f0f0f0",
+   "dark": "#3d3d3d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.grey.94"
+  },
+  "tokens.colorNeutralStroke4": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#3d3d3d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralStroke4Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#2e2e2e",
+   "highContrast": "#1aebff",
+   "teamsDark": "#2e2e2e",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorNeutralStroke4Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d6d6d6",
+   "dark": "#242424",
+   "highContrast": "#1aebff",
+   "teamsDark": "#242424",
+   "alias": "global.grey.84"
+  },
+  "tokens.colorNeutralStroke4Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#3d3d3d",
+   "highContrast": "#1aebff",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralStrokeSubtle": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#0a0a0a",
+   "highContrast": "#ffffff",
+   "teamsDark": "#0a0a0a",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorNeutralStrokeOnBrand": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#292929",
+   "highContrast": "#000000",
+   "teamsDark": "#292929",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralStrokeOnBrand2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralStrokeOnBrand2Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralStrokeOnBrand2Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "alias": "global.white"
+  },
+  "tokens.colorNeutralStrokeOnBrand2Selected": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "alias": "global.white"
+  },
+  "tokens.colorBrandStroke1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#ffffff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorBrandStroke2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b4d6fa",
+   "dark": "#0e4775",
+   "highContrast": "#ffffff",
+   "teamsLight": "#c5cbfa",
+   "teamsDark": "#3d3e78",
+   "alias": "global.brand.140"
+  },
+  "tokens.colorBrandStroke2Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#77b7f7",
+   "dark": "#0e4775",
+   "highContrast": "#1aebff",
+   "teamsLight": "#aab1fa",
+   "teamsDark": "#3d3e78",
+   "alias": "global.brand.120"
+  },
+  "tokens.colorBrandStroke2Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#0a2e4a",
+   "highContrast": "#1aebff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#333357",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorBrandStroke2Contrast": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b4d6fa",
+   "dark": "#0e4775",
+   "highContrast": "#000000",
+   "teamsLight": "#c5cbfa",
+   "teamsDark": "#3d3e78",
+   "alias": "global.brand.140"
+  },
+  "tokens.colorCompoundBrandStroke": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f6cbd",
+   "dark": "#479ef5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#5b5fc7",
+   "teamsDark": "#7579eb",
+   "alias": "global.brand.80"
+  },
+  "tokens.colorCompoundBrandStrokeHover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#115ea3",
+   "dark": "#62abf5",
+   "highContrast": "#1aebff",
+   "teamsLight": "#4f52b2",
+   "teamsDark": "#7f85f5",
+   "alias": "global.brand.70"
+  },
+  "tokens.colorCompoundBrandStrokePressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0f548c",
+   "dark": "#2886de",
+   "highContrast": "#1aebff",
+   "teamsLight": "#444791",
+   "teamsDark": "#5b5fc7",
+   "alias": "global.brand.60"
+  },
+  "tokens.colorNeutralStrokeDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0e0e0",
+   "dark": "#424242",
+   "highContrast": "#3ff23f",
+   "teamsDark": "#424242",
+   "alias": "global.grey.88"
+  },
+  "tokens.colorNeutralStrokeDisabled2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ebebeb",
+   "dark": "#3d3d3d",
+   "highContrast": "#3ff23f",
+   "teamsDark": "#3d3d3d",
+   "alias": "global.grey.92"
+  },
+  "tokens.colorNeutralStrokeInvertedDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff66",
+   "highContrast": "#3ff23f",
+   "alias": "global.whiteAlpha.40"
+  },
+  "tokens.colorTransparentStroke": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorTransparentStrokeInteractive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorTransparentStrokeDisabled": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000000",
+   "highContrast": "#3ff23f"
+  },
+  "tokens.colorNeutralStrokeAlpha": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000000d",
+   "dark": "#ffffff1a",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ffffff1a",
+   "alias": "global.blackAlpha.5"
+  },
+  "tokens.colorNeutralStrokeAlpha2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff33",
+   "highContrast": "#000000",
+   "alias": "global.whiteAlpha.20"
+  },
+  "tokens.colorStrokeFocus1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffffff",
+   "dark": "#000000",
+   "highContrast": "#000000",
+   "teamsDark": "#000000",
+   "alias": "global.white"
+  },
+  "tokens.colorStrokeFocus2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#000000",
+   "dark": "#ffffff",
+   "highContrast": "#1aebff",
+   "teamsDark": "#ffffff",
+   "alias": "global.black"
+  },
+  "tokens.colorNeutralShadowAmbient": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000001f",
+   "dark": "#0000003d",
+   "highContrast": "#0000003d",
+   "teamsDark": "#0000003d"
+  },
+  "tokens.colorNeutralShadowKey": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000024",
+   "dark": "#00000047",
+   "highContrast": "#00000047",
+   "teamsDark": "#00000047"
+  },
+  "tokens.colorNeutralShadowAmbientLighter": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000000f",
+   "dark": "#0000001f",
+   "highContrast": "#0000001f",
+   "teamsDark": "#0000001f"
+  },
+  "tokens.colorNeutralShadowKeyLighter": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000012",
+   "dark": "#00000024",
+   "highContrast": "#00000024",
+   "teamsDark": "#00000024"
+  },
+  "tokens.colorNeutralShadowAmbientDarker": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000033",
+   "dark": "#00000066",
+   "highContrast": "#00000066",
+   "teamsDark": "#00000066"
+  },
+  "tokens.colorNeutralShadowKeyDarker": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000003d",
+   "dark": "#0000007a",
+   "highContrast": "#0000007a",
+   "teamsDark": "#0000007a"
+  },
+  "tokens.colorBrandShadowAmbient": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0000004d"
+  },
+  "tokens.colorBrandShadowKey": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00000040"
+  },
+  "tokens.colorPaletteRedBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fdf6f6",
+   "dark": "#3f1011",
+   "highContrast": "#000000",
+   "teamsDark": "#3f1011"
+  },
+  "tokens.colorPaletteRedBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f1bbbc",
+   "dark": "#751d1f",
+   "highContrast": "#000000",
+   "teamsDark": "#751d1f"
+  },
+  "tokens.colorPaletteRedBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d13438",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteRedForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bc2f32",
+   "dark": "#e37d80",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e37d80"
+  },
+  "tokens.colorPaletteRedForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#751d1f",
+   "dark": "#f1bbbc",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f1bbbc"
+  },
+  "tokens.colorPaletteRedForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d13438",
+   "dark": "#e37d80",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e37d80"
+  },
+  "tokens.colorPaletteRedBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d13438",
+   "dark": "#e37d80",
+   "highContrast": "#1aebff",
+   "teamsDark": "#e37d80"
+  },
+  "tokens.colorPaletteRedBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f1bbbc",
+   "dark": "#d13438",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d13438"
+  },
+  "tokens.colorPaletteRedBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d13438",
+   "dark": "#e37d80",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e37d80"
+  },
+  "tokens.colorPaletteGreenBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f1faf1",
+   "dark": "#052505",
+   "highContrast": "#000000",
+   "teamsDark": "#052505"
+  },
+  "tokens.colorPaletteGreenBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9fd89f",
+   "dark": "#094509",
+   "highContrast": "#000000",
+   "teamsDark": "#094509"
+  },
+  "tokens.colorPaletteGreenBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteGreenForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0e700e",
+   "dark": "#54b054",
+   "highContrast": "#ffffff",
+   "teamsDark": "#54b054"
+  },
+  "tokens.colorPaletteGreenForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#094509",
+   "dark": "#9fd89f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9fd89f"
+  },
+  "tokens.colorPaletteGreenForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "dark": "#9fd89f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9fd89f"
+  },
+  "tokens.colorPaletteGreenBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "dark": "#54b054",
+   "highContrast": "#1aebff",
+   "teamsDark": "#54b054"
+  },
+  "tokens.colorPaletteGreenBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9fd89f",
+   "dark": "#107c10",
+   "highContrast": "#ffffff",
+   "teamsDark": "#107c10"
+  },
+  "tokens.colorPaletteGreenBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "dark": "#9fd89f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9fd89f"
+  },
+  "tokens.colorPaletteDarkOrangeBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fdf6f3",
+   "dark": "#411200",
+   "highContrast": "#000000",
+   "teamsDark": "#411200"
+  },
+  "tokens.colorPaletteDarkOrangeBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f4bfab",
+   "dark": "#7a2101",
+   "highContrast": "#000000",
+   "teamsDark": "#7a2101"
+  },
+  "tokens.colorPaletteDarkOrangeBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#da3b01",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteDarkOrangeForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c43501",
+   "dark": "#e9835e",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e9835e"
+  },
+  "tokens.colorPaletteDarkOrangeForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#7a2101",
+   "dark": "#f4bfab",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f4bfab"
+  },
+  "tokens.colorPaletteDarkOrangeForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#da3b01",
+   "dark": "#e9835e",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e9835e"
+  },
+  "tokens.colorPaletteDarkOrangeBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#da3b01",
+   "dark": "#e9835e",
+   "highContrast": "#1aebff",
+   "teamsDark": "#e9835e"
+  },
+  "tokens.colorPaletteDarkOrangeBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f4bfab",
+   "dark": "#da3b01",
+   "highContrast": "#ffffff",
+   "teamsDark": "#da3b01"
+  },
+  "tokens.colorPaletteDarkOrangeBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#da3b01",
+   "dark": "#e9835e",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e9835e"
+  },
+  "tokens.colorPaletteYellowBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fffef5",
+   "dark": "#4c4400",
+   "highContrast": "#000000",
+   "teamsDark": "#4c4400"
+  },
+  "tokens.colorPaletteYellowBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fef7b2",
+   "dark": "#817400",
+   "highContrast": "#000000",
+   "teamsDark": "#817400"
+  },
+  "tokens.colorPaletteYellowBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fde300",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteYellowForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#817400",
+   "dark": "#feee66",
+   "highContrast": "#ffffff",
+   "teamsDark": "#feee66"
+  },
+  "tokens.colorPaletteYellowForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#817400",
+   "dark": "#fef7b2",
+   "highContrast": "#ffffff",
+   "teamsDark": "#fef7b2"
+  },
+  "tokens.colorPaletteYellowForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fde300",
+   "dark": "#fdea3d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#fdea3d"
+  },
+  "tokens.colorPaletteYellowBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fde300",
+   "dark": "#feee66",
+   "highContrast": "#1aebff",
+   "teamsDark": "#feee66"
+  },
+  "tokens.colorPaletteYellowBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fef7b2",
+   "dark": "#fde300",
+   "highContrast": "#ffffff",
+   "teamsDark": "#fde300"
+  },
+  "tokens.colorPaletteYellowBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fde300",
+   "dark": "#fdea3d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#fdea3d"
+  },
+  "tokens.colorPaletteBerryBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fdf5fc",
+   "dark": "#3a1136",
+   "highContrast": "#000000",
+   "teamsDark": "#3a1136"
+  },
+  "tokens.colorPaletteBerryBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#edbbe7",
+   "dark": "#6d2064",
+   "highContrast": "#000000",
+   "teamsDark": "#6d2064"
+  },
+  "tokens.colorPaletteBerryBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c239b3",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteBerryForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#af33a1",
+   "dark": "#da7ed0",
+   "highContrast": "#ffffff",
+   "teamsDark": "#da7ed0"
+  },
+  "tokens.colorPaletteBerryForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#6d2064",
+   "dark": "#edbbe7",
+   "highContrast": "#ffffff",
+   "teamsDark": "#edbbe7"
+  },
+  "tokens.colorPaletteBerryForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c239b3",
+   "dark": "#d161c4",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d161c4"
+  },
+  "tokens.colorPaletteBerryBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c239b3",
+   "dark": "#da7ed0",
+   "highContrast": "#1aebff",
+   "teamsDark": "#da7ed0"
+  },
+  "tokens.colorPaletteBerryBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#edbbe7",
+   "dark": "#c239b3",
+   "highContrast": "#ffffff",
+   "teamsDark": "#c239b3"
+  },
+  "tokens.colorPaletteBerryBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c239b3",
+   "dark": "#d161c4",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d161c4"
+  },
+  "tokens.colorPaletteLightGreenBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f2fbf2",
+   "dark": "#063004",
+   "highContrast": "#000000",
+   "teamsDark": "#063004"
+  },
+  "tokens.colorPaletteLightGreenBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#a7e3a5",
+   "dark": "#0b5a08",
+   "highContrast": "#000000",
+   "teamsDark": "#0b5a08"
+  },
+  "tokens.colorPaletteLightGreenBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#13a10e",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteLightGreenForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#11910d",
+   "dark": "#5ec75a",
+   "highContrast": "#ffffff",
+   "teamsDark": "#5ec75a"
+  },
+  "tokens.colorPaletteLightGreenForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0b5a08",
+   "dark": "#a7e3a5",
+   "highContrast": "#ffffff",
+   "teamsDark": "#a7e3a5"
+  },
+  "tokens.colorPaletteLightGreenForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#13a10e",
+   "dark": "#3db838",
+   "highContrast": "#ffffff",
+   "teamsDark": "#3db838"
+  },
+  "tokens.colorPaletteLightGreenBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#13a10e",
+   "dark": "#5ec75a",
+   "highContrast": "#1aebff",
+   "teamsDark": "#5ec75a"
+  },
+  "tokens.colorPaletteLightGreenBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#a7e3a5",
+   "dark": "#13a10e",
+   "highContrast": "#ffffff",
+   "teamsDark": "#13a10e"
+  },
+  "tokens.colorPaletteLightGreenBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#13a10e",
+   "dark": "#3db838",
+   "highContrast": "#ffffff",
+   "teamsDark": "#3db838"
+  },
+  "tokens.colorPaletteMarigoldBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fefbf4",
+   "dark": "#463100",
+   "highContrast": "#000000",
+   "teamsDark": "#463100"
+  },
+  "tokens.colorPaletteMarigoldBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f9e2ae",
+   "dark": "#835b00",
+   "highContrast": "#000000",
+   "teamsDark": "#835b00"
+  },
+  "tokens.colorPaletteMarigoldBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eaa300",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorPaletteMarigoldForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d39300",
+   "dark": "#f2c661",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f2c661"
+  },
+  "tokens.colorPaletteMarigoldForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#835b00",
+   "dark": "#f9e2ae",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f9e2ae"
+  },
+  "tokens.colorPaletteMarigoldForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eaa300",
+   "dark": "#efb839",
+   "highContrast": "#ffffff",
+   "teamsDark": "#efb839"
+  },
+  "tokens.colorPaletteMarigoldBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eaa300",
+   "dark": "#f2c661",
+   "highContrast": "#1aebff",
+   "teamsDark": "#f2c661"
+  },
+  "tokens.colorPaletteMarigoldBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f9e2ae",
+   "dark": "#eaa300",
+   "highContrast": "#ffffff",
+   "teamsDark": "#eaa300"
+  },
+  "tokens.colorPaletteMarigoldBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eaa300",
+   "dark": "#efb839",
+   "highContrast": "#ffffff",
+   "teamsDark": "#efb839"
+  },
+  "tokens.colorPaletteRedForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#dc5e62",
+   "dark": "#d13438",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d13438"
+  },
+  "tokens.colorPaletteGreenForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#359b35",
+   "dark": "#107c10",
+   "highContrast": "#ffffff",
+   "teamsDark": "#107c10"
+  },
+  "tokens.colorPaletteYellowForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fef7b2",
+   "dark": "#817400",
+   "highContrast": "#ffffff",
+   "teamsDark": "#817400"
+  },
+  "tokens.colorPaletteDarkRedBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d69ca5",
+   "dark": "#590815",
+   "highContrast": "#000000",
+   "teamsDark": "#590815"
+  },
+  "tokens.colorPaletteDarkRedForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#420610",
+   "dark": "#d69ca5",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d69ca5"
+  },
+  "tokens.colorPaletteDarkRedBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#750b1c",
+   "dark": "#ac4f5e",
+   "highContrast": "#1aebff",
+   "teamsDark": "#ac4f5e"
+  },
+  "tokens.colorPaletteCranberryBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eeacb2",
+   "dark": "#6e0811",
+   "highContrast": "#000000",
+   "teamsDark": "#6e0811"
+  },
+  "tokens.colorPaletteCranberryForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#6e0811",
+   "dark": "#eeacb2",
+   "highContrast": "#ffffff",
+   "teamsDark": "#eeacb2"
+  },
+  "tokens.colorPaletteCranberryBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c50f1f",
+   "dark": "#dc626d",
+   "highContrast": "#1aebff",
+   "teamsDark": "#dc626d"
+  },
+  "tokens.colorPalettePumpkinBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#efc4ad",
+   "dark": "#712d09",
+   "highContrast": "#000000",
+   "teamsDark": "#712d09"
+  },
+  "tokens.colorPalettePumpkinForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#712d09",
+   "dark": "#efc4ad",
+   "highContrast": "#ffffff",
+   "teamsDark": "#efc4ad"
+  },
+  "tokens.colorPalettePumpkinBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ca5010",
+   "dark": "#df8e64",
+   "highContrast": "#1aebff",
+   "teamsDark": "#df8e64"
+  },
+  "tokens.colorPalettePeachBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ffddb3",
+   "dark": "#8f4e00",
+   "highContrast": "#000000",
+   "teamsDark": "#8f4e00"
+  },
+  "tokens.colorPalettePeachForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#8f4e00",
+   "dark": "#ffddb3",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ffddb3"
+  },
+  "tokens.colorPalettePeachBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ff8c00",
+   "dark": "#ffba66",
+   "highContrast": "#1aebff",
+   "teamsDark": "#ffba66"
+  },
+  "tokens.colorPaletteGoldBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ecdfa5",
+   "dark": "#6c5700",
+   "highContrast": "#000000",
+   "teamsDark": "#6c5700"
+  },
+  "tokens.colorPaletteGoldForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#6c5700",
+   "dark": "#ecdfa5",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ecdfa5"
+  },
+  "tokens.colorPaletteGoldBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c19c00",
+   "dark": "#dac157",
+   "highContrast": "#1aebff",
+   "teamsDark": "#dac157"
+  },
+  "tokens.colorPaletteBrassBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e0cea2",
+   "dark": "#553e06",
+   "highContrast": "#000000",
+   "teamsDark": "#553e06"
+  },
+  "tokens.colorPaletteBrassForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#553e06",
+   "dark": "#e0cea2",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e0cea2"
+  },
+  "tokens.colorPaletteBrassBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#986f0b",
+   "dark": "#c1a256",
+   "highContrast": "#1aebff",
+   "teamsDark": "#c1a256"
+  },
+  "tokens.colorPaletteBrownBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#ddc3b0",
+   "dark": "#50301a",
+   "highContrast": "#000000",
+   "teamsDark": "#50301a"
+  },
+  "tokens.colorPaletteBrownForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#50301a",
+   "dark": "#ddc3b0",
+   "highContrast": "#ffffff",
+   "teamsDark": "#ddc3b0"
+  },
+  "tokens.colorPaletteBrownBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#8e562e",
+   "dark": "#bb8f6f",
+   "highContrast": "#1aebff",
+   "teamsDark": "#bb8f6f"
+  },
+  "tokens.colorPaletteForestBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bdd99b",
+   "dark": "#294903",
+   "highContrast": "#000000",
+   "teamsDark": "#294903"
+  },
+  "tokens.colorPaletteForestForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#294903",
+   "dark": "#bdd99b",
+   "highContrast": "#ffffff",
+   "teamsDark": "#bdd99b"
+  },
+  "tokens.colorPaletteForestBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#498205",
+   "dark": "#85b44c",
+   "highContrast": "#1aebff",
+   "teamsDark": "#85b44c"
+  },
+  "tokens.colorPaletteSeafoamBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#a8f0cd",
+   "dark": "#00723b",
+   "highContrast": "#000000",
+   "teamsDark": "#00723b"
+  },
+  "tokens.colorPaletteSeafoamForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00723b",
+   "dark": "#a8f0cd",
+   "highContrast": "#ffffff",
+   "teamsDark": "#a8f0cd"
+  },
+  "tokens.colorPaletteSeafoamBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00cc6a",
+   "dark": "#5ae0a0",
+   "highContrast": "#1aebff",
+   "teamsDark": "#5ae0a0"
+  },
+  "tokens.colorPaletteDarkGreenBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9ad29a",
+   "dark": "#063b06",
+   "highContrast": "#000000",
+   "teamsDark": "#063b06"
+  },
+  "tokens.colorPaletteDarkGreenForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#063b06",
+   "dark": "#9ad29a",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9ad29a"
+  },
+  "tokens.colorPaletteDarkGreenBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0b6a0b",
+   "dark": "#4da64d",
+   "highContrast": "#1aebff",
+   "teamsDark": "#4da64d"
+  },
+  "tokens.colorPaletteLightTealBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#a6e9ed",
+   "dark": "#00666d",
+   "highContrast": "#000000",
+   "teamsDark": "#00666d"
+  },
+  "tokens.colorPaletteLightTealForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00666d",
+   "dark": "#a6e9ed",
+   "highContrast": "#ffffff",
+   "teamsDark": "#a6e9ed"
+  },
+  "tokens.colorPaletteLightTealBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00b7c3",
+   "dark": "#58d3db",
+   "highContrast": "#1aebff",
+   "teamsDark": "#58d3db"
+  },
+  "tokens.colorPaletteTealBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9bd9db",
+   "dark": "#02494c",
+   "highContrast": "#000000",
+   "teamsDark": "#02494c"
+  },
+  "tokens.colorPaletteTealForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#02494c",
+   "dark": "#9bd9db",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9bd9db"
+  },
+  "tokens.colorPaletteTealBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#038387",
+   "dark": "#4cb4b7",
+   "highContrast": "#1aebff",
+   "teamsDark": "#4cb4b7"
+  },
+  "tokens.colorPaletteSteelBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#94c8d4",
+   "dark": "#00333f",
+   "highContrast": "#000000",
+   "teamsDark": "#00333f"
+  },
+  "tokens.colorPaletteSteelForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#00333f",
+   "dark": "#94c8d4",
+   "highContrast": "#ffffff",
+   "teamsDark": "#94c8d4"
+  },
+  "tokens.colorPaletteSteelBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#005b70",
+   "dark": "#4496a9",
+   "highContrast": "#1aebff",
+   "teamsDark": "#4496a9"
+  },
+  "tokens.colorPaletteBlueBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#a9d3f2",
+   "dark": "#004377",
+   "highContrast": "#000000",
+   "teamsDark": "#004377"
+  },
+  "tokens.colorPaletteBlueForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#004377",
+   "dark": "#a9d3f2",
+   "highContrast": "#ffffff",
+   "teamsDark": "#a9d3f2"
+  },
+  "tokens.colorPaletteBlueBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0078d4",
+   "dark": "#5caae5",
+   "highContrast": "#1aebff",
+   "teamsDark": "#5caae5"
+  },
+  "tokens.colorPaletteRoyalBlueBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9abfdc",
+   "dark": "#002c4e",
+   "highContrast": "#000000",
+   "teamsDark": "#002c4e"
+  },
+  "tokens.colorPaletteRoyalBlueForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#002c4e",
+   "dark": "#9abfdc",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9abfdc"
+  },
+  "tokens.colorPaletteRoyalBlueBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#004e8c",
+   "dark": "#4a89ba",
+   "highContrast": "#1aebff",
+   "teamsDark": "#4a89ba"
+  },
+  "tokens.colorPaletteCornflowerBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c8d1fa",
+   "dark": "#2c3c85",
+   "highContrast": "#000000",
+   "teamsDark": "#2c3c85"
+  },
+  "tokens.colorPaletteCornflowerForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#2c3c85",
+   "dark": "#c8d1fa",
+   "highContrast": "#ffffff",
+   "teamsDark": "#c8d1fa"
+  },
+  "tokens.colorPaletteCornflowerBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#4f6bed",
+   "dark": "#93a4f4",
+   "highContrast": "#1aebff",
+   "teamsDark": "#93a4f4"
+  },
+  "tokens.colorPaletteNavyBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#a3b2e8",
+   "dark": "#001665",
+   "highContrast": "#000000",
+   "teamsDark": "#001665"
+  },
+  "tokens.colorPaletteNavyForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#001665",
+   "dark": "#a3b2e8",
+   "highContrast": "#ffffff",
+   "teamsDark": "#a3b2e8"
+  },
+  "tokens.colorPaletteNavyBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0027b4",
+   "dark": "#546fd2",
+   "highContrast": "#1aebff",
+   "teamsDark": "#546fd2"
+  },
+  "tokens.colorPaletteLavenderBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d2ccf8",
+   "dark": "#3f3682",
+   "highContrast": "#000000",
+   "teamsDark": "#3f3682"
+  },
+  "tokens.colorPaletteLavenderForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#3f3682",
+   "dark": "#d2ccf8",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d2ccf8"
+  },
+  "tokens.colorPaletteLavenderBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#7160e8",
+   "dark": "#a79cf1",
+   "highContrast": "#1aebff",
+   "teamsDark": "#a79cf1"
+  },
+  "tokens.colorPalettePurpleBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c6b1de",
+   "dark": "#341a51",
+   "highContrast": "#000000",
+   "teamsDark": "#341a51"
+  },
+  "tokens.colorPalettePurpleForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#341a51",
+   "dark": "#c6b1de",
+   "highContrast": "#ffffff",
+   "teamsDark": "#c6b1de"
+  },
+  "tokens.colorPalettePurpleBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#5c2e91",
+   "dark": "#9470bd",
+   "highContrast": "#1aebff",
+   "teamsDark": "#9470bd"
+  },
+  "tokens.colorPaletteGrapeBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d9a7e0",
+   "dark": "#4c0d55",
+   "highContrast": "#000000",
+   "teamsDark": "#4c0d55"
+  },
+  "tokens.colorPaletteGrapeForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#4c0d55",
+   "dark": "#d9a7e0",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d9a7e0"
+  },
+  "tokens.colorPaletteGrapeBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#881798",
+   "dark": "#b55fc1",
+   "highContrast": "#1aebff",
+   "teamsDark": "#b55fc1"
+  },
+  "tokens.colorPaletteLilacBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e6bfed",
+   "dark": "#63276d",
+   "highContrast": "#000000",
+   "teamsDark": "#63276d"
+  },
+  "tokens.colorPaletteLilacForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#63276d",
+   "dark": "#e6bfed",
+   "highContrast": "#ffffff",
+   "teamsDark": "#e6bfed"
+  },
+  "tokens.colorPaletteLilacBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b146c2",
+   "dark": "#cf87da",
+   "highContrast": "#1aebff",
+   "teamsDark": "#cf87da"
+  },
+  "tokens.colorPalettePinkBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f7c0e3",
+   "dark": "#80215d",
+   "highContrast": "#000000",
+   "teamsDark": "#80215d"
+  },
+  "tokens.colorPalettePinkForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#80215d",
+   "dark": "#f7c0e3",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f7c0e3"
+  },
+  "tokens.colorPalettePinkBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#e43ba6",
+   "dark": "#ef85c8",
+   "highContrast": "#1aebff",
+   "teamsDark": "#ef85c8"
+  },
+  "tokens.colorPaletteMagentaBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eca5d1",
+   "dark": "#6b0043",
+   "highContrast": "#000000",
+   "teamsDark": "#6b0043"
+  },
+  "tokens.colorPaletteMagentaForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#6b0043",
+   "dark": "#eca5d1",
+   "highContrast": "#ffffff",
+   "teamsDark": "#eca5d1"
+  },
+  "tokens.colorPaletteMagentaBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bf0077",
+   "dark": "#d957a8",
+   "highContrast": "#1aebff",
+   "teamsDark": "#d957a8"
+  },
+  "tokens.colorPalettePlumBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d696c0",
+   "dark": "#5a003b",
+   "highContrast": "#000000",
+   "teamsDark": "#5a003b"
+  },
+  "tokens.colorPalettePlumForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#43002b",
+   "dark": "#d696c0",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d696c0"
+  },
+  "tokens.colorPalettePlumBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#77004d",
+   "dark": "#ad4589",
+   "highContrast": "#1aebff",
+   "teamsDark": "#ad4589"
+  },
+  "tokens.colorPaletteBeigeBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#d7d4d4",
+   "dark": "#444241",
+   "highContrast": "#000000",
+   "teamsDark": "#444241"
+  },
+  "tokens.colorPaletteBeigeForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#444241",
+   "dark": "#d7d4d4",
+   "highContrast": "#ffffff",
+   "teamsDark": "#d7d4d4"
+  },
+  "tokens.colorPaletteBeigeBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#7a7574",
+   "dark": "#afabaa",
+   "highContrast": "#1aebff",
+   "teamsDark": "#afabaa"
+  },
+  "tokens.colorPaletteMinkBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#cecccb",
+   "dark": "#343231",
+   "highContrast": "#000000",
+   "teamsDark": "#343231"
+  },
+  "tokens.colorPaletteMinkForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#343231",
+   "dark": "#cecccb",
+   "highContrast": "#ffffff",
+   "teamsDark": "#cecccb"
+  },
+  "tokens.colorPaletteMinkBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#5d5a58",
+   "dark": "#9e9b99",
+   "highContrast": "#1aebff",
+   "teamsDark": "#9e9b99"
+  },
+  "tokens.colorPalettePlatinumBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#cdd6d8",
+   "dark": "#3b4447",
+   "highContrast": "#000000",
+   "teamsDark": "#3b4447"
+  },
+  "tokens.colorPalettePlatinumForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#3b4447",
+   "dark": "#cdd6d8",
+   "highContrast": "#ffffff",
+   "teamsDark": "#cdd6d8"
+  },
+  "tokens.colorPalettePlatinumBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#69797e",
+   "dark": "#a0adb2",
+   "highContrast": "#1aebff",
+   "teamsDark": "#a0adb2"
+  },
+  "tokens.colorPaletteAnchorBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bcc3c7",
+   "dark": "#202427",
+   "highContrast": "#000000",
+   "teamsDark": "#202427"
+  },
+  "tokens.colorPaletteAnchorForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#202427",
+   "dark": "#bcc3c7",
+   "highContrast": "#ffffff",
+   "teamsDark": "#bcc3c7"
+  },
+  "tokens.colorPaletteAnchorBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#394146",
+   "dark": "#808a90",
+   "highContrast": "#1aebff",
+   "teamsDark": "#808a90"
+  },
+  "tokens.colorStatusSuccessBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f1faf1",
+   "dark": "#052505",
+   "highContrast": "#000000",
+   "teamsDark": "#052505"
+  },
+  "tokens.colorStatusSuccessBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9fd89f",
+   "dark": "#094509",
+   "highContrast": "#000000",
+   "teamsDark": "#094509"
+  },
+  "tokens.colorStatusSuccessBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorStatusSuccessForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#0e700e",
+   "dark": "#54b054",
+   "highContrast": "#ffffff",
+   "teamsDark": "#54b054"
+  },
+  "tokens.colorStatusSuccessForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#094509",
+   "dark": "#9fd89f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9fd89f"
+  },
+  "tokens.colorStatusSuccessForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "dark": "#9fd89f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9fd89f"
+  },
+  "tokens.colorStatusSuccessForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#54b054",
+   "dark": "#0e700e",
+   "highContrast": "#ffffff",
+   "teamsDark": "#0e700e"
+  },
+  "tokens.colorStatusSuccessBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "dark": "#54b054",
+   "highContrast": "#1aebff",
+   "teamsDark": "#54b054"
+  },
+  "tokens.colorStatusSuccessBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#9fd89f",
+   "dark": "#107c10",
+   "highContrast": "#ffffff",
+   "teamsDark": "#107c10"
+  },
+  "tokens.colorStatusSuccessBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#107c10",
+   "dark": "#9fd89f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#9fd89f"
+  },
+  "tokens.colorStatusWarningBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fff9f5",
+   "dark": "#4a1e04",
+   "highContrast": "#000000",
+   "teamsDark": "#4a1e04"
+  },
+  "tokens.colorStatusWarningBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fdcfb4",
+   "dark": "#8a3707",
+   "highContrast": "#000000",
+   "teamsDark": "#8a3707"
+  },
+  "tokens.colorStatusWarningBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f7630c",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorStatusWarningForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bc4b09",
+   "dark": "#faa06b",
+   "highContrast": "#ffffff",
+   "teamsDark": "#faa06b"
+  },
+  "tokens.colorStatusWarningForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#8a3707",
+   "dark": "#fdcfb4",
+   "highContrast": "#ffffff",
+   "teamsDark": "#fdcfb4"
+  },
+  "tokens.colorStatusWarningForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bc4b09",
+   "dark": "#f98845",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f98845"
+  },
+  "tokens.colorStatusWarningForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#faa06b",
+   "dark": "#bc4b09",
+   "highContrast": "#ffffff",
+   "teamsDark": "#bc4b09"
+  },
+  "tokens.colorStatusWarningBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#f7630c",
+   "dark": "#faa06b",
+   "highContrast": "#1aebff",
+   "teamsDark": "#faa06b"
+  },
+  "tokens.colorStatusWarningBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fdcfb4",
+   "dark": "#f7630c",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f7630c"
+  },
+  "tokens.colorStatusWarningBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#bc4b09",
+   "dark": "#f98845",
+   "highContrast": "#ffffff",
+   "teamsDark": "#f98845"
+  },
+  "tokens.colorStatusDangerBackground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#fdf3f4",
+   "dark": "#3b0509",
+   "highContrast": "#000000",
+   "teamsDark": "#3b0509"
+  },
+  "tokens.colorStatusDangerBackground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eeacb2",
+   "dark": "#6e0811",
+   "highContrast": "#000000",
+   "teamsDark": "#6e0811"
+  },
+  "tokens.colorStatusDangerBackground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c50f1f",
+   "highContrast": "#ffffff"
+  },
+  "tokens.colorStatusDangerForeground1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b10e1c",
+   "dark": "#dc626d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#dc626d"
+  },
+  "tokens.colorStatusDangerForeground2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#6e0811",
+   "dark": "#eeacb2",
+   "highContrast": "#ffffff",
+   "teamsDark": "#eeacb2"
+  },
+  "tokens.colorStatusDangerForeground3": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c50f1f",
+   "dark": "#eeacb2",
+   "highContrast": "#ffffff",
+   "teamsDark": "#eeacb2"
+  },
+  "tokens.colorStatusDangerForegroundInverted": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#dc626d",
+   "dark": "#b10e1c",
+   "highContrast": "#ffffff",
+   "teamsDark": "#b10e1c"
+  },
+  "tokens.colorStatusDangerBorderActive": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c50f1f",
+   "dark": "#dc626d",
+   "highContrast": "#1aebff",
+   "teamsDark": "#dc626d"
+  },
+  "tokens.colorStatusDangerBorder1": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#eeacb2",
+   "dark": "#c50f1f",
+   "highContrast": "#ffffff",
+   "teamsDark": "#c50f1f"
+  },
+  "tokens.colorStatusDangerBorder2": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#c50f1f",
+   "dark": "#dc626d",
+   "highContrast": "#ffffff",
+   "teamsDark": "#dc626d"
+  },
+  "tokens.colorStatusDangerBackground3Hover": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#b10e1c",
+   "highContrast": "#1aebff"
+  },
+  "tokens.colorStatusDangerBackground3Pressed": {
+   "tier": "alias",
+   "type": "color",
+   "value": "#960b18",
+   "highContrast": "#1aebff"
+  },
+  "tokens.shadow2": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000024"
+    }
+   ],
+   "dark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000047"
+    }
+   ],
+   "highContrast": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000047"
+    }
+   ],
+   "teamsDark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000047"
+    }
+   ]
+  },
+  "tokens.shadow4": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000024"
+    }
+   ],
+   "dark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000047"
+    }
+   ],
+   "highContrast": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000047"
+    }
+   ],
+   "teamsDark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000047"
+    }
+   ]
+  },
+  "tokens.shadow8": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000024"
+    }
+   ],
+   "dark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000047"
+    }
+   ],
+   "highContrast": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000047"
+    }
+   ],
+   "teamsDark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000047"
+    }
+   ]
+  },
+  "tokens.shadow16": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000024"
+    }
+   ],
+   "dark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000047"
+    }
+   ],
+   "highContrast": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000047"
+    }
+   ],
+   "teamsDark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000047"
+    }
+   ]
+  },
+  "tokens.shadow28": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000024"
+    }
+   ],
+   "dark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000047"
+    }
+   ],
+   "highContrast": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000047"
+    }
+   ],
+   "teamsDark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000047"
+    }
+   ]
+  },
+  "tokens.shadow64": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000024"
+    }
+   ],
+   "dark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000047"
+    }
+   ],
+   "highContrast": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000047"
+    }
+   ],
+   "teamsDark": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000003d"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000047"
+    }
+   ]
+  },
+  "tokens.shadow2Brand": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "tokens.shadow4Brand": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "tokens.shadow8Brand": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "tokens.shadow16Brand": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "tokens.shadow28Brand": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "tokens.shadow64Brand": {
+   "tier": "global",
+   "type": "shadow",
+   "value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "typographyStyles.body1": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 14,
+    "fontWeight": 400,
+    "lineHeight": 20
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase300",
+    "fontWeight": "tokens.fontWeightRegular",
+    "lineHeight": "tokens.lineHeightBase300"
+   }
+  },
+  "typographyStyles.body1Strong": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 14,
+    "fontWeight": 600,
+    "lineHeight": 20
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase300",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightBase300"
+   }
+  },
+  "typographyStyles.body1Stronger": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 14,
+    "fontWeight": 700,
+    "lineHeight": 20
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase300",
+    "fontWeight": "tokens.fontWeightBold",
+    "lineHeight": "tokens.lineHeightBase300"
+   }
+  },
+  "typographyStyles.body2": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 16,
+    "fontWeight": 400,
+    "lineHeight": 22
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase400",
+    "fontWeight": "tokens.fontWeightRegular",
+    "lineHeight": "tokens.lineHeightBase400"
+   }
+  },
+  "typographyStyles.caption1": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 12,
+    "fontWeight": 400,
+    "lineHeight": 16
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase200",
+    "fontWeight": "tokens.fontWeightRegular",
+    "lineHeight": "tokens.lineHeightBase200"
+   }
+  },
+  "typographyStyles.caption1Strong": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 12,
+    "fontWeight": 600,
+    "lineHeight": 16
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase200",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightBase200"
+   }
+  },
+  "typographyStyles.caption1Stronger": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 12,
+    "fontWeight": 700,
+    "lineHeight": 16
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase200",
+    "fontWeight": "tokens.fontWeightBold",
+    "lineHeight": "tokens.lineHeightBase200"
+   }
+  },
+  "typographyStyles.caption2": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 10,
+    "fontWeight": 400,
+    "lineHeight": 14
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase100",
+    "fontWeight": "tokens.fontWeightRegular",
+    "lineHeight": "tokens.lineHeightBase100"
+   }
+  },
+  "typographyStyles.caption2Strong": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 10,
+    "fontWeight": 600,
+    "lineHeight": 14
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase100",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightBase100"
+   }
+  },
+  "typographyStyles.subtitle1": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 20,
+    "fontWeight": 600,
+    "lineHeight": 28
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase500",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightBase500"
+   }
+  },
+  "typographyStyles.subtitle2": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 16,
+    "fontWeight": 600,
+    "lineHeight": 22
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase400",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightBase400"
+   }
+  },
+  "typographyStyles.subtitle2Stronger": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 16,
+    "fontWeight": 700,
+    "lineHeight": 22
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase400",
+    "fontWeight": "tokens.fontWeightBold",
+    "lineHeight": "tokens.lineHeightBase400"
+   }
+  },
+  "typographyStyles.title1": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 32,
+    "fontWeight": 600,
+    "lineHeight": 40
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeHero800",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightHero800"
+   }
+  },
+  "typographyStyles.title2": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 28,
+    "fontWeight": 600,
+    "lineHeight": 36
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeHero700",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightHero700"
+   }
+  },
+  "typographyStyles.title3": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 24,
+    "fontWeight": 600,
+    "lineHeight": 32
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeBase600",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightBase600"
+   }
+  },
+  "typographyStyles.largeTitle": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 40,
+    "fontWeight": 600,
+    "lineHeight": 52
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeHero900",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightHero900"
+   }
+  },
+  "typographyStyles.display": {
+   "type": "typography",
+   "value": {
+    "fontFamily": "fontFamilyBase",
+    "fontSize": 68,
+    "fontWeight": 600,
+    "lineHeight": 92
+   },
+   "tokens": {
+    "fontFamily": "tokens.fontFamilyBase",
+    "fontSize": "tokens.fontSizeHero1000",
+    "fontWeight": "tokens.fontWeightSemibold",
+    "lineHeight": "tokens.lineHeightHero1000"
+   }
+  }
+ }
+}

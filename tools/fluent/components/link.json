@@ -1,0 +1,291 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "link",
+  "name": "Link",
+  "status": "stable",
+  "summary": "Text that navigates, or acts like a button while reading as text. Choose it over a subtle or transparent Button when the action sits inside or beside running text; inline marks one inside a sentence, where it is always underlined.",
+  "tokenGroups": [
+    "tokens.colorBrandForegroundLink",
+    "tokens.colorBrandForegroundLinkHover",
+    "tokens.colorBrandForegroundLinkPressed",
+    "tokens.colorNeutralForeground2Link",
+    "tokens.colorNeutralForeground2LinkHover",
+    "tokens.colorNeutralForeground2LinkPressed",
+    "tokens.colorBrandForegroundInverted",
+    "tokens.colorNeutralForegroundInvertedLink",
+    "tokens.colorNeutralForegroundInvertedLinkHover",
+    "tokens.colorNeutralForegroundInvertedLinkPressed",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase300",
+    "tokens.fontWeightRegular",
+    "tokens.strokeWidthThin"
+  ],
+  "references": {
+    "react": [
+      "useLinkStyles.styles.ts",
+      "Link.types.ts"
+    ],
+    "fluent2": [
+      "link"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The link text."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "Native href. With it the link renders as an anchor and inherits the surrounding font size; without it, as a button at fontSizeBase300."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "default",
+        "subtle"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "default is brand-coloured; subtle is neutral Foreground 2 until hovered."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The link sits inside running text: underlined at rest, not only on hover."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disabled colour, no underline, no activation; removed from the tab order."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Looks disabled and ignores activation but stays focusable, to keep a stable tab order."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Runs on click, or on Enter while focused."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Link",
+      "description": "An inline anchor, button or span holding the text; the only part."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "default",
+      "default": true,
+      "description": "Brand link colour, stepping to its Hover and Pressed tokens.",
+      "tokens": [
+        "tokens.colorBrandForegroundLink",
+        "tokens.colorBrandForegroundLinkHover",
+        "tokens.colorBrandForegroundLinkPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "Neutral Foreground 2 link colour, stepping to its Hover and Pressed tokens.",
+      "tokens": [
+        "tokens.colorNeutralForeground2Link",
+        "tokens.colorNeutralForeground2LinkHover",
+        "tokens.colorNeutralForeground2LinkPressed"
+      ]
+    },
+    {
+      "axis": "inline",
+      "value": "true",
+      "description": "Underlined at rest."
+    },
+    {
+      "axis": "background",
+      "value": "inverted",
+      "description": "Set by an inverted-background context, not a prop: colorBrandForegroundInverted at rest, hover and press alike; overrides appearance.",
+      "tokens": [
+        "tokens.colorBrandForegroundInverted"
+      ]
+    },
+    {
+      "axis": "background",
+      "value": "brand",
+      "description": "Set by a brand-background context: the inverted neutral link family, stepping on hover and press; overrides appearance.",
+      "tokens": [
+        "tokens.colorNeutralForegroundInvertedLink",
+        "tokens.colorNeutralForegroundInvertedLinkHover",
+        "tokens.colorNeutralForegroundInvertedLinkPressed"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "part": "root",
+      "text": "The link is display inline with no margin, padding or background, left-aligned, and inherits overflow and text-overflow so it truncates with its container; its text stays selectable.",
+      "source": "useLinkStyles.styles.ts:21-40"
+    },
+    {
+      "id": "text",
+      "part": "root",
+      "text": "The text is fontFamilyBase at fontWeightRegular and fontSizeBase300; an anchor with an href inherits the surrounding font size instead. No line height is set, so it takes the surrounding one.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.fontSizeBase300",
+        "tokens.fontWeightRegular"
+      ],
+      "source": "useLinkStyles.styles.ts:30-32,57-59,136"
+    },
+    {
+      "id": "underline",
+      "part": "root",
+      "text": "Any underline is strokeWidthThin thick, in the text's colour.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useLinkStyles.styles.ts:37-38"
+    },
+    {
+      "id": "as-button",
+      "part": "root",
+      "text": "Rendered as a button, the link drops the native button border so it reads as text.",
+      "source": "useLinkStyles.styles.ts:52-55,137"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's link colour, underlined only when inline.",
+      "tokens": [
+        "tokens.colorBrandForegroundLink",
+        "tokens.colorNeutralForeground2Link"
+      ],
+      "source": "useLinkStyles.styles.ts:27,37,62,75-77"
+    },
+    {
+      "state": "hovered",
+      "text": "The text underlines and takes the Hover link token; the pointer is a hand. Instant.",
+      "tokens": [
+        "tokens.colorBrandForegroundLinkHover",
+        "tokens.colorNeutralForeground2LinkHover",
+        "tokens.colorNeutralForegroundInvertedLinkHover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useLinkStyles.styles.ts:28,42-45,64-67,118-120"
+    },
+    {
+      "state": "pressed",
+      "text": "The text underlines and takes the Pressed link token.",
+      "tokens": [
+        "tokens.colorBrandForegroundLinkPressed",
+        "tokens.colorNeutralForeground2LinkPressed",
+        "tokens.colorNeutralForegroundInvertedLinkPressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useLinkStyles.styles.ts:47-50,69-72,121-123"
+    },
+    {
+      "state": "focused",
+      "text": "A custom indicator, not createFocusOutlineStyle: on keyboard focus (focus-visible only) the outline is removed and the text gets a double underline in colorStrokeFocus2.",
+      "tokens": [
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useLinkStyles.styles.ts:14-19,22-24; createCustomFocusIndicatorStyle.ts"
+    },
+    {
+      "state": "disabled",
+      "text": "colorNeutralForegroundDisabled with no underline at rest, hover or press, and the not-allowed pointer; this overrides appearance, background and inline.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useLinkStyles.styles.ts:79-94,142"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "element",
+      "text": "With an href the link renders as an anchor and navigates; without one it renders as a button and runs onClick. It may also render as a span.",
+      "source": "Link.types.ts:4-9; useLinkStyles.styles.ts:136-137"
+    },
+    {
+      "id": "disabled-focusable",
+      "text": "disabledFocusable keeps the link in the tab order with its focus underline but ignores activation and reports aria-disabled.",
+      "source": "Link.types.ts:25-30"
+    },
+    {
+      "id": "no-transition",
+      "text": "Colour and underline change instantly; the styles file declares no transition.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useLinkStyles.styles.ts:21-51"
+    }
+  ],
+  "accessibility": {
+    "role": "link",
+    "minTargetPx": 14,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Enter activates it (Space too when it renders as a button)"
+    ],
+    "semantics": [
+      "link when it has an href, button otherwise",
+      "aria-disabled when disabled or disabledFocusable"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The hit area is the inline text box, which nothing sizes: at fontSizeBase300 it is about 14px tall, well under the foundations' 24px minimum. Give standalone links vertical room in the layout.",
+      "tokens": [
+        "tokens.fontSizeBase300"
+      ],
+      "source": "useLinkStyles.styles.ts:21-40"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Disabled is merged last, so a disabled inline link loses its underline and reads as plain grey text in a sentence.",
+      "source": "useLinkStyles.styles.ts:79-94,141-142"
+    },
+    {
+      "kind": "gotcha",
+      "text": "On an inverted background the link has no hover or pressed colour change, only the underline; on a brand background it steps through the inverted-link tokens. The asymmetry is in the code.",
+      "tokens": [
+        "tokens.colorBrandForegroundInverted"
+      ],
+      "source": "useLinkStyles.styles.ts:107-124"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Only disabled has a forced-colours rule: GrayText at rest, hover and press, since links have no native disabled state. Otherwise the browser's forced link colour and the high-contrast theme apply; the double-underline focus indicator survives because it is a text decoration, not an outline.",
+      "source": "useLinkStyles.styles.ts:94-105"
+    },
+    {
+      "kind": "inferred",
+      "text": "Guidance on when to prefer a link over a subtle button follows the design site.",
+      "source": "fluent2:link"
+    }
+  ]
+}

@@ -1,0 +1,411 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "select",
+  "name": "Select",
+  "status": "stable",
+  "summary": "A styled native select: one value picked from a platform-drawn list, wearing Input's appearances and sizes. Choose it when the options are plain strings and the platform's own popup is acceptable; choose Combobox or Dropdown for custom option content, multiselect or typing.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorTransparentBackground",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorTransparentStrokeDisabled",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.fontFamilyBase",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "typographyStyles.body2",
+    "tokens.durationUltraFast",
+    "tokens.durationNormal",
+    "tokens.curveAccelerateMid",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "useSelectStyles.styles.ts",
+      "Select.types.ts"
+    ],
+    "fluent2": [
+      "select"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "Colour and border treatment, as Input's."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Height (24, 32, 40), text style, padding and icon size together; matches Input."
+    },
+    {
+      "name": "options",
+      "type": "list",
+      "required": true,
+      "description": "The native options: a value and a text each, optionally disabled or grouped."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The selected option's value."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "The end icon, a down chevron by default, drawn over the select and not clickable."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Native disabled: disabled colours and no popup."
+    },
+    {
+      "name": "invalid",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "aria-invalid: the border reads colorPaletteRedBorder2 while focus is not within."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the new value when the user picks an option."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "A flex row wrapping the select and the icon, position relative so the icon and focus line can be placed over it; it receives className and style.",
+      "tokens": [
+        "tokens.fontFamilyBase"
+      ]
+    },
+    {
+      "id": "select",
+      "name": "Select",
+      "description": "The native select element with its own appearance removed: the field's fill, border, radius, padding and text style; it grows to fill the root.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "The chevron, absolutely placed at the end inside the select's padding, colorNeutralStrokeAccessible, 16, 20 or 24px, taking no pointer events.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "id": "focus-line",
+      "name": "Focus line",
+      "description": "The root's ::after: a bottom strip as tall as borderRadiusMedium whose lower half is colorCompoundBrandStroke, scaled from zero width while focus is within."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "Background 1 fill and a 1px Stroke 1 border whose bottom edge is StrokeAccessible; hover and press step the side borders only.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "underline",
+      "description": "Transparent background, no radius, only a 1px StrokeAccessible bottom border; native options paint Background 1 so they read in dark themes.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralBackground1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker",
+      "description": "Background 3 fill behind the base 1px transparent border.",
+      "tokens": [
+        "tokens.colorNeutralBackground3"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "Background 1 fill behind the base 1px transparent border.",
+      "tokens": [
+        "tokens.colorNeutralBackground1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px tall, caption1 text, 16px icon, spacingHorizontalSNudge outer padding.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px tall, body1 text, 20px icon, spacingHorizontalMNudge outer padding.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingHorizontalMNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px tall, body2 text, 24px icon, spacingHorizontalM outer padding.",
+      "tokens": [
+        "typographyStyles.body2",
+        "tokens.spacingHorizontalM"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "heights",
+      "part": "select",
+      "text": "The select is exactly 24, 32 or 40px tall by size with no vertical padding, a 1px border on every side (transparent where the appearance shows none) and borderRadiusMedium.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "small",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useSelectStyles.styles.ts:20-25,110-121,146-163"
+    },
+    {
+      "id": "padding",
+      "part": "select",
+      "text": "Since the native element cannot hold children, its padding folds the outer inset and the inner content padding together: start padding is spacingHorizontalSNudge plus spacingHorizontalXXS at small, MNudge plus XXS at medium, M plus SNudge at large; end padding is the outer inset plus the icon size plus twice the gap (XXS at small and medium, SNudge at large).",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useSelectStyles.styles.ts:27-55"
+    },
+    {
+      "id": "icon-box",
+      "part": "icon",
+      "text": "The icon is a 16, 20 or 24px square placed at the end inset by spacingHorizontalSNudge, MNudge or M, vertically centred by the root's flex alignment.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM"
+      ],
+      "values": [
+        {
+          "name": "iconSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useSelectStyles.styles.ts:14-18,207-245"
+    },
+    {
+      "id": "focus-line",
+      "part": "focus-line",
+      "text": "The focus line spans the root's bottom edge, as tall as borderRadiusMedium with that radius on its bottom corners, painted by a gradient that fills its lower half with colorCompoundBrandStroke; unlike Input it sits inside the box, not 1px outside.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "source": "useSelectStyles.styles.ts:68-84"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's fill and border, colorNeutralForeground1 text, colorNeutralStrokeAccessible icon, a pointer cursor and the focus line scaled to zero.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useSelectStyles.styles.ts:110-128,164-168,208-213"
+    },
+    {
+      "state": "hovered",
+      "text": "Outline only: the border turns colorNeutralStroke1Hover while the bottom edge stays colorNeutralStrokeAccessible.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSelectStyles.styles.ts:169-173"
+    },
+    {
+      "state": "pressed",
+      "text": "Outline only: while pressed the border turns colorNeutralStroke1Pressed, the bottom edge unchanged.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSelectStyles.styles.ts:175-178"
+    },
+    {
+      "state": "focused",
+      "text": "While focus is within, the focus line scales to full width over durationNormal on curveDecelerateMid and back over durationUltraFast on curveAccelerateMid; the select itself declares a 2px transparent outline so no browser ring shows.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useSelectStyles.styles.ts:84-105,123-127"
+    },
+    {
+      "state": "error",
+      "text": "aria-invalid on an enabled select: while focus is not within, the border (the bottom border for underline) reads colorPaletteRedBorder2.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2"
+      ],
+      "source": "useSelectStyles.styles.ts:195-204,269-270"
+    },
+    {
+      "state": "disabled",
+      "text": "A transparent background, colorNeutralStrokeDisabled border (underline: transparent sides with a colorNeutralStrokeDisabled bottom), colorNeutralForegroundDisabled text and icon, and a not-allowed pointer; invalid is not shown while disabled.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorTransparentStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useSelectStyles.styles.ts:129-144,221-226,269-272"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "native",
+      "text": "Opening, keyboard navigation and option rendering are the platform's: the component styles only the closed field and overlays its own chevron; the popup list is not themed beyond the underline's option background.",
+      "source": "Select.types.ts:5-17; useSelectStyles.styles.ts:184-188"
+    },
+    {
+      "id": "change",
+      "text": "Picking an option fires onChange with the option's value, or its text when it has no value.",
+      "source": "Select.types.ts:27-31,46-54"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Space, Enter or Alt+ArrowDown opens the native list",
+      "ArrowUp and ArrowDown change the value or move in the list",
+      "typing jumps to a matching option",
+      "Escape closes the list"
+    ],
+    "semantics": [
+      "the native select carries the platform's combobox semantics and its options",
+      "disabled and aria-invalid are native attributes on the select",
+      "the icon is decorative and takes no pointer events"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Heights (24, 32, 40px), icon sizes (16, 20, 24px) and the 1px border are constants in the styles file, with a TODO asking whether field heights should be tokens.",
+      "source": "useSelectStyles.styles.ts:14-25,112,166"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Unlike Input, Combobox and SpinButton, the hover and press border keeps its rest StrokeAccessible bottom edge (no Hover or Pressed step) and the focus line is a half-height gradient inside the box rather than a clipped 2px border 1px outside it.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useSelectStyles.styles.ts:68-84,169-178"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The filled appearances add only a fill; the 1px transparent border comes from the base class, so hover and focus do not draw a TransparentStrokeInteractive border here as Input's filled appearances do.",
+      "source": "useSelectStyles.styles.ts:112,189-194"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a disabled select's border and icon read the system GrayText.",
+      "source": "useSelectStyles.styles.ts:134-136,223-225"
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluent 2 Kit</title>
+<meta name="description" content="Every token per theme, the system rules and one spec per component of the Fluent 2 implementation kit, read from Fluent UI React v9 at one commit.">
+<style>
+/* The page wears the kit's own web light and dark themes. */
+:root {
+  --bg: #fafafa; --surface: #ffffff; --surface2: #f5f5f5; --fg: #242424; --fg2: #424242; --fg3: #616161;
+  --stroke: #d1d1d1; --stroke2: #e0e0e0; --brand: #0f6cbd; --brand-hover: #115ea3; --on-brand: #ffffff;
+  --focus: #000000; --shadow: 0 0 2px rgba(0,0,0,.12), 0 2px 4px rgba(0,0,0,.14);
+  --sans: "Segoe UI", Selawik, -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  --mono: Consolas, ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { color-scheme: dark;
+    --bg: #1f1f1f; --surface: #292929; --surface2: #333333; --fg: #ffffff; --fg2: #d6d6d6; --fg3: #adadad;
+    --stroke: #666666; --stroke2: #525252; --brand: #479ef5; --brand-hover: #62abf5; --on-brand: #000000;
+    --focus: #ffffff; --shadow: 0 0 2px rgba(0,0,0,.24), 0 2px 4px rgba(0,0,0,.28); }
+}
+:root[data-theme="dark"] { color-scheme: dark;
+  --bg: #1f1f1f; --surface: #292929; --surface2: #333333; --fg: #ffffff; --fg2: #d6d6d6; --fg3: #adadad;
+  --stroke: #666666; --stroke2: #525252; --brand: #479ef5; --brand-hover: #62abf5; --on-brand: #000000;
+  --focus: #ffffff; --shadow: 0 0 2px rgba(0,0,0,.24), 0 2px 4px rgba(0,0,0,.28); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/20px var(--sans); }
+header { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--stroke2); padding: 8px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+header h1 { font-size: 16px; line-height: 22px; font-weight: 600; margin: 0 8px 0 0; }
+nav a { color: var(--fg2); text-decoration: none; padding: 6px 10px; border-radius: 4px; }
+nav a[aria-current] { background: var(--surface2); color: var(--fg); font-weight: 600; }
+nav a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+section[hidden] { display: none; }
+h2 { font-size: 20px; line-height: 28px; font-weight: 600; margin: 24px 0 8px; }
+h3 { font-size: 16px; line-height: 22px; font-weight: 600; margin: 16px 0 6px; }
+p, li { color: var(--fg2); }
+.muted { color: var(--fg3); }
+code, .path { font: 12px/16px var(--mono); }
+.chip { display: inline-block; font: 12px/16px var(--mono); background: var(--surface2); border: 1px solid var(--stroke2); border-radius: 4px; padding: 1px 6px; margin: 2px 2px 2px 0; color: var(--fg); cursor: pointer; }
+.chip:hover { border-color: var(--brand); }
+.card { background: var(--surface); border: 1px solid var(--stroke2); border-radius: 8px; padding: 12px 16px; margin: 8px 0; box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--stroke2); vertical-align: top; }
+th { color: var(--fg3); font-weight: 600; position: sticky; top: 46px; background: var(--surface); }
+.sw { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--stroke); vertical-align: middle; margin-right: 6px; background: var(--c); }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+input[type=search], select { font: inherit; padding: 4px 8px; border: 1px solid var(--stroke); border-radius: 4px; background: var(--surface); color: var(--fg); }
+button { font: inherit; font-weight: 600; padding: 5px 12px; border: 1px solid var(--stroke); border-radius: 4px; background: var(--surface); color: var(--fg); cursor: pointer; }
+button:hover { background: var(--surface2); }
+details { margin: 6px 0; }
+summary { cursor: pointer; font-weight: 600; }
+.rule { margin: 6px 0; padding-left: 10px; border-left: 3px solid var(--stroke2); }
+.rule .meta { color: var(--fg3); font-size: 12px; }
+.type-sample { margin: 6px 0; }
+.wrap { overflow-x: auto; }
+@media (max-width: 600px) { th { position: static; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fluent 2 Kit</h1>
+  <nav aria-label="Sections">
+    <a href="#tokens" data-tab="tokens">Tokens</a>
+    <a href="#typography" data-tab="typography">Typography</a>
+    <a href="#foundations" data-tab="foundations">Foundations</a>
+    <a href="#components" data-tab="components">Components</a>
+  </nav>
+  <span class="muted" id="source"></span>
+  <button id="theme" type="button" aria-label="Toggle dark mode">Dark</button>
+</header>
+<main>
+  <section id="tokens">
+    <h2>Tokens</h2>
+    <p>Every token per theme, keyed as Fluent code spells it. <span class="muted">value is web light; a theme column is blank where it equals value.</span></p>
+    <div class="controls">
+      <input id="tok-filter" type="search" placeholder="filter by name, e.g. Background1Hover" aria-label="Filter tokens">
+      <select id="tok-type" aria-label="Type"><option value="">every type</option></select>
+      <span class="muted" id="tok-count"></span>
+    </div>
+    <div class="wrap"><table id="tok-table"><thead><tr><th>token</th><th>tier</th><th>value</th><th>dark</th><th>highContrast</th><th>teamsLight</th><th>teamsDark</th><th>alias</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <section id="typography" hidden>
+    <h2>Typography</h2>
+    <p>The ramp, each style drawn at its size, weight and line height in the page's own font.</p>
+    <div id="type-ramp"></div>
+  </section>
+  <section id="foundations" hidden>
+    <h2>Foundations</h2>
+    <div id="foundations-body"></div>
+  </section>
+  <section id="components" hidden>
+    <h2>Components</h2>
+    <div class="controls"><input id="comp-filter" type="search" placeholder="filter specs" aria-label="Filter components"><span class="muted" id="comp-count"></span></div>
+    <div id="components-body"></div>
+  </section>
+</main>
+<script id="kit-data" type="application/json">
+__KIT_DATA__
+</script>
+<script>
+const KIT = JSON.parse(document.getElementById('kit-data').textContent);
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const isPath = s => typeof s === 'string' && /^(tokens|typographyStyles)\.[A-Za-z0-9]+$/.test(s);
+const chip = p => `<span class="chip" data-token="${esc(p)}" title="${esc(fmt(KIT.tokens[p]?.value))}">${esc(p.replace(/^tokens\./, ''))}</span>`;
+function fmt(v) {
+  if (v == null) return '';
+  if (Array.isArray(v) && v.length && typeof v[0] === 'object') return v.map(l => `${l.x} ${l.y} ${l.blur} ${l.color}`).join(', ');
+  if (Array.isArray(v)) return v.join(', ');
+  if (typeof v === 'object') return Object.entries(v).map(([k, x]) => `${k} ${x}`).join(' · ');
+  return String(v);
+}
+function cell(t, mode) {
+  const v = t[mode]; if (v === undefined) return '<td class="muted"></td>';
+  if (t.type === 'color') return `<td><span class="sw" style="--c:${esc(v)}"></span><code>${esc(v)}</code></td>`;
+  return `<td><code>${esc(fmt(v))}</code></td>`;
+}
+// Theme toggle
+const themeBtn = $('#theme');
+function setTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; try { t ? localStorage.setItem('fluent-kit-theme', t) : localStorage.removeItem('fluent-kit-theme'); } catch (e) {} themeBtn.textContent = (document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark' ? 'Light' : 'Dark'; }
+try { setTheme(localStorage.getItem('fluent-kit-theme') || ''); } catch (e) { setTheme(''); }
+themeBtn.onclick = () => setTheme(themeBtn.textContent === 'Dark' ? 'dark' : 'light');
+// Tabs
+function show(tab) { for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== tab; for (const a of document.querySelectorAll('nav a')) a.toggleAttribute('aria-current', a.dataset.tab === tab); }
+addEventListener('hashchange', () => { const id = location.hash.slice(1); if (id.startsWith('tok-')) { show('tokens'); $('#tok-filter').value = id.slice(4); renderTokens(); } else show(['tokens','typography','foundations','components'].includes(id) ? id : 'tokens'); });
+show(['typography','foundations','components'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'tokens');
+$('#source').textContent = `${KIT.source.repo}@${KIT.source.commit.slice(0, 7)} · ${KIT.source.package}@${KIT.source.version}`;
+// Tokens
+const types = [...new Set(Object.values(KIT.tokens).map(t => t.type))];
+for (const t of types) $('#tok-type').insertAdjacentHTML('beforeend', `<option value="${t}">${t}</option>`);
+function renderTokens() {
+  const q = $('#tok-filter').value.toLowerCase(), ty = $('#tok-type').value;
+  const rows = Object.entries(KIT.tokens).filter(([k, t]) => (!ty || t.type === ty) && k.toLowerCase().includes(q));
+  $('#tok-count').textContent = `${rows.length} of ${Object.keys(KIT.tokens).length}`;
+  $('#tok-table tbody').innerHTML = rows.slice(0, 600).map(([k, t]) => `<tr id="tok-${esc(k)}"><td class="path">${esc(k)}</td><td class="muted">${esc(t.tier || t.type)}</td>${['value','dark','highContrast','teamsLight','teamsDark'].map(m => cell(t, m)).join('')}<td class="muted">${esc(t.alias || (t.tokens ? Object.values(t.tokens).map(x => x.replace('tokens.', '')).join(' ') : ''))}</td></tr>`).join('');
+}
+$('#tok-filter').oninput = renderTokens; $('#tok-type').onchange = renderTokens; renderTokens();
+document.addEventListener('click', e => { const c = e.target.closest('.chip[data-token]'); if (c) { location.hash = 'tok-' + c.dataset.token; } });
+// Typography
+$('#type-ramp').innerHTML = Object.entries(KIT.tokens).filter(([k]) => k.startsWith('typographyStyles.')).map(([k, t]) => { const v = t.value; return `<div class="card type-sample"><div style="font-size:${v.fontSize}px;line-height:${v.lineHeight}px;font-weight:${v.fontWeight}">${esc(k.split('.')[1])} — The quick brown fox</div><div class="muted"><code>${esc(k)}</code> · ${v.fontSize}/${v.lineHeight}px · ${v.fontWeight}</div></div>`; }).join('');
+// Foundations: render any JSON value readably; token paths become chips.
+function render(v, depth = 0) {
+  if (isPath(v)) return chip(v);
+  if (Array.isArray(v)) { if (v.every(isPath)) return v.map(chip).join(''); return `<ul>${v.map(x => `<li>${render(x, depth + 1)}</li>`).join('')}</ul>`; }
+  if (v && typeof v === 'object') return Object.entries(v).filter(([k]) => k !== '$schema').map(([k, x]) => { const inline = typeof x !== 'object' || isPath(x) || (Array.isArray(x) && x.every(isPath)); return inline ? `<div><b>${esc(k)}</b> ${render(x, depth + 1)}</div>` : (depth === 0 ? `<div class="card"><h3>${esc(k)}</h3>${render(x, depth + 1)}</div>` : `<details${depth < 2 ? ' open' : ''}><summary>${esc(k)}</summary>${render(x, depth + 1)}</details>`); }).join('');
+  return esc(String(v));
+}
+$('#foundations-body').innerHTML = render(KIT.foundations);
+// Components
+function rules(list) { return (list || []).map(r => `<div class="rule"><div>${r.state ? `<b>${esc(r.state)}</b> ` : ''}${r.part ? `<span class="muted">[${esc(r.part)}]</span> ` : ''}${esc(r.text)}</div><div class="meta">${(r.tokens || []).map(chip).join('')}${(r.values || []).map(v => `<span class="chip">${esc(v.name)} = ${v.value}${esc(v.unit)}</span>`).join('')}${r.motion ? `<span class="chip">motion ${esc(fmt(r.motion))}</span>` : ''}${r.source ? `<div>${esc(r.source)}</div>` : ''}</div></div>`).join(''); }
+function renderComponents() {
+  const q = $('#comp-filter').value.toLowerCase();
+  const list = KIT.components.filter(c => JSON.stringify(c).toLowerCase().includes(q));
+  $('#comp-count').textContent = `${list.length} of ${KIT.components.length}`;
+  $('#components-body').innerHTML = list.map(c => `<details class="card" id="c-${esc(c.id)}"${list.length === 1 ? ' open' : ''}><summary>${esc(c.name)} <span class="muted">${esc(c.status)}</span></summary>
+    <p>${esc(c.summary)}</p>
+    <div class="muted">react: ${(c.references.react || []).map(esc).join(', ')} · fluent2: ${(c.references.fluent2 || []).map(esc).join(', ')}</div>
+    <h3>Inputs</h3><div class="wrap"><table><thead><tr><th>name</th><th>type</th><th>default</th><th>description</th></tr></thead><tbody>${c.inputs.map(i => `<tr><td><code>${esc(i.name)}</code></td><td>${esc(i.type)}${i.values ? ` (${i.values.map(esc).join(' | ')})` : ''}</td><td>${i.default !== undefined ? esc(String(i.default)) : ''}</td><td>${esc(i.description)}</td></tr>`).join('')}</tbody></table></div>
+    <h3>Anatomy</h3><ul>${c.anatomy.map(a => `<li><b>${esc(a.name)}</b> <code>${esc(a.id)}</code>${a.optional ? ' <span class="muted">optional</span>' : ''} — ${esc(a.description)}</li>`).join('')}</ul>
+    <h3>Variants</h3><ul>${c.variants.map(v => `<li><b>${esc(v.axis)}: ${esc(v.value)}</b>${v.default ? ' <span class="muted">default</span>' : ''} — ${esc(v.description)} ${(v.tokens || []).map(chip).join('')}</li>`).join('')}</ul>
+    <h3>Layout</h3>${rules(c.layout)}<h3>States</h3>${rules(c.states)}<h3>Behaviour</h3>${rules(c.behaviour)}
+    <h3>Accessibility</h3><div>role <code>${esc(c.accessibility.role)}</code> · min target ${c.accessibility.minTargetPx ?? 'none'}px</div><ul>${[...c.accessibility.keyboard, ...c.accessibility.semantics].map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    <h3>Notes</h3>${c.notes.map(n => `<div class="rule"><b>${esc(n.kind)}</b> ${esc(n.text)}<div class="meta">${(n.tokens || []).map(chip).join('')}${n.source ? esc(n.source) : ''}</div></div>`).join('')}
+    <h3>Tokens read</h3><div>${c.tokenGroups.map(chip).join('')}</div></details>`).join('');
+}
+$('#comp-filter').oninput = renderComponents; renderComponents();
+</script>
+</body>
+</html>

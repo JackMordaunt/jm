@@ -1,0 +1,557 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "spin-button",
+  "name": "SpinButton",
+  "status": "stable",
+  "summary": "A numeric field with stacked increment and decrement buttons at its end, stepping the value by step (Page keys by stepPage) within min and max and rounding to a precision. Choose it over Input for numbers that are nudged more than typed; choose Slider when the range matters more than the exact value.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorNeutralBackground3Hover",
+    "tokens.colorNeutralBackground3Pressed",
+    "tokens.colorTransparentBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentStrokeInteractive",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForeground3Hover",
+    "tokens.colorNeutralForeground3Pressed",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusNone",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalMNudge",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "tokens.durationUltraFast",
+    "tokens.durationNormal",
+    "tokens.curveAccelerateMid",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "useSpinButtonStyles.styles.ts",
+      "SpinButton.types.ts"
+    ],
+    "fluent2": [
+      "spin-button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "Colour and border treatment, as Input's."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "24 or 32px minimum height with caption1 or body1 text; there is no large."
+    },
+    {
+      "name": "value",
+      "type": "number",
+      "required": false,
+      "description": "The committed value; null means no value."
+    },
+    {
+      "name": "displayValue",
+      "type": "string",
+      "required": false,
+      "description": "Text shown for value when it is not a plain number, such as a currency."
+    },
+    {
+      "name": "min",
+      "type": "number",
+      "required": false,
+      "description": "The lowest value; none when unset."
+    },
+    {
+      "name": "max",
+      "type": "number",
+      "required": false,
+      "description": "The highest value; none when unset."
+    },
+    {
+      "name": "step",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "The difference between adjacent values, and the source of the default precision."
+    },
+    {
+      "name": "stepPage",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "The larger step Page Up and Page Down take."
+    },
+    {
+      "name": "precision",
+      "type": "number",
+      "required": false,
+      "description": "Decimal places the value rounds to; defaults to step's own (1 gives 0, 0.0089 gives 4, 300 gives 0)."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Shown in colorNeutralForeground4 while there is no value."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disabled colours on the field and both buttons; no input."
+    },
+    {
+      "name": "invalid",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "aria-invalid: the border reads colorPaletteRedBorder2 while focus is not within."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the committed value and display text on each button press or spin tick, each arrow key, and when typed text is committed by Enter or blur; not on every keystroke."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "An inline grid of two columns, the input and a 24px button column, and two rows the buttons split; it carries the fill, the border drawn by ::before above the content, borderRadiusMedium, and the focus line drawn by ::after.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.borderRadiusMedium",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalMNudge"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "The text input spanning both rows of the first column: borderless, transparent, inheriting the root's text style, colorNeutralForeground1 with a colorNeutralForeground4 placeholder.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4"
+      ]
+    },
+    {
+      "id": "increment",
+      "name": "Increment button",
+      "description": "The upper of the two 24 by 16px buttons at the end, rounded at the top end corner, a chevron-up in colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "decrement",
+      "name": "Decrement button",
+      "description": "The lower button, rounded at the bottom end corner, a chevron-down in colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "focus-line",
+      "name": "Focus line",
+      "description": "The root's ::after: a 2px colorCompoundBrandStroke bottom line clipped flat, scaled from zero width while focus is within."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "Background 1 fill; a 1px Stroke 1 border with a StrokeAccessible bottom edge, stepping to Hover on hover and Pressed on press and focus; the buttons tint with the Subtle family.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "underline",
+      "description": "Only the 1px StrokeAccessible bottom border with no radius, stepping to Hover and Pressed; the focus line loses its rounded corners; the buttons tint with the Subtle family.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker",
+      "description": "Background 3 fill with a 1px transparent border that turns TransparentStrokeInteractive on hover and focus; the buttons tint with Background 3's Hover and Pressed.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive",
+        "tokens.colorNeutralBackground3Hover",
+        "tokens.colorNeutralBackground3Pressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "Background 1 fill with the same transparent border as filled-darker; the buttons tint with Background 1's Hover and Pressed.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive",
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralBackground1Pressed"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px minimum height, caption1 text, spacingHorizontalS start padding, 12px-tall buttons.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px minimum height, body1 text, spacingHorizontalMNudge start padding, 16px-tall buttons.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingHorizontalMNudge"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "grid",
+      "part": "root",
+      "text": "The root is an inline grid with columns 1fr and 24px, two equal rows, a spacingHorizontalXS column gap and no row gap, at least 32px (medium) or 24px (small) tall, padded only at the start by spacingHorizontalMNudge (medium) or spacingHorizontalS (small).",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "buttonColumn",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightSmall",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinButtonStyles.styles.ts:19-37,122-126"
+    },
+    {
+      "id": "border",
+      "part": "root",
+      "text": "The 1px border is drawn by ::before over the whole root, above the content, so the buttons meet it without a gap at fractional zoom; outline keeps all four sides with a StrokeAccessible bottom, underline only the bottom with borderRadiusNone, filled all four transparent.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusNone",
+        "tokens.colorTransparentStroke"
+      ],
+      "values": [
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinButtonStyles.styles.ts:39-62,150-155,172-176"
+    },
+    {
+      "id": "input-box",
+      "part": "input",
+      "text": "The input spans both rows of the first column, full width, with no border, padding or outline and a literal transparent background so the root's fill shows; it inherits font family, size, weight and line height from the root.",
+      "source": "useSpinButtonStyles.styles.ts:216-237"
+    },
+    {
+      "id": "buttons",
+      "part": "increment",
+      "text": "Each button is 24px wide and 16px tall (12px at small), absolutely placed in the second column, one per row, padded 5px horizontally with 4px on the outer and 1px on the inner vertical edge (small: 3px outer, 0 inner, 6px end, 4px start), no radius except borderRadiusMedium on the outer end corner. The decrement button is the mirror in the second row.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "buttonWidth",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "buttonHeightMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "buttonHeightSmall",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "paddingHorizontal",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "paddingOuter",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingInner",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinButtonStyles.styles.ts:250-268,296-323"
+    },
+    {
+      "id": "focus-line",
+      "part": "focus-line",
+      "text": "The focus line is ::after over the root's bottom, as tall as the larger of 2px and borderRadiusMedium with that radius on its bottom corners (none for underline), a 2px colorCompoundBrandStroke bottom border clipped to its last 2px so the ends are flat.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "values": [
+        {
+          "name": "thickness",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinButtonStyles.styles.ts:64-86,167-169"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's fill and border, colorNeutralForeground1 text, colorNeutralForeground4 placeholder, colorNeutralForeground3 button glyphs on a transparent button background.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useSpinButtonStyles.styles.ts:224-236,262-263"
+    },
+    {
+      "state": "hovered",
+      "text": "Outline: the border turns colorNeutralStroke1Hover with a colorNeutralStrokeAccessibleHover bottom; underline: the bottom turns StrokeAccessibleHover; filled: the border turns colorTransparentStrokeInteractive.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorTransparentStrokeInteractive"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSpinButtonStyles.styles.ts:136-140,157-160,185-193"
+    },
+    {
+      "state": "pressed",
+      "text": "Pressed or focus within: outline's border turns colorNeutralStroke1Pressed with a StrokeAccessiblePressed bottom, underline's bottom StrokeAccessiblePressed; a press while focused turns the focus line colorCompoundBrandStrokePressed.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandStrokePressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSpinButtonStyles.styles.ts:112-115,142-147,162-166"
+    },
+    {
+      "state": "focused",
+      "text": "While focus is within, the focus line scales to full width over durationNormal on curveDecelerateMid and back over durationUltraFast on curveAccelerateMid; the root declares a 2px transparent outline for forced colours.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useSpinButtonStyles.styles.ts:88-119"
+    },
+    {
+      "state": "hovered",
+      "part": "increment",
+      "text": "An enabled button's glyph turns colorNeutralForeground3Hover on a tint: colorSubtleBackgroundHover for outline and underline, colorNeutralBackground3Hover for filled-darker, colorNeutralBackground1Hover for filled-lighter; the decrement button matches.",
+      "tokens": [
+        "tokens.colorNeutralForeground3Hover",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralBackground3Hover",
+        "tokens.colorNeutralBackground1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSpinButtonStyles.styles.ts:274-279,332-336,354-358,376-380"
+    },
+    {
+      "state": "pressed",
+      "part": "increment",
+      "text": "While pressed, or while the value is spinning in that direction, the glyph turns colorNeutralForeground3Pressed on the matching Pressed tint (Subtle, Background 3 or Background 1).",
+      "tokens": [
+        "tokens.colorNeutralForeground3Pressed",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralBackground3Pressed",
+        "tokens.colorNeutralBackground1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useSpinButtonStyles.styles.ts:280-288,337-345,359-367,381-384,420-439"
+    },
+    {
+      "state": "error",
+      "text": "aria-invalid on an enabled field: while focus is not within, the border reads colorPaletteRedBorder2.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2"
+      ],
+      "source": "useSpinButtonStyles.styles.ts:195-201,415"
+    },
+    {
+      "state": "disabled",
+      "text": "A transparent background and colorNeutralStrokeDisabled border, colorNeutralForegroundDisabled text, placeholder and glyphs, a not-allowed pointer; the buttons show no tint.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useSpinButtonStyles.styles.ts:203-213,239-248,290-293"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "step",
+      "text": "A button press or ArrowUp/ArrowDown changes the value by step, PageUp/PageDown by stepPage, clamped to min and max and rounded to the precision; from no value the first step starts at min (or 0 with no min).",
+      "source": "SpinButton.types.ts:66-74,100-113"
+    },
+    {
+      "id": "spin",
+      "text": "Holding a button repeats the step: the first repeat after 300ms, then faster as the hold lengthens down to an 80ms interval, reaching full speed after 1s; the held direction paints the button pressed until release.",
+      "values": [
+        {
+          "name": "spinDelay",
+          "value": 300,
+          "unit": "ms"
+        },
+        {
+          "name": "minSpinDelay",
+          "value": 80,
+          "unit": "ms"
+        },
+        {
+          "name": "maxSpinTime",
+          "value": 1000,
+          "unit": "ms"
+        }
+      ],
+      "source": "SpinButton.types.ts:76-84,134-138"
+    },
+    {
+      "id": "commit",
+      "text": "Typed text is committed on Enter or blur: a number parses, clamps and rounds; anything else reverts to the last value; Escape reverts while editing. onChange fires only on commits, steps and spins.",
+      "source": "SpinButton.types.ts:76-84"
+    },
+    {
+      "id": "bounds",
+      "text": "Home commits min and End commits max when set; at a bound the matching button still paints but stepping past it clamps, and the state reports which bound is reached.",
+      "source": "SpinButton.types.ts:140-145,158-159"
+    }
+  ],
+  "accessibility": {
+    "role": "spinbutton",
+    "minTargetPx": 12,
+    "keyboard": [
+      "ArrowUp and ArrowDown step by step",
+      "PageUp and PageDown step by stepPage",
+      "Home and End jump to min and max",
+      "Enter commits typed text; Escape reverts it"
+    ],
+    "semantics": [
+      "the input has role spinbutton with aria-valuenow, aria-valuemin, aria-valuemax and aria-valuetext for displayValue",
+      "the buttons are aria-hidden helpers with tabindex -1; the keyboard does the same through the input",
+      "disabled and aria-invalid sit on the input"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Heights (24, 32px), the 24px button column, button heights (16, 12px), button padding (5, 4, 1px and the small 3, 0, 6, 4px), the 1px border and the 2px focus line are constants in the styles file; the spin timing (300ms first repeat, 80ms floor, 1s ramp) lives in the hook useSpinButton.tsx, which the kit's source pattern cannot cite.",
+      "source": "useSpinButtonStyles.styles.ts:19-22,26,59,85,252-268,296-323"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The button padding does not match the design's fractional values; the file rounds them so the 16px icon artwork sits visually centred, and the small buttons are 12px tall in a 24px field.",
+      "source": "useSpinButtonStyles.styles.ts:309-323"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The buttons are 12px tall at small, under the kit's 24px target minimum; keyboard stepping through the input is the accessible path.",
+      "source": "useSpinButtonStyles.styles.ts:315-323"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a disabled field's border reads the system GrayText; the root's transparent 2px focus outline lets the platform draw its focus ring.",
+      "source": "useSpinButtonStyles.styles.ts:116-118,209-211"
+    }
+  ]
+}

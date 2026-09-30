@@ -1,0 +1,6043 @@
+{
+ "$schema": "https://www.designtokens.org/schema/2025.10.json",
+ "$description": "Fluent UI v9 tokens (@fluentui/tokens 1.0.0-alpha.24); global tokens hold values, alias tokens reference them; per-theme values in $extensions.fluent.modes",
+ "global": {
+  "borderRadiusNone": {
+   "$type": "dimension",
+   "$value": {
+    "value": 0,
+    "unit": "px"
+   }
+  },
+  "borderRadiusSmall": {
+   "$type": "dimension",
+   "$value": {
+    "value": 2,
+    "unit": "px"
+   }
+  },
+  "borderRadiusMedium": {
+   "$type": "dimension",
+   "$value": {
+    "value": 4,
+    "unit": "px"
+   }
+  },
+  "borderRadiusLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 6,
+    "unit": "px"
+   }
+  },
+  "borderRadiusXLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 8,
+    "unit": "px"
+   }
+  },
+  "borderRadius2XLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 12,
+    "unit": "px"
+   }
+  },
+  "borderRadius3XLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 16,
+    "unit": "px"
+   }
+  },
+  "borderRadius4XLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 24,
+    "unit": "px"
+   }
+  },
+  "borderRadius5XLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 32,
+    "unit": "px"
+   }
+  },
+  "borderRadius6XLarge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 40,
+    "unit": "px"
+   }
+  },
+  "borderRadiusCircular": {
+   "$type": "dimension",
+   "$value": {
+    "value": 10000,
+    "unit": "px"
+   }
+  },
+  "fontSizeBase100": {
+   "$type": "dimension",
+   "$value": {
+    "value": 10,
+    "unit": "px"
+   }
+  },
+  "fontSizeBase200": {
+   "$type": "dimension",
+   "$value": {
+    "value": 12,
+    "unit": "px"
+   }
+  },
+  "fontSizeBase300": {
+   "$type": "dimension",
+   "$value": {
+    "value": 14,
+    "unit": "px"
+   }
+  },
+  "fontSizeBase400": {
+   "$type": "dimension",
+   "$value": {
+    "value": 16,
+    "unit": "px"
+   }
+  },
+  "fontSizeBase500": {
+   "$type": "dimension",
+   "$value": {
+    "value": 20,
+    "unit": "px"
+   }
+  },
+  "fontSizeBase600": {
+   "$type": "dimension",
+   "$value": {
+    "value": 24,
+    "unit": "px"
+   }
+  },
+  "fontSizeHero700": {
+   "$type": "dimension",
+   "$value": {
+    "value": 28,
+    "unit": "px"
+   }
+  },
+  "fontSizeHero800": {
+   "$type": "dimension",
+   "$value": {
+    "value": 32,
+    "unit": "px"
+   }
+  },
+  "fontSizeHero900": {
+   "$type": "dimension",
+   "$value": {
+    "value": 40,
+    "unit": "px"
+   }
+  },
+  "fontSizeHero1000": {
+   "$type": "dimension",
+   "$value": {
+    "value": 68,
+    "unit": "px"
+   }
+  },
+  "lineHeightBase100": {
+   "$type": "dimension",
+   "$value": {
+    "value": 14,
+    "unit": "px"
+   }
+  },
+  "lineHeightBase200": {
+   "$type": "dimension",
+   "$value": {
+    "value": 16,
+    "unit": "px"
+   }
+  },
+  "lineHeightBase300": {
+   "$type": "dimension",
+   "$value": {
+    "value": 20,
+    "unit": "px"
+   }
+  },
+  "lineHeightBase400": {
+   "$type": "dimension",
+   "$value": {
+    "value": 22,
+    "unit": "px"
+   }
+  },
+  "lineHeightBase500": {
+   "$type": "dimension",
+   "$value": {
+    "value": 28,
+    "unit": "px"
+   }
+  },
+  "lineHeightBase600": {
+   "$type": "dimension",
+   "$value": {
+    "value": 32,
+    "unit": "px"
+   }
+  },
+  "lineHeightHero700": {
+   "$type": "dimension",
+   "$value": {
+    "value": 36,
+    "unit": "px"
+   }
+  },
+  "lineHeightHero800": {
+   "$type": "dimension",
+   "$value": {
+    "value": 40,
+    "unit": "px"
+   }
+  },
+  "lineHeightHero900": {
+   "$type": "dimension",
+   "$value": {
+    "value": 52,
+    "unit": "px"
+   }
+  },
+  "lineHeightHero1000": {
+   "$type": "dimension",
+   "$value": {
+    "value": 92,
+    "unit": "px"
+   }
+  },
+  "fontFamilyBase": {
+   "$type": "fontFamily",
+   "$value": "'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, \"Apple Color Emoji\", \"Segoe UI Emoji\", sans-serif",
+      "teamsLight": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, \"Apple Color Emoji\", \"Segoe UI Emoji\", sans-serif",
+      "teamsDark": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, \"Apple Color Emoji\", \"Segoe UI Emoji\", sans-serif"
+     }
+    }
+   }
+  },
+  "fontFamilyMonospace": {
+   "$type": "fontFamily",
+   "$value": "Consolas, 'Courier New', Courier, monospace"
+  },
+  "fontFamilyNumeric": {
+   "$type": "fontFamily",
+   "$value": "Bahnschrift, 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif"
+  },
+  "fontWeightRegular": {
+   "$type": "fontWeight",
+   "$value": 400
+  },
+  "fontWeightMedium": {
+   "$type": "fontWeight",
+   "$value": 500
+  },
+  "fontWeightSemibold": {
+   "$type": "fontWeight",
+   "$value": 600
+  },
+  "fontWeightBold": {
+   "$type": "fontWeight",
+   "$value": 700
+  },
+  "strokeWidthThin": {
+   "$type": "dimension",
+   "$value": {
+    "value": 1,
+    "unit": "px"
+   }
+  },
+  "strokeWidthThick": {
+   "$type": "dimension",
+   "$value": {
+    "value": 2,
+    "unit": "px"
+   }
+  },
+  "strokeWidthThicker": {
+   "$type": "dimension",
+   "$value": {
+    "value": 3,
+    "unit": "px"
+   }
+  },
+  "strokeWidthThickest": {
+   "$type": "dimension",
+   "$value": {
+    "value": 4,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalNone": {
+   "$type": "dimension",
+   "$value": {
+    "value": 0,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalXXS": {
+   "$type": "dimension",
+   "$value": {
+    "value": 2,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalXS": {
+   "$type": "dimension",
+   "$value": {
+    "value": 4,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalSNudge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 6,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalS": {
+   "$type": "dimension",
+   "$value": {
+    "value": 8,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalMNudge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 10,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalM": {
+   "$type": "dimension",
+   "$value": {
+    "value": 12,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 16,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalXL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 20,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalXXL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 24,
+    "unit": "px"
+   }
+  },
+  "spacingHorizontalXXXL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 32,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalNone": {
+   "$type": "dimension",
+   "$value": {
+    "value": 0,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalXXS": {
+   "$type": "dimension",
+   "$value": {
+    "value": 2,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalXS": {
+   "$type": "dimension",
+   "$value": {
+    "value": 4,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalSNudge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 6,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalS": {
+   "$type": "dimension",
+   "$value": {
+    "value": 8,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalMNudge": {
+   "$type": "dimension",
+   "$value": {
+    "value": 10,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalM": {
+   "$type": "dimension",
+   "$value": {
+    "value": 12,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 16,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalXL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 20,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalXXL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 24,
+    "unit": "px"
+   }
+  },
+  "spacingVerticalXXXL": {
+   "$type": "dimension",
+   "$value": {
+    "value": 32,
+    "unit": "px"
+   }
+  },
+  "durationUltraFast": {
+   "$type": "duration",
+   "$value": {
+    "value": 50,
+    "unit": "ms"
+   }
+  },
+  "durationFaster": {
+   "$type": "duration",
+   "$value": {
+    "value": 100,
+    "unit": "ms"
+   }
+  },
+  "durationFast": {
+   "$type": "duration",
+   "$value": {
+    "value": 150,
+    "unit": "ms"
+   }
+  },
+  "durationNormal": {
+   "$type": "duration",
+   "$value": {
+    "value": 200,
+    "unit": "ms"
+   }
+  },
+  "durationGentle": {
+   "$type": "duration",
+   "$value": {
+    "value": 250,
+    "unit": "ms"
+   }
+  },
+  "durationSlow": {
+   "$type": "duration",
+   "$value": {
+    "value": 300,
+    "unit": "ms"
+   }
+  },
+  "durationSlower": {
+   "$type": "duration",
+   "$value": {
+    "value": 400,
+    "unit": "ms"
+   }
+  },
+  "durationUltraSlow": {
+   "$type": "duration",
+   "$value": {
+    "value": 500,
+    "unit": "ms"
+   }
+  },
+  "curveAccelerateMax": {
+   "$type": "cubicBezier",
+   "$value": [
+    0.9,
+    0.1,
+    1,
+    0.2
+   ]
+  },
+  "curveAccelerateMid": {
+   "$type": "cubicBezier",
+   "$value": [
+    1,
+    0,
+    1,
+    1
+   ]
+  },
+  "curveAccelerateMin": {
+   "$type": "cubicBezier",
+   "$value": [
+    0.8,
+    0,
+    0.78,
+    1
+   ]
+  },
+  "curveDecelerateMax": {
+   "$type": "cubicBezier",
+   "$value": [
+    0.1,
+    0.9,
+    0.2,
+    1
+   ]
+  },
+  "curveDecelerateMid": {
+   "$type": "cubicBezier",
+   "$value": [
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  "curveDecelerateMin": {
+   "$type": "cubicBezier",
+   "$value": [
+    0.33,
+    0,
+    0.1,
+    1
+   ]
+  },
+  "curveEasyEaseMax": {
+   "$type": "cubicBezier",
+   "$value": [
+    0.8,
+    0,
+    0.2,
+    1
+   ]
+  },
+  "curveEasyEase": {
+   "$type": "cubicBezier",
+   "$value": [
+    0.33,
+    0,
+    0.67,
+    1
+   ]
+  },
+  "curveLinear": {
+   "$type": "cubicBezier",
+   "$value": [
+    0,
+    0,
+    1,
+    1
+   ]
+  },
+  "shadow2": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000024"
+    }
+   ],
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 1,
+        "blur": 2,
+        "color": "#00000047"
+       }
+      ],
+      "highContrast": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 1,
+        "blur": 2,
+        "color": "#00000047"
+       }
+      ],
+      "teamsDark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 1,
+        "blur": 2,
+        "color": "#00000047"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "shadow4": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000024"
+    }
+   ],
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 2,
+        "blur": 4,
+        "color": "#00000047"
+       }
+      ],
+      "highContrast": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 2,
+        "blur": 4,
+        "color": "#00000047"
+       }
+      ],
+      "teamsDark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 2,
+        "blur": 4,
+        "color": "#00000047"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "shadow8": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000024"
+    }
+   ],
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 4,
+        "blur": 8,
+        "color": "#00000047"
+       }
+      ],
+      "highContrast": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 4,
+        "blur": 8,
+        "color": "#00000047"
+       }
+      ],
+      "teamsDark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 4,
+        "blur": 8,
+        "color": "#00000047"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "shadow16": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000024"
+    }
+   ],
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 8,
+        "blur": 16,
+        "color": "#00000047"
+       }
+      ],
+      "highContrast": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 8,
+        "blur": 16,
+        "color": "#00000047"
+       }
+      ],
+      "teamsDark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 2,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 8,
+        "blur": 16,
+        "color": "#00000047"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "shadow28": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000024"
+    }
+   ],
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 8,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 14,
+        "blur": 28,
+        "color": "#00000047"
+       }
+      ],
+      "highContrast": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 8,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 14,
+        "blur": 28,
+        "color": "#00000047"
+       }
+      ],
+      "teamsDark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 8,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 14,
+        "blur": 28,
+        "color": "#00000047"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "shadow64": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000001f"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000024"
+    }
+   ],
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 8,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 32,
+        "blur": 64,
+        "color": "#00000047"
+       }
+      ],
+      "highContrast": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 8,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 32,
+        "blur": 64,
+        "color": "#00000047"
+       }
+      ],
+      "teamsDark": [
+       {
+        "x": 0,
+        "y": 0,
+        "blur": 8,
+        "color": "#0000003d"
+       },
+       {
+        "x": 0,
+        "y": 32,
+        "blur": 64,
+        "color": "#00000047"
+       }
+      ]
+     }
+    }
+   }
+  },
+  "shadow2Brand": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "blur": 2,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "shadow4Brand": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 2,
+     "blur": 4,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "shadow8Brand": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 4,
+     "blur": 8,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "shadow16Brand": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 2,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 8,
+     "blur": 16,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "shadow28Brand": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 14,
+     "blur": 28,
+     "color": "#00000040"
+    }
+   ]
+  },
+  "shadow64Brand": {
+   "$type": "shadow",
+   "$value": [
+    {
+     "x": 0,
+     "y": 0,
+     "blur": 8,
+     "color": "#0000004d"
+    },
+    {
+     "x": 0,
+     "y": 32,
+     "blur": 64,
+     "color": "#00000040"
+    }
+   ]
+  }
+ },
+ "alias": {
+  "colorNeutralForeground1": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground1Hover": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground1Pressed": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground1Selected": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground2": {
+   "$type": "color",
+   "$value": "#424242",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d6d6d6",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d6d6d6"
+     },
+     "source": "global.grey.26"
+    }
+   }
+  },
+  "colorNeutralForeground2Hover": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground2Pressed": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground2Selected": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground2BrandHover": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#000000",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorNeutralForeground2BrandPressed": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2886de",
+      "highContrast": "#000000",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#7579eb"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorNeutralForeground2BrandSelected": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#000000",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorNeutralForeground3": {
+   "$type": "color",
+   "$value": "#616161",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#adadad",
+      "highContrast": "#ffffff",
+      "teamsDark": "#adadad"
+     },
+     "source": "global.grey.38"
+    }
+   }
+  },
+  "colorNeutralForeground3Hover": {
+   "$type": "color",
+   "$value": "#424242",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d6d6d6",
+      "highContrast": "#000000",
+      "teamsDark": "#d6d6d6"
+     },
+     "source": "global.grey.26"
+    }
+   }
+  },
+  "colorNeutralForeground3Pressed": {
+   "$type": "color",
+   "$value": "#424242",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d6d6d6",
+      "highContrast": "#000000",
+      "teamsDark": "#d6d6d6"
+     },
+     "source": "global.grey.26"
+    }
+   }
+  },
+  "colorNeutralForeground3Selected": {
+   "$type": "color",
+   "$value": "#424242",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d6d6d6",
+      "highContrast": "#000000",
+      "teamsDark": "#d6d6d6"
+     },
+     "source": "global.grey.26"
+    }
+   }
+  },
+  "colorNeutralForeground3BrandHover": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#000000",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorNeutralForeground3BrandPressed": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2886de",
+      "highContrast": "#000000",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#7579eb"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorNeutralForeground3BrandSelected": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#000000",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorNeutralForeground4": {
+   "$type": "color",
+   "$value": "#707070",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#999999",
+      "highContrast": "#ffffff",
+      "teamsDark": "#999999"
+     },
+     "source": "global.grey.44"
+    }
+   }
+  },
+  "colorNeutralForeground5": {
+   "$type": "color",
+   "$value": "#616161",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#adadad",
+      "highContrast": "#ffffff",
+      "teamsDark": "#adadad"
+     },
+     "source": "global.grey.38"
+    }
+   }
+  },
+  "colorNeutralForeground5Hover": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground5Pressed": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground5Selected": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForegroundDisabled": {
+   "$type": "color",
+   "$value": "#bdbdbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#5c5c5c",
+      "highContrast": "#3ff23f",
+      "teamsDark": "#5c5c5c"
+     },
+     "source": "global.grey.74"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedDisabled": {
+   "$type": "color",
+   "$value": "#ffffff66",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#3ff23f"
+     },
+     "source": "global.whiteAlpha.40"
+    }
+   }
+  },
+  "colorBrandForegroundLink": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#ffff00",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorBrandForegroundLinkHover": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#62abf5",
+      "highContrast": "#ffff00",
+      "teamsLight": "#444791",
+      "teamsDark": "#9299f7"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorBrandForegroundLinkPressed": {
+   "$type": "color",
+   "$value": "#0c3b5e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2886de",
+      "highContrast": "#ffff00",
+      "teamsLight": "#383966",
+      "teamsDark": "#7579eb"
+     },
+     "source": "global.brand.40"
+    }
+   }
+  },
+  "colorBrandForegroundLinkSelected": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#ffff00",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorNeutralForeground2Link": {
+   "$type": "color",
+   "$value": "#424242",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d6d6d6",
+      "highContrast": "#ffff00",
+      "teamsDark": "#d6d6d6"
+     },
+     "source": "global.grey.26"
+    }
+   }
+  },
+  "colorNeutralForeground2LinkHover": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#ffff00",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground2LinkPressed": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#ffff00",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForeground2LinkSelected": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#ffff00",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorCompoundBrandForeground1": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorCompoundBrandForeground1Hover": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#62abf5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#9299f7"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorCompoundBrandForeground1Pressed": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2886de",
+      "highContrast": "#1aebff",
+      "teamsLight": "#444791",
+      "teamsDark": "#7579eb"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorBrandForeground1": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#ffffff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorBrandForeground2": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#62abf5",
+      "highContrast": "#ffffff",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#aab1fa"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorBrandForeground2Hover": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#96c6fa",
+      "highContrast": "#ffffff",
+      "teamsLight": "#444791",
+      "teamsDark": "#b6bcfa"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorBrandForeground2Pressed": {
+   "$type": "color",
+   "$value": "#0a2e4a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ebf3fc",
+      "highContrast": "#ffffff",
+      "teamsLight": "#333357",
+      "teamsDark": "#e8ebfa"
+     },
+     "source": "global.brand.30"
+    }
+   }
+  },
+  "colorNeutralForeground1Static": {
+   "$type": "color",
+   "$value": "#242424",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000"
+     },
+     "source": "global.grey.14"
+    }
+   }
+  },
+  "colorNeutralForegroundStaticInverted": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInverted": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "highContrast": "#000000",
+      "teamsDark": "#242424"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedHover": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "highContrast": "#000000",
+      "teamsDark": "#242424"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedPressed": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "highContrast": "#000000",
+      "teamsDark": "#242424"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedSelected": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "highContrast": "#000000",
+      "teamsDark": "#242424"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInverted2": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "teamsDark": "#242424"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundOnBrand": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedLink": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffff00"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedLinkHover": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffff00"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedLinkPressed": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffff00"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralForegroundInvertedLinkSelected": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffff00"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorBrandForegroundInverted": {
+   "$type": "color",
+   "$value": "#479ef5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0f6cbd",
+      "highContrast": "#ffffff",
+      "teamsLight": "#7f85f5",
+      "teamsDark": "#5b5fc7"
+     },
+     "source": "global.brand.100"
+    }
+   }
+  },
+  "colorBrandForegroundInvertedHover": {
+   "$type": "color",
+   "$value": "#62abf5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#115ea3",
+      "highContrast": "#000000",
+      "teamsLight": "#9299f7",
+      "teamsDark": "#4f52b2"
+     },
+     "source": "global.brand.110"
+    }
+   }
+  },
+  "colorBrandForegroundInvertedPressed": {
+   "$type": "color",
+   "$value": "#479ef5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0f548c",
+      "highContrast": "#000000",
+      "teamsLight": "#7f85f5",
+      "teamsDark": "#444791"
+     },
+     "source": "global.brand.100"
+    }
+   }
+  },
+  "colorBrandForegroundOnLight": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#5b5fc7"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorBrandForegroundOnLightHover": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#4f52b2"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorBrandForegroundOnLightPressed": {
+   "$type": "color",
+   "$value": "#0e4775",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#3d3e78",
+      "teamsDark": "#3d3e78"
+     },
+     "source": "global.brand.50"
+    }
+   }
+  },
+  "colorBrandForegroundOnLightSelected": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#444791",
+      "teamsDark": "#444791"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorNeutralBackground1": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#292929",
+      "highContrast": "#000000",
+      "teamsDark": "#292929"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralBackground1Hover": {
+   "$type": "color",
+   "$value": "#f5f5f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#1aebff",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.grey.96"
+    }
+   }
+  },
+  "colorNeutralBackground1Pressed": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1f1f1f",
+      "highContrast": "#1aebff",
+      "teamsDark": "#1f1f1f"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorNeutralBackground1Selected": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#383838",
+      "highContrast": "#1aebff",
+      "teamsDark": "#383838"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralBackground2": {
+   "$type": "color",
+   "$value": "#fafafa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1f1f1f",
+      "highContrast": "#000000",
+      "teamsDark": "#242424"
+     },
+     "source": "global.grey.98"
+    }
+   }
+  },
+  "colorNeutralBackground2Hover": {
+   "$type": "color",
+   "$value": "#f0f0f0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#333333",
+      "highContrast": "#1aebff",
+      "teamsDark": "#383838"
+     },
+     "source": "global.grey.94"
+    }
+   }
+  },
+  "colorNeutralBackground2Pressed": {
+   "$type": "color",
+   "$value": "#dbdbdb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#141414",
+      "highContrast": "#1aebff",
+      "teamsDark": "#1a1a1a"
+     },
+     "source": "global.grey.86"
+    }
+   }
+  },
+  "colorNeutralBackground2Selected": {
+   "$type": "color",
+   "$value": "#e6e6e6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2e2e2e",
+      "highContrast": "#1aebff",
+      "teamsDark": "#333333"
+     },
+     "source": "global.grey.90"
+    }
+   }
+  },
+  "colorNeutralBackground3": {
+   "$type": "color",
+   "$value": "#f5f5f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#141414",
+      "highContrast": "#000000",
+      "teamsDark": "#1f1f1f"
+     },
+     "source": "global.grey.96"
+    }
+   }
+  },
+  "colorNeutralBackground3Hover": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#292929",
+      "highContrast": "#1aebff",
+      "teamsDark": "#333333"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralBackground3Pressed": {
+   "$type": "color",
+   "$value": "#d6d6d6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0a0a0a",
+      "highContrast": "#1aebff",
+      "teamsDark": "#141414"
+     },
+     "source": "global.grey.84"
+    }
+   }
+  },
+  "colorNeutralBackground3Selected": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "highContrast": "#1aebff",
+      "teamsDark": "#2e2e2e"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorNeutralBackground4": {
+   "$type": "color",
+   "$value": "#f0f0f0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0a0a0a",
+      "highContrast": "#000000",
+      "teamsDark": "#141414"
+     },
+     "source": "global.grey.94"
+    }
+   }
+  },
+  "colorNeutralBackground4Hover": {
+   "$type": "color",
+   "$value": "#fafafa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1f1f1f",
+      "highContrast": "#1aebff",
+      "teamsDark": "#292929"
+     },
+     "source": "global.grey.98"
+    }
+   }
+  },
+  "colorNeutralBackground4Pressed": {
+   "$type": "color",
+   "$value": "#f5f5f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#000000",
+      "highContrast": "#1aebff",
+      "teamsDark": "#0a0a0a"
+     },
+     "source": "global.grey.96"
+    }
+   }
+  },
+  "colorNeutralBackground4Selected": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1a1a1a",
+      "highContrast": "#1aebff",
+      "teamsDark": "#242424"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralBackground5": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#000000",
+      "highContrast": "#000000",
+      "teamsDark": "#0a0a0a"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralBackground5Hover": {
+   "$type": "color",
+   "$value": "#f5f5f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#141414",
+      "highContrast": "#1aebff",
+      "teamsDark": "#1f1f1f"
+     },
+     "source": "global.grey.96"
+    }
+   }
+  },
+  "colorNeutralBackground5Pressed": {
+   "$type": "color",
+   "$value": "#f0f0f0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#050505",
+      "highContrast": "#1aebff",
+      "teamsDark": "#000000"
+     },
+     "source": "global.grey.94"
+    }
+   }
+  },
+  "colorNeutralBackground5Selected": {
+   "$type": "color",
+   "$value": "#fafafa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0f0f0f",
+      "highContrast": "#1aebff",
+      "teamsDark": "#1a1a1a"
+     },
+     "source": "global.grey.98"
+    }
+   }
+  },
+  "colorNeutralBackground6": {
+   "$type": "color",
+   "$value": "#e6e6e6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#333333",
+      "highContrast": "#000000",
+      "teamsDark": "#333333"
+     },
+     "source": "global.grey.90"
+    }
+   }
+  },
+  "colorNeutralBackground7": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000"
+     }
+    }
+   }
+  },
+  "colorNeutralBackground7Hover": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1a1a1a",
+      "highContrast": "#1aebff",
+      "teamsDark": "#1a1a1a"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralBackground7Pressed": {
+   "$type": "color",
+   "$value": "#d6d6d6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0a0a0a",
+      "highContrast": "#1aebff",
+      "teamsDark": "#0a0a0a"
+     },
+     "source": "global.grey.84"
+    }
+   }
+  },
+  "colorNeutralBackground7Selected": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorNeutralBackground8": {
+   "$type": "color",
+   "$value": "#fcfcfc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#292929",
+      "highContrast": "#000000",
+      "teamsDark": "#292929"
+     },
+     "source": "global.grey.99"
+    }
+   }
+  },
+  "colorNeutralBackgroundInverted": {
+   "$type": "color",
+   "$value": "#292929",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#000000",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.grey.16"
+    }
+   }
+  },
+  "colorNeutralBackgroundInvertedHover": {
+   "$type": "color",
+   "$value": "#3d3d3d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f5f5f5",
+      "highContrast": "#1aebff",
+      "teamsDark": "#f5f5f5"
+     },
+     "source": "global.grey.24"
+    }
+   }
+  },
+  "colorNeutralBackgroundInvertedPressed": {
+   "$type": "color",
+   "$value": "#1f1f1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e0e0e0",
+      "highContrast": "#1aebff",
+      "teamsDark": "#e0e0e0"
+     },
+     "source": "global.grey.12"
+    }
+   }
+  },
+  "colorNeutralBackgroundInvertedSelected": {
+   "$type": "color",
+   "$value": "#383838",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ebebeb",
+      "highContrast": "#1aebff",
+      "teamsDark": "#ebebeb"
+     },
+     "source": "global.grey.22"
+    }
+   }
+  },
+  "colorNeutralBackgroundStatic": {
+   "$type": "color",
+   "$value": "#333333",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#000000",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.grey.20"
+    }
+   }
+  },
+  "colorNeutralBackgroundAlpha": {
+   "$type": "color",
+   "$value": "#ffffff80",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1a1a1a80",
+      "highContrast": "#000000",
+      "teamsDark": "#1a1a1a80"
+     },
+     "source": "global.whiteAlpha.50"
+    }
+   }
+  },
+  "colorNeutralBackgroundAlpha2": {
+   "$type": "color",
+   "$value": "#ffffffcc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#1f1f1fb3",
+      "highContrast": "#000000",
+      "teamsDark": "#1f1f1fb3"
+     },
+     "source": "global.whiteAlpha.80"
+    }
+   }
+  },
+  "colorSubtleBackground": {
+   "$type": "color",
+   "$value": "#00000000"
+  },
+  "colorSubtleBackgroundHover": {
+   "$type": "color",
+   "$value": "#f5f5f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#383838",
+      "highContrast": "#1aebff",
+      "teamsDark": "#383838"
+     },
+     "source": "global.grey.96"
+    }
+   }
+  },
+  "colorSubtleBackgroundPressed": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2e2e2e",
+      "highContrast": "#1aebff",
+      "teamsDark": "#2e2e2e"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorSubtleBackgroundSelected": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#333333",
+      "highContrast": "#1aebff",
+      "teamsDark": "#333333"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorSubtleBackgroundLightAlphaHover": {
+   "$type": "color",
+   "$value": "#ffffffb3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424cc",
+      "highContrast": "#1aebff",
+      "teamsDark": "#242424cc"
+     },
+     "source": "global.whiteAlpha.70"
+    }
+   }
+  },
+  "colorSubtleBackgroundLightAlphaPressed": {
+   "$type": "color",
+   "$value": "#ffffff80",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#24242480",
+      "highContrast": "#1aebff",
+      "teamsDark": "#24242480"
+     },
+     "source": "global.whiteAlpha.50"
+    }
+   }
+  },
+  "colorSubtleBackgroundLightAlphaSelected": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorSubtleBackgroundInverted": {
+   "$type": "color",
+   "$value": "#00000000"
+  },
+  "colorSubtleBackgroundInvertedHover": {
+   "$type": "color",
+   "$value": "#0000001a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     },
+     "source": "global.blackAlpha.10"
+    }
+   }
+  },
+  "colorSubtleBackgroundInvertedPressed": {
+   "$type": "color",
+   "$value": "#0000004d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     },
+     "source": "global.blackAlpha.30"
+    }
+   }
+  },
+  "colorSubtleBackgroundInvertedSelected": {
+   "$type": "color",
+   "$value": "#00000033",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     },
+     "source": "global.blackAlpha.20"
+    }
+   }
+  },
+  "colorTransparentBackground": {
+   "$type": "color",
+   "$value": "#00000000"
+  },
+  "colorTransparentBackgroundHover": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorTransparentBackgroundPressed": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorTransparentBackgroundSelected": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorNeutralBackgroundDisabled": {
+   "$type": "color",
+   "$value": "#f0f0f0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#141414",
+      "highContrast": "#000000",
+      "teamsDark": "#141414"
+     },
+     "source": "global.grey.94"
+    }
+   }
+  },
+  "colorNeutralBackgroundDisabled2": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#292929",
+      "highContrast": "#3ff23f",
+      "teamsDark": "#292929"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralBackgroundInvertedDisabled": {
+   "$type": "color",
+   "$value": "#ffffff1a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000"
+     },
+     "source": "global.whiteAlpha.10"
+    }
+   }
+  },
+  "colorNeutralStencil1": {
+   "$type": "color",
+   "$value": "#e6e6e6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#575757",
+      "highContrast": "#ffffff",
+      "teamsDark": "#575757"
+     },
+     "source": "global.grey.90"
+    }
+   }
+  },
+  "colorNeutralStencil2": {
+   "$type": "color",
+   "$value": "#fafafa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#333333",
+      "highContrast": "#ffffff",
+      "teamsDark": "#333333"
+     },
+     "source": "global.grey.98"
+    }
+   }
+  },
+  "colorNeutralStencil1Alpha": {
+   "$type": "color",
+   "$value": "#0000001a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff1a",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ffffff1a"
+     },
+     "source": "global.blackAlpha.10"
+    }
+   }
+  },
+  "colorNeutralStencil2Alpha": {
+   "$type": "color",
+   "$value": "#0000000d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff0d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ffffff0d"
+     },
+     "source": "global.blackAlpha.5"
+    }
+   }
+  },
+  "colorBackgroundOverlay": {
+   "$type": "color",
+   "$value": "#00000066",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00000080",
+      "highContrast": "#00000080",
+      "teamsDark": "#00000080"
+     },
+     "source": "global.blackAlpha.40"
+    }
+   }
+  },
+  "colorScrollbarOverlay": {
+   "$type": "color",
+   "$value": "#00000080",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff99",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ffffff99"
+     },
+     "source": "global.blackAlpha.50"
+    }
+   }
+  },
+  "colorBrandBackground": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#115ea3",
+      "highContrast": "#ffffff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#4f52b2"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorBrandBackgroundHover": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0f6cbd",
+      "highContrast": "#1aebff",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#5b5fc7"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorBrandBackgroundPressed": {
+   "$type": "color",
+   "$value": "#0c3b5e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff",
+      "teamsLight": "#383966",
+      "teamsDark": "#383966"
+     },
+     "source": "global.brand.40"
+    }
+   }
+  },
+  "colorBrandBackgroundSelected": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff",
+      "teamsLight": "#444791",
+      "teamsDark": "#444791"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorCompoundBrandBackground": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorCompoundBrandBackgroundHover": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#62abf5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#9299f7"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorCompoundBrandBackgroundPressed": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2886de",
+      "highContrast": "#1aebff",
+      "teamsLight": "#444791",
+      "teamsDark": "#7579eb"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorBrandBackgroundStatic": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#5b5fc7"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorBrandBackground2": {
+   "$type": "color",
+   "$value": "#ebf3fc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#082338",
+      "highContrast": "#000000",
+      "teamsLight": "#e8ebfa",
+      "teamsDark": "#2f2f4a"
+     },
+     "source": "global.brand.160"
+    }
+   }
+  },
+  "colorBrandBackground2Hover": {
+   "$type": "color",
+   "$value": "#cfe4fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0c3b5e",
+      "highContrast": "#000000",
+      "teamsLight": "#dce0fa",
+      "teamsDark": "#383966"
+     },
+     "source": "global.brand.150"
+    }
+   }
+  },
+  "colorBrandBackground2Pressed": {
+   "$type": "color",
+   "$value": "#96c6fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#061724",
+      "highContrast": "#000000",
+      "teamsLight": "#b6bcfa",
+      "teamsDark": "#2b2b40"
+     },
+     "source": "global.brand.130"
+    }
+   }
+  },
+  "colorBrandBackground3Static": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#444791",
+      "teamsDark": "#444791"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorBrandBackground4Static": {
+   "$type": "color",
+   "$value": "#0c3b5e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000",
+      "teamsLight": "#383966",
+      "teamsDark": "#383966"
+     },
+     "source": "global.brand.40"
+    }
+   }
+  },
+  "colorBrandBackgroundInverted": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "source": "global.white"
+    }
+   }
+  },
+  "colorBrandBackgroundInvertedHover": {
+   "$type": "color",
+   "$value": "#ebf3fc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff",
+      "teamsLight": "#e8ebfa",
+      "teamsDark": "#e8ebfa"
+     },
+     "source": "global.brand.160"
+    }
+   }
+  },
+  "colorBrandBackgroundInvertedPressed": {
+   "$type": "color",
+   "$value": "#b4d6fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff",
+      "teamsLight": "#c5cbfa",
+      "teamsDark": "#c5cbfa"
+     },
+     "source": "global.brand.140"
+    }
+   }
+  },
+  "colorBrandBackgroundInvertedSelected": {
+   "$type": "color",
+   "$value": "#cfe4fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff",
+      "teamsLight": "#dce0fa",
+      "teamsDark": "#dce0fa"
+     },
+     "source": "global.brand.150"
+    }
+   }
+  },
+  "colorNeutralCardBackground": {
+   "$type": "color",
+   "$value": "#fafafa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#333333",
+      "highContrast": "#000000",
+      "teamsDark": "#333333"
+     },
+     "source": "global.grey.98"
+    }
+   }
+  },
+  "colorNeutralCardBackgroundHover": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#1aebff",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralCardBackgroundPressed": {
+   "$type": "color",
+   "$value": "#f5f5f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2e2e2e",
+      "highContrast": "#1aebff",
+      "teamsDark": "#2e2e2e"
+     },
+     "source": "global.grey.96"
+    }
+   }
+  },
+  "colorNeutralCardBackgroundSelected": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#383838",
+      "highContrast": "#1aebff",
+      "teamsDark": "#383838"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralCardBackgroundDisabled": {
+   "$type": "color",
+   "$value": "#f0f0f0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#141414",
+      "highContrast": "#000000",
+      "teamsDark": "#141414"
+     },
+     "source": "global.grey.94"
+    }
+   }
+  },
+  "colorNeutralStrokeAccessible": {
+   "$type": "color",
+   "$value": "#616161",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#adadad",
+      "highContrast": "#ffffff",
+      "teamsDark": "#adadad"
+     },
+     "source": "global.grey.38"
+    }
+   }
+  },
+  "colorNeutralStrokeAccessibleHover": {
+   "$type": "color",
+   "$value": "#575757",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#bdbdbd",
+      "highContrast": "#1aebff",
+      "teamsDark": "#bdbdbd"
+     },
+     "source": "global.grey.34"
+    }
+   }
+  },
+  "colorNeutralStrokeAccessiblePressed": {
+   "$type": "color",
+   "$value": "#4d4d4d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#b3b3b3",
+      "highContrast": "#1aebff",
+      "teamsDark": "#b3b3b3"
+     },
+     "source": "global.grey.30"
+    }
+   }
+  },
+  "colorNeutralStrokeAccessibleSelected": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorNeutralStroke1": {
+   "$type": "color",
+   "$value": "#d1d1d1",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#666666",
+      "highContrast": "#ffffff",
+      "teamsDark": "#666666"
+     },
+     "source": "global.grey.82"
+    }
+   }
+  },
+  "colorNeutralStroke1Hover": {
+   "$type": "color",
+   "$value": "#c7c7c7",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#757575",
+      "highContrast": "#1aebff",
+      "teamsDark": "#757575"
+     },
+     "source": "global.grey.78"
+    }
+   }
+  },
+  "colorNeutralStroke1Pressed": {
+   "$type": "color",
+   "$value": "#b3b3b3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#6b6b6b",
+      "highContrast": "#1aebff",
+      "teamsDark": "#6b6b6b"
+     },
+     "source": "global.grey.70"
+    }
+   }
+  },
+  "colorNeutralStroke1Selected": {
+   "$type": "color",
+   "$value": "#bdbdbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#707070",
+      "highContrast": "#1aebff",
+      "teamsDark": "#707070"
+     },
+     "source": "global.grey.74"
+    }
+   }
+  },
+  "colorNeutralStroke2": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#525252",
+      "highContrast": "#ffffff",
+      "teamsDark": "#525252"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorNeutralStroke3": {
+   "$type": "color",
+   "$value": "#f0f0f0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.grey.94"
+    }
+   }
+  },
+  "colorNeutralStroke4": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralStroke4Hover": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2e2e2e",
+      "highContrast": "#1aebff",
+      "teamsDark": "#2e2e2e"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorNeutralStroke4Pressed": {
+   "$type": "color",
+   "$value": "#d6d6d6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#242424",
+      "highContrast": "#1aebff",
+      "teamsDark": "#242424"
+     },
+     "source": "global.grey.84"
+    }
+   }
+  },
+  "colorNeutralStroke4Selected": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#1aebff",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralStrokeSubtle": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0a0a0a",
+      "highContrast": "#ffffff",
+      "teamsDark": "#0a0a0a"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorNeutralStrokeOnBrand": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#292929",
+      "highContrast": "#000000",
+      "teamsDark": "#292929"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralStrokeOnBrand2": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralStrokeOnBrand2Hover": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralStrokeOnBrand2Pressed": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "source": "global.white"
+    }
+   }
+  },
+  "colorNeutralStrokeOnBrand2Selected": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "source": "global.white"
+    }
+   }
+  },
+  "colorBrandStroke1": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#ffffff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorBrandStroke2": {
+   "$type": "color",
+   "$value": "#b4d6fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0e4775",
+      "highContrast": "#ffffff",
+      "teamsLight": "#c5cbfa",
+      "teamsDark": "#3d3e78"
+     },
+     "source": "global.brand.140"
+    }
+   }
+  },
+  "colorBrandStroke2Hover": {
+   "$type": "color",
+   "$value": "#77b7f7",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0e4775",
+      "highContrast": "#1aebff",
+      "teamsLight": "#aab1fa",
+      "teamsDark": "#3d3e78"
+     },
+     "source": "global.brand.120"
+    }
+   }
+  },
+  "colorBrandStroke2Pressed": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0a2e4a",
+      "highContrast": "#1aebff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#333357"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorBrandStroke2Contrast": {
+   "$type": "color",
+   "$value": "#b4d6fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0e4775",
+      "highContrast": "#000000",
+      "teamsLight": "#c5cbfa",
+      "teamsDark": "#3d3e78"
+     },
+     "source": "global.brand.140"
+    }
+   }
+  },
+  "colorCompoundBrandStroke": {
+   "$type": "color",
+   "$value": "#0f6cbd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#479ef5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#5b5fc7",
+      "teamsDark": "#7579eb"
+     },
+     "source": "global.brand.80"
+    }
+   }
+  },
+  "colorCompoundBrandStrokeHover": {
+   "$type": "color",
+   "$value": "#115ea3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#62abf5",
+      "highContrast": "#1aebff",
+      "teamsLight": "#4f52b2",
+      "teamsDark": "#7f85f5"
+     },
+     "source": "global.brand.70"
+    }
+   }
+  },
+  "colorCompoundBrandStrokePressed": {
+   "$type": "color",
+   "$value": "#0f548c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2886de",
+      "highContrast": "#1aebff",
+      "teamsLight": "#444791",
+      "teamsDark": "#5b5fc7"
+     },
+     "source": "global.brand.60"
+    }
+   }
+  },
+  "colorNeutralStrokeDisabled": {
+   "$type": "color",
+   "$value": "#e0e0e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#424242",
+      "highContrast": "#3ff23f",
+      "teamsDark": "#424242"
+     },
+     "source": "global.grey.88"
+    }
+   }
+  },
+  "colorNeutralStrokeDisabled2": {
+   "$type": "color",
+   "$value": "#ebebeb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3d3d3d",
+      "highContrast": "#3ff23f",
+      "teamsDark": "#3d3d3d"
+     },
+     "source": "global.grey.92"
+    }
+   }
+  },
+  "colorNeutralStrokeInvertedDisabled": {
+   "$type": "color",
+   "$value": "#ffffff66",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#3ff23f"
+     },
+     "source": "global.whiteAlpha.40"
+    }
+   }
+  },
+  "colorTransparentStroke": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorTransparentStrokeInteractive": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorTransparentStrokeDisabled": {
+   "$type": "color",
+   "$value": "#00000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#3ff23f"
+     }
+    }
+   }
+  },
+  "colorNeutralStrokeAlpha": {
+   "$type": "color",
+   "$value": "#0000000d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff1a",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ffffff1a"
+     },
+     "source": "global.blackAlpha.5"
+    }
+   }
+  },
+  "colorNeutralStrokeAlpha2": {
+   "$type": "color",
+   "$value": "#ffffff33",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#000000"
+     },
+     "source": "global.whiteAlpha.20"
+    }
+   }
+  },
+  "colorStrokeFocus1": {
+   "$type": "color",
+   "$value": "#ffffff",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#000000",
+      "highContrast": "#000000",
+      "teamsDark": "#000000"
+     },
+     "source": "global.white"
+    }
+   }
+  },
+  "colorStrokeFocus2": {
+   "$type": "color",
+   "$value": "#000000",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffffff",
+      "highContrast": "#1aebff",
+      "teamsDark": "#ffffff"
+     },
+     "source": "global.black"
+    }
+   }
+  },
+  "colorNeutralShadowAmbient": {
+   "$type": "color",
+   "$value": "#0000001f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0000003d",
+      "highContrast": "#0000003d",
+      "teamsDark": "#0000003d"
+     }
+    }
+   }
+  },
+  "colorNeutralShadowKey": {
+   "$type": "color",
+   "$value": "#00000024",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00000047",
+      "highContrast": "#00000047",
+      "teamsDark": "#00000047"
+     }
+    }
+   }
+  },
+  "colorNeutralShadowAmbientLighter": {
+   "$type": "color",
+   "$value": "#0000000f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0000001f",
+      "highContrast": "#0000001f",
+      "teamsDark": "#0000001f"
+     }
+    }
+   }
+  },
+  "colorNeutralShadowKeyLighter": {
+   "$type": "color",
+   "$value": "#00000012",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00000024",
+      "highContrast": "#00000024",
+      "teamsDark": "#00000024"
+     }
+    }
+   }
+  },
+  "colorNeutralShadowAmbientDarker": {
+   "$type": "color",
+   "$value": "#00000033",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00000066",
+      "highContrast": "#00000066",
+      "teamsDark": "#00000066"
+     }
+    }
+   }
+  },
+  "colorNeutralShadowKeyDarker": {
+   "$type": "color",
+   "$value": "#0000003d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0000007a",
+      "highContrast": "#0000007a",
+      "teamsDark": "#0000007a"
+     }
+    }
+   }
+  },
+  "colorBrandShadowAmbient": {
+   "$type": "color",
+   "$value": "#0000004d"
+  },
+  "colorBrandShadowKey": {
+   "$type": "color",
+   "$value": "#00000040"
+  },
+  "colorPaletteRedBackground1": {
+   "$type": "color",
+   "$value": "#fdf6f6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3f1011",
+      "highContrast": "#000000",
+      "teamsDark": "#3f1011"
+     }
+    }
+   }
+  },
+  "colorPaletteRedBackground2": {
+   "$type": "color",
+   "$value": "#f1bbbc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#751d1f",
+      "highContrast": "#000000",
+      "teamsDark": "#751d1f"
+     }
+    }
+   }
+  },
+  "colorPaletteRedBackground3": {
+   "$type": "color",
+   "$value": "#d13438",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteRedForeground1": {
+   "$type": "color",
+   "$value": "#bc2f32",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e37d80",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e37d80"
+     }
+    }
+   }
+  },
+  "colorPaletteRedForeground2": {
+   "$type": "color",
+   "$value": "#751d1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f1bbbc",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f1bbbc"
+     }
+    }
+   }
+  },
+  "colorPaletteRedForeground3": {
+   "$type": "color",
+   "$value": "#d13438",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e37d80",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e37d80"
+     }
+    }
+   }
+  },
+  "colorPaletteRedBorderActive": {
+   "$type": "color",
+   "$value": "#d13438",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e37d80",
+      "highContrast": "#1aebff",
+      "teamsDark": "#e37d80"
+     }
+    }
+   }
+  },
+  "colorPaletteRedBorder1": {
+   "$type": "color",
+   "$value": "#f1bbbc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d13438",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d13438"
+     }
+    }
+   }
+  },
+  "colorPaletteRedBorder2": {
+   "$type": "color",
+   "$value": "#d13438",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e37d80",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e37d80"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenBackground1": {
+   "$type": "color",
+   "$value": "#f1faf1",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#052505",
+      "highContrast": "#000000",
+      "teamsDark": "#052505"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenBackground2": {
+   "$type": "color",
+   "$value": "#9fd89f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#094509",
+      "highContrast": "#000000",
+      "teamsDark": "#094509"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenBackground3": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenForeground1": {
+   "$type": "color",
+   "$value": "#0e700e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#54b054",
+      "highContrast": "#ffffff",
+      "teamsDark": "#54b054"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenForeground2": {
+   "$type": "color",
+   "$value": "#094509",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9fd89f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9fd89f"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenForeground3": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9fd89f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9fd89f"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenBorderActive": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#54b054",
+      "highContrast": "#1aebff",
+      "teamsDark": "#54b054"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenBorder1": {
+   "$type": "color",
+   "$value": "#9fd89f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#107c10",
+      "highContrast": "#ffffff",
+      "teamsDark": "#107c10"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenBorder2": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9fd89f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9fd89f"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeBackground1": {
+   "$type": "color",
+   "$value": "#fdf6f3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#411200",
+      "highContrast": "#000000",
+      "teamsDark": "#411200"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeBackground2": {
+   "$type": "color",
+   "$value": "#f4bfab",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#7a2101",
+      "highContrast": "#000000",
+      "teamsDark": "#7a2101"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeBackground3": {
+   "$type": "color",
+   "$value": "#da3b01",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeForeground1": {
+   "$type": "color",
+   "$value": "#c43501",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e9835e",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e9835e"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeForeground2": {
+   "$type": "color",
+   "$value": "#7a2101",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f4bfab",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f4bfab"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeForeground3": {
+   "$type": "color",
+   "$value": "#da3b01",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e9835e",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e9835e"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeBorderActive": {
+   "$type": "color",
+   "$value": "#da3b01",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e9835e",
+      "highContrast": "#1aebff",
+      "teamsDark": "#e9835e"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeBorder1": {
+   "$type": "color",
+   "$value": "#f4bfab",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#da3b01",
+      "highContrast": "#ffffff",
+      "teamsDark": "#da3b01"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkOrangeBorder2": {
+   "$type": "color",
+   "$value": "#da3b01",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e9835e",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e9835e"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowBackground1": {
+   "$type": "color",
+   "$value": "#fffef5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4c4400",
+      "highContrast": "#000000",
+      "teamsDark": "#4c4400"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowBackground2": {
+   "$type": "color",
+   "$value": "#fef7b2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#817400",
+      "highContrast": "#000000",
+      "teamsDark": "#817400"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowBackground3": {
+   "$type": "color",
+   "$value": "#fde300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowForeground1": {
+   "$type": "color",
+   "$value": "#817400",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#feee66",
+      "highContrast": "#ffffff",
+      "teamsDark": "#feee66"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowForeground2": {
+   "$type": "color",
+   "$value": "#817400",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#fef7b2",
+      "highContrast": "#ffffff",
+      "teamsDark": "#fef7b2"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowForeground3": {
+   "$type": "color",
+   "$value": "#fde300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#fdea3d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#fdea3d"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowBorderActive": {
+   "$type": "color",
+   "$value": "#fde300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#feee66",
+      "highContrast": "#1aebff",
+      "teamsDark": "#feee66"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowBorder1": {
+   "$type": "color",
+   "$value": "#fef7b2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#fde300",
+      "highContrast": "#ffffff",
+      "teamsDark": "#fde300"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowBorder2": {
+   "$type": "color",
+   "$value": "#fde300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#fdea3d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#fdea3d"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryBackground1": {
+   "$type": "color",
+   "$value": "#fdf5fc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3a1136",
+      "highContrast": "#000000",
+      "teamsDark": "#3a1136"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryBackground2": {
+   "$type": "color",
+   "$value": "#edbbe7",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#6d2064",
+      "highContrast": "#000000",
+      "teamsDark": "#6d2064"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryBackground3": {
+   "$type": "color",
+   "$value": "#c239b3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryForeground1": {
+   "$type": "color",
+   "$value": "#af33a1",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#da7ed0",
+      "highContrast": "#ffffff",
+      "teamsDark": "#da7ed0"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryForeground2": {
+   "$type": "color",
+   "$value": "#6d2064",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#edbbe7",
+      "highContrast": "#ffffff",
+      "teamsDark": "#edbbe7"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryForeground3": {
+   "$type": "color",
+   "$value": "#c239b3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d161c4",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d161c4"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryBorderActive": {
+   "$type": "color",
+   "$value": "#c239b3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#da7ed0",
+      "highContrast": "#1aebff",
+      "teamsDark": "#da7ed0"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryBorder1": {
+   "$type": "color",
+   "$value": "#edbbe7",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#c239b3",
+      "highContrast": "#ffffff",
+      "teamsDark": "#c239b3"
+     }
+    }
+   }
+  },
+  "colorPaletteBerryBorder2": {
+   "$type": "color",
+   "$value": "#c239b3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d161c4",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d161c4"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenBackground1": {
+   "$type": "color",
+   "$value": "#f2fbf2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#063004",
+      "highContrast": "#000000",
+      "teamsDark": "#063004"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenBackground2": {
+   "$type": "color",
+   "$value": "#a7e3a5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0b5a08",
+      "highContrast": "#000000",
+      "teamsDark": "#0b5a08"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenBackground3": {
+   "$type": "color",
+   "$value": "#13a10e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenForeground1": {
+   "$type": "color",
+   "$value": "#11910d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#5ec75a",
+      "highContrast": "#ffffff",
+      "teamsDark": "#5ec75a"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenForeground2": {
+   "$type": "color",
+   "$value": "#0b5a08",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a7e3a5",
+      "highContrast": "#ffffff",
+      "teamsDark": "#a7e3a5"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenForeground3": {
+   "$type": "color",
+   "$value": "#13a10e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3db838",
+      "highContrast": "#ffffff",
+      "teamsDark": "#3db838"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenBorderActive": {
+   "$type": "color",
+   "$value": "#13a10e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#5ec75a",
+      "highContrast": "#1aebff",
+      "teamsDark": "#5ec75a"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenBorder1": {
+   "$type": "color",
+   "$value": "#a7e3a5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#13a10e",
+      "highContrast": "#ffffff",
+      "teamsDark": "#13a10e"
+     }
+    }
+   }
+  },
+  "colorPaletteLightGreenBorder2": {
+   "$type": "color",
+   "$value": "#13a10e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3db838",
+      "highContrast": "#ffffff",
+      "teamsDark": "#3db838"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldBackground1": {
+   "$type": "color",
+   "$value": "#fefbf4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#463100",
+      "highContrast": "#000000",
+      "teamsDark": "#463100"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldBackground2": {
+   "$type": "color",
+   "$value": "#f9e2ae",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#835b00",
+      "highContrast": "#000000",
+      "teamsDark": "#835b00"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldBackground3": {
+   "$type": "color",
+   "$value": "#eaa300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldForeground1": {
+   "$type": "color",
+   "$value": "#d39300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f2c661",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f2c661"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldForeground2": {
+   "$type": "color",
+   "$value": "#835b00",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f9e2ae",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f9e2ae"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldForeground3": {
+   "$type": "color",
+   "$value": "#eaa300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#efb839",
+      "highContrast": "#ffffff",
+      "teamsDark": "#efb839"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldBorderActive": {
+   "$type": "color",
+   "$value": "#eaa300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f2c661",
+      "highContrast": "#1aebff",
+      "teamsDark": "#f2c661"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldBorder1": {
+   "$type": "color",
+   "$value": "#f9e2ae",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#eaa300",
+      "highContrast": "#ffffff",
+      "teamsDark": "#eaa300"
+     }
+    }
+   }
+  },
+  "colorPaletteMarigoldBorder2": {
+   "$type": "color",
+   "$value": "#eaa300",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#efb839",
+      "highContrast": "#ffffff",
+      "teamsDark": "#efb839"
+     }
+    }
+   }
+  },
+  "colorPaletteRedForegroundInverted": {
+   "$type": "color",
+   "$value": "#dc5e62",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d13438",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d13438"
+     }
+    }
+   }
+  },
+  "colorPaletteGreenForegroundInverted": {
+   "$type": "color",
+   "$value": "#359b35",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#107c10",
+      "highContrast": "#ffffff",
+      "teamsDark": "#107c10"
+     }
+    }
+   }
+  },
+  "colorPaletteYellowForegroundInverted": {
+   "$type": "color",
+   "$value": "#fef7b2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#817400",
+      "highContrast": "#ffffff",
+      "teamsDark": "#817400"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkRedBackground2": {
+   "$type": "color",
+   "$value": "#d69ca5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#590815",
+      "highContrast": "#000000",
+      "teamsDark": "#590815"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkRedForeground2": {
+   "$type": "color",
+   "$value": "#420610",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d69ca5",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d69ca5"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkRedBorderActive": {
+   "$type": "color",
+   "$value": "#750b1c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ac4f5e",
+      "highContrast": "#1aebff",
+      "teamsDark": "#ac4f5e"
+     }
+    }
+   }
+  },
+  "colorPaletteCranberryBackground2": {
+   "$type": "color",
+   "$value": "#eeacb2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#6e0811",
+      "highContrast": "#000000",
+      "teamsDark": "#6e0811"
+     }
+    }
+   }
+  },
+  "colorPaletteCranberryForeground2": {
+   "$type": "color",
+   "$value": "#6e0811",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#eeacb2",
+      "highContrast": "#ffffff",
+      "teamsDark": "#eeacb2"
+     }
+    }
+   }
+  },
+  "colorPaletteCranberryBorderActive": {
+   "$type": "color",
+   "$value": "#c50f1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#dc626d",
+      "highContrast": "#1aebff",
+      "teamsDark": "#dc626d"
+     }
+    }
+   }
+  },
+  "colorPalettePumpkinBackground2": {
+   "$type": "color",
+   "$value": "#efc4ad",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#712d09",
+      "highContrast": "#000000",
+      "teamsDark": "#712d09"
+     }
+    }
+   }
+  },
+  "colorPalettePumpkinForeground2": {
+   "$type": "color",
+   "$value": "#712d09",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#efc4ad",
+      "highContrast": "#ffffff",
+      "teamsDark": "#efc4ad"
+     }
+    }
+   }
+  },
+  "colorPalettePumpkinBorderActive": {
+   "$type": "color",
+   "$value": "#ca5010",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#df8e64",
+      "highContrast": "#1aebff",
+      "teamsDark": "#df8e64"
+     }
+    }
+   }
+  },
+  "colorPalettePeachBackground2": {
+   "$type": "color",
+   "$value": "#ffddb3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#8f4e00",
+      "highContrast": "#000000",
+      "teamsDark": "#8f4e00"
+     }
+    }
+   }
+  },
+  "colorPalettePeachForeground2": {
+   "$type": "color",
+   "$value": "#8f4e00",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffddb3",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ffddb3"
+     }
+    }
+   }
+  },
+  "colorPalettePeachBorderActive": {
+   "$type": "color",
+   "$value": "#ff8c00",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ffba66",
+      "highContrast": "#1aebff",
+      "teamsDark": "#ffba66"
+     }
+    }
+   }
+  },
+  "colorPaletteGoldBackground2": {
+   "$type": "color",
+   "$value": "#ecdfa5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#6c5700",
+      "highContrast": "#000000",
+      "teamsDark": "#6c5700"
+     }
+    }
+   }
+  },
+  "colorPaletteGoldForeground2": {
+   "$type": "color",
+   "$value": "#6c5700",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ecdfa5",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ecdfa5"
+     }
+    }
+   }
+  },
+  "colorPaletteGoldBorderActive": {
+   "$type": "color",
+   "$value": "#c19c00",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#dac157",
+      "highContrast": "#1aebff",
+      "teamsDark": "#dac157"
+     }
+    }
+   }
+  },
+  "colorPaletteBrassBackground2": {
+   "$type": "color",
+   "$value": "#e0cea2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#553e06",
+      "highContrast": "#000000",
+      "teamsDark": "#553e06"
+     }
+    }
+   }
+  },
+  "colorPaletteBrassForeground2": {
+   "$type": "color",
+   "$value": "#553e06",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e0cea2",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e0cea2"
+     }
+    }
+   }
+  },
+  "colorPaletteBrassBorderActive": {
+   "$type": "color",
+   "$value": "#986f0b",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#c1a256",
+      "highContrast": "#1aebff",
+      "teamsDark": "#c1a256"
+     }
+    }
+   }
+  },
+  "colorPaletteBrownBackground2": {
+   "$type": "color",
+   "$value": "#ddc3b0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#50301a",
+      "highContrast": "#000000",
+      "teamsDark": "#50301a"
+     }
+    }
+   }
+  },
+  "colorPaletteBrownForeground2": {
+   "$type": "color",
+   "$value": "#50301a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ddc3b0",
+      "highContrast": "#ffffff",
+      "teamsDark": "#ddc3b0"
+     }
+    }
+   }
+  },
+  "colorPaletteBrownBorderActive": {
+   "$type": "color",
+   "$value": "#8e562e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#bb8f6f",
+      "highContrast": "#1aebff",
+      "teamsDark": "#bb8f6f"
+     }
+    }
+   }
+  },
+  "colorPaletteForestBackground2": {
+   "$type": "color",
+   "$value": "#bdd99b",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#294903",
+      "highContrast": "#000000",
+      "teamsDark": "#294903"
+     }
+    }
+   }
+  },
+  "colorPaletteForestForeground2": {
+   "$type": "color",
+   "$value": "#294903",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#bdd99b",
+      "highContrast": "#ffffff",
+      "teamsDark": "#bdd99b"
+     }
+    }
+   }
+  },
+  "colorPaletteForestBorderActive": {
+   "$type": "color",
+   "$value": "#498205",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#85b44c",
+      "highContrast": "#1aebff",
+      "teamsDark": "#85b44c"
+     }
+    }
+   }
+  },
+  "colorPaletteSeafoamBackground2": {
+   "$type": "color",
+   "$value": "#a8f0cd",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00723b",
+      "highContrast": "#000000",
+      "teamsDark": "#00723b"
+     }
+    }
+   }
+  },
+  "colorPaletteSeafoamForeground2": {
+   "$type": "color",
+   "$value": "#00723b",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a8f0cd",
+      "highContrast": "#ffffff",
+      "teamsDark": "#a8f0cd"
+     }
+    }
+   }
+  },
+  "colorPaletteSeafoamBorderActive": {
+   "$type": "color",
+   "$value": "#00cc6a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#5ae0a0",
+      "highContrast": "#1aebff",
+      "teamsDark": "#5ae0a0"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkGreenBackground2": {
+   "$type": "color",
+   "$value": "#9ad29a",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#063b06",
+      "highContrast": "#000000",
+      "teamsDark": "#063b06"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkGreenForeground2": {
+   "$type": "color",
+   "$value": "#063b06",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9ad29a",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9ad29a"
+     }
+    }
+   }
+  },
+  "colorPaletteDarkGreenBorderActive": {
+   "$type": "color",
+   "$value": "#0b6a0b",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4da64d",
+      "highContrast": "#1aebff",
+      "teamsDark": "#4da64d"
+     }
+    }
+   }
+  },
+  "colorPaletteLightTealBackground2": {
+   "$type": "color",
+   "$value": "#a6e9ed",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00666d",
+      "highContrast": "#000000",
+      "teamsDark": "#00666d"
+     }
+    }
+   }
+  },
+  "colorPaletteLightTealForeground2": {
+   "$type": "color",
+   "$value": "#00666d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a6e9ed",
+      "highContrast": "#ffffff",
+      "teamsDark": "#a6e9ed"
+     }
+    }
+   }
+  },
+  "colorPaletteLightTealBorderActive": {
+   "$type": "color",
+   "$value": "#00b7c3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#58d3db",
+      "highContrast": "#1aebff",
+      "teamsDark": "#58d3db"
+     }
+    }
+   }
+  },
+  "colorPaletteTealBackground2": {
+   "$type": "color",
+   "$value": "#9bd9db",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#02494c",
+      "highContrast": "#000000",
+      "teamsDark": "#02494c"
+     }
+    }
+   }
+  },
+  "colorPaletteTealForeground2": {
+   "$type": "color",
+   "$value": "#02494c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9bd9db",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9bd9db"
+     }
+    }
+   }
+  },
+  "colorPaletteTealBorderActive": {
+   "$type": "color",
+   "$value": "#038387",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4cb4b7",
+      "highContrast": "#1aebff",
+      "teamsDark": "#4cb4b7"
+     }
+    }
+   }
+  },
+  "colorPaletteSteelBackground2": {
+   "$type": "color",
+   "$value": "#94c8d4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#00333f",
+      "highContrast": "#000000",
+      "teamsDark": "#00333f"
+     }
+    }
+   }
+  },
+  "colorPaletteSteelForeground2": {
+   "$type": "color",
+   "$value": "#00333f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#94c8d4",
+      "highContrast": "#ffffff",
+      "teamsDark": "#94c8d4"
+     }
+    }
+   }
+  },
+  "colorPaletteSteelBorderActive": {
+   "$type": "color",
+   "$value": "#005b70",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4496a9",
+      "highContrast": "#1aebff",
+      "teamsDark": "#4496a9"
+     }
+    }
+   }
+  },
+  "colorPaletteBlueBackground2": {
+   "$type": "color",
+   "$value": "#a9d3f2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#004377",
+      "highContrast": "#000000",
+      "teamsDark": "#004377"
+     }
+    }
+   }
+  },
+  "colorPaletteBlueForeground2": {
+   "$type": "color",
+   "$value": "#004377",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a9d3f2",
+      "highContrast": "#ffffff",
+      "teamsDark": "#a9d3f2"
+     }
+    }
+   }
+  },
+  "colorPaletteBlueBorderActive": {
+   "$type": "color",
+   "$value": "#0078d4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#5caae5",
+      "highContrast": "#1aebff",
+      "teamsDark": "#5caae5"
+     }
+    }
+   }
+  },
+  "colorPaletteRoyalBlueBackground2": {
+   "$type": "color",
+   "$value": "#9abfdc",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#002c4e",
+      "highContrast": "#000000",
+      "teamsDark": "#002c4e"
+     }
+    }
+   }
+  },
+  "colorPaletteRoyalBlueForeground2": {
+   "$type": "color",
+   "$value": "#002c4e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9abfdc",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9abfdc"
+     }
+    }
+   }
+  },
+  "colorPaletteRoyalBlueBorderActive": {
+   "$type": "color",
+   "$value": "#004e8c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4a89ba",
+      "highContrast": "#1aebff",
+      "teamsDark": "#4a89ba"
+     }
+    }
+   }
+  },
+  "colorPaletteCornflowerBackground2": {
+   "$type": "color",
+   "$value": "#c8d1fa",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#2c3c85",
+      "highContrast": "#000000",
+      "teamsDark": "#2c3c85"
+     }
+    }
+   }
+  },
+  "colorPaletteCornflowerForeground2": {
+   "$type": "color",
+   "$value": "#2c3c85",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#c8d1fa",
+      "highContrast": "#ffffff",
+      "teamsDark": "#c8d1fa"
+     }
+    }
+   }
+  },
+  "colorPaletteCornflowerBorderActive": {
+   "$type": "color",
+   "$value": "#4f6bed",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#93a4f4",
+      "highContrast": "#1aebff",
+      "teamsDark": "#93a4f4"
+     }
+    }
+   }
+  },
+  "colorPaletteNavyBackground2": {
+   "$type": "color",
+   "$value": "#a3b2e8",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#001665",
+      "highContrast": "#000000",
+      "teamsDark": "#001665"
+     }
+    }
+   }
+  },
+  "colorPaletteNavyForeground2": {
+   "$type": "color",
+   "$value": "#001665",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a3b2e8",
+      "highContrast": "#ffffff",
+      "teamsDark": "#a3b2e8"
+     }
+    }
+   }
+  },
+  "colorPaletteNavyBorderActive": {
+   "$type": "color",
+   "$value": "#0027b4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#546fd2",
+      "highContrast": "#1aebff",
+      "teamsDark": "#546fd2"
+     }
+    }
+   }
+  },
+  "colorPaletteLavenderBackground2": {
+   "$type": "color",
+   "$value": "#d2ccf8",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3f3682",
+      "highContrast": "#000000",
+      "teamsDark": "#3f3682"
+     }
+    }
+   }
+  },
+  "colorPaletteLavenderForeground2": {
+   "$type": "color",
+   "$value": "#3f3682",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d2ccf8",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d2ccf8"
+     }
+    }
+   }
+  },
+  "colorPaletteLavenderBorderActive": {
+   "$type": "color",
+   "$value": "#7160e8",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a79cf1",
+      "highContrast": "#1aebff",
+      "teamsDark": "#a79cf1"
+     }
+    }
+   }
+  },
+  "colorPalettePurpleBackground2": {
+   "$type": "color",
+   "$value": "#c6b1de",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#341a51",
+      "highContrast": "#000000",
+      "teamsDark": "#341a51"
+     }
+    }
+   }
+  },
+  "colorPalettePurpleForeground2": {
+   "$type": "color",
+   "$value": "#341a51",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#c6b1de",
+      "highContrast": "#ffffff",
+      "teamsDark": "#c6b1de"
+     }
+    }
+   }
+  },
+  "colorPalettePurpleBorderActive": {
+   "$type": "color",
+   "$value": "#5c2e91",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9470bd",
+      "highContrast": "#1aebff",
+      "teamsDark": "#9470bd"
+     }
+    }
+   }
+  },
+  "colorPaletteGrapeBackground2": {
+   "$type": "color",
+   "$value": "#d9a7e0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4c0d55",
+      "highContrast": "#000000",
+      "teamsDark": "#4c0d55"
+     }
+    }
+   }
+  },
+  "colorPaletteGrapeForeground2": {
+   "$type": "color",
+   "$value": "#4c0d55",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d9a7e0",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d9a7e0"
+     }
+    }
+   }
+  },
+  "colorPaletteGrapeBorderActive": {
+   "$type": "color",
+   "$value": "#881798",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#b55fc1",
+      "highContrast": "#1aebff",
+      "teamsDark": "#b55fc1"
+     }
+    }
+   }
+  },
+  "colorPaletteLilacBackground2": {
+   "$type": "color",
+   "$value": "#e6bfed",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#63276d",
+      "highContrast": "#000000",
+      "teamsDark": "#63276d"
+     }
+    }
+   }
+  },
+  "colorPaletteLilacForeground2": {
+   "$type": "color",
+   "$value": "#63276d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#e6bfed",
+      "highContrast": "#ffffff",
+      "teamsDark": "#e6bfed"
+     }
+    }
+   }
+  },
+  "colorPaletteLilacBorderActive": {
+   "$type": "color",
+   "$value": "#b146c2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#cf87da",
+      "highContrast": "#1aebff",
+      "teamsDark": "#cf87da"
+     }
+    }
+   }
+  },
+  "colorPalettePinkBackground2": {
+   "$type": "color",
+   "$value": "#f7c0e3",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#80215d",
+      "highContrast": "#000000",
+      "teamsDark": "#80215d"
+     }
+    }
+   }
+  },
+  "colorPalettePinkForeground2": {
+   "$type": "color",
+   "$value": "#80215d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f7c0e3",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f7c0e3"
+     }
+    }
+   }
+  },
+  "colorPalettePinkBorderActive": {
+   "$type": "color",
+   "$value": "#e43ba6",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ef85c8",
+      "highContrast": "#1aebff",
+      "teamsDark": "#ef85c8"
+     }
+    }
+   }
+  },
+  "colorPaletteMagentaBackground2": {
+   "$type": "color",
+   "$value": "#eca5d1",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#6b0043",
+      "highContrast": "#000000",
+      "teamsDark": "#6b0043"
+     }
+    }
+   }
+  },
+  "colorPaletteMagentaForeground2": {
+   "$type": "color",
+   "$value": "#6b0043",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#eca5d1",
+      "highContrast": "#ffffff",
+      "teamsDark": "#eca5d1"
+     }
+    }
+   }
+  },
+  "colorPaletteMagentaBorderActive": {
+   "$type": "color",
+   "$value": "#bf0077",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d957a8",
+      "highContrast": "#1aebff",
+      "teamsDark": "#d957a8"
+     }
+    }
+   }
+  },
+  "colorPalettePlumBackground2": {
+   "$type": "color",
+   "$value": "#d696c0",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#5a003b",
+      "highContrast": "#000000",
+      "teamsDark": "#5a003b"
+     }
+    }
+   }
+  },
+  "colorPalettePlumForeground2": {
+   "$type": "color",
+   "$value": "#43002b",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d696c0",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d696c0"
+     }
+    }
+   }
+  },
+  "colorPalettePlumBorderActive": {
+   "$type": "color",
+   "$value": "#77004d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#ad4589",
+      "highContrast": "#1aebff",
+      "teamsDark": "#ad4589"
+     }
+    }
+   }
+  },
+  "colorPaletteBeigeBackground2": {
+   "$type": "color",
+   "$value": "#d7d4d4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#444241",
+      "highContrast": "#000000",
+      "teamsDark": "#444241"
+     }
+    }
+   }
+  },
+  "colorPaletteBeigeForeground2": {
+   "$type": "color",
+   "$value": "#444241",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#d7d4d4",
+      "highContrast": "#ffffff",
+      "teamsDark": "#d7d4d4"
+     }
+    }
+   }
+  },
+  "colorPaletteBeigeBorderActive": {
+   "$type": "color",
+   "$value": "#7a7574",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#afabaa",
+      "highContrast": "#1aebff",
+      "teamsDark": "#afabaa"
+     }
+    }
+   }
+  },
+  "colorPaletteMinkBackground2": {
+   "$type": "color",
+   "$value": "#cecccb",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#343231",
+      "highContrast": "#000000",
+      "teamsDark": "#343231"
+     }
+    }
+   }
+  },
+  "colorPaletteMinkForeground2": {
+   "$type": "color",
+   "$value": "#343231",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#cecccb",
+      "highContrast": "#ffffff",
+      "teamsDark": "#cecccb"
+     }
+    }
+   }
+  },
+  "colorPaletteMinkBorderActive": {
+   "$type": "color",
+   "$value": "#5d5a58",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9e9b99",
+      "highContrast": "#1aebff",
+      "teamsDark": "#9e9b99"
+     }
+    }
+   }
+  },
+  "colorPalettePlatinumBackground2": {
+   "$type": "color",
+   "$value": "#cdd6d8",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3b4447",
+      "highContrast": "#000000",
+      "teamsDark": "#3b4447"
+     }
+    }
+   }
+  },
+  "colorPalettePlatinumForeground2": {
+   "$type": "color",
+   "$value": "#3b4447",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#cdd6d8",
+      "highContrast": "#ffffff",
+      "teamsDark": "#cdd6d8"
+     }
+    }
+   }
+  },
+  "colorPalettePlatinumBorderActive": {
+   "$type": "color",
+   "$value": "#69797e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#a0adb2",
+      "highContrast": "#1aebff",
+      "teamsDark": "#a0adb2"
+     }
+    }
+   }
+  },
+  "colorPaletteAnchorBackground2": {
+   "$type": "color",
+   "$value": "#bcc3c7",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#202427",
+      "highContrast": "#000000",
+      "teamsDark": "#202427"
+     }
+    }
+   }
+  },
+  "colorPaletteAnchorForeground2": {
+   "$type": "color",
+   "$value": "#202427",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#bcc3c7",
+      "highContrast": "#ffffff",
+      "teamsDark": "#bcc3c7"
+     }
+    }
+   }
+  },
+  "colorPaletteAnchorBorderActive": {
+   "$type": "color",
+   "$value": "#394146",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#808a90",
+      "highContrast": "#1aebff",
+      "teamsDark": "#808a90"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessBackground1": {
+   "$type": "color",
+   "$value": "#f1faf1",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#052505",
+      "highContrast": "#000000",
+      "teamsDark": "#052505"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessBackground2": {
+   "$type": "color",
+   "$value": "#9fd89f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#094509",
+      "highContrast": "#000000",
+      "teamsDark": "#094509"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessBackground3": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessForeground1": {
+   "$type": "color",
+   "$value": "#0e700e",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#54b054",
+      "highContrast": "#ffffff",
+      "teamsDark": "#54b054"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessForeground2": {
+   "$type": "color",
+   "$value": "#094509",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9fd89f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9fd89f"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessForeground3": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9fd89f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9fd89f"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessForegroundInverted": {
+   "$type": "color",
+   "$value": "#54b054",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#0e700e",
+      "highContrast": "#ffffff",
+      "teamsDark": "#0e700e"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessBorderActive": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#54b054",
+      "highContrast": "#1aebff",
+      "teamsDark": "#54b054"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessBorder1": {
+   "$type": "color",
+   "$value": "#9fd89f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#107c10",
+      "highContrast": "#ffffff",
+      "teamsDark": "#107c10"
+     }
+    }
+   }
+  },
+  "colorStatusSuccessBorder2": {
+   "$type": "color",
+   "$value": "#107c10",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#9fd89f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#9fd89f"
+     }
+    }
+   }
+  },
+  "colorStatusWarningBackground1": {
+   "$type": "color",
+   "$value": "#fff9f5",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#4a1e04",
+      "highContrast": "#000000",
+      "teamsDark": "#4a1e04"
+     }
+    }
+   }
+  },
+  "colorStatusWarningBackground2": {
+   "$type": "color",
+   "$value": "#fdcfb4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#8a3707",
+      "highContrast": "#000000",
+      "teamsDark": "#8a3707"
+     }
+    }
+   }
+  },
+  "colorStatusWarningBackground3": {
+   "$type": "color",
+   "$value": "#f7630c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorStatusWarningForeground1": {
+   "$type": "color",
+   "$value": "#bc4b09",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#faa06b",
+      "highContrast": "#ffffff",
+      "teamsDark": "#faa06b"
+     }
+    }
+   }
+  },
+  "colorStatusWarningForeground2": {
+   "$type": "color",
+   "$value": "#8a3707",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#fdcfb4",
+      "highContrast": "#ffffff",
+      "teamsDark": "#fdcfb4"
+     }
+    }
+   }
+  },
+  "colorStatusWarningForeground3": {
+   "$type": "color",
+   "$value": "#bc4b09",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f98845",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f98845"
+     }
+    }
+   }
+  },
+  "colorStatusWarningForegroundInverted": {
+   "$type": "color",
+   "$value": "#faa06b",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#bc4b09",
+      "highContrast": "#ffffff",
+      "teamsDark": "#bc4b09"
+     }
+    }
+   }
+  },
+  "colorStatusWarningBorderActive": {
+   "$type": "color",
+   "$value": "#f7630c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#faa06b",
+      "highContrast": "#1aebff",
+      "teamsDark": "#faa06b"
+     }
+    }
+   }
+  },
+  "colorStatusWarningBorder1": {
+   "$type": "color",
+   "$value": "#fdcfb4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f7630c",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f7630c"
+     }
+    }
+   }
+  },
+  "colorStatusWarningBorder2": {
+   "$type": "color",
+   "$value": "#bc4b09",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#f98845",
+      "highContrast": "#ffffff",
+      "teamsDark": "#f98845"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBackground1": {
+   "$type": "color",
+   "$value": "#fdf3f4",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#3b0509",
+      "highContrast": "#000000",
+      "teamsDark": "#3b0509"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBackground2": {
+   "$type": "color",
+   "$value": "#eeacb2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#6e0811",
+      "highContrast": "#000000",
+      "teamsDark": "#6e0811"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBackground3": {
+   "$type": "color",
+   "$value": "#c50f1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#ffffff"
+     }
+    }
+   }
+  },
+  "colorStatusDangerForeground1": {
+   "$type": "color",
+   "$value": "#b10e1c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#dc626d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#dc626d"
+     }
+    }
+   }
+  },
+  "colorStatusDangerForeground2": {
+   "$type": "color",
+   "$value": "#6e0811",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#eeacb2",
+      "highContrast": "#ffffff",
+      "teamsDark": "#eeacb2"
+     }
+    }
+   }
+  },
+  "colorStatusDangerForeground3": {
+   "$type": "color",
+   "$value": "#c50f1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#eeacb2",
+      "highContrast": "#ffffff",
+      "teamsDark": "#eeacb2"
+     }
+    }
+   }
+  },
+  "colorStatusDangerForegroundInverted": {
+   "$type": "color",
+   "$value": "#dc626d",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#b10e1c",
+      "highContrast": "#ffffff",
+      "teamsDark": "#b10e1c"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBorderActive": {
+   "$type": "color",
+   "$value": "#c50f1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#dc626d",
+      "highContrast": "#1aebff",
+      "teamsDark": "#dc626d"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBorder1": {
+   "$type": "color",
+   "$value": "#eeacb2",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#c50f1f",
+      "highContrast": "#ffffff",
+      "teamsDark": "#c50f1f"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBorder2": {
+   "$type": "color",
+   "$value": "#c50f1f",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "dark": "#dc626d",
+      "highContrast": "#ffffff",
+      "teamsDark": "#dc626d"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBackground3Hover": {
+   "$type": "color",
+   "$value": "#b10e1c",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  },
+  "colorStatusDangerBackground3Pressed": {
+   "$type": "color",
+   "$value": "#960b18",
+   "$extensions": {
+    "fluent": {
+     "modes": {
+      "highContrast": "#1aebff"
+     }
+    }
+   }
+  }
+ },
+ "typographyStyles": {
+  "body1": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase300}",
+    "fontWeight": "{global.fontWeightRegular}",
+    "lineHeight": "{global.lineHeightBase300}"
+   }
+  },
+  "body1Strong": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase300}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightBase300}"
+   }
+  },
+  "body1Stronger": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase300}",
+    "fontWeight": "{global.fontWeightBold}",
+    "lineHeight": "{global.lineHeightBase300}"
+   }
+  },
+  "body2": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase400}",
+    "fontWeight": "{global.fontWeightRegular}",
+    "lineHeight": "{global.lineHeightBase400}"
+   }
+  },
+  "caption1": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase200}",
+    "fontWeight": "{global.fontWeightRegular}",
+    "lineHeight": "{global.lineHeightBase200}"
+   }
+  },
+  "caption1Strong": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase200}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightBase200}"
+   }
+  },
+  "caption1Stronger": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase200}",
+    "fontWeight": "{global.fontWeightBold}",
+    "lineHeight": "{global.lineHeightBase200}"
+   }
+  },
+  "caption2": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase100}",
+    "fontWeight": "{global.fontWeightRegular}",
+    "lineHeight": "{global.lineHeightBase100}"
+   }
+  },
+  "caption2Strong": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase100}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightBase100}"
+   }
+  },
+  "subtitle1": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase500}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightBase500}"
+   }
+  },
+  "subtitle2": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase400}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightBase400}"
+   }
+  },
+  "subtitle2Stronger": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase400}",
+    "fontWeight": "{global.fontWeightBold}",
+    "lineHeight": "{global.lineHeightBase400}"
+   }
+  },
+  "title1": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeHero800}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightHero800}"
+   }
+  },
+  "title2": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeHero700}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightHero700}"
+   }
+  },
+  "title3": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeBase600}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightBase600}"
+   }
+  },
+  "largeTitle": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeHero900}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightHero900}"
+   }
+  },
+  "display": {
+   "$type": "typography",
+   "$value": {
+    "fontFamily": "{global.fontFamilyBase}",
+    "fontSize": "{global.fontSizeHero1000}",
+    "fontWeight": "{global.fontWeightSemibold}",
+    "lineHeight": "{global.lineHeightHero1000}"
+   }
+  }
+ }
+}

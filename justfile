@@ -142,10 +142,10 @@ fetch dir url rev:
 # Every artefact the recipes build, the same list as .gitignore: a new
 # package's archive joins both.
 #
-# Remove build/ and every package's compiled C library
+# Remove build/, every package's compiled C library and the kits' pages
 [group('general')]
 clean:
-    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib git/lib ui/kb/lib
+    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib git/lib ui/kb/lib tools/*/kit/index.html
 
 # ============================================================================
 # odin-run: tools/odin-run, the `#!/usr/bin/env odin-run` script runner.
@@ -675,8 +675,8 @@ material-kit-page:
     {{m3e_kit}}/kit/build.sh
 
 # ============================================================================
-# ui/fluent: jm:ui/fluent: its kitchen, its font, and the code generated from the
-# fluent-kit and the Fluent icons.
+# ui/fluent: jm:ui/fluent, its kitchen, its font, and the fluent-kit and
+# Fluent icons at tools/fluent that its generated code comes from.
 # ============================================================================
 
 # examples/fluent-kitchen: every jm:ui/fluent component, one page each,
@@ -722,35 +722,82 @@ fluent-fonts:
     curl -sSL --max-time 30 -o "$dir/LICENSE.txt" https://raw.githubusercontent.com/microsoft/Selawik/master/LICENSE.txt
     rm -rf "$tmp"
 
-# Regenerate ui/fluent/tokens from the fluent-kit (FLUENT_KIT)
+fluent_kit := "tools/fluent"
+
+# Regenerate ui/fluent/tokens from the fluent-kit
 [group('ui/fluent')]
 fluent-tokens:
-    {{odin}} run tools/design-tokens {{flags}} -- fluent "${FLUENT_KIT:-$HOME/Source/Personal/fluent-kit}/tokens/fluent.resolved.json" ui/fluent/tokens/tokens.odin
+    {{odin}} run tools/design-tokens {{flags}} -- fluent {{fluent_kit}}/tokens/fluent.resolved.json ui/fluent/tokens/tokens.odin
 
 # Regenerate ui/fluent/icon_data.odin from the Fluent UI System Icons in
-# FLUENT_ICONS, the directory fluent-icons-fetch fills.
+# tools/fluent/icons, which fluent-icons-fetch fills.
 #
-# Regenerate ui/fluent/icon_data.odin from FLUENT_ICONS
+# Regenerate ui/fluent/icon_data.odin from the vendored icons
 [group('ui/fluent')]
 fluent-icons:
-    {{odin}} run tools/fluent-icons {{flags}} -- "${FLUENT_ICONS:-$HOME/Source/Vendor/fluent-icons}" ui/fluent/icon_data.odin
+    {{odin}} run {{fluent_kit}}/icon-data {{flags}} -- {{fluent_kit}}/icons ui/fluent/icon_data.odin
 
-# Fetch the 20px regular and filled SVG of every icon named in
-# tools/fluent-icons/icons.txt from microsoft/fluentui-system-icons (MIT)
-# into FLUENT_ICONS, with the licence beside them.
+# Fetch the 20px regular and filled SVG of every icon named in icons.txt
+# from microsoft/fluentui-system-icons (MIT), with the licence beside
+# them, at ref: the pinned commit in icons/COMMIT unless another ref is
+# given (`just fluent-icons-fetch main` bumps it). The set is replaced
+# whole, so an icon dropped from icons.txt goes too.
 #
-# Fetch the icons tools/fluent-icons/icons.txt names into FLUENT_ICONS
+# Fetch the icons icons.txt names at a pinned commit
 [group('ui/fluent')]
-fluent-icons-fetch:
+fluent-icons-fetch ref="":
     #!/usr/bin/env bash
-    set -eu
-    dir="${FLUENT_ICONS:-$HOME/Source/Vendor/fluent-icons}"
-    base=https://raw.githubusercontent.com/microsoft/fluentui-system-icons/main
-    mkdir -p "$dir"
-    curl -sSL --max-time 30 -o "$dir/LICENSE" "$base/LICENSE"
+    set -euo pipefail
+    dir={{fluent_kit}}/icons
+    ref="{{ref}}"
+    [ -n "$ref" ] || ref=$(cat "$dir/COMMIT")
+    repo=https://github.com/microsoft/fluentui-system-icons
+    sha=$ref
+    if ! [[ $ref =~ ^[0-9a-f]{40}$ ]]; then sha=$(git ls-remote "$repo" "$ref" | cut -f1 | head -1); fi
+    [ -n "$sha" ] || { echo "no ref $ref in $repo" >&2; exit 1; }
+    base=https://raw.githubusercontent.com/microsoft/fluentui-system-icons/$sha
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    curl -sSfL --max-time 30 -o "$tmp/LICENSE" "$base/LICENSE"
     while read -r name; do
       folder=$(echo "$name" | sed 's/_/ /g; s/\b./\u&/g; s/ /%20/g')
       for v in regular filled; do
-        curl -sSL --max-time 30 -o "$dir/ic_fluent_${name}_20_$v.svg" "$base/assets/$folder/SVG/ic_fluent_${name}_20_$v.svg"
+        curl -sSfL --max-time 30 -o "$tmp/ic_fluent_${name}_20_$v.svg" "$base/assets/$folder/SVG/ic_fluent_${name}_20_$v.svg"
       done
-    done < tools/fluent-icons/icons.txt
+    done < "$dir/icons.txt"
+    rm -f "$dir"/ic_fluent_*.svg "$dir/LICENSE"
+    mv "$tmp"/* "$dir"/
+    echo "$sha" > "$dir/COMMIT"
+    echo "fetched $(ls "$dir"/ic_fluent_*.svg | wc -l) icons at $sha"
+
+# Regenerate the kit's tokens/*.json from the vendored @fluentui/tokens
+[group('ui/fluent')]
+fluent-kit-tokens:
+    cd {{fluent_kit}} && node scripts/tokens.mjs
+
+# Replaces source/ wholesale at one commit of microsoft/fluentui: the
+# token sources, the focus helpers, and each spec'd component's styles and
+# types files; then the @fluentui/tokens package that commit names. Needs
+# gh and npm.
+#
+# Re-vendor the kit's source/ at a microsoft/fluentui commit
+[group('ui/fluent')]
+fluent-kit-fetch commit="master":
+    {{fluent_kit}}/scripts/fetch.sh {{commit}}
+
+# Regenerate the kit's kit.json, the index an agent reads first
+[group('ui/fluent')]
+fluent-kit-index:
+    {{fluent_kit}}/scripts/index.sh
+
+# Needs jq, node and the jsonschema CLI.
+#
+# Validate the kit: schemas, token paths, cited sources, fresh kit.json and tokens
+[group('ui/fluent')]
+fluent-kit-check:
+    {{fluent_kit}}/scripts/check.sh
+
+# Bundle the kit into kit/index.html, a page for people
+[group('ui/fluent')]
+fluent-kit-page:
+    {{fluent_kit}}/kit/build.sh

@@ -1,0 +1,248 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "label",
+  "name": "Label",
+  "status": "stable",
+  "summary": "Text that names a form control, with an optional required indicator. Use it through Field where there is one; use it alone only to label a control Field cannot wrap.",
+  "tokenGroups": [
+    "tokens.fontFamilyBase",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorPaletteRedForeground3",
+    "tokens.spacingHorizontalXS",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase300",
+    "tokens.lineHeightBase400",
+    "tokens.fontWeightSemibold"
+  ],
+  "references": {
+    "react": [
+      "useLabelStyles.styles.ts",
+      "Label.types.ts"
+    ],
+    "fluent2": [
+      "label"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The label text."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Font size and line height; large is also semibold."
+    },
+    {
+      "name": "weight",
+      "type": "enum",
+      "values": [
+        "regular",
+        "semibold"
+      ],
+      "required": false,
+      "default": "regular",
+      "description": "semibold raises the weight at any size."
+    },
+    {
+      "name": "required",
+      "type": "slot",
+      "required": false,
+      "default": false,
+      "description": "true appends an asterisk; a string or element appends that indicator instead."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the text and indicator in the disabled colour."
+    },
+    {
+      "name": "htmlFor",
+      "type": "string",
+      "required": false,
+      "description": "Native for: the id of the control it names."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Label",
+      "description": "A native label element holding the text."
+    },
+    {
+      "id": "required",
+      "name": "Required indicator",
+      "description": "A span after the text, an asterisk by default, in red with a small gap before it.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "fontSizeBase200 on lineHeightBase200.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "fontSizeBase300 on lineHeightBase300.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "fontSizeBase400 on lineHeightBase400, always semibold.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.fontWeightSemibold"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "regular",
+      "default": true,
+      "description": "Declares no weight; see the gotcha."
+    },
+    {
+      "axis": "weight",
+      "value": "semibold",
+      "description": "fontWeightSemibold.",
+      "tokens": [
+        "tokens.fontWeightSemibold"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "text",
+      "part": "root",
+      "text": "The label is fontFamilyBase in colorNeutralForeground1 at the size's font size and line height; it sets no display, padding or margin, so it flows inline like the native element.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.colorNeutralForeground1",
+        "tokens.fontSizeBase200",
+        "tokens.fontSizeBase300",
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase200",
+        "tokens.lineHeightBase300",
+        "tokens.lineHeightBase400"
+      ],
+      "source": "useLabelStyles.styles.ts:17-20,34-48"
+    },
+    {
+      "id": "required",
+      "part": "required",
+      "text": "The required indicator is colorPaletteRedForeground3 with spacingHorizontalXS before it, in the label's font.",
+      "tokens": [
+        "tokens.colorPaletteRedForeground3",
+        "tokens.spacingHorizontalXS"
+      ],
+      "source": "useLabelStyles.styles.ts:29-32,70-78"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: colorNeutralForeground1 text, colorPaletteRedForeground3 indicator. A label has no hover or pressed look.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorPaletteRedForeground3"
+      ],
+      "source": "useLabelStyles.styles.ts:17-32"
+    },
+    {
+      "state": "focused",
+      "text": "Not focusable and draws no indicator; clicking it focuses the control named by htmlFor, which draws its own.",
+      "source": "useLabelStyles.styles.ts:16-53"
+    },
+    {
+      "state": "disabled",
+      "text": "The text and the required indicator both turn colorNeutralForegroundDisabled.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useLabelStyles.styles.ts:22-27,64,75"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "for",
+      "text": "As a native label, a click on it moves focus to (or toggles) the control whose id is its for.",
+      "source": "Label.types.ts:33-36"
+    },
+    {
+      "id": "required-content",
+      "part": "required",
+      "text": "required true renders an asterisk; a string or element renders that content in the indicator's style instead.",
+      "source": "Label.types.ts:13-18"
+    }
+  ],
+  "accessibility": {
+    "role": "label",
+    "minTargetPx": null,
+    "keyboard": [
+      "None; not in the tab order"
+    ],
+    "semantics": [
+      "Names its control through for and id, or through aria-labelledby when Field wires it",
+      "The asterisk is visual only; the control must carry aria-required itself"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "weight regular sets no font weight at all: the label inherits whatever weight its parent has. Set fontWeightRegular explicitly when rendering without CSS inheritance, or inside a bold context.",
+      "source": "useLabelStyles.styles.ts:17-20,50-52,66"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Large is semibold regardless of weight; there is no large regular label.",
+      "tokens": [
+        "tokens.fontWeightSemibold"
+      ],
+      "source": "useLabelStyles.styles.ts:44-48"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The required indicator reads colorPaletteRedForeground3, while Field's error text reads colorPaletteRedForeground1; the two reds differ in light and dark themes.",
+      "tokens": [
+        "tokens.colorPaletteRedForeground3"
+      ],
+      "source": "useLabelStyles.styles.ts:30; useFieldStyles.styles.ts:89"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a disabled label and its indicator turn GrayText; otherwise the high-contrast theme's aliases apply, in which the red indicator resolves to the same white as the text.",
+      "source": "useLabelStyles.styles.ts:22-27"
+    },
+    {
+      "kind": "inferred",
+      "text": "The asterisk's accessibility (visual only, aria-required on the control) follows the design site's guidance; the styles file only colours it.",
+      "source": "fluent2:label"
+    }
+  ]
+}

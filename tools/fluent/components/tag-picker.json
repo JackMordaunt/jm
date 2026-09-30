@@ -1,0 +1,680 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tag-picker",
+  "name": "TagPicker",
+  "status": "stable",
+  "summary": "A multi-select combobox whose selections show as dismissible tags inside the field: a control holding a tag group, an input to type into and an expand icon, and a list of options in a popover. Choose it over a multiselect Combobox when the chosen items need to stay visible and removable in place.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorTransparentBackground",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorTransparentStroke",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.shadow16",
+    "tokens.borderRadiusMedium",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingVerticalSNudge",
+    "tokens.spacingVerticalS",
+    "tokens.spacingVerticalMNudge",
+    "tokens.spacingVerticalM",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase500",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "typographyStyles.body2",
+    "tokens.durationUltraFast",
+    "tokens.durationNormal",
+    "tokens.curveAccelerateMid",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "TagPicker.types.ts",
+      "useTagPickerControlStyles.styles.ts",
+      "TagPickerControl.types.ts",
+      "useTagPickerInputStyles.styles.ts",
+      "TagPickerInput.types.ts",
+      "useTagPickerButtonStyles.styles.ts",
+      "TagPickerButton.types.ts",
+      "useTagPickerGroupStyles.styles.ts",
+      "TagPickerGroup.types.ts",
+      "useTagPickerListStyles.styles.ts",
+      "TagPickerList.types.ts",
+      "useTagPickerOptionStyles.styles.ts",
+      "TagPickerOption.types.ts",
+      "useTagPickerOptionGroupStyles.styles.ts",
+      "TagPickerOptionGroup.types.ts"
+    ],
+    "fluent2": [
+      "tag-picker"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "The control's colour and border treatment, as Combobox's."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "medium",
+        "large",
+        "extra-large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Minimum control height (32, 40, 44), tag size, input padding and icon size together. There is no small."
+    },
+    {
+      "name": "options",
+      "type": "list",
+      "required": true,
+      "description": "The options, each with a value and text, optional media (an avatar or icon) and secondary content, optionally grouped."
+    },
+    {
+      "name": "selectedOptions",
+      "type": "list",
+      "required": false,
+      "description": "The selected values, each shown as a tag in the group."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The input's typed text, used by the caller to filter the options."
+    },
+    {
+      "name": "trigger",
+      "type": "enum",
+      "values": [
+        "input",
+        "button"
+      ],
+      "required": false,
+      "default": "input",
+      "description": "Whether the control holds a typeable input or a read-only button beside the tags."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Shown in colorNeutralForeground4 while nothing is typed."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the option list shows; reported through onOpenChange."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lays the list out in flow below the control instead of floating."
+    },
+    {
+      "name": "noPopover",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A picker with no list at all: tags and the input only, for free entry."
+    },
+    {
+      "name": "secondaryAction",
+      "type": "slot",
+      "required": false,
+      "description": "A button-like element after the expand icon, such as an add button."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disabled colours on the control, input and icon; no list."
+    },
+    {
+      "name": "invalid",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "aria-invalid: the border reads colorPaletteRedBorder2 while focus is not within."
+    },
+    {
+      "name": "onOptionSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the toggled value and the new selection when an option is picked or a tag dismissed."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when the list opens or closes."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "control",
+      "name": "Control",
+      "description": "The field: a wrapping flex row of the tag group, the input or button and the aside, with the appearance's fill and border, borderRadiusMedium, spacingHorizontalM side padding (the end padding grown by the aside's width), a 250px minimum width and the bottom focus line drawn by ::after.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "id": "group",
+      "name": "Tag group",
+      "description": "The selected options as tags, wrapping, padded vertically by the size and gapped by it; a text cursor over its empty space.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "The typeable text after the tags, role combobox: borderless and transparent, at least 24px wide and growing to fill the row, body1 text in colorNeutralForeground1 with a colorNeutralForeground4 placeholder.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "description": "The read-only trigger alternative to the input: a transparent, borderless button growing to fill the row, visually hidden once anything is selected.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4"
+      ]
+    },
+    {
+      "id": "aside",
+      "name": "Aside",
+      "description": "The end column, absolutely placed inside the control's end padding and as tall as the control: the expand icon and the secondary action.",
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "id": "expand-icon",
+      "name": "Expand icon",
+      "description": "The chevron in colorNeutralStrokeAccessible, 16, 20 or 24px by size, top-aligned in a slot as tall as the size's minimum height.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "id": "secondary-action",
+      "name": "Secondary action",
+      "description": "An optional flex slot after the expand icon for a caller's button.",
+      "optional": true
+    },
+    {
+      "id": "list",
+      "name": "List",
+      "description": "The popover: a Listbox with shadow16, borderRadiusMedium and at most 80% of the viewport tall; display none while closed.",
+      "tokens": [
+        "tokens.shadow16",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "option",
+      "name": "Option",
+      "description": "A Combobox option with no check icon: a flex row of optional media and the text, or with secondary content a two-column grid where the media spans both rows and the caption1 secondary content sits under the text.",
+      "tokens": [
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "id": "option-group",
+      "name": "Option group",
+      "description": "Combobox's OptionGroup unchanged.",
+      "optional": true
+    },
+    {
+      "id": "focus-line",
+      "name": "Focus line",
+      "description": "The control's ::after, Combobox's focus line."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "Background 1 fill; a strokeWidthThin Stroke 1 border with a StrokeAccessible bottom, stepping to Hover and Pressed on hover, press and focus.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "underline",
+      "description": "Transparent background, no radius, a strokeWidthThin StrokeAccessible bottom border only.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker",
+      "description": "Background 3 fill with a strokeWidthThin transparent border.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "Background 1 fill with a strokeWidthThin transparent border.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorTransparentStroke"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px minimum height; the group pads spacingVerticalSNudge and gaps spacingHorizontalXS; the input pads spacingVerticalSNudge; 16px icon; caption1 button text.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingHorizontalXS",
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px minimum height; the group pads spacingVerticalS and gaps spacingHorizontalSNudge; the input pads spacingVerticalMNudge; 20px icon; body1 button text.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingVerticalMNudge",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-large",
+      "description": "44px minimum height; the group pads spacingVerticalS and gaps spacingHorizontalSNudge; the input pads spacingVerticalM; 24px icon with a spacingHorizontalSNudge margin; body2 button text.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingVerticalM",
+        "typographyStyles.body2"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "control-box",
+      "part": "control",
+      "text": "The control is a wrapping flex row, items centred, spacingHorizontalXXS apart, at least 250px wide and at least 32, 40 or 44px tall by size, padded spacingHorizontalM at the start and spacingHorizontalM plus the aside's width at the end, with borderRadiusMedium (none for underline).",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalM",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 250,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightLarge",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightExtraLarge",
+          "value": 44,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:24-35,94-103"
+    },
+    {
+      "id": "group-box",
+      "part": "group",
+      "text": "The tag group wraps, padded top and bottom by spacingVerticalSNudge (medium) or spacingVerticalS (large, extra-large) with a spacingHorizontalXS (medium) or spacingHorizontalSNudge gap; its tags take the picker's size.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "source": "useTagPickerGroupStyles.styles.ts:17-36"
+    },
+    {
+      "id": "input-box",
+      "part": "input",
+      "text": "The input is body1 at every size, padded top and bottom by spacingVerticalSNudge, MNudge or M, at least 24px wide, at most the row, growing to fill it; its width is measured from its text so the tags and input share one wrapping row.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalMNudge",
+        "tokens.spacingVerticalM"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagPickerInputStyles.styles.ts:13-56"
+    },
+    {
+      "id": "button-box",
+      "part": "button",
+      "text": "The button trigger pads 3px vertically and spacingHorizontalSNudge at the end at medium (caption1), 5px and MNudge at large (body1), 7px and M at extra-large (body2), with a start padding one spacingHorizontalXXS (SNudge at extra-large) beyond the end; at least 32px tall.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "values": [
+        {
+          "name": "paddingVerticalMedium",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVerticalLarge",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVerticalExtraLarge",
+          "value": 7,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagPickerButtonStyles.styles.ts:16-57"
+    },
+    {
+      "id": "aside-box",
+      "part": "aside",
+      "text": "The aside is a flex row absolutely placed at the control's top, inset spacingHorizontalM from the end, as tall as the control with the size's minimum height; the control reserves its width in the end padding through a CSS variable.",
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:19,27,162-181"
+    },
+    {
+      "id": "icon-box",
+      "part": "expand-icon",
+      "text": "The expand icon is 16px at medium, 20px at large and 24px at extra-large, with a spacingHorizontalXXS start margin (SNudge at extra-large), centred in a slot as tall as the size's minimum height and aligned to the top of the aside so it stays on the first row of tags.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "values": [
+        {
+          "name": "iconMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconExtraLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:183-225"
+    },
+    {
+      "id": "list-box",
+      "part": "list",
+      "text": "The list is a Listbox with shadow16, borderRadiusMedium and at most 80% of the viewport height.",
+      "tokens": [
+        "tokens.shadow16",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "maxHeightViewport",
+          "value": 80,
+          "unit": "percent"
+        }
+      ],
+      "source": "useTagPickerListStyles.styles.ts:15-25"
+    },
+    {
+      "id": "option-box",
+      "part": "option",
+      "text": "An option is Combobox's option row without the check icon; with secondary content it becomes a grid of an auto media column and a text column, the media spanning both rows and the caption1 secondary content in the second row.",
+      "tokens": [
+        "typographyStyles.caption1"
+      ],
+      "source": "useTagPickerOptionStyles.styles.ts:15-35,53-60"
+    },
+    {
+      "id": "focus-line",
+      "part": "focus-line",
+      "text": "The focus line is Combobox's: 1px outside the control's left, right and bottom edges, a strokeWidthThick colorCompoundBrandStroke bottom border clipped to its last 2px.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorCompoundBrandStroke",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:44-56"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's fill and border, colorNeutralForeground1 text, colorNeutralForeground4 placeholder, colorNeutralStrokeAccessible icon, the focus line at zero.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:106-110,189-198; useTagPickerInputStyles.styles.ts:13-25"
+    },
+    {
+      "state": "hovered",
+      "text": "Outline only: the border turns colorNeutralStroke1Hover with a colorNeutralStrokeAccessibleHover bottom.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStrokeAccessibleHover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTagPickerControlStyles.styles.ts:112-116"
+    },
+    {
+      "state": "pressed",
+      "text": "Outline only: pressed or focus within, the border turns colorNeutralStroke1Pressed with a StrokeAccessiblePressed bottom; a press while focused turns the focus line colorCompoundBrandStrokePressed.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandStrokePressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTagPickerControlStyles.styles.ts:78-80,118-126"
+    },
+    {
+      "state": "focused",
+      "text": "While focus is within the control the focus line scales to full width over durationNormal on curveDecelerateMid and back over durationUltraFast on curveAccelerateMid.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useTagPickerControlStyles.styles.ts:57-77"
+    },
+    {
+      "state": "error",
+      "text": "aria-invalid: while focus is not within, the border (the bottom border for underline) reads colorPaletteRedBorder2.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2"
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:141-150"
+    },
+    {
+      "state": "disabled",
+      "text": "A transparent background and colorNeutralStrokeDisabled border, colorNeutralForegroundDisabled text, placeholder and icon, a not-allowed pointer; the list never opens.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:152-159,221-224; useTagPickerInputStyles.styles.ts:57-64"
+    },
+    {
+      "state": "open",
+      "text": "The list shows below the control; closed it is display none with no motion.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTagPickerListStyles.styles.ts:23-25,31-39"
+    },
+    {
+      "state": "selected",
+      "part": "group",
+      "text": "Each selected option is a tag in the group; with the button trigger, any selection hides the button and leaves the tags.",
+      "source": "useTagPickerButtonStyles.styles.ts:130-142; TagPickerGroup.types.ts:14-16"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "Clicking the control or its expand icon, ArrowDown on the input, or typing opens the list; Escape, Tab and a click outside close it; onOpenChange reports the change.",
+      "source": "TagPicker.types.ts:29-32,37-47,56; fluent2:tag-picker"
+    },
+    {
+      "id": "select",
+      "text": "Picking an option adds it to the selection as a tag and clears the typed text; the list stays open for more picks. onOptionSelect reports the toggled value and the whole selection.",
+      "source": "TagPicker.types.ts:24-27,57"
+    },
+    {
+      "id": "dismiss",
+      "text": "A tag's dismiss button, or Backspace in an empty input, removes the last (or that) selection through the same callback.",
+      "source": "TagPicker.types.ts:24-27; fluent2:tag-picker"
+    },
+    {
+      "id": "no-popover",
+      "text": "With noPopover the control has no list: the input's committed text becomes a tag through the caller, for free-form entry.",
+      "source": "TagPicker.types.ts:49-55"
+    },
+    {
+      "id": "filter",
+      "text": "The picker does not filter: the caller renders the options that match value and hides the ones already selected.",
+      "source": "TagPicker.types.ts:37-47; fluent2:tag-picker"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox",
+    "minTargetPx": 16,
+    "keyboard": [
+      "ArrowDown opens the list and moves the active option; ArrowUp moves back",
+      "Enter selects the active option",
+      "Backspace in an empty input removes the last tag; ArrowLeft moves into the tags",
+      "Escape closes the list; Tab moves on"
+    ],
+    "semantics": [
+      "the input (or button) has role combobox with aria-expanded and aria-controls the list",
+      "the list is a listbox with aria-multiselectable; options report aria-selected",
+      "the tag group is a list of the selections, each tag's dismiss labelled with its text",
+      "disabled and aria-invalid sit on the control"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 250px minimum width, minimum heights (32, 40, 44px), the input's 24px minimum width, the button's 3, 5 and 7px vertical padding, the icon sizes (16, 20, 24px) and the list's 80vh are constants in the styles files.",
+      "source": "useTagPickerControlStyles.styles.ts:33,94-103,183-187; useTagPickerInputStyles.styles.ts:31; useTagPickerButtonStyles.styles.ts:39-57; useTagPickerListStyles.styles.ts:19"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The icon sizes are one step smaller than Combobox's for the same name: medium reads the 16px small icon, large the 20px medium icon, extra-large the 24px large icon.",
+      "source": "useTagPickerControlStyles.styles.ts:183-220"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The input is body1 at every size; only its vertical padding grows with the size, unlike the button trigger, which changes text style.",
+      "tokens": [
+        "typographyStyles.body1"
+      ],
+      "source": "useTagPickerInputStyles.styles.ts:45-56; useTagPickerButtonStyles.styles.ts:39-57"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus line's curves are written to transitionDelay, as in Combobox; read them as the easing.",
+      "tokens": [
+        "tokens.curveAccelerateMid",
+        "tokens.curveDecelerateMid"
+      ],
+      "source": "useTagPickerControlStyles.styles.ts:57-71"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a disabled control's border reads the system GrayText and the control declares a transparent 2px outline while focus is within.",
+      "source": "useTagPickerControlStyles.styles.ts:37-42,156-158"
+    }
+  ]
+}

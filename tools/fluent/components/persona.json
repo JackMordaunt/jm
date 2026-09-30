@@ -1,0 +1,342 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "persona",
+  "name": "Persona",
+  "status": "stable",
+  "summary": "A person: an Avatar or a presence badge beside up to four lines of text, the name first. Use it in lists, headers and pickers; an Avatar alone is the picture without the text.",
+  "tokenGroups": [
+    "typographyStyles.body1",
+    "typographyStyles.caption1",
+    "typographyStyles.subtitle2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM"
+  ],
+  "references": {
+    "react": [
+      "usePersonaStyles.styles.ts",
+      "Persona.types.ts"
+    ],
+    "fluent2": [
+      "persona"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": "The person's name, passed to the avatar for its initials and colour, and shown as the primary text when no primaryText slot is given."
+    },
+    {
+      "name": "primaryText",
+      "type": "slot",
+      "required": false,
+      "description": "The first line, body1 in Foreground 1."
+    },
+    {
+      "name": "secondaryText",
+      "type": "slot",
+      "required": false,
+      "description": "The second line, caption1 in Foreground 2, pulled up 2px."
+    },
+    {
+      "name": "tertiaryText",
+      "type": "slot",
+      "required": false,
+      "description": "The third line, caption1 in Foreground 2."
+    },
+    {
+      "name": "quaternaryText",
+      "type": "slot",
+      "required": false,
+      "description": "The fourth line, caption1 in Foreground 2."
+    },
+    {
+      "name": "avatar",
+      "type": "slot",
+      "required": false,
+      "description": "The Avatar; sized by the persona's size and given the name."
+    },
+    {
+      "name": "presence",
+      "type": "slot",
+      "required": false,
+      "description": "A PresenceBadge, shown on the avatar, or alone when presenceOnly."
+    },
+    {
+      "name": "presenceOnly",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the presence badge in place of the avatar."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "extra-small",
+        "small",
+        "medium",
+        "large",
+        "extra-large",
+        "huge"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "The avatar's size step (20, 28, 32, 36, 40, 56px through the Avatar) and the gap to the text."
+    },
+    {
+      "name": "textPosition",
+      "type": "enum",
+      "values": [
+        "after",
+        "before",
+        "below"
+      ],
+      "required": false,
+      "default": "after",
+      "description": "Where the text sits relative to the media."
+    },
+    {
+      "name": "textAlignment",
+      "type": "enum",
+      "values": [
+        "start",
+        "center"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "start aligns the media to the top of the text block; center centres it."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Persona",
+      "description": "An inline grid: a max-content media column and an auto text column (reversed for before, stacked for below), rows of max-content, items justified start."
+    },
+    {
+      "id": "avatar",
+      "name": "Avatar",
+      "description": "The media, spanning every text row (five, or six when centred) with the size's spacing on the side facing the text.",
+      "optional": true
+    },
+    {
+      "id": "presence",
+      "name": "Presence",
+      "description": "The presence badge in the media column when presenceOnly, with SNudge spacing at small and the size's otherwise; with start alignment at sizes up to large it aligns to the primary line instead of spanning.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "id": "primary-text",
+      "name": "Primary text",
+      "description": "body1 in Foreground 1, block; subtitle2 at extra-large and huge, and caption1 for a one-line presence-only extra-small persona.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.subtitle2",
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "id": "secondary-text",
+      "name": "Secondary text",
+      "description": "caption1 in Foreground 2, block, pulled up 2px; body1 at huge with an avatar.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1",
+        "typographyStyles.body1",
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "tertiary-text",
+      "name": "Tertiary text",
+      "description": "caption1 in Foreground 2, block.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "id": "quaternary-text",
+      "name": "Quaternary text",
+      "description": "caption1 in Foreground 2, block.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground2"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "textPosition",
+      "value": "after",
+      "default": true,
+      "description": "Media left, text right; the media's spacing is a right margin."
+    },
+    {
+      "axis": "textPosition",
+      "value": "before",
+      "description": "Text left, media right, items justified end; the media's spacing is a left margin."
+    },
+    {
+      "axis": "textPosition",
+      "value": "below",
+      "description": "Media above the text, everything centred; the media's spacing is a bottom margin."
+    },
+    {
+      "axis": "textAlignment",
+      "value": "start",
+      "default": true,
+      "description": "The media aligns to the top of the text; a presence-only badge at sizes up to large aligns to the primary line."
+    },
+    {
+      "axis": "textAlignment",
+      "value": "center",
+      "description": "The media centres against the text block through a row template with 1fr rows above and below the four text rows."
+    },
+    {
+      "axis": "size",
+      "value": "extra-small",
+      "description": "SNudge spacing; a one-line presence-only persona reads caption1.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "S spacing (SNudge when presence-only).",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "S spacing.",
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "MNudge spacing.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-large",
+      "description": "MNudge spacing; the primary line is subtitle2.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge",
+        "typographyStyles.subtitle2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "huge",
+      "description": "M spacing; the primary line is subtitle2 and, with an avatar, the optional lines body1.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "typographyStyles.subtitle2",
+        "typographyStyles.body1"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "grid",
+      "text": "The root is an inline grid with auto-flow column, max-content rows and columns max-content then auto (auto then max-content for before, none for below); the media spans five rows, or six when text is centred, where the template adds a 1fr row above and below the four named text rows.",
+      "source": "usePersonaStyles.styles.ts:20-57,126-158"
+    },
+    {
+      "id": "spacing",
+      "text": "The gap between media and text is a margin on the media in the direction of the text: SNudge at extra-small, S at small and medium, MNudge at large and extra-large, M at huge; a presence-only small persona uses SNudge.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "usePersonaStyles.styles.ts:87-121"
+    },
+    {
+      "id": "text",
+      "text": "The primary line is body1 Foreground 1 and the others caption1 Foreground 2, each a block; the second line is pulled up 2px; at extra-large and huge the primary is subtitle2, at huge with an avatar the other lines are body1, and a one-line presence-only extra-small persona's primary is caption1.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.caption1",
+        "typographyStyles.subtitle2",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground2"
+      ],
+      "values": [
+        {
+          "name": "secondLinePullUp",
+          "value": -2,
+          "unit": "px"
+        }
+      ],
+      "source": "usePersonaStyles.styles.ts:77-79,219-289"
+    },
+    {
+      "id": "align-to-primary",
+      "text": "A presence-only persona with start alignment at sizes below extra-large aligns its badge to the primary line: the badge is centred in the first row and the text occupies the column after (or before) the middle line.",
+      "source": "usePersonaStyles.styles.ts:66-75,129,169-170,232-237,266-271"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "A persona has no interaction states of its own; its avatar and any surrounding control carry them.",
+      "source": "usePersonaStyles.styles.ts:126-158"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "static",
+      "text": "Nothing animates; the avatar's own active ring and the presence badge follow their specs.",
+      "motion": {
+        "instant": true
+      },
+      "source": "usePersonaStyles.styles.ts:126-158"
+    }
+  ],
+  "accessibility": {
+    "role": "none",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "the avatar is labelled by the name and the presence badge by its status; the text lines are plain text read in order"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The -2px second-line pull-up and the row template are constants; every spacing is a token.",
+      "source": "usePersonaStyles.styles.ts:77-79,32-36"
+    },
+    {
+      "kind": "inferred",
+      "text": "The avatar's pixel size per persona size (20, 28, 32, 36, 40, 56px) is set by the persona hook, not the styles file; avatar.json's size ramp is what it maps onto.",
+      "source": "fluent2:persona; Persona.types.ts:69"
+    }
+  ]
+}

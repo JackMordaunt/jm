@@ -1,0 +1,979 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "menu",
+  "name": "Menu",
+  "status": "stable",
+  "summary": "A floating list of commands or options opened from a trigger, for actions that do not warrant a visible button each. Items can carry an icon, a shortcut, a submenu, a checkmark (checkbox or radio) or a switch; use a select or combobox instead when the user picks a value for a form field.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2BrandSelected",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForeground3Hover",
+    "tokens.colorNeutralForeground3Pressed",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke2",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorCompoundBrandBackgroundHover",
+    "tokens.colorCompoundBrandBackgroundPressed",
+    "tokens.colorNeutralForegroundInverted",
+    "tokens.colorTransparentStrokeInteractive",
+    "tokens.shadow16",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.strokeWidthThin",
+    "tokens.spacingVerticalSNudge",
+    "tokens.spacingHorizontalXS",
+    "typographyStyles.body1",
+    "typographyStyles.caption1",
+    "typographyStyles.caption2",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase100",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.lineHeightBase100",
+    "tokens.lineHeightBase300",
+    "tokens.fontWeightRegular",
+    "tokens.fontWeightSemibold",
+    "tokens.durationNormal",
+    "tokens.curveEasyEase",
+    "tokens.durationSlower",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "Menu.types.ts",
+      "MenuTrigger.types.ts",
+      "useMenuPopoverStyles.styles.ts",
+      "MenuPopover.types.ts",
+      "useMenuListStyles.styles.ts",
+      "MenuList.types.ts",
+      "useMenuItemStyles.styles.ts",
+      "MenuItem.types.ts",
+      "useCheckmarkStyles.styles.ts",
+      "useMenuItemCheckboxStyles.styles.ts",
+      "MenuItemCheckbox.types.ts",
+      "useMenuItemRadioStyles.styles.ts",
+      "MenuItemRadio.types.ts",
+      "useMenuItemSwitchStyles.styles.ts",
+      "MenuItemSwitch.types.ts",
+      "useMenuItemLinkStyles.styles.ts",
+      "MenuItemLink.types.ts",
+      "useMenuDividerStyles.styles.ts",
+      "MenuDivider.types.ts",
+      "useMenuGroupStyles.styles.ts",
+      "MenuGroup.types.ts",
+      "useMenuGroupHeaderStyles.styles.ts",
+      "MenuGroupHeader.types.ts",
+      "useMenuSplitGroupStyles.styles.ts",
+      "MenuSplitGroup.types.ts",
+      "MenuSurfaceMotion.ts"
+    ],
+    "fluent2": [
+      "menu"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: controls visibility from outside."
+    },
+    {
+      "name": "defaultOpen",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: the initial visibility when the menu controls itself."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Menu: runs when a trigger click, hover, context click, key press, item click, outside click or outside scroll asks to open or close, with the new value and the cause."
+    },
+    {
+      "name": "openOnHover",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: opens on pointer hover over the trigger, after hoverDelay; submenus always do."
+    },
+    {
+      "name": "openOnContext",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: opens on right-click at the pointer and disables every other way of opening."
+    },
+    {
+      "name": "hoverDelay",
+      "type": "number",
+      "required": false,
+      "description": "Menu: milliseconds before a hover opens or a leave closes the menu."
+    },
+    {
+      "name": "persistOnItemClick",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: keeps the menu open after an item is clicked."
+    },
+    {
+      "name": "closeOnScroll",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: closes when the page scrolls outside the menu."
+    },
+    {
+      "name": "positioning",
+      "type": "enum",
+      "values": [
+        "below",
+        "above",
+        "before",
+        "after"
+      ],
+      "required": false,
+      "description": "Menu: where the popover sits relative to its trigger, with an alignment; it flips to stay in the viewport."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu: renders the popover in DOM order instead of a portal on the document body; ignored for submenus."
+    },
+    {
+      "name": "hasIcons",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu or MenuList: reserves the icon column on every item so labels align when only some items have icons."
+    },
+    {
+      "name": "hasCheckmarks",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Menu or MenuList: reserves the checkmark column on every item so labels align beside checkbox and radio items."
+    },
+    {
+      "name": "checkedValues",
+      "type": "list",
+      "required": false,
+      "description": "Menu or MenuList: the checked item values per group name, when the caller controls them."
+    },
+    {
+      "name": "defaultCheckedValues",
+      "type": "list",
+      "required": false,
+      "description": "Menu or MenuList: the checked values at first, when the list controls itself."
+    },
+    {
+      "name": "onCheckedValueChange",
+      "type": "callback",
+      "required": false,
+      "description": "Menu or MenuList: runs when a checkbox, radio or switch item changes, with its group name and that group's checked values."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "MenuItem: a 20px icon before the label."
+    },
+    {
+      "name": "secondaryContent",
+      "type": "slot",
+      "required": false,
+      "description": "MenuItem: text at the item's end, such as a keyboard shortcut."
+    },
+    {
+      "name": "subText",
+      "type": "slot",
+      "required": false,
+      "description": "MenuItem: a second, smaller line under the label; makes the item multiline."
+    },
+    {
+      "name": "hasSubmenu",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "MenuItem: marks the item as a submenu trigger and shows the submenu indicator."
+    },
+    {
+      "name": "persistOnClick",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "MenuItem: clicking this item leaves the menu open."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "MenuItem and its kinds: draws the disabled colour and ignores activation, but stays focusable for arrow navigation."
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": "MenuItemCheckbox, MenuItemRadio, MenuItemSwitch: the group this item's value belongs to in checkedValues."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": true,
+      "description": "MenuItemCheckbox, MenuItemRadio, MenuItemSwitch: the value recorded in checkedValues when the item is checked."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": true,
+      "description": "MenuItemLink: the link target; the item renders as an anchor."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "MenuItem: the label; MenuGroupHeader: the heading text; Menu: a MenuTrigger and a MenuPopover."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "trigger",
+      "name": "MenuTrigger",
+      "description": "Wraps one element (usually a button or menu button) that opens the menu; it adds aria-haspopup=menu and aria-expanded and no styling."
+    },
+    {
+      "id": "popover",
+      "name": "MenuPopover",
+      "description": "The floating surface: Background 1, medium radius, shadow16, 4px padding and a 1px transparent border.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.borderRadiusMedium",
+        "tokens.shadow16"
+      ]
+    },
+    {
+      "id": "list",
+      "name": "MenuList",
+      "description": "A vertical flex column of items, 2px apart; it owns keyboard navigation and the checked values."
+    },
+    {
+      "id": "item",
+      "name": "MenuItem",
+      "description": "One row, at least 32px tall: optional checkmark, icon, the label (content) with optional subText, secondary content and submenu indicator, 4px apart.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground2",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "checkmark",
+      "name": "Checkmark",
+      "description": "The leading check (checkbox items) or dot-check (radio items) column; hidden but space-keeping when unchecked, reserved on plain items by hasCheckmarks.",
+      "optional": true
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A 20px square icon slot before the label.",
+      "optional": true
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "description": "The label, growing to fill the row; becomes a column holding the label and the subText when subText is given."
+    },
+    {
+      "id": "subtext",
+      "name": "SubText",
+      "description": "A caption2 second line in Foreground 3 under the label.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption2",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "id": "secondary-content",
+      "name": "Secondary content",
+      "description": "End-aligned caption1 text in Foreground 3, typically a shortcut.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "id": "submenu-indicator",
+      "name": "Submenu indicator",
+      "description": "A 20px chevron at the item's end showing it opens a submenu.",
+      "optional": true
+    },
+    {
+      "id": "switch-indicator",
+      "name": "Switch indicator",
+      "description": "MenuItemSwitch only: a 40 by 20px pill track holding an 18px thumb, at the item's end.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorCompoundBrandBackground",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "MenuDivider",
+      "description": "A 1px Stroke 2 rule between items that bleeds to the popover's padding edge.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStroke2"
+      ]
+    },
+    {
+      "id": "group",
+      "name": "MenuGroup",
+      "description": "An unstyled wrapper that labels a run of items with its header.",
+      "optional": true
+    },
+    {
+      "id": "group-header",
+      "name": "MenuGroupHeader",
+      "description": "A 32px-tall semibold caption-sized heading in Foreground 3 above a group.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightSemibold"
+      ]
+    },
+    {
+      "id": "split-group",
+      "name": "MenuSplitGroup",
+      "description": "A row joining a main item and a submenu-trigger item, split by a short vertical rule.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "item",
+      "value": "item",
+      "default": true,
+      "description": "MenuItem: a command; activating it runs onClick and closes the menu."
+    },
+    {
+      "axis": "item",
+      "value": "checkbox",
+      "description": "MenuItemCheckbox: toggles its value in its group; the checkmark column shows a check when checked. Styled exactly as MenuItem plus the checkmark styles."
+    },
+    {
+      "axis": "item",
+      "value": "radio",
+      "description": "MenuItemRadio: selects its value and clears the rest of its group; styled exactly as MenuItem plus the checkmark styles."
+    },
+    {
+      "axis": "item",
+      "value": "switch",
+      "description": "MenuItemSwitch: toggles its value and shows a switch indicator at the end; never has a checkmark or submenu and keeps the menu open on click.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorCompoundBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundInverted"
+      ]
+    },
+    {
+      "axis": "item",
+      "value": "link",
+      "description": "MenuItemLink: an anchor with the item's look and all text decoration removed; it has no subText or submenu."
+    },
+    {
+      "axis": "layout",
+      "value": "multiline",
+      "description": "An item with subText stacks label and subText in the content column and centres the secondary content, submenu indicator and switch vertically; single-line items align everything to the top.",
+      "tokens": [
+        "typographyStyles.caption2"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "popover",
+      "part": "popover",
+      "text": "The popover is a border-box surface as wide as its content (max-content) between 138px and 300px, clipping horizontal overflow; it pads 4px inside a 1px colorTransparentStroke border, rounds to borderRadiusMedium, casts shadow16, fills colorNeutralBackground1 with colorNeutralForeground1 text, and sets body1 type for everything inside.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.shadow16",
+        "tokens.colorTransparentStroke",
+        "typographyStyles.body1"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 138,
+          "unit": "px"
+        },
+        {
+          "name": "maxWidth",
+          "value": 300,
+          "unit": "px"
+        },
+        {
+          "name": "padding",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuPopoverStyles.styles.ts:12-26"
+    },
+    {
+      "id": "list",
+      "part": "list",
+      "text": "The list is a vertical flex column with 2px between items, filling the popover's height when inside a Menu.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuListStyles.styles.ts:11-20"
+    },
+    {
+      "id": "item-box",
+      "part": "item",
+      "text": "An item is a border-box flex row, children aligned to the top, 4px apart, padded spacingVerticalSNudge on all four sides, at least 32px tall and at most 290px wide, with borderRadiusMedium corners, fontSizeBase300 (the line height comes from the popover's body1) and no text selection.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.borderRadiusMedium",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300"
+      ],
+      "values": [
+        {
+          "name": "gap",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "minHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "maxWidth",
+          "value": 290,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuItemStyles.styles.ts:22-39,79"
+    },
+    {
+      "id": "content",
+      "part": "content",
+      "text": "The content grows to fill the row and pads 2px on each side, so the label sits 8px from the item's start edge when there is no icon or checkmark.",
+      "values": [
+        {
+          "name": "paddingHorizontal",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuItemStyles.styles.ts:83-88"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon and the submenu indicator are 20px square inline-flex boxes centring a 20px glyph with line height 0; the icon never shrinks.",
+      "values": [
+        {
+          "name": "size",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuItemStyles.styles.ts:104-123"
+    },
+    {
+      "id": "checkmark",
+      "part": "checkmark",
+      "text": "The checkmark is a 16px square that never shrinks, hidden until the item is checked but keeping its space, and pushed down 2px so it centres on the first text line.",
+      "values": [
+        {
+          "name": "size",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "marginTop",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useCheckmarkStyles.styles.ts:7-18,29-35; useMenuItemStyles.styles.ts:131-133,290-293"
+    },
+    {
+      "id": "secondary-content",
+      "part": "secondary-content",
+      "text": "Secondary content pads 2px on each side and sets caption1 on lineHeightBase300 (so it shares the label's 20px line) in colorNeutralForeground3.",
+      "tokens": [
+        "typographyStyles.caption1",
+        "tokens.lineHeightBase300",
+        "tokens.colorNeutralForeground3"
+      ],
+      "values": [
+        {
+          "name": "paddingHorizontal",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuItemStyles.styles.ts:90-95"
+    },
+    {
+      "id": "subtext",
+      "part": "subtext",
+      "text": "SubText sets caption2 in colorNeutralForeground3; with it the content becomes a flex column and the secondary content and submenu indicator centre vertically.",
+      "tokens": [
+        "typographyStyles.caption2",
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useMenuItemStyles.styles.ts:125-128,244-257,270,286,302,317"
+    },
+    {
+      "id": "switch",
+      "part": "switch-indicator",
+      "text": "The switch track is 40 by 20px, border-box, a strokeWidthThin colorNeutralStrokeAccessible border, pill-rounded, with spacingHorizontalXS after it; its thumb is an 18px glyph (track height less 2px) drawn in currentColor, sitting at the start when off and translated 20px when on. With subText the track centres vertically.",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.spacingHorizontalXS"
+      ],
+      "values": [
+        {
+          "name": "trackWidth",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "trackHeight",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "thumbSize",
+          "value": 18,
+          "unit": "px"
+        },
+        {
+          "name": "thumbTravel",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuItemSwitchStyles.styles.ts:20-39,66-70,90-94"
+    },
+    {
+      "id": "divider",
+      "part": "divider",
+      "text": "A divider is a strokeWidthThin colorNeutralStroke2 bottom border with 4px above and below and a -5px horizontal margin, so it runs past the list's edge to the popover's border.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke2"
+      ],
+      "values": [
+        {
+          "name": "marginVertical",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "marginHorizontal",
+          "value": -5,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuDividerStyles.styles.ts:12-18"
+    },
+    {
+      "id": "group-header",
+      "part": "group-header",
+      "text": "A group header is a 32px flex row centring its text vertically, padded 8px on each side, in fontSizeBase200 semibold colorNeutralForeground3. MenuGroup itself adds no styles.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightSemibold",
+        "tokens.colorNeutralForeground3"
+      ],
+      "values": [
+        {
+          "name": "height",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "paddingHorizontal",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuGroupHeaderStyles.styles.ts:12-23; useMenuGroupStyles.styles.ts:9-13"
+    },
+    {
+      "id": "split-group",
+      "part": "split-group",
+      "text": "A split group is a flex row: the first item grows, the second (the submenu trigger) loses its start corner radii and start padding and draws a strokeWidthThin by 20px colorNeutralStroke1 rule before its content.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke1"
+      ],
+      "values": [
+        {
+          "name": "dividerHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuSplitGroupStyles.styles.ts:18-41"
+    },
+    {
+      "id": "link",
+      "part": "item",
+      "text": "MenuItemLink removes the anchor's text decoration and otherwise takes MenuItem's styles.",
+      "source": "useMenuItemLinkStyles.styles.ts:20-36"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "item",
+      "text": "Rest: colorNeutralBackground1 fill, colorNeutralForeground2 text and icon, Foreground 3 subText and secondary content; the pointer is a hand.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useMenuItemStyles.styles.ts:22-38,95,127"
+    },
+    {
+      "state": "hovered",
+      "part": "item",
+      "text": "Background turns colorNeutralBackground1Hover and text colorNeutralForeground2Hover; the icon turns colorNeutralForeground2BrandSelected and swaps to its filled variant; subText and secondary content turn colorNeutralForeground3Hover. Nothing transitions.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2BrandSelected",
+        "tokens.colorNeutralForeground3Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useMenuItemStyles.styles.ts:41-58,96-98"
+    },
+    {
+      "state": "pressed",
+      "part": "item",
+      "text": "While pressed over it the background turns colorNeutralBackground1Pressed, text colorNeutralForeground2Pressed and subText colorNeutralForeground3Pressed; the icon keeps its hover colour.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralForeground2Pressed",
+        "tokens.colorNeutralForeground3Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useMenuItemStyles.styles.ts:60-67"
+    },
+    {
+      "state": "focused",
+      "part": "item",
+      "text": "Keyboard focus (arrow navigation) draws the default createFocusOutlineStyle indicator: a 2px colorStrokeFocus2 outline just outside the item, following borderRadiusMedium; focused secondary content also turns colorNeutralForeground3Hover. Focus does not paint the hover background.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium",
+        "tokens.colorNeutralForeground3Hover"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuItemStyles.styles.ts:80,99-101; createFocusOutlineStyle.ts:55-112"
+    },
+    {
+      "state": "open",
+      "part": "popover",
+      "text": "Opening: the popover fades in and slides 10px toward its resting place over durationSlower with curveDecelerateMid; closing is instant.",
+      "tokens": [
+        "tokens.durationSlower",
+        "tokens.curveDecelerateMid"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationSlower",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "opacity",
+          "transform"
+        ]
+      },
+      "values": [
+        {
+          "name": "slideDistance",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "MenuSurfaceMotion.ts:8-42"
+    },
+    {
+      "state": "open",
+      "part": "item",
+      "text": "An item whose submenu is open keeps the hover look (Background 1 Hover, Foreground 2 Hover, brand-selected filled icon, Foreground 3 Hover subText) while the pointer is in the submenu.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2BrandSelected",
+        "tokens.colorNeutralForeground3Hover"
+      ],
+      "source": "useMenuItemStyles.styles.ts:150-172,275"
+    },
+    {
+      "state": "checked",
+      "part": "checkmark",
+      "text": "A checked checkbox or radio item shows its checkmark glyph; unchecked it keeps the column's space but hides the glyph. The row's colours do not change.",
+      "source": "useCheckmarkStyles.styles.ts:7-18,29-35; useMenuItemCheckboxStyles.styles.ts:51-52; useMenuItemRadioStyles.styles.ts:51-52; fluent2:menu"
+    },
+    {
+      "state": "checked",
+      "part": "switch-indicator",
+      "text": "A checked switch fills colorCompoundBrandBackground with a colorTransparentStroke border and a colorNeutralForegroundInverted thumb moved to the end; hover and press step the fill to CompoundBrandBackgroundHover and Pressed with colorTransparentStrokeInteractive borders.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorCompoundBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundInverted",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color",
+          "transform"
+        ]
+      },
+      "source": "useMenuItemSwitchStyles.styles.ts:66-88"
+    },
+    {
+      "state": "enabled",
+      "part": "switch-indicator",
+      "text": "An unchecked switch has a colorNeutralStrokeAccessible border and thumb on no fill; hovering the track steps both to StrokeAccessibleHover and pressing to StrokeAccessiblePressed.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorNeutralStrokeAccessiblePressed"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useMenuItemSwitchStyles.styles.ts:26-54"
+    },
+    {
+      "state": "disabled",
+      "part": "item",
+      "text": "Text, icon, subText and secondary content take colorNeutralForegroundDisabled; hover and press keep colorNeutralBackground1 and the regular icon, and the pointer shows not-allowed. The item stays focusable.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralBackground1"
+      ],
+      "source": "useMenuItemStyles.styles.ts:173-205,234-242,276,300,325"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "Clicking the trigger, or Enter, Space or ArrowDown on it, opens the menu and focuses the first item; openOnHover opens on hover after hoverDelay; openOnContext opens at the pointer on right-click instead.",
+      "source": "Menu.types.ts:37-40,71-83,222-254; MenuTrigger.types.ts:25-40"
+    },
+    {
+      "id": "close",
+      "text": "The menu closes on an item click (unless the item or menu persists on click), Escape, a click outside, and with closeOnScroll a scroll outside; onOpenChange reports the cause.",
+      "source": "Menu.types.ts:85-102,207-279; MenuItem.types.ts:48-53"
+    },
+    {
+      "id": "submenu",
+      "text": "An item with hasSubmenu opens its submenu on hover, click or the forward arrow (ArrowRight in LTR), and the backward arrow or Escape closes only the submenu and returns focus to the item; a safe zone keeps it open while the pointer travels diagonally to it.",
+      "source": "Menu.types.ts:128-131,184-187,235-242; MenuItem.types.ts:41-46; fluent2:menu"
+    },
+    {
+      "id": "navigation",
+      "text": "Up and Down arrows move focus between items and wrap; Home and End go to the first and last item; typing a character moves to the next item whose label starts with it.",
+      "source": "MenuList.types.ts:58-61; fluent2:menu"
+    },
+    {
+      "id": "selection",
+      "text": "A checkbox item toggles its value in checkedValues[name]; a radio item replaces its group's value with its own; a switch item toggles like a checkbox and never closes the menu. onCheckedValueChange reports each change.",
+      "source": "MenuList.types.ts:8-13,19-47,53-66; useMenuItemSwitchStyles.styles.ts:141-154"
+    },
+    {
+      "id": "alignment",
+      "text": "hasIcons and hasCheckmarks reserve the icon and checkmark columns on every item so labels line up in a menu that mixes items with and without them.",
+      "source": "MenuList.types.ts:30-38"
+    },
+    {
+      "id": "placement",
+      "text": "A root menu opens below its trigger aligned to its start edge and a submenu opens after its item aligned to its top, each flipping to stay in view; root menus render in a portal unless inline.",
+      "source": "Menu.types.ts:42-48,92-95; fluent2:menu"
+    },
+    {
+      "id": "motion",
+      "text": "Item colour changes are instant (no transition is declared); the switch indicator transitions background, border and colour, and its thumb's transform, over durationNormal with curveEasyEase, in 0.01ms under reduced motion.",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color",
+          "transform"
+        ]
+      },
+      "source": "useMenuItemSwitchStyles.styles.ts:35-43,55-63"
+    },
+    {
+      "id": "surface-motion",
+      "part": "popover",
+      "text": "The popover enters by fading in and sliding 10px from the side it opens toward (the positioning engine supplies the direction), over durationSlower with curveDecelerateMid; the slide adds to the positioning transform. It has no exit animation: on close it unmounts at once.",
+      "motion": {
+        "durationToken": "tokens.durationSlower",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "opacity",
+          "transform"
+        ]
+      },
+      "values": [
+        {
+          "name": "slideDistance",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "Menu.types.ts:10-16; MenuSurfaceMotion.ts:8-42"
+    }
+  ],
+  "accessibility": {
+    "role": "menu",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Enter, Space or ArrowDown on the trigger opens the menu",
+      "ArrowUp and ArrowDown move between items",
+      "Home and End jump to the first and last item",
+      "a printable character moves to the next item starting with it",
+      "Enter or Space activates the focused item or toggles a checkbox, radio or switch",
+      "ArrowRight opens a submenu, ArrowLeft closes it (mirrored in RTL)",
+      "Escape closes the menu and returns focus to the trigger",
+      "Tab closes the menu"
+    ],
+    "semantics": [
+      "the popover's list has role menu; items menuitem, menuitemcheckbox or menuitemradio (switches are menuitemcheckbox)",
+      "checked items report aria-checked",
+      "a submenu trigger reports aria-haspopup menu and aria-expanded",
+      "the trigger reports aria-haspopup menu and aria-expanded",
+      "a group is role group labelled by its header's id",
+      "a divider is role presentation",
+      "disabled items report aria-disabled and stay focusable"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Popover min and max widths (138, 300px), padding (4px) and border (1px); item min height (32px), max width (290px) and gap (4px); list gap (2px); content and secondary padding (2px); icon and indicator size (20px); checkmark offset (2px); divider margins (4px, -5px); group header height and padding (32px, 8px); split divider height (20px) and the switch's 40, 20 and 18px sizes are constants in the styles files.",
+      "source": "useMenuPopoverStyles.styles.ts:18-24; useMenuItemStyles.styles.ts:32-39,84-85,105-107,132; useMenuListStyles.styles.ts:15; useMenuDividerStyles.styles.ts:14; useMenuGroupHeaderStyles.styles.ts:16-19; useMenuSplitGroupStyles.styles.ts:36; useMenuItemSwitchStyles.styles.ts:21-24"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Item padding reads spacingVerticalSNudge on all four sides, including left and right; a theme that makes vertical and horizontal spacing differ changes item insets through the vertical token.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge"
+      ],
+      "source": "useMenuItemStyles.styles.ts:27-30"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The hovered icon reads colorNeutralForeground2BrandSelected, not a BrandHover token, and the popover's text is Foreground 1 while items override it to Foreground 2, so item labels are secondary-weight text by design.",
+      "tokens": [
+        "tokens.colorNeutralForeground2BrandSelected",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useMenuItemStyles.styles.ts:25,51-53; useMenuPopoverStyles.styles.ts:16"
+    },
+    {
+      "kind": "contradiction",
+      "text": "MenuItem's styles file defines splitItemMain and splitItemTrigger classes (a 24px divider) that its hook never applies; the live split-group divider is MenuSplitGroup's 20px one. Build the 20px rule.",
+      "source": "useMenuItemStyles.styles.ts:135-149,272-278; useMenuSplitGroupStyles.styles.ts:29-39"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The switch indicator has no disabled style: a disabled MenuItemSwitch greys its label but keeps the StrokeAccessible or CompoundBrand track colours and their hover steps.",
+      "source": "useMenuItemSwitchStyles.styles.ts:26-88,130-139"
+    },
+    {
+      "kind": "inferred",
+      "text": "The checkmark glyphs themselves (a check for checkbox items, a dot for radio items) and the chevron for the submenu indicator are the icons the menu's hooks supply, and the default positions and the keyboard model come from those hooks and the Fluent 2 page; the checkmark's size and hidden-when-unchecked rule are the selectable package's useCheckmarkStyles, vendored beside the components.",
+      "source": "useCheckmarkStyles.styles.ts:7-18; useMenuItemStyles.styles.ts:7,331; fluent2:menu"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a hovered item paints Canvas with Highlight text (it also sets a Highlight border colour, but the item has no border width, so none shows); an item with an open submenu is Canvas with Highlight text; focus is a Highlight outline; disabled text, icon and subText are GrayText on Canvas in every state. The popover's 1px colorTransparentStroke border becomes visible in the high-contrast theme while shadow16 vanishes.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useMenuItemStyles.styles.ts:69-77,168-171,206-230,238-240; useMenuPopoverStyles.styles.ts:24"
+    }
+  ]
+}

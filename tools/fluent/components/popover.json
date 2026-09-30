@@ -1,0 +1,451 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "popover",
+  "name": "Popover",
+  "status": "stable",
+  "summary": "A floating surface anchored to a trigger, holding any content up to and including buttons and inputs, opened by click and closed by a click outside or Escape. Use it where a tooltip is too small or non-interactive; use a menu for a list of commands, a dialog for something modal, and a teaching popover for onboarding.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackgroundStatic",
+    "tokens.colorNeutralForegroundStaticInverted",
+    "tokens.colorBrandBackground",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorTransparentStroke",
+    "tokens.colorNeutralShadowAmbient",
+    "tokens.colorNeutralShadowKey",
+    "tokens.borderRadiusMedium",
+    "typographyStyles.body1",
+    "tokens.durationSlower",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "usePopoverSurfaceStyles.styles.ts",
+      "PopoverSurface.types.ts",
+      "Popover.types.ts",
+      "PopoverTrigger.types.ts",
+      "constants.ts",
+      "PopoverSurfaceMotion.ts",
+      "usePopover.ts"
+    ],
+    "fluent2": [
+      "popover"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "A PopoverTrigger wrapping one element and a PopoverSurface holding the content; the surface alone when a custom target positions it."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Controls visibility; onOpenChange reports every request to change it."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the new open value on trigger click, outside click, Escape, hover, context menu or scroll."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "normal",
+        "brand",
+        "inverted"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "normal is the theme's surface; brand the brand background with on-brand text; inverted the static dark background with white text."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Padding 12, 16 or 20px and the arrow's height, 6px at small and 8px otherwise."
+    },
+    {
+      "name": "withArrow",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws an arrow on the surface pointing at the trigger."
+    },
+    {
+      "name": "positioning",
+      "type": "enum",
+      "values": [
+        "above",
+        "below",
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "above",
+      "description": "Where the surface sits relative to its trigger; the full positioning shorthand also takes an alignment and flips to stay in the viewport."
+    },
+    {
+      "name": "openOnHover",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Opens on pointer enter and closes on pointer leave after mouseLeaveDelay."
+    },
+    {
+      "name": "mouseLeaveDelay",
+      "type": "number",
+      "required": false,
+      "default": 500,
+      "description": "Milliseconds after the pointer leaves before a hover-opened popover closes."
+    },
+    {
+      "name": "openOnContext",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Opens on the context-menu event at the pointer, anchored to the click point, and disables the other triggers."
+    },
+    {
+      "name": "closeOnScroll",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Closes when the page scrolls outside the surface; context popovers always do."
+    },
+    {
+      "name": "trapFocus",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Traps Tab inside the surface and marks it a dialog; inertTrapFocus makes the rest of the page inert instead."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Renders the surface in DOM order rather than in a portal on the body."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "trigger",
+      "name": "PopoverTrigger",
+      "description": "Wraps one element, making it an ARIA button that toggles the popover and reports aria-expanded."
+    },
+    {
+      "id": "surface",
+      "name": "PopoverSurface",
+      "description": "The floating box: appearance colours, body1 text, borderRadiusMedium, a 1px transparent border, the size's padding and two drop shadows.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.borderRadiusMedium",
+        "tokens.colorTransparentStroke",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "id": "arrow",
+      "name": "Arrow",
+      "description": "A rotated square behind the surface's edge in the surface's colour, pointing at the trigger.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "normal",
+      "default": true,
+      "description": "Background 1 with Foreground 1 text.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "brand",
+      "description": "Brand Background with on-brand text.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "inverted",
+      "description": "The static dark background with static inverted text in every theme.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundStatic",
+        "tokens.colorNeutralForegroundStaticInverted"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "12px padding, 6px arrow."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "16px padding, 8px arrow."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "20px padding, 8px arrow."
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "part": "surface",
+      "text": "The surface is a block with borderRadiusMedium corners, a 1px colorTransparentStroke border and body1 text; its padding is 12, 16 or 20px by size.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.colorTransparentStroke",
+        "typographyStyles.body1"
+      ],
+      "values": [
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "paddingSmall",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "paddingMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "paddingLarge",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:23-35,53-57"
+    },
+    {
+      "id": "shadow",
+      "part": "surface",
+      "text": "Two drop shadows through a filter, so the arrow is shadowed too: 0 0 2px in colorNeutralShadowAmbient then 0 8px 16px in colorNeutralShadowKey, shadow16's geometry written out.",
+      "tokens": [
+        "tokens.colorNeutralShadowAmbient",
+        "tokens.colorNeutralShadowKey"
+      ],
+      "values": [
+        {
+          "name": "ambientBlur",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "keyOffsetY",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "keyBlur",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:31-35"
+    },
+    {
+      "id": "arrow",
+      "part": "arrow",
+      "text": "With withArrow the arrow is 6px high at small and 8px at medium and large, and the surface is offset from the trigger by that height; the positioning engine is told the surface's corner radius is 4 so the arrow clears the rounded corner.",
+      "values": [
+        {
+          "name": "arrowSmall",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "arrowMediumLarge",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "surfaceRadiusForArrow",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:14-18,59-61,82-86; constants.ts:10"
+    },
+    {
+      "id": "inline",
+      "part": "surface",
+      "text": "An inline surface is absolutely positioned at z-index 1 so relatively positioned siblings such as inputs do not cover it.",
+      "source": "usePopoverSurfaceStyles.styles.ts:37-41"
+    },
+    {
+      "id": "placement",
+      "text": "The surface is positioned above its trigger by default and flips or shifts to stay in the viewport; it is rendered in a portal unless inline.",
+      "source": "Popover.types.ts:59-64,113-117; fluent2:popover"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "part": "surface",
+      "text": "Opening fades the surface in while it slides 10px from the side it is positioned on, over durationSlower with curveDecelerateMid; closing unmounts it at once.",
+      "motion": {
+        "durationToken": "tokens.durationSlower",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "opacity",
+          "transform"
+        ]
+      },
+      "values": [
+        {
+          "name": "slideDistance",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "PopoverSurfaceMotion.ts:8-42"
+    },
+    {
+      "state": "enabled",
+      "part": "surface",
+      "text": "The appearance's colours; the surface has no hover, pressed or focus look of its own, and content inside draws its own focus indicators.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:23-51"
+    },
+    {
+      "state": "expanded",
+      "part": "trigger",
+      "text": "The trigger reports aria-expanded while the popover is open and keeps its own look.",
+      "source": "PopoverTrigger.types.ts:26-37"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "A click on the trigger, or Enter or Space on it, toggles the popover; onOpenChange reports the request.",
+      "source": "Popover.types.ts:78-90; PopoverTrigger.types.ts:8-14"
+    },
+    {
+      "id": "dismiss",
+      "text": "A click or focus outside the trigger and surface closes it, as does Escape; with trapFocus only a genuine focus move from inside to outside counts.",
+      "source": "usePopover.ts:119-170; fluent2:popover"
+    },
+    {
+      "id": "hover",
+      "text": "With openOnHover the trigger's pointer enter opens and pointer leave closes after mouseLeaveDelay (500ms unless set).",
+      "values": [
+        {
+          "name": "mouseLeaveDelay",
+          "value": 500,
+          "unit": "ms"
+        }
+      ],
+      "source": "usePopover.ts:85-99; Popover.types.ts:66-69,99-104"
+    },
+    {
+      "id": "context",
+      "text": "With openOnContext the context-menu event opens the popover anchored to the pointer's position and other triggers are disabled; it closes on scroll.",
+      "source": "Popover.types.ts:92-97; usePopover.ts:119-127"
+    },
+    {
+      "id": "scroll",
+      "text": "With closeOnScroll (or openOnContext) scrolling outside the surface closes it.",
+      "source": "Popover.types.ts:45-50; usePopover.ts:119-127"
+    },
+    {
+      "id": "focus",
+      "text": "Opening moves focus to the first focusable element in the surface unless disabled; with trapFocus Tab cycles inside the surface.",
+      "source": "Popover.types.ts:126-159; usePopover.ts:172-195"
+    },
+    {
+      "id": "enter-motion",
+      "part": "surface",
+      "text": "The enter motion is fade plus a 10px slide from the positioned side over durationSlower with curveDecelerateMid; there is no exit motion.",
+      "motion": {
+        "durationToken": "tokens.durationSlower",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "opacity",
+          "transform"
+        ]
+      },
+      "source": "PopoverSurfaceMotion.ts:8-42"
+    }
+  ],
+  "accessibility": {
+    "role": "group",
+    "minTargetPx": null,
+    "keyboard": [
+      "Enter or Space on the trigger opens and closes it",
+      "Escape closes it",
+      "Tab moves through the surface's content, cycling inside it with trapFocus"
+    ],
+    "semantics": [
+      "the trigger is an ARIA button with aria-expanded",
+      "the surface is a group, or a dialog when trapFocus is set",
+      "focus moves into the surface on open and back to the trigger on close"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 12, 16 and 20px paddings, the 1px border, the drop-shadow geometry, the 6 and 8px arrow heights and the surface radius the positioning engine is given (4, borderRadiusMedium's value) are constants in the styles file and constants.ts; the 10px slide and the 500ms mouse-leave delay are constants in the motion and hook files.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:14-18,28,33-34,53-57; constants.ts:10; PopoverSurfaceMotion.ts:21; usePopover.ts:95"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The shadow is a filter drop-shadow following the arrow's outline, written out because there is no filter form of shadow16; a box shadow on the rectangle leaves the arrow unshadowed.",
+      "tokens": [
+        "tokens.shadow16"
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:31-35"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The inverted appearance reads the Static tokens, which do not change between light and dark themes.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundStatic",
+        "tokens.colorNeutralForegroundStaticInverted"
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:43-46"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "No forced-colors rule of its own; the 1px colorTransparentStroke border becomes visible under the high-contrast theme and outlines the surface while the shadow vanishes.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "usePopoverSurfaceStyles.styles.ts:28"
+    }
+  ]
+}

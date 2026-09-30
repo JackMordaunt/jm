@@ -1,0 +1,648 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "teaching-popover",
+  "name": "TeachingPopover",
+  "status": "stable",
+  "summary": "A popover for onboarding and feature callouts: a header line, a title, a body with optional media, and a footer of one or two buttons, or a carousel of such pages with dot navigation. Use it to teach a feature at the point it appears; use a plain popover for ordinary content and a dialog for a decision.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorBrandBackground",
+    "tokens.colorBrandBackgroundHover",
+    "tokens.colorBrandBackgroundPressed",
+    "tokens.colorBrandForeground1",
+    "tokens.colorCompoundBrandForeground1Hover",
+    "tokens.colorCompoundBrandForeground1Pressed",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.borderRadiusXLarge",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusNone",
+    "tokens.spacingVerticalL",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalNone",
+    "tokens.fontSizeBase200",
+    "tokens.lineHeightBase200",
+    "tokens.fontSizeBase400",
+    "tokens.lineHeightBase400",
+    "tokens.fontWeightSemibold",
+    "typographyStyles.body1"
+  ],
+  "references": {
+    "react": [
+      "useTeachingPopoverSurfaceStyles.styles.ts",
+      "TeachingPopoverSurface.types.ts",
+      "useTeachingPopoverHeaderStyles.styles.ts",
+      "TeachingPopoverHeader.types.ts",
+      "useTeachingPopoverTitleStyles.styles.ts",
+      "TeachingPopoverTitle.types.ts",
+      "useTeachingPopoverBodyStyles.styles.ts",
+      "TeachingPopoverBody.types.ts",
+      "useTeachingPopoverFooterStyles.styles.ts",
+      "TeachingPopoverFooter.types.ts",
+      "useTeachingPopoverCarouselFooterStyles.styles.ts",
+      "TeachingPopoverCarouselFooter.types.ts",
+      "useTeachingPopoverCarouselFooterButtonStyles.styles.ts",
+      "TeachingPopoverCarouselFooterButton.types.ts",
+      "useTeachingPopoverCarouselNavStyles.styles.ts",
+      "useTeachingPopoverCarouselNavButtonStyles.styles.ts",
+      "TeachingPopoverCarouselNavButton.types.ts",
+      "useTeachingPopoverCarouselPageCountStyles.styles.ts",
+      "TeachingPopover.types.ts",
+      "useTeachingPopover.ts"
+    ],
+    "fluent2": [
+      "teaching-popover"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "A TeachingPopoverTrigger and a TeachingPopoverSurface holding a header, title, body and footer, or a carousel of TeachingPopoverCarouselCards with a nav and carousel footer."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "normal",
+        "brand"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "As Popover's; brand paints the brand background and turns every part on-brand, with the footer's primary button inverted to white on brand."
+    },
+    {
+      "name": "withArrow",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "As Popover's, but on by default."
+    },
+    {
+      "name": "trapFocus",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "As Popover's, but on by default."
+    },
+    {
+      "name": "mediaLength",
+      "type": "enum",
+      "values": [
+        "short",
+        "medium",
+        "tall"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "The body media's aspect: 288 by 117, 288 by 176, or square."
+    },
+    {
+      "name": "footerLayout",
+      "type": "enum",
+      "values": [
+        "horizontal",
+        "vertical"
+      ],
+      "required": false,
+      "default": "horizontal",
+      "description": "Footer buttons side by side, right-aligned, or stacked full width."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "centered",
+        "offset"
+      ],
+      "required": false,
+      "default": "centered",
+      "description": "A carousel footer's arrangement: previous and next at the two ends, or both at the end."
+    },
+    {
+      "name": "initialStepText",
+      "type": "string",
+      "required": true,
+      "description": "A carousel footer's previous-button text on the first page (where it acts as a dismiss)."
+    },
+    {
+      "name": "finalStepText",
+      "type": "string",
+      "required": true,
+      "description": "A carousel footer's next-button text on the last page (where it finishes)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "surface",
+      "name": "TeachingPopoverSurface",
+      "description": "A PopoverSurface padded spacingVerticalL, rounded to borderRadiusXLarge, at least 320px wide.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.borderRadiusXLarge"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "TeachingPopoverHeader",
+      "description": "A flex row of an optional 12px icon, small semibold Foreground 3 text and a dismiss button pushed to the end; padded spacingVerticalXS below.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.fontWeightSemibold",
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200",
+        "tokens.spacingVerticalXS"
+      ]
+    },
+    {
+      "id": "header-icon",
+      "name": "Header icon",
+      "description": "A fontSizeBase200 square icon in Foreground 2 with spacingHorizontalXS after it.",
+      "optional": true,
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.colorNeutralForeground2",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "dismiss",
+      "name": "Dismiss button",
+      "description": "A transparent, thin-transparent-bordered button in Foreground 2 (body1) at the end of the header, or of the title when there is no header, with its end corners square and no right border.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentStroke",
+        "tokens.strokeWidthThin",
+        "typographyStyles.body1",
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "TeachingPopoverTitle",
+      "description": "A base400 semibold Foreground 1 heading, space-between with an optional dismiss button, padded spacingVerticalS below.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.fontWeightSemibold",
+        "tokens.colorNeutralForeground1",
+        "tokens.spacingVerticalS"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "TeachingPopoverBody",
+      "description": "A column padded 12px below, holding optional media then the text.",
+      "tokens": []
+    },
+    {
+      "id": "media",
+      "name": "Body media",
+      "description": "A centred, clipped box 12px above the text with the mediaLength's aspect ratio over a 288px width.",
+      "optional": true
+    },
+    {
+      "id": "footer",
+      "name": "TeachingPopoverFooter",
+      "description": "A flex row (or column) of a primary and an optional secondary button, 8px apart, padded 12px above.",
+      "optional": true
+    },
+    {
+      "id": "carousel",
+      "name": "TeachingPopoverCarousel",
+      "description": "A container of TeachingPopoverCarouselCards, one visible at a time, with its own nav and footer; it adds no styles.",
+      "optional": true
+    },
+    {
+      "id": "carousel-card",
+      "name": "TeachingPopoverCarouselCard",
+      "description": "One page of the carousel, identified by a value; it adds no styles.",
+      "optional": true
+    },
+    {
+      "id": "carousel-nav",
+      "name": "TeachingPopoverCarouselNav",
+      "description": "A centred row of 8px dots spacingHorizontalXS apart, one per page, focusable as a group.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.colorBrandBackground"
+      ]
+    },
+    {
+      "id": "carousel-nav-button",
+      "name": "Nav dot",
+      "description": "An 8px circle in Brand Background at 30% (a 16px rounded bar at full strength when selected); on-brand white in the brand appearance.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand"
+      ]
+    },
+    {
+      "id": "carousel-footer",
+      "name": "TeachingPopoverCarouselFooter",
+      "description": "A row of the previous button, the page count and the next button, 8px apart, at the two ends (centered) or both at the end (offset).",
+      "optional": true
+    },
+    {
+      "id": "carousel-footer-button",
+      "name": "Carousel footer button",
+      "description": "A Button of at least 96px width; navType prev or next picks its direction and its text on the first or last page.",
+      "optional": true
+    },
+    {
+      "id": "page-count",
+      "name": "TeachingPopoverCarouselPageCount",
+      "description": "Centred text rendered by the caller from the current page and total.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "normal",
+      "default": true,
+      "description": "The popover's normal surface; text in the neutral foregrounds; nav dots in Brand Background.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground3",
+        "tokens.colorBrandBackground"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "brand",
+      "description": "The popover's brand surface: header, icon, dismiss and title turn on-brand; the footer's primary (and carousel next) button inverts to on-brand background with Brand Foreground 1 text (Compound Brand Foreground 1 Hover and Pressed), its secondary (and carousel previous) keeps the brand background with an on-brand border; nav dots are on-brand.",
+      "tokens": [
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.colorBrandForeground1",
+        "tokens.colorCompoundBrandForeground1Hover",
+        "tokens.colorCompoundBrandForeground1Pressed",
+        "tokens.colorBrandBackground",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorBrandBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "mediaLength",
+      "value": "short",
+      "description": "Media aspect 288:117 (117px tall at the 288px body width)."
+    },
+    {
+      "axis": "mediaLength",
+      "value": "medium",
+      "default": true,
+      "description": "Media aspect 288:176."
+    },
+    {
+      "axis": "mediaLength",
+      "value": "tall",
+      "description": "Square media, 288px."
+    },
+    {
+      "axis": "footerLayout",
+      "value": "horizontal",
+      "default": true,
+      "description": "Buttons side by side, right-aligned, each at least 96px wide with 4px corners."
+    },
+    {
+      "axis": "footerLayout",
+      "value": "vertical",
+      "description": "Buttons stacked, each auto width with 4px corners."
+    },
+    {
+      "axis": "layout",
+      "value": "centered",
+      "default": true,
+      "description": "Carousel footer spreads previous, count and next across the row."
+    },
+    {
+      "axis": "layout",
+      "value": "offset",
+      "description": "Carousel footer pushes the first child to the start and the rest to the end."
+    }
+  ],
+  "layout": [
+    {
+      "id": "surface",
+      "part": "surface",
+      "text": "The surface takes Popover's surface styles, then pads spacingVerticalL on every side, rounds to borderRadiusXLarge and is at least 320px wide, border-box.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.borderRadiusXLarge"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 320,
+          "unit": "px"
+        }
+      ],
+      "source": "useTeachingPopoverSurfaceStyles.styles.ts:13-20"
+    },
+    {
+      "id": "header",
+      "part": "header",
+      "text": "The header is a centred flex row in fontSizeBase200 at lineHeightBase200 semibold, Foreground 3, with spacingVerticalXS of bottom padding and no margins; its icon is a fontSizeBase200 square in Foreground 2 with spacingHorizontalXS after it; its dismiss button is pushed to the end with an auto start margin and padded spacingVerticalXS by spacingHorizontalXS.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200",
+        "tokens.fontWeightSemibold",
+        "tokens.colorNeutralForeground3",
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useTeachingPopoverHeaderStyles.styles.ts:15-74"
+    },
+    {
+      "id": "dismiss",
+      "part": "dismiss",
+      "text": "The dismiss button is body1 in Foreground 2 on a transparent background with a strokeWidthThin transparent border, no right border and square end corners, border-box; its focus indicator is a strokeWidthThick colorStrokeFocus2 outline with borderRadiusMedium corners.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentStroke",
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusNone",
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useTeachingPopoverHeaderStyles.styles.ts:31-51; useTeachingPopoverTitleStyles.styles.ts:30-48"
+    },
+    {
+      "id": "title",
+      "part": "title",
+      "text": "The title is a space-between flex row in fontSizeBase400 at lineHeightBase400 semibold, Foreground 1, padded spacingVerticalS below with no margins.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.fontWeightSemibold",
+        "tokens.colorNeutralForeground1",
+        "tokens.spacingVerticalS"
+      ],
+      "source": "useTeachingPopoverTitleStyles.styles.ts:14-26"
+    },
+    {
+      "id": "body",
+      "part": "body",
+      "text": "The body is a column padded 12px below; its media is a centred, clipped flex box with a 12px bottom margin whose aspect ratio is 288:117 (short), 288:176 (medium) or 1:1 (tall), falling back to those heights where aspect-ratio is unsupported.",
+      "values": [
+        {
+          "name": "paddingBottom",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "mediaWidth",
+          "value": 288,
+          "unit": "px"
+        },
+        {
+          "name": "shortHeight",
+          "value": 117,
+          "unit": "px"
+        },
+        {
+          "name": "mediumHeight",
+          "value": 176,
+          "unit": "px"
+        },
+        {
+          "name": "tallHeight",
+          "value": 288,
+          "unit": "px"
+        }
+      ],
+      "source": "useTeachingPopoverBodyStyles.styles.ts:12-49"
+    },
+    {
+      "id": "footer",
+      "part": "footer",
+      "text": "The footer is a flex box with 8px gaps padded 12px above: a row justified to the end whose buttons are at least 96px wide, or a column whose buttons are auto width; buttons round to 4px.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "paddingTop",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "buttonMinWidth",
+          "value": 96,
+          "unit": "px"
+        },
+        {
+          "name": "buttonRadius",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useTeachingPopoverFooterStyles.styles.ts:14-34"
+    },
+    {
+      "id": "carousel-nav",
+      "part": "carousel-nav",
+      "text": "The nav is a centred flex row with spacingHorizontalXS column gaps and a group focus indicator (strokeWidthThick colorStrokeFocus2, borderRadiusMedium); each dot is an 8px square with no border or padding, round when unselected and a 16px-wide 4px-radius bar when selected.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "dot",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "selectedWidth",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "selectedRadius",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useTeachingPopoverCarouselNavStyles.styles.ts:16-29; useTeachingPopoverCarouselNavButtonStyles.styles.ts:19-59"
+    },
+    {
+      "id": "carousel-footer",
+      "part": "carousel-footer",
+      "text": "The carousel footer is a flex row with 8px gaps: centered spreads its children with space-between; offset gives the first child an auto end margin so the rest sit at the end. Its buttons are at least 96px wide; the page count is a centred flex box.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "buttonMinWidth",
+          "value": 96,
+          "unit": "px"
+        }
+      ],
+      "source": "useTeachingPopoverCarouselFooterStyles.styles.ts:17-32; useTeachingPopoverCarouselFooterButtonStyles.styles.ts:16-19; useTeachingPopoverCarouselPageCountStyles.styles.ts:17-23"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "carousel-nav-button",
+      "text": "An unselected dot is Brand Background at 30% (color-mix into transparent; opacity 0.3 where unsupported); selected is full Brand Background. In brand appearance the on-brand colour replaces it, 30% when unselected.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "values": [
+        {
+          "name": "unselectedAlpha",
+          "value": 0.3,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useTeachingPopoverCarouselNavButtonStyles.styles.ts:28-70"
+    },
+    {
+      "state": "focused",
+      "part": "carousel-nav-button",
+      "text": "A dot draws a strokeWidthThick colorStrokeFocus2 outline with borderRadiusMedium corners; a strokeWidthThin transparent outline is always present for high contrast.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium",
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useTeachingPopoverCarouselNavButtonStyles.styles.ts:32-37,46-55"
+    },
+    {
+      "state": "hovered",
+      "part": "footer",
+      "text": "In brand appearance the primary (and carousel next) button keeps the on-brand background while its text steps to Compound Brand Foreground 1 Hover, then Pressed; the carousel previous button steps its brand background to Hover and Pressed with an on-brand border throughout.",
+      "tokens": [
+        "tokens.colorCompoundBrandForeground1Hover",
+        "tokens.colorCompoundBrandForeground1Pressed",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "source": "useTeachingPopoverFooterStyles.styles.ts:35-49; useTeachingPopoverCarouselFooterButtonStyles.styles.ts:20-48"
+    },
+    {
+      "state": "open",
+      "part": "surface",
+      "text": "As Popover: fade and 10px slide in over durationSlower with curveDecelerateMid, no exit motion.",
+      "motion": {
+        "durationToken": "tokens.durationSlower",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "opacity",
+          "transform"
+        ]
+      },
+      "source": "TeachingPopover.types.ts:6-13"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "popover",
+      "text": "Opening, dismissal, positioning and focus are Popover's, with withArrow and trapFocus defaulting to true.",
+      "source": "useTeachingPopover.ts:6-13; TeachingPopover.types.ts:6-13"
+    },
+    {
+      "id": "dismiss",
+      "text": "The header's (or title's) dismiss button closes the popover; the footer's secondary button, when present, does too.",
+      "source": "TeachingPopoverHeader.types.ts:11-14; TeachingPopoverFooter.types.ts:45-48; fluent2:teaching-popover"
+    },
+    {
+      "id": "carousel-paging",
+      "text": "The carousel shows one card at a time; the footer's next and previous buttons and the nav dots move between pages, and on the first page the previous button shows initialStepText (a dismiss) while on the last the next button shows finalStepText (a finish).",
+      "source": "TeachingPopoverCarouselFooter.types.ts:30-46; TeachingPopoverCarouselFooterButton.types.ts:14-25; fluent2:teaching-popover"
+    },
+    {
+      "id": "no-page-motion",
+      "text": "Page changes have no animation: the carousel's styles file marks the page-change animation as a todo.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useTeachingPopoverCarouselStyles.styles.ts:11-14"
+    }
+  ],
+  "accessibility": {
+    "role": "dialog",
+    "minTargetPx": 8,
+    "keyboard": [
+      "Enter or Space on the trigger opens it",
+      "Tab cycles inside the surface (trapFocus)",
+      "Escape closes it",
+      "Arrow keys move between nav dots; Enter or Space selects a page"
+    ],
+    "semantics": [
+      "the surface is a dialog labelled by its title",
+      "the dismiss button needs an accessible name",
+      "the nav is a group of buttons, one pressed per page",
+      "the page count text is read as the caller renders it"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 320px minimum width, the body's 12px paddings and 288px media width with 117/176/288 heights, the footer's 8px gap, 12px padding, 96px minimum button width and 4px button radius, and the nav's 8px dots, 16px selected bar, 4px radius and 30% unselected alpha are constants in the styles files.",
+      "source": "useTeachingPopoverSurfaceStyles.styles.ts:17; useTeachingPopoverBodyStyles.styles.ts:12,19,25-40,48; useTeachingPopoverFooterStyles.styles.ts:17-18,29,32-33; useTeachingPopoverCarouselNavButtonStyles.styles.ts:24-25,38,47,49"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The surface's padding reads spacingVerticalL for both axes, a vertical token used horizontally; the footer's 4px button radius is a literal, not borderRadiusMedium, and the dismiss button's square end corners read borderRadiusNone.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusNone"
+      ],
+      "source": "useTeachingPopoverSurfaceStyles.styles.ts:15; useTeachingPopoverFooterStyles.styles.ts:29,33"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The surface's focus and enter motion are Popover's, but its corners are borderRadiusXLarge while the arrow helper is still told the popover's 4px radius; an arrow near a corner may not meet it cleanly.",
+      "tokens": [
+        "tokens.borderRadiusXLarge"
+      ],
+      "source": "useTeachingPopoverSurfaceStyles.styles.ts:16,34"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "A nav dot's unselected fallback for browsers without color-mix sets opacity 0.3 on the whole button, which fades its focus outline too, as the styles file's own comment says.",
+      "source": "useTeachingPopoverCarouselNavButtonStyles.styles.ts:39-43,65-69"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "A selected nav dot paints CanvasText under forced colours; every dot keeps a strokeWidthThin transparent outline so it stays visible; the rest follow Popover's high-contrast behaviour.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useTeachingPopoverCarouselNavButtonStyles.styles.ts:32,46,56-58"
+    }
+  ]
+}

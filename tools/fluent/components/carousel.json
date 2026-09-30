@@ -1,0 +1,623 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "carousel",
+  "name": "Carousel",
+  "status": "stable",
+  "summary": "A horizontal strip of cards shown one group at a time, moved by previous and next buttons, dot navigation, drag or autoplay. Use it for a small set of peer items the user browses in order; use tabs when the sections have names and a list when all should be visible.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralBackgroundAlpha",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentStroke",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorCompoundBrandBackgroundHover",
+    "tokens.colorCompoundBrandBackgroundPressed",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusXLarge",
+    "tokens.borderRadiusSmall",
+    "tokens.shadow16",
+    "tokens.spacingVerticalL",
+    "tokens.spacingHorizontalXXL",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingVerticalS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalL",
+    "tokens.spacingVerticalM",
+    "tokens.spacingHorizontalM"
+  ],
+  "references": {
+    "react": [
+      "useCarouselStyles.styles.ts",
+      "Carousel.types.ts",
+      "useCarouselSliderStyles.styles.ts",
+      "CarouselSlider.types.ts",
+      "useCarouselViewportStyles.styles.ts",
+      "CarouselViewport.types.ts",
+      "useCarouselCardStyles.styles.ts",
+      "CarouselCard.types.ts",
+      "useCarouselNavStyles.styles.ts",
+      "CarouselNav.types.ts",
+      "useCarouselNavButtonStyles.styles.ts",
+      "CarouselNavButton.types.ts",
+      "useCarouselNavImageButtonStyles.styles.ts",
+      "CarouselNavImageButton.types.ts",
+      "useCarouselNavContainerStyles.styles.ts",
+      "CarouselNavContainer.types.ts",
+      "useCarouselButtonStyles.styles.ts",
+      "CarouselButton.types.ts",
+      "useCarouselAutoplayButtonStyles.styles.ts",
+      "CarouselAutoplayButton.types.ts",
+      "useCarousel.ts",
+      "useEmblaCarousel.ts"
+    ],
+    "fluent2": [
+      "carousel"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "A CarouselViewport holding a CarouselSlider of CarouselCards, then a CarouselNavContainer with its prev, next, autoplay buttons and a CarouselNav of dots or image buttons."
+    },
+    {
+      "name": "activeIndex",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "The page shown; defaultActiveIndex for uncontrolled use; onActiveIndexChange reports changes with their cause."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "flat",
+        "elevated"
+      ],
+      "required": false,
+      "default": "flat",
+      "description": "flat is the bare strip; elevated adds outer spacing, gaps between cards, and rounds and lifts each card."
+    },
+    {
+      "name": "align",
+      "type": "enum",
+      "values": [
+        "center",
+        "start",
+        "end"
+      ],
+      "required": false,
+      "default": "center",
+      "description": "Where the active card settles within the viewport."
+    },
+    {
+      "name": "circular",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Loops from the last page to the first and back."
+    },
+    {
+      "name": "groupSize",
+      "type": "number",
+      "required": false,
+      "description": "Cards per page; auto (the default) fits as many as the viewport shows."
+    },
+    {
+      "name": "draggable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lets the pointer drag the strip."
+    },
+    {
+      "name": "whitespace",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Adds empty space at the ends so align holds for the first and last cards."
+    },
+    {
+      "name": "motion",
+      "type": "enum",
+      "values": [
+        "slide",
+        "fade"
+      ],
+      "required": false,
+      "default": "slide",
+      "description": "slide scrolls the strip under an attraction physics with a unitless speed (25 by default, 20 to 60 recommended); fade cross-fades cards in place."
+    },
+    {
+      "name": "autoplayInterval",
+      "type": "number",
+      "required": false,
+      "default": 4000,
+      "description": "Milliseconds between pages while autoplay is on."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "inline",
+        "inline-wide",
+        "overlay",
+        "overlay-wide",
+        "overlay-expanded"
+      ],
+      "required": false,
+      "default": "inline",
+      "description": "A CarouselNavContainer option: controls under the strip, spread to its edges, laid over its bottom, spread over its bottom, or with prev and next at the sides mid-height."
+    },
+    {
+      "name": "cardFocus",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A CarouselSlider option: the cards form a focus group moved through with the arrow keys."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Carousel",
+      "description": "The relatively positioned box that clips horizontal overflow; elevated adds spacingVerticalL margin and padding around it.",
+      "tokens": [
+        "tokens.spacingVerticalL"
+      ]
+    },
+    {
+      "id": "viewport",
+      "name": "CarouselViewport",
+      "description": "The visible window, auto width at most 100%."
+    },
+    {
+      "id": "slider",
+      "name": "CarouselSlider",
+      "description": "The flex row of cards that moves; elevated spaces them spacingHorizontalXXL apart.",
+      "tokens": [
+        "tokens.spacingHorizontalXXL"
+      ]
+    },
+    {
+      "id": "card",
+      "name": "CarouselCard",
+      "description": "One item, the full viewport width unless autoSize, at most 100%; elevated rounds it to borderRadiusXLarge, clips it and casts shadow16.",
+      "tokens": [
+        "tokens.borderRadiusXLarge",
+        "tokens.shadow16"
+      ]
+    },
+    {
+      "id": "nav-container",
+      "name": "CarouselNavContainer",
+      "description": "The row of controls: prev, nav, next and autoplay, centred, pointer-transparent except its buttons; inline below the strip or overlaid on it.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalM",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "nav",
+      "name": "CarouselNav",
+      "description": "A centred pill of dots on Neutral Background Alpha, rounded to borderRadiusXLarge with spacingHorizontalS side margins, focusable as a group.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralBackgroundAlpha",
+        "tokens.borderRadiusXLarge",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "id": "nav-button",
+      "name": "CarouselNavButton",
+      "description": "A dot: an 8px circle in Foreground 1 at 60% inside spacingVerticalS by spacingHorizontalS padding, widening to a 16px bar when selected; brand appearance fills Compound Brand Background.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentBackground",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXS",
+        "tokens.colorCompoundBrandBackground"
+      ]
+    },
+    {
+      "id": "nav-image-button",
+      "name": "CarouselNavImageButton",
+      "description": "A 40px image thumbnail (48px when selected) with borderRadiusSmall corners and a transparent border, spacingHorizontalXS side margins.",
+      "optional": true,
+      "tokens": [
+        "tokens.borderRadiusSmall",
+        "tokens.colorTransparentStroke",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "button",
+      "name": "CarouselButton",
+      "description": "A Button for prev or next, vertically centred, in Foreground 2 on Neutral Background Alpha.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralBackgroundAlpha"
+      ]
+    },
+    {
+      "id": "autoplay-button",
+      "name": "CarouselAutoplayButton",
+      "description": "A ToggleButton for autoplay, vertically centred, in Foreground 2 on Neutral Background Alpha with a transparent border.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralBackgroundAlpha",
+        "tokens.colorTransparentStroke"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "flat",
+      "default": true,
+      "description": "No outer spacing, no gaps, cards unstyled."
+    },
+    {
+      "axis": "appearance",
+      "value": "elevated",
+      "description": "spacingVerticalL margin and padding around the root so shadows have room, spacingHorizontalXXL between cards, and each card rounded to borderRadiusXLarge with shadow16.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXXL",
+        "tokens.borderRadiusXLarge",
+        "tokens.shadow16"
+      ]
+    },
+    {
+      "axis": "navAppearance",
+      "value": "brand",
+      "description": "Dots fill Compound Brand Background (Hover and Pressed on interaction) at full opacity when selected; unselected stay Foreground 1 at 60%.",
+      "tokens": [
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorCompoundBrandBackgroundPressed",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "inline",
+      "default": true,
+      "description": "The nav container sits below the strip with spacingVerticalM above.",
+      "tokens": [
+        "tokens.spacingVerticalM"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "inline-wide",
+      "description": "As inline, with prev pushed to the far start and next to the far end."
+    },
+    {
+      "axis": "layout",
+      "value": "overlay",
+      "description": "The nav container is absolutely placed spacingVerticalM above the strip's bottom edge.",
+      "tokens": [
+        "tokens.spacingVerticalM"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "overlay-wide",
+      "description": "As overlay, with prev at the far start and next at the far end, each spacingHorizontalM in; autoplay takes spacingHorizontalM before it.",
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "overlay-expanded",
+      "description": "The container fills the strip: prev and next are absolutely placed spacingHorizontalM from the sides at mid-height, the nav sits spacingVerticalL above the bottom, and autoplay sits at the bottom start.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "motion",
+      "value": "slide",
+      "default": true,
+      "description": "The strip scrolls to the page under an attraction physics at speed 25 (unitless)."
+    },
+    {
+      "axis": "motion",
+      "value": "fade",
+      "description": "Cards cross-fade in place."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The root clips horizontal overflow only, so a focus outline can bleed vertically, and is relatively positioned for the overlaid controls; elevated adds spacingVerticalL margin and padding so card shadows are not clipped.",
+      "tokens": [
+        "tokens.spacingVerticalL"
+      ],
+      "source": "useCarouselStyles.styles.ts:16-29"
+    },
+    {
+      "id": "strip",
+      "part": "slider",
+      "text": "The viewport is auto width at most 100%; the slider is a flex row, spacingHorizontalXXL apart when elevated; each card is flex 0 0 100% at most 100% wide (0 0 auto with autoSize), and elevated rounds it to borderRadiusXLarge, clips it and casts shadow16.",
+      "tokens": [
+        "tokens.spacingHorizontalXXL",
+        "tokens.borderRadiusXLarge",
+        "tokens.shadow16"
+      ],
+      "source": "useCarouselViewportStyles.styles.ts:14-19; useCarouselSliderStyles.styles.ts:17-25; useCarouselCardStyles.styles.ts:16-32"
+    },
+    {
+      "id": "nav-container",
+      "part": "nav-container",
+      "text": "The container is a centred flex row the full width, pointer-transparent; inline adds spacingVerticalM above, overlay places it absolutely spacingVerticalM from the bottom; wide layouts push prev and next to the ends with an spacingHorizontalM inset when overlaid; overlay-expanded stretches it over the strip, places prev and next spacingHorizontalM from the sides at 50% height, raises the nav spacingVerticalL, and puts autoplay at the bottom start spacingHorizontalM in.",
+      "tokens": [
+        "tokens.spacingVerticalM",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingVerticalL",
+        "tokens.spacingHorizontalXS"
+      ],
+      "source": "useCarouselNavContainerStyles.styles.ts:24-91"
+    },
+    {
+      "id": "nav",
+      "part": "nav",
+      "text": "The nav is a centred flex row on colorNeutralBackgroundAlpha rounded to borderRadiusXLarge with auto vertical and spacingHorizontalS horizontal margins, taking pointer events, with a group focus indicator (strokeWidthThick colorStrokeFocus2, borderRadiusMedium).",
+      "tokens": [
+        "tokens.colorNeutralBackgroundAlpha",
+        "tokens.borderRadiusXLarge",
+        "tokens.spacingHorizontalS",
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useCarouselNavStyles.styles.ts:17-33"
+    },
+    {
+      "id": "dot",
+      "part": "nav-button",
+      "text": "A dot button is spacingHorizontalS by spacingVerticalS, content-box, padded the same on each side, borderless and transparent; its glyph is a round spacingHorizontalS by spacingVerticalS box in Foreground 1. Selected, the button is spacingHorizontalL wide with spacingHorizontalXS side padding and the glyph spacingHorizontalL wide with a 4px radius.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingVerticalS",
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground1",
+        "tokens.spacingHorizontalL",
+        "tokens.spacingHorizontalXS"
+      ],
+      "values": [
+        {
+          "name": "selectedRadius",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useCarouselNavButtonStyles.styles.ts:17-43,65-77"
+    },
+    {
+      "id": "image-button",
+      "part": "nav-image-button",
+      "text": "An image button is a 40px square (48px when selected) with borderRadiusSmall corners, a colorTransparentStroke border, no padding and spacingHorizontalXS side margins, clipping its image which fills it.",
+      "tokens": [
+        "tokens.borderRadiusSmall",
+        "tokens.colorTransparentStroke",
+        "tokens.spacingHorizontalXS"
+      ],
+      "values": [
+        {
+          "name": "size",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "selectedSize",
+          "value": 48,
+          "unit": "px"
+        }
+      ],
+      "source": "useCarouselNavImageButtonStyles.styles.ts:13-42"
+    },
+    {
+      "id": "buttons",
+      "part": "button",
+      "text": "The prev, next and autoplay buttons are Buttons (autoplay a ToggleButton) with auto vertical margins, Foreground 2 on colorNeutralBackgroundAlpha, taking pointer events; autoplay adds a colorTransparentStroke border.",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralBackgroundAlpha",
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useCarouselButtonStyles.styles.ts:17-27; useCarouselAutoplayButtonStyles.styles.ts:17-28"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "nav-button",
+      "text": "An unselected dot's glyph is at 60% opacity, 75% hovered and 100% pressed; selected is 100%, 75% hovered and 65% pressed. Brand fills Compound Brand Background, Hover and Pressed at full opacity when selected and keeps the neutral 60/75/100 when not.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorCompoundBrandBackgroundPressed"
+      ],
+      "values": [
+        {
+          "name": "unselectedOpacity",
+          "value": 0.6,
+          "unit": "ratio"
+        },
+        {
+          "name": "hoverOpacity",
+          "value": 0.75,
+          "unit": "ratio"
+        },
+        {
+          "name": "selectedPressedOpacity",
+          "value": 0.65,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useCarouselNavButtonStyles.styles.ts:44-122"
+    },
+    {
+      "state": "focused",
+      "part": "nav-button",
+      "text": "A dot draws a strokeWidthThick colorStrokeFocus2 border with a matching negative margin and borderRadiusMedium corners; a strokeWidthThin transparent outline is always present for high contrast.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium",
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useCarouselNavButtonStyles.styles.ts:45-50,68-73"
+    },
+    {
+      "state": "selected",
+      "part": "nav-image-button",
+      "text": "The selected image button grows from 40 to 48px.",
+      "values": [
+        {
+          "name": "size",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "selectedSize",
+          "value": 48,
+          "unit": "px"
+        }
+      ],
+      "source": "useCarouselNavImageButtonStyles.styles.ts:38-41,57,66"
+    },
+    {
+      "state": "other",
+      "label": "autoplaying",
+      "part": "autoplay-button",
+      "text": "The autoplay button is a checked ToggleButton while autoplay runs; the carousel advances every autoplayInterval and stops on any interaction.",
+      "source": "CarouselAutoplayButton.types.ts:10-28; useEmblaCarousel.ts:105-125"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "paging",
+      "text": "Prev and next move one page (a group of cards) in their direction; a dot or image button jumps to its page; with circular the ends wrap.",
+      "source": "useCarousel.ts:60-78; Carousel.types.ts:55-64"
+    },
+    {
+      "id": "defaults",
+      "text": "Unset options default to align center, not circular, group size auto, not draggable, no whitespace, slide motion at speed 25, autoplay every 4000ms and flat appearance.",
+      "values": [
+        {
+          "name": "autoplayInterval",
+          "value": 4000,
+          "unit": "ms"
+        },
+        {
+          "name": "slideSpeed",
+          "value": 25,
+          "unit": "count"
+        }
+      ],
+      "source": "useCarousel.ts:31-41; useEmblaCarousel.ts:80-81"
+    },
+    {
+      "id": "slide-motion",
+      "text": "The strip moves under Embla's attraction physics with the motion speed, not a timed easing: 25 by default, 20 to 60 recommended, and a drag's speed comes from the drag itself.",
+      "source": "Carousel.types.ts:78-89; useEmblaCarousel.ts:80-101"
+    },
+    {
+      "id": "fade-motion",
+      "text": "With motion fade the Fade plugin cross-fades cards in place instead of scrolling.",
+      "source": "useEmblaCarousel.ts:126-129"
+    },
+    {
+      "id": "autoplay",
+      "text": "Autoplay is off until its button is toggled on; it advances every autoplayInterval, stops on interaction, and the component itself pauses and resumes it rather than the plugin's mouse-enter rule.",
+      "values": [
+        {
+          "name": "autoplayInterval",
+          "value": 4000,
+          "unit": "ms"
+        }
+      ],
+      "source": "useEmblaCarousel.ts:105-125,142-150; Carousel.types.ts:97-103"
+    },
+    {
+      "id": "drag",
+      "text": "With draggable the pointer drags the strip; otherwise drag is ignored.",
+      "source": "useCarousel.ts:52; Carousel.types.ts:66-70"
+    },
+    {
+      "id": "announce",
+      "text": "Page changes are announced with a localisable announcement of the index and total.",
+      "source": "Carousel.types.ts:9-11,91-95"
+    }
+  ],
+  "accessibility": {
+    "role": "region",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab reaches prev, the nav group, next and autoplay",
+      "Arrow keys move between dots inside the nav group; Enter or Space selects a page",
+      "With cardFocus the arrow keys move between cards"
+    ],
+    "semantics": [
+      "prev, next and dots are buttons with accessible names; the selected dot is pressed",
+      "the autoplay button is a toggle whose label says whether autoplay is on",
+      "page changes are announced through a live region"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 4px selected-dot radius, the 40 and 48px image buttons and the dot opacities (0.6, 0.75, 1, 0.65) are constants in the styles files; the 4000ms autoplay interval and the slide speed 25 are constants in the hooks.",
+      "source": "useCarouselNavButtonStyles.styles.ts:52,57,61,76,81,86; useCarouselNavImageButtonStyles.styles.ts:13-14; useCarousel.ts:39; useEmblaCarousel.ts:81"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Slide motion is a physics simulation with a unitless speed, not a duration and curve; a renderer with timed easings must approximate it, and the kit's motion fields cannot carry it.",
+      "source": "Carousel.types.ts:78-89"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The dot's glyph is a pseudo-element the button's padding surrounds, so the hit area is 24 by 24px (8px glyph plus 8px padding each side) while the glyph is 8px; a selected dot is 24px wide of padding around a 16px bar.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingVerticalS"
+      ],
+      "source": "useCarouselNavButtonStyles.styles.ts:20-34,65-77"
+    },
+    {
+      "kind": "inferred",
+      "text": "The autoplay button's toggling and the announcement text are in useCarouselAutoplayButton.tsx and the carousel hook, which the kit's citation pattern cannot name for the former; the Embla options are read from useEmblaCarousel.ts.",
+      "source": "useEmblaCarousel.ts:105-140"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a dot's glyph is painted white with a difference blend so it stays visible on any card; the nav and buttons keep a strokeWidthThin transparent outline that becomes visible.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useCarouselNavButtonStyles.styles.ts:36-41,45,68"
+    }
+  ]
+}

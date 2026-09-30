@@ -1,0 +1,176 @@
+// icon-data writes jm:ui/fluent/icon_data.odin from a directory of
+// Fluent UI System Icons: every ic_fluent_<name>_20_<regular|filled>.svg
+// in it becomes an Icon member (<Name>, or <Name>_Filled) whose entry is
+// the file's path data verbatim.
+//
+//	icon-data tools/fluent/icons ui/fluent/icon_data.odin
+//
+// The icons live at github.com/microsoft/fluentui-system-icons under
+// assets/<Name>/SVG/ (MIT); tools/fluent/icons/icons.txt names the ones
+// the fluent package draws, and just fluent-icons-fetch pulls them into
+// that directory at the commit its COMMIT names. An icon with more than one path, or any attribute the
+// renderer cannot honour (fill-rule), is refused: a fill would differ.
+package main
+
+import "core:fmt"
+import "core:os"
+import "core:slice"
+import "core:strings"
+
+main :: proc() {
+	if len(os.args) != 3 {
+		fmt.eprintln("usage: icon-data <svg-dir> <out.odin>")
+		os.exit(2)
+	}
+	entries, err := os.read_all_directory_by_path(os.args[1], context.allocator)
+	if err != nil {
+		fmt.eprintfln("read %s: %v", os.args[1], err)
+		os.exit(1)
+	}
+	icons := make([dynamic]Svg)
+	ok := true
+	for e in entries {
+		name, variant, is_icon := split_icon_file(e.name)
+		if !is_icon {
+			continue
+		}
+		data, rerr := os.read_entire_file(e.fullpath, context.allocator)
+		if rerr != nil {
+			fmt.eprintfln("read %s: %v", e.fullpath, rerr)
+			os.exit(1)
+		}
+		d, box, pok := path_data(string(data))
+		if !pok {
+			fmt.eprintfln("%s: not one plain path in a square viewBox", e.name)
+			ok = false
+			continue
+		}
+		append(&icons, Svg{member_name(name, variant), d, box})
+	}
+	if !ok {
+		os.exit(1)
+	}
+	if len(icons) == 0 {
+		fmt.eprintfln("%s: no ic_fluent_*_20_*.svg files", os.args[1])
+		os.exit(1)
+	}
+	slice.sort_by(icons[:], proc(a, b: Svg) -> bool {return a.member < b.member})
+	out := generate(icons[:])
+	if werr := os.write_entire_file(os.args[2], transmute([]u8)out); werr != nil {
+		fmt.eprintfln("write %s: %v", os.args[2], werr)
+		os.exit(1)
+	}
+}
+
+Svg :: struct {
+	member: string,
+	d:      string,
+	box:    int,
+}
+
+// split_icon_file splits ic_fluent_<name>_20_<variant>.svg into its name and
+// variant; is_icon is false for any other file.
+split_icon_file :: proc(file: string) -> (name, variant: string, is_icon: bool) {
+	rest := strings.trim_prefix(file, "ic_fluent_")
+	if rest == file || !strings.has_suffix(rest, ".svg") {
+		return
+	}
+	rest = strings.trim_suffix(rest, ".svg")
+	i := strings.last_index(rest, "_20_")
+	if i < 0 {
+		return
+	}
+	name, variant = rest[:i], rest[i + 4:]
+	is_icon = variant == "regular" || variant == "filled"
+	return
+}
+
+// member_name is chevron_down as Chevron_Down, and its filled twin as
+// Chevron_Down_Filled.
+member_name :: proc(name, variant: string) -> string {
+	parts := strings.split(name, "_")
+	for &p in parts {
+		p = strings.concatenate({strings.to_upper(p[:1]), p[1:]})
+	}
+	m := strings.join(parts, "_")
+	if variant == "filled" {
+		return strings.concatenate({m, "_Filled"})
+	}
+	return m
+}
+
+// path_data is the one path's d attribute and the viewBox side of an
+// icon file, or ok false when the file has more or less than one path,
+// a fill rule, or a viewBox that is not a square at the origin.
+path_data :: proc(svg: string) -> (d: string, box: int, ok: bool) {
+	if strings.count(svg, "<path") != 1 || strings.contains(svg, "fill-rule") || strings.contains(svg, "evenodd") {
+		return
+	}
+	vb := attribute(svg, "viewBox") or_return
+	parts := strings.fields(vb)
+	if len(parts) != 4 || parts[0] != "0" || parts[1] != "0" || parts[2] != parts[3] {
+		return
+	}
+	for c in parts[2] {
+		if c < '0' || c > '9' {
+			return
+		}
+		box = box * 10 + int(c - '0')
+	}
+	d = attribute(svg, " d") or_return
+	return d, box, true
+}
+
+// attribute is the value of the first name="..." in s.
+attribute :: proc(s, name: string) -> (string, bool) {
+	key := strings.concatenate({name, "=\""})
+	i := strings.index(s, key)
+	if i < 0 {
+		return "", false
+	}
+	rest := s[i + len(key):]
+	j := strings.index_byte(rest, '"')
+	if j < 0 {
+		return "", false
+	}
+	return rest[:j], true
+}
+
+generate :: proc(icons: []Svg) -> string {
+	b := strings.builder_make()
+	fmt.sbprint(&b, HEADER)
+	fmt.sbprintln(&b, "Icon :: enum u8 {")
+	fmt.sbprintln(&b, "\tNone,")
+	for ic in icons {
+		fmt.sbprintfln(&b, "\t%s,", ic.member)
+	}
+	fmt.sbprintln(&b, "}\n")
+	fmt.sbprintln(&b, "@(private)")
+	fmt.sbprintln(&b, "ICON_SVG := [Icon]string {")
+	fmt.sbprintln(&b, "\t.None = \"\",")
+	for ic in icons {
+		fmt.sbprintfln(&b, "\t.%s = %q,", ic.member, ic.d)
+	}
+	fmt.sbprintln(&b, "}\n")
+	fmt.sbprintln(&b, "@(private)")
+	fmt.sbprintln(&b, "ICON_BOX := [Icon]u16 {")
+	fmt.sbprintln(&b, "\t.None = 20,")
+	for ic in icons {
+		fmt.sbprintfln(&b, "\t.%s = %d,", ic.member, ic.box)
+	}
+	fmt.sbprintln(&b, "}\n")
+	fmt.sbprintln(&b, "// icon_svg is i's path data and the side of its viewBox.")
+	fmt.sbprintln(&b, "icon_svg :: proc(i: Icon) -> (data: string, box: f32) {")
+	fmt.sbprintln(&b, "\treturn ICON_SVG[i], f32(ICON_BOX[i])")
+	fmt.sbprintln(&b, "}")
+	return strings.to_string(b)
+}
+
+HEADER :: `// Code generated by tools/fluent/icon-data from microsoft/fluentui-system-icons
+// assets/<Name>/SVG/ic_fluent_<name>_20_{regular,filled}.svg (MIT): each
+// entry is the SVG path data verbatim in the icons' own viewBox. DO NOT
+// EDIT; run just fluent-icons.
+package fluent
+
+// Icon is one Fluent UI System Icon at 20px, regular or _Filled.
+`

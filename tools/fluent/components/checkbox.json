@@ -1,0 +1,452 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "checkbox",
+  "name": "Checkbox",
+  "status": "stable",
+  "summary": "An independent on/off choice, or a parent choice whose children are partly selected (mixed). Choose it over a switch when the change takes effect on submit rather than at once, and over a radio group when any number of options may be chosen.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorCompoundBrandBackground",
+    "tokens.colorCompoundBrandBackgroundHover",
+    "tokens.colorCompoundBrandBackgroundPressed",
+    "tokens.colorNeutralForegroundInverted",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokeHover",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorCompoundBrandForeground1",
+    "tokens.colorCompoundBrandForeground1Hover",
+    "tokens.colorCompoundBrandForeground1Pressed",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.borderRadiusSmall",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.spacingVerticalS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalXS",
+    "tokens.lineHeightBase300"
+  ],
+  "references": {
+    "react": [
+      "useCheckboxStyles.styles.ts",
+      "Checkbox.types.ts"
+    ],
+    "fluent2": [
+      "checkbox"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "label",
+      "type": "slot",
+      "required": false,
+      "description": "The label text beside the indicator. Checkbox takes no children; the label is the only text."
+    },
+    {
+      "name": "checked",
+      "type": "enum",
+      "values": [
+        "false",
+        "true",
+        "mixed"
+      ],
+      "required": false,
+      "default": "false",
+      "description": "Controlled state. mixed is the indeterminate look for a parent whose children are partly checked."
+    },
+    {
+      "name": "defaultChecked",
+      "type": "enum",
+      "values": [
+        "false",
+        "true",
+        "mixed"
+      ],
+      "required": false,
+      "default": "false",
+      "description": "Initial state when uncontrolled."
+    },
+    {
+      "name": "labelPosition",
+      "type": "enum",
+      "values": [
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "after",
+      "description": "Which side of the indicator the label sits on."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "square",
+        "circular"
+      ],
+      "required": false,
+      "default": "square",
+      "description": "The indicator's corner treatment. circular is for task-list UIs only, since it otherwise reads as a radio."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "The indicator's size: 16px or 20px."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Native input attribute: draws the disabled colours and takes no input."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new checked value (true, false or mixed) when the user toggles it."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "An inline-flex row holding indicator and label; carries the label colour, the pointer cursor and the focus outline, and is only as wide as its content."
+    },
+    {
+      "id": "input",
+      "name": "Hidden input",
+      "description": "A transparent native checkbox stretched over the indicator column (the indicator plus spacingHorizontalS on each side, full row height), so the whole column toggles on click. It takes focus and all native attributes."
+    },
+    {
+      "id": "indicator",
+      "name": "Indicator",
+      "description": "The box: a bordered square (or circle) that fills with brand and shows a checkmark when checked, or shows a brand square glyph when mixed."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The text, vertically centred on the indicator; wraps without growing the row past the indicator's line.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "16px indicator with a 12px glyph; the row is 32px tall.",
+      "tokens": [
+        "tokens.spacingVerticalS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "20px indicator with a 16px glyph; the row is 36px tall and the input column widens to match."
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "default": true,
+      "description": "The indicator rounds by borderRadiusSmall.",
+      "tokens": [
+        "tokens.borderRadiusSmall"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "description": "The indicator is a circle; for checklists only.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "labelPosition",
+      "value": "after",
+      "default": true,
+      "description": "Label to the end of the indicator; the input covers the start column.",
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "labelPosition",
+      "value": "before",
+      "description": "Label to the start of the indicator; the input covers the end column.",
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The root is a relative, inline-flex row no wider than its content, vertically aligned middle with surrounding text.",
+      "source": "useCheckboxStyles.styles.ts:27-35"
+    },
+    {
+      "id": "indicator-box",
+      "part": "indicator",
+      "text": "The indicator is a fixed box with a strokeWidthThin solid border and borderRadiusSmall corners, pinned to the top of the row (align-self flex-start), centring its glyph, and surrounded by a margin of spacingVerticalS above and below and spacingHorizontalS either side; it never shrinks and ignores the pointer.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusSmall",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useCheckboxStyles.styles.ts:123-146"
+    },
+    {
+      "id": "indicator-size",
+      "part": "indicator",
+      "text": "Medium: the indicator is 16px square with a 12px glyph, so with its 8px margins the row is 32px tall. Large: 20px square with a 16px glyph, a 36px row.",
+      "values": [
+        {
+          "name": "indicatorMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "glyphMedium",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "indicatorLarge",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "glyphLarge",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "rowHeightMedium",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useCheckboxStyles.styles.ts:24-25,143-153"
+    },
+    {
+      "id": "hit-column",
+      "part": "input",
+      "text": "The hidden input is absolutely placed at the indicator's side of the row, full height, and as wide as the indicator plus spacingHorizontalS on each side (32px medium, 36px large), so clicks in the margin around the box still toggle it.",
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "widthMedium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "widthLarge",
+          "value": 36,
+          "unit": "px"
+        }
+      ],
+      "source": "useCheckboxStyles.styles.ts:97-121"
+    },
+    {
+      "id": "label",
+      "part": "label",
+      "text": "The label pads spacingVerticalS by spacingHorizontalS, trimmed to spacingHorizontalXS on the side facing the indicator, and takes a negative vertical margin of (indicator size − lineHeightBase300) / 2 so its first line centres on the indicator without making the row taller; wrapped lines keep their line height.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.lineHeightBase300"
+      ],
+      "source": "useCheckboxStyles.styles.ts:159-184"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Unchecked at rest: label colorNeutralForeground3; the indicator has no fill and a colorNeutralStrokeAccessible border.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useCheckboxStyles.styles.ts:33,133-135"
+    },
+    {
+      "state": "hovered",
+      "text": "Unchecked: label steps to colorNeutralForeground2 and the border to colorNeutralStrokeAccessibleHover. Checked: fill and border both step to colorCompoundBrandBackgroundHover. Mixed: border colorCompoundBrandStrokeHover and glyph colorCompoundBrandForeground1Hover. The change is instant.",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorCompoundBrandBackgroundHover",
+        "tokens.colorCompoundBrandStrokeHover",
+        "tokens.colorCompoundBrandForeground1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCheckboxStyles.styles.ts:39-42,56-59,72-75"
+    },
+    {
+      "state": "pressed",
+      "text": "Unchecked: label colorNeutralForeground1 and border colorNeutralStrokeAccessiblePressed. Checked: fill and border colorCompoundBrandBackgroundPressed. Mixed: border colorCompoundBrandStrokePressed and glyph colorCompoundBrandForeground1Pressed.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandBackgroundPressed",
+        "tokens.colorCompoundBrandStrokePressed",
+        "tokens.colorCompoundBrandForeground1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCheckboxStyles.styles.ts:44-47,61-64,77-80"
+    },
+    {
+      "state": "checked",
+      "part": "indicator",
+      "text": "Label colorNeutralForeground1; the indicator fills colorCompoundBrandBackground with a matching border and draws the checkmark in colorNeutralForegroundInverted.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorCompoundBrandBackground",
+        "tokens.colorNeutralForegroundInverted"
+      ],
+      "source": "useCheckboxStyles.styles.ts:50-54"
+    },
+    {
+      "state": "indeterminate",
+      "part": "indicator",
+      "text": "Mixed: label colorNeutralForeground1; the indicator keeps no fill, takes a colorCompoundBrandStroke border and draws a filled square glyph in colorCompoundBrandForeground1.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorCompoundBrandForeground1"
+      ],
+      "source": "useCheckboxStyles.styles.ts:67-70"
+    },
+    {
+      "state": "focused",
+      "part": "root",
+      "text": "Keyboard focus on the hidden input draws the default createFocusOutlineStyle outline around the whole root (indicator and label together): 2px colorStrokeFocus2 just outside the root, rounded borderRadiusMedium. Selector is focus-within, so it follows the input.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useCheckboxStyles.styles.ts:34; createFocusOutlineStyle.ts:89-112"
+    },
+    {
+      "state": "disabled",
+      "text": "Label and glyph colorNeutralForegroundDisabled, border colorNeutralStrokeDisabled, default cursor; no hover or press change. The disabled class replaces the checked one, so a disabled checked box has no fill: only the disabled checkmark shows inside a disabled border.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralStrokeDisabled"
+      ],
+      "source": "useCheckboxStyles.styles.ts:83-94,195-206"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "A click on the indicator column or the label, or Space while focused, toggles checked; onChange reports the new value.",
+      "source": "Checkbox.types.ts:43-71"
+    },
+    {
+      "id": "state-priority",
+      "text": "Exactly one of the state classes applies, in priority disabled, mixed, checked, unchecked; hover and press only exist inside the chosen enabled class.",
+      "source": "useCheckboxStyles.styles.ts:195-206"
+    },
+    {
+      "id": "no-transition",
+      "text": "No transition is declared: colour changes between rest, hover, pressed and checked are instant.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useCheckboxStyles.styles.ts:27-95"
+    },
+    {
+      "id": "focus-visible",
+      "text": "The focus outline appears only for keyboard focus, never after a pointer press.",
+      "source": "createCustomFocusIndicatorStyle.ts; constants.ts"
+    }
+  ],
+  "accessibility": {
+    "role": "checkbox",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Space toggles it"
+    ],
+    "semantics": [
+      "a native input type=checkbox, so checked, disabled and required come from the platform",
+      "mixed is reported as aria-checked=mixed through the input's indeterminate state",
+      "the label slot is a <label> bound to the input; a checkbox without one needs aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The indicator sizes (16, 20px) and glyph sizes (12, 16px) are constants in the styles file; no token gives them.",
+      "source": "useCheckboxStyles.styles.ts:24-25,143-153"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Disabled and checked shows no brand fill and no disabled background: the disabled class sets only border and glyph colours, so the box is outlined with a grey checkmark.",
+      "tokens": [
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useCheckboxStyles.styles.ts:83-94"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The label colour tracks state: tertiary (Foreground3) when unchecked, primary (Foreground1) when checked or mixed. A label painted Foreground1 throughout is wrong.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useCheckboxStyles.styles.ts:33,51,68"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The large label margin is still computed against lineHeightBase300; the label text does not grow with the indicator.",
+      "tokens": [
+        "tokens.lineHeightBase300"
+      ],
+      "source": "useCheckboxStyles.styles.ts:180-183"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The file adds forced-colours rules only for disabled: label and glyph become GrayText. Every other state relies on the high-contrast theme's alias values; the focus outline turns Highlight.",
+      "source": "useCheckboxStyles.styles.ts:90-93; createFocusOutlineStyle.ts:59-64"
+    },
+    {
+      "kind": "inferred",
+      "text": "The checkmark and the mixed square are icons supplied by the render function (not vendored); the styles only colour them with currentColor. Label typography comes from the Label component, body1 by default.",
+      "source": "fluent2:checkbox"
+    }
+  ]
+}

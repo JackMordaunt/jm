@@ -1,0 +1,851 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "nav",
+  "name": "Nav",
+  "status": "preview",
+  "statusNote": "@fluentui/react-nav-preview: the API is settling; the styles read here are the package at the kit's commit.",
+  "summary": "The app's side navigation: a column of items and collapsible categories of sub-items in a drawer, with section headers, dividers, an app title row and a hamburger to open or close it. Use a tab list for views of one page and a breadcrumb for a trail.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground4",
+    "tokens.colorNeutralBackground4Hover",
+    "tokens.colorNeutralBackground4Pressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2BrandSelected",
+    "tokens.colorCompoundBrandForeground1",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThick",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusCircular",
+    "tokens.spacingVerticalL",
+    "tokens.spacingVerticalMNudge",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalS",
+    "tokens.spacingVerticalXXS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalXS",
+    "typographyStyles.body1",
+    "typographyStyles.body1Strong",
+    "typographyStyles.caption1Strong",
+    "typographyStyles.subtitle2",
+    "tokens.durationFaster",
+    "tokens.durationFast",
+    "tokens.durationNormal",
+    "tokens.curveLinear",
+    "tokens.curveEasyEase",
+    "tokens.curveDecelerateMid",
+    "tokens.curveAccelerateMin"
+  ],
+  "references": {
+    "react": [
+      "Nav.types.ts",
+      "useNav.ts",
+      "useNavStyles.styles.ts",
+      "NavContext.ts",
+      "sharedNavStyles.styles.ts",
+      "NavItem.types.ts",
+      "useNavItem.ts",
+      "useNavItemStyles.styles.ts",
+      "NavSubItem.types.ts",
+      "useNavSubItemStyles.styles.ts",
+      "useNavSubItemGroupStyles.styles.ts",
+      "NavCategory.types.ts",
+      "useNavCategory.ts",
+      "NavCategoryItem.types.ts",
+      "useNavCategoryItem.styles.ts",
+      "useNavSectionHeaderStyles.styles.ts",
+      "useNavDividerStyles.styles.ts",
+      "NavDrawer.types.ts",
+      "useNavDrawer.ts",
+      "useNavDrawerStyles.styles.ts",
+      "useNavDrawerHeaderStyles.styles.ts",
+      "useNavDrawerBodyStyles.styles.ts",
+      "useNavDrawerFooterStyles.styles.ts",
+      "Hamburger.types.ts",
+      "useHamburgerStyles.styles.ts",
+      "AppItem.types.ts",
+      "useAppItem.ts",
+      "useAppItemStyles.styles.ts",
+      "useAppItemStaticStyles.styles.ts",
+      "SplitNavItem.types.ts",
+      "useSplitNavItemStyles.styles.ts",
+      "Collapse.ts"
+    ],
+    "fluent2": [
+      "nav"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "selectedValue",
+      "type": "string",
+      "required": false,
+      "description": "Nav and NavDrawer: the value of the selected item or sub-item; empty means none."
+    },
+    {
+      "name": "defaultSelectedValue",
+      "type": "string",
+      "required": false,
+      "description": "Nav and NavDrawer: the initial selection when the nav controls itself."
+    },
+    {
+      "name": "selectedCategoryValue",
+      "type": "string",
+      "required": false,
+      "description": "Nav and NavDrawer: the category holding the selected sub-item, shown as selected while it is closed."
+    },
+    {
+      "name": "openCategories",
+      "type": "list",
+      "required": false,
+      "description": "Nav and NavDrawer: the values of the open categories, when the caller controls them."
+    },
+    {
+      "name": "defaultOpenCategories",
+      "type": "list",
+      "required": false,
+      "description": "Nav and NavDrawer: the categories open at first; only the first counts when multiple is false."
+    },
+    {
+      "name": "multiple",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Nav and NavDrawer: whether several categories may be open at once; false closes the others when one opens."
+    },
+    {
+      "name": "density",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Nav and NavDrawer: the vertical padding of every item; horizontal spacing is unchanged."
+    },
+    {
+      "name": "onNavItemSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Nav and NavDrawer: runs with the selected value and, for a sub-item, its category value."
+    },
+    {
+      "name": "onNavCategoryItemToggle",
+      "type": "callback",
+      "required": false,
+      "description": "Nav and NavDrawer: runs when a category header is clicked, before the open set changes."
+    },
+    {
+      "name": "tabbable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "NavDrawer: false makes the nav one tab stop navigated by arrow keys; true lets Tab move through the items too."
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "overlay",
+        "inline"
+      ],
+      "required": false,
+      "default": "overlay",
+      "description": "NavDrawer: the drawer kind, with the drawer spec's position, size, open and separator inputs."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": true,
+      "description": "NavItem, NavSubItem, NavCategory: what identifies it in selection and open state."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "NavItem, NavSubItem, AppItem: a link target; with it the item is an anchor, else a button."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "NavItem, NavCategoryItem, AppItem: a 20px icon before the label, regular at rest and filled when selected."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "The label of an item, sub-item, category item, section header or app item; a category's NavCategoryItem and NavSubItemGroup; a drawer's header, body and footer."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Nav",
+      "description": "A flex column owning the selected value, the open categories and the density; NavDrawer is a Drawer wrapping one."
+    },
+    {
+      "id": "drawer",
+      "name": "NavDrawer",
+      "description": "The drawer spec's surface filled Background 4, 260px wide when no size is given, with role navigation.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralBackground4"
+      ]
+    },
+    {
+      "id": "drawer-header",
+      "name": "NavDrawerHeader",
+      "description": "The drawer header with its margin removed, padded 14px at the start and 5px above and below; it usually holds the hamburger.",
+      "optional": true
+    },
+    {
+      "id": "drawer-body",
+      "name": "NavDrawerBody",
+      "description": "The drawer body as a column of items spacingVerticalXXS apart, padded spacingHorizontalMNudge at the start and spacingHorizontalXS at the end.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "drawer-footer",
+      "name": "NavDrawerFooter",
+      "description": "The drawer footer as a column spacingVerticalXXS apart, padded spacingVerticalXXS above and below, spacingHorizontalXS at the end and spacingHorizontalMNudge at the start.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalMNudge"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "NavItem",
+      "description": "One selectable row: optional icon, then the label, full width, Background 4 with Foreground 2 text, rounded medium; selected it is strong text with the brand indicator bar at its start.",
+      "tokens": [
+        "tokens.colorNeutralBackground4",
+        "tokens.colorNeutralForeground2",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "category",
+      "name": "NavCategory",
+      "description": "A value-bearing group of a NavCategoryItem header and a NavSubItemGroup; it renders nothing itself."
+    },
+    {
+      "id": "category-item",
+      "name": "NavCategoryItem",
+      "description": "The category's header row, like an item, with an expand chevron pushed to the end; it reads as selected only while closed with a selected sub-item inside."
+    },
+    {
+      "id": "sub-item-group",
+      "name": "NavSubItemGroup",
+      "description": "The category's collapsible column of sub-items, clipping its overflow while it collapses."
+    },
+    {
+      "id": "sub-item",
+      "name": "NavSubItem",
+      "description": "A row like an item, indented 46px (40px at small density) with no icon; its indicator sits 36px further into the gutter."
+    },
+    {
+      "id": "indicator",
+      "name": "Selection indicator",
+      "description": "The 4 by 20px pill in Compound Brand Foreground 1 standing 16px before a selected row's padding edge.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorCompoundBrandForeground1",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A 20px slot stacking the regular and filled glyphs; the regular shows at rest, the filled fades in when selected.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2BrandSelected"
+      ]
+    },
+    {
+      "id": "section-header",
+      "name": "NavSectionHeader",
+      "description": "A caption1Strong heading over a run of items, 10px in from the start with 8px above and below.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1Strong"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "NavDivider",
+      "description": "The divider spec's rule with 4px above and below and no growth.",
+      "optional": true
+    },
+    {
+      "id": "app-item",
+      "name": "AppItem",
+      "description": "The app's name row at the top in subtitle2, centred with a 10px gap to its icon; AppItemStatic is the same without hover or press.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.subtitle2"
+      ]
+    },
+    {
+      "id": "hamburger",
+      "name": "Hamburger",
+      "description": "The button spec's button filled Background 4 with no border, hover and press in the Background 4 states, carrying the menu icon that opens or closes the drawer.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralBackground4",
+        "tokens.colorNeutralBackground4Hover",
+        "tokens.colorNeutralBackground4Pressed"
+      ]
+    },
+    {
+      "id": "split-item",
+      "name": "SplitNavItem",
+      "description": "A row joining an item (or sub-item) with up to three trailing buttons (action, toggle, menu) that appear on hover or focus.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "density",
+      "value": "medium",
+      "default": true,
+      "description": "Rows padded spacingVerticalMNudge above and below.",
+      "tokens": [
+        "tokens.spacingVerticalMNudge"
+      ]
+    },
+    {
+      "axis": "density",
+      "value": "small",
+      "description": "Rows padded spacingVerticalXS above and below; sub-items indent 40px and the app item pads 14px at the start with a 14px gap.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ]
+    },
+    {
+      "axis": "multiple",
+      "value": "true",
+      "default": true,
+      "description": "Any number of categories open at once; a header click toggles its own."
+    },
+    {
+      "axis": "multiple",
+      "value": "false",
+      "description": "At most one category open; opening one closes the other."
+    },
+    {
+      "axis": "item",
+      "value": "static",
+      "description": "AppItemStatic: the app row with a default cursor and no hover or press background."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The nav is a flex column.",
+      "source": "useNavStyles.styles.ts:16-20"
+    },
+    {
+      "id": "row",
+      "part": "item",
+      "text": "Every row (item, sub-item, category item, app item) is a full-width border-box flex row, children aligned to the top with spacingVerticalL between, text at the start, padded spacingVerticalMNudge above and below, spacingHorizontalMNudge at the start and spacingHorizontalS at the end, filled colorNeutralBackground4, rounded borderRadiusMedium, colorNeutralForeground2 body1 text with no border or decoration.",
+      "tokens": [
+        "tokens.spacingVerticalL",
+        "tokens.spacingVerticalMNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.colorNeutralBackground4",
+        "tokens.borderRadiusMedium",
+        "tokens.colorNeutralForeground2",
+        "typographyStyles.body1"
+      ],
+      "source": "sharedNavStyles.styles.ts:33-57"
+    },
+    {
+      "id": "row-small",
+      "part": "item",
+      "text": "At small density a row pads spacingVerticalXS above and below instead.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ],
+      "source": "sharedNavStyles.styles.ts:69-73"
+    },
+    {
+      "id": "indicator",
+      "part": "indicator",
+      "text": "The indicator is an absolutely placed 4px wide, 20px tall pill of colorCompoundBrandForeground1, its inline-start margin -16px so it stands in the gutter before the row's padding edge.",
+      "tokens": [
+        "tokens.colorCompoundBrandForeground1",
+        "tokens.borderRadiusCircular"
+      ],
+      "values": [
+        {
+          "name": "width",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "height",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "offset",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "sharedNavStyles.styles.ts:9-13,87-103"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon slot is a grid at least 20px square, centred, clipping overflow, with the regular and filled glyphs stacked in one cell; only the regular shows at rest.",
+      "values": [
+        {
+          "name": "size",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "sharedNavStyles.styles.ts:118-136"
+    },
+    {
+      "id": "sub-item",
+      "part": "sub-item",
+      "text": "A sub-item pads 46px at the start (40px at small density) and its indicator's inline-start margin is -52px, 36px beyond the plain item's, so it stands in the same gutter.",
+      "values": [
+        {
+          "name": "indentMedium",
+          "value": 46,
+          "unit": "px"
+        },
+        {
+          "name": "indentSmall",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "indicatorOffset",
+          "value": 52,
+          "unit": "px"
+        }
+      ],
+      "source": "useNavSubItemStyles.styles.ts:21-33,49-59"
+    },
+    {
+      "id": "sub-item-group",
+      "part": "sub-item-group",
+      "text": "The sub-item group does not shrink and clips its overflow, so the collapse motion can animate its height.",
+      "source": "useNavSubItemGroupStyles.styles.ts:14-20"
+    },
+    {
+      "id": "category-item",
+      "part": "category-item",
+      "text": "The category item is a full-width row whose expand icon is a 20px box pushed to the end with an auto start margin; its own icon behaves as an item's.",
+      "values": [
+        {
+          "name": "expandIconHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useNavCategoryItem.styles.ts:23-38,55-80"
+    },
+    {
+      "id": "section-header",
+      "part": "section-header",
+      "text": "A section header is caption1Strong text 10px in from the start with 8px above and below.",
+      "tokens": [
+        "typographyStyles.caption1Strong"
+      ],
+      "values": [
+        {
+          "name": "marginStart",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "marginBlock",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useNavSectionHeaderStyles.styles.ts:15-21"
+    },
+    {
+      "id": "divider",
+      "part": "divider",
+      "text": "A nav divider is the divider spec's default rule with 4px above and below and no flex growth.",
+      "values": [
+        {
+          "name": "marginVertical",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useNavDividerStyles.styles.ts:13-19,32"
+    },
+    {
+      "id": "app-item",
+      "part": "app-item",
+      "text": "The app item is a row in subtitle2 with its children centred, 4px inline margins pulled to -6px at the start and 0 at the end, a 10px gap, its width reverted from full, padded spacingVerticalS above and below, spacingHorizontalMNudge at the start and spacingHorizontalS at the end; at small density it pads 14px at the start with a 14px gap, and without an icon it pads 16px at the start.",
+      "tokens": [
+        "typographyStyles.subtitle2",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "gap",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "marginStart",
+          "value": -6,
+          "unit": "px"
+        },
+        {
+          "name": "smallPaddingStart",
+          "value": 14,
+          "unit": "px"
+        },
+        {
+          "name": "smallGap",
+          "value": 14,
+          "unit": "px"
+        },
+        {
+          "name": "noIconPaddingStart",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "useAppItemStyles.styles.ts:17-35,48-55"
+    },
+    {
+      "id": "drawer",
+      "part": "drawer",
+      "text": "The nav drawer is a drawer filled colorNeutralBackground4 with its items not stretched, and 260px wide when no drawer size is given.",
+      "tokens": [
+        "tokens.colorNeutralBackground4"
+      ],
+      "values": [
+        {
+          "name": "defaultWidth",
+          "value": 260,
+          "unit": "px"
+        }
+      ],
+      "source": "useNavDrawerStyles.styles.ts:16-26,36-41; sharedNavStyles.styles.ts:10"
+    },
+    {
+      "id": "drawer-header",
+      "part": "drawer-header",
+      "text": "The nav drawer header is the drawer header with its margin removed, padded 14px at the start and 5px above and below.",
+      "values": [
+        {
+          "name": "paddingStart",
+          "value": 14,
+          "unit": "px"
+        },
+        {
+          "name": "paddingBlock",
+          "value": 5,
+          "unit": "px"
+        }
+      ],
+      "source": "useNavDrawerHeaderStyles.styles.ts:16-22,28-31"
+    },
+    {
+      "id": "drawer-body",
+      "part": "drawer-body",
+      "text": "The nav drawer body is the drawer body as a flex column with spacingVerticalXXS between rows, padded spacingHorizontalMNudge at the start and spacingHorizontalXS at the end, none above or below.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalXS"
+      ],
+      "source": "useNavDrawerBodyStyles.styles.ts:16-24,30-33"
+    },
+    {
+      "id": "drawer-footer",
+      "part": "drawer-footer",
+      "text": "The nav drawer footer is the drawer footer as a flex column with spacingVerticalXXS between rows, padded spacingVerticalXXS above and below, spacingHorizontalXS at the end and spacingHorizontalMNudge at the start.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalMNudge"
+      ],
+      "source": "useNavDrawerFooterStyles.styles.ts:16-23,29-32"
+    },
+    {
+      "id": "hamburger",
+      "part": "hamburger",
+      "text": "The hamburger is the button spec's button with no border and no text decoration, filled colorNeutralBackground4.",
+      "tokens": [
+        "tokens.colorNeutralBackground4"
+      ],
+      "source": "useHamburgerStyles.styles.ts:18-30,36"
+    },
+    {
+      "id": "split-item",
+      "part": "split-item",
+      "text": "A split item is a row with no gap or padding, its children stretched, filled colorNeutralBackground4; the item inside is transparent, and each trailing button is at least 28px wide, padded 5px at the start, 12px at the end and 5px above (9px above at medium density), aligned to the start.",
+      "tokens": [
+        "tokens.colorNeutralBackground4"
+      ],
+      "values": [
+        {
+          "name": "buttonMinWidth",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "buttonPaddingStart",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "buttonPaddingEnd",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "buttonPaddingTopSmall",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "buttonPaddingTopMedium",
+          "value": 9,
+          "unit": "px"
+        }
+      ],
+      "source": "useSplitNavItemStyles.styles.ts:39-84,102-149"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "item",
+      "text": "Rest: colorNeutralBackground4 fill, colorNeutralForeground2 text and regular icon.",
+      "tokens": [
+        "tokens.colorNeutralBackground4",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "sharedNavStyles.styles.ts:42-44"
+    },
+    {
+      "state": "hovered",
+      "part": "item",
+      "text": "The fill turns colorNeutralBackground4Hover, the background easing over durationFaster on curveLinear; text and icon keep their colours.",
+      "tokens": [
+        "tokens.colorNeutralBackground4Hover",
+        "tokens.durationFaster",
+        "tokens.curveLinear"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveLinear",
+        "properties": [
+          "background"
+        ]
+      },
+      "source": "sharedNavStyles.styles.ts:17-27,52-60"
+    },
+    {
+      "state": "pressed",
+      "part": "item",
+      "text": "The shared row sets no pressed fill; the hamburger and the split item turn colorNeutralBackground4Pressed while active.",
+      "tokens": [
+        "tokens.colorNeutralBackground4Pressed"
+      ],
+      "source": "useHamburgerStyles.styles.ts:26-28; useSplitNavItemStyles.styles.ts:56-58"
+    },
+    {
+      "state": "focused",
+      "part": "item",
+      "text": "Keyboard focus draws a strokeWidthThick colorStrokeFocus2 outline inset by strokeWidthThick, so the ring sits inside the row's edge.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "sharedNavStyles.styles.ts:62-66"
+    },
+    {
+      "state": "selected",
+      "part": "item",
+      "text": "The label turns body1Strong, the indicator pill appears in the gutter, its background animating from transparent to colorCompoundBrandForeground1 over durationFaster on curveLinear, and the icon's filled glyph fades in to colorNeutralForeground2BrandSelected while the regular fades out over the same time.",
+      "tokens": [
+        "typographyStyles.body1Strong",
+        "tokens.colorCompoundBrandForeground1",
+        "tokens.colorNeutralForeground2BrandSelected",
+        "tokens.durationFaster",
+        "tokens.curveLinear"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveLinear",
+        "properties": [
+          "background",
+          "opacity",
+          "color"
+        ]
+      },
+      "source": "sharedNavStyles.styles.ts:79-81,87-103,137-165; useNavItemStyles.styles.ts:32-49"
+    },
+    {
+      "state": "collapsed",
+      "part": "category-item",
+      "text": "A closed category whose sub-item is selected shows the selected look (strong label, indicator, filled icon) on its header; open, the header is plain and the selected sub-item shows it instead.",
+      "tokens": [
+        "typographyStyles.body1Strong",
+        "tokens.colorCompoundBrandForeground1"
+      ],
+      "source": "useNavCategoryItem.styles.ts:52-62; useNav.ts:131-135"
+    },
+    {
+      "state": "expanded",
+      "part": "sub-item-group",
+      "text": "Opening a category runs the shared Collapse motion on its sub-item group: height and opacity grow over durationNormal on curveDecelerateMid, and closing shrinks them over durationFast on curveAccelerateMin.",
+      "tokens": [
+        "tokens.durationNormal",
+        "tokens.curveDecelerateMid",
+        "tokens.durationFast",
+        "tokens.curveAccelerateMin"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "height",
+          "opacity"
+        ]
+      },
+      "source": "Collapse.ts; useNavSubItemGroupStyles.styles.ts:14-20"
+    },
+    {
+      "state": "other",
+      "label": "split item hovered or focused within",
+      "part": "split-item",
+      "text": "The trailing buttons of a split item are opacity 0 and ignore the pointer until the row is hovered or holds focus, when they fade to 1 over durationFast on curveEasyEase.",
+      "tokens": [
+        "tokens.durationFast",
+        "tokens.curveEasyEase"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFast",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "opacity"
+        ]
+      },
+      "source": "useSplitNavItemStyles.styles.ts:28-34,49-54,86-91"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "select",
+      "text": "Clicking an item or sub-item selects its value, records its category value (or clears it for a plain item) and runs onNavItemSelect; an item with href navigates too.",
+      "source": "useNav.ts:130-135; useNavItem.ts:54-79"
+    },
+    {
+      "id": "toggle",
+      "text": "Clicking a category header toggles that category in the open set: with multiple it is added or removed, without it the set becomes just that category or empty.",
+      "source": "useNav.ts:38-48,137-144"
+    },
+    {
+      "id": "category-open",
+      "text": "A category is open when the open set holds its value; its sub-item group lays out only then.",
+      "source": "useNavCategory.ts:17-29"
+    },
+    {
+      "id": "focus",
+      "text": "By default the nav is one tab stop and arrow keys move between rows; tabbable lets Tab move through them as well.",
+      "source": "NavContext.ts:41-44; NavDrawer.types.ts:17-22"
+    },
+    {
+      "id": "drawer",
+      "text": "NavDrawer takes every drawer input (type, position, size, open, separator) and every nav input, and is role navigation.",
+      "source": "useNavDrawer.ts:21-49; NavDrawer.types.ts:14-36"
+    },
+    {
+      "id": "aria-current",
+      "text": "A selected item reads aria-current=page and an unselected one aria-current=false.",
+      "source": "useNavItem.ts:62-70"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab enters the nav (and, when tabbable, moves through rows)",
+      "Up and Down arrows move between rows",
+      "Enter and Space select an item or toggle a category",
+      "Escape closes an overlay nav drawer"
+    ],
+    "semantics": [
+      "the drawer is role navigation",
+      "a selected item is aria-current=page",
+      "a category header is a button reporting aria-expanded",
+      "the hamburger is a button and needs an accessible name"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 260px drawer width, the indicator's 4 by 20px and 16px offset, the sub-item indents (46, 40, 52px), the section header's 10 and 8px, the divider's 4px, the app item's -6, 10, 14 and 16px, the header's 14 and 5px and the split item's 28, 5, 12 and 9px are constants in the styles files.",
+      "source": "sharedNavStyles.styles.ts:9-16; useNavSubItemStyles.styles.ts:21-33; useNavSectionHeaderStyles.styles.ts:17-18; useNavDividerStyles.styles.ts:16-17; useAppItemStyles.styles.ts:17-35; useNavDrawerHeaderStyles.styles.ts:19-20; useSplitNavItemStyles.styles.ts:71-84"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Rows take the Background 4 family, not Background 1: the whole drawer is a Background 4 surface and a row's rest fill is invisible against it, so only hover, press and the indicator read.",
+      "tokens": [
+        "tokens.colorNeutralBackground4"
+      ],
+      "source": "sharedNavStyles.styles.ts:14-16,42; useNavDrawerStyles.styles.ts:18"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The selected look on a category header is conditional on the category being closed; opening it hands the look to the selected sub-item.",
+      "source": "useNavCategoryItem.styles.ts:60-61"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The nav drawer footer's padding shorthand lists five values, so the browser drops the declaration; the intended padding reads as spacingVerticalXXS above and below, spacingHorizontalXS at the end and spacingHorizontalMNudge at the start.",
+      "tokens": [
+        "tokens.spacingVerticalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalMNudge"
+      ],
+      "source": "useNavDrawerFooterStyles.styles.ts:18"
+    },
+    {
+      "kind": "inferred",
+      "text": "The category's expand chevron and its rotation come from the component's render, not the styles: the design site shows a chevron pointing down when open and right (or up) when closed; an implementation rotates its chevron icon.",
+      "source": "useNavCategoryItem.styles.ts:23-29; fluent2:nav"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the indicator gets a 2px colorTransparentStroke outline inset 2px, which the theme binds to a visible system colour so the pill survives forced backgrounds.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "sharedNavStyles.styles.ts:104-109"
+    }
+  ]
+}

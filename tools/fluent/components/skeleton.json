@@ -1,0 +1,308 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "skeleton",
+  "name": "Skeleton",
+  "status": "stable",
+  "summary": "A loading placeholder: a group of stencil-coloured shapes in the layout the content will take, shimmering or pulsing until it arrives. Use it where content loads in place; a Spinner is for an action without a known shape and a ProgressBar for a measured wait.",
+  "tokenGroups": [
+    "tokens.colorNeutralStencil1",
+    "tokens.colorNeutralStencil2",
+    "tokens.colorNeutralStencil1Alpha"
+  ],
+  "references": {
+    "react": [
+      "useSkeletonStyles.styles.ts",
+      "Skeleton.types.ts",
+      "useSkeletonItemStyles.styles.ts",
+      "SkeletonItem.types.ts"
+    ],
+    "fluent2": [
+      "skeleton"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The SkeletonItems, laid out by the caller in the shape of the content to come."
+    },
+    {
+      "name": "animation",
+      "type": "enum",
+      "values": [
+        "wave",
+        "pulse"
+      ],
+      "required": false,
+      "default": "wave",
+      "description": "wave slides a highlight across every item; pulse fades every item between full and 40% opacity."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "opaque",
+        "translucent"
+      ],
+      "required": false,
+      "default": "opaque",
+      "description": "opaque uses the stencil greys; translucent the alpha stencil, for coloured surfaces."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rectangle",
+        "circle",
+        "square"
+      ],
+      "required": false,
+      "default": "rectangle",
+      "description": "An item's shape: a full-width rectangle of the size's height, or a circle or square of the size on both axes."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "8",
+        "12",
+        "14",
+        "16",
+        "20",
+        "22",
+        "24",
+        "28",
+        "32",
+        "36",
+        "40",
+        "48",
+        "52",
+        "56",
+        "64",
+        "72",
+        "92",
+        "96",
+        "120",
+        "128"
+      ],
+      "required": false,
+      "default": "16",
+      "description": "An item's height, in px, and its width too for circle and square."
+    },
+    {
+      "name": "width",
+      "type": "string",
+      "required": false,
+      "description": "An explicit width for a rectangle, overriding 100%."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Skeleton",
+      "description": "The group: it carries the animation and appearance every item inherits and adds no visuals of its own (display block when rendered as a span)."
+    },
+    {
+      "id": "item",
+      "name": "SkeletonItem",
+      "description": "One shape: a stencil-coloured box with hidden overflow and a pseudo-element covering it that carries the animation.",
+      "tokens": [
+        "tokens.colorNeutralStencil1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "animation",
+      "value": "wave",
+      "default": true,
+      "description": "The item is Stencil 1 and its overlay is a left-to-right gradient Stencil 1, Stencil 2 at 50%, Stencil 1 that starts translated -100% and slides to +100% over 3s on ease-in-out, forever.",
+      "tokens": [
+        "tokens.colorNeutralStencil1",
+        "tokens.colorNeutralStencil2"
+      ]
+    },
+    {
+      "axis": "animation",
+      "value": "pulse",
+      "description": "The overlay is a solid Stencil 1 whose opacity runs 1, 0.4 at 50%, 1 over 1s on ease-in-out, forever.",
+      "tokens": [
+        "tokens.colorNeutralStencil1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "opaque",
+      "default": true,
+      "description": "The stencil greys.",
+      "tokens": [
+        "tokens.colorNeutralStencil1",
+        "tokens.colorNeutralStencil2"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "translucent",
+      "description": "The item is Stencil 1 Alpha and the wave gradient runs transparent, Stencil 1 Alpha at 50%, transparent; with pulse the item itself has no background and the overlay is Stencil 1 Alpha.",
+      "tokens": [
+        "tokens.colorNeutralStencil1Alpha"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rectangle",
+      "default": true,
+      "description": "Width 100% (or the given width), the size as height, 4px corners."
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "The size on both axes, 4px corners."
+    },
+    {
+      "axis": "shape",
+      "value": "circle",
+      "description": "The size on both axes with a 50% radius."
+    }
+  ],
+  "layout": [
+    {
+      "id": "item-box",
+      "text": "An item is relatively positioned with overflow hidden; its overlay pseudo-element is absolutely positioned over the whole item (inset 0) and carries the animation, 3s ease-in-out infinite by default, 1s for pulse.",
+      "values": [
+        {
+          "name": "waveDuration",
+          "value": 3000,
+          "unit": "ms"
+        },
+        {
+          "name": "pulseDuration",
+          "value": 1000,
+          "unit": "ms"
+        }
+      ],
+      "source": "useSkeletonItemStyles.styles.ts:33-51,69-75"
+    },
+    {
+      "id": "rectangle",
+      "text": "A rectangle is 100% wide with a 4px radius and the size as its height.",
+      "values": [
+        {
+          "name": "radius",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useSkeletonItemStyles.styles.ts:99-124"
+    },
+    {
+      "id": "square-circle",
+      "text": "A square or circle is the size on both axes; a circle adds a 50% radius.",
+      "values": [
+        {
+          "name": "circleRadius",
+          "value": 50,
+          "unit": "percent"
+        }
+      ],
+      "source": "useSkeletonItemStyles.styles.ts:126-153"
+    },
+    {
+      "id": "sizes",
+      "text": "The size steps are 8, 12, 14, 16, 20, 22, 24, 28, 32, 36, 40, 48, 52, 56, 64, 72, 92, 96, 120 and 128px, one class each.",
+      "source": "useSkeletonItemStyles.styles.ts:99-147; Skeleton.types.ts:15-35"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "A skeleton is always loading: the wave overlay slides across every item, or every item pulses; under reduced motion the animation runs once in 0.01ms, leaving the rest colour.",
+      "tokens": [
+        "tokens.colorNeutralStencil1",
+        "tokens.colorNeutralStencil2"
+      ],
+      "motion": {
+        "durationMs": 3000,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "useSkeletonItemStyles.styles.ts:12-28,43-49"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "wave",
+      "text": "The wave overlay's transform runs from translate(-100%) to translate(100%) over 3s on ease-in-out and repeats forever; all items in a group animate in step when they mount together.",
+      "motion": {
+        "durationMs": 3000,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "useSkeletonItemStyles.styles.ts:12-16,43-45,52-62"
+    },
+    {
+      "id": "pulse",
+      "text": "The pulse overlay's opacity runs 1, 0.4, 1 over 1s on ease-in-out, forever.",
+      "motion": {
+        "durationMs": 1000,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "values": [
+        {
+          "name": "minOpacity",
+          "value": 0.4,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useSkeletonItemStyles.styles.ts:18-28,69-75"
+    },
+    {
+      "id": "reduced-motion",
+      "text": "Under prefers-reduced-motion the animation duration is 0.01ms and it runs once.",
+      "source": "useSkeletonItemStyles.styles.ts:46-49"
+    }
+  ],
+  "accessibility": {
+    "role": "progressbar",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "the group is announced as a busy region with an aria-label such as Loading content; items are presentational"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 3s and 1s periods, the ease-in-out curve, the 0.4 pulse floor, the 4px rectangle radius and the size steps are constants in the styles file; no token gives them, and the curve is CSS's ease-in-out, not a Fluent curve token.",
+      "source": "useSkeletonItemStyles.styles.ts:12-28,43-49,99-147"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the wave overlay's background is WindowText, so the shimmer stays visible over the system canvas.",
+      "source": "useSkeletonItemStyles.styles.ts:64-66"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The wave's gradient is 200% of the item's travel: it starts fully outside on the left and ends fully outside on the right, so a renderer without gradient paint draws slices of the Stencil 1 to Stencil 2 ramp and moves them across.",
+      "tokens": [
+        "tokens.colorNeutralStencil1",
+        "tokens.colorNeutralStencil2"
+      ],
+      "source": "useSkeletonItemStyles.styles.ts:52-62"
+    }
+  ]
+}

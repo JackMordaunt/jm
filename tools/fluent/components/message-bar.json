@@ -1,0 +1,455 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "message-bar",
+  "name": "MessageBar",
+  "status": "stable",
+  "summary": "A persistent, inline status strip the page owns: an intent icon, a bold title running into body text, and actions, laid out on one line while it fits and reflowing to two when it does not. Use it for a condition the user should know about while on the page; use a toast for a passing notification and a dialog for a decision.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground3",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorStatusDangerBackground1",
+    "tokens.colorStatusDangerBorder1",
+    "tokens.colorStatusDangerForeground1",
+    "tokens.colorStatusWarningBackground1",
+    "tokens.colorStatusWarningBorder1",
+    "tokens.colorStatusWarningForeground3",
+    "tokens.colorStatusSuccessBackground1",
+    "tokens.colorStatusSuccessBorder1",
+    "tokens.colorStatusSuccessForeground1",
+    "tokens.strokeWidthThin",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusNone",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingVerticalS",
+    "tokens.spacingVerticalM",
+    "tokens.spacingVerticalMNudge",
+    "tokens.fontSizeBase500",
+    "typographyStyles.body1",
+    "typographyStyles.body1Strong",
+    "tokens.durationGentle"
+  ],
+  "references": {
+    "react": [
+      "useMessageBarStyles.styles.ts",
+      "MessageBar.types.ts",
+      "useMessageBarTitleStyles.styles.ts",
+      "useMessageBarBodyStyles.styles.ts",
+      "useMessageBarActionsStyles.styles.ts",
+      "MessageBarActions.types.ts",
+      "useMessageBarGroupStyles.styles.ts",
+      "MessageBarGroup.types.ts"
+    ],
+    "fluent2": [
+      "message-bar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "intent",
+      "type": "enum",
+      "values": [
+        "info",
+        "success",
+        "warning",
+        "error"
+      ],
+      "required": false,
+      "default": "info",
+      "description": "Picks the background, border and icon colours and the default icon; info is polite to assistive technology, the rest assertive."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "auto",
+        "singleline",
+        "multiline"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "auto watches the bar's width and switches to multiline when the single line would overflow; the others fix the layout."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "rounded (borderRadiusMedium) for a bar inside a component; square for a page-level bar flush with the viewport."
+    },
+    {
+      "name": "politeness",
+      "type": "enum",
+      "values": [
+        "polite",
+        "assertive"
+      ],
+      "required": false,
+      "description": "Overrides the live-region politeness the intent implies."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "Replaces the intent's default icon (Info, Warning, DiamondDismiss or CheckmarkCircle, filled)."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "A MessageBarBody, usually holding a MessageBarTitle then text, and optionally a MessageBarActions with its containerAction (the dismiss button) and action buttons."
+    },
+    {
+      "name": "animate",
+      "type": "enum",
+      "values": [
+        "exit-only",
+        "both"
+      ],
+      "required": false,
+      "default": "exit-only",
+      "description": "A MessageBarGroup option: bars always fade out when removed; both also slides and fades them in."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "MessageBar",
+      "description": "The strip: a grid of icon, body, secondary actions and actions columns, padded spacingHorizontalM on the left, at least 36px tall, with a strokeWidthThin border and borderRadiusMedium corners on Background 3.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorNeutralStroke1",
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusMedium",
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "The intent's filled icon at fontSizeBase500, spacingHorizontalS before the body, in Foreground 3 or the intent's foreground.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.spacingHorizontalS",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "MessageBarBody",
+      "description": "The body1 text in the body column, padded spacingHorizontalM on the right.",
+      "tokens": [
+        "typographyStyles.body1",
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "MessageBarTitle",
+      "description": "body1Strong text at the start of the body, followed by a space so the message runs on from it.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.body1Strong"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "MessageBarActions",
+      "description": "The action buttons, a flex row in the secondary-actions column with spacingHorizontalM gaps and right padding; hidden when it has none.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "id": "container-action",
+      "name": "Container action",
+      "description": "The dismiss button slot in the last column, padded spacingHorizontalM on the right.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ]
+    },
+    {
+      "id": "reflow-spacer",
+      "name": "Bottom reflow spacer",
+      "description": "An empty element rendered in multiline layout when there are no actions, occupying the secondary-actions row with a spacingVerticalS bottom margin so the bar keeps its bottom spacing.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingVerticalS"
+      ]
+    },
+    {
+      "id": "group",
+      "name": "MessageBarGroup",
+      "description": "A list of bars that animates them entering and leaving; it adds no styles of its own.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "intent",
+      "value": "info",
+      "default": true,
+      "description": "Background 3 with a Neutral Stroke 1 border and a Foreground 3 icon.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "error",
+      "description": "Status Danger Background 1, Border 1 and a Foreground 1 icon.",
+      "tokens": [
+        "tokens.colorStatusDangerBackground1",
+        "tokens.colorStatusDangerBorder1",
+        "tokens.colorStatusDangerForeground1"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "warning",
+      "description": "Status Warning Background 1, Border 1 and a Foreground 3 icon (the darker warning foreground, for contrast on the tinted background).",
+      "tokens": [
+        "tokens.colorStatusWarningBackground1",
+        "tokens.colorStatusWarningBorder1",
+        "tokens.colorStatusWarningForeground3"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "success",
+      "description": "Status Success Background 1, Border 1 and a Foreground 1 icon.",
+      "tokens": [
+        "tokens.colorStatusSuccessBackground1",
+        "tokens.colorStatusSuccessBorder1",
+        "tokens.colorStatusSuccessForeground1"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "singleline",
+      "description": "One row: icon, body, secondary actions, actions, vertically centred, text not wrapping."
+    },
+    {
+      "axis": "layout",
+      "value": "multiline",
+      "description": "Two rows: icon, body and the container action on the first, the actions spanning the second right-aligned; text wraps, items align to the top and the bar pads spacingVerticalMNudge above.",
+      "tokens": [
+        "tokens.spacingVerticalMNudge"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "default": true,
+      "description": "borderRadiusMedium corners.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "No rounding, for a bar spanning the page.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "grid",
+      "part": "root",
+      "text": "The bar is a single-row grid of four columns (auto, 1fr, auto, auto) named icon, body, secondaryActions and actions, items centred vertically, text on one line (nowrap), padded spacingHorizontalM on the left only, border-box, at least 36px tall, with a strokeWidthThin border and borderRadiusMedium corners.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "minHeight",
+          "value": 36,
+          "unit": "px"
+        }
+      ],
+      "source": "useMessageBarStyles.styles.ts:14-27"
+    },
+    {
+      "id": "multiline-grid",
+      "part": "root",
+      "text": "Multiline switches to three columns (auto, 1fr, auto) over two rows: icon, body and actions on the first and secondaryActions spanning the second; text wraps, items align to the start and the bar pads spacingVerticalMNudge on top.",
+      "tokens": [
+        "tokens.spacingVerticalMNudge"
+      ],
+      "source": "useMessageBarStyles.styles.ts:44-53"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon slot is a centred flex box at fontSizeBase500 (20px glyph) with spacingHorizontalS after it.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useMessageBarStyles.styles.ts:29-36"
+    },
+    {
+      "id": "body",
+      "part": "body",
+      "text": "The body is body1 in the body area with spacingHorizontalM of right padding; a title inside it is body1Strong and appends a space after itself so the following text runs on.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.body1Strong",
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useMessageBarBodyStyles.styles.ts:12-16; useMessageBarTitleStyles.styles.ts:15-20"
+    },
+    {
+      "id": "actions",
+      "part": "actions",
+      "text": "The actions are a flex row in the secondaryActions area with spacingHorizontalM column gaps and right padding; the container action sits in the actions area with the same right padding. In multiline the actions row justifies to the end with spacingVerticalMNudge above, spacingVerticalS below, no right margin and spacingVerticalM of right padding.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingVerticalMNudge",
+        "tokens.spacingVerticalS",
+        "tokens.spacingVerticalM"
+      ],
+      "source": "useMessageBarActionsStyles.styles.ts:16-35"
+    },
+    {
+      "id": "reflow-spacer",
+      "part": "reflow-spacer",
+      "text": "When multiline and no actions are given, the reflow spacer fills the secondaryActions area with a spacingVerticalS bottom margin, so the bar's bottom spacing matches a bar with actions.",
+      "tokens": [
+        "tokens.spacingVerticalS"
+      ],
+      "source": "useMessageBarStyles.styles.ts:38-41; MessageBar.types.ts:7-15"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "root",
+      "text": "The intent's background, border and icon colours; the bar itself has no hover, pressed or focus look, only its actions do.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorNeutralStroke1"
+      ],
+      "source": "useMessageBarStyles.styles.ts:14-27,67-98"
+    },
+    {
+      "state": "other",
+      "label": "reflowing",
+      "part": "root",
+      "text": "With layout auto the bar measures its own width: once its single line would overflow (the content's scroll width exceeds the bar's inline size) it becomes multiline, and it returns to a single line when it is again at least as wide as that recorded single-line width.",
+      "source": "useMessageBarReflow.ts:30-60; useMessageBar.ts:22-26"
+    },
+    {
+      "state": "open",
+      "part": "group",
+      "text": "Inside a MessageBarGroup with animate both, a bar enters by fading in and sliding down from -100% of its height over durationGentle; with the default exit-only it appears at once.",
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "properties": [
+          "opacity",
+          "transform"
+        ]
+      },
+      "source": "MessageBarGroup.types.ts:11-14"
+    },
+    {
+      "state": "other",
+      "label": "removed",
+      "part": "group",
+      "text": "A bar removed from a MessageBarGroup always fades out over durationGentle before it leaves the tree.",
+      "motion": {
+        "durationToken": "tokens.durationGentle",
+        "properties": [
+          "opacity"
+        ]
+      },
+      "source": "MessageBarGroup.types.ts:11-14"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "announce",
+      "text": "On mount the bar announces its body text and its actions' text, joined by a comma, politely for info and assertively otherwise unless politeness says which.",
+      "source": "useMessageBar.ts:22-23,33-41"
+    },
+    {
+      "id": "dismiss",
+      "text": "Dismissal is the caller's: the container action is a plain button (typically a dismiss icon button) whose click removes the bar from its group.",
+      "source": "MessageBarActions.types.ts:5-11; fluent2:message-bar"
+    },
+    {
+      "id": "default-icon",
+      "text": "Without an icon of its own the bar shows the intent's filled icon: Info, Warning, DiamondDismiss for error, CheckmarkCircle for success (getIntentIcon).",
+      "source": "useMessageBar.ts:18-30; fluent2:message-bar"
+    },
+    {
+      "id": "no-transition",
+      "text": "Nothing on the bar itself transitions; the only motion is the group's enter and exit.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useMessageBarStyles.styles.ts:14-98"
+    }
+  ],
+  "accessibility": {
+    "role": "status",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab reaches the action and dismiss buttons in order"
+    ],
+    "semantics": [
+      "the bar announces its body and actions on mount, politely for info and assertively for success, warning and error",
+      "the title's id labels the bar",
+      "actions are ordinary buttons"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 36px minimum height is a constant in the styles file; everything else is a token.",
+      "source": "useMessageBarStyles.styles.ts:24"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The warning icon reads colorStatusWarningForeground3, not Foreground 1 like the other intents: Foreground 1 is too light on the warning background.",
+      "tokens": [
+        "tokens.colorStatusWarningForeground3",
+        "tokens.colorStatusWarningForeground1"
+      ],
+      "source": "useMessageBarStyles.styles.ts:67-80"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The multiline actions row pads its right with spacingVerticalM, a vertical token used horizontally; it equals spacingHorizontalM in every theme.",
+      "tokens": [
+        "tokens.spacingVerticalM",
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useMessageBarActionsStyles.styles.ts:28-35"
+    },
+    {
+      "kind": "inferred",
+      "text": "The group's enter and exit motion (fade and slide over durationGentle) come from MessageBarGroup.motions.tsx, which the kit's citation pattern cannot name; the default icons come from getIntentIcon.tsx likewise. The reflow hook's width comparison is in useMessageBarReflow.ts.",
+      "source": "MessageBarGroup.types.ts:11-14; useMessageBarReflow.ts:30-60"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles files have no forced-colors rules; each intent's background, border and icon follow their tokens, so under the high-contrast theme every intent looks the same neutral bar with a CanvasText border and only the icon's shape distinguishes them.",
+      "source": "useMessageBarStyles.styles.ts:67-98"
+    }
+  ]
+}

@@ -1,0 +1,547 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "accordion",
+  "name": "Accordion",
+  "status": "stable",
+  "summary": "A vertical stack of headers that each show or hide a panel of content, for long pages whose sections a reader scans and opens one or a few at a time. Use tabs when sections are peers viewed one at a time, and a tree when items nest or need arrow-key navigation.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorTransparentBackground",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalS",
+    "typographyStyles.body1",
+    "tokens.fontFamilyBase",
+    "tokens.fontWeightRegular",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.fontSizeBase500",
+    "tokens.lineHeightBase300",
+    "tokens.lineHeightBase400",
+    "tokens.lineHeightBase500",
+    "tokens.durationNormal",
+    "tokens.curveEasyEaseMax"
+  ],
+  "references": {
+    "react": [
+      "useAccordionStyles.styles.ts",
+      "Accordion.types.ts",
+      "useAccordionItemStyles.styles.ts",
+      "AccordionItem.types.ts",
+      "useAccordionHeaderStyles.styles.ts",
+      "AccordionHeader.types.ts",
+      "useAccordionPanelStyles.styles.ts",
+      "AccordionPanel.types.ts",
+      "Collapse.ts"
+    ],
+    "fluent2": [
+      "accordion"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "openItems",
+      "type": "list",
+      "required": false,
+      "description": "Accordion: the values of the open items, when the caller controls them; a single value is accepted for one."
+    },
+    {
+      "name": "defaultOpenItems",
+      "type": "list",
+      "required": false,
+      "description": "Accordion: the items open at first, when the accordion controls itself."
+    },
+    {
+      "name": "multiple",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Accordion: lets more than one panel be open at once; otherwise opening one closes the other."
+    },
+    {
+      "name": "collapsible",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Accordion: lets the last open panel be closed, so all can be closed; otherwise one always stays open once any has been."
+    },
+    {
+      "name": "onToggle",
+      "type": "callback",
+      "required": false,
+      "description": "Accordion: runs when a header is activated, with that item's value and the resulting open items."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": true,
+      "description": "AccordionItem: the identity that openItems lists; any value, unique within the accordion."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "AccordionItem: stops the header toggling its panel and draws it in the disabled colour."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "extra-large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "AccordionHeader: the header's minimum height and text size."
+    },
+    {
+      "name": "expandIconPosition",
+      "type": "enum",
+      "values": [
+        "start",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "AccordionHeader: whether the chevron leads the label or is pushed to the far end of the header."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "AccordionHeader: shrinks the header to its content width instead of the full row."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "AccordionHeader: an optional icon between the expand icon (at start) and the label."
+    },
+    {
+      "name": "expandIcon",
+      "type": "slot",
+      "required": false,
+      "description": "AccordionHeader: replaces the default chevron."
+    },
+    {
+      "name": "as",
+      "type": "enum",
+      "values": [
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6"
+      ],
+      "required": false,
+      "default": "div",
+      "description": "AccordionHeader: the element wrapping the header button; use the heading level that fits the page outline."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "AccordionHeader: the label; AccordionPanel: the content shown when open."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "accordion",
+      "name": "Accordion",
+      "description": "The unstyled container of items; it owns which items are open."
+    },
+    {
+      "id": "item",
+      "name": "AccordionItem",
+      "description": "One header and its panel; unstyled, it carries the value and the disabled flag."
+    },
+    {
+      "id": "header",
+      "name": "AccordionHeader",
+      "description": "The row wrapper (a div or heading) with a transparent background and medium radius.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentBackground",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "id": "header-button",
+      "name": "Header button",
+      "description": "The full-width flex row that is the hit target: expand icon, optional icon and label on one line, vertically centred."
+    },
+    {
+      "id": "expand-icon",
+      "name": "Expand icon",
+      "description": "A chevron at 20px (fontSizeBase500) that points to the end when closed and down when open.",
+      "optional": true
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "An optional leading icon at 20px, before the label.",
+      "optional": true
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The header text in the size's type."
+    },
+    {
+      "id": "panel",
+      "name": "AccordionPanel",
+      "description": "The content under an open header, inset horizontally; not rendered while closed."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "32px minimum height with fontSizeBase200 text; the line height stays body1's.",
+      "tokens": [
+        "tokens.fontSizeBase200"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "44px minimum height, body1 text.",
+      "tokens": [
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "44px minimum height, fontSizeBase400 on lineHeightBase400.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-large",
+      "description": "44px minimum height, fontSizeBase500 on lineHeightBase500.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500"
+      ]
+    },
+    {
+      "axis": "expandIconPosition",
+      "value": "start",
+      "default": true,
+      "description": "Chevron first, spacingHorizontalS before the icon or label; the button pads spacingHorizontalMNudge at the start and spacingHorizontalM at the end.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "expandIconPosition",
+      "value": "end",
+      "description": "The chevron grows to fill the remaining width and right-aligns, with spacingHorizontalS before it; the button pads spacingHorizontalMNudge at the end, and spacingHorizontalM at the start when there is no icon.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "width",
+      "value": "inline",
+      "description": "Header root is inline-block and the button inline-flex, so the header is only as wide as its content."
+    }
+  ],
+  "layout": [
+    {
+      "id": "container",
+      "part": "accordion",
+      "text": "Accordion and AccordionItem add no styles: items stack in normal block flow with no gap, divider or border between them.",
+      "source": "useAccordionStyles.styles.ts:9-13; useAccordionItemStyles.styles.ts:9-13"
+    },
+    {
+      "id": "header-root",
+      "part": "header",
+      "text": "The header root has no margin, a colorTransparentBackground fill, colorNeutralForeground1 text and borderRadiusMedium corners, which only the focus outline makes visible.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentBackground",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:31-36"
+    },
+    {
+      "id": "header-button",
+      "part": "header-button",
+      "text": "The button is a full-width, border-box flex row, items centred vertically, no border, padded 0 vertically, spacingHorizontalMNudge at the start and spacingHorizontalM at the end, at least 44px tall, in body1 type; it inherits the header's colours.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "typographyStyles.body1"
+      ],
+      "values": [
+        {
+          "name": "minHeight",
+          "value": 44,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVertical",
+          "value": 0,
+          "unit": "px"
+        }
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:18-29,44-55"
+    },
+    {
+      "id": "size-small",
+      "part": "header-button",
+      "text": "Small lowers the minimum height to 32px and the font to fontSizeBase200, keeping lineHeightBase300.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase300"
+      ],
+      "values": [
+        {
+          "name": "minHeight",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:56-59,129"
+    },
+    {
+      "id": "size-large",
+      "part": "header-button",
+      "text": "Large sets fontSizeBase400 on lineHeightBase400 and extra-large fontSizeBase500 on lineHeightBase500; both keep the 44px minimum height.",
+      "tokens": [
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:60-67,130-131"
+    },
+    {
+      "id": "expand-icon",
+      "part": "expand-icon",
+      "text": "The expand icon fills the row's height and centres its glyph, sized by fontSizeBase500 and lineHeightBase500 (a 20px icon) at every header size; at start it has spacingHorizontalS after it, at end it grows to fill the free space, right-aligns the glyph and has spacingHorizontalS before it.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:80-97,136-144"
+    },
+    {
+      "id": "end-padding",
+      "part": "header-button",
+      "text": "With the expand icon at the end the button's end padding drops to spacingHorizontalMNudge, and its start padding rises to spacingHorizontalM when there is no icon slot.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:71-76,126-127"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon fills the row's height, centres its glyph at fontSizeBase500 on lineHeightBase500 and has spacingHorizontalS after it.",
+      "tokens": [
+        "tokens.fontSizeBase500",
+        "tokens.lineHeightBase500",
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:98-105"
+    },
+    {
+      "id": "panel",
+      "part": "panel",
+      "text": "The panel has no vertical margin and spacingHorizontalM on each side, aligning its content with the header's end padding; it sets no type or colour of its own.",
+      "tokens": [
+        "tokens.spacingHorizontalM"
+      ],
+      "source": "useAccordionPanelStyles.styles.ts:16-20"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "header",
+      "text": "Rest: transparent background and colorNeutralForeground1 text and icons.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:31-36"
+    },
+    {
+      "state": "hovered",
+      "part": "header-button",
+      "text": "The pointer becomes a hand; no colour changes on hover or press, since the styles file declares no hover or active rule and no transition.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useAccordionHeaderStyles.styles.ts:44-55"
+    },
+    {
+      "state": "focused",
+      "part": "header-button",
+      "text": "Keyboard focus draws the default createFocusOutlineStyle indicator on the button: a 2px colorStrokeFocus2 outline just outside the button, following borderRadiusMedium.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:30,125; createFocusOutlineStyle.ts:55-112"
+    },
+    {
+      "state": "expanded",
+      "part": "panel",
+      "text": "Open: the panel is rendered below its header and the chevron points down.",
+      "source": "AccordionPanel.types.ts:14-19; Collapse.ts:27-51; fluent2:accordion",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "height",
+          "whitespace",
+          "opacity"
+        ]
+      }
+    },
+    {
+      "state": "collapsed",
+      "part": "panel",
+      "text": "Closed: the panel is not rendered and the chevron points to the end.",
+      "source": "AccordionPanel.types.ts:14-19; Collapse.ts:27-51; fluent2:accordion",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "height",
+          "whitespace",
+          "opacity"
+        ]
+      }
+    },
+    {
+      "state": "disabled",
+      "part": "header",
+      "text": "Text and icons take colorNeutralForegroundDisabled, any background image is removed and the pointer shows not-allowed; the header does not toggle.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useAccordionHeaderStyles.styles.ts:37-40,77-79,116,132; AccordionItem.types.ts:13-16"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "Clicking the header button, or Enter or Space while it is focused, toggles its item's panel and runs onToggle with the item's value and the new open items.",
+      "source": "Accordion.types.ts:8-13,50-54"
+    },
+    {
+      "id": "single",
+      "text": "Without multiple, opening one item closes the open one; without collapsible, activating the only open item does nothing, so a panel stays open once one has been.",
+      "source": "Accordion.types.ts:34-42"
+    },
+    {
+      "id": "controlled",
+      "text": "openItems makes the caller own the open set; defaultOpenItems seeds it when the accordion owns it.",
+      "source": "Accordion.types.ts:28-32,56-59"
+    },
+    {
+      "id": "motion",
+      "text": "The panel's collapseMotion is Fluent's Collapse: opening animates the panel's height from 0px, its whitespace and its opacity from 0 together over durationNormal with curveEasyEaseMax; closing is symmetric in duration and curve, fading opacity and collapsing height and whitespace to 0px with no stagger between them.",
+      "source": "AccordionPanel.types.ts:1-8; Collapse.ts:27-51,55-63,68-92,101",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "height",
+          "whitespace",
+          "opacity"
+        ]
+      },
+      "values": [
+        {
+          "name": "collapsedSize",
+          "value": 0,
+          "unit": "px"
+        },
+        {
+          "name": "staggerDelay",
+          "value": 0,
+          "unit": "ms"
+        }
+      ]
+    },
+    {
+      "id": "navigation",
+      "text": "Arrow-key navigation between headers (linear or circular) exists but is deprecated; by default headers are reached with Tab like any button.",
+      "source": "Accordion.types.ts:44-48"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab moves between header buttons and into open panels",
+      "Enter and Space toggle the focused header's panel"
+    ],
+    "semantics": [
+      "the header button reports aria-expanded and aria-controls pointing at its panel",
+      "a disabled item's button reports aria-disabled",
+      "wrap the button in a heading (as h2 to h6) so the header joins the page outline",
+      "the panel is a region labelled by its header"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The header's 44px (32px small) minimum height and zero vertical padding are constants in the styles file.",
+      "source": "useAccordionHeaderStyles.styles.ts:49,57"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Small changes only the font size, not the line height (body1's lineHeightBase300 stays), and large and extra-large change the type but not the 44px minimum height; medium has no class of its own.",
+      "source": "useAccordionHeaderStyles.styles.ts:53,56-67,129-131"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The header has no hover, pressed or selected colour at all; an implementation that tints the row on hover departs from Fluent.",
+      "source": "useAccordionHeaderStyles.styles.ts:31-55"
+    },
+    {
+      "kind": "inferred",
+      "text": "The default chevron (ChevronRight, rotated 90 degrees when open, or its mirror under RTL) and the aria wiring are set in the header's hook, which is not vendored.",
+      "source": "AccordionHeader.types.ts:21-24; fluent2:accordion"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles files have no forced-colors rules. The focus outline turns Highlight through createFocusOutlineStyle; text follows its tokens (CanvasText, GrayText when disabled) and the transparent background shows the page.",
+      "source": "createFocusOutlineStyle.ts:60-64; useAccordionHeaderStyles.styles.ts:31-40"
+    }
+  ]
+}

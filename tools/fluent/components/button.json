@@ -1,0 +1,607 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "button",
+  "name": "Button",
+  "status": "stable",
+  "summary": "A single-action control. Choose emphasis by appearance (primary > secondary > outline > subtle > transparent), size by the density of the surrounding layout, and shape to match its neighbours; one button per primary action on a surface.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralForeground1Pressed",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorBrandBackground",
+    "tokens.colorBrandBackgroundHover",
+    "tokens.colorBrandBackgroundPressed",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2BrandHover",
+    "tokens.colorNeutralForeground2BrandPressed",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.colorTransparentStroke",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.shadow2",
+    "tokens.borderRadiusSmall",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusLarge",
+    "tokens.borderRadiusNone",
+    "tokens.borderRadiusCircular",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalM",
+    "tokens.spacingHorizontalL",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase400",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase300",
+    "tokens.lineHeightBase400",
+    "tokens.fontWeightRegular",
+    "tokens.fontWeightSemibold",
+    "tokens.durationFaster",
+    "tokens.curveEasyEase"
+  ],
+  "references": {
+    "react": [
+      "useButtonStyles.styles.ts",
+      "Button.types.ts"
+    ],
+    "fluent2": [
+      "button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "The label. A button with an icon and no label is icon-only and lays out square."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "One 20px icon (24px at large), before or after the label."
+    },
+    {
+      "name": "iconPosition",
+      "type": "enum",
+      "values": [
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "before",
+      "description": "Which side of the label the icon sits on."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "secondary",
+        "primary",
+        "outline",
+        "subtle",
+        "transparent"
+      ],
+      "required": false,
+      "default": "secondary",
+      "description": "Colour treatment. secondary is the neutral filled default; primary the brand fill; outline a border with no fill; subtle and transparent have no border and no fill at rest and differ only in their hover tint."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "circular",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "rounded takes the size's radius; circular is a pill; square has none."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Selects height (24, 32, 40), padding, minimum width, text style and icon size together."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the disabled colours and takes no input; also removed from the tab order."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Looks disabled and ignores activation but stays focusable, so assistive technology can still reach and describe it."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Runs on a click or on Enter or Space while focused."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "The inline-flex box: background, border, radius and padding; centres icon and label on both axes."
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A square slot for the icon, 20px at small and medium, 24px at large, with a gap to the label on its inner side.",
+      "optional": true
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The text, in the size's text style; one line, no wrapping.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "secondary",
+      "default": true,
+      "description": "Neutral fill Background 1 with a Stroke 1 border and Foreground 1 text, all three stepping to their Hover and Pressed tokens.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "primary",
+      "description": "Brand fill with no visible border and on-brand text; hover and press step the brand background.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorBrandBackgroundHover",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorNeutralForegroundOnBrand"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "Secondary's border and text over a transparent background; hover and press tint the background with the Transparent family.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorNeutralStroke1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "No border; Subtle background, transparent at rest and a neutral tint on hover and press; Foreground 2 text whose icon turns brand on hover.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground2BrandHover"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "description": "No border; Transparent background family; Foreground 2 text that itself turns brand on hover and press.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralForeground2BrandHover",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "24px tall: 3px vertical and spacingHorizontalS padding, 64px minimum width, caption1-sized regular text, borderRadiusMedium (the focus ring uses borderRadiusSmall).",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200",
+        "tokens.fontWeightRegular",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px tall: 5px vertical and spacingHorizontalM padding, 96px minimum width, body1 size at semibold, borderRadiusMedium.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontWeightSemibold",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px tall: 8px vertical and spacingHorizontalL padding, 96px minimum width, body2 size at semibold, borderRadiusMedium (the focus ring uses borderRadiusLarge).",
+      "tokens": [
+        "tokens.spacingHorizontalL",
+        "tokens.fontSizeBase400",
+        "tokens.lineHeightBase400",
+        "tokens.fontWeightSemibold",
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "default": true,
+      "description": "The size's radius.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "description": "A pill.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "No rounding.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "text": "The root is an inline-flex box centring its children on both axes, with a border of strokeWidthThin on every appearance (transparent where the appearance shows none) so the size never changes between appearances.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useButtonStyles.styles.ts:29-42"
+    },
+    {
+      "id": "medium",
+      "text": "Medium pads 5px vertically and spacingHorizontalM horizontally, so with the 20px line height and 1px borders it stands 32px tall; minimum width 96px.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.lineHeightBase300"
+      ],
+      "values": [
+        {
+          "name": "paddingVertical",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "minWidth",
+          "value": 96,
+          "unit": "px"
+        },
+        {
+          "name": "height",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useButtonStyles.styles.ts:19,59-61"
+    },
+    {
+      "id": "small",
+      "text": "Small pads 3px vertically (1px when it has an icon, since the 20px icon exceeds the 16px line height) and spacingHorizontalS horizontally: 24px tall, minimum width 64px.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.lineHeightBase200"
+      ],
+      "values": [
+        {
+          "name": "paddingVertical",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVerticalWithIcon",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "minWidth",
+          "value": 64,
+          "unit": "px"
+        },
+        {
+          "name": "height",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useButtonStyles.styles.ts:17-18,291-303"
+    },
+    {
+      "id": "large",
+      "text": "Large pads 8px vertically (7px with an icon, whose 24px matches the 22px line height plus 2) and spacingHorizontalL horizontally: 40px tall, minimum width 96px.",
+      "tokens": [
+        "tokens.spacingHorizontalL",
+        "tokens.lineHeightBase400"
+      ],
+      "values": [
+        {
+          "name": "paddingVertical",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "paddingVerticalWithIcon",
+          "value": 7,
+          "unit": "px"
+        },
+        {
+          "name": "minWidth",
+          "value": 96,
+          "unit": "px"
+        },
+        {
+          "name": "height",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useButtonStyles.styles.ts:20-21,307-319"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon slot is 20px square at small and medium and 24px at large; when a label follows or precedes it, the gap between them is spacingHorizontalXS at small and spacingHorizontalSNudge at medium and large.",
+      "tokens": [
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "values": [
+        {
+          "name": "iconSmallMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useButtonStyles.styles.ts:126-136,524-550"
+    },
+    {
+      "id": "icon-only",
+      "text": "An icon-only button is square: its padding equals the size's with-icon vertical padding on every side and its width is pinned to the height, 24, 32 or 40px, overriding the minimum width.",
+      "values": [
+        {
+          "name": "small",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "useButtonStyles.styles.ts:502-522"
+    },
+    {
+      "id": "text",
+      "part": "label",
+      "text": "The label is fontFamilyBase at the size's font size, line height and weight: regular at small, semibold at medium and large; no wrapping, no text decoration.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.fontWeightSemibold",
+        "tokens.fontWeightRegular"
+      ],
+      "source": "useButtonStyles.styles.ts:43-44,64-66,291-299,307-315"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's background, border and text tokens with no suffix; secondary, outline and (through the base) every appearance also declares no shadow at rest except that the focus style on primary composes shadow2.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useButtonStyles.styles.ts:39-42"
+    },
+    {
+      "state": "hovered",
+      "text": "Background, border and text swap to their Hover tokens together and the pointer becomes a hand; subtle and transparent additionally turn their icon (subtle) or text (transparent) to the Brand hover foreground, and swap a regular icon for its filled twin.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralForeground2BrandHover"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useButtonStyles.styles.ts:46-52,69-75,190-213,242-260"
+    },
+    {
+      "state": "pressed",
+      "text": "While the pointer is down over it, or Space is held while focus-visible, background, border and text take their Pressed tokens; pressed wins over hover.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralForeground1Pressed",
+        "tokens.colorBrandBackgroundPressed",
+        "tokens.colorNeutralForeground2BrandPressed"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useButtonStyles.styles.ts:54-60"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws the indicator inside the box: the border turns colorStrokeFocus2, a 1px colorStrokeFocus2 ring is inset from the edge, and a 2px transparent outline reserves the outer space; the ring follows the size's radius (small borderRadiusSmall, large borderRadiusLarge) or the shape's when circular or square. Primary adds a 2px on-brand ring inside the 1px one and composes shadow2, and drops the inner ring while hovered.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.colorTransparentStroke",
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThick",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.shadow2",
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusLarge"
+      ],
+      "source": "useButtonStyles.styles.ts:102-113,464-500"
+    },
+    {
+      "state": "disabled",
+      "text": "Background, border, text and icon take the Disabled tokens and the pointer shows not-allowed; outline, subtle and transparent keep a transparent background and primary keeps a transparent border, so only the text and border colours announce it there. Hover and press change nothing.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useButtonStyles.styles.ts:322-370,409-462"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "activate",
+      "text": "A left click, or Enter or Space while focused, runs onClick; the pressed look shows from press to release.",
+      "source": "Button.types.ts:8-10"
+    },
+    {
+      "id": "focus-visible",
+      "text": "The focus indicator appears only for keyboard focus, never after a pointer press.",
+      "source": "createCustomFocusIndicatorStyle.ts; constants.ts"
+    },
+    {
+      "id": "transition",
+      "text": "Every colour change between rest, hover and pressed transitions background, border and color over durationFaster with curveEasyEase; under reduced motion the transition is 0.01ms.",
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useButtonStyles.styles.ts:68-76"
+    },
+    {
+      "id": "disabled-focusable",
+      "text": "disabledFocusable keeps the button in the tab order and lets it take focus and show its ring, but it ignores activation and reports aria-disabled.",
+      "source": "Button.types.ts:19-26"
+    },
+    {
+      "id": "icon-swap",
+      "text": "Subtle and transparent buttons show the filled variant of an icon while hovered or pressed and the regular variant otherwise; a disabled button always shows the regular one.",
+      "source": "useButtonStyles.styles.ts:195-201,207-213,336-343"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Enter and Space activate it",
+      "Space held shows pressed"
+    ],
+    "semantics": [
+      "aria-disabled when disabled or disabledFocusable",
+      "an icon-only button needs an aria-label, since its icon has no text"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Vertical padding (3, 1, 5, 8, 7px), minimum widths (64, 96px) and icon sizes (20, 24px) are constants in the styles file; no token gives them.",
+      "source": "useButtonStyles.styles.ts:17-21,126-136,291-319,502-540"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus ring is drawn inside the button, not around it: the border itself turns colorStrokeFocus2 and a 1px ring sits inside that. An implementation drawing the generic 2px outside outline (createFocusOutlineStyle) gets the wrong look for buttons.",
+      "source": "useButtonStyles.styles.ts:102-113; createFocusOutlineStyle.ts"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Rounded shape sets no radius itself; the size does. Small and large buttons still use borderRadiusMedium for the box, and only their focus ring changes radius.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusLarge"
+      ],
+      "source": "useButtonStyles.styles.ts:285-287,291-299,307-315,495-499"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours: primary is Highlight with HighlightText text and border, inverting on hover and press; every appearance's hover and press become HighlightText background with Highlight text and border; focus turns the border ButtonText; disabled is ButtonFace with GrayText text and border.",
+      "source": "useButtonStyles.styles.ts:80-100,168-185,372-407"
+    },
+    {
+      "kind": "inferred",
+      "text": "Secondary is the default appearance: the styles file's secondary class is empty because the base class already is that look.",
+      "source": "useButtonStyles.styles.ts:187-189"
+    }
+  ]
+}

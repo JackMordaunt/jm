@@ -1,0 +1,213 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "list",
+  "name": "List",
+  "status": "preview",
+  "statusNote": "@fluentui/react-list is a preview package at the kit's commit; the styles are minimal and most of the behaviour lives in its hooks.",
+  "summary": "A vertical list of items that can be navigated with arrow keys and, optionally, selected one or many at a time, each item carrying a checkbox when selectable. Use it for rows of like content; a Tree nests, a Menu is for actions, a Table for columns.",
+  "tokenGroups": [
+    "tokens.strokeWidthThick",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusMedium"
+  ],
+  "references": {
+    "react": [
+      "useListStyles.styles.ts",
+      "List.types.ts",
+      "useListItemStyles.styles.ts",
+      "ListItem.types.ts"
+    ],
+    "fluent2": [
+      "list"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The ListItems."
+    },
+    {
+      "name": "navigationMode",
+      "type": "enum",
+      "values": [
+        "items",
+        "composite"
+      ],
+      "required": false,
+      "description": "items moves focus between the items with arrow keys; composite lets arrow keys move through focusable content inside each item as well."
+    },
+    {
+      "name": "selectionMode",
+      "type": "enum",
+      "values": [
+        "single",
+        "multiselect"
+      ],
+      "required": false,
+      "description": "Makes the items selectable, one or many; each item then shows a checkbox."
+    },
+    {
+      "name": "selectedItems",
+      "type": "list",
+      "required": false,
+      "description": "The selected item values, controlled; defaultSelectedItems seeds the uncontrolled form."
+    },
+    {
+      "name": "onSelectionChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the new selected values when selection changes."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "A ListItem's value, what selection reports."
+    },
+    {
+      "name": "onAction",
+      "type": "callback",
+      "required": false,
+      "description": "A ListItem's action, run on click or Enter when the item is navigable."
+    },
+    {
+      "name": "disabledSelection",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Keeps one item out of selection while the list stays selectable."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "List",
+      "description": "A ul (or ol or div) with its padding, margin, indent and markers removed."
+    },
+    {
+      "id": "item",
+      "name": "ListItem",
+      "description": "An li (or div) with markers removed; a flex row with a pointer cursor when selectable or navigable."
+    },
+    {
+      "id": "checkmark",
+      "name": "Checkmark",
+      "description": "The selection checkbox at the item's start, vertically centred, its indicator given a 4px margin.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "selectionMode",
+      "value": "none",
+      "default": true,
+      "description": "Items are plain rows; navigable ones are clickable."
+    },
+    {
+      "axis": "selectionMode",
+      "value": "single",
+      "description": "One item at a time; each item renders a checkbox that reflects its state."
+    },
+    {
+      "axis": "selectionMode",
+      "value": "multiselect",
+      "description": "Any number of items; each item renders a checkbox."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "text": "The list resets padding and margin to 0, text-indent to 0 and list-style-type to none.",
+      "source": "useListStyles.styles.ts:11-16"
+    },
+    {
+      "id": "item",
+      "text": "An item resets the same, and when selectable or navigable is a flex row with a pointer cursor; a disabled item keeps the default cursor.",
+      "source": "useListItemStyles.styles.ts:42-46,66-75,86-92"
+    },
+    {
+      "id": "checkmark",
+      "text": "The checkbox slot aligns itself to the centre of the row and gives the checkbox's indicator a 4px margin on every side.",
+      "values": [
+        {
+          "name": "indicatorMargin",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useListItemStyles.styles.ts:56-62"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: an item paints nothing of its own; its content carries the look.",
+      "source": "useListItemStyles.styles.ts:42-46"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws the default outline on the item: strokeWidthThick solid colorStrokeFocus2 with borderRadiusMedium, on the focus selector.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useListItemStyles.styles.ts:47-53"
+    },
+    {
+      "state": "selected",
+      "text": "Selection shows only through the item's checkbox; the row itself has no selected colour in the styles file.",
+      "source": "useListItemStyles.styles.ts:94-101"
+    },
+    {
+      "state": "disabled",
+      "text": "A disabled item shows the default cursor and takes no selection; nothing else changes visually.",
+      "source": "useListItemStyles.styles.ts:72-74,90"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "navigate",
+      "text": "Arrow keys move focus between items (navigationMode items), or through the focusable content of each item too (composite); Home and End jump to the first and last item.",
+      "source": "List.types.ts:22,28"
+    },
+    {
+      "id": "select",
+      "text": "A click, Space or Enter on a selectable item toggles it (multiselect) or makes it the one selection (single); the checkbox reflects the value and onSelectionChange reports the set.",
+      "source": "List.types.ts:29-32; ListItem.types.ts:19-21,28-30"
+    },
+    {
+      "id": "action",
+      "text": "A navigable item runs onAction on click or Enter, with its value.",
+      "source": "ListItem.types.ts:19-21"
+    }
+  ],
+  "accessibility": {
+    "role": "list",
+    "minTargetPx": null,
+    "keyboard": [
+      "Arrow Up and Down move between items",
+      "Home and End jump to the ends",
+      "Space or Enter selects or acts"
+    ],
+    "semantics": [
+      "a selectable list is a listbox whose items are options with aria-selected",
+      "a navigable list's items take the role the hooks assign (listItemRole)",
+      "an item's checkbox is the selection control assistive technology reads"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 4px checkbox indicator margin is a constant; the row has no height, padding or hover colour of its own, so a list's density is the caller's content.",
+      "source": "useListItemStyles.styles.ts:56-62"
+    },
+    {
+      "kind": "inferred",
+      "text": "Row heights, hover and selected backgrounds are not in the package; the design site's list rows read as 32 or 44px with Subtle hover, which a caller adds to its item content.",
+      "source": "fluent2:list"
+    }
+  ]
+}

@@ -1,0 +1,491 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "color-picker",
+  "name": "ColorPicker",
+  "status": "stable",
+  "summary": "A colour chooser assembled from a saturation-and-value area, a hue slider and an alpha slider that share one HSV colour. Choose it for any colour; choose SwatchPicker for a fixed set.",
+  "tokenGroups": [
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralBackground1",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.shadow4",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusNone",
+    "tokens.borderRadiusCircular",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalSNudge"
+  ],
+  "references": {
+    "react": [
+      "useColorPickerStyles.styles.ts",
+      "ColorPicker.types.ts",
+      "useColorPicker.ts",
+      "colorPicker.ts",
+      "useColorAreaStyles.styles.ts",
+      "ColorArea.types.ts",
+      "useColorArea.ts",
+      "ColorArea.constants.ts",
+      "useColorSliderStyles.styles.ts",
+      "ColorSlider.types.ts",
+      "useColorSlider.ts",
+      "ColorSlider.constants.ts",
+      "useAlphaSliderStyles.styles.ts",
+      "AlphaSlider.types.ts",
+      "useAlphaSlider.ts",
+      "useAlphaSliderState.ts",
+      "alphaSliderUtils.ts",
+      "AlphaSlider.constants.ts",
+      "color.ts",
+      "constants.ts",
+      "adjustChannel.ts",
+      "getCoordinates.ts",
+      "getPercent.ts",
+      "createHsvColor.ts"
+    ],
+    "fluent2": [
+      "color-picker"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "color",
+      "type": "string",
+      "required": false,
+      "description": "The selected colour as HSV: hue 0-360, saturation 0-1, value 0-1, alpha 0-1 (alpha defaults to 1). The initial colour when none is given is white, {h: 0, s: 0, v: 1, a: 1}."
+    },
+    {
+      "name": "onColorChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new HSV colour on every step of any child control."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "The corner treatment every child control takes unless it sets its own."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": true,
+      "description": "The controls: a ColorArea, ColorSliders for hue, saturation or value, and an AlphaSlider, in any subset and order; the picker only lays them out in a column and shares the colour."
+    },
+    {
+      "name": "channel",
+      "type": "enum",
+      "values": [
+        "hue",
+        "saturation",
+        "value"
+      ],
+      "required": false,
+      "default": "hue",
+      "description": "On a ColorSlider: which HSV channel it edits, which sets its rail's gradient and its range."
+    },
+    {
+      "name": "vertical",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "On a ColorSlider or AlphaSlider: stand it upright, smallest value at the bottom."
+    },
+    {
+      "name": "transparency",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "On an AlphaSlider: read the alpha channel as transparency, so the slider's value is 100 minus the opacity and the rail's gradient reverses."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Picker",
+      "description": "A column of the child controls with spacingVerticalXS between them; it draws nothing itself.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ]
+    },
+    {
+      "id": "area",
+      "name": "ColorArea",
+      "description": "A square of the current hue at full saturation and value, overlaid with white fading left to right and black fading top to bottom, so x is saturation and y (upward) is value; bordered by a 1px Neutral_Stroke1 line.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    },
+    {
+      "id": "area-thumb",
+      "name": "Area thumb",
+      "description": "A 20px circle at the colour's position, filled with the colour, ringed by a strokeWidthThin Neutral_Foreground4 border and a strokeWidthThick Neutral_Background1 inner ring, under shadow4.",
+      "tokens": [
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralBackground1",
+        "tokens.shadow4",
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThick",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "slider",
+      "name": "ColorSlider",
+      "description": "A 20px-thick rail with the channel's gradient and a thumb like the area's; the hue rail runs red, fuchsia, blue, aqua, lime, yellow, red, the saturation rail from grey (#808080) to the hue, the value rail from black to the hue."
+    },
+    {
+      "id": "slider-rail",
+      "name": "Rail",
+      "description": "The gradient track, 20px thick, the full length of the control, with a 1px Transparent_Stroke outline and the shape's radius.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "id": "slider-thumb",
+      "name": "Slider thumb",
+      "description": "The area thumb's look, centred on the value along the rail; a ColorSlider's is filled with the channel colour, an AlphaSlider's with Neutral_Background1 and its inner ring with the colour at its alpha.",
+      "tokens": [
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralBackground1",
+        "tokens.shadow4"
+      ]
+    },
+    {
+      "id": "alpha-slider",
+      "name": "AlphaSlider",
+      "description": "A ColorSlider whose rail is the colour fading to transparent over a checkerboard, with a 1px Neutral_Stroke1 border; edits alpha 0-100.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "default": true,
+      "description": "The area and every rail take borderRadiusMedium.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "No rounding on the area or the rails; the thumbs stay circular.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "axis": "channel",
+      "value": "hue",
+      "default": true,
+      "description": "The slider spans 0-360 over the six-colour hue gradient; its thumb is the hue at full saturation and value."
+    },
+    {
+      "axis": "channel",
+      "value": "saturation",
+      "description": "The slider spans 0-100 from #808080 to the hue at full saturation and value; its thumb is the current colour."
+    },
+    {
+      "axis": "channel",
+      "value": "value",
+      "description": "The slider spans 0-100 from black to the hue at full saturation and value; its thumb is the current colour."
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "default": true,
+      "description": "A slider at least 200px wide and 32px tall; the gradient runs left to right (right to left under RTL)."
+    },
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "description": "A slider at least 280px tall with the smallest value at the bottom; the gradient runs bottom to top."
+    }
+  ],
+  "layout": [
+    {
+      "id": "picker",
+      "text": "The picker is a column of its children with spacingVerticalXS between them and no padding or surface of its own.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ],
+      "source": "useColorPickerStyles.styles.ts:15-21"
+    },
+    {
+      "id": "area",
+      "part": "area",
+      "text": "The area is at least 300px square, has a 1px Neutral_Stroke1 border inside its box, and keeps spacingVerticalSNudge below it; the thumb is 20px and its centre sits at saturation across and value up from the bottom-left corner, so it can overhang the border by half its size.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.spacingVerticalSNudge"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 300,
+          "unit": "px"
+        },
+        {
+          "name": "minHeight",
+          "value": 300,
+          "unit": "px"
+        },
+        {
+          "name": "border",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "thumb",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorAreaStyles.styles.ts:23-37,42-56; useColorArea.ts:161-166"
+    },
+    {
+      "id": "area-thumb",
+      "part": "area-thumb",
+      "text": "The thumb is a circle bordered strokeWidthThin in Neutral_Foreground4 with a strokeWidthThick Neutral_Background1 ring just inside that border, filled with the current colour, under shadow4.",
+      "tokens": [
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralBackground1",
+        "tokens.shadow4",
+        "tokens.strokeWidthThin",
+        "tokens.strokeWidthThick",
+        "tokens.borderRadiusCircular"
+      ],
+      "source": "useColorAreaStyles.styles.ts:42-65"
+    },
+    {
+      "id": "slider",
+      "part": "slider",
+      "text": "A slider is a 3x3 grid whose centre cell holds the rail and the thumb: the rail is 20px thick and 100% long, the thumb 20px, and the root at least 32px tall and 200px wide horizontally, or 280px tall vertically; the hidden range input covers the whole root.",
+      "values": [
+        {
+          "name": "rail",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "thumb",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "minHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "minWidthHorizontal",
+          "value": 200,
+          "unit": "px"
+        },
+        {
+          "name": "minHeightVertical",
+          "value": 280,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorSliderStyles.styles.ts:30-55,72-109,161-187"
+    },
+    {
+      "id": "slider-rail",
+      "part": "slider-rail",
+      "text": "The rail carries a 1px Transparent_Stroke outline and a pseudo-element one pixel past each end, and takes the shape's radius; the thumb's centre sits at the channel's percentage along it, measured from the start (left, or bottom when vertical).",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusNone"
+      ],
+      "values": [
+        {
+          "name": "outline",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorSliderStyles.styles.ts:72-109,139-156; useColorSlider.ts:80-81,104-113"
+    },
+    {
+      "id": "alpha-rail",
+      "part": "alpha-slider",
+      "text": "The alpha rail adds a 1px Neutral_Stroke1 border and layers the colour, fading to transparent toward the low end, over a checkerboard image; with transparency the gradient runs the other way.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ],
+      "values": [
+        {
+          "name": "border",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useAlphaSliderStyles.styles.ts:22-27; alphaSliderUtils.ts:31-36"
+    },
+    {
+      "id": "alpha-thumb",
+      "part": "slider-thumb",
+      "text": "The alpha thumb is filled Neutral_Background1 and its inner ring is painted with the colour at its current alpha, so the ring previews the transparency over white.",
+      "tokens": [
+        "tokens.colorNeutralBackground1"
+      ],
+      "source": "useAlphaSliderStyles.styles.ts:32-38; useAlphaSliderState.ts:44-51"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: every control shows its gradient and its thumb at the shared colour; nothing changes on hover.",
+      "source": "useColorAreaStyles.styles.ts:23-37; useColorSliderStyles.styles.ts:30-39"
+    },
+    {
+      "state": "focused",
+      "part": "area-thumb",
+      "text": "Keyboard focus within the area draws the default outline around the thumb at strokeWidthThick with a circular radius, and the thumb's own border widens to strokeWidthThick.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThick",
+        "tokens.borderRadiusCircular"
+      ],
+      "source": "useColorAreaStyles.styles.ts:66-73; createFocusOutlineStyle.ts:100-112"
+    },
+    {
+      "state": "focused",
+      "part": "slider-thumb",
+      "text": "Keyboard focus on a slider's input turns the thumb's border into 2px Stroke_Focus2 with a strokeWidthThick Transparent_Stroke outline reserving space outside it.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.colorTransparentStroke",
+        "tokens.strokeWidthThick",
+        "tokens.borderRadiusCircular"
+      ],
+      "values": [
+        {
+          "name": "focusBorder",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useColorSliderStyles.styles.ts:171-175"
+    },
+    {
+      "state": "dragged",
+      "text": "While the pointer is down, every move sets the colour from the pointer's position: the area maps x to saturation and 1 - y to value, rounded to two decimals and clamped to 0-1; a slider maps the input's range value.",
+      "source": "useColorArea.ts:56-95; getCoordinates.ts:10-20; useColorSlider.ts:85-102"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "shared-colour",
+      "text": "Children read the picker's colour and send every change to its onColorChange; a child given its own color or onChange uses those instead, and a child outside a picker keeps its own state from defaultColor.",
+      "source": "colorPicker.ts:12-28; useColorPicker.ts:24-47; useColorArea.ts:33-50; useColorSlider.ts:43-70"
+    },
+    {
+      "id": "area-keys",
+      "text": "With the area focused, ArrowLeft and ArrowRight move saturation by 0.01 and ArrowUp and ArrowDown move value by 0.01, clamped to 0-1; the axis last moved becomes the one in the tab order.",
+      "values": [
+        {
+          "name": "step",
+          "value": 0.01,
+          "unit": "ratio"
+        }
+      ],
+      "source": "useColorArea.ts:109-159,181-196"
+    },
+    {
+      "id": "slider-range",
+      "text": "A hue slider runs 0 to 360 and the others 0 to 100 in whole steps; the value is clamped to that range and the thumb sits at its percentage of it.",
+      "values": [
+        {
+          "name": "hueMax",
+          "value": 360,
+          "unit": "count"
+        },
+        {
+          "name": "channelMax",
+          "value": 100,
+          "unit": "count"
+        }
+      ],
+      "source": "constants.ts:1-5; adjustChannel.ts:12-15; getPercent.ts:10-12; useColorSlider.ts:72-81,131-143"
+    },
+    {
+      "id": "slider-keys",
+      "text": "A slider is a native range input: arrow keys step its channel by one unit, Home and End go to the ends, and a vertical slider reads as vertical to assistive technology.",
+      "source": "useColorSlider.ts:131-143; useColorSliderStyles.styles.ts:181-186"
+    },
+    {
+      "id": "alpha-transparency",
+      "text": "With transparency the alpha slider stores 100 minus the alpha percentage, so the thumb moves the other way and the gradient is mirrored; without it the value is the alpha percentage and defaults to 100.",
+      "source": "useAlphaSliderState.ts:23-40; alphaSliderUtils.ts:8-21"
+    },
+    {
+      "id": "rtl",
+      "text": "Under right-to-left a horizontal rail's gradient and thumb travel are mirrored; a vertical one is unchanged.",
+      "source": "useColorSlider.ts:105; alphaSliderUtils.ts:31-36"
+    }
+  ],
+  "accessibility": {
+    "role": "group",
+    "minTargetPx": 20,
+    "keyboard": [
+      "Tab moves to the area, then to each slider's input",
+      "In the area, arrows move saturation (left, right) and value (up, down) by 0.01",
+      "On a slider, arrows step by one unit, Home and End go to the ends"
+    ],
+    "semantics": [
+      "the area exposes two hidden range inputs, one per axis, valued 0-100",
+      "a slider is a range input with aria-orientation vertical when upright",
+      "a slider's root is a group; the picker itself has no role"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 20px thumbs and rails, the 300px area minimum, the 200px and 280px slider minimums, the 32px slider height, the 1px borders and the 2px focus border are constants in the styles files; the hue and grey gradient stops are literal colours.",
+      "source": "useColorAreaStyles.styles.ts:23-37; useColorSliderStyles.styles.ts:16-67,171-175"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The area's y axis is inverted: the thumb's bottom offset is the value, so value 1 sits at the top edge, and the pointer maps 1 - y.",
+      "source": "useColorAreaStyles.styles.ts:54-56; getCoordinates.ts:13-14"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The alpha rail's checkerboard is a remote PNG named in the styles file; a renderer draws its own checkerboard.",
+      "source": "useAlphaSliderStyles.styles.ts:10,25"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The picker's only styling is the column gap; the shared colour and shape reach children through context, and a child with no picker is a standalone control.",
+      "source": "useColorPickerStyles.styles.ts:15-21; colorPicker.ts:22-28"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The area, rails and thumbs set forcedColorAdjust none, so their gradients and the chosen colour render as authored under forced colours; only the focus border follows the theme.",
+      "source": "useColorAreaStyles.styles.ts:27,49; useColorSliderStyles.styles.ts:80,125"
+    },
+    {
+      "kind": "inferred",
+      "text": "The package name carries no -preview suffix at this commit (@fluentui/react-color-picker 9.3.1), so the status is stable here even though the design site lists the picker as newer.",
+      "source": "useColorPickerStyles.styles.ts:26"
+    }
+  ]
+}

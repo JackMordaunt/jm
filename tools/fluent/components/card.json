@@ -1,0 +1,650 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "card",
+  "name": "Card",
+  "status": "stable",
+  "summary": "A surface that groups the content and actions about one subject: a header (image, title, description, action), an optional full-bleed preview and a footer of actions. Choose filled for a raised card on a page, filled-alternative on a Background 1 page, outline where shadows would crowd, subtle for a borderless tile; make it interactive or selectable only when the whole card is one target.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Hover",
+    "tokens.colorNeutralForeground1Selected",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Selected",
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground1Hover",
+    "tokens.colorNeutralBackground1Pressed",
+    "tokens.colorNeutralBackground1Selected",
+    "tokens.colorNeutralBackground2",
+    "tokens.colorNeutralBackground2Hover",
+    "tokens.colorNeutralBackground2Pressed",
+    "tokens.colorNeutralBackground2Selected",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorTransparentBackgroundSelected",
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorSubtleBackgroundSelected",
+    "tokens.colorTransparentStroke",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStroke1Selected",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralBackgroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.shadow2",
+    "tokens.shadow4",
+    "tokens.shadow8",
+    "tokens.borderRadiusSmall",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusLarge"
+  ],
+  "references": {
+    "react": [
+      "useCardStyles.styles.ts",
+      "Card.types.ts",
+      "useCardHeaderStyles.styles.ts",
+      "CardHeader.types.ts",
+      "useCardFooterStyles.styles.ts",
+      "CardFooter.types.ts",
+      "useCardPreviewStyles.styles.ts",
+      "CardPreview.types.ts"
+    ],
+    "fluent2": [
+      "card"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "filled",
+        "filled-alternative",
+        "outline",
+        "subtle"
+      ],
+      "required": false,
+      "default": "filled",
+      "description": "Surface treatment. filled is Background 1 with shadow4; filled-alternative is Background 2 with shadow4; outline is transparent with a Stroke 1 border and no shadow; subtle is the Subtle background with neither border nor shadow."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Sets padding, gap between children and corner radius together: 8px and borderRadiusSmall, 12px and borderRadiusMedium, 16px and borderRadiusLarge."
+    },
+    {
+      "name": "orientation",
+      "type": "enum",
+      "values": [
+        "vertical",
+        "horizontal"
+      ],
+      "required": false,
+      "default": "vertical",
+      "description": "Stacks the children in a column or a centred row."
+    },
+    {
+      "name": "focusMode",
+      "type": "enum",
+      "values": [
+        "off",
+        "no-tab",
+        "tab-exit",
+        "tab-only"
+      ],
+      "required": false,
+      "default": "off",
+      "description": "How keyboard focus treats the card and its inner controls. off: the card is not focusable. no-tab: Enter traps focus inside, Escape releases it. tab-exit: Enter traps focus inside, Tab past the last inner element releases it. tab-only: Tab cycles through the inner elements and leaves after the last."
+    },
+    {
+      "name": "selected",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Controlled selection. Supplying selected, defaultSelected or onSelectionChange makes the card selectable."
+    },
+    {
+      "name": "defaultSelected",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Initial selection when uncontrolled."
+    },
+    {
+      "name": "onSelectionChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with {selected} when a selectable card changes selection, from a mouse, keyboard or checkbox change event."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws the disabled colours and blocks interaction and selection on the card; not propagated to children."
+    },
+    {
+      "name": "floatingAction",
+      "type": "slot",
+      "required": false,
+      "description": "A control pinned to the card's top-right corner, often a checkbox paired with selection."
+    },
+    {
+      "name": "header",
+      "type": "slot",
+      "required": false,
+      "description": "CardHeader: its image, header, description and action slots."
+    },
+    {
+      "name": "preview",
+      "type": "slot",
+      "required": false,
+      "description": "CardPreview: full-bleed media with an optional logo slot."
+    },
+    {
+      "name": "footer",
+      "type": "slot",
+      "required": false,
+      "description": "CardFooter: a row of content with an optional action slot at the far end."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Card",
+      "description": "A flex container with overflow hidden, padding and gap both equal to the size's spacing, the size's radius, and a border drawn by an overlaid pseudo-element so a preview can sit under it.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ]
+    },
+    {
+      "id": "floating-action",
+      "name": "Floating action",
+      "description": "An absolutely positioned slot 4px in from the card's top and right edges, above the content.",
+      "optional": true
+    },
+    {
+      "id": "checkbox",
+      "name": "Selection checkbox",
+      "description": "The visually hidden native checkbox a selectable card renders to carry its selection state; 1px, clipped.",
+      "optional": true
+    },
+    {
+      "id": "header",
+      "name": "CardHeader",
+      "description": "A row of image, header (title) and description, with an action at the far end; lays out as a three-column grid when a description is present, else as a flex row whose title grows.",
+      "optional": true
+    },
+    {
+      "id": "header-image",
+      "name": "CardHeader image",
+      "description": "An inline-flex image or avatar before the title, spanning both title and description rows.",
+      "optional": true
+    },
+    {
+      "id": "header-title",
+      "name": "CardHeader header",
+      "description": "The title line.",
+      "optional": true
+    },
+    {
+      "id": "header-description",
+      "name": "CardHeader description",
+      "description": "The short description under the title.",
+      "optional": true
+    },
+    {
+      "id": "header-action",
+      "name": "CardHeader action",
+      "description": "Trailing actions, spanning both rows, 12px from the text.",
+      "optional": true
+    },
+    {
+      "id": "preview",
+      "name": "CardPreview",
+      "description": "A relatively positioned media container whose non-logo children fill it; the card's negative margins make it bleed to the card's edges.",
+      "optional": true
+    },
+    {
+      "id": "preview-logo",
+      "name": "CardPreview logo",
+      "description": "A 32px square logo pinned 12px in from the preview's bottom-left corner.",
+      "optional": true
+    },
+    {
+      "id": "footer",
+      "name": "CardFooter",
+      "description": "A flex row with 12px gaps; its action slot is pushed to the far end.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "filled",
+      "default": true,
+      "description": "Background 1, shadow4, transparent border; interactive hover steps to Background 1 Hover with shadow8 and Foreground 1 Hover text.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.shadow4"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-alternative",
+      "description": "Background 2, shadow4, transparent border; interactive hover steps to Background 2 Hover with shadow8 and Foreground 2 Hover text.",
+      "tokens": [
+        "tokens.colorNeutralBackground2",
+        "tokens.colorNeutralBackground2Hover",
+        "tokens.colorNeutralBackground2Pressed",
+        "tokens.colorNeutralBackground2Selected",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground2Selected",
+        "tokens.shadow4"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "Transparent background, no shadow, a Stroke 1 border that steps to Hover and Pressed when interactive.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStroke1Pressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "Subtle background (transparent at rest), no shadow, transparent border; interactive hover and press tint through the Subtle family.",
+      "tokens": [
+        "tokens.colorSubtleBackground",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorSubtleBackgroundSelected"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "8px padding and gap, borderRadiusSmall.",
+      "tokens": [
+        "tokens.borderRadiusSmall"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "12px padding and gap, borderRadiusMedium.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "16px padding and gap, borderRadiusLarge.",
+      "tokens": [
+        "tokens.borderRadiusLarge"
+      ]
+    },
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "default": true,
+      "description": "A column; a preview loses the card's side padding and, when first or last, its top or bottom padding."
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "description": "A row centred on the cross axis; a preview loses the card's top and bottom padding and, when first or last, its left or right padding; a trailing header or footer grows to fill."
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "text": "The root is a flex box with overflow hidden and border-box sizing; its padding and the gap between children both equal the size's spacing, and its text is colorNeutralForeground1. Header and footer never shrink.",
+      "tokens": [
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useCardStyles.styles.ts:40-50,66-69"
+    },
+    {
+      "id": "border",
+      "text": "The border is a strokeWidthThin solid ring on a pseudo-element covering the whole card, above the content and ignoring the pointer, with the card's radius; the appearance sets only its colour. Draw it over the preview, not under.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ],
+      "source": "useCardStyles.styles.ts:51-64"
+    },
+    {
+      "id": "sizes",
+      "text": "Size sets one spacing value used for both padding and gap, and the radius: small 8px with borderRadiusSmall, medium 12px with borderRadiusMedium, large 16px with borderRadiusLarge.",
+      "tokens": [
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusLarge"
+      ],
+      "values": [
+        {
+          "name": "spacingSmall",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "spacingMedium",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "spacingLarge",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardStyles.styles.ts:159-170"
+    },
+    {
+      "id": "preview-bleed-vertical",
+      "part": "preview",
+      "text": "In a vertical card a preview takes negative margins equal to the size's spacing on left and right, and on top when it is the first child (or follows the floating action) and on bottom when it is the last, so it meets the card's edges.",
+      "source": "useCardStyles.styles.ts:132-157"
+    },
+    {
+      "id": "preview-bleed-horizontal",
+      "part": "preview",
+      "text": "In a horizontal card, children are centred vertically; a preview takes negative top and bottom margins, and a negative left margin when first or right margin when last. A header or footer that is the last child grows to fill the row.",
+      "source": "useCardStyles.styles.ts:105-131"
+    },
+    {
+      "id": "floating-action",
+      "part": "floating-action",
+      "text": "The floating action is positioned absolutely 4px from the top and right edges, above the content layer.",
+      "values": [
+        {
+          "name": "inset",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardStyles.styles.ts:388-393"
+    },
+    {
+      "id": "hidden-checkbox",
+      "part": "checkbox",
+      "text": "A selectable card's checkbox is visually hidden: 1px square, absolutely positioned, clipped to nothing.",
+      "values": [
+        {
+          "name": "size",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardStyles.styles.ts:395-403"
+    },
+    {
+      "id": "header-grid",
+      "part": "header",
+      "text": "With a description, the header is a grid of columns min-content, 1fr, min-content: the image spans both rows in column 1, the title sits in row 1 and the description in row 2 of column 2, and the action spans both rows in column 3. Without one, it is a flex row whose title grows. Items are centred vertically either way.",
+      "source": "useCardHeaderStyles.styles.ts:25-29,55-94,104"
+    },
+    {
+      "id": "header-gap",
+      "part": "header-image",
+      "text": "The header's image has a 12px right margin and its action a 12px left margin.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardHeaderStyles.styles.ts:27,30-33,40-41"
+    },
+    {
+      "id": "footer",
+      "part": "footer",
+      "text": "The footer is a flex row with 12px gaps; its action slot takes an auto left margin so it sits at the far end.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardFooterStyles.styles.ts:15-22"
+    },
+    {
+      "id": "preview-fill",
+      "part": "preview",
+      "text": "Every direct child of the preview other than the logo is a block at 100% width and height.",
+      "source": "useCardPreviewStyles.styles.ts:15-24"
+    },
+    {
+      "id": "preview-logo",
+      "part": "preview-logo",
+      "text": "The preview's logo is 32px square, absolutely positioned 12px from the preview's bottom and left.",
+      "values": [
+        {
+          "name": "size",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "inset",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardPreviewStyles.styles.ts:26-32"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's background, shadow and border colour. filled and filled-alternative cast shadow4 with a transparent border; outline and subtle cast none, outline drawing a Stroke 1 border.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralBackground2",
+        "tokens.colorTransparentBackground",
+        "tokens.colorSubtleBackground",
+        "tokens.colorTransparentStroke",
+        "tokens.colorNeutralStroke1",
+        "tokens.shadow4"
+      ],
+      "source": "useCardStyles.styles.ts:178-185,217-224,256-263,316-323"
+    },
+    {
+      "state": "hovered",
+      "text": "Only an interactive or selectable card reacts, and shows a hand pointer. filled: Background 1 Hover, Foreground 1 Hover text, shadow8. filled-alternative: Background 2 Hover, Foreground 2 Hover text, shadow8. outline: Transparent Hover background, Stroke 1 Hover border, Foreground 1 Hover text. subtle: Subtle Hover background, Foreground 1 Hover text. Text components inside take currentColor so they follow.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Hover",
+        "tokens.colorNeutralBackground2Hover",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralForeground1Hover",
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.shadow8"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCardStyles.styles.ts:172-176,186-199,225-238,264-280,324-336"
+    },
+    {
+      "state": "pressed",
+      "text": "An interactive card's background takes its Pressed token (Background 1, Background 2, Transparent or Subtle Pressed); outline's border takes Stroke 1 Pressed. The hover shadow and text colour stay.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Pressed",
+        "tokens.colorNeutralBackground2Pressed",
+        "tokens.colorTransparentBackgroundPressed",
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralStroke1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCardStyles.styles.ts:200-202,239-241,281-287,337-339"
+    },
+    {
+      "state": "selected",
+      "text": "A selected card takes the appearance's Selected background (Background 1, Background 2, Transparent or Subtle Selected) and a Stroke 1 Selected border on every appearance, including those with no border at rest; hovering a selected card keeps the Selected background and turns text Foreground 1 Selected (Foreground 2 Selected for filled-alternative).",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralBackground2Selected",
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralStroke1Selected",
+        "tokens.colorNeutralForeground1Selected",
+        "tokens.colorNeutralForeground2Selected"
+      ],
+      "source": "useCardStyles.styles.ts:204-215,243-254,289-300,341-352,476"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws createFocusOutlineStyle's ring with the card's own values: a strokeWidthThick colorStrokeFocus2 border on a pseudo-element, radius the card's size radius, offset -2px so the ring sits inside the card's edge rather than outside it. A plain focusable card shows it on its own focus-visible; a selectable card shows it only while focus is within the card and its hidden checkbox has focus; a disabled card never shows it.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThick",
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusLarge"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": -2,
+          "unit": "px"
+        }
+      ],
+      "source": "useCardStyles.styles.ts:34-38,92-103,451-465; createFocusOutlineStyle.ts:35-46"
+    },
+    {
+      "state": "disabled",
+      "text": "Every appearance takes Background Disabled, Foreground Disabled text, Stroke Disabled border and shadow2, with a not-allowed pointer and no text selection, on rest, hover and press alike; a pseudo-element above the content swallows pointer input. outline instead keeps a transparent background and no shadow, so only its border and text change.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundDisabled",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.shadow2",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useCardStyles.styles.ts:72-90,301-314,405-408,480-481"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "interactive",
+      "text": "A card is interactive when it carries pointer handlers or renders as a button or link; interactive and selectable cards get the hover, pressed and pointer styles, plain cards stay static.",
+      "source": "Card.types.ts:152-164; useCardStyles.styles.ts:449,474-475"
+    },
+    {
+      "id": "selectable",
+      "text": "Supplying selected, defaultSelected or onSelectionChange makes the card selectable: it renders a hidden checkbox (or uses the floating action) to carry the state, and a click or keyboard toggle calls onSelectionChange with the new value.",
+      "source": "Card.types.ts:9-16,39-48,110-128"
+    },
+    {
+      "id": "focus-mode",
+      "text": "focusMode decides focus: off leaves the card unfocusable; no-tab and tab-exit make it one tab stop that Enter enters and Escape (or Tab past the last element, for tab-exit) leaves; tab-only tabs through its inner elements without trapping.",
+      "source": "Card.types.ts:74-94"
+    },
+    {
+      "id": "no-transition",
+      "text": "The styles file declares no transition: background, border, shadow and text change instantly between rest, hover, pressed and selected.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useCardStyles.styles.ts:92-409"
+    },
+    {
+      "id": "disabled-scope",
+      "text": "disabled blocks the card's own interaction and selection but is not passed to its children; disable inner controls separately.",
+      "source": "Card.types.ts:130-135"
+    }
+  ],
+  "accessibility": {
+    "role": "group",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab reaches the card when focusMode is not off",
+      "Enter moves focus into a no-tab or tab-exit card; Escape returns it to the card",
+      "Space or Enter toggles a selectable card through its checkbox"
+    ],
+    "semantics": [
+      "a selectable card exposes its state through the hidden native checkbox, labelled by the card's header",
+      "an interactive card rendered as a button or link takes that role",
+      "the card has no fixed size, so its hit area is its content plus padding; minTargetPx is null for that reason, not because it cannot be interactive"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The size spacing (8, 12, 16px), the header and footer gaps (12px), the floating action inset (4px), the preview logo's size and inset (32px, 12px) and the focus ring's -2px offset are constants in the styles files; no token gives them.",
+      "source": "useCardStyles.styles.ts:37,159-170,388-393; useCardHeaderStyles.styles.ts:27; useCardFooterStyles.styles.ts:19; useCardPreviewStyles.styles.ts:26-32"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The floating action and the disabled input shield stack on the theme's zIndexContent value, which the resolved token file does not carry; any layer above the content works.",
+      "source": "useCardStyles.styles.ts:80-85,392"
+    },
+    {
+      "kind": "contradiction",
+      "text": "foundations.json lists the card at shadow2 at rest, shadow4 hovered and shadow8 pressed; the styles file casts shadow4 at rest, shadow8 on hover, keeps shadow8 while pressed, and uses shadow2 only when disabled.",
+      "tokens": [
+        "tokens.shadow2",
+        "tokens.shadow4",
+        "tokens.shadow8"
+      ],
+      "source": "useCardStyles.styles.ts:72-78,178-202"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus ring is the generic createFocusOutlineStyle but with a -2px offset and strokeWidthThick width, which cancels the default outward shift: it sits flush inside the card's edge, over the border, following the size's radius rather than borderRadiusMedium.",
+      "tokens": [
+        "tokens.strokeWidthThick"
+      ],
+      "source": "useCardStyles.styles.ts:34-38; createFocusOutlineStyle.ts:35-112"
+    },
+    {
+      "kind": "gotcha",
+      "text": "filled-alternative and subtle switch the hovered text to a different family than filled: filled-alternative reads Foreground 2 Hover and Foreground 2 Selected, the rest Foreground 1. The rest text is Foreground 1 on all four.",
+      "tokens": [
+        "tokens.colorNeutralForeground2Hover",
+        "tokens.colorNeutralForeground1Hover"
+      ],
+      "source": "useCardStyles.styles.ts:49,235,252"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours an interactive or selectable card's border is Highlight and it turns Highlight background with HighlightText text on hover and press; a selected card is Highlight with HighlightText at rest too. The preview and footer keep system colours (forcedColorAdjust auto), and header and footer action buttons and links take currentColor for text, border and outline so they stay visible. The focus ring turns Highlight.",
+      "source": "useCardStyles.styles.ts:354-386; useCardHeaderStyles.styles.ts:43-51; useCardFooterStyles.styles.ts:24-32; createFocusOutlineStyle.ts:60-64"
+    },
+    {
+      "kind": "inferred",
+      "text": "The anatomy names (header image, title, description, action; preview and logo; footer and action) follow the slot names and the Fluent 2 card page; the code gives the header no typography, so the title and description take whatever text component the caller supplies.",
+      "source": "CardHeader.types.ts:6-31; fluent2:card"
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "search-box",
+  "name": "SearchBox",
+  "status": "stable",
+  "summary": "An Input specialised for search: a leading search icon, a dismiss control that appears while focused with text, and Escape to clear. It reuses Input's appearances, sizes and states; choose it over a plain Input wherever the value is a query.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM"
+  ],
+  "references": {
+    "react": [
+      "useSearchBoxStyles.styles.ts",
+      "SearchBox.types.ts",
+      "useInputStyles.styles.ts"
+    ],
+    "fluent2": [
+      "search-box"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "underline",
+        "filled-darker",
+        "filled-lighter"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "Input's appearance."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Input's size: 24, 32 or 40px with matching icon sizes."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The query text."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Input's placeholder."
+    },
+    {
+      "name": "contentBefore",
+      "type": "slot",
+      "required": false,
+      "description": "The leading slot, a search icon by default."
+    },
+    {
+      "name": "contentAfter",
+      "type": "slot",
+      "required": false,
+      "description": "Content after the text that shows only while focused, before the dismiss control."
+    },
+    {
+      "name": "dismiss",
+      "type": "slot",
+      "required": false,
+      "description": "The clear control, a dismiss icon by default; shown while the box is focused and has text."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Input's disabled."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the new value on each edit, and with an empty value when the dismiss control is activated."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "Input's root with its column gap removed, a 468px maximum width and its own horizontal padding per size."
+    },
+    {
+      "id": "content-before",
+      "name": "Content before",
+      "description": "Input's leading slot holding the search icon in colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "The text, padded spacingHorizontalSNudge at the start and, unfocused, by the size's end padding."
+    },
+    {
+      "id": "content-after",
+      "name": "Content after",
+      "description": "The trailing slot, collapsed to zero size while unfocused and padded spacingHorizontalM at the start with a spacingHorizontalXS gap while focused.",
+      "optional": true,
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "id": "dismiss",
+      "name": "Dismiss",
+      "description": "The clear icon at the end, colorNeutralForeground3, 16, 20 or 24px by size, a pointer cursor.",
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Root padded spacingHorizontalSNudge on both sides; unfocused input end padding spacingHorizontalSNudge; 16px dismiss icon.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Root padded spacingHorizontalS; unfocused input end padding spacingHorizontalS; 20px dismiss icon.",
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "Root padded spacingHorizontalMNudge; unfocused input end padding spacingHorizontalMNudge; 24px dismiss icon.",
+      "tokens": [
+        "tokens.spacingHorizontalMNudge"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "root-box",
+      "part": "root",
+      "text": "The root is Input's with no column gap, at most 468px wide, padded spacingHorizontalSNudge (small), spacingHorizontalS (medium) or spacingHorizontalMNudge (large) on both sides; unfocused it has no end padding at all.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge"
+      ],
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 468,
+          "unit": "px"
+        }
+      ],
+      "source": "useSearchBoxStyles.styles.ts:20-41,56-58,125-130"
+    },
+    {
+      "id": "input-padding",
+      "part": "input",
+      "text": "The input pads spacingHorizontalSNudge at the start and nothing at the end, except unfocused, when it takes the size's end padding (SNudge, S or MNudge) so the text keeps its inset while the trailing content is collapsed; the platform's own search decorations are hidden.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalMNudge"
+      ],
+      "source": "useSearchBoxStyles.styles.ts:43-54,61-71,132-137"
+    },
+    {
+      "id": "content-after",
+      "part": "content-after",
+      "text": "Focused, the trailing content is padded spacingHorizontalM at the start with a spacingHorizontalXS gap between its children; unfocused it is zero by zero with no padding and clipped, so it takes no space. A dismiss with no other trailing content takes the same padding.",
+      "tokens": [
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXS"
+      ],
+      "source": "useSearchBoxStyles.styles.ts:73-84,156-169"
+    },
+    {
+      "id": "dismiss-icon",
+      "part": "dismiss",
+      "text": "The dismiss icon is 16px at small, 20px at medium and 24px at large.",
+      "values": [
+        {
+          "name": "iconSmall",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconMedium",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useSearchBoxStyles.styles.ts:86-110"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest is Input's rest with the trailing content and dismiss collapsed; the leading icon and dismiss are colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ],
+      "source": "useSearchBoxStyles.styles.ts:86-94,171"
+    },
+    {
+      "state": "focused",
+      "text": "Focused, Input's focus line runs and the trailing content and dismiss appear; the input's end padding drops to zero as the trailing content takes it.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useSearchBoxStyles.styles.ts:125-137,156-165"
+    },
+    {
+      "state": "disabled",
+      "text": "Input's disabled look, the dismiss icon colorNeutralForegroundDisabled.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useSearchBoxStyles.styles.ts:96-99,139-149"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "dismiss",
+      "text": "Activating the dismiss control clears the value, reports an empty value through onChange and keeps focus in the box; it only shows while focused and, by the design site, while there is text.",
+      "source": "SearchBox.types.ts:19-27; fluent2:search-box"
+    },
+    {
+      "id": "escape",
+      "text": "Escape while focused clears the value the same way.",
+      "source": "fluent2:search-box"
+    },
+    {
+      "id": "input",
+      "text": "Everything else, editing, appearances, sizes, the focus line and the invalid border, is Input's.",
+      "source": "SearchBox.types.ts:5-8,37-42; useSearchBoxStyles.styles.ts:171"
+    }
+  ],
+  "accessibility": {
+    "role": "searchbox",
+    "minTargetPx": 16,
+    "keyboard": [
+      "Escape clears the text",
+      "Tab reaches the dismiss control only while it shows"
+    ],
+    "semantics": [
+      "the input has type search",
+      "the dismiss control is a labelled button-like element; clearing reports an empty value"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 468px maximum width and the dismiss icon sizes (16, 20, 24px) are constants in the styles file.",
+      "source": "useSearchBoxStyles.styles.ts:23,30,37,92,102,108"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The trailing content is collapsed to zero size rather than hidden, and the input's end padding is swapped between the input and that slot on focus, so the text does not shift when the dismiss control appears.",
+      "source": "useSearchBoxStyles.styles.ts:56-71,78-84"
+    },
+    {
+      "kind": "inferred",
+      "text": "That the dismiss control needs text to show, and that Escape clears, come from the design site; the styles file only ties the control's visibility to focus.",
+      "source": "fluent2:search-box; useSearchBoxStyles.styles.ts:156-169"
+    }
+  ]
+}

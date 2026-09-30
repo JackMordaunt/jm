@@ -158,3 +158,18 @@ test_the_checked_in_material_tokens_are_current :: proc(t: ^testing.T) {
 		"ui/material/tokens/tokens.odin is stale; run just material-tokens",
 	)
 }
+
+@(test)
+test_the_checked_in_fluent_tokens_are_current :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	doc, err := json.parse(#load("../fluent/tokens/fluent.resolved.json"))
+	testing.expect(t, err == json.Error.None)
+	out, ok := generate(doc.(json.Object)["tokens"].(json.Object), FLUENT)
+	testing.expect(t, ok)
+	testing.expect(
+		t,
+		out == string(#load("../../ui/fluent/tokens/tokens.odin")),
+		"ui/fluent/tokens/tokens.odin is stale; run just fluent-tokens",
+	)
+}

@@ -1,0 +1,347 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "split-button",
+  "name": "SplitButton",
+  "status": "stable",
+  "summary": "Two joined buttons: a primary action and a menu button that opens related alternatives. Use it when one action is the usual choice but others belong beside it, as in Save with Save as; use a menu button when there is no default action.",
+  "tokenGroups": [
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStrokeOnBrand",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentBackgroundHover",
+    "tokens.colorTransparentBackgroundPressed",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorStrokeFocus2"
+  ],
+  "references": {
+    "react": [
+      "useSplitButtonStyles.styles.ts",
+      "SplitButton.types.ts"
+    ],
+    "fluent2": [
+      "button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "primaryActionButton",
+      "type": "slot",
+      "required": false,
+      "description": "The button that runs the default action; its label is the SplitButton's children."
+    },
+    {
+      "name": "menuButton",
+      "type": "slot",
+      "required": false,
+      "description": "The menu button half; place the SplitButton in a MenuTrigger and pass the trigger props here."
+    },
+    {
+      "name": "menuIcon",
+      "type": "icon",
+      "required": false,
+      "description": "As menu button."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "secondary",
+        "primary",
+        "outline",
+        "subtle",
+        "transparent"
+      ],
+      "required": false,
+      "default": "secondary",
+      "description": "As button; applied to both halves."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "As button; applied to both halves."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "circular",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "As button; only the group's outer corners are rounded."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "As button, on the primary action."
+    },
+    {
+      "name": "iconPosition",
+      "type": "enum",
+      "values": [
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "before",
+      "description": "As button, on the primary action."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button; disables both halves."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Runs the primary action."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "The primary action's label."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Group",
+      "description": "An inline-flex wrapper holding both halves side by side, aligned to the text's middle."
+    },
+    {
+      "id": "primary-action",
+      "name": "Primary action button",
+      "description": "A button with square end corners; its end border is the divider between the halves."
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "description": "The primary action's end border: Stroke 1 on secondary and outline, StrokeOnBrand on primary, invisible on subtle and transparent.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeOnBrand"
+      ]
+    },
+    {
+      "id": "menu-button",
+      "name": "Menu button",
+      "description": "A menu button with no start border and square start corners, at least 24px wide."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "secondary",
+      "default": true,
+      "description": "Each half as a secondary button; the divider is the primary action's colorNeutralStroke1 end border, stepping with button's border on hover and press.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "As secondary: the file adds nothing.",
+      "tokens": [
+        "tokens.colorNeutralStroke1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "primary",
+      "description": "The divider is colorNeutralStrokeOnBrand at rest, hover and press, so a light line splits the brand fill.",
+      "tokens": [
+        "tokens.colorNeutralStrokeOnBrand"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "The divider reads colorTransparentBackground, Hover and Pressed, so no line shows between the halves.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "description": "As subtle: no visible divider.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small | medium | large",
+      "description": "As button, on both halves."
+    },
+    {
+      "axis": "shape",
+      "value": "rounded | circular | square",
+      "description": "As button on the outer corners; the file declares no shape classes of its own."
+    }
+  ],
+  "layout": [
+    {
+      "id": "group",
+      "part": "root",
+      "text": "The root is a relatively positioned inline-flex row, stretched, aligned vertical-middle with surrounding text.",
+      "source": "useSplitButtonStyles.styles.ts:32-38"
+    },
+    {
+      "id": "join",
+      "text": "The primary action loses its top-end and bottom-end radii; the menu button loses its start border and its top-start and bottom-start radii, so the two share one border line: the primary action's end border.",
+      "source": "useSplitButtonStyles.styles.ts:40-48"
+    },
+    {
+      "id": "menu-min-width",
+      "part": "menu-button",
+      "text": "The menu button's minimum width drops from button's 64 or 96px to 24px, the WCAG minimum for adjacent targets; with only its menu icon it lays out square, as an icon-only button.",
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useSplitButtonStyles.styles.ts:15-17,49"
+    },
+    {
+      "id": "halves",
+      "text": "Each half is otherwise a button (primary action) and a menu button (menu half) with the group's appearance, size and shape.",
+      "source": "SplitButton.types.ts:7-25"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "divider",
+      "text": "Rest: the divider is the primary action's end border in the appearance's colour; each half's own states are as button and menu button.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeOnBrand",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useSplitButtonStyles.styles.ts:57-60,95-98,112-115"
+    },
+    {
+      "state": "hovered",
+      "part": "divider",
+      "text": "Hovering either half hovers the group: on primary the divider stays colorNeutralStrokeOnBrand, on subtle and transparent it reads colorTransparentBackgroundHover; on secondary and outline it follows the primary action's own hover border only when that half is hovered.",
+      "tokens": [
+        "tokens.colorNeutralStrokeOnBrand",
+        "tokens.colorTransparentBackgroundHover"
+      ],
+      "source": "useSplitButtonStyles.styles.ts:62-66,100-104,117-121"
+    },
+    {
+      "state": "pressed",
+      "part": "divider",
+      "text": "Pressing reads colorNeutralStrokeOnBrand on primary and colorTransparentBackgroundPressed on subtle and transparent.",
+      "tokens": [
+        "tokens.colorNeutralStrokeOnBrand",
+        "tokens.colorTransparentBackgroundPressed"
+      ],
+      "source": "useSplitButtonStyles.styles.ts:68-72,106-110,123-127"
+    },
+    {
+      "state": "focused",
+      "text": "Each half draws button's inset colorStrokeFocus2 ring on its own, and the ring keeps the half's squared inner corners and the menu button's missing start border.",
+      "tokens": [
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useSplitButtonStyles.styles.ts:19-30,192-208"
+    },
+    {
+      "state": "disabled",
+      "part": "divider",
+      "text": "Disabled (or disabledFocusable) turns the divider colorNeutralStrokeDisabled in every state; the halves are as a disabled button.",
+      "tokens": [
+        "tokens.colorNeutralStrokeDisabled"
+      ],
+      "source": "useSplitButtonStyles.styles.ts:136-152,187"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "primary",
+      "text": "Clicking the primary action, or Enter or Space on it, runs onClick; it does not open the menu.",
+      "source": "SplitButton.types.ts:17-21"
+    },
+    {
+      "id": "menu",
+      "text": "The menu half opens the menu as a menu button does; the SplitButton is wrapped in a MenuTrigger whose props reach the menu half.",
+      "source": "SplitButton.types.ts:13-16; fluent2:button"
+    },
+    {
+      "id": "tab-order",
+      "text": "The halves are two tab stops, primary action first.",
+      "source": "fluent2:button"
+    }
+  ],
+  "accessibility": {
+    "role": "group",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves to the primary action, then the menu half",
+      "Enter or Space on the primary action runs it",
+      "Enter, Space or ArrowDown on the menu half opens the menu"
+    ],
+    "semantics": [
+      "two buttons; the menu half reports aria-haspopup menu and aria-expanded",
+      "give the menu half an aria-label such as More options, since it shows only a chevron"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The menu half's 24px minimum width is a constant (MIN_TARGET_SIZE) in the styles file.",
+      "source": "useSplitButtonStyles.styles.ts:15-17"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Subtle and transparent colour the divider with background tokens (colorTransparentBackground and its Hover and Pressed), not strokes; the effect is no divider. Draw nothing there rather than looking for a stroke token.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.colorTransparentBackgroundHover",
+        "tokens.colorTransparentBackgroundPressed"
+      ],
+      "source": "useSplitButtonStyles.styles.ts:95-127"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The divider is set as borderRightColor and the menu half's borderLeftWidth; these are physical sides, and in right-to-left layouts they must be mirrored (Griffel flips them automatically).",
+      "source": "useSplitButtonStyles.styles.ts:40-48,57-60"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the primary appearance's divider is HighlightText at rest and Highlight on hover and press, and a disabled group's divider is GrayText; the halves follow button's forced-colours rules.",
+      "source": "useSplitButtonStyles.styles.ts:74-90,155-173"
+    }
+  ]
+}

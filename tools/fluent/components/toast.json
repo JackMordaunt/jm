@@ -1,0 +1,648 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "toast",
+  "name": "Toast",
+  "status": "stable",
+  "summary": "A transient notification dispatched into a fixed corner of the screen by a Toaster, with a title, optional body and footer actions, that dismisses itself after a timeout. Use it for the outcome of an action the user did not have to wait for; use a message bar for a persistent status the page owns, and a dialog for anything that needs a decision.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralBackgroundInverted",
+    "tokens.colorNeutralForegroundInverted",
+    "tokens.colorNeutralForegroundInverted2",
+    "tokens.colorBrandForeground1",
+    "tokens.colorBrandForegroundInverted",
+    "tokens.colorStatusSuccessForeground1",
+    "tokens.colorStatusDangerForeground1",
+    "tokens.colorStatusWarningForeground1",
+    "tokens.colorStatusSuccessForegroundInverted",
+    "tokens.colorStatusDangerForegroundInverted",
+    "tokens.colorStatusWarningForegroundInverted",
+    "tokens.colorTransparentStroke",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThick",
+    "tokens.shadow8",
+    "tokens.borderRadiusMedium",
+    "tokens.fontSizeBase300",
+    "tokens.fontSizeBase200",
+    "tokens.lineHeightBase300",
+    "tokens.fontWeightSemibold",
+    "tokens.fontWeightRegular",
+    "tokens.durationNormal",
+    "tokens.durationSlower",
+    "tokens.curveEasyEaseMax"
+  ],
+  "references": {
+    "react": [
+      "useToastStyles.styles.ts",
+      "Toast.types.ts",
+      "useToastTitleStyles.styles.ts",
+      "ToastTitle.types.ts",
+      "useToastBodyStyles.styles.ts",
+      "ToastBody.types.ts",
+      "useToastFooterStyles.styles.ts",
+      "ToastFooter.types.ts",
+      "useToastContainerStyles.styles.ts",
+      "ToastContainer.types.ts",
+      "useToasterStyles.styles.ts",
+      "Toaster.types.ts",
+      "ToastTrigger.types.ts",
+      "useTimerStyles.styles.ts",
+      "AriaLive.types.ts"
+    ],
+    "fluent2": [
+      "toast"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "toastId",
+      "type": "string",
+      "required": false,
+      "description": "Identifies a toast for later update or dismiss; generated when omitted."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "The Toast element: a ToastTitle with optional media and action, an optional ToastBody with subtitle, and an optional ToastFooter of links or buttons."
+    },
+    {
+      "name": "intent",
+      "type": "enum",
+      "values": [
+        "info",
+        "success",
+        "warning",
+        "error"
+      ],
+      "required": false,
+      "default": "info",
+      "description": "Colours the title's media icon and picks the live-region politeness: info is polite, the others assertive."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "normal",
+        "inverted"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "normal is the theme's surface; inverted is the inverted background with inverted text, for a toast that must contrast with the page."
+    },
+    {
+      "name": "position",
+      "type": "enum",
+      "values": [
+        "bottom-end",
+        "bottom-start",
+        "top-end",
+        "top-start",
+        "top",
+        "bottom"
+      ],
+      "required": false,
+      "default": "bottom-end",
+      "description": "Which fixed corner or edge of the viewport the toast stacks in; a Toaster keeps one column per position."
+    },
+    {
+      "name": "timeout",
+      "type": "number",
+      "required": false,
+      "default": 3000,
+      "description": "Milliseconds the toast stays before dismissing itself once fully shown; a negative timeout never dismisses."
+    },
+    {
+      "name": "pauseOnHover",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the pointer resting on the toast pauses its timeout."
+    },
+    {
+      "name": "pauseOnWindowBlur",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the window losing focus pauses its timeout."
+    },
+    {
+      "name": "priority",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "Higher priority toasts leave the queue first when a limit holds toasts back; equal priority goes in dispatch order."
+    },
+    {
+      "name": "politeness",
+      "type": "enum",
+      "values": [
+        "polite",
+        "assertive"
+      ],
+      "required": false,
+      "description": "Overrides the live-region politeness the intent implies."
+    },
+    {
+      "name": "onStatusChange",
+      "type": "callback",
+      "required": false,
+      "description": "Reports each lifecycle step: queued, visible, dismissed, unmounted."
+    },
+    {
+      "name": "limit",
+      "type": "number",
+      "required": false,
+      "description": "A Toaster option: how many toasts may be visible at once; the rest queue by priority and order."
+    },
+    {
+      "name": "offset",
+      "type": "number",
+      "required": false,
+      "description": "A Toaster option: the distance from the viewport edges, per position or for all; defaults to 16px vertical and 20px horizontal (0 horizontal for the centred positions)."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "A Toaster option: position the columns absolutely inside their parent rather than fixed to the viewport."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "toaster",
+      "name": "Toaster",
+      "description": "One fixed, pointer-transparent column per position, 292px wide, holding that position's toasts; it also hosts the aria-live regions the toasts announce through.",
+      "tokens": []
+    },
+    {
+      "id": "container",
+      "name": "ToastContainer",
+      "description": "The list item around one toast: 16px above the previous, pointer-enabled, borderRadiusMedium, focusable as a group; it owns the timer and the enter and exit motion.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.colorStrokeFocus2",
+        "tokens.strokeWidthThick"
+      ]
+    },
+    {
+      "id": "root",
+      "name": "Toast",
+      "description": "The surface: a three-column grid (auto, 1fr, auto) padded 12px, Background 1 with a 1px transparent border, borderRadiusMedium and shadow8, in semibold base300 text.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusMedium",
+        "tokens.shadow8",
+        "tokens.fontSizeBase300",
+        "tokens.fontWeightSemibold"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "ToastTitle",
+      "description": "The heading text in Foreground 1, spanning the first two columns, breaking long words.",
+      "tokens": [
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "id": "media",
+      "name": "Title media",
+      "description": "The 16px icon slot before the title in column 1, coloured by intent; a caller may supply its own icon.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "id": "action",
+      "name": "Title action",
+      "description": "A link or button at the end of the title row in column 3, in Brand Foreground 1.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorBrandForeground1"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "ToastBody",
+      "description": "Regular base300 text in column 2 under the title, 6px below it.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontWeightRegular"
+      ]
+    },
+    {
+      "id": "subtitle",
+      "name": "Body subtitle",
+      "description": "A base200 line in Foreground 2 under the body, 4px below it.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.fontSizeBase200"
+      ]
+    },
+    {
+      "id": "footer",
+      "name": "ToastFooter",
+      "description": "A flex row of actions in column 2, 16px below the body, items 14px apart.",
+      "optional": true
+    },
+    {
+      "id": "timer",
+      "name": "Timer",
+      "description": "An invisible span whose CSS animation runs for the timeout; its animationend dismisses the toast, and pausing the animation pauses the timeout.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "normal",
+      "default": true,
+      "description": "Background 1 with Foreground 1 title and body, Foreground 2 subtitle and Brand Foreground 1 action.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground2",
+        "tokens.colorBrandForeground1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "inverted",
+      "description": "The inverted background with Foreground Inverted 2 title, body and subtitle, Foreground Inverted media and Brand Foreground Inverted action; intent icons take their Inverted status colours.",
+      "tokens": [
+        "tokens.colorNeutralBackgroundInverted",
+        "tokens.colorNeutralForegroundInverted2",
+        "tokens.colorNeutralForegroundInverted",
+        "tokens.colorBrandForegroundInverted",
+        "tokens.colorStatusSuccessForegroundInverted",
+        "tokens.colorStatusDangerForegroundInverted",
+        "tokens.colorStatusWarningForegroundInverted"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "info",
+      "default": true,
+      "description": "Media icon in Foreground 2; announced politely.",
+      "tokens": [
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "success",
+      "description": "Media icon in Status Success Foreground 1; announced assertively.",
+      "tokens": [
+        "tokens.colorStatusSuccessForeground1"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "warning",
+      "description": "Media icon in Status Warning Foreground 1; announced assertively.",
+      "tokens": [
+        "tokens.colorStatusWarningForeground1"
+      ]
+    },
+    {
+      "axis": "intent",
+      "value": "error",
+      "description": "Media icon in Status Danger Foreground 1; announced assertively.",
+      "tokens": [
+        "tokens.colorStatusDangerForeground1"
+      ]
+    },
+    {
+      "axis": "position",
+      "value": "bottom-end",
+      "default": true,
+      "description": "The column sits at the bottom end (right in LTR); new toasts are added at the bottom of a bottom column and at the top of a top column."
+    },
+    {
+      "axis": "position",
+      "value": "top",
+      "description": "The top and bottom positions centre the column horizontally with a 0 horizontal offset."
+    }
+  ],
+  "layout": [
+    {
+      "id": "toaster-column",
+      "part": "toaster",
+      "text": "Each position is a fixed (or, inline, absolute) 292px-wide column that ignores the pointer; its offsets are 16px from the top or bottom and 20px from the start or end edge, or 0 horizontal at the centred top and bottom positions where it is translated back by half its width, unless offset says otherwise.",
+      "values": [
+        {
+          "name": "width",
+          "value": 292,
+          "unit": "px"
+        },
+        {
+          "name": "verticalOffset",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "horizontalOffset",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useToasterStyles.styles.ts:15-25; getPositionStyles.ts:10-69"
+    },
+    {
+      "id": "container",
+      "part": "container",
+      "text": "A container is border-box with a 16px top margin, so consecutive toasts in a column are 16px apart, takes pointer events, and rounds to borderRadiusMedium so its focus outline follows the toast's corners.",
+      "tokens": [
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "gap",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "useToastContainerStyles.styles.ts:14-22"
+    },
+    {
+      "id": "surface",
+      "part": "root",
+      "text": "The toast is a grid of three columns (auto, 1fr, auto) padded 12px inside a 1px colorTransparentStroke border with borderRadiusMedium corners and shadow8, in fontSizeBase300 at fontWeightSemibold on a 20px line.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.borderRadiusMedium",
+        "tokens.shadow8",
+        "tokens.fontSizeBase300",
+        "tokens.fontWeightSemibold"
+      ],
+      "values": [
+        {
+          "name": "padding",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "lineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useToastStyles.styles.ts:12-24"
+    },
+    {
+      "id": "title-row",
+      "part": "title",
+      "text": "The title is a flex row ending at column 3, breaking words; its media is a 16px icon in column 1 padded 2px top and 8px right, and its action sits in the last column padded 12px on the left, aligned to the start.",
+      "values": [
+        {
+          "name": "mediaSize",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "mediaPaddingTop",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "mediaPaddingRight",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "actionPaddingLeft",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useToastTitleStyles.styles.ts:14-36"
+    },
+    {
+      "id": "body",
+      "part": "body",
+      "text": "The body occupies column 2, padded 6px above, in fontSizeBase300 at lineHeightBase300 regular; the subtitle follows in the same column padded 4px above, in fontSizeBase200 with the line height equal to the font size.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.lineHeightBase300",
+        "tokens.fontWeightRegular",
+        "tokens.fontSizeBase200"
+      ],
+      "values": [
+        {
+          "name": "bodyPaddingTop",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "subtitlePaddingTop",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useToastBodyStyles.styles.ts:13-32"
+    },
+    {
+      "id": "footer",
+      "part": "footer",
+      "text": "The footer is a flex row in column 2 padded 16px above, items vertically centred with 14px gaps.",
+      "values": [
+        {
+          "name": "paddingTop",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "gap",
+          "value": 14,
+          "unit": "px"
+        }
+      ],
+      "source": "useToastFooterStyles.styles.ts:14-21"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "part": "root",
+      "text": "The appearance's background and text colours; a toast has no hover or pressed look of its own, only its actions do.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useToastStyles.styles.ts:12-31"
+    },
+    {
+      "state": "focused",
+      "part": "container",
+      "text": "Keyboard focus on the container draws a strokeWidthThick colorStrokeFocus2 outline with borderRadiusMedium corners through createCustomFocusIndicatorStyle.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "source": "useToastContainerStyles.styles.ts:18-21"
+    },
+    {
+      "state": "open",
+      "part": "container",
+      "text": "A toast enters through CollapseDelayed: its height expands over durationNormal on curveEasyEaseMax while its opacity fades in over durationSlower after a durationNormal stagger; the timer starts only once the enter motion has finished.",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "height",
+          "opacity"
+        ]
+      },
+      "source": "Collapse.ts:29-45,111-117; useToastContainer.ts:131-144"
+    },
+    {
+      "state": "other",
+      "label": "dismissed",
+      "part": "container",
+      "text": "On dismiss the same collapse runs in reverse: opacity fades out first, then the height collapses; the toast is removed from the tree when the exit motion finishes.",
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveEasyEaseMax",
+        "properties": [
+          "height",
+          "opacity"
+        ]
+      },
+      "source": "Collapse.ts:66-92,111-117; useToastContainer.ts:131-136"
+    },
+    {
+      "state": "other",
+      "label": "paused",
+      "part": "timer",
+      "text": "While paused the timer's animation play state is paused, so the remaining time is kept, and resumes where it left off.",
+      "source": "useToastContainer.ts:75-89"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "dispatch",
+      "text": "A toast is dispatched imperatively to a Toaster (by toasterId, or the default one); the Toaster shows it at its position at once unless the visible count has reached limit, in which case it waits in a priority queue and shows when another leaves.",
+      "source": "createToaster.ts:47-70,125-140,155-166; types.ts:88-94"
+    },
+    {
+      "id": "defaults",
+      "text": "Unset options come from the Toaster, then from the defaults: bottom-end, 3000ms, priority 0, no pausing on hover or window blur.",
+      "values": [
+        {
+          "name": "timeout",
+          "value": 3000,
+          "unit": "ms"
+        }
+      ],
+      "source": "createToaster.ts:20-31; types.ts:18-75"
+    },
+    {
+      "id": "timeout",
+      "text": "The timeout is a CSS animation of the given duration on the invisible timer span, started when the enter motion completes; its end dismisses the toast. A negative timeout renders no timer, so the toast stays until dismissed.",
+      "source": "useTimerStyles.styles.ts:5-14; useToastContainer.ts:81-84,131-144,198"
+    },
+    {
+      "id": "pause",
+      "text": "Pointer enter pauses the timer and pointer leave resumes it; with pauseOnWindowBlur the window's blur and focus do the same; focus inside the toast keeps it from resuming; an imperative pause holds it until an imperative play.",
+      "source": "useToastContainer.ts:75-89,100-108,114-127,146-153"
+    },
+    {
+      "id": "stacking",
+      "text": "Within a column a bottom position appends new toasts below and a top position inserts them above, so the newest is always nearest the edge.",
+      "source": "useToaster.ts:200-210"
+    },
+    {
+      "id": "dismiss-keys",
+      "text": "Delete on a focused toast dismisses it; Escape anywhere in a Toaster dismisses every toast; Tab from a focused toast moves into its first focusable element and Shift+Tab into its last.",
+      "source": "useToastContainer.ts:157-173; Toaster.types.ts:23-35"
+    },
+    {
+      "id": "focus-restore",
+      "text": "When a toast that held focus is dismissed, focus is restored to where it was before entering the toaster.",
+      "source": "useToastContainer.ts:66-73,184-191"
+    },
+    {
+      "id": "announce",
+      "text": "When a toast becomes visible (and on every update) its text content is announced through the Toaster's live region at the politeness set or implied by intent.",
+      "source": "useToastContainer.ts:14-19,175-182; AriaLive.types.ts:24-34"
+    },
+    {
+      "id": "update",
+      "text": "A toast may be updated in place by toastId; the update restarts its timer (the timer is keyed by updateId) and re-announces it.",
+      "source": "types.ts:96-116; useToastContainer.ts:198"
+    }
+  ],
+  "accessibility": {
+    "role": "listitem",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab into the toaster focuses a toast",
+      "Tab and Shift+Tab within a toast reach its actions",
+      "Delete dismisses the focused toast",
+      "Escape dismisses all toasts"
+    ],
+    "semantics": [
+      "each toast is a focusable listitem labelled by its title and described by its body",
+      "the Toaster hosts polite and assertive live regions; info toasts announce politely, success, warning and error assertively",
+      "the toast's actions are ordinary buttons and links"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The column width (292px), the 16 and 20px viewport offsets, the 16px gap between toasts, the 12px padding, 1px border and 20px title line height, the 16px media icon with its 2 and 8px padding, the 12px action padding, the 6 and 4px body paddings and the footer's 16px padding and 14px gap are constants in the styles files and the position helper; the 3000ms default timeout is in the toaster's defaults.",
+      "source": "useToasterStyles.styles.ts:17; getPositionStyles.ts:21; useToastContainerStyles.styles.ts:16; useToastStyles.styles.ts:15-20; useToastTitleStyles.styles.ts:23-33; useToastBodyStyles.styles.ts:16,25; useToastFooterStyles.styles.ts:15-20; createToaster.ts:30"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The title's line height is a literal 20px, not lineHeightBase300, though the two are equal in every theme; the subtitle's line height is set to fontSizeBase200 (12px), tighter than lineHeightBase200.",
+      "tokens": [
+        "tokens.lineHeightBase300",
+        "tokens.fontSizeBase200",
+        "tokens.lineHeightBase200"
+      ],
+      "source": "useToastStyles.styles.ts:20; useToastBodyStyles.styles.ts:28-29"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The timeout does not start until the enter motion has finished, so a toast is on screen for its timeout plus the enter duration; and the Timer is a real CSS animation, so a renderer with no animation must run its own clock and honour pause.",
+      "source": "useToastContainer.ts:131-144; useTimerStyles.styles.ts:5-14"
+    },
+    {
+      "kind": "inferred",
+      "text": "The enter and exit motion come from CollapseDelayed in the motion components package (its Collapse.ts is vendored); ToastContainer's render file, which mounts it, is a .tsx file the kit's citation pattern cannot name.",
+      "source": "Collapse.ts:111-117"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Nothing in the toast reads the intent except the title media's colour and the politeness; a toast with no media shows no intent at all.",
+      "source": "useToastTitleStyles.styles.ts:52-80,101-111"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles files have no forced-colors rules. The 1px colorTransparentStroke border becomes visible under the high-contrast theme and outlines the toast while shadow8 vanishes; the focus outline turns Highlight through its token.",
+      "tokens": [
+        "tokens.colorTransparentStroke",
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useToastStyles.styles.ts:17; useToastContainerStyles.styles.ts:19-21"
+    }
+  ]
+}

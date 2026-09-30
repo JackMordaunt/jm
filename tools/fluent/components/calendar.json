@@ -1,0 +1,1075 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "calendar",
+  "name": "Calendar",
+  "status": "stable",
+  "statusNote": "Shipped as @fluentui/react-calendar-compat, a v8-derived compat package styled with v9 tokens; its API predates the v9 slot conventions.",
+  "summary": "A month grid for picking a date, with a month picker and a year picker reached through the header, a go-to-today button and optional week numbers. Use it inline where a date is the main content; use date-picker when the date belongs in a form field and the calendar should pop up.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForeground1Static",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStroke2",
+    "tokens.colorTransparentBackground",
+    "tokens.colorTransparentStroke",
+    "tokens.colorBrandBackground",
+    "tokens.colorBrandBackgroundInvertedHover",
+    "tokens.colorBrandBackgroundInvertedPressed",
+    "tokens.colorBrandBackgroundInvertedSelected",
+    "tokens.colorBrandForegroundOnLightHover",
+    "tokens.colorBrandForegroundOnLightPressed",
+    "tokens.colorBrandForeground1",
+    "tokens.colorBrandForeground2",
+    "tokens.colorBrandStroke1",
+    "tokens.colorStrokeFocus2",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusSmall",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.fontSizeBase200",
+    "tokens.fontSizeBase300",
+    "tokens.fontWeightRegular",
+    "tokens.fontWeightSemibold",
+    "tokens.durationSlower",
+    "tokens.curveDecelerateMax"
+  ],
+  "references": {
+    "react": [
+      "useCalendarStyles.styles.ts",
+      "Calendar.types.ts",
+      "useCalendarDayStyles.styles.ts",
+      "CalendarDay.types.ts",
+      "useCalendarDayGridStyles.styles.ts",
+      "useWeekCornerStyles.styles.ts",
+      "CalendarDayGrid.types.ts",
+      "useCalendarPickerStyles.styles.ts",
+      "CalendarPicker.types.ts",
+      "CalendarMonth.types.ts",
+      "CalendarYear.types.ts",
+      "constants.ts",
+      "animations.ts",
+      "defaults.ts",
+      "useWeeks.ts"
+    ],
+    "fluent2": [
+      "calendar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The selected date; with no value nothing is selected and the grid opens on today."
+    },
+    {
+      "name": "today",
+      "type": "string",
+      "required": false,
+      "description": "The date drawn as today; the machine clock when unset."
+    },
+    {
+      "name": "onSelectDate",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when a day, month or year is picked, with the date and the range of dates the dateRangeType selects around it."
+    },
+    {
+      "name": "onDismiss",
+      "type": "callback",
+      "required": false,
+      "description": "Runs when the calendar asks to close: Escape, or the close button when shown."
+    },
+    {
+      "name": "dateRangeType",
+      "type": "enum",
+      "values": [
+        "day",
+        "week",
+        "month",
+        "workWeek"
+      ],
+      "required": false,
+      "default": "day",
+      "description": "How many days a pick selects: the day, its week, its month, or the work-week days of its week."
+    },
+    {
+      "name": "firstDayOfWeek",
+      "type": "enum",
+      "values": [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+      ],
+      "required": false,
+      "default": "sunday",
+      "description": "The weekday the grid's columns start on."
+    },
+    {
+      "name": "firstWeekOfYear",
+      "type": "enum",
+      "values": [
+        "firstDay",
+        "firstFullWeek",
+        "firstFourDayWeek"
+      ],
+      "required": false,
+      "default": "firstDay",
+      "description": "Which week counts as week 1 when week numbers are shown."
+    },
+    {
+      "name": "isDayPickerVisible",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Shows the day grid."
+    },
+    {
+      "name": "isMonthPickerVisible",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Shows the month picker beside the day grid, or alone when the day grid is hidden."
+    },
+    {
+      "name": "showMonthPickerAsOverlay",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shows the month picker over the day grid, reached from the header, instead of beside it."
+    },
+    {
+      "name": "showGoToToday",
+      "type": "boolean",
+      "required": false,
+      "description": "Shows the go-to-today button under the grids."
+    },
+    {
+      "name": "showWeekNumbers",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shows the week number (1 to 53) in a column before each week."
+    },
+    {
+      "name": "showSixWeeksByDefault",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Always lays out six week rows, so the grid's height never changes between months."
+    },
+    {
+      "name": "minDate",
+      "type": "string",
+      "required": false,
+      "description": "The earliest date that can be navigated to or selected."
+    },
+    {
+      "name": "maxDate",
+      "type": "string",
+      "required": false,
+      "description": "The latest date that can be navigated to or selected."
+    },
+    {
+      "name": "restrictedDates",
+      "type": "list",
+      "required": false,
+      "description": "Dates that cannot be selected."
+    },
+    {
+      "name": "workWeekDays",
+      "type": "list",
+      "required": false,
+      "description": "The weekdays a workWeek pick selects; Monday to Friday by default."
+    },
+    {
+      "name": "highlightCurrentMonth",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Paints the current month (and year) in the pickers as brand."
+    },
+    {
+      "name": "highlightSelectedMonth",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Paints the selected month (and year) in the pickers as the inverted-selected tint."
+    },
+    {
+      "name": "showCloseButton",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Adds a dismiss button to the day grid's header."
+    },
+    {
+      "name": "allFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lets disabled days and buttons take focus."
+    },
+    {
+      "name": "strings",
+      "type": "list",
+      "required": false,
+      "description": "Localized month and day names and the labels: go to today, week number, the navigation buttons, close, and the selected and today announcements."
+    },
+    {
+      "name": "dateTimeFormatter",
+      "type": "list",
+      "required": false,
+      "description": "Formatters for the day number, month, year, month-year header and month-day-year announcement."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "The flex box holding the day picker and month picker wrapper, in a column when the month picker is hidden."
+    },
+    {
+      "id": "day-picker",
+      "name": "Day picker",
+      "description": "The CalendarDay: a header with the month-year button and navigation buttons, then the day grid.",
+      "optional": true
+    },
+    {
+      "id": "day-header",
+      "name": "Day header",
+      "description": "The row holding the month-and-year button and the month navigation buttons."
+    },
+    {
+      "id": "month-and-year",
+      "name": "Month and year",
+      "description": "The header's title button; clickable when a month picker can be shown from it."
+    },
+    {
+      "id": "nav-button",
+      "name": "Navigation button",
+      "description": "A 28px square icon button: previous, next and, when shown, close."
+    },
+    {
+      "id": "day-grid",
+      "name": "Day grid",
+      "description": "The table of week rows: a weekday label row, an optional week number column, and 4 to 6 weeks of day cells plus a hidden transition week above and below."
+    },
+    {
+      "id": "weekday-label",
+      "name": "Weekday label cell",
+      "description": "A column heading with the day's one-letter name."
+    },
+    {
+      "id": "week-number",
+      "name": "Week number cell",
+      "description": "The week's number, shown before the week's days when showWeekNumbers is set.",
+      "optional": true
+    },
+    {
+      "id": "day-cell",
+      "name": "Day cell",
+      "description": "One day's table cell: 2px of padding around the day button; selection tints the cell."
+    },
+    {
+      "id": "day-button",
+      "name": "Day button",
+      "description": "The 24px button inside a cell carrying the day number."
+    },
+    {
+      "id": "today-marker",
+      "name": "Today marker",
+      "description": "A 20px brand disc behind today's number.",
+      "optional": true
+    },
+    {
+      "id": "day-marker",
+      "name": "Day marker",
+      "description": "A 4px dot under a day the caller marks through getMarkedDays.",
+      "optional": true
+    },
+    {
+      "id": "month-picker",
+      "name": "Month picker",
+      "description": "The CalendarMonth: a header with the year button and year navigation, then a 4-by-3 grid of month buttons; the year picker replaces it when the year button is clicked.",
+      "optional": true
+    },
+    {
+      "id": "year-picker",
+      "name": "Year picker",
+      "description": "The CalendarYear: a header with the year-range button and range navigation, then a 4-by-3 grid of twelve years.",
+      "optional": true
+    },
+    {
+      "id": "picker-header",
+      "name": "Picker header",
+      "description": "The month or year picker's header row: the current item button and the navigation buttons."
+    },
+    {
+      "id": "item-button",
+      "name": "Item button",
+      "description": "A 40px square month or year button in the picker grid."
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "description": "The 1px line between the day picker and the month picker when both show side by side.",
+      "optional": true
+    },
+    {
+      "id": "go-today",
+      "name": "Go to today button",
+      "description": "The text button under the grids that navigates to today.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "layout",
+      "value": "day-and-month",
+      "default": true,
+      "description": "Day grid and month picker side by side, 440px wide, with the divider between them.",
+      "tokens": [
+        "tokens.colorNeutralStroke2"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "day-only",
+      "description": "The day grid alone, 220px wide; the header's month-and-year button is not clickable."
+    },
+    {
+      "axis": "layout",
+      "value": "month-only",
+      "description": "The month picker alone (isDayPickerVisible false), 220px wide."
+    },
+    {
+      "axis": "layout",
+      "value": "overlay",
+      "description": "The month picker shown over the day grid on demand from the month-and-year button (showMonthPickerAsOverlay), 220px wide."
+    },
+    {
+      "axis": "weekNumbers",
+      "value": "shown",
+      "description": "A 28px week number column before each week: 250px for the day grid alone, 470px with the month picker.",
+      "tokens": [
+        "tokens.colorNeutralForeground4",
+        "tokens.colorNeutralStroke2"
+      ]
+    },
+    {
+      "axis": "dateRangeType",
+      "value": "day",
+      "default": true,
+      "description": "A pick selects one day; the day button alone is tinted and outlined."
+    },
+    {
+      "axis": "dateRangeType",
+      "value": "week",
+      "description": "A pick selects the whole week; the week's cells are tinted as one rounded block."
+    },
+    {
+      "axis": "dateRangeType",
+      "value": "workWeek",
+      "description": "A pick selects the workWeekDays of that week; hover shows the whole week."
+    },
+    {
+      "axis": "dateRangeType",
+      "value": "month",
+      "description": "A pick selects the whole month; the month's cells are tinted as one block."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The root is a flex box 220px wide with the day picker and the month picker as columns; 440px with both visible, 250px for the day picker with week numbers, 470px with both and week numbers; with the month picker hidden it stacks as a column.",
+      "values": [
+        {
+          "name": "width",
+          "value": 220,
+          "unit": "px"
+        },
+        {
+          "name": "widthBoth",
+          "value": 440,
+          "unit": "px"
+        },
+        {
+          "name": "widthWeekNumbers",
+          "value": 250,
+          "unit": "px"
+        },
+        {
+          "name": "widthBothWeekNumbers",
+          "value": 470,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarStyles.styles.ts:19-42"
+    },
+    {
+      "id": "divider",
+      "part": "divider",
+      "text": "The divider is a 1px colorNeutralStroke2 right border on the day picker's side.",
+      "tokens": [
+        "tokens.colorNeutralStroke2"
+      ],
+      "values": [
+        {
+          "name": "width",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarStyles.styles.ts:44-49"
+    },
+    {
+      "id": "day-picker-box",
+      "part": "day-picker",
+      "text": "The day picker is 196px of content inside 12px of padding (226px with week numbers).",
+      "values": [
+        {
+          "name": "contentWidth",
+          "value": 196,
+          "unit": "px"
+        },
+        {
+          "name": "padding",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "contentWidthWeekNumbers",
+          "value": 226,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayStyles.styles.ts:20-35"
+    },
+    {
+      "id": "day-header",
+      "part": "day-header",
+      "text": "The header is a 28px inline-flex row across the picker's width: the month-and-year button grows to fill, then the navigation buttons sit at the end.",
+      "values": [
+        {
+          "name": "height",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayStyles.styles.ts:37-45,82-87"
+    },
+    {
+      "id": "month-and-year",
+      "part": "month-and-year",
+      "text": "The month-and-year button is fontSizeBase300 at fontWeightSemibold in colorNeutralForeground1 on a transparent background, 28px line height, padded 0 4px 0 10px, left-aligned and ellipsised, rounded to borderRadiusMedium.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.fontWeightSemibold",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentBackground",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "paddingLeft",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "paddingRight",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayStyles.styles.ts:47-65"
+    },
+    {
+      "id": "nav-button",
+      "part": "nav-button",
+      "text": "A navigation button is 28px square, transparent, colorNeutralForeground3 at fontSizeBase200 in the day header (colorNeutralForeground1 in the pickers), rounded to borderRadiusMedium; the icons are the up and down arrows and dismiss (calendarNavigationIcons.tsx).",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.colorNeutralForeground1",
+        "tokens.fontSizeBase200",
+        "tokens.borderRadiusMedium",
+        "tokens.colorTransparentBackground"
+      ],
+      "values": [
+        {
+          "name": "size",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayStyles.styles.ts:89-104; useCalendarPickerStyles.styles.ts:84-101"
+    },
+    {
+      "id": "grid",
+      "part": "day-grid",
+      "text": "The grid is a fixed-layout, collapsed table 196px wide (226px with week numbers), 4px below the header and 10px of padding below, centred text at fontSizeBase200; seven columns of 28px cells, a weekday label row, and 4 to 6 week rows (weeksToShow or six with showSixWeeksByDefault), with one transition week above and below laid out of flow and invisible.",
+      "tokens": [
+        "tokens.fontSizeBase200"
+      ],
+      "values": [
+        {
+          "name": "width",
+          "value": 196,
+          "unit": "px"
+        },
+        {
+          "name": "widthWeekNumbers",
+          "value": 226,
+          "unit": "px"
+        },
+        {
+          "name": "marginTop",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingBottom",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "columns",
+          "value": 7,
+          "unit": "count"
+        },
+        {
+          "name": "minWeeks",
+          "value": 4,
+          "unit": "count"
+        },
+        {
+          "name": "maxWeeks",
+          "value": 6,
+          "unit": "count"
+        }
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:40-61,279-298; useWeeks.ts:20-52; CalendarDayGrid.types.ts:113-118; constants.ts:51"
+    },
+    {
+      "id": "day-cell",
+      "part": "day-cell",
+      "text": "A day cell pads 2px around its 24px button, so a cell is 28px square; the number is fontSizeBase200 at fontWeightRegular in colorNeutralForeground1.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightRegular",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentBackground"
+      ],
+      "values": [
+        {
+          "name": "padding",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "buttonSize",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "cellSize",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:63-71,215-227"
+    },
+    {
+      "id": "week-number",
+      "part": "week-number",
+      "text": "A week number cell is 28px square, transparent, colorNeutralForeground4 at fontSizeBase200 regular, with a 1px colorNeutralStroke2 right border.",
+      "tokens": [
+        "tokens.colorNeutralForeground4",
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightRegular",
+        "tokens.colorNeutralStroke2",
+        "tokens.colorTransparentBackground"
+      ],
+      "values": [
+        {
+          "name": "size",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "borderRight",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:175-188"
+    },
+    {
+      "id": "today-marker",
+      "part": "today-marker",
+      "text": "Today's number sits centred on a 20px colorBrandBackground circle in colorNeutralForegroundOnBrand at fontWeightSemibold.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.fontWeightSemibold"
+      ],
+      "values": [
+        {
+          "name": "size",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:243-277"
+    },
+    {
+      "id": "day-marker",
+      "part": "day-marker",
+      "text": "A marked day carries a 4px colorBrandForeground2 dot centred 1px above the cell's bottom edge; on today it is colorNeutralForegroundOnBrand.",
+      "tokens": [
+        "tokens.colorBrandForeground2",
+        "tokens.colorNeutralForegroundOnBrand"
+      ],
+      "values": [
+        {
+          "name": "size",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "bottom",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:251-256,300-318"
+    },
+    {
+      "id": "picker-box",
+      "part": "month-picker",
+      "text": "The month and year pickers share one styles file: 196px of content in 12px of padding, a flex header, then a grid 4px below of 40px square item buttons in four columns with 12px between columns and 16px between rows, three rows of four.",
+      "values": [
+        {
+          "name": "contentWidth",
+          "value": 196,
+          "unit": "px"
+        },
+        {
+          "name": "padding",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "gridMarginTop",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "itemSize",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "columnGap",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "rowGap",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "columns",
+          "value": 4,
+          "unit": "count"
+        },
+        {
+          "name": "items",
+          "value": 12,
+          "unit": "count"
+        }
+      ],
+      "source": "useCalendarPickerStyles.styles.ts:25-44,117-154"
+    },
+    {
+      "id": "picker-header-button",
+      "part": "picker-header",
+      "text": "The current item button grows to fill the header at fontSizeBase300 semibold, padded 0 4px 0 10px, left-aligned, rounded to borderRadiusMedium; the navigation buttons follow, centred in a flex row.",
+      "tokens": [
+        "tokens.fontSizeBase300",
+        "tokens.fontWeightSemibold",
+        "tokens.borderRadiusMedium",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useCalendarPickerStyles.styles.ts:40-59,77-82"
+    },
+    {
+      "id": "item-button",
+      "part": "item-button",
+      "text": "An item button is transparent, colorNeutralForeground3 at fontSizeBase200 with fontWeightRegular content, 40px line height, rounded to borderRadiusMedium.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightRegular",
+        "tokens.borderRadiusMedium",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useCalendarPickerStyles.styles.ts:132-157"
+    },
+    {
+      "id": "year-range",
+      "part": "year-picker",
+      "text": "The year picker shows twelve consecutive years per page in the same 4-by-3 grid, its header naming the range from the first to the last; the navigation buttons move by twelve years.",
+      "values": [
+        {
+          "name": "yearsPerPage",
+          "value": 12,
+          "unit": "count"
+        }
+      ],
+      "source": "CalendarYear.types.ts:17-30,142-151"
+    },
+    {
+      "id": "go-today",
+      "part": "go-today",
+      "text": "The go-to-today button is a 30px-tall text button at fontSizeBase200 in colorNeutralForeground1 on a transparent background, padded 0 4px, aligned to the end of its column with 3px above and 16px to its right.",
+      "tokens": [
+        "tokens.fontSizeBase200",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorTransparentBackground"
+      ],
+      "values": [
+        {
+          "name": "height",
+          "value": 30,
+          "unit": "px"
+        },
+        {
+          "name": "paddingHorizontal",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "marginTop",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "marginRight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarStyles.styles.ts:58-73"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "day-button",
+      "text": "A hovered day button fills colorBrandBackgroundInvertedHover rounded to borderRadiusMedium; the hover range's cells (the week or month for those range types) tint the same with colorNeutralForeground1Static text.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedHover",
+        "tokens.colorNeutralForeground1Static",
+        "tokens.borderRadiusMedium"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCalendarDayGridStyles.styles.ts:77-87,233-236"
+    },
+    {
+      "state": "pressed",
+      "part": "day-button",
+      "text": "A pressed day button fills colorBrandBackgroundInvertedPressed; a pressed range cell the same with colorNeutralForeground1Static text.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedPressed",
+        "tokens.colorNeutralForeground1Static"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCalendarDayGridStyles.styles.ts:89-97,237-239"
+    },
+    {
+      "state": "selected",
+      "part": "day-cell",
+      "text": "Selected cells fill colorBrandBackgroundInvertedSelected with colorNeutralForeground1Static text and keep it under hover and press; the outer corners of the selected block round to borderRadiusMedium (a cell loses the corners that touch another selected cell above, below, left or right). A single selected day instead tints its button with a 1px colorBrandStroke1 border, rounded to borderRadiusMedium.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedSelected",
+        "tokens.colorNeutralForeground1Static",
+        "tokens.colorBrandStroke1",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "borderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:107-158,320-335; useWeekCornerStyles.styles.ts:46-135"
+    },
+    {
+      "state": "focused",
+      "part": "day-cell",
+      "text": "Keyboard focus draws the default focus outline on the cell at strokeWidthThick with a strokeWidthThick border, in colorStrokeFocus2; the focused week row rises above its neighbours.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:99-104,160-167; createFocusOutlineStyle.ts"
+    },
+    {
+      "state": "other",
+      "label": "today",
+      "part": "day-button",
+      "text": "Today's number reads colorNeutralForegroundOnBrand at fontWeightSemibold on the 20px colorBrandBackground marker; the marker keeps its fill under selection.",
+      "tokens": [
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.fontWeightSemibold",
+        "tokens.colorBrandBackground"
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:243-277"
+    },
+    {
+      "state": "other",
+      "label": "outside navigated month",
+      "part": "day-cell",
+      "text": "Days of the previous and next month shown in the grid read colorNeutralForeground4 at fontWeightRegular while lightenDaysOutsideNavigatedMonth is set (its default).",
+      "tokens": [
+        "tokens.colorNeutralForeground4",
+        "tokens.fontWeightRegular"
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:204-213; CalendarDayGrid.types.ts:164-168"
+    },
+    {
+      "state": "disabled",
+      "part": "day-cell",
+      "text": "A day before minDate, after maxDate or in restrictedDates reads colorNeutralForegroundDisabled on a transparent background and takes no pointer, in every state; a disabled picker, its buttons and its header read colorNeutralForegroundDisabled and take no pointer.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorTransparentBackground"
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:190-202; useCalendarDayStyles.styles.ts:119-131; useCalendarPickerStyles.styles.ts:237-248"
+    },
+    {
+      "state": "hovered",
+      "part": "month-and-year",
+      "text": "When the header is clickable (a month picker can open from it), hover fills colorBrandBackgroundInvertedHover with colorBrandForegroundOnLightHover text and a 1px colorTransparentStroke outline; the picker headers' current item button and every navigation button do the same.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedHover",
+        "tokens.colorBrandForegroundOnLightHover",
+        "tokens.colorTransparentStroke"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCalendarDayStyles.styles.ts:66-72,106-111; useCalendarPickerStyles.styles.ts:60-67,103-108"
+    },
+    {
+      "state": "pressed",
+      "part": "month-and-year",
+      "text": "Pressed, the header button and navigation buttons fill colorBrandBackgroundInvertedPressed with colorBrandForegroundOnLightPressed text.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedPressed",
+        "tokens.colorBrandForegroundOnLightPressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCalendarDayStyles.styles.ts:73-78,112-115; useCalendarPickerStyles.styles.ts:68-73,110-113"
+    },
+    {
+      "state": "hovered",
+      "part": "item-button",
+      "text": "A hovered month or year fills colorBrandBackgroundInvertedHover with colorNeutralForeground1Static text and a 1px colorTransparentStroke outline; pressed fills colorBrandBackgroundInvertedPressed.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedHover",
+        "tokens.colorNeutralForeground1Static",
+        "tokens.colorTransparentStroke",
+        "tokens.colorBrandBackgroundInvertedPressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCalendarPickerStyles.styles.ts:158-180"
+    },
+    {
+      "state": "other",
+      "label": "current",
+      "part": "item-button",
+      "text": "With highlightCurrentMonth or highlightCurrentYear, the current month or year fills colorBrandBackground with colorNeutralForegroundOnBrand text at fontWeightSemibold, unchanged by hover and press.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.fontWeightSemibold"
+      ],
+      "source": "useCalendarPickerStyles.styles.ts:183-205; CalendarMonth.types.ts:74-78; CalendarYear.types.ts:92-95"
+    },
+    {
+      "state": "selected",
+      "part": "item-button",
+      "text": "With highlightSelectedMonth or highlightSelectedYear, the selected month or year fills colorBrandBackgroundInvertedSelected with colorNeutralForeground1Static text at fontWeightSemibold, keeps it under hover, and fills colorBrandBackgroundInvertedPressed when pressed.",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedSelected",
+        "tokens.colorNeutralForeground1Static",
+        "tokens.fontWeightSemibold",
+        "tokens.colorBrandBackgroundInvertedPressed"
+      ],
+      "source": "useCalendarPickerStyles.styles.ts:207-235; CalendarMonth.types.ts:80-84; CalendarYear.types.ts:98-101"
+    },
+    {
+      "state": "hovered",
+      "part": "go-today",
+      "text": "Hover turns the go-to-today text colorBrandForeground1 on the same transparent background; pressed colorBrandForeground2; disabled colorNeutralForegroundDisabled with no pointer.",
+      "tokens": [
+        "tokens.colorBrandForeground1",
+        "tokens.colorBrandForeground2",
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorTransparentBackground"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useCalendarStyles.styles.ts:78-94"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "select",
+      "text": "Clicking a day, or Enter or Space on it, selects it and reports the date with the dates its dateRangeType covers; picking a month or year navigates the day grid there and, when a picker shows alone, selects it.",
+      "source": "Calendar.types.ts:34-40,62-67; CalendarDayGrid.types.ts:44-50; CalendarMonth.types.ts:34-40; CalendarYear.types.ts:68"
+    },
+    {
+      "id": "navigate",
+      "text": "The navigation buttons move the day grid a month, the month picker a year and the year picker twelve years; the go-to-today button navigates to today; navigation never goes before minDate or after maxDate.",
+      "source": "CalendarDay.types.ts:33-38; Calendar.types.ts:120-128; CalendarYear.types.ts:142-151"
+    },
+    {
+      "id": "header-switch",
+      "text": "Clicking the day grid's month-and-year button shows the month picker (as an overlay with showMonthPickerAsOverlay), and clicking the month picker's year button shows the year picker in its place; each picker's header button returns to the one before.",
+      "source": "CalendarDay.types.ts:45-48; CalendarMonth.types.ts:54-57; CalendarYear.types.ts:79; Calendar.types.ts:93-97"
+    },
+    {
+      "id": "grid-motion",
+      "text": "On navigation the week rows (or the picker grid) slide in 20px from the navigation direction over durationSlower with curveDecelerateMax, vertically by default or horizontally with animationDirection, and the transition week that leaves fades and slides out the same way; this replaces the original 367ms keyframes (calendarMotions.tsx:41-43,81-85; animations.ts keeps the deprecated definitions).",
+      "values": [
+        {
+          "name": "slideDistance",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "durationToken": "tokens.durationSlower",
+        "easing": "tokens.curveDecelerateMax",
+        "properties": [
+          "transform",
+          "opacity"
+        ]
+      },
+      "source": "animations.ts:5-23,50-116; Calendar.types.ts:241-251; CalendarDayGrid.types.ts:170-173"
+    },
+    {
+      "id": "range-hover",
+      "text": "With a week, workWeek or month dateRangeType, hovering a day tints the whole range it would select, and workWeek hovers as the full week.",
+      "source": "useWeekCornerStyles.styles.ts:137-156"
+    },
+    {
+      "id": "marked-days",
+      "text": "getMarkedDays is asked for the visible range whenever it changes and every date it returns shows the day marker; the day's label adds the dayMarkedAriaLabel string.",
+      "source": "CalendarDayGrid.types.ts:175-180; useWeeks.ts:23-44; defaults.ts:4"
+    },
+    {
+      "id": "dismiss",
+      "text": "Escape, or the close button when showCloseButton is set, calls onDismiss; the calendar closes nothing itself.",
+      "source": "Calendar.types.ts:42-45,160-164; CalendarDay.types.ts:82-86"
+    }
+  ],
+  "accessibility": {
+    "role": "grid",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Arrow keys move between days, wrapping across weeks and months",
+      "Home and End jump to the first and last day of the week",
+      "PageUp and PageDown move a month",
+      "Enter or Space selects the focused day, month or year",
+      "Tab moves between the header buttons, the grid and the go-to-today button",
+      "Escape asks to dismiss"
+    ],
+    "semantics": [
+      "the day grid is role grid with each week a row and each day a gridcell; the weekday labels are column headers",
+      "the selected day reports aria-selected; today's label uses todayDateFormatString and the selected date selectedDateFormatString",
+      "a live region announces the navigated month and year",
+      "the month-and-year header button is labelled with monthPickerHeaderAriaLabel when it opens the month picker",
+      "disabled days report aria-disabled and take focus only with allFocusable",
+      "the navigation buttons carry the prev and next month, year and year-range labels; the close button closeButtonAriaLabel"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Every dimension is a constant in the styles files: root widths 220, 440, 250 and 470px; picker padding 12px and content width 196px (226 with week numbers); headers and navigation buttons 28px; day cells 28px with 24px buttons; the today marker 20px and the day marker 4px; picker items 40px in a 4-by-3 grid with 12 and 16px gaps; the go-to-today button 30px; no token gives them.",
+      "source": "useCalendarStyles.styles.ts:19-42,58-73; useCalendarDayStyles.styles.ts:20-35,37-45,89-104; useCalendarDayGridStyles.styles.ts:40-71,175-188,215-227,260-277,300-318; useCalendarPickerStyles.styles.ts:25-31,84-101,117-154"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Selection in a range type tints the cells, but a single selected day tints and outlines the button inside its cell; the two looks differ by 2px of padding and the corner rounding comes from a different rule (week corners versus the button's own radius).",
+      "tokens": [
+        "tokens.colorBrandBackgroundInvertedSelected",
+        "tokens.colorBrandStroke1"
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:107-158,320-335"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The header buttons read the brand-on-light foreground tokens (colorBrandForegroundOnLightHover and Pressed) over the inverted brand backgrounds, a pairing no other component uses; the day header's navigation buttons rest in colorNeutralForeground3 while the pickers' rest in colorNeutralForeground1.",
+      "tokens": [
+        "tokens.colorBrandForegroundOnLightHover",
+        "tokens.colorBrandForegroundOnLightPressed",
+        "tokens.colorNeutralForeground3",
+        "tokens.colorNeutralForeground1"
+      ],
+      "source": "useCalendarDayStyles.styles.ts:66-78,89-116; useCalendarPickerStyles.styles.ts:60-74,84-115"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The day header sets a 44px line height on a 28px-tall row; the month-and-year button and the icon buttons set their own 28px line height, so the row's value is dead.",
+      "source": "useCalendarDayStyles.styles.ts:37-45"
+    },
+    {
+      "kind": "inferred",
+      "text": "The picker grid's 4-by-3 layout comes from CalendarYear.tsx (CELL_COUNT 12, CELLS_PER_ROW 4) and the styles' nth-child rules; the month picker lays out its twelve months the same way. The kit's source pattern cannot cite .tsx files, so the year page size is cited from the types' year range.",
+      "source": "useCalendarPickerStyles.styles.ts:149-154; CalendarYear.types.ts:17-30"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a day cell is Window on WindowText; hover draws a 1px Highlight outline; pressed is Window with Highlight text and border; a selected cell is Highlight with HighlightText; the today marker is WindowText with Window text and the day marker WindowText; days outside bounds or outside the month are GrayText; a hovered picker item is Window with WindowText and a Highlight outline, pressed Highlight text; the current item WindowText on Window and the selected Highlight with Window text; disabled is GrayText; the hovered go-to-today button gets a strokeWidthThin outline rounded to borderRadiusSmall.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusSmall"
+      ],
+      "source": "useCalendarDayGridStyles.styles.ts:72-97,112-132,150-155,198-200,209-211,253-256,270-275,313-316; useCalendarPickerStyles.styles.ts:164-178,189-202,213-229,243-246; useCalendarStyles.styles.ts:83-86; useCalendarDayStyles.styles.ts:126-128"
+    },
+    {
+      "kind": "contradiction",
+      "text": "Calendar defaults firstWeekOfYear to firstDay, and date-picker, which wraps it, to firstFullWeek; the same week can carry different numbers in the two.",
+      "source": "Calendar.types.ts:75-79; DatePicker.types.ts:171-175"
+    }
+  ]
+}

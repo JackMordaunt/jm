@@ -1,0 +1,499 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "textarea",
+  "name": "Textarea",
+  "status": "stable",
+  "summary": "A multi-line text entry control, optionally resizable. Choose it over Input when the answer may run to more than one line; wrap it in a Field for its label, hint and validation message.",
+  "tokenGroups": [
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground3",
+    "tokens.colorTransparentBackground",
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke1Hover",
+    "tokens.colorNeutralStroke1Pressed",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorTransparentStroke",
+    "tokens.colorTransparentStrokeInteractive",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground4",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.shadow2",
+    "tokens.borderRadiusMedium",
+    "tokens.strokeWidthThin",
+    "tokens.strokeWidthThick",
+    "tokens.spacingVerticalXS",
+    "tokens.spacingVerticalSNudge",
+    "tokens.spacingVerticalS",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.spacingHorizontalMNudge",
+    "tokens.spacingHorizontalM",
+    "tokens.fontFamilyBase",
+    "typographyStyles.caption1",
+    "typographyStyles.body1",
+    "typographyStyles.body2",
+    "tokens.durationUltraFast",
+    "tokens.durationNormal",
+    "tokens.curveAccelerateMid",
+    "tokens.curveDecelerateMid"
+  ],
+  "references": {
+    "react": [
+      "useTextareaStyles.styles.ts",
+      "Textarea.types.ts"
+    ],
+    "fluent2": [
+      "textarea"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "outline",
+        "filled-darker",
+        "filled-lighter",
+        "filled-darker-shadow",
+        "filled-lighter-shadow"
+      ],
+      "required": false,
+      "default": "outline",
+      "description": "Colour and border treatment, as Input's but with no underline. The two -shadow values are deprecated."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Selects minimum and maximum height, padding and text style together."
+    },
+    {
+      "name": "resize",
+      "type": "enum",
+      "values": [
+        "none",
+        "horizontal",
+        "vertical",
+        "both"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Which way the user may drag the native resize handle."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The current value, for a controlled textarea."
+    },
+    {
+      "name": "defaultValue",
+      "type": "string",
+      "required": false,
+      "description": "The initial value, for an uncontrolled textarea."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Native placeholder text, drawn in colorNeutralForeground4."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Native disabled on the textarea element: disabled colours, no focus line, no input."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with the new value each time the user edits the text."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "The inline-flex wrapper that draws background, border, radius and the bottom focus line; it pads its bottom by strokeWidthThick so the focus line never covers the resize handle. It receives className and style only."
+    },
+    {
+      "id": "textarea",
+      "name": "Text area",
+      "description": "The native textarea: borderless, transparent, filling the wrapper, carrying the padding and the size's text style. Native props and the ref go here."
+    },
+    {
+      "id": "focus-line",
+      "name": "Focus line",
+      "description": "A strokeWidthThick bottom line drawn by the root's ::after, scaled from zero to full width while focus is within."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "default": true,
+      "description": "Background 1 fill; a strokeWidthThin Stroke 1 border whose bottom edge is StrokeAccessible; hover, press and focus step the border.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker",
+      "description": "Background 3 fill with a transparent border that turns TransparentStrokeInteractive on hover and focus.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter",
+      "description": "Background 1 fill with the same transparent border as filled-darker.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorTransparentStroke",
+        "tokens.colorTransparentStrokeInteractive"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-darker-shadow",
+      "description": "Deprecated: Background 3, a TransparentStrokeInteractive border even at rest, and shadow2.",
+      "tokens": [
+        "tokens.colorNeutralBackground3",
+        "tokens.colorTransparentStrokeInteractive",
+        "tokens.shadow2"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "filled-lighter-shadow",
+      "description": "Deprecated: Background 1, a TransparentStrokeInteractive border even at rest, and shadow2.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.colorTransparentStrokeInteractive",
+        "tokens.shadow2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Text area 40px minimum, 200px maximum; spacingVerticalXS by spacingHorizontalSNudge plus XXS padding; caption1 text.",
+      "tokens": [
+        "tokens.spacingVerticalXS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalXXS",
+        "typographyStyles.caption1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Text area 52px minimum, 260px maximum; spacingVerticalSNudge by spacingHorizontalMNudge plus XXS padding; body1 text.",
+      "tokens": [
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalXXS",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "Text area 64px minimum, 320px maximum; spacingVerticalS by spacingHorizontalM plus XXS padding; body2 text.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXXS",
+        "typographyStyles.body2"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "part": "root",
+      "text": "The root is an inline-flex box, top-aligned in its line, with borderRadiusMedium corners, no margin and a bottom padding of strokeWidthThick, the focus line's thickness, so the line sits below the resize handle.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.strokeWidthThick"
+      ],
+      "source": "useTextareaStyles.styles.ts:17-26"
+    },
+    {
+      "id": "border",
+      "part": "root",
+      "text": "Every appearance draws a strokeWidthThin border: Stroke 1 with a StrokeAccessible bottom for outline, colorTransparentStroke for filled.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useTextareaStyles.styles.ts:97-98,120-124"
+    },
+    {
+      "id": "sizes",
+      "part": "textarea",
+      "text": "The size bounds the text area's height, not the root's: small 40 to 200px, medium 52 to 260px, large 64 to 320px; beyond the maximum the content scrolls. Width is unset and follows the native cols or the caller's layout.",
+      "values": [
+        {
+          "name": "smallMin",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "smallMax",
+          "value": 200,
+          "unit": "px"
+        },
+        {
+          "name": "mediumMin",
+          "value": 52,
+          "unit": "px"
+        },
+        {
+          "name": "mediumMax",
+          "value": 260,
+          "unit": "px"
+        },
+        {
+          "name": "largeMin",
+          "value": 64,
+          "unit": "px"
+        },
+        {
+          "name": "largeMax",
+          "value": 320,
+          "unit": "px"
+        }
+      ],
+      "source": "useTextareaStyles.styles.ts:181-198"
+    },
+    {
+      "id": "padding",
+      "part": "textarea",
+      "text": "Padding sits on the text area, not the root, so the native resize handle stays in the corner: vertical spacingVerticalXS, SNudge or S by size, horizontal the sum of spacingHorizontalSNudge, MNudge or M with spacingHorizontalXXS.",
+      "tokens": [
+        "tokens.spacingVerticalXS",
+        "tokens.spacingVerticalSNudge",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalSNudge",
+        "tokens.spacingHorizontalMNudge",
+        "tokens.spacingHorizontalM",
+        "tokens.spacingHorizontalXXS"
+      ],
+      "source": "useTextareaStyles.styles.ts:179-198"
+    },
+    {
+      "id": "text",
+      "part": "textarea",
+      "text": "The text area has no border, margin or outline, a literal transparent background, fontFamilyBase and the size's text style (caption1, body1, body2); it grows to fill the root at full height.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "typographyStyles.caption1",
+        "typographyStyles.body1",
+        "typographyStyles.body2"
+      ],
+      "source": "useTextareaStyles.styles.ts:153-169,185,191,197"
+    },
+    {
+      "id": "focus-line",
+      "part": "focus-line",
+      "text": "The focus line is the root's ::after: absolutely placed 1px outside the left, right and bottom edges, as tall as borderRadiusMedium (at least strokeWidthThick) with that radius on its bottom corners, drawing a strokeWidthThick colorCompoundBrandStroke bottom border clipped to its last strokeWidthThick so the ends are flat.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.strokeWidthThick",
+        "tokens.colorCompoundBrandStroke"
+      ],
+      "values": [
+        {
+          "name": "outset",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useTextareaStyles.styles.ts:40-61"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: the appearance's fill and border; text colorNeutralForeground1, placeholder colorNeutralForeground4 at full opacity; the focus line scaled to zero width.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground4"
+      ],
+      "source": "useTextareaStyles.styles.ts:64,158,163-166"
+    },
+    {
+      "state": "hovered",
+      "text": "Outline: the border turns colorNeutralStroke1Hover with a colorNeutralStrokeAccessibleHover bottom. Filled: the border turns colorTransparentStrokeInteractive. The fill never changes, and nothing transitions.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Hover",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorTransparentStrokeInteractive"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useTextareaStyles.styles.ts:99-101,126-129"
+    },
+    {
+      "state": "pressed",
+      "text": "While the pointer is down, outline's border is colorNeutralStroke1Pressed with a colorNeutralStrokeAccessiblePressed bottom; clicking an already focused textarea turns the focus line colorCompoundBrandStrokePressed.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandStrokePressed"
+      ],
+      "source": "useTextareaStyles.styles.ts:86-89,131-134"
+    },
+    {
+      "state": "focused",
+      "part": "focus-line",
+      "text": "A custom indicator, not createFocusOutlineStyle: while focus is within (pointer focus included) the strokeWidthThick colorCompoundBrandStroke focus line grows to full width over durationNormal and shrinks on blur over durationUltraFast; outline's border is colorNeutralStroke1Pressed with a colorCompoundBrandStroke bottom, filled's colorTransparentStrokeInteractive; the root gains a strokeWidthThick transparent outline.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorNeutralStroke1Pressed",
+        "tokens.colorTransparentStrokeInteractive",
+        "tokens.strokeWidthThick",
+        "tokens.durationNormal",
+        "tokens.durationUltraFast"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationNormal",
+        "easing": "tokens.curveDecelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useTextareaStyles.styles.ts:74-94,99-101,136-139"
+    },
+    {
+      "state": "error",
+      "text": "When the textarea has aria-invalid true and is enabled, every border turns colorPaletteRedBorder2 while focus is not within it.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2"
+      ],
+      "source": "useTextareaStyles.styles.ts:142-146,225,238"
+    },
+    {
+      "state": "disabled",
+      "text": "The appearance is dropped entirely: the root is transparent with a strokeWidthThin colorNeutralStrokeDisabled border on every side, the text and placeholder turn colorNeutralForegroundDisabled, the pointer shows not-allowed, and there is no focus line, hover or pressed look.",
+      "tokens": [
+        "tokens.colorTransparentBackground",
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStrokeDisabled",
+        "tokens.colorNeutralForegroundDisabled"
+      ],
+      "source": "useTextareaStyles.styles.ts:28-35,171-177,230-240"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "edit",
+      "text": "Typing changes the value and calls onChange with the new string; value controls it, defaultValue leaves it uncontrolled.",
+      "source": "Textarea.types.ts:33-63"
+    },
+    {
+      "id": "resize",
+      "part": "textarea",
+      "text": "resize maps to the native resize property on the text area: none (default), horizontal, vertical or both; the size's maximum height still caps a vertical drag.",
+      "source": "useTextareaStyles.styles.ts:184,190,196,204-217"
+    },
+    {
+      "id": "focus-line-motion",
+      "part": "focus-line",
+      "text": "The focus line animates only transform (scaleX 0 to 1): in over durationNormal, out over durationUltraFast; the intended curves are curveDecelerateMid in and curveAccelerateMid out. Under reduced motion both take 0.01ms.",
+      "tokens": [
+        "tokens.curveAccelerateMid"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationUltraFast",
+        "easing": "tokens.curveAccelerateMid",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "useTextareaStyles.styles.ts:63-85"
+    },
+    {
+      "id": "props-routing",
+      "text": "Native props and the ref go to the textarea element; the root receives only className and style.",
+      "source": "Textarea.types.ts:5-16"
+    }
+  ],
+  "accessibility": {
+    "role": "textbox",
+    "minTargetPx": 40,
+    "keyboard": [
+      "Tab moves focus into the text",
+      "Enter inserts a new line; native caret and selection keys apply"
+    ],
+    "semantics": [
+      "aria-multiline is implicit on a native textarea",
+      "aria-invalid true announces the error and draws the red border",
+      "needs an accessible name: a Field label or aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The size's minimum and maximum heights (40/200, 52/260, 64/320px) and the focus line's 1px outset are constants in the styles file.",
+      "source": "useTextareaStyles.styles.ts:44-46,182-196"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "As in Input, the focus line writes its curve tokens to transitionDelay rather than transitionTimingFunction; browsers drop the invalid delay and the line animates on the default ease. Use curveDecelerateMid (in) and curveAccelerateMid (out) as the timing function.",
+      "tokens": [
+        "tokens.curveDecelerateMid",
+        "tokens.curveAccelerateMid"
+      ],
+      "source": "useTextareaStyles.styles.ts:63-67,74-79"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Outline's focused bottom border is colorCompoundBrandStroke here but colorNeutralStrokeAccessiblePressed in Input, and Textarea separates :active from :focus-within where Input merges them. Under the focus line the difference is hidden; it shows during the focus-in animation.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorNeutralStrokeAccessiblePressed"
+      ],
+      "source": "useTextareaStyles.styles.ts:131-139; useInputStyles.styles.ts:140-143"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A disabled textarea discards its appearance class, where Input keeps it and overrides only fill and border colour. Every disabled textarea therefore looks the same, and a deprecated -shadow one loses shadow2, which a disabled Input keeps.",
+      "source": "useTextareaStyles.styles.ts:230-240; useInputStyles.styles.ts:192-205,348-354"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Only disabled has a forced-colours rule: its border turns GrayText. Otherwise the high-contrast theme's aliases apply, and the strokeWidthThick transparent outline added while focus is within is what forced colours paint visibly as the focus ring.",
+      "source": "useTextareaStyles.styles.ts:32-34,90-94"
+    },
+    {
+      "kind": "inferred",
+      "text": "The anatomy names follow the design site; the code names the slots root and textarea.",
+      "source": "fluent2:textarea"
+    }
+  ]
+}

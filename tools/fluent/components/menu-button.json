@@ -1,0 +1,315 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "menu-button",
+  "name": "MenuButton",
+  "status": "stable",
+  "summary": "A button that opens a menu, marked by a trailing chevron and styled as selected while its menu is open. Use it as a Menu's trigger when the button does nothing but open the menu; use a split button when there is also a default action.",
+  "tokenGroups": [
+    "tokens.colorNeutralStroke1Selected",
+    "tokens.colorNeutralForeground1Selected",
+    "tokens.colorNeutralBackground1Selected",
+    "tokens.colorBrandBackgroundSelected",
+    "tokens.colorSubtleBackgroundSelected",
+    "tokens.colorNeutralForeground2Selected",
+    "tokens.colorTransparentBackgroundSelected",
+    "tokens.colorNeutralForeground2BrandSelected",
+    "tokens.strokeWidthThicker",
+    "tokens.spacingHorizontalXS",
+    "tokens.lineHeightBase200",
+    "tokens.lineHeightBase400"
+  ],
+  "references": {
+    "react": [
+      "useMenuButtonStyles.styles.ts",
+      "MenuButton.types.ts"
+    ],
+    "fluent2": [
+      "button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "menuIcon",
+      "type": "icon",
+      "required": false,
+      "description": "The trailing indicator that the button opens a menu; a chevron by default."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "secondary",
+        "primary",
+        "outline",
+        "subtle",
+        "transparent"
+      ],
+      "required": false,
+      "default": "secondary",
+      "description": "As button."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "As button; also sizes the menu icon."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "rounded",
+        "circular",
+        "square"
+      ],
+      "required": false,
+      "default": "rounded",
+      "description": "As button."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "As button, but always before the label: MenuButton has no iconPosition."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "disabledFocusable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As button."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "As button: the label; without one the button is icon-only and the menu icon has no leading gap."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "As button; takes the appearance's Selected colours while its menu is open."
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "As button, always before the label.",
+      "optional": true
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "As button.",
+      "optional": true
+    },
+    {
+      "id": "menu-icon",
+      "name": "Menu icon",
+      "description": "A small square chevron after the label: 12px at small and medium, 16px at large.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "secondary",
+      "default": true,
+      "description": "Expanded: Background1Selected fill, Stroke1Selected border, Foreground1Selected text.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralStroke1Selected",
+        "tokens.colorNeutralForeground1Selected"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "primary",
+      "description": "Expanded: colorBrandBackgroundSelected fill; text and border as button.",
+      "tokens": [
+        "tokens.colorBrandBackgroundSelected"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "outline",
+      "description": "Expanded: a strokeWidthThicker colorNeutralStroke1Selected border and Foreground1Selected text over no fill.",
+      "tokens": [
+        "tokens.colorNeutralStroke1Selected",
+        "tokens.strokeWidthThicker",
+        "tokens.colorNeutralForeground1Selected"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "Expanded: colorSubtleBackgroundSelected fill and Foreground2Selected text.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground2Selected"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "transparent",
+      "description": "Expanded: colorTransparentBackgroundSelected fill and Foreground2BrandSelected text.",
+      "tokens": [
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small | medium | large",
+      "description": "As button; the menu icon is 12, 12 and 16px."
+    },
+    {
+      "axis": "shape",
+      "value": "rounded | circular | square",
+      "description": "As button."
+    }
+  ],
+  "layout": [
+    {
+      "id": "as-button",
+      "text": "Geometry, padding, minimum widths, icon sizes and text are as button, with the icon forced to the before position.",
+      "source": "useMenuButtonStyles.styles.ts:141"
+    },
+    {
+      "id": "menu-icon",
+      "part": "menu-icon",
+      "text": "The menu icon is a 12px square glyph on lineHeightBase200 at small and medium and a 16px one on lineHeightBase400 at large, with spacingHorizontalXS before it unless the button is icon-only.",
+      "tokens": [
+        "tokens.lineHeightBase200",
+        "tokens.lineHeightBase400",
+        "tokens.spacingHorizontalXS"
+      ],
+      "values": [
+        {
+          "name": "sizeSmallMedium",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "sizeLarge",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "useMenuButtonStyles.styles.ts:77-106,130-139"
+    },
+    {
+      "id": "expanded-border",
+      "part": "root",
+      "text": "Expanded outline widens the border to strokeWidthThicker inside the same border box, so the outer size holds.",
+      "tokens": [
+        "tokens.strokeWidthThicker"
+      ],
+      "source": "useMenuButtonStyles.styles.ts:27-31"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Closed: rest, hover, pressed, focus and disabled are as button.",
+      "source": "useMenuButtonStyles.styles.ts:114-119,141"
+    },
+    {
+      "state": "expanded",
+      "part": "root",
+      "text": "While its menu is open (aria-expanded) the root takes the appearance's Selected tokens and the icons show their filled variants.",
+      "tokens": [
+        "tokens.colorNeutralBackground1Selected",
+        "tokens.colorNeutralStroke1Selected",
+        "tokens.colorNeutralForeground1Selected",
+        "tokens.colorBrandBackgroundSelected",
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground2Selected",
+        "tokens.colorTransparentBackgroundSelected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ],
+      "source": "useMenuButtonStyles.styles.ts:16-48,116-117"
+    },
+    {
+      "state": "hovered",
+      "text": "Hovering an expanded button shows button's hover colours, since the expanded styles declare no hover of their own; the transition is as button.",
+      "source": "useMenuButtonStyles.styles.ts:16-48"
+    },
+    {
+      "state": "focused",
+      "text": "As button: the inset colorStrokeFocus2 ring.",
+      "source": "useMenuButtonStyles.styles.ts:141"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "As a MenuTrigger's child it opens its menu on click, Enter, Space or ArrowDown, and reports aria-expanded while open.",
+      "source": "useMenuButtonStyles.styles.ts:116; fluent2:menu"
+    },
+    {
+      "id": "icon-position",
+      "text": "The icon always sits before the label; any iconPosition is overridden.",
+      "source": "useMenuButtonStyles.styles.ts:141; MenuButton.types.ts:14-15"
+    },
+    {
+      "id": "as-button",
+      "text": "Activation, focus visibility, disabledFocusable and the colour transition are as button.",
+      "source": "useMenuButtonStyles.styles.ts:141"
+    }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves focus to it",
+      "Enter, Space or ArrowDown opens the menu",
+      "Escape in the menu closes it and returns focus here"
+    ],
+    "semantics": [
+      "aria-haspopup menu",
+      "aria-expanded true while the menu is open",
+      "an icon-only menu button needs an aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The menu icon's 12px and 16px sizes are constants in the styles file.",
+      "source": "useMenuButtonStyles.styles.ts:83-100"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The expanded icon colours are never applied: the class list passes iconExpandedStyles[appearance] && iconExpandedStyles.highContrast, which yields only the high-contrast class. The icon inherits the root's expanded text colour instead, so a subtle button's icon is Foreground2Selected, not the Foreground2BrandSelected the file intends.",
+      "tokens": [
+        "tokens.colorNeutralForeground1Selected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ],
+      "source": "useMenuButtonStyles.styles.ts:50-66,121-127"
+    },
+    {
+      "kind": "inferred",
+      "text": "The default menu icon is a chevron pointing down; the slot's content is set in the hook, which is not vendored.",
+      "source": "MenuButton.types.ts:4-9; fluent2:button"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The only forced-colours rule added is that an expanded button's icon turns Highlight on hover; everything else is as button.",
+      "source": "useMenuButtonStyles.styles.ts:67-74"
+    }
+  ]
+}

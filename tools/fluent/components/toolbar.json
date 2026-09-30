@@ -1,0 +1,463 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "toolbar",
+  "name": "Toolbar",
+  "status": "stable",
+  "summary": "A single tab stop holding a row (or column) of related commands: buttons, toggle buttons, radio buttons, groups and dividers. Choose it over loose buttons when several commands act on the same object and should be reached with arrow keys; the items are Button and ToggleButton, so build those first.",
+  "tokenGroups": [
+    "tokens.colorSubtleBackground",
+    "tokens.colorSubtleBackgroundHover",
+    "tokens.colorSubtleBackgroundPressed",
+    "tokens.colorSubtleBackgroundSelected",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground2Hover",
+    "tokens.colorNeutralForeground2Pressed",
+    "tokens.colorNeutralForeground2Selected",
+    "tokens.colorNeutralForeground2BrandSelected",
+    "tokens.colorTransparentBackgroundSelected",
+    "tokens.colorBrandBackground",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorNeutralStroke2",
+    "tokens.strokeWidthThin",
+    "tokens.colorStrokeFocus2",
+    "tokens.durationFaster",
+    "tokens.curveEasyEase"
+  ],
+  "references": {
+    "react": [
+      "useToolbarStyles.styles.ts",
+      "Toolbar.types.ts",
+      "useToolbarButtonStyles.styles.ts",
+      "ToolbarButton.types.ts",
+      "useToolbarToggleButtonStyles.styles.ts",
+      "ToolbarToggleButton.types.ts",
+      "useToolbarRadioButtonStyles.styles.ts",
+      "ToolbarRadioButton.types.ts",
+      "useToolbarDividerStyles.styles.ts",
+      "ToolbarDivider.types.ts",
+      "useToolbarGroupStyles.styles.ts",
+      "ToolbarGroup.types.ts",
+      "useToggleButtonStyles.styles.ts",
+      "useButtonStyles.styles.ts",
+      "useDividerStyles.styles.ts"
+    ],
+    "fluent2": [
+      "toolbar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Sets the toolbar's padding and, through context, its items' size."
+    },
+    {
+      "name": "vertical",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Stacks items in a column as wide as its widest item; drops the size padding."
+    },
+    {
+      "name": "checkedValues",
+      "type": "list",
+      "required": false,
+      "description": "Controlled checked state: a map from each toggle or radio name to the list of its checked values."
+    },
+    {
+      "name": "defaultCheckedValues",
+      "type": "list",
+      "required": false,
+      "description": "Initial checked map when uncontrolled."
+    },
+    {
+      "name": "onCheckedValueChange",
+      "type": "callback",
+      "required": false,
+      "description": "Runs with {name, checkedItems} when a toggle or radio item changes, from a click or key."
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "ToolbarButton, ToolbarToggleButton, ToolbarRadioButton (inside a ToolbarRadioGroup), ToolbarGroup and ToolbarDivider children."
+    },
+    {
+      "name": "itemAppearance",
+      "type": "enum",
+      "values": [
+        "subtle",
+        "primary",
+        "transparent"
+      ],
+      "required": false,
+      "default": "subtle",
+      "description": "Each button, toggle and radio item's own appearance prop: only primary, subtle and transparent are offered."
+    },
+    {
+      "name": "itemVertical",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "ToolbarButton's vertical prop: stacks its icon above its label with a 24px icon."
+    },
+    {
+      "name": "itemNameValue",
+      "type": "string",
+      "required": false,
+      "description": "ToolbarToggleButton and ToolbarRadioButton require a name and a value; the checked map is keyed by name and lists values."
+    },
+    {
+      "name": "itemDisabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Each item's disabled and disabledFocusable, as on Button."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Toolbar",
+      "description": "A flex row of items centred on the cross axis, padded by size; a column when vertical."
+    },
+    {
+      "id": "button",
+      "name": "ToolbarButton",
+      "description": "A Button (see button.json) limited to primary, subtle and transparent, optionally with icon stacked over label.",
+      "optional": true
+    },
+    {
+      "id": "toggle-button",
+      "name": "ToolbarToggleButton",
+      "description": "A ToggleButton whose checked look is the subtle selected fill, whatever its appearance.",
+      "optional": true
+    },
+    {
+      "id": "radio-button",
+      "name": "ToolbarRadioButton",
+      "description": "A ToggleButton in a ToolbarRadioGroup: one checked per name, same checked look as the toggle.",
+      "optional": true
+    },
+    {
+      "id": "radio-group",
+      "name": "ToolbarRadioGroup",
+      "description": "An unstyled container that makes its ToolbarRadioButtons one exclusive set.",
+      "optional": true
+    },
+    {
+      "id": "group",
+      "name": "ToolbarGroup",
+      "description": "A flex container of items, centred on the cross axis; a fit-content column in a vertical toolbar. Used to push a set of items to the far end.",
+      "optional": true
+    },
+    {
+      "id": "divider",
+      "name": "ToolbarDivider",
+      "description": "A Divider (see the divider component) as a 1px line in a 24px-wide slot between items.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralStroke2",
+        "tokens.strokeWidthThin"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Padding 0 by 4px; items small (24px)."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Padding 4px by 8px; items medium (32px)."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "Padding 4px by 20px; items large (40px)."
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "default": true,
+      "description": "A row; dividers are vertical lines."
+    },
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "description": "A column as wide as its content, with no size padding; groups stack their items; dividers are horizontal lines."
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The toolbar is a flex row centring items on the cross axis; horizontal padding by size is 0 by 4px (small), 4px by 8px (medium) and 4px by 20px (large), with no gap between items: buttons sit edge to edge.",
+      "values": [
+        {
+          "name": "paddingSmallBlock",
+          "value": 0,
+          "unit": "px"
+        },
+        {
+          "name": "paddingSmallInline",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingMediumBlock",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingMediumInline",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "paddingLargeBlock",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingLargeInline",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useToolbarStyles.styles.ts:14-27,36-44"
+    },
+    {
+      "id": "vertical",
+      "part": "root",
+      "text": "A vertical toolbar is a fit-content column; the size padding is not applied, so the base 4px by 8px padding remains at every size.",
+      "values": [
+        {
+          "name": "paddingBlock",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "paddingInline",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useToolbarStyles.styles.ts:15-23,39-42"
+    },
+    {
+      "id": "group",
+      "part": "group",
+      "text": "A group is a flex container centring its items; in a vertical toolbar it becomes a fit-content column.",
+      "source": "useToolbarGroupStyles.styles.ts:12-21"
+    },
+    {
+      "id": "divider",
+      "part": "divider",
+      "text": "A divider between horizontal items is an inline-flex vertical Divider capped at 1px width with 12px padding each side, at least 20px tall, its line strokeWidthThin in colorNeutralStroke2; in a vertical toolbar it is a horizontal Divider with the width cap lifted.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.colorNeutralStroke2"
+      ],
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "paddingInline",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "minHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useToolbarDividerStyles.styles.ts:7-17,27-31; useDividerStyles.styles.ts:92-102,189-206"
+    },
+    {
+      "id": "vertical-button",
+      "part": "button",
+      "text": "A vertical ToolbarButton stacks its icon above its label (flex column) and sets the icon to 24px with no margin.",
+      "values": [
+        {
+          "name": "iconSize",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "useToolbarButtonStyles.styles.ts:7-15,24-29"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Items rest in their Button appearance; the toolbar itself has no background, border or shadow.",
+      "source": "useToolbarStyles.styles.ts:14-27; useToolbarButtonStyles.styles.ts:31"
+    },
+    {
+      "state": "hovered",
+      "text": "Items hover as Button of their appearance: a subtle item takes colorSubtleBackgroundHover and colorNeutralForeground2Hover. A checked toggle or radio hovers with its ToggleButton appearance's hover tokens, since the toolbar overrides only the rest look.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundHover",
+        "tokens.colorNeutralForeground2Hover"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useToolbarToggleButtonStyles.styles.ts:8-18,27; useToggleButtonStyles.styles.ts:111-127"
+    },
+    {
+      "state": "pressed",
+      "text": "Items press as Button of their appearance: subtle reads colorSubtleBackgroundPressed and colorNeutralForeground2Pressed.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundPressed",
+        "tokens.colorNeutralForeground2Pressed"
+      ],
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useToggleButtonStyles.styles.ts:122-126"
+    },
+    {
+      "state": "checked",
+      "text": "A checked ToolbarToggleButton or ToolbarRadioButton takes colorSubtleBackgroundSelected with colorNeutralForeground2Selected text and a colorNeutralForeground2BrandSelected icon, shown filled, whatever its appearance.",
+      "part": "toggle-button",
+      "tokens": [
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorNeutralForeground2Selected",
+        "tokens.colorNeutralForeground2BrandSelected"
+      ],
+      "source": "useToolbarToggleButtonStyles.styles.ts:8-32; useToolbarRadioButtonStyles.styles.ts:8-32; useToggleButtonStyles.styles.ts:26-31"
+    },
+    {
+      "state": "focused",
+      "text": "Items draw Button's inset indicator on keyboard focus: the border turns colorStrokeFocus2 with a 1px colorStrokeFocus2 ring inside; the toolbar itself draws no focus indicator.",
+      "tokens": [
+        "tokens.colorStrokeFocus2"
+      ],
+      "source": "useToolbarButtonStyles.styles.ts:31; useButtonStyles.styles.ts:102-113"
+    },
+    {
+      "state": "disabled",
+      "text": "Disabled items take Button's disabled look; the toolbar has no disabled state of its own.",
+      "source": "ToolbarButton.types.ts:7-12"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "one-tab-stop",
+      "text": "The toolbar is one tab stop: Tab enters it on one item and leaves it; arrow keys move between items along its orientation.",
+      "source": "fluent2:toolbar"
+    },
+    {
+      "id": "toggle",
+      "text": "Activating a ToolbarToggleButton flips its value in the checked list under its name and calls onCheckedValueChange with the name and the new checked values.",
+      "source": "Toolbar.types.ts:8-15,34-51,86-91"
+    },
+    {
+      "id": "radio",
+      "text": "Activating a ToolbarRadioButton makes its value the only checked value under its name and calls onCheckedValueChange.",
+      "source": "Toolbar.types.ts:66-69; ToolbarRadioButton.types.ts:7-12"
+    },
+    {
+      "id": "size-context",
+      "text": "The toolbar's size and orientation reach every item through context; items size themselves to match rather than taking their own size prop.",
+      "source": "Toolbar.types.ts:74-77"
+    },
+    {
+      "id": "transition",
+      "text": "Item colours transition as Button's do: background, border and color over durationFaster with curveEasyEase; the toolbar adds no motion.",
+      "motion": {
+        "durationToken": "tokens.durationFaster",
+        "easing": "tokens.curveEasyEase",
+        "properties": [
+          "background",
+          "border",
+          "color"
+        ]
+      },
+      "source": "useToolbarButtonStyles.styles.ts:31; useButtonStyles.styles.ts:68-76"
+    }
+  ],
+  "accessibility": {
+    "role": "toolbar",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab moves focus into the toolbar and out of it again",
+      "Left and Right arrows (Up and Down when vertical) move between items",
+      "Enter and Space activate or toggle the focused item"
+    ],
+    "semantics": [
+      "aria-orientation vertical when vertical",
+      "toggle items report aria-pressed; radio items report their checked state within their group",
+      "an icon-only item needs an aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Toolbar padding (0/4, 4/8, 4/20px), the divider's 1px cap, 12px side padding and 20px minimum height, and the vertical button's 24px icon are constants; no token gives them.",
+      "source": "useToolbarStyles.styles.ts:18-26; useToolbarDividerStyles.styles.ts:9-13; useToolbarButtonStyles.styles.ts:11-14"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The toolbar's checked style is merged before ToggleButton's and wins at rest for every appearance, so a checked primary item loses its brand fill and shows the subtle selected grey; on hover it jumps back to its appearance's hover colours.",
+      "tokens": [
+        "tokens.colorSubtleBackgroundSelected",
+        "tokens.colorBrandBackground"
+      ],
+      "source": "useToolbarToggleButtonStyles.styles.ts:27,34; useToggleButtonStyles.styles.ts:318-340"
+    },
+    {
+      "kind": "gotcha",
+      "text": "ToolbarDivider's vertical prop defaults to true, and its styles apply the width cap unless vertical is false: the class named vertical is the one that lifts the cap for a horizontal divider.",
+      "source": "ToolbarDivider.types.ts:7-14; useToolbarDividerStyles.styles.ts:14-16,29"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The Divider's minimum line length is written '8px;' with a stray semicolon, which CSS rejects; the vertical divider's two line segments have no minimum height as shipped.",
+      "source": "useDividerStyles.styles.ts:16,195-205"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The size padding applies only to a horizontal toolbar; a vertical one keeps the base 4px by 8px at every size.",
+      "source": "useToolbarStyles.styles.ts:18,40-42"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The toolbar files add no forced-colour rules; items inherit Button's and ToggleButton's: a checked toggle or radio is Highlight with HighlightText text and a Highlight border, inverting on hover; a primary toggle falls back to ButtonFace with ButtonText so on and off stay distinct; focus draws the Highlight outline.",
+      "source": "useToggleButtonStyles.styles.ts:46-60,284-300"
+    },
+    {
+      "kind": "inferred",
+      "text": "Items default to the subtle appearance and take the toolbar's size; neither is in these styles or types files. The Fluent 2 page shows subtle items, and ToolbarButton.types omits a size prop, so the size must come from the toolbar.",
+      "source": "ToolbarButton.types.ts:7-12; fluent2:toolbar"
+    }
+  ]
+}

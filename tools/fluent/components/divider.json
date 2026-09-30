@@ -1,0 +1,314 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "divider",
+  "name": "Divider",
+  "status": "stable",
+  "summary": "A thin horizontal or vertical line separating groups of content, optionally with a short label set into it. Choose emphasis by appearance (strong > default > subtle; brand for accent); prefer spacing alone where it separates clearly enough.",
+  "tokenGroups": [
+    "tokens.colorNeutralStroke1",
+    "tokens.colorNeutralStroke2",
+    "tokens.colorNeutralStroke3",
+    "tokens.colorBrandStroke1",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorBrandForeground1",
+    "tokens.strokeWidthThin",
+    "tokens.fontFamilyBase",
+    "tokens.fontSizeBase200",
+    "tokens.fontWeightRegular",
+    "tokens.lineHeightBase200"
+  ],
+  "references": {
+    "react": [
+      "useDividerStyles.styles.ts",
+      "Divider.types.ts"
+    ],
+    "fluent2": [
+      "divider"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "Optional label content set into the line. Without it the divider is a plain line."
+    },
+    {
+      "name": "vertical",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draw a vertical line in a row instead of a horizontal one."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "default",
+        "subtle",
+        "strong",
+        "brand"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "Line and label colour: Stroke 2 / Foreground 2 by default, Stroke 3 / Foreground 3 subtle, Stroke 1 / Foreground 1 strong, brand stroke and foreground for brand."
+    },
+    {
+      "name": "alignContent",
+      "type": "enum",
+      "values": [
+        "start",
+        "center",
+        "end"
+      ],
+      "required": false,
+      "default": "center",
+      "description": "Where the label sits along the line; start and end leave an 8px stub of line before or after it."
+    },
+    {
+      "name": "inset",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Pull both ends of the line in by 12px."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Divider",
+      "description": "A flex box that grows along its axis and holds the two line segments and the label."
+    },
+    {
+      "id": "line-before",
+      "name": "Line before",
+      "description": "The root's ::before pseudo-element: a line segment that grows to fill the space before the label."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The wrapper holding children, in caption-sized text.",
+      "optional": true
+    },
+    {
+      "id": "line-after",
+      "name": "Line after",
+      "description": "The root's ::after pseudo-element: a line segment that grows to fill the space after the label."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "appearance",
+      "value": "default",
+      "default": true,
+      "description": "colorNeutralStroke2 line, colorNeutralForeground2 label.",
+      "tokens": [
+        "tokens.colorNeutralStroke2",
+        "tokens.colorNeutralForeground2"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "subtle",
+      "description": "colorNeutralStroke3 line, colorNeutralForeground3 label.",
+      "tokens": [
+        "tokens.colorNeutralStroke3",
+        "tokens.colorNeutralForeground3"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "strong",
+      "description": "colorNeutralStroke1 line, colorNeutralForeground1 label.",
+      "tokens": [
+        "tokens.colorNeutralStroke1",
+        "tokens.colorNeutralForeground1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "brand",
+      "description": "colorBrandStroke1 line, colorBrandForeground1 label.",
+      "tokens": [
+        "tokens.colorBrandStroke1",
+        "tokens.colorBrandForeground1"
+      ]
+    },
+    {
+      "axis": "orientation",
+      "value": "horizontal",
+      "default": true,
+      "description": "Full width; the segments draw a top border."
+    },
+    {
+      "axis": "orientation",
+      "value": "vertical",
+      "description": "A column at least 20px tall (84px with a label); the segments draw a right border."
+    },
+    {
+      "axis": "alignContent",
+      "value": "start",
+      "description": "An 8px stub, the label, then the growing segment."
+    },
+    {
+      "axis": "alignContent",
+      "value": "center",
+      "default": true,
+      "description": "Two growing segments either side of the label."
+    },
+    {
+      "axis": "alignContent",
+      "value": "end",
+      "description": "The growing segment, the label, then an 8px stub."
+    }
+  ],
+  "layout": [
+    {
+      "id": "box",
+      "part": "root",
+      "text": "The root is a flex box that grows along its parent, centring its children on the cross axis; horizontal takes the full width, vertical is a column at least 20px tall, or 84px when it has a label.",
+      "values": [
+        {
+          "name": "verticalMinHeight",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "verticalMinHeightWithLabel",
+          "value": 84,
+          "unit": "px"
+        }
+      ],
+      "source": "useDividerStyles.styles.ts:20-26,129-130,191-193,215-217"
+    },
+    {
+      "id": "segments",
+      "part": "line-before",
+      "text": "Each segment is a flex item that grows; horizontal draws a strokeWidthThin solid top border and is at least 8px wide, vertical a strokeWidthThin solid right border at least 8px tall. line-after follows the same rule.",
+      "tokens": [
+        "tokens.strokeWidthThin"
+      ],
+      "values": [
+        {
+          "name": "minLength",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useDividerStyles.styles.ts:15-16,34-44,132-142,195-205"
+    },
+    {
+      "id": "label-gap",
+      "part": "label",
+      "text": "With a label, 12px separates each segment from it; without one the margins are zero and the two segments meet as one line.",
+      "values": [
+        {
+          "name": "contentSpacing",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useDividerStyles.styles.ts:13,47-58,165-174,231-238,279"
+    },
+    {
+      "id": "stub",
+      "text": "alignContent start caps the leading segment and end the trailing one at 8px, so the label sits near that end; horizontal start and end also align the label's text left and right.",
+      "values": [
+        {
+          "name": "stubLength",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useDividerStyles.styles.ts:15,152-164,175-186,220-230,239-248"
+    },
+    {
+      "id": "inset",
+      "part": "root",
+      "text": "inset pulls the line in by 12px at each end: horizontal as left and right padding, vertical as top and bottom margin.",
+      "values": [
+        {
+          "name": "inset",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "useDividerStyles.styles.ts:14,146-149,209-212"
+    },
+    {
+      "id": "label-text",
+      "part": "label",
+      "text": "The label text is fontFamilyBase, fontSizeBase200, fontWeightRegular on lineHeightBase200, centred, in the appearance's foreground.",
+      "tokens": [
+        "tokens.fontFamilyBase",
+        "tokens.fontSizeBase200",
+        "tokens.fontWeightRegular",
+        "tokens.lineHeightBase200"
+      ],
+      "source": "useDividerStyles.styles.ts:28-32"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "A divider has one look per appearance and no interactive states.",
+      "tokens": [
+        "tokens.colorNeutralStroke2",
+        "tokens.colorNeutralForeground2"
+      ],
+      "source": "useDividerStyles.styles.ts:81-124"
+    },
+    {
+      "state": "focused",
+      "text": "Not focusable; draws no focus indicator.",
+      "source": "useDividerStyles.styles.ts:18-125"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "static",
+      "text": "The divider takes no input and does not animate.",
+      "source": "useDividerStyles.styles.ts:18-249"
+    }
+  ],
+  "accessibility": {
+    "role": "separator",
+    "minTargetPx": null,
+    "keyboard": [
+      "None; not in the tab order"
+    ],
+    "semantics": [
+      "role separator, with aria-orientation vertical when vertical",
+      "a labelled divider's text is read as content"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 12px label gap and inset, the 8px minimum segment and stub length, and the vertical minimum heights (20px, 84px with a label) are constants in the styles file; the line colour and width are tokens.",
+      "source": "useDividerStyles.styles.ts:13-16,193,216"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "minStartEndLength is the string '8px;' with a stray semicolon, so the segments' min-width and min-height declarations are malformed; in the browser the minimum may not apply. Build the 8px minimum as intended.",
+      "source": "useDividerStyles.styles.ts:16,135,141,198,204"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Vertical inset is margin, horizontal inset is padding: a vertical inset divider is shorter in its row, a horizontal one keeps its full box and only the line is shorter.",
+      "source": "useDividerStyles.styles.ts:146-149,209-212"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The styles file has no forced-colours rules; the stroke and foreground aliases resolve through the high-contrast theme, and the line, being a border, stays visible.",
+      "source": "useDividerStyles.styles.ts:81-124"
+    },
+    {
+      "kind": "inferred",
+      "text": "The separator role and aria-orientation are set by the component's hook, which this kit does not vendor; the design site and ARIA practice give them.",
+      "source": "fluent2:divider"
+    }
+  ]
+}

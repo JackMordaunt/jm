@@ -1,0 +1,23 @@
+import type { ComponentProps, ComponentState, Slot } from '@fluentui/react-utilities';
+import type { Listbox } from '@fluentui/react-combobox';
+import type { TagPickerContextValue } from '../../contexts/TagPickerContext';
+
+export type TagPickerListSlots = {
+  root: Slot<typeof Listbox>;
+};
+
+/**
+ * TagPickerList Props
+ */
+export type TagPickerListProps = ComponentProps<TagPickerListSlots> & {
+  /**
+   * @deprecated TagPickerList is always rendered within a TagPicker which manages active descendant focus.
+   * This prop has no effect.
+   */
+  disableAutoFocus?: boolean;
+};
+
+/**
+ * State used in rendering TagPickerList
+ */
+export type TagPickerListState = ComponentState<TagPickerListSlots> & Pick<TagPickerContextValue, 'open'>;

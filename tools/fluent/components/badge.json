@@ -1,0 +1,723 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "badge",
+  "name": "Badge",
+  "status": "stable",
+  "summary": "A small non-interactive label that draws attention to a status, count or category. Use Badge for short text or an icon with a colour meaning, CounterBadge for a number or unread dot on another element, and PresenceBadge for a person's availability on an avatar.",
+  "tokenGroups": [
+    "typographyStyles.caption1Strong",
+    "typographyStyles.caption2Strong",
+    "tokens.spacingHorizontalXXS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingHorizontalSNudge",
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusMedium",
+    "tokens.borderRadiusSmall",
+    "tokens.borderRadiusNone",
+    "tokens.strokeWidthThin",
+    "tokens.colorTransparentStroke",
+    "tokens.colorBrandBackground",
+    "tokens.colorNeutralForegroundOnBrand",
+    "tokens.colorBrandForeground1",
+    "tokens.colorBrandBackground2",
+    "tokens.colorBrandForeground2",
+    "tokens.colorBrandStroke2",
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground1Static",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralForegroundStaticInverted",
+    "tokens.colorNeutralBackground1",
+    "tokens.colorNeutralBackground4",
+    "tokens.colorNeutralBackground5",
+    "tokens.colorNeutralStroke2",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorPaletteRedBackground1",
+    "tokens.colorPaletteRedBackground3",
+    "tokens.colorPaletteRedForeground1",
+    "tokens.colorPaletteRedForeground3",
+    "tokens.colorPaletteRedBorder1",
+    "tokens.colorPaletteRedBorder2",
+    "tokens.colorPaletteDarkOrangeBackground1",
+    "tokens.colorPaletteDarkOrangeBackground3",
+    "tokens.colorPaletteDarkOrangeForeground1",
+    "tokens.colorPaletteDarkOrangeForeground3",
+    "tokens.colorPaletteDarkOrangeBorder1",
+    "tokens.colorPaletteGreenBackground1",
+    "tokens.colorPaletteGreenBackground3",
+    "tokens.colorPaletteGreenForeground1",
+    "tokens.colorPaletteGreenForeground3",
+    "tokens.colorPaletteGreenBorder1",
+    "tokens.colorPaletteGreenBorder2",
+    "tokens.colorPaletteYellowBackground1",
+    "tokens.colorPaletteYellowBackground3",
+    "tokens.colorPaletteYellowForeground1",
+    "tokens.colorPaletteYellowForeground2",
+    "tokens.colorPaletteYellowBorder1",
+    "tokens.colorPaletteMarigoldBackground3",
+    "tokens.colorPaletteLightGreenForeground3",
+    "tokens.colorPaletteBerryForeground3"
+  ],
+  "references": {
+    "react": [
+      "useBadgeStyles.styles.ts",
+      "Badge.types.ts",
+      "useCounterBadgeStyles.styles.ts",
+      "CounterBadge.types.ts",
+      "usePresenceBadgeStyles.styles.ts",
+      "PresenceBadge.types.ts"
+    ],
+    "fluent2": [
+      "badge"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "filled",
+        "ghost",
+        "outline",
+        "tint"
+      ],
+      "required": false,
+      "default": "filled",
+      "description": "filled: solid colour with contrasting text. ghost: coloured text, no fill, no border. outline: coloured text and border, no fill. tint: pale fill, darker text and a matching border. CounterBadge offers filled and ghost only."
+    },
+    {
+      "name": "color",
+      "type": "enum",
+      "values": [
+        "brand",
+        "danger",
+        "important",
+        "informative",
+        "severe",
+        "subtle",
+        "success",
+        "warning"
+      ],
+      "required": false,
+      "default": "brand",
+      "description": "The semantic colour. CounterBadge offers brand, danger, important and informative only."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "tiny",
+        "extra-small",
+        "small",
+        "medium",
+        "large",
+        "extra-large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Height 6, 10, 16, 20, 24, 32px; tiny and extra-small are fixed dots too small for text."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "circular",
+        "rounded",
+        "square"
+      ],
+      "required": false,
+      "default": "circular",
+      "description": "circular is a pill or circle; rounded takes borderRadiusMedium (borderRadiusSmall at small and below); square has none. CounterBadge offers circular and rounded."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "An icon before or after the text, sized with the badge (12px at medium)."
+    },
+    {
+      "name": "iconPosition",
+      "type": "enum",
+      "values": [
+        "before",
+        "after"
+      ],
+      "required": false,
+      "default": "before",
+      "description": "Which side of the text the icon sits on."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "Badge text: a word or two."
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "CounterBadge: the number shown."
+    },
+    {
+      "name": "overflowCount",
+      "type": "number",
+      "required": false,
+      "default": 99,
+      "description": "CounterBadge: the largest number shown; above it the badge shows the cap with a plus."
+    },
+    {
+      "name": "showZero",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "CounterBadge: whether a count of 0 is shown; by default the badge hides."
+    },
+    {
+      "name": "dot",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "CounterBadge: a 6px dot with no number."
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "values": [
+        "available",
+        "away",
+        "busy",
+        "do-not-disturb",
+        "offline",
+        "out-of-office",
+        "blocked",
+        "unknown"
+      ],
+      "required": false,
+      "default": "available",
+      "description": "PresenceBadge: the availability icon and its colour."
+    },
+    {
+      "name": "outOfOffice",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "PresenceBadge: draws the out-of-office variant of any status."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Badge",
+      "description": "An inline-flex pill centring its content, with a strokeWidthThin border drawn by an overlay pseudo-element so it never changes the size.",
+      "tokens": [
+        "tokens.strokeWidthThin",
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "An optional glyph before or after the text.",
+      "optional": true
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "The label or number in caption1Strong (caption2Strong at small and below); there is no text slot, the root pads for it.",
+      "optional": true,
+      "tokens": [
+        "typographyStyles.caption1Strong",
+        "typographyStyles.caption2Strong"
+      ]
+    },
+    {
+      "id": "counter",
+      "name": "CounterBadge",
+      "description": "A Badge showing a number or a dot, hidden when there is nothing to show.",
+      "optional": true
+    },
+    {
+      "id": "presence",
+      "name": "PresenceBadge",
+      "description": "A circular badge holding a presence icon on a colorNeutralBackground1 disc, coloured by status.",
+      "optional": true,
+      "tokens": [
+        "tokens.colorNeutralBackground1"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "tiny",
+      "description": "A 6px square dot; text, padding and minimum width are removed (font 4px); icon 6px.",
+      "tokens": [
+        "typographyStyles.caption2Strong"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-small",
+      "description": "A 10px square dot; text, padding and minimum width are removed (font 6px); icon 10px.",
+      "tokens": [
+        "typographyStyles.caption2Strong"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "16px tall, 16px minimum width, caption2Strong, side padding spacingHorizontalXXS plus spacingHorizontalXXS; icon 12px.",
+      "tokens": [
+        "typographyStyles.caption2Strong",
+        "tokens.spacingHorizontalXXS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "20px tall, 20px minimum width, caption1Strong, side padding spacingHorizontalXS plus spacingHorizontalXXS; icon 12px.",
+      "tokens": [
+        "typographyStyles.caption1Strong",
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "24px tall, 24px minimum width, caption1Strong, side padding spacingHorizontalXS plus spacingHorizontalXXS; icon 16px.",
+      "tokens": [
+        "tokens.spacingHorizontalXS"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-large",
+      "description": "32px tall, 32px minimum width, caption1Strong, side padding spacingHorizontalSNudge plus spacingHorizontalXXS; icon 20px with a wider icon gap.",
+      "tokens": [
+        "tokens.spacingHorizontalSNudge"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "circular",
+      "default": true,
+      "description": "A pill, or a circle when as wide as tall.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "rounded",
+      "description": "borderRadiusMedium; borderRadiusSmall at small, extra-small and tiny.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusSmall"
+      ]
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "No rounding.",
+      "tokens": [
+        "tokens.borderRadiusNone"
+      ]
+    },
+    {
+      "axis": "appearance-color",
+      "value": "filled",
+      "default": true,
+      "description": "Background / text per colour: brand colorBrandBackground / OnBrand; danger RedBackground3 / OnBrand; important Foreground1 / Background1 (inverted neutral); informative Background5 / Foreground3; severe DarkOrangeBackground3 / OnBrand; subtle Background1 / Foreground1; success GreenBackground3 / OnBrand; warning YellowBackground3 / Foreground1Static. Border transparent.",
+      "tokens": [
+        "tokens.colorBrandBackground",
+        "tokens.colorNeutralForegroundOnBrand",
+        "tokens.colorPaletteRedBackground3",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralBackground1",
+        "tokens.colorNeutralBackground5",
+        "tokens.colorNeutralForeground3",
+        "tokens.colorPaletteDarkOrangeBackground3",
+        "tokens.colorPaletteGreenBackground3",
+        "tokens.colorPaletteYellowBackground3",
+        "tokens.colorNeutralForeground1Static"
+      ]
+    },
+    {
+      "axis": "appearance-color",
+      "value": "ghost",
+      "description": "Text only, border hidden: brand BrandForeground1; danger RedForeground3; important Foreground1; informative Foreground3; severe DarkOrangeForeground3; subtle ForegroundStaticInverted; success GreenForeground3; warning YellowForeground2.",
+      "tokens": [
+        "tokens.colorBrandForeground1",
+        "tokens.colorPaletteRedForeground3",
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground3",
+        "tokens.colorPaletteDarkOrangeForeground3",
+        "tokens.colorNeutralForegroundStaticInverted",
+        "tokens.colorPaletteGreenForeground3",
+        "tokens.colorPaletteYellowForeground2"
+      ]
+    },
+    {
+      "axis": "appearance-color",
+      "value": "outline",
+      "description": "The ghost text colours with a border in the text colour, except danger (RedBorder2), important (Foreground3 text, StrokeAccessible border), informative (Foreground3, Stroke2) and success (GreenBorder2). No fill.",
+      "tokens": [
+        "tokens.colorPaletteRedBorder2",
+        "tokens.colorNeutralStrokeAccessible",
+        "tokens.colorNeutralStroke2",
+        "tokens.colorPaletteGreenBorder2"
+      ]
+    },
+    {
+      "axis": "appearance-color",
+      "value": "tint",
+      "description": "Background / text / border per colour: brand BrandBackground2 / BrandForeground2 / BrandStroke2; danger RedBackground1 / RedForeground1 / RedBorder1; important Foreground3 / Background1 / transparent; informative Background4 / Foreground3 / Stroke2; severe DarkOrangeBackground1 / DarkOrangeForeground1 / DarkOrangeBorder1; subtle Background1 / Foreground3 / Stroke2; success GreenBackground1 / GreenForeground1 / GreenBorder1; warning YellowBackground1 / YellowForeground1 / YellowBorder1.",
+      "tokens": [
+        "tokens.colorBrandBackground2",
+        "tokens.colorBrandForeground2",
+        "tokens.colorBrandStroke2",
+        "tokens.colorPaletteRedBackground1",
+        "tokens.colorPaletteRedForeground1",
+        "tokens.colorPaletteRedBorder1",
+        "tokens.colorNeutralBackground4",
+        "tokens.colorPaletteDarkOrangeBackground1",
+        "tokens.colorPaletteDarkOrangeForeground1",
+        "tokens.colorPaletteDarkOrangeBorder1",
+        "tokens.colorPaletteGreenBackground1",
+        "tokens.colorPaletteGreenForeground1",
+        "tokens.colorPaletteGreenBorder1",
+        "tokens.colorPaletteYellowBackground1",
+        "tokens.colorPaletteYellowForeground1",
+        "tokens.colorPaletteYellowBorder1"
+      ]
+    },
+    {
+      "axis": "presence-status",
+      "value": "available",
+      "default": true,
+      "description": "colorPaletteLightGreenForeground3.",
+      "tokens": [
+        "tokens.colorPaletteLightGreenForeground3"
+      ]
+    },
+    {
+      "axis": "presence-status",
+      "value": "busy",
+      "description": "busy, do-not-disturb and blocked all read colorPaletteRedBackground3.",
+      "tokens": [
+        "tokens.colorPaletteRedBackground3"
+      ]
+    },
+    {
+      "axis": "presence-status",
+      "value": "away",
+      "description": "colorPaletteMarigoldBackground3; with outOfOffice, colorPaletteBerryForeground3.",
+      "tokens": [
+        "tokens.colorPaletteMarigoldBackground3"
+      ]
+    },
+    {
+      "axis": "presence-status",
+      "value": "out-of-office",
+      "description": "colorPaletteBerryForeground3; offline with outOfOffice reads it too.",
+      "tokens": [
+        "tokens.colorPaletteBerryForeground3"
+      ]
+    },
+    {
+      "axis": "presence-status",
+      "value": "offline",
+      "description": "offline and unknown read colorNeutralForeground3.",
+      "tokens": [
+        "tokens.colorNeutralForeground3"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The badge is an inline-flex, border-box box centring its content: 20px tall with a 20px minimum width at medium, radius borderRadiusCircular, side padding spacingHorizontalXS plus a spacingHorizontalXXS text allowance. The border is a strokeWidthThin inset overlay inheriting the root's border colour and radius, so it adds no size; the root's border colour is colorTransparentStroke unless the appearance sets one.",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalXXS",
+        "tokens.strokeWidthThin",
+        "tokens.colorTransparentStroke",
+        "typographyStyles.caption1Strong"
+      ],
+      "values": [
+        {
+          "name": "height",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "minWidth",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useBadgeStyles.styles.ts:14-44"
+    },
+    {
+      "id": "sizes",
+      "part": "root",
+      "text": "Heights and minimum widths by size: small 16px, large 24px, extra-large 32px, each with its side padding plus spacingHorizontalXXS (XXS, XS, SNudge respectively). tiny and extra-small are fixed 6px and 10px squares with no padding or minimum width and font sizes of 4px and 6px (line heights to match), so they read as dots.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalXS",
+        "tokens.spacingHorizontalSNudge"
+      ],
+      "values": [
+        {
+          "name": "tiny",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "extraSmall",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "small",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "extraLarge",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "tinyFontSize",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "extraSmallFontSize",
+          "value": 6,
+          "unit": "px"
+        }
+      ],
+      "source": "useBadgeStyles.styles.ts:47-86,306-313"
+    },
+    {
+      "id": "shape",
+      "part": "root",
+      "text": "rounded reads borderRadiusMedium, dropping to borderRadiusSmall at small, extra-small and tiny; square reads borderRadiusNone.",
+      "tokens": [
+        "tokens.borderRadiusMedium",
+        "tokens.borderRadiusSmall",
+        "tokens.borderRadiusNone"
+      ],
+      "source": "useBadgeStyles.styles.ts:88-95,314-315"
+    },
+    {
+      "id": "icon",
+      "part": "icon",
+      "text": "The icon is a flex box with line height 1 and a negative spacingHorizontalXXS side margin that cancels the text allowance; its glyph is 12px at small and medium, 6px tiny, 10px extra-small, 16px large, 20px extra-large. With text beside it, the gap on the text side is spacingHorizontalXXS plus the allowance (spacingHorizontalXS plus the allowance at extra-large); an icon-only badge has none.",
+      "tokens": [
+        "tokens.spacingHorizontalXXS",
+        "tokens.spacingHorizontalXS"
+      ],
+      "values": [
+        {
+          "name": "iconMedium",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "iconTiny",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "iconExtraSmall",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "iconLarge",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconExtraLarge",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "useBadgeStyles.styles.ts:255-297,324-343"
+    },
+    {
+      "id": "counter-dot",
+      "part": "counter",
+      "text": "A CounterBadge with dot is a 6px square with no padding and no minimum width; one with no content and no dot is not displayed.",
+      "values": [
+        {
+          "name": "dot",
+          "value": 6,
+          "unit": "px"
+        }
+      ],
+      "source": "useCounterBadgeStyles.styles.ts:14-37"
+    },
+    {
+      "id": "presence-disc",
+      "part": "presence",
+      "text": "A PresenceBadge is a circular inline-flex box on colorNeutralBackground1 with 1px padding and the background clipped to the content box, so the disc sits 1px inside the icon's own edge; the icon takes a -1px margin to fill it. Tiny unclips the background.",
+      "tokens": [
+        "tokens.colorNeutralBackground1",
+        "tokens.borderRadiusCircular"
+      ],
+      "values": [
+        {
+          "name": "inset",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "usePresenceBadgeStyles.styles.ts:22-42,79-87"
+    },
+    {
+      "id": "presence-sizes",
+      "part": "presence",
+      "text": "Presence icons exist only at some sizes, so tiny, large and extra-large force the svg to 6px, 20px and 28px square; the other sizes use the icon's own size.",
+      "values": [
+        {
+          "name": "tiny",
+          "value": 6,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "extraLarge",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "usePresenceBadgeStyles.styles.ts:76-103"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "A badge has one look per appearance and colour and no interaction states: no hover, press, focus or disabled styles exist in any of the three styles files.",
+      "source": "useBadgeStyles.styles.ts:106-253; useCounterBadgeStyles.styles.ts:14-24; usePresenceBadgeStyles.styles.ts:44-104"
+    },
+    {
+      "state": "focused",
+      "text": "None: a badge is not focusable and draws no focus indicator, neither createFocusOutlineStyle nor a custom one. Put focus on the element the badge annotates.",
+      "source": "useBadgeStyles.styles.ts:18-44"
+    },
+    {
+      "state": "other",
+      "label": "out-of-office",
+      "part": "presence",
+      "text": "With outOfOffice, available stays colorPaletteLightGreenForeground3, busy, do-not-disturb and blocked stay colorPaletteRedBackground3, unknown stays colorNeutralForeground3, and away, offline and out-of-office all turn colorPaletteBerryForeground3; the icon becomes its outlined variant.",
+      "tokens": [
+        "tokens.colorPaletteLightGreenForeground3",
+        "tokens.colorPaletteRedBackground3",
+        "tokens.colorNeutralForeground3",
+        "tokens.colorPaletteBerryForeground3"
+      ],
+      "source": "usePresenceBadgeStyles.styles.ts:63-74,124-130; PresenceBadge.types.ts:22-27"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "count",
+      "part": "counter",
+      "text": "CounterBadge shows count, capped at overflowCount (default 99) with a plus beyond it; a zero count hides the badge unless showZero; dot replaces the number with a dot.",
+      "source": "CounterBadge.types.ts:19-47"
+    },
+    {
+      "id": "no-motion",
+      "text": "Badges do not animate; a change of count or status redraws at once.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useBadgeStyles.styles.ts:18-253"
+    },
+    {
+      "id": "busy-group",
+      "part": "presence",
+      "text": "busy, do-not-disturb and blocked share the busy colour; the icon distinguishes them.",
+      "source": "usePresenceBadgeStyles.styles.ts:14-20,118"
+    }
+  ],
+  "accessibility": {
+    "role": "img",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "a badge is decorative text: a status or count must also reach assistive technology through the annotated element's label or an aria-label",
+      "PresenceBadge carries an accessible name for its status (for example 'available')",
+      "a CounterBadge dot has no text; describe the unread state elsewhere"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "Every size (6, 10, 16, 20, 24, 32px), the dot sizes' 4px and 6px font sizes, icon sizes (6, 10, 12, 16, 20px), the counter dot (6px), the presence inset (1px) and the forced presence icon sizes (6, 20, 28px) are constants; spacing comes from tokens.",
+      "source": "useBadgeStyles.styles.ts:25-26,53-86,259,279-296; useCounterBadgeStyles.styles.ts:15-20; usePresenceBadgeStyles.styles.ts:35,79-103"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Several colours use a token from another role: filled important fills with colorNeutralForeground1 and writes colorNeutralBackground1; tint important fills with colorNeutralForeground3; presence busy and away colour an icon with Background3 palette tokens. Copy the token names, not the roles.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralForeground3",
+        "tokens.colorPaletteRedBackground3",
+        "tokens.colorPaletteMarigoldBackground3"
+      ],
+      "source": "useBadgeStyles.styles.ts:119-122,223-227; usePresenceBadgeStyles.styles.ts:45-50"
+    },
+    {
+      "kind": "gotcha",
+      "text": "ghost and outline subtle write colorNeutralForegroundStaticInverted, white in every theme: they are for dark or brand surfaces and vanish on a light page.",
+      "tokens": [
+        "tokens.colorNeutralForegroundStaticInverted"
+      ],
+      "source": "useBadgeStyles.styles.ts:164-166,197-199"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "PresenceBadge's outOfOffice class sets colorNeutralBackground1, but every one of the eight statuses is then overridden by a later status class, so that colour never shows.",
+      "tokens": [
+        "tokens.colorNeutralBackground1"
+      ],
+      "source": "usePresenceBadgeStyles.styles.ts:63-65,124-130"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The filled base class sets no background: filled's colour comes only from the filled-<color> class, and a renderer that drops the colour pairing gets a transparent badge.",
+      "source": "useBadgeStyles.styles.ts:106-110,317-318"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "No badge file has a forced-colors rule. The root keeps a colorTransparentStroke border colour so that forced colours, which repaint borders in a system colour, still outline the badge; ghost hides its border and so shows only text there. PresenceBadge's icon and disc take the system colours.",
+      "tokens": [
+        "tokens.colorTransparentStroke"
+      ],
+      "source": "useBadgeStyles.styles.ts:29-30,96-104"
+    },
+    {
+      "kind": "inferred",
+      "text": "The presence icons for extra-small, small and medium sizes (10, 12, 16px) and CounterBadge's '99+' overflow text come from the component hooks, not the styles files.",
+      "source": "CounterBadge.types.ts:31-35; fluent2:badge"
+    }
+  ]
+}

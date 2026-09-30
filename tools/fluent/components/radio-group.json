@@ -1,0 +1,413 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "radio-group",
+  "name": "RadioGroup",
+  "status": "stable",
+  "summary": "A set of mutually exclusive options, of which exactly one is chosen, each a Radio inside a RadioGroup. Choose it over a dropdown when there are few options (roughly five or fewer) worth showing at once, and over checkboxes when only one may be picked.",
+  "tokenGroups": [
+    "tokens.colorNeutralForeground1",
+    "tokens.colorNeutralForeground2",
+    "tokens.colorNeutralForeground3",
+    "tokens.colorNeutralStrokeAccessible",
+    "tokens.colorNeutralStrokeAccessibleHover",
+    "tokens.colorNeutralStrokeAccessiblePressed",
+    "tokens.colorCompoundBrandStroke",
+    "tokens.colorCompoundBrandStrokeHover",
+    "tokens.colorCompoundBrandStrokePressed",
+    "tokens.colorCompoundBrandForeground1",
+    "tokens.colorCompoundBrandForeground1Hover",
+    "tokens.colorCompoundBrandForeground1Pressed",
+    "tokens.colorNeutralForegroundDisabled",
+    "tokens.colorNeutralStrokeDisabled",
+    "tokens.colorStrokeFocus2",
+    "tokens.strokeWidthThin",
+    "tokens.borderRadiusCircular",
+    "tokens.borderRadiusMedium",
+    "tokens.spacingVerticalS",
+    "tokens.spacingHorizontalS",
+    "tokens.spacingHorizontalXS",
+    "tokens.spacingVerticalXS",
+    "tokens.lineHeightBase300"
+  ],
+  "references": {
+    "react": [
+      "useRadioStyles.styles.ts",
+      "Radio.types.ts",
+      "useRadioGroupStyles.styles.ts",
+      "RadioGroup.types.ts"
+    ],
+    "fluent2": [
+      "radio-group"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "vertical",
+        "horizontal",
+        "horizontal-stacked"
+      ],
+      "required": false,
+      "default": "vertical",
+      "description": "RadioGroup: stack the radios in a column, a row, or a row with each label below its indicator."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "RadioGroup: the value of the selected Radio, when controlled."
+    },
+    {
+      "name": "defaultValue",
+      "type": "string",
+      "required": false,
+      "description": "RadioGroup: the initially selected Radio's value, when uncontrolled."
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": "RadioGroup: the form name shared by every Radio; generated when omitted."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "RadioGroup: disables every Radio in it. Radio: disables that one item."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "RadioGroup: a selection is required; passes required to each Radio."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "RadioGroup: called with the newly selected value. (Radio's own onChange fires only when that Radio becomes selected, never on deselection.)"
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The Radio children, each with a value (string), an optional label slot, an optional labelPosition (after or below; defaults to below inside a horizontal-stacked group, else after) and an optional disabled."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "group",
+      "name": "Group",
+      "description": "The RadioGroup root: a flex container of Radios, aligned to the start of the cross axis, with no gap between items."
+    },
+    {
+      "id": "root",
+      "name": "Radio container",
+      "description": "One Radio: an inline-flex row (a centred column when the label is below) holding indicator and label and carrying the focus outline."
+    },
+    {
+      "id": "input",
+      "name": "Hidden input",
+      "description": "A transparent native radio over the indicator column (indicator plus spacingHorizontalS each side, full height; full width when the label is below). It takes focus and all native attributes."
+    },
+    {
+      "id": "indicator",
+      "name": "Indicator",
+      "description": "A 16px circle with a border; when checked a dot fills its centre, drawn by a pseudo-element or by a custom child the caller supplies."
+    },
+    {
+      "id": "dot",
+      "name": "Checked dot",
+      "description": "The ::after circle in currentColor, scaled to 62.5% of the indicator, shown only when checked."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The option text.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "layout",
+      "value": "vertical",
+      "default": true,
+      "description": "The group is a column; each Radio's label is after its indicator."
+    },
+    {
+      "axis": "layout",
+      "value": "horizontal",
+      "description": "The group is a row (the flex default); each Radio's label is after its indicator. Radios sit edge to edge, the label's end padding giving the only separation.",
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "horizontal-stacked",
+      "description": "The group is a row and each Radio defaults its label below the indicator: the Radio becomes a centred column, the label pads spacingVerticalXS above and centres its text.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "group",
+      "part": "group",
+      "text": "The group is display flex with align-items flex-start; vertical sets flex-direction column, horizontal and horizontal-stacked leave it a row. No gap is declared.",
+      "source": "useRadioGroupStyles.styles.ts:11-20,29-34"
+    },
+    {
+      "id": "radio-root",
+      "part": "root",
+      "text": "Each Radio root is a relative inline-flex row; with the label below it becomes a column with its items centred.",
+      "source": "useRadioStyles.styles.ts:19-30"
+    },
+    {
+      "id": "indicator",
+      "part": "indicator",
+      "text": "The indicator is a 16px circle (borderRadiusCircular) with a strokeWidthThin solid border, 12px font size for a custom glyph, margin spacingVerticalS above and below and spacingHorizontalS either side, so the row is 32px tall; it never shrinks and ignores the pointer.",
+      "tokens": [
+        "tokens.borderRadiusCircular",
+        "tokens.strokeWidthThin",
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS"
+      ],
+      "values": [
+        {
+          "name": "indicatorSize",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "glyphSize",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "rowHeight",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useRadioStyles.styles.ts:17,156-173"
+    },
+    {
+      "id": "dot",
+      "part": "dot",
+      "text": "The checked dot is a 16px circle in currentColor scaled by 0.625 (a 10px dot) with a transform rather than a size, to avoid rounding errors at 125% display scaling.",
+      "tokens": [
+        "tokens.borderRadiusCircular"
+      ],
+      "values": [
+        {
+          "name": "scale",
+          "value": 0.625,
+          "unit": "ratio"
+        },
+        {
+          "name": "dotSize",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "useRadioStyles.styles.ts:141-146,175-184"
+    },
+    {
+      "id": "hit-column",
+      "part": "input",
+      "text": "The hidden input sits at the start of the row, full height and 16px plus 2 × spacingHorizontalS wide (32px); with the label below it spans the full width and 16px plus 2 × spacingVerticalS tall.",
+      "tokens": [
+        "tokens.spacingHorizontalS",
+        "tokens.spacingVerticalS"
+      ],
+      "values": [
+        {
+          "name": "width",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "useRadioStyles.styles.ts:32-40,136-139"
+    },
+    {
+      "id": "label-after",
+      "part": "label",
+      "text": "Label after: padding spacingVerticalS by spacingHorizontalS with the start side trimmed to spacingHorizontalXS, and a negative vertical margin of (16px − lineHeightBase300) / 2 so the first line centres on the indicator without growing the row.",
+      "tokens": [
+        "tokens.spacingVerticalS",
+        "tokens.spacingHorizontalS",
+        "tokens.spacingHorizontalXS",
+        "tokens.lineHeightBase300"
+      ],
+      "source": "useRadioStyles.styles.ts:188-201"
+    },
+    {
+      "id": "label-below",
+      "part": "label",
+      "text": "Label below: the same padding with the top reduced to spacingVerticalXS, text centred.",
+      "tokens": [
+        "tokens.spacingVerticalXS"
+      ],
+      "source": "useRadioStyles.styles.ts:203-206"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Unchecked at rest: label colorNeutralForeground3, indicator border colorNeutralStrokeAccessible, no dot.",
+      "tokens": [
+        "tokens.colorNeutralForeground3",
+        "tokens.colorNeutralStrokeAccessible"
+      ],
+      "source": "useRadioStyles.styles.ts:50-59"
+    },
+    {
+      "state": "hovered",
+      "text": "Unchecked: label colorNeutralForeground2, border colorNeutralStrokeAccessibleHover. Checked: border colorCompoundBrandStrokeHover, dot colorCompoundBrandForeground1Hover; the label stays Foreground1. Instant.",
+      "tokens": [
+        "tokens.colorNeutralForeground2",
+        "tokens.colorNeutralStrokeAccessibleHover",
+        "tokens.colorCompoundBrandStrokeHover",
+        "tokens.colorCompoundBrandForeground1Hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useRadioStyles.styles.ts:61-68,97-102"
+    },
+    {
+      "state": "pressed",
+      "text": "While hovered and pressed. Unchecked: label colorNeutralForeground1, border colorNeutralStrokeAccessiblePressed. Checked: border colorCompoundBrandStrokePressed, dot colorCompoundBrandForeground1Pressed.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorNeutralStrokeAccessiblePressed",
+        "tokens.colorCompoundBrandStrokePressed",
+        "tokens.colorCompoundBrandForeground1Pressed"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "useRadioStyles.styles.ts:70-77,104-109"
+    },
+    {
+      "state": "checked",
+      "text": "Label colorNeutralForeground1; indicator border colorCompoundBrandStroke and dot colorCompoundBrandForeground1. There is no fill: the ring stays hollow around the dot. A custom indicator child is hidden (opacity 0) until checked.",
+      "tokens": [
+        "tokens.colorNeutralForeground1",
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorCompoundBrandForeground1"
+      ],
+      "source": "useRadioStyles.styles.ts:81-95,141-153"
+    },
+    {
+      "state": "focused",
+      "part": "root",
+      "text": "Keyboard focus draws the default createFocusOutlineStyle outline around the focused Radio (indicator and label): 2px colorStrokeFocus2 just outside it, rounded borderRadiusMedium; selector focus-within, following the input.",
+      "tokens": [
+        "tokens.colorStrokeFocus2",
+        "tokens.borderRadiusMedium"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "useRadioStyles.styles.ts:22; createFocusOutlineStyle.ts:89-112"
+    },
+    {
+      "state": "disabled",
+      "text": "Label colorNeutralForegroundDisabled with a default cursor; indicator border colorNeutralStrokeDisabled and dot colorNeutralForegroundDisabled, checked or not. No hover or press change.",
+      "tokens": [
+        "tokens.colorNeutralForegroundDisabled",
+        "tokens.colorNeutralStrokeDisabled"
+      ],
+      "source": "useRadioStyles.styles.ts:113-132"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "select",
+      "text": "Clicking a Radio's indicator column or label, or moving to it with the arrow keys, selects it and deselects the others; RadioGroup's onChange reports the new value. Only the selected Radio fires its own onChange.",
+      "source": "Radio.types.ts:57-64; RadioGroup.types.ts:33-37"
+    },
+    {
+      "id": "shared-name",
+      "text": "Every Radio in the group shares the group's name (generated if absent), so the platform enforces single selection and form submission.",
+      "source": "RadioGroup.types.ts:12-17"
+    },
+    {
+      "id": "group-props",
+      "text": "The group's disabled and required reach every Radio in it.",
+      "source": "RadioGroup.types.ts:46-54"
+    },
+    {
+      "id": "no-transition",
+      "text": "No transition is declared: every colour change is instant.",
+      "motion": {
+        "instant": true
+      },
+      "source": "useRadioStyles.styles.ts:32-133"
+    },
+    {
+      "id": "focus-visible",
+      "text": "The focus outline appears only for keyboard focus, never after a pointer press.",
+      "source": "createCustomFocusIndicatorStyle.ts; constants.ts"
+    }
+  ],
+  "accessibility": {
+    "role": "radiogroup",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab moves focus into the group, to the selected Radio (or the first when none is selected), and Tab again leaves it",
+      "Arrow keys move focus and selection to the next or previous Radio, wrapping",
+      "Space selects the focused Radio when none is selected"
+    ],
+    "semantics": [
+      "the group root is role radiogroup; label it with aria-labelledby or a Field label",
+      "each Radio is a native input type=radio, so checked, disabled and required come from the platform",
+      "each Radio's label slot is a <label> bound to its input"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The 16px indicator, the 12px custom glyph size and the 0.625 dot scale are constants in the styles file; no token gives them.",
+      "source": "useRadioStyles.styles.ts:17,156-184"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The group declares no gap: vertical radios stack as touching 32px rows and horizontal radios abut, separated only by each label's spacingHorizontalS end padding.",
+      "tokens": [
+        "tokens.spacingHorizontalS"
+      ],
+      "source": "useRadioGroupStyles.styles.ts:11-20"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A checked radio is not filled: unlike a checked checkbox, the ring stays hollow and only the brand-foreground dot and brand-stroke border mark it.",
+      "tokens": [
+        "tokens.colorCompoundBrandStroke",
+        "tokens.colorCompoundBrandForeground1"
+      ],
+      "source": "useRadioStyles.styles.ts:81-95"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours: an unchecked indicator border is ButtonBorder (a system colour outside the eight in foundations); checked turns border and dot Highlight; disabled turns label, border and dot GrayText; the focus outline turns Highlight.",
+      "source": "useRadioStyles.styles.ts:56-58,88-94,117-130; createFocusOutlineStyle.ts:59-64"
+    },
+    {
+      "kind": "inferred",
+      "text": "Arrow-key roving between radios is the native radio behaviour the hidden inputs inherit; the styles file does not state it. Label typography comes from the Label component, body1 by default.",
+      "source": "fluent2:radio-group"
+    }
+  ]
+}

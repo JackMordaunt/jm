@@ -1,0 +1,444 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "spinner",
+  "name": "Spinner",
+  "status": "stable",
+  "summary": "An indeterminate loading indicator: a ring with a growing and shrinking arc that spins. Choose it over a progress bar when the wait is short or its length unknown and there is no measurable progress, or when the space is too small for a bar.",
+  "tokenGroups": [
+    "tokens.colorBrandStroke2Contrast",
+    "tokens.colorBrandStroke1",
+    "tokens.colorNeutralStrokeAlpha2",
+    "tokens.colorNeutralStrokeOnBrand2",
+    "tokens.colorNeutralForegroundStaticInverted",
+    "tokens.strokeWidthThick",
+    "tokens.strokeWidthThicker",
+    "tokens.strokeWidthThickest",
+    "tokens.curveEasyEase",
+    "typographyStyles.body1",
+    "typographyStyles.subtitle2",
+    "typographyStyles.subtitle1"
+  ],
+  "references": {
+    "react": [
+      "useSpinnerStyles.styles.ts",
+      "Spinner.types.ts"
+    ],
+    "fluent2": [
+      "spinner"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "extra-tiny",
+        "tiny",
+        "extra-small",
+        "small",
+        "medium",
+        "large",
+        "extra-large",
+        "huge"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Ring diameter from 16 to 44px in 4px steps; also picks the stroke width and the label style."
+    },
+    {
+      "name": "appearance",
+      "type": "enum",
+      "values": [
+        "primary",
+        "inverted"
+      ],
+      "required": false,
+      "default": "primary",
+      "description": "primary is brand on a light track; inverted is for brand or dark surfaces."
+    },
+    {
+      "name": "label",
+      "type": "slot",
+      "required": false,
+      "description": "Text describing what is loading."
+    },
+    {
+      "name": "labelPosition",
+      "type": "enum",
+      "values": [
+        "after",
+        "before",
+        "above",
+        "below"
+      ],
+      "required": false,
+      "default": "after",
+      "description": "Where the label sits relative to the ring."
+    },
+    {
+      "name": "delay",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "Milliseconds after mount before the spinner renders, so brief waits show nothing."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Container",
+      "description": "A flex row (a column when the label is above or below), centring ring and label with an 8px gap and clipping overflow."
+    },
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "The spinner slot: a square masked to a ring whose width is the size's stroke width; its background is the track colour."
+    },
+    {
+      "id": "tail",
+      "name": "Tail",
+      "description": "The spinnerTail slot: the visible arc, in the ring's current colour, built from two 135° conic segments behind a 105° mask; it rotates inside the track."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "The text, in the size's type style.",
+      "optional": true
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "extra-tiny",
+      "description": "16px ring, strokeWidthThick, body1 label.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "tiny",
+      "description": "20px ring, strokeWidthThick, body1 label.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-small",
+      "description": "24px ring, strokeWidthThick, body1 label.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px ring, strokeWidthThick, body1 label.",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "typographyStyles.body1"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px ring, strokeWidthThicker, subtitle2 label.",
+      "tokens": [
+        "tokens.strokeWidthThicker",
+        "typographyStyles.subtitle2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "36px ring, strokeWidthThicker, subtitle2 label.",
+      "tokens": [
+        "tokens.strokeWidthThicker",
+        "typographyStyles.subtitle2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "extra-large",
+      "description": "40px ring, strokeWidthThicker, subtitle2 label.",
+      "tokens": [
+        "tokens.strokeWidthThicker",
+        "typographyStyles.subtitle2"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "huge",
+      "description": "44px ring, strokeWidthThickest, subtitle1 label.",
+      "tokens": [
+        "tokens.strokeWidthThickest",
+        "typographyStyles.subtitle1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "primary",
+      "default": true,
+      "description": "Track colorBrandStroke2Contrast, arc colorBrandStroke1; the label inherits its colour.",
+      "tokens": [
+        "tokens.colorBrandStroke2Contrast",
+        "tokens.colorBrandStroke1"
+      ]
+    },
+    {
+      "axis": "appearance",
+      "value": "inverted",
+      "description": "Track colorNeutralStrokeAlpha2, arc colorNeutralStrokeOnBrand2, label colorNeutralForegroundStaticInverted.",
+      "tokens": [
+        "tokens.colorNeutralStrokeAlpha2",
+        "tokens.colorNeutralStrokeOnBrand2",
+        "tokens.colorNeutralForegroundStaticInverted"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "root",
+      "part": "root",
+      "text": "The root is a flex box centring on both axes with an 8px gap between ring and label, line height 0, overflow hidden (so the rotating children never change its height) and a min-content minimum width; above or below turns it into a column.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:23-37,244"
+    },
+    {
+      "id": "ring",
+      "part": "track",
+      "text": "The track is a square of the size's diameter, masked by a radial gradient to a ring as wide as the stroke width, with a 1px soft edge on each side of the ring for anti-aliasing.",
+      "values": [
+        {
+          "name": "edgeSoftening",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:39-48"
+    },
+    {
+      "id": "sizes",
+      "part": "track",
+      "text": "Diameters: extra-tiny 16, tiny 20, extra-small 24, small 28 (all strokeWidthThick); medium 32, large 36, extra-large 40 (strokeWidthThicker); huge 44 (strokeWidthThickest).",
+      "tokens": [
+        "tokens.strokeWidthThick",
+        "tokens.strokeWidthThicker",
+        "tokens.strokeWidthThickest"
+      ],
+      "values": [
+        {
+          "name": "extraTiny",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "tiny",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "extraSmall",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "small",
+          "value": 28,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 36,
+          "unit": "px"
+        },
+        {
+          "name": "extraLarge",
+          "value": 40,
+          "unit": "px"
+        },
+        {
+          "name": "huge",
+          "value": 44,
+          "unit": "px"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:139-185"
+    },
+    {
+      "id": "tail",
+      "part": "tail",
+      "text": "The tail fills the track and is masked to hide its first 105°; its ::before and ::after each paint a 135° conic arc in currentColor. Rotating those arcs out from behind the mask grows the visible arc from 30° to 255° and back.",
+      "values": [
+        {
+          "name": "maskAngle",
+          "value": 105,
+          "unit": "deg"
+        },
+        {
+          "name": "segmentAngle",
+          "value": 135,
+          "unit": "deg"
+        },
+        {
+          "name": "minArc",
+          "value": 30,
+          "unit": "deg"
+        },
+        {
+          "name": "maxArc",
+          "value": 255,
+          "unit": "deg"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:71-90"
+    },
+    {
+      "id": "label",
+      "part": "label",
+      "text": "The label takes body1 at extra-tiny to small, subtitle2 at medium to extra-large, subtitle1 at huge.",
+      "tokens": [
+        "typographyStyles.body1",
+        "typographyStyles.subtitle2",
+        "typographyStyles.subtitle1"
+      ],
+      "source": "useSpinnerStyles.styles.ts:188-224"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "The only state: the ring spins and the arc breathes continuously while rendered.",
+      "tokens": [
+        "tokens.colorBrandStroke2Contrast",
+        "tokens.colorBrandStroke1"
+      ],
+      "motion": {
+        "durationMs": 1500,
+        "easing": "tokens.curveEasyEase"
+      },
+      "source": "useSpinnerStyles.styles.ts:50-64,92-113"
+    },
+    {
+      "state": "focused",
+      "text": "None: the spinner is not focusable and draws no focus indicator.",
+      "source": "useSpinnerStyles.styles.ts:23-69"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "spin",
+      "text": "The track rotates 0° to 360° every 1.5s, linear, forever.",
+      "motion": {
+        "durationMs": 1500,
+        "easing": [
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      "values": [
+        {
+          "name": "period",
+          "value": 1500,
+          "unit": "ms"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:58-64"
+    },
+    {
+      "id": "tail",
+      "text": "Every 1.5s on curveEasyEase the tail rotates −135° → 0° → 225°, while its ::before goes 0° → 105° → 0° and its ::after 0° → 225° → 0°, which lengthens the arc through the first half and shortens it through the second.",
+      "motion": {
+        "durationMs": 1500,
+        "easing": "tokens.curveEasyEase"
+      },
+      "values": [
+        {
+          "name": "period",
+          "value": 1500,
+          "unit": "ms"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:92-113"
+    },
+    {
+      "id": "reduced-motion",
+      "text": "Under reduced motion the track still spins, slowed to 1.8s, but the tail stops: its segments are removed and it becomes a static conic fade from transparent at 120° to currentColor at 360°, a comet shape carried round by the spin.",
+      "values": [
+        {
+          "name": "period",
+          "value": 1800,
+          "unit": "ms"
+        }
+      ],
+      "source": "useSpinnerStyles.styles.ts:66-68,114-120"
+    },
+    {
+      "id": "rtl",
+      "text": "Right-to-left mirrors the tail: the mask shows 0°–255°, the segments paint from 225°, and the reduced-motion fade runs from currentColor at 0° to transparent at 240°.",
+      "source": "useSpinnerStyles.styles.ts:129-137,262"
+    },
+    {
+      "id": "delay",
+      "text": "With a delay, nothing renders until that many milliseconds after mount.",
+      "source": "Spinner.types.ts:37-41"
+    }
+  ],
+  "accessibility": {
+    "role": "progressbar",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "reported as an indeterminate progressbar",
+      "the label names it; a spinner without a label needs aria-label"
+    ]
+  },
+  "notes": [
+    {
+      "kind": "hard-coded",
+      "text": "The diameters (16 to 44px), the 8px gap, the 1.5s period (1.8s reduced), the linear spin and the arc angles are constants in the styles file. The spin reads no duration token and no curveLinear; only the tail's curve is a token.",
+      "source": "useSpinnerStyles.styles.ts:28,58-68,92-94,139-185"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Reduced motion does not stop the spinner: the ring keeps rotating, slower, with a static comet-shaped arc.",
+      "source": "useSpinnerStyles.styles.ts:66-68,114-120"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The primary label sets no colour and inherits from its context; only the inverted label is coloured.",
+      "tokens": [
+        "tokens.colorNeutralForegroundStaticInverted"
+      ],
+      "source": "useSpinnerStyles.styles.ts:188-191,268-273"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the track is HighlightText and the arc Highlight, with forced adjustment off so the mask and gradients survive.",
+      "source": "useSpinnerStyles.styles.ts:52-56"
+    },
+    {
+      "kind": "inferred",
+      "text": "The progressbar role and the label's association with it come from the render and state hooks, which are not vendored.",
+      "source": "fluent2:spinner"
+    }
+  ]
+}
