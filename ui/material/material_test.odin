@@ -149,24 +149,13 @@ test_check_catches_a_scheme_that_loses_a_pair :: proc(t: ^testing.T) {
 	}
 }
 
-// The selection axioms only: the light scheme's Outline_Variant is 1.48:1
-// on Surface_Container, under base's 1.5 hairline floor, which predates
-// selection and is a question for material's outline mapping.
 @(test)
-test_both_schemes_map_selection_to_valid_base_colours :: proc(t: ^testing.T) {
+test_both_schemes_map_to_a_valid_base_theme :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
-	SELECTION :: bit_set[base.Role]{.Selection, .On_Selection, .Selection_Inactive, .On_Selection_Inactive}
-	axioms := make([dynamic]design.Axiom(base.Role), context.temp_allocator)
-	for a in base.AXIOMS {
-		if a.a in SELECTION || a.b in SELECTION {
-			append(&axioms, a)
-		}
-	}
-	testing.expect_value(t, len(axioms), 6)
 	for mode in base.Mode {
 		s := light_scheme() if mode == .Light else dark_scheme()
 		bt := base_theme(&s, mode)
-		v := design.check(bt.colors, axioms[:], context.temp_allocator)
+		v := design.check(bt.colors, base.AXIOMS, context.temp_allocator)
 		testing.expect_value(t, len(v), 0)
 		for x in v {
 			testing.expectf(t, false, "%v: %v %v vs %v: got %.2f, want %v", x.ctx, x.axiom.rel, x.axiom.a, x.axiom.b, x.got, x.axiom.k)

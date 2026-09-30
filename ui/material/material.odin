@@ -115,16 +115,25 @@ base_theme :: proc(s: ^Scheme, mode: base.Mode = .Light) -> base.Theme {
 	th := base.light()
 	th.mode = mode
 	th.colors.bind[mode] = {
+		// Panels are the low container, M3's lower-emphasis surface, so
+		// Outline_Variant (M3's divider colour) still reads on them at base's
+		// 1.5:1 floor: design.wcag_ratio puts it at 1.48:1 on
+		// Surface_Container in the light scheme, 1.55:1 on the low one
+		// (test_both_schemes_map_to_a_valid_base_theme holds it).
 		.Bg      = s[.Surface],
-		.Surface = s[.Surface_Container],
+		.Surface = s[.Surface_Container_Low],
 		.Fg      = s[.On_Surface],
 		.Muted   = s[.On_Surface_Variant],
 		.Outline = s[.Outline_Variant],
-		// M3 tokens no text selection. This follows Compose Material 3's
-		// default TextSelectionColors as remembered (primary at 40% over the
-		// text's surface, text unchanged; check androidx.compose.material3
-		// before relying on the figure), mixed to a solid colour so the
-		// axioms can measure it. Unfocused, on-surface at 16%: a grey.
+		// The m3e-kit tokens no text selection (ui/material/tokens has no
+		// selection role). Compose Material 3's own default is
+		// primary at 40% under unchanged text (androidx material3
+		// MaterialTheme.kt, rememberTextSelectionColors and
+		// TextSelectionBackgroundOpacity = 0.4f, as of commit 1092537,
+		// 2026-09-14). Mixed over Surface here to a solid colour so the
+		// axioms can measure it: exact on Surface, a shade light on darker
+		// containers. Compose has no unfocused colour; on-surface at 16%, a
+		// grey, is ours.
 		.Selection             = ops.mix(s[.Surface], s[.Primary], 0.4),
 		.On_Selection          = s[.On_Surface],
 		.Selection_Inactive    = ops.mix(s[.Surface], s[.On_Surface], 0.16),
