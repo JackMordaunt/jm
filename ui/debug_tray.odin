@@ -299,7 +299,7 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 
 	// The title bar drags it: by the pointer's travel, which holds however
 	// the bar itself moves (see Event.travel). Kept inside the window.
-	grip := scoped_id(gtx, 2)
+	grip := claim_id(gtx, 2)
 	for e in events(gtx, grip) {
 		#partial switch e.kind {
 		case .Press:
@@ -324,7 +324,7 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	ops.fill(gtx.scene, ops.Round_Rect{{0, 0, TRAY_WIDTH, h}, 8}, ops.Color{24, 22, 30, 240})
 	// Its own hit area, below the toggles: presses on the tray's padding
 	// reach nothing under it.
-	ops.input_area(gtx.scene, scoped_id(gtx, 1), ops.Rect{0, 0, TRAY_WIDTH, h}, {.Press, .Release, .Move, .Scroll})
+	ops.input_area(gtx.scene, claim_id(gtx, 1), ops.Rect{0, 0, TRAY_WIDTH, h}, {.Press, .Release, .Move, .Scroll})
 	// The title bar: a name and a grip, darker, to drag by.
 	title := ops.Rect{0, 0, TRAY_WIDTH, TRAY_TITLE}
 	title_color := ops.Color{40, 37, 50, 255}
@@ -390,7 +390,7 @@ tray_toggle :: proc(gtx: ^Ctx, r: ops.Rect, name: string, on: bool, key: u64, en
 		tray_text(gtx, name, {r.x + 22, r.y + (r.h + 12) / 2 - 1}, 12, ops.Color{120, 118, 130, 255})
 		return false
 	}
-	id := scoped_id(gtx, key)
+	id := claim_id(gtx, key)
 	st := widget_state(gtx, id)
 	clicked := click_from_events(gtx, id, st, r)
 	if st.hovered {

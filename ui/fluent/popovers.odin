@@ -178,7 +178,7 @@ surface_open :: proc(
 	key: u64,
 	loc: runtime.Source_Code_Location,
 ) -> (p: Popover) {
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Popover_Data)
 	if !open^ {
 		d.was_open = false
@@ -831,7 +831,7 @@ info_label :: proc(
 ) -> bool {
 	// The label's parts share one call site here, so each takes a key
 	// derived from the label's own id.
-	own := ui.scoped_id(gtx, key, loc)
+	own := ui.claim_id(gtx, key, loc)
 	o := open
 	if o == nil {
 		o = &ui.widget_data(gtx, own, Info_Data).open

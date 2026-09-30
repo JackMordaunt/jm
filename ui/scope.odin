@@ -58,9 +58,11 @@ retain :: proc(gtx: ^Ctx, v: $T) {
 	}
 }
 
-// scoped_id is id(key, loc) mixed with the open scopes, for a widget that
-// makes its id without widget_open (an overlay's own state, say).
-scoped_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
+// claim_id is the id of a widget made now at loc, for a widget that makes
+// its id without widget_open (an overlay's own state, say). Call it once
+// per widget per frame and derive every further id the widget needs from
+// the result with id_mix: a second claim is a second widget.
+claim_id :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
 	i := id(key, loc)
 	if l := gtx.layout; l != nil && l.scope != 0 {
 		i = id_mix(l.scope, u64(i))

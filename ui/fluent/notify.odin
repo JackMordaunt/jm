@@ -218,7 +218,7 @@ toaster :: proc(
 	if len(ts.items) == 0 {
 		return 0
 	}
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	pressed := 0
 	x: f32
 	switch position {

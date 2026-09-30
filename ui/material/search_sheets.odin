@@ -606,7 +606,7 @@ bottom_sheet_open :: proc(
 	loc := #caller_location,
 ) -> Sheet {
 	sh: Sheet
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	drag_id := ui.id_mix(id, 1)
 	handle_id := ui.id_mix(id, 2)
 	ss := state if state != nil else ui.widget_data(gtx, id, Sheet_State)
@@ -858,14 +858,14 @@ bottom_sheet :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	sh := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet)
+	sh := ui.guard_hold(gtx, Sheet)
 	sh^ = bottom_sheet_open(gtx, open, window, modal, handle, value, skip_partial, max_width, state, key, loc)
 	return sh.visible
 }
 
 @(private = "file")
 bottom_sheet_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, modal: bool, handle: bool, value: ^Sheet_Value, skip_partial: bool, max_width: f32, state: ^Sheet_State, key: u64, loc: runtime.Source_Code_Location) {
-	sheet_close(ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet))
+	sheet_close(ui.guard_take(gtx, Sheet))
 }
 
 @(deferred_in = side_sheet_guard_close)
@@ -880,14 +880,14 @@ side_sheet :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	sh := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet)
+	sh := ui.guard_hold(gtx, Sheet)
 	sh^ = side_sheet_open(gtx, open, window, modal, width, left, headline, key, loc)
 	return sh.visible
 }
 
 @(private = "file")
 side_sheet_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, modal: bool, width: f32, left: bool, headline: string, key: u64, loc: runtime.Source_Code_Location) {
-	sheet_close(ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Sheet))
+	sheet_close(ui.guard_take(gtx, Sheet))
 }
 
 // sheet_close whatever visible says. The spec gives no width;
@@ -904,7 +904,7 @@ side_sheet_open :: proc(
 	loc := #caller_location,
 ) -> Sheet {
 	sh: Sheet
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	sp := new(Sheet_Paint, gtx.allocator)
 	sp^ = {kind = modal ? .Side_Modal : .Side_Standard, left = left, drag_id = ui.id_mix(id, 1)}
 	sh.width = width - 48

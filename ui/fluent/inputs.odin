@@ -695,14 +695,14 @@ field :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	f := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Field)
+	f := ui.guard_hold(gtx, Field)
 	f^ = field_open(gtx, text, required, hint, message, validation, orientation, size, disabled, key, loc)
 	return true
 }
 
 @(private = "file")
 field_guard_close :: proc(gtx: ^ui.Ctx, text: string, required: bool, hint, message: string, validation: Validation, orientation: Orientation, size: Size, disabled: bool, key: u64, loc: runtime.Source_Code_Location) {
-	field_close(gtx, ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Field))
+	field_close(gtx, ui.guard_take(gtx, Field))
 }
 
 // Link_Appearance is a link's colour family: brand, or neutral until

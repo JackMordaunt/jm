@@ -142,7 +142,7 @@ drawer_open :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (d: Drawer) {
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	data := ui.widget_data(gtx, id, Drawer_Data)
 	dur := drawer_duration(size) / 1000
 	if open^ && kind == .Overlay && modal == .Modal {
@@ -340,14 +340,14 @@ drawer_part_close :: proc(part: ^Drawer_Part) {
 // drawer_header is drawer_header_open as a guard.
 @(deferred_in = drawer_part_guard_close)
 drawer_header :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_hold(gtx, Drawer_Part)
 	part^ = drawer_header_open(gtx, key, loc)
 	return true
 }
 
 @(private = "file")
 drawer_part_guard_close :: proc(gtx: ^ui.Ctx, key: u64, loc: runtime.Source_Code_Location) {
-	drawer_part_close(ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part))
+	drawer_part_close(ui.guard_take(gtx, Drawer_Part))
 }
 
 // drawer_header_title is the title row: subtitle1 text in
@@ -384,14 +384,14 @@ drawer_body_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) ->
 // drawer_body is drawer_body_open as a guard.
 @(deferred_in = drawer_body_guard_close)
 drawer_body :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_hold(gtx, Drawer_Part)
 	part^ = drawer_body_open(gtx, key, loc)
 	return true
 }
 
 @(private = "file")
 drawer_body_guard_close :: proc(gtx: ^ui.Ctx, key: u64, loc: runtime.Source_Code_Location) {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_take(gtx, Drawer_Part)
 	ui.close(&part.col)
 	ui.close(&part.inset)
 	ui.close(&part.scroll)
@@ -411,7 +411,7 @@ drawer_footer_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) 
 // drawer_footer is drawer_footer_open as a guard.
 @(deferred_in = drawer_part_guard_close)
 drawer_footer :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_hold(gtx, Drawer_Part)
 	part^ = drawer_footer_open(gtx, key, loc)
 	return true
 }
@@ -581,7 +581,7 @@ nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density
 		}
 	}
 	n.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = 7)
-	current_nav = ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Nav)
+	current_nav = ui.widget_data(gtx, ui.claim_id(gtx, key, loc), Nav)
 	current_nav^ = n
 	return
 }
@@ -791,7 +791,7 @@ Nav_Category :: struct {
 // who owns the open flags. Departure: the group's Collapse motion is
 // not applied; the sub-items appear at once.
 nav_category_open :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, ic := Icon.None, state := Interaction.Live, key: u64 = 0, loc := #caller_location) -> (cat: Nav_Category) {
-	data := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Nav_Category_Data)
+	data := ui.widget_data(gtx, ui.claim_id(gtx, key, loc), Nav_Category_Data)
 	if nav_row(gtx, label, ic, .Category, data.holds_selected && !open^, open^, state, key, loc) {
 		open^ = !open^
 	}
@@ -818,14 +818,14 @@ nav_category_close :: proc(cat: ^Nav_Category) {
 // sub-item group and runs only while the category is open.
 @(deferred_in = nav_category_guard_close)
 nav_category :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, ic := Icon.None, state := Interaction.Live, key: u64 = 0, loc := #caller_location) -> bool {
-	cat := ui.widget_data(gtx, ui.scoped_id(gtx, key ~ 0x4361744775617264, loc), Nav_Category)
+	cat := ui.guard_hold(gtx, Nav_Category)
 	cat^ = nav_category_open(gtx, label, open, ic, state, key, loc)
 	return cat.open
 }
 
 @(private = "file")
 nav_category_guard_close :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, ic: Icon, state: Interaction, key: u64, loc: runtime.Source_Code_Location) {
-	nav_category_close(ui.widget_data(gtx, ui.scoped_id(gtx, key ~ 0x4361744775617264, loc), Nav_Category))
+	nav_category_close(ui.guard_take(gtx, Nav_Category))
 }
 
 // nav_section_header is caption1Strong text 10px in from the start with
@@ -923,7 +923,7 @@ nav_header_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> 
 // nav_header is nav_header_open as a guard.
 @(deferred_in = drawer_part_guard_close)
 nav_header :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_hold(gtx, Drawer_Part)
 	part^ = nav_header_open(gtx, key, loc)
 	return true
 }
@@ -944,7 +944,7 @@ nav_body_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> Dr
 // nav_body is nav_body_open as a guard.
 @(deferred_in = drawer_body_guard_close)
 nav_body :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_hold(gtx, Drawer_Part)
 	part^ = nav_body_open(gtx, key, loc)
 	return true
 }
@@ -963,7 +963,7 @@ nav_footer_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> 
 // nav_footer is nav_footer_open as a guard.
 @(deferred_in = drawer_part_guard_close)
 nav_footer :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
-	part := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Drawer_Part)
+	part := ui.guard_hold(gtx, Drawer_Part)
 	part^ = nav_footer_open(gtx, key, loc)
 	return true
 }
@@ -1038,7 +1038,7 @@ breadcrumb :: proc(
 		head = idx
 		hidden_end = n - (max_shown - idx)
 	}
-	menu_data := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Breadcrumb_Overflow)
+	menu_data := ui.widget_data(gtx, ui.claim_id(gtx, key, loc), Breadcrumb_Overflow)
 	for i in 0 ..< n {
 		if i >= head && i < hidden_end {
 			if i == head {
@@ -1279,14 +1279,14 @@ tree_item :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	it := ui.widget_data(gtx, ui.scoped_id(gtx, key ~ 0x5472656547756172, loc), Tree_Item)
+	it := ui.guard_hold(gtx, Tree_Item)
 	it^, _ = tree_item_open(gtx, label, open, level, size, appearance, icon_before, icon_after, description, aside, checked, mixed, state, key, loc)
 	return it.open
 }
 
 @(private = "file")
 tree_item_guard_close :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, level: int, size: Tree_Size, appearance: Tree_Appearance, icon_before, icon_after: Icon, description, aside: string, checked: ^bool, mixed: bool, state: Interaction, key: u64, loc: runtime.Source_Code_Location) {
-	tree_item_close(ui.widget_data(gtx, ui.scoped_id(gtx, key ~ 0x5472656547756172, loc), Tree_Item))
+	tree_item_close(ui.guard_take(gtx, Tree_Item))
 }
 
 @(private)

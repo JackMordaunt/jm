@@ -149,6 +149,7 @@ Layout :: struct {
 	state:     map[ops.Area_Id]^Widget_State, // each on the heap, so a pointer lasts until its widget is dropped
 	data:      map[Data_Key]Data_Entry, // widget_data's typed values
 	retained:  map[ops.Area_Id]u64, // root scope -> the last frame retain kept it
+	held:      [dynamic]Held, // guard handles between guard_hold and guard_take
 	scope:     ops.Area_Id, // mixed into widget ids; scope and list set it
 	scope_root: ops.Area_Id, // the outermost open scope, which state records as its root
 	frame:     u64,
@@ -175,6 +176,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.allocator = allocator
 	l.stack = make([dynamic]Container, allocator)
 	l.children = make([dynamic]Child, allocator)
+	l.held = make([dynamic]Held, allocator)
 	l.state = make(map[ops.Area_Id]^Widget_State, allocator)
 	l.data = make(map[Data_Key]Data_Entry, allocator)
 	l.retained = make(map[ops.Area_Id]u64, allocator)
@@ -184,6 +186,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 layout_destroy :: proc(l: ^Layout) {
 	delete(l.stack)
 	delete(l.children)
+	delete(l.held)
 	for _, v in l.state {
 		free(v, l.allocator)
 	}
@@ -202,6 +205,7 @@ layout_destroy :: proc(l: ^Layout) {
 layout_reset :: proc(l: ^Layout) {
 	assert(len(l.stack) == 0, "ui: a container was not ended")
 	assert(l.scope == 0, "ui: a scope was not ended")
+	assert(len(l.held) == 0, "ui: a guard's handle was held and never taken")
 	clear(&l.stack)
 	clear(&l.children)
 	l.scope, l.scope_root = 0, 0

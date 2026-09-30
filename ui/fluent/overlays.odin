@@ -111,7 +111,7 @@ MENU_TRIGGER_GAP :: f32(4)
 // menus, and submenus (an item can show the chevron; the caller
 // composes the second menu).
 menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, key: u64 = 0, loc := #caller_location) -> (m: Menu) {
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Menu_Data)
 	if !open^ {
 		d.was_open = false
@@ -428,7 +428,7 @@ current_dialog: ^Dialog
 // takes no input); a non-modal dialog's title close button comes from
 // dialog_title; focus is not trapped (jm:ui has no Tab traversal).
 dialog_open :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, kind := Dialog_Kind.Modal, key: u64 = 0, loc := #caller_location) -> (d: Dialog) {
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	data := ui.widget_data(gtx, id, Dialog_Data)
 	if !open^ {
 		data.was_open = false

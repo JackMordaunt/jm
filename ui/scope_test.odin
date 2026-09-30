@@ -27,7 +27,7 @@ test_scope_gives_a_loop_its_own_ids_and_nests :: proc(t: ^testing.T) {
 		defer close(&ps)
 		rs := scope_open(gtx, 7)
 		defer close(&rs)
-		return scoped_id(gtx)
+		return claim_id(gtx)
 	}
 	testing.expect(t, row_under(gtx, "inbox") != row_under(gtx, "sent"))
 	testing.expect_value(t, row_under(gtx, "inbox"), row_under(gtx, "inbox"))
@@ -70,7 +70,7 @@ test_retain_keeps_a_page_state_while_it_is_not_drawn :: proc(t: ^testing.T) {
 	draw :: proc(gtx: ^Ctx, page: ^Page) {
 		s := scope_open(gtx, page)
 		defer close(&s)
-		widget_state(gtx, scoped_id(gtx)).springs[0].value = 9
+		widget_state(gtx, claim_id(gtx)).springs[0].value = 9
 	}
 	draw(&h.gtx, &page)
 	for _ in 0 ..< 5 {

@@ -191,3 +191,38 @@ innermost_close :: proc(gtx: ^Ctx, kind: Container_Kind) {
 		container_close(gtx, &i)
 	}
 }
+
+// guard_hold gives a design system's guard somewhere to keep its handle
+// until its closer runs: deferred_in hands the closer only the opener's
+// arguments, so the opener fills the slot this returns and the closer takes
+// it back with guard_take. Holds nest as the guards do. The slot lives in
+// the frame allocator; without a layout nothing is kept and guard_take
+// returns a zero handle.
+guard_hold :: proc(gtx: ^Ctx, $T: typeid) -> ^T {
+	h := new(T, gtx.allocator)
+	if l := gtx.layout; l != nil {
+		append(&l.held, Held{T, h})
+	}
+	return h
+}
+
+// guard_take is the handle the innermost guard_hold kept, which must be a T:
+// a guard that finds another guard's handle fails loudly rather than
+// closing the wrong thing.
+guard_take :: proc(gtx: ^Ctx, $T: typeid) -> ^T {
+	l := gtx.layout
+	if l == nil {
+		return new(T, gtx.allocator)
+	}
+	assert(len(l.held) > 0, "ui: a guard closed with no handle held")
+	h := pop(&l.held)
+	assert(h.type == T, "ui: a guard's scope ended with another guard's handle on top")
+	return (^T)(h.ptr)
+}
+
+// Held is one guard handle kept between guard_hold and guard_take.
+@(private)
+Held :: struct {
+	type: typeid,
+	ptr:  rawptr,
+}

@@ -113,7 +113,7 @@ carousel_open :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (c: Carousel) {
-	c.id = ui.scoped_id(gtx, key, loc)
+	c.id = ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, c.id, Carousel_Data)
 	active^ = clamp(active^, 0, max(count - 1, 0))
 	if autoplay != nil && autoplay^ && count > 1 {

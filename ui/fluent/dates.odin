@@ -634,7 +634,7 @@ date_picker :: proc(
 ) -> (picked: bool, validation: Date_Validation) {
 	// The inner widgets' keys derive from id, as a stack is no scope:
 	// two pickers keyed apart must not share an input.
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Date_Picker_Data)
 	st := ui.stack_open(gtx, key, loc)
 	defer ui.close(&st)
@@ -878,7 +878,7 @@ time_picker :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (changed: bool, err: Time_Error) {
-	id := ui.scoped_id(gtx, key, loc)
+	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Time_Picker_Data)
 	st := ui.stack_open(gtx, key, loc)
 	defer ui.close(&st)

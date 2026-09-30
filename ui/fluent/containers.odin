@@ -866,14 +866,14 @@ accordion_item :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	it := ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Accordion_Item)
+	it := ui.guard_hold(gtx, Accordion_Item)
 	it^ = accordion_item_open(gtx, header, open, ic, size, icon_end, state, key, loc)
 	return it.open
 }
 
 @(private = "file")
 accordion_item_guard_close :: proc(gtx: ^ui.Ctx, header: string, open: ^bool, ic: Icon, size: Accordion_Size, icon_end: bool, state: Interaction, key: u64, loc: runtime.Source_Code_Location) {
-	accordion_item_close(ui.widget_data(gtx, ui.scoped_id(gtx, key, loc), Accordion_Item))
+	accordion_item_close(ui.guard_take(gtx, Accordion_Item))
 }
 
 // accordion_header is the item's button (useAccordionHeaderStyles.

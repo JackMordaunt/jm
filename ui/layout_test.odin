@@ -361,7 +361,7 @@ test_state_is_pruned_after_a_frame_unseen :: proc(t: ^testing.T) {
 	h: Harness
 	harness_init(&h)
 	defer harness_destroy(&h)
-	widget_state(&h.gtx, scoped_id(&h.gtx)) // a widget asking for retained state
+	widget_state(&h.gtx, claim_id(&h.gtx)) // a widget asking for retained state
 	testing.expect_value(t, len(h.layout.state), 1)
 	harness_frame(&h)
 	testing.expect_value(t, len(h.layout.state), 1)
