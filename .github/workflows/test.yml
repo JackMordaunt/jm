@@ -1,5 +1,6 @@
 # Type-checks every package for every target, then on Linux, macOS and
-# Windows links every program the justfile lists and runs the test suite.
+# Windows links every program and runs the test suite, through the
+# justfile's own link and test recipes so the packages are found one way.
 # The native libraries are built here the way the justfile builds them: the
 # vendored SQLite, wasm3 and libpg_query with the platform's C compiler,
 # libgit2 and Blend2D with CMake from pinned upstream checkouts, cached
@@ -14,8 +15,8 @@
 # package, so it is built here, console-only, which links and runs ui/sdl's
 # tests because they drive a child process rather than open a window. The
 # pq tests skip themselves on a runner where the PostgreSQL server binaries
-# are not on PATH; the package still has to link libpq, so pq and jm-fuzz
-# are left out where there is no libpq to link. wasm-windows.yml is the
+# are not on PATH; the package still has to link libpq, so SKIP leaves pq
+# and jm-fuzz out where there is no libpq to link. wasm-windows.yml is the
 # shorter loop for jm:wasm on Windows alone.
 name: test
 on:
@@ -90,7 +91,6 @@ jobs:
           for l in mbedtls mbedx509 mbedcrypto; do ar rcs "$RUNNER_TEMP/stubs/lib$l.a"; done
           echo "LINKFLAGS=-L$RUNNER_TEMP/stubs" >> "$GITHUB_ENV"
           echo "/usr/lib/postgresql/$(ls /usr/lib/postgresql | sort -V | tail -1)/bin" >> "$GITHUB_PATH"
-          echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
       - name: platform packages (macos)
         if: runner.os == 'macOS'
         run: |
@@ -100,7 +100,6 @@ jobs:
           # sits under lib/postgresql@17; the libpq formula's lib is the
           # plain path to link.
           echo "LINKFLAGS=-L$(brew --prefix libpq)/lib" >> "$GITHUB_ENV"
-          echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
       - name: platform packages (windows)
         if: runner.os == 'Windows'
         run: |
@@ -115,9 +114,9 @@ jobs:
             # The 8.3 spelling: the linker splits a /LIBPATH at the space in
             # "Program Files".
             link="$link /LIBPATH:$(cygpath -d "$PGROOT/lib")"
-            echo "PQ=pq pq/testdb pq/fuzz" >> "$GITHUB_ENV"
           else
             echo "no PostgreSQL on this image: pq is left out"
+            echo "SKIP=pq tools/jm-fuzz" >> "$GITHUB_ENV"
           fi
           echo "LINKFLAGS=$link" >> "$GITHUB_ENV"
 
@@ -221,61 +220,13 @@ jobs:
           mkdir -p ui/blend2d/lib
           if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/blend2d/build/blend2d.lib" ui/blend2d/lib/; else cp "$RUNNER_TEMP/blend2d/build/libblend2d.a" ui/blend2d/lib/; fi
 
-      # Every program the justfile lists, linked; then the suite: the
-      # justfile's package list plus the packages that link Blend2D or
-      # SDL3, each as `just test` runs it. pq joins where libpq exists.
+      # Every program linked, then the suite, as `just link test` runs them
+      # anywhere. --no-deps: the native libraries are built above, because
+      # the recipes that build them on Windows are written for PowerShell.
       - name: build and test
         env:
           MSYS_NO_PATHCONV: 1
-        run: |
-          # GITHUB_WORKSPACE is the checkout in the platform's own spelling;
-          # Git Bash's $PWD (/d/a/jm/jm) is not a path Odin can open.
-          flags="-vet -strict-style -collection:jm=$GITHUB_WORKSPACE"
-          # Odin takes -extra-linker-flags once and the value may hold
-          # spaces, so the platform's flags and the C++ runtime Blend2D
-          # needs travel as one quoted argument, held in arrays so an
-          # empty one adds nothing.
-          link=(); [ -z "${LINKFLAGS:-}" ] || link=("-extra-linker-flags:$LINKFLAGS")
-          if [ "$RUNNER_OS" != Windows ]; then cxx=("-extra-linker-flags:${LINKFLAGS:+$LINKFLAGS }-lstdc++"); else cxx=("${link[@]}"); fi
-          exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
-          packages=$(sed -n 's/^packages := "\(.*\)"$/\1/p' justfile | sed 's| pq pq/testdb pq/fuzz||')
-          programs=$(sed -n 's/^programs := "\(.*\)"$/\1/p' justfile)
-          mkdir -p build/test build/debug
-          # vendor:sdl3 loads SDL3.dll at start-up on Windows, so the
-          # ui/sdl test binary needs it beside it.
-          [ "$RUNNER_OS" = Windows ] && cp "$(odin root)/vendor/sdl3/SDL3.dll" build/test/
-          failed=0
-          for p in $programs; do
-            if [ "$p" = tools/jm-fuzz ] && [ -z "${PQ:-}" ]; then echo "no libpq: $p is left out"; continue; fi
-            echo "::group::odin build $p"
-            odin build "$p" $flags "${cxx[@]}" -out:"build/debug/$(echo "$p" | tr / -)$exe" || { echo "::error::$p did not build"; failed=1; }
-            echo "::endgroup::"
-          done
-          odin build examples/hello.odin -file $flags "${link[@]}" -out:build/debug/hello$exe || { echo "::error::examples/hello.odin did not build"; failed=1; }
-          # The child ui/sdl's tests spawn, at the path they expect.
-          odin build examples/hot-counter/child -debug $flags "${cxx[@]}" -out:build/debug/hot-counter-child$exe || failed=1
-          for p in $packages $PQ; do
-            threads=""
-            case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac
-            echo "::group::odin test $p"
-            odin test "$p" $flags "${link[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
-            echo "::endgroup::"
-          done
-          for p in tools/wasm-bench tools/design-tokens tools/fluent-icons; do
-            threads=""; [ "$p" = tools/wasm-bench ] && threads="-define:ODIN_TEST_THREADS=1"
-            echo "::group::odin test $p"
-            odin test "$p" $flags "${link[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
-            echo "::endgroup::"
-          done
-          # ui/sdl on one thread: its tests spawn hot-counter-child copies
-          # sharing one exe path, as `just test` runs it.
-          for p in ui/render ui/render/fuzz ui/child ui/sdl; do
-            threads=""; [ "$p" = ui/sdl ] && threads="-define:ODIN_TEST_THREADS=1"
-            echo "::group::odin test $p"
-            odin test "$p" $flags "${cxx[@]}" $threads -out:"build/test/$(echo "$p" | tr / -)$exe" || { echo "::error::$p failed"; failed=1; }
-            echo "::endgroup::"
-          done
-          exit $failed
+        run: just --no-deps hot-counter-child link test
 
       # The one network step: an anonymous HTTPS clone through the static
       # libgit2 and the platform's own TLS.

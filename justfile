@@ -4,6 +4,7 @@
 #   just release   optimised odin-run                      -> build/release/odin-run
 #   just test      run every package's tests
 #   just check     type-check every package for linux, darwin and windows
+#   just link      build every program into build/debug
 #   just sqlite    compile the vendored SQLite amalgamation into sqlite3/lib
 #   just wasm      compile the vendored wasm3 interpreter into wasm/lib
 #   just pg_query  compile the vendored libpg_query parser into pg_query/lib
@@ -31,10 +32,15 @@ root  := replace(justfile_directory(), "\\", "/")
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
 bindir := env("BINDIR", home_directory() / ".local" / "bin")
-packages := "prelude sh http path timefmt debug flow tar sqlite3 selfupdate wasm pg_query fuzz sqlite3/fuzz tar/fuzz wasm/fuzz pg_query/fuzz ui ui/ops ui/kb ui/shape ui/testutil ui/design ui/base ui/diagram ui/ipc ui/material ui/material/tokens ui/fluent ui/fluent/tokens pq pq/testdb pq/fuzz git git/fuzz"
-# Every program: each builds to an executable where a package builds to its
-# tests. CI reads this line to link them all on each platform.
-programs := "tools/odin-run tools/jm-fuzz pg_query/gen tools/wasm-bench examples/hotreload-diagram examples/hot-counter/child examples/hot-counter/host examples/hot-architecture/child examples/hot-architecture/host examples/material-kitchen/child examples/material-kitchen/host examples/fluent-kitchen/child examples/fluent-kitchen/host examples/text-lab/child examples/text-lab/host tools/ui-bench tools/hot-watch tools/img-diff tools/design-tokens tools/fluent-icons tools/git-probe tools/material-shapes"
+# Directories that check, test and link leave out, with everything under
+# them: SKIP="pq tools/jm-fuzz" where there is no libpq to link.
+skip := env("SKIP", "")
+# Packages whose tests run alone, on one thread, after the rest: the three
+# over wasm3, which is not thread-safe; ui/sdl, whose tests spawn
+# hot-counter-child copies sharing one exe path; tar, whose git children
+# inherit each other's pipes on Windows; and flow and wasm-bench, whose tests
+# measure a split of work or its cost and fail under load.
+serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/sdl tar flow"
 cc       := env("CC", "cc")
 wasm_cc  := env("WASM_CC", "clang")
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
@@ -308,35 +314,85 @@ hot-counter-child: blend2d kb
     mkdir -p build/debug
     {{odin}} build examples/hot-counter/child -debug {{flags}} {{cxx_link}} -out:build/debug/hot-counter-child{{exe}}
 
-# Run every package's tests
-test: sqlite wasm pg_query blend2d kb libgit2 hot-counter-child
-    mkdir -p build/test
-    for p in {{packages}}; do \
-      threads=""; \
-      case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac; \
-      {{odin}} test $p {{flags}} {{link}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
+# Every directory of Odin source, tracked or not but never ignored, less
+# skip: so a new package joins check, test and link without joining a list.
+# kind picks among them: `package` and `program` split them on `package
+# main`, `test` keeps those holding an @(test) proc. CI reads them here too.
+_dirs kind:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{kind}}" in package|program|test) ;; *) echo "_dirs: no kind {{kind}}" >&2; exit 1;; esac
+    git ls-files --cached --others --exclude-standard -- '*.odin' | sed -e 's|/[^/]*$||' -e 's|^[^/]*\.odin$|.|' | sort -u \
+      | while read -r d; do
+      for s in {{skip}}; do case "$d" in "$s"|"$s"/*) continue 2;; esac; done
+      case "{{kind}}" in
+        package) grep -qs '^package main' "$d"/*.odin && continue ;;
+        program) grep -qs '^package main' "$d"/*.odin || continue ;;
+        test) grep -qs '@(test)' "$d"/*.odin || continue ;;
+      esac
+      echo "$d"
     done
-    {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
-    {{odin}} test tools/design-tokens {{flags}} -out:build/test/design-tokens{{exe}}
-    {{odin}} test tools/fluent-icons {{flags}} -out:build/test/fluent-icons{{exe}}
-    {{odin}} test ui/render {{flags}} {{cxx_link}} -out:build/test/ui-render{{exe}}
-    {{odin}} test ui/render/fuzz {{flags}} {{cxx_link}} -out:build/test/ui-render-fuzz{{exe}}
-    {{odin}} test ui/child {{flags}} {{cxx_link}} -out:build/test/ui-child{{exe}}
-    # -1 thread: ui/sdl's tests spawn real hot-counter-child processes
-    # sharing one exe path, the same reason wasm's own tests above do.
-    {{odin}} test ui/sdl {{flags}} {{cxx_link}} -define:ODIN_TEST_THREADS=1 -out:build/test/ui-sdl{{exe}}
 
-# Type-check every package and the runner for each target
-check:
-    for t in {{targets}}; do \
-      for p in {{packages}}; do {{odin}} check $p {{flags}} -no-entry-point -target:$t || exit 1; done; \
-      for p in {{programs}}; do {{odin}} check $p {{flags}} -target:$t || exit 1; done; \
-      {{odin}} check examples/hello.odin -file {{flags}} -target:$t || exit 1; \
-      {{odin}} check ui/render {{flags}} -no-entry-point -target:$t || exit 1; \
-      {{odin}} check ui/render/fuzz {{flags}} -no-entry-point -target:$t || exit 1; \
-      {{odin}} check ui/child {{flags}} -no-entry-point -target:$t || exit 1; \
-      {{odin}} check ui/sdl {{flags}} -no-entry-point -target:$t || exit 1; \
+# Run every package's tests: packages in parallel, then serial_tests one at a
+# time on one thread.
+# Every package links with cxx_link, a superset of what any one needs. A
+# job's output is held until it ends, and every failure prints before the
+# recipe fails.
+test: sqlite wasm pg_query blend2d kb libgit2 hot-counter-child
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/test
+    # vendor:sdl3 loads SDL3.dll at start-up on Windows, so ui/sdl's test
+    # binary needs it beside it.
+    if [ "{{os()}}" = windows ]; then cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/test/; fi
+    run() {
+      local p=$1 out
+      shift
+      if out=$({{odin}} test "$p" {{flags}} {{cxx_link}} "$@" -out:build/test/$(echo "$p" | tr / -){{exe}} 2>&1); then
+        echo "ok   $p"
+        return 0
+      fi
+      printf 'FAIL %s\n%s\n' "$p" "$out" >&2
+      return 1
+    }
+    export -f run
+    parallel=() serial=()
+    for d in $({{just}} _dirs test); do
+      case " {{serial_tests}} " in *" $d "*) serial+=("$d");; *) parallel+=("$d");; esac
     done
+    failed=0
+    printf '%s\n' "${parallel[@]}" | xargs -P {{num_cpus()}} -n 1 bash -c 'run "$0"' || failed=1
+    for d in "${serial[@]}"; do run "$d" -define:ODIN_TEST_THREADS=1 || failed=1; done
+    exit $failed
+
+# Type-check every package and program for each target, in parallel; a
+# program keeps its entry point. A job's output is held until it ends, and
+# every failure prints before the recipe fails.
+check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    { {{just}} _dirs package | sed 's/$/ -no-entry-point/'; {{just}} _dirs program | sed 's/$/ -entry-point/'; } \
+      | while read -r d entry; do for t in {{targets}}; do printf '%s %s %s\n' "$d" "$t" "$entry"; done; done \
+      | xargs -P {{num_cpus()}} -n 3 sh -c '
+      entry=$2
+      if [ "$entry" = -entry-point ]; then entry=; fi
+      if out=$({{odin}} check "$0" {{flags}} -target:"$1" $entry 2>&1); then exit 0; fi
+      printf "%s (%s)\n%s\n" "$0" "$1" "$out" >&2
+      exit 1'
+
+# Build every program into build/debug, named for its directory, in
+# parallel: type-checking misses a link failure. Output is held as in test.
+link: sqlite wasm pg_query blend2d kb libgit2
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/debug
+    {{just}} _dirs program | xargs -P {{num_cpus()}} -n 1 sh -c '
+      if out=$({{odin}} build "$0" {{flags}} {{cxx_link}} -out:build/debug/$(echo "$0" | tr / -){{exe}} 2>&1); then
+        echo "ok   $0"
+        exit 0
+      fi
+      printf "FAIL %s\n%s\n" "$0" "$out" >&2
+      exit 1'
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
 install: release

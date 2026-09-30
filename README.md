@@ -134,6 +134,7 @@ the cached binary.
 ```
 just build     debug odin-run          just release   optimised odin-run
 just test      all package tests       just check     3-target type-check
+just link      build every program into build/debug
 just install   odin-run -> ~/.local/bin (BINDIR overrides)
 just sqlite    compile the vendored SQLite  just wasm      compile wasm3
 just pg_query  compile the vendored libpg_query
@@ -161,9 +162,15 @@ just clean     drop build/ and the four archives
 `just install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.
 
-GitHub Actions runs `just check`, links every program in the justfile's
-`programs` list, and runs the same test suite on Linux, macOS and Windows
-(`.github/workflows/test.yml`), building the vendored C libraries, libgit2
+`check`, `test` and `link` find their packages rather than read a list:
+every directory of `.odin` files git sees, tracked or not but never
+ignored, a `package main` directory being a program and one with an
+`@(test)` proc a test package. `SKIP="pq tools/jm-fuzz"` leaves those
+directories and everything under them out, as on a machine without libpq.
+Packages run in parallel, except the `serial_tests` the justfile names.
+
+GitHub Actions runs `just check`, then `just link test` on Linux, macOS
+and Windows (`.github/workflows/test.yml`), building the vendored C libraries, libgit2
 and Blend2D there the way the recipes do and caching the CMake builds. It
 runs on a push to `main` or to any `ci/<name>` branch, so pushing a
 throwaway `ci/` branch checks all three platforms during development;
