@@ -836,7 +836,7 @@ info_label :: proc(
 	if o == nil {
 		o = &ui.widget_data(gtx, own, Info_Data).open
 	}
-	r := ui.row_open(gtx, gap = tok.SPACING_HORIZONTAL_XXS, align = .Start, key = key, loc = loc)
+	r := ui.row_open(gtx, gap = tok.SPACING_HORIZONTAL_XXS, align = .Start, key = u64(ui.id_mix(own, 5)), loc = loc)
 	defer ui.close(&r)
 	label(gtx, text, required, size, weight, key = u64(ui.id_mix(own, 1)))
 	st := ui.stack_open(gtx, key = u64(ui.id_mix(own, 2)))

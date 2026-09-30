@@ -357,7 +357,7 @@ menu :: proc(
 	live = open^
 
 	if inline {
-		p := ui.widget_open(gtx, key, loc)
+		p := ui.widget_open(gtx, u64(ui.id_mix(menu_id, 1)), loc)
 		defer ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
 		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, .Below)
 	} else {

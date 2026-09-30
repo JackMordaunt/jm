@@ -151,7 +151,7 @@ carousel_open :: proc(
 	c.width = (ui.is_finite(cs.max.x) ? cs.max.x : 400) - 2 * room
 	// Every part is keyed from the carousel's own id: they share call
 	// sites here, and two carousels on a page must not share state.
-	c.col = ui.column_open(gtx, key = key, loc = loc)
+	c.col = ui.column_open(gtx, key = part_key(c.id, 11), loc = loc)
 	// The clip is outside the elevated padding, so a card's shadow has
 	// that room before it is cut.
 	c.clip = ui.clip_box_open(gtx, key = part_key(c.id, 2))

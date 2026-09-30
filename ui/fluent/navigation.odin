@@ -211,9 +211,9 @@ drawer_open :: proc(
 		// part shown) growing with the motion.
 		cs := gtx.constraints
 		if at_bottom {
-			d.fixed = fixed_open(gtx, ui.is_finite(cs.max.x) ? cs.max.x : extent, extent, prog, bottom = true, key = key, loc = loc)
+			d.fixed = fixed_open(gtx, ui.is_finite(cs.max.x) ? cs.max.x : extent, extent, prog, bottom = true, key = u64(ui.id_mix(id, 1)), loc = loc)
 		} else {
-			d.fixed = fixed_open(gtx, extent, reveal = prog, key = key, loc = loc)
+			d.fixed = fixed_open(gtx, extent, reveal = prog, key = u64(ui.id_mix(id, 1)), loc = loc)
 		}
 		dp.fixed = d.fixed.p.id
 	}
@@ -564,24 +564,25 @@ nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density
 	n.density = density
 	nav_density = density
 	fill := color(.Neutral_Background4)
+	id := ui.claim_id(gtx, key, loc)
 	if open == nil {
 		n.inline = true
 		n.visible = true
 		// Exactly width wide; as tall as offered when that is bounded, else
 		// as tall as its rows.
-		n.fixed = fixed_open(gtx, width, key = key, loc = loc)
+		n.fixed = fixed_open(gtx, width, key = u64(ui.id_mix(id, 1)), loc = loc)
 		np := new(Nav_Paint, gtx.allocator)
 		np^ = {fill = fill, fixed = n.fixed.p.id}
-		n.box = ui.box_open(gtx, {padding = nav_padding(), paint = paint_nav, user = np}, key ~ 0x4e61764e61760001, loc)
+		n.box = ui.box_open(gtx, {padding = nav_padding(), paint = paint_nav, user = np}, u64(ui.id_mix(id, 2)), loc)
 	} else {
-		n.drawer = drawer_open(gtx, open, window, .Overlay, .Start, .Small, fill = fill, key = key, loc = loc)
+		n.drawer = drawer_open(gtx, open, window, .Overlay, .Start, .Small, fill = fill, key = u64(ui.id_mix(id, 3)), loc = loc)
 		n.visible = n.drawer.visible
 		if !n.visible {
 			return
 		}
 	}
-	n.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = 7)
-	current_nav = ui.widget_data(gtx, ui.claim_id(gtx, key, loc), Nav)
+	n.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 4)))
+	current_nav = ui.widget_data(gtx, id, Nav)
 	current_nav^ = n
 	return
 }
@@ -791,8 +792,9 @@ Nav_Category :: struct {
 // who owns the open flags. Departure: the group's Collapse motion is
 // not applied; the sub-items appear at once.
 nav_category_open :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, ic := Icon.None, state := Interaction.Live, key: u64 = 0, loc := #caller_location) -> (cat: Nav_Category) {
-	data := ui.widget_data(gtx, ui.claim_id(gtx, key, loc), Nav_Category_Data)
-	if nav_row(gtx, label, ic, .Category, data.holds_selected && !open^, open^, state, key, loc) {
+	id := ui.claim_id(gtx, key, loc)
+	data := ui.widget_data(gtx, id, Nav_Category_Data)
+	if nav_row(gtx, label, ic, .Category, data.holds_selected && !open^, open^, state, u64(ui.id_mix(id, 1)), loc) {
 		open^ = !open^
 	}
 	cat.open = open^
@@ -801,7 +803,7 @@ nav_category_open :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, ic := Icon.N
 	data.seen_selected = false
 	current_category = data
 	if cat.open {
-		data.open_column = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = key ~ 0x4361740000000001, loc = loc)
+		data.open_column = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 2)), loc = loc)
 	}
 	return
 }
@@ -1026,7 +1028,8 @@ breadcrumb :: proc(
 	loc := #caller_location,
 ) -> int {
 	m := breadcrumb_metrics(size)
-	r := ui.row_open(gtx, align = .Center, key = key ~ 0x4372756d62526f77, loc = loc)
+	id := ui.claim_id(gtx, key, loc)
+	r := ui.row_open(gtx, align = .Center, key = u64(ui.id_mix(id, 1)), loc = loc)
 	defer ui.close(&r)
 	clicked := -1
 	n := len(items)
@@ -1038,7 +1041,7 @@ breadcrumb :: proc(
 		head = idx
 		hidden_end = n - (max_shown - idx)
 	}
-	menu_data := ui.widget_data(gtx, ui.claim_id(gtx, key, loc), Breadcrumb_Overflow)
+	menu_data := ui.widget_data(gtx, id, Breadcrumb_Overflow)
 	for i in 0 ..< n {
 		if i >= head && i < hidden_end {
 			if i == head {

@@ -636,7 +636,7 @@ date_picker :: proc(
 	// two pickers keyed apart must not share an input.
 	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Date_Picker_Data)
-	st := ui.stack_open(gtx, key, loc)
+	st := ui.stack_open(gtx, u64(ui.id_mix(id, 5)), loc)
 	defer ui.close(&st)
 	ia: Input_Appearance
 	switch appearance {
@@ -880,7 +880,7 @@ time_picker :: proc(
 ) -> (changed: bool, err: Time_Error) {
 	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Time_Picker_Data)
-	st := ui.stack_open(gtx, key, loc)
+	st := ui.stack_open(gtx, u64(ui.id_mix(id, 5)), loc)
 	defer ui.close(&st)
 	r := input(gtx, s, placeholder, appearance, size, after = .Chevron_Down, width = width, name = name != "" ? name : placeholder, state = state, key = u64(ui.id_mix(id, 1)))
 	if state == .Live {
