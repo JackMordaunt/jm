@@ -1661,8 +1661,7 @@ rgb_to_hsv :: proc(c: ops.Color) -> Hsv {
 // COLOR_* are the picker's metrics (color-picker.json layout:
 // useColorAreaStyles.styles.ts:23-65, useColorSliderStyles.styles.ts:
 // 30-109): the area's minimum side, the thumb, the rail, a slider's
-// minimum length and height, and how many slices a gradient is painted
-// in, since ops has no gradient paint.
+// minimum length and height.
 @(private = "file")
 COLOR_AREA_MIN :: f32(300)
 @(private = "file")
@@ -1675,14 +1674,26 @@ COLOR_SLIDER_MIN :: f32(200)
 COLOR_SLIDER_MIN_VERTICAL :: f32(280)
 @(private = "file")
 COLOR_SLIDER_CROSS :: f32(32)
-@(private = "file")
-COLOR_SLICES :: 36
 
-// slices is how many strips paint a gradient length px long: one per
-// 3px, at least COLOR_SLICES.
+// even_stops is colors as gradient stops spread evenly from 0 to 1, in
+// the frame allocator, as a gradient paint holds them.
 @(private = "file")
-slices :: proc(length: f32) -> int {
-	return max(COLOR_SLICES, int(length / 3))
+even_stops :: proc(gtx: ^ui.Ctx, colors: ..ops.Color) -> []ops.Gradient_Stop {
+	stops := make([]ops.Gradient_Stop, len(colors), gtx.allocator)
+	for c, i in colors {
+		stops[i] = {f32(i) / f32(max(len(colors) - 1, 1)), c}
+	}
+	return stops
+}
+
+// rail_ends are a rail's gradient end points: low to high value left to
+// right, or bottom to top when vertical (color-picker.json layout).
+@(private = "file")
+rail_ends :: proc(rail: ops.Rect, vertical: bool) -> (p0, p1: ops.Point) {
+	if vertical {
+		return {rail.x, rail.y + rail.h}, {rail.x, rail.y}
+	}
+	return {rail.x, rail.y}, {rail.x + rail.w, rail.y}
 }
 
 Color_Shape :: enum u8 {
@@ -1702,10 +1713,9 @@ COLOR_KINDS :: ops.Event_Kinds{.Press, .Release, .Move, .Enter, .Leave, .Key, .F
 // color_area is the saturation-and-value square (color-picker.json):
 // x is saturation, y value from the bottom, a 1px Neutral_Stroke1
 // border, and the 20px thumb, which a press or drag moves (rounded to
-// two decimals) and arrow keys nudge by 0.01. ops has no gradient
-// paint, so the gradient is vertical strips of the hue at rising
-// saturation under as many horizontal strips of black at rising alpha,
-// a strip per 3px (see slices). Returns true on a frame hsv^ changed.
+// two decimals) and arrow keys nudge by 0.01. The square is the hue under
+// white fading out to the right, under black fading in toward the bottom
+// (useColorAreaStyles.styles.ts:26). Returns true on a frame hsv^ changed.
 color_area :: proc(
 	gtx: ^ui.Ctx,
 	hsv: ^Hsv,
@@ -1753,17 +1763,11 @@ color_area :: proc(
 	}
 	rad := shape == .Rounded ? tok.BORDER_RADIUS_MEDIUM : 0
 	ops.clip_push(gtx.scene, ops.Round_Rect{area, rad})
-	n := slices(sz.x)
-	for i in 0 ..< n {
-		s := (f32(i) + 0.5) / f32(n)
-		x := sz.x * f32(i) / f32(n)
-		ops.fill(gtx.scene, ops.Rect{x, 0, sz.x / f32(n) + 1, sz.y}, hsv_to_rgb({hsv.h, s, 1, 1}))
-	}
-	for j in 0 ..< n {
-		y := sz.y * f32(j) / f32(n)
-		a := (f32(j) + 0.5) / f32(n) // black grows toward the bottom, value 0
-		ops.fill(gtx.scene, ops.Rect{0, y, sz.x, sz.y / f32(n)}, ops.with_alpha({0, 0, 0, 255}, a)) // exact: overlapping translucent strips would band
-	}
+	white :: ops.Color{255, 255, 255, 255}
+	black :: ops.Color{0, 0, 0, 255}
+	ops.fill(gtx.scene, area, hsv_to_rgb({hsv.h, 1, 1, 1}))
+	ops.fill(gtx.scene, area, ops.Linear_Gradient{{0, 0}, {sz.x, 0}, even_stops(gtx, white, ops.with_alpha(white, 0))})
+	ops.fill(gtx.scene, area, ops.Linear_Gradient{{0, 0}, {0, sz.y}, even_stops(gtx, ops.with_alpha(black, 0), black)})
 	ops.clip_pop(gtx.scene)
 	stroke_inside(gtx, {area, rad}, color(.Neutral_Stroke1), tok.STROKE_WIDTH_THIN)
 	centre := ops.Point{clamp(hsv.s, 0, 1) * sz.x, (1 - clamp(hsv.v, 0, 1)) * sz.y}
@@ -1812,8 +1816,8 @@ paint_color_thumb :: proc(gtx: ^ui.Ctx, c: Control, centre: ops.Point, fill: ops
 // unit, Home and End go to the ends. The rail is 20px thick with a 1px
 // Transparent_Stroke outline and the shape's radius, in a root 32px
 // across and at least 200px long (280 tall when vertical, where the
-// smallest value is at the bottom). The gradient is strips, a strip
-// per 3px (see slices).
+// smallest value is at the bottom). Each rail is one gradient paint
+// (useColorSliderStyles.styles.ts:16-25,62-65).
 color_slider :: proc(
 	gtx: ^ui.Ctx,
 	hsv: ^Hsv,
@@ -1888,25 +1892,21 @@ color_slider :: proc(
 	rad := shape == .Rounded ? tok.BORDER_RADIUS_MEDIUM : 0
 	rail := vertical ? ops.Rect{(sz.x - COLOR_RAIL) / 2, 0, COLOR_RAIL, sz.y} : {0, (sz.y - COLOR_RAIL) / 2, sz.x, COLOR_RAIL}
 	ops.clip_push(gtx.scene, ops.Round_Rect{rail, rad})
-	n := slices(vertical ? rail.h : rail.w)
-	for i in 0 ..< n {
-		f := (f32(i) + 0.5) / f32(n)
-		col: ops.Color
-		switch channel {
-		case .Hue:
-			col = hsv_to_rgb({f * 360, 1, 1, 1})
-		case .Saturation:
-			col = ops.mix({128, 128, 128, 255}, hsv_to_rgb({hsv.h, 1, 1, 1}), f)
-		case .Value:
-			col = hsv_to_rgb({hsv.h, 1, f, 1})
-		}
-		if vertical {
-			y := rail.y + rail.h * (1 - f32(i + 1) / f32(n))
-			ops.fill(gtx.scene, ops.Rect{rail.x, y, rail.w, rail.h / f32(n) + 1}, col)
-		} else {
-			ops.fill(gtx.scene, ops.Rect{rail.x + rail.w * f32(i) / f32(n), rail.y, rail.w / f32(n) + 1, rail.h}, col)
-		}
+	// Stops in the order the channel's value rises, so they follow the
+	// thumb: hue through its six primaries and secondaries back to red,
+	// saturation from grey to the hue, value from black to the hue.
+	stops: []ops.Gradient_Stop
+	hue := hsv_to_rgb({hsv.h, 1, 1, 1})
+	switch channel {
+	case .Hue:
+		stops = even_stops(gtx, hsv_to_rgb({0, 1, 1, 1}), hsv_to_rgb({60, 1, 1, 1}), hsv_to_rgb({120, 1, 1, 1}), hsv_to_rgb({180, 1, 1, 1}), hsv_to_rgb({240, 1, 1, 1}), hsv_to_rgb({300, 1, 1, 1}), hsv_to_rgb({360, 1, 1, 1}))
+	case .Saturation:
+		stops = even_stops(gtx, {128, 128, 128, 255}, hue)
+	case .Value:
+		stops = even_stops(gtx, {0, 0, 0, 255}, hue)
 	}
+	p0, p1 := rail_ends(rail, vertical)
+	ops.fill(gtx.scene, rail, ops.Linear_Gradient{p0, p1, stops})
 	ops.clip_pop(gtx.scene)
 	stroke_inside(gtx, {rail, rad}, color(.Transparent_Stroke), tok.STROKE_WIDTH_THIN)
 	f := clamp(get(hsv, channel) / span, 0, 1)
@@ -1985,17 +1985,12 @@ alpha_slider :: proc(
 		}
 	}
 	base := hsv_to_rgb({hsv.h, hsv.s, hsv.v, 1})
-	n := slices(vertical ? rail.h : rail.w)
-	for i in 0 ..< n {
-		f := (f32(i) + 0.5) / f32(n)
-		a := transparency ? 1 - f : f
-		if vertical {
-			y := rail.y + rail.h * (1 - f32(i + 1) / f32(n))
-			ops.fill(gtx.scene, ops.Rect{rail.x, y, rail.w, rail.h / f32(n)}, ops.with_alpha(base, a))
-		} else {
-			ops.fill(gtx.scene, ops.Rect{rail.x + rail.w * f32(i) / f32(n), rail.y, rail.w / f32(n), rail.h}, ops.with_alpha(base, a))
-		}
-	}
+	// Transparent to the colour as the value rises; with transparency the
+	// value is 100 minus the alpha, so the gradient runs the other way
+	// (useAlphaSliderStyles.styles.ts:25).
+	clear := ops.with_alpha(base, 0)
+	p0, p1 := rail_ends(rail, vertical)
+	ops.fill(gtx.scene, rail, ops.Linear_Gradient{p0, p1, transparency ? even_stops(gtx, base, clear) : even_stops(gtx, clear, base)})
 	ops.clip_pop(gtx.scene)
 	stroke_inside(gtx, {rail, rad}, color(.Neutral_Stroke1), tok.STROKE_WIDTH_THIN)
 	f := clamp(value / 100, 0, 1)

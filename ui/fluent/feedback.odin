@@ -931,16 +931,13 @@ progress_bar :: proc(
 		ops.clip_push(gtx.scene, ops.Round_Rect{track, rad})
 		brand := role_color(.Compound_Brand_Background)
 		ops.fill(gtx.scene, ops.Round_Rect{{x, 0, seg, sz.y}, rad}, brand)
-		// The gradient Background6 -> transparent -> Background6 over
-		// it, as slices of the track colour fading toward the middle.
-		SLICES :: 8
+		// The gradient Background6, Transparent_Background at 50%,
+		// Background6 over it, so the segment fades in and out at its
+		// ends (useProgressBarStyles.styles.ts:69-74).
 		bg6 := role_color(.Neutral_Background6)
-		for i in 0 ..< SLICES {
-			a := 1 - f32(i) / f32(SLICES) // 1 at the ends, toward 0 at the middle
-			sw := seg / 2 / f32(SLICES)
-			ops.fill(gtx.scene, ops.Rect{x + f32(i) * sw, 0, sw, sz.y}, ops.with_alpha(bg6, a / f32(SLICES) * 2))
-			ops.fill(gtx.scene, ops.Rect{x + seg - f32(i + 1) * sw, 0, sw, sz.y}, ops.with_alpha(bg6, a / f32(SLICES) * 2))
-		}
+		stops := make([]ops.Gradient_Stop, 3, gtx.allocator)
+		stops[0], stops[1], stops[2] = {0, bg6}, {0.5, role_color(.Transparent_Background)}, {1, bg6}
+		ops.fill(gtx.scene, ops.Round_Rect{{x, 0, seg, sz.y}, rad}, ops.Linear_Gradient{{x, 0}, {x + seg, 0}, stops})
 		ops.clip_pop(gtx.scene)
 	} else {
 		frac := clamp(value / max(max_value, 1e-6), 0, 1)

@@ -1590,11 +1590,12 @@ SKELETON_EASE :: tok.Bezier{0.42, 0, 0.58, 1}
 // skeleton_item is one loading placeholder (skeleton.json): a
 // rectangle of the size's height and the full width (or width), a
 // square or a circle of the size, in Stencil 1 (Stencil 1 Alpha when
-// translucent), 4px corners on rectangles and squares. The wave draws a
-// band from Stencil 1 through Stencil 2 back to Stencil 1, twice the
-// item wide, sliding from fully left to fully right over 3s on
-// ease-in-out, forever; the pulse runs the item's opacity 1, 0.4, 1
-// over 1s. jm:ui has no gradient paint, so the band is slices.
+// translucent), 4px corners on rectangles and squares. The wave is an
+// overlay the item's own size, a gradient Stencil 1, Stencil 2 at 50%,
+// Stencil 1 (transparent, Stencil 1 Alpha, transparent when
+// translucent), sliding from -100% to +100% of the item's width over 3s
+// on ease-in-out, forever (useSkeletonItemStyles.styles.ts:5-9,50-90);
+// the pulse runs the item's opacity 1, 0.4, 1 over 1s.
 skeleton_item :: proc(
 	gtx: ^ui.Ctx,
 	size: f32 = 16,
@@ -1625,23 +1626,13 @@ skeleton_item :: proc(
 	switch animation {
 	case .Wave:
 		ops.fill(gtx.scene, rr, base)
-		if translucent {
-			base = {}
-		}
-		// The band's centre runs from -w (fully left) to 2w (fully right).
-		centre := -sz.x + t * 3 * sz.x
+		edge := translucent ? ops.with_alpha(peak, 0) : base
+		// The overlay's left edge runs from -w (fully left) to +w.
+		x := -sz.x + t * 2 * sz.x
+		stops := make([]ops.Gradient_Stop, 3, gtx.allocator)
+		stops[0], stops[1], stops[2] = {0, edge}, {0.5, peak}, {1, edge}
 		ops.clip_push(gtx.scene, rr)
-		slices := 16
-		sw := sz.x / f32(slices)
-		for i in 0 ..< slices {
-			x := f32(i) * sw
-			d := abs(x + sw / 2 - centre) / sz.x // 0 at the band's centre, 1 at its edge
-			if d >= 1 {
-				continue
-			}
-			col := translucent ? ops.with_alpha(peak, f32(peak[3]) / 255 * (1 - d)) : ops.mix(base, peak, 1 - d)
-			ops.fill(gtx.scene, ops.Rect{x, 0, sw + 0.5, sz.y}, col)
-		}
+		ops.fill(gtx.scene, ops.Rect{x, 0, sz.x, sz.y}, ops.Linear_Gradient{{x, 0}, {x + sz.x, 0}, stops})
 		ops.clip_pop(gtx.scene)
 	case .Pulse:
 		// 1, 0.4 at the half, 1 (styles.ts:18-28).
