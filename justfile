@@ -55,7 +55,14 @@ asmjit_rev  := "5134d396bd00c1b63259387acdbb12dfdf009f9b"
 # bundled ones, so nothing else is needed on the machine.
 libgit2_rev := "49e408b3208bc3093757a1c2db938d3590f3f412"
 libgit2_https := if os() == "macos" { "SecureTransport" } else { "OpenSSL-Dynamic" }
-cxx_link := if os() == "windows" { "" } else { "-extra-linker-flags:\"-lstdc++\"" }
+# Homebrew keeps libpq keg-only, so on macOS its lib directory is not on the
+# linker's search path and jm:pq cannot link without it. LINKFLAGS replaces
+# the guess, as CI sets it. Odin takes -extra-linker-flags once, so these and
+# the C++ runtime travel together in cxx_link.
+libpq_link := if os() == "macos" { `d="$(brew --prefix libpq 2>/dev/null)/lib"; [ -d "$d" ] && echo "-L$d" || true` } else { "" }
+linkflags := env("LINKFLAGS", libpq_link)
+link := if linkflags == "" { "" } else { "-extra-linker-flags:\"" + linkflags + "\"" }
+cxx_link := if os() == "windows" { link } else { "-extra-linker-flags:\"" + trim(linkflags + " -lstdc++") + "\"" }
 just := quote(just_executable())
 
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
@@ -304,7 +311,7 @@ test: sqlite wasm pg_query blend2d kb libgit2 hot-counter-child
     for p in {{packages}}; do \
       threads=""; \
       case "$p" in wasm|wasm/fuzz) threads="-define:ODIN_TEST_THREADS=1";; esac; \
-      {{odin}} test $p {{flags}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
+      {{odin}} test $p {{flags}} {{link}} $threads -out:build/test/$(echo $p | tr / -){{exe}} || exit 1; \
     done
     {{odin}} test tools/wasm-bench {{flags}} -define:ODIN_TEST_THREADS=1 -out:build/test/wasm-bench{{exe}}
     {{odin}} test tools/design-tokens {{flags}} -out:build/test/design-tokens{{exe}}
