@@ -123,6 +123,8 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			append(&st.f.draws, Draw{st.transform, st.clip, op})
 		case ops.Image:
 			append(&st.f.draws, Draw{st.transform, st.clip, op})
+		case ops.Shadow:
+		// Not drawn yet: Frame has no draw for it.
 		case ops.Input_Area:
 			append(
 				&st.f.hits,

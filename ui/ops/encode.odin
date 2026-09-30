@@ -21,8 +21,8 @@ ENCODE_MAGIC :: "UIOP"
 // ENCODE_VERSION changes whenever an op is added or its layout changes: a
 // decoder built against another version rejects the stream outright (see
 // encoded_version) rather than failing on the first unknown tag. 2 added
-// Defer; 8 gave Defer its Placement.
-ENCODE_VERSION :: u8(8)
+// Defer; 8 gave Defer its Placement; 9 added Shadow.
+ENCODE_VERSION :: u8(9)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -340,6 +340,12 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_u32(w, u32(v.run))
 		put_point(w, v.origin)
 		put_color(w, v.color)
+	case Shadow:
+		append(w, 16)
+		put_rect(w, v.rect)
+		put_f32(w, v.radius)
+		put_f32(w, v.blur)
+		put_color(w, v.color)
 	case Image:
 		append(w, 11)
 		put_u32(w, u32(v.id))
@@ -626,6 +632,13 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			v.place.side, v.place.align = Side(side), Side_Align(align)
 			v.place.gap = get_f32(r) or_return
 		}
+		return v, true
+	case 16:
+		v: Shadow
+		v.rect = get_rect(r) or_return
+		v.radius = get_f32(r) or_return
+		v.blur = get_f32(r) or_return
+		v.color = get_color(r) or_return
 		return v, true
 	case 15:
 		v: Debug_Box

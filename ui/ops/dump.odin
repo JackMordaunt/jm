@@ -52,6 +52,8 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			write_draw(&sb, ops, v)
 		case Image:
 			write_draw(&sb, ops, v)
+		case Shadow:
+			write_draw(&sb, ops, v)
 		case Input_Area:
 			fmt.sbprintf(&sb, "input %d ", v.id)
 			write_shape(&sb, v.shape)
@@ -187,7 +189,7 @@ write_tag :: proc(sb: ^strings.Builder, t: Tag) {
 	strings.write_quoted_string(sb, t.name)
 }
 
-// write_draw writes a draw op — a Fill, Stroke, Glyphs or Image — as dump
+// write_draw writes a draw op — a Fill, Stroke, Glyphs, Image or Shadow — as dump
 // prints one; ui's dump_frame prints a Frame's Draw_Cmd through it too.
 write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
 	#partial switch v in cmd {
@@ -225,5 +227,14 @@ write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
 		write_rect(sb, v.dst)
 		strings.write_string(sb, " src ")
 		write_rect(sb, v.src)
+	case Shadow:
+		strings.write_string(sb, "shadow ")
+		write_rect(sb, v.rect)
+		strings.write_string(sb, " r=")
+		write_num(sb, f64(v.radius))
+		strings.write_string(sb, " blur=")
+		write_num(sb, f64(v.blur))
+		strings.write_byte(sb, ' ')
+		write_color(sb, v.color)
 	}
 }

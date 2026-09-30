@@ -142,6 +142,21 @@ Op :: union {
 	Input_Area,
 	Tag,
 	Debug_Box,
+	Shadow,
+}
+
+// Shadow is the soft shadow of a rounded rect, as a CSS box-shadow draws
+// one: rect is the shape casting it, already offset and spread by the
+// caller, radius its corners, blur the CSS blur radius (the Gaussian's
+// sigma is half of it, CSS Backgrounds and Borders 3, 7.2 "Drop Shadows";
+// the shadow reaches 1.5 blur past rect), color the
+// shadow at its densest. The renderer computes it in closed form, not by
+// blurring pixels, so it is exact at any size and cheap to repeat.
+Shadow :: struct {
+	rect:   Rect,
+	radius: f32,
+	blur:   f32,
+	color:  Color,
 }
 
 // Debug_Box records one widget's layout for the inspector, when
@@ -254,6 +269,19 @@ stroke :: proc(o: ^Scene, shape: Shape, paint: Paint, style: Stroke_Style) {
 
 glyphs :: proc(o: ^Scene, run: Run_Id, origin: Point, color: Color) {
 	append(&o.ops, Glyphs{run, origin, color})
+}
+
+// shadow_bounds is where s paints: its rect grown by three sigmas, 1.5
+// blur. What lies past that is the Gaussian's tail beyond 3 sigma, 0.13%
+// of the shadow's density, under one step of 8-bit alpha.
+shadow_bounds :: proc(s: Shadow) -> Rect {
+	e := max(s.blur, 0) * 1.5
+	return {s.rect.x - e, s.rect.y - e, s.rect.w + 2 * e, s.rect.h + 2 * e}
+}
+
+// shadow records the soft shadow of the rounded rect r; see Shadow.
+shadow :: proc(o: ^Scene, r: Rect, radius, blur: f32, color: Color) {
+	append(&o.ops, Shadow{r, radius, blur, color})
 }
 
 image :: proc(o: ^Scene, id: Image_Id, dst: Rect, src: Rect = {}) {
