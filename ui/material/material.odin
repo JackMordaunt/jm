@@ -430,10 +430,8 @@ disabled_container :: proc() -> ops.Color {
 	return ops.with_alpha(scheme()[.On_Surface], DISABLED_CONTAINER_OPACITY)
 }
 
-// paint_elevation paints an approximate shadow for M3 elevation level 0-5 under
-// rr (level 1-5 = 1, 3, 6, 8, 12dp). jm:ui has no blur, so it is a stack
-// of offset translucent round rects: soft enough to read as a lift, not the
-// spec's two-shadow (key + ambient) composite.
+// paint_elevation paints the shadow for M3 elevation level 0-5 under rr
+// (level 1-5 = 1, 3, 6, 8, 12dp): see paint_elevation_dp.
 paint_elevation :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, level: int) {
 	DP := [6]f32{0, 1, 3, 6, 8, 12}
 	paint_elevation_dp(gtx, rr, DP[clamp(level, 0, 5)])
@@ -504,12 +502,64 @@ touch_target :: proc(r: ops.Rect) -> ops.Rect {
 	return design.touch_target(r, MIN_TOUCH)
 }
 
+// ELEVATION_SHADOWS are the two shadow layers of each elevation level,
+// a key shadow offset downward and an ambient one around the shape, as
+// the m3e-kit's foundations.json elevation.rules say to approximate (it
+// gives no geometry). The numbers are Material's web elevation shadows
+// (key at 30% black, ambient at 15%), inferred rather than tokenized.
+// The shadow is black: foundations.json color.missingRoles.
+@(private)
+ELEVATION_SHADOWS := [6][2]design.Box_Shadow {
+	{},
+	{{0, 1, 2, 0, {0, 0, 0, 77}}, {0, 1, 3, 1, {0, 0, 0, 38}}},
+	{{0, 1, 2, 0, {0, 0, 0, 77}}, {0, 2, 6, 2, {0, 0, 0, 38}}},
+	{{0, 1, 3, 0, {0, 0, 0, 77}}, {0, 4, 8, 3, {0, 0, 0, 38}}},
+	{{0, 2, 3, 0, {0, 0, 0, 77}}, {0, 6, 10, 4, {0, 0, 0, 38}}},
+	{{0, 4, 4, 0, {0, 0, 0, 77}}, {0, 8, 12, 6, {0, 0, 0, 38}}},
+}
+
+// ELEVATION_DP is each level's elevation in dp, sys.elevation.level0-5.
+@(private)
+ELEVATION_DP := [6]f32 {
+	tok.SYS_ELEVATION_LEVEL0,
+	tok.SYS_ELEVATION_LEVEL1,
+	tok.SYS_ELEVATION_LEVEL2,
+	tok.SYS_ELEVATION_LEVEL3,
+	tok.SYS_ELEVATION_LEVEL4,
+	tok.SYS_ELEVATION_LEVEL5,
+}
+
 // paint_elevation_dp is paint_elevation for an elevation in dp rather
 // than a level, so a token's value (and a tween between two) paints
-// directly. The shadow is black: the m3e-kit's foundations.json,
-// color.missingRoles.
+// directly: the layers of the levels either side of dp, mixed by where
+// dp falls between them, so an animated elevation moves smoothly.
 paint_elevation_dp :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, dp: f32) {
-	design.paint_shadow(gtx, rr, dp, {0, 0, 0, 255})
+	if dp <= 0 {
+		return
+	}
+	hi := len(ELEVATION_DP) - 1
+	for l in 1 ..< len(ELEVATION_DP) {
+		if dp <= ELEVATION_DP[l] {
+			hi = l
+			break
+		}
+	}
+	lo := hi - 1
+	t := clamp((dp - ELEVATION_DP[lo]) / (ELEVATION_DP[hi] - ELEVATION_DP[lo]), 0, 1)
+	for i in 0 ..< 2 {
+		a, b := ELEVATION_SHADOWS[lo][i], ELEVATION_SHADOWS[hi][i]
+		if lo == 0 {
+			a = b
+			a.color[3] = 0 // level 0 casts nothing: fade the level 1 shadow in
+		}
+		design.paint_box_shadow(gtx, rr, {
+			x      = a.x + (b.x - a.x) * t,
+			y      = a.y + (b.y - a.y) * t,
+			blur   = a.blur + (b.blur - a.blur) * t,
+			spread = a.spread + (b.spread - a.spread) * t,
+			color  = ops.mix(a.color, b.color, t),
+		})
+	}
 }
 
 // Mode is the baseline schemes' context: the kit ships a light and a dark
