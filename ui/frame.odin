@@ -45,6 +45,7 @@ Hit :: struct {
 	order:     int, // recording order; later areas are on top
 	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
 	cursor:    ops.Cursor, // the pointer's look over it
+	yields:    bool, // see ops.Input_Area
 }
 
 // Placed is a popup flatten placed (see ops.Placement): its key, the

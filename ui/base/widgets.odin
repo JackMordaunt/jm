@@ -2,6 +2,7 @@ package base
 
 import "base:runtime"
 import "jm:ui"
+import "jm:ui/design"
 import "jm:ui/ops"
 
 // Label_Style is a label's colour and size; a zero field takes the theme's.
@@ -18,18 +19,26 @@ resolve_label :: proc(s: Label_Style) -> Label_Style {
 // label draws one line of text, baseline at the font's ascent. Its size is
 // the text's advance by the line height, clamped to the constraints; it
 // does not wrap. It records a Tag with the text so a probe can find it.
-label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, loc := #caller_location) -> ui.Dims {
-	p := ui.widget_open(gtx, key, loc)
+// The text is selectable (ui.selectable_text) unless selectable is false.
+label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, selectable := true, loc := #caller_location) -> ui.Dims {
+	w := ui.widget_open(gtx, key, loc)
 	s := resolve_label(style)
-	f := font(gtx)
-	run := ui.shape(gtx.shaper, f, s.size, text, gtx.allocator)
-	m := ui.metrics(gtx.shaper, f, s.size)
-	size := ui.constrain(gtx.constraints, {run.advance, ui.line_height(m)})
-	if ui.painted(s.color) {
-		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {0, m.ascent}, s.color)
+	p := ui.paragraph_layout(gtx.shaper, font(gtx), s.size, text, 0, gtx.allocator)
+	width := p.width
+	for c in p.lines[0].hanging {
+		width = max(width, p.width + c.x1) // trailing spaces count, as a run's advance did
 	}
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
-	return ui.widget_close(gtx, &p, {size, m.ascent})
+	size := ui.constrain(gtx.constraints, {width, p.height})
+	sel: design.Selection_Paint
+	if selectable {
+		lo, hi, focused := ui.selectable_text(gtx, w.id, p, {}, {0, 0, size.x, size.y})
+		sel = selection_colors(lo, hi, focused)
+	}
+	if ui.painted(s.color) || sel.lo < sel.hi {
+		design.draw_paragraph(gtx, p, {}, s.color, sel)
+	}
+	ops.tag(gtx.scene, w.id, ui.frame_string(gtx, text))
+	return ui.widget_close(gtx, &w, {size, p.metrics.ascent})
 }
 
 // text draws one line of s with its top-left at pos, styled like label

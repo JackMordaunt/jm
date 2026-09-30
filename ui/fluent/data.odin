@@ -1723,7 +1723,9 @@ ITALIC_SHEAR :: f32(0.2)
 // is true, else clipping, with an ellipsis when truncate is set
 // (useTextStyles.styles.ts:27-36,121-123). italic shears the glyphs,
 // underline and strikethrough draw their lines; align places block
-// lines. Returns its dims; the run is tagged with s.
+// lines. Returns its dims; the run is tagged with s. The text is
+// selectable (ui.selectable_text) unless selectable is false, or it is
+// one line clipped to its box.
 text :: proc(
 	gtx: ^ui.Ctx,
 	s: string,
@@ -1739,9 +1741,10 @@ text :: proc(
 	underline := false,
 	strikethrough := false,
 	key: u64 = 0,
+	selectable := true,
 	loc := #caller_location,
 ) -> ui.Dims {
-	return text_styled(gtx, s, text_style(size, weight), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc)
+	return text_styled(gtx, s, text_style(size, weight), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc, selectable)
 }
 
 // text_preset is text at one of the ramp's named styles (text.json
@@ -1760,61 +1763,77 @@ text_preset :: proc(
 	underline := false,
 	strikethrough := false,
 	key: u64 = 0,
+	selectable := true,
 	loc := #caller_location,
 ) -> ui.Dims {
-	return text_styled(gtx, s, style(role), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc)
+	return text_styled(gtx, s, style(role), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc, selectable)
 }
 
 @(private)
-text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Color, block: bool, width: f32, wrap_lines, truncate: bool, align: Text_Align, italic, underline, strikethrough: bool, key: u64, loc: runtime.Source_Code_Location) -> ui.Dims {
+text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Color, block: bool, width: f32, wrap_lines, truncate: bool, align: Text_Align, italic, underline, strikethrough: bool, key: u64, loc: runtime.Source_Code_Location, selectable := true) -> ui.Dims {
 	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	box_w := width
 	if block && box_w == 0 {
 		box_w = ui.is_finite(cs.max.x) ? cs.max.x : 0
 	}
-	lines: []Text
-	if block && wrap_lines && box_w > 0 {
-		lines = wrap(gtx, s, st, box_w)
-	} else {
-		lines = make([]Text, 1, gtx.allocator)
-		lines[0] = shape_style(gtx, s, st)
-	}
-	tw, th := lines_size(lines)
-	sz := ui.constrain(cs, {box_w > 0 ? box_w : tw, th})
+	para := layout_style(gtx, s, st, box_w if block && wrap_lines && box_w > 0 else 0)
+	sz := ui.constrain(cs, {box_w > 0 ? box_w : para.width, para.height})
 	if italic {
 		// Shear about the run's bottom: the top leans right by the shear.
 		ops.transform_push(gtx.scene, ops.Affine{1, 0, f64(-ITALIC_SHEAR), 1, f64(ITALIC_SHEAR * sz.y), 0})
 	}
-	y: f32
-	for l in lines {
-		x: f32
-		switch align {
-		case .Start:
-		case .Center:
-			x = (sz.x - min(l.width, sz.x)) / 2
-		case .End:
-			x = sz.x - min(l.width, sz.x)
+	if !wrap_lines && para.width > sz.x + 0.5 {
+		// One line wider than its box: clipped or ellipsised, and not
+		// selectable, since what shows is not the text.
+		l := shape_style(gtx, s, st)
+		x := align_x(align, sz.x, min(l.width, sz.x))
+		draw_truncated(gtx, l, s, {x, 0}, sz.x, st, color, truncate)
+		decorate(gtx, {x, 0}, min(l.width, sz.x), baseline_of(l), l.metrics.ascent, color, underline, strikethrough)
+	} else {
+		for &ln in para.lines {
+			ln.x = align_x(align, sz.x, ln.width) if !para.rtl || align != .Start else ln.x
 		}
-		if l.width > sz.x + 0.5 && !wrap_lines {
-			draw_truncated(gtx, l, s, {x, y}, sz.x, st, color, truncate)
-		} else {
-			draw_text(gtx, l, {x, y}, color)
+		sel: design.Selection_Paint
+		if selectable {
+			lo, hi, focused := ui.selectable_text(gtx, p.id, para, {}, {0, 0, sz.x, sz.y})
+			sel = selection_colors(lo, hi, focused)
 		}
-		lw := min(l.width, sz.x)
-		if underline {
-			ops.fill(gtx.scene, ops.Rect{x, y + baseline_of(l) + 1, lw, 1}, color)
+		draw_paragraph(gtx, para, {}, color, sel)
+		for ln in para.lines {
+			decorate(gtx, {ln.x, ln.baseline - para.lines[0].baseline}, min(ln.width, sz.x), para.lines[0].baseline, para.metrics.ascent, color, underline, strikethrough)
 		}
-		if strikethrough {
-			ops.fill(gtx.scene, ops.Rect{x, y + baseline_of(l) - l.metrics.ascent * 0.3, lw, 1}, color)
-		}
-		y += l.height
 	}
 	if italic {
 		ops.transform_pop(gtx.scene)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
-	return ui.widget_close(gtx, &p, {sz, len(lines) > 0 ? baseline_of(lines[0]) : 0})
+	return ui.widget_close(gtx, &p, {sz, para.lines[0].baseline})
+}
+
+// align_x is where a line w wide starts in a box box_w wide.
+@(private = "file")
+align_x :: proc(align: Text_Align, box_w, w: f32) -> f32 {
+	switch align {
+	case .Start:
+	case .Center:
+		return (box_w - w) / 2
+	case .End:
+		return box_w - w
+	}
+	return 0
+}
+
+// decorate draws a line's underline and strikethrough, the line box's
+// top-left at pos, w wide, its baseline that far down.
+@(private = "file")
+decorate :: proc(gtx: ^ui.Ctx, pos: ops.Point, w, baseline, ascent: f32, color: ops.Color, underline, strikethrough: bool) {
+	if underline {
+		ops.fill(gtx.scene, ops.Rect{pos.x, pos.y + baseline + 1, w, 1}, color)
+	}
+	if strikethrough {
+		ops.fill(gtx.scene, ops.Rect{pos.x, pos.y + baseline - ascent * 0.3, w, 1}, color)
+	}
 }
 
 // draw_truncated draws l, the shaped s, clipped to width, with an ellipsis in place of

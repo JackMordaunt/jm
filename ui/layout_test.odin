@@ -1176,3 +1176,21 @@ test_popup_reports_its_shift_in_anchor_coordinates :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	testing.expect_value(t, m.shift, ops.Point{-50, 0})
 }
+
+@(test)
+test_a_cancelled_thumb_drag_stops_scrolling :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	ia := scroll_frame(&h)
+	bar := id_mix(ia.id, 1)
+	w := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip).shape.(ops.Rect).w
+	edge := w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET
+	harness_frame(&h)
+	// Held on the thumb, then its press is taken: moves no longer drag.
+	event_push(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 4}})
+	event_push(&h, {kind = .Cancel, area = bar})
+	event_push(&h, {kind = .Move, area = bar, travel = {0, 30}})
+	scroll_frame(&h)
+	testing.expect_value(t, scroll_offset(&h), 0)
+}

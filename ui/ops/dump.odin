@@ -62,6 +62,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			if v.cursor != .Default {
 				fmt.sbprintf(&sb, " cursor=%s", strings.to_lower(fmt.tprint(v.cursor), context.temp_allocator))
 			}
+			if v.yields {
+				strings.write_string(&sb, " yields")
+			}
 		case Tag:
 			write_tag(&sb, v)
 		case Debug_Box:

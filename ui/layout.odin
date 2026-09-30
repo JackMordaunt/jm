@@ -157,6 +157,7 @@ Layout :: struct {
 	scope_root: ops.Area_Id, // the outermost open scope, which state records as its root
 	frame:     u64,
 	allocator: mem.Allocator,
+	selection: Label_Selection, // the app's one selection in read-only text; see selectable.odin
 }
 
 // Placement is a widget's bracket: widget_open fills it, widget_close
@@ -203,6 +204,7 @@ layout_destroy :: proc(l: ^Layout) {
 	}
 	delete(l.data)
 	delete(l.retained)
+	text_destroy(&l.selection.state)
 	l^ = {}
 }
 
@@ -1181,7 +1183,7 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size
 			if st.pressed {
 				off += main_of(axis, e.travel) * b.range / b.travel
 			}
-		case .Release:
+		case .Release, .Cancel:
 			st.pressed = false
 		}
 	}

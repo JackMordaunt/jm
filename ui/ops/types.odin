@@ -125,6 +125,11 @@ Event_Kind :: enum u8 {
 	// Paste answers a clipboard read (ui.clipboard_read): delivered to the
 	// areas that asked, never hit-tested, its bytes in text.
 	Paste,
+	// Cancel tells a pressed area its press was taken from it: a drag that
+	// started on yielding text over it went to the text instead. It clears
+	// the press without a click, and is delivered whatever kinds the area
+	// asked for, since a press it never hears the end of would stick.
+	Cancel,
 }
 
 // Cursor is the pointer's look over an input area. An area that sets none

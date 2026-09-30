@@ -33,6 +33,12 @@ import "jm:ui/ops"
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
 // - A focus_request moves focus before the queued events are routed.
+// - A Press whose top-most target yields (ops.Input_Area.yields, selectable
+//   text) goes to the next area under it that wants Press and does not
+//   yield, when there is one. If the pointer then drags past YIELD_DRAG
+//   device pixels while held, or the press was a double or triple click,
+//   the yielding area takes over: the other gets Cancel, the yielder the
+//   press (and focus, if it wants keys) and the drag from there.
 // - The cursor (router_cursor) is the grabbing area's during a grab, else
 //   the top-most area's under the last pointer position, whatever kinds it
 //   wants, else Default.
@@ -71,7 +77,16 @@ Router :: struct {
 	focus_asked: bool,
 	cursor:      ops.Cursor,
 	pointed:     bool, // a pointer event has set pointer
+
+	yielder:     Hit, // a yielding area whose press went to the one under it; area 0 when none
+	yield_press: Raw_Event, // that press, replayed to the yielder if it takes over
+	pressed_at:  ops.Area_Id, // the area the last route's first Press went to, 0 for none
+	press_seen:  bool, // the last route routed a Press
 }
+
+// YIELD_DRAG is how far, in device pixels, a press on yielding text must
+// drag before the text takes it from the clickable area under it.
+YIELD_DRAG :: 4
 
 @(private = "file")
 HOVER_KINDS :: ops.Event_Kinds{.Move, .Enter, .Leave}
@@ -129,6 +144,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	refresh(f, r.focus, &r.focus_hit)
 	refresh(f, r.hover, &r.hover_hit)
 	refresh(f, r.pressed, &r.pressed_hit)
+	r.press_seen, r.pressed_at = false, 0
 	if r.focus_asked {
 		r.focus_asked = false
 		h: Hit
@@ -144,6 +160,12 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			route_release(r, f, e)
 		case .Move:
 			update_hover(r, f, e.pos)
+			if r.yielder.area != 0 {
+				d := e.pos - r.yield_press.pos
+				if d.x * d.x + d.y * d.y > YIELD_DRAG * YIELD_DRAG {
+					take_yield(r)
+				}
+			}
 			if r.pressed != 0 {
 				deliver_pointer(r, r.pressed_hit, e)
 			} else if h, ok := hit_test(f, e.pos, .Move); ok {
@@ -159,7 +181,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 		case .Paste:
 			route_paste(r, e)
-		case .Enter, .Leave, .Focus, .Blur:
+		case .Enter, .Leave, .Focus, .Blur, .Cancel:
 		// Synthesized by the router; a pushed one is ignored.
 		}
 		if e.kind == .Press || e.kind == .Release || e.kind == .Move {
@@ -389,9 +411,20 @@ route_press :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 	}
 	update_hover(r, f, e.pos)
 	h, ok := hit_test(f, e.pos, .Press)
+	if !r.press_seen {
+		r.press_seen = true
+		r.pressed_at = h.area if ok else 0
+	}
 	if !ok {
 		set_focus(r, {})
 		return
+	}
+	if h.yields {
+		if under, found := hit_under(f, h, e.pos); found {
+			r.yielder, r.yield_press = h, e
+			r.pressed_at = under.area
+			h = under
+		}
 	}
 	r.pressed = h.area
 	r.pressed_hit = h
@@ -399,10 +432,45 @@ route_press :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 		set_focus(r, h)
 	}
 	deliver_pointer(r, h, e)
+	if r.yielder.area != 0 && e.clicks >= 2 {
+		take_yield(r)
+	}
+}
+
+// hit_under is the top-most area below h (recorded before it) under
+// device point p that wants Press and does not yield itself.
+@(private = "file")
+hit_under :: proc(f: ^Frame, h: Hit, p: ops.Point) -> (Hit, bool) {
+	#reverse for u in f.hits[:min(h.order, len(f.hits))] {
+		if .Press in u.kinds && !u.yields && hit_contains(f, u, p) {
+			return u, true
+		}
+	}
+	return {}, false
+}
+
+// take_yield hands the held press to the yielding area over it: Cancel
+// to the area that had it, then the press itself, replayed, to the
+// yielder, which becomes the grab (and the focus when it wants keys).
+@(private = "file")
+take_yield :: proc(r: ^Router) {
+	y, press := r.yielder, r.yield_press
+	r.yielder = {}
+	if r.pressed != 0 {
+		append(&r.events, Event{kind = .Cancel, area = r.pressed, pos = to_local(r.pressed_hit, press.pos)})
+	}
+	r.pressed = y.area
+	r.pressed_hit = y
+	r.pressed_at = y.area
+	if y.kinds & {.Key, .Text} != {} {
+		set_focus(r, y)
+	}
+	deliver_pointer(r, y, press)
 }
 
 @(private = "file")
 route_release :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
+	r.yielder = {}
 	if r.pressed != 0 {
 		deliver_pointer(r, r.pressed_hit, e)
 		r.pressed = 0
@@ -534,6 +602,8 @@ activate_from_events :: proc(gtx: ^Ctx, area: ops.Area_Id, st: ^Widget_State, bo
 				}
 				st.pressed = false
 			}
+		case .Cancel:
+			st.pressed = false
 		case .Key:
 			if e.key == .Enter || e.key == .Space {
 				a.clicked = true

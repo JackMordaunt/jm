@@ -119,6 +119,11 @@ Input_Area :: struct {
 	shape:  Shape,
 	kinds:  Event_Kinds,
 	cursor: Cursor, // the pointer's look while it is over this area
+	// yields: a press here goes to the area under it that wants Press, if
+	// any, until the pointer drags past ui.YIELD_DRAG or a double click
+	// lands; then this area takes the press (and the other a Cancel). It is
+	// how selectable text inside a clickable card keeps the card clickable.
+	yields: bool,
 }
 
 // Tag names an area for the dump and the probe: probe.find("Save").
@@ -289,8 +294,8 @@ image :: proc(o: ^Scene, id: Image_Id, dst: Rect, src: Rect = {}) {
 	append(&o.ops, Image{id, dst, src})
 }
 
-input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cursor := Cursor.Default) {
-	append(&o.ops, Input_Area{id, shape, kinds, cursor})
+input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cursor := Cursor.Default, yields := false) {
+	append(&o.ops, Input_Area{id, shape, kinds, cursor, yields})
 	if o.outline_areas {
 		// Every area a user can reach, widget or painted row alike.
 		stroke(o, shape, HIT_BOUNDS_COLOR, {width = 1})

@@ -153,6 +153,13 @@ font :: proc(gtx: ^ui.Ctx) -> ops.Font_Id {
 // focus, the inactive pair when it has not.
 selection_paint :: proc(s: ^ui.Text_State, focused: bool) -> design.Selection_Paint {
 	lo, hi := ui.text_selection(s)
+	return selection_colors(lo, hi, focused)
+}
+
+// selection_colors is bytes lo to hi in the active theme's selection
+// colours, focused or inactive: what ui.selectable_text returns, ready to
+// paint.
+selection_colors :: proc(lo, hi: int, focused: bool) -> design.Selection_Paint {
 	if focused {
 		return {lo, hi, color(.Selection), color(.On_Selection)}
 	}
