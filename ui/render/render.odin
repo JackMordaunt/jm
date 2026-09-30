@@ -57,6 +57,8 @@ Renderer :: struct {
 	faces:      map[ops.Font_Id]bl.FontFaceCore,
 	fonts:      map[Font_Key]bl.FontCore,
 	images:     map[ops.Image_Id]bl.ImageCore,
+	shadows:    map[Shadow_Key]bl.ImageCore, // see shadow.odin
+	shadow_bytes: int, // the pixels shadows holds
 	masks:      map[ui.Clip_Id]Mask, // per render call
 	pool:       [dynamic][]u8, // mask pixel buffers, reused across calls
 	pool_used:  int, // buffers handed out this call
@@ -93,6 +95,7 @@ init :: proc(r: ^Renderer, allocator := context.allocator) {
 	r.faces = make(map[ops.Font_Id]bl.FontFaceCore, allocator)
 	r.fonts = make(map[Font_Key]bl.FontCore, allocator)
 	r.images = make(map[ops.Image_Id]bl.ImageCore, allocator)
+	r.shadows = make(map[Shadow_Key]bl.ImageCore, allocator)
 	r.masks = make(map[ui.Clip_Id]Mask, allocator)
 	r.pool = make([dynamic][]u8, allocator)
 }
@@ -112,6 +115,8 @@ destroy :: proc(r: ^Renderer) {
 	delete(r.fonts)
 	delete(r.faces)
 	delete(r.images)
+	clear_shadows(r)
+	delete(r.shadows)
 	delete(r.masks)
 	for b in r.pool {
 		delete(b, r.allocator)
@@ -550,7 +555,7 @@ draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) 
 			bl.context_blit_image_d(ctx, &origin, img, src)
 		}
 	case ops.Shadow:
-	// Not rendered yet.
+		draw_shadow(r, ctx, d, cmd)
 	}
 }
 
