@@ -302,7 +302,8 @@ host_step :: proc(l: ^Host_Loop) {
 	}
 	roundtrip_ms := ui.ms(trip_start)
 	dbg: ui.Reply_Debug
-	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg)
+	plat: ui.Reply_Platform
+	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg, &plat)
 	if !dok || !ops.decode(ops_bytes, &l.scene) {
 		// Say why: the window just freezes on its last frame otherwise, which
 		// reads as a crash. A version mismatch is a host built before the
@@ -326,6 +327,15 @@ host_step :: proc(l: ^Host_Loop) {
 	l.host_stats.present_ms, l.host_stats.roundtrip_ms = ui.ms(present_start), roundtrip_ms
 	l.host_stats.rss_bytes = ui.process_rss()
 	l.wants_frame, l.frame_after = wants_frame || flashing(w), frame_after
+	// The cursor and clipboard the child asked for; a read's Paste goes
+	// out with the next input, so a frame must follow to carry it.
+	reqs := ui.reply_requests(&plat)
+	for q in reqs {
+		if _, reads := q.(ui.Clipboard_Read); reads {
+			l.wants_frame, l.frame_after = true, 0
+		}
+	}
+	apply_platform(w, plat.cursor, plat.changed, reqs, host_sink, l, virtual.arena_allocator(&l.text))
 	l.n += 1
 }
 

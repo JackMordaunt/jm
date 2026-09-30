@@ -163,7 +163,7 @@ search_bar :: proc(
 		paint_focus_ring_corners(gtx, fc, bar, bar_k)
 	}
 	if live {
-		ops.input_area(gtx.scene, p.id, bar, SEARCH_KINDS)
+		ops.input_area(gtx.scene, p.id, bar, SEARCH_KINDS, .Text)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, placeholder))
 
@@ -469,10 +469,10 @@ search_view :: proc(
 	if live && open && mode != .Docked_With_Gap {
 		// The header takes the bar's own input: the same id, on top.
 		ops.transform_push(gtx.scene, ops.translate(header.x, header.y + (header.h - H) / 2))
-		ops.input_area(gtx.scene, id, ops.Rect{0, 0, header.w, H}, SEARCH_KINDS)
+		ops.input_area(gtx.scene, id, ops.Rect{0, 0, header.w, H}, SEARCH_KINDS, .Text)
 		ops.transform_pop(gtx.scene)
 	} else if live && open {
-		ops.input_area(gtx.scene, id, ops.Rect{0, 0, w, H}, SEARCH_KINDS)
+		ops.input_area(gtx.scene, id, ops.Rect{0, 0, w, H}, SEARCH_KINDS, .Text)
 	}
 	if back && live {
 		bid := ui.id_mix(id, 4)

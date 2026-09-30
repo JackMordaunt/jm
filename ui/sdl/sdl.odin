@@ -143,6 +143,9 @@ Window :: struct {
 	sized:    bool, // the frame being drawn is for a new size
 	density:  f32,
 	flashes:  [dynamic]Flash, // repaint flashes still fading, for the debug tray
+	cursors:  [ops.Cursor]^sdl3.Cursor, // made on first use, see show_cursor
+	cursor_shown: ops.Cursor,
+	cursor_set:   bool, // cursor_shown has been applied
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -413,6 +416,16 @@ step :: proc(l: ^Loop) {
 	host.present_ms = ui.ms(present_start)
 	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host))
 	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
+	// The cursor and clipboard, once the frame is done; a clipboard read
+	// queues its Paste, so a frame must follow to deliver it.
+	reqs := ui.router_requests(&l.router)
+	for q in reqs {
+		if _, reads := q.(ui.Clipboard_Read); reads {
+			l.wants_frame, l.frame_after = true, 0
+		}
+	}
+	apply_platform(w, ui.router_cursor(&l.router), true, reqs, router_sink, &l.router)
+	ui.router_requests_clear(&l.router)
 	free_all(context.temp_allocator)
 	// Every event polled before this frame was routed in it.
 	virtual.arena_free_all(&l.events)
@@ -497,6 +510,7 @@ close :: proc(w: ^Window) {
 	bl.image_destroy(&w.pixels)
 	sdl3.DestroyRenderer(w.renderer)
 	sdl3.DestroyWindow(w.window)
+	destroy_cursors(w)
 	delete(w.flashes)
 	w^ = {}
 }
@@ -798,7 +812,10 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				continue
 			}
 			kind: ops.Event_Kind = .Press if e.type == .MOUSE_BUTTON_DOWN else .Release
-			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState())})
+			// clicks is SDL's count of rapid presses ("1 for single-click, 2
+			// for double-click", sdl3_events.odin), which SDL takes from the
+			// system's double-click setting where it has one.
+			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState()), clicks = e.button.clicks})
 		case .MOUSE_WHEEL:
 			// Positive y scrolls down (toward the user), like a scroll offset.
 			s := [2]f32{e.wheel.x, -e.wheel.y}

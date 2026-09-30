@@ -122,6 +122,30 @@ Event_Kind :: enum u8 {
 	Text,
 	Focus,
 	Blur,
+	// Paste answers a clipboard read (ui.clipboard_read): delivered to the
+	// areas that asked, never hit-tested, its bytes in text.
+	Paste,
+}
+
+// Cursor is the pointer's look over an input area. An area that sets none
+// shows Default: the topmost area under the pointer decides, so a button
+// over selectable text shows the arrow, not the I-beam.
+Cursor :: enum u8 {
+	Default,
+	Text,
+	Pointer, // a link or other clickable
+	Grab,
+	Grabbing,
+	Move,
+	Resize_EW,
+	Resize_NS,
+	Resize_NESW,
+	Resize_NWSE,
+	Not_Allowed,
+	Crosshair,
+	Wait,
+	Progress,
+	None, // hidden
 }
 
 Event_Kinds :: bit_set[Event_Kind;u16]

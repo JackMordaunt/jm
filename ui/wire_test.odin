@@ -14,10 +14,11 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 
 	events := []Raw_Event {
 		{kind = .Move, pos = {12, 34}},
-		{kind = .Press, pos = {5, 6}, button = .Right, mods = {.Shift, .Ctrl}},
+		{kind = .Press, pos = {5, 6}, button = .Right, mods = {.Shift, .Ctrl}, clicks = 2},
 		{kind = .Scroll, pos = {1, 2}, scroll = {0, -3.5}},
 		{kind = .Key, key = .Enter, mods = {.Alt}},
 		{kind = .Text, text = "héllo\nworld"},
+		{kind = .Paste, text = "pasted", mime = TEXT_MIME},
 	}
 	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
 	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
@@ -131,4 +132,44 @@ test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) 
 	}
 	_, _, _, _, host, ok := decode_input(full, context.temp_allocator)
 	testing.expect(t, ok && host.rss_bytes == 1 << 20 && host.present_ms == 2)
+}
+
+@(test)
+test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p := Reply_Platform{cursor = .Text}
+	p.requests_buf[0] = Clipboard_Write{TEXT_MIME, "copied"}
+	p.requests_buf[1] = Clipboard_Read{TEXT_MIME}
+	p.requests_n = 2
+	sc_bytes := []byte{1, 2, 3}
+	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, platform = &p)
+	got: Reply_Platform
+	wants, _, rest, ok := decode_reply(data, nil, &got)
+	testing.expect(t, ok && wants)
+	testing.expect(t, slice.equal(rest, sc_bytes), "the scene bytes follow the platform block")
+	testing.expect(t, got.changed)
+	testing.expect_value(t, got.cursor, ops.Cursor.Text)
+	reqs := reply_requests(&got)
+	testing.expect_value(t, len(reqs), 2)
+	if len(reqs) == 2 {
+		testing.expect_value(t, reqs[0].(Clipboard_Write).data, "copied")
+		testing.expect_value(t, reqs[1].(Clipboard_Read).mime, TEXT_MIME)
+	}
+
+	// A reply with nothing for the platform is the old layout, byte for byte.
+	plain := encode_reply(false, 0, sc_bytes, context.temp_allocator)
+	none: Reply_Platform
+	_, _, _, ok = decode_reply(plain, nil, &none)
+	testing.expect(t, ok)
+	testing.expect(t, !none.changed && none.requests_n == 0)
+	testing.expect_value(t, plain[0] & 8, 0)
+}
+
+@(test)
+test_reply_with_an_unknown_request_is_rejected :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// flags 8, frame_after 0, cursor Default, one request of kind 9.
+	data := []byte{8, 0, 0, 0, 0, 0, 1, 9}
+	_, _, _, ok := decode_reply(data)
+	testing.expect(t, !ok)
 }

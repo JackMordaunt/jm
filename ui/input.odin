@@ -30,6 +30,12 @@ import "jm:ui/ops"
 //   that wants neither leaves focus where it is, so clicking a toolbar
 //   button does not blur the text field it acts on.
 // - Key and Text go to the focused area, else they are dropped.
+// - Paste goes to every area that asked with clipboard_read since the
+//   last Paste, then the askers are forgotten (see request.odin).
+// - A focus_request moves focus before the queued events are routed.
+// - The cursor (router_cursor) is the grabbing area's during a grab, else
+//   the top-most area's under the last pointer position, whatever kinds it
+//   wants, else Default.
 // - Every delivery honours the target's kinds: an area that did not ask
 //   for Enter, Focus or Release never receives one.
 //
@@ -58,6 +64,13 @@ Router :: struct {
 	pressed_hit: Hit,
 	pointer:     ops.Point, // the device position of the last pointer event, for Event.travel
 	placed:      [dynamic]Placed, // the popups the last frame placed, for placed_side
+
+	requests:    [dynamic]Request, // asked of the platform, until router_requests_clear
+	readers:     [dynamic]ops.Area_Id, // areas awaiting a Paste
+	focus_next:  ops.Area_Id, // with focus_asked: focus to grant at the next route
+	focus_asked: bool,
+	cursor:      ops.Cursor,
+	pointed:     bool, // a pointer event has set pointer
 }
 
 @(private = "file")
@@ -70,28 +83,34 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.queue = make([dynamic]Raw_Event, allocator)
 	r.events = make([dynamic]Event, allocator)
 	r.placed = make([dynamic]Placed, allocator)
+	r.requests = make([dynamic]Request, allocator)
+	r.readers = make([dynamic]ops.Area_Id, allocator)
 }
 
 // router_destroy frees everything r owns.
 router_destroy :: proc(r: ^Router) {
 	release_text(r)
 	for e in r.queue {
-		if e.kind == .Text {
-			delete(e.text, r.allocator)
-		}
+		free_strings(r, e)
 	}
+	router_requests_clear(r)
 	delete(r.queue)
 	delete(r.events)
 	delete(r.placed)
+	delete(r.requests)
+	delete(r.readers)
 	r^ = {}
 }
 
-// router_push queues a device event for the next route. Text is copied, so
-// the caller's string need not outlive the call.
+// router_push queues a device event for the next route. Text and Paste
+// strings are copied, so the caller's need not outlive the call.
 router_push :: proc(r: ^Router, e: Raw_Event) {
 	e := e
-	if e.kind == .Text {
+	if owns_strings(e.kind) {
 		e.text = clone_string(e.text, r.allocator)
+		e.mime = clone_string(e.mime, r.allocator)
+	} else {
+		e.text, e.mime = "", ""
 	}
 	append(&r.queue, e)
 }
@@ -110,6 +129,13 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	refresh(f, r.focus, &r.focus_hit)
 	refresh(f, r.hover, &r.hover_hit)
 	refresh(f, r.pressed, &r.pressed_hit)
+	if r.focus_asked {
+		r.focus_asked = false
+		h: Hit
+		if r.focus_next == 0 || refresh(f, r.focus_next, &h) {
+			set_focus(r, h)
+		}
+	}
 	for e in r.queue {
 		switch e.kind {
 		case .Press:
@@ -129,18 +155,49 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 		case .Key, .Text:
 			if r.focus == 0 || !deliver(r, r.focus_hit, e, {}) {
-				if e.kind == .Text {
-					delete(e.text, r.allocator)
-				}
+				free_strings(r, e)
 			}
+		case .Paste:
+			route_paste(r, e)
 		case .Enter, .Leave, .Focus, .Blur:
 		// Synthesized by the router; a pushed one is ignored.
 		}
 		if e.kind == .Press || e.kind == .Release || e.kind == .Move {
 			r.pointer = e.pos
+			r.pointed = true
 		}
 	}
 	clear(&r.queue)
+	r.cursor = resolve_cursor(r, f)
+}
+
+// route_paste hands e to every area waiting on a clipboard read, each its
+// own copy of the strings, and forgets them all; with none waiting it is
+// dropped.
+@(private = "file")
+route_paste :: proc(r: ^Router, e: Raw_Event) {
+	for area in r.readers {
+		append(&r.events, Event{kind = .Paste, area = area, text = clone_string(e.text, r.allocator), mime = clone_string(e.mime, r.allocator)})
+	}
+	clear(&r.readers)
+	free_strings(r, e)
+}
+
+// resolve_cursor is the pointer's look after this route: see router_cursor.
+@(private = "file")
+resolve_cursor :: proc(r: ^Router, f: ^Frame) -> ops.Cursor {
+	if r.pressed != 0 {
+		return r.pressed_hit.cursor
+	}
+	if !r.pointed || f == nil {
+		return .Default
+	}
+	#reverse for h in f.hits {
+		if hit_contains(f, h, r.pointer) {
+			return h.cursor
+		}
+	}
+	return .Default
 }
 
 // events returns the events routed to area this frame, in arrival order.
@@ -266,19 +323,21 @@ to_local :: proc(h: Hit, p: ops.Point) -> ops.Point {
 	return ops.apply(inv, p)
 }
 
-// refresh replaces last with area's hit in f when f still has it; the
-// top-most one wins when an id is recorded twice.
+// refresh replaces last with area's hit in f when f still has it, and
+// reports whether it did; the top-most one wins when an id is recorded
+// twice.
 @(private = "file")
-refresh :: proc(f: ^Frame, area: ops.Area_Id, last: ^Hit) {
+refresh :: proc(f: ^Frame, area: ops.Area_Id, last: ^Hit) -> bool {
 	if f == nil || area == 0 {
-		return
+		return false
 	}
 	#reverse for h in f.hits {
 		if h.area == area {
 			last^ = h
-			return
+			return true
 		}
 	}
+	return false
 }
 
 // deliver appends e for h's area with pos, when h's kinds contain e's kind.
@@ -298,6 +357,8 @@ deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: ops.Point) -> bool {
 			key = e.key,
 			mods = e.mods,
 			text = e.text,
+			mime = e.mime,
+			clicks = e.clicks,
 		},
 	)
 	return true
@@ -393,17 +454,35 @@ set_focus :: proc(r: ^Router, h: Hit) {
 	}
 }
 
-// release_text frees the Text strings delivered by the previous route.
+// release_text frees the Text and Paste strings delivered by the previous
+// route.
 @(private = "file")
 release_text :: proc(r: ^Router) {
 	for e in r.events {
-		if e.kind == .Text {
+		if owns_strings(e.kind) {
 			delete(e.text, r.allocator)
+			delete(e.mime, r.allocator)
 		}
 	}
 }
 
+// owns_strings reports whether events of kind carry strings the router
+// copied and must free.
 @(private = "file")
+owns_strings :: proc(kind: ops.Event_Kind) -> bool {
+	return kind == .Text || kind == .Paste
+}
+
+// free_strings frees a queued event's copied strings.
+@(private = "file")
+free_strings :: proc(r: ^Router, e: Raw_Event) {
+	if owns_strings(e.kind) {
+		delete(e.text, r.allocator)
+		delete(e.mime, r.allocator)
+	}
+}
+
+@(private)
 clone_string :: proc(s: string, allocator: mem.Allocator) -> string {
 	b := make([]u8, len(s), allocator)
 	copy(b, s)

@@ -361,7 +361,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	if o.state == .Live {
 		// Registered before the trailing icon's, which sits over it and
 		// must win its hits.
-		ops.input_area(gtx.scene, p.id, g.field, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
+		ops.input_area(gtx.scene, p.id, g.field, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur}, .Text)
 	}
 	filled := o.kind == .Filled
 	field := g.field

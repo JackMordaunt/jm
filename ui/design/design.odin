@@ -111,9 +111,9 @@ CLICK_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .F
 
 // listen registers id's input area when st is live (a Control's st, nil
 // for a forced state).
-listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS) {
+listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS, cursor := ops.Cursor.Default) {
 	if st != nil {
-		ops.input_area(gtx.scene, id, shape, kinds)
+		ops.input_area(gtx.scene, id, shape, kinds, cursor)
 	}
 }
 

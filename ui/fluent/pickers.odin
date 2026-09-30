@@ -583,7 +583,7 @@ combobox :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	// The field's area first, so the clear control sits on top of it.
-	listen(gtx, c.st, p.id, area, typed ? FIELD_KINDS : CLICK_KINDS)
+	listen(gtx, c.st, p.id, area, typed ? FIELD_KINDS : CLICK_KINDS, typed ? .Text : .Default)
 	// The expand icon, or the clear control in its place.
 	icon_at := ops.Point{sz.x - m.pad_end - m.icon, (sz.y - m.icon) / 2}
 	if clearable && selected^ >= 0 && !c.disabled {
@@ -1018,7 +1018,7 @@ spin_button :: proc(
 	paint_spin_button(gtx, up, .Chevron_Up, cu, tint, GLYPH, glyph, {0, rad, 0, 0})
 	paint_spin_button(gtx, down, .Chevron_Down, cd, tint, GLYPH, glyph, {0, 0, rad, 0})
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id), k.line)
-	listen(gtx, c.st, p.id, area, FIELD_KINDS)
+	listen(gtx, c.st, p.id, area, FIELD_KINDS, .Text)
 	listen(gtx, cu.st, up_id, up)
 	listen(gtx, cd.st, down_id, down)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
@@ -1162,7 +1162,7 @@ search_box :: proc(
 		ops.fill(gtx.scene, ops.Rect{left + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
-	listen(gtx, c.st, p.id, area, FIELD_KINDS) // under the dismiss control
+	listen(gtx, c.st, p.id, area, FIELD_KINDS, .Text) // under the dismiss control
 	if showing_dismiss {
 		icon(gtx, .Dismiss, {sz.x - pad - icon_size, (sz.y - icon_size) / 2}, icon_size, color_for({.Neutral_Foreground3, .Neutral_Foreground3_Hover, .Neutral_Foreground3_Pressed, .Neutral_Foreground_Disabled}, cd))
 		listen(gtx, cd.st, dismiss_id, dismiss)
@@ -1344,7 +1344,7 @@ tag_picker :: proc(
 
 	k := field_colors(appearance, c, invalid, .Outline_Only)
 	rad := paint_field(gtx, area, appearance, k)
-	listen(gtx, c.st, p.id, area, FIELD_KINDS) // under the tags, which take their own clicks
+	listen(gtx, c.st, p.id, area, FIELD_KINDS, .Text) // under the tags, which take their own clicks
 	end_pad := tok.SPACING_HORIZONTAL_M + m.icon + m.icon_gap
 	ops.clip_push(gtx.scene, ops.Rect{tok.STROKE_WIDTH_THIN, tok.STROKE_WIDTH_THIN, sz.x - end_pad - tok.STROKE_WIDTH_THIN, sz.y - 2 * tok.STROKE_WIDTH_THIN})
 	for o, i in options {

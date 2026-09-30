@@ -3,6 +3,7 @@ package fluent
 import "core:strings"
 import "core:testing"
 import "jm:ui"
+import "jm:ui/ops"
 
 // Behaviour of the inputs group, driven through ui.Probe by their tags.
 
@@ -158,4 +159,25 @@ test_textarea_wraps_at_spaces_and_newlines :: proc(t: ^testing.T) {
 	testing.expect(t, len(long.lines) >= 2)
 	// The empty string is one empty line, so the caret has a home.
 	testing.expect_value(t, len(layout_style(gtx, "", st, one).lines), 1)
+}
+
+@(test)
+test_inputs_show_the_i_beam_and_links_the_hand :: proc(t: ^testing.T) {
+	m: Inputs_Model
+	p: ui.Probe
+	ui.probe_init(&p, inputs, &m, {600, 500}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	defer ui.text_destroy(&m.name)
+	defer ui.text_destroy(&m.notes)
+	cursor_over :: proc(p: ^ui.Probe, name: string) -> ops.Cursor {
+		c, _ := ui.probe_center(p, name)
+		ui.probe_move(p, c.x, c.y)
+		return ui.probe_cursor(p)
+	}
+	testing.expect_value(t, cursor_over(&p, "First and last"), ops.Cursor.Text)
+	testing.expect_value(t, cursor_over(&p, "Notes"), ops.Cursor.Text)
+	testing.expect_value(t, cursor_over(&p, "Learn more"), ops.Cursor.Pointer)
+	ui.probe_move(&p, 590, 490) // nothing there
+	testing.expect_value(t, ui.probe_cursor(&p), ops.Cursor.Default)
 }

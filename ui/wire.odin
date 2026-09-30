@@ -12,10 +12,15 @@ import "jm:ui/ops"
 //
 //	Input: f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event
 //	Raw_Event: u8 kind, f32 x, f32 y, u8 button, f32 sx, f32 sy, u8 key,
-//	           u8 mods, str text
-//	Reply: u8 wants_frame, f32 frame_after, then encode(sc)'s own bytes
-//	       verbatim — Reply carries no length for them; the transport frame
-//	       they arrived in already bounds where they end.
+//	           u8 mods, str text, str mime, u8 clicks
+//	Reply: u8 flags, f32 frame_after, [debug block], [platform block], then
+//	       encode(sc)'s own bytes verbatim — Reply carries no length for
+//	       them; the transport frame they arrived in already bounds where
+//	       they end. Flags: 1 wants a frame, 2 full frames, 4 flash (a count
+//	       and rects follow), 8 platform (u8 cursor, u8 n, n × request:
+//	       u8 1 str mime str data for a clipboard write, u8 2 str mime for a
+//	       read). The platform block is written only when the cursor changed
+//	       or a request is pending, so most replies are as before.
 
 // encode_input serializes size, density, dt and events into a new byte
 // slice, the host's half of one frame's round trip.
@@ -96,6 +101,8 @@ encode_raw_event :: proc(w: ^[dynamic]byte, e: Raw_Event) {
 	append(w, u8(e.key))
 	append(w, transmute(u8)e.mods)
 	ops.put_str(w, e.text)
+	ops.put_str(w, e.mime)
+	append(w, e.clicks)
 }
 
 @(private = "file")
@@ -125,6 +132,8 @@ decode_raw_event :: proc(r: ^ops.Reader) -> (e: Raw_Event, ok: bool) {
 	}
 	e.mods = transmute(Mods)mods
 	e.text = ops.get_str(r) or_return
+	e.mime = ops.get_str(r) or_return
+	e.clicks = ops.get_u8(r) or_return
 	return e, true
 }
 
@@ -139,18 +148,35 @@ encode_reply :: proc(
 	full_frames := false,
 	flash := false,
 	keep_out: []ops.Rect = nil,
+	platform: ^Reply_Platform = nil,
 ) -> []byte {
 	w := make([dynamic]byte, 0, 5 + len(ops_bytes), allocator)
 	// Bit 0: wants another frame. Bit 1: redraw it whole (the debug tray's
 	// full frames), since the compositor runs in the host. Bit 2: flash
 	// what it repaints, but not over keep_out, the debug panels, which
 	// follow as a count and rects.
-	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0))
+	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0) | (u8(8) if platform != nil else 0))
 	ops.put_f32(&w, frame_after)
 	if flash {
 		append(&w, u8(min(len(keep_out), 255)))
 		for r in keep_out[:min(len(keep_out), 255)] {
 			ops.put_rect(&w, r)
+		}
+	}
+	if platform != nil {
+		append(&w, u8(platform.cursor))
+		reqs := reply_requests(platform)
+		append(&w, u8(len(reqs)))
+		for q in reqs {
+			switch v in q {
+			case Clipboard_Write:
+				append(&w, 1)
+				ops.put_str(&w, v.mime)
+				ops.put_str(&w, v.data)
+			case Clipboard_Read:
+				append(&w, 2)
+				ops.put_str(&w, v.mime)
+			}
 		}
 	}
 	append(&w, ..ops_bytes)
@@ -161,10 +187,13 @@ encode_reply :: proc(
 // (not copied), meant for an immediate ui.decode.
 // keep_out is read into its fixed buffer; the reply's flags and keep_out
 // come back as Reply_Debug.
-decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
-	r := ops.Reader{data = data}
+decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Platform = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
+	r := ops.Reader {
+		data      = data,
+		allocator = context.temp_allocator,
+	}
 	flag := ops.get_u8(&r) or_return
-	if flag > 7 {
+	if flag > 15 {
 		return false, 0, nil, false
 	}
 	d: Reply_Debug
@@ -183,7 +212,52 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil) -> (wants_frame: boo
 	if dbg != nil {
 		dbg^ = d
 	}
+	p: Reply_Platform
+	if flag & 8 != 0 {
+		c := ops.get_u8(&r) or_return
+		if c > u8(max(ops.Cursor)) {
+			return false, 0, nil, false
+		}
+		p.cursor = ops.Cursor(c)
+		p.changed = true
+		n := int(ops.get_u8(&r) or_return)
+		for _ in 0 ..< n {
+			q: Request
+			switch ops.get_u8(&r) or_return {
+			case 1:
+				mime := ops.get_str(&r) or_return
+				data := ops.get_str(&r) or_return
+				q = Clipboard_Write{mime, data}
+			case 2:
+				q = Clipboard_Read{ops.get_str(&r) or_return}
+			case:
+				return false, 0, nil, false
+			}
+			if p.requests_n < len(p.requests_buf) {
+				p.requests_buf[p.requests_n] = q
+				p.requests_n += 1
+			}
+		}
+	}
+	if platform != nil {
+		platform^ = p
+	}
 	return wants_frame, frame_after, data[r.pos:], true
+}
+
+// Reply_Platform is what a reply asks of the host's platform: the cursor,
+// when changed is set, and the frame's requests (request.odin). Strings in
+// the requests are in the temp allocator.
+Reply_Platform :: struct {
+	cursor:       ops.Cursor,
+	changed:      bool,
+	requests_buf: [4]Request,
+	requests_n:   int,
+}
+
+// reply_requests is p's requests, in the order the child made them.
+reply_requests :: proc(p: ^Reply_Platform) -> []Request {
+	return p.requests_buf[:p.requests_n]
 }
 
 // Reply_Debug is what a reply asks of the host for the child's debug tray:

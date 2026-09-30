@@ -41,6 +41,7 @@ Probe :: struct {
 	tray:        Debug_Tray, // DEBUG_TOGGLE_KEY opens it, as in a live loop; its stats are the last frame's
 	arena:       ops.Frame_Arena,
 	allocator:   mem.Allocator,
+	clipboard:   [dynamic]u8, // the fake system clipboard frames write and read
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -62,6 +63,7 @@ probe_init :: proc(
 	p.user = user
 	p.size = size
 	p.allocator = allocator
+	p.clipboard = make([dynamic]u8, allocator)
 	p.shaper = stub_shaper()
 	p.font = font
 	p.dt = 1.0 / 60
@@ -83,6 +85,7 @@ probe_destroy :: proc(p: ^Probe) {
 	frame_destroy(&p.prev)
 	ops.destroy(&p.scene)
 	ops.frame_arena_destroy(&p.arena)
+	delete(p.clipboard)
 	p^ = {}
 }
 
@@ -125,6 +128,41 @@ probe_frame :: proc(p: ^Probe) {
 	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), ops.frame_arena_used(&p.arena)))
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
+	probe_platform(p)
+}
+
+// probe_platform carries out the frame's requests as a host would, on
+// the probe's fake clipboard: a write replaces it, a read answers with a
+// Paste for the next frame.
+@(private = "file")
+probe_platform :: proc(p: ^Probe) {
+	for q in router_requests(&p.router) {
+		switch v in q {
+		case Clipboard_Write:
+			clear(&p.clipboard)
+			append(&p.clipboard, v.data)
+		case Clipboard_Read:
+			router_push(&p.router, {kind = .Paste, text = string(p.clipboard[:]), mime = v.mime})
+		}
+	}
+	router_requests_clear(&p.router)
+}
+
+// probe_clipboard is the fake clipboard's text; valid until the next frame
+// that writes it.
+probe_clipboard :: proc(p: ^Probe) -> string {
+	return string(p.clipboard[:])
+}
+
+// probe_set_clipboard puts text on the fake clipboard, as another app would.
+probe_set_clipboard :: proc(p: ^Probe, text: string) {
+	clear(&p.clipboard)
+	append(&p.clipboard, text)
+}
+
+// probe_cursor is the pointer's look after the last frame's route.
+probe_cursor :: proc(p: ^Probe) -> ops.Cursor {
+	return router_cursor(&p.router)
 }
 
 // probe_set_dt overrides gtx.dt for every probe_frame from here on, in

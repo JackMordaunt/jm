@@ -56,6 +56,7 @@ run :: proc(app: App) {
 	defer ui.frame_destroy(&frames[0])
 	defer ui.frame_destroy(&frames[1])
 	frame, prev := &frames[0], &frames[1]
+	sent_cursor: ops.Cursor // the host starts with the default arrow
 
 	router: ui.Router
 	ui.router_init(&router)
@@ -158,6 +159,21 @@ run :: proc(app: App) {
 		// host is what the host said presenting the frame before cost.
 		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), ops.frame_arena_used(arena), host))
 		keep_out: [2]ops.Rect
+		// The platform block: the cursor when it changed, and what the
+		// frame asked of the clipboard, which the host carries out.
+		platform: ^ui.Reply_Platform
+		p: ui.Reply_Platform
+		cursor := ui.router_cursor(&router)
+		reqs := ui.router_requests(&router)
+		if cursor != sent_cursor || len(reqs) > 0 {
+			p.cursor = cursor
+			for q in reqs[:min(len(reqs), len(p.requests_buf))] {
+				p.requests_buf[p.requests_n] = q
+				p.requests_n += 1
+			}
+			platform = &p
+			sent_cursor = cursor
+		}
 		reply := ui.encode_reply(
 			gtx.wants_frame || tray.open,
 			gtx.frame_after,
@@ -166,7 +182,9 @@ run :: proc(app: App) {
 			ui.debug_tray_wants_full_frames(&tray),
 			ui.debug_tray_wants_flash(&tray),
 			ui.debug_tray_overlays(&tray, density, &keep_out),
+			platform,
 		)
+		ui.router_requests_clear(&router)
 		if !ipc.write_frame(os.stdout, reply) {
 			return // the host is gone
 		}

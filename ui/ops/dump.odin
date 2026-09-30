@@ -59,6 +59,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			write_shape(&sb, v.shape)
 			strings.write_string(&sb, " kinds=")
 			write_kinds(&sb, v.kinds)
+			if v.cursor != .Default {
+				fmt.sbprintf(&sb, " cursor=%s", strings.to_lower(fmt.tprint(v.cursor), context.temp_allocator))
+			}
 		case Tag:
 			write_tag(&sb, v)
 		case Debug_Box:

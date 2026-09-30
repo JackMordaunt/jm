@@ -344,8 +344,8 @@ state_layer :: proc(st: Interaction) -> f32 {
 CLICK_KINDS :: design.CLICK_KINDS
 
 // listen registers id's input area when c is Live.
-listen :: proc(gtx: ^ui.Ctx, c: Control, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS) {
-	design.listen(gtx, c.st, id, shape, kinds)
+listen :: proc(gtx: ^ui.Ctx, c: Control, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS, cursor := ops.Cursor.Default) {
+	design.listen(gtx, c.st, id, shape, kinds, cursor)
 }
 
 // paint_state_layer paints c's state layer of color over shape, then any ripple.

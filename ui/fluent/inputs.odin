@@ -315,7 +315,7 @@ input :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, area, underline ? 0 : BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
-	listen(gtx, c.st, p.id, area, EDIT_KINDS)
+	listen(gtx, c.st, p.id, area, EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
@@ -478,7 +478,7 @@ textarea :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, box, BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
-	listen(gtx, c.st, p.id, box, EDIT_KINDS)
+	listen(gtx, c.st, p.id, box, EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ui.widget_close(gtx, &p, {sz, text_y + para.lines[0].baseline})
 	return
@@ -777,7 +777,7 @@ link :: proc(
 			ops.fill(gtx.scene, ops.Rect{0, base + 2, t.width, tok.STROKE_WIDTH_THIN}, fg)
 		}
 	}
-	listen(gtx, c.st, p.id, area)
+	listen(gtx, c.st, p.id, area, cursor = .Pointer) // a link, as a browser shows one
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
 	ui.widget_close(gtx, &p, {sz, base})
 	return c.clicked
