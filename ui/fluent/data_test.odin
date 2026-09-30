@@ -188,3 +188,43 @@ test_skeleton_and_text_size_and_animate :: proc(t: ^testing.T) {
 	testing.expect_value(t, text_style(.S500, .Semibold), style(.Subtitle1))
 	testing.expect_value(t, tag_group_gap(.Small), f32(6))
 }
+
+@(private = "file")
+Hug_Model :: struct {
+	in_row, in_column: ui.Dims,
+	wrapped:           ui.Dims,
+	short:             f32, // "Short" shaped on one line
+}
+
+@(private = "file")
+hug_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Hug_Model)(user)
+	m.short = shape_style(gtx, "Short", text_style(.S300, .Regular)).width
+	col := ui.column_open(gtx, align = .Fill)
+	defer ui.close(&col)
+	if ui.row(gtx) {
+		m.in_row = text(gtx, "Short", {0, 0, 0, 255}, block = true)
+	}
+	m.in_column = text(gtx, "Filled", {0, 0, 0, 255}, block = true)
+	if ui.row(gtx) {
+		m.wrapped = text(gtx, "long enough to wrap onto more than one line", {0, 0, 0, 255}, block = true, key = 1)
+	}
+}
+
+@(test)
+test_block_text_hugs_in_a_row_and_fills_a_fill_column :: proc(t: ^testing.T) {
+	m: Hug_Model
+	p: ui.Probe
+	ui.probe_init(&p, hug_view, &m, {200, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	short := m.short
+	testing.expect(t, m.in_row.size.x > 0)
+	testing.expect_value(t, m.in_row.size.x, short)
+	testing.expect_value(t, m.in_column.size.x, 200)
+	// Wrapped, it is its widest line, no wider than the row offered.
+	testing.expect(t, m.wrapped.size.y > text_style(.S300, .Regular).line_height)
+	testing.expect(t, m.wrapped.size.x <= 200)
+	testing.expect(t, m.wrapped.size.x > short)
+}

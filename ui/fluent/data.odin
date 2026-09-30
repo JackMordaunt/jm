@@ -1721,7 +1721,12 @@ ITALIC_SHEAR :: f32(0.2)
 // foreground. Inline, it is its content's width on one line; block
 // lays it out to width (the constraints' when 0), wrapping when wrap
 // is true, else clipping, with an ellipsis when truncate is set
-// (useTextStyles.styles.ts:27-36,121-123). italic shears the glyphs,
+// (useTextStyles.styles.ts:27-36,121-123). A block with no width,
+// Start-aligned and left to right, is as wide as its widest line up to
+// that, as a CSS block is in a flex row: it hugs its content in a row
+// and still fills a Fill column, whose constraints set its minimum.
+// Other alignments and right-to-left text take the whole box, which
+// they place their lines in. italic shears the glyphs,
 // underline and strikethrough draw their lines; align places block
 // lines. Returns its dims; the run is tagged with s. The text is
 // selectable (ui.selectable_text) unless selectable is false, or it is
@@ -1778,7 +1783,8 @@ text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Colo
 		box_w = ui.is_finite(cs.max.x) ? cs.max.x : 0
 	}
 	para := layout_style(gtx, s, st, box_w if block && wrap_lines && box_w > 0 else 0)
-	sz := ui.constrain(cs, {box_w > 0 ? box_w : para.width, para.height})
+	hug := width == 0 && align == .Start && !para.rtl
+	sz := ui.constrain(cs, {box_w > 0 && !hug ? box_w : para.width, para.height})
 	if italic {
 		// Shear about the run's bottom: the top leans right by the shear.
 		ops.transform_push(gtx.scene, ops.Affine{1, 0, f64(-ITALIC_SHEAR), 1, f64(ITALIC_SHEAR * sz.y), 0})
