@@ -198,11 +198,11 @@ pg_query:
 # Compile Blend2D into ui/blend2d/lib if it is missing
 [unix]
 blend2d:
-    @mkdir -p ui/blend2d/lib
+    @mkdir -p ui/blend2d/lib build
     @if [ ! -f {{blend2d_lib}} ]; then \
         echo "cmake blend2d ({{blend2d_src}}) -> {{blend2d_lib}}"; \
-        cmake -S {{blend2d_src}} -B build/blend2d -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1; \
-        cmake --build build/blend2d --config Release --parallel >> build/blend2d.log 2>&1; \
+        cmake -S {{blend2d_src}} -B build/blend2d -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit 1; \
+        cmake --build build/blend2d --config Release --parallel >> build/blend2d.log 2>&1 || exit 1; \
         cp build/blend2d/libblend2d.a {{blend2d_lib}}; \
     fi
 
@@ -227,14 +227,14 @@ blend2d:
 # Compile libgit2 into git/lib if it is missing
 [unix]
 libgit2:
-    @mkdir -p git/lib
+    @mkdir -p git/lib build
     @if [ ! -f {{libgit2_lib}} ]; then \
         echo "cmake libgit2 ({{libgit2_src}}) -> {{libgit2_lib}}"; \
         cmake -S {{libgit2_src}} -B build/libgit2 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_SSH=exec -DUSE_HTTPS={{libgit2_https}} \
             -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin \
-            -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1; \
-        cmake --build build/libgit2 --config Release --parallel >> build/libgit2.log 2>&1; \
+            -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1 || exit 1; \
+        cmake --build build/libgit2 --config Release --parallel >> build/libgit2.log 2>&1 || exit 1; \
         cp build/libgit2/libgit2.a {{libgit2_lib}}; \
     fi
 
