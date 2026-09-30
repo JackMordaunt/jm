@@ -143,7 +143,7 @@ current_popover: ^Popover
 //
 // Departures: focus is neither moved in nor trapped (jm:ui has no Tab traversal); hover-,
 // context- and scroll-driven opening are not built; the arrow is not
-// shadowed (ops has no drop-shadow filter); the 4px gap without an arrow
+// shadowed (ops.Shadow casts rounded rects only); the 4px gap without an arrow
 // is the tooltip's, as the styles file gives none.
 popover_open :: proc(
 	gtx: ^ui.Ctx,
