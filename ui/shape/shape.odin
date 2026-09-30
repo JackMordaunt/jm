@@ -32,6 +32,7 @@ package shape
 import "core:mem"
 import "core:os"
 import "jm:ui/ops"
+import "jm:ui"
 import "jm:ui/kb"
 
 // Shaper holds the faces it has parsed. Zero it and call init before use;
@@ -39,7 +40,8 @@ import "jm:ui/kb"
 Shaper :: struct {
 	refs:      []ops.Font_Ref, // what faces are loaded from
 	faces:     map[ops.Font_Id]^Face, // boxed: kb keys its caches by font address
-	scratch:   [dynamic]ops.Glyph, // a run under construction, reused
+	scratch:   [dynamic]ui.Shaped_Glyph, // text under construction, reused
+	runs:      [dynamic]ui.Shaped_Run,
 	allocator: ^mem.Allocator, // boxed: kb keeps a pointer to it
 }
 
@@ -61,7 +63,8 @@ Face :: struct {
 init :: proc(s: ^Shaper, allocator := context.allocator) {
 	s.allocator = new_clone(allocator, allocator)
 	s.faces = make(map[ops.Font_Id]^Face, allocator)
-	s.scratch = make([dynamic]ops.Glyph, allocator)
+	s.scratch = make([dynamic]ui.Shaped_Glyph, allocator)
+	s.runs = make([dynamic]ui.Shaped_Run, allocator)
 }
 
 // destroy releases every face and kb's context.
@@ -80,67 +83,125 @@ destroy :: proc(s: ^Shaper) {
 	}
 	delete(s.faces)
 	delete(s.scratch)
+	delete(s.runs)
 	free(s.allocator, a)
 	s^ = {}
 }
 
-// shape shapes UTF-8 text in font at size pixels. Glyph offsets are from
-// the run origin in pixels, y down; advance is the pen position after the
-// last glyph. An unknown or unreadable font yields an empty run.
+// shape shapes UTF-8 text in font at size pixels as one run: runs of
+// either direction laid left to right in logical order (see the package
+// doc). Glyph offsets are from the run origin in pixels, y down; advance is
+// the pen position after the last glyph. An unknown or unreadable font
+// yields an empty run.
 shape :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {
+	st := shape_text(s, font, size, text, context.temp_allocator)
 	run := ops.Glyph_Run{font = font, size = size}
+	run.glyphs = make([]ops.Glyph, len(st.glyphs), allocator)
+	pen: f32
+	for r in st.runs {
+		for v in 0 ..< r.last - r.first {
+			k := r.last - 1 - v if r.rtl else r.first + v
+			g := st.glyphs[k]
+			run.glyphs[k] = {g.id, g.cluster, pen + g.offset.x, g.offset.y}
+			pen += g.advance
+		}
+	}
+	run.advance = pen
+	return run
+}
+
+// shape_text shapes UTF-8 text in font at size pixels as a paragraph for
+// ui.paragraph_layout: kb's runs with their directions, the paragraph's
+// direction, and kb's grapheme and line breaks. Text is horizontal: a
+// glyph's vertical advance is dropped. An unknown or unreadable font
+// yields no glyphs, runs or breaks.
+shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ui.Shaped_Text {
+	st := ui.Shaped_Text{font = font, size = size}
 	f := face(s, font)
 	if f == nil || len(text) == 0 {
-		return run
+		return st
 	}
 	kb.ShapeBegin(f.ctx, .Dont_Know, .Dont_Know)
 	kb.ShapeUtf8(f.ctx, text, .Source_Index)
 	kb.ShapeEnd(f.ctx)
 	if kb.ShapeError(f.ctx) != .None {
-		return run
+		return st
 	}
 
-	scale := f64(size) / f64(f.upem)
+	scale := size / f.upem
 	clear(&s.scratch)
-	pen: [2]i64 // font units
+	clear(&s.runs)
 	for {
 		r: kb.Run
 		if !kb.ShapeRun(f.ctx, &r) {
 			break
 		}
-		start := len(s.scratch)
+		if len(s.runs) == 0 {
+			st.rtl = r.paragraph_direction == .RTL
+		}
+		first := len(s.scratch)
 		g: ^kb.Glyph
 		for kb.GlyphIteratorNext(&r.glyphs, &g) {
 			cp: kb.Shape_Codepoint
 			_ = kb.ShapeGetShapeCodepoint(f.ctx, g.user_id_or_codepoint_index, &cp)
-			x := f64(pen.x + i64(g.offset_x)) * scale
-			y := -f64(pen.y + i64(g.offset_y)) * scale // font units are y up
-			append(&s.scratch, ops.Glyph{u32(g.id), u32(cp.user_id), f32(x), f32(y)})
-			pen += {i64(g.advance_x), i64(g.advance_y)}
+			// Font units are y up, as OpenType's glyph space is.
+			append(&s.scratch, ui.Shaped_Glyph{u32(g.id), u32(cp.user_id), f32(g.advance_x) * scale, {f32(g.offset_x) * scale, -f32(g.offset_y) * scale}})
 		}
-		if r.direction == .RTL {
-			reverse(s.scratch[start:]) // kb mirrored it; clusters want logical order
+		if len(s.scratch) == first {
+			continue
 		}
+		rtl := r.direction == .RTL
+		if rtl {
+			reverse(s.scratch[first:]) // kb mirrored it; clusters want logical order
+		}
+		append(&s.runs, ui.Shaped_Run{first = first, last = len(s.scratch), rtl = rtl})
 	}
 	merge_clusters(s.scratch[:])
-	run.glyphs = make([]ops.Glyph, len(s.scratch), allocator)
-	copy(run.glyphs, s.scratch[:])
-	run.advance = f32(f64(pen.x) * scale)
-	return run
+	for &r, i in s.runs {
+		r.start = int(s.scratch[r.first].cluster)
+		r.end = int(s.scratch[s.runs[i + 1].first].cluster) if i + 1 < len(s.runs) else len(text)
+	}
+	if len(s.runs) > 0 {
+		s.runs[0].start = 0
+	}
+
+	breaks := make([dynamic]ui.Text_Break, 0, len(text), allocator)
+	cp: kb.Shape_Codepoint
+	for i: i32 = 0; kb.ShapeGetShapeCodepoint(f.ctx, i, &cp); i += 1 {
+		kinds: ui.Break_Kinds
+		if .Grapheme in cp.breaks {
+			kinds += {.Grapheme}
+		}
+		if .Line_Soft in cp.breaks {
+			kinds += {.Line_Soft}
+		}
+		if .Line_Hard in cp.breaks {
+			kinds += {.Line_Hard}
+		}
+		if kinds != {} {
+			append(&breaks, ui.Text_Break{int(cp.user_id), kinds})
+		}
+	}
+	st.breaks = breaks[:]
+	st.glyphs = make([]ui.Shaped_Glyph, len(s.scratch), allocator)
+	copy(st.glyphs, s.scratch[:])
+	st.runs = make([]ui.Shaped_Run, len(s.runs), allocator)
+	copy(st.runs, s.runs[:])
+	return st
 }
 
 // merge_clusters lowers each glyph's cluster to the smallest that follows
 // it, so a glyph a script moved ahead of its base shares the base's
 // cluster and clusters never decrease.
 @(private)
-merge_clusters :: proc(gs: []ops.Glyph) {
+merge_clusters :: proc(gs: []ui.Shaped_Glyph) {
 	for i := len(gs) - 2; i >= 0; i -= 1 {
 		gs[i].cluster = min(gs[i].cluster, gs[i + 1].cluster)
 	}
 }
 
 @(private)
-reverse :: proc(gs: []ops.Glyph) {
+reverse :: proc(gs: []ui.Shaped_Glyph) {
 	for i, j := 0, len(gs) - 1; i < j; i, j = i + 1, j - 1 {
 		gs[i], gs[j] = gs[j], gs[i]
 	}

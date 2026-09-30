@@ -23,7 +23,6 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import "core:unicode/utf8"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/child"
@@ -252,7 +251,7 @@ page_scripts :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_bidi :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	specimens(gtx, m, BIDI[:], "Drawn in logical order until bidi lands; one font per line until fallback does.")
+	specimens(gtx, m, BIDI[:], "Runs reordered per line (UAX #9 L2 from run directions); one font per line until fallback lands.")
 }
 
 page_emoji :: proc(gtx: ^ui.Ctx, m: ^Model) {
@@ -277,10 +276,22 @@ page_editing :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_paragraph :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 12)
+	col := ui.column_open(gtx, gap = 20)
 	defer ui.close(&col)
+	note(gtx, "ui.paragraph_layout at 520px: soft breaks, hanging spaces, emergency breaks, right-to-left alignment.")
+	for sm, i in WRAPPED {
+		specimen(gtx, m, sm, key = u64(i), width = 520)
+	}
 	note(gtx, "A textarea: wrapping, vertical caret motion and hit-testing across lines.")
 	fluent.textarea(gtx, &m.paragraph, width = 520)
+}
+
+WRAPPED := [?]Sample {
+	{"Latin", PARAGRAPH, .Latin},
+	{"Hebrew: a right-to-left paragraph", "עברית היא שפה שמית ממשפחת השפות האפרו-אסיאתיות. הטקסט נכתב מימין לשמאל, ומספרים כמו 2026 נכתבים משמאל לימין.", .Hebrew},
+	{"Arabic: joining across wrapped lines", "اللغة العربية هي أكثر اللغات السامية تحدثاً، وإحدى أكثر اللغات انتشاراً في العالم، يتحدثها أكثر من 400 مليون نسمة.", .Arabic},
+	{"Thai: no spaces between words", "ภาษาไทยเป็นภาษาที่มีระดับเสียงของคำแน่นอนหรือวรรณยุกต์เช่นเดียวกับภาษาจีนและออกเสียงแยกคำต่อคำ", .Thai},
+	{"CJK: a break between any two ideographs", "日本語の文章は単語の間に空白を置かずに書かれるので、行はほとんどどの文字の間でも折り返すことができます。", .CJK},
 }
 
 // swap_font makes id the font fluent's controls and ui's hit-testing
@@ -340,61 +351,83 @@ swatch :: proc(gtx: ^ui.Ctx, c: ops.Color, loc := #caller_location) -> ui.Dims {
 
 // specimen is one sample: its label and counts, then its run at the
 // chosen size with the overlays.
-specimen :: proc(gtx: ^ui.Ctx, m: ^Model, sm: Sample, key: u64) {
+specimen :: proc(gtx: ^ui.Ctx, m: ^Model, sm: Sample, key: u64, width: f32 = 0) {
 	s := fluent.scheme()
-	size := SIZES[m.size]
-	font := m.font[sm.script]
-	run := ui.shape(gtx.shaper, font, size, sm.text, gtx.allocator)
-	fm := ui.metrics(gtx.shaper, font, size)
+	p := ui.paragraph_layout(gtx.shaper, m.font[sm.script], SIZES[m.size], sm.text, width, gtx.allocator)
 
 	col := ui.column_open(gtx, gap = 4, key = key)
 	defer ui.close(&col)
 	base.label(gtx, sm.label, {size = 13, color = s[.Neutral_Foreground1]})
 	font_note := m.found[sm.script] ? fmt.tprint(sm.script) : fmt.tprintf("%v missing, default font", sm.script)
-	base.label(gtx, fmt.tprintf("%d bytes · %d runes · %d glyphs · %d clusters · %.1fpx · %s", len(sm.text), utf8.rune_count(sm.text), len(run.glyphs), cluster_count(run), run.advance, font_note), {size = 11, color = s[.Neutral_Foreground3]})
-	shaped(gtx, run, fm, sm.text, !m.plain, s[.Neutral_Foreground1])
+	glyphs, clusters, runs := 0, 0, 0
+	for ln in p.lines {
+		runs += len(ln.runs)
+		for r in ln.runs {
+			glyphs += len(r.glyphs.glyphs)
+			clusters += len(r.clusters)
+		}
+	}
+	base.label(gtx, fmt.tprintf("%d bytes · %d graphemes · %d glyphs · %d clusters · %d runs · %d lines · %.1fpx · %s%s", len(sm.text), len(p.graphemes) - 1, glyphs, clusters, runs, len(p.lines), p.width, "rtl · " if p.rtl else "", font_note), {size = 11, color = s[.Neutral_Foreground3]})
+	draw_specimen(gtx, p, width, !m.plain, s[.Neutral_Foreground1])
 }
 
-// shaped draws run with its line box's top-left at the origin and, when
-// overlays is set, what the shaper produced laid over it.
-shaped :: proc(gtx: ^ui.Ctx, run: ops.Glyph_Run, fm: ui.Font_Metrics, text: string, overlays: bool, color: ops.Color, loc := #caller_location) -> ui.Dims {
-	p := ui.widget_open(gtx, 0, loc)
-	h := fm.ascent + fm.descent
-	tick := max(fm.descent * 0.6, 4)
+// draw_specimen draws paragraph p, width wide (its own width when 0),
+// with its top-left at the origin and, when overlays is set, what layout
+// produced laid over it: each line's box and baseline, glyph origins, the
+// logical start edge of each cluster and a tick at every caret stop.
+draw_specimen :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, width: f32, overlays: bool, color: ops.Color, loc := #caller_location) -> ui.Dims {
+	w := width if width > 0 else p.width
+	pl := ui.widget_open(gtx, 0, loc)
 	if overlays {
-		ops.fill(gtx.scene, ops.Rect{0, 0, run.advance, h}, BOX)
-		ops.fill(gtx.scene, ops.Rect{0, fm.ascent, run.advance, 1}, BASELINE)
-		prev := -1
-		for g in run.glyphs {
-			if int(g.cluster) != prev {
-				ops.fill(gtx.scene, ops.Rect{g.x, 0, 1, h}, CLUSTER)
-				prev = int(g.cluster)
+		if width > 0 {
+			ops.stroke(gtx.scene, ops.Rect{0, 0, w, p.height}, BASELINE, {width = 1})
+		}
+		draw_line_boxes(gtx, p)
+	}
+	ui.paragraph_draw(gtx.scene, p, {}, color)
+	if overlays {
+		draw_glyph_marks(gtx, p)
+	}
+	return ui.widget_close(gtx, &pl, {{w, p.height + tick_height(p)}, p.metrics.ascent})
+}
+
+// draw_line_boxes draws, under the text, each line's box and baseline and
+// a rule at each cluster's logical start edge.
+draw_line_boxes :: proc(gtx: ^ui.Ctx, p: ui.Paragraph) {
+	lh := ui.line_height(p.metrics)
+	h := p.metrics.ascent + p.metrics.descent
+	for ln, k in p.lines {
+		top := f32(k) * lh
+		ops.fill(gtx.scene, ops.Rect{ln.x, top, ln.width, h}, BOX)
+		ops.fill(gtx.scene, ops.Rect{ln.x, ln.baseline, ln.width, 1}, BASELINE)
+		for r in ln.runs {
+			for c in r.clusters {
+				ops.fill(gtx.scene, ops.Rect{ln.x + (c.x1 - 1 if r.rtl else c.x0), top, 1, h}, CLUSTER)
 			}
 		}
 	}
-	ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {0, fm.ascent}, color)
-	if overlays {
-		for g in run.glyphs {
-			ops.fill(gtx.scene, ops.Ellipse{{g.x - 2, fm.ascent + g.y - 2, 4, 4}}, ORIGIN)
-		}
-		for _, i in text {
-			x := ui.caret_x(run, text, i)
-			ops.fill(gtx.scene, ops.Rect{x - 0.5, h, 1, tick}, CARET)
-		}
-		ops.fill(gtx.scene, ops.Rect{run.advance - 0.5, h, 1, tick}, CARET)
-	}
-	return ui.widget_close(gtx, &p, {{run.advance, h + tick}, fm.ascent})
 }
 
-cluster_count :: proc(run: ops.Glyph_Run) -> int {
-	n, prev := 0, -1
-	for g in run.glyphs {
-		if int(g.cluster) != prev {
-			n += 1
-			prev = int(g.cluster)
+// draw_glyph_marks draws, over the text, a dot at each glyph's origin and
+// a tick under each caret stop.
+draw_glyph_marks :: proc(gtx: ^ui.Ctx, p: ui.Paragraph) {
+	for ln in p.lines {
+		for r in ln.runs {
+			for g in r.glyphs.glyphs {
+				ops.fill(gtx.scene, ops.Ellipse{{ln.x + r.x + g.x - 2, ln.baseline + g.y - 2, 4, 4}}, ORIGIN)
+			}
 		}
 	}
-	return n
+	lh := ui.line_height(p.metrics)
+	h := p.metrics.ascent + p.metrics.descent
+	for g in p.graphemes {
+		k, x := ui.paragraph_caret(p, g)
+		ops.fill(gtx.scene, ops.Rect{x - 0.5, f32(k) * lh + h, 1, tick_height(p)}, CARET)
+	}
+}
+
+tick_height :: proc(p: ui.Paragraph) -> f32 {
+	return max(p.metrics.descent * 0.6, 4)
 }
 
 // lab_fonts picks each Script's file, the first candidate in FONT_FILES

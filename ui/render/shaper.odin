@@ -26,7 +26,12 @@ shaper :: proc(r: ^Renderer, fonts: []ops.Font_Ref) -> ui.Shaper {
 	if os.get_env(buf[:], SHAPER_ENV) == "blend2d" {
 		return {data = r, shape = shape_blend2d, metrics = metrics}
 	}
-	return {data = r, shape = shape_kb, metrics = metrics}
+	return {data = r, shape = shape_kb, metrics = metrics, shape_text = shape_text_kb}
+}
+
+@(private)
+shape_text_kb :: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ui.Shaped_Text {
+	return shape.shape_text(&(^Renderer)(data).text, font, size, text, allocator)
 }
 
 @(private)

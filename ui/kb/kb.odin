@@ -75,12 +75,33 @@ Glyph :: struct {
 	advance_x, advance_y:       i32,
 }
 
+// Break is one of kbts_break_flags: flags on a codepoint describe the
+// boundary before it (jm:ui/shape's test_shape_text_directions_and_breaks
+// pins this: soft breaks land on the rune after each space).
+Break :: enum u32 {
+	Direction           = 0, // direction changes; direction holds the new one
+	Script              = 1,
+	Grapheme            = 2, // a caret may stop here
+	Word                = 3,
+	Line_Soft           = 4, // a line may wrap here
+	Line_Hard           = 5, // a line must end here
+	Manual              = 6,
+	Paragraph_Direction = 7, // paragraph_direction is set
+}
+Breaks :: distinct bit_set[Break;u32]
+
 // Shape_Codepoint is kbts_shape_codepoint; user_id is the input's user id,
-// a byte offset under Source_Index.
+// a byte offset under Source_Index. direction and paragraph_direction hold
+// only where breaks says they changed, as kb_text_shape.h's own comments
+// on kbts_shape_codepoint put it ("Only set when (BreakFlags & ...)").
 Shape_Codepoint :: struct #align (8) {
-	_:       [24]u8,
-	user_id: c.int,
-	_:       [20]u8,
+	_:                   [24]u8,
+	user_id:             c.int,
+	breaks:              Breaks,
+	script:              u32,
+	direction:           Direction,
+	paragraph_direction: Direction,
+	_:                   [4]u8,
 }
 
 // Font_Info2_1 is kbts_font_info2_1; set size to size_of(Font_Info2_1)
@@ -117,6 +138,9 @@ Allocator_Function :: #type proc "c" (data: rawptr, op: ^Allocator_Op)
 #assert(offset_of(Glyph, advance_y) == 40)
 #assert(size_of(Shape_Codepoint) == 48)
 #assert(offset_of(Shape_Codepoint, user_id) == 24)
+#assert(offset_of(Shape_Codepoint, breaks) == 28)
+#assert(offset_of(Shape_Codepoint, direction) == 36)
+#assert(offset_of(Shape_Codepoint, paragraph_direction) == 40)
 #assert(size_of(Font_Info2_1) == 168)
 #assert(offset_of(Font_Info2_1, units_per_em) == 152)
 #assert(size_of(Allocator_Op) == 24)

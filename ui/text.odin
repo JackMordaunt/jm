@@ -6,8 +6,9 @@ import "jm:ui/ops"
 
 // Text is shaped in layout and rasterized in the renderer. The op buffer
 // carries glyph runs, never strings, so a renderer needs the font file and
-// nothing else. Shaper is the seam: ui/render implements it over Blend2D's
-// font_shape; tests use stub_shaper.
+// nothing else. Shaper is the seam: ui/render implements it over
+// jm:ui/shape; tests use stub_shaper. shape makes one run for one line;
+// shape_text (shaped.odin) keeps what a paragraph needs to wrap and reorder.
 
 Font_Metrics :: struct {
 	ascent:   f32, // above the baseline, positive
@@ -16,9 +17,12 @@ Font_Metrics :: struct {
 }
 
 Shaper :: struct {
-	data:    rawptr,
-	shape:   proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run,
-	metrics: proc(data: rawptr, font: ops.Font_Id, size: f32) -> Font_Metrics,
+	data:       rawptr,
+	shape:      proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run,
+	metrics:    proc(data: rawptr, font: ops.Font_Id, size: f32) -> Font_Metrics,
+	// shape_text is optional: without it, shape_text builds one
+	// left-to-right run from shape (see shaped.odin).
+	shape_text: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> Shaped_Text,
 }
 
 shape :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {
@@ -104,7 +108,7 @@ next_cluster :: proc(run: ops.Glyph_Run, n: int, g: ^int) -> (hi: int, x0, x1: f
 
 // cluster_fraction is how far through cluster byte offset j lies, counted
 // in runes.
-@(private = "file")
+@(private)
 cluster_fraction :: proc(cluster: string, j: int) -> f32 {
 	before := utf8.rune_count(cluster[:j])
 	return f32(before) / f32(max(utf8.rune_count(cluster), 1))
