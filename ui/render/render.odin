@@ -239,14 +239,22 @@ clear_masks :: proc(r: ^Renderer) {
 	r.pool_used = 0
 }
 
-// pool_take hands out a reused buffer of at least n bytes for this call.
+// MASK_ALIGN is where a mask buffer and each of its rows start: Blend2D's
+// A8 mask fill paints outside the clip from a buffer or row that is not
+// 16-byte aligned (test_mask_buffer_alignment shows it). malloc aligns
+// for C's max_align_t, 16 bytes on 64-bit targets; an arena need not.
+@(private)
+MASK_ALIGN :: 16
+
+// pool_take hands out a reused buffer of at least n bytes for this call,
+// starting MASK_ALIGN-aligned.
 @(private)
 pool_take :: proc(r: ^Renderer, n: int) -> []u8 {
 	if r.pool_used == len(r.pool) {
-		append(&r.pool, make([]u8, n, r.allocator))
+		append(&r.pool, mem.make_aligned([]u8, n, MASK_ALIGN, r.allocator) or_else nil)
 	} else if len(r.pool[r.pool_used]) < n {
 		delete(r.pool[r.pool_used], r.allocator)
-		r.pool[r.pool_used] = make([]u8, n, r.allocator)
+		r.pool[r.pool_used] = mem.make_aligned([]u8, n, MASK_ALIGN, r.allocator) or_else nil
 	}
 	r.pool_used += 1
 	return r.pool[r.pool_used - 1][:n]
@@ -487,13 +495,12 @@ clip_mask :: proc(r: ^Renderer, f: ^ui.Frame, id: ui.Clip_Id, w, h: i32) -> ^Mas
 	return &r.masks[id]
 }
 
-// mask_view points img at a pooled A8 buffer the size of box. Rows are
-// padded to 16 bytes: with unpadded rows the mask fill painted outside the
-// clip.
+// mask_view points img at a pooled A8 buffer the size of box, its rows
+// padded to MASK_ALIGN.
 @(private)
 mask_view :: proc(r: ^Renderer, img: ^bl.ImageCore, box: ops.Rect) -> bool {
 	w, h := int(box.w), int(box.h)
-	stride := mem.align_forward_int(w, 16)
+	stride := mem.align_forward_int(w, MASK_ALIGN)
 	buf := pool_take(r, stride * h)
 	return bl.image_create_from_data(img, i32(w), i32(h), .A8, raw_data(buf), stride, .RW, nil, nil) == 0
 }
