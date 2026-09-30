@@ -138,6 +138,7 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 					layer = st.layer,
 					cursor = op.cursor,
 					yields = op.yields,
+					observes = op.observes,
 				},
 			)
 		case ops.Tag:
