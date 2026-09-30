@@ -88,6 +88,13 @@ focus_request :: proc(gtx: ^Ctx, area: ops.Area_Id) {
 	r.focus_asked = true
 }
 
+// focus_visible reports whether the focused area should show a focus
+// indicator: the last input was a key rather than a pointer press. A
+// design system reads it to draw its ring only for keyboard users.
+focus_visible :: proc(gtx: ^Ctx) -> bool {
+	return gtx.router != nil && gtx.router.keyboard
+}
+
 // router_requests is what the frames since the last router_requests_clear
 // asked of the platform, in the order asked. Valid until that clear.
 router_requests :: proc(r: ^Router) -> []Request {

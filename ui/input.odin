@@ -33,6 +33,9 @@ import "jm:ui/ops"
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
 // - A focus_request moves focus before the queued events are routed.
+// - Focus is visible (focus_visible) from a Key until the next Press, as
+//   the web's :focus-visible: a click focuses without showing a ring, a
+//   key shows it on whatever holds focus.
 // - A Press whose top-most target yields (ops.Input_Area.yields, selectable
 //   text) goes to the next area under it that wants Press and does not
 //   yield, when there is one. If the pointer then drags past YIELD_DRAG
@@ -82,6 +85,7 @@ Router :: struct {
 	yield_press: Raw_Event, // that press, replayed to the yielder if it takes over
 	pressed_at:  ops.Area_Id, // the area the last route's first Press went to, 0 for none
 	press_seen:  bool, // the last route routed a Press
+	keyboard:    bool, // a Key came after the last Press: focus is visible
 }
 
 // YIELD_DRAG is how far, in device pixels, a press on yielding text must
@@ -155,6 +159,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	for e in r.queue {
 		switch e.kind {
 		case .Press:
+			r.keyboard = false
 			route_press(r, f, e)
 		case .Release:
 			route_release(r, f, e)
@@ -176,6 +181,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 				deliver_pointer(r, h, e)
 			}
 		case .Key, .Text:
+			if e.kind == .Key {
+				r.keyboard = true
+			}
 			if r.focus == 0 || !deliver(r, r.focus_hit, e, {}) {
 				free_strings(r, e)
 			}

@@ -162,6 +162,24 @@ test_focus_request_moves_focus_at_the_next_route :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_focus_is_visible_from_a_key_until_the_next_press :: proc(t: ^testing.T) {
+	b: Board
+	defer board_destroy(&b)
+	p: Probe
+	probe_init(&p, board, &b, {100, 50})
+	defer probe_destroy(&p)
+	testing.expect(t, !p.router.keyboard)
+	probe_click(&p, "a")
+	testing.expect(t, !p.router.keyboard)
+	probe_key(&p, .Tab)
+	testing.expect(t, p.router.keyboard)
+	probe_frame(&p)
+	testing.expect(t, p.router.keyboard) // a frame without input keeps it
+	probe_click(&p, "b")
+	testing.expect(t, !p.router.keyboard)
+}
+
+@(test)
 test_press_carries_the_os_click_count :: proc(t: ^testing.T) {
 	b: Board
 	defer board_destroy(&b)
