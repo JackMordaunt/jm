@@ -1,0 +1,65 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "search",
+  "name": "Search bar",
+  "status": "changed",
+  "statusNote": "New maximum width, centered-text style, and a \"contained\" full-screen expansion where the collapsed bar persists visually inside the expanded view are new in Expressive.",
+  "summary": "A persistent, pill-shaped entry point for search that expands into a full-screen or docked search view showing suggestions/results. Use the compact bar wherever search is a secondary action in a screen's app bar; the expanded view is a transient state of the same control, not a separate screen the user navigates to.",
+  "tokenGroups": ["comp.search-bar", "comp.search-view"],
+  "references": { "compose": ["SearchBar.kt"], "mdc": ["Search.md"] },
+  "inputs": [
+    { "name": "inputField", "type": "slot", "required": true, "description": "The text input row: leading icon, input/hint text, optional trailing icon/avatar." },
+    { "name": "expanded", "type": "boolean", "required": true, "description": "Whether the search view is showing. The caller owns it." },
+    { "name": "onExpandedChange", "type": "callback", "required": true, "description": "Called with the new expanded value when the bar or its scrim is activated/dismissed." },
+    { "name": "content", "type": "slot", "required": true, "description": "The results/suggestions container shown below the header once expanded." },
+    { "name": "presentation", "type": "enum", "values": ["full-screen", "full-screen-contained", "docked", "docked-with-gap"], "required": false, "default": "full-screen", "description": "full-screen replaces the screen; full-screen-contained (Expressive) keeps the collapsed bar's shape/position as the header with no divider; docked expands into a bounded popup anchored under the bar; docked-with-gap adds a gap and its own scrim/dropdown shape between the bar and the popup." },
+    { "name": "onSearch", "type": "callback", "required": true, "description": "Input field: runs a search for the current query text." },
+    { "name": "placeholder", "type": "slot", "required": false, "description": "Input field: hint content shown when the query is empty." },
+    { "name": "leadingIcon", "type": "icon", "required": false, "description": "Input field: leading icon, e.g. search glyph, menu, or back." },
+    { "name": "trailingIcon", "type": "icon", "required": false, "description": "Input field: trailing icon or avatar." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Input field enabled state." }
+  ],
+  "anatomy": [
+    { "id": "collapsed-field", "name": "Collapsed input field", "description": "The pill-shaped bar: leading icon, input/hint text, optional trailing icon/avatar.", "tokens": ["comp.search-bar.container-shape", "comp.search-bar.container-color", "comp.search-bar.input-text-font"] },
+    { "id": "expanded-header", "name": "Expanded header", "description": "The input row inside the expanded view, either docked or full-screen height.", "tokens": ["comp.search-view.docked-header-container-height", "comp.search-view.full-screen-header-container-height"] },
+    { "id": "divider", "name": "Divider", "description": "Separates the header from results in the expanded view.", "optional": true, "tokens": ["comp.search-view.divider-color"] },
+    { "id": "results", "name": "Results/suggestions container", "description": "Scrollable content below the header.", "tokens": ["comp.search-view.container-color"] },
+    { "id": "scrim", "name": "Scrim", "description": "Full-screen only: dims content behind the expanded view during the transition.", "optional": true, "tokens": ["sys.color.scrim"] }
+  ],
+  "variants": [
+    { "axis": "presentation", "value": "compact", "default": true, "tokenGroup": "comp.search-bar", "description": "Default resting state, any screen." },
+    { "axis": "presentation", "value": "full-screen", "tokenGroup": "comp.search-view", "description": "Expands into a new full-screen surface; the collapsed bar does not persist visually." },
+    { "axis": "presentation", "value": "full-screen-contained", "tokenGroup": "comp.search-view", "description": "Expressive: expands full-screen but the collapsed bar's shape/position persists as the header, no divider." },
+    { "axis": "presentation", "value": "docked", "tokenGroup": "comp.search-view", "description": "Expands into a bounded popup anchored under the bar (tablets/desktop)." }
+  ],
+  "layout": [
+    { "id": "collapsed-width", "text": "Collapsed width is clamped between 360dp and 720dp — the Expressive \"new maximum width\" the MDC docs call out.", "values": [{ "name": "minWidth", "value": 360, "unit": "dp" }, { "name": "maxWidth", "value": 720, "unit": "dp" }], "source": "SearchBar.kt:4177-4180" },
+    { "id": "collapsed-vertical-padding", "text": "Vertical padding inside the collapsed bar is a fixed 8dp above and below the input row, independent of the bar's container-height token.", "values": [{ "name": "verticalPadding", "value": 8, "unit": "dp" }], "tokens": ["comp.search-bar.container-height"], "source": "SearchBar.kt:4181-4182" },
+    { "id": "icon-edge-padding", "text": "Icon-to-edge padding in the search bar is 16dp, vs. 12dp in a generic text field.", "values": [{ "name": "iconOffsetX", "value": 16, "unit": "dp" }], "source": "SearchBar.kt:4185-4186" },
+    { "id": "expanded-header-height", "text": "Full-screen expanded header height comes from the full-screen header token; docked expanded header height from the docked header token. Top padding above the header shrinks from the collapsed bar's padding to 0 as the expansion progresses.", "tokens": ["comp.search-view.full-screen-header-container-height", "comp.search-view.docked-header-container-height"], "source": "SearchBar.kt:3546" },
+    { "id": "docked-results-height", "text": "Docked expanded results table has a minimum height of 240dp and caps at 2/3 of screen height standalone, or 1/2 when shown with a gap under the bar.", "values": [{ "name": "dockedMinHeight", "value": 240, "unit": "dp" }, { "name": "dockedMaxHeightStandalone", "value": 66.7, "unit": "percent" }, { "name": "dockedMaxHeightWithGap", "value": 50, "unit": "percent" }], "source": "SearchBar.kt:4176-4178" }
+  ],
+  "states": [
+    { "state": "expanded", "text": "State is modeled as a discrete Collapsed/Expanded value plus a continuous progress float driving the transition — implementors should expose both a discrete state and an interpolation value, not just a boolean.", "source": "SearchBar.kt:1426-1431,1504-1539" },
+    { "state": "expanded", "part": "collapsed-field", "label": "shape-morph", "text": "The collapsed pill interpolates its corner radius down to 0 as progress goes to 1, becoming the full-screen container's rectangle shape only once fully expanded (only when the bar uses the default collapsed shape); for the docked variant the target shape is the docked container shape instead. Width/height also lerp from the collapsed bar's measured bounds to the container's full constraints over the same progress.", "tokens": ["comp.search-bar.container-shape", "comp.search-view.full-screen-container-shape", "comp.search-view.docked-container-shape"], "source": "SearchBar.kt:3402-3421,4169-4170,3542-3547" },
+    { "state": "expanded", "label": "full-screen-motion", "text": "Full-screen expand uses a slow-spatial spring, collapse uses a default-spatial spring.", "motion": { "spring": "sys.motion.spring.slow-spatial" }, "source": "SearchBar.kt:1638-1641" },
+    { "state": "expanded", "label": "contained-full-screen-motion", "text": "Contained full-screen (Expressive) uses a fast-spatial spring for both expand and collapse.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "SearchBar.kt:1675-1677" },
+    { "state": "expanded", "label": "docked-with-gap-motion", "text": "Docked-with-gap expand uses a default-spatial spring, collapse uses a fast-spatial spring; the results content fade-in/out inside the contained/gap variants animates separately from the container's spatial spring.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "SearchBar.kt:1720-1721,1671-1673" },
+    { "state": "other", "label": "predictive-back", "text": "While a system back gesture is in progress, the expanded surface previews collapsing by scaling down to 0.9 of its size, offset by up to 24dp vertically and 1/20 of width horizontally, clamped to an 8dp margin from the edge; releasing/committing the gesture finishes the normal collapse transition.", "values": [{ "name": "predictiveBackMinScale", "value": 0.9, "unit": "ratio" }, { "name": "predictiveBackMaxOffsetY", "value": 24, "unit": "dp" }, { "name": "predictiveBackEdgeMargin", "value": 8, "unit": "dp" }], "source": "SearchBar.kt:4187-4192,3519-3536" }
+  ],
+  "behaviour": [
+    { "id": "keyboard-dismiss", "text": "The keyboard is dismissed automatically once the bar reaches the collapsed state, not on expand-start.", "source": "SearchBar.kt:930,1213" },
+    { "id": "scroll-linked-app-bar", "text": "When embedded in a top app bar with a scroll behavior, the bar's container/app-bar colors cross-fade based on the scroll-overlap fraction, independent of the expand/collapse transition.", "source": "SearchBar.kt:577-586,3138-3196" },
+    { "id": "one-state-machine", "text": "Treat \"compact bar\" and \"search view\" as two rendered states of one state machine, not two components — the shape/size morph requires interpolating between the collapsed bar's measured bounds and the expanded container's bounds every frame of the transition, not swapping components at a threshold." }
+  ],
+  "accessibility": {
+    "role": "search",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Enter submits the current query.", "Escape or the back gesture collapses the expanded view."],
+    "semantics": ["The collapsed bar behaves as a search entry point (role search/button); activating it moves focus to the expanded input field.", "The expanded full-screen view is presented as a modal surface (dialog semantics) — back/escape must collapse it; the docked variant is a dismissible popup instead.", "Minimum touch target on leading/trailing icons follows the platform minimum, independent of the avatar-size/icon-size tokens which describe the glyph, not the hit area."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "The Expressive \"contained\" variant's header keeps the collapsed bar's shape and drops the header/results divider, so the input field visually reads as \"the same bar, now docked at the top\" rather than a new surface appearing." },
+    { "kind": "gotcha", "text": "Full-screen and docked variants use different max-height ratios for their results area — don't share one clamp constant between them." }
+  ]
+}

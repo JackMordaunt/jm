@@ -1,0 +1,73 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "list",
+  "name": "List",
+  "status": "changed",
+  "statusNote": "The standard list is unchanged from M3; expanded-list, reorder-list and reveal-list are new in Expressive.",
+  "summary": "A continuous, vertical index of text and/or images. Use a standard list for one/two/three-line rows; use the Expressive additions when rows need to grow inline (expanded-list), be manually reordered (reorder-list), or expose swipe actions (reveal-list).",
+  "tokenGroups": ["comp.list", "comp.expanded-list", "comp.reorder-list", "comp.reveal-list"],
+  "references": { "compose": ["ListItem.kt", "ListItemDefaults.kt"], "mdc": ["List.md"] },
+  "inputs": [
+    { "name": "content", "type": "slot", "required": true, "description": "The row's main content (headline/label text)." },
+    { "name": "leadingContent", "type": "slot", "required": false, "description": "Icon, avatar, image, or video thumbnail." },
+    { "name": "trailingContent", "type": "slot", "required": false, "description": "Trailing icon, trailing supporting text, or a trailing icon-button." },
+    { "name": "overlineContent", "type": "slot", "required": false, "description": "Small label above the headline." },
+    { "name": "supportingContent", "type": "slot", "required": false, "description": "Secondary text below the headline." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Row enabled state." },
+    { "name": "selectionMode", "type": "enum", "values": ["none", "click", "single-select", "multi-select"], "required": false, "default": "none", "description": "none is a plain informational row; click fires onClick; single-select behaves like a radio row; multi-select is a checked/onCheckedChange toggle row." },
+    { "name": "checked", "type": "boolean", "required": false, "description": "multi-select mode: whether this row is toggled on." },
+    { "name": "onCheckedChange", "type": "callback", "required": false, "description": "multi-select mode: called when this row is clicked." },
+    { "name": "onLongClick", "type": "callback", "required": false, "description": "Optional long-press handler, e.g. to enter a reorder or multi-select mode." },
+    { "name": "segmentIndex", "type": "number", "required": false, "description": "This row's position within a segmented run, used to pick which corners are large-rounded." },
+    { "name": "segmentCount", "type": "number", "required": false, "description": "The total number of rows in this row's segmented run." },
+    { "name": "variant", "type": "enum", "values": ["standard", "expanded", "reorder", "reveal"], "required": false, "default": "standard", "description": "Selects the token group and interaction model." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Full-list surface.", "tokens": ["comp.list.container-shape"] },
+    { "id": "leading-element", "name": "Leading element", "description": "Icon, avatar, image, or video thumbnail.", "optional": true, "tokens": ["comp.list.item-leading-icon-size", "comp.list.item-leading-avatar-size", "comp.list.item-leading-image-height", "comp.list.item-leading-image-width"] },
+    { "id": "overline", "name": "Overline", "description": "Small label above the headline.", "optional": true, "tokens": ["comp.list.item-overline-color", "comp.list.item-overline-font"] },
+    { "id": "headline", "name": "Headline / label text", "description": "Primary text.", "tokens": ["comp.list.item-label-text-color", "comp.list.item-label-text-font"] },
+    { "id": "supporting-text", "name": "Supporting text", "description": "Secondary text below the headline.", "optional": true, "tokens": ["comp.list.item-supporting-text-color", "comp.list.item-supporting-text-font"] },
+    { "id": "trailing-element", "name": "Trailing element", "description": "Icon, trailing supporting text, or a trailing icon-button.", "optional": true, "tokens": ["comp.list.item-trailing-icon-color", "comp.list.item-trailing-supporting-text-color"] },
+    { "id": "divider", "name": "Divider", "description": "Optional separator between items.", "optional": true, "tokens": ["comp.list.divider-leading-space", "comp.list.divider-trailing-space"] }
+  ],
+  "variants": [
+    { "axis": "lines", "value": "one-line", "default": true, "tokenGroup": "comp.list", "description": "Single line of text." },
+    { "axis": "lines", "value": "two-line", "tokenGroup": "comp.list", "description": "Headline + one supporting line." },
+    { "axis": "lines", "value": "three-line", "tokenGroup": "comp.list", "description": "Headline + two supporting lines." },
+    { "axis": "behaviour", "value": "expanded-list", "tokenGroup": "comp.expanded-list", "description": "Row grows to show more content inline (e.g. a detail panel) on expand." },
+    { "axis": "behaviour", "value": "reorder-list", "tokenGroup": "comp.reorder-list", "description": "Row is drag-handled to reorder within the list." },
+    { "axis": "behaviour", "value": "reveal-list", "tokenGroup": "comp.reveal-list", "description": "Row reveals trailing action button(s) on swipe." }
+  ],
+  "layout": [
+    { "id": "row-vertical-padding", "text": "Vertical padding inside a row is 8dp for one/two-line rows and 12dp for three-line rows, taken from the item top/bottom space tokens unless the host uses precision-pointer (mouse) sizing, in which case top padding is fixed at 12dp regardless of the token.", "tokens": ["comp.list.item-top-space", "comp.list.item-bottom-space"], "values": [{ "name": "oneTwoLinePadding", "value": 8, "unit": "dp" }, { "name": "threeLinePadding", "value": 12, "unit": "dp" }], "source": "ListItem.kt:1275,1277; ListItemDefaults.kt:51-58" },
+    { "id": "segmented-shape", "text": "A segmented-run helper reshapes only the first/last/single item of a run to the container's large-corner shape while middle items keep the base per-state shape — this produces the \"segmented group\" look driven by the segmented container colour and segmented gap.", "tokens": ["comp.list.container-shape", "comp.list.item-segmented-container-color", "comp.list.segmented-gap"], "source": "ListItem.kt:452-505" },
+    { "id": "row-height", "text": "Row height is the max of the token minimum height for its line-count and the natural content height (leading/trailing/text stack), never smaller than the token value.", "tokens": ["comp.list.item-one-line-container-height", "comp.list.item-two-line-container-height", "comp.list.item-three-line-container-height"], "source": "ListItem.kt:1162-1172" },
+    { "id": "leading-video-sizes", "text": "item-large-leading-video-height/width (64x114) and item-small-leading-video-height/width (56x100) are distinct token pairs for the same leading-video slot at different row emphases — pick one per row, not both.", "tokens": ["comp.list.item-large-leading-video-height", "comp.list.item-small-leading-video-height"], "values": [{ "name": "largeVideoHeight", "value": 64, "unit": "dp" }, { "name": "largeVideoWidth", "value": 114, "unit": "dp" }, { "name": "smallVideoHeight", "value": 56, "unit": "dp" }, { "name": "smallVideoWidth", "value": 100, "unit": "dp" }] }
+  ],
+  "states": [
+    { "state": "hovered", "text": "Each interaction state (enabled, disabled, hovered, focused, pressed, selected, dragged) has its own label/icon/overline/supporting-text colour and, per state, its own container shape.", "tokens": ["comp.list.item-hovered-container-expressive-shape"] },
+    { "state": "pressed", "text": "Pressed and selected both morph the container to the large corner shape; hovered morphs to the medium corner shape.", "tokens": ["comp.list.item-pressed-container-expressive-shape", "comp.list.item-selected-container-expressive-shape", "comp.list.item-hovered-container-expressive-shape"] },
+    { "state": "pressed", "label": "shape-motion", "text": "Shape morph on interaction uses a fast-spatial spring.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "ListItem.kt:1502-1505" },
+    { "state": "hovered", "label": "colour-motion", "text": "Container/content colour cross-fade uses a default-effects spring.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "ListItem.kt:1502-1505" },
+    { "state": "dragged", "label": "elevation-motion", "text": "Elevation (for reorder drag lift) also animates on the fast-spatial spring.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "ListItem.kt:1502-1505" },
+    { "state": "selected", "text": "Selected + disabled combinations have their own dimmed color/opacity tokens, distinct from plain disabled.", "tokens": ["comp.list.item-selected-disabled-label-text-color", "comp.list.item-selected-disabled-label-text-opacity"] },
+    { "state": "dragged", "part": "container", "text": "Dragged state (reorder) recolors the row to the reorder-list item tokens and reshapes it to the reorder-list item shape (large corner) while lifted, at elevation level4; the drop zone underneath shows the reorder-list drop-zone colour.", "tokens": ["comp.reorder-list.item-container-color", "comp.reorder-list.item-shape", "comp.list.item-dragged-container-elevation", "comp.reorder-list.item-drop-zone-color"] }
+  ],
+  "behaviour": [
+    { "id": "compose-gap", "text": "At the pinned Compose commit, only ReorderListTokens are actually wired into ListItemDefaults, as draggedContainerColor/draggedShape parameters on the existing colors()/shapes() builders — a generic \"dragged\" state, not a reorder-specific composable or drag gesture. ExpandedListTokens and RevealListTokens are not referenced anywhere in ListItem.kt or ListItemDefaults.kt (verified by grep) — there is no public expand or swipe-to-reveal composable yet." },
+    { "id": "expanded-list-inferred", "text": "Expanded-list is inferred as an inline expand/collapse: a row grows from collapsed-item-* colors to expanded-item-* colors and reveals more content, toggled by its collapsed-item-trailing-icon ranging to expanded-item-trailing-icon (chevron-style disclosure), with a full/pill trailing-icon-shape on that icon's container.", "tokens": ["comp.expanded-list.collapsed-item-trailing-icon-icon-color", "comp.expanded-list.expanded-item-container-color", "comp.expanded-list.trailing-icon-shape"], "source": "mdc:List.md" },
+    { "id": "reveal-list-inferred", "text": "Reveal-list is inferred as swipe-to-reveal: swiping the row exposes one or more trailing action buttons or a plain icon-button behind the row; releasing past a threshold triggers the action, releasing short of it snaps the row back closed.", "tokens": ["comp.reveal-list.item-action-icon-button-container-color", "comp.reveal-list.item-icon-button-container-color", "comp.reveal-list.item-icon-button-container-shape"], "source": "mdc:List.md" },
+    { "id": "reorder-list-inferred", "text": "Reorder-list's inferred interaction is long-press-and-hold (or a dedicated drag handle icon) to pick up a row, drag to reposition, drop to commit — consistent with the dragged state Compose already exposes.", "source": "mdc:List.md" }
+  ],
+  "accessibility": {
+    "role": "list",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Rows are focusable in document order.", "Reorder-list additionally needs a keyboard-operable \"move up/move down\" affordance since drag alone is not keyboard-accessible."],
+    "semantics": ["The list container is a list/group; each row is a list item, additionally a button/checkbox/radio role when the row itself is actionable/selectable.", "Screen reader announces headline, supporting text, selected/checked state, and position-in-set/set-size for the list; a reveal-list row announces its available swipe actions as accessible actions, not only as swipe gestures."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Minimum touch target is 48dp, independent of the token row height when a row is shorter (e.g. compact one-line rows)." },
+    { "kind": "inferred", "text": "Geometry/color for expanded-list and reveal-list is token-driven only; the interaction model is inferred from MDC prose and analogy, not sourced from a reference implementation.", "source": "mdc:List.md" }
+  ]
+}

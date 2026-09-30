@@ -5,3 +5,5 @@ pg_query/lib/
 ui/blend2d/lib/
 git/lib/
 ui/kb/lib/
+# the kits' pages for people, bundled by just material-kit-page and fluent-kit-page
+tools/*/kit/index.html

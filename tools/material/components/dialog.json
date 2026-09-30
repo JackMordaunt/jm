@@ -1,0 +1,53 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "dialog",
+  "name": "Dialog",
+  "status": "unchanged",
+  "summary": "A modal window that interrupts the user for a required decision or critical information. Use it for short, focused prompts; use a bottom sheet instead when the content is a longer list of choices or benefits from swipe dismissal.",
+  "tokenGroups": ["comp.dialog"],
+  "references": { "compose": ["AlertDialog.kt"], "mdc": ["Dialog.md"] },
+  "inputs": [
+    { "name": "onDismissRequest", "type": "callback", "required": true, "description": "Called when the user dismisses the dialog by clicking outside it or pressing back. Not called when the dismiss button is clicked." },
+    { "name": "confirmButton", "type": "slot", "required": true, "description": "The confirming action, typically a text button." },
+    { "name": "dismissButton", "type": "slot", "required": false, "description": "The dismissing action, typically a text button." },
+    { "name": "icon", "type": "icon", "required": false, "description": "A small hero icon centered above the headline." },
+    { "name": "headline", "type": "slot", "required": false, "description": "States the dialog's purpose." },
+    { "name": "supportingText", "type": "slot", "required": false, "description": "Details supporting the headline." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The surface the dialog sits on.", "tokens": ["comp.dialog.container-color", "comp.dialog.container-shape", "comp.dialog.container-elevation"] },
+    { "id": "icon", "name": "Icon", "description": "A small hero icon above the headline.", "optional": true, "tokens": ["comp.dialog.icon-color", "comp.dialog.icon-size"] },
+    { "id": "headline", "name": "Headline", "description": "States the dialog's purpose.", "optional": true, "tokens": ["comp.dialog.headline-color", "comp.dialog.headline-font"] },
+    { "id": "supporting-text", "name": "Supporting text", "description": "Details supporting the headline.", "optional": true, "tokens": ["comp.dialog.supporting-text-color", "comp.dialog.supporting-text-font"] },
+    { "id": "actions", "name": "Actions", "description": "A confirm button and an optional dismiss button.", "tokens": ["comp.dialog.action-label-text-color", "comp.dialog.action-label-text-font", "comp.dialog.action-hover-label-text-color", "comp.dialog.action-focus-label-text-color", "comp.dialog.action-pressed-label-text-color"] }
+  ],
+  "variants": [
+    { "axis": "content", "value": "basic", "default": true, "tokenGroup": "comp.dialog", "description": "Headline, supporting text and actions, with no icon." },
+    { "axis": "content", "value": "icon", "tokenGroup": "comp.dialog", "description": "Adds a centered hero icon above the headline. Both variants are the same composable; the difference is purely whether an icon slot is supplied, not a separate shape or size." }
+  ],
+  "layout": [
+    { "text": "Width is clamped between 280dp and 560dp; there is no upper bound on height.", "values": [{ "name": "minWidth", "value": 280, "unit": "dp" }, { "name": "maxWidth", "value": 560, "unit": "dp" }], "part": "container", "source": "AlertDialog.kt:409-412,147" },
+    { "text": "Container padding is 24dp on all sides.", "values": [{ "name": "padding", "value": 24, "unit": "dp" }], "part": "container", "source": "AlertDialog.kt:229-230" },
+    { "text": "The icon, when present, is centered horizontally with 16dp bottom padding, and re-centers the headline under it instead of left-aligning it.", "values": [{ "name": "iconBottomPadding", "value": 16, "unit": "dp" }], "part": "icon", "source": "AlertDialog.kt:419,339-345" },
+    { "text": "The headline has 16dp bottom padding. Supporting text has 24dp bottom padding and grows to fit its content without being forced to fill remaining space.", "values": [{ "name": "titleBottomPadding", "value": 16, "unit": "dp" }, { "name": "supportingTextBottomPadding", "value": 24, "unit": "dp" }], "source": "AlertDialog.kt:420,358-359" },
+    { "text": "There is no built-in max height or scrolling: the content column is not wrapped in a scroll modifier, so long supporting text can overflow the dialog window. An implementor must add scrolling for long content; nothing in Compose clips or truncates it.", "source": "AlertDialog.kt" },
+    { "text": "Actions sit right-aligned in a wrapping row with 8dp main-axis and 8dp cross-axis spacing. There is no fixed dp breakpoint for wrapping — it wraps whenever the buttons don't fit the available width; the confirm button appears first when stacked and last (trailing) when side-by-side, achieved by flipping layout direction around the row rather than reordering children.", "values": [{ "name": "actionsMainAxisSpacing", "value": 8, "unit": "dp" }, { "name": "actionsCrossAxisSpacing", "value": 8, "unit": "dp" }], "part": "actions", "source": "AlertDialog.kt:414-417,381-401" }
+  ],
+  "states": [],
+  "behaviour": [
+    { "text": "No press, hover or focus state on the container. Confirm and dismiss slots are ordinary buttons (typically a text button) and own their own interaction states; the dialog's action colour tokens are only a fallback content colour for arbitrary button content — a real text button ignores them and uses its own tokens.", "source": "AlertDialog.kt:281-284" },
+    { "text": "Dismissal happens only through onDismissRequest (outside click or back press) or an explicit button action — there is no swipe-to-dismiss." },
+    { "text": "No sys.motion.spring.* is referenced anywhere in AlertDialog.kt. The dialog's enter/exit transition comes from the underlying platform dialog window default, not a coded Compose animation. Treat this as an open choice for the target renderer rather than inventing a token that doesn't exist upstream.", "source": "AlertDialog.kt" }
+  ],
+  "accessibility": {
+    "role": "alertdialog",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Escape or a platform back action triggers onDismissRequest.", "Tab and Shift+Tab cycle focus between the dismiss button and confirm button (and any focusable dialog content); focus is trapped within the dialog while it is open.", "Enter or Space activates the focused button."],
+    "semantics": ["The dialog exposes a pane title (\"Dialog\") so screen readers announce it as a dialog on entry.", "Confirm and dismiss are real buttons; standard minimum touch target applies to both regardless of their visual, often text-only, size.", "Headline and supporting text are read as ordinary text content, with no extra live-region behaviour beyond the pane title."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "MDC-Android's anatomy also lists an optional divider between supporting text and actions; Compose's AlertDialogContent does not render one. Don't assume parity with the View-based divider there.", "source": "mdc:Dialog.md" },
+    { "kind": "upstream-bug", "text": "comp.dialog.container-elevation (level 3) is not actually wired to any shadow or tonal elevation in AlertDialogContent's Surface call — tonalElevation defaults to a hardcoded 0dp and shadowElevation isn't passed at all. Applying a real level-3 shadow is a renderer decision the token alone doesn't enforce in the reference implementation.", "tokens": ["comp.dialog.container-elevation"], "source": "AlertDialog.kt" },
+    { "kind": "gotcha", "text": "\"Full-screen dialog\" is a separate MDC-Android variant with no Compose equivalent surfaced here — out of scope for this spec.", "source": "mdc:Dialog.md" }
+  ]
+}

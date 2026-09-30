@@ -1,0 +1,47 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "badge",
+  "name": "Badge",
+  "status": "unchanged",
+  "summary": "A small status indicator overlaid on the corner of an icon or navigation item, showing that something changed without interrupting the user. Use a dot for a plain attention signal, a numeral for a short count or label.",
+  "tokenGroups": ["comp.badge"],
+  "references": { "compose": ["Badge.kt"], "mdc": ["BadgeDrawable.md"] },
+  "inputs": [
+    { "name": "anchor", "type": "slot", "required": true, "description": "The icon or item the badge is positioned against. The badge itself contributes no size to the layout; it overlays the anchor's top-trailing corner." },
+    { "name": "label", "type": "slot", "required": false, "description": "Short text or number shown inside the container. Its presence, not a separate flag, switches the badge from a small dot to a larger numeral/label container." },
+    { "name": "containerColor", "type": "string", "required": false, "description": "Overrides the badge container colour (comp.badge.color or comp.badge.large-color, chosen by whether label is present)." }
+  ],
+  "anatomy": [
+    { "id": "anchor", "name": "Anchor", "description": "The icon or navigation item the badge is attached to. Not part of the badge itself, but drives its offset." },
+    { "id": "container", "name": "Container", "description": "The coloured shape: a small dot with no label, or a larger pill/circle when it carries content.", "tokens": ["comp.badge.color", "comp.badge.shape", "comp.badge.size", "comp.badge.large-color", "comp.badge.large-shape", "comp.badge.large-size"] },
+    { "id": "label", "name": "Label", "description": "Short text or number inside the container. Only present on the numeral variant.", "optional": true, "tokens": ["comp.badge.large-label-text-color", "comp.badge.large-label-text-font"] }
+  ],
+  "variants": [
+    { "axis": "content", "value": "dot", "default": true, "tokenGroup": "comp.badge", "description": "No label content: a presence/attention signal with no information, sized and shaped by comp.badge.size/shape/color." },
+    { "axis": "content", "value": "numeral", "tokenGroup": "comp.badge", "description": "Carries a short count or label, sized and shaped by comp.badge.large-size/large-shape/large-color/large-label-text-*. Rendered whenever label content is supplied — it is the same composable with an optional slot, not a separate one (Badge.kt:155-162)." }
+  ],
+  "layout": [
+    { "text": "The container's size token is a minimum, not a fixed size: a numeral badge widens automatically to fit its label rather than clipping.", "tokens": ["comp.badge.large-size"], "source": "Badge.kt:167" },
+    { "text": "When the label needs more horizontal room than a circle (e.g. two or more digits), the container gets 4dp of extra padding on each side of the text, which is what turns the circle into a pill.", "values": [{ "name": "extraHorizontalPadding", "value": 4, "unit": "dp" }], "part": "container", "source": "Badge.kt:200-202" },
+    { "text": "Anchor offset is hard-coded in dp, not token-driven, and differs by variant: a dot badge is pulled 6dp in from the anchor's trailing edge and 6dp down from its top edge.", "values": [{ "name": "dotHorizontalOffset", "value": 6, "unit": "dp" }, { "name": "dotVerticalOffset", "value": 6, "unit": "dp" }], "source": "Badge.kt:206-218" },
+    { "text": "A numeral badge is pulled 12dp in horizontally and 14dp down vertically from the anchor's top-trailing corner — a deliberately larger overlap than the dot, to center the numeral over the corner rather than hang off it.", "values": [{ "name": "numeralHorizontalOffset", "value": 12, "unit": "dp" }, { "name": "numeralVerticalOffset", "value": 14, "unit": "dp" }], "source": "Badge.kt:206-218" },
+    { "text": "Both offsets are measured from the anchor's top-trailing corner independent of the anchor's own size — a 24dp icon and a 40dp touch target get the same offset.", "source": "Badge.kt:105-123" },
+    { "text": "No digit-count truncation logic exists in Badge.kt; label content is exactly whatever the caller passes. A kit implementation must own overflow formatting (e.g. \"999+\") explicitly rather than assume the renderer provides it.", "source": "Badge.kt" }
+  ],
+  "states": [],
+  "behaviour": [
+    { "text": "Badge has no interaction states of its own (no hover, press or focus); it is not touchable, and taps on its area land on the anchor beneath it." },
+    { "text": "There is no built-in appear/disappear or content-change animation — Badge.kt has no transition, AnimatedVisibility or animateContentSize. Any enter/exit or dot-to-numeral size morph must be built at the call site.", "source": "Badge.kt" }
+  ],
+  "accessibility": {
+    "role": "none",
+    "minTouchTargetDp": null,
+    "keyboard": [],
+    "semantics": ["The badge itself carries no independent touch target or role; it is a presentation-only overlay.", "Accessibility semantics (e.g. \"3 unread\") belong on the anchor's own content description, not on the badge, since there is no dedicated announcement for a badge appearing or its count changing."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Model badge as one composable with an optional label slot that switches its size/shape/colour token group, not as two hard variants selected by a flag — this keeps a dot-to-numeral transition a content-driven resize rather than a variant switch.", "source": "Badge.kt:155-162" },
+    { "kind": "gotcha", "text": "The dot offset (6dp/6dp) and the numeral offset (12dp/14dp) are deliberately different constants, not a shared value — keep two offset pairs rather than collapsing them into one \"badge offset\".", "source": "Badge.kt:206-218" },
+    { "kind": "inferred", "text": "The \"999+\" overflow convention is not in Badge.kt; it is carried over conceptually from the View-system BadgeDrawable's maxCharacterCount/maxNumber attributes in MDC-Android. Treat digit-cap formatting as a decision the kit must document explicitly.", "source": "mdc:BadgeDrawable.md" }
+  ]
+}

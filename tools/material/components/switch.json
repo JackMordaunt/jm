@@ -1,0 +1,57 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "switch",
+  "name": "Switch",
+  "status": "changed",
+  "statusNote": "The handle (\"thumb\" in older MDC docs) now changes size across three states — unselected, selected, pressed — instead of two, adding a pressed-state \"squish\" that baseline M3 did not have.",
+  "summary": "A binary on/off control whose effect applies immediately, with no separate save or confirm step. Prefer switch over checkbox for a standalone setting; prefer checkbox for list selection.",
+  "tokenGroups": ["comp.switch"],
+  "references": { "compose": ["Switch.kt"], "mdc": ["Switch.md"] },
+  "inputs": [
+    { "name": "checked", "type": "boolean", "required": true, "description": "Whether the switch is on." },
+    { "name": "onCheckedChange", "type": "callback", "required": false, "description": "Called when the switch is clicked, with the new value. Omit to make it non-interactive; it still renders in its current visual state." },
+    { "name": "thumbContent", "type": "slot", "required": false, "description": "Optional small icon centered inside the handle, indicating on/off. Its presence forces the handle to render at the larger selected diameter even while unselected. Any on/off icon swap animation is the caller's responsibility; the switch does not crossfade or animate this content itself." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables interaction and applies the disabled colors when false." }
+  ],
+  "anatomy": [
+    { "id": "track", "name": "Track", "description": "The stadium-shaped background. Outlined only while unselected; the outline is covered by the fill the instant the track becomes selected-colored.", "tokens": ["comp.switch.track-width", "comp.switch.track-height", "comp.switch.track-shape", "comp.switch.track-outline-width"] },
+    { "id": "handle", "name": "Handle", "description": "The circular knob that slides between the track's ends. Changes size and color by state.", "tokens": ["comp.switch.handle-shape"] },
+    { "id": "icon", "name": "Icon", "description": "Small glyph centered inside the handle, indicating on/off. Supplied by the caller as arbitrary content; not required.", "optional": true, "tokens": ["comp.switch.selected-icon-size", "comp.switch.unselected-icon-size"] },
+    { "id": "state-layer", "name": "State layer", "description": "Circular hover/focus/pressed indicator centered on the handle, unbounded by the track.", "optional": true, "tokens": ["comp.switch.state-layer-shape", "comp.switch.state-layer-size"] }
+  ],
+  "variants": [],
+  "layout": [
+    { "text": "The track is track-width by track-height; its outline, when visible, is track-outline-width.", "part": "track", "tokens": ["comp.switch.track-width", "comp.switch.track-height", "comp.switch.track-outline-width"] },
+    { "text": "The handle's diameter is state-dependent: unselected-handle-width/height at rest unselected, selected-handle-width/height at rest selected, and pressed-handle-width/height while pressed in either state. Pressing briefly grows the handle to its largest size regardless of on/off.", "part": "handle", "tokens": ["comp.switch.unselected-handle-width", "comp.switch.selected-handle-width", "comp.switch.pressed-handle-width"], "source": "Switch.kt:286-291" },
+    { "text": "If thumbContent (an icon) is supplied, the handle renders at the selected diameter even while unselected: icon presence forces the larger handle size. This rule is not expressed in any token.", "part": "handle", "source": "Switch.kt:283-290" },
+    { "text": "The handle is centered in the track: its inset from the track edge is (track-height minus the handle's current rendered size) / 2, recomputed every time the rendered size changes, so the handle stays vertically and horizontally centered at every size.", "part": "handle", "tokens": ["comp.switch.track-height"], "source": "Switch.kt:295-298" },
+    { "text": "Exception while pressed: the handle does not stay centered. It snaps to sit exactly track-outline-width from the near track edge, the edge it is travelling toward, producing a \"hug the edge\" pinch rather than a centered position.", "part": "handle", "tokens": ["comp.switch.track-outline-width"], "source": "Switch.kt:299-305" },
+    { "text": "Travel distance between the unselected and selected rest positions is computed once from the selected handle size and a derived padding constant ((track-width minus selected-handle-width) minus ((track-height minus selected-handle-height) / 2)), not from whichever size is currently rendered. Do not recompute travel distance per current handle size.", "part": "handle", "tokens": ["comp.switch.track-width", "comp.switch.selected-handle-width", "comp.switch.track-height"], "source": "Switch.kt:297,670" }
+  ],
+  "states": [
+    { "state": "selected", "text": "Handle and icon draw in selected-handle-color and selected-icon-color; track fills with selected-track-color. The selected track border is hard-coded fully transparent, so the unselected outline disappears the instant the track becomes selected-colored because the fill covers it, rather than animating out separately.", "tokens": ["comp.switch.selected-handle-color", "comp.switch.selected-track-color", "comp.switch.selected-icon-color"], "source": "Switch.kt:371,385" },
+    { "state": "other", "label": "unselected", "text": "Handle, icon and track draw in their unselected-* color tokens; the track shows its outline at track-outline-width.", "tokens": ["comp.switch.unselected-handle-color", "comp.switch.unselected-track-color", "comp.switch.unselected-icon-color", "comp.switch.unselected-track-outline-color", "comp.switch.track-outline-width"] },
+    { "state": "pressed", "text": "Handle size and offset both snap instantly, with no easing, instead of animating: the press-squish is immediate and only the later release/settle motion is springy.", "part": "handle", "tokens": ["comp.switch.pressed-handle-width", "comp.switch.pressed-handle-height"], "motion": { "instant": true }, "source": "Switch.kt:307-317,660" },
+    { "state": "disabled", "text": "Colors are not animated between enabled and disabled; treat the transition as an instant cut, matching checkbox and radio button. No separate disabled-transition motion is defined for switch.", "tokens": ["comp.switch.disabled-selected-track-color", "comp.switch.disabled-unselected-track-color"], "motion": { "instant": true } },
+    { "state": "hovered", "text": "Hovering, focusing or pressing does not recolor the track, handle or icon: comp.switch defines per-interaction color tokens (selected-hover-track-color, selected-focus-handle-color, unselected-pressed-icon-color, etc.), but the pinned Compose implementation's default SwitchColors never reads them. Interaction feedback is the ripple/state-layer overlay on the handle, plus the handle's own size-based press squish.", "source": "Switch.kt:369-404" }
+  ],
+  "behaviour": [
+    { "text": "Handle size and position both animate on a fast-spatial spring, except while pressed, where both snap instantly with no easing.", "part": "handle", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "Switch.kt:188,307-317" },
+    { "text": "Toggling the switch calls onCheckedChange(!checked); the effect should apply immediately with no separate confirmation step." },
+    { "text": "Icon content, if supplied, is arbitrary caller-provided composable content and is not internally crossfaded or animated by the switch; any on/off icon swap animation must be implemented by the icon content itself.", "part": "icon" }
+  ],
+  "accessibility": {
+    "role": "switch",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the switch.", "Space or Enter toggles it."],
+    "semantics": ["Announced as \"on\"/\"off\", not \"checked\"/\"unchecked\".", "The focus ring/state layer is drawn on the handle at its current position and size, not on the track.", "The effect of toggling is immediate and requires no separate confirmation; do not gate a switch behind a save action."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "comp.switch defines per-interaction-state colors for track, handle and icon (selected-hover-track-color, selected-focus-handle-color, selected-pressed-icon-color, and the unselected equivalents), but SwitchColors in the pinned Compose implementation only branches on enabled and checked; none of the hover/focus/pressed variants are read. Interaction feedback is the ripple overlay on the handle plus the handle's own size change, not a recolor.", "tokens": ["comp.switch.selected-hover-track-color", "comp.switch.selected-focus-handle-color", "comp.switch.selected-pressed-icon-color"], "source": "Switch.kt:369-404" },
+    { "kind": "dead-token", "text": "comp.switch.focus-indicator-color is never referenced by Switch.kt; the inset focus ring (when the ripple theme uses one) is drawn with the track's own shape and no distinct color token.", "tokens": ["comp.switch.focus-indicator-color"], "source": "Switch.kt:152-169" },
+    { "kind": "dead-token", "text": "comp.switch.icon-handle-width/height (24dp) exist as tokens but are not referenced by any code path in Switch.kt at the pinned commit; they duplicate the selected-handle size and are unused. Do not treat them as a distinct required size.", "tokens": ["comp.switch.icon-handle-width", "comp.switch.icon-handle-height"], "source": "Switch.kt" },
+    { "kind": "gotcha", "text": "The token comp.switch.unselected-focus-track-outline-color is used unconditionally as the base unselected track border color in SwitchDefaults.colors(), not only while focused, despite its name. Its \"focus\" naming is misleading: it is the plain resting unselected outline color.", "tokens": ["comp.switch.unselected-focus-track-outline-color"], "source": "Switch.kt:375,437" },
+    { "kind": "gotcha", "text": "Do not assume a fixed two-state handle diameter: the size machine has three tiers (unselected/selected/pressed) plus an icon-presence override, and travel distance is always computed from the selected size regardless of which size is currently rendered." },
+    { "kind": "gotcha", "text": "The pressed-state offset formula reuses track-outline-width as the pinch gap; if that token changes, both the resting track border width and the pressed-handle inset move together.", "tokens": ["comp.switch.track-outline-width"], "source": "Switch.kt:301-305" }
+  ]
+}

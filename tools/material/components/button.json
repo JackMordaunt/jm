@@ -1,0 +1,79 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "button",
+  "name": "Button",
+  "status": "changed",
+  "statusNote": "Five sizes (XS-XL) and a round/square shape choice per size are new in Expressive; the filled/tonal/outlined/elevated/text colour variants are unchanged in concept from baseline M3.",
+  "summary": "A single-action button. Choose emphasis by colour style (filled > elevated ≈ tonal > outlined > text) and choose size by the density of the surrounding layout, not by importance.",
+  "tokenGroups": ["comp.button-x-small", "comp.button-small", "comp.button-medium", "comp.button-large", "comp.button-x-large", "comp.filled-button", "comp.filled-tonal-button", "comp.outlined-button", "comp.elevated-button", "comp.text-button", "comp.tonal-button", "comp.baseline-button"],
+  "references": { "compose": ["Button.kt", "ToggleButton.kt"], "mdc": ["CommonButton.md"] },
+  "inputs": [
+    { "name": "label", "type": "slot", "required": true, "description": "The button's text content." },
+    { "name": "onClick", "type": "callback", "required": true, "description": "Runs the button's action." },
+    { "name": "leadingIcon", "type": "icon", "required": false, "description": "Optional leading icon. Expressive guidance favours one icon per button, leading or trailing, not both." },
+    { "name": "trailingIcon", "type": "icon", "required": false, "description": "Optional trailing icon; mutually preferred over leadingIcon, though Compose does not forbid both." },
+    { "name": "size", "type": "enum", "values": ["x-small", "small", "medium", "large", "x-large"], "required": false, "default": "small", "description": "Selects the token group that drives container height, and buckets content padding, icon size and icon-label spacing from that height." },
+    { "name": "style", "type": "enum", "values": ["filled", "tonal", "outlined", "elevated", "text"], "required": false, "default": "filled", "description": "Colour style; selects the matching comp.*-button token group. Maps to the Compose composables Button, FilledTonalButton, OutlinedButton, ElevatedButton and TextButton." },
+    { "name": "shape", "type": "enum", "values": ["round", "square"], "required": false, "default": "round", "description": "Resting silhouette, from the size's container-shape-round or container-shape-square token. Pick one per button; a button never mixes the two at rest." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables the button and applies the style's disabled container/label opacities." },
+    { "name": "checkable", "type": "boolean", "required": false, "default": false, "description": "Makes the button a two-state toggle (Compose ToggleButton/ElevatedToggleButton/FilledTonalToggleButton/OutlinedToggleButton), changing its role to checkbox and adding the checked state. Not offered for the text style, which has no toggle composable." },
+    { "name": "checked", "type": "boolean", "required": false, "default": false, "description": "Current toggle state. Only meaningful when checkable is true; the caller owns it." },
+    { "name": "onCheckedChange", "type": "callback", "required": false, "description": "Called with the new checked value when a checkable button is clicked." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Filled, tonal and elevated have a solid fill; outlined has a 1px stroke only; text has no container.", "tokens": ["comp.button-small.container-shape-round", "comp.button-small.container-shape-square", "comp.button-small.outlined-outline-width"] },
+    { "id": "label", "name": "Label text", "description": "Required text content." },
+    { "id": "icon", "name": "Leading/trailing icon", "description": "Optional, one or the other as a rule; a button can technically carry both slots but Expressive guidance favours one.", "optional": true, "tokens": ["comp.button-small.icon-size", "comp.button-small.icon-label-space"] }
+  ],
+  "variants": [
+    { "axis": "size", "value": "x-small", "tokenGroup": "comp.button-x-small" },
+    { "axis": "size", "value": "small", "default": true, "tokenGroup": "comp.button-small" },
+    { "axis": "size", "value": "medium", "tokenGroup": "comp.button-medium" },
+    { "axis": "size", "value": "large", "tokenGroup": "comp.button-large" },
+    { "axis": "size", "value": "x-large", "tokenGroup": "comp.button-x-large" },
+    { "axis": "style", "value": "filled", "default": true, "tokenGroup": "comp.filled-button", "description": "Highest emphasis; primary action. Toggle colours (selected/unselected) also live in this group." },
+    { "axis": "style", "value": "tonal", "tokenGroup": "comp.filled-tonal-button", "description": "Medium-high emphasis. Only the plain (non-toggle) FilledTonalButton reads this group; the tonal toggle button reads comp.tonal-button instead — see notes." },
+    { "axis": "style", "value": "outlined", "tokenGroup": "comp.outlined-button", "description": "Medium emphasis, secondary action." },
+    { "axis": "style", "value": "elevated", "tokenGroup": "comp.elevated-button", "description": "Filled-tonal look plus a shadow; use on patterned or coloured surfaces only." },
+    { "axis": "style", "value": "text", "tokenGroup": "comp.text-button", "description": "Low emphasis, tertiary/inline action. No toggle composable exists for this style." },
+    { "axis": "shape", "value": "round", "default": true, "description": "Fully rounded resting shape, from container-shape-round." },
+    { "axis": "shape", "value": "square", "description": "Squared resting shape, from container-shape-square. Also the checked shape for a small toggle button by default." }
+  ],
+  "layout": [
+    { "text": "Content padding is chosen by container height bucket, not by the size prop directly: height < small → x-small padding, < medium → small padding, < large → medium padding, < x-large → large padding, else x-large padding.", "source": "Button.kt:1578-1593" },
+    { "text": "Icon size and icon-label spacing are bucketed by the same container-height thresholds as content padding.", "tokens": ["comp.button-x-small.icon-size", "comp.button-small.icon-size", "comp.button-medium.icon-size", "comp.button-large.icon-size", "comp.button-x-large.icon-size"], "source": "Button.kt:1601-1631" },
+    { "text": "Minimum container width is a flat 58dp at every size; it is not tokenized.", "values": [{ "name": "minWidth", "value": 58, "unit": "dp" }], "source": "Button.kt:1053" },
+    { "text": "Minimum height for the default (small) size is the small size's container-height token, except on precision-pointer input (mouse/trackpad), where it drops to a hardcoded 36dp regardless of the token. Implement this as a separate pointer-precision min-height override, not as a sixth size.", "tokens": ["comp.button-small.container-height"], "values": [{ "name": "pointerPrecisionMinHeight", "value": 36, "unit": "dp" }], "source": "Button.kt:1059-1065" },
+    { "text": "On precision-pointer input, the small button's vertical padding also drops from 10dp to a hardcoded 8dp, and its leading padding switches to a hardcoded 12dp instead of the leading-space token.", "values": [{ "name": "pointerPrecisionVerticalPadding", "value": 8, "unit": "dp" }, { "name": "pointerPrecisionLeadingPadding", "value": 12, "unit": "dp" }], "source": "Button.kt:1652-1656" },
+    { "text": "Vertical content padding by size is hardcoded, not tokenized: x-small 6dp; small 8dp normally, 10dp on touch; medium 16dp; large 32dp.", "values": [{ "name": "verticalPaddingXSmall", "value": 6, "unit": "dp" }, { "name": "verticalPaddingSmall", "value": 8, "unit": "dp" }, { "name": "verticalPaddingSmallTouch", "value": 10, "unit": "dp" }, { "name": "verticalPaddingMedium", "value": 16, "unit": "dp" }, { "name": "verticalPaddingLarge", "value": 32, "unit": "dp" }], "source": "Button.kt:915,950-956,1660,1663" },
+    { "text": "A button containing only an icon (no label) uses a hardcoded 16dp leading content padding instead of the leading-space token.", "values": [{ "name": "iconOnlyLeadingPadding", "value": 16, "unit": "dp" }], "source": "Button.kt:912,932" },
+    { "text": "Icon size defaults to a flat 18dp rather than any size token, marked in Compose as a placeholder pending a corrected baseline-button value; the per-size icon-size tokens are what actually get used once bucketed by height, so this 18dp fallback is not normally observed.", "values": [{ "name": "iconSizeFallback", "value": 18, "unit": "dp" }], "source": "Button.kt:1080-1081" },
+    { "text": "Extra-small icon-label spacing is a hardcoded 4dp, not sourced from a token, pending a correction to the x-small token value.", "values": [{ "name": "extraSmallIconLabelSpace", "value": 4, "unit": "dp" }], "source": "Button.kt:1107-1108" }
+  ],
+  "states": [
+    { "state": "pressed", "text": "Every button has a resting shape and a pressed shape and animates between them on press/release, using the size's pressed-container-shape token.", "tokens": ["comp.button-small.pressed-container-shape"], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "Button.kt:250-258" },
+    { "state": "checked", "text": "A checkable button adds a third, checked shape from the size's selected-container-shape-round or selected-container-shape-square token (round morphs to square when checked at small size); role becomes checkbox, not button.", "tokens": ["comp.button-small.selected-container-shape-round", "comp.button-small.selected-container-shape-square"], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "ToggleButton.kt:176,189" },
+    { "state": "checked", "text": "Checked/unchecked colours come from the style's own selected-*/unselected-* tokens (filled, elevated, outlined), except the tonal toggle, which reads comp.tonal-button's selected-*/unselected-* tokens instead of comp.filled-tonal-button.", "tokens": ["comp.filled-button.selected-container-color", "comp.filled-button.unselected-container-color", "comp.tonal-button.selected-container-color", "comp.tonal-button.unselected-container-color"], "source": "ToggleButton.kt:781-793,1207-1216" },
+    { "state": "disabled", "text": "Each style applies its own disabled container and label/icon opacities independently; no additional hardcoded alpha is layered on top.", "tokens": ["comp.filled-button.disabled-container-opacity", "comp.filled-button.disabled-label-text-opacity"] },
+    { "state": "hovered", "part": "container", "text": "Elevated buttons track hovered elevation from the style's token group; filled/tonal/outlined/text use their hovered label/icon colour tokens only.", "tokens": ["comp.elevated-button.hovered-container-elevation"] },
+    { "state": "focused", "text": "Applies the style's focused icon/label colour tokens; elevated additionally applies its focused-container-elevation token.", "tokens": ["comp.filled-button.focused-icon-color", "comp.filled-button.focused-label-text-color"] }
+  ],
+  "behaviour": [
+    { "text": "A checkable button calls onCheckedChange(!checked) on click; the caller owns the checked value.", "source": "ToggleButton.kt" },
+    { "text": "Toggle button's default pressed shape at small size is hardcoded to a 6dp rounded rectangle, diverging from the small size's pressed-container-shape token; x-small/medium/large/x-large toggle pressed shapes do use their own size token correctly. This is very likely an upstream oversight; a from-scratch kit can simply always use the size's pressed-container-shape token for consistency.", "tokens": ["comp.button-small.pressed-container-shape"], "values": [{ "name": "toggleSmallPressedShapeOverride", "value": 6, "unit": "dp" }], "source": "ToggleButton.kt:699,720" },
+    { "text": "Elevated button's shadow tracks rest/pressed/focused/hovered/disabled elevation, all sourced from the elevated-button token group; no hardcoded elevation numbers are used.", "tokens": ["comp.elevated-button.container-elevation", "comp.elevated-button.pressed-container-elevation", "comp.elevated-button.focused-container-elevation", "comp.elevated-button.hovered-container-elevation", "comp.elevated-button.disabled-container-elevation"], "source": "Button.kt:1463-1467" }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the button.", "Enter or Space activates it.", "For a checkable button, Space or Enter also toggles checked and the checkbox role's checked state is announced."],
+    "semantics": ["Screen readers announce the label text.", "An icon-only button (no label) must carry an explicit content description; there is no fallback text to announce.", "A checkable button uses the checkbox role, not the button role, and announces checked/unchecked, not a mutually-exclusive radio choice."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "button.md's own token list names comp.tonal-button and comp.baseline-button alongside the five style groups, but Button.kt (the plain, non-toggle composables) never imports TonalButtonTokens or reads any BaselineButtonTokens colour/shape field. comp.tonal-button is live only as ToggleButton.kt's colour source for the tonal toggle variant (see the checked-state note below); comp.baseline-button is effectively dead.", "tokens": ["comp.tonal-button", "comp.baseline-button"], "source": "Button.kt" },
+    { "kind": "dead-token", "text": "comp.baseline-button's colour tokens (container-color, icon-color, label-text-*, selected-*/unselected-*, disabled-*) and its size/shape tokens (container-height, container-shape-round/square, icon-size, icon-label-space, pressed-container-shape, selected-container-shape-*) are never read anywhere in Button.kt or ToggleButton.kt. Only leading-space and trailing-space are read, and only as the legacy single-size ButtonDefaults.ContentPadding default, which the height-bucketed contentPaddingFor() logic supersedes in practice for every documented size.", "tokens": ["comp.baseline-button"], "source": "Button.kt:910-911,923-929" },
+    { "kind": "gotcha", "text": "The tonal toggle button (FilledTonalToggleButton) reads its selected/unselected colours from comp.tonal-button, not from comp.filled-tonal-button (the group the plain FilledTonalButton uses). comp.filled-tonal-button itself has no selected-*/unselected-* fields at all, so do not look for toggle colours there for the tonal style.", "tokens": ["comp.tonal-button", "comp.filled-tonal-button"], "source": "ToggleButton.kt:1207-1216" },
+    { "kind": "dead-token", "text": "comp.filled-tonal-button carries container-height, container-shape, icon-size and label-text-font fields that no other style group has and that Button.kt/ToggleButton.kt never read — the actual height/shape/icon-size for every style come from the per-size comp.button-* groups instead.", "tokens": ["comp.filled-tonal-button.container-height", "comp.filled-tonal-button.container-shape", "comp.filled-tonal-button.icon-size", "comp.filled-tonal-button.label-text-font"], "source": "Button.kt" },
+    { "kind": "gotcha", "text": "There is no text-toggle composable in ToggleButton.kt; the text style cannot be made checkable, unlike filled/tonal/outlined/elevated.", "source": "ToggleButton.kt" }
+  ]
+}

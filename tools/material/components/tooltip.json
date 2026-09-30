@@ -1,0 +1,62 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tooltip",
+  "name": "Tooltip",
+  "status": "unchanged",
+  "summary": "A small popup that labels or explains an anchor element on hover, long-press, or keyboard focus. Choose plain for a short one-line label; choose rich when the content needs a title, multi-line body, or an action.",
+  "tokenGroups": ["comp.plain-tooltip", "comp.rich-tooltip"],
+  "references": { "compose": ["Tooltip.kt"], "mdc": [] },
+  "inputs": [
+    { "name": "anchor", "type": "slot", "required": true, "description": "The element the tooltip labels or explains." },
+    { "name": "style", "type": "enum", "values": ["plain", "rich"], "required": false, "default": "plain", "description": "Selects the token group and content structure." },
+    { "name": "label", "type": "string", "required": false, "description": "Plain style only: the single line of label text." },
+    { "name": "title", "type": "string", "required": false, "description": "Rich style only: an optional short title line (subhead)." },
+    { "name": "body", "type": "slot", "required": false, "description": "Rich style only: one or more lines of supporting text." },
+    { "name": "actionLabel", "type": "string", "required": false, "description": "Rich style only: label for an optional action button in its own row at the bottom." },
+    { "name": "onAction", "type": "callback", "required": false, "description": "Rich style only: runs when the action button is pressed." },
+    { "name": "caret", "type": "boolean", "required": false, "default": false, "description": "Draws a triangular caret pointing at the anchor. The caret is a boolean union with the container's own corner shape, not a separate decoration." },
+    { "name": "position", "type": "enum", "values": ["above", "below", "left", "right", "start", "end"], "required": false, "description": "Preferred side of the anchor. The position provider flips and clamps the popup back inside the window bounds when the preferred side would clip." },
+    { "name": "persistent", "type": "boolean", "required": false, "description": "When true, the tooltip does not auto-dismiss on the fixed timer and stays until the user taps outside it or an explicit dismiss call. Defaults to false for plain tooltips and true for rich tooltips with an action." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The popup surface, optionally with a caret pointing at the anchor.", "tokens": ["comp.plain-tooltip.container-color", "comp.plain-tooltip.container-shape", "comp.rich-tooltip.container-color", "comp.rich-tooltip.container-shape", "comp.rich-tooltip.container-elevation"] },
+    { "id": "supporting-text", "name": "Supporting text", "description": "Plain style: the single line of label text.", "tokens": ["comp.plain-tooltip.supporting-text-color", "comp.plain-tooltip.supporting-text-font"] },
+    { "id": "subhead", "name": "Subhead", "description": "Rich style only: an optional short title line above the body.", "optional": true, "tokens": ["comp.rich-tooltip.subhead-color", "comp.rich-tooltip.subhead-font"] },
+    { "id": "body", "name": "Body", "description": "Rich style: one or more lines of supporting body text.", "tokens": ["comp.rich-tooltip.supporting-text-color", "comp.rich-tooltip.supporting-text-font"] },
+    { "id": "action", "name": "Action", "description": "Rich style only: a single text button in its own row at the bottom.", "optional": true, "tokens": ["comp.rich-tooltip.action-label-text-color", "comp.rich-tooltip.action-label-text-font", "comp.rich-tooltip.action-hover-label-text-color", "comp.rich-tooltip.action-focus-label-text-color", "comp.rich-tooltip.action-pressed-label-text-color"] }
+  ],
+  "variants": [
+    { "axis": "style", "value": "plain", "default": true, "tokenGroup": "comp.plain-tooltip", "description": "A short, one-line label for an icon or control." },
+    { "axis": "style", "value": "rich", "tokenGroup": "comp.rich-tooltip", "description": "Descriptive content needing a title, multi-line body, and/or an action." }
+  ],
+  "layout": [
+    { "text": "Minimum container size is 40dp wide by 24dp tall for both styles — a floor, not a token; content can grow past it.", "values": [{ "name": "minWidth", "value": 40, "unit": "dp" }, { "name": "minHeight", "value": 24, "unit": "dp" }], "part": "container", "source": "Tooltip.kt:1450-1453" },
+    { "text": "Plain tooltip max width is 200dp; content padding is 8dp horizontal and 4dp vertical.", "values": [{ "name": "plainMaxWidth", "value": 200, "unit": "dp" }, { "name": "plainHorizontalPadding", "value": 8, "unit": "dp" }, { "name": "plainVerticalPadding", "value": 4, "unit": "dp" }], "part": "container", "source": "Tooltip.kt:535,1456-1459" },
+    { "text": "Rich tooltip max width is 320dp with 16dp horizontal inset. When a subhead is present, its first-line baseline sits 28dp from the top and the body's first line sits 24dp below the subhead's baseline; body text gets 16dp bottom padding when there is no action; the action row has 8dp bottom padding and a 36dp minimum height of its own.", "values": [{ "name": "richMaxWidth", "value": 320, "unit": "dp" }, { "name": "richHorizontalPadding", "value": 16, "unit": "dp" }, { "name": "heightToSubheadFirstLine", "value": 28, "unit": "dp" }, { "name": "heightFromSubheadToTextFirstLine", "value": 24, "unit": "dp" }, { "name": "textBottomPadding", "value": 16, "unit": "dp" }, { "name": "actionLabelBottomPadding", "value": 8, "unit": "dp" }, { "name": "actionLabelMinHeight", "value": 36, "unit": "dp" }], "part": "container", "source": "Tooltip.kt:538,1460-1471" },
+    { "text": "The gap between the tooltip and its anchor is 4dp in every direction.", "values": [{ "name": "spacingBetweenTooltipAndAnchor", "value": 4, "unit": "dp" }], "source": "Tooltip.kt:1449" },
+    { "text": "The caret is 16dp wide by 8dp tall and is opt-in per tooltip; the default has no caret. The caret shape is a boolean union with the container's own corner shape, not a decoration layered on top, so a custom container shape reshapes the caret's base too.", "values": [{ "name": "caretWidth", "value": 16, "unit": "dp" }, { "name": "caretHeight", "value": 8, "unit": "dp" }], "source": "Tooltip.kt:532" },
+    { "text": "Anchor position is a caller preference (above, below, left, right, start, end), not auto-selected — but the position provider flips or clamps the popup back inside the window bounds when the preferred side would clip, so edge-of-screen handling is not left to the host. If a caret is drawn, recompute its direction from the resolved position, not the requested one.", "source": "Tooltip.kt:822-843,899" }
+  ],
+  "states": [
+    { "state": "open", "text": "Only one tooltip is shown at a time across a shared mutex; opening a second dismisses the first, mirroring the snackbar's single-visible-item rule.", "source": "Tooltip.kt" }
+  ],
+  "behaviour": [
+    { "text": "Touch or stylus: a press-and-hold past the platform's long-press timeout (a system value, not a Material constant) shows the tooltip; releasing before that cancels it as a normal tap instead.", "source": "Tooltip.kt:220-283" },
+    { "text": "Mouse: the tooltip shows immediately on pointer enter over the anchor, with no delay, and hides on pointer exit unless the tooltip is persistent.", "source": "Tooltip.kt:220-283" },
+    { "text": "Keyboard: the tooltip shows immediately when the anchor receives focus and hides when focus leaves.", "source": "Tooltip.kt:220-283" },
+    { "text": "A non-persistent tooltip auto-hides after a fixed 1500ms even if the trigger condition (e.g. hover) is still active.", "values": [{ "name": "autoDismissMs", "value": 1500, "unit": "ms" }], "source": "Tooltip.kt:465" },
+    { "text": "A persistent tooltip does not auto-dismiss on the timer; it stays until the user taps outside it or an explicit dismiss call. Plain tooltips default to non-persistent; the TooltipState used for rich tooltips with an action defaults to persistent; either can override.", "source": "Tooltip.kt:863,889" },
+    { "text": "Both styles fade and scale in tandem on show and hide: opacity animates 0 to 1 on fast-effects while scale animates 0.8 to 1.0 on fast-spatial. There is no slide or translate component.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "values": [{ "name": "scaleFrom", "value": 0.8, "unit": "ratio" }, { "name": "scaleTo", "value": 1, "unit": "ratio" }], "source": "Tooltip.kt:212-230" }
+  ],
+  "accessibility": {
+    "role": "tooltip",
+    "minTouchTargetDp": null,
+    "keyboard": ["The tooltip shows when the anchor receives keyboard focus and hides when focus leaves.", "Escape dismisses an open tooltip and returns focus to the anchor, per the standard WAI-ARIA tooltip pattern.", "Rich tooltip's action button is an independent focus stop reachable by Tab; it is not only reachable via the tooltip's dismiss-on-outside-click."],
+    "semantics": ["Tooltip content is exposed via an assertive live region with its own pane title, so screen readers announce it immediately on show.", "The anchor gets a long-click semantic action labelled for the tooltip, so screen-reader users can trigger it explicitly rather than relying on dwell or hover.", "Rich tooltip's action button is a real button with its own touch target and focus stop."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "MDC-Android has no usable Tooltip documentation page (only an issue-tracker stub); there is no mdc reference for this component beyond what Compose itself implements.", "source": "Tooltip.kt" },
+    { "kind": "gotcha", "text": "The 1500ms auto-dismiss applies even to mouse hover: a pointer resting on an anchor for longer than that will see the tooltip disappear underneath it unless it is marked persistent.", "source": "Tooltip.kt:465" },
+    { "kind": "gotcha", "text": "Plain vs. rich is not just a content difference — their persistence defaults differ (auto-dismiss vs. sticky-until-dismissed). Treat them as distinct interaction contracts, not one container with optional slots.", "source": "Tooltip.kt:863,889" }
+  ]
+}

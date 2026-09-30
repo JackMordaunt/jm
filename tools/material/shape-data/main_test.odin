@@ -54,3 +54,18 @@ test_generate_refuses_a_pair_of_unequal_length :: proc(t: ^testing.T) {
 	_, ok = generate(doc.(json.Object))
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_the_checked_in_shape_data_is_current :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	doc, err := json.parse(#load("../shapes/morphs.json"))
+	testing.expect(t, err == json.Error.None)
+	out, ok := generate(doc.(json.Object))
+	testing.expect(t, ok)
+	testing.expect(
+		t,
+		out == string(#load("../../../ui/material/shape_data.odin")),
+		"ui/material/shape_data.odin is stale; run just material-shapes",
+	)
+}

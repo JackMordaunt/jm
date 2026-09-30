@@ -2,7 +2,7 @@
 // kit's resolved token file: every token as a typed Odin constant, and the
 // colour roles' values per mode.
 //
-//	design-tokens material <m3e-kit>/tokens/m3e.resolved.json ui/material/tokens/tokens.odin
+//	design-tokens material tools/material/tokens/m3e.resolved.json ui/material/tokens/tokens.odin
 //	design-tokens fluent <fluent-kit>/tokens/fluent.resolved.json ui/fluent/tokens/tokens.odin
 //
 // Both kits write the same flat shape: {type, value, <mode>: value, alias}

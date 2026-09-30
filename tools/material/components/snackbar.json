@@ -1,0 +1,60 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "snackbar",
+  "name": "Snackbar",
+  "status": "unchanged",
+  "summary": "A brief, transient message about a process or event, anchored to the bottom of the screen. It never blocks interaction and never requires a response; an action is optional.",
+  "tokenGroups": ["comp.snackbar"],
+  "references": { "compose": ["Snackbar.kt", "SnackbarHost.kt"], "mdc": ["Snackbar.md"] },
+  "inputs": [
+    { "name": "message", "type": "string", "required": true, "description": "The supporting text shown in the snackbar, one or two lines." },
+    { "name": "actionLabel", "type": "string", "required": false, "description": "Label for the optional action button, e.g. \"Undo\" or \"Retry\". Omit for no action." },
+    { "name": "onAction", "type": "callback", "required": false, "description": "Runs when the action button is pressed. Dismisses the snackbar immediately regardless of its duration timer." },
+    { "name": "withDismissAction", "type": "boolean", "required": false, "default": false, "description": "Shows a trailing close icon that dismisses the snackbar immediately." },
+    { "name": "duration", "type": "enum", "values": ["short", "long", "indefinite"], "required": false, "description": "Auto-dismiss duration. Default is short when actionLabel is absent, indefinite when it is present." },
+    { "name": "actionOnNewLine", "type": "boolean", "required": false, "default": false, "description": "Forces the action onto its own row below the text, switching to the two-line layout algorithm." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The coloured surface the message sits on.", "tokens": ["comp.snackbar.container-color", "comp.snackbar.container-shape", "comp.snackbar.container-elevation"] },
+    { "id": "supporting-text", "name": "Supporting text", "description": "The message, one or two lines.", "tokens": ["comp.snackbar.supporting-text-color", "comp.snackbar.supporting-text-font"] },
+    { "id": "action", "name": "Action", "description": "A single text button, e.g. \"Undo\" or \"Retry\".", "optional": true, "tokens": ["comp.snackbar.action-label-text-color", "comp.snackbar.action-label-text-font", "comp.snackbar.action-hover-label-text-color", "comp.snackbar.action-focus-label-text-color", "comp.snackbar.action-pressed-label-text-color"] },
+    { "id": "dismiss-icon", "name": "Dismiss icon", "description": "A close affordance at the trailing edge. Mutually exclusive, layout-wise, with the action button in the one-row single-line layout.", "optional": true, "tokens": ["comp.snackbar.icon-color", "comp.snackbar.icon-size", "comp.snackbar.hover-icon-color", "comp.snackbar.focus-icon-color", "comp.snackbar.pressed-icon-color"] }
+  ],
+  "variants": [
+    { "axis": "layout", "value": "single-line", "default": true, "tokenGroup": "comp.snackbar", "description": "Message fits one line and the action label is short enough to sit beside it, using comp.snackbar.single-line-container-height." },
+    { "axis": "layout", "value": "two-line", "tokenGroup": "comp.snackbar", "description": "Message wraps to two lines, or the action label is long enough to force the button onto its own row below the text, using comp.snackbar.two-lines-container-height." }
+  ],
+  "layout": [
+    { "text": "Single-line vs. two-line is a layout algorithm choice, not a variant the caller declares: decide it from whether the action label plus text fit one row at the current width, not from counting characters.", "source": "Snackbar.kt" },
+    { "text": "Container width is capped at 600dp regardless of viewport; on wider screens the snackbar does not stretch full-bleed.", "values": [{ "name": "containerMaxWidth", "value": 600, "unit": "dp" }], "source": "Snackbar.kt:604" },
+    { "text": "Horizontal inset from the screen edge to the container is 16dp; the side nearest a button gets 8dp instead.", "values": [{ "name": "horizontalSpacing", "value": 16, "unit": "dp" }, { "name": "horizontalSpacingButtonSide", "value": 8, "unit": "dp" }], "source": "Snackbar.kt:608,610" },
+    { "text": "Single-line layout: text gets 14dp vertical padding; when the action fits on the same row, the button sits 4dp from the container's bottom edge.", "values": [{ "name": "verticalPadding", "value": 14, "unit": "dp" }, { "name": "actionButtonBottomPadding", "value": 4, "unit": "dp" }], "source": "Snackbar.kt:620,622" },
+    { "text": "Two-line layout: the text's first line baseline sits 30dp from the top; the action row starts 12dp below the text baseline, with 2dp extra bottom padding under the button.", "values": [{ "name": "heightToFirstLine", "value": 30, "unit": "dp" }, { "name": "longButtonVerticalOffset", "value": 12, "unit": "dp" }, { "name": "separateButtonExtraY", "value": 2, "unit": "dp" }], "source": "Snackbar.kt:606,618,612" },
+    { "text": "The dismiss icon, when present, always occupies its own trailing slot sized to icon-size; when there is no dismiss icon, the text gets 8dp of extra trailing space instead so it doesn't hug the edge.", "tokens": ["comp.snackbar.icon-size"], "values": [{ "name": "textEndExtraSpacing", "value": 8, "unit": "dp" }], "source": "Snackbar.kt:616" },
+    { "text": "Container height is the larger of the layout's height token and the measured content height — a large font can push a single-line container taller than single-line-container-height.", "tokens": ["comp.snackbar.single-line-container-height"], "source": "Snackbar.kt:450-452" },
+    { "text": "There is no hard-coded max-line clamp: Compose never truncates the text with an ellipsis. An implementor should still cap real messages at two lines editorially, since nothing in code enforces it.", "source": "Snackbar.kt" },
+    { "text": "comp.snackbar.container-elevation is applied as shadow elevation, not tonal — the container colour itself does not shift with elevation.", "tokens": ["comp.snackbar.container-elevation", "comp.snackbar.container-color"], "source": "Snackbar.kt:118" }
+  ],
+  "states": [
+    { "state": "other", "label": "queued", "text": "Only one snackbar is ever visible at a time; a newly requested snackbar is queued and shown only once the current one has fully finished dismissing. There is no stacking of multiple visible snackbars.", "source": "SnackbarHost.kt" }
+  ],
+  "behaviour": [
+    { "text": "The container itself has no hover, focus or press state; only the action button and dismiss icon have interaction states, using their own button/icon-button specs.", "source": "Snackbar.kt" },
+    { "text": "Auto-dismiss after 4000ms when duration is short.", "values": [{ "name": "shortDurationMs", "value": 4000, "unit": "ms" }], "source": "SnackbarHost.kt:298-306" },
+    { "text": "Auto-dismiss after 10000ms when duration is long.", "values": [{ "name": "longDurationMs", "value": 10000, "unit": "ms" }], "source": "SnackbarHost.kt:298-306" },
+    { "text": "Never auto-dismisses when duration is indefinite; requires the action or an explicit dismiss. Clicking the action or the dismiss icon dismisses immediately regardless of the timer.", "source": "SnackbarHost.kt:298-306" },
+    { "text": "Default duration is short when actionLabel is absent, indefinite when it is present — an actionable snackbar does not disappear on its own unless the caller overrides duration.", "source": "SnackbarHost.kt:104-105" },
+    { "text": "Enter and exit are a combined fade and scale, not a slide, despite the bottom-of-screen position: opacity animates 0 to 1 on fast-effects and scale animates 0.8 to 1.0 on fast-spatial, together in both directions. No slide offset is applied by the framework; placing the snackbar near the bottom edge (or above a FAB/nav bar) is the host's own layout responsibility.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "values": [{ "name": "scaleFrom", "value": 0.8, "unit": "ratio" }, { "name": "scaleTo", "value": 1, "unit": "ratio" }], "source": "SnackbarHost.kt:370-420" },
+    { "text": "Swipe-to-dismiss, mentioned in MDC-Android docs, is a host or gesture concern layered on top; it is not part of the Snackbar composable itself.", "source": "mdc:Snackbar.md" }
+  ],
+  "accessibility": {
+    "role": "status",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the action button and dismiss icon when present; Enter or Space activates the focused one."],
+    "semantics": ["Announced via a live region tied to visibility, with a pane title read by screen readers; supporting text is read automatically, so don't duplicate it in a separate label.", "Dismiss icon and action are real buttons; minimum touch target applies to both independent of their visual icon/text size.", "A screen-reader-triggered dismiss action is exposed even without a visible dismiss icon, so assistive tech can always close a lingering (especially indefinite) snackbar."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Because only one snackbar shows at a time and new ones queue silently, don't build a toast-stack visual with offset stacking or multiple partially-visible cards.", "source": "SnackbarHost.kt" },
+    { "kind": "gotcha", "text": "Indefinite snackbars are a trap without a visible dismiss affordance — pair a dismiss icon or action whenever duration is indefinite, or the message can only be cleared programmatically.", "source": "SnackbarHost.kt" }
+  ]
+}

@@ -1,0 +1,489 @@
+<title>M3 Expressive Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..800&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* The page wears the kit's own baseline scheme: sys.color.* light and dark. */
+:root {
+  --surface: #fef7ff;
+  --surface-low: #f7f2fa;
+  --surface-container: #f3edf7;
+  --surface-high: #ece6f0;
+  --on-surface: #1d1b20;
+  --on-surface-variant: #49454f;
+  --outline: #79747e;
+  --outline-variant: #cac4d0;
+  --primary: #6750a4;
+  --on-primary: #ffffff;
+  --primary-container: #eaddff;
+  --on-primary-container: #21005d;
+  --secondary-container: #e8def8;
+  --on-secondary-container: #1d192b;
+  --tertiary: #7d5260;
+  --error-container: #f9dedc;
+  --on-error-container: #410e0b;
+  --sans: "Roboto Flex", Roboto, "Segoe UI", system-ui, sans-serif;
+  --mono: "Roboto Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #141218; --surface-low: #1d1b20; --surface-container: #211f26; --surface-high: #2b2930;
+    --on-surface: #e6e0e9; --on-surface-variant: #cac4d0; --outline: #938f99; --outline-variant: #49454f;
+    --primary: #d0bcff; --on-primary: #381e72; --primary-container: #4f378b; --on-primary-container: #eaddff;
+    --secondary-container: #4a4458; --on-secondary-container: #e8def8; --tertiary: #efb8c8; --error-container: #8c1d18; --on-error-container: #f9dedc;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #141218; --surface-low: #1d1b20; --surface-container: #211f26; --surface-high: #2b2930;
+  --on-surface: #e6e0e9; --on-surface-variant: #cac4d0; --outline: #938f99; --outline-variant: #49454f;
+  --primary: #d0bcff; --on-primary: #381e72; --primary-container: #4f378b; --on-primary-container: #eaddff;
+  --secondary-container: #4a4458; --on-secondary-container: #e8def8; --tertiary: #efb8c8; --error-container: #8c1d18; --on-error-container: #f9dedc;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--surface); color: var(--on-surface);
+  font: 400 15px/1.55 var(--sans);
+}
+.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+nav.rail {
+  position: sticky; top: env(safe-area-inset-top, 0px); align-self: start;
+  height: 100vh; overflow-y: auto; padding: 20px 12px 32px;
+  background: var(--surface-low); border-right: 1px solid var(--outline-variant);
+}
+.brand { padding: 4px 16px 16px; }
+.brand b { display: block; font: 700 22px/28px var(--sans); font-variation-settings: "opsz" 40; letter-spacing: -0.2px; }
+.brand span { font: 500 12px/16px var(--sans); color: var(--on-surface-variant); letter-spacing: 0.5px; }
+.navgroup { font: 500 11px/16px var(--sans); letter-spacing: 0.8px; text-transform: uppercase; color: var(--on-surface-variant); padding: 16px 16px 6px; }
+nav.rail a {
+  display: flex; align-items: center; min-height: 40px; padding: 0 16px;
+  border-radius: 20px; color: var(--on-surface-variant); text-decoration: none;
+  font: 500 14px/20px var(--sans);
+}
+nav.rail a:hover { background: color-mix(in srgb, var(--on-surface) 8%, transparent); }
+nav.rail a[aria-current="page"] { background: var(--secondary-container); color: var(--on-secondary-container); font-weight: 700; }
+nav.rail a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.mobile-nav { display: none; }
+
+main { padding-block: 32px 96px; padding-inline: 40px; min-width: 0; }
+.page { max-width: 1040px; }
+h1 { font: 600 40px/48px var(--sans); font-variation-settings: "opsz" 72; letter-spacing: -0.5px; margin: 0 0 8px; text-wrap: balance; }
+h2 { font: 600 24px/32px var(--sans); font-variation-settings: "opsz" 32; margin: 40px 0 12px; text-wrap: balance; }
+h3 { font: 600 17px/24px var(--sans); margin: 28px 0 8px; }
+.lede { color: var(--on-surface-variant); font-size: 17px; line-height: 26px; max-width: 68ch; margin: 0 0 24px; }
+.prose { max-width: 76ch; }
+.prose p, .prose li { max-width: 72ch; }
+.prose h1 { display: none; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+:not(pre) > code { background: var(--surface-container); padding: 1px 5px; border-radius: 6px; }
+pre { background: var(--surface-container); padding: 14px 16px; border-radius: 12px; overflow-x: auto; font-size: 13px; line-height: 20px; }
+.tablewrap { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--outline-variant); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--outline-variant); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font: 500 12px/16px var(--sans); letter-spacing: 0.4px; color: var(--on-surface-variant); background: var(--surface-low); }
+a { color: var(--primary); }
+
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.chip { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--outline-variant); font: 500 12px/16px var(--sans); color: var(--on-surface-variant); background: transparent; }
+.chip.new { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
+.seg { display: inline-flex; gap: 2px; }
+.seg button { height: 36px; padding: 0 16px; border: 1px solid var(--outline); background: transparent; color: var(--on-surface); font: 500 13px var(--sans); cursor: pointer; }
+.seg button:first-child { border-radius: 18px 4px 4px 18px; }
+.seg button:last-child { border-radius: 4px 18px 18px 4px; }
+.seg button[aria-pressed="true"] { background: var(--secondary-container); color: var(--on-secondary-container); border-color: transparent; border-radius: 18px; }
+input[type=search] { height: 40px; min-width: 0; width: min(320px, 100%); padding: 0 16px; border-radius: 20px; border: 1px solid var(--outline); background: var(--surface-container); color: var(--on-surface); font: 400 14px var(--sans); }
+
+/* Colour roles */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.sw { border-radius: 12px; padding: 10px 12px; min-height: 76px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--outline-variant) 60%, transparent); }
+.sw b { font: 500 13px/18px var(--sans); }
+.sw span { font: 400 11.5px/16px var(--mono); opacity: 0.85; }
+.swdot { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--outline-variant); }
+
+/* Type specimens */
+.spec-row { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--outline-variant); align-items: baseline; }
+.spec-row .label { font: 500 12px/16px var(--mono); color: var(--on-surface-variant); }
+.spec-row .sample { overflow-wrap: anywhere; font-family: var(--sans); }
+
+/* Shapes */
+.corners { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
+.corner-box { aspect-ratio: 1; max-width: 100%; background: var(--primary-container); display: grid; place-items: center; text-align: center; color: var(--on-primary-container); font: 500 12px/16px var(--sans); padding: 8px; }
+.shapes { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.shape-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; font: 400 11.5px/16px var(--mono); color: var(--on-surface-variant); text-align: center; }
+.shape-cell svg { width: 100%; max-width: 88px; aspect-ratio: 1; }
+.shape-cell path { fill: var(--primary); }
+.demo { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; background: var(--surface-container); border-radius: 16px; padding: 20px; margin: 12px 0; }
+.demo canvas { max-width: 100%; }
+.demo p { margin: 0; max-width: 44ch; color: var(--on-surface-variant); font-size: 14px; }
+.btn { height: 40px; padding: 0 20px; border-radius: 20px; border: 0; background: var(--primary); color: var(--on-primary); font: 500 14px var(--sans); cursor: pointer; }
+
+/* Token table cells */
+td.v { white-space: nowrap; }
+td.alias { color: var(--on-surface-variant); }
+.empty { color: var(--on-surface-variant); font-style: italic; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.card { display: block; padding: 16px; border-radius: 16px; background: var(--surface-container); color: var(--on-surface); text-decoration: none; }
+.card:hover { background: var(--surface-high); }
+.card b { display: block; font: 600 15px/22px var(--sans); }
+.card span { font-size: 13px; color: var(--on-surface-variant); }
+
+/* JSON-rendered specs */
+ul.rules { list-style: none; padding: 0; margin: 8px 0 16px; display: grid; gap: 10px; max-width: 80ch; }
+ul.rules > li { padding: 10px 14px; border-radius: 12px; background: var(--surface-low); border: 1px solid var(--outline-variant); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 12.5px; }
+.facts:empty { display: none; }
+.src { font: 400 11.5px/18px var(--mono); color: var(--on-surface-variant); }
+.kv { color: var(--on-surface-variant); font-size: 13px; }
+.chip.note-upstream-bug, .chip.note-contradiction { background: var(--error-container); color: var(--on-error-container); border-color: transparent; }
+.chip.note-missing-token, .chip.note-dead-token { background: var(--secondary-container); color: var(--on-secondary-container); border-color: transparent; }
+.meta a.chip { text-decoration: none; }
+dl.tree { margin: 4px 0 12px; display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 6px 16px; }
+dl.tree dt { font: 500 13px/20px var(--sans); color: var(--on-surface-variant); }
+dl.tree dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+ul.tree { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+details.raw { margin-top: 32px; }
+details.raw summary { cursor: pointer; font: 500 14px var(--sans); color: var(--primary); }
+details.raw pre { max-height: 480px; }
+
+@media (max-width: 860px) {
+  dl.tree { grid-template-columns: 1fr; }
+  .app { display: block; }
+  nav.rail { display: none; }
+  .mobile-nav { display: block; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; background: var(--surface-low); border-bottom: 1px solid var(--outline-variant); padding: 10px 16px; }
+  .mobile-nav select { width: 100%; height: 40px; border-radius: 12px; border: 1px solid var(--outline); background: var(--surface); color: var(--on-surface); font: 500 14px var(--sans); padding: 0 12px; }
+  main { padding-inline: 16px; padding-block: 20px 64px; }
+  h1 { font-size: 30px; line-height: 38px; }
+  .spec-row { grid-template-columns: 1fr; gap: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="app">
+  <nav class="rail" id="rail" aria-label="Kit sections"></nav>
+  <div>
+    <div class="mobile-nav"><label for="mnav" hidden>Section</label><select id="mnav"></select></div>
+    <main id="main"><p>Loading the kit…</p></main>
+  </div>
+</div>
+
+<script id="kit-data" type="application/json">
+__KIT_DATA__
+</script>
+<script>
+const KIT = JSON.parse(document.getElementById('kit-data').textContent);
+const T = KIT.tokens;
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let mode = 'light';
+
+const FOUNDATION_PAGES = [
+  ['overview', 'Overview'], ['color', 'Colour'], ['type', 'Typography'], ['shape', 'Shape'],
+  ['motion', 'Motion'], ['states', 'Elevation & states'], ['guide', 'Foundations guide'],
+];
+const titleOf = c => c.name;
+const statusOf = c => c.deprecated ? `deprecated → ${c.deprecated.replacedBy}` : `${c.status} in Expressive`.replace('unchanged in Expressive', 'unchanged from M3');
+const groupsOf = c => c.tokenGroups.map(g => g.replace(/^comp\./, ''));
+
+function nav() {
+  const rail = $('#rail'), sel = $('#mnav');
+  let h = `<div class="brand"><b>M3 Expressive</b><span>Implementation kit · ${esc(KIT.source.commit.slice(0, 12))}</span></div>`;
+  let o = '';
+  h += '<div class="navgroup">Foundations</div>';
+  o += '<optgroup label="Foundations">';
+  for (const [id, name] of FOUNDATION_PAGES) { h += `<a href="#${id}" data-id="${id}">${name}</a>`; o += `<option value="${id}">${name}</option>`; }
+  o += '</optgroup><optgroup label="Components">';
+  h += '<div class="navgroup">Components</div>';
+  for (const c of [...KIT.components].sort((a, b) => titleOf(a).localeCompare(titleOf(b)))) {
+    h += `<a href="#c-${c.id}" data-id="c-${c.id}">${esc(titleOf(c))}</a>`;
+    o += `<option value="c-${c.id}">${esc(titleOf(c))}</option>`;
+  }
+  rail.innerHTML = h;
+  sel.innerHTML = o + '</optgroup>';
+  sel.onchange = () => { location.hash = sel.value; };
+}
+
+// A resolved token's value in the current mode.
+const val = t => (mode === 'dark' && t.dark !== undefined) ? t.dark : t.value;
+function fmt(t) {
+  const v = val(t);
+  switch (t.type) {
+    case 'color': return `<span class="swdot" style="background:${v}"></span><span class="mono">${v}</span>`;
+    case 'dimension': return `<span class="mono">${v} dp</span>`;
+    case 'duration': return `<span class="mono">${v} ms</span>`;
+    case 'shape': return `<span class="mono">${v === 'full' ? 'full' : v.join(' ') + ' dp'}</span>`;
+    case 'typography': return `<span class="mono">${v.fontSize}/${v.lineHeight} · ${v.fontWeight}</span>`;
+    case 'cubicBezier': return `<span class="mono">[${v.join(', ')}]</span>`;
+    default: return `<span class="mono">${esc(v)}${t.standard !== undefined ? ` (standard ${t.standard})` : ''}</span>`;
+  }
+}
+
+function tokenTable(prefix, filter = '') {
+  const rows = Object.entries(T).filter(([k]) => k.startsWith(prefix + '.') && k.includes(filter));
+  if (!rows.length) return `<p class="empty">No tokens under ${esc(prefix)}.</p>`;
+  return `<div class="tablewrap"><table><thead><tr><th>Token</th><th>Value (${mode})</th><th>Alias</th></tr></thead><tbody>` +
+    rows.map(([k, t]) => `<tr><td class="mono">${esc(k.slice(prefix.length + 1))}</td><td class="v">${fmt(t)}</td><td class="alias mono">${esc(t.alias || '')}</td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+
+function modeToggle() {
+  return `<div class="seg" role="group" aria-label="Colour mode">
+    <button type="button" data-mode="light" aria-pressed="${mode === 'light'}">Light</button>
+    <button type="button" data-mode="dark" aria-pressed="${mode === 'dark'}">Dark</button></div>`;
+}
+
+const pages = {
+  overview() {
+    const n = Object.keys(T).length;
+    const comps = Object.keys(T).filter(k => k.startsWith('comp.')).map(k => k.split('.')[1]);
+    return `<h1>Material 3 Expressive, ready to build</h1>
+      <p class="lede">Everything an implementor needs to build the Material 3 Expressive components on their own renderer. The kit holds ${n.toLocaleString()} tokens parsed from the Jetpack Compose sources, a spec for each component, and the Expressive shape library as Bézier geometry.</p>
+      <div class="meta"><span class="chip">androidx ${esc(KIT.source.commit.slice(0, 12))}</span><span class="chip">${new Set(comps).size} component token groups</span><span class="chip">${KIT.components.length} component specs</span>${KIT.shapes ? `<span class="chip">${Object.keys(KIT.shapes.shapes).length} shapes</span>` : ''}</div>
+      <h2>How an agent uses it</h2>
+      <div class="prose"><p>The kit is JSON throughout, and every file has a JSON Schema in <code>schema/</code>. This page is a human view of the same files.</p><ol>
+        <li>Start at <code>kit.json</code>. It gives the reading order, the conventions, and an index of every component with its status, summary and token groups.</li>
+        <li>Read <code>foundations.json</code> once, the <a href="#guide">system rules</a> every spec assumes.</li>
+        <li>Build each component from <code>components/&lt;id&gt;.json</code>, which gives its inputs, anatomy, variants, layout, states, behaviour, accessibility and notes. Look up every token path it names in <code>tokens/m3e.resolved.json</code>.</li>
+        <li>For the shape library and the loading indicator, use <code>shapes/shapes.json</code> and <code>shapes/morphs.json</code>.</li>
+        <li><code>just material-kit-check</code> validates every file against its schema and confirms every token path exists.</li>
+      </ol></div>
+      <h2>Components</h2>
+      <div class="cards">${[...KIT.components].sort((a, b) => titleOf(a).localeCompare(titleOf(b))).map(c =>
+        `<a class="card" href="#c-${c.id}"><b>${esc(titleOf(c))}</b><span>${esc(statusOf(c) || 'spec')}</span></a>`).join('')}</div>`;
+  },
+
+  color() {
+    const roles = Object.entries(T).filter(([k]) => k.startsWith('sys.color.'));
+    const pair = name => T['sys.color.on-' + name] ? 'on-' + name : (name.startsWith('on-') && T['sys.color.' + name.slice(3)] ? name.slice(3) : null);
+    return `<h1>Colour</h1><p class="lede">49 roles, each resolved to a baseline palette tone. Content in role <code>on-X</code> always sits on role <code>X</code>. Each swatch below shows its role name in the paired colour.</p>
+      <div class="toolbar">${modeToggle()}</div>
+      <div class="swatches">${roles.map(([k, t]) => {
+        const name = k.slice(10), p = pair(name);
+        const fg = p ? val(T['sys.color.' + p]) : (parseInt(val(t).slice(1, 3), 16) > 140 ? '#1d1b20' : '#ffffff');
+        return `<div class="sw" style="background:${val(t)};color:${fg}"><b>${name}</b><span>${val(t)} · ${esc(t.alias.replace('ref.palette.', ''))}</span></div>`;
+      }).join('')}</div>
+      <h2>Tokens</h2>${tokenTable('sys.color')}`;
+  },
+
+  type() {
+    const styles = Object.entries(T).filter(([k]) => k.startsWith('sys.typography.'));
+    return `<h1>Typography</h1><p class="lede">There are 15 baseline styles, and Expressive adds a weight-raised emphasized twin for each. Sizes are in sp; the samples render at 1 sp = 1 px in Roboto Flex.</p>
+      ${styles.map(([k, t]) => { const v = t.value; const name = k.slice(15);
+        return `<div class="spec-row"><div class="label">${name}<br>${v.fontSize}/${v.lineHeight} · ${v.fontWeight} · ${v.letterSpacing}</div>
+        <div class="sample" style="font-size:${v.fontSize}px;line-height:${v.lineHeight}px;font-weight:${v.fontWeight};letter-spacing:${v.letterSpacing}px">Split buttons pair an action with its menu</div></div>`; }).join('')}
+      <h2>Tokens</h2>${tokenTable('sys.typescale')}`;
+  },
+
+  shape() {
+    const corners = Object.entries(T).filter(([k]) => k.startsWith('sys.shape.corner.'));
+    const radius = v => v === 'full' ? '50%' : v.map(r => r + 'px').join(' ');
+    let lib = '<p class="empty">The shape library is not bundled in this build.</p>';
+    if (KIT.shapes) {
+      lib = `<div class="shapes">${Object.entries(KIT.shapes.shapes).map(([name, s]) =>
+        `<div class="shape-cell"><svg viewBox="0 0 1 1" role="img" aria-label="${name}"><path d="${pathOf(s.cubics)}"/></svg>${name}</div>`).join('')}</div>`;
+    }
+    return `<h1>Shape</h1><p class="lede">The corner scale has three steps new in Expressive: large-increased, extra-large-increased and extra-extra-large. Radii are set per corner, and <code>full</code> means half the shorter side.</p>
+      <div class="corners">${corners.map(([k, t]) => `<div class="corner-box" style="border-radius:${radius(t.value)}">${k.slice(17)}<br>${t.value === 'full' ? 'full' : t.value.join(' ')}</div>`).join('')}</div>
+      <h2>Shape library</h2><p class="lede">35 shapes in the unit square as cubic Béziers, from <code>shapes/shapes.json</code>. The loading indicator morphs through a sequence of them.</p>
+      ${KIT.morphs ? `<div class="demo"><canvas id="morph" width="160" height="160" aria-label="Loading indicator morph"></canvas><p>The loading indicator’s indeterminate loop, played from <code>shapes/morphs.json</code>. Each step interpolates pre-matched cubics linearly on its own spring (ζ 0.6, k 200) and turns the shape 90°, over a slow global spin.</p></div>` : ''}
+      ${lib}
+      <h2>Tokens</h2>${tokenTable('sys.shape')}`;
+  },
+
+  motion() {
+    return `<h1>Motion</h1><p class="lede">Expressive motion runs on springs. Spatial springs move size, position and shape, and they overshoot. Effects springs move colour and opacity, and never overshoot. The curves are drawn from the tokens using the closed-form solution in Foundations §7.</p>
+      <div class="toolbar"><div class="seg" role="group" aria-label="Motion scheme"><button type="button" data-scheme="value" aria-pressed="true">Expressive</button><button type="button" data-scheme="standard" aria-pressed="false">Standard</button></div><button class="btn" id="replay" type="button">Replay</button></div>
+      <div class="demo"><canvas id="springs" width="720" height="300" style="width:100%;height:auto" aria-label="Spring response curves"></canvas></div>
+      <h2>Tokens</h2>${tokenTable('sys.motion')}`;
+  },
+
+  states() {
+    return `<h1>Elevation &amp; states</h1><p class="lede">Elevation is given in dp and is carried first by surface tone, then by shadow. A state layer is the content colour at the state's opacity, drawn over the container and clipped to its shape.</p>
+      <h2>Elevation</h2>${tokenTable('sys.elevation')}<h2>State layers</h2>${tokenTable('sys.state')}`;
+  },
+
+  guide() {
+    const f = KIT.foundations;
+    return `<h1>Foundations</h1><p class="lede">The system rules every component spec assumes, rendered from <code>foundations.json</code>.</p>` +
+      Object.entries(f).filter(([k]) => k !== '$schema').map(([k, v]) => `<h2>${esc(humanise(k))}</h2>${tree(v)}`).join('') +
+      rawJson(f, 'foundations.json');
+  },
+};
+
+const humanise = k => k.replace(/([a-z])([A-Z0-9])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+
+// A token path, linked to its resolved value where it names one token.
+function tok(p) {
+  const t = T[p];
+  const hint = t ? ` title="${esc(JSON.stringify(val(t)))}"` : '';
+  const dot = t && t.type === 'color' ? `<span class="swdot" style="background:${val(t)}"></span>` : '';
+  return `<code${hint}>${dot}${esc(p)}</code>`;
+}
+const isTok = s => typeof s === 'string' && /^(ref|sys|comp)(\.[a-z0-9-]+)+$/.test(s);
+
+// Renders any JSON value readably: objects as labelled lists, token paths as tokens.
+function tree(v) {
+  if (Array.isArray(v)) {
+    if (v.every(x => typeof x !== 'object' || x === null)) return v.length ? v.map(x => isTok(x) ? tok(x) : `<code>${esc(x)}</code>`).join(' ') : '<span class="empty">none</span>';
+    return `<ul class="tree">${v.map(x => `<li>${tree(x)}</li>`).join('')}</ul>`;
+  }
+  if (v && typeof v === 'object') {
+    if (typeof v.text === 'string' && Object.keys(v).length <= 4) {
+      const rest = Object.entries(v).filter(([k]) => k !== 'text');
+      return `${esc(v.text)}${rest.length ? ' ' + rest.map(([k, x]) => `<span class="kv">${esc(k)}: ${tree(x)}</span>`).join(' ') : ''}`;
+    }
+    return `<dl class="tree">${Object.entries(v).map(([k, x]) => `<dt>${esc(humanise(k))}</dt><dd>${tree(x)}</dd>`).join('')}</dl>`;
+  }
+  if (isTok(v)) return tok(v);
+  return v === null ? '<span class="empty">none</span>' : esc(v);
+}
+
+function rawJson(obj, name) {
+  return `<details class="raw"><summary>Raw JSON · ${esc(name)}</summary><pre>${esc(JSON.stringify(obj, null, 2))}</pre></details>`;
+}
+
+const motionText = m => !m ? '' : m.spring ? tok(m.spring) : m.instant ? '<code>instant</code>'
+  : m.durationMs !== undefined ? `<code>${m.durationMs} ms</code>${m.easing ? ' ' + (isTok(m.easing) ? tok(m.easing) : `<code>[${m.easing.join(', ')}]</code>`) : ''}`
+  : `<code>spring ζ${m.damping} k${m.stiffness}</code>`;
+
+function rules(list) {
+  if (!list || !list.length) return '<p class="empty">None.</p>';
+  return `<ul class="rules">${list.map(r => `<li>
+    ${r.state ? `<span class="chip">${esc(r.state === 'other' ? r.label || 'other' : r.state)}</span> ` : ''}${r.part ? `<span class="chip">${esc(r.part)}</span> ` : ''}${esc(r.text)}
+    <div class="facts">${(r.tokens || []).map(tok).join(' ')}
+      ${(r.values || []).map(x => `<code>${esc(x.name)} = ${x.value} ${x.unit}</code>`).join(' ')}
+      ${r.motion ? `<span class="kv">motion ${motionText(r.motion)}</span>` : ''}
+      ${r.source ? `<span class="src">${esc(r.source)}</span>` : ''}</div></li>`).join('')}</ul>`;
+}
+
+function componentPage(c) {
+  const tables = groupsOf(c).map(g => `<h3 class="mono">comp.${esc(g)}</h3>${tokenTable('comp.' + g, $('#tf')?.value || '')}`).join('');
+  const table = (heads, rows) => `<div class="tablewrap"><table><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  const a = c.accessibility;
+  return `<h1>${esc(c.name)}</h1>
+    <div class="meta"><span class="chip ${c.status === 'new' ? 'new' : ''}">${esc(c.status)}</span>
+      ${c.deprecated ? `<a class="chip" href="#c-${c.deprecated.replacedBy}">deprecated · use ${esc(c.deprecated.replacedBy)}</a>` : ''}
+      ${[...c.references.compose, ...c.references.mdc.map(m => 'mdc:' + m)].map(r => `<span class="chip mono">${esc(r)}</span>`).join('')}</div>
+    <p class="lede">${esc(c.summary)}${c.statusNote ? ` <em>${esc(c.statusNote)}</em>` : ''}</p>
+    <h2>Inputs</h2>${c.inputs.length ? table(['Name', 'Type', 'Required', 'Default', 'Description'], c.inputs.map(i =>
+      `<tr><td class="mono">${esc(i.name)}</td><td class="mono">${esc(i.type)}${i.values ? `<br>${i.values.map(esc).join(' | ')}` : ''}</td><td>${i.required ? 'yes' : ''}</td><td class="mono">${i.default === undefined ? '' : esc(JSON.stringify(i.default))}</td><td>${esc(i.description)}</td></tr>`)) : '<p class="empty">None.</p>'}
+    <h2>Anatomy</h2>${table(['Part', 'Description', 'Tokens'], c.anatomy.map(p =>
+      `<tr><td><b>${esc(p.name)}</b><br><span class="mono">${esc(p.id)}</span>${p.optional ? ' · optional' : ''}</td><td>${esc(p.description)}</td><td>${(p.tokens || []).map(tok).join('<br>')}</td></tr>`))}
+    <h2>Variants</h2>${c.variants.length ? table(['Axis', 'Value', 'Token group', 'Notes'], c.variants.map(v =>
+      `<tr><td>${esc(v.axis)}</td><td class="mono">${esc(v.value)}${v.default ? ' (default)' : ''}</td><td>${v.tokenGroup ? tok(v.tokenGroup) : ''}</td><td>${esc(v.description || '')}</td></tr>`)) : '<p class="empty">None.</p>'}
+    <h2>Layout</h2>${rules(c.layout)}
+    <h2>States</h2>${rules(c.states)}
+    <h2>Behaviour</h2>${rules(c.behaviour)}
+    <h2>Accessibility</h2><dl class="tree"><dt>Role</dt><dd><code>${esc(a.role)}</code></dd><dt>Minimum touch target</dt><dd>${a.minTouchTargetDp === null ? 'not interactive' : a.minTouchTargetDp + ' dp'}</dd>
+      <dt>Keyboard</dt><dd>${tree(a.keyboard)}</dd><dt>Semantics</dt><dd>${tree(a.semantics)}</dd></dl>
+    <h2>Notes</h2>${c.notes.length ? `<ul class="rules">${c.notes.map(n => `<li><span class="chip note-${esc(n.kind)}">${esc(n.kind)}</span> ${esc(n.text)}<div class="facts">${(n.tokens || []).map(tok).join(' ')}${n.source ? `<span class="src">${esc(n.source)}</span>` : ''}</div></li>`).join('')}</ul>` : '<p class="empty">None.</p>'}
+    <h2>Tokens</h2><div class="toolbar">${modeToggle()}<input type="search" id="tf" placeholder="Filter tokens, e.g. pressed" aria-label="Filter tokens"></div>
+    <div id="tables">${tables || '<p class="empty">This component has no token groups.</p>'}</div>
+    ${rawJson(c, `components/${c.id}.json`)}`;
+}
+
+function pathOf(cubics) {
+  if (!cubics.length) return '';
+  let d = `M${cubics[0][0]} ${cubics[0][1]}`;
+  for (const c of cubics) d += `C${c[2]} ${c[3]} ${c[4]} ${c[5]} ${c[6]} ${c[7]}`;
+  return d + 'Z';
+}
+
+// The closed-form spring from Foundations §7, x0 = -1 toward 0.
+function spring(z, k, t) {
+  const w = Math.sqrt(k), x0 = -1;
+  if (z < 1) { const wd = w * Math.sqrt(1 - z * z); return 1 + Math.exp(-z * w * t) * (x0 * Math.cos(wd * t) + (z * w * x0 / wd) * Math.sin(wd * t)); }
+  return 1 + Math.exp(-w * t) * (x0 + w * x0 * t);
+}
+
+let raf = 0;
+function drawSprings(scheme) {
+  const cv = $('#springs'); if (!cv) return;
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height, pad = 36;
+  const css = getComputedStyle(document.documentElement);
+  const ink = css.getPropertyValue('--on-surface-variant'), grid = css.getPropertyValue('--outline-variant');
+  const names = ['fast-spatial', 'default-spatial', 'slow-spatial', 'fast-effects', 'default-effects', 'slow-effects'];
+  const colours = [css.getPropertyValue('--primary'), css.getPropertyValue('--tertiary'), css.getPropertyValue('--on-surface'), css.getPropertyValue('--primary'), css.getPropertyValue('--tertiary'), css.getPropertyValue('--on-surface')];
+  const tmax = 1.0, ymax = 1.3;
+  const X = t => pad + (t / tmax) * (W - pad * 2), Y = y => H - pad - (y / ymax) * (H - pad * 2);
+  const start = performance.now();
+  cancelAnimationFrame(raf);
+  const frame = now => {
+    const reveal = Math.min(1, (now - start) / 900);
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = grid; ctx.lineWidth = 1; ctx.fillStyle = ink; ctx.font = '11px Roboto Mono, monospace';
+    for (const y of [0, 0.5, 1]) { ctx.beginPath(); ctx.moveTo(pad, Y(y)); ctx.lineTo(W - pad, Y(y)); ctx.stroke(); ctx.fillText(String(y), 6, Y(y) + 4); }
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) ctx.fillText(t * 1000 + 'ms', X(t) - 14, H - 12);
+    names.forEach((n, i) => {
+      const z = T[`sys.motion.spring.${n}.damping`][scheme] ?? T[`sys.motion.spring.${n}.damping`].value;
+      const k = T[`sys.motion.spring.${n}.stiffness`][scheme] ?? T[`sys.motion.spring.${n}.stiffness`].value;
+      ctx.strokeStyle = colours[i]; ctx.lineWidth = 2; ctx.setLineDash(n.includes('effects') ? [5, 4] : []);
+      ctx.beginPath();
+      for (let s = 0; s <= 200 * reveal; s++) { const t = s / 200 * tmax; const y = spring(z, k, t); s ? ctx.lineTo(X(t), Y(y)) : ctx.moveTo(X(t), Y(y)); }
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = colours[i]; ctx.fillText(`${n}  ζ${z} k${k}`, W - pad - 190, pad + i * 15);
+    });
+    if (reveal < 1) raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+}
+
+function playMorph() {
+  const cv = $('#morph'); if (!cv || !KIT.morphs) return;
+  // LoadingIndicator.kt's indeterminate loop, as recorded in morphs.json:
+  // a morph every 650 ms on a ζ0.6 k200 spring, +90° per step, plus a
+  // global spin of 360° per 4666 ms.
+  const ind = KIT.morphs.indeterminate, pairs = ind.pairs;
+  const ctx = cv.getContext('2d'), step = 0.65, size = 160 * ind.drawScale;
+  let t0 = performance.now();
+  cancelAnimationFrame(raf);
+  const frame = now => {
+    if (!document.body.contains(cv)) return;
+    const el = (now - t0) / 1000, n = Math.floor(el / step), i = n % pairs.length;
+    const p = spring(0.6, 200, el % step);
+    const a = pairs[i].start, b = pairs[i].end;
+    const cub = a.map((c, j) => c.map((x, m) => x + (b[j][m] - x) * p));
+    const deg = p * 90 + (90 + n * 90) % 360 + (el * 1000 % 4666) / 4666 * 360;
+    ctx.clearRect(0, 0, 160, 160);
+    ctx.save(); ctx.translate(80, 80); ctx.rotate(deg * Math.PI / 180); ctx.translate(-size / 2, -size / 2); ctx.scale(size, size);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+    ctx.fill(new Path2D(pathOf(cub)));
+    ctx.restore();
+    raf = requestAnimationFrame(frame);
+  };
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) raf = requestAnimationFrame(frame);
+  else { t0 = 0; frame(0); cancelAnimationFrame(raf); }
+}
+
+function route() {
+  const id = location.hash.slice(1) || 'overview';
+  const main = $('#main');
+  cancelAnimationFrame(raf);
+  const c = id.startsWith('c-') && KIT.components.find(x => 'c-' + x.id === id);
+  main.innerHTML = `<div class="page">${c ? componentPage(c) : (pages[id] || pages.overview)()}</div>`;
+  document.querySelectorAll('nav.rail a').forEach(a => {
+    if (a.dataset.id === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  $('#mnav').value = c || pages[id] ? id : 'overview';
+  main.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { mode = b.dataset.mode; const f = $('#tf')?.value; route(); if (f && $('#tf')) { $('#tf').value = f; filterTables(c); } });
+  main.querySelectorAll('[data-scheme]').forEach(b => b.onclick = () => {
+    main.querySelectorAll('[data-scheme]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawSprings(b.dataset.scheme); });
+  if ($('#replay')) $('#replay').onclick = () => drawSprings($('[data-scheme][aria-pressed="true"]').dataset.scheme);
+  if ($('#tf')) $('#tf').oninput = () => filterTables(c);
+  drawSprings('value');
+  playMorph();
+  window.scrollTo(0, 0);
+}
+
+function filterTables(c) {
+  const f = $('#tf').value.trim();
+  $('#tables').innerHTML = groupsOf(c).map(g => `<h3 class="mono">comp.${esc(g)}</h3>${tokenTable('comp.' + g, f)}`).join('');
+}
+
+nav();
+addEventListener('hashchange', route);
+route();
+</script>

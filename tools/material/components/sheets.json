@@ -1,0 +1,65 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "sheets",
+  "name": "Sheets",
+  "status": "changed",
+  "statusNote": "Bottom sheet: spring-driven motion, deterministic partial-expand, drag boundary damping near dismiss. Side sheet: geometry unchanged from M3, but no Compose implementation exists in this source tree (gap; see notes).",
+  "summary": "Surfaces anchored to a screen edge that hold supplementary content: bottom sheets rise from the bottom edge, side sheets slide in from left/right. Each has a standard (persistent, no scrim) and modal (blocking, scrimmed) form.",
+  "tokenGroups": ["comp.sheet-bottom", "comp.drag-handle", "comp.scrim"],
+  "references": { "compose": ["ModalBottomSheet.kt", "BottomSheet.kt", "SheetDefaults.kt", "DragHandle.kt"], "mdc": ["BottomSheet.md", "SideSheet.md"] },
+  "inputs": [
+    { "name": "content", "type": "slot", "required": true, "description": "The sheet's content." },
+    { "name": "edge", "type": "enum", "values": ["bottom", "left", "right"], "required": false, "default": "bottom", "description": "Which screen edge the sheet is anchored to." },
+    { "name": "modal", "type": "boolean", "required": false, "default": true, "description": "Modal blocks interaction and shows a scrim; standard coexists with screen content and shows none." },
+    { "name": "onDismissRequest", "type": "callback", "required": false, "description": "Called when the sheet should be dismissed (scrim tap, drag past threshold, Escape, or back gesture)." },
+    { "name": "sheetState", "type": "string", "required": false, "description": "Bottom sheet: the Hidden/PartiallyExpanded/Expanded anchor state, hoistable so a caller can drive it directly." },
+    { "name": "maxWidth", "type": "number", "required": false, "default": 640, "description": "Bottom sheet: the sheet's maximum width in dp, regardless of viewport." },
+    { "name": "gesturesEnabled", "type": "boolean", "required": false, "default": true, "description": "Whether drag-to-dismiss/drag-to-resize gestures are enabled." },
+    { "name": "dragHandle", "type": "slot", "required": false, "description": "Optional drag handle content; omit to render no handle." },
+    { "name": "shape", "type": "string", "required": false, "description": "Override for the sheet container's corner shape." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Bottom sheet: the sheet surface. Side sheet: the sheet surface, standard or modal.", "tokens": ["comp.sheet-bottom.docked-container-shape", "comp.sheet-bottom.docked-container-color"] },
+    { "id": "drag-handle", "name": "Drag handle", "description": "Bottom sheet only, optional: a static pill styled from comp.sheet-bottom.docked-drag-handle-*, distinct from the generic comp.drag-handle component.", "optional": true, "tokens": ["comp.sheet-bottom.docked-drag-handle-color", "comp.sheet-bottom.docked-drag-handle-height", "comp.sheet-bottom.docked-drag-handle-width"] },
+    { "id": "scrim", "name": "Scrim", "description": "Modal only.", "optional": true, "tokens": ["comp.scrim.container-color", "comp.scrim.container-opacity"] },
+    { "id": "divider", "name": "Divider", "description": "Side sheet, standard, optional.", "optional": true },
+    { "id": "headline", "name": "Headline", "description": "Side sheet, standard.", "optional": true, "tokens": ["comp.navigation-drawer.headline-color"] },
+    { "id": "close-affordance", "name": "Close affordance", "description": "Side sheet: an icon button; modal additionally adds a header, close icon button, optional leading back icon button, and optional action row.", "optional": true }
+  ],
+  "variants": [
+    { "axis": "type", "value": "bottom-standard", "default": true, "tokenGroup": "comp.sheet-bottom", "description": "Coexists with screen content, no scrim." },
+    { "axis": "type", "value": "bottom-modal", "tokenGroup": "comp.sheet-bottom", "description": "Blocks interaction, scrim, drag-to-dismiss." },
+    { "axis": "type", "value": "side-standard", "tokenGroup": "comp.navigation-drawer", "description": "Persistent panel beside content. No dedicated side-sheet tokens exist; substituted from comp.navigation-drawer.*, the nearest analogous edge-anchored panel." },
+    { "axis": "type", "value": "side-modal", "tokenGroup": "comp.navigation-drawer", "description": "Blocks interaction, scrim. Same navigation-drawer substitution as side-standard." }
+  ],
+  "layout": [
+    { "id": "bottom-max-width", "text": "Max width is 640dp regardless of viewport.", "values": [{ "name": "sheetMaxWidth", "value": 640, "unit": "dp" }], "source": "SheetDefaults.kt:536" },
+    { "id": "bottom-anchors", "text": "Anchors: Hidden at full container height; Expanded at fullHeight - sheetHeight; PartiallyExpanded is available whenever not skipped and sits at fullHeight - min(fullHeight/2, sheetHeight) — a sheet shorter than half the screen shows its full height with no artificial gap, i.e. PartiallyExpanded converges with Expanded rather than being a fixed 50% anchor. Best modeled as \"may equal Expanded\", not a guaranteed halfway stop — don't hard-code a 50% height.", "source": "BottomSheet.kt:417-443" },
+    { "id": "bottom-drag-thresholds", "text": "Drag settle uses a positional threshold of 56dp and a velocity threshold of 125dp/s to decide which anchor a drag/fling resolves to.", "values": [{ "name": "positionalThreshold", "value": 56, "unit": "dp" }, { "name": "velocityThreshold", "value": 125, "unit": "dp" }], "source": "SheetDefaults.kt:559" },
+    { "id": "bottom-boundary-damping", "text": "Within 125dp of the Hidden anchor, fling velocity is damped by a quadratic factor of the remaining distance, clamped to not drop below the velocity threshold — this stops the expressive spring from overshooting the screen edge during a fast dismiss swipe.", "values": [{ "name": "boundaryDampeningZone", "value": 125, "unit": "dp" }], "source": "SheetDefaults.kt:567; BottomSheet.kt:226-247" },
+    { "id": "bottom-drag-handle-shape", "text": "The default drag handle shape comes from the theme's extra-large corner shape, not from a comp.sheet-bottom shape token; it sits 22dp from the sheet's top edge.", "values": [{ "name": "dragHandleVerticalPadding", "value": 22, "unit": "dp" }], "source": "SheetDefaults.kt:575,788" },
+    { "id": "bottom-predictive-back", "text": "Predictive back scales the sheet down from a bottom-center-ish transform origin, capped at 48dp horizontal / 24dp vertical scale distance; inner content is scaled inversely on Y to keep its own aspect ratio.", "values": [{ "name": "predictiveBackMaxScaleXDistance", "value": 48, "unit": "dp" }, { "name": "predictiveBackMaxScaleYDistance", "value": 24, "unit": "dp" }], "source": "BottomSheet.kt:494-504" },
+    { "id": "bottom-elevation-default", "text": "docked-standard-container-elevation and docked-modal-container-elevation are both level1, but only the modal one is wired as the default tonal elevation.", "tokens": ["comp.sheet-bottom.docked-standard-container-elevation", "comp.sheet-bottom.docked-modal-container-elevation"], "source": "SheetDefaults.kt:526" },
+    { "id": "side-sheet-width", "text": "No spec-mandated width exists (MDC's own example uses 256dp, not a default); the navigation-drawer's container-width (360) and container-shape (rounded only on the edge away from the screen border) are the nearest existing tokens, and their standard/modal color+elevation split matches MDC's side-sheet color table exactly. Treat this as a considered default, not a verified Expressive value, until a real comp.side-sheet.* group ships upstream.", "tokens": ["comp.navigation-drawer.container-width", "comp.navigation-drawer.container-shape", "comp.navigation-drawer.standard-container-color", "comp.navigation-drawer.modal-container-color"], "values": [{ "name": "mdcExampleWidth", "value": 256, "unit": "dp" }], "source": "mdc:SideSheet.md" }
+  ],
+  "states": [
+    { "state": "open", "part": "scrim", "text": "Modal variants show a scrim; alpha fades 0 to 1 with a default-effects spring. Clicking it dismisses if configured to.", "tokens": ["comp.scrim.container-opacity"], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "ModalBottomSheet.kt:146-151" },
+    { "state": "open", "part": "container", "label": "enter", "text": "Bottom sheet enter uses a default-spatial spring; drag/fling settle also uses the default-spatial spring.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "BottomSheet.kt:135-137,208" },
+    { "state": "collapsed", "part": "container", "label": "dismiss", "text": "Bottom sheet dismiss/hide uses a fast-effects spring.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "BottomSheet.kt:135-137" },
+    { "state": "other", "part": "drag-handle", "label": "click-cycle", "text": "Clicking the drag handle cycles state: Expanded dismisses, PartiallyExpanded expands, otherwise (Hidden) shows.", "source": "BottomSheet.kt:366-372" }
+  ],
+  "behaviour": [
+    { "id": "two-drag-handle-specs", "text": "Two unrelated \"drag handle\" specs share this file: comp.drag-handle.* belongs to the generic VerticalDragHandle — a vertically-oriented handle for dragging something horizontally (e.g. a resizable pane divider), with distinct default/pressed/dragged colors, shapes and sizes. The bottom sheet's own handle is styled from comp.sheet-bottom.docked-drag-handle-* instead, and has no pressed/dragged visual state at all — it is a static pill. Don't reuse one spec for the other.", "tokens": ["comp.drag-handle.pressed-color", "comp.drag-handle.dragged-shape", "comp.sheet-bottom.docked-drag-handle-color"] },
+    { "id": "side-sheet-states", "text": "Side sheet states per MDC: Expanded, Hidden, Dragging, Settling; draggable by default.", "source": "mdc:SideSheet.md" }
+  ],
+  "accessibility": {
+    "role": "dialog",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Escape closes a modal sheet.", "Tab moves focus through the sheet's content in document order."],
+    "semantics": ["Bottom sheet exposes a pane title and, when gestures are enabled, dismiss/expand/collapse semantic actions on the drag handle so assistive tech can drive state without a drag gesture.", "MDC's drag-handle view enforces a 48dp minimum touch target; Compose's default drag handle does not add this itself — reserve at least 48dp of tappable height around the visual handle.", "Side sheet close/back affordances are ordinary icon buttons — the standard minimum touch target applies."]
+  },
+  "notes": [
+    { "kind": "missing-token", "text": "There is no Compose side-sheet composable in this source tree at all (confirmed by search); the side-sheet layout above is built from MDC-Android docs plus the navigation-drawer token substitution. Treat any side-sheet width/elevation/shape as a considered default, not a verified Expressive value, until a real comp.side-sheet.* group ships upstream.", "source": "mdc:SideSheet.md" },
+    { "kind": "gotcha", "text": "Bottom sheet's PartiallyExpanded is best modeled as \"may equal Expanded\" rather than a guaranteed halfway stop — don't hard-code a 50% height.", "source": "BottomSheet.kt" }
+  ]
+}

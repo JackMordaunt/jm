@@ -1,0 +1,106 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "text-field",
+  "name": "Text field",
+  "status": "changed",
+  "statusNote": "Label, indicator/outline and colour transitions now animate with spring motion (sys.motion.spring.*) instead of the prior duration/easing curves; shapes, geometry and colour roles are unchanged from M3.",
+  "summary": "A single- or multi-line input for short-to-medium free text. Filled sits on a tinted surface with a bottom indicator line; outlined sits on a transparent background with a full border. Autocomplete composes either variant with a popup menu of selectable options anchored to the field.",
+  "tokenGroups": ["comp.filled-text-field", "comp.outlined-text-field", "comp.filled-autocomplete", "comp.outlined-autocomplete", "comp.menu"],
+  "references": {
+    "compose": ["TextField.kt", "OutlinedTextField.kt", "TextFieldDefaults.kt", "TextFieldImpl.kt", "ExposedDropdownMenu.kt", "Menu.kt", "MenuDefaults.kt"],
+    "mdc": ["TextField.md"]
+  },
+  "inputs": [
+    { "name": "value", "type": "string", "required": true, "description": "The current input text." },
+    { "name": "onValueChange", "type": "callback", "required": true, "description": "Called with the new text as the user types." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables the field when false." },
+    { "name": "readOnly", "type": "boolean", "required": false, "default": false, "description": "Lets the value be selected and copied but not edited." },
+    { "name": "variant", "type": "enum", "values": ["filled", "outlined", "filled-autocomplete", "outlined-autocomplete"], "required": false, "default": "filled", "description": "Selects the container style and, for the autocomplete variants, composes a selectable-options popup." },
+    { "name": "labelPosition", "type": "enum", "values": ["inside", "above"], "required": false, "default": "inside", "description": "Inside rests the label over the input and floats it on focus/non-empty; above fixes it outside the container, never floating." },
+    { "name": "label", "type": "slot", "required": false, "description": "The field's accessible name and floating/fixed caption." },
+    { "name": "placeholder", "type": "slot", "required": false, "description": "Shown in place of the input only once the label has floated clear." },
+    { "name": "leadingIcon", "type": "icon", "required": false, "description": "Optional icon before the input text." },
+    { "name": "trailingIcon", "type": "icon", "required": false, "description": "Optional icon after the input text; for autocomplete this is normally a chevron that flips on open/close." },
+    { "name": "prefix", "type": "slot", "required": false, "description": "Inline affix text immediately before the input." },
+    { "name": "suffix", "type": "slot", "required": false, "description": "Inline affix text immediately after the input." },
+    { "name": "supportingText", "type": "slot", "required": false, "description": "Helper or error text below the container." },
+    { "name": "isError", "type": "boolean", "required": false, "default": false, "description": "Switches indicator/outline, label and supporting text to the error colours." },
+    { "name": "singleLine", "type": "boolean", "required": false, "default": false, "description": "Collapses the field to one line and caps maxLines at 1." },
+    { "name": "minLines", "type": "number", "required": false, "default": 1, "description": "Minimum number of visible text lines." },
+    { "name": "maxLines", "type": "number", "required": false, "description": "Maximum number of visible text lines before the field scrolls; unbounded unless singleLine is true, in which case it is forced to 1." },
+    { "name": "expanded", "type": "boolean", "required": false, "default": false, "description": "Autocomplete only: whether the options menu is open." },
+    { "name": "onExpandedChange", "type": "callback", "required": false, "description": "Autocomplete only: called when the user asks to open or close the options menu." },
+    { "name": "options", "type": "list", "required": false, "description": "Autocomplete only: the selectable options shown in the popup." },
+    { "name": "onOptionSelected", "type": "callback", "required": false, "description": "Autocomplete only: called with the chosen option." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The field's surface: filled is a solid tint with square bottom corners so the indicator reads as attached; outlined is transparent with a fully rounded border.", "tokens": ["comp.filled-text-field.container-color", "comp.filled-text-field.container-shape", "comp.outlined-text-field.container-shape", "comp.outlined-text-field.container-height"] },
+    { "id": "label", "name": "Label", "description": "Rests inside over the input at rest; floats above it (filled) or cuts a gap in the border (outlined) once focused or non-empty. Fixed outside the container when labelPosition is above.", "tokens": ["comp.filled-text-field.label-color", "comp.filled-text-field.label-font", "comp.outlined-text-field.label-color", "comp.outlined-text-field.label-font"] },
+    { "id": "leading-icon", "name": "Leading icon", "description": "Optional icon before the input text.", "optional": true, "tokens": ["comp.filled-text-field.leading-icon-color", "comp.filled-text-field.leading-icon-size"] },
+    { "id": "trailing-icon", "name": "Trailing icon", "description": "Optional icon after the input text; the autocomplete chevron flips 180 degrees on open/close.", "optional": true, "tokens": ["comp.filled-text-field.trailing-icon-color", "comp.filled-text-field.trailing-icon-size"] },
+    { "id": "input", "name": "Input text / caret", "description": "The editable text and its caret.", "tokens": ["comp.filled-text-field.input-color", "comp.filled-text-field.input-font", "comp.filled-text-field.caret-color"] },
+    { "id": "placeholder", "name": "Placeholder", "description": "Shown only once the label has floated clear of the input area.", "optional": true, "tokens": ["comp.filled-text-field.input-placeholder-color"] },
+    { "id": "prefix", "name": "Prefix", "description": "Inline affix text before the input.", "optional": true, "tokens": ["comp.filled-text-field.input-prefix-color"] },
+    { "id": "suffix", "name": "Suffix", "description": "Inline affix text after the input.", "optional": true, "tokens": ["comp.filled-text-field.input-suffix-color"] },
+    { "id": "active-indicator", "name": "Active indicator", "description": "Filled variant only: the bottom line that thickens and recolours on focus.", "tokens": ["comp.filled-text-field.active-indicator-color", "comp.filled-text-field.active-indicator-height", "comp.filled-text-field.focus-active-indicator-height"] },
+    { "id": "outline", "name": "Outline", "description": "Outlined variant only: the full border that thickens and recolours on focus, with a notch cut around the floated label.", "tokens": ["comp.outlined-text-field.outline-color", "comp.outlined-text-field.outline-width", "comp.outlined-text-field.focus-outline-width"] },
+    { "id": "supporting-text-row", "name": "Supporting text row", "description": "Helper, error, and (kit-added, not a Compose primitive) character counter text below the container.", "optional": true, "tokens": ["comp.filled-text-field.supporting-color", "comp.filled-text-field.supporting-font"] },
+    { "id": "menu", "name": "Menu", "description": "Autocomplete only: the popup list of selectable options, anchored under the field and width-matched to it.", "optional": true, "tokens": ["comp.menu.container-color", "comp.menu.container-shape", "comp.menu.container-elevation"] }
+  ],
+  "variants": [
+    { "axis": "variant", "value": "filled", "default": true, "tokenGroup": "comp.filled-text-field", "description": "Denser forms, matches surrounding filled surfaces." },
+    { "axis": "variant", "value": "outlined", "tokenGroup": "comp.outlined-text-field", "description": "Lower-emphasis surfaces, sits on any background." },
+    { "axis": "variant", "value": "filled-autocomplete", "tokenGroup": "comp.filled-autocomplete", "description": "Filled field composed with a selectable-options popup." },
+    { "axis": "variant", "value": "outlined-autocomplete", "tokenGroup": "comp.outlined-autocomplete", "description": "Outlined field composed with a selectable-options popup." },
+    { "axis": "label-position", "value": "inside", "default": true, "description": "Label rests inside the container and floats above it (filled) or into the outline (outlined) on focus or non-empty content." },
+    { "axis": "label-position", "value": "above", "description": "Label is fixed outside the container, above it, and never floats (TextFieldDefaults.kt:2367)." }
+  ],
+  "layout": [
+    { "text": "Minimum container height is 56dp and minimum width is 280dp, for both filled and outlined; there is no max height, and multi-line input grows freely.", "part": "container", "values": [{ "name": "minHeight", "value": 56, "unit": "dp" }, { "name": "minWidth", "value": 280, "unit": "dp" }], "source": "TextFieldDefaults.kt:83,89,1000,1006" },
+    { "text": "Horizontal content inset is 16dp on both sides; this is the base for the label rest position and text/icon padding before icon-slot adjustment.", "values": [{ "name": "horizontalContentInset", "value": 16, "unit": "dp" }], "source": "TextFieldImpl.kt:2235-2236" },
+    { "text": "With a label, vertical padding is an asymmetric top/bottom pair that centers the floated label plus input in the 56dp row; without a label it is symmetric 16dp.", "part": "label", "source": "TextFieldDefaults.kt" },
+    { "text": "Icon glyphs are 24dp but sit in a 48dp minimum touch target; the field adds (48 − 24) / 2 dp of extra horizontal padding between the icon slot and the text to compensate visually.", "values": [{ "name": "iconGlyphSize", "value": 24, "unit": "dp" }, { "name": "iconTouchTarget", "value": 48, "unit": "dp" }], "source": "TextFieldImpl.kt:2170-2174" },
+    { "text": "The supporting/error row starts 4dp below the container.", "part": "supporting-text-row", "values": [{ "name": "supportingTopPadding", "value": 4, "unit": "dp" }], "source": "TextFieldImpl.kt:2235,2241" },
+    { "text": "Prefix and suffix text carry 2dp of padding from the input text.", "values": [{ "name": "prefixSuffixTextPadding", "value": 2, "unit": "dp" }], "source": "TextFieldImpl.kt:2243-2244" },
+    { "text": "Fixed minimum line heights apply independent of font metrics: input text 24dp, focused/floated label 16dp, supporting text 16dp.", "values": [{ "name": "minTextLineHeight", "value": 24, "unit": "dp" }, { "name": "minFocusedLabelLineHeight", "value": 16, "unit": "dp" }, { "name": "minSupportingTextLineHeight", "value": 16, "unit": "dp" }], "source": "TextFieldImpl.kt:2245-2250" },
+    { "text": "The outlined notch is drawn by clipping the outline over a rect spanning the floated label's measured width plus 4dp of inner padding on each side, vertically centered on the label so no border hairline shows through; it exists only once the floating label's width is nonzero.", "part": "outline", "values": [{ "name": "outlineCutoutInnerPadding", "value": 4, "unit": "dp" }], "source": "OutlinedTextField.kt:562-591" },
+    { "text": "When the notch is present, the outlined container's top padding grows by half the floated label's line height.", "part": "outline", "source": "TextFieldImpl.kt:2177-2182" },
+    { "text": "The filled and outlined variants intentionally use different corner tokens for the container: filled reads extra-small-top (square bottom corners so the indicator reads as attached); outlined reads extra-small (all four corners rounded).", "part": "container", "tokens": ["comp.filled-text-field.container-shape", "comp.outlined-text-field.container-shape"] },
+    { "text": "The autocomplete menu's width is forced to exactly match the field's measured width by default; this is a hard layout constraint, not a token.", "part": "menu", "source": "ExposedDropdownMenu.kt:204-213" },
+    { "text": "The autocomplete menu keeps a 48dp margin from the top and bottom edges of the window.", "part": "menu", "values": [{ "name": "menuVerticalMargin", "value": 48, "unit": "dp" }], "source": "Menu.kt:2324-2325" }
+  ],
+  "states": [
+    { "state": "hovered", "text": "Hovering changes indicator/outline and label/input/icon colours; there is no hover state-layer overlay.", "tokens": ["comp.filled-text-field.hover-label-color", "comp.filled-text-field.hover-input-color", "comp.filled-text-field.hover-leading-icon-color", "comp.filled-text-field.hover-trailing-icon-color", "comp.outlined-text-field.hover-label-color", "comp.outlined-text-field.hover-outline-color"], "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "state": "hovered", "part": "active-indicator", "text": "Filled only: hovering also changes the active indicator's height, not just its colour.", "tokens": ["comp.filled-text-field.hover-active-indicator-height"], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "state": "hovered", "part": "outline", "text": "Outlined only: hovering also changes the outline's width, not just its colour.", "tokens": ["comp.outlined-text-field.hover-outline-width"], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "state": "focused", "text": "Focus changes indicator/outline and label/input/icon colours and triggers the label float.", "tokens": ["comp.filled-text-field.focus-label-color", "comp.filled-text-field.focus-input-color", "comp.outlined-text-field.focus-label-color", "comp.outlined-text-field.focus-outline-color"], "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "state": "focused", "part": "active-indicator", "text": "Filled only: on focus the active indicator thickens to focus-active-indicator-height.", "tokens": ["comp.filled-text-field.focus-active-indicator-height"], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "state": "focused", "part": "outline", "text": "Outlined only: on focus the outline thickens to focus-outline-width.", "tokens": ["comp.outlined-text-field.focus-outline-width"], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "state": "error", "text": "Error overrides label, indicator/outline and supporting colour regardless of hover or focus, via dedicated error-hover-* and error-focus-* token rows.", "tokens": ["comp.filled-text-field.error-label-color", "comp.filled-text-field.error-active-indicator-color", "comp.filled-text-field.error-hover-active-indicator-color", "comp.filled-text-field.error-focus-active-indicator-color", "comp.outlined-text-field.error-outline-color", "comp.outlined-text-field.error-hover-outline-color", "comp.outlined-text-field.error-focus-outline-color"] },
+    { "state": "disabled", "text": "Input, label, icons, supporting text and indicator/outline drop to their disabled-*-opacity over the enabled colour; the caret does not render.", "tokens": ["comp.filled-text-field.disabled-input-opacity", "comp.filled-text-field.disabled-label-opacity", "comp.filled-text-field.disabled-leading-icon-opacity", "comp.filled-text-field.disabled-trailing-icon-opacity", "comp.filled-text-field.disabled-supporting-opacity", "comp.filled-text-field.disabled-active-indicator-opacity", "comp.outlined-text-field.disabled-outline-opacity"] }
+  ],
+  "behaviour": [
+    { "text": "One 0→1 label float progress value drives the label's type-style lerp (body-large to body-small), its position, and (outlined) the notch cutout rect together, animated on focus or emptiness change.", "part": "label", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "TextFieldImpl.kt:2036" },
+    { "text": "The label's type style interpolates between body-large and body-small by lerping the two typographies, not by simply scaling one style.", "part": "label", "source": "TextFieldImpl.kt:1951" },
+    { "text": "The placeholder fades in on a fast-effects timing once the label has floated clear.", "part": "placeholder", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "TextFieldImpl.kt:2048-2075" },
+    { "text": "The placeholder fades out on a slower, slow-effects timing; fade-in and fade-out are intentionally asymmetric.", "part": "placeholder", "motion": { "spring": "sys.motion.spring.slow-effects" }, "source": "TextFieldImpl.kt:2048-2075" },
+    { "text": "Indicator thickness (filled) or outline width (outlined) animates on fast-spatial.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "text": "Indicator/outline colour animates independently on fast-effects; colour can finish changing before the thickness/width animation stops growing.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "TextFieldImpl.kt:2115-2133" },
+    { "text": "The autocomplete trailing chevron rotates 180 degrees open and 0 degrees closed; animating this rotation is a deliberate kit deviation, since upstream Compose applies a plain, unanimated Modifier.rotate.", "part": "trailing-icon", "values": [{ "name": "chevronRotation", "value": 180, "unit": "deg" }], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "ExposedDropdownMenu.kt:462-463" },
+    { "text": "Selecting an autocomplete option or tapping outside closes the popup and returns focus to the field; arrow keys move the selection while it is open.", "part": "menu" }
+  ],
+  "accessibility": {
+    "role": "textbox",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to and from the field.", "Typing edits the value at the caret.", "Escape closes an open autocomplete menu and returns focus to the field.", "With an autocomplete menu open, arrow keys move the selection and Enter chooses the focused option."],
+    "semantics": ["The label is the accessible name.", "Label, value, then error/supporting text are announced, and error/supporting text changes are announced as a polite live-region update rather than only a colour change.", "Interactive leading/trailing icons need a content description; non-interactive ones are skipped by screen readers.", "Icon touch targets are announced/hit-tested at 48x48dp minimum even though the glyph is 24dp."]
+  },
+  "notes": [
+    { "kind": "inferred", "text": "internal/TextFieldImpl.kt could not be fetched by a bare internal/ path append in this pass; every fact attributed to it here is taken from the component's own .md description rather than independently re-verified against a second copy of the file.", "source": "mdc:TextField.md" },
+    { "kind": "gotcha", "text": "comp.outlined-text-field carries a top-level container-height token (56), but comp.filled-text-field has no equivalent container-height token at all; both variants share the same hardcoded 56dp minimum in TextFieldDefaults.kt, so don't expect a matching filled token to exist.", "tokens": ["comp.outlined-text-field.container-height"], "source": "TextFieldDefaults.kt:83,89,1000,1006" },
+    { "kind": "gotcha", "text": "Filled and outlined use different corner token names for the same container part (extra-small-top vs extra-small) — don't share one shape token between the two variants.", "tokens": ["comp.filled-text-field.container-shape", "comp.outlined-text-field.container-shape"] },
+    { "kind": "missing-token", "text": "There is no built-in character counter in Compose material3; compose it into the supporting-text slot, right-aligned, sharing supporting-color/supporting-font, switching to the error colours past the limit independent of the field's own isError.", "tokens": ["comp.filled-text-field.supporting-color", "comp.filled-text-field.supporting-font"], "source": "mdc:TextField.md" },
+    { "kind": "gotcha", "text": "Supporting text, error text and the counter share one row; error text replaces the helper text on isError rather than stacking above or below it." },
+    { "kind": "inferred", "text": "Autocomplete token groups mostly re-namespace the field's own tokens under a field-* prefix and add menu-* for the popup; treat autocomplete as {text field} + {menu} composition rather than a new container.", "tokens": ["comp.filled-autocomplete.menu-container-color", "comp.filled-autocomplete.menu-container-shape"] }
+  ]
+}

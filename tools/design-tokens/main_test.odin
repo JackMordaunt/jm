@@ -143,3 +143,18 @@ test_generate_refuses_a_family_the_kit_does_not_name :: proc(t: ^testing.T) {
 	_, ok = generate(serif, MATERIAL)
 	testing.expect(t, !ok)
 }
+
+@(test)
+test_the_checked_in_material_tokens_are_current :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	doc, err := json.parse(#load("../material/tokens/m3e.resolved.json"))
+	testing.expect(t, err == json.Error.None)
+	out, ok := generate(doc.(json.Object)["tokens"].(json.Object), MATERIAL)
+	testing.expect(t, ok)
+	testing.expect(
+		t,
+		out == string(#load("../../ui/material/tokens/tokens.odin")),
+		"ui/material/tokens/tokens.odin is stale; run just material-tokens",
+	)
+}

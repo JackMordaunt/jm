@@ -1,0 +1,59 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "navigation-bar",
+  "name": "Navigation bar",
+  "status": "changed",
+  "statusNote": "The flexible/\"short\" variant, horizontal items, and new colors are new in Expressive; the classic vertical-only bar is unchanged from M3.",
+  "summary": "A bottom bar of 3-5 (up to 6 in the flexible variant) top-level destinations, always visible on compact/medium widths. Use it instead of a rail once the window is too narrow to dock navigation to a side.",
+  "tokenGroups": ["comp.navigation-bar", "comp.navigation-bar-horizontal-item", "comp.navigation-bar-vertical-item"],
+  "references": { "compose": ["NavigationBar.kt", "ShortNavigationBar.kt", "NavigationItem.kt"], "mdc": ["BottomNavigation.md"] },
+  "inputs": [
+    { "name": "items", "type": "list", "required": true, "description": "3-5 destination items (up to 6 in the flexible variant), each with selected, onClick, icon and optional label." },
+    { "name": "flexible", "type": "boolean", "required": false, "default": false, "description": "Selects the flexible (\"short\") bar instead of the standard fixed-height bar." },
+    { "name": "itemIconPosition", "type": "enum", "values": ["top", "start"], "required": false, "default": "top", "description": "Per-item icon position: stacked above the label (top/vertical item) or beside it (start/horizontal item). The recommended binding is by window width: compact uses top, medium and wider (>=600dp) uses start, but a caller can pin either explicitly." },
+    { "name": "arrangement", "type": "enum", "values": ["equal-weight", "centered"], "required": false, "default": "equal-weight", "description": "Flexible bar only: equal-weight matches the standard bar's equal-share division; centered groups items with padding computed from item count, capped at 6 items." },
+    { "name": "alwaysShowLabel", "type": "boolean", "required": false, "default": true, "description": "Whether to always show an item's label, or only when it is selected." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Per-item enabled state." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Full-width bar anchored to the bottom edge.", "tokens": ["comp.navigation-bar.container-color", "comp.navigation-bar.container-height", "comp.navigation-bar.nav-shape"] },
+    { "id": "item", "name": "Item", "description": "Icon + label, one per destination, equal share of the bar's width.", "tokens": ["comp.navigation-bar.item-between-space", "comp.navigation-bar.label-text-font"] },
+    { "id": "active-indicator", "name": "Active indicator", "description": "Pill behind the icon (and label, in the horizontal layout) of the selected item.", "tokens": ["comp.navigation-bar.item-active-indicator-color", "comp.navigation-bar.item-active-indicator-shape"] },
+    { "id": "badge", "name": "Badge", "description": "Optional small dot or numeral anchored to the icon.", "optional": true }
+  ],
+  "variants": [
+    { "axis": "layout", "value": "standard-vertical", "default": true, "tokenGroup": "comp.navigation-bar-vertical-item", "description": "Default; icon stacked above label; compact widths." },
+    { "axis": "layout", "value": "flexible-vertical", "tokenGroup": "comp.navigation-bar-vertical-item", "description": "Compact-width flexible bar, equal-weight arrangement, 3-5 items." },
+    { "axis": "layout", "value": "flexible-horizontal", "tokenGroup": "comp.navigation-bar-horizontal-item", "description": "Medium+ width flexible bar, centered arrangement, icon beside label, 3-6 items." }
+  ],
+  "layout": [
+    { "id": "icon-position-binding", "text": "Item icon position is an explicit top (vertical) or start (horizontal) choice, not an automatic breakpoint switch in the renderer itself — but the recommended binding is by window width: compact windows use vertical items with equal-weight distribution, medium and wider windows (>=600dp) use horizontal items with centered distribution.", "source": "mdc:BottomNavigation.md; NavigationItem.kt:85-93" },
+    { "id": "standard-item-width", "text": "Standard (non-flexible) bar: items always occupy equal fixed-width shares of the bar (width divided by item count), vertical layout only.", "source": "NavigationBar.kt:602-618" },
+    { "id": "flexible-equal-weight", "text": "Flexible bar, equal-weight arrangement: same equal-share division as the standard bar.", "source": "ShortNavigationBar.kt:172-174" },
+    { "id": "flexible-centered", "text": "Flexible bar, centered arrangement: items are centered as a group with horizontal padding computed from item count, capped at 6 items (padding is 0 beyond 6): paddingPercentage = ((100 - 10*(itemCount+3)) / 2) / 100 of the bar width per side — i.e. items occupy 60% of width at 3 items, 70% at 4, 80% at 5, 90% at 6. Each item may still grow past its minimum share up to barWidth/itemCount, and growth reduces the padding on that item's side to keep the group centered.", "source": "ShortNavigationBar.kt:610-615,596-609,576" },
+    { "id": "indicator-geometry", "text": "The horizontal-item indicator's horizontal inset from the item edge comes from the horizontal-item's leading/trailing space tokens; the vertical-item indicator is centered and sized to its own width x height tokens, independent of icon size — indicator padding is (indicatorSize - iconSize) / 2 on each axis.", "tokens": ["comp.navigation-bar-horizontal-item.active-indicator-leading-space", "comp.navigation-bar-horizontal-item.active-indicator-trailing-space", "comp.navigation-bar-vertical-item.active-indicator-width", "comp.navigation-bar-vertical-item.active-indicator-height"], "source": "NavigationBar.kt:742-749; ShortNavigationBar.kt:618-627" },
+    { "id": "bar-height", "text": "Bar height is container-height for both variants (64dp); the old 80dp \"tall\" height token is legacy/M3-classic only and is not read by the flexible bar.", "tokens": ["comp.navigation-bar.container-height", "comp.navigation-bar.tall-container-height"], "source": "ShortNavigationBar.kt:111" },
+    { "id": "unbounded-width", "text": "If the bar is given unbounded width, items keep their natural intrinsic width instead of splitting the available space evenly.", "source": "NavigationBar.kt:234" }
+  ],
+  "states": [
+    { "state": "selected", "text": "Single-select (role tab, selectable group); pressing an inactive item selects it and deselects the previous one." },
+    { "state": "selected", "label": "indicator-motion", "text": "Indicator width/position and the icon/label cross-fade both animate on a fast spatial spring for the pill's grow/shrink and slide.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "NavigationBar.kt:245" },
+    { "state": "selected", "label": "colour-motion", "text": "Icon and label colour/opacity transitions animate on a default-effects spring.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "NavigationBar.kt:186,239" },
+    { "state": "other", "label": "icon-position-reflow", "text": "When an item's icon position animates between top and start (e.g. the flexible bar reflowing on a width change), the position interpolation itself uses a default-spatial spring, and the label swaps between the vertical-item and horizontal-item label type styles at the animation's halfway point.", "tokens": ["comp.navigation-bar-vertical-item.icon-size", "comp.navigation-bar-horizontal-item.icon-size"], "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "NavigationItem.kt:492,495-499" },
+    { "state": "enabled", "text": "Unselected items keep icon-only or icon+label per the bar's label-visibility setting; MDC default shows labels only for the selected item unless \"always show\" is set." }
+  ],
+  "behaviour": [
+    { "id": "arrangement-is-bar-level", "text": "The centered/equal-weight arrangement is a bar-level choice, not per-item; don't mix indicator geometry from the two item groups within one bar." },
+    { "id": "item-growth-recentering", "text": "Item width growth (an item wider than its minimum share) recenters the whole group by adjusting the bar's outer padding, not by re-splitting neighboring items — replicate the padding-shift math rather than a naive flex-box distribution." }
+  ],
+  "accessibility": {
+    "role": "tab",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus between items.", "Arrow keys move focus within the tab group.", "Enter or Space selects the focused item."],
+    "semantics": ["Each item has role tab and a minimum touch target regardless of the visual item/indicator size.", "Screen readers announce the item's label and selected state; unlabeled icon-only items must still carry a content description."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Bar-level \"flexible\" and item-level icon position are independent knobs: a renderer should let a caller force top/start at any width, but the default should follow the >=600dp rule." },
+    { "kind": "gotcha", "text": "Don't conflate the classic 80dp tall-container-height with the Expressive 64dp default; the flexible bar always reuses the 64dp token.", "tokens": ["comp.navigation-bar.tall-container-height", "comp.navigation-bar.container-height"] }
+  ]
+}

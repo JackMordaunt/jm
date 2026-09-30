@@ -1,0 +1,57 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "checkbox",
+  "name": "Checkbox",
+  "status": "changed",
+  "statusNote": "Container geometry and checkmark path were retuned for Expressive, gated at the pinned commit behind the internal isCheckboxStylingFixEnabled flag. This spec follows the new (flag-on) geometry as the target, not the legacy fallback.",
+  "summary": "A square selection control for choosing zero, one or many items from a list, or for toggling a single on/off setting when a list-item-style label is present. Prefer switch for a standalone setting with an immediate effect; prefer checkbox for list selection and tri-state (indeterminate) parent/child selection.",
+  "tokenGroups": ["comp.checkbox"],
+  "references": { "compose": ["Checkbox.kt"], "mdc": ["Checkbox.md"] },
+  "inputs": [
+    { "name": "value", "type": "enum", "values": ["unselected", "selected", "indeterminate"], "required": true, "description": "Tri-state value. indeterminate is reachable only programmatically (e.g. a parent checkbox with mixed children), never by user tap-cycling. Building indeterminate requires the tri-state composable (TriStateCheckbox(state: ToggleableState)); the binary overload (Checkbox(checked: Boolean)) only ever produces unselected or selected." },
+    { "name": "onValueChange", "type": "callback", "required": false, "description": "Called when the control is clicked, with the new value. Omit to make the checkbox non-interactive; it still renders in its current visual state." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables interaction and applies the disabled colors when false." },
+    { "name": "error", "type": "boolean", "required": false, "description": "Renders the error color set (selected + invalid input, e.g. a required agreement left unchecked on submit). Not backed by any Compose parameter at the pinned commit; the error tokens exist ahead of the reference implementation, so build this from comp.checkbox.selected-error-* / .unselected-error-* directly." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The square, rounded-corner box. Filled with no visible border when selected or indeterminate; outlined and transparent when unselected.", "tokens": ["comp.checkbox.container-size", "comp.checkbox.container-shape"] },
+    { "id": "icon", "name": "Icon", "description": "A checkmark when selected, or a horizontal dash when indeterminate. Absent (fully transparent) when unselected.", "tokens": ["comp.checkbox.icon-size"] },
+    { "id": "state-layer", "name": "State layer", "description": "Circular hover/focus/pressed indicator centered on the container, extending past its edges.", "optional": true, "tokens": ["comp.checkbox.state-layer-shape", "comp.checkbox.state-layer-size"] }
+  ],
+  "variants": [],
+  "layout": [
+    { "text": "The container is a square of container-size; the icon is drawn in the same box at icon-size with no added inset, so icon and container share one coordinate space.", "part": "icon", "tokens": ["comp.checkbox.container-size", "comp.checkbox.icon-size"] },
+    { "text": "The checkmark/outline stroke width is hard-coded to 2dp, not read from any token, and is floored to whole device pixels before drawing.", "values": [{ "name": "strokeWidth", "value": 2, "unit": "dp" }], "source": "Checkbox.kt:485,662" },
+    { "text": "The checkmark is a 3-point polyline defined as fractions of container width: left (0.25, 0.5) to apex (0.4, 0.65) to right (0.75, 0.3). This geometry is not derivable from tokens; hand-author or port this exact path.", "values": [{ "name": "leftX", "value": 0.25, "unit": "ratio" }, { "name": "leftY", "value": 0.5, "unit": "ratio" }, { "name": "apexX", "value": 0.4, "unit": "ratio" }, { "name": "apexY", "value": 0.65, "unit": "ratio" }, { "name": "rightX", "value": 0.75, "unit": "ratio" }, { "name": "rightY", "value": 0.3, "unit": "ratio" }], "part": "icon", "source": "Checkbox.kt:718-724" },
+    { "text": "Indeterminate reuses the checkmark polyline animated flat: both endpoints' Y and the apex's X and Y lerp toward 0.5 as a 0-to-1 shift fraction rises, turning the check into a horizontal dash.", "part": "icon", "source": "Checkbox.kt:718-731" },
+    { "text": "The outline stroke is inset by half the stroke width so its visual edge aligns with the container bounds. Fill and outline are drawn as two separate passes only when the box color differs from the border color; otherwise one filled pass is used.", "part": "container", "source": "Checkbox.kt:675-698" },
+    { "text": "The state layer is round, sized state-layer-size, which is larger than the container and is a different size again from the platform minimum touch target.", "part": "state-layer", "tokens": ["comp.checkbox.state-layer-size"] }
+  ],
+  "states": [
+    { "state": "selected", "text": "Container fills with selected-container-color and shows no visible border (the selected outline-width tokens all resolve to 0); the icon draws a checkmark.", "tokens": ["comp.checkbox.selected-container-color", "comp.checkbox.selected-icon-color", "comp.checkbox.selected-outline-width"] },
+    { "state": "indeterminate", "text": "Container fills exactly as selected (same color tokens); the icon draws the flattened dash instead of a checkmark.", "tokens": ["comp.checkbox.selected-container-color", "comp.checkbox.selected-icon-color"], "source": "Checkbox.kt:965-997" },
+    { "state": "other", "label": "unselected", "text": "Container is transparent and shows outline-color at outline-width; no icon is drawn.", "tokens": ["comp.checkbox.unselected-outline-color", "comp.checkbox.unselected-outline-width"] },
+    { "state": "hovered", "part": "container", "text": "Hovering, focusing or pressing does not recolor the container, border or checkmark: comp.checkbox defines per-interaction container/outline/icon color tokens, but the pinned Compose implementation never reads them. Interaction feedback is the ripple/state-layer overlay only, tinted to the current selected/unselected box color.", "source": "Checkbox.kt:963-997,918-923" },
+    { "state": "disabled", "text": "Colors snap immediately to the disabled set on either side of the enabled/disabled transition; there is no animation between enabled and disabled.", "tokens": ["comp.checkbox.selected-disabled-container-color", "comp.checkbox.selected-disabled-icon-color", "comp.checkbox.unselected-disabled-outline-color"], "motion": { "instant": true }, "source": "Checkbox.kt:639-652" },
+    { "state": "error", "text": "Selected + invalid input uses the error color set instead of the normal selected colors; only reachable while selected (no unselected-error visual is distinct from plain unselected in the token set beyond its own outline colors).", "tokens": ["comp.checkbox.selected-error-container-color", "comp.checkbox.selected-error-icon-color", "comp.checkbox.unselected-error-outline-color"] }
+  ],
+  "behaviour": [
+    { "text": "Toggling unselected to selected (or to indeterminate) draws the checkmark/dash in as checkDrawFraction animates 0 to 1.", "part": "icon", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "Checkbox.kt:596-621" },
+    { "text": "Toggling to unselected does not animate the checkmark drawing out: after a hard-coded 100ms delay, so the container color finishes fading first, the icon snaps to invisible in a single frame.", "part": "icon", "values": [{ "name": "snapAnimationDelay", "value": 100, "unit": "ms" }], "source": "Checkbox.kt:596-621,1049" },
+    { "text": "Container/border/checkmark color transitions use sys.motion.spring.fast-effects when animating toward unselected (\"box out\") and sys.motion.spring.default-effects when animating toward selected or indeterminate (\"box in\").", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "Checkbox.kt:1040-1048" },
+    { "text": "Clicking calls onValueChange with the toggled value. A user tap only ever cycles unselected to/from selected; indeterminate is set and cleared programmatically by the caller (e.g. a parent \"select all\" checkbox), never by tap.", "source": "Checkbox.kt" }
+  ],
+  "accessibility": {
+    "role": "checkbox",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the checkbox.", "Space toggles it."],
+    "semantics": ["Exposes tri-state to assistive tech: indeterminate is announced as a mixed state, not merely unchecked.", "When paired with a text label in a list-item pattern, the whole row should be one tap target and one announced control, not two."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "comp.checkbox defines a full set of per-interaction-state colors (selected-hover-container-color, selected-focus-icon-color, unselected-pressed-outline-color, etc.), but the pinned Compose Checkbox never reads any of them: boxColor/borderColor/checkmarkColor branch only on enabled and ToggleableState. Hover, focus and pressed are conveyed purely by the ripple overlay, which is itself tinted to the plain checked/unchecked box color, not to a distinct per-interaction color.", "tokens": ["comp.checkbox.selected-hover-container-color", "comp.checkbox.selected-focus-icon-color", "comp.checkbox.unselected-pressed-outline-color"], "source": "Checkbox.kt:918-997" },
+    { "kind": "dead-token", "text": "comp.checkbox.focus-indicator-color is never referenced by Checkbox.kt; the focus ring comes from the default ripple focus-ring shape only, with no distinct color binding.", "tokens": ["comp.checkbox.focus-indicator-color"], "source": "Checkbox.kt" },
+    { "kind": "missing-token", "text": "comp.checkbox has no error parameter or plumbing in CheckboxColors at the pinned commit — the token surface (selected-error-*, unselected-error-*) is ahead of the reference implementation. There is no Compose code to copy for the error variant; build it from the tokens directly.", "tokens": ["comp.checkbox.selected-error-container-color", "comp.checkbox.unselected-error-outline-color"], "source": "Checkbox.kt" },
+    { "kind": "gotcha", "text": "Legacy (pre-fix) Compose geometry used a 20dp box inset by 2dp padding inside a wrapper (net 24dp) and a different checkmark polyline (0.2,0.5 / 0.4,0.7 / 0.8,0.3). Use the current token-driven container-size (18dp) and the polyline in this spec's layout rules, not the legacy constants.", "source": "Checkbox.kt:524-531,718-724" },
+    { "kind": "gotcha", "text": "The container corner radius is hard-coded to a private 2dp constant (RadiusSize) in Checkbox.kt rather than read from comp.checkbox.container-shape, though the token currently resolves to the same 2dp/2dp/2dp/2dp value — implementors reading the token and implementors copying the Compose constant will agree today, but the token is not actually wired up.", "tokens": ["comp.checkbox.container-shape"], "source": "Checkbox.kt:524" }
+  ]
+}

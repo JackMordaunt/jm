@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3e-kit.local/schema/resolved.schema.json",
+  "title": "M3 Expressive resolved tokens",
+  "description": "Every token flat, keyed by path, with references followed to final values. value is the default mode (light colour, Expressive springs); dark and standard give the other mode where the token's alias chain depends on it; alias is the token this one points at.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "source", "tokens"],
+  "properties": {
+    "description": { "type": "string" },
+    "source": { "type": "object", "required": ["repo", "commit", "path"], "properties": { "repo": { "type": "string" }, "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }, "path": { "type": "string" } } },
+    "tokens": {
+      "type": "object",
+      "propertyNames": { "pattern": "^(ref|sys|comp)(\\.[a-z0-9-]+)+$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "value"],
+        "properties": {
+          "type": { "enum": ["number", "dimension", "duration", "color", "cubicBezier", "shape", "fontFamily", "fontWeight", "typography"] },
+          "value": { "$ref": "#/$defs/value" },
+          "dark": { "$ref": "#/$defs/value" },
+          "standard": { "$ref": "#/$defs/value" },
+          "alias": { "type": "string" }
+        },
+        "allOf": [
+          { "if": { "properties": { "type": { "const": "color" } } }, "then": { "properties": { "value": { "$ref": "#/$defs/color" }, "dark": { "$ref": "#/$defs/color" } } } },
+          { "if": { "properties": { "type": { "enum": ["number", "dimension", "duration", "fontWeight"] } } }, "then": { "properties": { "value": { "type": "number" }, "standard": { "type": "number" } } } },
+          { "if": { "properties": { "type": { "const": "shape" } } }, "then": { "properties": { "value": { "oneOf": [ { "const": "full" }, { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 } ] } } } },
+          { "if": { "properties": { "type": { "const": "cubicBezier" } } }, "then": { "properties": { "value": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 } } } },
+          { "if": { "properties": { "type": { "const": "typography" } } }, "then": { "properties": { "value": { "type": "object", "required": ["fontFamily", "fontWeight", "fontSize", "lineHeight", "letterSpacing"] } } } }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "value": { "type": ["number", "string", "array", "object"] },
+    "color": { "type": "string", "pattern": "^#[0-9a-f]{6}$" }
+  }
+}

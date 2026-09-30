@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3e-kit.local/schema/shapes.schema.json",
+  "title": "M3 Expressive shape library",
+  "description": "The 35 MaterialShapes as closed paths of cubic Béziers in the unit square, y down. Draw: moveTo(cubics[0][0], cubics[0][1]); for each cubic cubicTo(c[2],c[3], c[4],c[5], c[6],c[7]); close; fill non-zero.",
+  "type": "object",
+  "required": ["source", "space", "cubic", "shapes"],
+  "properties": {
+    "source": { "type": "object" },
+    "space": { "type": "string" },
+    "cubic": { "type": "string" },
+    "shapes": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["center", "bounds", "cubics"],
+        "properties": {
+          "center": { "$ref": "#/$defs/point" },
+          "bounds": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "[left, top, right, bottom]" },
+          "cubics": { "$ref": "#/$defs/cubics" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "point": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "cubic": { "type": "array", "items": { "type": "number" }, "minItems": 8, "maxItems": 8, "description": "[anchor0x, anchor0y, control0x, control0y, control1x, control1y, anchor1x, anchor1y]" },
+    "cubics": { "type": "array", "items": { "$ref": "#/$defs/cubic" }, "minItems": 1 }
+  }
+}

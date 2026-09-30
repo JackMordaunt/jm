@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3e-kit.local/schema/foundations.schema.json",
+  "title": "M3 Expressive foundations",
+  "description": "System-wide rules every component spec assumes: token conventions, colour, typography, shape, elevation, interaction states, motion, layout, and the delta from Material Web v0_192. Token values live in tokens/m3e.resolved.json; this file names token paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tokens", "color", "typography", "shape", "elevation", "interaction", "motion", "layout", "deltaFromMaterialWebV0192"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resolvedFile", "dtcgFile", "tiers", "rules", "modes", "units", "stateVocabulary"],
+      "properties": {
+        "resolvedFile": { "type": "string" },
+        "dtcgFile": { "type": "string" },
+        "tiers": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["name", "prefix", "holds", "readByComponents"], "properties": { "name": { "type": "string" }, "prefix": { "enum": ["ref", "sys", "comp"] }, "holds": { "type": "string" }, "readByComponents": { "type": "boolean" } } } },
+        "rules": { "$ref": "#/$defs/rules" },
+        "modes": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["applies", "default", "alternates"], "properties": { "applies": { "$ref": "#/$defs/token" }, "default": { "type": "string" }, "alternates": { "type": "array", "items": { "type": "string" } }, "note": { "type": "string" } } } },
+        "units": { "type": "object", "additionalProperties": { "type": "string" } },
+        "stateVocabulary": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pairing", "families", "baseline", "seedSchemes", "missingRoles"],
+      "properties": {
+        "pairing": { "type": "string" },
+        "families": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["name", "roles", "use"], "properties": { "name": { "type": "string" }, "roles": { "$ref": "#/$defs/tokens" }, "use": { "type": "string" } } } },
+        "baseline": { "type": "string" },
+        "seedSchemes": { "type": "object", "additionalProperties": false, "required": ["library", "text"], "properties": { "library": { "type": "string" }, "text": { "type": "string" } } },
+        "missingRoles": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["role", "text"], "properties": { "role": { "type": "string" }, "text": { "type": "string" }, "tokens": { "$ref": "#/$defs/tokens" } } } }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["styles", "emphasized", "fontSlots", "requiredWeights", "lineBox"],
+      "properties": {
+        "styles": { "type": "string" },
+        "emphasized": { "type": "object", "additionalProperties": false, "required": ["text", "weightSteps"], "properties": { "text": { "type": "string" }, "weightSteps": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["from", "to"], "properties": { "from": { "type": "integer" }, "to": { "type": "integer" } } } } } },
+        "fontSlots": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["token", "roles", "text"], "properties": { "token": { "$ref": "#/$defs/token" }, "roles": { "type": "array", "items": { "type": "string" } }, "text": { "type": "string" } } } },
+        "requiredWeights": { "type": "array", "items": { "type": "integer" } },
+        "lineBox": { "$ref": "#/$defs/rule" }
+      }
+    },
+    "shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scale", "newInExpressive", "rules", "library"],
+      "properties": {
+        "scale": { "$ref": "#/$defs/tokens" },
+        "newInExpressive": { "$ref": "#/$defs/tokens" },
+        "rules": { "$ref": "#/$defs/rules" },
+        "library": { "type": "object", "additionalProperties": false, "required": ["shapes", "morphs", "svg", "text"], "properties": { "shapes": { "type": "string" }, "morphs": { "type": "string" }, "svg": { "type": "string" }, "text": { "type": "string" } } }
+      }
+    },
+    "elevation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levels", "rules"],
+      "properties": {
+        "levels": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["token", "uses"], "properties": { "token": { "$ref": "#/$defs/token" }, "uses": { "type": "array", "items": { "type": "string" } } } } },
+        "rules": { "$ref": "#/$defs/rules" }
+      }
+    },
+    "interaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stateLayer", "disabled", "focusRing", "touchTarget"],
+      "properties": {
+        "stateLayer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "opacities", "priority", "ripple", "motion"],
+          "properties": {
+            "text": { "type": "string" },
+            "opacities": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["state", "token"], "properties": { "state": { "type": "string" }, "token": { "$ref": "#/$defs/token" } } } },
+            "priority": { "type": "array", "items": { "type": "string" } },
+            "ripple": { "type": "string" },
+            "motion": { "type": "object" }
+          }
+        },
+        "disabled": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "defaults", "elevation"],
+          "properties": {
+            "text": { "type": "string" },
+            "defaults": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["part", "color", "opacity"], "properties": { "part": { "type": "string" }, "color": { "$ref": "#/$defs/token" }, "opacity": { "type": "number" } } } },
+            "elevation": { "$ref": "#/$defs/token" }
+          }
+        },
+        "focusRing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "color", "widthDp", "outwardOffsetDp", "activeWidthDp", "animation", "source"],
+          "properties": {
+            "text": { "type": "string" }, "color": { "$ref": "#/$defs/token" }, "widthDp": { "type": "number" }, "outwardOffsetDp": { "type": "number" }, "activeWidthDp": { "type": "number" },
+            "animation": { "type": "object", "additionalProperties": false, "required": ["durationToken", "growFraction", "text"], "properties": { "durationToken": { "$ref": "#/$defs/token" }, "growFraction": { "type": "number" }, "text": { "type": "string" } } },
+            "source": { "type": "string" }
+          }
+        },
+        "touchTarget": { "type": "object", "additionalProperties": false, "required": ["minDp", "text"], "properties": { "minDp": { "type": "number" }, "text": { "type": "string" } } }
+      }
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["springs", "kinds", "springTokens", "algorithm", "timeBased"],
+      "properties": {
+        "springs": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["token", "kind", "use"], "properties": { "token": { "$ref": "#/$defs/token" }, "kind": { "enum": ["spatial", "effects"] }, "use": { "type": "string" } } } },
+        "kinds": { "type": "object", "additionalProperties": { "type": "string" } },
+        "springTokens": { "type": "string" },
+        "algorithm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mass", "variables", "underdamped", "critical", "value", "rules", "settleThresholds", "state"],
+          "properties": {
+            "mass": { "type": "number" }, "variables": { "type": "string" }, "underdamped": { "type": "string" }, "critical": { "type": "string" }, "value": { "type": "string" },
+            "rules": { "type": "array", "items": { "type": "string" } },
+            "settleThresholds": { "type": "object", "additionalProperties": { "type": "number" } },
+            "state": { "type": "string" }
+          }
+        },
+        "timeBased": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["use", "easing", "durations"], "properties": { "use": { "type": "string" }, "easing": { "$ref": "#/$defs/token" }, "durations": { "$ref": "#/$defs/tokens" } } } }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gridDp", "commonPaddingDp", "windowSizeClasses", "rtl"],
+      "properties": {
+        "gridDp": { "type": "number" },
+        "commonPaddingDp": { "type": "array", "items": { "type": "number" } },
+        "windowSizeClasses": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["name", "minDp", "maxDp", "navigation", "panes"], "properties": { "name": { "type": "string" }, "minDp": { "type": "number" }, "maxDp": { "type": ["number", "null"] }, "navigation": { "type": "string" }, "panes": { "type": "integer" } } } },
+        "rtl": { "type": "string" }
+      }
+    },
+    "deltaFromMaterialWebV0192": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["area", "text"], "properties": { "area": { "type": "string" }, "text": { "type": "string" }, "tokens": { "$ref": "#/$defs/tokens" } } } }
+  },
+  "$defs": {
+    "token": { "type": "string", "pattern": "^(ref|sys|comp)(\\.[a-z0-9-]+)+$" },
+    "tokens": { "type": "array", "items": { "$ref": "#/$defs/token" } },
+    "rule": { "type": "object", "additionalProperties": false, "required": ["text"], "properties": { "text": { "type": "string" }, "tokens": { "$ref": "#/$defs/tokens" }, "source": { "type": "string" } } },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } }
+  }
+}

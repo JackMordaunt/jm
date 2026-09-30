@@ -1,0 +1,77 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "menu",
+  "name": "Menu",
+  "status": "changed",
+  "statusNote": "comp.menu is the unchanged legacy flat dropdown; comp.standard-menu, comp.vibrant-menu and comp.segmented-menu are new Expressive grouped-item variants with rounded sub-container groups and corner-morphing.",
+  "summary": "A temporary surface listing choices, opened from a button, icon or other anchor. The legacy flat dropdown is a plain list with an optional divider; Expressive menus compose the same items into rounded groups with a standard (surface-tinted) or vibrant (tertiary-tinted) container colour, with a segmented-menu geometry for grouped/selectable items.",
+  "tokenGroups": ["comp.menu", "comp.standard-menu", "comp.vibrant-menu", "comp.segmented-menu"],
+  "references": {
+    "compose": ["Menu.kt", "MenuDefaults.kt"],
+    "mdc": ["Menu.md"]
+  },
+  "inputs": [
+    { "name": "expanded", "type": "boolean", "required": true, "description": "Whether the popup is open. The caller owns it, normally bound to the anchor's toggle state." },
+    { "name": "onDismissRequest", "type": "callback", "required": true, "description": "Called when the user dismisses the menu, by pressing Escape or tapping outside it." },
+    { "name": "items", "type": "list", "required": true, "description": "The menu's items, optionally clustered into groups." },
+    { "name": "anchorPosition", "type": "enum", "values": ["above", "below", "left", "right", "start", "end"], "required": false, "default": "below", "description": "Preferred side of the anchor to open toward; the menu falls back to the first candidate position that fits the window." },
+    { "name": "style", "type": "enum", "values": ["legacy", "standard", "vibrant"], "required": false, "default": "legacy", "description": "Colour treatment: legacy is the flat pre-Expressive dropdown; standard and vibrant are Expressive grouped menus differing only in container/item colour." },
+    { "name": "grouped", "type": "boolean", "required": false, "default": false, "description": "Clusters items into rounded segmented-menu sub-containers with corner-morphing instead of one flat list; composable with the standard or vibrant style." },
+    { "name": "selectedValue", "type": "string", "required": false, "description": "The value of the currently selected item, for a menu used as a single- or multi-select control." },
+    { "name": "onItemSelected", "type": "callback", "required": false, "description": "Called with an item's value when the user chooses it." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The popup surface holding the item list, or a single group.", "tokens": ["comp.menu.container-color", "comp.menu.container-shape", "comp.menu.container-elevation"] },
+    { "id": "group", "name": "Group", "description": "Expressive only: a rounded sub-container clustering related items. A menu can hold one standalone group or several stacked leading/middle/trailing groups.", "optional": true, "tokens": ["comp.segmented-menu.group-shape", "comp.segmented-menu.group-container-color", "comp.segmented-menu.group-padding"] },
+    { "id": "item", "name": "Item", "description": "A row: optional leading icon (swappable for a selected-state icon), label text, optional supporting text, optional trailing icon or trailing text such as a shortcut.", "tokens": ["comp.menu.menu-list-item-leading-icon-color", "comp.segmented-menu.item-leading-icon-size", "comp.segmented-menu.item-label-text-font"] },
+    { "id": "divider", "name": "Divider", "description": "Legacy comp.menu only: separates item clusters in a flat list. There is no dedicated divider token; it is drawn with a generic HorizontalDivider.", "optional": true },
+    { "id": "group-label", "name": "Group label", "description": "Expressive only: optional heading text above a group's items.", "optional": true },
+    { "id": "focus-indicator", "name": "Focus indicator", "description": "Ring drawn on the focused item or group.", "tokens": ["comp.menu.focus-indicator-color", "comp.segmented-menu.item-focus-indicator-color"] }
+  ],
+  "variants": [
+    { "axis": "style", "value": "legacy", "default": true, "tokenGroup": "comp.menu", "description": "Plain flat list, one selected-item highlight colour; for pre-Expressive apps." },
+    { "axis": "style", "value": "standard", "tokenGroup": "comp.standard-menu", "description": "Expressive grouped menu, surface-tinted, low emphasis." },
+    { "axis": "style", "value": "vibrant", "tokenGroup": "comp.vibrant-menu", "description": "Expressive grouped menu, tertiary-tinted, high emphasis; use sparingly." },
+    { "axis": "grouping", "value": "flat", "default": true, "description": "Items render as one undivided or divider-separated list." },
+    { "axis": "grouping", "value": "grouped", "tokenGroup": "comp.segmented-menu", "description": "Items render inside one or more rounded sub-container groups with corner-morphing on the group and its first/middle/last items; usable with the standard or vibrant style." }
+  ],
+  "layout": [
+    { "text": "Legacy item row minimum height is 48dp, minimum/maximum width is 112–280dp, and horizontal padding is 12dp.", "part": "item", "values": [{ "name": "legacyItemMinHeight", "value": 48, "unit": "dp" }, { "name": "legacyItemMinWidth", "value": 112, "unit": "dp" }, { "name": "legacyItemMaxWidth", "value": 280, "unit": "dp" }, { "name": "legacyItemHorizontalPadding", "value": 12, "unit": "dp" }], "source": "Menu.kt:2374,2376,2388,2390" },
+    { "text": "The legacy popup's content gets 8dp of vertical padding and clips to the intrinsic maximum width of its items.", "part": "container", "values": [{ "name": "legacyContentVerticalPadding", "value": 8, "unit": "dp" }], "source": "Menu.kt:2386" },
+    { "text": "Expressive selectable item content padding is 12dp horizontal and 12dp vertical by default; an alternate 'precision pointer' sizing mode uses 16dp start / 10dp end instead. This is a hardcoded platform input-device toggle, not exposed as a token.", "part": "item", "values": [{ "name": "selectableItemVerticalPadding", "value": 12, "unit": "dp" }, { "name": "precisionPointerStart", "value": 16, "unit": "dp" }, { "name": "precisionPointerEnd", "value": 10, "unit": "dp" }], "source": "MenuDefaults.kt:863,869-876" },
+    { "text": "Group content padding is 0dp horizontal and 2dp vertical; minimum group height is 32dp.", "part": "group", "values": [{ "name": "groupVerticalPadding", "value": 2, "unit": "dp" }, { "name": "groupMinHeight", "value": 32, "unit": "dp" }], "source": "Menu.kt:2378,2393" },
+    { "text": "The gap between stacked groups reads segmented-gap; the analogous gap for a horizontal icon-only row reads horizontal-icon-only-segmented-gap instead.", "part": "group", "tokens": ["comp.segmented-menu.segmented-gap", "comp.segmented-menu.horizontal-icon-only-segmented-gap"], "source": "MenuDefaults.kt:173" },
+    { "text": "A segment's outer corner (the one facing away from neighbouring items) takes the larger item-first-child-shape or item-last-child-shape (both medium); the corner facing the adjacent item in the segment (the seam) takes the smaller item-first-child-inner-corner-corner-size (extra-small). This outer-vs-inner split is implied by the tokens but never stated directly by them.", "part": "item", "tokens": ["comp.segmented-menu.item-first-child-shape", "comp.segmented-menu.item-last-child-shape", "comp.segmented-menu.item-first-child-inner-corner-corner-size", "comp.segmented-menu.item-last-child-inner-corner-corner-size"] },
+    { "text": "The same outer/inner rule applies one level up to group shapes: a leading group gets sys.shape.corner.large on its outer (top) corners and sys.shape.corner.small on its inner (bottom) corners; a trailing group is the mirror. Only the middle group shape is a real token; the leading/trailing asymmetric corner pairs are hardcoded directly from sys.shape.corner.large/small and must be composed by the implementor.", "part": "group", "tokens": ["comp.segmented-menu.group-shape"], "source": "MenuDefaults.kt:104-127" },
+    { "text": "The horizontal-* segmented-menu tokens (container/item spacing, icon-only item, active-container-shape) describe a horizontal icon-row segmented layout with no consuming code at the pinned commit; build this layout from the tokens alone, with no Compose reference implementation to cross-check.", "tokens": ["comp.segmented-menu.horizontal-container-top-space", "comp.segmented-menu.horizontal-icon-only-item-leading-space", "comp.segmented-menu.active-container-shape"] },
+    { "text": "No submenu/cascading-menu logic exists in Menu.kt at this pin; nested menus are user-composed by opening a second popup anchored to an item. Treat submenus as composing two menus, not a built-in feature." }
+  ],
+  "states": [
+    { "state": "open", "text": "The popup scales from 0.8 to 1.0 and fades from 0 to 1 alpha as it opens, and the reverse as it closes.", "part": "container", "values": [{ "name": "closedScale", "value": 0.8, "unit": "ratio" }, { "name": "expandedScale", "value": 1, "unit": "ratio" }], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "Menu.kt:2402-2405" },
+    { "state": "open", "text": "The popup's fade (as opposed to its scale) animates on fast-effects rather than fast-spatial.", "part": "container", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "Menu.kt:2402-2405" },
+    { "state": "selected", "text": "Selection is shown by a shape morph from the unselected item shape to item-selected-shape (or the horizontal equivalent) plus the selected colour set.", "part": "item", "tokens": ["comp.segmented-menu.item-selected-shape"], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "Menu.kt" },
+    { "state": "hovered", "part": "group", "text": "A group's shape morphs from group-shape to inactive-container-shape only after it has been hovered at least once and hover then ends, tracked with a hasBeenHovered flag; the first render is never in the inactive shape.", "tokens": ["comp.segmented-menu.group-shape", "comp.segmented-menu.inactive-container-shape"], "source": "Menu.kt:289" },
+    { "state": "disabled", "text": "Disabled items use opacity multipliers on label, leading and trailing content, with separate item-selected-disabled-* families for a disabled selected item; there is no colour blending, only plain alpha.", "tokens": ["comp.standard-menu.item-disabled-label-text-opacity", "comp.standard-menu.item-disabled-leading-icon-opacity", "comp.standard-menu.item-disabled-trailing-icon-opacity", "comp.standard-menu.item-selected-disabled-label-text-opacity"] },
+    { "state": "other", "label": "colour transitions", "text": "Container, text and icon colour transitions animate on fast-effects.", "motion": { "spring": "sys.motion.spring.fast-effects" } }
+  ],
+  "behaviour": [
+    { "text": "The scale/fade pivot is a calculated transform origin derived from the overlap between the anchor and menu bounds; the menu grows from whichever corner or edge is closest to the anchor, not always a fixed corner.", "part": "container", "source": "Menu.kt:2216" },
+    { "text": "Each anchor position (above/below/left/right/start/end) supplies an ordered list of x/y candidate positions, anchor-aligned first then window-edge-aligned; the first candidate that fits the window is used. There is no fixed pixel offset beyond the caller-supplied offset value.", "part": "container" },
+    { "text": "The menu keeps a 48dp margin from the top and bottom edges of the window.", "part": "container", "values": [{ "name": "menuVerticalMargin", "value": 48, "unit": "dp" }], "source": "Menu.kt:2324-2325" },
+    { "text": "A leading selected icon, such as a checkmark, is optional caller content that cross-fades in and out via expand/shrink plus fade; there is no built-in checkmark glyph, the icon swap is opt-in.", "part": "item", "motion": { "spring": "sys.motion.spring.fast-spatial" } },
+    { "text": "Arrow keys move focus between items, Escape or an outside click dismisses the menu, and Enter or Space activates the focused item.", "part": "item" }
+  ],
+  "accessibility": {
+    "role": "menu",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Arrow keys move focus between items.", "Escape dismisses the menu and returns focus to the anchor.", "Enter or Space activates the focused item.", "Clicking outside the menu dismisses it."],
+    "semantics": ["Items carry menuitem semantics; a checkable item reports the checkbox role instead.", "A selectable item built with SelectableDropdownMenuItem reports the radio-button role, not the checkbox role used by a checkable item.", "The screen reader announces the item label, its checked or selected state, and its disabled state."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "comp.segmented-menu.active-container-shape is typed as a raw dimension (24) in the token source rather than a shape reference; treat it as a corner-radius value, not a shape alias — it does not resolve to any sys.shape.corner.* step.", "tokens": ["comp.segmented-menu.active-container-shape"] },
+    { "kind": "gotcha", "text": "Standard vs vibrant is purely a colour swap between groupStandardContainerColor and groupVibrantContainerColor; pick one map application-wide per menu, don't mix within a single group.", "tokens": ["comp.standard-menu.container-color", "comp.vibrant-menu.container-color"] },
+    { "kind": "missing-token", "text": "The legacy comp.menu divider has no colour or spacing token of its own; reuse the app's generic divider token, with 12dp horizontal / 2dp vertical as the default gap." },
+    { "kind": "gotcha", "text": "Menu content width is intrinsic and clamped by the legacy min/max width constants; Expressive items don't carry that min/max width and instead let each item's shapes or group control geometry — don't apply the legacy 112–280dp clamp to Expressive items.", "tokens": ["comp.segmented-menu.item"] },
+    { "kind": "contradiction", "text": "comp.vibrant-menu has no item-selected-disabled-container-color/opacity pair even though comp.standard-menu does; a disabled selected item in a vibrant menu must fall back to the enabled selected container colour at the disabled label/icon opacity rather than a dedicated disabled container token.", "tokens": ["comp.vibrant-menu.item-selected-container-color", "comp.standard-menu.item-selected-disabled-container-color"] }
+  ]
+}

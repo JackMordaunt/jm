@@ -1,0 +1,525 @@
+{
+  "name": "m3e-kit",
+  "description": "Material 3 Expressive implementation kit: everything needed to build the M3 Expressive components on any renderer. All facts derive from the Jetpack Compose Material 3 sources at one androidx commit.",
+  "source": {
+    "repo": "androidx/androidx",
+    "commit": "1358a48e9c23e257ae3357f6f645cb60a3610a7f"
+  },
+  "readOrder": [
+    "kit.json: this index.",
+    "foundations.json: system rules every spec assumes (token tiers and modes, units, colour pairing, emphasized type, per-corner shape and morphing, state layers, disabled, focus ring, touch target, spring algorithm, window size classes).",
+    "tokens/m3e.resolved.json: every token value, keyed by path. Look up any path a spec names here.",
+    "components/<id>.json: one spec per component. Build from its tokenGroups plus its layout, states and behaviour rules; read its notes before trusting a token.",
+    "shapes/shapes.json and shapes/morphs.json: only for the shape library and the loading indicator."
+  ],
+  "conventions": {
+    "tokenPaths": "Strings matching ^(ref|sys|comp)(\\.[a-z0-9-]+)+$ are token paths or group prefixes in tokens/m3e.resolved.json; every one in this kit is checked to exist.",
+    "sources": "source fields cite Compose as File.kt:line at the pinned commit, or mdc:File.md for MDC-Android docs.",
+    "units": "dp for dimensions, sp for text, ms for durations; shapes are [top-start, top-end, bottom-end, bottom-start] dp or \"full\"."
+  },
+  "files": [
+    {
+      "path": "foundations.json",
+      "schema": "schema/foundations.schema.json",
+      "describes": "System-wide rules."
+    },
+    {
+      "path": "tokens/m3e.resolved.json",
+      "schema": "schema/resolved.schema.json",
+      "describes": "All tokens, references resolved, both modes."
+    },
+    {
+      "path": "tokens/m3e.tokens.json",
+      "schema": null,
+      "describes": "The same tokens as a DTCG 2025.10 document with references intact, for theming tools."
+    },
+    {
+      "path": "components/<id>.json",
+      "schema": "schema/component.schema.json",
+      "describes": "One spec per component."
+    },
+    {
+      "path": "shapes/shapes.json",
+      "schema": "schema/shapes.schema.json",
+      "describes": "35 shapes as unit-square cubic Béziers."
+    },
+    {
+      "path": "shapes/morphs.json",
+      "schema": "schema/morphs.schema.json",
+      "describes": "Loading indicator morph pairs, pre-matched for linear interpolation."
+    },
+    {
+      "path": "shapes/svg/<name>.svg",
+      "schema": null,
+      "describes": "Each shape as SVG, viewBox 0 0 100 100."
+    }
+  ],
+  "counts": {
+    "tokens": 2512,
+    "components": 35,
+    "shapes": 35
+  },
+  "components": [
+    {
+      "id": "app-bar",
+      "name": "Top app bar",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A horizontal bar anchored to the top of a screen that carries a screen title, primary navigation and up to a few high-priority actions. Pick small for most screens, medium/large (fixed or flexible) when the title needs visual weight or a subtitle, center-aligned for a more formal/branded header, and the search app bar when the screen's primary action is search.",
+      "tokenGroups": [
+        "comp.app-bar",
+        "comp.app-bar-small",
+        "comp.app-bar-medium",
+        "comp.app-bar-medium-flexible",
+        "comp.app-bar-large",
+        "comp.app-bar-large-flexible",
+        "comp.search-bar"
+      ],
+      "file": "components/app-bar.json"
+    },
+    {
+      "id": "badge",
+      "name": "Badge",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A small status indicator overlaid on the corner of an icon or navigation item, showing that something changed without interrupting the user. Use a dot for a plain attention signal, a numeral for a short count or label.",
+      "tokenGroups": [
+        "comp.badge"
+      ],
+      "file": "components/badge.json"
+    },
+    {
+      "id": "bottom-app-bar",
+      "name": "Bottom app bar",
+      "status": "changed",
+      "replacedBy": "toolbar",
+      "summary": "A bar anchored to the bottom of the screen carrying a handful of frequent actions and, optionally, an embedded FAB. Use the fixed variant for a stable 80dp bar; use the flexible variant when the bar's height or item spacing needs to adapt to its content. MDC-Android recommends the docked toolbar instead for new designs.",
+      "tokenGroups": [
+        "comp.bottom-app-bar",
+        "comp.docked-toolbar",
+        "comp.fab-secondary-container"
+      ],
+      "file": "components/bottom-app-bar.json"
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A single-action button. Choose emphasis by colour style (filled > elevated ≈ tonal > outlined > text) and choose size by the density of the surrounding layout, not by importance.",
+      "tokenGroups": [
+        "comp.button-x-small",
+        "comp.button-small",
+        "comp.button-medium",
+        "comp.button-large",
+        "comp.button-x-large",
+        "comp.filled-button",
+        "comp.filled-tonal-button",
+        "comp.outlined-button",
+        "comp.elevated-button",
+        "comp.text-button",
+        "comp.tonal-button",
+        "comp.baseline-button"
+      ],
+      "file": "components/button.json"
+    },
+    {
+      "id": "button-group",
+      "name": "Button group",
+      "status": "new",
+      "replacedBy": null,
+      "summary": "An invisible row container that spaces a set of buttons and adds press interaction between neighbors. Choose standard to keep each button's own shape and support weighted/flexible widths, or connected to fuse them into one pill silhouette as the Expressive replacement for the deprecated segmented button.",
+      "tokenGroups": [
+        "comp.button-group-small",
+        "comp.connected-button-group-small"
+      ],
+      "file": "components/button-group.json"
+    },
+    {
+      "id": "card",
+      "name": "Card",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A container that groups content and actions about a single subject. Elevated cards separate from the background with a shadow; filled cards use a tonal surface for lower emphasis; outlined cards use a border for the lowest emphasis on backgrounds that already separate content.",
+      "tokenGroups": [
+        "comp.elevated-card",
+        "comp.filled-card",
+        "comp.outlined-card"
+      ],
+      "file": "components/card.json"
+    },
+    {
+      "id": "carousel",
+      "name": "Carousel",
+      "status": "new",
+      "replacedBy": null,
+      "summary": "A horizontal (or vertical) scroller that shows a mix of large, medium, and small items so several pieces of visual content are browsable at once, with items masking/expanding as they scroll toward the edge. Choose it over a standard scroll view when items should snap and change size near the edges.",
+      "tokenGroups": [],
+      "file": "components/carousel.json"
+    },
+    {
+      "id": "checkbox",
+      "name": "Checkbox",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A square selection control for choosing zero, one or many items from a list, or for toggling a single on/off setting when a list-item-style label is present. Prefer switch for a standalone setting with an immediate effect; prefer checkbox for list selection and tri-state (indeterminate) parent/child selection.",
+      "tokenGroups": [
+        "comp.checkbox"
+      ],
+      "file": "components/checkbox.json"
+    },
+    {
+      "id": "chips",
+      "name": "Chips",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "Compact, tappable elements for input, attributes, filtering, or one-off actions. Use assist for a single contextual action, filter for toggling membership in a content set, input for user-entered discrete values, and suggestion for tapping a dynamically generated hint.",
+      "tokenGroups": [
+        "comp.chips",
+        "comp.assist-chip",
+        "comp.filter-chip",
+        "comp.input-chip",
+        "comp.suggestion-chip"
+      ],
+      "file": "components/chips.json"
+    },
+    {
+      "id": "date-picker",
+      "name": "Date picker",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A modal dialog for choosing a single date, with two interchangeable display modes — a calendar grid and a single free-text field — toggled in place inside the same container. Range selection is a related but separate mode, noted only briefly here.",
+      "tokenGroups": [
+        "comp.date-picker-modal",
+        "comp.date-input-modal"
+      ],
+      "file": "components/date-picker.json"
+    },
+    {
+      "id": "dialog",
+      "name": "Dialog",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A modal window that interrupts the user for a required decision or critical information. Use it for short, focused prompts; use a bottom sheet instead when the content is a longer list of choices or benefits from swipe dismissal.",
+      "tokenGroups": [
+        "comp.dialog"
+      ],
+      "file": "components/dialog.json"
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A thin line that groups or separates content in lists and layouts. Purely visual, with no label, icon or interactive behaviour; choose it over extra spacing when a boundary must be explicit.",
+      "tokenGroups": [
+        "comp.divider"
+      ],
+      "file": "components/divider.json"
+    },
+    {
+      "id": "fab",
+      "name": "Floating action button",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "The single most important action on a screen, floating above content; use one per screen. The extended FAB adds a text label for extra context and can collapse to icon-only on scroll.",
+      "tokenGroups": [
+        "comp.fab-small",
+        "comp.fab-baseline",
+        "comp.fab-medium",
+        "comp.fab-large",
+        "comp.fab-primary-container",
+        "comp.fab-secondary-container",
+        "comp.extended-fab-primary",
+        "comp.extended-fab-small",
+        "comp.extended-fab-medium",
+        "comp.extended-fab-large"
+      ],
+      "file": "components/fab.json"
+    },
+    {
+      "id": "fab-menu",
+      "name": "FAB menu",
+      "status": "new",
+      "replacedBy": null,
+      "summary": "A FAB that expands into a vertical list of labelled action items above it. The trigger morphs from a circular add button into a close button as the menu opens.",
+      "tokenGroups": [
+        "comp.fab-menu-baseline",
+        "comp.fab-baseline",
+        "comp.fab-medium",
+        "comp.fab-large",
+        "comp.fab-primary-container"
+      ],
+      "file": "components/fab-menu.json"
+    },
+    {
+      "id": "icon-button",
+      "name": "Icon button",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A button whose entire content is a single icon, for compact actions in toolbars, app bars, list rows and cards. Choose the colour style for emphasis and the width option to fit the surrounding layout.",
+      "tokenGroups": [
+        "comp.x-small-icon-button",
+        "comp.small-icon-button",
+        "comp.medium-icon-button",
+        "comp.large-icon-button",
+        "comp.x-large-icon-button",
+        "comp.standard-icon-button",
+        "comp.filled-icon-button",
+        "comp.filled-tonal-icon-button",
+        "comp.outlined-icon-button"
+      ],
+      "file": "components/icon-button.json"
+    },
+    {
+      "id": "list",
+      "name": "List",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A continuous, vertical index of text and/or images. Use a standard list for one/two/three-line rows; use the Expressive additions when rows need to grow inline (expanded-list), be manually reordered (reorder-list), or expose swipe actions (reveal-list).",
+      "tokenGroups": [
+        "comp.list",
+        "comp.expanded-list",
+        "comp.reorder-list",
+        "comp.reveal-list"
+      ],
+      "file": "components/list.json"
+    },
+    {
+      "id": "loading-indicator",
+      "name": "Loading indicator",
+      "status": "new",
+      "replacedBy": null,
+      "summary": "An indeterminate, or progress-driven, indicator that morphs a single filled blob through a sequence of Material shapes instead of spinning a ring or filling a bar. Use it in place of the indeterminate circular progress indicator for waits under about 5 seconds; keep the circular progress indicator for longer or unbounded waits.",
+      "tokenGroups": [
+        "comp.loading-indicator"
+      ],
+      "file": "components/loading-indicator.json"
+    },
+    {
+      "id": "menu",
+      "name": "Menu",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A temporary surface listing choices, opened from a button, icon or other anchor. The legacy flat dropdown is a plain list with an optional divider; Expressive menus compose the same items into rounded groups with a standard (surface-tinted) or vibrant (tertiary-tinted) container colour, with a segmented-menu geometry for grouped/selectable items.",
+      "tokenGroups": [
+        "comp.menu",
+        "comp.standard-menu",
+        "comp.vibrant-menu",
+        "comp.segmented-menu"
+      ],
+      "file": "components/menu.json"
+    },
+    {
+      "id": "navigation-bar",
+      "name": "Navigation bar",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A bottom bar of 3-5 (up to 6 in the flexible variant) top-level destinations, always visible on compact/medium widths. Use it instead of a rail once the window is too narrow to dock navigation to a side.",
+      "tokenGroups": [
+        "comp.navigation-bar",
+        "comp.navigation-bar-horizontal-item",
+        "comp.navigation-bar-vertical-item"
+      ],
+      "file": "components/navigation-bar.json"
+    },
+    {
+      "id": "navigation-drawer",
+      "name": "Navigation drawer",
+      "status": "changed",
+      "replacedBy": "navigation-rail",
+      "summary": "Standard drawers sit alongside content permanently or dismissibly for frequent, deliberate navigation; modal drawers overlay content behind a scrim for infrequent access on compact layouts. MDC-Android marks this component deprecated in Expressive, recommending an expanded navigation rail instead; ship it for parity with existing apps, not for new designs.",
+      "tokenGroups": [
+        "comp.navigation-drawer"
+      ],
+      "file": "components/navigation-drawer.json"
+    },
+    {
+      "id": "navigation-rail",
+      "name": "Navigation rail",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A side-docked bar of 3-7 top-level destinations for tablet/desktop widths. Use collapsed as the default docked state; let it expand in place (or present modally) when the destination set needs labels or the surface plays the role a navigation drawer would on a phone.",
+      "tokenGroups": [
+        "comp.navigation-rail-baseline-item",
+        "comp.navigation-rail-collapsed",
+        "comp.navigation-rail-color",
+        "comp.navigation-rail-expanded",
+        "comp.navigation-rail-horizontal-item",
+        "comp.navigation-rail-vertical-item"
+      ],
+      "file": "components/navigation-rail.json"
+    },
+    {
+      "id": "progress-indicator",
+      "name": "Progress indicator",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "Shows the status of a determinate or indeterminate process as a filled line or ring. Choose plain for a neutral, restrained wait; choose wavy for a more expressive, attention-getting wait, less legible at very small sizes.",
+      "tokenGroups": [
+        "comp.progress-indicator",
+        "comp.linear-progress-indicator",
+        "comp.circular-progress-indicator"
+      ],
+      "file": "components/progress-indicator.json"
+    },
+    {
+      "id": "radio-button",
+      "name": "Radio button",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A circular selection control for choosing exactly one option from a mutually exclusive set. Always used in groups of two or more; never used alone, and never has an indeterminate state.",
+      "tokenGroups": [
+        "comp.radio-button"
+      ],
+      "file": "components/radio-button.json"
+    },
+    {
+      "id": "search",
+      "name": "Search bar",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A persistent, pill-shaped entry point for search that expands into a full-screen or docked search view showing suggestions/results. Use the compact bar wherever search is a secondary action in a screen's app bar; the expanded view is a transient state of the same control, not a separate screen the user navigates to.",
+      "tokenGroups": [
+        "comp.search-bar",
+        "comp.search-view"
+      ],
+      "file": "components/search.json"
+    },
+    {
+      "id": "segmented-button",
+      "name": "Segmented button",
+      "status": "unchanged",
+      "replacedBy": "button-group",
+      "summary": "A row of 2-5 mutually touching outlined buttons sharing one outline, acting as a single- or multi-select choice control. Deprecated in favor of the connected button group, which MDC-Android says has \"mostly the same functionality but with an updated visual design\"; implement this only to read or author legacy M3 UI.",
+      "tokenGroups": [
+        "comp.outlined-segmented-button"
+      ],
+      "file": "components/segmented-button.json"
+    },
+    {
+      "id": "sheets",
+      "name": "Sheets",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "Surfaces anchored to a screen edge that hold supplementary content: bottom sheets rise from the bottom edge, side sheets slide in from left/right. Each has a standard (persistent, no scrim) and modal (blocking, scrimmed) form.",
+      "tokenGroups": [
+        "comp.sheet-bottom",
+        "comp.drag-handle",
+        "comp.scrim"
+      ],
+      "file": "components/sheets.json"
+    },
+    {
+      "id": "slider",
+      "name": "Slider",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A one-dimensional control for selecting a value, or a range with two handles, from a continuous or stepped scale. Choose it over a stepper or text input when relative position matters more than the exact number.",
+      "tokenGroups": [
+        "comp.slider"
+      ],
+      "file": "components/slider.json"
+    },
+    {
+      "id": "snackbar",
+      "name": "Snackbar",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A brief, transient message about a process or event, anchored to the bottom of the screen. It never blocks interaction and never requires a response; an action is optional.",
+      "tokenGroups": [
+        "comp.snackbar"
+      ],
+      "file": "components/snackbar.json"
+    },
+    {
+      "id": "split-button",
+      "name": "Split button",
+      "status": "new",
+      "replacedBy": null,
+      "summary": "A leading action button fused to a trailing toggle button that opens a menu of related actions. Use it when one action is primary and its alternatives belong in a menu; it is a two-button connected button group with fixed roles.",
+      "tokenGroups": [
+        "comp.split-button-x-small",
+        "comp.split-button-small",
+        "comp.split-button-medium",
+        "comp.split-button-large",
+        "comp.split-button-x-large"
+      ],
+      "file": "components/split-button.json"
+    },
+    {
+      "id": "switch",
+      "name": "Switch",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A binary on/off control whose effect applies immediately, with no separate save or confirm step. Prefer switch over checkbox for a standalone setting; prefer checkbox for list selection.",
+      "tokenGroups": [
+        "comp.switch"
+      ],
+      "file": "components/switch.json"
+    },
+    {
+      "id": "tabs",
+      "name": "Tab row",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A horizontal row of tabs that switches between sibling content panes. Use primary tabs (bold, centered indicator) at the top level under an app bar; use secondary tabs (thin underline) to further split content within a section that already has primary navigation.",
+      "tokenGroups": [
+        "comp.primary-navigation-tab",
+        "comp.secondary-navigation-tab"
+      ],
+      "file": "components/tabs.json"
+    },
+    {
+      "id": "text-field",
+      "name": "Text field",
+      "status": "changed",
+      "replacedBy": null,
+      "summary": "A single- or multi-line input for short-to-medium free text. Filled sits on a tinted surface with a bottom indicator line; outlined sits on a transparent background with a full border. Autocomplete composes either variant with a popup menu of selectable options anchored to the field.",
+      "tokenGroups": [
+        "comp.filled-text-field",
+        "comp.outlined-text-field",
+        "comp.filled-autocomplete",
+        "comp.outlined-autocomplete",
+        "comp.menu"
+      ],
+      "file": "components/text-field.json"
+    },
+    {
+      "id": "time-picker",
+      "name": "Time picker",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A modal dialog for choosing an hour and minute, with an optional AM/PM period. It has two interchangeable modes — an analog clock dial and a pair of numeric text fields — toggled in place inside the same container.",
+      "tokenGroups": [
+        "comp.time-picker",
+        "comp.time-input"
+      ],
+      "file": "components/time-picker.json"
+    },
+    {
+      "id": "toolbar",
+      "name": "Toolbar",
+      "status": "new",
+      "replacedBy": null,
+      "summary": "A floating toolbar surfaces contextual actions for the content beneath it and can float anywhere on screen, optionally paired with a FAB; a docked toolbar spans the window width with actions that stay constant across pages, replacing the bottom app bar.",
+      "tokenGroups": [
+        "comp.floating-toolbar",
+        "comp.docked-toolbar"
+      ],
+      "file": "components/toolbar.json"
+    },
+    {
+      "id": "tooltip",
+      "name": "Tooltip",
+      "status": "unchanged",
+      "replacedBy": null,
+      "summary": "A small popup that labels or explains an anchor element on hover, long-press, or keyboard focus. Choose plain for a short one-line label; choose rich when the content needs a title, multi-line body, or an action.",
+      "tokenGroups": [
+        "comp.plain-tooltip",
+        "comp.rich-tooltip"
+      ],
+      "file": "components/tooltip.json"
+    }
+  ]
+}

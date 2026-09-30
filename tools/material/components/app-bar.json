@@ -1,0 +1,78 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "app-bar",
+  "name": "Top app bar",
+  "status": "changed",
+  "statusNote": "Small and center-aligned single-row bars are layout-unchanged from M3 but gain a subtitle slot. Medium and large flexible bars, and the search app bar, are new in Expressive.",
+  "summary": "A horizontal bar anchored to the top of a screen that carries a screen title, primary navigation and up to a few high-priority actions. Pick small for most screens, medium/large (fixed or flexible) when the title needs visual weight or a subtitle, center-aligned for a more formal/branded header, and the search app bar when the screen's primary action is search.",
+  "tokenGroups": ["comp.app-bar", "comp.app-bar-small", "comp.app-bar-medium", "comp.app-bar-medium-flexible", "comp.app-bar-large", "comp.app-bar-large-flexible", "comp.search-bar"],
+  "references": { "compose": ["AppBar.kt"], "mdc": ["TopAppBar.md"] },
+  "inputs": [
+    { "name": "title", "type": "slot", "required": true, "description": "Required title content. Wraps instead of always eliding, unlike classic M3." },
+    { "name": "subtitle", "type": "slot", "required": false, "description": "Optional second text line under the title. On a flexible medium/large bar, its presence is what selects the taller expanded height." },
+    { "name": "navigationIcon", "type": "slot", "required": false, "description": "Leading icon button, e.g. back or menu." },
+    { "name": "actions", "type": "list", "required": false, "description": "0-3 trailing icon buttons, laid out end-to-start." },
+    { "name": "titleAlignment", "type": "enum", "values": ["start", "center"], "required": false, "default": "start", "description": "Horizontal alignment of the title and subtitle. \"center\" is the center-aligned variant." },
+    { "name": "size", "type": "enum", "values": ["small", "medium", "medium-flexible", "large", "large-flexible"], "required": false, "default": "small", "description": "Selects the token group and whether the bar is single-row or two-row." },
+    { "name": "scrollBehavior", "type": "enum", "values": ["none", "pinned", "enter-always", "exit-until-collapsed"], "required": false, "default": "none", "description": "Governs how the bar's height and colour react to the scrolling content beneath it." },
+    { "name": "collapsedHeight", "type": "number", "required": false, "default": null, "description": "Overrides the bar's collapsed height in dp. Must be finite and, for two-row bars, less than or equal to expandedHeight, otherwise the token default is used silently." },
+    { "name": "expandedHeight", "type": "number", "required": false, "default": null, "description": "Overrides the bar's maximum expanded height in dp. Must be finite and greater than or equal to collapsedHeight, otherwise the token default is used silently." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Full-width surface; corner rounding is always none.", "tokens": ["comp.app-bar.container-shape", "comp.app-bar.container-color", "comp.app-bar.container-elevation"] },
+    { "id": "navigation-icon", "name": "Navigation icon", "description": "Optional leading icon button.", "optional": true, "tokens": ["comp.app-bar.leading-icon-color", "comp.app-bar.leading-space", "comp.app-bar.icon-size"] },
+    { "id": "title", "name": "Title", "description": "Required text; wraps in Expressive rather than always eliding.", "tokens": ["comp.app-bar.title-color", "comp.app-bar-small.title-font"] },
+    { "id": "subtitle", "name": "Subtitle", "description": "Optional second text line, smaller/lighter than the title.", "optional": true, "tokens": ["comp.app-bar.subtitle-color", "comp.app-bar-small.subtitle-font"] },
+    { "id": "action-icons", "name": "Action icons", "description": "0-3 trailing icon buttons, laid out end-to-start.", "optional": true, "tokens": ["comp.app-bar.trailing-icon-color", "comp.app-bar.trailing-space", "comp.app-bar.icon-button-space", "comp.app-bar.icon-size"] },
+    { "id": "search-field", "name": "Search field", "description": "Search app bar only: replaces the title slot with a pill-shaped input styled from comp.search-bar, with a leading icon (menu/back) and optional trailing avatar.", "optional": true, "tokens": ["comp.search-bar", "comp.search-bar.avatar-size"] }
+  ],
+  "variants": [
+    { "axis": "size", "value": "small", "default": true, "tokenGroup": "comp.app-bar-small", "description": "Default; single row, title left- or center-aligned per the alignment axis." },
+    { "axis": "alignment", "value": "start", "default": true, "description": "Title/subtitle left-aligned." },
+    { "axis": "alignment", "value": "center", "description": "Small bar with titleHorizontalAlignment = center, for a more formal/branded header." },
+    { "axis": "size", "value": "medium", "tokenGroup": "comp.app-bar-medium", "description": "Two-row bar; title is always at collapsed size on row 2." },
+    { "axis": "size", "value": "medium-flexible", "tokenGroup": "comp.app-bar-medium-flexible", "description": "Two-row bar that expands taller when a subtitle is present." },
+    { "axis": "size", "value": "large", "tokenGroup": "comp.app-bar-large", "description": "Tallest two-row bar. MDC treats it as superseded by large flexible." },
+    { "axis": "size", "value": "large-flexible", "tokenGroup": "comp.app-bar-large-flexible", "description": "Large bar that expands taller when a subtitle is present." },
+    { "axis": "variant", "value": "search", "tokenGroup": "comp.search-bar", "description": "Small bar whose title slot hosts a search field." }
+  ],
+  "layout": [
+    { "id": "single-row-edge-padding", "text": "Single-row bars (small, center-aligned): the navigation icon and actions each get a fixed horizontal edge padding.", "values": [{ "name": "horizontalPadding", "value": 4, "unit": "dp" }], "source": "AppBar.kt:3610-3611" },
+    { "id": "single-row-title-inset", "text": "The title's minimum start inset is max(titleInset, navIconWidth); the title never sits closer than 16dp from the edge even with no navigation icon.", "values": [{ "name": "titleInset", "value": 12, "unit": "dp" }, { "name": "titleEdgeMargin", "value": 16, "unit": "dp" }], "source": "AppBar.kt:3610-3615" },
+    { "id": "single-row-title-centering", "text": "The title is first aligned against the full bar width (centering is relative to the whole bar, not the icon gap), then nudged inward only if it would overlap the navigation icon or actions.", "source": "AppBar.kt:3193-3211" },
+    { "id": "two-row-stack", "text": "Two-row bars (medium/large, fixed and flexible) stack two independent rows in a column: row 1 is the small/collapsed title at collapsedHeight, row 2 is the large/expanded title at expandedHeight minus collapsedHeight.", "source": "AppBar.kt:2865-2915" },
+    { "id": "two-row-alignment", "text": "Both rows share one titleHorizontalAlignment; there is no horizontal interpolation between collapsed and expanded title position, only a vertical height change plus an alpha crossfade.", "source": "AppBar.kt:2865-2915" },
+    { "id": "two-row-title-bottom-padding", "text": "The expanded title's bottom padding is baseline-relative: padding minus (titleHeight - titleBaseline), shrunk further if the row is too short to fit it.", "values": [{ "name": "mediumTitleBottomPadding", "value": 24, "unit": "dp" }, { "name": "largeTitleBottomPadding", "value": 28, "unit": "dp" }], "source": "AppBar.kt:3606-3609,3220-3241" },
+    { "id": "flexible-expanded-height", "text": "Flexible medium/large bars pick expandedHeight at compose time based on whether a subtitle is supplied: without one, container-height; with one, the taller large-container-height token, both from the matching flexible token group.", "tokens": ["comp.app-bar-medium-flexible.container-height", "comp.app-bar-medium-flexible.large-container-height"], "source": "AppBar.kt:1996-2018" },
+    { "id": "collapsed-height-default", "text": "collapsedHeight always defaults to the small bar's container-height regardless of the bar's own size.", "tokens": ["comp.app-bar-small.container-height"], "source": "AppBar.kt:1996-2018" },
+    { "id": "scroll-height-formula", "text": "Overall bar height during scroll is max(expandedHeight, titleIntrinsicHeight) + heightOffset, coerced to at least 0.", "source": "AppBar.kt:3116-3123" }
+  ],
+  "states": [
+    { "state": "scrolled", "part": "container", "text": "Single-row bars binary-switch between container-color and on-scroll-container-color once overlappedFraction exceeds 1% — not a gradient.", "tokens": ["comp.app-bar.container-color", "comp.app-bar.on-scroll-container-color"], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "AppBar.kt:2690-2699" },
+    { "state": "scrolled", "part": "container", "label": "two-row-colour-crossfade", "text": "Two-row bars instead interpolate the same two colours continuously by collapsedFraction.", "tokens": ["comp.app-bar.container-color", "comp.app-bar.on-scroll-container-color"], "source": "AppBar.kt:2816-2818" },
+    { "state": "scrolled", "part": "title", "label": "title-alpha-crossfade", "text": "The collapsed (top) title's alpha follows a cubic-bezier(.8, 0, .8, .15) easing of collapsedFraction; the expanded (bottom) title's alpha is 1 minus collapsedFraction. Whichever title is below 50% alpha has its semantics hidden to avoid duplicate announcements.", "values": [{ "name": "topTitleAlphaEasingX1", "value": 0.8, "unit": "ratio" }, { "name": "topTitleAlphaEasingY1", "value": 0, "unit": "ratio" }, { "name": "topTitleAlphaEasingX2", "value": 0.8, "unit": "ratio" }, { "name": "topTitleAlphaEasingY2", "value": 0.15, "unit": "ratio" }], "source": "AppBar.kt:2830-2831,3604" },
+    { "state": "dragged", "text": "The whole bar is draggable when an unpinned scroll behaviour is attached: dragging adjusts heightOffset directly, and release settles it via the fling/snap rule.", "source": "AppBar.kt:2711-2726" }
+  ],
+  "behaviour": [
+    { "id": "icon-button-states", "text": "Navigation and action icons are standard icon buttons; see that component's spec for press/hover/focus/disabled states." },
+    { "id": "scroll-pinned", "text": "Pinned scroll behaviour never changes height; it only tracks contentOffset so colour can react to content passing underneath." },
+    { "id": "scroll-enter-always", "text": "Enter-always collapses or expands immediately on any downward or upward scroll delta, consuming the scroll before the content does. A legacy reverseLayout variant exists for reversed lists.", "source": "AppBar.kt:3400-3475" },
+    { "id": "scroll-exit-until-collapsed", "text": "Exit-until-collapsed only starts collapsing once content has scrolled past its own start, and only re-expands once content is scrolled fully back to the top.", "source": "AppBar.kt:3484-3529" },
+    { "id": "fling-snap", "text": "A fling first decays physically (not a motion token), then snaps fully open or closed with the default-effects spring once collapsedFraction crosses 0.5; settling is skipped below 1% or at 100% collapsed.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "AppBar.kt:1539-1540,3576-3579,3552" },
+    { "id": "touch-exploration", "text": "Touch exploration disables the scroll behaviour entirely, keeping the bar fully expanded." },
+    { "id": "height-validation", "text": "expandedHeight and collapsedHeight are validated (must be specified and finite, expanded greater than or equal to collapsed); an unspecified or infinite value silently falls back to the token default rather than erroring." },
+    { "id": "search-app-bar-composition", "text": "Build the search app bar by embedding a comp.search-bar-styled field in the small bar's title slot; it is a compositional pattern, not a distinct layout primitive.", "source": "mdc:TopAppBar.md" }
+  ],
+  "accessibility": {
+    "role": "toolbar",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves through the navigation icon, then each action icon, in document order.", "Enter or Space activates the focused icon button."],
+    "semantics": ["The bar exposes a header/toolbar landmark.", "The title is announced once per crossfade state; whichever of the collapsed/expanded title is below 50% alpha has its semantics hidden to avoid duplicate announcements."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "The bar draws a plain filled rectangle (drawBehind), not a shadowed surface — on-scroll-container-elevation (level2) is descriptive of the tonal colour source, not an applied elevation/shadow.", "tokens": ["comp.app-bar.on-scroll-container-elevation"], "source": "AppBar.kt" },
+    { "kind": "inferred", "text": "The search app bar is not a separate layout primitive; implement it by embedding a comp.search-bar-styled field in the small bar's title slot.", "source": "mdc:TopAppBar.md" },
+    { "kind": "gotcha", "text": "MDC treats the fixed large bar as superseded by large flexible in practice, but neither Compose nor the tokens formally deprecate comp.app-bar-large; ship both groups.", "source": "mdc:TopAppBar.md" },
+    { "kind": "gotcha", "text": "collapsedHeight always defaults to the small bar's container-height regardless of the bar's own size — don't default a medium/large bar's collapsed height to its own size's container-height token.", "tokens": ["comp.app-bar-small.container-height"], "source": "AppBar.kt" }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "segmented-button",
+  "name": "Segmented button",
+  "status": "unchanged",
+  "statusNote": "Compose ships SegmentedButton.kt unmodified for the Expressive pass; only its deprecation notice is new. Build it for back-compat/migration only, and point new UI at button-group's connected variant instead.",
+  "deprecated": { "replacedBy": "button-group", "source": "mdc:ToggleButtonGroup.md" },
+  "summary": "A row of 2-5 mutually touching outlined buttons sharing one outline, acting as a single- or multi-select choice control. Deprecated in favor of the connected button group, which MDC-Android says has \"mostly the same functionality but with an updated visual design\"; implement this only to read or author legacy M3 UI.",
+  "tokenGroups": ["comp.outlined-segmented-button"],
+  "references": { "compose": ["SegmentedButton.kt"], "mdc": ["ToggleButtonGroup.md"] },
+  "inputs": [
+    { "name": "selectionMode", "type": "enum", "values": ["single", "multi"], "required": false, "default": "single", "description": "Single wraps segments in a mutually-exclusive selection (SingleChoiceSegmentedButtonRow, role RadioButton per segment); multi allows independent toggles (MultiChoiceSegmentedButtonRow, no exclusivity enforced)." },
+    { "name": "segments", "type": "list", "required": true, "description": "Ordered row of 2-5 segments. Each has a required label, an optional icon, a selected/checked boolean, an onSelectedChange/onCheckedChange callback, and an enabled flag." },
+    { "name": "activeIcon", "type": "icon", "required": false, "default": null, "description": "Icon shown on a segment while it is selected/checked; defaults to a checkmark. Ignored per-segment if that segment supplies its own icon slot." },
+    { "name": "inactiveIcon", "type": "icon", "required": false, "default": null, "description": "Icon shown on a segment while it is not selected; when omitted (the default) unselected segments show no icon and only the active icon fades/scales in on selection." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The row of segments, drawn with one shared 1px outline running its full width; no per-segment borders.", "tokens": ["comp.outlined-segmented-button.outline-color", "comp.outlined-segmented-button.outline-width", "comp.outlined-segmented-button.container-height"] },
+    { "id": "icon", "name": "Icon", "description": "Optional per-segment icon. Shown by default only on the active/checked segment(s); can be forced always-on via a custom inactive icon.", "optional": true, "tokens": ["comp.outlined-segmented-button.icon-size"] },
+    { "id": "label", "name": "Label text", "description": "Required per-segment text.", "tokens": ["comp.outlined-segmented-button.label-text-font"] }
+  ],
+  "variants": [
+    { "axis": "style", "value": "outlined", "default": true, "tokenGroup": "comp.outlined-segmented-button", "description": "The only style; there is no filled or elevated segmented button." }
+  ],
+  "layout": [
+    { "text": "Only the first and last segment get outer rounding (the row's base shape split into a start-shape and an end-shape); every middle segment is a plain rectangle.", "source": "SegmentedButton.kt:605-609" },
+    { "text": "Segments overlap by outline-width (negative spacing) so each shared edge draws once, at full width, instead of doubling two adjacent 1px borders.", "tokens": ["comp.outlined-segmented-button.outline-width"], "source": "SegmentedButton.kt:328-330,365" },
+    { "text": "Content padding is hardcoded to 12dp at the start and end; there is no leading-space/trailing-space token in comp.outlined-segmented-button to source it from. Vertical padding reuses the common button's content padding top/bottom.", "values": [{ "name": "horizontalContentPadding", "value": 12, "unit": "dp" }], "source": "SegmentedButton.kt:617-622" },
+    { "text": "The row's minimum height is container-height; each segment additionally takes the common button's minimum width and height.", "tokens": ["comp.outlined-segmented-button.container-height"], "source": "SegmentedButton.kt:156-157,236-237,336-337,369-370" },
+    { "text": "Within a segment, the icon (if any) sits to the label's start, separated by a fixed icon-label spacing; when a segment has no icon slot filled, the label recenters into the space the icon would have used.", "source": "SegmentedButton.kt:405-451" }
+  ],
+  "states": [
+    { "state": "selected", "text": "With no inactive icon supplied, the active icon (default: a checkmark) fades in and scales in from 0, anchored at its bottom-left corner, and is never explicitly animated out on deselect — it is simply replaced when the next state renders.", "values": [{ "name": "scaleOriginX", "value": 0, "unit": "ratio" }, { "name": "scaleOriginY", "value": 1, "unit": "ratio" }], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "SegmentedButton.kt:649-663" },
+    { "state": "selected", "text": "The active icon's fade-in uses a separate, slower effects spring than its scale-in.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "SegmentedButton.kt:654-655" },
+    { "state": "selected", "text": "When both an active and an inactive icon are supplied, the two cross-fade instead of the active icon fading/scaling in alone.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "SegmentedButton.kt:665-670" },
+    { "state": "selected", "text": "Selected-state icon and label colors resolve through selected-icon-color/selected-label-text-color (and their focused/hovered/pressed variants); unselected segments resolve through the matching unselected-* tokens.", "tokens": ["comp.outlined-segmented-button.selected-icon-color", "comp.outlined-segmented-button.selected-label-text-color", "comp.outlined-segmented-button.unselected-icon-color", "comp.outlined-segmented-button.unselected-label-text-color"] },
+    { "state": "focused", "text": "A focused segment resolves its icon and label colors through the selected- or unselected-focus- tokens, matching whether it is currently selected.", "tokens": ["comp.outlined-segmented-button.selected-focus-icon-color", "comp.outlined-segmented-button.selected-focus-label-text-color", "comp.outlined-segmented-button.unselected-focus-icon-color", "comp.outlined-segmented-button.unselected-focus-label-text-color"] },
+    { "state": "disabled", "text": "A disabled segment uses its own disabled icon, label and outline color/opacity tokens regardless of selection.", "tokens": ["comp.outlined-segmented-button.disabled-icon-color", "comp.outlined-segmented-button.disabled-icon-opacity", "comp.outlined-segmented-button.disabled-label-text-color", "comp.outlined-segmented-button.disabled-label-text-opacity", "comp.outlined-segmented-button.disabled-outline-color", "comp.outlined-segmented-button.disabled-outline-opacity"] }
+  ],
+  "behaviour": [
+    { "text": "In single-select mode, selecting a segment calls onClick for that segment only; the row does not clear sibling selection itself — SingleChoiceSegmentedButtonRow only groups segments for correct focus/semantics, so the caller must set the other segments' selected state to false.", "source": "SegmentedButton.kt:210-253,328-343" },
+    { "text": "In multi-select mode, each segment's onCheckedChange fires independently with that segment's own new checked value; no exclusivity is applied.", "source": "SegmentedButton.kt:130-155,364-378" },
+    { "text": "Border color per segment is driven by active-border-color/inactive-border-color (and their disabled equivalents), resolved and animated implicitly through the same interaction-driven color state as the container and content colors — there is no separate hardcoded border-color animation.", "source": "SegmentedButton.kt:522-568,762-777" }
+  ],
+  "accessibility": {
+    "role": "radio",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves into and out of the row as one stop in single-select mode (selectableGroup); each segment is its own Tab stop in multi-select mode.", "Arrow keys move the selection between segments in single-select mode, per the WAI-ARIA radiogroup pattern.", "Enter or Space toggles the focused segment in multi-select mode."],
+    "semantics": ["Single-select segments carry an explicit RadioButton role, set on the segment itself — not on the row, which carries no role of its own.", "Multi-select segments set no explicit role in SegmentedButton.kt; they rely on the underlying toggleable modifier's checked-state semantics, which assistive tech generally renders as a checkbox.", "Each segment should be announced with its position in the row (e.g. \"1 of 3\"); Compose relies on standard radio-group traversal for this rather than an explicit live region."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Only the single-select SegmentedButton overload sets an explicit role (RadioButton, SegmentedButton.kt:239). The multi-select overload never sets role = Role.Checkbox; its checkbox-like announcement comes only from the underlying toggleable/Surface(checked=...) semantics, not a hardcoded role.", "source": "SegmentedButton.kt:239" },
+    { "kind": "gotcha", "text": "The 12dp hardcoded content padding and the single flat size (no XS-XL scale) are the two clearest signs this component predates Expressive's per-size token system; do not try to retrofit size variants onto it.", "source": "SegmentedButton.kt:617-622" },
+    { "kind": "missing-token", "text": "There is no leading-space/trailing-space token in comp.outlined-segmented-button for the segment's horizontal content padding; it is a hardcoded 12dp in Compose instead.", "source": "SegmentedButton.kt:617-622" },
+    { "kind": "gotcha", "text": "Compose enforces no group-level minimum touch target for segments beyond ButtonDefaults.MinWidth/MinHeight on each Surface; treat the 48dp minimum touch target as general M3 accessibility guidance to apply yourself, not a modifier already present in SegmentedButton.kt.", "source": "SegmentedButton.kt:156-157,236-237" },
+    { "kind": "inferred", "text": "comp.segmented-menu is a separate, newer menu-style token group (its own item/segment/shape tokens for a pill-menu pattern); SegmentedButton.kt reads only comp.outlined-segmented-button and never references comp.segmented-menu, so it is excluded from this spec.", "source": "SegmentedButton.kt" }
+  ]
+}

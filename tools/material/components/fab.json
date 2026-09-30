@@ -1,0 +1,93 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "fab",
+  "name": "Floating action button",
+  "status": "changed",
+  "statusNote": "Expressive adds the medium FAB size and the primary, secondary and tertiary container colour roles. The baseline and large FAB and the small, medium and large extended FAB are unchanged in concept.",
+  "summary": "The single most important action on a screen, floating above content; use one per screen. The extended FAB adds a text label for extra context and can collapse to icon-only on scroll.",
+  "tokenGroups": ["comp.fab-small", "comp.fab-baseline", "comp.fab-medium", "comp.fab-large", "comp.fab-primary-container", "comp.fab-secondary-container", "comp.extended-fab-primary", "comp.extended-fab-small", "comp.extended-fab-medium", "comp.extended-fab-large"],
+  "references": { "compose": ["FloatingActionButton.kt"], "mdc": ["FloatingActionButton.md", "ExtendedFloatingActionButton.md"] },
+  "inputs": [
+    { "name": "onClick", "type": "callback", "required": true, "description": "Runs the action." },
+    { "name": "icon", "type": "icon", "required": true, "description": "The action's icon. Required for every FAB." },
+    { "name": "label", "type": "slot", "required": false, "description": "The extended FAB's text label. Supplying it makes the FAB extended." },
+    { "name": "expanded", "type": "boolean", "required": false, "default": true, "description": "Extended FAB only: whether the label is shown. False collapses the FAB to icon-only." },
+    { "name": "size", "type": "enum", "values": ["small", "baseline", "medium", "large"], "required": false, "default": "baseline", "description": "Selects the size token group. Extended FABs take small, medium or large, plus the unsized generic extended FAB at baseline height; there is no extended size named baseline." },
+    { "name": "color", "type": "enum", "values": ["primary", "secondary", "tertiary"], "required": false, "default": "primary", "description": "Container colour role. Primary is the Compose default (comp.fab-primary-container)." },
+    { "name": "elevation", "type": "enum", "values": ["default", "lowered"], "required": false, "default": "default", "description": "Lowered uses the lower elevation set for less prominent placements." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The coloured, shaped, elevated surface.", "tokens": ["comp.fab-baseline.container-height", "comp.fab-baseline.container-width", "comp.fab-baseline.container-shape", "comp.fab-primary-container.container-color", "comp.fab-primary-container.container-elevation"] },
+    { "id": "icon", "name": "Icon", "description": "The action's icon; required." },
+    { "id": "label", "name": "Label text", "description": "The extended FAB's text label.", "optional": true, "tokens": ["comp.extended-fab-primary.label-text-font"] }
+  ],
+  "variants": [
+    { "axis": "size", "value": "small", "tokenGroup": "comp.fab-small", "description": "SmallFloatingActionButton." },
+    { "axis": "size", "value": "baseline", "default": true, "tokenGroup": "comp.fab-baseline" },
+    { "axis": "size", "value": "medium", "tokenGroup": "comp.fab-medium" },
+    { "axis": "size", "value": "large", "tokenGroup": "comp.fab-large" },
+    { "axis": "extended-size", "value": "small", "tokenGroup": "comp.extended-fab-small", "description": "Roughly the baseline FAB's height." },
+    { "axis": "extended-size", "value": "medium", "tokenGroup": "comp.extended-fab-medium" },
+    { "axis": "extended-size", "value": "large", "tokenGroup": "comp.extended-fab-large" },
+    { "axis": "extended-size", "value": "generic", "tokenGroup": "comp.extended-fab-primary", "description": "The unsized ExtendedFloatingActionButton: baseline height, extended-fab-primary shape, hard-coded padding." },
+    { "axis": "color", "value": "primary", "default": true, "tokenGroup": "comp.fab-primary-container" },
+    { "axis": "color", "value": "secondary", "tokenGroup": "comp.fab-secondary-container" },
+    { "axis": "color", "value": "tertiary", "description": "No token group; use the tertiary-container / on-tertiary-container colour pair directly." }
+  ],
+  "layout": [
+    { "text": "Size the FAB's container from the size group's container-width and container-height as minimums, per size, and centre the icon.", "tokens": ["comp.fab-baseline.container-width", "comp.fab-baseline.container-height"], "source": "FloatingActionButton.kt:144-145,239-240,297-298,356-357" },
+    { "text": "Give the small, baseline and large FAB the container-shape of their size group.", "tokens": ["comp.fab-small.container-shape", "comp.fab-baseline.container-shape", "comp.fab-large.container-shape"], "source": "FloatingActionButton.kt:1014,1018,1026" },
+    { "text": "Give the medium FAB and the medium extended FAB the large-increased corner shape; neither has a container-shape token.", "tokens": ["sys.shape.corner.large-increased"], "source": "FloatingActionButton.kt:1022,1037" },
+    { "text": "Give the small and large extended FAB their size group's container-shape, and the generic extended FAB extended-fab-primary's container-shape.", "tokens": ["comp.extended-fab-small.container-shape", "comp.extended-fab-large.container-shape", "comp.extended-fab-primary.container-shape"], "source": "FloatingActionButton.kt:1030,1034,1042" },
+    { "text": "Size the medium FAB's icon from comp.fab-medium.icon-size.", "part": "icon", "tokens": ["comp.fab-medium.icon-size"], "source": "FloatingActionButton.kt:1007" },
+    { "text": "Size the large FAB's icon at 36dp, not from comp.fab-large.icon-size.", "part": "icon", "values": [{ "name": "largeIconSize", "value": 36, "unit": "dp" }], "source": "FloatingActionButton.kt:1010" },
+    { "text": "A sized extended FAB's minimum width and height both equal its size group's container-height, per size; the collapsed FAB is that square.", "tokens": ["comp.extended-fab-small.container-height"], "source": "FloatingActionButton.kt:1434-1437,1446-1449,1459-1462" },
+    { "text": "Pad a sized extended FAB's content with its size group's leading-space and trailing-space, per size.", "tokens": ["comp.extended-fab-small.leading-space", "comp.extended-fab-small.trailing-space"], "source": "FloatingActionButton.kt:1439,1441" },
+    { "text": "Separate the icon and label of the small extended FAB by comp.extended-fab-small.icon-label-space.", "tokens": ["comp.extended-fab-small.icon-label-space"], "source": "FloatingActionButton.kt:1443" },
+    { "text": "Separate the icon and label of the medium extended FAB by 12dp and of the large extended FAB by 16dp, not by their icon-label-space tokens.", "values": [{ "name": "mediumIconLabelSpace", "value": 12, "unit": "dp" }, { "name": "largeIconLabelSpace", "value": 16, "unit": "dp" }], "source": "FloatingActionButton.kt:1454-1456,1467-1469" },
+    { "text": "Set the label of the small, medium and large extended FAB in title-medium, title-large and headline-small respectively.", "part": "label", "tokens": ["sys.typography.title-medium", "sys.typography.title-large", "sys.typography.headline-small"], "source": "FloatingActionButton.kt:1444,1457,1470" },
+    { "text": "Lay out the generic icon-and-label extended FAB at the baseline FAB's height with 16dp start padding before the icon, 12dp between icon and label, 20dp end padding after the label, and an 80dp minimum width.", "values": [{ "name": "startIconPadding", "value": 16, "unit": "dp" }, { "name": "iconLabelSpace", "value": 12, "unit": "dp" }, { "name": "textPadding", "value": 20, "unit": "dp" }, { "name": "minWidth", "value": 80, "unit": "dp" }], "source": "FloatingActionButton.kt:898-910,1471-1482" },
+    { "text": "Collapse the generic extended FAB to comp.fab-baseline.container-width with no padding and the icon centred.", "tokens": ["comp.fab-baseline.container-width"], "source": "FloatingActionButton.kt:898-913" },
+    { "text": "Lay out the generic label-only extended FAB with 20dp horizontal padding, an 80dp minimum width and the content centred.", "values": [{ "name": "textPadding", "value": 20, "unit": "dp" }, { "name": "minWidth", "value": 80, "unit": "dp" }], "source": "FloatingActionButton.kt:620-625" }
+  ],
+  "states": [
+    { "state": "enabled", "text": "At rest, fill the container with the colour role's container-color at its container-elevation.", "part": "container", "tokens": ["comp.fab-primary-container.container-color", "comp.fab-primary-container.container-elevation"], "source": "FloatingActionButton.kt:1046,1061" },
+    { "state": "pressed", "text": "Raise the container to pressed-container-elevation.", "part": "container", "tokens": ["comp.fab-primary-container.pressed-container-elevation"], "source": "FloatingActionButton.kt:1062" },
+    { "state": "focused", "text": "Raise the container to focused-container-elevation.", "part": "container", "tokens": ["comp.fab-primary-container.focused-container-elevation"], "source": "FloatingActionButton.kt:1063" },
+    { "state": "hovered", "text": "Raise the container to hovered-container-elevation.", "part": "container", "tokens": ["comp.fab-primary-container.hovered-container-elevation"], "source": "FloatingActionButton.kt:1064" },
+    { "state": "other", "label": "lowered", "text": "With lowered elevation, use level 1 at rest, pressed and focused, and level 2 on hover.", "part": "container", "tokens": ["sys.elevation.level1", "sys.elevation.level2"], "source": "FloatingActionButton.kt:1084-1089" },
+    { "state": "collapsed", "text": "Sized extended FAB: morph the width between the collapsed square and the full content width.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "FloatingActionButton.kt:963" },
+    { "state": "collapsed", "part": "label", "text": "Sized extended FAB: fade the label and the icon-label gap together as the container narrows, and remove them once fully collapsed.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "FloatingActionButton.kt:964,983-996" },
+    { "state": "collapsed", "part": "label", "text": "Generic extended FAB: on collapse, fade the label out and shrink it horizontally towards the start edge.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "FloatingActionButton.kt:1485-1494" },
+    { "state": "collapsed", "part": "label", "text": "Generic extended FAB: the collapse fade uses fast-effects while the horizontal shrink uses default-spatial.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "FloatingActionButton.kt:1488" },
+    { "state": "expanded", "part": "label", "text": "Generic extended FAB: on expand, fade the label in.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "FloatingActionButton.kt:1496-1499" }
+  ],
+  "behaviour": [
+    { "text": "Show and hide the FAB, e.g. on scroll direction change, by scaling between 0.2 and 1 towards a caller-given alignment while fading; the caller may override either spring.", "values": [{ "name": "showHideTargetScale", "value": 0.2, "unit": "ratio" }], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "FloatingActionButton.kt:1004,1135-1141" },
+    { "text": "Fade the FAB during show and hide with fast-effects by default.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "FloatingActionButton.kt:1135-1141" },
+    { "text": "The FAB has no disabled state; it is always interactive while shown, and visibility is controlled by show and hide instead." }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the FAB.", "Enter or Space activates it."],
+    "semantics": [
+      "Give the icon a content description whenever no label is visible (small, baseline, medium and large FAB).",
+      "Give an extended FAB a content description matching its action even though its label is visible, so collapsing does not remove the announced name.",
+      "The FAB is a button; the small FAB's 40dp container must still get a 48dp touch target."
+    ]
+  },
+  "notes": [
+    { "kind": "missing-token", "text": "comp.fab-medium.container-shape and comp.extended-fab-medium.container-shape do not exist; Compose hard-codes the large-increased corner with a TODO to tokenize. Treat both as one fixed shape until upstream adds tokens.", "tokens": ["sys.shape.corner.large-increased"], "source": "FloatingActionButton.kt:1022,1037" },
+    { "kind": "contradiction", "text": "comp.fab-large.icon-size disagrees with the 36dp Compose hard-codes, with a TODO calling the token incorrect. Prefer 36dp; the token is stale.", "tokens": ["comp.fab-large.icon-size"], "source": "FloatingActionButton.kt:1010" },
+    { "kind": "contradiction", "text": "comp.extended-fab-medium.icon-label-space and comp.extended-fab-large.icon-label-space exist, but Compose marks them incorrect and hard-codes 12dp and 16dp. Prefer the hard-coded values.", "tokens": ["comp.extended-fab-medium.icon-label-space", "comp.extended-fab-large.icon-label-space"], "source": "FloatingActionButton.kt:1454-1456,1467-1469" },
+    { "kind": "missing-token", "text": "The generic extended FAB's 16dp start, 12dp icon-label, 20dp end padding and 80dp minimum width, and the 0.2 show-hide scale, exist only in code.", "source": "FloatingActionButton.kt:1004,1471-1482" },
+    { "kind": "gotcha", "text": "The sized and generic extended FAB overloads use different spring pairings for collapse and expand. This is a real Compose inconsistency; pick one pairing for a kit's extended FAB rather than reproducing both.", "source": "FloatingActionButton.kt:963-964,1485-1499" },
+    { "kind": "gotcha", "text": "Compose clears the label's semantics in every extended FAB, so the visible label is never announced; the announced name must come from the icon's content description.", "source": "FloatingActionButton.kt:921,991" },
+    { "kind": "dead-token", "text": "Compose reads no icon-size for the small, baseline or extended FABs; the icon size comes from the icon itself.", "tokens": ["comp.fab-small.icon-size", "comp.fab-baseline.icon-size", "comp.extended-fab-small.icon-size", "comp.extended-fab-medium.icon-size", "comp.extended-fab-large.icon-size", "comp.extended-fab-primary.icon-size"], "source": "FloatingActionButton.kt" },
+    { "kind": "dead-token", "text": "Compose reads only container-shape and label-text-font from comp.extended-fab-primary; its colour, height and elevation tokens are unread, and extended FABs take their colours and elevation from comp.fab-primary-container.", "tokens": ["comp.extended-fab-primary"], "source": "FloatingActionButton.kt:143,1030" },
+    { "kind": "dead-token", "text": "Compose reads no comp.fab-secondary-container token and no per-state icon-color token; the caller passes the secondary colour, and content colour is derived from the container colour.", "tokens": ["comp.fab-secondary-container", "comp.fab-primary-container.icon-color"], "source": "FloatingActionButton.kt:131-138" },
+    { "kind": "gotcha", "text": "The plain FAB's content text style is comp.extended-fab-primary.label-text-font, although it normally shows only an icon.", "tokens": ["comp.extended-fab-primary.label-text-font"], "source": "FloatingActionButton.kt:143" },
+    { "kind": "inferred", "text": "The tertiary colour role has no token group; apply sys.color.tertiary-container with sys.color.on-tertiary-container.", "tokens": ["sys.color.tertiary-container", "sys.color.on-tertiary-container"] }
+  ]
+}

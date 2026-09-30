@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3e-kit.local/schema/morphs.schema.json",
+  "title": "M3 Expressive loading indicator morphs",
+  "description": "Pre-matched morph pairs. For a pair, start and end have equal length; morph(t)[i][k] = start[i][k] + (end[i][k] - start[i][k]) * t, drawn like a shape. t comes from a spring and may overshoot 1.",
+  "type": "object",
+  "required": ["source", "lerp", "notes", "indeterminate", "determinate"],
+  "properties": {
+    "source": { "type": "object" },
+    "lerp": { "type": "string" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "indeterminate": { "$ref": "#/$defs/sequence" },
+    "determinate": { "$ref": "#/$defs/sequence" }
+  },
+  "$defs": {
+    "cubic": { "type": "array", "items": { "type": "number" }, "minItems": 8, "maxItems": 8 },
+    "sequence": {
+      "type": "object",
+      "required": ["sequence", "circular", "shapesScaleFactor", "activeIndicatorScale", "drawScale", "pairs"],
+      "properties": {
+        "sequence": { "type": "array", "items": { "type": "string" } },
+        "circular": { "type": "boolean" },
+        "shapesScaleFactor": { "type": "number" },
+        "activeIndicatorScale": { "type": "number" },
+        "drawScale": { "type": "number", "description": "Multiply by the container size to get the drawn shape size." },
+        "pairs": { "type": "array", "items": { "type": "object", "required": ["from", "to", "start", "end"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "start": { "type": "array", "items": { "$ref": "#/$defs/cubic" } }, "end": { "type": "array", "items": { "$ref": "#/$defs/cubic" } } } } }
+      }
+    }
+  }
+}

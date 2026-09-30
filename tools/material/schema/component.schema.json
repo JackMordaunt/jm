@@ -1,0 +1,521 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3e-kit.local/schema/component.schema.json",
+  "title": "M3 Expressive component spec",
+  "description": "What an implementor needs to build one component beyond its token values. Measurements and colours live in tokens/m3e.resolved.json; a spec names token paths, never restates their values. Every string in a `tokens` array or `tokenGroup` is a token path or a group prefix present in the resolved tokens.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "status",
+    "summary",
+    "tokenGroups",
+    "references",
+    "inputs",
+    "anatomy",
+    "variants",
+    "layout",
+    "states",
+    "behaviour",
+    "accessibility",
+    "notes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "#/$defs/id",
+      "description": "Kebab-case; equals the file name."
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "new",
+        "changed",
+        "unchanged"
+      ],
+      "description": "Relative to baseline Material 3 before Expressive."
+    },
+    "statusNote": {
+      "type": "string",
+      "description": "What changed, when status is changed."
+    },
+    "deprecated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replacedBy",
+        "source"
+      ],
+      "properties": {
+        "replacedBy": {
+          "$ref": "#/$defs/id",
+          "description": "The component id to build instead."
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "What it is for and when to choose it over its neighbours. One or two sentences."
+    },
+    "tokenGroups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tokenPath"
+      },
+      "uniqueItems": true,
+      "description": "Every comp.* group this component reads. May be empty when upstream has none."
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compose",
+        "mdc"
+      ],
+      "properties": {
+        "compose": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z]+\\.kt$"
+          }
+        },
+        "mdc": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z]+\\.md$"
+          }
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "The component's API surface, independent of any framework: what a caller supplies.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "type",
+          "required",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          "type": {
+            "enum": [
+              "boolean",
+              "number",
+              "string",
+              "enum",
+              "slot",
+              "callback",
+              "list",
+              "icon"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The allowed values, for type enum."
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "default": {
+            "type": [
+              "boolean",
+              "number",
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "anatomy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "optional": {
+            "type": "boolean"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens"
+          }
+        }
+      }
+    },
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "axis",
+          "value"
+        ],
+        "properties": {
+          "axis": {
+            "type": "string",
+            "description": "What varies, e.g. size, style, color, layout, width, shape."
+          },
+          "value": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "tokenGroup": {
+            "$ref": "#/$defs/tokenPath"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "layout": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "description": "Geometry the tokens do not give: hard-coded measurements, sizing and placement rules."
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "text"
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "enabled",
+              "hovered",
+              "focused",
+              "pressed",
+              "dragged",
+              "disabled",
+              "selected",
+              "checked",
+              "indeterminate",
+              "error",
+              "open",
+              "expanded",
+              "collapsed",
+              "scrolled",
+              "loading",
+              "other"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "description": "Names the state when state is other."
+          },
+          "part": {
+            "$ref": "#/$defs/id",
+            "description": "An anatomy id, when the change is local to one part."
+          },
+          "text": {
+            "type": "string"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens"
+          },
+          "values": {
+            "$ref": "#/$defs/values"
+          },
+          "motion": {
+            "$ref": "#/$defs/motion"
+          },
+          "source": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      }
+    },
+    "behaviour": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "description": "Interaction, scroll, selection and animation rules."
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "minTouchTargetDp",
+        "keyboard",
+        "semantics"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "WAI-ARIA role or nearest equivalent, e.g. button, checkbox, tablist, dialog."
+        },
+        "minTouchTargetDp": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Null when the component is not interactive."
+        },
+        "keyboard": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "semantics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What assistive technology is told: state, labels, live regions."
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "text"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "upstream-bug",
+              "missing-token",
+              "dead-token",
+              "contradiction",
+              "inferred",
+              "gotcha"
+            ],
+            "description": "upstream-bug: Compose code looks wrong. missing-token: a value only exists in code. dead-token: a token no code reads. contradiction: code and token disagree. inferred: not in Compose, taken from MDC docs or analogy. gotcha: easy to get wrong."
+          },
+          "text": {
+            "type": "string"
+          },
+          "tokens": {
+            "$ref": "#/$defs/tokens"
+          },
+          "source": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "tokenPath": {
+      "type": "string",
+      "pattern": "^(ref|sys|comp)(\\.[a-z0-9-]+)+$"
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tokenPath"
+      },
+      "uniqueItems": true
+    },
+    "source": {
+      "type": "string",
+      "description": "Where a fact comes from: one or more citations separated by \"; \". A citation is a Compose file with optional lines (SplitButton.kt:279 or SplitButton.kt:624-648,697), an MDC doc (mdc:SplitButton.md), or a token file (FabMediumTokens.kt).",
+      "pattern": "^(mdc:[A-Za-z]+\\.md|[A-Za-z]+\\.kt(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?)(; (mdc:[A-Za-z]+\\.md|[A-Za-z]+\\.kt(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?))*$"
+    },
+    "values": {
+      "type": "array",
+      "description": "Hard-coded numbers the rule depends on, not available as tokens.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*$"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "enum": [
+              "dp",
+              "sp",
+              "ms",
+              "deg",
+              "percent",
+              "ratio",
+              "count",
+              "px"
+            ]
+          }
+        }
+      }
+    },
+    "motion": {
+      "description": "How a change animates. A named spring (a sys.motion.spring.* group), a literal spring, a time-based transition, or none.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "spring"
+          ],
+          "properties": {
+            "spring": {
+              "enum": [
+                "sys.motion.spring.fast-spatial",
+                "sys.motion.spring.default-spatial",
+                "sys.motion.spring.slow-spatial",
+                "sys.motion.spring.fast-effects",
+                "sys.motion.spring.default-effects",
+                "sys.motion.spring.slow-effects"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "damping",
+            "stiffness"
+          ],
+          "properties": {
+            "damping": {
+              "type": "number"
+            },
+            "stiffness": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "durationMs"
+          ],
+          "properties": {
+            "durationMs": {
+              "type": "number"
+            },
+            "durationToken": {
+              "$ref": "#/$defs/tokenPath"
+            },
+            "easing": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/tokenPath"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "instant"
+          ],
+          "properties": {
+            "instant": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "text": {
+          "type": "string",
+          "description": "One rule, imperative or declarative, self-contained."
+        },
+        "part": {
+          "$ref": "#/$defs/id"
+        },
+        "tokens": {
+          "$ref": "#/$defs/tokens"
+        },
+        "values": {
+          "$ref": "#/$defs/values"
+        },
+        "motion": {
+          "$ref": "#/$defs/motion"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    }
+  }
+}

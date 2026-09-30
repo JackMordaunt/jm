@@ -1,0 +1,64 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tabs",
+  "name": "Tab row",
+  "status": "unchanged",
+  "statusNote": "PrimaryTabRow/SecondaryTabRow and their indicator shapes predate Expressive; no wavy/MaterialShapes indicator exists for tabs.",
+  "summary": "A horizontal row of tabs that switches between sibling content panes. Use primary tabs (bold, centered indicator) at the top level under an app bar; use secondary tabs (thin underline) to further split content within a section that already has primary navigation.",
+  "tokenGroups": ["comp.primary-navigation-tab", "comp.secondary-navigation-tab"],
+  "references": { "compose": ["Tab.kt", "TabRow.kt"], "mdc": ["Tabs.md"] },
+  "inputs": [
+    { "name": "selectedTabIndex", "type": "number", "required": true, "description": "The index of the currently selected tab." },
+    { "name": "tabs", "type": "list", "required": true, "description": "The row's tabs. Each tab has selected, onClick, and icon and/or label content." },
+    { "name": "style", "type": "enum", "values": ["primary", "secondary"], "required": false, "default": "primary", "description": "Selects the token group and indicator behaviour." },
+    { "name": "scrollable", "type": "boolean", "required": false, "default": false, "description": "Fixed rows place tabs evenly across the full width; scrollable rows offset tabs from the start edge and lay them out at natural width, scrolling any overflow." },
+    { "name": "selectedContentColor", "type": "string", "required": false, "description": "Per-tab colour override for its selected content." },
+    { "name": "unselectedContentColor", "type": "string", "required": false, "description": "Per-tab colour override for its unselected content; defaults to the selected colour." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Per-tab enabled state." },
+    { "name": "icon", "type": "icon", "required": false, "description": "Per-tab optional icon; icon+label tabs are taller than text-only tabs." },
+    { "name": "label", "type": "slot", "required": false, "description": "Per-tab optional label text." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The row surface.", "tokens": ["comp.primary-navigation-tab.container-color", "comp.secondary-navigation-tab.container-color"] },
+    { "id": "tab", "name": "Tab", "description": "One selectable item: icon and/or label text.", "tokens": ["comp.primary-navigation-tab.label-text-font", "comp.primary-navigation-tab.icon-size"] },
+    { "id": "active-indicator", "name": "Active indicator", "description": "A bar drawn under the selected tab, on top of the divider.", "tokens": ["comp.primary-navigation-tab.active-indicator-color", "comp.primary-navigation-tab.active-indicator-height", "comp.primary-navigation-tab.active-indicator-shape"] },
+    { "id": "divider", "name": "Divider", "description": "A hairline under the whole row (secondary tabs only by default).", "optional": true, "tokens": ["comp.secondary-navigation-tab.divider-color", "comp.secondary-navigation-tab.divider-height"] }
+  ],
+  "variants": [
+    { "axis": "style", "value": "primary-fixed", "default": true, "tokenGroup": "comp.primary-navigation-tab", "description": "Top-level destinations, tabs evenly fill the row." },
+    { "axis": "style", "value": "primary-scrollable", "tokenGroup": "comp.primary-navigation-tab", "description": "Top-level destinations that don't fit the row." },
+    { "axis": "style", "value": "secondary-fixed", "tokenGroup": "comp.secondary-navigation-tab", "description": "Sub-navigation within a section, evenly filled." },
+    { "axis": "style", "value": "secondary-scrollable", "tokenGroup": "comp.secondary-navigation-tab", "description": "Sub-navigation that doesn't fit the row." }
+  ],
+  "layout": [
+    { "id": "fixed-tab-width", "text": "Fixed tab rows place tabs evenly across the full width, each taking equal space.", "source": "TabRow.kt:172-173" },
+    { "id": "scrollable-edge-padding", "text": "Scrollable tab rows offset tabs from the start edge with an edge padding, defaulting to 52dp, and lay tabs out at their natural width, scrolling any overflow.", "values": [{ "name": "edgePadding", "value": 52, "unit": "dp" }], "source": "TabRow.kt:259,830" },
+    { "id": "scrollable-min-width", "text": "Scrollable tab rows enforce a minimum tab width of 90dp; fixed rows have no equivalent minimum — width is simply row-width divided by tab-count.", "values": [{ "name": "minTabWidth", "value": 90, "unit": "dp" }], "source": "TabRow.kt:268,854,981" },
+    { "id": "tab-height", "text": "Text-only tabs use container-height; icon+label tabs use the taller icon-and-label-text-container-height token instead.", "tokens": ["comp.primary-navigation-tab.container-height", "comp.primary-navigation-tab.icon-and-label-text-container-height"], "source": "Tab.kt:417-420" },
+    { "id": "text-and-icon-padding", "text": "Text has 16dp horizontal padding inside the tab; an icon sits 8dp before the text and is vertically positioned by baseline distance, not a fixed gap.", "values": [{ "name": "horizontalTextPadding", "value": 16, "unit": "dp" }, { "name": "textDistanceFromLeadingIcon", "value": 8, "unit": "dp" }], "source": "Tab.kt:423-424,441-442,298-300" },
+    { "id": "indicator-width", "text": "Primary indicator width follows the content width (label/icon bounding box) rather than the full tab width, so it stays centered and shorter than the tab. Secondary indicator instead spans the tab's full width.", "tokens": ["comp.primary-navigation-tab.active-indicator-shape"], "source": "TabRow.kt:157,461,209" },
+    { "id": "indicator-min-width", "text": "Both indicators enforce a minimum drawn width of 24dp to preserve a visible touch/visual target even for very narrow content.", "values": [{ "name": "indicatorMinWidth", "value": 24, "unit": "dp" }], "source": "TabRow.kt:460-461,606-608,798-799" },
+    { "id": "divider-position", "text": "The row divider sits at the bottom of the row, underneath (behind) the active indicator, spanning the full row width.", "tokens": ["comp.secondary-navigation-tab.divider-color", "comp.secondary-navigation-tab.divider-height"], "source": "TabRow.kt:161,212,1041-1043" }
+  ],
+  "states": [
+    { "state": "selected", "text": "Single-select within the row; pressing a tab moves selection immediately — there is no intermediate \"activating\" state.", "source": "TabRow.kt:400" },
+    { "state": "hovered", "text": "Interaction states (hover/focus/pressed, active/inactive) recolor the icon and label independently per token; the indicator itself has no hover/press variant, only active/inactive.", "tokens": ["comp.primary-navigation-tab.active-hover-icon-color", "comp.primary-navigation-tab.inactive-pressed-label-text-color"] },
+    { "state": "selected", "label": "label-icon-crossfade", "text": "Label/icon colour cross-fades between active and inactive colour on selection change: fade-in uses a default-effects spring, fade-out uses a fast-effects spring.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "Tab.kt:277-283" },
+    { "state": "selected", "label": "indicator-motion", "text": "The active indicator's position (offset from row start) and, for the primary indicator, its width both animate independently using a default-spatial spring, each animating from its own current value on every selection change so a fast double-tap doesn't snap.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "TabRow.kt:405-406,684-746" },
+    { "state": "other", "label": "auto-scroll", "text": "Scrollable tab rows additionally auto-scroll the selected tab into view using the same default-spatial spring spec.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "TabRow.kt:524-527,837-838" }
+  ],
+  "behaviour": [
+    { "id": "custom-indicator-divider", "text": "A custom indicator composable and divider composable can be swapped in per row; the indicator receives an API to read animated tab positions.", "source": "TabRow.kt:135-165" },
+    { "id": "same-underlying-impl", "text": "Primary vs secondary is a styling and indicator-behaviour choice only — both are the same row implementation underneath; pick the token group and content-matching behaviour, not a different structural component.", "source": "TabRow.kt:392" }
+  ],
+  "accessibility": {
+    "role": "tab",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Arrow keys move focus between tabs within the group.", "Enter or Space selects the focused tab."],
+    "semantics": ["Each tab behaves as a Tab role within a selectable group, so assistive tech announces the group and each item's selected state.", "The 24dp minimum indicator width guarantees a visible affordance, but tab touch targets themselves should still meet the platform's general 48dp minimum, driven by container-height, not by the indicator."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Don't restate a fixed row's per-tab width — it's row-width divided by tab count, not a token." },
+    { "kind": "gotcha", "text": "The divider is a plain horizontal rule, not a decoration owned by the indicator; a row with no divider is a legitimate custom composition." }
+  ]
+}

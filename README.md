@@ -78,7 +78,7 @@ just's own release, and SDL3 has to be built from source there.
 | `ui/diagram` | titled, accent-bordered groups of chips and arrows (solid or dashed) for an architecture diagram, over plain `ui` calls |
 | `ui/design` | what every design system on `ui` shares: the interaction states and per-frame `Control`, per-corner geometry, text shaping in a line box, box-shadow layers drawn as exact Gaussian shadows, CSS easing, and a generic `Theme(Role, Context)` with axioms that `check` measures in every context (OKLab, APCA and WCAG metrics) |
 | `ui/base` | the smallest design system on `ui`: a five-role palette bound light and dark as an instance of `ui/design`, checked by its axioms, and the plain widgets every page needs — label, text, divider, panel; a full system maps its scheme down to it |
-| `ui/material` | Material 3 Expressive on `ui`: the colour scheme, type scale, shape, motion springs and state tokens generated from the m3e-kit into `ui/material/tokens`, Material Symbols icons as paths, and the components (buttons, text fields, selection controls, chips, cards, lists, navigation, app bars, tabs), each able to paint any spec state on demand |
+| `ui/material` | Material 3 Expressive on `ui`: the colour scheme, type scale, shape, motion springs and state tokens generated from the m3e-kit (`tools/material`) into `ui/material/tokens`, Material Symbols icons as paths, and the components (buttons, text fields, selection controls, chips, cards, lists, navigation, app bars, tabs), each able to paint any spec state on demand |
 | `ui/fluent` | Fluent 2 on `ui`: the five colour themes (web and Teams, light and dark, high contrast), type ramp, spacing, radii, strokes, shadows and motion generated from the fluent-kit into `ui/fluent/tokens`, with states read as separate tokens through a `design.Control` and colour changes eased over the kit's duration and curve |
 | `ui/testutil` | `count_ops`: assertions a `ui` package's own tests and a downstream package's tests both want, without an import cycle |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
@@ -156,8 +156,9 @@ ui           blend2d  fetch and compile Blend2D into ui/blend2d/lib
              text-png page=Scripts  render one text-lab page, whole, to build/
 ui/material  material-kitchen  build and open the hot-reloaded M3 kitchen
              material-png page=Chips  render one M3 kitchen page to build/
-             material-tokens  regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
+             material-tokens  regenerate ui/material/tokens from the m3e-kit
              material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit's morphs
+             material-kit-{tokens,shapes,fetch,index,check,page}  maintain the m3e-kit in tools/material
 ui/fluent    fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
              fluent-png page=Button  render one Fluent kitchen page to build/
              fluent-fonts  fetch Selawik, the kitchen's stand-in for Segoe UI, into ~/.local/share/fonts

@@ -1,0 +1,54 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "loading-indicator",
+  "name": "Loading indicator",
+  "status": "new",
+  "summary": "An indeterminate, or progress-driven, indicator that morphs a single filled blob through a sequence of Material shapes instead of spinning a ring or filling a bar. Use it in place of the indeterminate circular progress indicator for waits under about 5 seconds; keep the circular progress indicator for longer or unbounded waits.",
+  "tokenGroups": ["comp.loading-indicator"],
+  "references": { "compose": ["LoadingIndicator.kt", "MaterialShapes.kt"], "mdc": ["LoadingIndicator.md"] },
+  "inputs": [
+    { "name": "contained", "type": "boolean", "required": false, "default": false, "description": "Draws a fully-rounded coloured container behind the shape. Switches which comp.loading-indicator colour tokens apply (contained-active-color/contained-container-color vs. active-indicator-color)." },
+    { "name": "progress", "type": "number", "required": false, "description": "0.0 to 1.0, coerced into range. Omit for the indeterminate, auto-looping variant; supply it for the determinate, progress-driven morph." },
+    { "name": "indicatorColor", "type": "string", "required": false, "description": "Overrides the active shape's fill colour." },
+    { "name": "containerColor", "type": "string", "required": false, "description": "Contained variant only: overrides the background container colour." },
+    { "name": "polygons", "type": "list", "required": false, "description": "Custom sequence of shapes to morph between, replacing the default determinate or indeterminate sequence. Must contain at least 2 shapes." }
+  ],
+  "anatomy": [
+    { "id": "active-indicator", "name": "Active indicator", "description": "A single flat-filled, morphing shape with no stroke.", "tokens": ["comp.loading-indicator.active-indicator-color", "comp.loading-indicator.active-size", "comp.loading-indicator.contained-active-color"] },
+    { "id": "container", "name": "Container", "description": "A fully-rounded background box behind the shape. Present only in the contained variant.", "optional": true, "tokens": ["comp.loading-indicator.container-width", "comp.loading-indicator.container-height", "comp.loading-indicator.container-shape", "comp.loading-indicator.contained-container-color"] }
+  ],
+  "variants": [
+    { "axis": "container", "value": "uncontained", "default": true, "tokenGroup": "comp.loading-indicator", "description": "The shape floats with a transparent container." },
+    { "axis": "container", "value": "contained", "tokenGroup": "comp.loading-indicator", "description": "A coloured, fully-round container sits behind the shape; indicator and container colours must hold at least 3:1 contrast." },
+    { "axis": "mode", "value": "indeterminate", "default": true, "description": "Auto-looping morph through a fixed 7-shape sequence, independent of any progress value (LoadingIndicator.kt:98-240)." },
+    { "axis": "mode", "value": "determinate", "description": "Morph position is bound directly to a 0.0-1.0 progress value (LoadingIndicator.kt:98-240)." }
+  ],
+  "layout": [
+    { "text": "container-width and container-height size the clip/background box; active-size sets the indicator's scale inside it. The actual runtime scale factor is active-size divided by the smaller of container-width/container-height, further multiplied by a per-shape bounds-fit factor so no shape corner clips as it rotates through the morph.", "tokens": ["comp.loading-indicator.container-width", "comp.loading-indicator.container-height", "comp.loading-indicator.active-size"], "source": "LoadingIndicator.kt:572-573,615-630" },
+    { "text": "The shape is always drawn into a square (1:1) area centered in the container, even when container-width and container-height differ.", "tokens": ["comp.loading-indicator.container-width", "comp.loading-indicator.container-height"], "source": "LoadingIndicator.kt:309-311,470" },
+    { "text": "shapes/morphs.json gives the precomputed bounds-fit constants for each mode: indeterminate uses shapesScaleFactor 0.86558 and draws at drawScale 0.68525; determinate uses shapesScaleFactor 1 and drawScale 0.79167. Both modes' activeIndicatorScale is 0.79167 (the 38dp indicator size over the 48dp container, per LoadingIndicator.kt).", "values": [{ "name": "indeterminateShapesScaleFactor", "value": 0.86558, "unit": "ratio" }, { "name": "indeterminateDrawScale", "value": 0.68525, "unit": "ratio" }, { "name": "determinateShapesScaleFactor", "value": 1, "unit": "ratio" }, { "name": "determinateDrawScale", "value": 0.79167, "unit": "ratio" }, { "name": "activeIndicatorScale", "value": 0.79167, "unit": "ratio" }], "source": "LoadingIndicator.kt" }
+  ],
+  "states": [
+    { "state": "indeterminate", "text": "Morphs through 7 named shapes in a fixed, circular (looping) order: soft-burst, cookie-9-sided, pentagon, pill, sunny, cookie-4-sided, oval, then back to soft-burst. The exact sequence and each pair's morph geometry are given in shapes/morphs.json's \"indeterminate\" key, and every shape name is defined as a cubic-bezier outline in shapes/shapes.json's \"shapes\" object.", "motion": { "damping": 0.6, "stiffness": 200 }, "values": [{ "name": "morphIntervalMs", "value": 650, "unit": "ms" }], "source": "LoadingIndicator.kt:541-550" },
+    { "state": "other", "label": "determinate", "text": "Morphs between exactly 2 shapes, position bound directly to the 0-1 progress value rather than time-looped: circle (pre-rotated 18 degrees, for a smoother morph start) then soft-burst. This sequence is not circular — shapes/morphs.json's \"determinate\" key sets circular: false. Progress drives the morph arithmetically (progress times shape count), not a restarting spring.", "values": [{ "name": "circleInitialRotation", "value": 18, "unit": "deg" }], "source": "LoadingIndicator.kt:560-566,313-327" }
+  ],
+  "behaviour": [
+    { "text": "Each indeterminate shape-to-shape morph runs on a spring with damping 0.6 and stiffness 200 (visibility threshold raised tenfold to 0.1 to shorten settle time), restarted every 650ms regardless of whether the prior spring finished. This is a one-off spring tuned for this component, not one of the named sys.motion.spring.* tokens, and it must match shapes/morphs.json's stated damping/stiffness/interval exactly.", "motion": { "damping": 0.6, "stiffness": 200 }, "values": [{ "name": "morphIntervalMs", "value": 650, "unit": "ms" }], "source": "LoadingIndicator.kt:400-420,681" },
+    { "text": "The determinate morph transition has no spring of its own: the active shape index and in-morph progress are both derived arithmetically from the caller's progress value (progress times shape count), so whatever spec animates the progress input itself drives the morph's apparent smoothness.", "source": "LoadingIndicator.kt:313-327" },
+    { "text": "Indeterminate rotation sums two layered rotations: a continuous linear-eased 360-degree spin every 4666ms, plus a discrete +90-degree step applied at each 650ms morph completion. Total angle equals in-morph-progress times 90 degrees, plus the accumulated step angle, plus the continuous angle.", "values": [{ "name": "globalRotationDurationMs", "value": 4666, "unit": "ms" }, { "name": "stepRotation", "value": 90, "unit": "deg" }], "motion": { "durationMs": 4666, "easing": "sys.motion.easing.linear" }, "source": "LoadingIndicator.kt:392-393,415-416,425-434,473,680-684" },
+    { "text": "Determinate rotation is a single rotation tied directly to progress, counter-clockwise: angle equals minus progress times 180 degrees, with no easing curve of its own.", "values": [{ "name": "rotationRange", "value": -180, "unit": "deg" }], "source": "LoadingIndicator.kt:330" },
+    { "text": "There is no separate scale or size animatable. The spring's under-damped 0.6 ratio is what reads visually as a slight overshoot or bounce in the morphing silhouette, not a distinct scale animation.", "source": "LoadingIndicator.kt:391,479-482" },
+    { "text": "A single flat fill colour is used per draw call; no automatic colour crossfade is implemented. MDC's \"potential colour change\" during the morph means the caller supplies different indicatorColor values externally frame to frame, not that the component animates colour itself.", "source": "LoadingIndicator.kt" }
+  ],
+  "accessibility": {
+    "role": "progressbar",
+    "minTouchTargetDp": null,
+    "keyboard": [],
+    "semantics": ["Determinate mode exposes standard progress-bar range semantics (0.0 to 1.0).", "Indeterminate mode exposes no progress value, only an ongoing/busy state.", "MDC: set an explicit content description — the shape and motion alone convey no accessible label or value on their own.", "Contained variant: indicator colour and container colour must hold at least 3:1 contrast."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Determinate and indeterminate use different default shape lists and different morph math: indeterminate treats its list as a closed loop (shapes/morphs.json: circular true), determinate treats its list as a linear 0-to-1 sequence (circular false). Do not share one custom polygon list between both modes without accounting for this.", "source": "LoadingIndicator.kt:102,139,190,232" },
+    { "kind": "gotcha", "text": "Any custom shape sequence passed as polygons must contain at least 2 shapes, or the reference implementation throws.", "source": "LoadingIndicator.kt:268-270,375-377" },
+    { "kind": "missing-token", "text": "MDC-Android's LoadingIndicator.md documents showDelay/minHideDelay attributes (defer showing / guarantee a minimum visible time) that have no equivalent in this Compose source — treat as an Android-widget-layer concern, not a token-level or shape-morph concern.", "source": "mdc:LoadingIndicator.md" }
+  ]
+}

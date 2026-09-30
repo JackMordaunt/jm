@@ -1,0 +1,71 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "fab-menu",
+  "name": "FAB menu",
+  "status": "new",
+  "summary": "A FAB that expands into a vertical list of labelled action items above it. The trigger morphs from a circular add button into a close button as the menu opens.",
+  "tokenGroups": ["comp.fab-menu-baseline", "comp.fab-baseline", "comp.fab-medium", "comp.fab-large", "comp.fab-primary-container"],
+  "references": { "compose": ["FloatingActionButtonMenu.kt"], "mdc": ["FloatingActionButtonMenu.md"] },
+  "inputs": [
+    { "name": "expanded", "type": "boolean", "required": true, "description": "Whether the menu is open. Drives the trigger's toggle progress and the staggered item reveal." },
+    { "name": "onExpandedChange", "type": "callback", "required": true, "description": "Called with the requested new expanded value when the trigger is toggled." },
+    { "name": "triggerIcon", "type": "icon", "required": true, "description": "The trigger's icon. Expected to cross-fade between an add glyph and a close glyph, switching at 50% of the open progress; the component does not enforce this itself." },
+    { "name": "triggerSize", "type": "enum", "values": ["baseline", "medium", "large"], "required": false, "default": "baseline", "description": "Selects the trigger's closed-state token group and starting icon size." },
+    { "name": "items", "type": "list", "required": true, "description": "The action items shown above the trigger as a vertical stack that scrolls if it overflows the available height. Each item has its own icon, label and onClick." },
+    { "name": "horizontalAlignment", "type": "enum", "values": ["start", "end"], "required": false, "default": "end", "description": "Horizontal alignment of the trigger and the item column." }
+  ],
+  "anatomy": [
+    { "id": "trigger", "name": "Toggle FAB (trigger)", "description": "Morphs shape, size, colour and icon between its closed and open (close-button) states.", "tokens": ["comp.fab-baseline.container-height", "comp.fab-menu-baseline.close-button-container-height", "comp.fab-menu-baseline.close-button-icon-size"] },
+    { "id": "menu-item", "name": "Menu item row", "description": "One action: icon + label.", "tokens": ["comp.fab-menu-baseline.list-item-container-height", "comp.fab-menu-baseline.list-item-leading-space", "comp.fab-menu-baseline.list-item-trailing-space", "comp.fab-menu-baseline.list-item-icon-label-space", "comp.fab-menu-baseline.list-item-icon-size"] },
+    { "id": "item-list", "name": "Item list container", "description": "Vertical stack of menu items, listed above the trigger; scrolls if it overflows the available height.", "tokens": ["comp.fab-menu-baseline.list-item-between-space"] }
+  ],
+  "variants": [
+    { "axis": "trigger-size", "value": "baseline", "default": true, "tokenGroup": "comp.fab-baseline", "description": "Closed-state size. comp.fab-menu-baseline provides the open (close-button) state at every trigger size." },
+    { "axis": "trigger-size", "value": "medium", "tokenGroup": "comp.fab-medium" },
+    { "axis": "trigger-size", "value": "large", "tokenGroup": "comp.fab-large", "description": "Closed-state icon size is a hard-coded 36dp override, like the plain large FAB; see notes." },
+    { "axis": "horizontal-alignment", "value": "start" },
+    { "axis": "horizontal-alignment", "value": "end", "default": true }
+  ],
+  "layout": [
+    { "text": "Inset the whole menu, item column and trigger together, by a hard-coded 16dp on each side; it is not sourced from comp.fab-menu-baseline.", "values": [{ "name": "horizontalInset", "value": 16, "unit": "dp" }], "source": "FloatingActionButtonMenu.kt:737" },
+    { "text": "Reserve a hard-coded 16dp between the item column and the trigger button below it; it is not sourced from comp.fab-menu-baseline.", "values": [{ "name": "triggerPaddingBottom", "value": 16, "unit": "dp" }], "source": "FloatingActionButtonMenu.kt:741" },
+    { "text": "Give the trigger a closed-state corner radius that is hard-coded per trigger size, not read from any FAB shape token: 16dp at baseline, 20dp at medium, 28dp at large.", "values": [{ "name": "closedCornerRadiusBaseline", "value": 16, "unit": "dp" }, { "name": "closedCornerRadiusMedium", "value": 20, "unit": "dp" }, { "name": "closedCornerRadiusLarge", "value": 28, "unit": "dp" }], "source": "FloatingActionButtonMenu.kt:715-716,721-722,727-728" },
+    { "text": "Give the trigger's open (close-button) state a full-circle corner radius: half of comp.fab-menu-baseline.close-button-container-height.", "part": "trigger", "tokens": ["comp.fab-menu-baseline.close-button-container-height"], "source": "FloatingActionButtonMenu.kt:730,732" },
+    { "text": "At trigger-size large, use a hard-coded 36dp for the closed-state icon size, the same override as the plain large FAB's icon size.", "part": "trigger", "values": [{ "name": "largeClosedIconSize", "value": 36, "unit": "dp" }], "tokens": ["comp.fab-large.icon-size"], "source": "FloatingActionButtonMenu.kt:729" }
+  ],
+  "states": [
+    { "state": "open", "part": "trigger", "text": "A single progress value from 0 (closed) to 1 (open) lerps the trigger's container size, corner radius, container colour and icon size/colour together. Treat it as one scrubbable value, not a boolean cross-fade.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "FloatingActionButtonMenu.kt:456-460" },
+    { "state": "open", "part": "trigger", "text": "As progress goes from 0 to 1, the container colour lerps primaryContainer to primary and the icon colour lerps onPrimaryContainer to onPrimary, shifting the trigger from the container tone to the more saturated primary tone.", "tokens": ["comp.fab-primary-container.container-color", "comp.fab-primary-container.icon-color"], "source": "FloatingActionButtonMenu.kt:581,612" },
+    { "state": "other", "label": "icon-swap", "part": "trigger", "text": "The trigger's icon content is expected to cross-fade from an add glyph to a close glyph at 50% open progress. This is a usage convention for the icon slot, not behaviour the component enforces.", "source": "FloatingActionButtonMenu.kt:440" },
+    { "state": "other", "label": "item-reveal", "part": "item-list", "text": "Item reveal is staggered by an integer visible-item count that animates from 0 to the total item count, or back. Items below the current count are hidden; each becomes visible in list order as the count passes its index.", "motion": { "spring": "sys.motion.spring.slow-effects" }, "source": "FloatingActionButtonMenu.kt:203-217" },
+    { "state": "other", "label": "item-reveal-threshold", "part": "item-list", "text": "Force the stagger spring's visibility threshold to 1 so the last item does not lag visibly behind the animated count.", "values": [{ "name": "visibilityThreshold", "value": 1, "unit": "count" }], "source": "FloatingActionButtonMenu.kt:209-217" },
+    { "state": "other", "label": "item-enter-exit-width", "part": "menu-item", "text": "Each item additionally animates its own width as it enters or exits, layered on top of the staggered reveal rather than replacing it.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "FloatingActionButtonMenu.kt:341-343" },
+    { "state": "other", "label": "item-enter-exit-opacity", "part": "menu-item", "text": "Each item simultaneously animates its own opacity as it enters or exits, independent of the width animation and the staggered reveal.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "FloatingActionButtonMenu.kt:341-343" }
+  ],
+  "behaviour": [
+    { "text": "Clicking the trigger calls onExpandedChange(!expanded); the caller owns expanded and re-renders the menu accordingly.", "part": "trigger" },
+    { "text": "Each menu item calls its own onClick when activated, independent of the trigger.", "part": "menu-item" },
+    { "text": "While open, Tab without Shift, or an arrow-down key, on the focused trigger moves focus into the item list instead of past it. Implement equivalent focus-trap-in behaviour for keyboard and switch-access users.", "part": "trigger", "source": "FloatingActionButtonMenu.kt:138-151" }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTouchTargetDp": 48,
+    "keyboard": [
+      "Tab moves focus to the trigger; Enter or Space toggles it open or closed (standard button/toggle pattern).",
+      "While open, Tab without Shift, or an arrow-down key, on the focused trigger moves focus into the item list instead of past it.",
+      "Tab moves between item rows in list order; Enter or Space activates the focused item (standard button pattern)."
+    ],
+    "semantics": [
+      "The trigger carries checkbox-like on/off (checked) semantics, matching ToggleFloatingActionButton, rather than plain button semantics.",
+      "Each menu item has the button role.",
+      "The trigger's content description should state the action (\"Open actions menu\" / \"Close menu\") since both its icon and its colour change; do not rely on the icon glyph alone.",
+      "Menu items are grouped for traversal with a slightly negative traversalIndex (-0.9) so they are read before the trigger, which sits below them."
+    ]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "The hard-coded 16dp trigger gap (FabMenuButtonPaddingBottom) is applied twice: once padding the item column's reserved bottom space, once offsetting the trigger up from the layout's bottom edge. The two cancel out, so the net visual gap between the lowest menu item and the trigger is comp.fab-menu-baseline.close-button-between-space alone, not 16dp.", "tokens": ["comp.fab-menu-baseline.close-button-between-space"], "source": "FloatingActionButtonMenu.kt:160,187,274-280" },
+    { "kind": "dead-token", "text": "comp.fab-menu-baseline.close-button-container-elevation and comp.fab-menu-baseline.list-item-container-elevation both exist but neither is read: the trigger's shadow elevation is hard-coded to comp.fab-primary-container.container-elevation and stays constant across the open/close progress, unlike size, shape and colour, which all lerp; menu-item Surfaces are created with Compose's default zero elevation.", "tokens": ["comp.fab-menu-baseline.close-button-container-elevation", "comp.fab-menu-baseline.list-item-container-elevation", "comp.fab-primary-container.container-elevation"], "source": "FloatingActionButtonMenu.kt:378-382,537,735-736" },
+    { "kind": "gotcha", "text": "Model the trigger as one progress: Float driving four lerped outputs (size, corner radius, container colour, icon colour/size) rather than two discrete closed/open visual states; the API explicitly supports scrubbing this value, e.g. via drag.", "source": "FloatingActionButtonMenu.kt:504-577" },
+    { "kind": "gotcha", "text": "The staggered item-count reveal and the per-item width/opacity enter-exit animation are two independent, simultaneous animations; implement both rather than treating one as replacing the other." }
+  ]
+}

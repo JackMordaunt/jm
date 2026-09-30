@@ -1,0 +1,93 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "slider",
+  "name": "Slider",
+  "status": "changed",
+  "statusNote": "Expressive adds the centered and vertical configurations, handle narrowing while interacting, a gap between track and handle, and inset icons. The continuous, range and stepped value model is unchanged. MDC-Android renamed continuous to standard and discrete to stops.",
+  "summary": "A one-dimensional control for selecting a value, or a range with two handles, from a continuous or stepped scale. Choose it over a stepper or text input when relative position matters more than the exact number.",
+  "tokenGroups": ["comp.slider"],
+  "references": { "compose": ["Slider.kt"], "mdc": ["Slider.md"] },
+  "inputs": [
+    { "name": "value", "type": "number", "required": true, "description": "The current value, within valueRange. For a range slider, the start of the selected range." },
+    { "name": "valueEnd", "type": "number", "required": false, "description": "The end of the selected range. Supplying it makes the slider a range slider with two handles." },
+    { "name": "onValueChange", "type": "callback", "required": true, "description": "Called with the new value (or range) on every change during drag, tap or key press." },
+    { "name": "onValueChangeFinished", "type": "callback", "required": false, "description": "Called once when the user finishes a change, e.g. on drag release." },
+    { "name": "valueRange", "type": "list", "required": false, "description": "The [min, max] pair of the scale. Compose defaults to 0..1." },
+    { "name": "steps", "type": "number", "required": false, "default": 0, "description": "The number of discrete stops between the two ends. 0 makes the slider continuous." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Enables interaction; disabled sliders use the disabled-* tokens." },
+    { "name": "orientation", "type": "enum", "values": ["horizontal", "vertical"], "required": false, "default": "horizontal", "description": "Horizontal is Slider/RangeSlider; vertical is VerticalSlider, which Compose offers for single-value sliders only." },
+    { "name": "topToBottom", "type": "boolean", "required": false, "default": true, "description": "Vertical only: whether the minimum is at the top." },
+    { "name": "track", "type": "enum", "values": ["standard", "centered"], "required": false, "default": "standard", "description": "Standard fills from the track's start; centered fills from the midpoint toward the handle. Compose selects this by passing SliderDefaults.CenteredTrack as the track slot." },
+    { "name": "startIcon", "type": "icon", "required": false, "description": "Inset icon drawn inside the track at the start end. Standard slider only; not in Compose." },
+    { "name": "endIcon", "type": "icon", "required": false, "description": "Inset icon drawn inside the track at the end. Standard slider only; not in Compose." },
+    { "name": "label", "type": "string", "required": false, "description": "Accessible label. On a range slider, give each handle its own, e.g. \"start\" and \"end\"." }
+  ],
+  "anatomy": [
+    { "id": "track", "name": "Track", "description": "An inactive (unfilled) segment and an active (filled) segment, stadium-capped by default.", "tokens": ["comp.slider.active-track-color", "comp.slider.inactive-track-color", "comp.slider.inactive-track-height", "comp.slider.active-track-height", "comp.slider.active-track-shape", "comp.slider.inactive-track-shape"] },
+    { "id": "handle", "name": "Handle", "description": "A narrow filled bar with fully rounded ends, perpendicular to the track.", "tokens": ["comp.slider.handle-color", "comp.slider.handle-width", "comp.slider.handle-height", "comp.slider.handle-shape"] },
+    { "id": "track-gap", "name": "Track gap", "description": "A visible break in the track on either side of each handle.", "tokens": ["comp.slider.active-handle-leading-space"] },
+    { "id": "stop-indicator", "name": "Stop indicator", "description": "A small dot marking a discrete step position, and the end of the track.", "optional": true, "tokens": ["comp.slider.stop-indicator-size", "comp.slider.stop-indicator-shape"] },
+    { "id": "value-indicator", "name": "Value indicator", "description": "A label popup above the handle showing the numeric value. Specified by tokens and MDC; not implemented in the pinned Compose source.", "optional": true, "tokens": ["comp.slider.value-indicator-container-color", "comp.slider.value-indicator-label-text-color", "comp.slider.value-indicator-label-text-font", "comp.slider.value-indicator-active-bottom-space"] },
+    { "id": "inset-icon", "name": "Inset icon", "description": "An icon drawn inside the track at one or both ends. Standard slider only.", "optional": true }
+  ],
+  "variants": [
+    { "axis": "track", "value": "standard", "default": true, "tokenGroup": "comp.slider", "description": "The value fills from the track's leading edge." },
+    { "axis": "track", "value": "centered", "tokenGroup": "comp.slider", "description": "The range straddles a midpoint, e.g. -100..100 defaulting to 0; the fill grows from the centre in either direction. Same tokens, different geometry." },
+    { "axis": "handles", "value": "single", "default": true, "tokenGroup": "comp.slider" },
+    { "axis": "handles", "value": "range", "tokenGroup": "comp.slider", "description": "Two handles select a min/max pair. Sizing tokens are shared; there is no per-handle colour split." },
+    { "axis": "orientation", "value": "horizontal", "default": true, "tokenGroup": "comp.slider" },
+    { "axis": "orientation", "value": "vertical", "tokenGroup": "comp.slider", "description": "Dimension tokens are orientation-agnostic; width and height swap." },
+    { "axis": "stepping", "value": "continuous", "default": true, "tokenGroup": "comp.slider", "description": "MDC calls this standard." },
+    { "axis": "stepping", "value": "stops", "tokenGroup": "comp.slider", "description": "Snaps to ticks; the stop-indicator-* tokens apply only here. MDC calls this stops; Compose calls it discrete." }
+  ],
+  "layout": [
+    { "text": "Narrow the handle to exactly half its full width while it is focused, pressed or dragged. Compute it as handle-width / 2 at draw time; do not read pressed-handle-width or focus-handle-width, though the result coincides with them.", "part": "handle", "tokens": ["comp.slider.handle-width"], "values": [{ "name": "activeHandleWidthRatio", "value": 0.5, "unit": "ratio" }], "source": "Slider.kt:2751-2760" },
+    { "text": "Hover alone does not narrow the handle; hover-handle-width stays at full width.", "part": "handle", "tokens": ["comp.slider.hover-handle-width"], "source": "Slider.kt:2751-2760" },
+    { "text": "Each gap measures from the handle's centre: half the handle's current thickness plus active-handle-leading-space. The gap therefore widens as the handle narrows; it is not a fixed length.", "part": "track-gap", "tokens": ["comp.slider.active-handle-leading-space"], "source": "Slider.kt:2452-2466,3348-3349" },
+    { "text": "Draw the inside corner of a track segment that meets a gap at a hard-coded 2dp, whatever active-track-shape-leading says.", "part": "track", "tokens": ["comp.slider.active-track-shape-leading"], "values": [{ "name": "trackInsideCornerRadius", "value": 2, "unit": "dp" }], "source": "Slider.kt:3350-3351" },
+    { "text": "Round the outer track corners, and any segment side away from a gap, to a full stadium: radius is half the track's measured cross-axis thickness, not a fixed token value.", "part": "track", "values": [{ "name": "outerCornerPercent", "value": 50, "unit": "percent" }], "source": "Slider.kt:2113-2139" },
+    { "text": "On a centered slider, draw the active segment from the track's midpoint to the handle, and apply the gap and inside-corner treatment at the midpoint end as well as at the handle.", "part": "track", "source": "Slider.kt:2467-2520" },
+    { "text": "On a range slider, size each handle's gap from that handle's own current width. The two gaps are independent and differ while only one handle is narrowed.", "part": "track-gap", "source": "Slider.kt:2452-2466" },
+    { "text": "When vertical, swap width and height for every dimension token: track thickness is the fixed axis and length the flexible one. The handle becomes handle-height wide and handle-width tall.", "tokens": ["comp.slider.handle-width", "comp.slider.handle-height", "comp.slider.inactive-track-height"], "source": "Slider.kt:3346-3347" },
+    { "text": "When vertical and topToBottom is false, mirror the drawing with a scale(1, -1) transform instead of recomputing coordinates.", "source": "Slider.kt:2105-2107" },
+    { "text": "Place stop indicators at steps + 2 evenly spaced fractions of the track, including both ends.", "part": "stop-indicator", "tokens": ["comp.slider.stop-indicator-size"], "source": "Slider.kt:2800-2801" },
+    { "text": "Skip any stop indicator that falls inside a handle's gap, and any that coincides with the end-of-track stop indicator already drawn, so stops never render under or beside a handle.", "part": "stop-indicator", "source": "Slider.kt:2637-2660" },
+    { "text": "Size the track's end stop indicator and every tick with stop-indicator-size, drawn as a circle.", "part": "stop-indicator", "tokens": ["comp.slider.stop-indicator-size"], "source": "Slider.kt:2712-2722" },
+    { "text": "Draw an inset icon inside the track's own thickness. Neither Compose nor the tokens give its size or inset; MDC names the size trackIconSize without a default, so choose one deliberately.", "part": "inset-icon", "source": "mdc:Slider.md" },
+    { "text": "Place the value indicator above the handle, separated by value-indicator-active-bottom-space.", "part": "value-indicator", "tokens": ["comp.slider.value-indicator-active-bottom-space"], "source": "mdc:Slider.md" }
+  ],
+  "states": [
+    { "state": "enabled", "text": "Colour the handle handle-color, the active segment active-track-color and the inactive segment inactive-track-color.", "tokens": ["comp.slider.handle-color", "comp.slider.active-track-color", "comp.slider.inactive-track-color"], "source": "Slider.kt:1718-1722" },
+    { "state": "enabled", "part": "stop-indicator", "text": "Colour ticks with the opposite segment's colour: ticks on the active segment take inactive-track-color, ticks on the inactive segment take active-track-color.", "tokens": ["comp.slider.active-track-color", "comp.slider.inactive-track-color"], "source": "Slider.kt:1720-1722" },
+    { "state": "focused", "part": "handle", "text": "Narrow the handle to half width and show a focus ring shaped by handle-shape. Press gives no ripple.", "tokens": ["comp.slider.handle-shape"], "motion": { "instant": true }, "source": "Slider.kt:935-941" },
+    { "state": "pressed", "part": "handle", "text": "Narrow the handle to half width and widen both gaps to match.", "motion": { "instant": true }, "source": "Slider.kt:2751-2760" },
+    { "state": "dragged", "part": "handle", "text": "Narrow the handle exactly as when pressed; drag and press share one active state.", "motion": { "instant": true }, "source": "Slider.kt:2751-2760" },
+    { "state": "disabled", "text": "Apply each disabled colour at its disabled opacity; composite the handle over the surface colour. Snap immediately, without animation.", "tokens": ["comp.slider.disabled-handle-color", "comp.slider.disabled-handle-opacity", "comp.slider.disabled-active-track-color", "comp.slider.disabled-active-track-opacity", "comp.slider.disabled-inactive-track-color", "comp.slider.disabled-inactive-track-opacity"], "motion": { "instant": true }, "source": "Slider.kt:1723-1737" }
+  ],
+  "behaviour": [
+    { "text": "While dragging a stepped slider, snap the pointer position to the nearest tick on every move, with no dead zone; the handle jumps tick to tick during the drag, not only on release.", "source": "Slider.kt:2775-2786" },
+    { "text": "Drive handle narrowing and gap widening from one signal, focused or pressed or dragged, so the handle edge and gap edge never mismatch." },
+    { "text": "The pinned source changes handle width and gap instantly. Animate them deliberately, e.g. with fast-spatial, rather than copying the omission.", "motion": { "spring": "sys.motion.spring.fast-spatial" } },
+    { "text": "Each arrow key moves the value by one delta: range / (steps + 1) when stepped, range / 100 when continuous.", "values": [{ "name": "continuousKeyStepPercent", "value": 1, "unit": "percent" }], "source": "Slider.kt:1100-1106" },
+    { "text": "Page Up and Page Down move by page × delta, where page = (steps + 1) / 10, or 100 / 10 when continuous, clamped to 1..10. Every key move clamps to the value range.", "values": [{ "name": "minPageMultiplier", "value": 1, "unit": "count" }, { "name": "maxPageMultiplier", "value": 10, "unit": "count" }], "source": "Slider.kt:1127-1136" },
+    { "text": "Home and End jump to the minimum and maximum.", "source": "Slider.kt:1108-1118" },
+    { "text": "Keep range handles from crossing by coercion only; Compose has no minimum separation. Add one deliberately if the product needs MDC's minSeparation." },
+    { "text": "Show the value indicator only while the handle is touched or dragged by default (MDC labelBehavior floating); allow forcing it always visible or always hidden. Build it as a tooltip-style popup from the value-indicator-* tokens.", "part": "value-indicator", "tokens": ["comp.slider.value-indicator-container-color", "comp.slider.value-indicator-label-text-color", "comp.slider.value-indicator-label-text-font"], "source": "mdc:Slider.md" }
+  ],
+  "accessibility": {
+    "role": "slider",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Right and Up arrow increase the value by one step; Left and Down decrease it. In RTL, Left and Right are reversed.", "Page Up and Page Down move by a larger multi-step increment.", "Home and End jump to the minimum and maximum.", "On a range slider, Tab moves between the two handles."],
+    "semantics": ["Expose the current value, minimum, maximum and step, and announce the formatted value live as it changes.", "Enforce a 48dp touch target around the handle, independent of its 4dp-class visual width.", "On a range slider, expose each handle as a separate node with its own label so start and end are distinguishable."]
+  },
+  "notes": [
+    { "kind": "missing-token", "text": "The 2dp inside corner at a gap is hard-coded; no token carries it.", "source": "Slider.kt:3350-3351" },
+    { "kind": "gotcha", "text": "active-track-shape-leading resolves to a full round, but Compose never uses it for the gap-facing corner. Use it, if at all, only for the outer corner.", "tokens": ["comp.slider.active-track-shape-leading"] },
+    { "kind": "dead-token", "text": "Compose reads no per-state width or colour token: pressed-handle-width, focus-handle-width, hover-handle-width, disabled-handle-width and the pressed-, focus- and hover- colour tokens are unread. Narrowing is computed as half of handle-width.", "tokens": ["comp.slider.pressed-handle-width", "comp.slider.focus-handle-width", "comp.slider.hover-handle-width", "comp.slider.disabled-handle-width", "comp.slider.pressed-handle-color", "comp.slider.hover-handle-color", "comp.slider.pressed-active-track-color", "comp.slider.pressed-inactive-track-color", "comp.slider.focus-active-track-color", "comp.slider.focus-inactive-track-color"], "source": "Slider.kt" },
+    { "kind": "dead-token", "text": "Compose colours ticks from the track colours, so the stop-indicator colour tokens are unread.", "tokens": ["comp.slider.stop-indicator-color", "comp.slider.stop-indicator-color-selected", "comp.slider.focus-stop-color", "comp.slider.hover-stop-color", "comp.slider.pressed-stop-color", "comp.slider.disabled-stop-color"], "source": "Slider.kt:1718-1737" },
+    { "kind": "inferred", "text": "The value indicator is ahead of Compose: no Slider.kt code path exists. MDC's TooltipDrawable behaviour (shape, floating placement above the handle, show on touch) is the spec of record, sized and coloured from the value-indicator-* tokens.", "tokens": ["comp.slider.value-indicator-container-color"], "source": "mdc:Slider.md" },
+    { "kind": "inferred", "text": "Inset icons have no Compose parameter or token; the only Compose precedent is a custom-track sample.", "source": "mdc:Slider.md" },
+    { "kind": "gotcha", "text": "Ticks on the active segment take the inactive track colour and vice versa; do not colour ticks with their own segment's colour.", "source": "Slider.kt:1720-1722" },
+    { "kind": "dead-token", "text": "stop-indicator-shape is never read: drawStopIndicator always draws a hard-coded circle (drawCircle), sized from stop-indicator-size alone, with no shape lookup.", "tokens": ["comp.slider.stop-indicator-shape"], "source": "Slider.kt:2713-2715" }
+  ]
+}

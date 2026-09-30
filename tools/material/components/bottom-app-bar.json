@@ -1,0 +1,58 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "bottom-app-bar",
+  "name": "Bottom app bar",
+  "status": "changed",
+  "statusNote": "The fixed bottom app bar is unchanged from M3. The flexible variant (configurable height/spacing, no FAB cradle) is new in Expressive and shares metrics with the docked-toolbar tokens.",
+  "deprecated": { "replacedBy": "toolbar", "source": "mdc:BottomAppBar.md" },
+  "summary": "A bar anchored to the bottom of the screen carrying a handful of frequent actions and, optionally, an embedded FAB. Use the fixed variant for a stable 80dp bar; use the flexible variant when the bar's height or item spacing needs to adapt to its content. MDC-Android recommends the docked toolbar instead for new designs.",
+  "tokenGroups": ["comp.bottom-app-bar", "comp.docked-toolbar", "comp.fab-secondary-container"],
+  "references": { "compose": ["AppBar.kt"], "mdc": ["BottomAppBar.md", "DockedToolbar.md"] },
+  "inputs": [
+    { "name": "content", "type": "list", "required": true, "description": "The row's action items (icon or text buttons) and, for the fixed variant, an optional floating action button." },
+    { "name": "flexible", "type": "boolean", "required": false, "default": false, "description": "Selects the flexible variant (configurable height/spacing, no FAB cradle) instead of the fixed 80dp bar." },
+    { "name": "horizontalArrangement", "type": "enum", "values": ["start", "space-between", "fixed-centered"], "required": false, "default": "start", "description": "How content is arranged along the row. \"start\" is the fixed variant's only arrangement; \"space-between\" and \"fixed-centered\" apply to the flexible variant." },
+    { "name": "expandedHeight", "type": "number", "required": false, "default": null, "description": "Flexible variant only: the maximum height the bar can reach when fully expanded, in dp. Must be finite and greater than zero or the token default is used." },
+    { "name": "scrollBehavior", "type": "enum", "values": ["none", "exit-always"], "required": false, "default": "none", "description": "exit-always is the only scroll behaviour offered for either variant; it hides the bar 1:1 with scroll." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Full-width surface, no corner rounding, in both variants.", "tokens": ["comp.bottom-app-bar.container-shape", "comp.bottom-app-bar.container-color"] },
+    { "id": "action-items", "name": "Action items", "description": "A row of icon/text buttons: Arrangement.Start (fixed) or a configurable arrangement (flexible)." },
+    { "id": "fab", "name": "Floating action button", "description": "Fixed variant only: an optional dedicated slot at the row's trailing edge.", "optional": true, "tokens": ["comp.fab-secondary-container.container-color"] },
+    { "id": "primary-action", "name": "Primary action", "description": "Flexible variant: no dedicated FAB slot; a FAB or any other control is just another row child, positioned by the arrangement.", "optional": true }
+  ],
+  "variants": [
+    { "axis": "layout", "value": "fixed", "default": true, "tokenGroup": "comp.bottom-app-bar", "description": "Stable 80dp bar, actions start-aligned, FAB embedded top-end." },
+    { "axis": "layout", "value": "flexible-space-between", "tokenGroup": "comp.docked-toolbar", "description": "Shorter bar, actions pushed to the two ends; the flexible variant's default arrangement." },
+    { "axis": "layout", "value": "flexible-fixed-centered", "tokenGroup": "comp.docked-toolbar", "description": "Same flexible bar, items evenly spaced and centered instead." }
+  ],
+  "layout": [
+    { "id": "fixed-content-padding", "text": "Fixed bar content padding is sized to compensate for the icon button's own touch-target expansion so the visual icon sits 16dp from the edge.", "values": [{ "name": "contentPadding", "value": 4, "unit": "dp" }], "source": "AppBar.kt:2651-2652" },
+    { "id": "fixed-fab-padding", "text": "When a FAB is supplied it sits in a top-start-aligned box, again sized so the FAB's own hit-target inset nets out to a clean margin. There is no cradle/notch cut into the container, unlike the legacy MDC-Android MaterialToolbar-based bar — the FAB simply overlaps the top of the bar.", "values": [{ "name": "fabHorizontalPadding", "value": 12, "unit": "dp" }, { "name": "fabVerticalPadding", "value": 8, "unit": "dp" }], "source": "AppBar.kt:2655-2656" },
+    { "id": "flexible-height-and-padding", "text": "The flexible bar reuses the same container (colour, shape, draggable/scroll plumbing) but swaps in docked-toolbar metrics: height defaults to container-height, content padding uses container-leading-space/container-trailing-space on the horizontal edges only — there is no vertical content padding, since the row is vertically centered in the fixed container height.", "tokens": ["comp.docked-toolbar.container-height", "comp.docked-toolbar.container-leading-space", "comp.docked-toolbar.container-trailing-space"], "source": "AppBar.kt:2352,1290,2342-2346" },
+    { "id": "flexible-arrangements", "text": "Two horizontal arrangements are provided for the flexible bar: the default is space-between, pushing content to the two ends; the alternate fixed-centered arrangement centers items with a maximum spacing between them for a compact, grouped look.", "tokens": ["comp.docked-toolbar.container-max-spacing"], "values": [{ "name": "fixedCenteredMaxSpacing", "value": 32, "unit": "dp" }], "source": "AppBar.kt:2359-2361" },
+    { "id": "live-height", "text": "Both variants compute their live height the same way: on layout, the container's measured height becomes the scroll behaviour's heightOffsetLimit (the bar can collapse its own full height, not a fraction of it), and the displayed height is (measuredHeight + heightOffset) coerced to at least 0 — so a fully hidden bar has an on-screen height of exactly 0.", "source": "AppBar.kt:1370-1373" }
+  ],
+  "states": [
+    { "state": "other", "label": "scroll-hidden", "text": "The bar tracks scroll 1:1 with no threshold — heightOffset is adjusted by the full scroll delta on every post-scroll event, so it starts hiding on the very first pixel of downward scroll and starts reappearing on the very first pixel scrolled back up.", "source": "AppBar.kt:2569-2576" }
+  ],
+  "behaviour": [
+    { "id": "icon-button-states", "text": "Action items are standard icon/text buttons; see that component's spec for interaction states." },
+    { "id": "drag-resize", "text": "The bar is directly draggable when an unpinned scroll behaviour is attached, using the same drag-to-resize mechanism as the top app bar.", "source": "AppBar.kt:1330-1344" },
+    { "id": "touch-exploration", "text": "Scroll behaviour is disabled under touch exploration and the bar stays fully shown." },
+    { "id": "fab-default-color", "text": "The fixed bar's default embedded-FAB colour is the secondary FAB container, not the primary container. The flexible bar has no equivalent default-colour hook: since the FAB is just row content, its colour is whatever the caller composes.", "tokens": ["comp.fab-secondary-container.container-color"], "source": "AppBar.kt:2325" },
+    { "id": "exit-always-fling", "text": "Fling/snap uses the same decay-then-snap mechanism as the top app bar, but snapping to fully open (collapsedFraction < 0.5) or fully closed (>= 0.5) uses a faster spring than the top bar's default-effects; the fling itself still decays physically, not via a token. Settling is skipped below 1% collapsed or at 100% collapsed.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "AppBar.kt:2367-2368,2610" }
+  ],
+  "accessibility": {
+    "role": "toolbar",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves through each action item in order.", "Enter or Space activates the focused item."],
+    "semantics": ["The bar exposes a bottom toolbar landmark; the embedded FAB keeps its own button semantics distinct from the action row."]
+  },
+  "notes": [
+    { "kind": "dead-token", "text": "comp.bottom-app-bar.container-elevation resolves to level2, but the fixed bar's Compose default is a hardcoded 0dp — the elevated look comes entirely from container-color already being the tonal surface-container value, not from an applied tonal-elevation shadow.", "tokens": ["comp.bottom-app-bar.container-elevation", "comp.bottom-app-bar.container-color"], "source": "AppBar.kt:2315" },
+    { "kind": "upstream-bug", "text": "The flexible bar passes the top app bar's container-elevation token (level0/0dp) as its tonalElevation, not comp.bottom-app-bar.container-elevation — a cross-component token reuse worth preserving rather than \"fixing\" to the bottom-app-bar token.", "tokens": ["comp.app-bar.container-elevation", "comp.bottom-app-bar.container-elevation"], "source": "AppBar.kt" },
+    { "kind": "gotcha", "text": "Both variants share one private layout function upstream; a from-scratch implementation can likewise treat fixed and flexible as one container with swappable height/padding/arrangement rather than two components." },
+    { "kind": "gotcha", "text": "Content padding (4dp) and FAB padding are deliberately shrunk to net out against each button's own hit-target expansion, not the visible target — the visual result still meets the platform's minimum touch target." }
+  ]
+}

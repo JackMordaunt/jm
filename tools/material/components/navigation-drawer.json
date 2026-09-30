@@ -1,0 +1,69 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "navigation-drawer",
+  "name": "Navigation drawer",
+  "status": "changed",
+  "statusNote": "Width grew from the classic 280dp max to 360dp, and shape/elevation moved onto tokens.",
+  "deprecated": { "replacedBy": "navigation-rail", "source": "mdc:NavigationDrawer.md" },
+  "summary": "Standard drawers sit alongside content permanently or dismissibly for frequent, deliberate navigation; modal drawers overlay content behind a scrim for infrequent access on compact layouts. MDC-Android marks this component deprecated in Expressive, recommending an expanded navigation rail instead; ship it for parity with existing apps, not for new designs.",
+  "tokenGroups": ["comp.navigation-drawer"],
+  "references": { "compose": ["NavigationDrawer.kt"], "mdc": ["NavigationDrawer.md"] },
+  "inputs": [
+    { "name": "drawerContent", "type": "slot", "required": true, "description": "The drawer sheet's content: headline(s) and items." },
+    { "name": "content", "type": "slot", "required": true, "description": "The screen content the drawer sits beside or overlays." },
+    { "name": "variant", "type": "enum", "values": ["permanent", "dismissible", "modal"], "required": true, "description": "permanent has no open/close state at all; dismissible toggles in/out of layout via a menu icon; modal overlays content with a scrim." },
+    { "name": "open", "type": "boolean", "required": false, "default": false, "description": "Dismissible and modal only: whether the drawer is currently shown. The caller owns it." },
+    { "name": "gesturesEnabled", "type": "boolean", "required": false, "default": true, "description": "Whether drag-to-open/dismiss is enabled." },
+    { "name": "label", "type": "slot", "required": true, "description": "Per-item: the destination's label." },
+    { "name": "selected", "type": "boolean", "required": true, "description": "Per-item: whether this destination is the active one." },
+    { "name": "onClick", "type": "callback", "required": true, "description": "Per-item: runs the destination's navigation." },
+    { "name": "icon", "type": "icon", "required": false, "description": "Per-item: optional leading icon." },
+    { "name": "badge", "type": "slot", "required": false, "description": "Per-item: optional trailing badge (count/status)." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The drawer sheet; fixed width, full height.", "tokens": ["comp.navigation-drawer.container-width", "comp.navigation-drawer.standard-container-color", "comp.navigation-drawer.modal-container-color"] },
+    { "id": "headline", "name": "Headline", "description": "Optional section label above a group of items.", "optional": true, "tokens": ["comp.navigation-drawer.headline-color", "comp.navigation-drawer.headline-font"] },
+    { "id": "item", "name": "Item", "description": "One destination row: icon, label, optional badge.", "tokens": ["comp.navigation-drawer.active-icon-color", "comp.navigation-drawer.active-label-text-color", "comp.navigation-drawer.label-text-font"] },
+    { "id": "active-indicator", "name": "Active indicator", "description": "Pill behind the selected item's icon+label.", "tokens": ["comp.navigation-drawer.active-indicator-color", "comp.navigation-drawer.active-indicator-width", "comp.navigation-drawer.active-indicator-height", "comp.navigation-drawer.active-indicator-shape"] },
+    { "id": "badge-label", "name": "Badge label text", "description": "Optional count/status on an item.", "optional": true, "tokens": ["comp.navigation-drawer.large-badge-label-color", "comp.navigation-drawer.large-badge-label-font"] },
+    { "id": "scrim", "name": "Scrim", "description": "Modal only; dims content behind the open drawer.", "optional": true, "tokens": ["sys.color.scrim"] }
+  ],
+  "variants": [
+    { "axis": "variant", "value": "permanent", "default": true, "tokenGroup": "comp.navigation-drawer", "description": "Always visible, content reflows beside it (a row composition, no open/close state)." },
+    { "axis": "variant", "value": "dismissible", "tokenGroup": "comp.navigation-drawer", "description": "Toggles in/out of layout via a menu icon, content reflows." },
+    { "axis": "variant", "value": "modal", "tokenGroup": "comp.navigation-drawer", "description": "Overlays content with a scrim, opened by gesture or icon, dismissed by scrim tap, swipe, or Escape." }
+  ],
+  "layout": [
+    { "id": "container-width", "text": "Container width is fixed at 360dp; Compose enforces this as a maximum and clamps drag gestures to it. A 240dp minimum width floor is used only while measuring, not a token.", "tokens": ["comp.navigation-drawer.container-width"], "values": [{ "name": "minimumDrawerWidthFloor", "value": 240, "unit": "dp" }], "source": "NavigationDrawer.kt:1342" },
+    { "id": "standard-shape", "text": "Standard container: a large-end rounded corner shape applies to the trailing corners only (leading corners square, flush with the screen edge)." },
+    { "id": "active-indicator-size", "text": "Item active indicator is 56dp tall, 336dp wide — narrower than the container to leave a margin; shape is a full pill.", "tokens": ["comp.navigation-drawer.active-indicator-height", "comp.navigation-drawer.active-indicator-width", "comp.navigation-drawer.active-indicator-shape"] },
+    { "id": "item-padding", "text": "Item internal padding is 16dp leading / 24dp trailing inset around the icon+label row, with a 12dp gap between icon and label and between label and badge. Not tokenized.", "values": [{ "name": "leadingInset", "value": 16, "unit": "dp" }, { "name": "trailingInset", "value": 24, "unit": "dp" }, { "name": "iconLabelGap", "value": 12, "unit": "dp" }, { "name": "labelBadgeGap", "value": 12, "unit": "dp" }], "source": "NavigationDrawer.kt:1140-1148" },
+    { "id": "icon-size", "text": "Icon size is 24dp.", "tokens": ["comp.navigation-drawer.icon-size"] },
+    { "id": "elevation", "text": "Modal drawer elevation is level0 (shadow comes from the scrim, not container elevation); permanent/dismissible standard drawers render at level0 or level1 depending on container colour context.", "tokens": ["comp.navigation-drawer.modal-container-elevation", "comp.navigation-drawer.standard-container-elevation"] }
+  ],
+  "states": [
+    { "state": "selected", "text": "One item selected at a time; the selected item gets the active indicator and active-* icon/label colors; unselected items use inactive-* colors.", "tokens": ["comp.navigation-drawer.active-icon-color", "comp.navigation-drawer.active-label-text-color", "comp.navigation-drawer.inactive-icon-color", "comp.navigation-drawer.inactive-label-text-color"] },
+    { "state": "hovered", "text": "Hover, focus, and pressed variants exist for both active and inactive items, each recoloring icon and label only; the indicator shape is unchanged by interaction state.", "tokens": ["comp.navigation-drawer.active-hover-icon-color", "comp.navigation-drawer.active-focus-icon-color", "comp.navigation-drawer.active-pressed-icon-color", "comp.navigation-drawer.inactive-hover-icon-color", "comp.navigation-drawer.inactive-focus-icon-color", "comp.navigation-drawer.inactive-pressed-icon-color"] },
+    { "state": "focused", "text": "A separate ring/outline in the focus-indicator colour is drawn around the item on keyboard focus, distinct from the hover/press state layer.", "tokens": ["comp.navigation-drawer.focus-indicator-color"] },
+    { "state": "dragged", "part": "container", "label": "drag-to-dismiss", "text": "Modal only: the drawer is a horizontal anchored-drag surface with two anchors, closed and open. A positional threshold of 50% of travel distance, or a velocity threshold of 400dp/s, crossing either commits the drawer to the nearer/flung-toward anchor on release. Drag can be disabled via gesturesEnabled.", "values": [{ "name": "positionalThreshold", "value": 50, "unit": "percent" }, { "name": "velocityThreshold", "value": 400, "unit": "dp" }], "source": "NavigationDrawer.kt:1339-1341" },
+    { "state": "open", "part": "scrim", "text": "Modal only: the scrim uses sys.color.scrim at fixed opacity; its alpha is driven directly by drag/animation progress (0 closed to full open), not a separate fade timeline. Tapping the scrim while open closes the drawer.", "tokens": ["sys.color.scrim"], "source": "NavigationDrawer.kt:1067-1068" },
+    { "state": "open", "text": "Open animates with a default-spatial spring; close animates with a fast-effects spring — open and close are intentionally asymmetric (slower spatial spring in, snappier effects spring out). The live drag itself snaps anchors using the same default-spatial spring. A permanent drawer has no open/close motion — it is always laid out.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "NavigationDrawer.kt:354,353" },
+    { "state": "collapsed", "label": "close-motion", "text": "Close animates with a fast-effects spring.", "motion": { "spring": "sys.motion.spring.fast-effects" }, "source": "NavigationDrawer.kt:355" }
+  ],
+  "behaviour": [
+    { "id": "dismiss-paths", "text": "Scrim tap, drag past threshold, and the Escape key all close a modal drawer; a permanent drawer has no dismiss path." },
+    { "id": "focus-on-open", "text": "On open, keyboard focus moves to the first focusable element inside the drawer content." },
+    { "id": "shared-state-model", "text": "Modal and dismissible drawers share one open/closed state model; permanent drawers carry no state at all — they are just a fixed-width row sibling to content." }
+  ],
+  "accessibility": {
+    "role": "dialog",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Escape closes a modal drawer.", "Focus is trapped/moved to the drawer's first element on open and should return to the invoking control on close.", "Tab moves through items in document order."],
+    "semantics": ["Modal drawer content is exposed as a dismissible pane (paneTitle \"Navigation menu\", with a dismiss semantic action when open); items expose role tab with selected state.", "Minimum touch target: item row height matches the 56dp active-indicator height end to end, meeting the 48dp minimum with margin.", "Screen reader announces the item's label, selected state, and any badge value; the drawer itself announces as a navigation pane when it opens."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "The active indicator width (336) is intentionally less than the full container width (360) minus its horizontal margin — do not stretch it edge to edge.", "tokens": ["comp.navigation-drawer.active-indicator-width", "comp.navigation-drawer.container-width"] },
+    { "kind": "gotcha", "text": "Container shape only rounds the trailing corners (large-end); do not apply this shape to a bottom/full-screen drawer variant, which instead needs a top-rounded bottom-container-shape for that layout.", "tokens": ["comp.navigation-drawer.container-shape", "comp.navigation-drawer.bottom-container-shape"] },
+    { "kind": "gotcha", "text": "Because MDC-Android flags this component as deprecated in favor of the expanded navigation rail, treat new-token additions here cautiously — the spec may not receive further Expressive-era investment upstream.", "source": "mdc:NavigationDrawer.md" }
+  ]
+}

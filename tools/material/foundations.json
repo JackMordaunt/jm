@@ -1,0 +1,173 @@
+{
+  "$schema": "schema/foundations.schema.json",
+  "tokens": {
+    "resolvedFile": "tokens/m3e.resolved.json",
+    "dtcgFile": "tokens/m3e.tokens.json",
+    "tiers": [
+      { "name": "reference", "prefix": "ref", "holds": "Raw palette tones and typefaces.", "readByComponents": false },
+      { "name": "system", "prefix": "sys", "holds": "Roles: colour, typescale, typography, shape, elevation, state, motion.", "readByComponents": true },
+      { "name": "component", "prefix": "comp", "holds": "One component variant's values, aliasing sys tokens.", "readByComponents": true }
+    ],
+    "rules": [
+      { "text": "Build components against comp.* tokens; fall back to sys.* only where a component spec names a sys token." },
+      { "text": "Theme by replacing sys.color.* values; comp tokens follow because they are aliases." },
+      { "text": "In m3e.resolved.json each token is {type, value, alias?, dark?, standard?}. value is the default mode; dark or standard appears when anything on the token's alias chain depends on that mode. alias names the token it points at." },
+      { "text": "Token property names read state, then part, then property: e.g. hovered-state-layer-opacity, disabled-label-text-color, pressed-container-shape. A property with no state prefix is the enabled value." }
+    ],
+    "modes": [
+      { "applies": "sys.color", "default": "light", "alternates": ["dark"] },
+      { "applies": "sys.motion.spring", "default": "expressive", "alternates": ["standard"], "note": "App-wide choice. Expressive is this kit's default; Standard is calmer, for productivity apps." }
+    ],
+    "units": {
+      "dimension": "dp; multiply by display scale. Text sizes are sp; multiply by display scale times the user's font scale.",
+      "duration": "ms",
+      "shape": "Four radii [top-start, top-end, bottom-end, bottom-start] in dp, or \"full\" meaning half the shorter side. Start and end mirror under right-to-left.",
+      "color": "#rrggbb, sRGB, opaque; apply opacity tokens as alpha on top.",
+      "cubicBezier": "[x1, y1, x2, y2] control points of a CSS-style cubic-bezier easing.",
+      "typography": "{fontFamily, fontWeight, fontSize sp, lineHeight sp, letterSpacing sp}",
+      "dtcg": "In m3e.tokens.json dp and sp are written as px, and shape is a kit extension type whose 50% radius means full."
+    },
+    "stateVocabulary": ["hovered", "focused", "pressed", "dragged", "disabled", "selected", "unselected"]
+  },
+
+  "color": {
+    "pairing": "Content in role on-X sits on a surface of role X and always passes contrast against it. Never pair across families.",
+    "families": [
+      { "name": "accent", "roles": ["sys.color.primary", "sys.color.on-primary", "sys.color.primary-container", "sys.color.on-primary-container", "sys.color.secondary", "sys.color.on-secondary", "sys.color.secondary-container", "sys.color.on-secondary-container", "sys.color.tertiary", "sys.color.on-tertiary", "sys.color.tertiary-container", "sys.color.on-tertiary-container", "sys.color.error", "sys.color.on-error", "sys.color.error-container", "sys.color.on-error-container"], "use": "Emphasis, strongest to contrasting: primary, secondary, tertiary; error for errors only." },
+      { "name": "surface", "roles": ["sys.color.surface", "sys.color.surface-dim", "sys.color.surface-bright", "sys.color.surface-container-lowest", "sys.color.surface-container-low", "sys.color.surface-container", "sys.color.surface-container-high", "sys.color.surface-container-highest", "sys.color.on-surface", "sys.color.on-surface-variant"], "use": "Backgrounds. Raised surfaces step up the container roles instead of casting tinted shadows." },
+      { "name": "outline", "roles": ["sys.color.outline", "sys.color.outline-variant"], "use": "outline for important boundaries such as text-field borders; outline-variant for dividers and decoration." },
+      { "name": "fixed", "roles": ["sys.color.primary-fixed", "sys.color.primary-fixed-dim", "sys.color.on-primary-fixed", "sys.color.on-primary-fixed-variant", "sys.color.secondary-fixed", "sys.color.secondary-fixed-dim", "sys.color.on-secondary-fixed", "sys.color.on-secondary-fixed-variant", "sys.color.tertiary-fixed", "sys.color.tertiary-fixed-dim", "sys.color.on-tertiary-fixed", "sys.color.on-tertiary-fixed-variant"], "use": "The same colour in light and dark." },
+      { "name": "inverse", "roles": ["sys.color.inverse-surface", "sys.color.inverse-on-surface", "sys.color.inverse-primary"], "use": "Elements that contrast with the page: snackbars, plain tooltips." },
+      { "name": "other", "roles": ["sys.color.scrim", "sys.color.surface-tint", "sys.color.background", "sys.color.on-background", "sys.color.surface-variant"], "use": "scrim behind modals; surface-tint is legacy; background equals surface." }
+    ],
+    "baseline": "The resolved values are the static purple baseline scheme. Each role's alias names its palette tone, e.g. light primary = ref.palette.primary.40, dark primary = ref.palette.primary.80.",
+    "seedSchemes": { "library": "https://github.com/material-foundation/material-color-utilities", "text": "To theme from a seed colour, generate tonal palettes with material-color-utilities (DynamicScheme, 2025 colour spec) and map each role to the tone its alias uses here." },
+    "missingRoles": [ { "role": "shadow", "text": "Material Web v0_192 has a shadow role; Compose does not. Use black.", "tokens": ["ref.palette.neutral.0"] } ]
+  },
+
+  "typography": {
+    "styles": "sys.typography.* holds 30 composite styles: 15 baseline (display, headline, title, body, label × large, medium, small) and 15 -emphasized twins.",
+    "emphasized": { "text": "An emphasized style keeps its baseline size and line height and raises the weight one step. Use it for hero moments, selected states and key actions, not body copy.", "weightSteps": [ { "from": 400, "to": 500 }, { "from": 500, "to": 700 } ] },
+    "fontSlots": [
+      { "token": "ref.typeface.brand", "roles": ["display", "headline", "title"], "text": "Compose sets it to the platform sans-serif, Roboto on Android. Treat as a replaceable slot." },
+      { "token": "ref.typeface.plain", "roles": ["body", "label"], "text": "Compose sets it to the platform sans-serif, Roboto on Android. Treat as a replaceable slot." }
+    ],
+    "requiredWeights": [400, 500, 700],
+    "lineBox": { "text": "Centre glyphs vertically in a line box of lineHeight, with no trimming; a one-line label's box height is its line height.", "source": "TypographyTokens.kt:329" }
+  },
+
+  "shape": {
+    "scale": ["sys.shape.corner.none", "sys.shape.corner.extra-small", "sys.shape.corner.small", "sys.shape.corner.medium", "sys.shape.corner.large", "sys.shape.corner.large-increased", "sys.shape.corner.extra-large", "sys.shape.corner.extra-large-increased", "sys.shape.corner.extra-extra-large", "sys.shape.corner.full"],
+    "newInExpressive": ["sys.shape.corner.large-increased", "sys.shape.corner.extra-large-increased", "sys.shape.corner.extra-extra-large"],
+    "rules": [
+      { "text": "The renderer's rounded rectangle must take four independent corner radii: split buttons, connected button groups, sheets and tab indicators all use asymmetric corners." },
+      { "text": "Expressive components morph corner radii on press and selection. Animate each radius with the component's named spring. When either end is full, interpolate the concrete dp value (half the shorter side), not the keyword." },
+      { "text": "Radii never exceed half the shorter side; clamp after interpolation." }
+    ],
+    "library": { "shapes": "shapes/shapes.json", "morphs": "shapes/morphs.json", "svg": "shapes/svg/", "text": "35 shapes as unit-square cubic Béziers (y down). morphs.json holds the loading indicator's pre-matched pairs: morph(t) is a per-control-point lerp from start to end." }
+  },
+
+  "elevation": {
+    "levels": [
+      { "token": "sys.elevation.level0", "uses": ["filled and flat components", "app bar at rest", "navigation rail", "tabs", "filled and outlined cards"] },
+      { "token": "sys.elevation.level1", "uses": ["elevated card", "elevated button"] },
+      { "token": "sys.elevation.level2", "uses": ["menus", "bottom app bar", "navigation bar", "rich tooltip", "scrolled app bar"] },
+      { "token": "sys.elevation.level3", "uses": ["FAB", "extended FAB", "dialogs", "date and time pickers", "search bar and view", "snackbar"] },
+      { "token": "sys.elevation.level4", "uses": ["hovered FAB"] },
+      { "token": "sys.elevation.level5", "uses": [] }
+    ],
+    "rules": [
+      { "text": "Carry depth by surface tone first: a raised surface uses a higher surface-container role. Draw the shadow in addition." },
+      { "text": "Shadow geometry has no tokens; approximate with two layers scaled by the level: a key shadow offset downward and an ambient shadow around the whole shape." }
+    ]
+  },
+
+  "interaction": {
+    "stateLayer": {
+      "text": "Hover, focus, press and drag draw one layer over the container, clipped to its shape, in the component's content colour (its container's on-* role, or its *-state-layer-color token).",
+      "opacities": [
+        { "state": "hovered", "token": "sys.state.hover-state-layer-opacity" },
+        { "state": "focused", "token": "sys.state.focus-state-layer-opacity" },
+        { "state": "pressed", "token": "sys.state.pressed-state-layer-opacity" },
+        { "state": "dragged", "token": "sys.state.dragged-state-layer-opacity" }
+      ],
+      "priority": ["dragged", "pressed", "focused", "hovered"],
+      "ripple": "A press also draws a ripple at pressed opacity, spreading from the touch point.",
+      "motion": { "spring": "sys.motion.spring.default-effects" }
+    },
+    "disabled": {
+      "text": "Disabled components take no input and draw no state layer. Colours come from each component's disabled-* tokens: the colour token plus its disabled-*-opacity applied as alpha.",
+      "defaults": [
+        { "part": "content", "color": "sys.color.on-surface", "opacity": 0.38 },
+        { "part": "container", "color": "sys.color.on-surface", "opacity": 0.12 },
+        { "part": "outline", "color": "sys.color.on-surface", "opacity": 0.12 }
+      ],
+      "elevation": "sys.elevation.level0"
+    },
+    "focusRing": {
+      "text": "Keyboard focus only, never after a pointer press. A stroke outside the component following its corner radii plus the offset.",
+      "color": "sys.color.secondary",
+      "widthDp": 3,
+      "outwardOffsetDp": 2,
+      "activeWidthDp": 8,
+      "animation": { "durationToken": "sys.motion.duration.long4", "growFraction": 0.25, "text": "On appearing, grow from widthDp to activeWidthDp over the first quarter of the duration, then settle back to widthDp." },
+      "source": "Material Web md-comp-focus-ring (Compose has no ring tokens)"
+    },
+    "touchTarget": { "minDp": 48, "text": "Every interactive component takes at least 48×48 dp of hit area, centred on its visual, even when it draws smaller." }
+  },
+
+  "motion": {
+    "springs": [
+      { "token": "sys.motion.spring.fast-spatial", "kind": "spatial", "use": "Small, quick moves: button and icon-button press morphs, switch thumb, FAB menu, slider." },
+      { "token": "sys.motion.spring.default-spatial", "kind": "spatial", "use": "Most size, position and shape changes: checkbox, sheets, rail expand, tab indicator." },
+      { "token": "sys.motion.spring.slow-spatial", "kind": "spatial", "use": "Large moves: search bar expanding into the search view." },
+      { "token": "sys.motion.spring.fast-effects", "kind": "effects", "use": "Colour and opacity on small elements." },
+      { "token": "sys.motion.spring.default-effects", "kind": "effects", "use": "Colour and opacity." },
+      { "token": "sys.motion.spring.slow-effects", "kind": "effects", "use": "Large fades." }
+    ],
+    "kinds": { "spatial": "Moves bounds, position and shape; overshoots in Expressive (damping < 1).", "effects": "Moves colour and alpha; never overshoots (damping = 1)." },
+    "springTokens": "Each spring group has .damping (ratio ζ) and .stiffness (k, N/m at unit mass).",
+    "algorithm": {
+      "mass": 1,
+      "variables": "ω = sqrt(k); x0 = start - target; v0 = current velocity; t in seconds since the spring started.",
+      "underdamped": "ζ < 1: ωd = ω·sqrt(1-ζ²); x(t) = e^(-ζωt)·(x0·cos(ωd·t) + ((v0 + ζω·x0)/ωd)·sin(ωd·t))",
+      "critical": "ζ = 1: x(t) = e^(-ωt)·(x0 + (v0 + ω·x0)·t)",
+      "value": "value(t) = target + x(t); velocity = dx/dt.",
+      "rules": [
+        "Evaluate the closed form each frame from the start time; it is frame-rate independent. An Euler integrator needs sub-stepping at k = 3800.",
+        "When the target changes mid-flight, start a new spring from the current value and velocity.",
+        "Settle when |x| and |v| both fall below the quantity's threshold, then snap to target."
+      ],
+      "settleThresholds": { "unitFloat": 0.01, "dp": 0.1, "px": 0.5 },
+      "state": "Each animated property needs retained per-widget state: start value, start velocity, target, start time."
+    },
+    "timeBased": [
+      { "use": "enter", "easing": "sys.motion.easing.emphasized", "durations": ["sys.motion.duration.medium4", "sys.motion.duration.long1", "sys.motion.duration.long2"] },
+      { "use": "exit", "easing": "sys.motion.easing.emphasized-accelerate", "durations": ["sys.motion.duration.short3", "sys.motion.duration.short4"] },
+      { "use": "small utility transitions", "easing": "sys.motion.easing.standard", "durations": [] },
+      { "use": "indeterminate loops", "easing": "sys.motion.easing.linear", "durations": [] }
+    ]
+  },
+
+  "layout": {
+    "gridDp": 4,
+    "commonPaddingDp": [8, 12, 16, 24],
+    "windowSizeClasses": [
+      { "name": "compact", "minDp": 0, "maxDp": 599, "navigation": "navigation-bar", "panes": 1 },
+      { "name": "medium", "minDp": 600, "maxDp": 839, "navigation": "navigation-rail", "panes": 1 },
+      { "name": "expanded", "minDp": 840, "maxDp": 1199, "navigation": "navigation-rail", "panes": 2 },
+      { "name": "large", "minDp": 1200, "maxDp": 1599, "navigation": "navigation-rail", "panes": 2 },
+      { "name": "extra-large", "minDp": 1600, "maxDp": null, "navigation": "navigation-rail", "panes": 2 }
+    ],
+    "rtl": "Mirror every start/end token and directional icon under right-to-left."
+  },
+
+  "deltaFromMaterialWebV0192": [
+    { "area": "state", "text": "Focus and pressed state-layer opacities drop from 0.12 to 0.10.", "tokens": ["sys.state.focus-state-layer-opacity", "sys.state.pressed-state-layer-opacity"] },
+    { "area": "shape", "text": "Three new corner steps, plus the shape library and corner morphing.", "tokens": ["sys.shape.corner.large-increased", "sys.shape.corner.extra-large-increased", "sys.shape.corner.extra-extra-large"] },
+    { "area": "typography", "text": "15 emphasized styles replace v0_192's label-*-weight-prominent.", "tokens": ["sys.typography"] },
+    { "area": "motion", "text": "Springs in two schemes; durations and easings unchanged.", "tokens": ["sys.motion.spring"] },
+    { "area": "color", "text": "Roles identical except v0_192's shadow role, absent here." },
+    { "area": "components", "text": "New or reworked: buttons XS–XL with shape morph, icon-button sizes and widths, toggle buttons, split button, button groups, FAB menu, FAB and extended FAB sizes, docked and floating toolbars, flexible app bars, collapsed and expanded navigation rail, navigation bar item layouts, loading indicator, wavy progress, Expressive slider, vibrant and segmented menus, expanded, reorderable and swipe-reveal lists, drag handle." }
+  ]
+}

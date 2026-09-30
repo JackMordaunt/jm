@@ -1,0 +1,71 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "icon-button",
+  "name": "Icon button",
+  "status": "changed",
+  "statusNote": "Five sizes (XS-XL), the narrow/uniform/wide width options, and a round/square shape choice are new in Expressive; the standard/filled/filled-tonal/outlined colour variants are unchanged in concept.",
+  "summary": "A button whose entire content is a single icon, for compact actions in toolbars, app bars, list rows and cards. Choose the colour style for emphasis and the width option to fit the surrounding layout.",
+  "tokenGroups": ["comp.x-small-icon-button", "comp.small-icon-button", "comp.medium-icon-button", "comp.large-icon-button", "comp.x-large-icon-button", "comp.standard-icon-button", "comp.filled-icon-button", "comp.filled-tonal-icon-button", "comp.outlined-icon-button"],
+  "references": { "compose": ["IconButton.kt", "IconButtonDefaults.kt"], "mdc": ["IconButton.md"] },
+  "inputs": [
+    { "name": "icon", "type": "icon", "required": true, "description": "The button's single icon content, typically 24x24dp." },
+    { "name": "onClick", "type": "callback", "required": true, "description": "Runs the button's action." },
+    { "name": "contentDescription", "type": "string", "required": true, "description": "Mandatory accessibility label; icon-only content has no visible text to fall back on." },
+    { "name": "size", "type": "enum", "values": ["x-small", "small", "medium", "large", "x-large"], "required": false, "default": "small", "description": "Selects the token group that drives container height and icon size." },
+    { "name": "style", "type": "enum", "values": ["standard", "filled", "filled-tonal", "outlined"], "required": false, "default": "standard", "description": "Colour style; selects the matching comp.*-icon-button token group." },
+    { "name": "widthOption", "type": "enum", "values": ["narrow", "uniform", "wide"], "required": false, "default": "uniform", "description": "Container width, independent of size and style. Width is derived as icon-size + (leading-space + trailing-space) for the chosen option; height is always the size's fixed container-height regardless of width option." },
+    { "name": "shape", "type": "enum", "values": ["round", "square"], "required": false, "default": "round", "description": "Resting silhouette, from the size's container-shape-round or container-shape-square token. Square is also offered as a per-instance resting choice, independent of checked state." },
+    { "name": "vibrant", "type": "boolean", "required": false, "default": false, "description": "Selects the high-contrast icon colour (the style's color token) instead of the muted default that inherits the ambient content colour. Only changes anything for the standard and outlined styles; filled and filled-tonal always use their own container/icon colour tokens and have no vibrant variant." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables the button and applies the style's disabled opacities." },
+    { "name": "checkable", "type": "boolean", "required": false, "default": false, "description": "Makes the button a two-state toggle (IconToggleButton/FilledIconToggleButton/FilledTonalIconToggleButton/OutlinedIconToggleButton), changing its role to checkbox and adding the checked state." },
+    { "name": "checked", "type": "boolean", "required": false, "default": false, "description": "Current toggle state. Only meaningful when checkable is true; the caller owns it." },
+    { "name": "onCheckedChange", "type": "callback", "required": false, "description": "Called with the new checked value when a checkable button is clicked." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Standard has none (transparent); filled and filled-tonal are solid; outlined has a 1px stroke.", "tokens": ["comp.small-icon-button.container-shape-round", "comp.small-icon-button.container-shape-square", "comp.small-icon-button.outlined-outline-width"] },
+    { "id": "icon", "name": "Icon", "description": "Single icon, centered in the container.", "tokens": ["comp.small-icon-button.icon-size"] }
+  ],
+  "variants": [
+    { "axis": "size", "value": "x-small", "tokenGroup": "comp.x-small-icon-button" },
+    { "axis": "size", "value": "small", "default": true, "tokenGroup": "comp.small-icon-button" },
+    { "axis": "size", "value": "medium", "tokenGroup": "comp.medium-icon-button" },
+    { "axis": "size", "value": "large", "tokenGroup": "comp.large-icon-button" },
+    { "axis": "size", "value": "x-large", "tokenGroup": "comp.x-large-icon-button" },
+    { "axis": "style", "value": "standard", "default": true, "tokenGroup": "comp.standard-icon-button", "description": "Transparent container; icon colour only." },
+    { "axis": "style", "value": "filled", "tokenGroup": "comp.filled-icon-button" },
+    { "axis": "style", "value": "filled-tonal", "tokenGroup": "comp.filled-tonal-icon-button" },
+    { "axis": "style", "value": "outlined", "tokenGroup": "comp.outlined-icon-button" },
+    { "axis": "width", "value": "narrow", "description": "Recommended for small screens. Width = icon-size + narrow-leading-space + narrow-trailing-space." },
+    { "axis": "width", "value": "uniform", "default": true, "description": "Recommended for medium-width screens. Width = icon-size + default-leading-space + default-trailing-space (large size names these uniform-leading-space/uniform-trailing-space instead of default-*; see notes)." },
+    { "axis": "width", "value": "wide", "description": "Width = icon-size + wide-leading-space + wide-trailing-space." },
+    { "axis": "shape", "value": "round", "default": true, "description": "Fully rounded resting shape, from container-shape-round." },
+    { "axis": "shape", "value": "square", "description": "Squared resting shape, from container-shape-square." }
+  ],
+  "layout": [
+    { "text": "Width is derived, not read from a single token: width = leading-space + trailing-space + icon-size for the chosen width option, using that option's per-size leading/trailing tokens (narrow-*, default-*/uniform-*, wide-*).", "tokens": ["comp.small-icon-button.icon-size", "comp.small-icon-button.narrow-leading-space", "comp.small-icon-button.narrow-trailing-space", "comp.small-icon-button.default-leading-space", "comp.small-icon-button.default-trailing-space", "comp.small-icon-button.wide-leading-space", "comp.small-icon-button.wide-trailing-space"], "source": "IconButtonDefaults.kt:1078-1204" },
+    { "text": "Height is the size's fixed container-height token regardless of the chosen width option.", "tokens": ["comp.small-icon-button.container-height"], "source": "IconButtonDefaults.kt:1078-1204" },
+    { "text": "Icon size is fixed per size bucket and does not change with the width option.", "tokens": ["comp.small-icon-button.icon-size"] },
+    { "text": "Width and size are orthogonal axes: a toolbar can mix a narrow x-small icon button with a wide large one; do not couple them in the component model.", "source": "mdc:IconButton.md" }
+  ],
+  "states": [
+    { "state": "pressed", "text": "Rest shape morphs to the size's pressed-container-shape token, the same mechanism as Button.", "tokens": ["comp.small-icon-button.pressed-container-shape"], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "IconButton.kt:1578-1584" },
+    { "state": "checked", "text": "A checkable icon button's shape becomes the size's selected-container-shape-round or selected-container-shape-square token; role becomes checkbox. The same default-effects spring drives this transition as the plain press morph.", "tokens": ["comp.small-icon-button.selected-container-shape-round", "comp.small-icon-button.selected-container-shape-square"], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "IconButton.kt:1597-1602" },
+    { "state": "disabled", "text": "Applies the style's disabled colour and opacity tokens; the outlined style's disabled border additionally uses its disabled-outline-color at the same disabled opacity, with no extra hardcoded value.", "tokens": ["comp.standard-icon-button.disabled-color", "comp.standard-icon-button.disabled-opacity", "comp.outlined-icon-button.disabled-outline-color"] }
+  ],
+  "behaviour": [
+    { "text": "A checkable icon button calls onCheckedChange(!checked) on click; the caller owns the checked value.", "source": "IconButton.kt" },
+    { "text": "Role is checkbox for every checkable icon button variant and button for every non-checkable one; never radio, even inside a mutually exclusive group — grouping/exclusivity is the container's job (e.g. button-group or segmented control), not this component's.", "source": "IconButton.kt:254,461,622,680,855,918,1109,1169,1191,1249" }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the button.", "Enter or Space activates it.", "For a checkable button, Space or Enter also toggles checked and the checkbox role's checked state is announced."],
+    "semantics": ["Icon-only content has no visible label; a content description is mandatory on every instance.", "A checkable button uses the checkbox role, not button, and announces checked/unchecked."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "The plain (non-vibrant, non-toggle) IconButton default colours do not read the style's colour token at all for standard/outlined icon buttons: iconButtonColors() just inherits the ambient LocalContentColor with a transparent container. Only the explicit iconButtonVibrantColors()/outlinedIconButtonVibrantColors() default (the vibrant input here) reads comp.standard-icon-button.color / comp.outlined-icon-button.color. Filled and filled-tonal always read their own container-color/color tokens regardless, and have no vibrant variant.", "tokens": ["comp.standard-icon-button.color", "comp.outlined-icon-button.color"], "source": "IconButtonDefaults.kt:95-160" },
+    { "kind": "upstream-bug", "text": "Every size's uniform/default width calculation adds the leading-space token to itself (DefaultLeadingSpace + DefaultLeadingSpace, or UniformLeadingSpace + UniformLeadingSpace for large) instead of adding leading-space + trailing-space; the narrow and wide calculations correctly add their distinct leading and trailing tokens. This makes the corresponding default-trailing-space / uniform-trailing-space token unreachable from this code path. It is numerically harmless only because each size's default/uniform leading and trailing values happen to be equal.", "tokens": ["comp.small-icon-button.default-trailing-space", "comp.large-icon-button.uniform-trailing-space"], "source": "IconButtonDefaults.kt:1105-1124,1184-1204" },
+    { "kind": "gotcha", "text": "The uniform-width tokens are named inconsistently across sizes: x-small, small, medium and x-large call them default-leading-space/default-trailing-space, but large calls the same concept uniform-leading-space/uniform-trailing-space.", "tokens": ["comp.small-icon-button.default-leading-space", "comp.large-icon-button.uniform-leading-space"], "source": "IconButtonDefaults.kt" },
+    { "kind": "gotcha", "text": "container-shape-square is not only a toggle-checked shape; it is also offered as an alternate resting shape per size, same as Button. Treat round vs. square as a per-instance style choice independent of checked state." }
+  ]
+}

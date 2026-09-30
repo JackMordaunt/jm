@@ -7,7 +7,7 @@ them, each a plain immediate-mode proc like jm:ui's own widgets.
 	if material.button(gtx, "Save") { save(m) }
 	material.checkbox(gtx, &m.agree)
 
-Every value comes from the M3 Expressive kit (~/Source/Personal/m3e-kit):
+Every value comes from the M3 Expressive kit (tools/material):
 tokens from its m3e.resolved.json, generated into package tokens (imported
 as tok), and behaviour from its foundations.json and components/<id>.json
 specs, which cite Jetpack Compose. Where a component departs from its spec

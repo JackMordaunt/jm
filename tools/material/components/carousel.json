@@ -1,0 +1,63 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "carousel",
+  "name": "Carousel",
+  "status": "new",
+  "statusNote": "Post-M2 component; no comp.carousel tokens exist yet (verified: a key scan for \"carousel\" in tokens/m3e.resolved.json returns empty).",
+  "summary": "A horizontal (or vertical) scroller that shows a mix of large, medium, and small items so several pieces of visual content are browsable at once, with items masking/expanding as they scroll toward the edge. Choose it over a standard scroll view when items should snap and change size near the edges.",
+  "tokenGroups": [],
+  "references": { "compose": ["Carousel.kt", "Strategy.kt", "Keylines.kt", "CarouselState.kt"], "mdc": ["Carousel.md"] },
+  "inputs": [
+    { "name": "state", "type": "string", "required": true, "description": "The carousel's scroll/settle state object; exposes the settled page index and a jump-without-animation operation." },
+    { "name": "content", "type": "slot", "required": true, "description": "Per-item content, indexed by item position; drawn full-size and clipped to the item's current mask rect as it scrolls." },
+    { "name": "strategy", "type": "enum", "values": ["multi-browse", "uncontained", "hero-start-aligned", "hero-center-aligned", "full-screen"], "required": true, "description": "Which keyline algorithm arranges items: multi-browse solves large/medium/small counts jointly; uncontained is one uniform item width with a deliberately cut-off last item and no snap; hero variants show one or more large items with small peek item(s); full-screen is the degenerate case with no room for small items." },
+    { "name": "preferredItemWidth", "type": "number", "required": false, "description": "Multi-browse/uncontained/hero: the width in dp the carousel aims for on its large (or uniform, for uncontained) item; hero's default targets the whole viewport." },
+    { "name": "itemSpacing", "type": "number", "required": false, "default": 0, "description": "The space between items, in dp." },
+    { "name": "contentPadding", "type": "number", "required": false, "default": 0, "description": "Padding around the whole content, before the first item and after the last, in dp." },
+    { "name": "minSmallItemWidth", "type": "number", "required": false, "default": 40, "description": "The minimum allowable width of small items, in dp." },
+    { "name": "maxSmallItemWidth", "type": "number", "required": false, "default": 56, "description": "The maximum allowable width of small items, in dp." },
+    { "name": "userScrollEnabled", "type": "boolean", "required": false, "default": true, "description": "Whether scrolling via user gestures or accessibility actions is allowed." },
+    { "name": "orientation", "type": "enum", "values": ["horizontal", "vertical"], "required": false, "default": "horizontal", "description": "The scroll axis." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The scrollable viewport; clips items to it." },
+    { "id": "large-item", "name": "Large item", "description": "The fully visible, focal item size." },
+    { "id": "medium-item", "name": "Medium item", "description": "Partially cut off, present only in multi-browse.", "optional": true },
+    { "id": "small-item", "name": "Small item", "description": "The most-cut-off item, present in multi-browse and hero.", "optional": true },
+    { "id": "item-content", "name": "Item content", "description": "Each item's own content (image, text), drawn full-size and clipped to the item's current mask rect as it scrolls." }
+  ],
+  "variants": [
+    { "axis": "strategy", "value": "multi-browse", "default": true, "description": "Quick browsing of many similar items (thumbnails, album art); one or more large + medium + small items, sizes solved jointly per available width." },
+    { "axis": "strategy", "value": "uncontained", "description": "One item size throughout, last item deliberately cut off at the edge; uniform item width plus one cut-off item." },
+    { "axis": "strategy", "value": "hero-start-aligned", "description": "One or more large items with a small peek at the edge; one or more large + one small." },
+    { "axis": "strategy", "value": "hero-center-aligned", "description": "A centered large item flanked by two small items; requires at least 3 items to center." },
+    { "axis": "strategy", "value": "full-screen", "description": "Degenerate hero/multi-browse with no room for small items; one large item filling the viewport." }
+  ],
+  "layout": [
+    { "id": "carousel-defaults", "text": "No dedicated tokens exist for item sizes; CarouselDefaults supplies the only defaults: min small item size, max small item size, item spacing, content padding, and an internal anchor size used for the sliver of a small/edge item that stays visible.", "values": [{ "name": "minSmallItemSize", "value": 40, "unit": "dp" }, { "name": "maxSmallItemSize", "value": 56, "unit": "dp" }, { "name": "itemSpacing", "value": 0, "unit": "dp" }, { "name": "contentPadding", "value": 0, "unit": "dp" }, { "name": "anchorSize", "value": 10, "unit": "dp" }], "source": "Carousel.kt:813-824" },
+    { "id": "multi-browse-sizing", "text": "Multi-browse solves item sizes by targeting a small item at 1/3 of the large item's size, clamped to [minSmallItemSize, maxSmallItemSize], and a medium size at the midpoint of large and small, then finds the lowest-cost integer arrangement of large/medium/small counts that fills the available width.", "values": [{ "name": "smallSizeRatio", "value": 33.3, "unit": "percent" }], "source": "Keylines.kt:44-97" },
+    { "id": "hero-sizing", "text": "Hero targets the same 1/3-of-large small size, requires 2 small items to center (else 1, start-aligned), and forces start-alignment when fewer than 3 items exist even if centering was requested.", "source": "Keylines.kt:214-236" },
+    { "id": "hero-collapse-to-full-screen", "text": "Hero collapses to full-screen (0 small items) when available space is below smallCount * minSmallItemSize + minSmallItemSize * 1.25 — i.e. there isn't room for the required small items plus a large item at least 25% bigger than them.", "values": [{ "name": "fullScreenCollapseFactor", "value": 1.25, "unit": "ratio" }], "source": "Keylines.kt:239-241" },
+    { "id": "uncontained-sizing", "text": "Uncontained sizes its cut-off (medium) sliver via remainingSpace * 1.5, clamped so it never exceeds 85% of the large item size — past that threshold the sliver is judged \"too similar\" to a full item and is shrunk back to a 20%-cut-off size instead.", "values": [{ "name": "remainingSpaceFactor", "value": 1.5, "unit": "ratio" }, { "name": "mediumLargeItemDiffThreshold", "value": 85, "unit": "percent" }, { "name": "shrunkCutoff", "value": 20, "unit": "percent" }], "source": "Carousel.kt:825; Keylines.kt:335-364", "tokens": [] },
+    { "id": "keyline-snap-and-mask", "text": "Items snap to keyline positions; a mask clip/border on each item clips content to the intersection of the item's own bounds and its current mask rect, which is what produces the expand/collapse look as an item crosses from small to medium to large." }
+  ],
+  "states": [
+    { "state": "other", "label": "settle", "text": "Scrolling and snapping are pager-based, one focal page per settle; the state exposes the settled page index and a jump-without-animation operation. Programmatic scrolls further than 3 pages away animate via a synthetic short hop instead of scrolling every intermediate page.", "values": [{ "name": "maxPagesForAnimateScroll", "value": 3, "unit": "count" }], "source": "CarouselState.kt:67,86,198" },
+    { "state": "other", "label": "fling-snap", "text": "Fling/snap does not use a named sys.motion.spring — it uses a raw spring(stiffness = StiffnessMediumLow) as the snap-approach spec for both the single-advance (multi-browse/hero default) and free-fling behaviors. A high-velocity fling first decays via a spline-based decay curve, then hands off to that spring for the final snap. Uncontained carousels use a no-snap fling behavior instead — velocity-based fling with no post-fling snap at all.", "motion": { "damping": 1, "stiffness": 400 }, "source": "Carousel.kt:739,769,759-772,219,795-803" }
+  ],
+  "behaviour": [
+    { "id": "no-own-interaction-states", "text": "No dedicated press/hover/focus/selected item states are defined by Carousel itself; those are the responsibility of whatever content each item composes (e.g. a Card)." },
+    { "id": "parallax", "text": "An optional parallax effect can translate/clip item content as it enters and exits the viewport, independent of the snap/fling behavior.", "source": "Carousel.kt" },
+    { "id": "three-strategies-not-one", "text": "Multi-browse, hero, and uncontained are three separate keyline algorithms, not one algorithm with a mode flag — a generic renderer should implement them as distinct strategies matching multiBrowseKeylineList, heroKeylineList, and uncontainedKeylineList." }
+  ],
+  "accessibility": {
+    "role": "list",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Scrolling to the next/previous item must be operable without a drag gesture (e.g. next/previous actions), since carousels are drag-first by design."],
+    "semantics": ["The container behaves as a scrollable list/group; each item is a member of that group and should expose its own accessible name from its content.", "Item content controls (e.g. a play button on a media item) must still meet the 48dp minimum even when the item itself is masked down to a small (40-56dp) sliver.", "Screen reader should announce position within the carousel (e.g. \"item 3 of 8\") since visually only a few items are ever on screen at once."]
+  },
+  "notes": [
+    { "kind": "missing-token", "text": "There is no comp.carousel token group to theme against; a design system built on this kit must either add one or theme individual items using existing card/list tokens for their content, leaving only the sizing/snap behavior above as carousel-specific.", "source": "mdc:Carousel.md" },
+    { "kind": "inferred", "text": "minSmallItemSize/maxSmallItemSize/anchorSize/mediumLargeItemDiffThreshold are Compose-internal constants, not tokens — treat them as reasonable starting defaults to expose as configuration, not values to hard-code permanently.", "source": "Carousel.kt" }
+  ]
+}

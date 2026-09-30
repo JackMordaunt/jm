@@ -1,0 +1,64 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "split-button",
+  "name": "Split button",
+  "status": "new",
+  "summary": "A leading action button fused to a trailing toggle button that opens a menu of related actions. Use it when one action is primary and its alternatives belong in a menu; it is a two-button connected button group with fixed roles.",
+  "tokenGroups": ["comp.split-button-x-small", "comp.split-button-small", "comp.split-button-medium", "comp.split-button-large", "comp.split-button-x-large"],
+  "references": { "compose": ["SplitButton.kt", "Button.kt"], "mdc": ["SplitButton.md"] },
+  "inputs": [
+    { "name": "leadingContent", "type": "slot", "required": true, "description": "The primary action's label and optional leading icon." },
+    { "name": "onLeadingClick", "type": "callback", "required": true, "description": "Runs the primary action." },
+    { "name": "checked", "type": "boolean", "required": true, "description": "Whether the trailing button's menu is open. The caller owns it, normally bound to the menu's visibility." },
+    { "name": "onCheckedChange", "type": "callback", "required": true, "description": "Called with the new checked value when the trailing button is clicked." },
+    { "name": "trailingIcon", "type": "icon", "required": false, "description": "The trailing button's icon, normally a down chevron, rotated 180° while checked." },
+    { "name": "size", "type": "enum", "values": ["x-small", "small", "medium", "large", "x-large"], "required": false, "default": "small", "description": "Selects the token group." },
+    { "name": "style", "type": "enum", "values": ["filled", "tonal", "elevated", "outlined"], "required": false, "default": "filled", "description": "Colour style, shared by both buttons; colours come from the matching common-button token group." },
+    { "name": "leadingEnabled", "type": "boolean", "required": false, "default": true, "description": "Enables the leading button." },
+    { "name": "trailingEnabled", "type": "boolean", "required": false, "default": true, "description": "Enables the trailing button, independently of the leading one." }
+  ],
+  "anatomy": [
+    { "id": "leading-button", "name": "Leading button", "description": "The primary action: label, with an optional leading icon.", "tokens": ["comp.split-button-small.leading-button-leading-space", "comp.split-button-small.leading-button-trailing-space"] },
+    { "id": "trailing-button", "name": "Trailing button", "description": "Icon-only toggle that opens and closes the menu; checked while the menu is open.", "tokens": ["comp.split-button-small.trailing-button-leading-space", "comp.split-button-small.trailing-button-trailing-space", "comp.split-button-small.trailing-icon-size"] },
+    { "id": "gap", "name": "Gap", "description": "The space between the two buttons.", "tokens": ["comp.split-button-small.between-space"] }
+  ],
+  "variants": [
+    { "axis": "size", "value": "x-small", "tokenGroup": "comp.split-button-x-small" },
+    { "axis": "size", "value": "small", "default": true, "tokenGroup": "comp.split-button-small" },
+    { "axis": "size", "value": "medium", "tokenGroup": "comp.split-button-medium" },
+    { "axis": "size", "value": "large", "tokenGroup": "comp.split-button-large" },
+    { "axis": "size", "value": "x-large", "tokenGroup": "comp.split-button-x-large" },
+    { "axis": "style", "value": "filled", "default": true, "tokenGroup": "comp.filled-button", "description": "Both buttons take the leading button's colours." },
+    { "axis": "style", "value": "tonal", "tokenGroup": "comp.filled-tonal-button" },
+    { "axis": "style", "value": "elevated", "tokenGroup": "comp.elevated-button" },
+    { "axis": "style", "value": "outlined", "tokenGroup": "comp.outlined-button" }
+  ],
+  "layout": [
+    { "text": "Lay the two buttons out in a row separated by between-space; both take the size's container-height.", "tokens": ["comp.split-button-small.between-space", "comp.split-button-small.container-height"] },
+    { "text": "The outer corners (the leading button's start edge and the trailing button's end edge) are always full: half the height. No per-size token is read.", "values": [{ "name": "outerCornerPercent", "value": 50, "unit": "percent" }], "source": "SplitButton.kt:279,425,467" },
+    { "text": "The inner corners, where the buttons face each other, take inner-corner-corner-size at rest. Each button owns its own shape, but the two inner corners always match.", "tokens": ["comp.split-button-small.inner-corner-corner-size"] },
+    { "text": "Choose each button's content padding and the trailing icon size from the container height with the same size buckets as the common button.", "tokens": ["comp.split-button-small.trailing-icon-size"], "source": "SplitButton.kt:624-648" }
+  ],
+  "states": [
+    { "state": "pressed", "text": "The pressed button's inner corners morph to inner-pressed-corner-corner-size; the other button is unaffected.", "tokens": ["comp.split-button-small.inner-pressed-corner-corner-size"], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "SplitButton.kt:697,777,889" },
+    { "state": "checked", "part": "trailing-button", "text": "The trailing button becomes a full circle (all four corners 50%) while checked.", "tokens": ["comp.split-button-small.trailing-inner-selected-corner-corner-size-percent"], "values": [{ "name": "checkedCornerPercent", "value": 50, "unit": "percent" }], "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "SplitButton.kt:427" },
+    { "state": "checked", "part": "trailing-button", "text": "While checked, draw a content-colour layer over the trailing button at the pressed state-layer opacity. There is no separate selected colour token.", "tokens": ["sys.state.pressed-state-layer-opacity"], "source": "SplitButton.kt:421,905-910" },
+    { "state": "disabled", "text": "Each button disables independently, using its style's disabled container and label opacities." }
+  ],
+  "behaviour": [
+    { "text": "Clicking the trailing button calls onCheckedChange(!checked). The caller opens the menu, anchored below the split button, and sets checked back to false when the menu closes.", "part": "trailing-button" },
+    { "text": "Rotate the trailing icon 180° as checked changes. Compose leaves the icon to the caller; MDC animates a chevron flip.", "part": "trailing-button", "values": [{ "name": "checkedIconRotation", "value": 180, "unit": "deg" }], "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "mdc:SplitButton.md" }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves to each button separately.", "Enter or Space activates the focused button.", "With the menu open, arrow keys move through its items and Escape closes it, returning focus to the trailing button."],
+    "semantics": ["Both buttons have the button role; the trailing button is not announced as a checkbox.", "The trailing button needs a label naming its menu, e.g. \"More options\", and announces expanded or collapsed from checked."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Model the pair as two separately shaped, separately pressable surfaces with one outer silhouette, not as one container with a divider." },
+    { "kind": "gotcha", "text": "The trailing-inner-selected -percent token means a percentage of the shorter side; implement the checked shape as 50%, not as a dp radius.", "tokens": ["comp.split-button-small.trailing-inner-selected-corner-corner-size-percent"] },
+    { "kind": "dead-token", "text": "inner-hovered-corner-corner-size exists for every size, but Compose never reads it; hover does not change the inner corners.", "tokens": ["comp.split-button-small.inner-hovered-corner-corner-size"], "source": "SplitButton.kt" },
+    { "kind": "gotcha", "text": "Only x-small has an outer-corner-corner-size-percent token; the other sizes rely on the hard-coded full outer corner.", "tokens": ["comp.split-button-x-small.outer-corner-corner-size-percent"] }
+  ]
+}

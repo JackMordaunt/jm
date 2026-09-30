@@ -1,0 +1,53 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "radio-button",
+  "name": "Radio button",
+  "status": "unchanged",
+  "statusNote": "Geometry, color mapping and interaction model are identical to baseline M3. The only Expressive-era change is that the dot's grow/shrink now runs on a named spring instead of a duration curve, which is a framework-wide motion-system change, not specific to this component.",
+  "summary": "A circular selection control for choosing exactly one option from a mutually exclusive set. Always used in groups of two or more; never used alone, and never has an indeterminate state.",
+  "tokenGroups": ["comp.radio-button"],
+  "references": { "compose": ["RadioButton.kt"], "mdc": ["RadioButton.md"] },
+  "inputs": [
+    { "name": "selected", "type": "boolean", "required": true, "description": "Whether this radio button is the selected option in its group." },
+    { "name": "onClick", "type": "callback", "required": false, "description": "Called when this radio button is clicked. Omit to make it non-interactive; it still renders in its current visual state. The component has no group awareness: the caller must deselect the other members of the group itself." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables interaction and applies the disabled color when false." }
+  ],
+  "anatomy": [
+    { "id": "outer-ring", "name": "Outer ring", "description": "A stroked circle, always drawn, in the unselected or selected color.", "tokens": ["comp.radio-button.icon-size"] },
+    { "id": "inner-dot", "name": "Inner dot", "description": "A filled circle shown only when selected, sharing the ring's color.", "optional": true },
+    { "id": "state-layer", "name": "State layer", "description": "Circular hover/focus/pressed indicator centered on the control, extending past the ring and not clipped to it.", "optional": true, "tokens": ["comp.radio-button.state-layer-size"] }
+  ],
+  "variants": [],
+  "layout": [
+    { "text": "The ring's diameter is icon-size; its stroke width is hard-coded to 2dp, not read from any token.", "part": "outer-ring", "tokens": ["comp.radio-button.icon-size"], "values": [{ "name": "ringStrokeWidth", "value": 2, "unit": "dp" }], "source": "RadioButton.kt:186,322-323" },
+    { "text": "The ring is drawn stroked and inset by half its stroke width, so its visual edge sits exactly at the icon-size boundary.", "part": "outer-ring", "source": "RadioButton.kt:182-187" },
+    { "text": "The inner dot's resting radius is hard-coded to 6dp (12dp diameter). It is not derived from icon-size and has no backing token; author it as its own constant.", "part": "inner-dot", "values": [{ "name": "dotRadius", "value": 6, "unit": "dp" }], "source": "RadioButton.kt:187,320-321" },
+    { "text": "The dot is inset by the same stroke width as the ring (radius minus half the stroke width), so it never visually touches the ring's inner edge.", "part": "inner-dot", "values": [{ "name": "ringStrokeWidth", "value": 2, "unit": "dp" }], "source": "RadioButton.kt:187,189" },
+    { "text": "A hard-coded 2dp padding sits between the clickable/state-layer area and the ring, applied before the ring is measured at icon-size. No token backs this padding.", "values": [{ "name": "clickablePadding", "value": 2, "unit": "dp" }], "source": "RadioButton.kt:178-179,318-319" },
+    { "text": "The state layer is unbounded and circular, radius state-layer-size / 2, and is not clipped to the ring's bounds.", "part": "state-layer", "tokens": ["comp.radio-button.state-layer-size"], "source": "RadioButton.kt:165-169" }
+  ],
+  "states": [
+    { "state": "selected", "text": "Ring and dot both draw in selected-icon-color; the dot is shown.", "tokens": ["comp.radio-button.selected-icon-color"] },
+    { "state": "other", "label": "unselected", "text": "Ring draws in unselected-icon-color; the dot is not shown (radius 0).", "tokens": ["comp.radio-button.unselected-icon-color"] },
+    { "state": "disabled", "text": "Colors snap immediately to the disabled set on either side of the enabled/disabled transition; there is no animation between enabled and disabled.", "tokens": ["comp.radio-button.disabled-selected-icon-color", "comp.radio-button.disabled-unselected-icon-color"], "motion": { "instant": true }, "source": "RadioButton.kt:144-152" },
+    { "state": "hovered", "text": "Hovering, focusing or pressing does not recolor the ring or dot: comp.radio-button defines per-interaction icon-color tokens (selected-hover-icon-color, unselected-focus-icon-color, etc.), but RadioButtonColors in the pinned Compose implementation exposes only four colors (selected, unselected, disabled-selected, disabled-unselected) and never reads them. Interaction feedback is the ripple/state-layer overlay only.", "source": "RadioButton.kt:242-268" }
+  ],
+  "behaviour": [
+    { "text": "Selecting animates the dot's radius from 0 to its resting 6dp on a fast-spatial spring.", "part": "inner-dot", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "RadioButton.kt:137-141" },
+    { "text": "Deselecting animates the same spring back to radius 0. Unlike checkbox, there is no snap/delay asymmetry between selecting and deselecting.", "part": "inner-dot", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "RadioButton.kt:137-141" },
+    { "text": "Ring and dot color transitions animate together, since they always share one resolved color per state, on a default-effects spring.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "RadioButton.kt:144-147" },
+    { "text": "Selection is exclusive within a group: selecting one radio button must programmatically deselect the others in the same group. The component itself has no group awareness or shared state." }
+  ],
+  "accessibility": {
+    "role": "radio",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the group, not to each radio button individually.", "Arrow keys move selection between options within a group and select the newly focused option immediately, unlike checkbox there is no separate Space-to-toggle step.", "Space activates the focused option if none in the group is yet selected."],
+    "semantics": ["Exposed as part of a mutually exclusive group; assistive tech announces group position, e.g. \"2 of 4\".", "Label text adjacent to the control should be included in the tap target, per group-list patterns."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "comp.radio-button defines per-interaction-state icon colors (selected-hover-icon-color, selected-focus-icon-color, selected-pressed-icon-color, and the unselected equivalents), but RadioButtonColors in the pinned Compose implementation only carries selectedColor/unselectedColor/disabledSelectedColor/disabledUnselectedColor and never branches on hover, focus or pressed. Those eight tokens are unread; interaction feedback is the ripple overlay alone.", "tokens": ["comp.radio-button.selected-hover-icon-color", "comp.radio-button.selected-focus-icon-color", "comp.radio-button.selected-pressed-icon-color", "comp.radio-button.unselected-hover-icon-color", "comp.radio-button.unselected-focus-icon-color", "comp.radio-button.unselected-pressed-icon-color"], "source": "RadioButton.kt:242-268" },
+    { "kind": "missing-token", "text": "The dot's fixed 6dp radius is a genuine gap in the token set: comp.radio-button has no dot-size token. Hardcode 6dp or promote it to a token; do not attempt to derive it from icon-size.", "source": "RadioButton.kt:320-321" },
+    { "kind": "gotcha", "text": "Ring and dot always share a single resolved color per state; there is no separate container-vs-icon color pairing like checkbox has. Do not introduce a second color for the dot." },
+    { "kind": "inferred", "text": "No focus-indicator-color token exists for radio-button (unlike checkbox's comp.checkbox.focus-indicator-color, itself unread by Compose). Use the state layer plus the platform's default focus ring for focus indication; nothing in comp.radio-button governs it.", "source": "mdc:RadioButton.md" }
+  ]
+}

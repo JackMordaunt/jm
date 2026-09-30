@@ -1,0 +1,69 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "toolbar",
+  "name": "Toolbar",
+  "status": "new",
+  "statusNote": "Floating toolbar and docked toolbar both have no M2/M3-classic equivalent; docked toolbar replaces the deprecated bottom app bar.",
+  "summary": "A floating toolbar surfaces contextual actions for the content beneath it and can float anywhere on screen, optionally paired with a FAB; a docked toolbar spans the window width with actions that stay constant across pages, replacing the bottom app bar.",
+  "tokenGroups": ["comp.floating-toolbar", "comp.docked-toolbar"],
+  "references": { "compose": ["FloatingToolbar.kt"], "mdc": ["FloatingToolbar.md", "DockedFloatingToolbars.md", "DockedToolbar.md"] },
+  "inputs": [
+    { "name": "expanded", "type": "boolean", "required": true, "description": "Floating toolbar only: whether the leading/trailing content group is showing." },
+    { "name": "floatingActionButton", "type": "slot", "required": false, "description": "Floating toolbar only: an adjacent standard or vibrant FAB, sized and elevated in sync with the toolbar's expand state." },
+    { "name": "content", "type": "list", "required": true, "description": "The toolbar's icon buttons, buttons, or overflow menu, laid out in a row (horizontal) or column (vertical)." },
+    { "name": "orientation", "type": "enum", "values": ["horizontal", "vertical"], "required": false, "default": "horizontal", "description": "Floating toolbar only; docked toolbars are always horizontal." },
+    { "name": "colorStyle", "type": "enum", "values": ["standard", "vibrant"], "required": false, "default": "standard", "description": "standard is neutral-coloured; vibrant is a high-emphasis primary-tinted colour." },
+    { "name": "fabPosition", "type": "enum", "values": ["start", "end", "top", "bottom", "center"], "required": false, "default": "end", "description": "Where the paired FAB sits relative to the toolbar. start/end apply when horizontal, top/bottom/center when vertical." },
+    { "name": "docked", "type": "boolean", "required": false, "default": false, "description": "Selects the full-width docked toolbar instead of the floating pill." },
+    { "name": "scrollBehavior", "type": "enum", "values": ["none", "exit-always"], "required": false, "default": "none", "description": "exit-always collapses the bar toward its exit direction on scroll." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Pill (floating) or full-width bar (docked).", "tokens": ["comp.floating-toolbar.container-shape", "comp.docked-toolbar.container-shape"] },
+    { "id": "elements", "name": "Elements", "description": "Icon buttons, buttons, or an overflow menu." },
+    { "id": "leading-trailing-group", "name": "Leading/trailing content group", "description": "Floating toolbars only: an optional group either side of the main row/column, shown only while expanded.", "optional": true },
+    { "id": "paired-fab", "name": "Paired FAB", "description": "Floating only: an adjacent standard or vibrant floating action button, sized and elevated in sync with the toolbar's expand state.", "optional": true }
+  ],
+  "variants": [
+    { "axis": "layout", "value": "floating-horizontal-standard", "default": true, "tokenGroup": "comp.floating-toolbar", "description": "Actions floating over content, neutral colour." },
+    { "axis": "layout", "value": "floating-horizontal-vibrant", "tokenGroup": "comp.floating-toolbar", "description": "Same, high-emphasis primary-tinted colour." },
+    { "axis": "layout", "value": "floating-vertical", "tokenGroup": "comp.floating-toolbar", "description": "Column layout for side placement, standard or vibrant." },
+    { "axis": "layout", "value": "floating-paired-fab", "tokenGroup": "comp.floating-toolbar", "description": "Toolbar shrinks and FAB grows to fill freed space, and vice versa." },
+    { "axis": "layout", "value": "docked-standard", "tokenGroup": "comp.docked-toolbar", "description": "Full-width bar, neutral colour." },
+    { "axis": "layout", "value": "docked-vibrant", "tokenGroup": "comp.docked-toolbar", "description": "Full-width bar, high-emphasis colour." }
+  ],
+  "layout": [
+    { "id": "floating-shape-fixed", "text": "The floating container clips to container-shape and never changes shape between expanded and collapsed — only its size animates.", "tokens": ["comp.floating-toolbar.container-shape"], "source": "FloatingToolbar.kt:1476-1505" },
+    { "id": "floating-min-height", "text": "Minimum floating container height is container-height.", "tokens": ["comp.floating-toolbar.container-height"], "source": "FloatingToolbar.kt:635" },
+    { "id": "floating-padding", "text": "Content padding uses container-leading-space/container-trailing-space on all sides; screen offset from the edge equals container-external-padding.", "tokens": ["comp.floating-toolbar.container-leading-space", "comp.floating-toolbar.container-trailing-space", "comp.floating-toolbar.container-external-padding"], "source": "FloatingToolbar.kt:677-683,689" },
+    { "id": "floating-fab-gap", "text": "The gap between the floating toolbar and a paired FAB is hard-coded, not a token.", "values": [{ "name": "toolbarToFabGap", "value": 8, "unit": "dp" }], "source": "FloatingToolbar.kt:1160" },
+    { "id": "floating-fab-diameter", "text": "The paired FAB's diameter is not a toolbar token: it interpolates across a fixed size range (FAB baseline width to FAB medium width) as expand progress goes from 1 to 0.", "source": "FloatingToolbar.kt:1153,1631-1639" },
+    { "id": "floating-scroll-threshold", "text": "Scroll-to-hide distance threshold is hard-coded, not a token.", "values": [{ "name": "scrollDistanceThreshold", "value": 40, "unit": "dp" }], "source": "FloatingToolbar.kt:1148" },
+    { "id": "docked-layout", "text": "Full-width container; container-leading-space/container-trailing-space inset the end elements; container-min-spacing/container-max-spacing bound the gap between elements as the bar reflows; container-shape is unrounded, unlike the floating toolbar's full pill.", "tokens": ["comp.docked-toolbar.container-height", "comp.docked-toolbar.container-leading-space", "comp.docked-toolbar.container-trailing-space", "comp.docked-toolbar.container-min-spacing", "comp.docked-toolbar.container-max-spacing", "comp.docked-toolbar.container-shape"], "source": "mdc:DockedToolbar.md" }
+  ],
+  "states": [
+    { "state": "expanded", "text": "A 0..1 progress animates with the toolbar's default animation spec, which resolves to a spatial spring. Toolbar width and FAB diameter key off the same progress, so they move in lockstep; non-FAB leading/trailing content enters/exits with the same spring.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "FloatingToolbar.kt:693-696,1614-1639,731-748" },
+    { "state": "other", "label": "padding-bounce", "text": "When leading/trailing content toggles, the content row's padding re-balances with a default-effects spring.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "FloatingToolbar.kt:1542" },
+    { "state": "other", "label": "shadow-crossfade", "text": "Elevation lerps between collapsed/expanded values on the expand progress, with no separate spring, for the FAB-paired layout; the non-FAB layout animates shadow with the fast-spatial spring instead.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "FloatingToolbar.kt:1655-1660,1493-1497" },
+    { "state": "collapsed", "label": "scroll-to-hide", "text": "exit-always scroll behaviour collapses the bar toward its exit direction immediately on scroll; on release it snaps fully open or closed, whichever is nearer, plus a spline decay (not a spring) for residual fling velocity.", "motion": { "spring": "sys.motion.spring.default-effects" }, "source": "FloatingToolbar.kt:723-724,1259-1266,726" }
+  ],
+  "behaviour": [
+    { "id": "nested-scroll-thresholds", "text": "A separate nested-scroll expand/collapse mechanism toggles past an expand or collapse scroll-distance threshold, both defaulting to the same 40dp scroll distance threshold used for scroll-to-hide.", "source": "FloatingToolbar.kt:935-936" },
+    { "id": "touch-exploration", "text": "With a screen reader active the toolbar forces itself expanded and ignores scroll behaviour; a custom accessibility action lets the user toggle expand/collapse explicitly.", "source": "FloatingToolbar.kt:188-197" },
+    { "id": "standard-colour", "text": "Standard container uses standard-container-color with an on-colour derived content colour.", "tokens": ["comp.floating-toolbar.standard-container-color"] },
+    { "id": "vibrant-colour", "text": "Vibrant container uses vibrant-container-color; its selectable buttons use the vibrant-button-selected-*/vibrant-button-unselected-* triad (icon, text, container) for pressed/toggled state.", "tokens": ["comp.floating-toolbar.vibrant-container-color", "comp.floating-toolbar.vibrant-button-selected-container-color", "comp.floating-toolbar.vibrant-button-selected-icon-color", "comp.floating-toolbar.vibrant-button-selected-text-color", "comp.floating-toolbar.vibrant-button-unselected-icon-color", "comp.floating-toolbar.vibrant-button-unselected-text-color"] },
+    { "id": "fab-colour", "text": "The paired FAB's colours are not toolbar tokens: the standard FAB uses primary-container, the vibrant FAB uses tertiary-container.", "source": "FloatingToolbar.kt:1113-1140" },
+    { "id": "docked-behaviour", "text": "Docked toolbar standard/vibrant follow the same two-scheme pattern as floating, and MDC pairs it with a hide-on-scroll behaviour, but this is inferred from MDC prose — Compose has no expand/collapse or colour-crossfade implementation to cite for it.", "source": "mdc:DockedToolbar.md" }
+  ],
+  "accessibility": {
+    "role": "toolbar",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves through each action element in order.", "Enter or Space activates the focused element."],
+    "semantics": ["Non-modal toolbar: generic container/toolbar role with focusable action children; each child's touch target follows its own component spec.", "Floating toolbar exposes explicit expand/collapse custom accessibility actions and stays expanded under touch exploration, so actions are never screen-reader-unreachable.", "A fully scroll-hidden floating toolbar drops out of the focus order."]
+  },
+  "notes": [
+    { "kind": "missing-token", "text": "Docked toolbar is under-specified at this pinned commit: the androidx tree has no DockedToolbar/DockedToolbarLayout composable, only HorizontalFloatingToolbar/VerticalFloatingToolbar and DockedToolbarTokens.kt. Everything about docked toolbar behaviour is inferred from MDC-Android's DockedToolbar.md (View-system behaviour, not Compose) plus tokens it shares in spirit with the floating toolbar. Treat its motion springs and shape-morph as unconfirmed until a Compose implementation lands.", "source": "mdc:DockedToolbar.md" },
+    { "kind": "gotcha", "text": "MDC shows a docked-toolbar variant with an embedded primary action button in place of a paired FAB; no equivalent exists in Compose's floating toolbar API.", "source": "mdc:DockedToolbar.md" },
+    { "kind": "inferred", "text": "Floating toolbar's FAB gap (8dp) and scroll threshold (40dp) are hard-coded in source with a TODO to load them from component tokens — expect them to move into tokens later.", "source": "FloatingToolbar.kt:1159-1160" },
+    { "kind": "missing-token", "text": "Container/collapsed/expanded elevation defaults are literally Level0 with a TODO to read from token — not yet wired to sys.elevation.*.", "source": "FloatingToolbar.kt:640,646" }
+  ]
+}

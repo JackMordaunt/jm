@@ -1,0 +1,63 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "navigation-rail",
+  "name": "Navigation rail",
+  "status": "changed",
+  "statusNote": "Expanded and modal presentations, and the collapsed<->expanded transition, are new; the plain collapsed rail's vertical item layout is unchanged from M3.",
+  "summary": "A side-docked bar of 3-7 top-level destinations for tablet/desktop widths. Use collapsed as the default docked state; let it expand in place (or present modally) when the destination set needs labels or the surface plays the role a navigation drawer would on a phone.",
+  "tokenGroups": ["comp.navigation-rail-baseline-item", "comp.navigation-rail-collapsed", "comp.navigation-rail-color", "comp.navigation-rail-expanded", "comp.navigation-rail-horizontal-item", "comp.navigation-rail-vertical-item"],
+  "references": { "compose": ["NavigationRail.kt", "WideNavigationRail.kt", "NavigationItem.kt"], "mdc": ["NavigationRail.md"] },
+  "inputs": [
+    { "name": "items", "type": "list", "required": true, "description": "3-7 destination items, each with selected, onClick, icon and optional label." },
+    { "name": "header", "type": "slot", "required": false, "description": "Optional top slot for a FAB or logo, above the items." },
+    { "name": "expanded", "type": "boolean", "required": false, "default": false, "description": "Whether the rail shows its expanded (wider, icon-start, labelled) presentation instead of collapsed." },
+    { "name": "modal", "type": "boolean", "required": false, "default": false, "description": "Whether the expanded state floats over content with a scrim instead of pushing the layout." },
+    { "name": "hideOnCollapse", "type": "boolean", "required": false, "default": false, "description": "Modal only: when true, the rail slides fully offscreen while collapsed (a dismissible drawer); when false, the collapsed rail always stays resident." },
+    { "name": "itemIconPosition", "type": "enum", "values": ["top", "start"], "required": false, "default": null, "description": "Per-item icon position. Defaults to tracking the rail's expanded state (top when collapsed, start when expanded) but can be pinned explicitly." },
+    { "name": "gesturesEnabled", "type": "boolean", "required": false, "default": true, "description": "Modal only: whether drag/anchor gestures can drive the collapsed<->expanded state." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Full-height column anchored to a screen edge.", "tokens": ["comp.navigation-rail-collapsed.container-color", "comp.navigation-rail-collapsed.container-width", "comp.navigation-rail-expanded.container-width-minimum", "comp.navigation-rail-expanded.container-width-maximum"] },
+    { "id": "header", "name": "Header", "description": "Optional top slot for a FAB or logo, above the items.", "optional": true, "tokens": ["comp.navigation-rail-collapsed.top-space", "comp.navigation-rail-baseline-item.header-space-minimum"] },
+    { "id": "item", "name": "Item", "description": "Icon + optional label, one per destination.", "tokens": ["comp.navigation-rail-baseline-item.container-height", "comp.navigation-rail-baseline-item.icon-size"] },
+    { "id": "active-indicator", "name": "Active indicator", "description": "Pill behind the selected item's icon (and label, when expanded).", "tokens": ["comp.navigation-rail-color.item-active-indicator", "comp.navigation-rail-baseline-item.active-indicator-shape"] },
+    { "id": "badge", "name": "Badge", "description": "Optional small dot or numeral anchored to the icon.", "optional": true },
+    { "id": "scrim", "name": "Scrim", "description": "Modal, expanded only: dims the rest of the screen.", "optional": true, "tokens": ["sys.color.scrim"] }
+  ],
+  "variants": [
+    { "axis": "layout", "value": "collapsed", "default": true, "tokenGroup": "comp.navigation-rail-collapsed", "description": "Docked default; icon-top vertical items; 3-7 items." },
+    { "axis": "layout", "value": "expanded", "tokenGroup": "comp.navigation-rail-expanded", "description": "Docked, wider, icon-start horizontal items; replaces a drawer; >=3 items." },
+    { "axis": "layout", "value": "modal", "tokenGroup": "comp.navigation-rail-expanded", "description": "Expanded state floats over content with a scrim instead of pushing the layout (modal-* tokens)." }
+  ],
+  "layout": [
+    { "id": "collapsed-width", "text": "Collapsed width is container-width; the plain (non-expandable) rail instead floors its width at the narrower narrow-container-width — narrow is the legacy/M3 value, the wider default is the Expressive one.", "tokens": ["comp.navigation-rail-collapsed.container-width", "comp.navigation-rail-collapsed.narrow-container-width"], "source": "NavigationRail.kt:130,761; WideNavigationRail.kt:1688-1689" },
+    { "id": "expanded-width", "text": "Expanded width is clamped between container-width-minimum and container-width-maximum; within that range it hugs the widest item or header content.", "tokens": ["comp.navigation-rail-expanded.container-width-minimum", "comp.navigation-rail-expanded.container-width-maximum"], "source": "WideNavigationRail.kt:443-472" },
+    { "id": "icon-position-binding", "text": "Item icon position follows rail state: top (stacked) when collapsed, start (icon beside label) when expanded, bound automatically; a caller can still pin either position explicitly.", "source": "WideNavigationRail.kt:988-989,1032-1033" },
+    { "id": "item-vertical-gap", "text": "Vertical gap between stacked items is item-vertical-space while collapsed, and collapses to none while expanded (items instead rely on each row's own height).", "tokens": ["comp.navigation-rail-collapsed.item-vertical-space"], "source": "WideNavigationRail.kt:338" },
+    { "id": "item-min-height", "text": "Per-item minimum height is the baseline item's container-height while collapsed; while expanded it drops to the accessibility minimum touch size instead, since the row grows to fit the horizontal icon+label content.", "tokens": ["comp.navigation-rail-baseline-item.container-height"], "source": "WideNavigationRail.kt:343" },
+    { "id": "top-and-header-space", "text": "Top inset before the first item (or header) comes from the rail state's top-space token; the space reserved between a header and the item list is header-space-minimum.", "tokens": ["comp.navigation-rail-collapsed.top-space", "comp.navigation-rail-expanded.top-space", "comp.navigation-rail-baseline-item.header-space-minimum"] },
+    { "id": "indicator-geometry", "text": "Indicator geometry differs by item orientation: vertical items center a fixed width x height pill under the icon; horizontal items use a full-row-height pill inset by the baseline item's leading/trailing space and wrap the icon+label as one group.", "tokens": ["comp.navigation-rail-vertical-item.active-indicator-width", "comp.navigation-rail-vertical-item.active-indicator-height", "comp.navigation-rail-horizontal-item.active-indicator-height", "comp.navigation-rail-baseline-item.active-indicator-leading-space", "comp.navigation-rail-baseline-item.active-indicator-trailing-space"] },
+    { "id": "container-shape", "text": "Standalone (non-modal) collapsed/expanded containers are edge-to-edge rectangles (full-bleed, no corner rounding); the modal expanded container instead uses a rounded modal shape and its own elevation, since it floats above the app content rather than sharing its edge.", "tokens": ["comp.navigation-rail-collapsed.container-shape", "comp.navigation-rail-expanded.container-shape", "comp.navigation-rail-expanded.modal-container-shape", "comp.navigation-rail-expanded.modal-container-elevation"] }
+  ],
+  "states": [
+    { "state": "expanded", "label": "non-modal-transition", "text": "Rail width, item vertical spacing, and item min-height all animate together on a default-spatial spring; an item's icon-position interpolation (top to start) rides the same family.", "motion": { "spring": "sys.motion.spring.default-spatial" }, "source": "WideNavigationRail.kt:324-334; NavigationItem.kt:492" },
+    { "state": "expanded", "label": "modal-transition", "text": "The same width/shape animation instead uses a faster spring for a modal rail, and colour/scrim fades use a default-effects spring.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "WideNavigationRail.kt:325,597,641,830" },
+    { "state": "expanded", "part": "scrim", "label": "modal-default", "text": "Default modal behaviour (hideOnCollapse = false): the rail is always visible collapsed; expanding grows it in place over the content, showing the scrim once the width has animated past a settle point of 30% progress.", "values": [{ "name": "modalScrimSettlePoint", "value": 0.3, "unit": "ratio" }], "source": "WideNavigationRail.kt:599-600,643-644" },
+    { "state": "collapsed", "label": "modal-hide-on-collapse", "text": "hideOnCollapse = true makes the rail a dismissible drawer: it slides fully offscreen when collapsed and the scrim tracks whether the target state is collapsed at all.", "source": "WideNavigationRail.kt:727-856,819-828" },
+    { "state": "selected", "text": "Single-select (role tab, selectable group), same as the navigation bar." }
+  ],
+  "behaviour": [
+    { "id": "two-state-value", "text": "Collapse/expand is driven by a two-state value (Collapsed/Expanded) rather than a boolean flag, so a renderer can also drive it as a draggable anchor point.", "source": "WideNavigationRail.kt:1577-1578" },
+    { "id": "independent-icon-position", "text": "Collapsed vs expanded is a rail-level state; item icon position is a per-item property that merely defaults to tracking that state — keep the two independently overridable for animated or mixed layouts." }
+  ],
+  "accessibility": {
+    "role": "tab",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus between items.", "Arrow keys move focus within the tab group.", "Enter or Space selects the focused item.", "Escape dismisses a modal-expanded rail."],
+    "semantics": ["Each item has role tab and a minimum touch target even where the visual row is shorter (collapsed state).", "Modal-expanded state should be announced as a transient overlay (like a drawer): trap focus while the scrim is showing, restore focus to the trigger on dismiss.", "Screen readers announce label and selection state per item regardless of icon position."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "Don't conflate the plain collapsed-only rail's narrow-container-width with the Expressive collapsed default container-width; they're different tokens for different rail capabilities (fixed rail vs expandable rail), not two sizes of the same component.", "tokens": ["comp.navigation-rail-collapsed.narrow-container-width", "comp.navigation-rail-collapsed.container-width"] },
+    { "kind": "gotcha", "text": "Modal expanded elevation/shape only apply while the rail is actually overlaying content; a non-modal expanded rail keeps the flat, unelevated, square-edged container." }
+  ]
+}

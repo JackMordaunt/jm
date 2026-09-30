@@ -1,0 +1,40 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "divider",
+  "name": "Divider",
+  "status": "unchanged",
+  "summary": "A thin line that groups or separates content in lists and layouts. Purely visual, with no label, icon or interactive behaviour; choose it over extra spacing when a boundary must be explicit.",
+  "tokenGroups": ["comp.divider"],
+  "references": { "compose": ["Divider.kt"], "mdc": ["Divider.md"] },
+  "inputs": [
+    { "name": "thickness", "type": "number", "required": false, "description": "Overrides comp.divider.thickness in dp. Passing a hairline value (1 device pixel) renders a true single-pixel line, thinner than the token default." },
+    { "name": "color", "type": "string", "required": false, "description": "Overrides comp.divider.color." }
+  ],
+  "anatomy": [
+    { "id": "line", "name": "Line", "description": "The only element: a straight line drawn across the full length of its container.", "tokens": ["comp.divider.color", "comp.divider.thickness"] }
+  ],
+  "variants": [
+    { "axis": "orientation", "value": "horizontal", "default": true, "description": "Fills the available width at a fixed height equal to thickness." },
+    { "axis": "orientation", "value": "vertical", "description": "Fills the available height at a fixed width equal to thickness." },
+    { "axis": "inset", "value": "full-width", "default": true, "tokenGroup": "comp.divider", "description": "Spans edge-to-edge. Same token group and composable as inset; the difference is purely caller-applied margin." },
+    { "axis": "inset", "value": "inset", "tokenGroup": "comp.divider", "description": "Indented equally from both ends. There is no dedicated inset token, size or Compose parameter — the caller applies the margin in its own layout." }
+  ],
+  "layout": [
+    { "text": "HorizontalDivider and VerticalDivider take no inset or padding parameters of their own; apply any start/end indent through the caller's layout, not a component prop.", "source": "Divider.kt:49-89" },
+    { "text": "HorizontalDivider fills the available width at a fixed height of thickness; VerticalDivider fills the available height at a fixed width of thickness. Orientation is purely which composable is called, not a shared parameter.", "tokens": ["comp.divider.thickness"], "source": "Divider.kt" }
+  ],
+  "states": [],
+  "behaviour": [
+    { "text": "A divider has no interaction states (no hover, focus, press or drag) and no motion; it never animates and never responds to input." }
+  ],
+  "accessibility": {
+    "role": "separator",
+    "minTouchTargetDp": null,
+    "keyboard": [],
+    "semantics": ["Not focusable and not exposed to the accessibility tree at all — Compose applies no semantics to it; it is purely decorative and screen readers skip it."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "MDC-Android also defines a 'heavy' divider style at 8dp thickness; there is no corresponding comp.divider token or Compose variant for it. Implement a heavy divider as a manual thickness override on top of comp.divider.color, not as a distinct token group.", "tokens": ["comp.divider.color"], "source": "mdc:Divider.md" },
+    { "kind": "gotcha", "text": "Passing a hairline thickness (Dp.Hairline) renders a true single-device-pixel line regardless of density, thinner than the token default; this is not modeled as its own variant or token.", "tokens": ["comp.divider.thickness"], "source": "Divider.kt:53-54" }
+  ]
+}

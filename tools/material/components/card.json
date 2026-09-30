@@ -1,0 +1,65 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "card",
+  "name": "Card",
+  "status": "unchanged",
+  "summary": "A container that groups content and actions about a single subject. Elevated cards separate from the background with a shadow; filled cards use a tonal surface for lower emphasis; outlined cards use a border for the lowest emphasis on backgrounds that already separate content.",
+  "tokenGroups": ["comp.elevated-card", "comp.filled-card", "comp.outlined-card"],
+  "references": {
+    "compose": ["Card.kt", "Elevation.kt"],
+    "mdc": ["Card.md"]
+  },
+  "inputs": [
+    { "name": "content", "type": "slot", "required": true, "description": "The card's body: any mix of headline, subhead, supporting text, media, icons and action buttons." },
+    { "name": "variant", "type": "enum", "values": ["elevated", "filled", "outlined"], "required": false, "default": "elevated", "description": "Selects the container treatment and its token group." },
+    { "name": "onClick", "type": "callback", "required": false, "description": "Makes the whole card a single tappable target when supplied; omit it for a plain, non-interactive container." },
+    { "name": "enabled", "type": "boolean", "required": false, "default": true, "description": "Disables the whole-card tap target when onClick is supplied." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "The card's surface: a fill (flat colour or elevation-tinted) and, for outlined, a 1px border.", "tokens": ["comp.elevated-card.container-color", "comp.elevated-card.container-shape", "comp.outlined-card.outline-width"] },
+    { "id": "headline", "name": "Headline", "description": "Primary text." },
+    { "id": "subhead", "name": "Subhead", "description": "Secondary text under the headline.", "optional": true },
+    { "id": "supporting-text", "name": "Supporting text", "description": "Body content.", "optional": true },
+    { "id": "media", "name": "Image / media", "description": "Optional illustrative content.", "optional": true },
+    { "id": "icon", "name": "Icon", "description": "Optional leading or action icon.", "optional": true, "tokens": ["comp.elevated-card.icon-color", "comp.elevated-card.icon-size"] },
+    { "id": "buttons", "name": "Buttons", "description": "Optional action row, typically text buttons.", "optional": true }
+  ],
+  "variants": [
+    { "axis": "variant", "value": "elevated", "default": true, "tokenGroup": "comp.elevated-card", "description": "Default emphasis; separates from a flat background via shadow." },
+    { "axis": "variant", "value": "filled", "tokenGroup": "comp.filled-card", "description": "Lower emphasis; tonal container, no shadow at rest." },
+    { "axis": "variant", "value": "outlined", "tokenGroup": "comp.outlined-card", "description": "Lowest emphasis; a border replaces fill contrast." }
+  ],
+  "layout": [
+    { "text": "Container shape is fixed per variant; Card does not morph shape on interaction, unlike a list item — only elevation, fill and (outlined) border colour animate.", "part": "container", "tokens": ["comp.elevated-card.container-shape"], "source": "Card.kt" },
+    { "text": "All three variants share the same container-shape value at this token snapshot; they differ in fill, elevation and border treatment only, not geometry.", "tokens": ["comp.elevated-card.container-shape", "comp.filled-card.container-shape", "comp.outlined-card.container-shape"] },
+    { "text": "icon-color and icon-size apply to any icon placed in the card, such as a leading avatar or a trailing action icon; there is no separate token group per icon position.", "part": "icon", "tokens": ["comp.elevated-card.icon-color", "comp.elevated-card.icon-size"] },
+    { "text": "Recommended external margin around a card in a list or grid is 8dp; this is a layout convention for the surrounding container to apply, not a token.", "values": [{ "name": "recommendedExternalMargin", "value": 8, "unit": "dp" }], "source": "mdc:Card.md" }
+  ],
+  "states": [
+    { "state": "enabled", "text": "At rest, elevation and outline colour take their base container-elevation/outline-color tokens.", "tokens": ["comp.elevated-card.container-elevation", "comp.outlined-card.outline-color"] },
+    { "state": "hovered", "text": "Hovering raises elevation to hover-container-elevation; on the outlined variant the token set also defines a hover-outline-color, though Compose's outlinedCardBorder does not read it at this pin (see notes).", "tokens": ["comp.elevated-card.hover-container-elevation", "comp.outlined-card.hover-outline-color"], "motion": { "durationMs": 120, "easing": [0.4, 0.0, 0.2, 1.0] }, "source": "Elevation.kt:109" },
+    { "state": "focused", "text": "Focus raises elevation to focus-container-elevation and draws a focus ring from focus-indicator-color; the outlined variant's token set also defines a focus-outline-color, though Compose's outlinedCardBorder does not read it at this pin (see notes).", "tokens": ["comp.elevated-card.focus-container-elevation", "comp.elevated-card.focus-indicator-color", "comp.outlined-card.focus-outline-color"], "motion": { "durationMs": 120, "easing": [0.4, 0.0, 0.2, 1.0] }, "source": "Elevation.kt:109" },
+    { "state": "pressed", "text": "Pressing raises elevation to pressed-container-elevation; the outlined variant's token set also defines a pressed-outline-color, though Compose's outlinedCardBorder does not read it at this pin (see notes).", "tokens": ["comp.elevated-card.pressed-container-elevation", "comp.outlined-card.pressed-outline-color"], "motion": { "durationMs": 120, "easing": [0.4, 0.0, 0.2, 1.0] }, "source": "Elevation.kt:109" },
+    { "state": "dragged", "text": "Dragging raises elevation to dragged-container-elevation, exposed for host-driven drag-and-drop such as reordering cards in a grid; Compose does not implement drag gestures on Card itself, the app supplies the drag interaction. The outlined variant's token set also defines a dragged-outline-color, though Compose's outlinedCardBorder does not read it at this pin (see notes).", "tokens": ["comp.elevated-card.dragged-container-elevation", "comp.outlined-card.dragged-outline-color"], "motion": { "durationMs": 120, "easing": [0.4, 0.0, 0.2, 1.0] }, "source": "Elevation.kt:109" },
+    { "state": "disabled", "text": "Disabled applies disabled-container-opacity over disabled-container-color (elevated/filled) instead of animating elevation; the outlined variant instead switches to disabled-outline-color at disabled-outline-opacity, composited over the container colour.", "tokens": ["comp.elevated-card.disabled-container-color", "comp.elevated-card.disabled-container-opacity", "comp.elevated-card.disabled-container-elevation", "comp.outlined-card.disabled-outline-color", "comp.outlined-card.disabled-outline-opacity"], "source": "Card.kt:618-628" }
+  ],
+  "behaviour": [
+    { "text": "Elevation is driven purely by interaction state, resolved by CardElevation as: disabled uses disabled-container-elevation, pressed uses pressed-container-elevation, hovered uses hover-container-elevation, focused uses focus-container-elevation, dragged uses dragged-container-elevation, otherwise container-elevation.", "source": "Card.kt:640-654" },
+    { "text": "Elevation transitions are plain tweens, not sys.motion.spring.* — entering a raised state (press/drag/hover/focus) uses a 120ms FastOutSlowInEasing tween.", "values": [{ "name": "incomingDurationMs", "value": 120, "unit": "ms" }], "motion": { "durationMs": 120, "easing": [0.4, 0.0, 0.2, 1.0] }, "source": "Elevation.kt:109" },
+    { "text": "A hover-out (leaving the hovered state back to rest) also uses a 120ms tween, but with the same custom easing as the 150ms outgoing spec below, not FastOutSlowInEasing.", "values": [{ "name": "hoverOutDurationMs", "value": 120, "unit": "ms" }], "motion": { "durationMs": 120, "easing": [0.4, 0.0, 0.6, 1.0] }, "source": "Elevation.kt:113" },
+    { "text": "Returning to rest from a non-hover interaction uses a 150ms tween with its own custom cubic-bezier easing, distinct from both incoming specs.", "values": [{ "name": "outgoingDurationMs", "value": 150, "unit": "ms" }], "motion": { "durationMs": 150, "easing": [0.4, 0.0, 0.6, 1.0] }, "source": "Elevation.kt:111" },
+    { "text": "No state layer overlay is defined at the token level for Card, unlike a list item's disabled state-layer opacity; interaction feedback is elevation change plus optional platform ripple only." }
+  ],
+  "accessibility": {
+    "role": "button",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to the card when it is interactive.", "Enter or Space activates the card when onClick is supplied."],
+    "semantics": ["A card with onClick is treated as a single tappable target and given the button role; without onClick it is a plain container and inner controls carry their own roles.", "The screen reader announces the card's accessible name, normally the headline or an explicit content description, plus its role.", "A checkable card also announces its checked state."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "comp.outlined-card defines hover-outline-color, focus-outline-color, pressed-outline-color and dragged-outline-color, and the component's own description says the border switches to these per interaction state — but CardDefaults.outlinedCardBorder at this pin only branches on enabled vs disabled (OutlinedCardTokens.OutlineColor / DisabledOutlineColor) and returns a static, non-reactive BorderStroke. None of the four interaction-state outline colour tokens are read by any code in Card.kt at this commit.", "tokens": ["comp.outlined-card.hover-outline-color", "comp.outlined-card.focus-outline-color", "comp.outlined-card.pressed-outline-color", "comp.outlined-card.dragged-outline-color"], "source": "Card.kt:618-628" },
+    { "kind": "gotcha", "text": "Because outline colour does not react to interaction state in Compose, only elevation (all variants) and the disabled outline swap (outlined) actually animate; do not wire hover/focus/press/drag outline colour changes expecting them to match a live Compose reference." },
+    { "kind": "missing-token", "text": "MDC-Android defines a checked state for card with its own icon and stroke colour from sys.color.secondary, but the current resolved token set has no checked-* tokens for card; a checkable card must source that treatment from sys.color.secondary directly until such tokens exist.", "source": "mdc:Card.md" },
+    { "kind": "inferred", "text": "internal/Elevation.kt was fetched successfully at this pin (via the internal/ path) and used directly for the tween durations and easings cited above; it is a shared elevation helper also used by Button, not a Card-specific file." }
+  ]
+}

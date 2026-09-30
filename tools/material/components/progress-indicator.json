@@ -1,0 +1,58 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "progress-indicator",
+  "name": "Progress indicator",
+  "status": "changed",
+  "statusNote": "The visible track gap and stop indicator now exist even on the plain (non-wavy) linear/circular styles; wavy is a new style option. Determinate/indeterminate keyframe timings are unchanged from prior M3.",
+  "summary": "Shows the status of a determinate or indeterminate process as a filled line or ring. Choose plain for a neutral, restrained wait; choose wavy for a more expressive, attention-getting wait, less legible at very small sizes.",
+  "tokenGroups": ["comp.progress-indicator", "comp.linear-progress-indicator", "comp.circular-progress-indicator"],
+  "references": { "compose": ["ProgressIndicator.kt", "WavyProgressIndicator.kt"], "mdc": ["ProgressIndicator.md"] },
+  "inputs": [
+    { "name": "shape", "type": "enum", "values": ["linear", "circular"], "required": true, "description": "Selects the linear-progress-indicator or circular-progress-indicator token group." },
+    { "name": "style", "type": "enum", "values": ["plain", "wavy"], "required": false, "default": "plain", "description": "Plain draws a straight/circular active indicator; wavy adds a sinusoidal deformation to it." },
+    { "name": "progress", "type": "number", "required": false, "description": "0.0 (no progress) to 1.0 (full progress); values outside the range are coerced into it. Omit to render the indeterminate variant, which loops instead of tracking a value." },
+    { "name": "amplitude", "type": "number", "required": false, "description": "Wavy style only, 0.0–1.0. Determinate defaults to a step function (0 near 0% and 100% progress, full in between); indeterminate defaults to a constant 1.0." },
+    { "name": "wavelength", "type": "number", "required": false, "description": "Wavy style only: the length of one wave, in dp. Defaults to the style's token wavelength; the actual value on a circular indicator may be adjusted slightly to fit a whole number of waves around the circumference." },
+    { "name": "strokeCap", "type": "enum", "values": ["round", "square"], "required": false, "default": "round", "description": "Plain style only. Round caps add the full stroke width to the visible gap; only a square (butt) cap renders the raw gap token value." }
+  ],
+  "anatomy": [
+    { "id": "track", "name": "Track", "description": "The unfilled portion. Not a continuous bar: it stops short of the active indicator by a visible gap.", "tokens": ["comp.progress-indicator.track-color", "comp.progress-indicator.track-shape"] },
+    { "id": "active-indicator", "name": "Active indicator", "description": "The filled portion showing progress.", "tokens": ["comp.progress-indicator.active-indicator-color", "comp.progress-indicator.active-shape"] },
+    { "id": "stop-indicator", "name": "Stop indicator", "description": "A small dot or square fixed at the far end of the track. Linear only; circular has no stop-indicator draw path at any level.", "optional": true, "tokens": ["comp.progress-indicator.stop-color", "comp.progress-indicator.stop-shape", "comp.linear-progress-indicator.stop-size", "comp.linear-progress-indicator.stop-trailing-space"] },
+    { "id": "wave", "name": "Wave", "description": "Wavy style only: a sinusoidal deformation of the active indicator's stroke. The track segment stays straight or circular.", "optional": true, "tokens": ["comp.linear-progress-indicator.active-wave-amplitude", "comp.linear-progress-indicator.active-wave-wavelength", "comp.linear-progress-indicator.wave-height", "comp.circular-progress-indicator.active-wave-amplitude", "comp.circular-progress-indicator.active-wave-wavelength", "comp.circular-progress-indicator.wave-size"] }
+  ],
+  "variants": [
+    { "axis": "shape", "value": "linear", "default": true, "tokenGroup": "comp.linear-progress-indicator" },
+    { "axis": "shape", "value": "circular", "tokenGroup": "comp.circular-progress-indicator" },
+    { "axis": "style", "value": "plain", "default": true, "description": "Neutral, restrained wait indicator." },
+    { "axis": "style", "value": "wavy", "description": "Expressive, attention-getting wait indicator; increases the linear indicator's overall visual height and is less legible at very small sizes (MDC guidance)." }
+  ],
+  "layout": [
+    { "text": "The default container box is hardcoded, not tokenized: linear is 240dp wide at the track-thickness height; circular is a fixed diameter, both independent of the size tokens used for stroke thickness.", "values": [{ "name": "linearIndicatorWidth", "value": 240, "unit": "dp" }], "source": "ProgressIndicator.kt:1030,1034,1043" },
+    { "text": "The rendered gap is not just the gap token: with the default round stroke cap, the full stroke width is added to the gap token to get the rendered gap; only a butt (square) cap renders the raw token value.", "tokens": ["comp.linear-progress-indicator.track-active-space", "comp.circular-progress-indicator.track-active-space"], "source": "ProgressIndicator.kt:166-173,658-664" },
+    { "text": "Stop indicator shape follows the stroke cap — a circle for round caps, a square otherwise. Its size is clamped to the track thickness and its inset from the end is clamped to stop-trailing-space, so a large stop-size token never floats free of the end. It mirrors in RTL.", "tokens": ["comp.linear-progress-indicator.stop-size", "comp.linear-progress-indicator.stop-trailing-space", "comp.linear-progress-indicator.track-thickness"], "source": "ProgressIndicator.kt:876-919,912-915" },
+    { "text": "The wavy stop indicator exists only on the determinate linear wavy function; indeterminate linear wavy and both circular wavy variants take no stop-size parameter at all. MDC's rule: a stop indicator is required whenever the track's contrast against its background is below 3:1.", "values": [{ "name": "minTrackContrast", "value": 3, "unit": "ratio" }], "part": "stop-indicator", "source": "WavyProgressIndicator.kt:106,133,170-236,281-384,76-78" },
+    { "text": "Wave amplitude on the determinate wavy variants is a step function of progress, not continuous: zero while progress is at or below 10% or at or above 95%, otherwise full amplitude, cross-fading over 500ms using standard easing when ramping up and emphasized-accelerate easing when ramping down. The indeterminate wavy variants hold amplitude at a constant full 1.0, with no ramp.", "values": [{ "name": "rampInThreshold", "value": 10, "unit": "percent" }, { "name": "rampOutThreshold", "value": 95, "unit": "percent" }], "motion": { "durationMs": 500, "durationToken": "sys.motion.duration.long2", "easing": "sys.motion.easing.standard" }, "part": "wave", "source": "WavyProgressIndicator.kt:490-511,177,360" },
+    { "text": "Wave speed defaults to exactly one wavelength travelled per second (waveSpeed defaults to the wavelength value). On the circular wavy variant the actual wavelength and speed can differ slightly from the configured value, adjusted to fit a whole number of waves around the circumference for a seamless loop. Linear indeterminate uses a shorter wavelength token than linear determinate, though both share the same token pair naming.", "tokens": ["comp.linear-progress-indicator.active-wave-wavelength", "comp.linear-progress-indicator.indeterminate-active-wave-wavelength"], "part": "wave", "source": "WavyProgressIndicator.kt:109,179,291,362,264-269,341-347" }
+  ],
+  "states": [],
+  "behaviour": [
+    { "text": "Progress indicators have no interaction states — no hover, focus, press, drag or disabled — they are not interactive." },
+    { "text": "Determinate progress has no built-in animation between values in the plain style; its recommended spec is a bespoke spring (no-bounce damping, very low stiffness, a tightened visibility threshold) that is not one of the named sys.motion.spring.* tokens.", "source": "ProgressIndicator.kt:862-867" },
+    { "text": "The wavy style instead recommends a 500ms linear-eased tween for animating between determinate progress values. This differs from the plain style's spring — an implementor porting both styles to one motion system should pick one deliberately, not assume parity.", "motion": { "durationMs": 500, "durationToken": "sys.motion.duration.long2", "easing": "sys.motion.easing.linear" }, "source": "WavyProgressIndicator.kt:393-397" },
+    { "text": "Indeterminate linear (plain and wavy share identical keyframes, the latter reused verbatim): four head/tail sweeps loop every 1750ms, staggered at delays of 0, 250, 650 and 900ms with durations of 1000, 1000, 850 and 850ms respectively, eased with emphasized-accelerate.", "values": [{ "name": "loopMs", "value": 1750, "unit": "ms" }], "motion": { "durationMs": 1750, "easing": "sys.motion.easing.emphasized-accelerate" }, "source": "ProgressIndicator.kt:1049-1063; WavyProgressIndicator.kt:182-209" },
+    { "text": "Indeterminate circular (plain and wavy share identical keyframes, the latter reused verbatim): three simultaneous animations over a 6000ms loop — a continuous 1080° linear-eased rotation (3 full turns); an additional stepped rotation advancing 90° every 1500ms, each step eased with emphasized-decelerate over 300ms then holding; and the sweep angle animating between 10% and 87% of the circle with standard easing over the first 3000ms, then resetting for the second 3000ms.", "values": [{ "name": "loopMs", "value": 6000, "unit": "ms" }, { "name": "totalRotation", "value": 1080, "unit": "deg" }, { "name": "stepRotation", "value": 90, "unit": "deg" }, { "name": "stepIntervalMs", "value": 1500, "unit": "ms" }, { "name": "sweepMin", "value": 10, "unit": "percent" }, { "name": "sweepMax", "value": 87, "unit": "percent" }], "source": "ProgressIndicator.kt:930-978; WavyProgressIndicator.kt:632-654" }
+  ],
+  "accessibility": {
+    "role": "progressbar",
+    "minTouchTargetDp": null,
+    "keyboard": [],
+    "semantics": ["Determinate progress is exposed as range semantics from 0.0 to 1.0 and announced as a percentage.", "Indeterminate progress exposes only a busy/loading state, with no numeric value."]
+  },
+  "notes": [
+    { "kind": "gotcha", "text": "The gap-in-track and optional stop indicator are present on the default (non-deprecated) plain linear/circular functions in this source tree, not only on the wavy ones — the old continuous-track, no-gap behaviour now only exists via hidden/deprecated overloads.", "source": "ProgressIndicator.kt:205-227,575-599" },
+    { "kind": "gotcha", "text": "Circular has no stop indicator in either style; only linear does. Do not build a shared \"stop dot\" primitive that assumes both shapes support it.", "source": "ProgressIndicator.kt" },
+    { "kind": "inferred", "text": "MDC-Android's \"thick\" track (8dp, 4dp corner) is a manual style override in material-components-android, not a distinct token or size variant in this Compose source.", "source": "mdc:ProgressIndicator.md" },
+    { "kind": "gotcha", "text": "Plain and wavy indeterminate animations are driven by the exact same internal timing constants for a given shape — implement them as one shared timing spec with two different path renderers (straight/circular vs. sinusoidal), not as two independently-tuned animations." }
+  ]
+}

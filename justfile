@@ -574,7 +574,8 @@ text-png page="Scripts": blend2d kb
     build/debug/text-lab-child{{exe}} -full -page "{{page}}" -png "build/text-{{page}}.png"
 
 # ============================================================================
-# ui/material: jm:ui/material: its kitchen and the code generated from the m3e-kit.
+# ui/material: jm:ui/material, its kitchen, and the m3e-kit at tools/material
+# that its generated code comes from.
 # ============================================================================
 
 # examples/material-kitchen: every jm:ui/material component, one page
@@ -606,21 +607,72 @@ material-png page="Buttons": blend2d kb
     {{odin}} build examples/material-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-child{{exe}}
     build/debug/material-kitchen-child{{exe}} -page "{{page}}" -png "build/material-{{page}}.png"
 
-# Regenerate ui/material/tokens/tokens.odin from the M3 Expressive kit's
-# resolved tokens. M3E_KIT is the kit checkout.
+# The m3e-kit's Compose token sources and where androidx keeps them.
+m3e_kit := "tools/material"
+m3e_tokens_path := "compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/tokens"
+
+# Regenerate ui/material/tokens/tokens.odin from the m3e-kit's resolved
+# tokens.
 #
-# Regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
+# Regenerate ui/material/tokens from the m3e-kit
 [group('ui/material')]
 material-tokens:
-    {{odin}} run tools/design-tokens {{flags}} -- material "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/tokens/m3e.resolved.json" ui/material/tokens/tokens.odin
+    {{odin}} run tools/design-tokens {{flags}} -- material {{m3e_kit}}/tokens/m3e.resolved.json ui/material/tokens/tokens.odin
 
 # Regenerate ui/material/shape_data.odin, the loading indicator's morph
-# pairs, from the M3 Expressive kit's shapes/morphs.json.
+# pairs, from the m3e-kit's shapes/morphs.json.
 #
-# Regenerate ui/material/shape_data.odin from the m3e-kit (M3E_KIT)
+# Regenerate ui/material/shape_data.odin from the m3e-kit
 [group('ui/material')]
 material-shapes:
-    {{odin}} run tools/material-shapes {{flags}} -- "${M3E_KIT:-$HOME/Source/Personal/m3e-kit}/shapes/morphs.json" ui/material/shape_data.odin
+    {{odin}} run {{m3e_kit}}/shape-data {{flags}} -- {{m3e_kit}}/shapes/morphs.json ui/material/shape_data.odin
+
+# Re-parse the kit's Compose sources into its tokens/*.json
+[group('ui/material')]
+material-kit-tokens:
+    {{odin}} run {{m3e_kit}}/m3e-tokens {{flags}} -- {{m3e_kit}}/source {{m3e_kit}}/tokens
+
+# Needs java 21 or later; the graphics-shapes jars are fetched and cached.
+#
+# Regenerate the kit's shapes/ from graphics-shapes
+[group('ui/material')]
+material-kit-shapes:
+    {{m3e_kit}}/shapes/gen/run.sh
+
+# Replaces source/ wholesale, so a token file upstream deleted goes too.
+# Needs gh.
+#
+# Pull the kit's Compose token sources at androidx-main
+[group('ui/material')]
+material-kit-fetch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sha=$(gh api repos/androidx/androidx/commits/androidx-main --jq .sha)
+    tmp=$(mktemp -d)
+    gh api "repos/androidx/androidx/contents/{{m3e_tokens_path}}?ref=$sha" --jq '.[].name' |
+        xargs -P 16 -I{} curl -sfL --max-time 60 -o "$tmp/{}" \
+            "https://raw.githubusercontent.com/androidx/androidx/$sha/{{m3e_tokens_path}}/{}"
+    rm -rf {{m3e_kit}}/source/tokens
+    mv "$tmp" {{m3e_kit}}/source/tokens
+    echo "$sha" > {{m3e_kit}}/source/COMMIT
+    echo "fetched $(ls {{m3e_kit}}/source/tokens | wc -l) files at $sha"
+
+# Regenerate the kit's kit.json, the index an agent reads first
+[group('ui/material')]
+material-kit-index:
+    {{m3e_kit}}/scripts/index.sh
+
+# Needs jq and the jsonschema CLI.
+#
+# Validate the kit: schemas, token paths, a fresh kit.json
+[group('ui/material')]
+material-kit-check:
+    {{m3e_kit}}/scripts/check.sh
+
+# Bundle the kit into kit/index.html, a page for people
+[group('ui/material')]
+material-kit-page:
+    {{m3e_kit}}/kit/build.sh
 
 # ============================================================================
 # ui/fluent: jm:ui/fluent: its kitchen, its font, and the code generated from the

@@ -1,0 +1,60 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "button-group",
+  "name": "Button group",
+  "status": "new",
+  "summary": "An invisible row container that spaces a set of buttons and adds press interaction between neighbors. Choose standard to keep each button's own shape and support weighted/flexible widths, or connected to fuse them into one pill silhouette as the Expressive replacement for the deprecated segmented button.",
+  "tokenGroups": ["comp.button-group-small", "comp.connected-button-group-small"],
+  "references": { "compose": ["ButtonGroup.kt"], "mdc": ["ButtonGroup.md"] },
+  "inputs": [
+    { "name": "variant", "type": "enum", "values": ["standard", "connected"], "required": false, "default": "standard", "description": "Selects the layout strategy and token group. Standard keeps each child's own shape; connected fuses children into a shared pill with small facing inner corners." },
+    { "name": "children", "type": "list", "required": true, "description": "Ordered row of child items. Each is either clickable (label, optional icon, onClick, weight, enabled) or toggleable (label, optional icon, checked, onCheckedChange, weight, enabled); a row of toggleable children forms a single- or multi-select control, same as a set of segmented buttons." },
+    { "name": "expandedRatio", "type": "number", "required": false, "default": 0.15, "description": "Fraction of a pressed child's own width to grow it by, taken from its immediate neighbor(s). 0 disables press expansion; 1 doubles the pressed child's width." },
+    { "name": "overflowIndicator", "type": "slot", "required": true, "description": "Control shown at the row's end once children stop fitting; opens a dropdown menu holding the overflowed children. Compose has no built-in default value for this slot, but every shipped style uses a filled icon button with a 3-dot glyph (see anatomy)." }
+  ],
+  "anatomy": [
+    { "id": "container", "name": "Container", "description": "Invisible row layout; contributes no chrome of its own, only spacing, child shape overrides (connected variant) and press-driven remeasurement." },
+    { "id": "children", "name": "Children", "description": "The row's buttons or icon buttons. Each keeps its own size and color token group (e.g. comp.button-small, comp.filled-button); the button group itself carries no size axis." },
+    { "id": "overflow-indicator", "name": "Overflow indicator", "description": "End-of-row control shown only once children overflow; opens a dropdown menu listing the overflowed children. Defaults to a filled icon button with a 3-dot \"more\" glyph.", "optional": true, "tokens": ["comp.filled-icon-button"] }
+  ],
+  "variants": [
+    { "axis": "variant", "value": "standard", "default": true, "tokenGroup": "comp.button-group-small", "description": "Children keep their own shape and visual separation; supports fixed-width, weighted, and mixed-width children in the same row." },
+    { "axis": "variant", "value": "connected", "tokenGroup": "comp.connected-button-group-small", "description": "Children touch and share one pill-shaped outer silhouette with small inner corners where they meet; the Expressive replacement for the segmented button." }
+  ],
+  "layout": [
+    { "text": "Space standard-group children with between-space via Arrangement.spacedBy; space connected-group children with the connected group's own between-space instead.", "tokens": ["comp.button-group-small.between-space", "comp.connected-button-group-small.between-space"], "source": "ButtonGroup.kt:188-193" },
+    { "text": "Standard children keep whatever shape their own button style already has; the button group applies no shape override to them.", "source": "ButtonGroup.kt" },
+    { "text": "In a connected group, the leading child's outward (start) corners are full round and its inward (end) corners take inner-corner-corner-size; the trailing child mirrors this (outward end corners full round, inward start corners take inner-corner-corner-size).", "tokens": ["comp.connected-button-group-small.inner-corner-corner-size"], "source": "ButtonGroup.kt:196-237" },
+    { "text": "A connected middle child's rest shape is sys.shape.corner.small on all four corners, not the group's own inner-corner-corner-size token; only its pressed shape switches to pressed-inner-corner-corner-size on all four corners.", "tokens": ["sys.shape.corner.small", "comp.connected-button-group-small.pressed-inner-corner-corner-size"], "source": "ButtonGroup.kt:243-266" },
+    { "text": "Pressing a connected leading or trailing child swaps only its inward-facing corner(s) to pressed-inner-corner-corner-size; its outward full-round corner(s) are unaffected.", "tokens": ["comp.connected-button-group-small.pressed-inner-corner-corner-size"], "source": "ButtonGroup.kt:205-236" },
+    { "text": "Press-expand the interacted child and compress its touching neighbor(s) at layout time (a real remeasure, not a scale transform): a middle child's growth on each side is capped at min(expandedRatio × its own width ÷ 2, that neighbor's compression limit), added on both sides; an edge child's growth is capped at min(expandedRatio × its own width, its one neighbor's compression limit).", "values": [{ "name": "expandedRatio", "value": 0.15, "unit": "ratio" }], "source": "ButtonGroup.kt:718-762" },
+    { "text": "Each child's compression limit is its own content end-padding (ButtonWithIconContentPadding if it has an icon, otherwise ContentPadding), not a button-group token; a neighbor with little padding compresses less than expandedRatio would otherwise take.", "source": "ButtonGroup.kt:1089-1101,1161-1173" },
+    { "text": "Children that don't fit at their measured width, taken from the end of the row, move into the overflow dropdown; the overflow indicator's own measured width is reserved from the available row width before counting how many children fit.", "source": "ButtonGroup.kt:673-706" }
+  ],
+  "states": [
+    { "state": "pressed", "part": "children", "text": "The pressed child's width animates toward its expanded target and neighbors animate toward their compressed target together, as one interruptible spring.", "motion": { "spring": "sys.motion.spring.fast-spatial" }, "source": "ButtonGroup.kt:138" },
+    { "state": "pressed", "part": "children", "text": "In a connected group, the pressed child's inward corner(s) morph to pressed-inner-corner-corner-size at the same time as the width change.", "tokens": ["comp.connected-button-group-small.pressed-inner-corner-corner-size"], "source": "ButtonGroup.kt:205-236" },
+    { "state": "checked", "part": "children", "text": "A checked child in a connected group becomes a full circle (all four corners fully rounded); this is a hardcoded shape, not the group's own selected-inner-corner-corner-size-percent token.", "values": [{ "name": "checkedCornerPercent", "value": 50, "unit": "percent" }], "source": "ButtonGroup.kt:240" },
+    { "state": "disabled", "part": "children", "text": "Each child enables or disables independently through its own enabled flag and its own button token group's disabled opacities; ButtonGroup itself exposes no group-level enabled or disabled state.", "source": "ButtonGroup.kt:870-897" }
+  ],
+  "behaviour": [
+    { "text": "A row of toggleable children (built with toggleableItem) forms a single- or multi-select control; the button group enforces no exclusivity itself. The caller clears sibling checked state for single-select, exactly as with per-segment roles on the segmented button.", "source": "ButtonGroup.kt:888-897" },
+    { "text": "Weighted children (Modifier.weight) share the row width remaining after unweighted children are measured at their intrinsic width, in proportion to their weight; fixed-width and weighted children may be mixed in the same row.", "source": "ButtonGroup.kt:826-836" },
+    { "text": "Clicking the overflow indicator toggles its ButtonGroupMenuState open or closed, showing a dropdown of the overflowed children; a custom overflowIndicator is responsible for wiring its own open/close affordance to that same state.", "source": "ButtonGroup.kt:296-335" }
+  ],
+  "accessibility": {
+    "role": "none",
+    "minTouchTargetDp": 48,
+    "keyboard": ["Tab moves focus to each child in row order, then to the overflow indicator when one is shown.", "Enter or Space activates the focused child.", "With the overflow menu open, arrow keys move through its items and Escape closes it, returning focus to the overflow indicator.", "When children are toggleable and single-select, arrow keys move the selection between them as one Tab stop, following the radiogroup pattern."],
+    "semantics": ["The container itself carries no accessible role or label, unless composed as a toggle set, in which case it follows the toggle-button-group pattern (radio-like for single-select, checkbox-like for multi-select).", "The default overflow indicator announces a fixed content description (\"More options\").", "Never let visual compression from a neighbor's press-expansion shrink a child's effective hit area below the minimum touch target; clip only its visual bounds."]
+  },
+  "notes": [
+    { "kind": "contradiction", "text": "button-group.md describes a connected group's middle children as taking inner-corner-corner-size on all four corners at rest. ButtonGroup.kt instead defaults a middle child's rest shape to sys.shape.corner.small (ShapeDefaults.Small) and only applies the group's own pressed-inner-corner-corner-size token, on all four corners, once pressed; inner-corner-corner-size itself is applied only to the leading and trailing children's inward-facing corners.", "tokens": ["sys.shape.corner.small", "comp.connected-button-group-small.inner-corner-corner-size", "comp.connected-button-group-small.pressed-inner-corner-corner-size"], "source": "ButtonGroup.kt:196-266" },
+    { "kind": "dead-token", "text": "container-height exists on both comp.button-group-small and comp.connected-button-group-small, but ButtonGroup.kt never reads either: the row's height is whatever its child buttons resolve to, each from its own size-appropriate button/icon-button token group.", "tokens": ["comp.button-group-small.container-height", "comp.connected-button-group-small.container-height"], "source": "ButtonGroup.kt" },
+    { "kind": "dead-token", "text": "comp.connected-button-group-small.container-shape is never read; the outer pill silhouette is composed from the leading/trailing children's own full-round outward corners plus inner-corner-corner-size on the facing corners, not from one shared shape token.", "tokens": ["comp.connected-button-group-small.container-shape"], "source": "ButtonGroup.kt:196-237" },
+    { "kind": "dead-token", "text": "comp.connected-button-group-small.selected-inner-corner-corner-size-percent is never read; the checked shape is hardcoded to a full circle (ShapeTokens.CornerFull) instead.", "tokens": ["comp.connected-button-group-small.selected-inner-corner-corner-size-percent"], "source": "ButtonGroup.kt:240" },
+    { "kind": "gotcha", "text": "MDC-Android's ButtonGroup.md documents \"works with all button sizes: XS, S, M, L, and XL\", but only one (small) button-group and connected-button-group token group exists. Sizing comes entirely from the size of the child Button/IconButton composables placed inside the group, not from any button-group-level size token or variant.", "tokens": ["comp.button-group-small", "comp.connected-button-group-small"], "source": "mdc:ButtonGroup.md" },
+    { "kind": "gotcha", "text": "ButtonGroup's overflowIndicator parameter has no default value in Compose (unlike, e.g., a Button's color defaults) so callers must always pass one explicitly; ButtonGroupDefaults.OverflowIndicator is the standard filled 3-dot icon button every shipped style otherwise uses.", "source": "ButtonGroup.kt:129-135" },
+    { "kind": "inferred", "text": "Overflow-menu open/close (a plain DropdownMenu show/hide) is independent of the press-expansion animation; opening the menu does not itself grow or shrink any child.", "source": "ButtonGroup.kt" }
+  ]
+}
