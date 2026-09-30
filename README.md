@@ -132,32 +132,43 @@ the cached binary.
 ## Recipes
 
 ```
-just build     debug odin-run          just release   optimised odin-run
-just test      all package tests       just check     3-target type-check
-just link      build every program into build/debug
-just install   odin-run -> ~/.local/bin (BINDIR overrides)
-just sqlite    compile the vendored SQLite  just wasm      compile wasm3
-just pg_query  compile the vendored libpg_query
-just pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
-just blend2d   fetch and compile Blend2D into ui/blend2d/lib
-just kb        compile the vendored kb_text_shape into ui/kb/lib
-just material-kitchen  build and open the hot-reloaded M3 kitchen
-just material-png page=Chips  render one M3 kitchen page to build/
-just material-tokens   regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
-just fluent-tokens     regenerate ui/fluent/tokens from the fluent-kit (FLUENT_KIT)
-just fluent-icons      regenerate ui/fluent/icon_data.odin from the vendored Fluent icons (FLUENT_ICONS)
-just fluent-icons-fetch  fetch the icons tools/fluent-icons/icons.txt names into FLUENT_ICONS
-just fluent-kitchen    build and open the hot-reloaded Fluent 2 kitchen
-just fluent-png page=Button  render one Fluent kitchen page to build/
-just fluent-fonts      fetch Selawik, the kitchen's stand-in for Segoe UI, into ~/.local/share/fonts
-just text-lab          build and open the hot-reloaded text lab: scripts, bidi, emoji, carets
-just text-png page=Scripts  render one text-lab page, whole, to build/
-just material-shapes   regenerate ui/material/shape_data.odin from the m3e-kit's morphs
-just bench-ui  ms per frame for layout and the Blend2D executor
-just hot-counter-child  build the subprocess `just test`'s own host/child test spawns
-just example   run examples/hello.odin      just fuzz      30s of fuzzing
-just clean     drop build/ and the four archives
+general      check    3-target type-check of every package and program
+             test     every package's tests
+             link     build every program into build/debug
+             clean    drop build/ and the compiled archives
+odin-run     build    debug odin-run         release  optimised odin-run
+             install  odin-run -> ~/.local/bin (BINDIR overrides)
+             example  run examples/hello.odin
+sqlite3      sqlite   compile the vendored SQLite
+wasm         wasm     compile wasm3          bench    time jm:wasm's workloads
+             bench-build  rebuild the workloads from their C sources
+pg_query     pg_query  compile the vendored libpg_query
+             pg_query-gen  regenerate pg_query/nodes.odin from the vendored schema
+git          libgit2  fetch and compile libgit2 into git/lib
+fuzz         fuzz     30s of fuzzing         fuzz-isolate  a child process per case
+             fuzz-asan  the same under AddressSanitizer
+ui           blend2d  fetch and compile Blend2D into ui/blend2d/lib
+             kb       compile the vendored kb_text_shape into ui/kb/lib
+             hot-counter-child  build the subprocess `just test`'s own host/child test spawns
+             bench-ui  ms per frame for layout and the Blend2D executor
+             hot-architecture  build the hot-reloaded architecture diagram
+             text-lab  build and open the hot-reloaded text lab: scripts, bidi, emoji, carets
+             text-png page=Scripts  render one text-lab page, whole, to build/
+ui/material  material-kitchen  build and open the hot-reloaded M3 kitchen
+             material-png page=Chips  render one M3 kitchen page to build/
+             material-tokens  regenerate ui/material/tokens from the m3e-kit (M3E_KIT)
+             material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit's morphs
+ui/fluent    fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
+             fluent-png page=Button  render one Fluent kitchen page to build/
+             fluent-fonts  fetch Selawik, the kitchen's stand-in for Segoe UI, into ~/.local/share/fonts
+             fluent-tokens  regenerate ui/fluent/tokens from the fluent-kit (FLUENT_KIT)
+             fluent-icons  regenerate ui/fluent/icon_data.odin from the vendored Fluent icons (FLUENT_ICONS)
+             fluent-icons-fetch  fetch the icons tools/fluent-icons/icons.txt names into FLUENT_ICONS
 ```
+
+`just` alone lists the recipes in these sections: one per package or tool,
+the recipe that compiles a package's C library in its section, and general
+for what spans them all.
 
 `just install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.
