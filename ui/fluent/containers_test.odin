@@ -36,6 +36,7 @@ containers :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	tab_list(gtx, VTABS[:], &m.vtab, vertical = true, key = 1)
 	if accordion_item(gtx, "Section", &m.open) {
 		button(gtx, "Inside")
+		button(gtx, "Below")
 	}
 	if card(gtx, .Filled, selected = &m.sel, clicked = &m.card_hit, name = "Card") {
 		button(gtx, "In card")
@@ -128,6 +129,11 @@ test_accordion_lays_its_panel_out_only_while_open :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	_, inside = ui.probe_find(&p, "Inside")
 	testing.expect(t, inside)
+	// The panel stacks its children below the header, one under the next.
+	in_b, below := ui.probe_bounds(&p, "Inside"), ui.probe_bounds(&p, "Below")
+	testing.expect(t, in_b.y >= hd.y + hd.h)
+	testing.expect(t, below.y >= in_b.y + in_b.h)
+	testing.expect_value(t, below.x, in_b.x)
 	// Enter on the focused header closes it again.
 	ui.probe_key(&p, .Enter)
 	testing.expect(t, !m.open)
