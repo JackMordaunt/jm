@@ -480,9 +480,10 @@ selection_paint :: base.selection_paint
 selectable_paragraph :: base.selectable_paragraph
 
 // layout_style lays s out at a style in the face for its weight, wrapped
-// at width when width > 0; see design.layout_style.
-layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0) -> ui.Paragraph {
-	return design.layout_style(gtx, s, st, font_for(gtx, st.weight), width)
+// at width when width > 0 and truncated past max_lines; see
+// design.layout_style.
+layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0, max_lines := 0, ellipsis := ui.ELLIPSIS) -> ui.Paragraph {
+	return design.layout_style(gtx, s, st, font_for(gtx, st.weight), width, max_lines, ellipsis)
 }
 
 // text is s at a type role in color, as a widget: one line at its own

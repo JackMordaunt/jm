@@ -1720,7 +1720,8 @@ ITALIC_SHEAR :: f32(0.2)
 // Text sets no colour of its own, so the caller passes the surface's
 // foreground. Inline, it is its content's width on one line; block
 // lays it out to width (the constraints' when 0), wrapping when wrap
-// is true, else clipping, with an ellipsis when truncate is set
+// is true, else cut to one line where it meets the box, with an
+// ellipsis when truncate is set and clipped otherwise
 // (useTextStyles.styles.ts:27-36,121-123). A block with no width,
 // Start-aligned and left to right, is as wide as its widest line up to
 // that, as a CSS block is in a flex row: it hugs its content in a row
@@ -1729,8 +1730,8 @@ ITALIC_SHEAR :: f32(0.2)
 // they place their lines in. italic shears the glyphs,
 // underline and strikethrough draw their lines; align places block
 // lines. Returns its dims; the run is tagged with s. The text is
-// selectable (ui.selectable_text) unless selectable is false, or it is
-// one line clipped to its box.
+// selectable (ui.selectable_text) unless selectable is false; a selection
+// through an ellipsis takes the text it hides.
 text :: proc(
 	gtx: ^ui.Ctx,
 	s: string,
@@ -1782,33 +1783,39 @@ text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Colo
 	if block && box_w == 0 {
 		box_w = ui.is_finite(cs.max.x) ? cs.max.x : 0
 	}
-	para := layout_style(gtx, s, st, box_w if block && wrap_lines && box_w > 0 else 0)
+	para: ui.Paragraph
+	if wrap_lines {
+		para = layout_style(gtx, s, st, box_w if block && box_w > 0 else 0)
+	} else {
+		// One line, cut where it meets its box: with an ellipsis, or run
+		// on for the clip below.
+		limit := box_w if box_w > 0 else (cs.max.x if ui.is_finite(cs.max.x) else 0)
+		para = layout_style(gtx, s, st, limit, max_lines = 1, ellipsis = ui.ELLIPSIS if truncate else "")
+	}
 	hug := width == 0 && align == .Start && !para.rtl
 	sz := ui.constrain(cs, {box_w > 0 && !hug ? box_w : para.width, para.height})
 	if italic {
 		// Shear about the run's bottom: the top leans right by the shear.
 		ops.transform_push(gtx.scene, ops.Affine{1, 0, f64(-ITALIC_SHEAR), 1, f64(ITALIC_SHEAR * sz.y), 0})
 	}
-	if !wrap_lines && para.width > sz.x + 0.5 {
-		// One line wider than its box: clipped or ellipsised, and not
-		// selectable, since what shows is not the text.
-		l := shape_style(gtx, s, st)
-		x := align_x(align, sz.x, min(l.width, sz.x))
-		draw_truncated(gtx, l, s, {x, 0}, sz.x, st, color, truncate)
-		decorate(gtx, {x, 0}, min(l.width, sz.x), baseline_of(l), l.metrics.ascent, color, underline, strikethrough)
-	} else {
-		for &ln in para.lines {
-			ln.x = align_x(align, sz.x, ln.width) if !para.rtl || align != .Start else ln.x
-		}
-		sel: design.Selection_Paint
-		if selectable {
-			lo, hi, focused := ui.selectable_text(gtx, p.id, para, {}, {0, 0, sz.x, sz.y})
-			sel = selection_colors(lo, hi, focused)
-		}
-		draw_paragraph(gtx, para, {}, color, sel)
-		for ln in para.lines {
-			decorate(gtx, {ln.x, ln.baseline - para.lines[0].baseline}, min(ln.width, sz.x), para.lines[0].baseline, para.metrics.ascent, color, underline, strikethrough)
-		}
+	for &ln in para.lines {
+		ln.x = align_x(align, sz.x, min(ln.width, sz.x)) if !para.rtl || align != .Start else ln.x
+	}
+	clipped := para.width > sz.x + 0.5
+	if clipped {
+		ops.clip_push(gtx.scene, ops.Rect{0, 0, sz.x, sz.y})
+	}
+	sel: design.Selection_Paint
+	if selectable {
+		lo, hi, focused := ui.selectable_text(gtx, p.id, para, {}, {0, 0, sz.x, sz.y})
+		sel = selection_colors(lo, hi, focused)
+	}
+	draw_paragraph(gtx, para, {}, color, sel)
+	for ln in para.lines {
+		decorate(gtx, {ln.x, ln.baseline - para.lines[0].baseline}, min(ln.width, sz.x), para.lines[0].baseline, para.metrics.ascent, color, underline, strikethrough)
+	}
+	if clipped {
+		ops.clip_pop(gtx.scene)
 	}
 	if italic {
 		ops.transform_pop(gtx.scene)
@@ -1840,32 +1847,6 @@ decorate :: proc(gtx: ^ui.Ctx, pos: ops.Point, w, baseline, ascent: f32, color: 
 	if strikethrough {
 		ops.fill(gtx.scene, ops.Rect{pos.x, pos.y + baseline - ascent * 0.3, w, 1}, color)
 	}
-}
-
-// draw_truncated draws l, the shaped s, clipped to width, with an ellipsis in place of
-// the clipped end when truncate is set: the run is shaped again with a
-// trailing "…" over shrinking prefixes until it fits.
-@(private)
-draw_truncated :: proc(gtx: ^ui.Ctx, l: Text, s: string, pos: ops.Point, width: f32, st: tok.Type_Style, color: ops.Color, truncate: bool) {
-	if !truncate {
-		ops.clip_push(gtx.scene, ops.Rect{pos.x, pos.y, width, l.height})
-		draw_text(gtx, l, pos, color)
-		ops.clip_pop(gtx.scene)
-		return
-	}
-	n := len(s)
-	for n > 0 {
-		t := shape_style(gtx, fmt.tprintf("%s…", s[:n]), st)
-		if t.width <= width + 0.5 {
-			draw_text(gtx, t, pos, color)
-			return
-		}
-		n -= 1
-		for n > 0 && s[n] & 0xC0 == 0x80 {
-			n -= 1
-		}
-	}
-	draw_text(gtx, shape_style(gtx, "…", st), pos, color)
 }
 
 // Image.

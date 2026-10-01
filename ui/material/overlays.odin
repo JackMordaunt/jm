@@ -1104,17 +1104,12 @@ icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ops.Color, loc := #
 }
 
 // wrap_lines breaks s at spaces into shaped lines no wider than width —
-// a word wider than width keeps a line to itself — on gtx.allocator. With
-// max_lines, the last line takes the rest of s, for the caller to clip.
+// a word wider than width keeps a line to itself — on gtx.allocator.
 @(private)
-wrap_lines :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32, max_lines := 0) -> []Text {
+wrap_lines :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32) -> []Text {
 	out := make([dynamic]Text, gtx.allocator)
 	start := 0
 	for {
-		if max_lines > 0 && len(out) == max_lines - 1 {
-			append(&out, shape_style(gtx, s[start:], st))
-			break
-		}
 		end := -1
 		fit: Text
 		i := start
@@ -1148,18 +1143,6 @@ lines_size :: proc(lines: []Text) -> (w, h: f32) {
 		h += t.height
 	}
 	return
-}
-
-// paint_wrapped draws s wrapped to width from at, at most max_lines
-// lines (0 for any), and returns the height drawn.
-@(private)
-paint_wrapped :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Color, at: ops.Point, width: f32, max_lines := 0) -> f32 {
-	y := at.y
-	for t in wrap_lines(gtx, s, st, width, max_lines) {
-		draw_text(gtx, t, {at.x, y}, color)
-		y += t.height
-	}
-	return y - at.y
 }
 
 // Snackbar_Duration is how long a snackbar with a timer stays up.

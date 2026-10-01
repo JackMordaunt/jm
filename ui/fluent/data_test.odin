@@ -228,3 +228,32 @@ test_block_text_hugs_in_a_row_and_fills_a_fill_column :: proc(t: ^testing.T) {
 	testing.expect(t, m.wrapped.size.x <= 200)
 	testing.expect(t, m.wrapped.size.x > short)
 }
+
+@(test)
+test_truncated_text_fits_its_box_and_copies_whole :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		col := ui.column_open(gtx)
+		defer ui.close(&col)
+		text(gtx, "a sentence far too long for its box", color(.Neutral_Foreground1), block = true, width = 80, wrap_lines = false, truncate = true)
+	}
+	p: ui.Probe
+	ui.probe_init(&p, view, nil, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	b := ui.probe_bounds(&p, "a sentence far too long for its box")
+	testing.expect_value(t, b.w, 80)
+	// What is drawn is a short run and the ellipsis, not the sentence.
+	drawn := 0
+	for r in ui.probe_current(&p).scene.runs {
+		drawn += len(r.glyphs)
+	}
+	testing.expect(t, drawn > 1 && drawn < 15, "the line is cut")
+	y := b.y + b.h / 2
+	ui.router_push(&p.router, {kind = .Press, pos = {b.x + 1, y}, clicks = 1})
+	ui.router_push(&p.router, {kind = .Move, pos = {b.x + b.w - 1, y}})
+	ui.router_push(&p.router, {kind = .Release, pos = {b.x + b.w - 1, y}, clicks = 1})
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	ctx := ui.Ctx{layout = &p.layout}
+	testing.expect_value(t, ui.label_selection(&ctx), "a sentence far too long for its box")
+}

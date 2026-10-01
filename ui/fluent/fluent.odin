@@ -303,9 +303,10 @@ selectable_paragraph :: base.selectable_paragraph
 selection_colors :: base.selection_colors
 
 // layout_style lays s out at a style in the face nearest its weight,
-// wrapped at width when width > 0; see design.layout_style.
-layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0) -> ui.Paragraph {
-	return design.layout_style(gtx, s, st, design.font_for(font_faces(), st.weight, gtx.font), width)
+// wrapped at width when width > 0 and truncated past max_lines; see
+// design.layout_style.
+layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0, max_lines := 0, ellipsis := ui.ELLIPSIS) -> ui.Paragraph {
+	return design.layout_style(gtx, s, st, design.font_for(font_faces(), st.weight, gtx.font), width, max_lines, ellipsis)
 }
 
 // text_stops is s's caret and word stops at a style, for ui.text_edit.

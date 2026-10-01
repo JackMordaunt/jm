@@ -861,7 +861,8 @@ paint_list_body :: proc(gtx: ^ui.Ctx, b: List_Body, c: Control) {
 	y += draw_style_text(gtx, it.headline, {x, y}, tok.LIST_ITEM_LABEL_TEXT_FONT, b.col.label).height
 	if it.supporting != "" {
 		max_lines := b.lines == 3 && it.overline == "" ? 2 : 1
-		paint_wrapped(gtx, it.supporting, tok.LIST_ITEM_SUPPORTING_TEXT_FONT, b.col.supporting, {x, y}, tw, max_lines)
+		sup := layout_style(gtx, it.supporting, tok.LIST_ITEM_SUPPORTING_TEXT_FONT, tw, max_lines = max_lines)
+		draw_paragraph(gtx, sup, {x, y}, b.col.supporting)
 	}
 	ops.clip_pop(gtx.scene)
 }
