@@ -229,3 +229,57 @@ key_from_hex_fills_a_caller_buffer :: proc(t: ^testing.T) {
 	testing.expect_value(t, key[31], 0xab)
 	testing.expect(t, !key_from_hex("zz", key[:]), "wrong length")
 }
+
+// A release that carries the patch from this very build updates by it;
+// one whose patch is damaged falls back to the whole asset.
+@(test)
+apply_takes_the_patch_from_this_build_and_falls_back :: proc(t: ^testing.T) {
+	ta := context.temp_allocator
+	root := temp_root(t)
+	defer os.remove_all(root)
+	old_body := strings.repeat("old binary with a long shared middle part ", 200, ta)
+	new_body := strings.concatenate({"new header; ", old_body[20:], " and a new tail"}, ta)
+	r := make_release(t, root, "tool", new_body, "v1.1.0")
+	exe := exe_file(t, root, old_body)
+
+	// The patch, named after the old file's hash, listed beside the asset.
+	old_hash := string(hex.encode(hash.hash_string(.SHA256, old_body, ta), ta))
+	name := strings.concatenate({"tool.", old_hash[:PATCH_HASH_LEN], ".patch"}, ta)
+	p := diff(transmute([]byte)old_body, transmute([]byte)new_body, ta)
+	testing.expect(t, len(p) < len(new_body) / 2, "the patch is the small download")
+	testing.expect_value(t, path.write(path.join(r.dir, name, allocator = ta), string(p)), nil)
+	new_hash := string(hex.encode(hash.hash_string(.SHA256, new_body, ta), ta))
+	patch_hash := string(hex.encode(hash.hash_bytes(.SHA256, p, ta), ta))
+	sign_sums(t, &r, strings.concatenate({new_hash, "  tool\n", patch_hash, "  ", name, "\n"}, ta))
+
+	res := run(config(r, exe, "", .Apply))
+	testing.expect_value(t, res.outcome, Outcome.Applied)
+	testing.expect(t, res.patched, "updated by the patch")
+	testing.expect_value(t, res.patch_bytes, len(p))
+	testing.expect_value(t, message(&res), "updated by patch")
+	testing.expect_value(t, read(exe), new_body)
+	testing.expect(t, !os.exists(strings.concatenate({exe, ".patch"}, ta)), "no patch file left")
+
+	// Back to the old build, with the listed patch now damaged: the hash
+	// check refuses it and the whole asset comes down instead.
+	testing.expect_value(t, path.write(exe, old_body), nil)
+	os.remove(strings.concatenate({exe, ".old"}, ta))
+	testing.expect_value(t, path.write(path.join(r.dir, name, allocator = ta), "not a patch"), nil)
+	res = run(config(r, exe, "", .Apply))
+	testing.expect_value(t, res.outcome, Outcome.Applied)
+	testing.expect(t, !res.patched, "fell back to the asset")
+	testing.expect_value(t, read(exe), new_body)
+
+	// A patch whose hash is right but whose result is not the asset is
+	// refused the same way.
+	testing.expect_value(t, path.write(exe, old_body), nil)
+	os.remove(strings.concatenate({exe, ".old"}, ta))
+	wrong := diff(transmute([]byte)old_body, transmute([]byte)string("something else entirely"), ta)
+	testing.expect_value(t, path.write(path.join(r.dir, name, allocator = ta), string(wrong)), nil)
+	wrong_hash := string(hex.encode(hash.hash_bytes(.SHA256, wrong, ta), ta))
+	sign_sums(t, &r, strings.concatenate({new_hash, "  tool\n", wrong_hash, "  ", name, "\n"}, ta))
+	res = run(config(r, exe, "", .Apply))
+	testing.expect_value(t, res.outcome, Outcome.Applied)
+	testing.expect(t, !res.patched, "a patch to the wrong file is refused")
+	testing.expect_value(t, read(exe), new_body)
+}

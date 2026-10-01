@@ -19,7 +19,10 @@ base_url without a scheme is read from disk, which is how the tests work).
 The layout under the base is:
 
 	<asset>               one file per platform, named as Config.asset
-	sha256sums.txt        `sha256sum` output over the assets
+	<asset>.<hash16>.patch
+	                      optional: the patch from the build whose SHA-256
+	                      starts with hash16 to this asset (see patch.odin)
+	sha256sums.txt        `sha256sum` output over the assets and patches
 	sha256sums.txt.sig    64-byte Ed25519 signature of sha256sums.txt
 	version.txt           the release's version, for display only
 
@@ -30,15 +33,23 @@ running executable, so no version is parsed: version is for display and
 the development-build guard.
 
 Notify checks at most once per interval, recorded by a stamp under
-state_dir, and never changes anything. Apply downloads the asset, verifies
-it, renames the running executable to `<exe>.old`, moves the new one in,
-and runs it again with the same arguments: execve on Unix, spawn-wait-exit
-on Windows. The `.old` file is removed on the next run.
+state_dir, and never changes anything. Apply looks for a patch named after
+this executable's own hash first: it downloads it, checks its published
+hash, applies it to the executable's bytes and checks the result against
+the asset's published hash, so a patch can never yield anything but the
+released file. When no patch is listed, or it fails any check, the whole
+asset is downloaded and verified instead. Either way the new file is
+written beside the executable, the running one is renamed to `<exe>.old`,
+the new one moved in, and run again with the same arguments: execve on
+Unix, spawn-wait-exit on Windows. The `.old` file is removed on the next
+run.
 
 A development build (empty version) or an executable that is a symlink,
 which is how a checkout is installed, is refused rather than replaced.
 
-Memory: run allocates nothing from context.allocator. Paths, the checksum
+Memory: run allocates nothing from context.allocator except to apply a
+patch, when the executable, the patch and the result are held in memory
+for the moment it takes and freed before run returns. Paths, the checksum
 file, the signature and the messages live in fixed buffers on the stack
 and in the Result, files are hashed in chunks, and downloads stream to
 disk. The caps (4 KiB paths, 16 KiB of checksums, 128 bytes of version)
@@ -80,6 +91,9 @@ Outcome :: enum {
 // Result is returned by value; message and version read its inline buffers.
 Result :: struct {
 	outcome:     Outcome,
+	// The update came as a patch of this many bytes, not the whole asset.
+	patched:     bool,
+	patch_bytes: int,
 	message_buf: [256]byte,
 	message_len: int,
 	version_buf: [VERSION_CAP]byte,
@@ -219,21 +233,25 @@ run :: proc(cfg: Config) -> (r: Result) {
 		return failf(&r, .Update_Available, "update available: %s", version(&r))
 	}
 
-	if !fetch_to_file(base, cfg.asset, fresh, cfg.timeout) {
-		os.remove(fresh)
-		return failf(&r, .Failed, "cannot download %s", cfg.asset)
-	}
-	got: [HEX_DIGEST]byte
-	if err := file_hash(fresh, got[:]); err != nil || !strings.equal_fold(string(got[:]), want) {
-		os.remove(fresh)
-		return failf(&r, .Failed, "downloaded file does not match its published hash")
+	// A patch from this very build is the small download; anything about
+	// it that does not hold falls through to the whole asset.
+	if !apply_patch(base, cfg, fixed_string(&sums), string(have[:]), want, exe, fresh, &r) {
+		if !fetch_to_file(base, cfg.asset, fresh, cfg.timeout) {
+			os.remove(fresh)
+			return failf(&r, .Failed, "cannot download %s", cfg.asset)
+		}
+		got: [HEX_DIGEST]byte
+		if err := file_hash(fresh, got[:]); err != nil || !strings.equal_fold(string(got[:]), want) {
+			os.remove(fresh)
+			return failf(&r, .Failed, "downloaded file does not match its published hash")
+		}
 	}
 	if !swap(exe, old, fresh, &r) {
 		os.remove(fresh)
 		return r
 	}
 	if cfg.no_reexec {
-		return failf(&r, .Applied, "updated")
+		return failf(&r, .Applied, r.patched ? "updated by patch" : "updated")
 	}
 	args := cfg.args
 	if args == nil && len(os.args) > 1 {
@@ -241,6 +259,66 @@ run :: proc(cfg: Config) -> (r: Result) {
 	}
 	reexec(exe, args, &r)
 	return r
+}
+
+// apply_patch tries the patch named after this build: listed in the
+// signed sums, fetched beside the executable, its own hash checked, applied
+// to the executable's bytes, and the result checked against the asset's
+// published hash before it is written as the new file. false means the
+// caller downloads the whole asset; nothing is left behind either way.
+apply_patch :: proc(base: string, cfg: Config, sums, have, want, exe, fresh: string, r: ^Result) -> bool {
+	name_buf: [PATH_CAP]byte
+	name := patch_name(name_buf[:], cfg.asset, have)
+	if name == "" {
+		return false
+	}
+	patch_want, listed := published_hash_lookup(sums, name)
+	if !listed {
+		return false
+	}
+	patch_path: [PATH_CAP]byte
+	patch_file := fmt.bprintf(patch_path[:], "%s.patch", exe)
+	defer os.remove(patch_file)
+	if !fetch_to_file(base, name, patch_file, cfg.timeout) {
+		return false
+	}
+	got: [HEX_DIGEST]byte
+	if err := file_hash(patch_file, got[:]); err != nil || !strings.equal_fold(string(got[:]), patch_want) {
+		return false
+	}
+	old_bytes, oerr := os.read_entire_file_from_path(exe, context.allocator)
+	if oerr != nil {
+		return false
+	}
+	defer delete(old_bytes)
+	patch_bytes, perr := os.read_entire_file_from_path(patch_file, context.allocator)
+	if perr != nil {
+		return false
+	}
+	defer delete(patch_bytes)
+	new_bytes, ok := apply(old_bytes, patch_bytes)
+	if !ok {
+		return false
+	}
+	defer delete(new_bytes)
+	digest: [sha2.DIGEST_SIZE_256]byte
+	sha_bytes(new_bytes, digest[:])
+	hex := HEX
+	hexed: [HEX_DIGEST]byte
+	for b, i in digest {
+		hexed[2 * i] = hex[b >> 4]
+		hexed[2 * i + 1] = hex[b & 0xF]
+	}
+	if !strings.equal_fold(string(hexed[:]), want) {
+		return false
+	}
+	if os.write_entire_file(fresh, new_bytes) != nil {
+		os.remove(fresh)
+		return false
+	}
+	r.patched = true
+	r.patch_bytes = len(patch_bytes)
+	return true
 }
 
 // key_from_hex decodes a 64-character hex public key into dst, which must
