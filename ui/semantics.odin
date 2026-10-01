@@ -66,10 +66,14 @@ container_semantics :: proc(gtx: ^Ctx, s: ops.Semantics, index := -1) {
 // own, a root of the layer: a tooltip, a list box, a toaster. It returns
 // the node's id, for the parts drawn straight into the overlay to nest
 // under with child_semantics. The node is emitted at overlay_close, with
-// a popup's size as its box.
-overlay_semantics :: proc(gtx: ^Ctx, o: ^Overlay, s: ops.Semantics, key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
-	o.node = claim_id(gtx, key, loc)
+// a popup's size as its box, or rect for a plain overlay, which has no
+// size of its own. id names the node when the overlay already has an
+// area (a focusable surface, whose focus should show on the node); 0
+// claims a fresh one at key and loc.
+overlay_semantics :: proc(gtx: ^Ctx, o: ^Overlay, s: ops.Semantics, key: u64 = 0, id: ops.Area_Id = 0, rect: ops.Rect = {}, loc := #caller_location) -> ops.Area_Id {
+	o.node = id if id != 0 else claim_id(gtx, key, loc)
 	o.semantics = s
+	o.node_rect = rect
 	return o.node
 }
 

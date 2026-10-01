@@ -474,6 +474,13 @@ test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) 
 		tip = overlay_semantics(gtx, &o, {role = .Tooltip, label = "tip"})
 		popup_close(&o, {40, 16})
 	}
+	{
+		// A plain overlay has no size: its node takes the box it is given,
+		// and the id of the area it already has.
+		o := overlay_open(gtx)
+		testing.expect_value(t, overlay_semantics(gtx, &o, {role = .Status}, id = 77, rect = {0, 0, 30, 12}), ops.Area_Id(77))
+		close(&o)
+	}
 	got := make([dynamic]ops.Semantic, context.temp_allocator)
 	for op in h.scene.ops {
 		if s, ok := op.(ops.Semantic); ok {
@@ -482,7 +489,7 @@ test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) 
 	}
 	// The child closes first, naming the column as its parent; the
 	// column's op carries its own box and the role it declared.
-	testing.expect_value(t, len(got), 5)
+	testing.expect_value(t, len(got), 6)
 	testing.expect_value(t, got[2].parent, got[3].id)
 	testing.expect_value(t, got[3].semantics, ops.Semantics{role = .Group})
 	testing.expect_value(t, got[3].parent, ops.Area_Id(0))
@@ -490,6 +497,8 @@ test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) 
 	testing.expect_value(t, got[4].parent, ops.Area_Id(0))
 	testing.expect_value(t, got[4].rect, ops.Rect{0, 0, 40, 16})
 	testing.expect_value(t, got[4].semantics.role, ops.Role.Tooltip)
+	testing.expect_value(t, got[5].id, ops.Area_Id(77))
+	testing.expect_value(t, got[5].rect, ops.Rect{0, 0, 30, 12})
 	testing.expect_value(t, got[0].semantics, ops.Semantics{role = .List_Item, label = "Apple", states = {.Selected}})
 	testing.expect_value(t, got[0].rect, ops.Rect{0, 0, 80, 20})
 	testing.expect_value(t, got[0].parent, got[1].id)
