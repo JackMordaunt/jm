@@ -379,7 +379,7 @@ search_view :: proc(
 	full_screen := mode == .Full_Screen || mode == .Full_Screen_Contained
 	o: ui.Overlay
 	if full_screen {
-		o = ui.overlay_open(gtx, cs = ui.exact(window), root = true)
+		o = ui.overlay_open(gtx, cs = ui.exact(window), root = true, cover = true)
 	} else {
 		o = ui.overlay_open(gtx)
 	}
@@ -685,7 +685,7 @@ bottom_sheet_open :: proc(
 	w := min(window.x, max_width)
 	sh.width = w - 2 * tok.LIST_ITEM_LEADING_SPACE
 	if modal {
-		so := ui.overlay_open(gtx, cs = ui.exact(window), root = true)
+		so := ui.overlay_open(gtx, cs = ui.exact(window), root = true, cover = true)
 		scrim_id := ui.id_mix(id, 5)
 		for e in ui.events(gtx, scrim_id) {
 			if e.kind == .Press {
@@ -698,7 +698,7 @@ bottom_sheet_open :: proc(
 		}
 		ui.close(&so)
 	}
-	sh.overlay = ui.overlay_open(gtx, {0, max(offset, 0)}, ui.exact(window), root = true)
+	sh.overlay = ui.overlay_open(gtx, {0, max(offset, 0)}, ui.exact(window), root = true, cover = modal)
 	col := ui.column_open(gtx, align = .Center)
 	sh.flexes[0] = col
 	sh.nflex = 1
@@ -921,7 +921,7 @@ side_sheet_open :: proc(
 			return sh
 		}
 		sh.visible = true
-		so := ui.overlay_open(gtx, cs = ui.exact(window), root = true)
+		so := ui.overlay_open(gtx, cs = ui.exact(window), root = true, cover = true)
 		scrim_id := ui.id_mix(id, 2)
 		for e in ui.events(gtx, scrim_id) {
 			if e.kind == .Press {
@@ -933,7 +933,7 @@ side_sheet_open :: proc(
 			ops.input_area(gtx.scene, scrim_id, ops.Rect{0, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 		}
 		ui.close(&so)
-		sh.overlay = ui.overlay_open(gtx, {left ? -slide : slide, 0.001}, ui.exact(window), root = true)
+		sh.overlay = ui.overlay_open(gtx, {left ? -slide : slide, 0.001}, ui.exact(window), root = true, cover = true)
 		r := ui.row_open(gtx, align = .Fill)
 		sh.flexes[0] = r
 		sh.nflex = 1

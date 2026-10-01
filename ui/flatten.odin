@@ -39,8 +39,16 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
 	flatten_range(&st, 0, len(sc.ops), 0)
 	// Deferred macros run last, in the order met, so their draws and hits
 	// sit above everything else; one deferred from inside another runs
-	// after it. Each starts unclipped.
-	for i := 0; i < len(st.deferred); i += 1 {
+	// after it. A covering one runs in the order of its container's end
+	// instead, and one covering the window once nothing else is left.
+	// Each starts unclipped.
+	for i := 0; ; i += 1 {
+		if i == len(st.deferred) {
+			if len(st.held) == 0 {
+				break
+			}
+			release_held(&st, 0, all = true)
+		}
 		d := st.deferred[i]
 		m := sc.macros[d.id]
 		st.transform, st.clip = d.transform, NO_CLIP
@@ -99,7 +107,13 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 				t, side, shift = place(t, op.place, st.viewport)
 				append(&st.f.placed, Placed{op.place.key, side, shift})
 			}
-			append(&st.deferred, Deferred{op.id, t})
+			if op.cover {
+				append(&st.held, Covering{op.covers, {op.id, t}})
+			} else {
+				append(&st.deferred, Deferred{op.id, t})
+			}
+		case ops.Cover_End:
+			release_held(st, op.id)
 		case ops.Fill:
 			append(&st.f.draws, Draw{st.transform, st.clip, op})
 		case ops.Stroke:
@@ -221,4 +235,20 @@ place :: proc(t: ops.Affine, p: ops.Placement, viewport: ops.Rect) -> (ops.Affin
 		shift = {f32(inv.a * f64(dx) + inv.c * f64(dy)), f32(inv.b * f64(dx) + inv.d * f64(dy))}
 	}
 	return out, side, shift
+}
+
+// release_held moves the held Defers covering container id — every one,
+// when all — into the run order, keeping the order they were met in.
+@(private = "file")
+release_held :: proc(st: ^Flattener, id: ops.Area_Id, all := false) {
+	kept := 0
+	for h in st.held {
+		if all || h.covers == id {
+			append(&st.deferred, h.deferred)
+		} else {
+			st.held[kept] = h
+			kept += 1
+		}
+	}
+	resize(&st.held, kept)
 }

@@ -176,6 +176,50 @@ test_drawer_variants_open_close_and_select :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_modal_drawer_covers_popups_its_content_raises :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		m := (^Nav_Model)(user)
+		// The drawer comes first, as in a scaffold; the content after it
+		// raises a popup of its own, as a FAB menu or a snackbar does.
+		st := ui.stack_open(gtx)
+		defer ui.close(&st)
+		if navigation_drawer(gtx, ITEMS[:], &m.selected, 300, variant = .Modal, open = &m.open) {
+			m.open = false
+		}
+		o := ui.overlay_open(gtx, {500, 250})
+		defer ui.close(&o)
+		if button(gtx, "Popup") {
+			m.clicked += 1
+		}
+	}
+	m := Nav_Model{open = true}
+	p: ui.Probe
+	ui.probe_init(&p, view, &m, {800, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	ui.probe_advance(&p, 120, 0.016)
+
+	// A press on the popup lands on the scrim: the drawer closes and the
+	// popup never hears it.
+	popup, ok := bounds(&p, "Popup")
+	testing.expect(t, ok)
+	click_at(&p, {popup.x + popup.w / 2, popup.y + popup.h / 2})
+	testing.expect(t, !m.open)
+	testing.expect_value(t, m.clicked, 0)
+	// Closed, the popup takes presses again.
+	ui.probe_advance(&p, 120, 0.016)
+	testing.expect(t, ui.probe_click(&p, "Popup"))
+	testing.expect_value(t, m.clicked, 1)
+
+	// Picking a destination closes it.
+	m.open = true
+	ui.probe_advance(&p, 120, 0.016)
+	testing.expect(t, ui.probe_click(&p, "Rooms"))
+	testing.expect_value(t, m.selected, 2)
+	testing.expect(t, !m.open)
+}
+
+@(test)
 test_flexible_bar_goes_horizontal_and_centres :: proc(t: ^testing.T) {
 	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m := (^Nav_Model)(user)

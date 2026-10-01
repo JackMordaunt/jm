@@ -168,7 +168,9 @@ Drawer_Scroll :: struct {
 // Modal takes none and draws over the content, in an overlay, behind a
 // scrim that closes it on a press, as does Escape on a focused item. Open
 // runs on the default-spatial spring and close on fast-effects, as the
-// spec's asymmetric motion asks.
+// spec's asymmetric motion asks. A modal drawer covers the whole of the
+// container it is called in — its later siblings and the popups they
+// raise too — wherever in it the call sits.
 //
 // scroll is the item list's scroll position (see Drawer_Scroll). Pass one
 // to keep it yourself: to restore it, persist it, or share it between the
@@ -232,7 +234,7 @@ navigation_drawer :: proc(
 
 	o: ui.Overlay
 	if v == .Modal {
-		o = ui.overlay_open(gtx)
+		o = ui.overlay_open(gtx, cover = true)
 		scrim_id := ui.id_mix(p.id, 0xffff)
 		ops.fill(gtx.scene, ops.Rect{-1e5, -1e5, 2e5, 2e5}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * clamp(prog, 0, 1)))
 		if shown && open != nil {
@@ -697,7 +699,7 @@ navigation_rail :: proc(
 
 	o: ui.Overlay
 	if modal {
-		o = ui.overlay_open(gtx)
+		o = ui.overlay_open(gtx, cover = true)
 		if scrim > 0 {
 			ops.fill(gtx.scene, ops.Rect{-1e5, -1e5, 2e5, 2e5}, ops.with_alpha(color(tok.SCRIM_CONTAINER_COLOR), tok.SCRIM_CONTAINER_OPACITY * scrim))
 		}

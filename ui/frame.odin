@@ -80,7 +80,7 @@ Frame :: struct {
 	tags:  [dynamic]ops.Tag,
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
 	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
-	scene:   ^ops.Scene, // resources: paths, runs, fonts, images
+	scene:   ^ops.Scene, // resources: paths, runs, fonts, images //review:ignore odin-destroy-incomplete borrowed: flatten points it at the caller's scene
 	stacks:  Flatten_Stacks, // flatten's scratch, not part of the result
 }
 
@@ -92,6 +92,14 @@ Flatten_Stacks :: struct {
 	transforms: [dynamic]ops.Affine, // the transforms pushed so far, innermost last
 	clips:      [dynamic]Clip_Id, // likewise the clips
 	deferred:   [dynamic]Deferred, // the Defers met, run after everything else
+	held:       [dynamic]Covering, // covering Defers met, waiting for their Cover_End
+}
+
+// Covering is a Defer waiting for the end of the container it covers.
+@(private)
+Covering :: struct {
+	covers:   ops.Area_Id,
+	deferred: Deferred,
 }
 
 // Deferred is a Defer met during flatten: its macro and the transform to
@@ -112,6 +120,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.stacks.transforms = make([dynamic]ops.Affine, allocator)
 	f.stacks.clips = make([dynamic]Clip_Id, allocator)
 	f.stacks.deferred = make([dynamic]Deferred, allocator)
+	f.stacks.held = make([dynamic]Covering, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -124,6 +133,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.stacks.transforms)
 	clear(&f.stacks.clips)
 	clear(&f.stacks.deferred)
+	clear(&f.stacks.held)
 	f.scene = nil
 }
 
@@ -137,5 +147,6 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.stacks.transforms)
 	delete(f.stacks.clips)
 	delete(f.stacks.deferred)
+	delete(f.stacks.held)
 	f^ = {}
 }

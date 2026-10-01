@@ -132,6 +132,7 @@ Container :: struct {
 	pad:      Padding,
 	style:    Box_Style,
 	body:     ops.Macro_Id,
+	covered:  bool, // an overlay covers it: its end is a Cover_End
 	extent:   ops.Size, // overlay: max child size; flex: max cross in .y
 	baseline: f32,
 	// Flex only.
@@ -760,6 +761,7 @@ flex_close :: proc(f: ^Flex) {
 	memo.weights = c.weights
 	memo.count = c.count
 	done := container_pop(gtx, f.index)
+	cover_close(gtx, &done)
 	widget_close(gtx, &done.place, {size, baseline})
 	f.index = -1
 }
@@ -824,6 +826,7 @@ wrap_close :: proc(f: ^Flex) {
 	}
 	size := constrain(c.cs, {width, y})
 	done := container_pop(gtx, f.index)
+	cover_close(gtx, &done)
 	widget_close(gtx, &done.place, {size, baseline})
 	f.index = -1
 }
@@ -1008,6 +1011,7 @@ Overlay :: struct {
 	scope:  ops.Area_Id,
 	parent: ops.Area_Id, // the layout's root_parent, set aside
 	root:   bool,
+	cover:  bool, // stacks over the enclosing container's later children too
 	pushed: bool, // at was non-zero: a translate to pop
 	active: bool,
 	// discard, set before end, drops the layer: recorded, never drawn or
@@ -1023,11 +1027,20 @@ Overlay :: struct {
 // place it against that widget — or from the window's top-left when root. They lay out from a fresh root
 // under cs — they are not children of the container around the call, and
 // take no space in it. A menu, tooltip or dialog is one of these.
-overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF, INF}}, root := false) -> Overlay {
+//
+// An overlay stacks over what was recorded before it, so a popup raised
+// later — by a sibling after it — lands on top. One with cover stacks over
+// the whole of its enclosing container instead: everything recorded in it,
+// before or after, and every overlay that raises, sit under it, while an
+// overlay raised from inside it still sits above. That is a modal: a
+// dialog, a modal sheet or drawer and its scrim. At the root it covers the
+// window. Nothing else decides the order: no overlay knows of another.
+overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF, INF}}, root := false, cover := false) -> Overlay {
 	o := Overlay {
 		gtx    = gtx,
 		saved  = gtx.constraints,
 		root   = root,
+		cover  = cover,
 		active = true,
 	}
 	o.macro = ops.macro_open(gtx.scene)
@@ -1054,10 +1067,15 @@ overlay_close :: proc(o: ^Overlay) {
 	}
 	o.active = false
 	gtx := o.gtx
+	covers: ops.Area_Id
 	if l := gtx.layout; l != nil {
 		containers_attach(l, o.stack)
 		l.scope = o.scope
 		l.root_parent = o.parent
+		if c := innermost(l); o.cover && c != nil {
+			c.covered = true
+			covers = c.place.id
+		}
 	}
 	gtx.constraints = o.saved
 	if o.pushed {
@@ -1068,9 +1086,9 @@ overlay_close :: proc(o: ^Overlay) {
 		return
 	}
 	if o.place.set {
-		ops.defer_place(gtx.scene, o.macro, o.place)
+		ops.defer_place(gtx.scene, o.macro, o.place, o.cover, covers)
 	} else {
-		ops.defer_call(gtx.scene, o.macro, o.root)
+		ops.defer_call(gtx.scene, o.macro, o.root, o.cover, covers)
 	}
 }
 
@@ -1409,5 +1427,15 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 			baseline += off.y
 		}
 	}
+	cover_close(gtx, &c)
 	widget_close(gtx, &c.place, {size, baseline})
+}
+
+// cover_close ends what a covering overlay covers, once the container's
+// children are all recorded: see overlay_open's cover.
+@(private)
+cover_close :: proc(gtx: ^Ctx, c: ^Container) {
+	if c.covered {
+		ops.cover_end(gtx.scene, c.place.id)
+	}
 }

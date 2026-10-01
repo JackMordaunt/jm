@@ -48,10 +48,24 @@ Call :: struct {
 // A placed Defer (place.set) is a popup: its macro is laid out from its
 // own origin, and flatten chooses where that origin lands so the popup
 // stays in the viewport (see Placement).
+//
+// A covering Defer (cover) stacks above everything recorded in a
+// container, not only what came before it: it keeps the transform current
+// where it is met but joins the run order at the Cover_End for covers, so
+// the container's later children and the Defers they raise sit under it.
+// covers 0 is the window: it joins once every other Defer has run.
 Defer :: struct {
-	id:    Macro_Id,
-	root:  bool,
-	place: Placement,
+	id:     Macro_Id,
+	root:   bool,
+	cover:  bool,
+	covers: Area_Id,
+	place:  Placement,
+}
+
+// Cover_End is the end of container id: the covering Defers that name it
+// join the run order here, in the order they were met.
+Cover_End :: struct {
+	id: Area_Id,
 }
 
 // Side is which side of its anchor a popup opens on. After is the
@@ -154,6 +168,7 @@ Op :: union {
 	Tag,
 	Debug_Box,
 	Shadow,
+	Cover_End,
 }
 
 // Shadow is the soft shadow of a rounded rect, as a CSS box-shadow draws
@@ -340,16 +355,24 @@ call :: proc(o: ^Scene, id: Macro_Id) {
 }
 
 // defer_place runs macro id after the rest of the frame, on top, as a
-// popup placed by place; see Defer and Placement.
-defer_place :: proc(o: ^Scene, id: Macro_Id, place: Placement) {
+// popup placed by place; with cover, over all of container covers. See
+// Defer and Placement.
+defer_place :: proc(o: ^Scene, id: Macro_Id, place: Placement, cover := false, covers := Area_Id(0)) {
 	p := place
 	p.set = true
-	append(&o.ops, Defer{id = id, place = p})
+	append(&o.ops, Defer{id = id, cover = cover, covers = covers, place = p})
 }
 
-// defer_call runs macro id after the rest of the frame, on top; see Defer.
-defer_call :: proc(o: ^Scene, id: Macro_Id, root := false) {
-	append(&o.ops, Defer{id = id, root = root})
+// defer_call runs macro id after the rest of the frame, on top; with
+// cover, over all of container covers. See Defer.
+defer_call :: proc(o: ^Scene, id: Macro_Id, root := false, cover := false, covers := Area_Id(0)) {
+	append(&o.ops, Defer{id = id, root = root, cover = cover, covers = covers})
+}
+
+// cover_end marks the end of container id, where the Defers covering it
+// join the run order; see Cover_End.
+cover_end :: proc(o: ^Scene, id: Area_Id) {
+	append(&o.ops, Cover_End{id})
 }
 
 // Resources.

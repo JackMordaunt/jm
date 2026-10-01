@@ -24,8 +24,9 @@ ENCODE_MAGIC :: "UIOP"
 // Defer; 8 gave Defer its Placement; 9 added Shadow; 10 gave Glyph its
 // cluster; 11 its font; 12 gave Input_Area a cursor and Event_Kind Paste;
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
-// flags byte, bit 0 yields and bit 1 observes.
-ENCODE_VERSION :: u8(14)
+// flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
+// covers and added Cover_End.
+ENCODE_VERSION :: u8(15)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -373,6 +374,8 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 14)
 		put_u32(w, u32(v.id))
 		append(w, v.root ? 1 : 0)
+		append(w, v.cover ? 1 : 0)
+		put_u64(w, u64(v.covers))
 		append(w, v.place.set ? 1 : 0)
 		if v.place.set {
 			put_u64(w, u64(v.place.key))
@@ -381,6 +384,9 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 			append(w, u8(v.place.side), u8(v.place.align))
 			put_f32(w, v.place.gap)
 		}
+	case Cover_End:
+		append(w, 17)
+		put_u64(w, u64(v.id))
 	case Debug_Box:
 		append(w, 15)
 		put_u64(w, u64(v.id))
@@ -634,6 +640,12 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			return nil, false
 		}
 		v.root = root == 1
+		cover := get_u8(r) or_return
+		if cover > 1 {
+			return nil, false
+		}
+		v.cover = cover == 1
+		v.covers = Area_Id(get_u64(r) or_return)
 		placed := get_u8(r) or_return
 		if placed > 1 {
 			return nil, false
@@ -658,6 +670,10 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.radius = get_f32(r) or_return
 		v.blur = get_f32(r) or_return
 		v.color = get_color(r) or_return
+		return v, true
+	case 17:
+		v: Cover_End
+		v.id = Area_Id(get_u64(r) or_return)
 		return v, true
 	case 15:
 		v: Debug_Box

@@ -253,10 +253,8 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	defer ui.close(&r)
 	if docked {
 		m3.navigation_drawer(gtx, items, &m.page, width = 300)
-	} else if m.nav_open {
-		if m3.navigation_drawer(gtx, items, &m.page, width = 300, variant = .Modal, open = &m.nav_open) {
-			m.nav_open = false
-		}
+	} else if m3.navigation_drawer(gtx, items, &m.page, width = 300, variant = .Modal, open = &m.nav_open) {
+		m.nav_open = false
 	}
 	ui.flexible(gtx, 1)
 	body := ui.column_open(gtx)

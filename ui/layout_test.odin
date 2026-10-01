@@ -720,6 +720,67 @@ test_overlay_takes_no_space_and_draws_last :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_covering_overlay_stacks_over_its_whole_container :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		// At the root, recorded first: it covers the window, so it runs last.
+		o := overlay_open(gtx, cover = true); defer close(&o)
+		label(gtx, "window")
+	}
+	{
+		col := column_open(gtx); defer close(&col)
+		{
+			o := overlay_open(gtx, cover = true); defer close(&o)
+			label(gtx, "modal")
+			n := overlay_open(gtx); defer close(&n)
+			label(gtx, "from modal")
+		}
+		label(gtx, "page")
+		{
+			o := overlay_open(gtx); defer close(&o)
+			label(gtx, "popup")
+		}
+		{
+			r := row_open(gtx); defer close(&r)
+			{
+				o := overlay_open(gtx, cover = true); defer close(&o)
+				label(gtx, "row modal")
+			}
+			o := overlay_open(gtx); defer close(&o)
+			label(gtx, "row popup")
+		}
+		o := overlay_open(gtx); defer close(&o)
+		label(gtx, "late")
+	}
+	f: Frame
+	frame_init(&f, context.temp_allocator)
+	flatten(&h.scene, &f)
+	names := make([dynamic]string, context.temp_allocator)
+	for tg in f.tags {
+		append(&names, tg.name)
+	}
+	// Each modal sits over everything in its own container and what that
+	// raises, under what its container's later siblings raise; one raised
+	// from inside a modal sits over it.
+	want := []string{"page", "popup", "row popup", "row modal", "late", "modal", "from modal", "window"}
+	testing.expect_value(t, len(names), len(want))
+	for w, i in want {
+		if i < len(names) {
+			testing.expect_value(t, names[i], w)
+		}
+	}
+	// One draw per label, in the same order. The row's modal still lands
+	// where it was recorded: the row's origin, below "page".
+	testing.expect_value(t, len(f.draws), len(want))
+	if len(f.draws) == len(want) {
+		testing.expect_value(t, ops.apply(f.draws[3].transform, {0, 0}).y, 14)
+	}
+}
+
+@(test)
 test_discarded_overlay_is_never_drawn :: proc(t: ^testing.T) {
 	h: Harness
 	harness_init(&h)

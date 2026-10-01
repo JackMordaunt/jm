@@ -40,6 +40,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "call %d", v.id)
 		case Defer:
 			fmt.sbprintf(&sb, "defer %d%s", v.id, v.root ? " root" : "")
+			if v.cover {
+				fmt.sbprintf(&sb, " covers %d", v.covers)
+			}
 			if v.place.set {
 				a := v.place.anchor
 				fmt.sbprintf(&sb, " place %v %v of %v %v %v size %v %v gap %v", v.place.side, v.place.align, a.x, a.y, a.w, a.h, v.place.size.x, v.place.size.y, v.place.gap)
@@ -70,6 +73,8 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			}
 		case Tag:
 			write_tag(&sb, v)
+		case Cover_End:
+			fmt.sbprintf(&sb, "cover end %d", v.id)
 		case Debug_Box:
 			fmt.sbprintf(&sb, "box %d %s %vx%v min %vx%v max %vx%v %s:%d", v.id, v.kind, v.size.x, v.size.y, v.min.x, v.min.y, v.max.x, v.max.y, v.file, v.line)
 		}

@@ -997,7 +997,7 @@ dialog :: proc(
 	}
 	chosen := -1
 	id := ui.claim_id(gtx, key, loc)
-	o := ui.overlay_open(gtx, cs = ui.loose(window), root = true)
+	o := ui.overlay_open(gtx, cs = ui.loose(window), root = true, cover = true)
 	defer ui.close(&o)
 	defer o.discard = !open^ // closed this frame: draw nothing, catch nothing
 	for e in ui.events(gtx, id) {
