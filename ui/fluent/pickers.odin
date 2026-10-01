@@ -305,6 +305,10 @@ listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, open: ^bool, options: []string, s
 	// the window (ui.popup_open).
 	ov := ui.popup_open(gtx, {0, 0, w, h}, id, .Below, .Start, tok.SPACING_VERTICAL_XXS)
 	defer ui.popup_close(&ov, {pw, ph})
+	// The list as a widget of the popup, so the options nest under it.
+	lp := ui.widget_open(gtx, 0x11b1)
+	defer ui.widget_close(gtx, &lp, {size = {pw, ph}})
+	ui.semantics(gtx, &lp, {role = .List})
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	box_id := ui.id_mix(id, 0xfffe)
 	for e in ui.events(gtx, box_id) {
@@ -322,7 +326,7 @@ listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, open: ^bool, options: []string, s
 	for i in d.scroll ..< min(d.scroll + rows, n) {
 		row := ops.Rect{LISTBOX_PAD + tok.STROKE_WIDTH_THIN, y, pw - 2 * (LISTBOX_PAD + tok.STROKE_WIDTH_THIN), row_h}
 		is_sel := chosen != nil ? chosen[i] : i == selected
-		if option(gtx, ui.id_mix(id, u64(0x0900 + i)), row, options[i], is_sel, check, i == d.active && d.by_keys) {
+		if option(gtx, &lp, ui.id_mix(id, u64(0x0900 + i)), row, options[i], is_sel, check, i == d.active && d.by_keys) {
 			r.picked = i
 		}
 		y += row_h + LISTBOX_GAP
@@ -372,7 +376,7 @@ step_listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, k: ui.Key, n: int) -> (picke
 // and the keyboard-active row draws a 2px Stroke_Focus2 ring 2px
 // outside itself. Returns true on a click.
 @(private = "file")
-option :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, row: ops.Rect, label: string, selected, check, active: bool) -> bool {
+option :: proc(gtx: ^ui.Ctx, lp: ^ui.Placement, id: ops.Area_Id, row: ops.Rect, label: string, selected, check, active: bool) -> bool {
 	c := control(gtx, id, row, .Live)
 	bg := color_for({.Neutral_Background1, .Neutral_Background1_Hover, .Neutral_Background1_Pressed, .Neutral_Background1}, c)
 	fg := color_for({.Neutral_Foreground1, .Neutral_Foreground1_Hover, .Neutral_Foreground1_Pressed, .Neutral_Foreground_Disabled}, c)
@@ -392,6 +396,7 @@ option :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, row: ops.Rect, label: string, sele
 	}
 	listen(gtx, c.st, id, row)
 	ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
+	ui.part_semantics(gtx, lp, id, row, {role = .List_Item, label = label, states = state_if(selected, {.Selected})})
 	return c.clicked
 }
 
@@ -607,6 +612,9 @@ combobox :: proc(
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id, flag^), k.line)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 
+	if flag^ {
+		ui.key_interest(gtx, p.id, .Escape) // the key loop above closes on it, focused or not
+	}
 	pk := listbox(gtx, p.id, flag, shown, shown_sel, sz.x, sz.y)
 	if pk.picked >= 0 {
 		selected^ = pick_shown(pk.picked, map_back)
@@ -619,6 +627,9 @@ combobox :: proc(
 		}
 	}
 	r.opened = flag^
+	sem := field_semantics(gtx, .Combo_Box, name, placeholder, ui.frame_string(gtx, typed ? string(s.buf[:]) : sel_text), c.disabled)
+	sem.states += {.Expandable} + state_if(flag^, {.Expanded})
+	ui.semantics(gtx, &p, sem)
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
@@ -749,6 +760,9 @@ select :: proc(
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id, d.open), k.line, inside = true)
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
+	if d.open {
+		ui.key_interest(gtx, p.id, .Escape) // the key loop above closes on it, focused or not
+	}
 	pk := listbox(gtx, p.id, &d.open, options, selected^, sz.x, sz.y, check = false)
 	if pk.picked >= 0 {
 		selected^ = pk.picked
@@ -756,6 +770,9 @@ select :: proc(
 	}
 	r.changed = selected^ != old
 	r.opened = d.open
+	sem := field_semantics(gtx, .Combo_Box, name, placeholder, selected^ >= 0 && selected^ < len(options) ? options[selected^] : "", c.disabled)
+	sem.states += {.Expandable} + state_if(d.open, {.Expanded})
+	ui.semantics(gtx, &p, sem)
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
 	return
 }
@@ -1026,6 +1043,9 @@ spin_button :: proc(
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ops.tag(gtx.scene, up_id, "increment")
 	ops.tag(gtx.scene, down_id, "decrement")
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, shown), c.disabled))
+	ui.part_semantics(gtx, &p, up_id, up, {role = .Button, label = "increment", states = state_if(cu.disabled, {.Disabled})})
+	ui.part_semantics(gtx, &p, down_id, down, {role = .Button, label = "decrement", states = state_if(cd.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
 	return value^ != old
 }
@@ -1168,6 +1188,7 @@ search_box :: proc(
 	}
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id), k.line)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, str), c.disabled))
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
@@ -1340,6 +1361,9 @@ tag_picker :: proc(
 
 	k := field_colors(appearance, c, invalid, .Outline_Only)
 	rad := paint_field(gtx, area, appearance, k)
+	sem := field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, query), c.disabled)
+	sem.states += {.Expandable} + state_if(flag^, {.Expanded})
+	ui.semantics(gtx, &p, sem)
 	listen(gtx, c.st, p.id, area, FIELD_KINDS, .Text) // under the tags, which take their own clicks
 	end_pad := tok.SPACING_HORIZONTAL_M + m.icon + m.icon_gap
 	ops.clip_push(gtx.scene, ops.Rect{tok.STROKE_WIDTH_THIN, tok.STROKE_WIDTH_THIN, sz.x - end_pad - tok.STROKE_WIDTH_THIN, sz.y - 2 * tok.STROKE_WIDTH_THIN})
@@ -1349,7 +1373,7 @@ tag_picker :: proc(
 		}
 		// A forced picker's tags rest; only a live one's react.
 		tag_state: Interaction = c.disabled ? .Disabled : state == .Live ? .Live : .Enabled
-		tw := paint_tag(gtx, ui.id_mix(p.id, u64(0x7a00 + i)), {x, tag_y}, o, m, tag_state)
+		tw := paint_tag(gtx, &p, ui.id_mix(p.id, u64(0x7a00 + i)), {x, tag_y}, o, m, tag_state)
 		if tw < 0 {
 			chosen[i] = false
 			r.changed = true
@@ -1377,6 +1401,9 @@ tag_picker :: proc(
 	icon(gtx, .Chevron_Down, {sz.x - tok.SPACING_HORIZONTAL_M - m.icon, (m.min_h - m.icon) / 2}, m.icon, k.icon)
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id, flag^), k.line)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
+	if flag^ {
+		ui.key_interest(gtx, p.id, .Escape) // the key loop above closes on it, focused or not
+	}
 	pk := listbox(gtx, p.id, flag, shown, -1, sz.x, sz.y, check = false)
 	if pk.picked >= 0 {
 		pick(chosen, s, idx[pk.picked], &r)
@@ -1391,7 +1418,7 @@ tag_picker :: proc(
 // end) and reads its dismiss click. Returns the tag's width, negated
 // when its dismiss was clicked.
 @(private = "file")
-paint_tag :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, pos: ops.Point, label: string, m: Tag_Picker_Metrics, state: Interaction) -> f32 {
+paint_tag :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, id: ops.Area_Id, pos: ops.Point, label: string, m: Tag_Picker_Metrics, state: Interaction) -> f32 {
 	t := shape_style(gtx, label, m.tag_style)
 	w := m.tag_pad + tok.SPACING_HORIZONTAL_XXS + t.width + tok.SPACING_HORIZONTAL_XXS + m.tag_icon + m.tag_pad
 	r := ops.Rect{pos.x, pos.y, w, m.tag_h}
@@ -1408,6 +1435,7 @@ paint_tag :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, pos: ops.Point, label: string, 
 	paint_focus_outline(gtx, c, rr)
 	listen(gtx, c.st, id, r)
 	ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = label, states = state_if(disabled, {.Disabled})})
 	return c.clicked ? -w : w
 }
 
@@ -1499,6 +1527,7 @@ swatch_picker :: proc(
 	rows := cols > 0 ? (n + cols - 1) / cols : 0
 	sz := ui.constrain(gtx.constraints, {f32(cols) * m.side + f32(max(cols - 1, 0)) * gap, f32(rows) * m.side + f32(max(rows - 1, 0)) * gap})
 	old := selected^
+	ui.semantics(gtx, &p, {role = .Radio_Group, states = state_if(state == .Disabled, {.Disabled})})
 	rad: f32
 	switch shape {
 	case .Square:
@@ -1576,6 +1605,7 @@ swatch_picker :: proc(
 		}
 		listen(gtx, c.st, id, r)
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, sw.name))
+		ui.part_semantics(gtx, &p, id, r, {role = .Radio, label = sw.name, states = state_if(is_sel, {.Checked}) + state_if(c.disabled, {.Disabled})})
 	}
 	ui.widget_close(gtx, &p, {size = sz})
 	return selected^ != old
@@ -1910,7 +1940,9 @@ color_slider :: proc(
 	thumb_fill := channel == .Hue ? hsv_to_rgb({hsv.h, 1, 1, 1}) : hsv_to_rgb({hsv.h, hsv.s, hsv.v, 1})
 	paint_color_thumb(gtx, c, centre, thumb_fill, true)
 	listen(gtx, c.st, p.id, area, COLOR_KINDS)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : channel == .Hue ? "hue" : channel == .Saturation ? "saturation" : "value"))
+	said := ui.frame_string(gtx, name != "" ? name : channel == .Hue ? "hue" : channel == .Saturation ? "saturation" : "value")
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Slider, label = said, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(get(hsv, channel)))), states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return hsv^ != old
 }
@@ -1994,6 +2026,7 @@ alpha_slider :: proc(
 	paint_color_thumb(gtx, c, centre, {255, 255, 255, 255}, true, ring_fill = ops.with_alpha(base, hsv.a))
 	listen(gtx, c.st, p.id, area, COLOR_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
+	ui.semantics(gtx, &p, {role = .Slider, label = name, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(value))), states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return hsv^ != old
 }
@@ -2146,6 +2179,7 @@ rating :: proc(
 		paint_star(gtx, r, fill, filled_col, filled_col, false)
 		paint_focus_outline(gtx, cs[i], {r, tok.BORDER_RADIUS_MEDIUM})
 	}
+	ui.semantics(gtx, &p, {role = .Slider, label = name, value = ui.frame_string(gtx, fmt.tprintf("%g of %d", shown, n)), states = state_if(state == .Disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return value^ != old
 }
@@ -2245,6 +2279,7 @@ rating_display :: proc(
 		draw_text(gtx, ct, {x, (h - tst.line_height) / 2}, fg)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, value_text != "" ? value_text : "rating"))
+	ui.semantics(gtx, &p, {role = .Text, label = "rating", value = ui.frame_string(gtx, fmt.tprintf("%g of %d", shown, max(max_stars, 1))), description = ui.frame_string(gtx, count_text)})
 	return ui.widget_close(gtx, &p, {sz, (h - tst.line_height) / 2 + baseline_of(vt)})
 }
 

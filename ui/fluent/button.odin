@@ -251,7 +251,9 @@ button :: proc(
 	inner := appearance == .Primary && !c.hovered ? tok.STROKE_WIDTH_THICK : 0
 	paint_focus_inset(gtx, c, area, corners_all(ring), border, paint_border = false, inner = inner, inner_color = color(.Neutral_Foreground_On_Brand))
 	listen(gtx, c.st, p.id, area)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, icon_only ? name : label))
+	said := ui.frame_string(gtx, icon_only ? name : label)
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
 	return c.clicked
 }

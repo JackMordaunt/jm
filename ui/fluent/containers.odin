@@ -76,7 +76,12 @@ card_open :: proc(
 	cp := new(Card_Paint, gtx.allocator)
 	cp^ = {appearance, size, interactive, selected, clicked, name, state}
 	spacing, _ := card_spacing(size)
-	return ui.box_open(gtx, {padding = ui.pad_all(spacing), paint = paint_card, user = cp}, key, loc)
+	box := ui.box_open(gtx, {padding = ui.pad_all(spacing), paint = paint_card, user = cp}, key, loc)
+	// A card that takes a click is a button to a reader; one that only
+	// holds its children is a group.
+	role: ops.Role = interactive || selected != nil ? .Button : .Group
+	ui.container_semantics(gtx, {role = role, label = name, states = state_if(selected != nil && selected^, {.Selected}) + state_if(state == .Disabled, {.Disabled})})
+	return box
 }
 
 // card is card_open as a guard: `if fluent.card(gtx, .Outline) { … }`
@@ -308,6 +313,7 @@ divider :: proc(
 	}
 	mid := vertical ? size.x / 2 : size.y / 2
 	line := color(line_role)
+	ui.semantics(gtx, &p, {role = .Separator, label = text})
 	seg :: proc(gtx: ^ui.Ctx, vertical: bool, from, to, mid, w: f32, c: ops.Color) {
 		if to - from <= 0 || !ui.painted(c) {
 			return
@@ -550,6 +556,7 @@ tab_list :: proc(
 		}
 	}
 	sz := ui.constrain(gtx.constraints, total)
+	ui.semantics(gtx, &p, {role = .Tab_List})
 	changed := false
 	ind := ui.widget_data(gtx, p.id, Tab_Indicator) if state == .Live else nil
 	pos: f32 = 0
@@ -637,6 +644,7 @@ tab_list :: proc(
 		}
 		listen(gtx, c.st, id, rect)
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
+		ui.part_semantics(gtx, &p, id, rect, {role = .Tab, label = label, states = state_if(on, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	}
 	if !circular {
 		if bar_target.w > 0 && ui.painted(bar_color) {
@@ -713,6 +721,7 @@ toolbar_open :: proc(gtx: ^ui.Ctx, size := Size.Medium, vertical := false, key: 
 	toolbar_depth += 1
 	t: Toolbar
 	t.inset = ui.inset_open(gtx, toolbar_padding(size, vertical), key, loc)
+	ui.container_semantics(gtx, {role = .Toolbar})
 	if vertical {
 		t.flex = ui.column_open(gtx, align = .Center)
 	} else {
@@ -929,6 +938,7 @@ accordion_header :: proc(gtx: ^ui.Ctx, header: string, open: ^bool, ic: Icon, si
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, header))
+	ui.semantics(gtx, &p, {role = .Button, label = header, states = ops.States{.Expandable} + state_if(open^, {.Expanded}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 }
 

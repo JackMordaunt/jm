@@ -190,6 +190,13 @@ surface_open :: proc(
 			open^ = false
 		}
 	}
+	// Escape reaches the surface's id by key_interest below whether or
+	// not the surface holds focus; paint_popover reads it too when it does.
+	for e in ui.events(gtx, id) {
+		if e.kind == .Key && e.key == .Escape {
+			open^ = false
+		}
+	}
 	if !open^ {
 		d.was_open = false
 		return
@@ -242,6 +249,7 @@ surface_open :: proc(
 		cs.min.y = 0
 	}
 	p.overlay = ui.popup_open(gtx, {0, 0, anchor.x, anchor.y}, id, asked, align == .Start ? .Start : .Center, gap, cs)
+	ui.key_interest(gtx, id, .Escape)
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	if slide != {} {
 		ops.transform_push(gtx.scene, ops.translate(slide.x, slide.y))
@@ -254,6 +262,8 @@ surface_open :: proc(
 	// The content column fills the surface, so a fixed-width surface's
 	// rows span it.
 	p.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_S, align = .Fill, key = u64(ui.id_mix(id, 2)))
+	// A non-modal dialog named as its tag is: the page behind stays live.
+	ui.container_semantics(gtx, {role = .Dialog, label = name})
 	current_popover = ui.widget_data(gtx, id, Popover)
 	current_popover^ = p
 	return
@@ -578,10 +588,14 @@ teaching_popover_header :: proc(gtx: ^ui.Ctx, text: string, ic := Icon.None, dis
 // styles.ts:14-48).
 teaching_popover_title :: proc(gtx: ^ui.Ctx, text: string, dismiss := false, key: u64 = 0, loc := #caller_location) {
 	brand := is_teaching_brand()
+	if current_teaching != nil {
+		// The title names the popover's column, by its handle.
+		ui.container_semantics(gtx, {role = .Dialog, label = text}, current_teaching.col.index)
+	}
 	r := ui.row_open(gtx, align = .Start, key = key, loc = loc)
 	defer ui.close(&r)
 	st := tok.Type_Style{weight = tok.FONT_WEIGHT_SEMIBOLD, size = tok.FONT_SIZE_BASE400, line_height = tok.LINE_HEIGHT_BASE400}
-	style_text(gtx, text, st, color(brand ? .Neutral_Foreground_On_Brand : .Neutral_Foreground1))
+	style_text(gtx, text, st, color(brand ? .Neutral_Foreground_On_Brand : .Neutral_Foreground1), heading = true)
 	if dismiss {
 		ui.fill_space(gtx)
 		teaching_dismiss(gtx, 2)
@@ -615,6 +629,7 @@ teaching_popover_media :: proc(gtx: ^ui.Ctx, length := Teaching_Media.Medium, pa
 		icon(gtx, .Image, {(sz.x - 32) / 2, (sz.y - 32) / 2}, 32, color(.Neutral_Foreground3))
 	}
 	ops.clip_pop(gtx.scene)
+	ui.semantics(gtx, &p, {role = .Image})
 	ui.widget_close(gtx, &p, {size = {sz.x, sz.y + TEACHING_BODY_PAD}})
 }
 
@@ -776,6 +791,7 @@ teaching_popover_page_count :: proc(gtx: ^ui.Ctx, page, count: int, key: u64 = 0
 teaching_dots :: proc(gtx: ^ui.Ctx, page: ^int, count: int, brand: bool, key: u64) {
 	r := ui.row_open(gtx, gap = tok.SPACING_HORIZONTAL_XS, align = .Center, key = key)
 	defer ui.close(&r)
+	ui.container_semantics(gtx, {role = .Tab_List})
 	for i in 0 ..< count {
 		if nav_dot(gtx, i == page^, brand ? .Neutral_Foreground_On_Brand : .Brand_Background, TEACHING_DOT_ALPHA, 1, TEACHING_DOT, TEACHING_DOT_SELECTED, 0, fmt_page(gtx, i, count), page, count, key = u64(i + 1)) {
 			page^ = i
@@ -876,7 +892,9 @@ info_button :: proc(gtx: ^ui.Ctx, open: ^bool, size: Size, state: Interaction, o
 	icon(gtx, ic, {pad.x, pad.y}, isz, fg)
 	paint_focus_outline(gtx, c, rr)
 	listen(gtx, c.st, p.id, area)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, tprint_info(owner)))
+	said := ui.frame_string(gtx, tprint_info(owner))
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = ops.States{.Expandable} + state_if(open^, {.Expanded}) + state_if(c.disabled, {.Disabled})})
 	// Pulled up and down by spacingVerticalXXS so it does not stretch the
 	// line (useInfoLabelStyles.styles.ts:14-36): laid out that much shorter.
 	ui.widget_close(gtx, &p, {size = sz})
@@ -973,7 +991,9 @@ roles_button :: proc(
 	}
 	paint_focus_inset(gtx, c, area, k, border, paint_border = false)
 	listen(gtx, c.st, p.id, area)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label != "" ? label : name))
+	said := ui.frame_string(gtx, label != "" ? label : name)
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -1037,6 +1057,7 @@ nav_dot :: proc(
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, name)
+	ui.semantics(gtx, &p, {role = .Tab, label = name, states = state_if(selected, {.Selected})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -1051,11 +1072,12 @@ icon_widget :: proc(gtx: ^ui.Ctx, ic: Icon, size: f32, fg: ops.Color, loc := #ca
 
 // style_text is one line of s at a style, as a widget, tagged with s.
 @(private)
-style_text :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, fg: ops.Color, loc := #caller_location) {
+style_text :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, fg: ops.Color, heading := false, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	t := shape_style(gtx, s, st)
 	draw_text(gtx, t, {}, fg)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
+	ui.semantics(gtx, &p, {role = heading ? .Heading : .Text, label = s})
 	ui.widget_close(gtx, &p, {{t.width, t.height}, baseline_of(t)})
 }
 

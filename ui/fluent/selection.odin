@@ -1,5 +1,6 @@
 package fluent
 
+import "core:fmt"
 import "jm:ui"
 import "jm:ui/design"
 import tok "jm:ui/fluent/tokens"
@@ -143,6 +144,7 @@ checkbox :: proc(
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(gtx, &p, {role = .Checkbox, label = label, states = state_if(mixed, {.Mixed}) + state_if(on, {.Checked}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, at.y + baseline_of(t)})
 	return c.clicked
 }
@@ -202,6 +204,7 @@ radio_group :: proc(
 			r.w = sz.x // a column's rows share the widest label's width
 		}
 	}
+	ui.semantics(gtx, &p, {role = .Radio_Group, states = state_if(state == .Disabled, {.Disabled})})
 	for i in 0 ..< n {
 		id := ui.id_mix(p.id, u64(i))
 		st := state
@@ -228,6 +231,7 @@ radio_group :: proc(
 		paint_radio(gtx, c, rows[i], texts[i], i == selected^)
 		listen(gtx, c.st, id, rows[i])
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
+		ui.part_semantics(gtx, &p, id, rows[i], {role = .Radio, label = labels[i], states = state_if(i == selected^, {.Checked}) + state_if(c.disabled, {.Disabled})})
 	}
 	ui.widget_close(gtx, &p, {size = sz})
 	return selected^ != old
@@ -348,6 +352,7 @@ toggle_switch :: proc(
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(gtx, &p, {role = .Switch, label = label, states = state_if(on^, {.Checked}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, at.y + baseline_of(t)})
 	return c.clicked
 }
@@ -536,6 +541,7 @@ slider :: proc(
 	paint_focus_outline(gtx, c, {ring, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area, SLIDER_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
+	ui.semantics(gtx, &p, {role = .Slider, label = name, value = ui.frame_string(gtx, fmt.tprintf("%g", value^)), states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return value^ != old
 }

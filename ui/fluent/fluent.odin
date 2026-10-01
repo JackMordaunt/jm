@@ -415,6 +415,13 @@ CLICK_KINDS :: design.CLICK_KINDS
 // st is live, so a component passes c.st.
 listen :: design.listen
 
+// state_if is states when on, else none: the states a flag adds to a
+// component's semantics.
+@(private)
+state_if :: proc(on: bool, states: ops.States) -> ops.States {
+	return states if on else {}
+}
+
 // FOCUS_OUTLINE_WIDTH is the default indicator's stroke (foundations
 // interaction.focus.outline.widthPx, createFocusOutlineStyle.ts); the
 // outline sits just outside the component, its outer edge that far out.

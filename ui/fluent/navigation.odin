@@ -86,6 +86,7 @@ Drawer :: struct {
 	position: Drawer_Position,
 	window:   ops.Size,
 	fixed:    Fixed_Surface, // an inline drawer's place in the flow
+	modal:    bool, // an overlay drawer behind a backdrop: a dialog to a reader
 }
 
 @(private)
@@ -145,9 +146,15 @@ drawer_open :: proc(
 	id := ui.claim_id(gtx, key, loc)
 	data := ui.widget_data(gtx, id, Drawer_Data)
 	dur := drawer_duration(size) / 1000
-	if open^ && kind == .Overlay && modal == .Modal {
+	if open^ && kind == .Overlay {
+		// A backdrop press closes a modal drawer; Escape, sent to the
+		// drawer's id by key_interest below, closes any overlay one,
+		// focused or not.
 		for e in ui.events(gtx, id) {
-			if e.kind == .Press {
+			if e.kind == .Press && modal == .Modal {
+				open^ = false
+			}
+			if e.kind == .Key && e.key == .Escape {
 				open^ = false
 			}
 		}
@@ -200,6 +207,9 @@ drawer_open :: proc(
 			surface = {window.x, extent}
 		}
 		d.overlay = ui.overlay_open(gtx, at, cs = ui.exact(surface), root = true)
+		if open^ {
+			ui.key_interest(gtx, id, .Escape)
+		}
 		if dp.modal {
 			ops.fill(gtx.scene, ops.Rect{-at.x, -at.y, window.x, window.y}, fade(color(.Background_Overlay), prog))
 			if open^ {
@@ -219,6 +229,10 @@ drawer_open :: proc(
 	}
 	d.box = ui.box_open(gtx, {paint = paint_drawer, user = dp}, key = 2)
 	d.col = ui.column_open(gtx, align = .Fill, key = 3)
+	// A modal overlay drawer is a dialog; an inline or non-modal one is
+	// a navigation region. drawer_header_title names it.
+	d.modal = kind == .Overlay && dp.modal
+	ui.container_semantics(gtx, drawer_semantics(d, ""))
 	current_drawer = ui.widget_data(gtx, id, Drawer)
 	current_drawer^ = d
 	return
@@ -310,6 +324,16 @@ paint_drawer :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr
 	}
 }
 
+// drawer_semantics is what d's column says: a modal dialog, or a
+// navigation region, named label.
+@(private)
+drawer_semantics :: proc(d: Drawer, label: string) -> ops.Semantics {
+	if d.modal {
+		return {role = .Dialog, label = label, states = {.Modal}}
+	}
+	return {role = .Navigation, label = label}
+}
+
 // drawer_header_open is the header: a column padded spacingVerticalXXL
 // above, spacingHorizontalXXL at the sides and spacingVerticalS below,
 // spacingHorizontalS between its rows (useDrawerHeaderStyles.styles.ts:
@@ -356,9 +380,14 @@ drawer_part_guard_close :: proc(gtx: ^ui.Ctx, key: u64, loc: runtime.Source_Code
 // padding so its edge meets the header's (useDrawerHeaderTitleStyles.
 // styles.ts:19-56).
 drawer_header_title :: proc(gtx: ^ui.Ctx, text: string, close: ^bool = nil, key: u64 = 0, loc := #caller_location) {
+	if d := current_drawer; d != nil {
+		// The title names the drawer's column, two containers up, by
+		// its handle.
+		ui.container_semantics(gtx, drawer_semantics(d^, text), d.col.index)
+	}
 	r := ui.row_open(gtx, align = .Center, key = key, loc = loc)
 	defer ui.close(&r)
-	base_label(gtx, text, .Subtitle1, color(.Neutral_Foreground1))
+	base_label(gtx, text, .Subtitle1, color(.Neutral_Foreground1), heading = true)
 	if close != nil {
 		ui.fill_space(gtx)
 		if button(gtx, "", .Subtle, .Dismiss, name = "Close") {
@@ -419,12 +448,13 @@ drawer_footer :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bo
 // base_label is one line of s at role in color, as a widget with its
 // tag, for the plain text the containers here hold.
 @(private)
-base_label :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, key: u64 = 0, loc := #caller_location) {
+base_label :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, key: u64 = 0, heading := false, loc := #caller_location) {
 	p := ui.widget_open(gtx, key, loc)
 	t := shape_text(gtx, s, role)
 	sz := ui.constrain(gtx.constraints, {t.width, t.height})
 	draw_text(gtx, t, {0, 0}, color)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
+	ui.semantics(gtx, &p, {role = heading ? .Heading : .Text, label = s})
 	ui.widget_close(gtx, &p, {sz, baseline_of(t)})
 }
 
@@ -582,6 +612,7 @@ nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density
 		}
 	}
 	n.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 4)))
+	ui.container_semantics(gtx, {role = .Navigation})
 	current_nav = ui.widget_data(gtx, id, Nav)
 	current_nav^ = n
 	return
@@ -730,6 +761,11 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 	}
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	states := state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})
+	if kind == .Category {
+		states += {.Expandable} + state_if(open, {.Expanded})
+	}
+	ui.semantics(gtx, &p, {role = .Tab, label = label, states = states})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -886,6 +922,7 @@ app_item :: proc(gtx: ^ui.Ctx, label: string, ic := Icon.None, static := false, 
 		listen(gtx, c.st, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(gtx, &p, {role = static ? .Text : .Button, label = label, states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked && !static
 }
@@ -907,6 +944,7 @@ hamburger :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc := 
 	paint_focus_inset(gtx, c, area, k, paint_border = true)
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "Navigation"))
+	ui.semantics(gtx, &p, {role = .Button, label = "Navigation", states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -1031,6 +1069,7 @@ breadcrumb :: proc(
 	id := ui.claim_id(gtx, key, loc)
 	r := ui.row_open(gtx, align = .Center, key = u64(ui.id_mix(id, 1)), loc = loc)
 	defer ui.close(&r)
+	ui.container_semantics(gtx, {role = .Navigation})
 	clicked := -1
 	n := len(items)
 	// partitionBreadcrumbItems.ts:23-56: the first overflow_index items,
@@ -1156,6 +1195,10 @@ crumb_button :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, m: Breadcrumb_Metric
 		listen(gtx, c.st, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, tag))
+	// The overflow button is a button; every crumb is a link, the
+	// current page the selected one.
+	role: ops.Role = icon_only ? .Button : .Link
+	ui.semantics(gtx, &p, {role = role, label = tag, states = state_if(current, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked && !current
 }
@@ -1251,6 +1294,7 @@ tree_item_open :: proc(
 	it.open = open != nil && open^
 	if it.open {
 		it.body = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = key ~ 0x5375627472656501, loc = loc)
+		ui.container_semantics(gtx, {role = .List})
 	}
 	return
 }
@@ -1401,6 +1445,11 @@ tree_row :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, level: int, size: Tre
 	}
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	states := state_if(c.disabled, {.Disabled})
+	if branch {
+		states += {.Expandable} + state_if(open^, {.Expanded})
+	}
+	ui.semantics(gtx, &p, {role = .List_Item, label = label, value = aside, description = description, states = states})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 	return c.clicked
 }

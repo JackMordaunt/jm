@@ -243,7 +243,9 @@ toggle_button :: proc(
 	paint_label(gtx, f, t, shown, icon_position, mt, content, icon_only)
 	frame_focus(gtx, f, appearance, width)
 	listen(gtx, f.c.st, p.id, f.area)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, icon_only ? name : label))
+	said := ui.frame_string(gtx, icon_only ? name : label)
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = state_if(on, {.Selected}) + state_if(f.c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return f.c.clicked
 }
@@ -315,7 +317,9 @@ menu_button :: proc(
 	icon(gtx, expanded ? .Chevron_Down_Filled : .Chevron_Down, {x, (sz.y - chev) / 2}, chev, f.ic)
 	frame_focus(gtx, f, appearance, width)
 	listen(gtx, f.c.st, p.id, f.area)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, icon_only ? name : label))
+	said := ui.frame_string(gtx, icon_only ? name : label)
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = ops.States{.Expandable} + state_if(expanded, {.Expanded}) + state_if(f.c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return toggled
 }
@@ -398,6 +402,7 @@ split_button :: proc(
 		frame_focus(gtx, f, appearance)
 		listen(gtx, f.c.st, p.id, f.area)
 		ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+		ui.semantics(gtx, &p, {role = .Button, label = label, states = state_if(f.c.disabled, {.Disabled})})
 		ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	}
 	{
@@ -434,6 +439,7 @@ split_button :: proc(
 		frame_focus(gtx, f, appearance, width)
 		listen(gtx, f.c.st, p.id, f.area)
 		ops.tag(gtx.scene, p.id, ui.frame_string(gtx, menu_name))
+		ui.semantics(gtx, &p, {role = .Button, label = menu_name, states = ops.States{.Expandable} + state_if(expanded, {.Expanded}) + state_if(f.c.disabled, {.Disabled})})
 		ui.widget_close(gtx, &p, {size = sz})
 	}
 	return clicked
@@ -547,7 +553,9 @@ compound_button :: proc(
 	}
 	frame_focus(gtx, f, appearance)
 	listen(gtx, f.c.st, p.id, f.area)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, icon_only ? name : label))
+	said := ui.frame_string(gtx, icon_only ? name : label)
+	ops.tag(gtx.scene, p.id, said)
+	ui.semantics(gtx, &p, {role = .Button, label = said, description = secondary, states = state_if(f.c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - text_h) / 2 + baseline_of(t)})
 	return f.c.clicked
 }

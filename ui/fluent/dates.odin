@@ -233,11 +233,12 @@ calendar :: proc(
 	// buttons, whose click moves view before the grid lays out.
 	x0, y0 := CALENDAR_PAD, CALENDAR_PAD
 	header_title := fmt.tprintf("%s %d", MONTH_NAMES[view.month - 1], view.year)
-	header_button(gtx, p.id, 1, {x0, y0, CALENDAR_CONTENT - 2 * CALENDAR_NAV, CALENDAR_HEADER_H}, header_title, false, btn_state)
-	if nav_button(gtx, p.id, 2, {x0 + CALENDAR_CONTENT - 2 * CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Up, NAV_FG3, "Previous month", btn_state) {
+	ui.semantics(gtx, &p, {role = .Group, label = ui.frame_string(gtx, header_title)})
+	header_button(gtx, &p, 1, {x0, y0, CALENDAR_CONTENT - 2 * CALENDAR_NAV, CALENDAR_HEADER_H}, header_title, false, btn_state)
+	if nav_button(gtx, &p, 2, {x0 + CALENDAR_CONTENT - 2 * CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Up, NAV_FG3, "Previous month", btn_state) {
 		view^ = date_add_months(view^, -1)
 	}
-	if nav_button(gtx, p.id, 3, {x0 + CALENDAR_CONTENT - CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Down, NAV_FG3, "Next month", btn_state) {
+	if nav_button(gtx, &p, 3, {x0 + CALENDAR_CONTENT - CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Down, NAV_FG3, "Next month", btn_state) {
 		view^ = date_add_months(view^, 1)
 	}
 	if view^ != d.seen_view {
@@ -326,7 +327,9 @@ calendar :: proc(
 			}
 			paint_day(gtx, c, cell, day, view^, today, selected^, marked, out_of_bounds)
 			listen(gtx, c.st, id, cell)
-			ops.tag(gtx.scene, id, ui.frame_string(gtx, fmt.tprintf("%d %s %d", day.day, MONTH_SHORT[day.month - 1], day.year)))
+			said := fmt.aprintf("%d %s %d", day.day, MONTH_SHORT[day.month - 1], day.year, allocator = gtx.allocator)
+			ops.tag(gtx.scene, id, said)
+			ui.part_semantics(gtx, &p, id, cell, {role = .Button, label = said, states = state_if(day == selected^, {.Selected}) + state_if(c.disabled, {.Disabled})})
 		}
 	}
 	ops.clip_pop(gtx.scene)
@@ -353,18 +356,18 @@ calendar :: proc(
 			d.year_base = view.year - (view.year % CALENDAR_YEARS)
 		}
 		title := d.page == .Months ? fmt.tprintf("%d", view.year) : fmt.tprintf("%d - %d", d.year_base, d.year_base + CALENDAR_YEARS - 1)
-		if header_button(gtx, p.id, 4, {px, y0, CALENDAR_CONTENT - 2 * CALENDAR_NAV, CALENDAR_HEADER_H}, title, true, btn_state) {
+		if header_button(gtx, &p, 4, {px, y0, CALENDAR_CONTENT - 2 * CALENDAR_NAV, CALENDAR_HEADER_H}, title, true, btn_state) {
 			d.page = d.page == .Months ? .Years : .Months
 		}
 		step := d.page == .Months ? 1 : CALENDAR_YEARS
-		if nav_button(gtx, p.id, 5, {px + CALENDAR_CONTENT - 2 * CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Up, NAV_FG1, "Previous year", btn_state) {
+		if nav_button(gtx, &p, 5, {px + CALENDAR_CONTENT - 2 * CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Up, NAV_FG1, "Previous year", btn_state) {
 			if d.page == .Months {
 				view^ = date_add_months(view^, -12)
 			} else {
 				d.year_base -= step
 			}
 		}
-		if nav_button(gtx, p.id, 6, {px + CALENDAR_CONTENT - CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Down, NAV_FG1, "Next year", btn_state) {
+		if nav_button(gtx, &p, 6, {px + CALENDAR_CONTENT - CALENDAR_NAV, y0, CALENDAR_NAV, CALENDAR_NAV}, .Arrow_Down, NAV_FG1, "Next year", btn_state) {
 			if d.page == .Months {
 				view^ = date_add_months(view^, 12)
 			} else {
@@ -386,7 +389,7 @@ calendar :: proc(
 				current = highlight_current_month && today.year == d.year_base + i
 				chosen = highlight_selected_month && selected.year == d.year_base + i
 			}
-			if picker_item(gtx, p.id, u64(200 + i), item, label, current, chosen, btn_state) {
+			if picker_item(gtx, &p, u64(200 + i), item, label, current, chosen, btn_state) {
 				if d.page == .Months {
 					view^ = {view.year, i + 1, 1}
 				} else {
@@ -413,6 +416,7 @@ calendar :: proc(
 		paint_focus_outline(gtx, c, {br, tok.BORDER_RADIUS_MEDIUM})
 		listen(gtx, c.st, id, br)
 		ops.tag(gtx.scene, id, "Go to today")
+		ui.part_semantics(gtx, &p, id, br, {role = .Button, label = "Go to today", states = state_if(c.disabled, {.Disabled})})
 	}
 	if view^ != d.seen_view {
 		// The month picker or go-to-today moved view after the grid laid
@@ -457,8 +461,8 @@ week_of :: proc(first, day: Date) -> int {
 // line, clickable only where a picker can open from it
 // (useCalendarDayStyles.styles.ts, useCalendarPickerStyles.styles.ts).
 @(private = "file")
-header_button :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, text: string, clickable: bool, state: Interaction) -> bool {
-	id := ui.id_mix(root, key)
+header_button :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, r: ops.Rect, text: string, clickable: bool, state: Interaction) -> bool {
+	id := ui.id_mix(p.id, key)
 	c: Control
 	if clickable {
 		c = control(gtx, id, r, state)
@@ -474,10 +478,14 @@ header_button :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, te
 	ops.clip_push(gtx.scene, r)
 	draw_text(gtx, t, {r.x + 10, r.y + (r.h - t.height) / 2}, fg)
 	ops.clip_pop(gtx.scene)
+	said := ui.frame_string(gtx, text)
 	if clickable {
 		paint_focus_outline(gtx, c, {r, tok.BORDER_RADIUS_MEDIUM})
 		listen(gtx, c.st, id, r)
-		ops.tag(gtx.scene, id, ui.frame_string(gtx, text))
+		ops.tag(gtx.scene, id, said)
+		ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = state_if(c.disabled, {.Disabled})})
+	} else {
+		ui.part_semantics(gtx, p, id, r, {role = .Heading, label = said})
 	}
 	return c.clicked
 }
@@ -486,8 +494,8 @@ header_button :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, te
 // roles, brand-inverted fills on hover and press
 // (useCalendarDayStyles.styles.ts, useCalendarPickerStyles.styles.ts).
 @(private = "file")
-nav_button :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, ic: Icon, fg: State_Roles, name: string, state: Interaction) -> bool {
-	id := ui.id_mix(root, key)
+nav_button :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, r: ops.Rect, ic: Icon, fg: State_Roles, name: string, state: Interaction) -> bool {
+	id := ui.id_mix(p.id, key)
 	c := control(gtx, id, r, state)
 	bg := color_for(NAV_BG, c)
 	if ui.painted(bg) {
@@ -497,6 +505,7 @@ nav_button :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, ic: I
 	paint_focus_outline(gtx, c, {r, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, id, r)
 	ops.tag(gtx.scene, id, name)
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = name, states = state_if(c.disabled, {.Disabled})})
 	return c.clicked
 }
 
@@ -505,8 +514,8 @@ nav_button :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, ic: I
 // brand fills with Foreground1_Static text, the current or selected one
 // highlighted when asked.
 @(private = "file")
-picker_item :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, text: string, current, chosen: bool, state: Interaction) -> bool {
-	id := ui.id_mix(root, key)
+picker_item :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, r: ops.Rect, text: string, current, chosen: bool, state: Interaction) -> bool {
+	id := ui.id_mix(p.id, key)
 	c := control(gtx, id, r, state)
 	bg := color_for(State_Roles{.Transparent_Background, .Brand_Background_Inverted_Hover, .Brand_Background_Inverted_Pressed, .Transparent_Background}, c)
 	fg := color_for(ITEM_FG, c)
@@ -524,7 +533,9 @@ picker_item :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, key: u64, r: ops.Rect, text
 	draw_text(gtx, t, {r.x + (r.w - t.width) / 2, r.y + (r.h - t.height) / 2}, fg)
 	paint_focus_outline(gtx, c, {r, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, id, r)
-	ops.tag(gtx.scene, id, ui.frame_string(gtx, text))
+	said := ui.frame_string(gtx, text)
+	ops.tag(gtx.scene, id, said)
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = state_if(current || chosen, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	return c.clicked
 }
 
@@ -680,9 +691,17 @@ date_picker :: proc(
 			open^ = false
 		}
 	}
+	// Escape reaches the picker's id by key_interest below whether or not
+	// a day holds focus; a focused day reports it as dismissed too.
+	for e in ui.events(gtx, id) {
+		if e.kind == .Key && e.key == .Escape {
+			open^ = false
+		}
+	}
 	// Below the input, flipped above or shifted along it to stay in the
 	// window (ui.popup_open).
 	ov := ui.popup_open(gtx, {0, 0, 0, input_h}, id, .Below, .Start, DATE_POPUP_GAP)
+	ui.key_interest(gtx, id, .Escape)
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	mp := new(Menu_Paint, gtx.allocator)
 	mp^ = {id = id, alpha = 1}
@@ -924,6 +943,7 @@ time_picker :: proc(
 	box := ui.box_open(gtx, {padding = ui.pad_all(tok.SPACING_HORIZONTAL_XS + tok.STROKE_WIDTH_THIN), paint = paint_menu, user = mp}, key = u64(ui.id_mix(id, 2)))
 	sb := ui.scroll_box_open(gtx, key = u64(ui.id_mix(id, 3)), min_width = max(160, (width > 0 ? width : 200) - 2 * (tok.SPACING_HORIZONTAL_XS + tok.STROKE_WIDTH_THIN)))
 	col := ui.column_open(gtx, gap = tok.SPACING_HORIZONTAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 4)))
+	ui.container_semantics(gtx, {role = .List})
 	opts := time_options(start_hour, end_hour, increment, gtx.allocator)
 	for t, i in opts {
 		label := format_time(t, hour12, seconds, gtx.allocator)
@@ -1006,6 +1026,7 @@ time_option :: proc(gtx: ^ui.Ctx, label: string, selected: bool, state: Interact
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(gtx, &p, {role = .List_Item, label = label, states = state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }

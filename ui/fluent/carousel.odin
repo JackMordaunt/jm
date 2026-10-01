@@ -152,6 +152,7 @@ carousel_open :: proc(
 	// Every part is keyed from the carousel's own id: they share call
 	// sites here, and two carousels on a page must not share state.
 	c.col = ui.column_open(gtx, key = part_key(c.id, 11), loc = loc)
+	ui.container_semantics(gtx, {role = .Group, label = "carousel"})
 	// The clip is outside the elevated padding, so a card's shadow has
 	// that room before it is cut.
 	c.clip = ui.clip_box_open(gtx, key = part_key(c.id, 2))
@@ -205,6 +206,7 @@ carousel_close :: proc(c: ^Carousel) {
 	}
 	pill := ui.box_open(gtx, {fill = color(.Neutral_Background_Alpha), radius = tok.BORDER_RADIUS_XLARGE}, key = part_key(c.id, 6))
 	dots := ui.row_open(gtx, align = .Center, key = part_key(c.id, 7))
+	ui.container_semantics(gtx, {role = .Tab_List})
 	for i in 0 ..< c.count {
 		before := c.active^
 		if nav_dot(
@@ -314,6 +316,7 @@ carousel_card_open :: proc(gtx: ^ui.Ctx, i: int, key: u64 = 0, loc := #caller_lo
 	look := new(Card_Look, gtx.allocator)
 	look.elevated = c.appearance == .Elevated
 	card.box = ui.box_open(gtx, {paint = paint_carousel_card, user = look}, key = part_key(c.id, u64(0x200 + i)), loc = loc)
+	ui.container_semantics(gtx, {role = .Group, label = fmt_page(gtx, i, c.count)})
 	card.col = ui.column_open(gtx, align = .Fill, key = part_key(c.id, u64(0x300 + i)))
 	strut(gtx, {c.width, 0}, part_key(c.id, u64(0x400 + i)))
 	return

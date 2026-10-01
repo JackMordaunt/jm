@@ -123,6 +123,13 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, ke
 			open^ = false
 		}
 	}
+	// Escape reaches the menu's own id by key_interest below, whether or
+	// not an item holds focus.
+	for e in ui.events(gtx, id) {
+		if e.kind == .Key && e.key == .Escape {
+			open^ = false
+		}
+	}
 	if !open^ {
 		d.was_open = false
 		return
@@ -142,6 +149,7 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, ke
 	d.seen = 0
 
 	m.overlay = ui.popup_open(gtx, anchor, id, .Below, .Start, MENU_TRIGGER_GAP)
+	ui.key_interest(gtx, id, .Escape)
 	// Scrim: an invisible catch-all under the popover; a press on it closes.
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	// The slide comes from the anchor: down into place below it, up into
@@ -156,6 +164,7 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, ke
 	m.paint = mp
 	m.box = ui.box_open(gtx, {padding = ui.pad_all(MENU_PAD + tok.STROKE_WIDTH_THIN), paint = paint_menu, user = mp}, key = 1)
 	m.col = ui.column_open(gtx, gap = MENU_GAP, key = 2)
+	ui.container_semantics(gtx, {role = .Menu})
 	current_menu = ui.widget_data(gtx, id, Menu)
 	current_menu^ = m
 	return
@@ -335,6 +344,17 @@ menu_item :: proc(
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(
+		gtx,
+		&p,
+		{
+			role = .Menu_Item,
+			label = label,
+			value = secondary,
+			description = subtext,
+			states = state_if(check != .None && checked != nil && checked^, {.Checked}) + state_if(submenu, {.Expandable}) + state_if(c.disabled, {.Disabled}),
+		},
+	)
 	ui.widget_close(gtx, &p, {sz, top + baseline_of(t)})
 	return c.clicked
 }
@@ -348,6 +368,7 @@ menu_divider :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) {
 	w := current_menu != nil ? current_menu.width : MENU_MIN_WIDTH
 	sz := ui.constrain(gtx.constraints, {w, 2 * MENU_DIVIDER_PAD + tok.STROKE_WIDTH_THIN})
 	ops.fill(gtx.scene, ops.Rect{0, MENU_DIVIDER_PAD, sz.x, tok.STROKE_WIDTH_THIN}, color(.Neutral_Stroke2))
+	ui.semantics(gtx, &p, {role = .Separator})
 	ui.widget_close(gtx, &p, {size = sz})
 }
 
@@ -360,6 +381,7 @@ menu_header :: proc(gtx: ^ui.Ctx, text: string, key: u64 = 0, loc := #caller_loc
 	sz := ui.constrain(gtx.constraints, {max(w, t.width + 2 * MENU_HEADER_PAD), MENU_HEADER_H})
 	draw_text(gtx, t, {MENU_HEADER_PAD, (sz.y - t.height) / 2}, color(.Neutral_Foreground3))
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	ui.semantics(gtx, &p, {role = .Text, label = text})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 }
 
@@ -434,11 +456,14 @@ dialog_open :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, kind := Dialog_
 		data.was_open = false
 		return
 	}
-	if kind != .Non_Modal {
-		for e in ui.events(gtx, id) {
-			if e.kind == .Press && kind == .Modal {
-				open^ = false
-			}
+	// A backdrop press closes a modal dialog; Escape, sent to the
+	// dialog's id by key_interest below, closes any kind, focused or not.
+	for e in ui.events(gtx, id) {
+		if e.kind == .Press && kind == .Modal {
+			open^ = false
+		}
+		if e.kind == .Key && e.key == .Escape {
+			open^ = false
 		}
 	}
 	if !open^ {
@@ -464,6 +489,7 @@ dialog_open :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, kind := Dialog_
 	left := (window.x - max_w) / 2
 	d.width = max_w - 2 * (DIALOG_PAD + tok.STROKE_WIDTH_THIN)
 	d.overlay = ui.overlay_open(gtx, {left, 0}, cs = ui.loose({max_w, window.y}), root = true)
+	ui.key_interest(gtx, id, .Escape)
 	if kind != .Non_Modal {
 		ops.fill(gtx.scene, ops.Rect{-left, 0, window.x, window.y}, fade(color(.Background_Overlay), shade))
 		ops.input_area(gtx.scene, id, ops.Rect{-left, 0, window.x, window.y}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
@@ -477,6 +503,9 @@ dialog_open :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, kind := Dialog_
 	dp.open = open
 	d.box = ui.box_open(gtx, {padding = ui.pad_all(DIALOG_PAD + tok.STROKE_WIDTH_THIN), paint = paint_dialog, user = dp}, key = 2)
 	d.col = ui.column_open(gtx, gap = DIALOG_GAP, align = .Fill, key = 3)
+	// Unlabelled until dialog_title names it: the title is a child laid
+	// out after the column opens.
+	ui.container_semantics(gtx, {role = .Dialog, states = state_if(kind != .Non_Modal, {.Modal})})
 	current_dialog = ui.widget_data(gtx, id, Dialog)
 	current_dialog^ = d
 	return
@@ -538,9 +567,13 @@ paint_dialog :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr
 // end that closes the dialog (useDialogTitleStyles.styles.ts:17-62).
 dialog_title :: proc(gtx: ^ui.Ctx, text: string, close := false, key: u64 = 0, loc := #caller_location) {
 	d := current_dialog
+	if d != nil {
+		// The title names the dialog's column, by its handle.
+		ui.container_semantics(gtx, {role = .Dialog, label = text, states = state_if(d.kind != .Non_Modal, {.Modal})}, d.col.index)
+	}
 	r := ui.row_open(gtx, align = .Start, key = key, loc = loc)
 	defer ui.close(&r)
-	text_block(gtx, text, .Subtitle1, color(.Neutral_Foreground1), d != nil ? d.width - 32 - DIALOG_GAP : 0)
+	text_block(gtx, text, .Subtitle1, color(.Neutral_Foreground1), d != nil ? d.width - 32 - DIALOG_GAP : 0, heading = true)
 	if d != nil && (close || d.kind == .Non_Modal) {
 		ui.fill_space(gtx)
 		if button(gtx, "", .Transparent, .Dismiss, name = "Close", key = 1) {
@@ -679,6 +712,9 @@ tooltip :: proc(
 	asked := position == .Above ? ops.Side.Above : ops.Side.Below
 	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, bubble_id, asked, .Center, gap)
 	defer ui.popup_close(&o, {w, h})
+	// The bubble as a widget of the popup, so it can declare itself.
+	bp := ui.widget_open(gtx, 0x7102)
+	defer ui.widget_close(gtx, &bp, {size = {w, h}})
 	side, shift := ui.placed(gtx, bubble_id, asked)
 	fill := color(appearance == .Inverted ? .Neutral_Background_Static : .Neutral_Background1)
 	fg := color(appearance == .Inverted ? .Neutral_Foreground_Static_Inverted : .Neutral_Foreground1)
@@ -705,6 +741,7 @@ tooltip :: proc(
 	}
 	ops.input_area(gtx.scene, bubble_id, rr, {.Enter, .Leave, .Move})
 	ops.tag(gtx.scene, bubble_id, ui.frame_string(gtx, text))
+	ui.part_semantics(gtx, &bp, bubble_id, rr.rect, {role = .Tooltip, label = text})
 }
 
 // wrap breaks s into shaped lines no wider than width, a word at a
@@ -747,7 +784,7 @@ lines_size :: proc(lines: []Text) -> (w, h: f32) {
 // text_block lays s out wrapped to width (or unwrapped when 0) at a type
 // role, as one widget: dialog content, a card's body. Lines are
 // start-aligned. The text is selectable unless selectable is false.
-text_block :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32 = 0, key: u64 = 0, selectable := true, loc := #caller_location) -> ui.Dims {
+text_block :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32 = 0, key: u64 = 0, selectable := true, heading := false, loc := #caller_location) -> ui.Dims {
 	p := ui.widget_open(gtx, key, loc)
 	para := layout_style(gtx, s, style(role), width)
 	sz := ui.constrain(gtx.constraints, {width > 0 ? max(width, para.width) : para.width, para.height})
@@ -757,6 +794,7 @@ text_block :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, w
 		draw_paragraph(gtx, para, {}, color)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
+	ui.semantics(gtx, &p, {role = heading ? .Heading : .Text, label = s})
 	return ui.widget_close(gtx, &p, {sz, para.lines[0].baseline})
 }
 

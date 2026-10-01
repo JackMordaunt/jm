@@ -1,5 +1,6 @@
 package fluent
 
+import "core:fmt"
 import "core:math"
 import "core:strconv"
 import "core:strings"
@@ -259,6 +260,7 @@ badge :: proc(
 		icon(gtx, ic, {x, (sz.y - mt.icon) / 2}, mt.icon, fg)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	ui.semantics(gtx, &p, {role = .Text, label = text})
 	return ui.widget_close(gtx, &p, {sz, has_text ? (sz.y - t.height) / 2 + baseline_of(t) : sz.y})
 }
 
@@ -375,6 +377,7 @@ presence_badge :: proc(
 	sz := ui.constrain(gtx.constraints, {d, d})
 	paint_presence(gtx, {0, 0, sz.x, sz.y}, status, out_of_office)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, PRESENCE_NAMES[status]))
+	ui.semantics(gtx, &p, {role = .Text, label = PRESENCE_NAMES[status]})
 	return ui.widget_close(gtx, &p, {sz, sz.y})
 }
 
@@ -829,6 +832,7 @@ avatar :: proc(
 		paint_presence(gtx, br, status, out_of_office)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
+	ui.semantics(gtx, &p, {role = .Image, label = name, description = presence ? PRESENCE_NAMES[status] : ""})
 	return ui.widget_close(gtx, &p, {sz, sz.y})
 }
 
@@ -955,6 +959,12 @@ progress_bar :: proc(
 		ops.fill(gtx.scene, ops.Round_Rect{{0, 0, sz.x * progress_value(mo), sz.y}, rad}, role_color(progress_role(color)))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
+	if value < 0 {
+		ui.semantics(gtx, &p, {role = .Progress, label = name, states = {.Busy}})
+	} else {
+		percent := int(math.round(clamp(value / max(max_value, 1e-6), 0, 1) * 100))
+		ui.semantics(gtx, &p, {role = .Progress, label = name, value = ui.frame_string(gtx, fmt.tprintf("%d%%", percent))})
+	}
 	return ui.widget_close(gtx, &p, {sz, sz.y})
 }
 
@@ -1115,5 +1125,6 @@ spinner :: proc(
 		draw_text(gtx, t, lp, label_color)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label != "" ? label : "spinner"))
+	ui.semantics(gtx, &p, {role = .Progress, label = label, states = {.Busy}})
 	return ui.widget_close(gtx, &p, {sz, label != "" ? lp.y + baseline_of(t) : sz.y})
 }

@@ -88,7 +88,9 @@ table_style :: proc(size: Table_Size) -> tok.Type_Style {
 // are the widths in px, 0 for a column that shares the free width; a
 // row lays its cells in that order. Close it with table_close.
 table_open :: proc(gtx: ^ui.Ctx, columns: []f32, size := Table_Size.Medium, key: u64 = 0, loc := #caller_location) -> Table {
-	return {size, columns, ui.column_open(gtx, align = .Fill, key = key, loc = loc)}
+	col := ui.column_open(gtx, align = .Fill, key = key, loc = loc)
+	ui.container_semantics(gtx, {role = .Table})
+	return {size, columns, col}
 }
 
 table_close :: proc(t: ^Table) {
@@ -163,6 +165,7 @@ table_row_open :: proc(
 	rp := new(Table_Row_Paint, gtx.allocator)
 	rp^ = {t.size, appearance, selected, clicked, state, !interactive, name}
 	box := ui.box_open(gtx, {paint = paint_table_row, user = rp}, key, loc)
+	ui.container_semantics(gtx, {role = .Row, label = name, states = state_if(selected != nil && selected^, {.Selected}) + state_if(interactive && state == .Disabled, {.Disabled})})
 	row := ui.row_open(gtx, align = .Center)
 	return {t, 0, box, row}
 }
@@ -341,6 +344,7 @@ table_cell :: proc(gtx: ^ui.Ctx, r: ^Table_Row, text: string, color := ops.Color
 	sz := ui.constrain(gtx.constraints, {w, content.h})
 	draw_clipped_line(gtx, t, {content.x, (sz.y - t.height) / 2}, max(sz.x - 2 * tok.SPACING_HORIZONTAL_S, 0), fg)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	ui.semantics(gtx, &p, {role = .Cell, label = text})
 	return ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 }
 
@@ -415,6 +419,7 @@ table_cell_layout :: proc(
 		draw_clipped_line(gtx, d, {x, y + t.height}, avail, role_color(.Neutral_Foreground2))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, main))
+	ui.semantics(gtx, &p, {role = .Cell, label = main, description = description})
 	return ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 }
 
@@ -484,6 +489,16 @@ table_header_cell :: proc(
 		listen(gtx, c.st, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	sorted := ""
+	if sort != nil {
+		#partial switch sort^ {
+		case .Ascending:
+			sorted = "ascending"
+		case .Descending:
+			sorted = "descending"
+		}
+	}
+	ui.semantics(gtx, &p, {role = .Cell, label = label, value = sorted, states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 	return c.clicked
 }
@@ -538,6 +553,10 @@ table_selection_cell :: proc(
 		listen(gtx, c.st, p.id, ops.Rect{0, 0, sz.x, sz.y})
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, kind == .Radio ? "radio" : "checkbox"))
+	if !hidden {
+		role: ops.Role = kind == .Radio ? .Radio : .Checkbox
+		ui.semantics(gtx, &p, {role = role, states = state_if(mixed, {.Mixed}) + state_if(checked^ && !mixed, {.Checked}) + state_if(state == .Disabled, {.Disabled})})
+	}
 	ui.widget_close(gtx, &p, {size = sz})
 	return toggled
 }
@@ -613,7 +632,9 @@ List :: struct {
 // root resetting every margin. selected is the one selection in single
 // mode. Close it with list_close.
 list_open :: proc(gtx: ^ui.Ctx, mode := List_Selection.None, selected: ^int = nil, key: u64 = 0, loc := #caller_location) -> List {
-	return {mode, selected, 0, ui.column_open(gtx, align = .Fill, key = key, loc = loc)}
+	col := ui.column_open(gtx, align = .Fill, key = key, loc = loc)
+	ui.container_semantics(gtx, {role = .List})
+	return {mode, selected, 0, col}
 }
 
 list_close :: proc(l: ^List) {
@@ -727,6 +748,7 @@ list_item :: proc(
 		listen(gtx, c.st, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(gtx, &p, {role = .List_Item, label = label, states = state_if(on, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 	return c.clicked
 }
@@ -971,6 +993,9 @@ tag :: proc(
 		listen(gtx, c.st, p.id, hit)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	// A dismissible tag is a button, dismiss being its one action.
+	role: ops.Role = dismissible ? .Button : .Text
+	ui.semantics(gtx, &p, {role = role, label = text, description = secondary, states = state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - k.primary.height) / 2 + baseline_of(k.primary)})
 	return c.clicked
 }
@@ -1024,6 +1049,7 @@ interaction_tag :: proc(
 	}
 	r := selected ? selected_tag_roles() : tag_roles(appearance)
 	radius := tag_radius(shape, sz.y)
+	ui.semantics(gtx, &p, {role = .Button, label = text, description = secondary, states = state_if(selected, {.Selected}) + state_if(pc.disabled, {.Disabled})})
 	// The primary keeps the right corners square when a secondary follows
 	// and drops its right border, drawn once by the secondary
 	// (tag.json gotcha).
@@ -1060,6 +1086,7 @@ interaction_tag :: proc(
 		paint_focus_outline_corners(gtx, sc, second, sk)
 		listen(gtx, sc.st, sid, second)
 		ops.tag(gtx.scene, sid, ui.frame_string(gtx, "dismiss"))
+		ui.part_semantics(gtx, &p, sid, second, {role = .Button, label = "dismiss", states = state_if(sc.disabled, {.Disabled})})
 	}
 	paint_focus_outline_corners(gtx, pc, primary, pk)
 	listen(gtx, pc.st, p.id, primary)
@@ -1243,6 +1270,7 @@ persona :: proc(
 		y += shaped[i].height - (i == 0 && n > 1 ? 2 : 0)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
+	ui.semantics(gtx, &p, {role = .Text, label = name, description = secondary})
 	return ui.widget_close(gtx, &p, {sz, text_at.y + baseline_of(shaped[0])})
 }
 
@@ -1433,6 +1461,7 @@ avatar_group :: proc(
 		w = px + f32(items - 1) * (px + step)
 	}
 	sz := ui.constrain(gtx.constraints, {w, px})
+	ui.semantics(gtx, &p, {role = .Group, label = "avatar group"})
 	x: f32
 	if layout == .Pie {
 		paint_pie(gtx, {0, 0, px, px}, names[:shown], ring)
@@ -1480,7 +1509,9 @@ avatar_group :: proc(
 		t := shape_style(gtx, count, overflow_style(px))
 		draw_text(gtx, t, {r.x + (px - t.width) / 2, r.y + (px - t.height) / 2}, fg)
 		listen(gtx, c.st, bid, ops.Ellipse{r})
-		ops.tag(gtx.scene, bid, ui.frame_string(gtx, count))
+		said := ui.frame_string(gtx, count)
+		ops.tag(gtx.scene, bid, said)
+		ui.part_semantics(gtx, &p, bid, r, {role = .Button, label = said, states = ops.States{.Expandable} + state_if(is_open, {.Expanded}) + state_if(c.disabled, {.Disabled})})
 		if is_open {
 			paint_overflow_list(gtx, open, names[shown:], r, u64(bid))
 		}
@@ -1553,6 +1584,7 @@ overflow_row :: proc(gtx: ^ui.Ctx, name: string, key: u64, loc := #caller_locati
 	paint_avatar_disc(gtx, {tok.SPACING_HORIZONTAL_XS, pad, av, av}, name, .Circular, .Colorful)
 	draw_text(gtx, t, {tok.SPACING_HORIZONTAL_XS + av + tok.SPACING_HORIZONTAL_S, (sz.y - t.height) / 2}, role_color(.Neutral_Foreground1))
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
+	ui.semantics(gtx, &p, {role = .Text, label = name})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 }
 
@@ -1640,6 +1672,7 @@ skeleton_item :: proc(
 		ops.fill(gtx.scene, rr, ops.with_alpha(base, f32(base[3]) / 255 * a))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "skeleton"))
+	ui.semantics(gtx, &p, {role = .Progress, states = {.Busy}})
 	return ui.widget_close(gtx, &p, {size = sz})
 }
 
@@ -1753,6 +1786,17 @@ text :: proc(
 	return text_styled(gtx, s, text_style(size, weight), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc, selectable)
 }
 
+// is_heading is whether a preset reads as a heading: the titles and
+// the display style, not the body and caption ramp.
+@(private)
+is_heading :: proc(role: Type_Role) -> bool {
+	#partial switch role {
+	case .Title3, .Title2, .Title1, .Large_Title, .Display:
+		return true
+	}
+	return false
+}
+
 // text_preset is text at one of the ramp's named styles (text.json
 // preset typography-style): Caption1, Body1Strong, Title2 and the rest.
 text_preset :: proc(
@@ -1772,11 +1816,11 @@ text_preset :: proc(
 	selectable := true,
 	loc := #caller_location,
 ) -> ui.Dims {
-	return text_styled(gtx, s, style(role), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc, selectable)
+	return text_styled(gtx, s, style(role), color, block, width, wrap_lines, truncate, align, italic, underline, strikethrough, key, loc, selectable, is_heading(role))
 }
 
 @(private)
-text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Color, block: bool, width: f32, wrap_lines, truncate: bool, align: Text_Align, italic, underline, strikethrough: bool, key: u64, loc: runtime.Source_Code_Location, selectable := true) -> ui.Dims {
+text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Color, block: bool, width: f32, wrap_lines, truncate: bool, align: Text_Align, italic, underline, strikethrough: bool, key: u64, loc: runtime.Source_Code_Location, selectable := true, heading := false) -> ui.Dims {
 	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	box_w := width
@@ -1821,6 +1865,7 @@ text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Colo
 		ops.transform_pop(gtx.scene)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s), {0, 0, sz.x, sz.y})
+	ui.semantics(gtx, &p, {role = heading ? .Heading : .Text, label = s})
 	return ui.widget_close(gtx, &p, {sz, para.lines[0].baseline})
 }
 
@@ -1955,5 +2000,6 @@ image :: proc(
 		stroke_inside(gtx, rr, role_color(.Neutral_Stroke1), tok.STROKE_WIDTH_THIN)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "image"))
+	ui.semantics(gtx, &p, {role = .Image})
 	return ui.widget_close(gtx, &p, {size = sz})
 }

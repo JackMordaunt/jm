@@ -41,6 +41,46 @@ Edit :: struct {
 // typed text and the wheel.
 EDIT_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur, .Scroll}
 
+// Field_Words is what an open field tells the control inside it: the
+// label a reader names it by, the hint that describes it, and whether
+// the field is required or disabled, so the control's semantics carry
+// the field's words rather than only its own placeholder.
+@(private)
+Field_Words :: struct {
+	label, hint:        string,
+	required, disabled: bool,
+}
+
+// The open fields' words, innermost last; per thread, like the scheme.
+@(private = "file", thread_local)
+open_fields: [GUARD_DEPTH]Field_Words
+@(private = "file", thread_local)
+open_field_count: int
+
+// field_semantics is a text control's semantics: named by its accessible
+// name, else by the field it sits in, else by its placeholder; described
+// by the field's hint; required or disabled as the field or the control
+// says. value is the control's text, already in frame memory.
+@(private)
+field_semantics :: proc(gtx: ^ui.Ctx, role: ops.Role, name, placeholder, value: string, disabled: bool, readonly := false) -> (s: ops.Semantics) {
+	s.role = role
+	s.label = name
+	s.value = value
+	if open_field_count > 0 {
+		f := open_fields[open_field_count - 1]
+		if s.label == "" {
+			s.label = f.label
+		}
+		s.description = f.hint
+		s.states += state_if(f.required, {.Required}) + state_if(f.disabled, {.Disabled})
+	}
+	if s.label == "" {
+		s.label = placeholder
+	}
+	s.states += state_if(disabled, {.Disabled}) + state_if(readonly, {.Readonly})
+	return
+}
+
 // BORDER is the input border: strokeWidthThin, which the input's styles
 // file spells as a 1px constant (useInputStyles.styles.ts:42-59) and
 // the textarea's as the token.
@@ -313,6 +353,7 @@ input :: proc(
 	paint_focus_line(gtx, area, underline ? 0 : BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
 	listen(gtx, c.st, p.id, area, EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, str), c.disabled))
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
@@ -474,6 +515,7 @@ textarea :: proc(
 	paint_focus_line(gtx, box, BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
 	listen(gtx, c.st, p.id, box, EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, string(s.buf[:])), c.disabled))
 	ui.widget_close(gtx, &p, {sz, text_y + para.lines[0].baseline})
 	return
 }
@@ -514,6 +556,7 @@ label :: proc(gtx: ^ui.Ctx, text: string, required := false, size := Size.Medium
 		draw_text(gtx, star, {t.width + tok.SPACING_HORIZONTAL_XS, 0}, color(disabled ? .Neutral_Foreground_Disabled : .Palette_Red_Foreground3))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	ui.semantics(gtx, &p, {role = .Text, label = text, states = state_if(disabled, {.Disabled})})
 	return ui.widget_close(gtx, &p, {sz, baseline_of(t)})
 }
 
@@ -576,6 +619,10 @@ field_open :: proc(
 ) -> (f: Field) {
 	f.hint, f.message = ui.frame_string(gtx, hint), ui.frame_string(gtx, message)
 	f.validation, f.disabled = validation, disabled
+	if open_field_count < GUARD_DEPTH {
+		open_fields[open_field_count] = {text, f.hint, required, disabled}
+	}
+	open_field_count += 1
 	f.horizontal = orientation == .Horizontal && ui.is_finite(gtx.constraints.max.x)
 	if !f.horizontal {
 		// Vertical: spacingVerticalXXS around the label and below it, 1px
@@ -641,7 +688,7 @@ field_close :: proc(gtx: ^ui.Ctx, f: ^Field) {
 			ic, tint = .Checkmark_Circle_Filled, color(.Palette_Green_Foreground1)
 		}
 		text := f.validation == .Error ? tint : color(.Neutral_Foreground3)
-		paint_secondary_text(gtx, f.message, text, ic, tint, 1)
+		paint_secondary_text(gtx, f.message, text, ic, tint, 1, alert = true)
 	}
 	if f.hint != "" {
 		paint_secondary_text(gtx, f.hint, color(.Neutral_Foreground3), .None, {}, 2)
@@ -650,14 +697,17 @@ field_close :: proc(gtx: ^ui.Ctx, f: ^Field) {
 		ui.close(&f.inner)
 	}
 	ui.close(&f.outer)
+	open_field_count = max(open_field_count - 1, 0)
 }
 
 // paint_secondary_text is a field's message or hint: caption1 with
 // spacingVerticalXXS above, and with an icon a VALIDATION_ICON gutter
 // before the text, the icon shifted 1px down (useFieldStyles.styles.ts:
-// 81-108). A widget of its own so a probe finds it by its text.
+// 81-108). A widget of its own so a probe finds it by its text. The
+// message is an alert to a reader; the hint already describes the
+// control, so it says nothing of its own.
 @(private = "file")
-paint_secondary_text :: proc(gtx: ^ui.Ctx, text: string, fg: ops.Color, ic: Icon, tint: ops.Color, key: u64) {
+paint_secondary_text :: proc(gtx: ^ui.Ctx, text: string, fg: ops.Color, ic: Icon, tint: ops.Color, key: u64, alert := false) {
 	p := ui.widget_open(gtx, key)
 	st := style(.Caption1)
 	t := shape_style(gtx, text, st)
@@ -669,6 +719,9 @@ paint_secondary_text :: proc(gtx: ^ui.Ctx, text: string, fg: ops.Color, ic: Icon
 	}
 	draw_text(gtx, t, {gutter, y}, fg)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	if alert {
+		ui.semantics(gtx, &p, {role = .Alert, label = text})
+	}
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 }
 
@@ -773,6 +826,7 @@ link :: proc(
 	}
 	listen(gtx, c.st, p.id, area, cursor = .Pointer) // a link, as a browser shows one
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
+	ui.semantics(gtx, &p, {role = .Link, label = text, states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, base})
 	return c.clicked
 }

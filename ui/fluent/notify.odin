@@ -232,6 +232,10 @@ toaster :: proc(
 	top := position == .Top || position == .Top_End || position == .Top_Start
 	o := ui.overlay_open(gtx, {x, 0}, cs = ui.loose({TOAST_WIDTH, window.y}), root = true)
 	defer ui.close(&o)
+	// The column as one widget, so each toast can declare itself as a
+	// part of it.
+	tp := ui.widget_open(gtx, 1)
+	defer ui.widget_close(gtx, &tp, {size = {TOAST_WIDTH, window.y}})
 	// Both columns place the newest nearest their edge (toast.json
 	// behaviour stacking): a top column stacks down from it, a bottom one
 	// up, each walking the queue newest first. With a limit the oldest
@@ -285,7 +289,7 @@ toaster :: proc(
 			y -= TOAST_GAP
 		}
 		if h > 0 {
-			if paint_toast(gtx, t, tid, st, at, full, alpha, appearance) {
+			if paint_toast(gtx, &tp, t, tid, st, at, full, alpha, appearance) {
 				pressed = t.id
 				toast_dismiss(ts, t.id)
 			}
@@ -332,7 +336,7 @@ toast_texts :: proc(gtx: ^ui.Ctx, t: Toast) -> (title, body, subtitle: ui.Paragr
 // by alpha, and its dismiss button; returns true when that button is
 // pressed.
 @(private)
-paint_toast :: proc(gtx: ^ui.Ctx, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_State, pos: ops.Point, h, alpha: f32, appearance: Toast_Appearance) -> bool {
+paint_toast :: proc(gtx: ^ui.Ctx, tp: ^ui.Placement, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_State, pos: ops.Point, h, alpha: f32, appearance: Toast_Appearance) -> bool {
 	inverted := appearance == .Inverted
 	bg := color(inverted ? .Neutral_Background_Inverted : .Neutral_Background1)
 	fg := color(inverted ? .Neutral_Foreground_Inverted2 : .Neutral_Foreground1)
@@ -359,6 +363,9 @@ paint_toast :: proc(gtx: ^ui.Ctx, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_St
 	// hoverable, so Delete and the hover pause reach it.
 	ops.input_area(gtx.scene, tid, rr, CLICK_KINDS)
 	ops.tag(gtx.scene, tid, ui.frame_string(gtx, t.title))
+	// The toast is a live region, a part of the toaster's column as its
+	// dismiss button is: a part cannot nest under a part.
+	ui.part_semantics(gtx, tp, tid, area, {role = .Status, label = t.title, description = t.body})
 	pad := TOAST_PAD + tok.STROKE_WIDTH_THIN
 	x := pos.x + pad
 	y := pos.y + pad
@@ -394,7 +401,9 @@ paint_toast :: proc(gtx: ^ui.Ctx, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_St
 	icon(gtx, .Dismiss, {dismiss.x + 2, dismiss.y + 2}, 16, fade(dfg, alpha))
 	paint_focus_outline(gtx, dc, {dismiss, tok.BORDER_RADIUS_MEDIUM})
 	ops.input_area(gtx.scene, did, dismiss, CLICK_KINDS)
-	ops.tag(gtx.scene, did, ui.frame_string(gtx, fmt.tprintf("Dismiss %s", t.title)))
+	dismiss_name := ui.frame_string(gtx, fmt.tprintf("Dismiss %s", t.title))
+	ops.tag(gtx.scene, did, dismiss_name)
+	ui.part_semantics(gtx, tp, did, dismiss, {role = .Button, label = dismiss_name})
 	c := Control{}
 	c.st = st
 	c.focus_visible = st.focused && ui.focus_visible(gtx)
@@ -539,6 +548,7 @@ message_bar :: proc(
 	sz := ui.constrain(cs, {width > 0 ? width : single_w, h})
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	rr := ops.Round_Rect{area, rad}
+	ui.semantics(gtx, &p, {role = .Status, label = title != "" ? title : text, description = title != "" ? text : ""})
 	ops.fill(gtx.scene, rr, bg)
 	stroke_inside(gtx, rr, border, tok.STROKE_WIDTH_THIN)
 	// Icon, at the first line (multiline) or centred (single).
@@ -571,13 +581,13 @@ message_bar :: proc(
 	#reverse for a, i in actions {
 		bw := max(acts[i].width + 2 * tok.SPACING_HORIZONTAL_M + 2 * tok.STROKE_WIDTH_THIN, 96)
 		ax -= bw + tok.SPACING_HORIZONTAL_M
-		if message_bar_button(gtx, p.id, u64(i + 1), a, acts[i], {ax, ay, bw, 32}, .Secondary) {
+		if message_bar_button(gtx, &p, u64(i + 1), a, acts[i], {ax, ay, bw, 32}, .Secondary) {
 			action = i
 		}
 	}
 	if dismissable {
 		dr := ops.Rect{sz.x - tok.STROKE_WIDTH_THIN - tok.SPACING_HORIZONTAL_M - 32, multiline ? tok.STROKE_WIDTH_THIN + tok.SPACING_VERTICAL_XXS : (sz.y - 32) / 2, 32, 32}
-		dismissed = message_bar_button(gtx, p.id, 0x7f, "Dismiss", {}, dr, .Transparent, .Dismiss)
+		dismissed = message_bar_button(gtx, &p, 0x7f, "Dismiss", {}, dr, .Transparent, .Dismiss)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, title != "" ? title : text))
 	ui.widget_close(gtx, &p, {sz, y})
@@ -639,8 +649,8 @@ wrap_prefixed :: proc(gtx: ^ui.Ctx, title, text: string, width: f32) -> []Bar_Li
 // its own id): the secondary appearance for an action, the transparent
 // one with an icon for the dismiss. Returns true when clicked.
 @(private)
-message_bar_button :: proc(gtx: ^ui.Ctx, owner: ops.Area_Id, key: u64, name: string, t: Text, r: ops.Rect, appearance: Appearance, ic := Icon.None) -> bool {
-	bid := ui.id_mix(owner, key)
+message_bar_button :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, name: string, t: Text, r: ops.Rect, appearance: Appearance, ic := Icon.None) -> bool {
+	bid := ui.id_mix(p.id, key)
 	st := ui.widget_state(gtx, bid)
 	act := ui.activate_from_events(gtx, bid, st, r)
 	c := Control{}
@@ -660,5 +670,6 @@ message_bar_button :: proc(gtx: ^ui.Ctx, owner: ops.Area_Id, key: u64, name: str
 	paint_focus_inset(gtx, c, r, k, paint_border = false)
 	ops.input_area(gtx.scene, bid, r, CLICK_KINDS)
 	ops.tag(gtx.scene, bid, ui.frame_string(gtx, name))
+	ui.part_semantics(gtx, p, bid, r, {role = .Button, label = name})
 	return act.clicked
 }
