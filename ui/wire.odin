@@ -10,7 +10,9 @@ import "jm:ui/ops"
 // plain encode/decode round-trip tests with no process or pipe involved.
 // Both reuse encode.odin's put_*/get_* helpers and its little-endian rule.
 //
-//	Input: f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event
+//	Input: f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event,
+//	       [host stats], str restore (what the last child persisted,
+//	       sent once to a respawned child; "" otherwise)
 //	Raw_Event: u8 kind, f32 x, f32 y, u8 button, f32 sx, f32 sy, u8 key,
 //	           u8 mods, str text, str mime, u8 clicks
 //	Reply: u8 flags, f32 frame_after, [debug block], [platform block], then
@@ -19,12 +21,13 @@ import "jm:ui/ops"
 //	       they end. Flags: 1 wants a frame, 2 full frames, 4 flash (a count
 //	       and rects follow), 8 platform (u8 cursor, u8 n, n × request:
 //	       u8 1 str mime str data for a clipboard write, u8 2 str mime for a
-//	       read). The platform block is written only when the cursor changed
-//	       or a request is pending, so most replies are as before.
+//	       read), 16 persist (str data the host keeps for the next child).
+//	       The platform block is written only when the cursor changed or a
+//	       request is pending, so most replies are as before.
 
 // encode_input serializes size, density, dt and events into a new byte
 // slice, the host's half of one frame's round trip.
-encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}) -> []byte {
+encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}, restore: []byte = nil) -> []byte {
 	w := make([dynamic]byte, 0, 64, allocator)
 	ops.put_f32(&w, size.x)
 	ops.put_f32(&w, size.y)
@@ -41,6 +44,7 @@ encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allo
 	ops.put_u32(&w, u32(host.repaint_rects))
 	ops.put_u32(&w, u32(host.repaint_px))
 	ops.put_u64(&w, u64(max(host.rss_bytes, 0)))
+	ops.put_str(&w, string(restore))
 	return w[:]
 }
 
@@ -57,6 +61,7 @@ decode_input :: proc(
 	density, dt: f32,
 	events: []Raw_Event,
 	host: Host_Stats,
+	restore: []byte,
 	ok: bool,
 ) {
 	r := ops.Reader {
@@ -84,10 +89,16 @@ decode_input :: proc(
 	if r.pos < len(r.data) {
 		host.rss_bytes = int(ops.get_u64(&r) or_return)
 	}
-	if r.pos != len(r.data) {
-		return {}, 0, 0, nil, {}, false
+	if r.pos < len(r.data) {
+		s := ops.get_str(&r) or_return
+		if len(s) > 0 {
+			restore = transmute([]byte)s
+		}
 	}
-	return size, density, dt, out, host, true
+	if r.pos != len(r.data) {
+		return {}, 0, 0, nil, {}, nil, false
+	}
+	return size, density, dt, out, host, restore, true
 }
 
 @(private = "file")
@@ -149,13 +160,14 @@ encode_reply :: proc(
 	flash := false,
 	keep_out: []ops.Rect = nil,
 	platform: ^Reply_Platform = nil,
+	persist: []byte = nil,
 ) -> []byte {
 	w := make([dynamic]byte, 0, 5 + len(ops_bytes), allocator)
 	// Bit 0: wants another frame. Bit 1: redraw it whole (the debug tray's
 	// full frames), since the compositor runs in the host. Bit 2: flash
 	// what it repaints, but not over keep_out, the debug panels, which
-	// follow as a count and rects.
-	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0) | (u8(8) if platform != nil else 0))
+	// follow as a count and rects. Bit 4: persist bytes follow.
+	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0) | (u8(8) if platform != nil else 0) | (u8(16) if persist != nil else 0))
 	ops.put_f32(&w, frame_after)
 	if flash {
 		append(&w, u8(min(len(keep_out), 255)))
@@ -182,21 +194,26 @@ encode_reply :: proc(
 			}
 		}
 	}
+	if persist != nil {
+		ops.put_str(&w, string(persist))
+	}
 	append(&w, ..ops_bytes)
 	return w[:]
 }
 
 // decode_reply is encode_reply's inverse: ops_bytes is a slice into data
-// (not copied), meant for an immediate ui.decode.
+// (not copied), meant for an immediate ui.decode, and so is what the
+// child asked to persist, left in persist^ when it is given (nil when the
+// reply carries none): the host copies it before data goes.
 // keep_out is read into its fixed buffer; the reply's flags and keep_out
 // come back as Reply_Debug.
-decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Platform = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
+decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Platform = nil, persist: ^[]byte = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
 	r := ops.Reader {
 		data      = data,
 		allocator = context.temp_allocator,
 	}
 	flag := ops.get_u8(&r) or_return
-	if flag > 15 {
+	if flag > 31 {
 		return false, 0, nil, false
 	}
 	d: Reply_Debug
@@ -246,6 +263,14 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 	}
 	if platform != nil {
 		platform^ = p
+	}
+	if flag & 16 != 0 {
+		n := ops.get_count(&r, 1) or_return
+		start := r.pos
+		_ = ops.take(&r, n) or_return
+		if persist != nil {
+			persist^ = data[start:start + n]
+		}
 	}
 	return wants_frame, frame_after, data[r.pos:], true
 }

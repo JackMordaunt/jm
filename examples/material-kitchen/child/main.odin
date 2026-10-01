@@ -23,8 +23,8 @@
 //	material-kitchen-child -open ...                      every menu, dialog and snackbar open
 //
 // The selected page and scheme survive a hot-reload respawn through
-// build/debug/material-kitchen.state: the child owns the model, and a
-// respawn starts a fresh child.
+// ui.persist: the host keeps them, and a fresh child reads them back
+// with ui.restored on its first frame.
 package main
 
 import "core:fmt"
@@ -43,7 +43,6 @@ WIDTH :: 1400
 // class (layout.windowSizeClasses, 1200-1599dp).
 DOCKED_NAV_MIN :: 1200
 HEIGHT :: 900
-STATE_FILE :: "build/debug/material-kitchen.state"
 
 Page :: struct {
 	name: string,
@@ -230,6 +229,7 @@ PAGES := [?]Page {
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
+	restore(gtx, m)
 	m.scheme = m.dark ? m3.dark_scheme() : m3.light_scheme()
 	m3.use(&m.scheme, m.dark ? .Dark : .Light)
 	m3.use_fonts({0, 1, 2})
@@ -282,7 +282,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			page_todo(gtx, p)
 		}
 	}
-	persist(m)
+	persist(gtx, m)
 }
 
 // app_bar is a plain small top app bar until the real component lands:
@@ -428,21 +428,21 @@ TODAY :: m3.Date{2026, 9, 28}
 
 // State that survives a respawn.
 
-persist :: proc(m: ^Model) {
+persist :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	now := [2]int{m.page, int(m.dark)}
 	if now == m.persisted {
 		return
 	}
 	m.persisted = now
-	_ = os.write_entire_file(STATE_FILE, transmute([]u8)fmt.tprintf("%d %d", now[0], now[1]))
+	ui.persist(gtx, transmute([]u8)fmt.aprintf("%d %d", now[0], now[1], allocator = gtx.allocator))
 }
 
-restore :: proc(m: ^Model) {
-	data, err := os.read_entire_file(STATE_FILE, context.temp_allocator)
-	if err != nil {
+restore :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	data := ui.restored(gtx)
+	if data == nil {
 		return
 	}
-	fields := strings.fields(string(data), context.temp_allocator)
+	fields := strings.fields(string(data), gtx.allocator)
 	if len(fields) == 2 {
 		m.page = clamp(parse_int(fields[0]), 0, len(PAGES) - 1)
 		m.dark = parse_int(fields[1]) != 0
@@ -480,7 +480,6 @@ main :: proc() {
 	m.date, m.time = TODAY, {9, 41}
 	fonts := kitchen_fonts()
 	if len(os.args) == 1 {
-		restore(&m)
 		child.run({ui = kitchen_ui, user = &m, fonts = fonts})
 		return
 	}

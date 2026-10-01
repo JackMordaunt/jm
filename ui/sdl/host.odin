@@ -84,6 +84,8 @@ Host_Loop :: struct {
 	wants_frame: bool,
 	frame_after: f32,
 	shown:       bool,
+	saved:       [dynamic]u8, // what the child last asked to persist (ui.persist), for the next child
+	restoring:   bool, // a child was just spawned with saved to give it: the next input carries it
 }
 
 // run_host opens the window, spawns app.child, and loops until the window
@@ -155,6 +157,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	render.compositor_init(&l.comp, int(app.threads))
 	l.comp.damage.resize_in_place = true
 	l.events = make([dynamic]ui.Raw_Event)
+	l.saved = make([dynamic]u8)
 	l.last = sdl3.GetTicksNS()
 	return true
 }
@@ -170,6 +173,7 @@ host_loop_destroy :: proc(l: ^Host_Loop) {
 	ipc.kill(&l.child)
 	delete(l.child_path)
 	delete(l.events)
+	delete(l.saved)
 	virtual.arena_destroy(&l.text)
 	render.compositor_destroy(&l.comp)
 	ui.frame_destroy(&l.frame)
@@ -257,6 +261,8 @@ host_maybe_respawn :: proc(l: ^Host_Loop) {
 	}
 	l.child = child
 	l.child_dead = false
+	// The new child starts from the state the last one persisted.
+	l.restoring = len(l.saved) > 0
 }
 
 // host_step sends this frame's polled events to the child, decodes its
@@ -282,7 +288,8 @@ host_step :: proc(l: ^Host_Loop) {
 
 	w := &l.w
 	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
-	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats)
+	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats, l.saved[:] if l.restoring else nil)
+	l.restoring = false
 	clear(&l.events)
 	virtual.arena_free_all(&l.text) // encode_input copied every Text string
 
@@ -303,7 +310,13 @@ host_step :: proc(l: ^Host_Loop) {
 	roundtrip_ms := ui.ms(trip_start)
 	dbg: ui.Reply_Debug
 	plat: ui.Reply_Platform
-	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg, &plat)
+	persist: []byte
+	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg, &plat, &persist)
+	if persist != nil {
+		// Kept here, not in the child, so it outlives the child.
+		clear(&l.saved)
+		append(&l.saved, ..persist)
+	}
 	if !dok || !ops.decode(ops_bytes, &l.scene) {
 		// Say why: the window just freezes on its last frame otherwise, which
 		// reads as a crash. A version mismatch is a host built before the

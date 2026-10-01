@@ -23,7 +23,8 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
 	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
 
-	size, density, dt, got, got_host, ok := decode_input(data)
+	size, density, dt, got, got_host, restore, ok := decode_input(data)
+	testing.expect_value(t, len(restore), 0)
 	testing.expect_value(t, got_host, host)
 	testing.expect(t, ok)
 	testing.expect_value(t, size, ops.Size{800, 600})
@@ -41,7 +42,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 @(test)
 test_encode_input_no_events :: proc(t: ^testing.T) {
 	data := encode_input({0, 0}, 1, 0, nil, context.temp_allocator)
-	size, density, dt, events, _, ok := decode_input(data, context.temp_allocator)
+	size, density, dt, events, _, _, ok := decode_input(data, context.temp_allocator)
 	testing.expect(t, ok)
 	testing.expect_value(t, size, ops.Size{0, 0})
 	testing.expect_value(t, density, f32(1))
@@ -98,7 +99,7 @@ test_decode_input_survives_random_bytes :: proc(t: ^testing.T) {
 		if i % 2 == 1 && n >= 16 {
 			copy(b, valid[:16])
 		}
-		_, _, _, _, _, _ = decode_input(b, context.temp_allocator)
+		_, _, _, _, _, _, _ = decode_input(b, context.temp_allocator)
 		free_all(context.temp_allocator)
 	}
 }
@@ -120,17 +121,19 @@ test_decode_reply_survives_random_bytes :: proc(t: ^testing.T) {
 @(test)
 test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) {
 	full := encode_input({800, 600}, 1, 0.5, nil, context.temp_allocator, Host_Stats{present_ms = 2, rss_bytes = 1 << 20})
-	// The same input as a host from before the stats sent it, and from
-	// before the resident memory.
-	for cut, i in ([]int{len(full) - 24, len(full) - 8}) {
-		size, _, dt, _, host, ok := decode_input(full[:cut], context.temp_allocator)
+	// The same input as a host from before the stats sent it, from before
+	// the resident memory, and from before the restore string (4 bytes
+	// for its empty length).
+	for cut, i in ([]int{len(full) - 28, len(full) - 12, len(full) - 4}) {
+		size, _, dt, _, host, restore, ok := decode_input(full[:cut], context.temp_allocator)
 		testing.expect(t, ok)
 		testing.expect_value(t, size, ops.Size{800, 600})
 		testing.expect_value(t, dt, f32(0.5))
-		testing.expect_value(t, host.rss_bytes, 0)
+		testing.expect_value(t, host.rss_bytes, i < 2 ? 0 : 1 << 20)
 		testing.expect_value(t, host.present_ms, i == 0 ? 0 : 2) // the timings, when sent, still read
+		testing.expect_value(t, len(restore), 0)
 	}
-	_, _, _, _, host, ok := decode_input(full, context.temp_allocator)
+	_, _, _, _, host, _, ok := decode_input(full, context.temp_allocator)
 	testing.expect(t, ok && host.rss_bytes == 1 << 20 && host.present_ms == 2)
 }
 
@@ -174,4 +177,29 @@ test_reply_with_an_unknown_request_is_rejected :: proc(t: ^testing.T) {
 	data := []byte{8, 0, 0, 0, 0, 0, 1, 9}
 	_, _, _, ok := decode_reply(data)
 	testing.expect(t, !ok)
+}
+
+@(test)
+test_input_carries_what_the_last_child_persisted :: proc(t: ^testing.T) {
+	data := encode_input({800, 600}, 1, 0, nil, context.temp_allocator, restore = transmute([]byte)string("page 3"))
+	_, _, _, _, _, restore, ok := decode_input(data, context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect_value(t, string(restore), "page 3")
+}
+
+@(test)
+test_reply_carries_what_the_child_persists :: proc(t: ^testing.T) {
+	sc_bytes := []byte{1, 2, 3}
+	data := encode_reply(true, 0.5, sc_bytes, context.temp_allocator, persist = transmute([]byte)string("count 4"))
+	persist: []byte
+	wants, after, got, ok := decode_reply(data, persist = &persist)
+	testing.expect(t, ok && wants)
+	testing.expect_value(t, after, f32(0.5))
+	testing.expect_value(t, string(persist), "count 4")
+	testing.expect(t, slice.equal(got, sc_bytes))
+	// A reply with nothing to persist leaves persist alone.
+	persist = nil
+	_, _, got, ok = decode_reply(encode_reply(false, 0, sc_bytes, context.temp_allocator), persist = &persist)
+	testing.expect(t, ok && persist == nil)
+	testing.expect(t, slice.equal(got, sc_bytes))
 }

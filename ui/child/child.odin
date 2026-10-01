@@ -97,7 +97,7 @@ run :: proc(app: App) {
 		if !ok {
 			return // the host closed the pipe: exit clean
 		}
-		size, density, raw_dt, events, host, dok := ui.decode_input(payload, allocator)
+		size, density, raw_dt, events, host, restore, dok := ui.decode_input(payload, allocator)
 		if !dok {
 			return // a corrupt request; nothing salvageable
 		}
@@ -130,6 +130,7 @@ run :: proc(app: App) {
 			time        = time,
 			allocator   = allocator,
 			debug       = debug,
+			restored    = restore,
 		}
 		scaled := density != 1
 		if scaled {
@@ -183,6 +184,7 @@ run :: proc(app: App) {
 			ui.debug_tray_wants_flash(&tray),
 			ui.debug_tray_overlays(&tray, density, &keep_out),
 			platform,
+			gtx.persist,
 		)
 		ui.router_requests_clear(&router)
 		if !ipc.write_frame(os.stdout, reply) {

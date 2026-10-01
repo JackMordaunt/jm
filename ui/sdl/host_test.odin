@@ -64,20 +64,6 @@ test_host_child_round_trip_moves_a_click_across_the_pipe :: proc(t: ^testing.T) 
 	sc: ops.Scene
 	ops.init(&sc, virtual.arena_allocator(&arena))
 
-	ask :: proc(t: ^testing.T, c: ^ipc.Child, size: ops.Size, events: []ui.Raw_Event, sc: ^ops.Scene) -> ^ui.Frame {
-		input := ui.encode_input(size, 1, 1.0 / 60, events, context.temp_allocator)
-		testing.expect(t, ipc.write_frame(c.stdin, input))
-		reply, rok := ipc.read_frame(c.stdout, context.temp_allocator)
-		testing.expect(t, rok)
-		_, _, ops_bytes, dok := ui.decode_reply(reply)
-		testing.expect(t, dok)
-		testing.expect(t, ops.decode(ops_bytes, sc))
-		f := new(ui.Frame, context.temp_allocator)
-		ui.frame_init(f, context.temp_allocator)
-		ui.flatten(sc, f)
-		return f
-	}
-
 	f := ask(t, &c, size, nil, &sc)
 	before := shows_label(f, "count 0")
 	testing.expect(t, before)
@@ -151,6 +137,65 @@ test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
 	testing.expect(t, ipc.write_frame(l.child.stdin, input))
 	_, rok := ipc.read_frame(l.child.stdout, context.temp_allocator)
 	testing.expect(t, rok)
+}
+
+// ask runs one round trip with c, as host_step does: events (and, once,
+// what a previous child persisted) go in, the reply's scene comes back
+// flattened; persist, when given, receives what the child asked to keep.
+@(private = "file")
+ask :: proc(t: ^testing.T, c: ^ipc.Child, size: ops.Size, events: []ui.Raw_Event, sc: ^ops.Scene, restore: []byte = nil, persist: ^[]byte = nil) -> ^ui.Frame {
+	input := ui.encode_input(size, 1, 1.0 / 60, events, context.temp_allocator, restore = restore)
+	testing.expect(t, ipc.write_frame(c.stdin, input))
+	reply, rok := ipc.read_frame(c.stdout, context.temp_allocator)
+	testing.expect(t, rok)
+	_, _, ops_bytes, dok := ui.decode_reply(reply, persist = persist)
+	testing.expect(t, dok)
+	testing.expect(t, ops.decode(ops_bytes, sc))
+	f := new(ui.Frame, context.temp_allocator)
+	ui.frame_init(f, context.temp_allocator)
+	ui.flatten(sc, f)
+	return f
+}
+
+// test_a_respawned_child_starts_from_what_the_last_persisted clicks the
+// counter up in one child, takes what its reply asks to persist (as
+// host_step keeps it in Host_Loop.saved), and hands it to a fresh child
+// with its first input, the way host_step does after host_maybe_respawn:
+// the new process shows the old count, not zero.
+@(test)
+test_a_respawned_child_starts_from_what_the_last_persisted :: proc(t: ^testing.T) {
+	if !require_child_exe(t) {
+		return
+	}
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	size := ops.Size{360, 200}
+	sc: ops.Scene
+	ops.init(&sc, virtual.arena_allocator(&arena))
+
+	first, ok := ipc.spawn({CHILD_EXE})
+	testing.expect(t, ok)
+	f := ask(t, &first, size, nil, &sc)
+	plus, found := find_center(f, &sc, "+")
+	testing.expect(t, found)
+	ask(t, &first, size, []ui.Raw_Event{{kind = .Move, pos = plus}, {kind = .Press, pos = plus}}, &sc)
+	ask(t, &first, size, []ui.Raw_Event{{kind = .Release, pos = plus}}, &sc)
+	persisted: []byte
+	f = ask(t, &first, size, nil, &sc, persist = &persisted)
+	testing.expect(t, shows_label(f, "count 1"))
+	testing.expect_value(t, string(persisted), "1")
+	saved := make([]byte, len(persisted), context.temp_allocator) // host_step copies it out of the reply
+	copy(saved, persisted)
+	ipc.kill(&first)
+
+	second, sok := ipc.spawn({CHILD_EXE})
+	testing.expect(t, sok)
+	defer ipc.kill(&second)
+	f = ask(t, &second, size, nil, &sc, restore = saved)
+	testing.expect(t, shows_label(f, "count 1"))
+	// Only the first input restores; the count then lives in the child.
+	f = ask(t, &second, size, nil, &sc)
+	testing.expect(t, shows_label(f, "count 1"))
 }
 
 @(private = "file")

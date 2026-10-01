@@ -13,7 +13,7 @@
 // The rest of the flags are ui/render's headless steps, as in
 // examples/material-kitchen: -dump, -click, -key, -advance, -layout,
 // -inspect, -reveal and -bounds. The selected page and theme survive a
-// hot-reload respawn through build/debug/fluent-kitchen.state.
+// hot-reload respawn through ui.persist and ui.restored.
 package main
 
 import "core:fmt"
@@ -29,7 +29,6 @@ import "jm:ui/render"
 
 WIDTH :: 1400
 HEIGHT :: 900
-STATE_FILE :: "build/debug/fluent-kitchen.state"
 NAV_WIDTH :: 240
 
 Page :: struct {
@@ -246,6 +245,7 @@ PAGES := [?]Page {
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
+	restore(gtx, m)
 	m.scheme = fluent.theme_scheme(m.theme)
 	fluent.use(&m.scheme, fluent.mode_of(m.theme))
 	fluent.use_fonts({0, 1, 2})
@@ -280,7 +280,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			page_todo(gtx, p)
 		}
 	}
-	persist(m)
+	persist(gtx, m)
 }
 
 // nav is the page list as the toolkit's own inline nav drawer: the
@@ -425,21 +425,21 @@ page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
 
 // State that survives a respawn.
 
-persist :: proc(m: ^Model) {
+persist :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	now := [2]int{m.page, int(m.theme)}
 	if now == m.persisted {
 		return
 	}
 	m.persisted = now
-	_ = os.write_entire_file(STATE_FILE, transmute([]u8)fmt.tprintf("%d %d", now[0], now[1]))
+	ui.persist(gtx, transmute([]u8)fmt.aprintf("%d %d", now[0], now[1], allocator = gtx.allocator))
 }
 
-restore :: proc(m: ^Model) {
-	data, err := os.read_entire_file(STATE_FILE, context.temp_allocator)
-	if err != nil {
+restore :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	data := ui.restored(gtx)
+	if data == nil {
 		return
 	}
-	fields := strings.fields(string(data), context.temp_allocator)
+	fields := strings.fields(string(data), gtx.allocator)
 	if len(fields) == 2 {
 		m.page = clamp(parse_int(fields[0]), 0, len(PAGES) - 1)
 		m.theme = fluent.Theme(clamp(parse_int(fields[1]), 0, len(fluent.Theme) - 1))
@@ -473,7 +473,6 @@ main :: proc() {
 	m.page = 1
 	fonts := kitchen_fonts()
 	if len(os.args) == 1 {
-		restore(&m)
 		child.run({ui = kitchen_ui, user = &m, fonts = fonts})
 		return
 	}

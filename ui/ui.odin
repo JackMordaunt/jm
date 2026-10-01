@@ -79,6 +79,8 @@ Ctx :: struct {
 	wants_frame: bool, // request_frame was called this frame
 	frame_after: f32, // then: the fewest seconds any caller asked to wait
 	debug:       Debug_Flags, // inspection switches; see Debug_Flag
+	restored:    []byte, // what the last child persisted, on the first frame after a hot-reload respawn; see restored
+	persist:     []byte, // what persist asked the host to keep this frame
 }
 
 // request_frame asks the host for another frame within after seconds; 0,

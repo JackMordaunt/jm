@@ -95,6 +95,22 @@ clipboard_read :: proc(gtx: ^Ctx, area: ops.Area_Id, mime := TEXT_MIME) {
 	append(&r.requests, Clipboard_Read{clone_string(mime, r.allocator)})
 }
 
+// persist asks the host to keep data across a hot-reload respawn: the
+// next child's first frame reads it back with restored. The host keeps
+// the latest, so call it when the state changes (or every frame, for a
+// few bytes). data must live until the frame ends; gtx.allocator does.
+// A loop with no host (ui/sdl's own, a probe) keeps nothing.
+persist :: proc(gtx: ^Ctx, data: []byte) {
+	gtx.persist = data
+}
+
+// restored is what the previous child persisted, on the first frame a
+// respawned child runs, and nil on every other frame: an app parses it
+// there and goes on from where the last build left off.
+restored :: proc(gtx: ^Ctx) -> []byte {
+	return gtx.restored
+}
+
 // focus_request moves keyboard focus to area at the next route, sending
 // Blur and Focus as a press would; 0 clears focus. An area missing from
 // the frame just laid out keeps the focus where it is.
