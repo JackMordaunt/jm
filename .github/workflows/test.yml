@@ -222,9 +222,11 @@ jobs:
           mkdir -p ui/blend2d/lib
           if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/blend2d/build/blend2d.lib" ui/blend2d/lib/; else cp "$RUNNER_TEMP/blend2d/build/libblend2d.a" ui/blend2d/lib/; fi
 
-      # AccessKit: the pinned release's prebuilt archive, checked by hash.
+      # AccessKit: the pinned release's prebuilt library, checked by hash:
+      # the static archive on Linux and macOS, the DLL on Windows.
       - name: accesskit
-        if: runner.os == 'Linux'
+        env:
+          MSYS_NO_PATHCONV: 1
         run: just accesskit
 
       # Every program linked, then the suite, as `just link test` runs them

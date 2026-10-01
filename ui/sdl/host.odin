@@ -165,6 +165,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	if !app.no_accessibility && bridge_init(&l.a11y, l.w.window, app.title) {
 		l.w.a11y = &l.a11y
 	}
+	sdl3.ShowWindow(l.w.window)
 	return true
 }
 

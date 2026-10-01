@@ -153,7 +153,7 @@ fuzz         fuzz     30s of fuzzing         fuzz-isolate  a child process per c
              fuzz-asan  the same under AddressSanitizer
 ui           blend2d  fetch and compile Blend2D into ui/blend2d/lib
              kb       compile the vendored kb_text_shape into ui/kb/lib
-             accesskit  fetch AccessKit's prebuilt static library into ui/accesskit/lib
+             accesskit  fetch AccessKit's prebuilt library into ui/accesskit/lib
              hot-counter-child  build the subprocess `just test`'s own host/child test spawns
              bench-ui  ms per frame for layout and the Blend2D executor
              hot-architecture  build the hot-reloaded architecture diagram
@@ -721,8 +721,9 @@ commit in `ui/kb/vendor` (zlib licence); `just kb` builds it, and
 `JM_UI_SHAPER=blend2d` shapes with Blend2D's own shaper instead, to compare.
 Assistive technology reads the widgets' semantics (`ui.semantics`) through
 AccessKit (`ui/accesskit`, Apache-2.0 or MIT), fetched as the upstream
-release's prebuilt static library by `just accesskit` rather than built, so
-no Rust toolchain is needed; the Linux adapter (AT-SPI2) is the one wired.
+release's prebuilt library by `just accesskit` rather than built, so no
+Rust toolchain is needed: the static archive on Linux (AT-SPI2) and macOS
+(NSAccessibility), the DLL on Windows (UI Automation), beside the executable.
 `examples/material-kitchen` is the demo, `just material-kitchen` opens it.
 
 That "serialized for a renderer in another process" is `ui/sdl.run_host`:

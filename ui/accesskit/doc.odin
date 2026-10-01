@@ -8,7 +8,7 @@
 // assistive technology's thread. tree.odin builds that tree from a
 // ui.Frame's semantic nodes; ui/sdl owns the adapter and the loop.
 //
-// Only the Linux adapter is bound so far. The binding itself (api.odin)
-// is linked on Linux only, so this package type-checks everywhere and
-// links nowhere else.
+// The three desktop adapters are bound, each in its api_<os>.odin: Linux
+// links the static archive, macOS the static archive with AppKit, Windows
+// the DLL through its import library. Elsewhere only this file compiles.
 package accesskit

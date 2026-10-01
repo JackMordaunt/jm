@@ -326,6 +326,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	if !app.no_accessibility && bridge_init(&l.a11y, l.w.window, app.title) {
 		l.w.a11y = &l.a11y
 	}
+	sdl3.ShowWindow(l.w.window)
 	return true
 }
 
@@ -502,7 +503,9 @@ open :: proc(w: ^Window, app: App) -> bool {
 	if height <= 0 {
 		height = 600
 	}
-	w.window = sdl3.CreateWindow(title, i32(width), i32(height), {.RESIZABLE, .HIGH_PIXEL_DENSITY})
+	// Hidden until the loop has its bridge to assistive technology: the
+	// Windows adapter must attach before the window is first shown.
+	w.window = sdl3.CreateWindow(title, i32(width), i32(height), {.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN})
 	if w.window == nil {
 		fmt.eprintln("sdl: window:", sdl3.GetError())
 		return false

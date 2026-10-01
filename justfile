@@ -68,7 +68,7 @@ test: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-child
     mkdir -p build/test
     # vendor:sdl3 loads SDL3.dll at start-up on Windows, so ui/sdl's test
     # binary needs it beside it.
-    if [ "{{os()}}" = windows ]; then cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/test/; fi
+    if [ "{{os()}}" = windows ]; then cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/test/; cp ui/accesskit/lib/accesskit.dll build/test/ 2>/dev/null || true; fi
     run() {
       local p=$1 out
       shift
@@ -455,18 +455,19 @@ blend2d_lib := if os() == "windows" { "ui/blend2d/lib/blend2d.lib" } else { "ui/
 kb_lib := if os() == "windows" { "ui/kb/lib/kb_text_shape.lib" } else { "ui/kb/lib/kb_text_shape.a" }
 
 # AccessKit's C bindings (ui/accesskit) are fetched as the upstream
-# release, not built: the zip holds prebuilt static libraries for every
-# desktop target, so no Rust toolchain is needed here. The one archive for
-# this machine is kept, with its debug sections stripped (46 MB to 8 MB;
-# the code the linker takes is under 2 MB). Linux is the one wired up so
-# far; the recipe keeps the macOS archive too, for when its adapter lands.
-accesskit_lib := "ui/accesskit/lib/libaccesskit.a"
+# release, not built: the zip holds prebuilt libraries for every desktop
+# target, so no Rust toolchain is needed here. Linux and macOS keep the
+# static archive for this machine, Linux with its debug sections stripped
+# (46 MB to 8 MB; the code the linker takes is under 2 MB); Windows keeps
+# the DLL and its import library, since the static archive there was built
+# against the dynamic C runtime, which Odin does not link. The DLL goes
+# beside whatever runs: `test` and `sdl3` copy it.
+accesskit_lib := if os() == "windows" { "ui/accesskit/lib/accesskit.lib" } else { "ui/accesskit/lib/libaccesskit.a" }
 accesskit_ver := "0.23.1"
 accesskit_sha := "35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc7043f"
 
-# Fetch AccessKit's prebuilt static library into ui/accesskit/lib if it is missing
+# Fetch AccessKit's prebuilt library into ui/accesskit/lib if it is missing
 [group('ui')]
-[unix]
 accesskit:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -480,24 +481,20 @@ accesskit:
     if command -v sha256sum >/dev/null; then sum=$(sha256sum "$zip" | cut -d' ' -f1); else sum=$(shasum -a 256 "$zip" | cut -d' ' -f1); fi
     [ "$sum" = "{{accesskit_sha}}" ] || { echo "accesskit: $zip has sha256 $sum, expected {{accesskit_sha}}" >&2; exit 1; }
     case "$(uname -s)-$(uname -m)" in
-      Linux-x86_64) sub=linux/x86_64 ;;
-      Linux-i686) sub=linux/x86 ;;
-      Darwin-arm64) sub=macos/arm64 ;;
-      Darwin-x86_64) sub=macos/x86_64 ;;
+      Linux-x86_64) sub=linux/x86_64/static; files="libaccesskit.a" ;;
+      Linux-i686) sub=linux/x86/static; files="libaccesskit.a" ;;
+      Darwin-arm64) sub=macos/arm64/static; files="libaccesskit.a" ;;
+      Darwin-x86_64) sub=macos/x86_64/static; files="libaccesskit.a" ;;
+      MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) sub=windows/x86_64/msvc/shared; files="accesskit.lib accesskit.dll" ;;
       *) echo "accesskit: no prebuilt library for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
     esac
-    member="accesskit-c-{{accesskit_ver}}/lib/$sub/static/libaccesskit.a"
-    unzip -qo "$zip" "$member" -d build/accesskit
-    cp "build/accesskit/$member" {{accesskit_lib}}
-    if [ "$(uname -s)" = Linux ]; then strip --strip-debug {{accesskit_lib}}; fi
-    echo "accesskit -> {{accesskit_lib}} ($(du -h {{accesskit_lib}} | cut -f1))"
-
-# No adapter is wired on Windows yet: nothing to fetch, so link and test
-# have a dependency that is satisfied there.
-[group('ui')]
-[windows]
-accesskit:
-    @echo "accesskit: not fetched on Windows (no adapter yet)"
+    for f in $files; do
+      member="accesskit-c-{{accesskit_ver}}/lib/$sub/$f"
+      if command -v unzip >/dev/null; then unzip -qo "$zip" "$member" -d build/accesskit; else 7z x -y -obuild/accesskit "$zip" "$member" >/dev/null; fi
+      cp "build/accesskit/$member" ui/accesskit/lib/
+    done
+    if [ "$(uname -s)" = Linux ]; then strip --strip-debug ui/accesskit/lib/libaccesskit.a; fi
+    echo "accesskit -> ui/accesskit/lib ($(du -sh ui/accesskit/lib | cut -f1))"
 # Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
 # vendored here: 29 MB of source is fetched into build/src instead, at the
 # upstream commits the binding in ui/blend2d was generated from (Blend2D
@@ -572,12 +569,13 @@ kb:
 # vendor:sdl3 links SDL3.dll at load time on Windows, so the demo cannot start
 # without it beside the exe.
 #
-# Copy SDL3.dll next to the demo
+# Copy SDL3.dll, and AccessKit's DLL, next to the demo
 [group('ui')]
 [windows]
 sdl3:
     @mkdir -p build/debug
     @cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/debug/
+    @cp ui/accesskit/lib/accesskit.dll build/debug/ 2>/dev/null || true
 
 # Nothing to do: SDL3 is a system library off Windows
 [group('ui')]

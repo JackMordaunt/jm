@@ -1,16 +1,27 @@
-#+build linux
+#+build linux, darwin, windows
 package accesskit
 
 import "core:c"
 
-foreign import lib "lib/libaccesskit.a"
+// Linux and macOS link the release's static archive; Windows its DLL
+// through the import library beside it, so the DLL must sit next to the
+// executable. Rust's msvc static libraries take the dynamic C runtime
+// unless built with crt-static, and Odin links the static one, so the DLL
+// sidesteps the mismatch rather than testing it. The adapters are in
+// api_<os>.odin.
+when ODIN_OS == .Windows {
+	foreign import lib "lib/accesskit.lib"
+} else when ODIN_OS == .Darwin {
+	foreign import lib {"lib/libaccesskit.a", "system:AppKit.framework", "system:Foundation.framework"}
+} else {
+	foreign import lib "lib/libaccesskit.a"
+}
 
 // Opaque to us: the header declares them without a body, and makes and
 // frees them (node_new, tree_update_free; an update takes its nodes).
 Node :: struct {}
 Tree_Update :: struct {}
 Tree_Info :: struct {}
-Unix_Adapter :: struct {}
 
 Tree_Id :: struct {
 	bytes: [16]u8,
@@ -26,12 +37,13 @@ Action_Request :: struct {
 	target_node: Node_Id,
 }
 
-// The handlers run on the adapter's own thread on Linux (accesskit.h
-// 0.23.1, line 2995: "All of the handlers will always be called from
-// another thread"): an activation handler returns the whole tree, an
-// action handler takes a request it must free (line 1117: ownership of
-// the request is transferred to the callback), a deactivation handler
-// hears the assistive technology go away.
+// An activation handler returns the whole tree, an action handler takes
+// a request it must free (accesskit.h 0.23.1, line 1117: ownership of the
+// request is transferred to the callback), a deactivation handler hears
+// the assistive technology go away. Which thread calls them is the
+// adapter's: another thread on Linux (line 2995), the window's for
+// activation on Windows and possibly another for actions (lines
+// 3117-3119), the main thread on macOS.
 Tree_Update_Factory :: #type proc "c" (userdata: rawptr) -> ^Tree_Update
 Activation_Handler :: #type proc "c" (userdata: rawptr) -> ^Tree_Update
 Action_Handler :: #type proc "c" (request: ^Action_Request, userdata: rawptr)
@@ -76,13 +88,4 @@ foreign lib {
 	tree_info_free :: proc(tree: ^Tree_Info) ---
 	string_free :: proc(s: cstring) ---
 	action_request_free :: proc(request: ^Action_Request) ---
-
-	unix_adapter_new :: proc(activation: Activation_Handler, activation_userdata: rawptr, action: Action_Handler, action_userdata: rawptr, deactivation: Deactivation_Handler, deactivation_userdata: rawptr) -> ^Unix_Adapter ---
-	unix_adapter_free :: proc(adapter: ^Unix_Adapter) ---
-	unix_adapter_set_root_window_bounds :: proc(adapter: ^Unix_Adapter, outer, inner: Rect) ---
-	// The header (0.23.1, the Unix adapter section) names it: the update
-	// is built and pushed only while the adapter is active, that is while
-	// an assistive technology has asked for the tree.
-	unix_adapter_update_if_active :: proc(adapter: ^Unix_Adapter, factory: Tree_Update_Factory, userdata: rawptr) ---
-	unix_adapter_update_window_focus_state :: proc(adapter: ^Unix_Adapter, is_focused: bool) ---
 }
