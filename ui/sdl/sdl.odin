@@ -94,6 +94,7 @@ App :: struct {
 	fallbacks:     []ops.Font_Id, // font ids tried in order for a rune the font asked for lacks
 	clear:         Color,
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
+	no_accessibility: bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
 }
 
 // default_font is ui.default_font: kept here too since every existing
@@ -146,6 +147,7 @@ Window :: struct {
 	cursors:  [ops.Cursor]^sdl3.Cursor, // made on first use, see show_cursor
 	cursor_shown: ops.Cursor,
 	cursor_set:   bool, // cursor_shown has been applied
+	a11y:         ^Bridge, // the loop's bridge to assistive technology, for window events; nil without one
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -235,6 +237,7 @@ Loop :: struct {
 	app:           App,
 	w:             Window,
 	rec:           ui.Recorder, // every frame's input, when ui.RECORD_ENV names a file
+	a11y:          Bridge, // what assistive technology reads, unless App.no_accessibility
 	scene:           ops.Scene,
 	frames:        [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
 	router:        ui.Router,
@@ -277,6 +280,7 @@ run :: proc(app: App) {
 	defer sdl3.RemoveEventWatch(redraw_on_expose, l)
 
 	for {
+		bridge_take_actions(&l.a11y, &l.frames[(l.n + 1) % 2], router_sink, &l.router)
 		if !poll(&l.w, router_sink, &l.router, virtual.arena_allocator(&l.events)) {
 			break
 		}
@@ -319,11 +323,15 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	l.last = sdl3.GetTicksNS()
 	ui.debug_tray_init(&l.tray)
 	ui.recorder_from_env(&l.rec)
+	if !app.no_accessibility && bridge_init(&l.a11y, l.w.window, app.title) {
+		l.w.a11y = &l.a11y
+	}
 	return true
 }
 
 @(private)
 loop_destroy :: proc(l: ^Loop) {
+	bridge_destroy(&l.a11y)
 	ui.recorder_close(&l.rec)
 	virtual.arena_destroy(&l.events)
 	ops.frame_arena_destroy(&l.arenas[0])
@@ -423,6 +431,7 @@ step :: proc(l: ^Loop) {
 		ui.debug_tray_overlays(&l.tray, w.density, &keep_out),
 	)
 	host.present_ms = ui.ms(present_start)
+	bridge_frame(&l.a11y, frame, l.router.focus, w.density)
 	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host))
 	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
 	// The cursor and clipboard, once the frame is done; a clipboard read
@@ -804,8 +813,15 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				return false
 			}
 			d = w.density
+			bridge_window_bounds(w.a11y)
 		case .WINDOW_EXPOSED:
 			w.exposed = true
+		case .WINDOW_FOCUS_GAINED:
+			bridge_window_focus(w.a11y, true)
+		case .WINDOW_FOCUS_LOST:
+			bridge_window_focus(w.a11y, false)
+		case .WINDOW_MOVED, .WINDOW_SHOWN, .WINDOW_MAXIMIZED, .WINDOW_RESTORED:
+			bridge_window_bounds(w.a11y)
 		case .RENDER_TARGETS_RESET:
 			w.stale = true
 		case .RENDER_DEVICE_RESET:

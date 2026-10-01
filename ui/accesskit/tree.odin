@@ -73,8 +73,11 @@ snapshot_destroy :: proc(s: ^Snapshot) {
 
 // snapshot_take fills s from f: one record per semantic node, in f's
 // order, the window titled title, focus the router's focused area when a
-// node has it. It reuses s's capacity, so a steady frame allocates nothing.
-snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: string) {
+// node has it, rects scaled by scale: 1 / the display density, since f
+// is in device pixels and the window bounds the bridge gives the adapter
+// are SDL's window size, in points. It reuses s's capacity, so a steady
+// frame allocates nothing.
+snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: string, scale: f32 = 1) {
 	clear(&s.records)
 	clear(&s.text)
 	s.title = put_text(s, title)
@@ -88,7 +91,7 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 			value       = put_text(s, n.semantics.value),
 			description = put_text(s, n.semantics.description),
 			labelled_by = Node_Id(n.semantics.labelled_by),
-			rect        = {f64(n.rect.x), f64(n.rect.y), f64(n.rect.x + n.rect.w), f64(n.rect.y + n.rect.h)},
+			rect        = {f64(n.rect.x * scale), f64(n.rect.y * scale), f64((n.rect.x + n.rect.w) * scale), f64((n.rect.y + n.rect.h) * scale)},
 			selected    = .Selected in n.semantics.states,
 			expandable  = .Expandable in n.semantics.states || .Expanded in n.semantics.states,
 			expanded    = .Expanded in n.semantics.states,
@@ -114,13 +117,30 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 		if n.rect.w > 0 && n.rect.h > 0 {
 			seen := ops.rect_intersect(ui.clip_chain_bounds(f, n.clip), n.rect)
 			r.hidden = seen.w <= 0 || seen.h <= 0
+		} else if n.rect != {} {
+			// A box with one side collapsed is a closed drawer or sheet: in
+			// the frame, with nothing to see.
+			r.hidden = true
 		}
-		for h in f.hits {
-			if h.area != n.id {
-				continue
+		if n.semantics.role == .Text || n.semantics.role == .Heading {
+			// Static text is read from the node's value: accesskit-c's
+			// examples/sdl/hello_world.c announces through a Label whose
+			// value is the text, and a live dump of the kitchen read a
+			// Label with only a label as nameless. A heading is named by
+			// its label; both get the text.
+			r.value = r.label
+		}
+		if interactive(n.semantics.role) {
+			// Only a control takes the reader's focus and clicks: selectable
+			// text wants keys for copying, but a reader stepping through
+			// every label would be no use.
+			for h in f.hits {
+				if h.area != n.id {
+					continue
+				}
+				r.focusable |= .Key in h.kinds || .Focus in h.kinds
+				r.clickable |= .Press in h.kinds
 			}
-			r.focusable |= .Key in h.kinds || .Focus in h.kinds
-			r.clickable |= .Press in h.kinds
 		}
 		if ops.Area_Id(r.id) == focus && focus != 0 {
 			s.focus = r.id
@@ -130,9 +150,10 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 }
 
 // snapshot_equal reports whether a and b describe the same tree: the
-// same records and the same strings.
+// same records and the same strings. Focus is compared apart, since a
+// focus that moved alone is a smaller update.
 snapshot_equal :: proc(a, b: ^Snapshot) -> bool {
-	if len(a.records) != len(b.records) || a.focus != b.focus || a.title != b.title {
+	if len(a.records) != len(b.records) || a.title != b.title {
 		return false
 	}
 	return slice.equal(a.text[:], b.text[:]) && mem.compare(slice.to_bytes(a.records[:]), slice.to_bytes(b.records[:])) == 0
@@ -157,6 +178,16 @@ put_text :: proc(s: ^Snapshot, str: string) -> i32 {
 	append(&s.text, str)
 	append(&s.text, 0)
 	return off
+}
+
+// interactive reports whether r is a control the reader may focus or
+// click, rather than content it reads past.
+interactive :: proc(r: ops.Role) -> bool {
+	#partial switch r {
+	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Link, .Option, .Grid_Cell, .Row, .Cell:
+		return true
+	}
+	return false
 }
 
 // role_of is the AccessKit role for an ops.Role: the same name where

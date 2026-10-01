@@ -15,7 +15,10 @@ tree_update :: proc(s: ^Snapshot) -> ^Tree_Update {
 	if t := text(s, s.title); t != nil {
 		node_set_label(window, t)
 	}
-	known := make(map[Node_Id]bool, len(s.records), context.temp_allocator)
+	// On the heap, not the temp allocator: the adapter's thread calls this
+	// too, with whatever context it was given.
+	known := make(map[Node_Id]bool, len(s.records))
+	defer delete(known)
 	for r in s.records {
 		known[r.id] = true
 	}

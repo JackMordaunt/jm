@@ -75,7 +75,8 @@ test_snapshot_builds_the_tree_accesskit_reads :: proc(t: ^testing.T) {
 	r := s.records[:]
 	testing.expect(t, strings.contains(got, fmt.tprintf("role: Window, children: [#%d, #%d, #%d, #%d, #%d, #%d], label: \"Bridge\"", r[0].id, r[3].id, r[4].id, r[5].id, r[6].id, r[7].id)), got)
 	testing.expect(t, strings.count(got, "role: ") == 9, got)
-	testing.expect(t, strings.contains(got, `role: Heading, label: "Fruit", level: 1, bounds: Rect { x0: 0.0, y0: 0.0, x1: 80.0, y1: 20.0 }`), got)
+	testing.expect(t, strings.contains(got, `role: Heading, label: "Fruit", value: "Fruit", level: 1, bounds: Rect { x0: 0.0, y0: 0.0, x1: 80.0, y1: 20.0 }`), got)
+	testing.expect(t, strings.contains(got, `role: Label, label: "Volume", value: "Volume", bounds:`), got) // static text is read from its value
 	testing.expect(t, strings.contains(got, `role: ListItem, actions: [Click], label: "Pear", is_selected: true`), got)
 	testing.expect(t, strings.contains(got, fmt.tprintf("role: List, children: [#%d, #%d]", s.records[1].id, s.records[2].id)), got)
 	testing.expect(t, strings.contains(got, `role: CheckBox, actions: [Click], label: "Dark", toggled: True`), got)
@@ -91,7 +92,8 @@ test_snapshot_builds_the_tree_accesskit_reads :: proc(t: ^testing.T) {
 	// Focus on the field: a different snapshot, named in the update.
 	testing.expect(t, ui.probe_click(&p, "Name"))
 	snapshot_take(&again, ui.probe_current(&p), p.router.focus, "Bridge")
-	testing.expect(t, !snapshot_equal(&s, &again))
+	testing.expect(t, snapshot_equal(&s, &again)) // focus is compared apart
+	testing.expect(t, s.focus != again.focus)
 	testing.expect_value(t, again.focus, Node_Id(p.router.focus))
 	testing.expect(t, strings.contains(debug(&again, context.temp_allocator), fmt.tprintf("focus: #%d }", p.router.focus)))
 }
@@ -109,6 +111,29 @@ scrolled_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		ui.semantics(gtx, &p, {role = .List_Item, label = "row"})
 		ui.widget_close(gtx, &p, {size = {80, 20}})
 	}
+}
+
+// collapsed_view is a drawer closed to no width: in the frame, unseen.
+@(private = "file")
+collapsed_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1) // the root would force the window's size on it
+	defer ui.close(&col)
+	p := ui.widget_open(gtx, 2)
+	ui.semantics(gtx, &p, {role = .Navigation})
+	ui.widget_close(gtx, &p, {size = {0, 300}})
+}
+
+@(test)
+test_a_collapsed_node_is_hidden :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, collapsed_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Drawer")
+	testing.expect_value(t, len(s.records), 1)
+	testing.expect(t, s.records[0].hidden)
 }
 
 @(test)

@@ -222,6 +222,11 @@ jobs:
           mkdir -p ui/blend2d/lib
           if [ "$RUNNER_OS" = Windows ]; then cp "$RUNNER_TEMP/blend2d/build/blend2d.lib" ui/blend2d/lib/; else cp "$RUNNER_TEMP/blend2d/build/libblend2d.a" ui/blend2d/lib/; fi
 
+      # AccessKit: the pinned release's prebuilt archive, checked by hash.
+      - name: accesskit
+        if: runner.os == 'Linux'
+        run: just accesskit
+
       # Every program linked, then the suite, as `just link test` runs them
       # anywhere. --no-deps: the native libraries are built above, because
       # the recipes that build them on Windows are written for PowerShell.

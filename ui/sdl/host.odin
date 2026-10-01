@@ -54,6 +54,7 @@ Host_App :: struct {
 	dir:           string, // the child's working directory; "" is this process's own
 	clear:         Color, // shown before the child's first reply arrives
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
+	no_accessibility: bool, // leave assistive technology unserved: no bridge is made
 }
 
 @(private)
@@ -86,6 +87,7 @@ Host_Loop :: struct {
 	shown:       bool,
 	saved:       [dynamic]u8, // what the child last asked to persist (ui.persist), for the next child
 	restoring:   bool, // a child was just spawned with saved to give it: the next input carries it
+	a11y:        Bridge, // what assistive technology reads of the child's frames
 }
 
 // run_host opens the window, spawns app.child, and loops until the window
@@ -108,6 +110,7 @@ run_host :: proc(app: Host_App) {
 	defer sdl3.RemoveEventWatch(redraw_on_expose_host, l)
 
 	for {
+		bridge_take_actions(&l.a11y, &l.frame, host_sink, l)
 		if !poll(&l.w, host_sink, l, virtual.arena_allocator(&l.text)) {
 			break
 		}
@@ -159,6 +162,9 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	l.events = make([dynamic]ui.Raw_Event)
 	l.saved = make([dynamic]u8)
 	l.last = sdl3.GetTicksNS()
+	if !app.no_accessibility && bridge_init(&l.a11y, l.w.window, app.title) {
+		l.w.a11y = &l.a11y
+	}
 	return true
 }
 
@@ -171,6 +177,7 @@ host_loop_destroy :: proc(l: ^Host_Loop) {
 	// nothing left to do about one, whatever it turns out to mean in the
 	// already-gone case.
 	ipc.kill(&l.child)
+	bridge_destroy(&l.a11y)
 	delete(l.child_path)
 	delete(l.events)
 	delete(l.saved)
@@ -339,6 +346,7 @@ host_step :: proc(l: ^Host_Loop) {
 	// Sent with the next input, for the child's debug tray.
 	l.host_stats.present_ms, l.host_stats.roundtrip_ms = ui.ms(present_start), roundtrip_ms
 	l.host_stats.rss_bytes = ui.process_rss()
+	bridge_frame(&l.a11y, &l.frame, plat.focus, w.density)
 	l.wants_frame, l.frame_after = wants_frame || flashing(w), frame_after
 	// The cursor and clipboard the child asked for; a read's Paste goes
 	// out with the next input, so a frame must follow to carry it.
