@@ -36,11 +36,14 @@ semantics :: proc(gtx: ^Ctx, p: ^Placement, s: ops.Semantics) {
 
 // part_semantics describes a part of widget p that is not a widget of
 // its own: id is the part's area (one mixed from p.id), rect its box in
-// p's space. It nests under p when p declares semantics, else where p
-// would. Call it inside p's bracket, under p's own transform.
-part_semantics :: proc(gtx: ^Ctx, p: ^Placement, id: ops.Area_Id, rect: ops.Rect, s: ops.Semantics) {
-	parent := p.id if p.semantic else semantic_parent(gtx.layout, p.parent)
-	ops.semantic(gtx.scene, id, parent, s, rect)
+// p's space. It nests under p, whether p declares its own semantics
+// before or after it or never (then p is an unlabelled group of its
+// parts), or under an earlier part of p when under names one: a toast's
+// dismiss button under the toast. Call it inside p's bracket, under p's
+// own transform.
+part_semantics :: proc(gtx: ^Ctx, p: ^Placement, id: ops.Area_Id, rect: ops.Rect, s: ops.Semantics, under: ops.Area_Id = 0) {
+	p.parts = true
+	ops.semantic(gtx.scene, id, under if under != 0 else p.id, s, rect)
 }
 
 // container_semantics is semantics for an open container: a column that

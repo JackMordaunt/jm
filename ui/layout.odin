@@ -187,6 +187,7 @@ Placement :: struct {
 	kind:     string, // the widget proc that made it, for Debug_Box: button, column
 	semantics: ops.Semantics, // what semantics set; emitted at widget_close
 	semantic:  bool,
+	parts:     bool, // part_semantics declared a part under this widget
 }
 
 // layout_init prepares l; its storage lives in allocator.
@@ -354,6 +355,10 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 	}
 	if p.semantic {
 		ops.semantic(gtx.scene, p.id, semantic_parent(gtx.layout, p.parent), p.semantics, {0, 0, d.size.x, d.size.y})
+	} else if p.parts {
+		// Its parts named it as their parent: it is a group of them, so
+		// the order of the declarations does not matter.
+		ops.semantic(gtx.scene, p.id, semantic_parent(gtx.layout, p.parent), {role = .Group}, {0, 0, d.size.x, d.size.y})
 	}
 	if p.pushed {
 		ops.transform_pop(gtx.scene)

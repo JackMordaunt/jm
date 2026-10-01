@@ -459,6 +459,13 @@ test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) 
 		widget_close(gtx, &p, {size = {80, 20}})
 		spacer(gtx, 10) // says nothing: no op for it
 	}
+	{
+		// A widget with a part and no declaration of its own closes as a
+		// group of its parts, under the nearest declared container.
+		q := widget_open(gtx, 2)
+		part_semantics(gtx, &q, id_mix(q.id, 1), {0, 0, 5, 5}, {role = .Tab, label = "One"})
+		widget_close(gtx, &q, {size = {20, 10}})
+	}
 	got := make([dynamic]ops.Semantic, context.temp_allocator)
 	for op in h.scene.ops {
 		if s, ok := op.(ops.Semantic); ok {
@@ -467,7 +474,10 @@ test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) 
 	}
 	// The child closes first, naming the column as its parent; the
 	// column's op carries its own box and the role it declared.
-	testing.expect_value(t, len(got), 2)
+	testing.expect_value(t, len(got), 4)
+	testing.expect_value(t, got[2].parent, got[3].id)
+	testing.expect_value(t, got[3].semantics, ops.Semantics{role = .Group})
+	testing.expect_value(t, got[3].parent, ops.Area_Id(0))
 	testing.expect_value(t, got[0].semantics, ops.Semantics{role = .List_Item, label = "Apple", states = {.Selected}})
 	testing.expect_value(t, got[0].rect, ops.Rect{0, 0, 80, 20})
 	testing.expect_value(t, got[0].parent, got[1].id)

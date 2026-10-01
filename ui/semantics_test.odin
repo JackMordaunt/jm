@@ -36,9 +36,19 @@ screen_view :: proc(gtx: ^Ctx, user: rawptr) {
 		defer close(&wrap)
 		p := widget_open(gtx, 3)
 		ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 24, 24}, {.Press})
-		semantics(gtx, &p, {role = .Checkbox, label = "Dark", states = {.Checked}})
+		// A part before its widget's own declaration, and a part under
+		// that part: both nest where they belong.
 		part_semantics(gtx, &p, id_mix(p.id, 1), {0, 0, 12, 12}, {role = .Text, label = "box"})
+		part_semantics(gtx, &p, id_mix(p.id, 2), {0, 0, 6, 6}, {role = .Text, label = "tick"}, under = id_mix(p.id, 1))
+		semantics(gtx, &p, {role = .Checkbox, label = "Dark", states = {.Checked}})
 		widget_close(gtx, &p, {size = {24, 24}})
+	}
+	{
+		// A widget that declares nothing itself but has parts is a group
+		// of them.
+		p := widget_open(gtx, 8)
+		part_semantics(gtx, &p, id_mix(p.id, 1), {0, 0, 10, 10}, {role = .Tab, label = "One", states = {.Selected}})
+		widget_close(gtx, &p, {size = {40, 10}})
 	}
 	label(gtx, "Status: ready", key = 4)
 	{
@@ -90,8 +100,11 @@ semantics_report_reads_the_screen_as_a_tree :: proc(t: ^testing.T) {
 			"  list item \"Pear\" selected at 0,20 80x20\n",
 			"checkbox \"Dark\" checked at 0,40 24x24\n",
 			"  text \"box\" at 0,40 12x12\n",
-			"text \"Status: ready\" at 0,64 109x14\n",
-			"text field \"Name\" value \"Jack\" at 0,78 120x24\n",
+			"    text \"tick\" at 0,40 6x6\n",
+			"group \"\" at 0,64 40x10\n",
+			"  tab \"One\" selected at 0,64 10x10\n",
+			"text \"Status: ready\" at 0,74 109x14\n",
+			"text field \"Name\" value \"Jack\" at 0,88 120x24\n",
 		},
 		context.temp_allocator,
 	)
