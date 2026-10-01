@@ -413,9 +413,11 @@ SLIDER_KINDS :: ops.Event_Kinds{.Press, .Release, .Move, .Enter, .Leave, .Key, .
 // when a step is given, along length px, horizontal or
 // vertical (min at the bottom). A press anywhere on it jumps the value
 // there and a drag moves it; Left/Down and Right/Up step, Page keys move
-// ten steps, Home and End go to the ends. name is what its tag carries.
-// Returns true on a frame value^ changed. Colours and the thumb snap;
-// nothing transitions.
+// ten steps, Home and End go to the ends. name is what its tag carries
+// and a reader says; labelled_by names it by another node's label
+// instead: an app draws the caption with base.label (or label here),
+// keeps the id that returns, and passes it. Returns true on a frame
+// value^ changed. Colours and the thumb snap; nothing transitions.
 //
 // The hit area is the whole root, not just the thumb-sized band the
 // hidden input covers. The focus outline is drawn 2px inside the root
@@ -433,6 +435,7 @@ slider :: proc(
 	size := Size.Medium,
 	vertical := false,
 	name := "slider",
+	labelled_by: ops.Area_Id = 0,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -541,7 +544,7 @@ slider :: proc(
 	paint_focus_outline(gtx, c, {ring, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area, SLIDER_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
-	ui.semantics(gtx, &p, {role = .Slider, label = name, value = ui.frame_string(gtx, fmt.tprintf("%g", value^)), states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", value^)), states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return value^ != old
 }

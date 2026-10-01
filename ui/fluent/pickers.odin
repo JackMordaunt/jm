@@ -305,10 +305,8 @@ listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, open: ^bool, options: []string, s
 	// the window (ui.popup_open).
 	ov := ui.popup_open(gtx, {0, 0, w, h}, id, .Below, .Start, tok.SPACING_VERTICAL_XXS)
 	defer ui.popup_close(&ov, {pw, ph})
-	// The list as a widget of the popup, so the options nest under it.
-	lp := ui.widget_open(gtx, 0x11b1)
-	defer ui.widget_close(gtx, &lp, {size = {pw, ph}})
-	ui.semantics(gtx, &lp, {role = .List})
+	// The popup is the list box's node; the options nest under it.
+	lb := ui.overlay_semantics(gtx, &ov, {role = .List_Box}, 0x11b1)
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	box_id := ui.id_mix(id, 0xfffe)
 	for e in ui.events(gtx, box_id) {
@@ -326,7 +324,7 @@ listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, open: ^bool, options: []string, s
 	for i in d.scroll ..< min(d.scroll + rows, n) {
 		row := ops.Rect{LISTBOX_PAD + tok.STROKE_WIDTH_THIN, y, pw - 2 * (LISTBOX_PAD + tok.STROKE_WIDTH_THIN), row_h}
 		is_sel := chosen != nil ? chosen[i] : i == selected
-		if option(gtx, &lp, ui.id_mix(id, u64(0x0900 + i)), row, options[i], is_sel, check, i == d.active && d.by_keys) {
+		if option(gtx, lb, ui.id_mix(id, u64(0x0900 + i)), row, options[i], is_sel, check, i == d.active && d.by_keys) {
 			r.picked = i
 		}
 		y += row_h + LISTBOX_GAP
@@ -374,9 +372,10 @@ step_listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, k: ui.Key, n: int) -> (picke
 // the check column, then the label; hover and press read Neutral_
 // Background1's and Foreground1's twins, a selected row shows the check,
 // and the keyboard-active row draws a 2px Stroke_Focus2 ring 2px
-// outside itself. Returns true on a click.
+// outside itself. lb is the list box's node, the row's parent. Returns
+// true on a click.
 @(private = "file")
-option :: proc(gtx: ^ui.Ctx, lp: ^ui.Placement, id: ops.Area_Id, row: ops.Rect, label: string, selected, check, active: bool) -> bool {
+option :: proc(gtx: ^ui.Ctx, lb: ops.Area_Id, id: ops.Area_Id, row: ops.Rect, label: string, selected, check, active: bool) -> bool {
 	c := control(gtx, id, row, .Live)
 	bg := color_for({.Neutral_Background1, .Neutral_Background1_Hover, .Neutral_Background1_Pressed, .Neutral_Background1}, c)
 	fg := color_for({.Neutral_Foreground1, .Neutral_Foreground1_Hover, .Neutral_Foreground1_Pressed, .Neutral_Foreground_Disabled}, c)
@@ -396,7 +395,7 @@ option :: proc(gtx: ^ui.Ctx, lp: ^ui.Placement, id: ops.Area_Id, row: ops.Rect, 
 	}
 	listen(gtx, c.st, id, row)
 	ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
-	ui.part_semantics(gtx, lp, id, row, {role = .List_Item, label = label, states = state_if(selected, {.Selected})})
+	ui.child_semantics(gtx, lb, id, row, {role = .Option, label = label, states = state_if(selected, {.Selected})})
 	return c.clicked
 }
 
@@ -846,7 +845,10 @@ spin_precision :: proc(step: f32) -> int {
 // edits the field's own text, committed on Enter or blur (a number
 // parses, clamps and rounds; anything else reverts) and dropped by
 // Escape. lo and hi are optional bounds: pass -inf and +inf for none.
-// Returns true on a frame value^ changed.
+// name is what its tag carries and a reader says, the enclosing
+// field's label or the placeholder when ""; labelled_by names it by a
+// caption's node instead (see slider). Returns true on a frame value^
+// changed.
 //
 // Departure: the small size's 12px buttons are under the kit's 24px
 // target, as the spec notes; keyboard stepping is the accessible path.
@@ -864,6 +866,7 @@ spin_button :: proc(
 	invalid := false,
 	width: f32 = 0,
 	name := "",
+	labelled_by: ops.Area_Id = 0,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -1043,7 +1046,7 @@ spin_button :: proc(
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ops.tag(gtx.scene, up_id, "increment")
 	ops.tag(gtx.scene, down_id, "decrement")
-	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, shown), c.disabled))
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, shown), c.disabled, labelled_by = labelled_by))
 	ui.part_semantics(gtx, &p, up_id, up, {role = .Button, label = "increment", states = state_if(cu.disabled, {.Disabled})})
 	ui.part_semantics(gtx, &p, down_id, down, {role = .Button, label = "decrement", states = state_if(cd.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
@@ -1843,7 +1846,9 @@ paint_color_thumb :: proc(gtx: ^ui.Ctx, c: Control, centre: ops.Point, fill: ops
 // Transparent_Stroke outline and the shape's radius, in a root 32px
 // across and at least 200px long (280 tall when vertical, where the
 // smallest value is at the bottom). Each rail is one gradient paint
-// (useColorSliderStyles.styles.ts:16-25,62-65).
+// (useColorSliderStyles.styles.ts:16-25,62-65). name is what its tag
+// carries and a reader says, the channel's name when ""; labelled_by
+// names it by a caption's node instead (see slider).
 color_slider :: proc(
 	gtx: ^ui.Ctx,
 	hsv: ^Hsv,
@@ -1852,6 +1857,7 @@ color_slider :: proc(
 	vertical := false,
 	shape := Color_Shape.Rounded,
 	name := "",
+	labelled_by: ops.Area_Id = 0,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -1942,7 +1948,7 @@ color_slider :: proc(
 	listen(gtx, c.st, p.id, area, COLOR_KINDS)
 	said := ui.frame_string(gtx, name != "" ? name : channel == .Hue ? "hue" : channel == .Saturation ? "saturation" : "value")
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = .Slider, label = said, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(get(hsv, channel)))), states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(said, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(get(hsv, channel)))), states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return hsv^ != old
 }
@@ -1952,7 +1958,9 @@ color_slider :: proc(
 // a checkerboard drawn from 5px cells, inside a 1px Neutral_Stroke1
 // border; with transparency the value is 100 minus the alpha and the
 // gradient runs the other way. The thumb is Neutral_Background1 with
-// its inner ring in the colour at its alpha.
+// its inner ring in the colour at its alpha. name is what its tag
+// carries and a reader says; labelled_by names it by a caption's node
+// instead (see slider).
 alpha_slider :: proc(
 	gtx: ^ui.Ctx,
 	hsv: ^Hsv,
@@ -1961,6 +1969,7 @@ alpha_slider :: proc(
 	transparency := false,
 	shape := Color_Shape.Rounded,
 	name := "alpha",
+	labelled_by: ops.Area_Id = 0,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -2026,7 +2035,7 @@ alpha_slider :: proc(
 	paint_color_thumb(gtx, c, centre, {255, 255, 255, 255}, true, ring_fill = ops.with_alpha(base, hsv.a))
 	listen(gtx, c.st, p.id, area, COLOR_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
-	ui.semantics(gtx, &p, {role = .Slider, label = name, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(value))), states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(value))), states = state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return hsv^ != old
 }
@@ -2102,8 +2111,9 @@ Rating_Hover :: struct {
 // star is its own radio: a click sets its value (its half from its left
 // half), arrow keys on a focused star move the value a step, and
 // hovering previews the value until the pointer leaves; hover, when
-// given, receives the value the stars show. Returns true on a frame
-// value^ changed.
+// given, receives the value the stars show. name is what its tags
+// carry and a reader says; labelled_by names it by a caption's node
+// instead (see slider). Returns true on a frame value^ changed.
 rating :: proc(
 	gtx: ^ui.Ctx,
 	value: ^f32,
@@ -2112,6 +2122,7 @@ rating :: proc(
 	size := Rating_Size.Extra_Large,
 	tint := Rating_Color.Neutral,
 	name := "rating",
+	labelled_by: ops.Area_Id = 0,
 	hover: ^f32 = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
@@ -2179,7 +2190,7 @@ rating :: proc(
 		paint_star(gtx, r, fill, filled_col, filled_col, false)
 		paint_focus_outline(gtx, cs[i], {r, tok.BORDER_RADIUS_MEDIUM})
 	}
-	ui.semantics(gtx, &p, {role = .Slider, label = name, value = ui.frame_string(gtx, fmt.tprintf("%g of %d", shown, n)), states = state_if(state == .Disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g of %d", shown, n)), states = state_if(state == .Disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return value^ != old
 }

@@ -268,6 +268,11 @@ calendar :: proc(
 		draw_text(gtx, t, {cx + (CALENDAR_CELL - t.width) / 2, gy + (CALENDAR_CELL - t.height) / 2}, color(.Neutral_Foreground1))
 	}
 	grid := ops.Rect{x0, gy + CALENDAR_CELL, CALENDAR_CONTENT, f32(weeks) * CALENDAR_CELL}
+	// The weeks are a grid named as the header reads, and each day a
+	// cell of it; the calendar stays a group, as the pickers beside the
+	// grid and the go-to-today button are its parts too.
+	grid_id := ui.id_mix(p.id, 99)
+	ui.part_semantics(gtx, &p, grid_id, grid, {role = .Grid, label = ui.frame_string(gtx, header_title)})
 	ops.clip_push(gtx.scene, grid)
 	first := date_add_days(view^, -weekday(view^))
 	focused_any := false
@@ -329,7 +334,7 @@ calendar :: proc(
 			listen(gtx, c.st, id, cell)
 			said := fmt.aprintf("%d %s %d", day.day, MONTH_SHORT[day.month - 1], day.year, allocator = gtx.allocator)
 			ops.tag(gtx.scene, id, said)
-			ui.part_semantics(gtx, &p, id, cell, {role = .Button, label = said, states = state_if(day == selected^, {.Selected}) + state_if(c.disabled, {.Disabled})})
+			ui.part_semantics(gtx, &p, id, cell, {role = .Grid_Cell, label = said, states = state_if(day == selected^, {.Selected}) + state_if(c.disabled, {.Disabled})}, under = grid_id)
 		}
 	}
 	ops.clip_pop(gtx.scene)
@@ -943,7 +948,7 @@ time_picker :: proc(
 	box := ui.box_open(gtx, {padding = ui.pad_all(tok.SPACING_HORIZONTAL_XS + tok.STROKE_WIDTH_THIN), paint = paint_menu, user = mp}, key = u64(ui.id_mix(id, 2)))
 	sb := ui.scroll_box_open(gtx, key = u64(ui.id_mix(id, 3)), min_width = max(160, (width > 0 ? width : 200) - 2 * (tok.SPACING_HORIZONTAL_XS + tok.STROKE_WIDTH_THIN)))
 	col := ui.column_open(gtx, gap = tok.SPACING_HORIZONTAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 4)))
-	ui.container_semantics(gtx, {role = .List})
+	ui.container_semantics(gtx, {role = .List_Box})
 	opts := time_options(start_hour, end_hour, increment, gtx.allocator)
 	for t, i in opts {
 		label := format_time(t, hour12, seconds, gtx.allocator)
@@ -1026,7 +1031,7 @@ time_option :: proc(gtx: ^ui.Ctx, label: string, selected: bool, state: Interact
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
-	ui.semantics(gtx, &p, {role = .List_Item, label = label, states = state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Option, label = label, states = state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }

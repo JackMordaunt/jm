@@ -57,28 +57,39 @@ open_fields: [GUARD_DEPTH]Field_Words
 @(private = "file", thread_local)
 open_field_count: int
 
-// field_semantics is a text control's semantics: named by its accessible
-// name, else by the field it sits in, else by its placeholder; described
-// by the field's hint; required or disabled as the field or the control
-// says. value is the control's text, already in frame memory.
+// field_semantics is a text control's semantics: named by the node
+// labelled_by names when given, else by its accessible name, else by
+// the field it sits in, else by its placeholder; described by the
+// field's hint; required or disabled as the field or the control says.
+// value is the control's text, already in frame memory.
 @(private)
-field_semantics :: proc(gtx: ^ui.Ctx, role: ops.Role, name, placeholder, value: string, disabled: bool, readonly := false) -> (s: ops.Semantics) {
+field_semantics :: proc(gtx: ^ui.Ctx, role: ops.Role, name, placeholder, value: string, disabled: bool, readonly := false, labelled_by: ops.Area_Id = 0) -> (s: ops.Semantics) {
 	s.role = role
-	s.label = name
+	s.label = labelled_name(name, labelled_by)
+	s.labelled_by = labelled_by
 	s.value = value
 	if open_field_count > 0 {
 		f := open_fields[open_field_count - 1]
-		if s.label == "" {
+		if s.label == "" && s.labelled_by == 0 {
 			s.label = f.label
 		}
 		s.description = f.hint
 		s.states += state_if(f.required, {.Required}) + state_if(f.disabled, {.Disabled})
 	}
-	if s.label == "" {
+	if s.label == "" && s.labelled_by == 0 {
 		s.label = placeholder
 	}
 	s.states += state_if(disabled, {.Disabled}) + state_if(readonly, {.Readonly})
 	return
+}
+
+// labelled_name is the label a control declares: name, or "" when
+// labelled_by names a caption, so a reader speaks the caption's label in
+// its place: the caption the user sees is the name the user hears, and
+// the control's generic name ("slider") is only for one with no caption.
+@(private)
+labelled_name :: proc(name: string, labelled_by: ops.Area_Id) -> string {
+	return "" if labelled_by != 0 else name
 }
 
 // BORDER is the input border: strokeWidthThin, which the input's styles
@@ -538,8 +549,9 @@ label_style :: proc(size: Size, weight: Weight) -> tok.Type_Style {
 // at the size's style, with a required asterisk in Palette_Red_
 // Foreground3 spacingHorizontalXS after it; disabled draws both in the
 // Disabled foreground. It is not focusable; the control it names draws
-// the focus.
-label :: proc(gtx: ^ui.Ctx, text: string, required := false, size := Size.Medium, weight := Weight.Regular, disabled := false, key: u64 = 0, loc := #caller_location) -> ui.Dims {
+// the focus. It returns its id as well, like base.label, so a control
+// drawn after it can be labelled_by it.
+label :: proc(gtx: ^ui.Ctx, text: string, required := false, size := Size.Medium, weight := Weight.Regular, disabled := false, key: u64 = 0, loc := #caller_location) -> (ui.Dims, ops.Area_Id) {
 	p := ui.widget_open(gtx, key, loc)
 	st := label_style(size, weight)
 	t := shape_style(gtx, text, st)
@@ -557,7 +569,7 @@ label :: proc(gtx: ^ui.Ctx, text: string, required := false, size := Size.Medium
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
 	ui.semantics(gtx, &p, {role = .Text, label = text, states = state_if(disabled, {.Disabled})})
-	return ui.widget_close(gtx, &p, {sz, baseline_of(t)})
+	return ui.widget_close(gtx, &p, {sz, baseline_of(t)}), p.id
 }
 
 // Validation is a field's message state: it colours the message icon

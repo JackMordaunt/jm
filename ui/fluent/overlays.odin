@@ -712,9 +712,8 @@ tooltip :: proc(
 	asked := position == .Above ? ops.Side.Above : ops.Side.Below
 	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, bubble_id, asked, .Center, gap)
 	defer ui.popup_close(&o, {w, h})
-	// The bubble as a widget of the popup, so it can declare itself.
-	bp := ui.widget_open(gtx, 0x7102)
-	defer ui.widget_close(gtx, &bp, {size = {w, h}})
+	// The popup is the tooltip's node, a root of its layer.
+	ui.overlay_semantics(gtx, &o, {role = .Tooltip, label = text}, 0x7102)
 	side, shift := ui.placed(gtx, bubble_id, asked)
 	fill := color(appearance == .Inverted ? .Neutral_Background_Static : .Neutral_Background1)
 	fg := color(appearance == .Inverted ? .Neutral_Foreground_Static_Inverted : .Neutral_Foreground1)
@@ -741,7 +740,6 @@ tooltip :: proc(
 	}
 	ops.input_area(gtx.scene, bubble_id, rr, {.Enter, .Leave, .Move})
 	ops.tag(gtx.scene, bubble_id, ui.frame_string(gtx, text))
-	ui.part_semantics(gtx, &bp, bubble_id, rr.rect, {role = .Tooltip, label = text})
 }
 
 // wrap breaks s into shaped lines no wider than width, a word at a

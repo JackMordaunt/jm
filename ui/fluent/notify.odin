@@ -232,10 +232,9 @@ toaster :: proc(
 	top := position == .Top || position == .Top_End || position == .Top_Start
 	o := ui.overlay_open(gtx, {x, 0}, cs = ui.loose({TOAST_WIDTH, window.y}), root = true)
 	defer ui.close(&o)
-	// The column as one widget, so each toast can declare itself as a
-	// part of it.
-	tp := ui.widget_open(gtx, 1)
-	defer ui.widget_close(gtx, &tp, {size = {TOAST_WIDTH, window.y}})
+	// The column is chrome a reader passes over: each toast nests under
+	// it as a part, and reads as a root of the layer.
+	column := ui.overlay_semantics(gtx, &o, {role = .Presentation}, 1)
 	// Both columns place the newest nearest their edge (toast.json
 	// behaviour stacking): a top column stacks down from it, a bottom one
 	// up, each walking the queue newest first. With a limit the oldest
@@ -289,7 +288,7 @@ toaster :: proc(
 			y -= TOAST_GAP
 		}
 		if h > 0 {
-			if paint_toast(gtx, &tp, t, tid, st, at, full, alpha, appearance) {
+			if toast_paint(gtx, column, t, tid, st, at, full, alpha, appearance) {
 				pressed = t.id
 				toast_dismiss(ts, t.id)
 			}
@@ -332,11 +331,11 @@ toast_texts :: proc(gtx: ^ui.Ctx, t: Toast) -> (title, body, subtitle: ui.Paragr
 	return layout_style(gtx, t.title, head, w), layout_style(gtx, t.body, style(.Body1), w), layout_style(gtx, t.subtitle, sub, w)
 }
 
-// paint_toast draws t at pos in the column with its full height, faded
+// toast_paint draws t at pos in the column with its full height, faded
 // by alpha, and its dismiss button; returns true when that button is
-// pressed.
+// pressed. column is the toaster's node, the toast's parent.
 @(private)
-paint_toast :: proc(gtx: ^ui.Ctx, tp: ^ui.Placement, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_State, pos: ops.Point, h, alpha: f32, appearance: Toast_Appearance) -> bool {
+toast_paint :: proc(gtx: ^ui.Ctx, column: ops.Area_Id, t: ^Toast, tid: ops.Area_Id, st: ^ui.Widget_State, pos: ops.Point, h, alpha: f32, appearance: Toast_Appearance) -> bool {
 	inverted := appearance == .Inverted
 	bg := color(inverted ? .Neutral_Background_Inverted : .Neutral_Background1)
 	fg := color(inverted ? .Neutral_Foreground_Inverted2 : .Neutral_Foreground1)
@@ -363,9 +362,9 @@ paint_toast :: proc(gtx: ^ui.Ctx, tp: ^ui.Placement, t: ^Toast, tid: ops.Area_Id
 	// hoverable, so Delete and the hover pause reach it.
 	ops.input_area(gtx.scene, tid, rr, CLICK_KINDS)
 	ops.tag(gtx.scene, tid, ui.frame_string(gtx, t.title))
-	// The toast is a live region, a part of the toaster's column as its
-	// dismiss button is: a part cannot nest under a part.
-	ui.part_semantics(gtx, tp, tid, area, {role = .Status, label = t.title, description = t.body})
+	// The toast is a live region under the toaster's column; its dismiss
+	// button nests under the toast.
+	ui.child_semantics(gtx, column, tid, area, {role = .Status, label = t.title, description = t.body})
 	pad := TOAST_PAD + tok.STROKE_WIDTH_THIN
 	x := pos.x + pad
 	y := pos.y + pad
@@ -403,7 +402,7 @@ paint_toast :: proc(gtx: ^ui.Ctx, tp: ^ui.Placement, t: ^Toast, tid: ops.Area_Id
 	ops.input_area(gtx.scene, did, dismiss, CLICK_KINDS)
 	dismiss_name := ui.frame_string(gtx, fmt.tprintf("Dismiss %s", t.title))
 	ops.tag(gtx.scene, did, dismiss_name)
-	ui.part_semantics(gtx, tp, did, dismiss, {role = .Button, label = dismiss_name})
+	ui.child_semantics(gtx, tid, did, dismiss, {role = .Button, label = dismiss_name})
 	c := Control{}
 	c.st = st
 	c.focus_visible = st.focused && ui.focus_visible(gtx)
