@@ -20,26 +20,58 @@ import "core:strings"
 //
 // A design system's controls declare their role; base.label declares
 // Text. A container declares one for itself with container_semantics,
-// right after opening it, and its children nest under it.
+// right after opening it, and its children nest under it: a node's
+// parent is the nearest enclosing widget or container that declared
+// semantics, whatever undeclared containers lie between. A part of a
+// widget that is not a widget of its own (a tab, a calendar's day) is
+// declared with part_semantics and nests under the widget.
 
 // semantics sets what widget p says about itself; widget_close emits it.
-// The strings must live until the frame ends (frame_string).
+// The strings must live until the frame ends (frame_string). gtx is
+// taken for symmetry with the other declarations.
 semantics :: proc(gtx: ^Ctx, p: ^Placement, s: ops.Semantics) {
 	p.semantics = s
 	p.semantic = true
 }
 
-// container_semantics is semantics for the innermost open container: a
-// column that is a list, an overlay that is a dialog or a menu.
-container_semantics :: proc(gtx: ^Ctx, s: ops.Semantics) {
+// part_semantics describes a part of widget p that is not a widget of
+// its own: id is the part's area (one mixed from p.id), rect its box in
+// p's space. It nests under p when p declares semantics, else where p
+// would. Call it inside p's bracket, under p's own transform.
+part_semantics :: proc(gtx: ^Ctx, p: ^Placement, id: ops.Area_Id, rect: ops.Rect, s: ops.Semantics) {
+	parent := p.id if p.semantic else semantic_parent(gtx.layout, p.parent)
+	ops.semantic(gtx.scene, id, parent, s, rect)
+}
+
+// container_semantics is semantics for an open container: a column that
+// is a list, a dialog's column in its overlay. index is the container's
+// handle index (ui.Flex.index and the like), so a title drawn deeper can
+// still label the container it names; -1 is the innermost open one.
+container_semantics :: proc(gtx: ^Ctx, s: ops.Semantics, index := -1) {
 	l := gtx.layout
 	if l == nil {
 		return
 	}
-	if c := innermost(l); c != nil {
+	c := innermost(l) if index < 0 else container_at(l, index)
+	if c != nil {
 		c.place.semantics = s
 		c.place.semantic = true
 	}
+}
+
+// semantic_parent is the id of the nearest container at or above stack
+// index parent that declared semantics, 0 when none has.
+@(private)
+semantic_parent :: proc(l: ^Layout, parent: int) -> ops.Area_Id {
+	if l == nil {
+		return 0
+	}
+	for i := min(parent, depth(l) - 1); i >= 0; i -= 1 {
+		if c := container_at(l, i); c.place.semantic {
+			return c.place.id
+		}
+	}
+	return 0
 }
 
 // key_interest asks that area be sent every Key event matching key (None
@@ -54,22 +86,19 @@ key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, op
 // indented under their parent: the role, the label, the value and
 // description when set, the states, `focused` on the area focus names,
 // and the device rect, in document order: the order a reader is meant
-// to take them in.
+// to take them in. A node whose parent is in no frame node is a root.
 semantics_report :: proc(f: ^Frame, focus: ops.Area_Id = 0, allocator := context.allocator) -> string {
 	if len(f.nodes) == 0 {
 		return strings.clone("no semantics: nothing in the frame declares a role\n", allocator)
 	}
-	// Nodes close children-first; a node's parent is the next shallower
-	// node after it on its layer.
+	index := make(map[ops.Area_Id]int, context.temp_allocator)
+	for n, i in f.nodes {
+		index[n.id] = i
+	}
 	parent := make([]int, len(f.nodes), context.temp_allocator)
 	for n, i in f.nodes {
-		parent[i] = -1
-		for j in i + 1 ..< len(f.nodes) {
-			if f.nodes[j].layer == n.layer && f.nodes[j].depth < n.depth {
-				parent[i] = j
-				break
-			}
-		}
+		p, ok := index[n.parent]
+		parent[i] = p if ok && n.parent != 0 && p != i else -1
 	}
 	b := strings.builder_make(allocator)
 	write_semantic_children(&b, f, parent, -1, 0, focus)
@@ -168,6 +197,12 @@ role_name :: proc(r: ops.Role) -> string {
 		return "row"
 	case .Cell:
 		return "cell"
+	case .Separator:
+		return "separator"
+	case .Radio_Group:
+		return "radio group"
+	case .Alert:
+		return "alert"
 	}
 	return "unknown"
 }

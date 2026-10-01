@@ -74,14 +74,13 @@ Layout_Box :: struct {
 }
 
 // Semantic_Node is a Semantic op placed on the frame: its rect in device
-// space, its container depth and layer, from which semantics_report
-// rebuilds the tree (a node's parent is the next node after it that is
-// shallower, on its layer).
+// space, and its parent by id (0 at the top), from which semantics_report
+// rebuilds the tree.
 Semantic_Node :: struct {
 	id:        ops.Area_Id,
+	parent:    ops.Area_Id,
 	semantics: ops.Semantics,
 	rect:      ops.Rect,
-	depth:     i32,
 	layer:     i32,
 	clip:      Clip_Id,
 }

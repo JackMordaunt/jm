@@ -353,7 +353,7 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 		)
 	}
 	if p.semantic {
-		ops.semantic(gtx.scene, p.id, p.semantics, d.size, i32(depth(gtx.layout)))
+		ops.semantic(gtx.scene, p.id, semantic_parent(gtx.layout, p.parent), p.semantics, {0, 0, d.size.x, d.size.y})
 	}
 	if p.pushed {
 		ops.transform_pop(gtx.scene)

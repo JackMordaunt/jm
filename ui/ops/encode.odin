@@ -26,7 +26,7 @@ ENCODE_MAGIC :: "UIOP"
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
 // covers and added Cover_End.
-ENCODE_VERSION :: u8(17)
+ENCODE_VERSION :: u8(18)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -402,13 +402,13 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 	case Semantic:
 		append(w, 18)
 		put_u64(w, u64(v.id))
+		put_u64(w, u64(v.parent))
 		append(w, u8(v.semantics.role))
 		put_str(w, v.semantics.label)
 		put_str(w, v.semantics.value)
 		put_str(w, v.semantics.description)
 		put_u32(w, u32(transmute(u16)v.semantics.states))
-		put_point(w, v.size)
-		put_u32(w, u32(v.depth))
+		put_rect(w, v.rect)
 	case Key_Interest:
 		append(w, 19)
 		put_u64(w, u64(v.area))
@@ -708,6 +708,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 	case 18:
 		v: Semantic
 		v.id = Area_Id(get_u64(r) or_return)
+		v.parent = Area_Id(get_u64(r) or_return)
 		role := get_u8(r) or_return
 		if role > u8(max(Role)) {
 			return nil, false
@@ -721,8 +722,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			return nil, false
 		}
 		v.semantics.states = transmute(States)u16(states)
-		v.size = get_point(r) or_return
-		v.depth = i32(get_u32(r) or_return)
+		v.rect = get_rect(r) or_return
 		return v, true
 	case 19:
 		v: Key_Interest

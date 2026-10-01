@@ -269,6 +269,9 @@ Role :: enum u8 {
 	Table,
 	Row,
 	Cell,
+	Separator, // a divider: read as a break, not as content
+	Radio_Group,
+	Alert, // a message a reader announces at once: a validation error
 }
 
 // State is one of the states a Semantic op may carry.

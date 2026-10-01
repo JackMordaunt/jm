@@ -65,7 +65,7 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	if len(f.nodes) > 0 {
 		strings.write_string(&sb, "semantics\n")
 		for n in f.nodes {
-			fmt.sbprintf(&sb, "  node %d depth=%d layer=%d ", n.id, n.depth, n.layer)
+			fmt.sbprintf(&sb, "  node %d in %d layer=%d ", n.id, n.parent, n.layer)
 			ops.write_rect(&sb, n.rect)
 			strings.write_byte(&sb, ' ')
 			ops.write_semantics(&sb, n.semantics)

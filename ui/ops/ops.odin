@@ -146,15 +146,16 @@ Input_Area :: struct {
 }
 
 // Semantic describes a widget to assistive technology: ui.semantics on a
-// widget's Placement emits one at widget_close, as Debug_Box is emitted,
-// with the widget's size in its own space and its container depth, so a
-// reader rebuilds the tree from close order and depth (children close
-// before their container). size is zero for a widget with no box.
+// widget's Placement emits one at widget_close, as Debug_Box is emitted.
+// parent is the nearest enclosing widget or container that declared
+// semantics of its own, 0 at the top, so a reader rebuilds the tree by
+// id whatever lies between; rect is the widget's box in the recording
+// space, zero for one with no box.
 Semantic :: struct {
 	id:        Area_Id,
+	parent:    Area_Id,
 	semantics: Semantics,
-	size:      Size,
-	depth:     i32,
+	rect:      Rect,
 }
 
 // Key_Interest asks that area be sent Key events matching key (None is
@@ -365,9 +366,10 @@ tag :: proc(o: ^Scene, id: Area_Id, name: string, bounds: Rect = {}) {
 	append(&o.ops, Tag{id, name, bounds})
 }
 
-// semantic records a Semantic for id; ui.semantics is the usual caller.
-semantic :: proc(o: ^Scene, id: Area_Id, s: Semantics, size: Size, depth: i32) {
-	append(&o.ops, Semantic{id, s, size, depth})
+// semantic records a Semantic for id under parent; ui.semantics and
+// ui.part_semantics are the usual callers.
+semantic :: proc(o: ^Scene, id, parent: Area_Id, s: Semantics, rect: Rect) {
+	append(&o.ops, Semantic{id, parent, s, rect})
 }
 
 // key_interest records a Key_Interest for area; ui.key_interest is the

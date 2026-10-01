@@ -150,8 +150,8 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			r := ops.transform_rect(st.transform, ops.Rect{0, 0, op.size.x, op.size.y})
 			append(&st.f.boxes, Layout_Box{op.id, r, op.min, op.max, op.depth, op.file, op.line, op.procedure, op.kind, st.clip, st.layer})
 		case ops.Semantic:
-			r := ops.transform_rect(st.transform, ops.Rect{0, 0, op.size.x, op.size.y})
-			append(&st.f.nodes, Semantic_Node{op.id, op.semantics, r, op.depth, st.layer, st.clip})
+			r := op.rect == {} ? ops.Rect{} : ops.transform_rect(st.transform, op.rect)
+			append(&st.f.nodes, Semantic_Node{op.id, op.parent, op.semantics, r, st.layer, st.clip})
 		case ops.Key_Interest:
 			append(&st.f.keys, op)
 		}

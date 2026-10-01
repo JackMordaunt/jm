@@ -30,9 +30,14 @@ screen_view :: proc(gtx: ^Ctx, user: rawptr) {
 		}
 	}
 	{
+		// An undeclared column around it: the checkbox still sits at the
+		// top, not under the text that follows the column.
+		wrap := column_open(gtx, key = 30)
+		defer close(&wrap)
 		p := widget_open(gtx, 3)
 		ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 24, 24}, {.Press})
 		semantics(gtx, &p, {role = .Checkbox, label = "Dark", states = {.Checked}})
+		part_semantics(gtx, &p, id_mix(p.id, 1), {0, 0, 12, 12}, {role = .Text, label = "box"})
 		widget_close(gtx, &p, {size = {24, 24}})
 	}
 	label(gtx, "Status: ready", key = 4)
@@ -84,6 +89,7 @@ semantics_report_reads_the_screen_as_a_tree :: proc(t: ^testing.T) {
 			"  list item \"Apple\" at 0,0 80x20\n",
 			"  list item \"Pear\" selected at 0,20 80x20\n",
 			"checkbox \"Dark\" checked at 0,40 24x24\n",
+			"  text \"box\" at 0,40 12x12\n",
 			"text \"Status: ready\" at 0,64 109x14\n",
 			"text field \"Name\" value \"Jack\" at 0,78 120x24\n",
 		},

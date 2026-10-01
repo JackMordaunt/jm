@@ -78,9 +78,10 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 		case Debug_Box:
 			fmt.sbprintf(&sb, "box %d %s %vx%v min %vx%v max %vx%v %s:%d", v.id, v.kind, v.size.x, v.size.y, v.min.x, v.min.y, v.max.x, v.max.y, v.file, v.line)
 		case Semantic:
-			fmt.sbprintf(&sb, "semantic %d ", v.id)
+			fmt.sbprintf(&sb, "semantic %d in %d ", v.id, v.parent)
 			write_semantics(&sb, v.semantics)
-			fmt.sbprintf(&sb, " %vx%v depth %d", v.size.x, v.size.y, v.depth)
+			strings.write_byte(&sb, ' ')
+			write_rect(&sb, v.rect)
 		case Key_Interest:
 			fmt.sbprintf(&sb, "key_interest %d %v", v.area, v.key)
 			write_mods(&sb, " mods", v.mods)

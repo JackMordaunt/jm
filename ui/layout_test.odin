@@ -465,14 +465,15 @@ test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) 
 			append(&got, s)
 		}
 	}
-	// The child closes first, one level deeper than the column; the
-	// column's op carries its own size and the role it declared.
+	// The child closes first, naming the column as its parent; the
+	// column's op carries its own box and the role it declared.
 	testing.expect_value(t, len(got), 2)
 	testing.expect_value(t, got[0].semantics, ops.Semantics{role = .List_Item, label = "Apple", states = {.Selected}})
-	testing.expect_value(t, got[0].size, ops.Size{80, 20})
+	testing.expect_value(t, got[0].rect, ops.Rect{0, 0, 80, 20})
+	testing.expect_value(t, got[0].parent, got[1].id)
 	testing.expect_value(t, got[1].semantics, ops.Semantics{role = .List, label = "Fruit"})
-	testing.expect_value(t, got[1].size, ops.Size{80, 30}) // the column hugs its content
-	testing.expect_value(t, got[0].depth, got[1].depth + 1)
+	testing.expect_value(t, got[1].rect, ops.Rect{0, 0, 80, 30}) // the column hugs its content
+	testing.expect_value(t, got[1].parent, ops.Area_Id(0))
 }
 
 // owned_scroll_frame is scroll_frame with the caller's offset.
