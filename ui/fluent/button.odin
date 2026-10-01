@@ -207,7 +207,7 @@ button :: proc(
 	// styles file transitions together. A focused border turns
 	// Stroke_Focus2 (styles.ts:102-113).
 	border_color := color_for(r.border, c)
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		border_color = color(.Stroke_Focus2)
 	}
 	bg := blend(gtx, c, 0, color_for(r.bg, c))
@@ -215,7 +215,7 @@ button :: proc(
 	fg := blend(gtx, c, 2, color_for(r.text, c))
 	icon_color := blend(gtx, c, 3, color_for(r.icon, c))
 
-	if appearance == .Primary && c.focused && !c.disabled {
+	if appearance == .Primary && c.focus_visible && !c.disabled {
 		paint_shadow(gtx, {area, rad}, tok.SHADOW2) // the primary focus style composes shadow2
 	}
 	if ui.painted(bg) {

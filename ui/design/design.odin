@@ -53,15 +53,16 @@ STATES :: [?]Interaction{.Enabled, .Hovered, .Focused, .Pressed, .Disabled}
 // was activated, what it is doing, and the single state that summarises
 // that for painting.
 Control :: struct {
-	st:       ^ui.Widget_State, // nil unless Live
-	clicked:  bool,
-	hovered:  bool,
-	pressed:  bool,
-	focused:  bool, // paint a focus ring
-	disabled: bool,
-	state:    Interaction, // never Live: the strongest of the flags, by effective_state's order
-	press:    bool, // a left press or keyboard activation landed this frame, at press_at
-	press_at: ops.Point,
+	st:            ^ui.Widget_State, // nil unless Live
+	clicked:       bool,
+	hovered:       bool,
+	pressed:       bool,
+	focused:       bool, // paint a focus ring
+	focus_visible: bool, // focused by keyboard (ui.focus_visible), for a system that rings only then
+	disabled:      bool,
+	state:         Interaction, // never Live: the strongest of the flags, by effective_state's order
+	press:         bool, // a left press or keyboard activation landed this frame, at press_at
+	press_at:      ops.Point,
 }
 
 // control resolves state for the component with id and bounds. Live reads
@@ -75,11 +76,12 @@ control :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, bounds: ops.Rect, state: Interact
 		a := ui.activate_from_events(gtx, id, c.st, bounds)
 		c.clicked, c.press, c.press_at = a.clicked, a.press, a.at
 		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
+		c.focus_visible = c.focused && ui.focus_visible(gtx)
 	case .Enabled:
 	case .Hovered:
 		c.hovered = true
 	case .Focused:
-		c.focused = true
+		c.focused, c.focus_visible = true, true
 	case .Pressed, .Dragged:
 		c.pressed = true
 	case .Disabled:

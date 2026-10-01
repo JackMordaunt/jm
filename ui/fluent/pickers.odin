@@ -1559,13 +1559,13 @@ swatch_picker :: proc(
 			inner, outer, inner_col = m.sel_press_in, m.sel_press_out, color(.Compound_Brand_Stroke_Pressed)
 		case is_sel && c.hovered:
 			inner, outer, inner_col = m.sel_hover_in, m.sel_hover_out, color(.Compound_Brand_Stroke_Hover)
-		case is_sel && c.focused:
+		case is_sel && c.focus_visible:
 			inner, outer, inner_col = m.sel_in, m.sel_out, color(.Stroke_Focus2)
 		case is_sel:
 			inner, outer = m.sel_in, m.sel_out
 		case c.pressed:
 			inner, outer, inner_col = m.press_in, m.press_out, color(.Compound_Brand_Stroke_Pressed)
-		case c.focused:
+		case c.focus_visible:
 			inner, outer, inner_col = m.hover_in, m.hover_out, color(.Stroke_Focus2)
 		case c.hovered:
 			inner, outer = m.hover_in, m.hover_out
@@ -1787,7 +1787,7 @@ paint_color_thumb :: proc(gtx: ^ui.Ctx, c: Control, centre: ops.Point, fill: ops
 	paint_shadow(gtx, {box, r}, tok.SHADOW4)
 	border_w := tok.STROKE_WIDTH_THIN
 	border := color(.Neutral_Foreground4)
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		border_w = tok.STROKE_WIDTH_THICK
 		if on_slider {
 			border = color(.Stroke_Focus2)

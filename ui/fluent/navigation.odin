@@ -724,7 +724,7 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 	}
 	// Focus: a strokeWidthThick Stroke_Focus2 outline inset by the same,
 	// inside the row's edge (sharedNavStyles.styles.ts:62-66).
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		inset := tok.STROKE_WIDTH_THICK
 		design.stroke_inside_corners(gtx, shrink(area, inset), design.grow_corners(k, -inset), color(.Stroke_Focus2), tok.STROKE_WIDTH_THICK)
 	}
@@ -1396,7 +1396,7 @@ tree_row :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, level: int, size: Tre
 	if aside != "" {
 		draw_text(gtx, side, {sz.x - tok.SPACING_HORIZONTAL_M - side.width, (sz.y - side.height) / 2}, color(.Neutral_Foreground3))
 	}
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		design.paint_focus_ring(gtx, c.base, {area, tok.BORDER_RADIUS_MEDIUM}, {TREE_FOCUS_WIDTH, 0, color(.Stroke_Focus2)})
 	}
 	listen(gtx, c.st, p.id, area)

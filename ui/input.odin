@@ -25,6 +25,10 @@ import "jm:ui/ops"
 //   grab is held only the grabbing area can be hovered, so a drag does not
 //   light up what it crosses; hover is recomputed at the Release point.
 //   A Move that leaves every area sets hover to 0 and is delivered nowhere.
+// - Observers (ops.Input_Area.observes) sit outside all of that: every
+//   observer under the pointer is sent Enter as the pointer arrives and
+//   Leave as it goes, whatever is on top of it, and no other event. Hover,
+//   presses and the cursor never land on one.
 // - A Press whose target wants Key or Text takes focus (Blur to the old,
 //   Focus to the new). A Press on no area clears focus. A Press on an area
 //   that wants neither leaves focus where it is, so clicking a toolbar
@@ -33,16 +37,19 @@ import "jm:ui/ops"
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
 // - A focus_request moves focus before the queued events are routed.
+// - Focus is visible (focus_visible) from a Key until the next Press, as
+//   the web's :focus-visible: a click focuses without showing a ring, a
+//   key shows it on whatever holds focus.
 // - A yielding area (ops.Input_Area.yields, selectable text) is never
 //   hovered and gets no Move while nothing is pressed: hover and free
 //   moves go to what lies under it, so a card keeps its hover over its
 //   own text. It still gets Move while it holds the grab.
 // - A Press whose top-most target yields goes to the next area under it
-//   that wants Press and does not
-//   yield, when there is one. If the pointer then drags past YIELD_DRAG
-//   device pixels while held, or the press was a double or triple click,
-//   the yielding area takes over: the other gets Cancel, the yielder the
-//   press (and focus, if it wants keys) and the drag from there.
+//   that wants Press and does not yield, when there is one. If the
+//   pointer then drags past YIELD_DRAG device pixels while held, or the
+//   press was a double or triple click, the yielding area takes over: the
+//   other gets Cancel, the yielder the press (and focus, if it wants keys)
+//   and the drag from there.
 // - The cursor (router_cursor) is the grabbing area's during a grab, else
 //   the top-most area's under the last pointer position, whatever kinds it
 //   wants, else Default.
@@ -86,6 +93,8 @@ Router :: struct {
 	yield_press: Raw_Event, // that press, replayed to the yielder if it takes over
 	pressed_at:  ops.Area_Id, // the area the last route's first Press went to, 0 for none
 	press_seen:  bool, // the last route routed a Press
+	keyboard:    bool, // a Key came after the last Press: focus is visible
+	observed:    [dynamic]Hit, // the observers the pointer is over, each sent its Enter
 }
 
 // YIELD_DRAG is how far, in device pixels, a press on yielding text must
@@ -104,6 +113,7 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.placed = make([dynamic]Placed, allocator)
 	r.requests = make([dynamic]Request, allocator)
 	r.readers = make([dynamic]ops.Area_Id, allocator)
+	r.observed = make([dynamic]Hit, allocator)
 }
 
 // router_destroy frees everything r owns.
@@ -118,6 +128,7 @@ router_destroy :: proc(r: ^Router) {
 	delete(r.placed)
 	delete(r.requests)
 	delete(r.readers)
+	delete(r.observed)
 	r^ = {}
 }
 
@@ -159,6 +170,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	for e in r.queue {
 		switch e.kind {
 		case .Press:
+			r.keyboard = false
 			route_press(r, f, e)
 		case .Release:
 			route_release(r, f, e)
@@ -180,6 +192,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 				deliver_pointer(r, h, e)
 			}
 		case .Key, .Text:
+			if e.kind == .Key {
+				r.keyboard = true
+			}
 			if r.focus == 0 || !deliver(r, r.focus_hit, e, {}) {
 				free_strings(r, e)
 			}
@@ -219,7 +234,7 @@ resolve_cursor :: proc(r: ^Router, f: ^Frame) -> ops.Cursor {
 		return .Default
 	}
 	#reverse for h in f.hits {
-		if hit_contains(f, h, r.pointer) {
+		if !h.observes && hit_contains(f, h, r.pointer) {
 			return h.cursor
 		}
 	}
@@ -267,7 +282,7 @@ hit_test_any :: proc(f: ^Frame, p: ops.Point, kinds: ops.Event_Kinds, past_yield
 		if past_yields && h.yields {
 			continue
 		}
-		if h.kinds & kinds != {} && hit_contains(f, h, p) {
+		if h.kinds & kinds != {} && !h.observes && hit_contains(f, h, p) {
 			return h, true
 		}
 	}
@@ -451,7 +466,7 @@ route_press :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 @(private = "file")
 hit_under :: proc(f: ^Frame, h: Hit, p: ops.Point) -> (Hit, bool) {
 	#reverse for u in f.hits[:min(h.order, len(f.hits))] {
-		if .Press in u.kinds && !u.yields && hit_contains(f, u, p) {
+		if .Press in u.kinds && !u.yields && !u.observes && hit_contains(f, u, p) {
 			return u, true
 		}
 	}
@@ -493,6 +508,7 @@ route_release :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 // update_hover moves hover to the area under p, sending Leave and Enter.
 @(private = "file")
 update_hover :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
+	update_observers(r, f, p)
 	h: Hit
 	ok: bool
 	if r.pressed != 0 {
@@ -511,6 +527,39 @@ update_hover :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 	r.hover = next
 	r.hover_hit = h if ok else {}
 	if ok {
+		synth(r, h, .Enter, to_local(h, p))
+	}
+}
+
+// update_observers sends Leave to each observer the pointer, now at p,
+// has left, and Enter to each it has come over.
+@(private = "file")
+update_observers :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
+	i := 0
+	for i < len(r.observed) {
+		o := r.observed[i]
+		now: Hit
+		if refresh(f, o.area, &now) && hit_contains(f, now, p) {
+			r.observed[i] = now
+			i += 1
+			continue
+		}
+		synth(r, o, .Leave, to_local(o, p))
+		unordered_remove(&r.observed, i)
+	}
+	if f == nil {
+		return
+	}
+	outer: for h in f.hits {
+		if !h.observes || !hit_contains(f, h, p) {
+			continue
+		}
+		for o in r.observed {
+			if o.area == h.area {
+				continue outer
+			}
+		}
+		append(&r.observed, h)
 		synth(r, h, .Enter, to_local(h, p))
 	}
 }

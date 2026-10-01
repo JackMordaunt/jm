@@ -124,6 +124,11 @@ Input_Area :: struct {
 	// lands; then this area takes the press (and the other a Cancel). It is
 	// how selectable text inside a clickable card keeps the card clickable.
 	yields: bool,
+	// observes: the area is an observer. It is sent Enter and Leave while
+	// the pointer is over it, whatever lies on top, and nothing else; it
+	// takes no hover, press or cursor from the areas it overlaps. It is
+	// how a tooltip wrapping a control learns the pointer is over it.
+	observes: bool,
 }
 
 // Tag names an area for the dump and the probe: probe.find("Save").
@@ -295,11 +300,17 @@ image :: proc(o: ^Scene, id: Image_Id, dst: Rect, src: Rect = {}) {
 }
 
 input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cursor := Cursor.Default, yields := false) {
-	append(&o.ops, Input_Area{id, shape, kinds, cursor, yields})
+	append(&o.ops, Input_Area{id, shape, kinds, cursor, yields, false})
 	if o.outline_areas {
 		// Every area a user can reach, widget or painted row alike.
 		stroke(o, shape, HIT_BOUNDS_COLOR, {width = 1})
 	}
+}
+
+// observer_area records an observer (Input_Area.observes) over shape:
+// id is sent Enter and Leave as the pointer crosses it, and nothing else.
+observer_area :: proc(o: ^Scene, id: Area_Id, shape: Shape) {
+	append(&o.ops, Input_Area{id = id, shape = shape, kinds = {.Enter, .Leave}, observes = true})
 }
 
 // HIT_BOUNDS_COLOR outlines input areas under Debug_Flag.Bounds: cyan,

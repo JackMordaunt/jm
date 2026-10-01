@@ -40,6 +40,7 @@ import sqlite3_fuzz "jm:sqlite3/fuzz"
 import tar_fuzz "jm:tar/fuzz"
 import render_fuzz "jm:ui/render/fuzz"
 import wasm_fuzz "jm:wasm/fuzz"
+import zstd_fuzz "jm:zstd/fuzz"
 
 // Runner is a suite under a name, already given its subject type. A Suite is
 // parametric, so the suites cannot sit in one slice; the run procedures can.
@@ -58,6 +59,7 @@ runners := []Runner {
 	{"pq", pq_fuzz.CORPUS, pq_fuzz.run},
 	{"ui_render", render_fuzz.CORPUS, render_fuzz.run},
 	{"git", git_fuzz.CORPUS, git_fuzz.run},
+	{"zstd", zstd_fuzz.CORPUS, zstd_fuzz.run},
 }
 
 main :: proc() {

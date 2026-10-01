@@ -42,6 +42,7 @@ Probe :: struct {
 	arena:       ops.Frame_Arena,
 	allocator:   mem.Allocator,
 	clipboard:   [dynamic]u8, // the fake system clipboard frames write and read
+	opened:      [dynamic]u8, // the last URL a frame asked to open
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -64,6 +65,7 @@ probe_init :: proc(
 	p.size = size
 	p.allocator = allocator
 	p.clipboard = make([dynamic]u8, allocator)
+	p.opened = make([dynamic]u8, allocator)
 	p.shaper = stub_shaper()
 	p.font = font
 	p.dt = 1.0 / 60
@@ -86,6 +88,7 @@ probe_destroy :: proc(p: ^Probe) {
 	ops.destroy(&p.scene)
 	ops.frame_arena_destroy(&p.arena)
 	delete(p.clipboard)
+	delete(p.opened)
 	p^ = {}
 }
 
@@ -133,7 +136,7 @@ probe_frame :: proc(p: ^Probe) {
 
 // probe_platform carries out the frame's requests as a host would, on
 // the probe's fake clipboard: a write replaces it, a read answers with a
-// Paste for the next frame.
+// Paste for the next frame. An opened URL is kept for probe_opened_url.
 @(private = "file")
 probe_platform :: proc(p: ^Probe) {
 	for q in router_requests(&p.router) {
@@ -143,6 +146,9 @@ probe_platform :: proc(p: ^Probe) {
 			append(&p.clipboard, v.data)
 		case Clipboard_Read:
 			router_push(&p.router, {kind = .Paste, text = string(p.clipboard[:]), mime = v.mime})
+		case Open_Url:
+			clear(&p.opened)
+			append(&p.opened, v.url)
 		}
 	}
 	router_requests_clear(&p.router)
@@ -152,6 +158,12 @@ probe_platform :: proc(p: ^Probe) {
 // that writes it.
 probe_clipboard :: proc(p: ^Probe) -> string {
 	return string(p.clipboard[:])
+}
+
+// probe_opened_url is the last URL a frame asked to open, "" if none;
+// valid until the next frame that opens one.
+probe_opened_url :: proc(p: ^Probe) -> string {
+	return string(p.opened[:])
 }
 
 // probe_set_clipboard puts text on the fake clipboard, as another app would.

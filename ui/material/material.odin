@@ -485,6 +485,48 @@ layout_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, width: f32 = 0
 	return design.layout_style(gtx, s, st, font_for(gtx, st.weight), width)
 }
 
+// text is s at a type role in color, as a widget: one line at its own
+// width, wrapped at width when width > 0, else at the width it is
+// offered, and as wide as its widest line. Right-to-left text takes the
+// whole wrap width, which its lines are placed in. The text is
+// selectable (ui.selectable_text) unless selectable is false, and it is
+// tagged with s.
+text :: proc(
+	gtx: ^ui.Ctx,
+	s: string,
+	role: Type_Role,
+	color: ops.Color,
+	width: f32 = 0,
+	selectable := true,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> ui.Dims {
+	p := ui.widget_open(gtx, key, loc)
+	cs := gtx.constraints
+	wrap := width
+	if wrap == 0 && ui.is_finite(cs.max.x) {
+		wrap = cs.max.x
+	}
+	para := layout_style(gtx, s, TYPE_STYLES[role], wrap)
+	w := para.width
+	if para.rtl && wrap > 0 {
+		w = wrap
+	}
+	size := ui.constrain(cs, {w, para.height})
+	sel: design.Selection_Paint
+	if selectable {
+		lo, hi, focused := ui.selectable_text(gtx, p.id, para, {}, {0, 0, size.x, size.y})
+		sel = base.selection_colors(lo, hi, focused)
+	}
+	draw_paragraph(gtx, para, {}, color, sel)
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
+	baseline: f32
+	if len(para.lines) > 0 {
+		baseline = para.lines[0].baseline
+	}
+	return ui.widget_close(gtx, &p, {size, baseline})
+}
+
 // text_stops is s's caret and word stops at a style, for ui.text_edit.
 text_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style) -> ui.Text_Stops {
 	return ui.text_stops(gtx, s, font_for(gtx, st.weight), st.size)

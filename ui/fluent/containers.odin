@@ -198,7 +198,7 @@ paint_card :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) 
 	if ui.painted(border) {
 		stroke_inside(gtx, rr, border, tok.STROKE_WIDTH_THIN)
 	}
-	if c.focused && !c.disabled {
+	if c.focus_visible && !c.disabled {
 		stroke_inside(gtx, rr, color(.Stroke_Focus2), tok.STROKE_WIDTH_THICK)
 	}
 	if live {
@@ -629,7 +629,7 @@ tab_list :: proc(
 				ops.fill(gtx.scene, ops.Round_Rect{bar, min(bar.w, bar.h) / 2}, k.hover_bar)
 			}
 		}
-		if c.focused && !c.disabled {
+		if c.focus_visible && !c.disabled {
 			paint_focus_outline(gtx, c, rr)
 			if circular {
 				stroke_inside(gtx, rr, color(.Neutral_Stroke_On_Brand), tok.STROKE_WIDTH_THIN)
@@ -809,13 +809,15 @@ ACCORDION_GLYPH :: tok.FONT_SIZE_BASE500
 Accordion_Item :: struct {
 	column: ui.Flex,
 	panel:  ui.Inset,
+	body:   ui.Flex,
 	open:   bool,
 }
 
 // accordion_item_open opens one item: a column holding the header, a
 // full-width button with the chevron (pointing to the end, down when
 // open), an optional icon and the label, and then, only while open^,
-// the panel padded spacingHorizontalM at each side for the body. A
+// the panel padded spacingHorizontalM at each side, a full-width
+// column that stacks the body's children top to bottom. A
 // click, or Enter or Space while focused, flips open^; single-open and
 // collapsible rules are the caller's, who owns the open flags. The
 // header has no hover or press colour and no transition, by the spec.
@@ -840,12 +842,14 @@ accordion_item_open :: proc(
 	it.open = open^
 	if it.open {
 		it.panel = ui.inset_open(gtx, ui.pad_xy(tok.SPACING_HORIZONTAL_M, 0))
+		it.body = ui.column_open(gtx, align = .Fill)
 	}
 	return it
 }
 
 accordion_item_close :: proc(it: ^Accordion_Item) {
 	if it.open {
+		ui.close(&it.body)
 		ui.close(&it.panel)
 	}
 	ui.close(&it.column)

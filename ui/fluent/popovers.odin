@@ -950,7 +950,7 @@ roles_button :: proc(
 	k := corners_all(min(radius, min(sz.x, sz.y) / 2))
 	path := rounded(gtx, area, k)
 	bg := blend(gtx, c, 0, color_for(roles.bg, c))
-	stroke := blend(gtx, c, 1, c.focused && !c.disabled ? color(.Stroke_Focus2) : color_for(roles.border, c))
+	stroke := blend(gtx, c, 1, c.focus_visible && !c.disabled ? color(.Stroke_Focus2) : color_for(roles.border, c))
 	fg := blend(gtx, c, 2, color_for(roles.text, c))
 	icon_fg := blend(gtx, c, 3, color_for(roles.icon, c))
 	if ui.painted(bg) {

@@ -51,7 +51,7 @@ frame_control :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, sz: ops.Size, roles: Button
 	f.k, f.ring = k, ring
 	f.c = control(gtx, id, f.area, state)
 	border := color_for(roles.border, f.c)
-	if f.c.focused && !f.c.disabled && focus_border {
+	if f.c.focus_visible && !f.c.disabled && focus_border {
 		border = color(.Stroke_Focus2)
 	}
 	f.bg = blend(gtx, f.c, 0, color_for(roles.bg, f.c))
@@ -80,7 +80,7 @@ ALL_SIDES :: Sides{.Left, .Top, .Right, .Bottom}
 @(private)
 frame_paint :: proc(gtx: ^ui.Ctx, f: Frame, appearance: Appearance, width: f32 = tok.STROKE_WIDTH_THIN, sides := ALL_SIDES) {
 	path := rounded(gtx, f.area, f.k)
-	if appearance == .Primary && f.c.focused && !f.c.disabled {
+	if appearance == .Primary && f.c.focus_visible && !f.c.disabled {
 		paint_shadow(gtx, {f.area, f.k.tl}, tok.SHADOW2)
 	}
 	if ui.painted(f.bg) {
@@ -384,7 +384,7 @@ split_button :: proc(
 		frame_paint(gtx, f, appearance, border, {.Left, .Top, .Bottom})
 		// The end border in the divider's colour, over the whole height.
 		div := color_for(divider, f.c)
-		if f.c.focused && !f.c.disabled {
+		if f.c.focus_visible && !f.c.disabled {
 			div = color(.Stroke_Focus2)
 		}
 		if ui.painted(div) {

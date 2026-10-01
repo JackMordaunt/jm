@@ -19,7 +19,10 @@ base_url without a scheme is read from disk, which is how the tests work).
 The layout under the base is:
 
 	<asset>               one file per platform, named as Config.asset
-	sha256sums.txt        `sha256sum` output over the assets
+	<asset>.zst           optional: the asset compressed with zstd
+	<asset>.<hex>.patch   optional: a jm:zstd patch to the asset from the
+	                      build whose sha256 is <hex>, as tools/mkpatch makes
+	sha256sums.txt        `sha256sum` output over every file above
 	sha256sums.txt.sig    64-byte Ed25519 signature of sha256sums.txt
 	version.txt           the release's version, for display only
 
@@ -30,10 +33,15 @@ running executable, so no version is parsed: version is for display and
 the development-build guard.
 
 Notify checks at most once per interval, recorded by a stamp under
-state_dir, and never changes anything. Apply downloads the asset, verifies
-it, renames the running executable to `<exe>.old`, moves the new one in,
-and runs it again with the same arguments: execve on Unix, spawn-wait-exit
-on Windows. The `.old` file is removed on the next run.
+state_dir, and never changes anything. Apply obtains the new binary by the
+cheapest route the signed sums list: the patch from the running binary's
+own hash, then the compressed asset, then the asset itself. A route's file
+is checked against its published hash before zstd reads a byte of it, and
+what it decodes to is checked against the asset's; any failure falls
+through to the next route, and Result.via and the message say which ran.
+Apply then renames the running executable to `<exe>.old`, moves the new one
+in, and runs it again with the same arguments: execve on Unix,
+spawn-wait-exit on Windows. The `.old` file is removed on the next run.
 
 A development build (empty version) or an executable that is a symlink,
 which is how a checkout is installed, is refused rather than replaced.
@@ -43,7 +51,10 @@ file, the signature and the messages live in fixed buffers on the stack
 and in the Result, files are hashed in chunks, and downloads stream to
 disk. The caps (4 KiB paths, 16 KiB of checksums, 128 bytes of version)
 fail loudly when exceeded. core:os and jm:http use the temp allocator for
-their own scoped conversions.
+their own scoped conversions. Decoding a patch or the compressed asset is
+the exception, because zstd's window is as large as the binary: the running
+executable is mapped read-only rather than read, and zstd's tables live in
+a virtual-memory arena released before run returns.
 */
 package selfupdate
 
@@ -52,11 +63,13 @@ import "core:crypto/sha2"
 import "core:fmt"
 import "core:io"
 import "core:mem"
+import "core:mem/virtual"
 import "core:os"
 import "core:strings"
 import "core:time"
 
 import "jm:http"
+import "jm:zstd"
 
 Mode :: enum {
 	Notify,
@@ -77,9 +90,24 @@ Outcome :: enum {
 	Failed,
 }
 
+// Via is the route an applied update took to the new binary.
+Via :: enum {
+	Full,
+	Compressed,
+	Patch,
+}
+
+VIA_NAMES := [Via]string {
+	.Full       = "full download",
+	.Compressed = "compressed asset",
+	.Patch      = "patch",
+}
+
 // Result is returned by value; message and version read its inline buffers.
 Result :: struct {
 	outcome:     Outcome,
+	// Set when outcome is Applied.
+	via:         Via,
 	message_buf: [256]byte,
 	message_len: int,
 	version_buf: [VERSION_CAP]byte,
@@ -121,6 +149,8 @@ Config :: struct {
 }
 
 SUMS_FILE :: "sha256sums.txt"
+ZST_EXT :: ".zst"
+PATCH_EXT :: ".patch"
 SIG_FILE :: "sha256sums.txt.sig"
 VERSION_FILE :: "version.txt"
 STAMP_FILE :: "selfupdate.stamp"
@@ -219,21 +249,20 @@ run :: proc(cfg: Config) -> (r: Result) {
 		return failf(&r, .Update_Available, "update available: %s", version(&r))
 	}
 
-	if !fetch_to_file(base, cfg.asset, fresh, cfg.timeout) {
-		os.remove(fresh)
-		return failf(&r, .Failed, "cannot download %s", cfg.asset)
-	}
-	got: [HEX_DIGEST]byte
-	if err := file_hash(fresh, got[:]); err != nil || !strings.equal_fold(string(got[:]), want) {
-		os.remove(fresh)
-		return failf(&r, .Failed, "downloaded file does not match its published hash")
+	route := obtain(cfg, base, fixed_string(&sums), exe, string(have[:]), want, fresh)
+	if !route.ok {
+		return failf(&r, .Failed, "cannot update %s: %s", cfg.asset, route.note)
 	}
 	if !swap(exe, old, fresh, &r) {
 		os.remove(fresh)
 		return r
 	}
+	r.via = route.via
 	if cfg.no_reexec {
-		return failf(&r, .Applied, "updated")
+		if route.note != "" {
+			return failf(&r, .Applied, "updated via %s (%s: %s)", VIA_NAMES[route.via], VIA_NAMES[route.failed], route.note)
+		}
+		return failf(&r, .Applied, "updated via %s", VIA_NAMES[route.via])
 	}
 	args := cfg.args
 	if args == nil && len(os.args) > 1 {
@@ -241,6 +270,12 @@ run :: proc(cfg: Config) -> (r: Result) {
 	}
 	reexec(exe, args, &r)
 	return r
+}
+
+// patch_name is the release file holding the patch to asset from the build
+// whose sha256 is from_hex, written into buf: `<asset>.<from_hex>.patch`.
+patch_name :: proc(buf: []byte, asset, from_hex: string) -> string {
+	return fmt.bprintf(buf, "%s.%s%s", asset, from_hex, PATCH_EXT)
 }
 
 // key_from_hex decodes a 64-character hex public key into dst, which must
@@ -390,6 +425,115 @@ copy_file_to :: proc(p: string, dst: io.Writer) -> bool {
 			return n == 0 || rerr == .EOF
 		}
 	}
+}
+
+// Route is how obtain got the new binary. note says why failed, the first
+// route the sums listed, did not work; when nothing worked it is the full
+// download's reason.
+Route :: struct {
+	via:    Via,
+	ok:     bool,
+	failed: Via,
+	note:   string,
+}
+
+// obtain writes the release's asset to fresh, verified against want, by the
+// cheapest route the signed sums list; a route that fails falls through.
+obtain :: proc(cfg: Config, base, sums, exe, have, want, fresh: string) -> (route: Route) {
+	name_buf, dl_buf: [PATH_CAP]byte
+	dl := fmt.bprintf(dl_buf[:], "%s.dl", exe)
+	defer os.remove(dl)
+
+	name := patch_name(name_buf[:], cfg.asset, have)
+	if note := try_decode(base, sums, name, dl, fresh, exe, want, cfg.timeout); note == "" {
+		return {via = .Patch, ok = true}
+	} else if note != NOT_LISTED {
+		route.failed, route.note = .Patch, note
+	}
+	name = fmt.bprintf(name_buf[:], "%s%s", cfg.asset, ZST_EXT)
+	if note := try_decode(base, sums, name, dl, fresh, "", want, cfg.timeout); note == "" {
+		route.via, route.ok = .Compressed, true
+		return route
+	} else if note != NOT_LISTED && route.note == "" {
+		route.failed, route.note = .Compressed, note
+	}
+	route.via = .Full
+	if !fetch_to_file(base, cfg.asset, fresh, cfg.timeout) {
+		route.failed, route.note = .Full, "download failed"
+	} else if !hash_matches(fresh, want) {
+		route.failed, route.note = .Full, "downloaded file does not match its published hash"
+	} else {
+		route.ok = true
+		return route
+	}
+	os.remove(fresh)
+	return route
+}
+
+NOT_LISTED :: "not in the release"
+
+// try_decode fetches name to dl, checks it against its published hash, and
+// decodes it into fresh with the file at prefix, if any, as the zstd
+// prefix; fresh must then hash to want. It returns "" on success or why not.
+try_decode :: proc(base, sums, name, dl, fresh, prefix, want: string, timeout: time.Duration) -> string {
+	published, listed := published_hash_lookup(sums, name)
+	if !listed {
+		return NOT_LISTED
+	}
+	if !fetch_to_file(base, name, dl, timeout) {
+		return "download failed"
+	}
+	if !hash_matches(dl, published) {
+		return "does not match its published hash"
+	}
+	if !decode(dl, fresh, prefix) {
+		os.remove(fresh)
+		return "does not decode"
+	}
+	if !hash_matches(fresh, want) {
+		os.remove(fresh)
+		return "decodes to the wrong binary"
+	}
+	return ""
+}
+
+// decode streams the zstd file src into dst, with the file at prefix mapped
+// as the prefix when one is named.
+decode :: proc(src, dst, prefix: string) -> bool {
+	old: []byte
+	if prefix != "" {
+		data, err := virtual.map_file_from_path(prefix, {.Read})
+		if err != .None {
+			return false
+		}
+		old = data
+	}
+	defer virtual.unmap_file(old)
+	arena: virtual.Arena
+	if virtual.arena_init_growing(&arena) != nil {
+		return false
+	}
+	defer virtual.arena_destroy(&arena)
+	in_f, in_err := os.open(src)
+	if in_err != nil {
+		return false
+	}
+	defer os.close(in_f)
+	out_f, out_err := os.create(dst)
+	if out_err != nil {
+		return false
+	}
+	defer os.close(out_f)
+	opts := zstd.Options {
+		prefix    = old,
+		allocator = virtual.arena_allocator(&arena),
+	}
+	return zstd.decompress_stream(os.to_writer(out_f), os.to_reader(in_f), opts) == nil
+}
+
+hash_matches :: proc(p, want: string) -> bool {
+	got: [HEX_DIGEST]byte
+	return file_hash(p, got[:]) == nil && strings.equal_fold(string(got[:]), want)
 }
 
 // swap moves the running executable aside and the new file into its place.

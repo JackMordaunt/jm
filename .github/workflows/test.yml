@@ -147,10 +147,10 @@ jobs:
       # The vendored C libraries, compiled as the justfile compiles them.
       # On Windows the recipes are written for PowerShell and just's parser
       # trips over the file there, so the same commands run directly.
-      - name: sqlite, wasm3, libpg_query, kb_text_shape (unix)
+      - name: sqlite, zstd, wasm3, libpg_query, kb_text_shape (unix)
         if: runner.os != 'Windows'
-        run: just sqlite wasm pg_query kb
-      - name: sqlite, wasm3, libpg_query, kb_text_shape (windows)
+        run: just sqlite zstd wasm pg_query kb
+      - name: sqlite, zstd, wasm3, libpg_query, kb_text_shape (windows)
         if: runner.os == 'Windows'
         env:
           MSYS_NO_PATHCONV: 1
@@ -159,9 +159,11 @@ jobs:
           sqlite_defines=$(value sqlite_defines)
           wasm_defines=$(value wasm_defines)
           pg_query_flags=$(value pg_query_flags | sed 's/-fno-strict-aliasing//; s/-fwrapv//; s/-fPIC//; s/-O2//; s/-Wno-[a-z-]*//g')
-          mkdir -p sqlite3/lib wasm/lib/obj pg_query/lib/obj ui/kb/lib
+          mkdir -p sqlite3/lib zstd/lib wasm/lib/obj pg_query/lib/obj ui/kb/lib
           cl -nologo -O2 -c sqlite3/vendor/sqlite3.c -Fosqlite3/lib/sqlite3.obj $sqlite_defines
           lib -nologo -OUT:sqlite3/lib/sqlite3.lib sqlite3/lib/sqlite3.obj
+          cl -nologo -O2 -c zstd/vendor/zstd.c -Fozstd/lib/zstd.obj
+          lib -nologo -OUT:zstd/lib/zstd.lib zstd/lib/zstd.obj
           cl -nologo -std:c11 -O2 -c ui/kb/vendor/kb_text_shape.c -Foui/kb/lib/kb_text_shape.obj
           lib -nologo -OUT:ui/kb/lib/kb_text_shape.lib ui/kb/lib/kb_text_shape.obj
           # wasm3 is C11 that MSVC's cl rejects (m3_exec.h); clang-cl takes it.

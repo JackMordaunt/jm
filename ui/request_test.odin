@@ -6,7 +6,8 @@ import "jm:ui/ops"
 
 // Board is a test ui: two focusable text areas, "a" over the left half
 // and "b" over the right, that copy "a says hi" on SHORTCUT+C, ask for
-// the clipboard on SHORTCUT+V, and keep what a Paste brings.
+// the clipboard on SHORTCUT+V, open a URL on SHORTCUT+O, and keep what a
+// Paste brings.
 @(private = "file")
 Board :: struct {
 	pasted:     [2]string,
@@ -42,6 +43,8 @@ board :: proc(gtx: ^Ctx, user: rawptr) {
 					if b.write_last != "" {
 						clipboard_write(gtx, b.write_last)
 					}
+				case .O:
+					open_url(gtx, "https://example.com/docs")
 				case .V:
 					clipboard_read(gtx, id)
 					if b.both_read {
@@ -159,6 +162,38 @@ test_focus_request_moves_focus_at_the_next_route :: proc(t: ^testing.T) {
 		focused |= e.kind == .Focus
 	}
 	testing.expect(t, blurred && focused, "a is blurred and b focused, as a press would")
+}
+
+@(test)
+test_open_url_reaches_the_platform_once_the_frame_is_done :: proc(t: ^testing.T) {
+	b: Board
+	defer board_destroy(&b)
+	p: Probe
+	probe_init(&p, board, &b, {100, 50})
+	defer probe_destroy(&p)
+	probe_click(&p, "a")
+	testing.expect_value(t, probe_opened_url(&p), "")
+	probe_key(&p, .O, {SHORTCUT})
+	testing.expect_value(t, probe_opened_url(&p), "https://example.com/docs")
+	testing.expect_value(t, len(router_requests(&p.router)), 0) // carried out and forgotten
+}
+
+@(test)
+test_focus_is_visible_from_a_key_until_the_next_press :: proc(t: ^testing.T) {
+	b: Board
+	defer board_destroy(&b)
+	p: Probe
+	probe_init(&p, board, &b, {100, 50})
+	defer probe_destroy(&p)
+	testing.expect(t, !p.router.keyboard)
+	probe_click(&p, "a")
+	testing.expect(t, !p.router.keyboard)
+	probe_key(&p, .Tab)
+	testing.expect(t, p.router.keyboard)
+	probe_frame(&p)
+	testing.expect(t, p.router.keyboard) // a frame without input keeps it
+	probe_click(&p, "b")
+	testing.expect(t, !p.router.keyboard)
 }
 
 @(test)

@@ -49,12 +49,18 @@ Axis :: enum u8 {
 // Align places children on a flex's cross axis. Start is single pass;
 // Center and End record each child into a macro; Fill gives each child
 // tight cross constraints (the flex's cross max), so it stays single pass,
-// and degrades to Start when the cross axis is unbounded.
+// and degrades to Start when the cross axis is unbounded. Baseline lines
+// up the first baselines of a row's children (or of a wrap's line),
+// recording each like Center; a child that reports none aligns its bottom
+// edge, as CSS synthesises one. The row is as tall as the deepest ascent
+// plus the deepest descent. A column has no baselines across it, so
+// Baseline there acts as Start.
 Align :: enum u8 {
 	Start,
 	Center,
 	End,
 	Fill,
+	Baseline,
 }
 
 // Widget_State is what every widget keeps between frames, keyed by its
@@ -582,7 +588,7 @@ flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, key: u64, loc: 
 		axis     = axis,
 		gap      = gap,
 		align    = align,
-		deferred = align == .Center || align == .End,
+		deferred = align == .Center || align == .End || (align == .Baseline && axis == .Horizontal),
 	}
 	return {gtx, container_push(gtx, c, p)}
 }
@@ -591,8 +597,8 @@ flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, key: u64, loc: 
 // below, whenever the next child would pass the width it is offered: the
 // row of chips, buttons or cards that must reflow, not scroll, when the
 // window narrows. Each child is offered the full width and measures at its
-// natural size; align places a child across its line (Start, Center or
-// End; Fill acts as Start). A line_gap below 0 means gap. Weights do not
+// natural size; align places a child across its line (Start, Center,
+// End or Baseline; Fill acts as Start). A line_gap below 0 means gap. Weights do not
 // apply: a flexible child is laid out at its natural size.
 wrap_open :: proc(
 	gtx: ^Ctx,
@@ -714,6 +720,12 @@ flex_close :: proc(f: ^Flex) {
 	if c.align == .Fill && is_finite(cross_max) {
 		cross = cross_max
 	}
+	ascent: f32
+	if c.align == .Baseline && c.axis == .Horizontal {
+		descent: f32
+		ascent, descent = baseline_extent(kids)
+		cross = max(cross, ascent + descent)
+	}
 	size := constrain(c.cs, axis_vec(c.axis, total, cross))
 	cross = cross_of(c.axis, size)
 	at, baseline: f32
@@ -727,6 +739,10 @@ flex_close :: proc(f: ^Flex) {
 			off = (cross - cross_of(c.axis, k.size)) / 2
 		case .End:
 			off = cross - cross_of(c.axis, k.size)
+		case .Baseline:
+			if c.axis == .Horizontal {
+				off = ascent - child_baseline(k)
+			}
 		}
 		pos := axis_vec(c.axis, at, off)
 		if k.deferred {
@@ -774,6 +790,12 @@ wrap_close :: proc(f: ^Flex) {
 			h = max(h, kids[end].size.y)
 			end += 1
 		}
+		ascent: f32
+		if c.align == .Baseline {
+			descent: f32
+			ascent, descent = baseline_extent(kids[start:end])
+			h = max(h, ascent + descent)
+		}
 		x: f32
 		for k in kids[start:end] {
 			off: f32
@@ -782,6 +804,8 @@ wrap_close :: proc(f: ^Flex) {
 				off = (h - k.size.y) / 2
 			case .End:
 				off = h - k.size.y
+			case .Baseline:
+				off = ascent - child_baseline(k)
 			}
 			ops.transform_push(gtx.scene, ops.translate(x, y + off))
 			ops.call(gtx.scene, k.macro)
@@ -802,6 +826,26 @@ wrap_close :: proc(f: ^Flex) {
 	done := container_pop(gtx, f.index)
 	widget_close(gtx, &done.place, {size, baseline})
 	f.index = -1
+}
+
+// child_baseline is k's first baseline from its top, or its bottom edge
+// when it reports none, as CSS synthesises a baseline for a box without
+// text.
+@(private = "file")
+child_baseline :: proc(k: Child) -> f32 {
+	return k.baseline > 0 ? k.baseline : k.size.y
+}
+
+// baseline_extent is how far kids reach above and below their shared
+// baseline: the deepest ascent and the deepest descent.
+@(private = "file")
+baseline_extent :: proc(kids: []Child) -> (ascent, descent: f32) {
+	for k in kids {
+		b := child_baseline(k)
+		ascent = max(ascent, b)
+		descent = max(descent, k.size.y - b)
+	}
+	return
 }
 
 // spacer takes size along the innermost flex's main axis (a square outside
@@ -863,6 +907,43 @@ inset_open :: proc(gtx: ^Ctx, padding: Padding, key: u64 = 0, loc := #caller_loc
 		offset = {padding.left, padding.top},
 	}
 	return {gtx, container_push(gtx, c, p)}
+}
+
+// Size_Limits bound a sized box: min and max per axis. A zero max leaves
+// that axis uncapped; min equal to max fixes it.
+Size_Limits :: struct {
+	min, max: ops.Size,
+}
+
+// sized bounds its children and itself by limits within what it is
+// offered: children get the narrowed constraints, and the box is its
+// content's size clamped into them, so a min holds even around a small
+// body. The offered constraints win a conflict (a max below the offered
+// min, a min above the offered max), and a min wins over a max, as in
+// CSS. It paints nothing; put a box inside it for a surface.
+sized_open :: proc(gtx: ^Ctx, limits: Size_Limits, key: u64 = 0, loc := #caller_location) -> Inset {
+	p := widget_open(gtx, key, loc)
+	cs := limit(gtx.constraints, limits)
+	i := container_push(gtx, {kind = .Inset, inner = cs}, p)
+	if i >= 0 {
+		gtx.layout.stack[i].cs = cs
+	}
+	return {gtx, i}
+}
+
+// limit narrows cs by limits (see sized_open).
+@(private = "file")
+limit :: proc(cs: Constraints, limits: Size_Limits) -> Constraints {
+	out: Constraints
+	for a in 0 ..< 2 {
+		lo := clamp(limits.min[a], cs.min[a], cs.max[a])
+		hi := cs.max[a]
+		if limits.max[a] > 0 {
+			hi = max(clamp(limits.max[a], cs.min[a], cs.max[a]), lo)
+		}
+		out.min[a], out.max[a] = lo, hi
+	}
+	return out
 }
 
 // inset_close reports the inset's size.

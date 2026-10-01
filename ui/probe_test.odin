@@ -1,5 +1,7 @@
 package ui
 
+import "base:runtime"
+import "core:mem"
 import "core:strings"
 import "jm:ui/ops"
 import "core:testing"
@@ -111,4 +113,69 @@ probe_type_into_focused :: proc(t: ^testing.T) {
 	testing.expect(t, probe_click(&p, "Save"))
 	testing.expect(t, m.focused, "a non-key button keeps focus")
 	testing.expect_value(t, m.saved, 1)
+}
+
+@(private = "file")
+steady_view :: proc(gtx: ^Ctx, user: rawptr) {
+	if column(gtx, gap = 4) {
+		label(gtx, "title")
+		if row(gtx, gap = 8, align = .Baseline) {
+			label(gtx, "left")
+			flexible(gtx, 1)
+			label(gtx, "grow")
+		}
+		if clip_box(gtx) {
+			label(gtx, "clipped")
+		}
+		o := popup_open(gtx, {0, 0, 20, 20}, 99)
+		label(gtx, "popup")
+		popup_close(&o, {20, 20})
+	}
+}
+
+@(test)
+test_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
+	// Every allocator the frame could reach goes through a spy: the probe's
+	// own (its scene, frames, router and layout), the default and temp.
+	spy := Alloc_Spy{inner = context.allocator}
+	spy_t := Alloc_Spy{inner = context.temp_allocator}
+	inner, inner_t := context.allocator, context.temp_allocator
+	context.allocator = mem.Allocator{spy_proc, &spy}
+	context.temp_allocator = mem.Allocator{spy_proc, &spy_t}
+	defer context.allocator, context.temp_allocator = inner, inner_t
+	p: Probe
+	probe_init(&p, steady_view, nil, {200, 200})
+	defer probe_destroy(&p)
+	probe_frame(&p) // a second frame settles the weighted child and the popup
+	spy.n, spy_t.n = 0, 0
+	probe_frame(&p)
+	probe_frame(&p)
+	for i in 0 ..< min(spy.n, len(spy.at)) {
+		testing.expectf(t, false, "heap allocator called at %v", spy.at[i])
+	}
+	for i in 0 ..< min(spy_t.n, len(spy_t.at)) {
+		testing.expectf(t, false, "temp allocator called at %v", spy_t.at[i])
+	}
+	testing.expect(t, probe_tagged(&p, "popup")) // the frames did lay the view out
+}
+
+// Alloc_Spy records where allocations came from, in a fixed buffer, and
+// passes them on to inner: a failing test names every site.
+@(private = "file")
+Alloc_Spy :: struct {
+	inner: mem.Allocator,
+	at:    [16]runtime.Source_Code_Location,
+	n:     int,
+}
+
+@(private = "file")
+spy_proc :: proc(data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old: rawptr, old_size: int, loc := #caller_location) -> ([]byte, mem.Allocator_Error) {
+	s := (^Alloc_Spy)(data)
+	if mode != .Query_Features && mode != .Query_Info {
+		if s.n < len(s.at) {
+			s.at[s.n] = loc
+		}
+		s.n += 1
+	}
+	return s.inner.procedure(s.inner.data, mode, size, alignment, old, old_size, loc)
 }

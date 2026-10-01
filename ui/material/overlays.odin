@@ -1,5 +1,6 @@
 package material
 
+import "base:runtime"
 import "core:strings"
 import "jm:ui/ops"
 import "jm:ui"
@@ -635,8 +636,8 @@ TOOLTIP_GAP :: f32(4)
 // plain_tooltip is M3's plain tooltip as a widget: comp.plain-tooltip's
 // body-small inverse-on-surface text on inverse-surface, corner 4, 8×4dp
 // padding, wrapping at 200dp, never under 40×24dp; caret adds the 16×8dp
-// pointer on that side. See icon_button's tooltip for one that follows
-// hover.
+// pointer on that side. See tooltip for one that follows hover over any
+// control, and icon_button's own tooltip.
 plain_tooltip :: proc(gtx: ^ui.Ctx, label: string, caret := Tooltip_Caret.None, key: u64 = 0, loc := #caller_location) {
 	p := ui.widget_open(gtx, key, loc)
 	size := paint_plain_tooltip(gtx, {}, label, caret)
@@ -751,6 +752,63 @@ hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string,
 	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, key, .Below, .Center, TOOLTIP_GAP)
 	size := paint_plain_tooltip(gtx, {}, label, .None, a, k)
 	ui.popup_close(&o, size)
+}
+
+// tooltip_open wraps whatever is laid out inside it, any control or
+// group of them, with a plain tooltip that follows hover as icon_button's
+// does: shown under the body, flipping or shifting to stay in the window,
+// hidden on leave or after TOOLTIP_DISMISS. The wrapper hears the
+// pointer through an observer area (ops.Input_Area.observes), so the
+// control inside keeps its own hover, presses and cursor. It paints
+// nothing else and adds nothing to the body's size.
+tooltip_open :: proc(gtx: ^ui.Ctx, label: string, key: u64 = 0, loc := #caller_location) -> ui.Box {
+	tp := new(Tooltip_Anchor, gtx.allocator)
+	tp.label = label
+	return ui.box_open(gtx, {paint = paint_tooltip_anchor, user = tp}, key, loc)
+}
+
+// tooltip is tooltip_open as a guard: `if m3.tooltip(gtx, "Why") { … }`
+// closes itself at the end of the if.
+@(deferred_in = tooltip_guard_close)
+tooltip :: proc(gtx: ^ui.Ctx, label: string, key: u64 = 0, loc := #caller_location) -> bool {
+	tooltip_open(gtx, label, key, loc)
+	return true
+}
+
+@(private = "file")
+tooltip_guard_close :: proc(gtx: ^ui.Ctx, label: string, key: u64, loc: runtime.Source_Code_Location) {
+	ui.innermost_close(gtx, .Box)
+}
+
+@(private = "file")
+Tooltip_Anchor :: struct {
+	label: string,
+}
+
+// Tooltip_Hover is a wrapping tooltip's state between frames: whether
+// the pointer is over its body, and for how long.
+@(private = "file")
+Tooltip_Hover :: struct {
+	over:    bool,
+	seconds: f32,
+}
+
+// paint_tooltip_anchor runs once the body's size is known: it lays the
+// observer over the body and shows the tooltip while the pointer is on it.
+@(private = "file")
+paint_tooltip_anchor :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
+	tp := (^Tooltip_Anchor)(user)
+	h := ui.widget_data(gtx, id, Tooltip_Hover)
+	for e in ui.events(gtx, id) {
+		#partial switch e.kind {
+		case .Enter:
+			h.over = true
+		case .Leave:
+			h.over = false
+		}
+	}
+	ops.observer_area(gtx.scene, id, ops.Rect{0, 0, size.x, size.y})
+	hover_tooltip(gtx, h.over, &h.seconds, tp.label, size, ui.id_mix(id, 0x746f6f6c))
 }
 
 // Rich tooltip metrics (tooltip.json layout, Tooltip.kt:538,1460-1471):
@@ -1043,12 +1101,6 @@ icon_widget :: proc(gtx: ^ui.Ctx, g: Icon, size: f32, color: ops.Color, loc := #
 	p := ui.widget_open(gtx, 0, loc)
 	icon(gtx, g, {}, size, color)
 	ui.widget_close(gtx, &p, {size = {size, size}})
-}
-
-// wrapped_text lays s out in lines no wider than width (jm:ui's label
-// does not wrap), as one selectable widget.
-wrapped_text :: proc(gtx: ^ui.Ctx, s: string, role: Type_Role, color: ops.Color, width: f32, loc := #caller_location) {
-	paragraph_widget(gtx, layout_style(gtx, s, TYPE_STYLES[role], width), color, loc = loc)
 }
 
 // wrap_lines breaks s at spaces into shaped lines no wider than width —

@@ -12,8 +12,9 @@ add_hit :: proc(
 	kinds: ops.Event_Kinds,
 	m := ops.IDENTITY,
 	clip := NO_CLIP,
+	observes := false,
 ) {
-	append(&f.hits, Hit{area, kinds, shape, m, clip, len(f.hits), 0, .Default, false})
+	append(&f.hits, Hit{area = area, kinds = kinds, shape = shape, transform = m, clip = clip, order = len(f.hits), observes = observes})
 }
 
 // route pushes evs, routes them against f and returns the routed events.
@@ -302,4 +303,49 @@ input_router_nil_frame :: proc(t: ^testing.T) {
 	defer router_destroy(&r)
 	evs := route(&r, nil, {kind = .Press, pos = {1, 1}}, {kind = .Text, text = "dropped"})
 	testing.expect_value(t, len(evs), 0)
+}
+
+@(test)
+test_an_observer_hears_enter_and_leave_under_what_is_on_top :: proc(t: ^testing.T) {
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+	r: Router
+	router_init(&r)
+	defer router_destroy(&r)
+	// A wrapping observer (1) under a button (2), and a second button (3)
+	// beside them, outside the observer.
+	add_hit(&f, 1, ops.Rect{0, 0, 50, 50}, {.Enter, .Leave}, observes = true)
+	add_hit(&f, 2, ops.Rect{0, 0, 50, 50}, {.Press, .Release, .Enter, .Leave})
+	add_hit(&f, 3, ops.Rect{60, 0, 50, 50}, {.Press, .Release, .Enter, .Leave})
+	f.hits[1].cursor = .Pointer
+	add_hit(&f, 4, ops.Rect{0, 0, 50, 50}, {.Enter, .Leave}, observes = true) // on top, with a cursor of its own
+	f.hits[3].cursor = .Text
+
+	evs := route(&r, &f, {kind = .Move, pos = {10, 10}})
+	testing.expect_value(t, len(evs), 3)
+	if len(evs) == 3 {
+		expect_event(t, evs[0], .Enter, 1, {10, 10})
+		expect_event(t, evs[1], .Enter, 4, {10, 10})
+		expect_event(t, evs[2], .Enter, 2, {10, 10})
+	}
+	testing.expect_value(t, r.hover, ops.Area_Id(2)) // observers take no hover
+	testing.expect_value(t, router_cursor(&r), ops.Cursor.Pointer) // nor the cursor
+
+	// A press goes to the button; the observer hears nothing more.
+	evs = route(&r, &f, {kind = .Press, pos = {12, 10}, button = .Left}, {kind = .Release, pos = {12, 10}, button = .Left})
+	for e in evs {
+		testing.expect(t, e.area == 2, "only the button takes the press and release")
+	}
+
+	evs = route(&r, &f, {kind = .Move, pos = {70, 10}})
+	testing.expect_value(t, len(evs), 4)
+	if len(evs) == 4 {
+		testing.expect_value(t, evs[0].kind, ops.Event_Kind.Leave)
+		testing.expect_value(t, evs[1].kind, ops.Event_Kind.Leave)
+		testing.expect_value(t, evs[0].area + evs[1].area, ops.Area_Id(1 + 4)) // both observers, in either order
+		expect_event(t, evs[2], .Leave, 2, {70, 10})
+		expect_event(t, evs[3], .Enter, 3, {70, 10}) // the rect is placed by its shape, not a transform
+	}
+	testing.expect_value(t, len(r.observed), 0)
 }

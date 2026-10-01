@@ -84,6 +84,58 @@ divider :: proc(gtx: ^ui.Ctx, line := ops.Color{}, key: u64 = 0, loc := #caller_
 	return ui.widget_close(gtx, &p, {size = size})
 }
 
+// box_open sizes its body within what it is offered: width or height,
+// when non-zero, fixes that axis; min_size and max_size bound the rest
+// (a zero max leaves an axis uncapped). The body gets the narrowed
+// constraints and the box is at least min_size even around a small body.
+// It paints nothing: open a panel inside it for a surface. See
+// ui.sized_open for how a conflict with the offered constraints resolves.
+box_open :: proc(
+	gtx: ^ui.Ctx,
+	width: f32 = 0,
+	height: f32 = 0,
+	min_size := ops.Size{},
+	max_size := ops.Size{},
+	key: u64 = 0,
+	loc := #caller_location,
+) -> ui.Inset {
+	return ui.sized_open(gtx, box_limits(width, height, min_size, max_size), key, loc)
+}
+
+// box is box_open as a guard: `if base.box(gtx, width = 240) { … }`
+// closes itself at the end of the if.
+@(deferred_in = box_guard_close)
+box :: proc(
+	gtx: ^ui.Ctx,
+	width: f32 = 0,
+	height: f32 = 0,
+	min_size := ops.Size{},
+	max_size := ops.Size{},
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	box_open(gtx, width, height, min_size, max_size, key, loc)
+	return true
+}
+
+@(private = "file")
+box_guard_close :: proc(gtx: ^ui.Ctx, width, height: f32, min_size, max_size: ops.Size, key: u64, loc: runtime.Source_Code_Location) {
+	ui.innermost_close(gtx, .Inset)
+}
+
+// box_limits folds a fixed width or height into min and max.
+@(private = "file")
+box_limits :: proc(width, height: f32, min_size, max_size: ops.Size) -> ui.Size_Limits {
+	l := ui.Size_Limits{min_size, max_size}
+	if width > 0 {
+		l.min.x, l.max.x = width, width
+	}
+	if height > 0 {
+		l.min.y, l.max.y = height, height
+	}
+	return l
+}
+
 // panel_open is ui.box_open with the theme's defaults: a Surface fill, an
 // Outline border of stroke width, the theme's radius and spacing as
 // padding. A zero field takes the default; CLEAR paints nothing.

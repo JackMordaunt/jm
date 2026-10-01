@@ -763,7 +763,7 @@ link :: proc(
 	draw_text(gtx, t, {0, 0}, fg)
 	base := baseline_of(t)
 	if !c.disabled {
-		if c.focused {
+		if c.focus_visible {
 			fc := color(.Stroke_Focus2)
 			ops.fill(gtx.scene, ops.Rect{0, base + 2, t.width, tok.STROKE_WIDTH_THIN}, fc)
 			ops.fill(gtx.scene, ops.Rect{0, base + 4, t.width, tok.STROKE_WIDTH_THIN}, fc)

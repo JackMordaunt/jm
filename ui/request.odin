@@ -3,7 +3,7 @@ package ui
 import "jm:ui/ops"
 
 // Requests are what a frame asks of the platform, beyond pixels: the
-// clipboard written or read. A widget makes one during layout; the Router
+// clipboard written or read, a URL opened. A widget makes one during layout; the Router
 // queues it, and whatever runs the frame (ui/sdl's loop, a host over the
 // wire, the probe) drains the queue once the frame is done, with
 // router_requests then router_requests_clear. Gio calls these commands.
@@ -25,6 +25,7 @@ TEXT_MIME :: "text/plain;charset=utf-8"
 Request :: union {
 	Clipboard_Write,
 	Clipboard_Read,
+	Open_Url,
 }
 
 // Clipboard_Write puts data on the clipboard as mime.
@@ -35,6 +36,24 @@ Clipboard_Write :: struct {
 // Clipboard_Read asks for the clipboard as mime, answered with a Paste.
 Clipboard_Read :: struct {
 	mime: string,
+}
+
+// Open_Url asks the platform to open url with the system's handler for
+// its scheme: a browser for http and https, a mail client for mailto.
+Open_Url :: struct {
+	url: string,
+}
+
+// open_url asks the platform to open url once the frame is done, as a
+// click on a link would. The ui learns nothing back: whether a handler
+// exists is the platform's business. Each call is one request; url is
+// copied.
+open_url :: proc(gtx: ^Ctx, url: string) {
+	r := gtx.router
+	if r == nil || url == "" {
+		return
+	}
+	append(&r.requests, Open_Url{clone_string(url, r.allocator)})
 }
 
 // clipboard_write puts text on the clipboard once the frame is done. The
@@ -88,6 +107,13 @@ focus_request :: proc(gtx: ^Ctx, area: ops.Area_Id) {
 	r.focus_asked = true
 }
 
+// focus_visible reports whether the focused area should show a focus
+// indicator: the last input was a key rather than a pointer press. A
+// design system reads it to draw its ring only for keyboard users.
+focus_visible :: proc(gtx: ^Ctx) -> bool {
+	return gtx.router != nil && gtx.router.keyboard
+}
+
 // router_requests is what the frames since the last router_requests_clear
 // asked of the platform, in the order asked. Valid until that clear.
 router_requests :: proc(r: ^Router) -> []Request {
@@ -118,5 +144,7 @@ free_request :: proc(r: ^Router, q: Request) {
 		delete(v.data, r.allocator)
 	case Clipboard_Read:
 		delete(v.mime, r.allocator)
+	case Open_Url:
+		delete(v.url, r.allocator)
 	}
 }

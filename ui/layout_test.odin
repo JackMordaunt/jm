@@ -1194,3 +1194,73 @@ test_a_cancelled_thumb_drag_stops_scrolling :: proc(t: ^testing.T) {
 	scroll_frame(&h)
 	testing.expect_value(t, scroll_offset(&h), 0)
 }
+
+// block is a leaf size big whose first baseline is baseline down (0: none).
+@(private = "file")
+block :: proc(gtx: ^Ctx, size: ops.Size, baseline: f32, key: u64, loc := #caller_location) -> Dims {
+	p := widget_open(gtx, key, loc)
+	return widget_close(gtx, &p, {size, baseline})
+}
+
+@(test)
+test_align_baseline_lines_up_first_baselines_in_a_row :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	d: Dims
+	{
+		outer := column_open(gtx); defer close(&outer)
+		r := row_open(gtx, align = .Baseline)
+		block(gtx, {10, 30}, 20, 1) // tallest ascent
+		block(gtx, {10, 14}, 10, 2)
+		block(gtx, {10, 8}, 0, 3) // no baseline: its bottom edge sits on the line
+		block(gtx, {10, 24}, 6, 4) // deepest descent
+		close(&r)
+		kids := children_of(gtx.layout, innermost(gtx.layout))
+		d = {kids[len(kids) - 1].size, kids[len(kids) - 1].baseline} // the row, as its parent saw it
+	}
+	all := pushes(&h.scene) // the column places the row first, then the row its children
+	testing.expect_value(t, len(all), 5)
+	p := all[1:]
+	if len(p) == 4 {
+		testing.expect_value(t, p[0].y, 0)
+		testing.expect_value(t, p[1].y, 10)
+		testing.expect_value(t, p[2].y, 12)
+		testing.expect_value(t, p[3].y, 14)
+	}
+	testing.expect_value(t, d.size.y, 20 + 18) // deepest ascent plus deepest descent
+	testing.expect_value(t, d.baseline, 20)
+}
+
+@(test)
+test_align_baseline_is_start_in_a_column_and_per_line_in_a_wrap :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {25, 300})
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		col := column_open(gtx, align = .Baseline); defer close(&col)
+		block(gtx, {10, 30}, 20, 1)
+		block(gtx, {5, 14}, 10, 2)
+	}
+	testing.expect_value(t, testutil.count_ops(h.scene.ops[:], ops.Macro_Begin), 0) // placed as it goes
+
+	harness_frame(&h)
+	gtx = &h.gtx
+	{
+		w := wrap_open(gtx, align = .Baseline); defer close(&w)
+		block(gtx, {10, 30}, 20, 1)
+		block(gtx, {10, 14}, 10, 2)
+		block(gtx, {10, 10}, 4, 3) // 25 wide: a second line
+		block(gtx, {10, 20}, 16, 4)
+	}
+	p := pushes(&h.scene)
+	testing.expect_value(t, len(p), 4)
+	if len(p) == 4 {
+		testing.expect_value(t, p[0], ops.Point{0, 0})
+		testing.expect_value(t, p[1], ops.Point{10, 10})
+		testing.expect_value(t, p[2], ops.Point{0, 30 + 12}) // line two's baseline is 16 down
+		testing.expect_value(t, p[3], ops.Point{10, 30})
+	}
+}

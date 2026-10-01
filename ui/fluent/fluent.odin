@@ -27,6 +27,8 @@ shaped by (fluent-kit foundations.json):
     springs.
   - Keyboard focus is an outline outside the component (paint_focus_
     outline), except buttons, which draw it inside (paint_focus_inset).
+    Every focus indicator reads Control.focus_visible, so a click
+    focuses without one and a key shows it (:focus-visible).
   - Disabled swaps every colour for its Disabled token; nothing dims.
   - A shadow token is two layers, ambient then key, in colour roles.
   - High contrast is a theme like any other: the same roles, bound to the
@@ -423,14 +425,18 @@ focus_outline :: proc() -> design.Focus_Ring {
 }
 
 // paint_focus_outline is the default keyboard focus indicator: a 2px
-// Stroke_Focus2 outline just outside rr, following its corners.
+// Stroke_Focus2 outline just outside rr, following its corners. Like
+// every Fluent indicator it shows only while c.focus_visible
+// (createFocusOutlineStyle's :focus-visible), not after a click.
 paint_focus_outline :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect) {
-	design.paint_focus_ring(gtx, c.base, rr, focus_outline())
+	paint_focus_outline_corners(gtx, c, rr.rect, corners_all(rr.radius))
 }
 
 // paint_focus_outline_corners is paint_focus_outline for per-corner radii.
 paint_focus_outline_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners) {
-	design.paint_focus_ring_corners(gtx, c.base, r, k, focus_outline())
+	b := c.base
+	b.focused = b.focus_visible
+	design.paint_focus_ring_corners(gtx, b, r, k, focus_outline())
 }
 
 // paint_focus_inset is a button's focus indicator, drawn inside its box
@@ -442,7 +448,7 @@ paint_focus_outline_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Co
 // when non-zero, is a further ring of inner_color inside that (the
 // primary button's on-brand ring, strokeWidthThick wide).
 paint_focus_inset :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners, border: f32 = tok.STROKE_WIDTH_THIN, paint_border := true, inner: f32 = 0, inner_color := ops.Color{}) {
-	if !c.focused || c.disabled {
+	if !c.focus_visible || c.disabled {
 		return
 	}
 	fc := color(.Stroke_Focus2)
