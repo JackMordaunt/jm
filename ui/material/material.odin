@@ -299,6 +299,19 @@ TYPE_STYLES := [Type_Role]tok.Type_Style {
 	.Label_Small_Emphasized     = tok.SYS_TYPOGRAPHY_LABEL_SMALL_EMPHASIZED,
 }
 
+// is_heading reports whether role is a display, headline or title
+// style: text a reader announces as a heading, not body copy.
+@(private)
+is_heading :: proc(role: Type_Role) -> bool {
+	#partial switch role {
+	case .Display_Large, .Display_Medium, .Display_Small, .Headline_Large, .Headline_Medium, .Headline_Small, .Title_Large, .Title_Medium, .Title_Small:
+		return true
+	case .Display_Large_Emphasized, .Display_Medium_Emphasized, .Display_Small_Emphasized, .Headline_Large_Emphasized, .Headline_Medium_Emphasized, .Headline_Small_Emphasized, .Title_Large_Emphasized, .Title_Medium_Emphasized, .Title_Small_Emphasized:
+		return true
+	}
+	return false
+}
+
 // type_scale is role's font size and line height.
 type_scale :: proc(role: Type_Role) -> (size, line_height: f32) {
 	st := TYPE_STYLES[role]
@@ -364,6 +377,19 @@ CLICK_KINDS :: design.CLICK_KINDS
 // listen registers id's input area when c is Live.
 listen :: proc(gtx: ^ui.Ctx, c: Control, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS, cursor := ops.Cursor.Default) {
 	design.listen(gtx, c.st, id, shape, kinds, cursor)
+}
+
+// states_of is the states every control shares: Disabled from c, and
+// Selected when on.
+@(private)
+states_of :: proc(c: Control, on := false) -> (s: ops.States) {
+	if c.disabled {
+		s += {.Disabled}
+	}
+	if on {
+		s += {.Selected}
+	}
+	return
 }
 
 // paint_state_layer paints c's state layer of color over shape, then any ripple.
@@ -521,6 +547,7 @@ text :: proc(
 	}
 	draw_paragraph(gtx, para, {}, color, sel)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s), {0, 0, size.x, size.y})
+	ui.semantics(gtx, &p, {role = is_heading(role) ? .Heading : .Text, label = s})
 	baseline: f32
 	if len(para.lines) > 0 {
 		baseline = para.lines[0].baseline

@@ -1,8 +1,17 @@
 package material
 
+import "core:reflect"
 import "jm:ui"
 import "jm:ui/design"
 import "jm:ui/ops"
+
+// icon_name is i's name as a reader says it for an icon-only control, the
+// enum's own: "Search", "More_Vert". The string is the one in the enum's
+// base:runtime Type_Info_Enum.names table, so it outlives the frame.
+icon_name :: proc(i: Icon) -> string {
+	name, _ := reflect.enum_name_from_value(i)
+	return name
+}
 
 // Icons are Material Symbols (Outlined, and the _fill1 variants), drawn as
 // vector paths through design's Icon_Set: icon_data.odin holds each

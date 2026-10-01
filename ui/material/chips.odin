@@ -290,6 +290,8 @@ chip :: proc(
 			lead = on ? .Check : (av != .None ? av : leading)
 		}
 	}
+	// Before the remove control, which is a part of it.
+	ui.semantics(gtx, &p, {role = .Button, label = label, states = states_of(c, on)})
 	dragged := state == .Dragged
 
 	// Springs: 0 corner radius (dp), 1 leading width (0-1), 2 leading
@@ -369,7 +371,9 @@ chip :: proc(
 				removed^ = true
 			}
 			ops.input_area(gtx.scene, rid, hit, CLICK_KINDS)
-			ops.tag(gtx.scene, rid, fmt.aprintf("remove %s", label, allocator = gtx.allocator))
+			remove := fmt.aprintf("remove %s", label, allocator = gtx.allocator)
+			ops.tag(gtx.scene, rid, remove)
+			ui.part_semantics(gtx, &p, rid, hit, {role = .Button, label = remove})
 		}
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))

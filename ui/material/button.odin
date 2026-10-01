@@ -380,6 +380,11 @@ button :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	name := label
+	if name == "" {
+		name = icon_name(leading != .None ? leading : trailing)
+	}
+	ui.semantics(gtx, &p, {role = .Button, label = name, states = states_of(c, on)})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -620,6 +625,7 @@ icon_button :: proc(
 		hover_tooltip(gtx, c.st.hovered, &ui.widget_data(gtx, p.id, Tooltip_Timer).seconds, tooltip, sz, ui.id_mix(p.id, 0x746f6f6c))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, tooltip != "" ? tooltip : "icon_button"))
+	ui.semantics(gtx, &p, {role = .Button, label = tooltip != "" ? tooltip : icon_name(glyph), states = states_of(c, on)})
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -733,6 +739,7 @@ fab :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, hit)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "fab"))
+	ui.semantics(gtx, &p, {role = .Button, label = icon_name(glyph)})
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -838,6 +845,7 @@ extended_fab :: proc(
 	paint_focus_ring_corners(gtx, c, area, k)
 	listen(gtx, c, p.id, touch_target(area))
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
+	ui.semantics(gtx, &p, {role = .Button, label = label != "" ? label : icon_name(glyph)})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -871,6 +879,8 @@ segmented_button :: proc(
 	loc := #caller_location,
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
+	// Declared first: the segments are its parts.
+	ui.semantics(gtx, &p, {role = .Group})
 	n := min(len(labels), len(selected))
 	changed := -1
 	if n == 0 {
@@ -947,6 +957,7 @@ segmented_button :: proc(
 		}
 		listen(gtx, c, id, touch_target(seg))
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
+		ui.part_semantics(gtx, &p, id, seg, {role = .Button, label = labels[i], states = states_of(c, on)})
 		x += w
 	}
 	ops.clip_pop(gtx.scene)
@@ -1096,6 +1107,7 @@ split_button :: proc(
 	toggled: bool,
 ) {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Group, label = label})
 	sm := split_metrics(size)
 	bm := button_metrics(size)
 	col := button_colors(kind)
@@ -1163,6 +1175,12 @@ split_button :: proc(
 	listen(gtx, tc, trail_id, touch_target(trail))
 	ops.tag(gtx.scene, lead_id, ui.frame_string(gtx, label))
 	ops.tag(gtx.scene, trail_id, ui.frame_string(gtx, menu_label))
+	ui.part_semantics(gtx, &p, lead_id, lead, {role = .Button, label = label, states = states_of(lc)})
+	ts := states_of(tc) + {.Expandable}
+	if expanded^ {
+		ts += {.Expanded}
+	}
+	ui.part_semantics(gtx, &p, trail_id, trail, {role = .Button, label = menu_label, states = ts})
 	ui.widget_close(gtx, &p, {sz, (h - t.height) / 2 + baseline_of(t)})
 	return lc.clicked, tc.clicked
 }

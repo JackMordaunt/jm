@@ -55,6 +55,7 @@ bottom_app_bar :: proc(
 	loc := #caller_location,
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Toolbar})
 	h := tok.BOTTOM_APP_BAR_CONTAINER_HEIGHT
 	if flexible {
 		h = height > 0 ? height : tok.DOCKED_TOOLBAR_CONTAINER_HEIGHT
@@ -91,7 +92,7 @@ bottom_app_bar :: proc(
 	if !flexible {
 		x := BOTTOM_BAR_CONTENT_PADDING
 		for g, i in actions {
-			if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {x, y, ACTION_SLOT, ACTION_SLOT}, g, false, col, action_state(state, i, 0), 1) {
+			if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {x, y, ACTION_SLOT, ACTION_SLOT}, g, false, col, action_state(state, i, 0), 1, &p) {
 				clicked = i
 			}
 			x += ACTION_SLOT
@@ -101,7 +102,7 @@ bottom_app_bar :: proc(
 			// margins net out (AppBar.kt:2655-2656).
 			pad := BOTTOM_BAR_FAB_PADDING
 			fr := ops.Rect{w - BOTTOM_BAR_CONTENT_PADDING - pad[0] - fab_d, BOTTOM_BAR_CONTENT_PADDING + pad[1], fab_d, fab_d}
-			if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, tok.FAB_BASELINE_ICON_SIZE, fab_c, fab_i, tok.FAB_SECONDARY_CONTAINER_CONTAINER_ELEVATION, fab_st) {
+			if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, tok.FAB_BASELINE_ICON_SIZE, fab_c, fab_i, tok.FAB_SECONDARY_CONTAINER_CONTAINER_ELEVATION, fab_st, &p) {
 				clicked = TOOLBAR_FAB
 			}
 		}
@@ -138,12 +139,12 @@ bottom_app_bar :: proc(
 	for i in 0 ..< items {
 		e := ext(i, n, fab_d)
 		if i < n {
-			if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {x, y, ACTION_SLOT, ACTION_SLOT}, actions[i], false, col, action_state(state, i, 0), 1) {
+			if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {x, y, ACTION_SLOT, ACTION_SLOT}, actions[i], false, col, action_state(state, i, 0), 1, &p) {
 				clicked = i
 			}
 		} else {
 			fr := ops.Rect{x, (h - fab_d) / 2, fab_d, fab_d}
-			if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, tok.FAB_BASELINE_ICON_SIZE, fab_c, fab_i, tok.FAB_SECONDARY_CONTAINER_CONTAINER_ELEVATION, fab_st) {
+			if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, tok.FAB_BASELINE_ICON_SIZE, fab_c, fab_i, tok.FAB_SECONDARY_CONTAINER_CONTAINER_ELEVATION, fab_st, &p) {
 				clicked = TOOLBAR_FAB
 			}
 		}

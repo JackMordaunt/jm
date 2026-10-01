@@ -167,6 +167,13 @@ checkbox :: proc(
 	paint_focus_ring(gtx, c, {{mid.x - 20, mid.y - 20, 40, 40}, 20})
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y})
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label == "" ? "checkbox" : label))
+	states := states_of(c)
+	if indeterminate {
+		states += {.Mixed}
+	} else if checked^ {
+		states += {.Checked}
+	}
+	ui.semantics(gtx, &p, {role = .Checkbox, label = label, states = states})
 	ui.widget_close(gtx, &p, {size = size})
 	return c.clicked
 }
@@ -249,6 +256,7 @@ radio_button :: proc(
 	paint_focus_ring(gtx, c, {{mid.x - 20, mid.y - 20, 40, 40}, 20})
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y})
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label == "" ? "radio" : label))
+	ui.semantics(gtx, &p, {role = .Radio, label = label, states = states_of(c) + (on ? {.Checked} : {})})
 	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }
@@ -351,6 +359,7 @@ switch_ :: proc(
 	paint_focus_ring(gtx, c, {{centre.x - h, centre.y - h, 2 * h, 2 * h}, h})
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y})
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label == "" ? "switch" : label))
+	ui.semantics(gtx, &p, {role = .Switch, label = label, states = states_of(c) + (sel ? {.Checked} : {})})
 	ui.widget_close(gtx, &p, {size = size})
 	return c.clicked
 }

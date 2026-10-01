@@ -80,6 +80,7 @@ slider :: proc(
 	paint_slider(gtx, c, g, lo, hi, {value^, value^}, false, track == .Centered, 1, icons, indicator)
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "slider"))
+	ui.semantics(gtx, &p, {role = .Slider, value = slider_value_text(gtx, value^, hi - lo), states = states_of(c)})
 	ui.widget_close(gtx, &p, {size = size})
 	return value^ != old
 }
@@ -121,6 +122,10 @@ range_slider :: proc(
 	paint_slider(gtx, c, g, lo, hi, {lo_value^, hi_value^}, true, false, active, {}, indicator)
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "range slider"))
+	// One node: the handles share the widget's area and its keys.
+	span := hi - lo
+	range := fmt.aprintf("%s–%s", slider_value_text(gtx, lo_value^, span), slider_value_text(gtx, hi_value^, span), allocator = gtx.allocator)
+	ui.semantics(gtx, &p, {role = .Slider, value = range, states = states_of(c)})
 	ui.widget_close(gtx, &p, {size = size})
 	return old != {lo_value^, hi_value^}
 }
@@ -565,13 +570,23 @@ paint_slider_handles :: proc(
 	}
 }
 
+// slider_value_text is v as the value indicator shows it, and as a reader
+// says it: whole numbers once the value or the range reaches 10, two
+// significant figures below. It lives for the frame.
+@(private)
+slider_value_text :: proc(gtx: ^ui.Ctx, v, span: f32) -> string {
+	if abs(v) >= 10 || span >= 10 {
+		return fmt.aprintf("%.0f", v, allocator = gtx.allocator)
+	}
+	return fmt.aprintf("%.2g", v, allocator = gtx.allocator)
+}
+
 // paint_value_indicator is the slider's value label: label text in
 // inverse-on-surface on an inverse-surface pill, active-bottom-space
 // above the handle hr (to its start side when vertical).
 @(private)
 paint_value_indicator :: proc(gtx: ^ui.Ctx, g: Slider_Geom, hr: ops.Rect, v, span: f32) {
-	str := abs(v) >= 10 || span >= 10 ? fmt.tprintf("%.0f", v) : fmt.tprintf("%.2g", v)
-	t := shape_style(gtx, str, tok.SLIDER_VALUE_INDICATOR_LABEL_TEXT_FONT)
+	t := shape_style(gtx, slider_value_text(gtx, v, span), tok.SLIDER_VALUE_INDICATOR_LABEL_TEXT_FONT)
 	pad := VALUE_INDICATOR_PAD
 	h := t.height + 2 * pad.y
 	w := max(t.width + 2 * pad.x, h)
@@ -663,7 +678,19 @@ linear_progress :: proc(
 		lambda = indeterminate ? tok.LINEAR_PROGRESS_INDICATOR_INDETERMINATE_ACTIVE_WAVE_WAVELENGTH : tok.LINEAR_PROGRESS_INDICATOR_ACTIVE_WAVE_WAVELENGTH
 	}
 	paint_linear_progress(gtx, size, segs[:count], wavy, amp, lambda, math.mod(t, 1), square, indeterminate)
+	describe_progress(gtx, &p, value)
 	ui.widget_close(gtx, &p, {size = size})
+}
+
+// describe_progress declares a progress indicator to a reader: busy while
+// indeterminate (value < 0), else its percentage as the reader says it.
+@(private)
+describe_progress :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, value: f32) {
+	if value < 0 {
+		ui.semantics(gtx, p, {role = .Progress, states = {.Busy}})
+		return
+	}
+	ui.semantics(gtx, p, {role = .Progress, value = fmt.aprintf("%.0f%%", clamp(value, 0, 1) * 100, allocator = gtx.allocator)})
 }
 
 // paint_linear_progress draws the track right to left around the active
@@ -830,6 +857,7 @@ circular_progress :: proc(
 		}
 	}
 	paint_circular_progress(gtx, sz, rot, sweep, wavy, amp, wavelength, t, square, indeterminate)
+	describe_progress(gtx, &p, value)
 	ui.widget_close(gtx, &p, {size = sz})
 }
 
@@ -987,6 +1015,7 @@ loading_indicator :: proc(
 		rot = -pr * 180
 	}
 	paint_morph(gtx, seq.morphs[morph], t, sz / 2, min(sz.x, sz.y) * seq.draw_scale, rot, col)
+	describe_progress(gtx, &p, progress)
 	ui.widget_close(gtx, &p, {size = sz})
 }
 

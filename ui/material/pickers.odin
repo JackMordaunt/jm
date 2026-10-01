@@ -142,6 +142,7 @@ date_picker :: proc(
 	} else {
 		headline = m == .Input ? "Entered date" : "Selected date"
 	}
+	ui.semantics(gtx, &p, {role = .Group, label = ui.frame_string(gtx, headline), description = sup})
 	hfont := tok.DATE_PICKER_MODAL_HEADER_HEADLINE_FONT
 	if ranged {
 		hfont = tok.DATE_PICKER_MODAL_RANGE_SELECTION_HEADER_HEADLINE_FONT
@@ -151,6 +152,7 @@ date_picker :: proc(
 	draw_style_text(gtx, headline, {24, header_h - 12 - hfont.line_height}, hfont, color(tok.DATE_PICKER_MODAL_HEADER_HEADLINE_COLOR))
 	if input != nil {
 		g := m == .Picker ? Icon.Edit : Icon.Calendar_Today
+		ui.part_semantics(gtx, &p, ui.id_mix(p.id, 2), {size.x - 12 - 48, header_h - 12 - 48, 48, 48}, {role = .Button, label = "date mode"})
 		if picker_icon_button(gtx, ui.id_mix(p.id, 2), {size.x - 12 - 48, header_h - 12 - 48}, g, "date mode") {
 			m = m == .Picker ? .Input : .Picker
 			if m == .Input && selected^ != {} {
@@ -189,31 +191,36 @@ date_picker :: proc(
 			listen(gtx, yc, yid, yb)
 			ops.tag(gtx.scene, yid, "year menu")
 		}
+		ui.part_semantics(gtx, &p, yid, yb, {role = .Button, label = ui.frame_string(gtx, label), states = {.Expandable} + (year_open ? {.Expanded} : {})})
 		if !year_open {
-			if picker_icon_button(gtx, ui.id_mix(p.id, 4), {size.x - DATE_GRID_PADDING - 96, y0 + 4}, .Chevron_Left, live ? "previous month" : "") {
+			prev_r := ops.Rect{size.x - DATE_GRID_PADDING - 96, y0 + 4, 48, 48}
+			if picker_icon_button(gtx, ui.id_mix(p.id, 4), {prev_r.x, prev_r.y}, .Chevron_Left, live ? "previous month" : "") {
 				view.month -= 1
 				if view.month < 1 {
 					view.month, view.year = 12, view.year - 1
 				}
 			}
-			if picker_icon_button(gtx, ui.id_mix(p.id, 5), {size.x - DATE_GRID_PADDING - 48, y0 + 4}, .Chevron_Right, live ? "next month" : "") {
+			ui.part_semantics(gtx, &p, ui.id_mix(p.id, 4), prev_r, {role = .Button, label = "previous month"})
+			next_r := ops.Rect{size.x - DATE_GRID_PADDING - 48, y0 + 4, 48, 48}
+			if picker_icon_button(gtx, ui.id_mix(p.id, 5), {next_r.x, next_r.y}, .Chevron_Right, live ? "next month" : "") {
 				view.month += 1
 				if view.month > 12 {
 					view.month, view.year = 1, view.year + 1
 				}
 			}
+			ui.part_semantics(gtx, &p, ui.id_mix(p.id, 5), next_r, {role = .Button, label = "next month"})
 		}
 		gy := y0 + DATE_NAV_HEIGHT
 		if year_open {
-			year_scroll = year_grid(gtx, p.id, view, today, {0, gy, size.x, DATE_CELL + DATE_ROWS * DATE_CELL}, year_scroll, min_year, max_year, live, 1 - mf, &year_open)
+			year_scroll = year_grid(gtx, p.id, view, today, {0, gy, size.x, DATE_CELL + DATE_ROWS * DATE_CELL}, year_scroll, min_year, max_year, live, 1 - mf, &year_open, &p)
 		} else {
-			changed = day_grid(gtx, p.id, selected, range_end, view^, today, selectable, min_year, max_year, gy, live, 1 - mf)
+			changed = day_grid(gtx, p.id, selected, range_end, view^, today, selectable, min_year, max_year, gy, live, 1 - mf, &p)
 		}
 		ops.transform_pop(gtx.scene)
 	}
 	if mf > 0.01 && input != nil {
 		ops.transform_push(gtx.scene, ops.translate(0, DATE_ENTER_OFFSET * (1 - mf)))
-		changed |= date_field(gtx, ui.id_mix(p.id, 6), input, selected, view, selectable, min_year, max_year, {24, y0 + 10, size.x - 48, 56}, m == .Input, mf)
+		changed |= date_field(gtx, ui.id_mix(p.id, 6), input, selected, view, selectable, min_year, max_year, {24, y0 + 10, size.x - 48, 56}, m == .Input, mf, &p)
 		ops.transform_pop(gtx.scene)
 	}
 	ops.clip_pop(gtx.scene)
@@ -278,6 +285,7 @@ day_grid :: proc(
 	y: f32,
 	live: bool,
 	alpha: f32,
+	p: ^ui.Placement, // the picker, which the cells are parts of
 ) -> bool {
 	x0 := DATE_GRID_PADDING
 	for d, i in timefmt.DAYS {
@@ -327,10 +335,12 @@ day_grid :: proc(
 			on = this == selected^ || (ranged && this == range_end^)
 		}
 		paint_day(gtx, c, r, day, on, today == this, band, alpha)
+		name := fmt.aprintf("%04d-%02d-%02d", this.year, this.month, this.day, allocator = gtx.allocator)
 		if live && !disabled {
 			listen(gtx, c, id, r)
-			ops.tag(gtx.scene, id, fmt.aprintf("%04d-%02d-%02d", this.year, this.month, this.day, allocator = gtx.allocator))
+			ops.tag(gtx.scene, id, name)
 		}
+		ui.part_semantics(gtx, p, id, r, {role = .Button, label = name, states = states_of(c, on)})
 	}
 	return changed
 }
@@ -414,6 +424,7 @@ date_cell :: proc(
 	c := control(gtx, p.id, r, state)
 	paint_day(gtx, c, r, day, selected, today, in_range ? .Middle : .None, 1)
 	listen(gtx, c, p.id, r)
+	ui.semantics(gtx, &p, {role = .Button, label = fmt.aprintf("%d", day, allocator = gtx.allocator), states = states_of(c, selected)})
 	ui.widget_close(gtx, &p, {size = {DATE_CELL, DATE_CELL}})
 	return c.clicked
 }
@@ -433,6 +444,7 @@ year_grid :: proc(
 	live: bool,
 	alpha: f32,
 	open: ^bool,
+	p: ^ui.Placement, // the picker, which the years are parts of
 ) -> f32 {
 	YW, YH :: tok.DATE_PICKER_MODAL_SELECTION_YEAR_CONTAINER_WIDTH, tok.DATE_PICKER_MODAL_SELECTION_YEAR_CONTAINER_HEIGHT
 	pitch := YH + DATE_YEAR_GUTTER
@@ -488,10 +500,12 @@ year_grid :: proc(
 			t := shape_style(gtx, fmt.tprintf("%d", y), tok.DATE_PICKER_MODAL_SELECTION_YEAR_LABEL_TEXT_FONT)
 			draw_text(gtx, t, {cx - t.width / 2, cy - t.height / 2}, fade(label, alpha))
 			paint_focus_ring_corners(gtx, c, chip, k, inward = true)
+			name := fmt.aprintf("year %d", y, allocator = gtx.allocator)
 			if live {
 				listen(gtx, c, id, chip)
-				ops.tag(gtx.scene, id, ui.frame_string(gtx, fmt.tprintf("year %d", y)))
+				ops.tag(gtx.scene, id, name)
 			}
+			ui.part_semantics(gtx, p, id, chip, {role = .Button, label = name, states = states_of(c, on)})
 		}
 	}
 	if live {
@@ -519,6 +533,7 @@ date_field :: proc(
 	r: ops.Rect,
 	live: bool,
 	alpha: f32,
+	p: ^ui.Placement, // the picker, which the field is a part of
 ) -> bool {
 	st := ui.widget_state(gtx, id)
 	edited := false
@@ -626,6 +641,7 @@ date_field :: proc(
 		ops.input_area(gtx.scene, id, r, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
 		ops.tag(gtx.scene, id, "date input")
 	}
+	ui.part_semantics(gtx, p, id, r, {role = .Text_Field, label = "Date", value = ui.frame_string(gtx, string(shown[:n])), description = err != "" ? ui.frame_string(gtx, err) : "MM/DD/YYYY"})
 	return changed
 }
 
@@ -715,6 +731,7 @@ time_picker :: proc(
 	old := t^
 	live := state == .Live
 	input := mode == .Input
+	ui.semantics(gtx, &p, {role = .Group, label = input ? "Enter time" : "Select time"})
 	CW := is_24h ? tok.TIME_PICKER_TIME_SELECTOR24_H_VERTICAL_CONTAINER_WIDTH : tok.TIME_PICKER_TIME_SELECTOR_CONTAINER_WIDTH
 	CH := input ? tok.TIME_INPUT_TIME_FIELD_CONTAINER_HEIGHT : tok.TIME_PICKER_TIME_SELECTOR_CONTAINER_HEIGHT
 	if input {
@@ -757,7 +774,7 @@ time_picker :: proc(
 		minute := k == 1
 		active := editing_minute^ == minute
 		if input {
-			if time_field(gtx, id, box, t, minute, is_24h, live, state) {
+			if time_field(gtx, id, box, t, minute, is_24h, live, state, &p) {
 				editing_minute^ = minute
 			}
 		} else {
@@ -783,6 +800,7 @@ time_picker :: proc(
 				listen(gtx, c, id, box)
 				ops.tag(gtx.scene, id, minute ? "minute" : "hour")
 			}
+			ui.part_semantics(gtx, &p, id, box, {role = .Button, label = minute ? "minute" : "hour", value = fmt.aprintf("%02d", v, allocator = gtx.allocator), states = states_of(c, active)})
 		}
 		x += CW
 		if k == 0 {
@@ -810,7 +828,7 @@ time_picker :: proc(
 		} else {
 			pr = {x + 12, top, tok.TIME_PICKER_PERIOD_SELECTOR_VERTICAL_CONTAINER_WIDTH, tok.TIME_PICKER_PERIOD_SELECTOR_VERTICAL_CONTAINER_HEIGHT}
 		}
-		period_toggle(gtx, p.id, pr, t, horizontal, live, state)
+		period_toggle(gtx, p.id, pr, t, horizontal, live, state, &p)
 	}
 
 	if !input {
@@ -831,7 +849,7 @@ time_picker :: proc(
 // 2770-2911), the current half on tertiary-container. Clicking the other
 // half moves the time 12 hours; clicking the current one does nothing.
 @(private)
-period_toggle :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, r: ops.Rect, t: ^Time, horizontal, live: bool, state: Interaction) {
+period_toggle :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, r: ops.Rect, t: ^Time, horizontal, live: bool, state: Interaction, p: ^ui.Placement) {
 	k := corners(tok.TIME_PICKER_PERIOD_SELECTOR_CONTAINER_SHAPE, r)
 	for half in 0 ..< 2 {
 		hr: ops.Rect
@@ -866,6 +884,7 @@ period_toggle :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, r: ops.Rect, t: ^Time, hor
 			listen(gtx, c, id, hr)
 			ops.tag(gtx.scene, id, half == 0 ? "AM" : "PM")
 		}
+		ui.part_semantics(gtx, p, id, hr, {role = .Button, label = half == 0 ? "AM" : "PM", states = states_of(c, on)})
 	}
 	ow := tok.TIME_PICKER_PERIOD_SELECTOR_OUTLINE_WIDTH
 	oc := color(tok.TIME_PICKER_PERIOD_SELECTOR_OUTLINE_COLOR)
@@ -886,7 +905,7 @@ period_toggle :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, r: ops.Rect, t: ^Time, hor
 // primary-container with a 2dp primary outline. Returns true when it took
 // focus this frame.
 @(private)
-time_field :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, t: ^Time, minute, is_24h, live: bool, state: Interaction) -> bool {
+time_field :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, t: ^Time, minute, is_24h, live: bool, state: Interaction, p: ^ui.Placement) -> bool {
 	focused_now := false
 	hovered, focused: bool
 	if live {
@@ -961,6 +980,7 @@ time_field :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, t: ^Time, minute,
 		ops.input_area(gtx.scene, id, shape, {.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur})
 		ops.tag(gtx.scene, id, minute ? "minute" : "hour")
 	}
+	ui.part_semantics(gtx, p, id, r, {role = .Text_Field, label = minute ? "Minute" : "Hour", value = ui.frame_string(gtx, fmt.tprintf("%02d", v)), states = state == .Disabled ? {.Disabled} : {}})
 	return focused_now
 }
 
@@ -1146,6 +1166,7 @@ carousel :: proc(
 	loc := #caller_location,
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .List, label = "carousel"})
 	size := ui.constrain(gtx.constraints, {width, height})
 	kl := carousel_keylines(strategy, size.x, item_width, item_spacing, min_small, max_small)
 	n := len(items)
@@ -1236,6 +1257,7 @@ carousel :: proc(
 			draw_text(gtx, t, {r.x + 16, r.h - 16 - t.height}, fade(on, (a - 0.3) / 0.7))
 			ops.clip_pop(gtx.scene)
 		}
+		ui.part_semantics(gtx, &p, ui.id_mix(p.id, u64(i)), r, {role = .List_Item, label = it.label})
 	}
 	ops.clip_pop(gtx.scene)
 	if focused {

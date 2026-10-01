@@ -111,7 +111,9 @@ card_open :: proc(
 	cp := new(Card_Paint, gtx.allocator)
 	cp^ = {kind, clickable, state, clicked}
 	// ui's zero padding means "theme default"; negative means exactly 0.
-	return ui.box_open(gtx, {padding = ui.pad_all(padding), paint = paint_card, user = cp}, key, loc)
+	b := ui.box_open(gtx, {padding = ui.pad_all(padding), paint = paint_card, user = cp}, key, loc)
+	ui.container_semantics(gtx, {role = clickable ? .Button : .Group, states = state == .Disabled ? {.Disabled} : {}})
+	return b
 }
 
 @(private)
@@ -741,6 +743,7 @@ list_item :: proc(
 		listen(gtx, c, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, it.headline))
+	ui.semantics(gtx, &p, {role = .List_Item, label = it.headline, description = it.supporting, states = states_of(c, selected)})
 	ui.widget_close(gtx, &p, {size = size})
 	return activated && it.selection != .None
 }
@@ -999,5 +1002,6 @@ divider :: proc(
 		size = {cs.max.x < ui.INF ? cs.max.x : max(cs.min.x, length), thickness}
 		ops.fill(gtx.scene, ops.Rect{inset, 0, max(size.x - inset - inset_end, 0), thickness}, ink)
 	}
+	ui.semantics(gtx, &p, {role = .Separator})
 	ui.widget_close(gtx, &p, {size = ui.constrain(cs, size)})
 }

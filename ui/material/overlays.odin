@@ -355,22 +355,36 @@ menu :: proc(
 			}
 		}
 	}
+	// Escape reaches the menu whether or not one of its items has focus.
+	if live {
+		ui.key_interest(gtx, menu_id, .Escape)
+		for e in ui.events(gtx, menu_id) {
+			if e.kind == .Key && e.key == .Escape {
+				open^ = false
+			}
+		}
+	}
 	live = open^
 
-	if inline {
-		p := ui.widget_open(gtx, u64(ui.id_mix(menu_id, 1)), loc)
-		defer ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
-		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, .Below)
-	} else {
+	o: ui.Overlay
+	side := ops.Side.Below
+	if !inline {
 		// The anchor runs from the menu's origin down to offset, as wide as
 		// the menu, so the menu opens at offset below it, or flips above
 		// the origin when below would leave the window (ui.popup_open). It
 		// must have area: placement leaves a popup whose anchor is off
 		// screen where it asked to be, and a zero-width one never shows.
 		anchor := ops.Rect{offset.x, min(offset.y, 0), w, abs(offset.y)}
-		o := ui.popup_open(gtx, anchor, menu_id)
-		side := ui.placed_side(gtx, menu_id, .Below)
-		menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, side)
+		o = ui.popup_open(gtx, anchor, menu_id)
+		side = ui.placed_side(gtx, menu_id, .Below)
+	}
+	// One widget either way: in place inline, at the popup's origin
+	// otherwise, so the rows have a menu to be parts of.
+	p := ui.widget_open(gtx, u64(ui.id_mix(menu_id, 1)), loc)
+	ui.semantics(gtx, &p, {role = .Menu})
+	menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, side, &p)
+	ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
+	if !inline {
 		ui.popup_close(&o, {w, h})
 	}
 	return chosen
@@ -392,6 +406,7 @@ menu_paint :: proc(
 	style: Menu_Style,
 	groups: bool,
 	side: ops.Side,
+	p: ^ui.Placement, // the menu's widget, which the rows are parts of
 ) {
 	expressive := style != .Legacy
 	// Grow from the start corner nearest the anchor: the top when the menu
@@ -446,6 +461,7 @@ menu_paint :: proc(
 		if it.heading {
 			t := shape_text(gtx, it.label, .Title_Small)
 			draw_text(gtx, t, {tok.SEGMENTED_MENU_ITEM_LEADING_SPACE, row.y + (row.h - t.height) / 2}, fade(color(.On_Surface_Variant), alpha))
+			ui.part_semantics(gtx, p, id, {0, row.y, w, row.h}, {role = .Heading, label = it.label})
 			continue
 		}
 		paint_menu_item(gtx, it, row, w, style, c, alpha)
@@ -453,6 +469,7 @@ menu_paint :: proc(
 			listen(gtx, c, id, ops.Rect{0, row.y, w, row.h})
 		}
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
+		ui.part_semantics(gtx, p, id, {0, row.y, w, row.h}, {role = .Menu_Item, label = it.label, description = it.supporting, states = states_of(c, it.selected) + (it.submenu ? {.Expandable} : {})})
 		if row.divider_after {
 			ops.fill(
 				gtx.scene,
@@ -641,6 +658,7 @@ TOOLTIP_GAP :: f32(4)
 plain_tooltip :: proc(gtx: ^ui.Ctx, label: string, caret := Tooltip_Caret.None, key: u64 = 0, loc := #caller_location) {
 	p := ui.widget_open(gtx, key, loc)
 	size := paint_plain_tooltip(gtx, {}, label, caret)
+	ui.semantics(gtx, &p, {role = .Tooltip, label = label})
 	ui.widget_close(gtx, &p, {size = size})
 }
 
@@ -750,7 +768,11 @@ hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string,
 		ui.request_frame(gtx, TOOLTIP_DISMISS - t)
 	}
 	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, key, .Below, .Center, TOOLTIP_GAP)
+	// A widget of its own in the popup, so the tooltip has a node.
+	p := ui.widget_open(gtx, u64(key))
 	size := paint_plain_tooltip(gtx, {}, label, .None, a, k)
+	ui.semantics(gtx, &p, {role = .Tooltip, label = label})
+	ui.widget_close(gtx, &p, {size = size})
 	ui.popup_close(&o, size)
 }
 
@@ -872,13 +894,14 @@ rich_tooltip :: proc(
 	rp.caret = caret
 	b := ui.box_open(gtx, {padding = pad, paint = paint_rich_tooltip, user = rp}, key, loc)
 	defer ui.close(&b)
+	ui.container_semantics(gtx, {role = .Tooltip, label = subhead, description = supporting})
 	col := ui.column_open(gtx)
 	defer ui.close(&col)
 	body := layout_style(gtx, supporting, tok.RICH_TOOLTIP_SUPPORTING_TEXT_FONT, RICH_TIP_MAX_W - 2 * RICH_TIP_PAD_X)
 	if subhead != "" {
 		t := shape_style(gtx, subhead, tok.RICH_TOOLTIP_SUBHEAD_FONT)
 		ui.spacer(gtx, RICH_TIP_SUBHEAD_BASELINE - baseline_of(t))
-		label_widget(gtx, t, color(tok.RICH_TOOLTIP_SUBHEAD_COLOR))
+		label_widget(gtx, t, subhead, color(tok.RICH_TOOLTIP_SUBHEAD_COLOR))
 		ui.spacer(gtx, RICH_TIP_BODY_BASELINE - (t.height - baseline_of(t)) - body.lines[0].baseline)
 	} else {
 		ui.spacer(gtx, RICH_TIP_TOP)
@@ -913,19 +936,20 @@ paint_rich_tooltip :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: 
 	paint_caret(gtx, r, rp.caret, fill)
 }
 
-// label_widget places a shaped Text as a widget of its own size.
+// label_widget places t, the shaped s, as a widget of its own size.
 @(private)
-label_widget :: proc(gtx: ^ui.Ctx, t: Text, color: ops.Color, loc := #caller_location) {
+label_widget :: proc(gtx: ^ui.Ctx, t: Text, s: string, color: ops.Color, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	draw_text(gtx, t, {}, color)
+	ui.semantics(gtx, &p, {role = .Text, label = s})
 	ui.widget_close(gtx, &p, {ops.Size{t.width, t.height}, baseline_of(t)})
 }
 
 // paragraph_widget places laid-out text as one selectable widget at least
 // width wide, each line start-aligned or, with centre, centred in that
-// width.
+// width. heading says it as a heading, not body text.
 @(private)
-paragraph_widget :: proc(gtx: ^ui.Ctx, para: ui.Paragraph, color: ops.Color, width: f32 = 0, centre := false, loc := #caller_location) {
+paragraph_widget :: proc(gtx: ^ui.Ctx, para: ui.Paragraph, color: ops.Color, width: f32 = 0, centre := false, heading := false, loc := #caller_location) {
 	p := ui.widget_open(gtx, 0, loc)
 	para := para
 	w := max(para.width, width)
@@ -936,6 +960,7 @@ paragraph_widget :: proc(gtx: ^ui.Ctx, para: ui.Paragraph, color: ops.Color, wid
 	}
 	selectable_paragraph(gtx, p.id, para, {}, color, {0, 0, w, para.height})
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, para.text))
+	ui.semantics(gtx, &p, {role = heading ? .Heading : .Text, label = para.text})
 	ui.widget_close(gtx, &p, {ops.Size{w, para.height}, para.lines[0].baseline})
 }
 
@@ -1025,6 +1050,7 @@ dialog :: proc(
 	dp.open = open
 	d := ui.box_open(gtx, {padding = ui.pad_all(DIALOG_PAD), paint = paint_dialog, user = dp}, key = 1)
 	defer ui.close(&d)
+	ui.container_semantics(gtx, {role = .Dialog, label = headline, states = {.Modal}})
 	col := ui.column_open(gtx, align = glyph != .None ? .Center : .Start)
 	defer ui.close(&col)
 	if glyph != .None {
@@ -1032,7 +1058,7 @@ dialog :: proc(
 		ui.spacer(gtx, DIALOG_ICON_GAP)
 	}
 	if headline != "" {
-		paragraph_widget(gtx, head, color(tok.DIALOG_HEADLINE_COLOR), glyph != .None ? inner : 0, glyph != .None)
+		paragraph_widget(gtx, head, color(tok.DIALOG_HEADLINE_COLOR), glyph != .None ? inner : 0, glyph != .None, heading = true)
 		ui.spacer(gtx, DIALOG_HEADLINE_GAP)
 	}
 	if supporting != "" {
@@ -1079,8 +1105,10 @@ paint_dialog :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr
 	paint_elevation_dp(gtx, rr, tok.DIALOG_CONTAINER_ELEVATION)
 	ops.fill(gtx.scene, rr, color(tok.DIALOG_CONTAINER_COLOR))
 	// The dialog swallows its own presses so they do not reach the scrim,
-	// and takes focus on one so Escape reaches it.
+	// and takes focus on one so Escape reaches it; the interest brings
+	// Escape here whether or not it did.
 	ops.input_area(gtx.scene, id, rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll, .Key})
+	ui.key_interest(gtx, id, .Escape)
 }
 
 // actions_width is a row of text-button actions' width.
@@ -1214,6 +1242,7 @@ snackbar :: proc(
 	closed: bool,
 ) {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Status, label = message})
 	alpha, scale := f32(1), f32(1)
 	if timer != nil {
 		timer^ += gtx.dt
@@ -1296,6 +1325,7 @@ snackbar :: proc(
 		paint_focus_ring(gtx, c, {{ctr.x - half, ctr.y - half, 2 * half, 2 * half}, half})
 		listen(gtx, c, cid, r)
 		ops.tag(gtx.scene, cid, "close snackbar")
+		ui.part_semantics(gtx, &p, cid, r, {role = .Button, label = "close snackbar", states = states_of(c)})
 		closed = closed || c.clicked
 	}
 	if action != "" {
@@ -1321,6 +1351,7 @@ snackbar :: proc(
 		paint_focus_ring(gtx, c, pill)
 		listen(gtx, c, aid, r)
 		ops.tag(gtx.scene, aid, ui.frame_string(gtx, action))
+		ui.part_semantics(gtx, &p, aid, r, {role = .Button, label = action, states = states_of(c)})
 		acted = c.clicked
 	}
 	ops.transform_pop(gtx.scene)

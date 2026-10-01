@@ -68,6 +68,7 @@ button_group :: proc(
 	loc := #caller_location,
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Group})
 	toggles := selected != nil
 	n := min(toggles ? min(len(labels), len(selected)) : len(labels), GROUP_MAX)
 	// The group's height tokens are dead (button-group.json notes): the
@@ -235,6 +236,7 @@ button_group :: proc(
 			name, _ = reflect.enum_name_from_value(g)
 		}
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, name))
+		ui.part_semantics(gtx, &p, id, r, {role = .Button, label = name, states = states_of(c, on)})
 		x += w + gap
 	}
 
@@ -258,6 +260,7 @@ button_group :: proc(
 		paint_focus_ring(gtx, c, rr)
 		listen(gtx, c, id, hit)
 		ops.tag(gtx.scene, id, "More options")
+		ui.part_semantics(gtx, &p, id, r, {role = .Button, label = "More options", states = states_of(c) + {.Expandable} + (overflow^ ? {.Expanded} : {})})
 		x += ind_w + gap
 
 		items := make([]Menu_Item, n - shown, gtx.allocator)
@@ -427,6 +430,7 @@ toolbar :: proc(
 	loc := #caller_location,
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Toolbar})
 	n := len(actions)
 	docked := kind == .Docked || kind == .Docked_Vibrant
 	vibrant := kind == .Floating_Vibrant || kind == .Docked_Vibrant
@@ -457,7 +461,7 @@ toolbar :: proc(
 		x := tok.DOCKED_TOOLBAR_CONTAINER_LEADING_SPACE + (inner - run) / 2
 		for g_, i in actions {
 			st := action_state(state, i, forced)
-			if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {x, (DH - ACTION_SLOT) / 2, ACTION_SLOT, ACTION_SLOT}, g_, i == selected, col, st, 1) {
+			if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {x, (DH - ACTION_SLOT) / 2, ACTION_SLOT, ACTION_SLOT}, g_, i == selected, col, st, 1, &p) {
 				clicked = i
 			}
 			x += ACTION_SLOT + g
@@ -521,7 +525,7 @@ toolbar :: proc(
 				// A shrinking action stays centred in its shrinking slot.
 				ao := at(vertical, m - ACTION_SLOT * (1 - k) / 2, cross0 + (H - ACTION_SLOT) / 2)
 				st := action_state(state, i, forced)
-				if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {ao.x, ao.y, ACTION_SLOT, ACTION_SLOT}, g_, i == selected, col, st, k) {
+				if toolbar_action(gtx, ui.id_mix(p.id, u64(i)), {ao.x, ao.y, ACTION_SLOT, ACTION_SLOT}, g_, i == selected, col, st, k, &p) {
 					clicked = i
 				}
 			}
@@ -542,7 +546,7 @@ toolbar :: proc(
 		isz := tok.FAB_MEDIUM_ICON_SIZE + (tok.FAB_BASELINE_ICON_SIZE - tok.FAB_MEDIUM_ICON_SIZE) * e
 		// The FAB keeps baseline's corner: only its size animates.
 		fr := ops.Rect{fo.x, fo.y, fab_d, fab_d}
-		if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, isz, fc, fi, tok.FAB_PRIMARY_CONTAINER_CONTAINER_ELEVATION, state == .Disabled ? .Disabled : .Live) {
+		if paint_fab_at(gtx, ui.id_mix(p.id, 0xfab), fr, tok.FAB_BASELINE_CONTAINER_SHAPE.radii[0], fab, isz, fc, fi, tok.FAB_PRIMARY_CONTAINER_CONTAINER_ELEVATION, state == .Disabled ? .Disabled : .Live, &p) {
 			clicked = TOOLBAR_FAB
 		}
 	}
@@ -600,7 +604,7 @@ toolbar_colors :: proc(vibrant, docked: bool) -> Toolbar_Colors {
 // colour fades (fast-effects). alpha fades the whole action, for one
 // entering or leaving. Returns true on the frame it is clicked.
 @(private)
-toolbar_action :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, slot: ops.Rect, g: Icon, selected: bool, col: Toolbar_Colors, state: Interaction, alpha: f32) -> bool {
+toolbar_action :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, slot: ops.Rect, g: Icon, selected: bool, col: Toolbar_Colors, state: Interaction, alpha: f32, p: ^ui.Placement) -> bool {
 	c := control(gtx, id, slot, state)
 	sel_t := animate(gtx, c, 0, selected ? 1 : 0, .Fast_Spatial)
 	press_t := animate(gtx, c, 1, c.pressed ? 1 : 0, .Fast_Spatial)
@@ -623,6 +627,7 @@ toolbar_action :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, slot: ops.Rect, g: Icon, s
 	listen(gtx, c, id, slot)
 	name, _ := reflect.enum_name_from_value(g)
 	ops.tag(gtx.scene, id, name)
+	ui.part_semantics(gtx, p, id, slot, {role = .Button, label = name, states = states_of(c, selected)})
 	return c.clicked
 }
 
@@ -631,7 +636,7 @@ toolbar_action :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, slot: ops.Rect, g: Icon, s
 // than lay one out. elevation_dp is its container-elevation token.
 // Returns true on the frame it is clicked.
 @(private)
-paint_fab_at :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, radius: f32, g: Icon, isz: f32, container, content: ops.Color, elevation_dp: f32, state: Interaction) -> bool {
+paint_fab_at :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, radius: f32, g: Icon, isz: f32, container, content: ops.Color, elevation_dp: f32, state: Interaction, p: ^ui.Placement) -> bool {
 	c := control(gtx, id, r, state)
 	rr := ops.Round_Rect{r, min(radius, min(r.w, r.h) / 2)}
 	paint_elevation(gtx, rr, elevation_level(elevation_dp))
@@ -642,6 +647,7 @@ paint_fab_at :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, r: ops.Rect, radius: f32, g:
 	listen(gtx, c, id, r)
 	name, _ := reflect.enum_name_from_value(g)
 	ops.tag(gtx.scene, id, name)
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = name, states = states_of(c)})
 	return c.clicked
 }
 
@@ -742,6 +748,7 @@ fab_menu :: proc(
 	// The trigger names its action, since its icon and colour both change
 	// (fab-menu.json accessibility).
 	ops.tag(gtx.scene, p.id, open^ ? "Close menu" : "Open actions menu")
+	ui.semantics(gtx, &p, {role = .Button, label = open^ ? "Close menu" : "Open actions menu", states = states_of(c) + {.Expandable} + (open^ ? {.Expanded} : {})})
 
 	chosen := -1
 	if count > 0.01 || open^ {
@@ -753,6 +760,15 @@ fab_menu :: proc(
 		// trigger as it is now, so the stack follows the morph; the two
 		// 16dp paddings upstream cancel (fab-menu.json notes).
 		y := tr.y - tok.FAB_MENU_BASELINE_CLOSE_BUTTON_BETWEEN_SPACE - f32(n) * H - f32(max(n - 1, 0)) * between
+		y0 := y
+		// The items shown, declared once painted: a menu widget at the
+		// stack's top, so they are parts of it, not of the trigger.
+		Shown :: struct {
+			id:    ops.Area_Id,
+			r:     ops.Rect,
+			label: string,
+		}
+		shown := make([dynamic]Shown, 0, n, gtx.allocator)
 		for it, i in items {
 			id := ui.id_mix(p.id, u64(100 + i))
 			visible := count > f32(i)
@@ -788,9 +804,18 @@ fab_menu :: proc(
 				paint_focus_ring(gtx, ic, {r, H / 2})
 				listen(gtx, ic, id, r)
 				ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
+				append(&shown, Shown{id, r, it.label})
 			}
 			y += H + between
 		}
+		ops.transform_push(gtx.scene, ops.translate(0, y0))
+		mp := ui.widget_open(gtx, u64(ui.id_mix(p.id, 99)), loc)
+		ui.semantics(gtx, &mp, {role = .Menu, label = "actions"})
+		for sh in shown {
+			ui.part_semantics(gtx, &mp, sh.id, {sh.r.x, sh.r.y - y0, sh.r.w, sh.r.h}, {role = .Menu_Item, label = sh.label})
+		}
+		ui.widget_close(gtx, &mp, {size = {closed_d, max(y - between - y0, 0)}})
+		ops.transform_pop(gtx.scene)
 	}
 	ui.widget_close(gtx, &p, {size = box})
 	return chosen

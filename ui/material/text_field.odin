@@ -353,6 +353,22 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 	fi := field_input(gtx, p.id, s, o, g, &r)
 	r.focused = fi.focused
 	str := string(s.buf[:])
+	// The text is the field's own buffer, settled for the frame once the
+	// input has run; the caller's strings outlive it.
+	states: ops.States
+	if o.state == .Disabled {
+		states += {.Disabled}
+	}
+	if o.read_only {
+		states += {.Readonly}
+	}
+	ui.semantics(gtx, p, {role = .Text_Field, label = o.label != "" ? o.label : o.placeholder, value = str, description = o.supporting, states = states})
+	if o.error && o.supporting != "" {
+		// The supporting row turns into the error message: an alert, so a
+		// reader announces it as it appears.
+		row := ops.Rect{g.field.x, g.field.y + g.field.h, g.field.w, max(g.size.y - g.field.y - g.field.h, 0)}
+		ui.part_semantics(gtx, p, ui.id_mix(p.id, 0xa1e7), row, {role = .Alert, label = o.supporting})
+	}
 	if o.state == .Live {
 		// Registered before the trailing icon's, which sits over it and
 		// must win its hits.
@@ -661,6 +677,18 @@ autocomplete :: proc(
 			open = expanded^,
 		},
 	)
+	// A field that opens a list of options is a combo box to a reader; the
+	// menu's keys reach it through the field, so Escape asks for the
+	// field whether or not it holds focus.
+	combo := ops.States{.Expandable}
+	if state == .Disabled {
+		combo += {.Disabled}
+	}
+	if expanded^ {
+		combo += {.Expanded}
+		ui.key_interest(gtx, p.id, .Escape)
+	}
+	ui.semantics(gtx, &p, {role = .Combo_Box, label = label != "" ? label : placeholder, value = string(s.buf[:]), description = supporting, states = combo})
 	ui.widget_close(gtx, &p, {size = r.size})
 	if state != .Live {
 		return chosen
@@ -735,6 +763,10 @@ autocomplete :: proc(
 		paint_elevation(gtx, rr, elevation_level(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_ELEVATION : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_ELEVATION))
 		ops.fill(gtx.scene, rr, color(filled ? tok.FILLED_AUTOCOMPLETE_MENU_CONTAINER_COLOR : tok.OUTLINED_AUTOCOMPLETE_MENU_CONTAINER_COLOR))
 		ops.input_area(gtx.scene, ui.id_mix(menu_id, 0xfffe), rr, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+		// The list is a widget at the popup's origin, so its rows are parts
+		// of a menu.
+		mp := ui.widget_open(gtx, u64(menu_id), loc)
+		ui.semantics(gtx, &mp, {role = .Menu, label = label != "" ? label : placeholder})
 		for oi, row in matches {
 			item := ops.Rect{0, MENU_PAD + MENU_ITEM_H * f32(row), w, MENU_ITEM_H}
 			id := ui.id_mix(menu_id, u64(oi) + 1)
@@ -757,7 +789,9 @@ autocomplete :: proc(
 			// (text-field.json behaviour: picking returns focus to it).
 			listen(gtx, c, id, item, {.Press, .Release, .Enter, .Leave, .Move})
 			ops.tag(gtx.scene, id, ui.frame_string(gtx, options[oi]))
+			ui.part_semantics(gtx, &mp, id, item, {role = .Menu_Item, label = options[oi], states = strings.equal_fold(options[oi], str) ? {.Selected} : {}})
 		}
+		ui.widget_close(gtx, &mp, {size = {w, h}})
 	}
 	if pick >= 0 {
 		ui.text_set(s, options[pick])

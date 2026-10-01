@@ -190,6 +190,7 @@ navigation_drawer :: proc(
 ) -> bool {
 	v := modal ? Drawer_Kind.Modal : variant
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Navigation})
 	cs := gtx.constraints
 	w := min(width, tok.NAVIGATION_DRAWER_CONTAINER_WIDTH)
 	content: f32 = 2 * DRAWER_MARGIN
@@ -271,6 +272,7 @@ navigation_drawer :: proc(
 				t := shape_style(gtx, it.label, tok.NAVIGATION_DRAWER_HEADLINE_FONT)
 				// Aligned with the items' icons: their margin plus leading inset.
 				draw_text(gtx, t, {sheet.x + DRAWER_MARGIN + DRAWER_ITEM_LEADING, y + (DRAWER_HEADLINE_HEIGHT - t.height) / 2}, color(tok.NAVIGATION_DRAWER_HEADLINE_COLOR))
+				ui.part_semantics(gtx, &p, ui.id_mix(p.id, u64(i)), {sheet.x + DRAWER_MARGIN, y, item_w, DRAWER_HEADLINE_HEIGHT}, {role = .Heading, label = it.label})
 			}
 			y += DRAWER_HEADLINE_HEIGHT
 			continue
@@ -283,6 +285,7 @@ navigation_drawer :: proc(
 				selected^ = i
 				changed = true
 			}
+			ui.part_semantics(gtx, &p, id, r, {role = .Tab, label = it.label, states = nav_states(it, selected^ == i, .Live)})
 			if v != .Permanent && open != nil && escape_pressed(gtx, id) {
 				open^ = false
 			}
@@ -298,6 +301,19 @@ navigation_drawer :: proc(
 	}
 	ui.widget_close(gtx, &p, {size = size})
 	return changed
+}
+
+// nav_states is a destination's states: selected when active, disabled
+// by the item or the forced state.
+@(private)
+nav_states :: proc(it: Nav_Item, active: bool, state: Interaction) -> (s: ops.States) {
+	if active {
+		s += {.Selected}
+	}
+	if it.disabled || state == .Disabled {
+		s += {.Disabled}
+	}
+	return
 }
 
 // escape_pressed reports whether an Escape key reached id this frame.
@@ -326,6 +342,7 @@ drawer_item :: proc(
 	p := ui.widget_open(gtx, key, loc)
 	size := ui.constrain(gtx.constraints, {width, tok.NAVIGATION_DRAWER_ACTIVE_INDICATOR_HEIGHT})
 	clicked := paint_drawer_item(gtx, p.id, {0, 0, size.x, size.y}, item, active, state)
+	ui.semantics(gtx, &p, {role = .Tab, label = item.label, states = nav_states(item, active, state)})
 	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
@@ -580,6 +597,7 @@ nav_destination :: proc(
 	}
 	size := ui.constrain(gtx.constraints, want)
 	clicked := paint_nav_item(gtx, p.id, {0, 0, size.x, size.y}, it, active, sty, horizontal ? 1 : 0, -1, true, state)
+	ui.semantics(gtx, &p, {role = .Tab, label = it.label, states = nav_states(it, active, state)})
 	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
@@ -628,6 +646,7 @@ navigation_rail :: proc(
 	fab_clicked: bool,
 ) {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Navigation})
 	s := scheme()
 	cs := gtx.constraints
 	sty := RAIL_STYLE
@@ -738,9 +757,11 @@ navigation_rail :: proc(
 		// A 48dp target centred on the items' icon column.
 		mid := ui.id_mix(p.id, 998)
 		name := open ? "Collapse navigation" : "Expand navigation"
-		if bar_icon_button(gtx, mid, {x0 + inset + (sty.v_indicator.x - BAR_ICON_TARGET) / 2, y}, .Menu, s[.On_Surface_Variant], name = name) && expandable {
+		mr := ops.Rect{x0 + inset + (sty.v_indicator.x - BAR_ICON_TARGET) / 2, y, BAR_ICON_TARGET, BAR_ICON_TARGET}
+		if bar_icon_button(gtx, mid, {mr.x, mr.y}, .Menu, s[.On_Surface_Variant], name = name) && expandable {
 			expanded^ = !expanded^
 		}
+		ui.part_semantics(gtx, &p, mid, mr, {role = .Button, label = name, states = {.Expandable} + (open ? {.Expanded} : {})})
 		y += BAR_ICON_TARGET
 	}
 	if fab_icon != .None {
@@ -765,6 +786,7 @@ navigation_rail :: proc(
 		paint_focus_ring_corners(gtx, c, area, corners(tok.FAB_BASELINE_CONTAINER_SHAPE, area))
 		listen(gtx, c, fid, area)
 		ops.tag(gtx.scene, fid, fab_label != "" ? fab_label : "FAB")
+		ui.part_semantics(gtx, &p, fid, area, {role = .Button, label = fab_label != "" ? fab_label : icon_name(fab_icon)})
 		fab_clicked = c.clicked
 		y += tok.FAB_BASELINE_CONTAINER_HEIGHT
 	}
@@ -784,6 +806,7 @@ navigation_rail :: proc(
 			changed = selected^ != i
 			selected^ = i
 		}
+		ui.part_semantics(gtx, &p, id, {x0, y, w, item_h}, {role = .Tab, label = it.label, states = nav_states(it, selected^ == i, .Live)})
 		if modal && open && escape_pressed(gtx, id) {
 			expanded^ = false
 		}
@@ -835,6 +858,7 @@ navigation_bar :: proc(
 	loc := #caller_location,
 ) -> bool {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Navigation})
 	cs := gtx.constraints
 	sty := BAR_STYLE
 	w := width > 0 ? width : (cs.max.x < ui.INF ? cs.max.x : 412)
@@ -902,10 +926,12 @@ navigation_bar :: proc(
 			continue
 		}
 		r := ops.Rect{x, 0, widths[k], size.y}
-		if paint_nav_item(gtx, ui.id_mix(p.id, u64(i)), r, it, selected^ == i, sty, pos, -1, always_show_label, .Live) {
+		id := ui.id_mix(p.id, u64(i))
+		if paint_nav_item(gtx, id, r, it, selected^ == i, sty, pos, -1, always_show_label, .Live) {
 			changed = selected^ != i
 			selected^ = i
 		}
+		ui.part_semantics(gtx, &p, id, r, {role = .Tab, label = it.label, states = nav_states(it, selected^ == i, .Live)})
 		x += widths[k]
 		k += 1
 	}

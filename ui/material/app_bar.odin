@@ -74,6 +74,7 @@ top_app_bar :: proc(
 	loc := #caller_location,
 ) -> App_Bar_Result {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Toolbar, label = title})
 	res := App_Bar_Result {
 		action = -1,
 	}
@@ -121,17 +122,21 @@ top_app_bar :: proc(
 	iy := (small_h - BAR_ICON_TARGET) / 2
 	left := tok.APP_BAR_LEADING_SPACE + APP_BAR_TITLE_INSET
 	if navigation != .None {
-		if bar_icon_button(gtx, ui.id_mix(p.id, 1), {tok.APP_BAR_LEADING_SPACE, iy}, navigation, color(tok.APP_BAR_LEADING_ICON_COLOR), name = "navigation") {
+		nid := ui.id_mix(p.id, 1)
+		if bar_icon_button(gtx, nid, {tok.APP_BAR_LEADING_SPACE, iy}, navigation, color(tok.APP_BAR_LEADING_ICON_COLOR), name = "navigation") {
 			res.navigation = true
 		}
+		ui.part_semantics(gtx, &p, nid, {tok.APP_BAR_LEADING_SPACE, iy, BAR_ICON_TARGET, BAR_ICON_TARGET}, {role = .Button, label = "navigation"})
 		left = tok.APP_BAR_LEADING_SPACE + max(APP_BAR_TITLE_INSET, BAR_ICON_TARGET)
 	}
 	right := size.x - tok.APP_BAR_TRAILING_SPACE
 	for i := len(actions) - 1; i >= 0; i -= 1 {
 		right -= BAR_ICON_TARGET
-		if bar_icon_button(gtx, ui.id_mix(p.id, u64(10 + i)), {right, iy}, actions[i], color(tok.APP_BAR_TRAILING_ICON_COLOR)) {
+		aid := ui.id_mix(p.id, u64(10 + i))
+		if bar_icon_button(gtx, aid, {right, iy}, actions[i], color(tok.APP_BAR_TRAILING_ICON_COLOR)) {
 			res.action = i
 		}
+		ui.part_semantics(gtx, &p, aid, {right, iy, BAR_ICON_TARGET, BAR_ICON_TARGET}, {role = .Button, label = icon_name(actions[i])})
 		right -= tok.APP_BAR_ICON_BUTTON_SPACE
 	}
 	if len(actions) == 0 {
@@ -140,7 +145,10 @@ top_app_bar :: proc(
 
 	title_col, sub_col := color(tok.APP_BAR_TITLE_COLOR), color(tok.APP_BAR_SUBTITLE_COLOR)
 	if kind == .Search {
-		res.search = paint_search_bar(gtx, ui.id_mix(p.id, 2), {left, (small_h - tok.SEARCH_BAR_CONTAINER_HEIGHT) / 2, max(right - left, 0), tok.SEARCH_BAR_CONTAINER_HEIGHT}, title)
+		sid := ui.id_mix(p.id, 2)
+		sr := ops.Rect{left, (small_h - tok.SEARCH_BAR_CONTAINER_HEIGHT) / 2, max(right - left, 0), tok.SEARCH_BAR_CONTAINER_HEIGHT}
+		res.search = paint_search_bar(gtx, sid, sr, title)
+		ui.part_semantics(gtx, &p, sid, sr, {role = .Button, label = title})
 	} else {
 		// The small (collapsed) title: a single row's only title, or a
 		// two-row bar's top one, fading in as it collapses.
@@ -297,6 +305,7 @@ tabs :: proc(
 	loc := #caller_location,
 ) -> bool {
 	p := ui.widget_open(gtx, key, loc)
+	ui.semantics(gtx, &p, {role = .Tab_List})
 	n := min(len(labels), MAX_TABS)
 	with_icons := len(icons) >= n && n > 0
 	stacked := with_icons && !secondary
@@ -406,6 +415,8 @@ tabs :: proc(
 		paint_focus_ring_corners(gtx, c, {r.x + gap, r.y + gap, r.w - 2 * gap, r.h - 2 * gap}, {}, inward = true)
 		listen(gtx, c, id, r)
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
+		// selected^ rather than active: a click this frame already moved it.
+		ui.part_semantics(gtx, &p, id, r, {role = .Tab, label = labels[i], states = states_of(c, selected^ == i)})
 	}
 
 	ih := tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_HEIGHT

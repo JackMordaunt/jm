@@ -166,6 +166,20 @@ search_bar :: proc(
 		ops.input_area(gtx.scene, p.id, bar, SEARCH_KINDS, .Text)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, placeholder))
+	full_screen := mode == .Full_Screen || mode == .Full_Screen_Contained
+	if live && open && full_screen {
+		// A full-screen view covers the page, so Escape closes it whether or
+		// not the input holds focus; search_text_events reads it.
+		ui.key_interest(gtx, p.id, .Escape)
+	}
+	bar_states := ops.States{.Expandable}
+	if open {
+		bar_states += {.Expanded}
+	}
+	if state == .Disabled {
+		bar_states += {.Disabled}
+	}
+	ui.semantics(gtx, &p, {role = .Text_Field, label = placeholder, value = str, states = bar_states})
 
 	picked := -1
 	if t > 0.001 {
@@ -481,6 +495,10 @@ search_view :: proc(
 		}
 		listen(gtx, bc, bid, ops.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {.Press, .Release, .Enter, .Leave, .Move})
 		ops.tag(gtx.scene, bid, "search back")
+		// An undeclared bracket: the button is a root of the view's layer.
+		bp := ui.widget_open(gtx, u64(bid))
+		ui.part_semantics(gtx, &bp, bid, {header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {role = .Button, label = "search back"})
+		ui.widget_close(gtx, &bp, {})
 	}
 	if divider && fade > 0 {
 		ops.fill(gtx.scene, ops.Rect{cont.x, header.y + header.h, cont.w, 1}, ops.with_alpha(color(tok.SEARCH_VIEW_DIVIDER_COLOR), fade))
@@ -495,6 +513,14 @@ search_view :: proc(
 	if mode == .Full_Screen_Contained {
 		text_c, icon_c = ops.with_alpha(text_c, fade), ops.with_alpha(icon_c, fade)
 	}
+	// The rows are declared once painted, as parts of a list widget at
+	// the results' origin.
+	Shown :: struct {
+		id:    ops.Area_Id,
+		r:     ops.Rect,
+		label: string,
+	}
+	shown: [64]Shown
 	for row in 0 ..< rows {
 		mi := matches[row]
 		r := ops.Rect{results.x, results.y + f32(row) * ROW, results.w, ROW}
@@ -513,7 +539,16 @@ search_view :: proc(
 			listen(gtx, c, rid, r, {.Press, .Release, .Enter, .Leave, .Move})
 			ops.tag(gtx.scene, rid, ui.frame_string(gtx, suggestions[mi]))
 		}
+		shown[row] = {rid, {0, f32(row) * ROW, results.w, ROW}, suggestions[mi]}
 	}
+	ops.transform_push(gtx.scene, ops.translate(results.x, results.y))
+	lp := ui.widget_open(gtx, u64(ui.id_mix(id, 5)))
+	ui.semantics(gtx, &lp, {role = .List, label = placeholder})
+	for sh in shown[:rows] {
+		ui.part_semantics(gtx, &lp, sh.id, sh.r, {role = .List_Item, label = sh.label})
+	}
+	ui.widget_close(gtx, &lp, {size = {results.w, results.h}})
+	ops.transform_pop(gtx.scene)
 	ops.clip_pop(gtx.scene)
 	return picked
 }
@@ -682,6 +717,11 @@ bottom_sheet_open :: proc(
 		return sh // closed and off screen
 	}
 	sh.visible = true
+	if open^ {
+		// Escape hides the sheet whether or not it holds focus; the drag
+		// events above read it.
+		ui.key_interest(gtx, drag_id, .Escape)
+	}
 	w := min(window.x, max_width)
 	sh.width = w - 2 * tok.LIST_ITEM_LEADING_SPACE
 	if modal {
@@ -708,6 +748,8 @@ bottom_sheet_open :: proc(
 	b := ui.box_open(gtx, {padding = {tok.LIST_ITEM_LEADING_SPACE, 0, tok.LIST_ITEM_LEADING_SPACE, 24}, paint = paint_sheet, user = sp}, key = 1)
 	sh.boxes[0] = b
 	sh.nbox = 1
+	// A modal sheet is a dialog to a reader; a standard one a region of the page.
+	ui.container_semantics(gtx, {role = modal ? .Dialog : .Group, states = modal ? {.Modal} : {}})
 	inner := ui.column_open(gtx)
 	sh.flexes[1] = inner
 	sh.nflex = 2
@@ -826,6 +868,8 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, w: f32, loc := #caller_locat
 	hit := ops.Rect{(w - 48) / 2, 0, 48, slot.h}
 	ops.input_area(gtx.scene, id, hit, {.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur})
 	ops.tag(gtx.scene, id, "drag handle")
+	// The handle's own id, not the widget's, so focus shows on the node.
+	ui.part_semantics(gtx, &p, id, hit, {role = .Button, label = "drag handle"})
 	ui.widget_close(gtx, &p, {size = {w, slot.h}})
 }
 
@@ -913,6 +957,9 @@ side_sheet_open :: proc(
 				open^ = false
 			}
 		}
+		if open^ {
+			ui.key_interest(gtx, sp.drag_id, .Escape)
+		}
 		st := ui.widget_state(gtx, id)
 		// Offset toward the edge it hides behind: 0 shown, width hidden.
 		slide := animate(gtx, {st = st}, 0, open^ ? 0 : width, .Default_Spatial, 0.1)
@@ -948,6 +995,7 @@ side_sheet_open :: proc(
 	b := ui.box_open(gtx, {padding = ui.pad_all(24), paint = paint_sheet, user = sp}, key = 1)
 	sh.boxes[0] = b
 	sh.nbox = 1
+	ui.container_semantics(gtx, {role = modal ? .Dialog : .Group, label = headline, states = modal ? {.Modal} : {}})
 	inner := ui.column_open(gtx, gap = 16)
 	sh.flexes[1] = inner
 	sh.nflex = 2
@@ -975,6 +1023,7 @@ sheet_headline :: proc(gtx: ^ui.Ctx, s: string, loc := #caller_location) -> Text
 	p := ui.widget_open(gtx, 0, loc)
 	t := shape_text(gtx, s, .Title_Large)
 	draw_text(gtx, t, {}, color(tok.NAVIGATION_DRAWER_HEADLINE_COLOR))
+	ui.semantics(gtx, &p, {role = .Heading, label = s})
 	ui.widget_close(gtx, &p, {ops.Size{t.width, t.height}, baseline_of(t)})
 	return t
 }
