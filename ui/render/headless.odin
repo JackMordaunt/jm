@@ -126,6 +126,8 @@ inspecting :: proc(h: ^Headless) {
 // step that failed. The steps:
 //
 //	-click NAME        press and release the area tagged NAME
+//	-drag NAME DX DY   press on NAME, move the pointer by DX, DY over four
+//	                   frames, release
 //	-scroll NAME DY    scroll DY notches over NAME (positive is down)
 //	-key KEY           press KEY (a ui.Key name: Enter, Tab, Down, A, ...),
 //	                   with modifiers before it joined by +: Shift+Left,
@@ -160,6 +162,21 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 			return true, false
 		}
 		ui.probe_frame(&h.p)
+	case "-drag":
+		if !need(args, i, 3, flag) {
+			return true, false
+		}
+		dx, dx_ok := strconv.parse_f32(args[i^ + 2])
+		dy, dy_ok := strconv.parse_f32(args[i^ + 3])
+		if !dx_ok || !dy_ok {
+			fmt.eprintfln("-drag: %q %q are not numbers", args[i^ + 2], args[i^ + 3])
+			return true, false
+		}
+		if !ui.probe_drag(&h.p, args[i^ + 1], dx, dy) {
+			fmt.eprintfln("no %q to drag", args[i^ + 1])
+			return true, false
+		}
+		i^ += 3
 	case "-scroll":
 		if !need(args, i, 2, flag) {
 			return true, false

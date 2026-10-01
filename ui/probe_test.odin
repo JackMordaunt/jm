@@ -216,3 +216,51 @@ probe_finds_a_tag_without_an_area_by_its_bounds :: proc(t: ^testing.T) {
 	_, missing := probe_find(&p, "nothing")
 	testing.expect(t, !missing)
 }
+
+// Drag_Model sums what a draggable area is told: how far it travelled
+// while pressed, in how many moves, and whether the press was released.
+// The move onto it before the press is hover, not drag, and not counted.
+@(private = "file")
+Drag_Model :: struct {
+	travel:   ops.Point,
+	moves:    int,
+	pressed:  bool,
+	released: bool,
+}
+
+@(private = "file")
+drag_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Drag_Model)(user)
+	p := widget_open(gtx, 1)
+	ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 50, 50}, {.Press, .Move, .Release})
+	ops.tag(gtx.scene, p.id, "handle")
+	for e in events(gtx, p.id) {
+		#partial switch e.kind {
+		case .Press:
+			m.pressed = true
+		case .Move:
+			if m.pressed {
+				m.travel += e.travel
+				m.moves += 1
+			}
+		case .Release:
+			m.pressed, m.released = false, true
+		}
+	}
+	widget_close(gtx, &p, {size = {50, 50}})
+}
+
+@(test)
+probe_drag_moves_in_steps_and_releases :: proc(t: ^testing.T) {
+	m: Drag_Model
+	p: Probe
+	probe_init(&p, drag_view, &m, {200, 200})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_drag(&p, "handle", 120, -10))
+	// The grab holds past the area's edge, so every step's move arrives
+	// and they add up to the whole distance.
+	testing.expect_value(t, m.moves, 4)
+	testing.expect_value(t, m.travel, ops.Point{120, -10})
+	testing.expect(t, m.released)
+	testing.expect(t, !probe_drag(&p, "nothing", 1, 1))
+}

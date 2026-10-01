@@ -263,6 +263,31 @@ probe_click :: proc(p: ^Probe, name: string, button: Button = .Left) -> bool {
 	return true
 }
 
+// probe_drag presses at the center of the area tagged name, moves the
+// pointer by (dx, dy) in steps equal moves, a frame after each, and
+// releases where it ends: a drag as a hand makes one, so a slop threshold
+// or a per-move gesture sees several Moves, not one jump. It returns
+// false, and does nothing, when name is not found.
+probe_drag :: proc(p: ^Probe, name: string, dx, dy: f32, steps := 4, button: Button = .Left) -> bool {
+	c, ok := probe_center(p, name)
+	if !ok {
+		return false
+	}
+	router_push(&p.router, {kind = .Move, pos = c})
+	router_push(&p.router, {kind = .Press, pos = c, button = button})
+	probe_frame(p)
+	n := max(steps, 1)
+	at := c
+	for i in 1 ..= n {
+		at = {c.x + dx * f32(i) / f32(n), c.y + dy * f32(i) / f32(n)}
+		router_push(&p.router, {kind = .Move, pos = at})
+		probe_frame(p)
+	}
+	router_push(&p.router, {kind = .Release, pos = at, button = button})
+	probe_frame(p)
+	return true
+}
+
 // probe_type sends text as one Text event (the whole string, not one per
 // rune) to the focused area and runs a frame.
 probe_type :: proc(p: ^Probe, text: string) {
