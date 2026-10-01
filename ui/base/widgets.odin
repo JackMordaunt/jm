@@ -20,7 +20,9 @@ resolve_label :: proc(s: Label_Style) -> Label_Style {
 // the text's advance by the line height, clamped to the constraints; it
 // does not wrap. It records a Tag with the text so a probe can find it.
 // The text is selectable (ui.selectable_text) unless selectable is false.
-label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, selectable := true, loc := #caller_location) -> ui.Dims {
+// To a reader it is text, or a heading when heading is set. It returns
+// its id as well, so a control drawn after it can be labelled_by it.
+label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, selectable := true, heading := false, loc := #caller_location) -> (ui.Dims, ops.Area_Id) {
 	w := ui.widget_open(gtx, key, loc)
 	s := resolve_label(style)
 	p := ui.paragraph_layout(gtx.shaper, font(gtx), s.size, text, 0, gtx.allocator)
@@ -35,8 +37,8 @@ label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, 
 		design.draw_paragraph(gtx, p, {}, s.color)
 	}
 	ops.tag(gtx.scene, w.id, ui.frame_string(gtx, text), {0, 0, size.x, size.y})
-	ui.semantics(gtx, &w, {role = .Text, label = ui.frame_string(gtx, text)})
-	return ui.widget_close(gtx, &w, {size, p.metrics.ascent})
+	ui.semantics(gtx, &w, {role = .Heading if heading else .Text, label = ui.frame_string(gtx, text)})
+	return ui.widget_close(gtx, &w, {size, p.metrics.ascent}), w.id
 }
 
 // selectable_paragraph draws p with its top-left at at in color, selectable

@@ -1036,6 +1036,8 @@ Overlay :: struct {
 	// would otherwise take the next click (input routes against the last
 	// frame's hits).
 	discard: bool,
+	node:      ops.Area_Id, // overlay_semantics' node for the layer, 0 for none
+	semantics: ops.Semantics,
 }
 
 // overlay records the widgets up to end into a layer drawn after the rest
@@ -1095,6 +1097,11 @@ overlay_close :: proc(o: ^Overlay) {
 		}
 	}
 	gtx.constraints = o.saved
+	if o.node != 0 {
+		// Inside the macro, so it lands on the layer; a popup knows its
+		// size by now, a plain overlay has no box of its own.
+		ops.semantic(gtx.scene, o.node, 0, o.semantics, {0, 0, o.place.size.x, o.place.size.y} if o.place.set else {})
+	}
 	if o.pushed {
 		ops.transform_pop(gtx.scene)
 	}

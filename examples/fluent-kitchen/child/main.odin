@@ -318,7 +318,7 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.close(&bar)
 	r := ui.row_open(gtx, align = .Center)
 	defer ui.close(&r)
-	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 20, color = s[.Neutral_Foreground1]})
+	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 20, color = s[.Neutral_Foreground1]}, heading = true)
 	ui.fill_space(gtx)
 	names := fluent.THEME_NAMES
 	if fluent.button(gtx, names[m.theme], .Outline, .Settings) {

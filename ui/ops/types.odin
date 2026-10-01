@@ -272,6 +272,11 @@ Role :: enum u8 {
 	Separator, // a divider: read as a break, not as content
 	Radio_Group,
 	Alert, // a message a reader announces at once: a validation error
+	Grid, // a two-dimensional pick: a calendar's month
+	Grid_Cell,
+	List_Box, // a list to pick from: a combo box's options
+	Option,
+	Presentation, // decoration: a reader skips the node and reads its children
 }
 
 // State is one of the states a Semantic op may carry.
@@ -291,11 +296,14 @@ State :: enum u8 {
 States :: bit_set[State;u16]
 
 // Semantics is what a widget says about itself: its role, the label a
-// reader speaks for it, its value when it has one (a slider's, a field's
-// text), a longer description (a tooltip's text), and its states.
+// reader speaks for it, or the widget whose label names it (a slider
+// after its caption) when it has none of its own, its value when it has
+// one (a slider's, a field's text), a longer description (a tooltip's
+// text), and its states.
 Semantics :: struct {
 	role:        Role,
 	label:       string,
+	labelled_by: Area_Id, // another node, whose label is read when label is ""
 	value:       string,
 	description: string,
 	states:      States,

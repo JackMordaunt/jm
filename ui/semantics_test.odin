@@ -50,7 +50,24 @@ screen_view :: proc(gtx: ^Ctx, user: rawptr) {
 		part_semantics(gtx, &p, id_mix(p.id, 1), {0, 0, 10, 10}, {role = .Tab, label = "One", states = {.Selected}})
 		widget_close(gtx, &p, {size = {40, 10}})
 	}
-	label(gtx, "Status: ready", key = 4)
+	caption: ops.Area_Id
+	{
+		// A caption, as base.label returns its id for.
+		c := widget_open(gtx, 4)
+		semantics(gtx, &c, {role = .Text, label = "Status: ready"})
+		caption = c.id
+		widget_close(gtx, &c, {size = {100, 14}})
+	}
+	{
+		// A slider with no label of its own, named by the caption above
+		// it, inside a decorative container a reader passes over.
+		wrap := column_open(gtx, key = 40)
+		defer close(&wrap)
+		container_semantics(gtx, {role = .Presentation})
+		p := widget_open(gtx, 41)
+		semantics(gtx, &p, {role = .Slider, labelled_by = caption, value = "50"})
+		widget_close(gtx, &p, {size = {100, 10}})
+	}
 	{
 		p := widget_open(gtx, 5)
 		ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 120, 24}, {.Press, .Key, .Text, .Focus, .Blur})
@@ -64,6 +81,13 @@ screen_view :: proc(gtx: ^Ctx, user: rawptr) {
 		widget_close(gtx, &p, {size = {120, 24}})
 	}
 	if m.dialog {
+		// A tooltip painted straight into a popup: the overlay is its node.
+		{
+			tip := popup_open(gtx, {0, 0, 10, 10}, key = 70)
+			node := overlay_semantics(gtx, &tip, {role = .Tooltip, label = "Saves the file"})
+			child_semantics(gtx, node, id_mix(node, 1), {2, 2, 8, 8}, {role = .Text, label = "arrow"})
+			popup_close(&tip, {40, 16})
+		}
 		o := overlay_open(gtx)
 		defer close(&o)
 		box := column_open(gtx, key = 6)
@@ -103,8 +127,9 @@ semantics_report_reads_the_screen_as_a_tree :: proc(t: ^testing.T) {
 			"    text \"tick\" at 0,40 6x6\n",
 			"group \"\" at 0,64 40x10\n",
 			"  tab \"One\" selected at 0,64 10x10\n",
-			"text \"Status: ready\" at 0,74 109x14\n",
-			"text field \"Name\" value \"Jack\" at 0,88 120x24\n",
+			"text \"Status: ready\" at 0,74 100x14\n",
+			"slider \"Status: ready\" value \"50\" at 0,88 100x10\n",
+			"text field \"Name\" value \"Jack\" at 0,98 120x24\n",
 		},
 		context.temp_allocator,
 	)
@@ -117,6 +142,7 @@ semantics_report_reads_the_screen_as_a_tree :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	got = probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, strings.contains(got, "text field \"Name\" value \"Jack\" focused at"), got)
+	testing.expect(t, strings.contains(got, "tooltip \"Saves the file\" at 0,10 40x16\n  text \"arrow\" at 2,12 8x8\n"), got)
 	testing.expect(t, strings.has_suffix(got, "dialog \"Discard?\" modal at 0,0 60x24\n  button \"Discard\" at 0,0 60x24\n"), got)
 }
 

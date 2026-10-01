@@ -213,6 +213,9 @@ write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
 	fmt.sbprint(sb, s.role)
 	strings.write_byte(sb, ' ')
 	strings.write_quoted_string(sb, s.label)
+	if s.labelled_by != 0 {
+		fmt.sbprintf(sb, " labelled_by %d", s.labelled_by)
+	}
 	if s.value != "" {
 		strings.write_string(sb, " value ")
 		strings.write_quoted_string(sb, s.value)

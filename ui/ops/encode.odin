@@ -26,7 +26,7 @@ ENCODE_MAGIC :: "UIOP"
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
 // covers and added Cover_End.
-ENCODE_VERSION :: u8(18)
+ENCODE_VERSION :: u8(19)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -405,6 +405,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_u64(w, u64(v.parent))
 		append(w, u8(v.semantics.role))
 		put_str(w, v.semantics.label)
+		put_u64(w, u64(v.semantics.labelled_by))
 		put_str(w, v.semantics.value)
 		put_str(w, v.semantics.description)
 		put_u32(w, u32(transmute(u16)v.semantics.states))
@@ -715,6 +716,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		}
 		v.semantics.role = Role(role)
 		v.semantics.label = get_str(r) or_return
+		v.semantics.labelled_by = Area_Id(get_u64(r) or_return)
 		v.semantics.value = get_str(r) or_return
 		v.semantics.description = get_str(r) or_return
 		states := get_u32(r) or_return

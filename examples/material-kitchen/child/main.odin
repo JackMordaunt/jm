@@ -304,7 +304,7 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
 		}
 		ui.spacer(gtx, 8)
 	}
-	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 22, color = s[.On_Surface]})
+	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 22, color = s[.On_Surface]}, heading = true)
 	ui.fill_space(gtx)
 	if m3.icon_button(gtx, m.dark ? .Light_Mode : .Dark_Mode, tooltip = m.dark ? "Light scheme" : "Dark scheme") {
 		m.dark = !m.dark

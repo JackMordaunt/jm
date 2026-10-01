@@ -62,6 +62,25 @@ container_semantics :: proc(gtx: ^Ctx, s: ops.Semantics, index := -1) {
 	}
 }
 
+// overlay_semantics describes an open overlay or popup as a node of its
+// own, a root of the layer: a tooltip, a list box, a toaster. It returns
+// the node's id, for the parts drawn straight into the overlay to nest
+// under with child_semantics. The node is emitted at overlay_close, with
+// a popup's size as its box.
+overlay_semantics :: proc(gtx: ^Ctx, o: ^Overlay, s: ops.Semantics, key: u64 = 0, loc := #caller_location) -> ops.Area_Id {
+	o.node = claim_id(gtx, key, loc)
+	o.semantics = s
+	return o.node
+}
+
+// child_semantics describes id, a part with no widget of its own, as a
+// child of the node parent: a part of an overlay (overlay_semantics), or
+// a part under a part. rect is in the space current at the call.
+// part_semantics is this with the widget as parent.
+child_semantics :: proc(gtx: ^Ctx, parent, id: ops.Area_Id, rect: ops.Rect, s: ops.Semantics) {
+	ops.semantic(gtx.scene, id, parent, s, rect)
+}
+
 // semantic_parent is the id of the nearest container at or above stack
 // index parent that declared semantics, 0 when none has.
 @(private)
@@ -86,10 +105,12 @@ key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, op
 }
 
 // semantics_report prints f's semantic tree, one node a line, children
-// indented under their parent: the role, the label, the value and
-// description when set, the states, `focused` on the area focus names,
-// and the device rect, in document order: the order a reader is meant
-// to take them in. A node whose parent is in no frame node is a root.
+// indented under their parent: the role, the label (the labelled_by
+// node's when the node has none), the value and description when set,
+// the states, `focused` on the area focus names, and the device rect, in
+// document order: the order a reader is meant to take them in. A node
+// whose parent is in no frame node is a root; a Presentation node is not
+// printed, its children take its place.
 semantics_report :: proc(f: ^Frame, focus: ops.Area_Id = 0, allocator := context.allocator) -> string {
 	if len(f.nodes) == 0 {
 		return strings.clone("no semantics: nothing in the frame declares a role\n", allocator)
@@ -114,12 +135,16 @@ write_semantic_children :: proc(b: ^strings.Builder, f: ^Frame, parent: []int, o
 		if parent[i] != of {
 			continue
 		}
+		if n.semantics.role == .Presentation {
+			write_semantic_children(b, f, parent, i, indent, focus)
+			continue
+		}
 		for _ in 0 ..< indent {
 			strings.write_string(b, "  ")
 		}
 		strings.write_string(b, role_name(n.semantics.role))
 		strings.write_byte(b, ' ')
-		strings.write_quoted_string(b, n.semantics.label)
+		strings.write_quoted_string(b, semantic_label(f, n.semantics))
 		if n.semantics.value != "" {
 			strings.write_string(b, " value ")
 			strings.write_quoted_string(b, n.semantics.value)
@@ -139,6 +164,20 @@ write_semantic_children :: proc(b: ^strings.Builder, f: ^Frame, parent: []int, o
 		fmt.sbprintf(b, " at %.0f,%.0f %.0fx%.0f\n", n.rect.x, n.rect.y, n.rect.w, n.rect.h)
 		write_semantic_children(b, f, parent, i, indent + 1, focus)
 	}
+}
+
+// semantic_label is s's own label, or the label of the node labelled_by
+// names when s has none and the frame has that node.
+semantic_label :: proc(f: ^Frame, s: ops.Semantics) -> string {
+	if s.label != "" || s.labelled_by == 0 {
+		return s.label
+	}
+	for n in f.nodes {
+		if n.id == s.labelled_by {
+			return n.semantics.label
+		}
+	}
+	return ""
 }
 
 // role_name is r as a reader says it: "text field", "list item".
@@ -206,6 +245,16 @@ role_name :: proc(r: ops.Role) -> string {
 		return "radio group"
 	case .Alert:
 		return "alert"
+	case .Grid:
+		return "grid"
+	case .Grid_Cell:
+		return "grid cell"
+	case .List_Box:
+		return "list box"
+	case .Option:
+		return "option"
+	case .Presentation:
+		return "presentation"
 	}
 	return "unknown"
 }
