@@ -19,6 +19,14 @@ import "jm:ui/ops"
 // run is one level above a left-to-right paragraph, and a left-to-right run
 // two above a right-to-left one. Nested embeddings and isolates beyond that
 // are not modelled. A right-to-left paragraph's lines align to the right.
+//
+// With max_lines, text that would run past that many lines is truncated:
+// the last line holds what fits of its own hard line and ends in an
+// ellipsis, or, with no ellipsis, runs on unwrapped for the caller to
+// clip. max_lines = 1 is the one-line label that truncates rather than
+// wraps when it meets its width. The ellipsis stands for the hidden text:
+// its cluster spans it, so a selection through the ellipsis selects, and
+// copies, the text through to its end.
 Paragraph :: struct {
 	text:      string,
 	font:      ops.Font_Id,
@@ -27,6 +35,7 @@ Paragraph :: struct {
 	rtl:       bool,
 	width:     f32, // the widest line, hanging whitespace excluded
 	height:    f32,
+	truncated: bool, // max_lines hid some of text
 	pitch:     f32, // from one line's top to the next
 	lines:     []Text_Line,
 	graphemes: []int, // where a caret may stop, ascending, len(text) included
@@ -68,14 +77,41 @@ Cluster_Span :: struct {
 // Lines are the font's line_height apart, its ascent from the top of each
 // line to the baseline; a line_pitch > 0 instead makes each line that
 // tall with the font's ascent and descent centred in it, as a type style's
-// line box is.
-paragraph_layout :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, max_width: f32, allocator: mem.Allocator, line_pitch: f32 = 0) -> Paragraph {
-	return paragraph_from_shaped(shape_text(s, font, size, text, allocator), metrics(s, font, size), text, max_width, allocator, line_pitch)
+// line box is. max_lines > 0 truncates the text to that many lines,
+// ending in ellipsis ("" to leave the last line unwrapped for clipping).
+paragraph_layout :: proc(
+	s: Shaper,
+	font: ops.Font_Id,
+	size: f32,
+	text: string,
+	max_width: f32,
+	allocator: mem.Allocator,
+	line_pitch: f32 = 0,
+	max_lines := 0,
+	ellipsis := ELLIPSIS,
+) -> Paragraph {
+	ell: Shaped_Text
+	if max_lines > 0 && ellipsis != "" {
+		ell = shape_text(s, font, size, ellipsis, context.temp_allocator)
+	}
+	return paragraph_from_shaped(shape_text(s, font, size, text, allocator), metrics(s, font, size), text, max_width, allocator, line_pitch, max_lines, ell)
 }
 
+// ELLIPSIS is what truncated text ends in by default.
+ELLIPSIS :: "\u2026"
+
 // paragraph_from_shaped lays out text already shaped as st; see
-// paragraph_layout.
-paragraph_from_shaped :: proc(st: Shaped_Text, m: Font_Metrics, text: string, max_width: f32, allocator: mem.Allocator, line_pitch: f32 = 0) -> Paragraph {
+// paragraph_layout. ellipsis is the ellipsis already shaped, empty to clip.
+paragraph_from_shaped :: proc(
+	st: Shaped_Text,
+	m: Font_Metrics,
+	text: string,
+	max_width: f32,
+	allocator: mem.Allocator,
+	line_pitch: f32 = 0,
+	max_lines := 0,
+	ellipsis: Shaped_Text = {},
+) -> Paragraph {
 	p := Paragraph{text = text, font = st.font, size = st.size, metrics = m, rtl = st.rtl}
 	l := Layout_State{st = st, text = text, max = max_width, allocator = allocator}
 	l.sums = make([]f32, len(st.glyphs) + 1, context.temp_allocator)
@@ -97,13 +133,20 @@ paragraph_from_shaped :: proc(st: Shaped_Text, m: Font_Metrics, text: string, ma
 	start := 0
 	for {
 		end := next_line_end(&l, start)
+		if max_lines > 0 && len(lines) == max_lines - 1 && end < len(text) {
+			ln, cut := truncated_line(&l, start, ellipsis)
+			append(&lines, ln)
+			p.graphemes = hide_graphemes(p.graphemes, cut, len(text))
+			p.truncated = true
+			break
+		}
 		append(&lines, lay_line(&l, start, end))
 		if end >= len(text) {
 			break
 		}
 		start = end
 	}
-	if len(text) > 0 && text[len(text) - 1] == '\n' {
+	if len(text) > 0 && text[len(text) - 1] == '\n' && (max_lines <= 0 || len(lines) < max_lines) {
 		append(&lines, lay_line(&l, len(text), len(text)))
 	}
 	p.lines = lines[:]
@@ -474,6 +517,95 @@ lay_line :: proc(l: ^Layout_State, start, end: int) -> Text_Line {
 	ln.width = x
 	ln.hanging = hanging_clusters(l, ln.hang, line_content_end(l.text, ln))
 	return ln
+}
+
+// truncated_line is the last line truncation leaves, from start: what fits
+// of its hard line with ellipsis after it, or, with no ellipsis, the whole
+// hard line unwrapped. The line runs on to the text's end, the ellipsis's
+// one cluster spanning what it hides. cut is where the shown text ends.
+@(private)
+truncated_line :: proc(l: ^Layout_State, start: int, ellipsis: Shaped_Text) -> (ln: Text_Line, cut: int) {
+	n := len(l.text)
+	hard := n
+	for b in l.st.breaks {
+		if b.at > start && .Line_Hard in b.kinds {
+			hard = b.at
+			break
+		}
+	}
+	hard = line_content_end(l.text, Text_Line{start = start, end = hard})
+	if len(ellipsis.glyphs) == 0 {
+		ln = lay_line(l, start, hard)
+		ln.end = n
+		return ln, hard
+	}
+	ew: f32
+	for g in ellipsis.glyphs {
+		ew += g.advance
+	}
+	cut = start
+	lo, _ := slice.binary_search(l.graphemes, start + 1)
+	for g in l.graphemes[lo:] {
+		if g > hard || (l.max > 0 && visible_width(l, start, g) + ew > l.max) {
+			break
+		}
+		cut = g
+	}
+	cut = trim_hang(l.text, start, cut)
+	ln = lay_line(l, start, cut)
+	glyphs := make([]ops.Glyph, len(ellipsis.glyphs), l.allocator)
+	pen: f32
+	for g, i in ellipsis.glyphs {
+		glyphs[i] = {g.id, u32(cut), pen + g.offset.x, g.offset.y, g.font}
+		pen += g.advance
+	}
+	x := ln.width
+	if l.st.rtl {
+		// Right to left, the line ends at its left: the ellipsis goes
+		// there and the rest moves over.
+		x = 0
+		for &r in ln.runs {
+			r.x += ew
+			for &c in r.clusters {
+				c.x0 += ew
+				c.x1 += ew
+			}
+		}
+	}
+	run := Line_Run {
+		glyphs   = {font = ellipsis.font, size = ellipsis.size, glyphs = glyphs, advance = ew},
+		x        = x,
+		start    = cut,
+		end      = n,
+		rtl      = l.st.rtl,
+		clusters = slice.clone([]Cluster_Span{{cut, n, x, x + ew}}, l.allocator),
+	}
+	runs := make([]Line_Run, len(ln.runs) + 1, l.allocator)
+	if l.st.rtl {
+		runs[0] = run
+		copy(runs[1:], ln.runs)
+	} else {
+		copy(runs, ln.runs)
+		runs[len(ln.runs)] = run
+	}
+	ln.runs = runs
+	ln.width += ew
+	ln.end, ln.hang = n, n
+	return ln, cut
+}
+
+// hide_graphemes drops the caret stops strictly between cut and end, the
+// text an ellipsis hides, in place.
+@(private)
+hide_graphemes :: proc(graphemes: []int, cut, end: int) -> []int {
+	k := 0
+	for g in graphemes {
+		if g <= cut || g >= end {
+			graphemes[k] = g
+			k += 1
+		}
+	}
+	return graphemes[:k]
 }
 
 // hanging_clusters measures the clusters of text[start:end] as distances

@@ -188,3 +188,69 @@ test_selection_rects_show_a_selected_newline :: proc(t: ^testing.T) {
 	testing.expect_value(t, rs[0], ops.Rect{6, 0, 6 + SIZE * 0.25, 10})
 	testing.expect_value(t, rs[1], ops.Rect{0, 10, 6, 10})
 }
+
+@(private = "file")
+lay_max :: proc(text: string, max_width: f32, max_lines: int, ellipsis := ELLIPSIS) -> Paragraph {
+	return paragraph_layout(stub_shaper(), 0, SIZE, text, max_width, context.temp_allocator, max_lines = max_lines, ellipsis = ellipsis)
+}
+
+@(test)
+test_paragraph_truncates_one_line_instead_of_wrapping :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// 50px holds eight runes; seven and the ellipsis's one fit.
+	p := lay_max("aaaa bbbb cccc", 50, 1)
+	testing.expect(t, p.truncated)
+	expect_lines(t, p, {{0, 14}})
+	ln := p.lines[0]
+	testing.expect_value(t, ln.width, 48) // "aaaa bb" and the ellipsis
+	last := ln.runs[len(ln.runs) - 1]
+	testing.expect_value(t, last.clusters[0], Cluster_Span{7, 14, 42, 48})
+	// Caret stops end at the cut, then jump the ellipsis to the text's end.
+	n := len(p.graphemes)
+	testing.expect_value(t, [2]int{p.graphemes[n - 2], p.graphemes[n - 1]}, [2]int{7, 14})
+	testing.expect_value(t, paragraph_hit(p, {47, 5}), 14)
+	_, x := paragraph_caret(p, 7)
+	testing.expect_value(t, x, 42)
+	// What fits is not truncated; a space before the cut is trimmed.
+	testing.expect(t, !lay_max("aaaa", 50, 1).truncated)
+	testing.expect_value(t, lay_max("aaaaaa bbb", 50, 1).lines[0].width, 42) // "aaaaaa" "…"
+}
+
+@(test)
+test_paragraph_wraps_to_max_lines_then_truncates :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p := lay_max("aaa bbb ccc ddd eee", 50, 2)
+	testing.expect(t, p.truncated)
+	expect_lines(t, p, {{0, 8}, {8, 19}})
+	testing.expect_value(t, p.lines[1].width, 48) // "ccc ddd…"
+	testing.expect(t, !lay_max("aaa bbb ccc ddd", 50, 2).truncated) // two lines exactly
+	// A hard break ends the last line's text even with room to spare.
+	q := lay_max("one\ntwo\nthree", 0, 2)
+	expect_lines(t, q, {{0, 4}, {4, 13}})
+	testing.expect_value(t, q.lines[1].width, 24) // "two…"
+	// Within the limit, nothing changes.
+	expect_lines(t, lay_max("ab\ncd\n", 0, 2), {{0, 3}, {3, 6}})
+}
+
+@(test)
+test_paragraph_without_ellipsis_runs_on_to_clip :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p := lay_max("aaaa bbbb cccc\nhidden", 50, 1, ellipsis = "")
+	testing.expect(t, p.truncated)
+	expect_lines(t, p, {{0, 21}})
+	testing.expect_value(t, p.lines[0].width, 84) // the whole first line, wider than 50
+}
+
+@(test)
+test_selecting_through_an_ellipsis_selects_the_hidden_text :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p := lay_max("aaaa bbbb cccc", 50, 1)
+	rects := paragraph_selection_rects(p, 5, 14)
+	testing.expect_value(t, len(rects), 1)
+	testing.expect_value(t, rects[0], ops.Rect{30, 0, 18, p.pitch}) // "bb" and the ellipsis
+	s: Text_State
+	text_set(&s, p.text)
+	defer text_destroy(&s)
+	text_select(&s, 5, paragraph_hit(p, {60, 5}))
+	testing.expect_value(t, text_selected(&s), "bbbb cccc")
+}
