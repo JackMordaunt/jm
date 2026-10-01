@@ -189,6 +189,7 @@ run :: proc(app: App) {
 			ui.debug_tray_overlays(&tray, density, &keep_out),
 			platform,
 			gtx.persist,
+			router.focus,
 		)
 		ui.router_requests_clear(&router)
 		if !ipc.write_frame(os.stdout, reply) {

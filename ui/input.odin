@@ -40,7 +40,9 @@ import "jm:ui/ops"
 //   keyFilterMatch (io/input/key.go) for a key.Filter with no Focus.
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
-// - A focus_request moves focus before the queued events are routed.
+// - A focus_request moves focus before the queued events are routed; a
+//   pushed Focus naming an area (an assistive technology's request through
+//   the platform) moves it in turn with the other events.
 // - Focus is visible (focus_visible) from a Key until the next Press, as
 //   the web's :focus-visible: a click focuses without showing a ring, a
 //   key shows it on whatever holds focus.
@@ -207,7 +209,15 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 		case .Paste:
 			route_paste(r, e)
-		case .Enter, .Leave, .Focus, .Blur, .Cancel:
+		case .Focus:
+			// Pushed by a platform for an assistive technology's request:
+			// focus the area, shown as keyboard focus, when the frame has it.
+			h: Hit
+			if e.area != 0 && f != nil && refresh(f, e.area, &h) {
+				set_focus(r, h)
+				r.keyboard = true
+			}
+		case .Enter, .Leave, .Blur, .Cancel:
 		// Synthesized by the router; a pushed one is ignored.
 		}
 		if e.kind == .Press || e.kind == .Release || e.kind == .Move {

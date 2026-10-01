@@ -104,7 +104,6 @@ draw_bounds :: proc(sc: ^ops.Scene, cmd: Draw_Cmd) -> (ops.Rect, string) {
 
 // clip_chain_bounds is the device bounds of clip id and all it sits in;
 // NO_CLIP is everywhere.
-@(private)
 clip_chain_bounds :: proc(f: ^Frame, id: Clip_Id) -> ops.Rect {
 	r := ops.Rect{-1e7, -1e7, 2e7, 2e7}
 	for c := id; c != NO_CLIP && int(c) < len(f.clips); c = f.clips[c].parent {

@@ -27,10 +27,13 @@ Event :: struct {
 }
 
 // Raw_Event is what a platform (ui/sdl, the probe) feeds the router: the
-// same fields as Event but with pos in device pixels and no area. The router
-// resolves the area and converts pos to local space.
+// same fields as Event but with pos in device pixels and, for a pointer
+// or key event, no area: the router resolves it and converts pos to local
+// space. A Focus carries the area to focus, as an assistive technology
+// asks for one; the router focuses it as focus_request would.
 Raw_Event :: struct {
 	kind:   ops.Event_Kind,
+	area:   ops.Area_Id, // Focus only: the area to focus
 	pos:    ops.Point,
 	button: Button,
 	scroll: [2]f32,

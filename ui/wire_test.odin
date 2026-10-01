@@ -19,6 +19,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Key, key = .Enter, mods = {.Alt}},
 		{kind = .Text, text = "héllo\nworld"},
 		{kind = .Paste, text = "pasted", mime = TEXT_MIME},
+		{kind = .Focus, area = 77},
 	}
 	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
 	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
@@ -190,11 +191,13 @@ test_input_carries_what_the_last_child_persisted :: proc(t: ^testing.T) {
 @(test)
 test_reply_carries_what_the_child_persists :: proc(t: ^testing.T) {
 	sc_bytes := []byte{1, 2, 3}
-	data := encode_reply(true, 0.5, sc_bytes, context.temp_allocator, persist = transmute([]byte)string("count 4"))
+	data := encode_reply(true, 0.5, sc_bytes, context.temp_allocator, persist = transmute([]byte)string("count 4"), focus = 42)
 	persist: []byte
-	wants, after, got, ok := decode_reply(data, persist = &persist)
+	plat: Reply_Platform
+	wants, after, got, ok := decode_reply(data, nil, &plat, &persist)
 	testing.expect(t, ok && wants)
 	testing.expect_value(t, after, f32(0.5))
+	testing.expect_value(t, plat.focus, ops.Area_Id(42))
 	testing.expect_value(t, string(persist), "count 4")
 	testing.expect(t, slice.equal(got, sc_bytes))
 	// A reply with nothing to persist leaves persist alone.

@@ -14,8 +14,10 @@ import "jm:ui/ops"
 //	       [host stats], str restore (what the last child persisted,
 //	       sent once to a respawned child; "" otherwise)
 //	Raw_Event: u8 kind, f32 x, f32 y, u8 button, f32 sx, f32 sy, u8 key,
-//	           u8 mods, str text, str mime, u8 clicks
-//	Reply: u8 flags, f32 frame_after, [debug block], [platform block], then
+//	           u8 mods, str text, str mime, u8 clicks, u64 area
+//	Reply: u8 flags, f32 frame_after, u64 focus (the focused area, 0 for
+//	       none: what the host tells assistive technology), [debug block],
+//	       [platform block], [persist], then
 //	       encode(sc)'s own bytes verbatim — Reply carries no length for
 //	       them; the transport frame they arrived in already bounds where
 //	       they end. Flags: 1 wants a frame, 2 full frames, 4 flash (a count
@@ -114,6 +116,7 @@ encode_raw_event :: proc(w: ^[dynamic]byte, e: Raw_Event) {
 	ops.put_str(w, e.text)
 	ops.put_str(w, e.mime)
 	append(w, e.clicks)
+	ops.put_u64(w, u64(e.area))
 }
 
 @(private = "file")
@@ -145,6 +148,7 @@ decode_raw_event :: proc(r: ^ops.Reader) -> (e: Raw_Event, ok: bool) {
 	e.text = ops.get_str(r) or_return
 	e.mime = ops.get_str(r) or_return
 	e.clicks = ops.get_u8(r) or_return
+	e.area = ops.Area_Id(ops.get_u64(r) or_return)
 	return e, true
 }
 
@@ -161,6 +165,7 @@ encode_reply :: proc(
 	keep_out: []ops.Rect = nil,
 	platform: ^Reply_Platform = nil,
 	persist: []byte = nil,
+	focus: ops.Area_Id = 0,
 ) -> []byte {
 	w := make([dynamic]byte, 0, 5 + len(ops_bytes), allocator)
 	// Bit 0: wants another frame. Bit 1: redraw it whole (the debug tray's
@@ -169,6 +174,7 @@ encode_reply :: proc(
 	// follow as a count and rects. Bit 4: persist bytes follow.
 	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0) | (u8(8) if platform != nil else 0) | (u8(16) if persist != nil else 0))
 	ops.put_f32(&w, frame_after)
+	ops.put_u64(&w, u64(focus))
 	if flash {
 		append(&w, u8(min(len(keep_out), 255)))
 		for r in keep_out[:min(len(keep_out), 255)] {
@@ -219,6 +225,7 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 	d: Reply_Debug
 	wants_frame, d.full_frames, d.flash = flag & 1 != 0, flag & 2 != 0, flag & 4 != 0
 	frame_after = ops.get_f32(&r) or_return
+	focus := ops.Area_Id(ops.get_u64(&r) or_return)
 	if d.flash {
 		n := int(ops.get_u8(&r) or_return)
 		for i in 0 ..< n {
@@ -233,6 +240,7 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 		dbg^ = d
 	}
 	p: Reply_Platform
+	p.focus = focus
 	if flag & 8 != 0 {
 		c := ops.get_u8(&r) or_return
 		if c > u8(max(ops.Cursor)) {
@@ -283,6 +291,7 @@ Reply_Platform :: struct {
 	changed:      bool,
 	requests_buf: [4]Request,
 	requests_n:   int,
+	focus:        ops.Area_Id, // the child's focused area, every reply
 }
 
 // reply_requests is p's requests, in the order the child made them.

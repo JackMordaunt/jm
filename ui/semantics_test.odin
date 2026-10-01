@@ -188,3 +188,24 @@ key_interest_matches_by_key_and_modifiers :: proc(t: ^testing.T) {
 	testing.expect(t, key_interest_matches(any, .F11, {.Alt}))
 	testing.expect(t, !key_interest_matches(ops.Key_Interest{1, .None, {}, {}}, .A, {.Shift}))
 }
+
+@(test)
+a_pushed_focus_names_the_area_an_assistive_technology_asked_for :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m: Screen_Model
+	defer delete(m.keys)
+	p: Probe
+	probe_init(&p, screen_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	field, ok := probe_find(&p, "Name")
+	testing.expect(t, ok)
+	router_push(&p.router, {kind = .Focus, area = field.area})
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, field.area)
+	testing.expect(t, p.router.keyboard) // shown as keyboard focus
+	testing.expect(t, strings.contains(probe_semantics(&p, context.temp_allocator), "text field \"Name\" value \"Jack\" focused at"))
+	// An area the frame does not have is not focused, and focus stays.
+	router_push(&p.router, {kind = .Focus, area = 999999})
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, field.area)
+}
