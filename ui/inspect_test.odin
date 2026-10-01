@@ -107,3 +107,33 @@ test_inspect_prefers_an_overlay_over_the_page_beneath :: proc(t: ^testing.T) {
 	testing.expect_value(t, got.box.rect, ops.Rect{10, 10, 50, 50})
 	testing.expect(t, got.box.layer > 0)
 }
+
+// Tally is a widget's own retained value: what widget_data keeps for it.
+@(private = "file")
+Tally :: struct {
+	frames: int,
+	last:   string,
+}
+
+// tally_view is one widget that counts its frames in a Tally.
+@(private = "file")
+tally_view :: proc(gtx: ^Ctx, user: rawptr) {
+	p := widget_open(gtx, 7)
+	t := widget_data(gtx, p.id, Tally)
+	t.frames += 1
+	t.last = "seen"
+	widget_close(gtx, &p, {size = {40, 40}})
+}
+
+@(test)
+test_inspect_prints_a_widgets_data_values :: proc(t: ^testing.T) {
+	p: Probe
+	probe_init(&p, tally_view, nil, {100, 100}, debug = {.Inspect}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	probe_frame(&p)
+	report := inspect_report(probe_current(&p), &p.layout, {10, 10}, context.temp_allocator)
+	// The value as fmt prints it, after the widget's own flags, under
+	// "state": a reader sees what the widget remembers, typed.
+	testing.expect(t, strings.contains(report, `state  Tally{frames = 2, last = "seen"}`), report)
+}

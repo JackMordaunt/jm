@@ -3,7 +3,9 @@ package ui
 import "core:fmt"
 import "jm:ui/ops"
 import "core:path/filepath"
+import "core:slice"
 import "core:strings"
+import "core:unicode/utf8"
 
 // Inspection is what lies under a point of a frame recorded with
 // Debug_Flag.Inspect: the innermost widget box, and the top-most input area,
@@ -266,31 +268,56 @@ size_text :: proc(s: ops.Size) -> string {
 	return fmt.tprintf("%sx%s", side(s.x), side(s.y))
 }
 
+// DATA_TEXT_MAX is how much of one widget_data value state_text shows:
+// enough to read a memo or a gesture, not a whole table.
+@(private = "file")
+DATA_TEXT_MAX :: 120
+
 // state_text is the widget state layout keeps for id, the flags that are
-// set and any moving springs, or "".
+// set and any moving springs, then every widget_data value kept for it
+// as fmt prints it (`Drag{active = true, ...}`), by type name, cut at
+// DATA_TEXT_MAX; or "".
 @(private = "file")
 state_text :: proc(layout: ^Layout, id: ops.Area_Id) -> string {
 	if layout == nil {
 		return ""
 	}
-	st, ok := layout.state[id]
-	if !ok || st == nil {
-		return ""
-	}
 	b := strings.builder_make(context.temp_allocator)
-	if st.hovered {
-		strings.write_string(&b, "hovered ")
-	}
-	if st.pressed {
-		strings.write_string(&b, "pressed ")
-	}
-	if st.focused {
-		strings.write_string(&b, "focused ")
-	}
-	for s, i in st.springs {
-		if s.started && (s.value != 0 || s.target != 0) {
-			fmt.sbprintf(&b, "spring%d=%.2f->%.2f ", i, s.value, s.target)
+	if st, ok := layout.state[id]; ok && st != nil {
+		if st.hovered {
+			strings.write_string(&b, "hovered ")
 		}
+		if st.pressed {
+			strings.write_string(&b, "pressed ")
+		}
+		if st.focused {
+			strings.write_string(&b, "focused ")
+		}
+		for s, i in st.springs {
+			if s.started && (s.value != 0 || s.target != 0) {
+				fmt.sbprintf(&b, "spring%d=%.2f->%.2f ", i, s.value, s.target)
+			}
+		}
+	}
+	values := make([dynamic]string, context.temp_allocator)
+	for key, e in layout.data {
+		if key.id != id {
+			continue
+		}
+		v := fmt.tprintf("%v", any{e.ptr, key.type})
+		if len(v) > DATA_TEXT_MAX {
+			cut := DATA_TEXT_MAX
+			for cut > 0 && !utf8.rune_start(v[cut]) {
+				cut -= 1
+			}
+			v = fmt.tprintf("%s…", v[:cut])
+		}
+		append(&values, v)
+	}
+	slice.sort(values[:]) // map order is not: the text is the same every time
+	for v in values {
+		strings.write_string(&b, v)
+		strings.write_byte(&b, ' ')
 	}
 	return strings.trim_right_space(strings.to_string(b))
 }
