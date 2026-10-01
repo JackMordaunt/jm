@@ -169,7 +169,7 @@ date_picker :: proc(
 		ops.transform_push(gtx.scene, ops.translate(0, DATE_ENTER_OFFSET * mf))
 		live := m == .Picker
 		// Month bar: the year menu button, then previous and next.
-		label := fmt.tprintf("%s %d", timefmt.MONTHS[view.month - 1], view.year)
+		label := ui.frame_string(gtx, fmt.tprintf("%s %d", timefmt.MONTHS[view.month - 1], view.year))
 		lt := shape_text(gtx, label, .Label_Large)
 		yb := ops.Rect{DATE_GRID_PADDING, y0 + 4, 12 + lt.width + 4 + 18 + 12, 48}
 		yid := ui.id_mix(p.id, 3)
@@ -191,7 +191,7 @@ date_picker :: proc(
 			listen(gtx, yc, yid, yb)
 			ops.tag(gtx.scene, yid, "year menu")
 		}
-		ui.part_semantics(gtx, &p, yid, yb, {role = .Button, label = ui.frame_string(gtx, label), states = {.Expandable} + (year_open ? {.Expanded} : {})})
+		ui.part_semantics(gtx, &p, yid, yb, {role = .Button, label = label, states = {.Expandable} + (year_open ? {.Expanded} : {})})
 		if !year_open {
 			prev_r := ops.Rect{size.x - DATE_GRID_PADDING - 96, y0 + 4, 48, 48}
 			if picker_icon_button(gtx, ui.id_mix(p.id, 4), {prev_r.x, prev_r.y}, .Chevron_Left, live ? "previous month" : "") {
@@ -214,7 +214,7 @@ date_picker :: proc(
 		if year_open {
 			year_scroll = year_grid(gtx, p.id, view, today, {0, gy, size.x, DATE_CELL + DATE_ROWS * DATE_CELL}, year_scroll, min_year, max_year, live, 1 - mf, &year_open, &p)
 		} else {
-			changed = day_grid(gtx, p.id, selected, range_end, view^, today, selectable, min_year, max_year, gy, live, 1 - mf, &p)
+			changed = day_grid(gtx, p.id, selected, range_end, view^, today, selectable, min_year, max_year, gy, live, 1 - mf, label, &p)
 		}
 		ops.transform_pop(gtx.scene)
 	}
@@ -285,7 +285,8 @@ day_grid :: proc(
 	y: f32,
 	live: bool,
 	alpha: f32,
-	p: ^ui.Placement, // the picker, which the cells are parts of
+	month: string, // the month and year as the headline shows it, for the frame
+	p: ^ui.Placement, // the picker, which the grid is a part of
 ) -> bool {
 	x0 := DATE_GRID_PADDING
 	for d, i in timefmt.DAYS {
@@ -295,6 +296,10 @@ day_grid :: proc(
 	gy := y + DATE_CELL
 	first := weekday({view.year, view.month, 1})
 	n := days_in_month(view.year, view.month)
+	// The month is a grid of the picker, each day a cell of it; the
+	// weekday headers above it are not declared.
+	grid := ui.id_mix(pid, 9)
+	ui.part_semantics(gtx, p, grid, {x0, gy, 7 * DATE_CELL, f32((first + n + 6) / 7) * DATE_CELL}, {role = .Grid, label = month})
 	changed := false
 	ranged := range_end != nil
 	for day in 1 ..= n {
@@ -340,7 +345,7 @@ day_grid :: proc(
 			listen(gtx, c, id, r)
 			ops.tag(gtx.scene, id, name)
 		}
-		ui.part_semantics(gtx, p, id, r, {role = .Button, label = name, states = states_of(c, on)})
+		ui.child_semantics(gtx, grid, id, r, {role = .Grid_Cell, label = name, states = states_of(c, on)})
 	}
 	return changed
 }

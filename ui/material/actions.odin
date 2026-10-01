@@ -760,20 +760,17 @@ fab_menu :: proc(
 		// trigger as it is now, so the stack follows the morph; the two
 		// 16dp paddings upstream cancel (fab-menu.json notes).
 		y := tr.y - tok.FAB_MENU_BASELINE_CLOSE_BUTTON_BETWEEN_SPACE - f32(n) * H - f32(max(n - 1, 0)) * between
-		y0 := y
-		// The items shown, declared once painted: a menu widget at the
-		// stack's top, so they are parts of it, not of the trigger.
-		Shown :: struct {
-			id:    ops.Area_Id,
-			r:     ops.Rect,
-			label: string,
-		}
-		shown := make([dynamic]Shown, 0, n, gtx.allocator)
+		// The layer is the menu's node, so the items shown are its children,
+		// not parts of the trigger; boxed, once the items are measured, by
+		// the stack at full width.
+		menu := ui.claim_id(gtx, u64(ui.id_mix(p.id, 99)), loc)
+		top, menu_w := y, f32(0)
 		for it, i in items {
 			id := ui.id_mix(p.id, u64(100 + i))
 			visible := count > f32(i)
 			txt := shape_text(gtx, it.label, .Title_Medium)
 			full_w := tok.FAB_MENU_BASELINE_LIST_ITEM_LEADING_SPACE + tok.FAB_MENU_BASELINE_LIST_ITEM_ICON_SIZE + tok.FAB_MENU_BASELINE_LIST_ITEM_ICON_LABEL_SPACE + txt.width + tok.FAB_MENU_BASELINE_LIST_ITEM_TRAILING_SPACE
+			menu_w = max(menu_w, full_w)
 			// Width and opacity spring per item, before its bounds exist.
 			wt, at: f32 = visible ? 1 : 0, visible ? 1 : 0
 			live := state == .Live
@@ -804,18 +801,11 @@ fab_menu :: proc(
 				paint_focus_ring(gtx, ic, {r, H / 2})
 				listen(gtx, ic, id, r)
 				ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
-				append(&shown, Shown{id, r, it.label})
+				ui.child_semantics(gtx, menu, id, r, {role = .Menu_Item, label = it.label})
 			}
 			y += H + between
 		}
-		ops.transform_push(gtx.scene, ops.translate(0, y0))
-		mp := ui.widget_open(gtx, u64(ui.id_mix(p.id, 99)), loc)
-		ui.semantics(gtx, &mp, {role = .Menu, label = "actions"})
-		for sh in shown {
-			ui.part_semantics(gtx, &mp, sh.id, {sh.r.x, sh.r.y - y0, sh.r.w, sh.r.h}, {role = .Menu_Item, label = sh.label})
-		}
-		ui.widget_close(gtx, &mp, {size = {closed_d, max(y - between - y0, 0)}})
-		ops.transform_pop(gtx.scene)
+		ui.overlay_semantics(gtx, &o, {role = .Menu, label = "actions"}, id = menu, rect = {align_start ? 0 : closed_d - menu_w, top, menu_w, max(y - between - top, 0)})
 	}
 	ui.widget_close(gtx, &p, {size = box})
 	return chosen

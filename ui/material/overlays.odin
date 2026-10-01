@@ -366,9 +366,17 @@ menu :: proc(
 	}
 	live = open^
 
+	// The menu's node, which the rows are children of: a widget taking
+	// the menu's space inline, the popup itself otherwise.
 	o: ui.Overlay
+	p: ui.Placement
+	node: ops.Area_Id
 	side := ops.Side.Below
-	if !inline {
+	if inline {
+		p = ui.widget_open(gtx, u64(ui.id_mix(menu_id, 1)), loc)
+		ui.semantics(gtx, &p, {role = .Menu})
+		node = p.id
+	} else {
 		// The anchor runs from the menu's origin down to offset, as wide as
 		// the menu, so the menu opens at offset below it, or flips above
 		// the origin when below would leave the window (ui.popup_open). It
@@ -377,14 +385,12 @@ menu :: proc(
 		anchor := ops.Rect{offset.x, min(offset.y, 0), w, abs(offset.y)}
 		o = ui.popup_open(gtx, anchor, menu_id)
 		side = ui.placed_side(gtx, menu_id, .Below)
+		node = ui.overlay_semantics(gtx, &o, {role = .Menu}, u64(ui.id_mix(menu_id, 1)), loc = loc)
 	}
-	// One widget either way: in place inline, at the popup's origin
-	// otherwise, so the rows have a menu to be parts of.
-	p := ui.widget_open(gtx, u64(ui.id_mix(menu_id, 1)), loc)
-	ui.semantics(gtx, &p, {role = .Menu})
-	menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, side, &p)
-	ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
-	if !inline {
+	menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, side, node)
+	if inline {
+		ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
+	} else {
 		ui.popup_close(&o, {w, h})
 	}
 	return chosen
@@ -406,7 +412,7 @@ menu_paint :: proc(
 	style: Menu_Style,
 	groups: bool,
 	side: ops.Side,
-	p: ^ui.Placement, // the menu's widget, which the rows are parts of
+	node: ops.Area_Id, // the menu's node, which the rows are children of
 ) {
 	expressive := style != .Legacy
 	// Grow from the start corner nearest the anchor: the top when the menu
@@ -461,7 +467,7 @@ menu_paint :: proc(
 		if it.heading {
 			t := shape_text(gtx, it.label, .Title_Small)
 			draw_text(gtx, t, {tok.SEGMENTED_MENU_ITEM_LEADING_SPACE, row.y + (row.h - t.height) / 2}, fade(color(.On_Surface_Variant), alpha))
-			ui.part_semantics(gtx, p, id, {0, row.y, w, row.h}, {role = .Heading, label = it.label})
+			ui.child_semantics(gtx, node, id, {0, row.y, w, row.h}, {role = .Heading, label = it.label})
 			continue
 		}
 		paint_menu_item(gtx, it, row, w, style, c, alpha)
@@ -469,7 +475,7 @@ menu_paint :: proc(
 			listen(gtx, c, id, ops.Rect{0, row.y, w, row.h})
 		}
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, it.label))
-		ui.part_semantics(gtx, p, id, {0, row.y, w, row.h}, {role = .Menu_Item, label = it.label, description = it.supporting, states = states_of(c, it.selected) + (it.submenu ? {.Expandable} : {})})
+		ui.child_semantics(gtx, node, id, {0, row.y, w, row.h}, {role = .Menu_Item, label = it.label, description = it.supporting, states = states_of(c, it.selected) + (it.submenu ? {.Expandable} : {})})
 		if row.divider_after {
 			ops.fill(
 				gtx.scene,
@@ -768,11 +774,9 @@ hover_tooltip :: proc(gtx: ^ui.Ctx, hovered: bool, hover_t: ^f32, label: string,
 		ui.request_frame(gtx, TOOLTIP_DISMISS - t)
 	}
 	o := ui.popup_open(gtx, {0, 0, box.x, box.y}, key, .Below, .Center, TOOLTIP_GAP)
-	// A widget of its own in the popup, so the tooltip has a node.
-	p := ui.widget_open(gtx, u64(key))
+	// The popup is the tooltip's node, boxed by its size.
+	ui.overlay_semantics(gtx, &o, {role = .Tooltip, label = label}, u64(key))
 	size := paint_plain_tooltip(gtx, {}, label, .None, a, k)
-	ui.semantics(gtx, &p, {role = .Tooltip, label = label})
-	ui.widget_close(gtx, &p, {size = size})
 	ui.popup_close(&o, size)
 }
 

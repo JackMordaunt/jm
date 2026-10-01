@@ -458,6 +458,9 @@ search_view :: proc(
 		ops.input_area(gtx.scene, catch_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	}
 	shape := rounded(gtx, cont, k)
+	// The layer only holds the view: a reader passes over it to the back
+	// button and the suggestions, declared in place under it.
+	view := ui.overlay_semantics(gtx, &o, {role = .Presentation}, u64(ui.id_mix(id, 5)), rect = cont)
 	if cont.h > 0 {
 		paint_elevation(gtx, {cont, k.tl}, elevation_level(tok.SEARCH_VIEW_CONTAINER_ELEVATION))
 		ops.fill(gtx.scene, shape, color(color_role))
@@ -495,10 +498,7 @@ search_view :: proc(
 		}
 		listen(gtx, bc, bid, ops.Rect{header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {.Press, .Release, .Enter, .Leave, .Move})
 		ops.tag(gtx.scene, bid, "search back")
-		// An undeclared bracket: the button is a root of the view's layer.
-		bp := ui.widget_open(gtx, u64(bid))
-		ui.part_semantics(gtx, &bp, bid, {header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {role = .Button, label = "search back"})
-		ui.widget_close(gtx, &bp, {})
+		ui.child_semantics(gtx, view, bid, {header.x + 4, header.y + (header.h - 48) / 2, 48, 48}, {role = .Button, label = "search back"})
 	}
 	if divider && fade > 0 {
 		ops.fill(gtx.scene, ops.Rect{cont.x, header.y + header.h, cont.w, 1}, ops.with_alpha(color(tok.SEARCH_VIEW_DIVIDER_COLOR), fade))
@@ -513,14 +513,9 @@ search_view :: proc(
 	if mode == .Full_Screen_Contained {
 		text_c, icon_c = ops.with_alpha(text_c, fade), ops.with_alpha(icon_c, fade)
 	}
-	// The rows are declared once painted, as parts of a list widget at
-	// the results' origin.
-	Shown :: struct {
-		id:    ops.Area_Id,
-		r:     ops.Rect,
-		label: string,
-	}
-	shown: [64]Shown
+	// The suggestions are a list box to pick from, the rows its options.
+	list := ui.id_mix(id, 6)
+	ui.child_semantics(gtx, view, list, results, {role = .List_Box, label = placeholder})
 	for row in 0 ..< rows {
 		mi := matches[row]
 		r := ops.Rect{results.x, results.y + f32(row) * ROW, results.w, ROW}
@@ -539,16 +534,8 @@ search_view :: proc(
 			listen(gtx, c, rid, r, {.Press, .Release, .Enter, .Leave, .Move})
 			ops.tag(gtx.scene, rid, ui.frame_string(gtx, suggestions[mi]))
 		}
-		shown[row] = {rid, {0, f32(row) * ROW, results.w, ROW}, suggestions[mi]}
+		ui.child_semantics(gtx, list, rid, r, {role = .Option, label = suggestions[mi]})
 	}
-	ops.transform_push(gtx.scene, ops.translate(results.x, results.y))
-	lp := ui.widget_open(gtx, u64(ui.id_mix(id, 5)))
-	ui.semantics(gtx, &lp, {role = .List, label = placeholder})
-	for sh in shown[:rows] {
-		ui.part_semantics(gtx, &lp, sh.id, sh.r, {role = .List_Item, label = sh.label})
-	}
-	ui.widget_close(gtx, &lp, {size = {results.w, results.h}})
-	ops.transform_pop(gtx.scene)
 	ops.clip_pop(gtx.scene)
 	return picked
 }
@@ -868,8 +855,10 @@ sheet_handle :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, w: f32, loc := #caller_locat
 	hit := ops.Rect{(w - 48) / 2, 0, 48, slot.h}
 	ops.input_area(gtx.scene, id, hit, {.Press, .Release, .Move, .Enter, .Leave, .Key, .Focus, .Blur})
 	ops.tag(gtx.scene, id, "drag handle")
-	// The handle's own id, not the widget's, so focus shows on the node.
+	// The handle's own id, not the widget's, so focus shows on the node;
+	// the slot around it is decoration a reader passes over.
 	ui.part_semantics(gtx, &p, id, hit, {role = .Button, label = "drag handle"})
+	ui.semantics(gtx, &p, {role = .Presentation})
 	ui.widget_close(gtx, &p, {size = {w, slot.h}})
 }
 

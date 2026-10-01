@@ -48,6 +48,10 @@ Value_Indicator :: enum u8 {
 // INSET_ICON_SIZE). The kit has one size of slider: MDC's XS to XL sizes
 // have no tokens in it, so they are not offered. The focus ring shows on
 // any focus, a pointer's too, since jm:ui does not say which gave it.
+//
+// The slider shows no text of its own, so a reader needs name, or
+// labelled_by: the id of the caption that names it. An app draws the
+// caption with base.label, keeps the id it returns, and passes that in.
 slider :: proc(
 	gtx: ^ui.Ctx,
 	value: ^f32,
@@ -62,6 +66,8 @@ slider :: proc(
 	end_icon := Icon.None,
 	indicator := Value_Indicator.Floating,
 	state := Interaction.Live,
+	name := "",
+	labelled_by: ops.Area_Id = 0,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -79,8 +85,8 @@ slider :: proc(
 	icons := track == .Standard ? [2]Icon{start_icon, end_icon} : {}
 	paint_slider(gtx, c, g, lo, hi, {value^, value^}, false, track == .Centered, 1, icons, indicator)
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "slider"))
-	ui.semantics(gtx, &p, {role = .Slider, value = slider_value_text(gtx, value^, hi - lo), states = states_of(c)})
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : "slider"))
+	ui.semantics(gtx, &p, {role = .Slider, label = name, labelled_by = labelled_by, value = slider_value_text(gtx, value^, hi - lo), states = states_of(c)})
 	ui.widget_close(gtx, &p, {size = size})
 	return value^ != old
 }
@@ -90,7 +96,8 @@ slider :: proc(
 // to the other handle. Handles meet but never cross: the moving one stops
 // at the other. It is horizontal and standard-track only: slider.json's
 // orientation input says Compose's VerticalSlider is single-value only,
-// and its centered track is a single slider's track slot.
+// and its centered track is a single slider's track slot. name and
+// labelled_by name it to a reader, as slider's do.
 range_slider :: proc(
 	gtx: ^ui.Ctx,
 	lo_value, hi_value: ^f32,
@@ -100,6 +107,8 @@ range_slider :: proc(
 	width: f32 = 240,
 	indicator := Value_Indicator.Floating,
 	state := Interaction.Live,
+	name := "",
+	labelled_by: ops.Area_Id = 0,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -121,11 +130,11 @@ range_slider :: proc(
 	}
 	paint_slider(gtx, c, g, lo, hi, {lo_value^, hi_value^}, true, false, active, {}, indicator)
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "range slider"))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : "range slider"))
 	// One node: the handles share the widget's area and its keys.
 	span := hi - lo
 	range := fmt.aprintf("%s–%s", slider_value_text(gtx, lo_value^, span), slider_value_text(gtx, hi_value^, span), allocator = gtx.allocator)
-	ui.semantics(gtx, &p, {role = .Slider, value = range, states = states_of(c)})
+	ui.semantics(gtx, &p, {role = .Slider, label = name, labelled_by = labelled_by, value = range, states = states_of(c)})
 	ui.widget_close(gtx, &p, {size = size})
 	return old != {lo_value^, hi_value^}
 }
