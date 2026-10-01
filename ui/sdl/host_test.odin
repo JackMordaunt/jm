@@ -179,11 +179,13 @@ test_a_respawned_child_starts_from_what_the_last_persisted :: proc(t: ^testing.T
 	plus, found := find_center(f, &sc, "+")
 	testing.expect(t, found)
 	ask(t, &first, size, []ui.Raw_Event{{kind = .Move, pos = plus}, {kind = .Press, pos = plus}}, &sc)
-	ask(t, &first, size, []ui.Raw_Event{{kind = .Release, pos = plus}}, &sc)
+	// The click lands in this frame, and persist_struct sends the model
+	// the moment it changes: the reply to the release carries it.
 	persisted: []byte
-	f = ask(t, &first, size, nil, &sc, persist = &persisted)
+	ask(t, &first, size, []ui.Raw_Event{{kind = .Release, pos = plus}}, &sc, persist = &persisted)
+	testing.expect_value(t, string(persisted), "count 1\n")
+	f = ask(t, &first, size, nil, &sc)
 	testing.expect(t, shows_label(f, "count 1"))
-	testing.expect_value(t, string(persisted), "1")
 	saved := make([]byte, len(persisted), context.temp_allocator) // host_step copies it out of the reply
 	copy(saved, persisted)
 	ipc.kill(&first)
