@@ -185,6 +185,8 @@ Placement :: struct {
 	weight:   f32,
 	loc:      runtime.Source_Code_Location, // the call that made the widget, for Debug_Box
 	kind:     string, // the widget proc that made it, for Debug_Box: button, column
+	semantics: ops.Semantics, // what semantics set; emitted at widget_close
+	semantic:  bool,
 }
 
 // layout_init prepares l; its storage lives in allocator.
@@ -349,6 +351,9 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 			&gtx.scene.ops,
 			ops.Debug_Box{p.id, d.size, p.given.min, p.given.max, depth, p.loc.file_path, p.loc.line, p.loc.procedure, p.kind},
 		)
+	}
+	if p.semantic {
+		ops.semantic(gtx.scene, p.id, p.semantics, d.size, i32(depth(gtx.layout)))
 	}
 	if p.pushed {
 		ops.transform_pop(gtx.scene)

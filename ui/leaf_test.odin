@@ -14,6 +14,7 @@ label :: proc(gtx: ^Ctx, text: string, color := ops.Color{0, 0, 0, 255}, key: u6
 		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {0, m.ascent}, color)
 	}
 	ops.tag(gtx.scene, p.id, frame_string(gtx, text), {0, 0, size.x, size.y})
+	semantics(gtx, &p, {role = .Text, label = frame_string(gtx, text)})
 	return widget_close(gtx, &p, {size, m.ascent})
 }
 

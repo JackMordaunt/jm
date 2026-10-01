@@ -26,7 +26,7 @@ ENCODE_MAGIC :: "UIOP"
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
 // covers and added Cover_End.
-ENCODE_VERSION :: u8(16)
+ENCODE_VERSION :: u8(17)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -399,6 +399,22 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_u32(w, u32(v.line))
 		put_str(w, v.procedure)
 		put_str(w, v.kind)
+	case Semantic:
+		append(w, 18)
+		put_u64(w, u64(v.id))
+		append(w, u8(v.semantics.role))
+		put_str(w, v.semantics.label)
+		put_str(w, v.semantics.value)
+		put_str(w, v.semantics.description)
+		put_u32(w, u32(transmute(u16)v.semantics.states))
+		put_point(w, v.size)
+		put_u32(w, u32(v.depth))
+	case Key_Interest:
+		append(w, 19)
+		put_u64(w, u64(v.area))
+		append(w, u8(v.key))
+		append(w, transmute(u8)v.mods)
+		append(w, transmute(u8)v.optional)
 	case:
 		append(w, 0)
 	}
@@ -688,6 +704,41 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.line = i32(get_u32(r) or_return)
 		v.procedure = get_str(r) or_return
 		v.kind = get_str(r) or_return
+		return v, true
+	case 18:
+		v: Semantic
+		v.id = Area_Id(get_u64(r) or_return)
+		role := get_u8(r) or_return
+		if role > u8(max(Role)) {
+			return nil, false
+		}
+		v.semantics.role = Role(role)
+		v.semantics.label = get_str(r) or_return
+		v.semantics.value = get_str(r) or_return
+		v.semantics.description = get_str(r) or_return
+		states := get_u32(r) or_return
+		if states >= 1 << (uint(max(State)) + 1) {
+			return nil, false
+		}
+		v.semantics.states = transmute(States)u16(states)
+		v.size = get_point(r) or_return
+		v.depth = i32(get_u32(r) or_return)
+		return v, true
+	case 19:
+		v: Key_Interest
+		v.area = Area_Id(get_u64(r) or_return)
+		key := get_u8(r) or_return
+		if key > u8(max(Key)) {
+			return nil, false
+		}
+		v.key = Key(key)
+		mods := get_u8(r) or_return
+		optional := get_u8(r) or_return
+		if mods >= 1 << (uint(max(Mod)) + 1) || optional >= 1 << (uint(max(Mod)) + 1) {
+			return nil, false
+		}
+		v.mods = transmute(Mods)mods
+		v.optional = transmute(Mods)optional
 		return v, true
 	}
 	return nil, false

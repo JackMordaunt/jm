@@ -145,6 +145,29 @@ Input_Area :: struct {
 	observes: bool,
 }
 
+// Semantic describes a widget to assistive technology: ui.semantics on a
+// widget's Placement emits one at widget_close, as Debug_Box is emitted,
+// with the widget's size in its own space and its container depth, so a
+// reader rebuilds the tree from close order and depth (children close
+// before their container). size is zero for a widget with no box.
+Semantic :: struct {
+	id:        Area_Id,
+	semantics: Semantics,
+	size:      Size,
+	depth:     i32,
+}
+
+// Key_Interest asks that area be sent Key events matching key (None is
+// any key) whose modifiers include mods and nothing outside mods and
+// optional, whether or not it is focused: a dialog's Escape, an app's
+// shortcuts. The focused area still gets every key first, as before.
+Key_Interest :: struct {
+	area:     Area_Id,
+	key:      Key,
+	mods:     Mods, // required
+	optional: Mods, // allowed as well
+}
+
 // Tag names an area for the dump and the probe: probe.find("Save").
 // bounds is the tagged widget's box in the recording space, so a probe can
 // find a widget that has no input area (a label, a message); the zero rect
@@ -173,6 +196,8 @@ Op :: union {
 	Debug_Box,
 	Shadow,
 	Cover_End,
+	Semantic,
+	Key_Interest,
 }
 
 // Shadow is the soft shadow of a rounded rect, as a CSS box-shadow draws
@@ -338,6 +363,17 @@ HIT_BOUNDS_COLOR :: Color{0, 200, 255, 160}
 
 tag :: proc(o: ^Scene, id: Area_Id, name: string, bounds: Rect = {}) {
 	append(&o.ops, Tag{id, name, bounds})
+}
+
+// semantic records a Semantic for id; ui.semantics is the usual caller.
+semantic :: proc(o: ^Scene, id: Area_Id, s: Semantics, size: Size, depth: i32) {
+	append(&o.ops, Semantic{id, s, size, depth})
+}
+
+// key_interest records a Key_Interest for area; ui.key_interest is the
+// usual caller.
+key_interest :: proc(o: ^Scene, area: Area_Id, key: Key, mods: Mods = {}, optional: Mods = {}) {
+	append(&o.ops, Key_Interest{area, key, mods, optional})
 }
 
 // macro_open opens a macro; ops recorded until macro_close are not run

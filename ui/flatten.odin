@@ -149,6 +149,11 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 		case ops.Debug_Box:
 			r := ops.transform_rect(st.transform, ops.Rect{0, 0, op.size.x, op.size.y})
 			append(&st.f.boxes, Layout_Box{op.id, r, op.min, op.max, op.depth, op.file, op.line, op.procedure, op.kind, st.clip, st.layer})
+		case ops.Semantic:
+			r := ops.transform_rect(st.transform, ops.Rect{0, 0, op.size.x, op.size.y})
+			append(&st.f.nodes, Semantic_Node{op.id, op.semantics, r, op.depth, st.layer, st.clip})
+		case ops.Key_Interest:
+			append(&st.f.keys, op)
 		}
 		i += 1
 	}

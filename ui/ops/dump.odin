@@ -77,6 +77,14 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "cover end %d", v.id)
 		case Debug_Box:
 			fmt.sbprintf(&sb, "box %d %s %vx%v min %vx%v max %vx%v %s:%d", v.id, v.kind, v.size.x, v.size.y, v.min.x, v.min.y, v.max.x, v.max.y, v.file, v.line)
+		case Semantic:
+			fmt.sbprintf(&sb, "semantic %d ", v.id)
+			write_semantics(&sb, v.semantics)
+			fmt.sbprintf(&sb, " %vx%v depth %d", v.size.x, v.size.y, v.depth)
+		case Key_Interest:
+			fmt.sbprintf(&sb, "key_interest %d %v", v.area, v.key)
+			write_mods(&sb, " mods", v.mods)
+			write_mods(&sb, " optional", v.optional)
 		}
 		strings.write_byte(&sb, '\n')
 	}
@@ -195,6 +203,42 @@ write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 		}
 		first = false
 		strings.write_string(sb, strings.to_lower(fmt.tprint(k), context.temp_allocator))
+	}
+}
+
+// write_semantics writes s as `role "label"`, then ` value "…"`,
+// ` desc "…"` and the states that are set, each only when present.
+write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
+	fmt.sbprint(sb, s.role)
+	strings.write_byte(sb, ' ')
+	strings.write_quoted_string(sb, s.label)
+	if s.value != "" {
+		strings.write_string(sb, " value ")
+		strings.write_quoted_string(sb, s.value)
+	}
+	if s.description != "" {
+		strings.write_string(sb, " desc ")
+		strings.write_quoted_string(sb, s.description)
+	}
+	for st in State {
+		if st in s.states {
+			fmt.sbprintf(sb, " %v", st)
+		}
+	}
+}
+
+// write_mods writes label and the modifiers in m, or nothing for none.
+write_mods :: proc(sb: ^strings.Builder, label: string, m: Mods) {
+	if m == {} {
+		return
+	}
+	strings.write_string(sb, label)
+	sep := " "
+	for mod in Mod {
+		if mod in m {
+			fmt.sbprintf(sb, "%s%v", sep, mod)
+			sep = "+"
+		}
 	}
 }
 

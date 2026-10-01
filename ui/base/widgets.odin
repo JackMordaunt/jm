@@ -35,6 +35,7 @@ label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, 
 		design.draw_paragraph(gtx, p, {}, s.color)
 	}
 	ops.tag(gtx.scene, w.id, ui.frame_string(gtx, text), {0, 0, size.x, size.y})
+	ui.semantics(gtx, &w, {role = .Text, label = ui.frame_string(gtx, text)})
 	return ui.widget_close(gtx, &w, {size, p.metrics.ascent})
 }
 

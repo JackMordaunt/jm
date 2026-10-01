@@ -195,3 +195,105 @@ shape_bounds :: proc(ops: ^Scene, s: Shape) -> Rect {
 	}
 	return {}
 }
+
+// Keys and modifiers, as a platform reports them and as an area asks for
+// them (Key_Interest). They live here rather than in ui because ops names
+// them in its own records; ui aliases them.
+Button :: enum u8 {
+	Left,
+	Right,
+	Middle,
+}
+
+Key :: enum u8 {
+	None, // in a Key_Interest: any key
+	Enter,
+	Escape,
+	Tab,
+	Backspace,
+	Delete,
+	Left,
+	Right,
+	Up,
+	Down,
+	Home,
+	End,
+	Page_Up,
+	Page_Down,
+	Space,
+	A, B, C, D, E, F, G, H, I, J, K, L, M,
+	N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9,
+	F11, // ui.DEBUG_TOGGLE_KEY: the frame loops take it before routing
+}
+
+Mod :: enum u8 {
+	Shift,
+	Ctrl,
+	Alt,
+	Super,
+}
+
+Mods :: bit_set[Mod;u8]
+
+// Role is what a widget is to assistive technology, a screen reader or a
+// test reading the screen: the vocabulary of a Semantic op, named after
+// the WAI-ARIA 1.2 roles (button, checkbox, listitem, tablist, dialog,
+// status, …) so a platform bridge maps each by name.
+Role :: enum u8 {
+	Unknown,
+	Group, // a region that only holds others: a card, a toolbar's row
+	Text, // static text
+	Heading,
+	Link,
+	Image,
+	Button,
+	Checkbox,
+	Radio,
+	Switch,
+	Slider,
+	Text_Field,
+	Combo_Box,
+	Tab_List,
+	Tab,
+	List,
+	List_Item,
+	Menu,
+	Menu_Item,
+	Toolbar,
+	Navigation,
+	Dialog,
+	Tooltip,
+	Progress,
+	Status, // a live region: a snackbar, a toast
+	Table,
+	Row,
+	Cell,
+}
+
+// State is one of the states a Semantic op may carry.
+State :: enum u8 {
+	Checked,
+	Mixed, // a checkbox neither checked nor clear
+	Selected,
+	Expandable,
+	Expanded,
+	Disabled,
+	Readonly,
+	Required,
+	Busy,
+	Modal,
+}
+
+States :: bit_set[State;u16]
+
+// Semantics is what a widget says about itself: its role, the label a
+// reader speaks for it, its value when it has one (a slider's, a field's
+// text), a longer description (a tooltip's text), and its states.
+Semantics :: struct {
+	role:        Role,
+	label:       string,
+	value:       string,
+	description: string,
+	states:      States,
+}

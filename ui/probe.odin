@@ -360,6 +360,12 @@ probe_dump_frame :: proc(p: ^Probe) -> string {
 	return dump_frame(probe_current(p))
 }
 
+// probe_semantics is semantics_report of the current frame, with the
+// focused area marked: the screen as a screen reader would read it.
+probe_semantics :: proc(p: ^Probe, allocator := context.allocator) -> string {
+	return semantics_report(probe_current(p), p.router.focus, allocator)
+}
+
 // probe_tagged reports whether the current frame tags anything name,
 // whether or not it has an input area: a label, a message, a row that
 // only paints. probe_find is the one for what a pointer can reach.

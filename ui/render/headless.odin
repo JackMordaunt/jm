@@ -141,6 +141,8 @@ inspecting :: proc(h: ^Headless) {
 //	-dump              print the current frame's sc as text
 //	-overflow          print what the window or a clip cuts off at the sides
 //	-layout            print every widget's box, constraints and call
+//	-semantics         print the frame's semantic tree, as a screen
+//	                   reader would read it
 //	-stats             print the last frame's timings, counts and memory
 //	-events            print the routed events the session logged
 //	-inspect X Y       print the widget and input area under X, Y
@@ -270,6 +272,8 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		fmt.print(ui.event_log_report(&h.p.tray, context.temp_allocator))
 	case "-stats":
 		fmt.print(ui.frame_stats_report(h.p.tray.last, context.temp_allocator))
+	case "-semantics":
+		fmt.print(ui.probe_semantics(&h.p, context.temp_allocator))
 	case "-layout":
 		inspecting(h)
 		fmt.print(ui.layout_report(ui.probe_current(&h.p), context.temp_allocator))

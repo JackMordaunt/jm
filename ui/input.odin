@@ -33,7 +33,11 @@ import "jm:ui/ops"
 //   Focus to the new). A Press on no area clears focus. A Press on an area
 //   that wants neither leaves focus where it is, so clicking a toolbar
 //   button does not blur the text field it acts on.
-// - Key and Text go to the focused area, else they are dropped.
+// - Key and Text go to the focused area, else they are dropped. A Key
+//   also goes to every area with a Key_Interest it matches (ui.key_interest),
+//   focused or not, once per area, after the focused area has had it: a
+//   dialog's Escape, an app's shortcuts. The match is Gio v0.10.2's
+//   keyFilterMatch (io/input/key.go) for a key.Filter with no Focus.
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
 // - A focus_request moves focus before the queued events are routed.
@@ -195,7 +199,10 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			if e.kind == .Key {
 				r.keyboard = true
 			}
-			if r.focus == 0 || !deliver(r, r.focus_hit, e, {}) {
+			focused := r.focus != 0 && deliver(r, r.focus_hit, e, {})
+			if e.kind == .Key && f != nil {
+				route_key_interest(r, f, e, r.focus if focused else 0)
+			} else if !focused {
 				free_strings(r, e)
 			}
 		case .Paste:
@@ -210,6 +217,37 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	}
 	clear(&r.queue)
 	r.cursor = resolve_cursor(r, f)
+}
+
+// route_key_interest sends Key e to every area whose Key_Interest in f
+// matches it, except had, which has it already, and once per area.
+@(private = "file")
+route_key_interest :: proc(r: ^Router, f: ^Frame, e: Raw_Event, had: ops.Area_Id) {
+	first := len(r.events)
+	for k in f.keys {
+		if k.area == had || !key_interest_matches(k, e.key, e.mods) {
+			continue
+		}
+		again := false
+		for d in r.events[first:] {
+			if d.area == k.area {
+				again = true
+			}
+		}
+		if !again {
+			append(&r.events, Event{kind = .Key, area = k.area, key = e.key, mods = e.mods})
+		}
+	}
+}
+
+// key_interest_matches reports whether k asks for key with mods: the key
+// (any, for None), every required modifier, and no modifier outside the
+// required and optional ones.
+key_interest_matches :: proc(k: ops.Key_Interest, key: Key, mods: Mods) -> bool {
+	if k.key != .None && k.key != key {
+		return false
+	}
+	return mods >= k.mods && (mods - k.mods - k.optional) == {}
 }
 
 // route_paste hands e to every area waiting on a clipboard read, each its

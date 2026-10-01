@@ -22,6 +22,8 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.defer_place(&src, 0, {key = 5, anchor = {1, 2, 3, 4}, size = {10, 20}, side = .Above, align = .End, gap = 2})
 	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view", "label"})
 	ops.shadow(&src, {4, 6, 30, 20}, 5, 8, {0, 0, 0, 60})
+	ops.semantic(&src, 7, {role = .Checkbox, label = "Dark", value = "on", description = "the scheme", states = {.Checked, .Disabled}}, {30, 20}, 2)
+	ops.key_interest(&src, 7, .Escape, {.Ctrl}, {.Shift})
 	append(&src.ops, nil) // a nil op survives too
 
 	data := ops.encode(&src)

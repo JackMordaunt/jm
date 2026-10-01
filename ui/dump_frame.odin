@@ -7,8 +7,9 @@ import "jm:ui/ops"
 // dump_frame is the canonical text form of a Frame, ops.dump's twin: one
 // draw or hit per line, in device terms.
 
-// dump_frame renders f in four sections, draws, clips, hits and tags, one
-// entry per line indented under its section. Transforms print in brackets;
+// dump_frame renders f in sections, draws, clips, hits and tags, then
+// semantics and keys when the frame has any, one entry per line indented
+// under its section. Transforms print in brackets;
 // a missing clip prints as clip=none.
 dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	sb := strings.builder_make(allocator)
@@ -60,6 +61,25 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 		strings.write_string(&sb, "  ")
 		ops.write_tag(&sb, t)
 		strings.write_byte(&sb, '\n')
+	}
+	if len(f.nodes) > 0 {
+		strings.write_string(&sb, "semantics\n")
+		for n in f.nodes {
+			fmt.sbprintf(&sb, "  node %d depth=%d layer=%d ", n.id, n.depth, n.layer)
+			ops.write_rect(&sb, n.rect)
+			strings.write_byte(&sb, ' ')
+			ops.write_semantics(&sb, n.semantics)
+			strings.write_byte(&sb, '\n')
+		}
+	}
+	if len(f.keys) > 0 {
+		strings.write_string(&sb, "keys\n")
+		for k in f.keys {
+			fmt.sbprintf(&sb, "  key_interest %d %v", k.area, k.key)
+			ops.write_mods(&sb, " mods", k.mods)
+			ops.write_mods(&sb, " optional", k.optional)
+			strings.write_byte(&sb, '\n')
+		}
 	}
 	return strings.to_string(sb)
 }

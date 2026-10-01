@@ -5,42 +5,12 @@ import "jm:ui/ops"
 // Events, as widgets see them. Event_Kind and Event_Kinds are sc', since
 // an Input_Area op says which kinds its area wants.
 
-Button :: enum u8 {
-	Left,
-	Right,
-	Middle,
-}
-
-Key :: enum u8 {
-	None,
-	Enter,
-	Escape,
-	Tab,
-	Backspace,
-	Delete,
-	Left,
-	Right,
-	Up,
-	Down,
-	Home,
-	End,
-	Page_Up,
-	Page_Down,
-	Space,
-	A, B, C, D, E, F, G, H, I, J, K, L, M,
-	N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9,
-	F11, // DEBUG_TOGGLE_KEY: the frame loops take it before routing
-}
-
-Mod :: enum u8 {
-	Shift,
-	Ctrl,
-	Alt,
-	Super,
-}
-
-Mods :: bit_set[Mod;u8]
+// Button, Key, Mod and Mods are ops', since a Key_Interest op names
+// them; widgets spell them ui.Key and ui.Mods as before.
+Button :: ops.Button
+Key :: ops.Key
+Mod :: ops.Mod
+Mods :: ops.Mods
 
 Event :: struct {
 	kind:   ops.Event_Kind,

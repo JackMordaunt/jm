@@ -73,11 +73,26 @@ Layout_Box :: struct {
 	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
 }
 
+// Semantic_Node is a Semantic op placed on the frame: its rect in device
+// space, its container depth and layer, from which semantics_report
+// rebuilds the tree (a node's parent is the next node after it that is
+// shallower, on its layer).
+Semantic_Node :: struct {
+	id:        ops.Area_Id,
+	semantics: ops.Semantics,
+	rect:      ops.Rect,
+	depth:     i32,
+	layer:     i32,
+	clip:      Clip_Id,
+}
+
 Frame :: struct {
 	draws: [dynamic]Draw,
 	clips: [dynamic]Clip,
 	hits:  [dynamic]Hit,
 	tags:  [dynamic]ops.Tag,
+	nodes: [dynamic]Semantic_Node, // every Semantic, in close order
+	keys:  [dynamic]ops.Key_Interest, // every Key_Interest, for the router
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
 	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images //review:ignore odin-destroy-incomplete borrowed: flatten points it at the caller's scene
@@ -115,6 +130,8 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.clips = make([dynamic]Clip, allocator)
 	f.hits = make([dynamic]Hit, allocator)
 	f.tags = make([dynamic]ops.Tag, allocator)
+	f.nodes = make([dynamic]Semantic_Node, allocator)
+	f.keys = make([dynamic]ops.Key_Interest, allocator)
 	f.boxes = make([dynamic]Layout_Box, allocator)
 	f.placed = make([dynamic]Placed, allocator)
 	f.stacks.transforms = make([dynamic]ops.Affine, allocator)
@@ -128,6 +145,8 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.clips)
 	clear(&f.hits)
 	clear(&f.tags)
+	clear(&f.nodes)
+	clear(&f.keys)
 	clear(&f.boxes)
 	clear(&f.placed)
 	clear(&f.stacks.transforms)
@@ -142,6 +161,8 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.clips)
 	delete(f.hits)
 	delete(f.tags)
+	delete(f.nodes)
+	delete(f.keys)
 	delete(f.boxes)
 	delete(f.placed)
 	delete(f.stacks.transforms)

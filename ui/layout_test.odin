@@ -445,6 +445,36 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
 }
 
+@(test)
+test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		col := column_open(gtx); defer close(&col)
+		container_semantics(gtx, {role = .List, label = "Fruit"})
+		p := widget_open(gtx, 1)
+		semantics(gtx, &p, {role = .List_Item, label = "Apple", states = {.Selected}})
+		widget_close(gtx, &p, {size = {80, 20}})
+		spacer(gtx, 10) // says nothing: no op for it
+	}
+	got := make([dynamic]ops.Semantic, context.temp_allocator)
+	for op in h.scene.ops {
+		if s, ok := op.(ops.Semantic); ok {
+			append(&got, s)
+		}
+	}
+	// The child closes first, one level deeper than the column; the
+	// column's op carries its own size and the role it declared.
+	testing.expect_value(t, len(got), 2)
+	testing.expect_value(t, got[0].semantics, ops.Semantics{role = .List_Item, label = "Apple", states = {.Selected}})
+	testing.expect_value(t, got[0].size, ops.Size{80, 20})
+	testing.expect_value(t, got[1].semantics, ops.Semantics{role = .List, label = "Fruit"})
+	testing.expect_value(t, got[1].size, ops.Size{80, 30}) // the column hugs its content
+	testing.expect_value(t, got[0].depth, got[1].depth + 1)
+}
+
 // owned_scroll_frame is scroll_frame with the caller's offset.
 @(private)
 owned_scroll_frame :: proc(h: ^Harness, offset: ^Scroll_Offset) -> ops.Input_Area {
