@@ -74,6 +74,7 @@ just's own release, and SDL3 has to be built from source there.
 | `ui/render` | executes a `ui.Frame` on Blend2D (vendored binding in `ui/blend2d`), hands out a `ui/shape` shaper with Blend2D's line metrics, and `snapshot`s a `ui` proc straight to a PNG |
 | `ui/shape` | text to glyph runs with kb_text_shape: OpenType shaping for complex scripts, normalisation, per-run direction, clusters as byte offsets |
 | `ui/kb`   | the binding to kb_text_shape, vendored in `ui/kb/vendor` and statically linked |
+| `ui/accesskit` | the binding to AccessKit's C library (prebuilt, `just accesskit`), and the tree it is fed from a frame's semantic nodes: what a screen reader hears |
 | `ui/sdl`  | the SDL3 window and event loop for a `ui` app; `run_host` runs the same window against a subprocess instead of a local ui proc |
 | `ui/ipc`  | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/sdl`'s host/subprocess split |
 | `ui/child` | the subprocess half of that split: owns the Model, the ui proc, `Router` and `Layout`, and speaks `ui`'s wire format over its own stdin/stdout |
@@ -152,6 +153,7 @@ fuzz         fuzz     30s of fuzzing         fuzz-isolate  a child process per c
              fuzz-asan  the same under AddressSanitizer
 ui           blend2d  fetch and compile Blend2D into ui/blend2d/lib
              kb       compile the vendored kb_text_shape into ui/kb/lib
+             accesskit  fetch AccessKit's prebuilt static library into ui/accesskit/lib
              hot-counter-child  build the subprocess `just test`'s own host/child test spawns
              bench-ui  ms per frame for layout and the Blend2D executor
              hot-architecture  build the hot-reloaded architecture diagram
@@ -717,6 +719,10 @@ it was generated from and builds the archive, and anything linking it needs
 `-lstdc++`. Text is shaped by kb_text_shape, vendored upstream at a pinned
 commit in `ui/kb/vendor` (zlib licence); `just kb` builds it, and
 `JM_UI_SHAPER=blend2d` shapes with Blend2D's own shaper instead, to compare.
+Assistive technology reads the widgets' semantics (`ui.semantics`) through
+AccessKit (`ui/accesskit`, Apache-2.0 or MIT), fetched as the upstream
+release's prebuilt static library by `just accesskit` rather than built, so
+no Rust toolchain is needed; the Linux adapter (AT-SPI2) is the one wired.
 `examples/material-kitchen` is the demo, `just material-kitchen` opens it.
 
 That "serialized for a renderer in another process" is `ui/sdl.run_host`:

@@ -62,7 +62,7 @@ check:
 #
 # Run every package's tests
 [group('general')]
-test: sqlite zstd wasm pg_query blend2d kb libgit2 hot-counter-child
+test: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-child
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/test
@@ -94,7 +94,7 @@ test: sqlite zstd wasm pg_query blend2d kb libgit2 hot-counter-child
 #
 # Build every program into build/debug
 [group('general')]
-link: sqlite zstd wasm pg_query blend2d kb libgit2
+link: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/debug
@@ -145,7 +145,7 @@ fetch dir url rev:
 # Remove build/, every package's compiled C library and the kits' pages
 [group('general')]
 clean:
-    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib git/lib ui/kb/lib tools/*/kit/index.html
+    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib ui/accesskit/lib git/lib ui/kb/lib tools/*/kit/index.html
 
 # ============================================================================
 # odin-run: tools/odin-run, the `#!/usr/bin/env odin-run` script runner.
@@ -453,6 +453,51 @@ fuzz-asan args="-for=30s": sqlite wasm pg_query blend2d kb libgit2
 
 blend2d_lib := if os() == "windows" { "ui/blend2d/lib/blend2d.lib" } else { "ui/blend2d/lib/libblend2d.a" }
 kb_lib := if os() == "windows" { "ui/kb/lib/kb_text_shape.lib" } else { "ui/kb/lib/kb_text_shape.a" }
+
+# AccessKit's C bindings (ui/accesskit) are fetched as the upstream
+# release, not built: the zip holds prebuilt static libraries for every
+# desktop target, so no Rust toolchain is needed here. The one archive for
+# this machine is kept, with its debug sections stripped (46 MB to 8 MB;
+# the code the linker takes is under 2 MB). Linux is the one wired up so
+# far; the recipe keeps the macOS archive too, for when its adapter lands.
+accesskit_lib := "ui/accesskit/lib/libaccesskit.a"
+accesskit_ver := "0.23.1"
+accesskit_sha := "35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc7043f"
+
+# Fetch AccessKit's prebuilt static library into ui/accesskit/lib if it is missing
+[group('ui')]
+[unix]
+accesskit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p ui/accesskit/lib build
+    [ -f {{accesskit_lib}} ] && exit 0
+    zip=build/accesskit-c-{{accesskit_ver}}.zip
+    if [ ! -f "$zip" ]; then
+      echo "fetch accesskit-c {{accesskit_ver}} -> $zip"
+      curl -sSL --max-time 600 -o "$zip" "https://github.com/AccessKit/accesskit-c/releases/download/{{accesskit_ver}}/accesskit-c-{{accesskit_ver}}.zip"
+    fi
+    if command -v sha256sum >/dev/null; then sum=$(sha256sum "$zip" | cut -d' ' -f1); else sum=$(shasum -a 256 "$zip" | cut -d' ' -f1); fi
+    [ "$sum" = "{{accesskit_sha}}" ] || { echo "accesskit: $zip has sha256 $sum, expected {{accesskit_sha}}" >&2; exit 1; }
+    case "$(uname -s)-$(uname -m)" in
+      Linux-x86_64) sub=linux/x86_64 ;;
+      Linux-i686) sub=linux/x86 ;;
+      Darwin-arm64) sub=macos/arm64 ;;
+      Darwin-x86_64) sub=macos/x86_64 ;;
+      *) echo "accesskit: no prebuilt library for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+    esac
+    member="accesskit-c-{{accesskit_ver}}/lib/$sub/static/libaccesskit.a"
+    unzip -qo "$zip" "$member" -d build/accesskit
+    cp "build/accesskit/$member" {{accesskit_lib}}
+    if [ "$(uname -s)" = Linux ]; then strip --strip-debug {{accesskit_lib}}; fi
+    echo "accesskit -> {{accesskit_lib}} ($(du -h {{accesskit_lib}} | cut -f1))"
+
+# No adapter is wired on Windows yet: nothing to fetch, so link and test
+# have a dependency that is satisfied there.
+[group('ui')]
+[windows]
+accesskit:
+    @echo "accesskit: not fetched on Windows (no adapter yet)"
 # Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
 # vendored here: 29 MB of source is fetched into build/src instead, at the
 # upstream commits the binding in ui/blend2d was generated from (Blend2D
