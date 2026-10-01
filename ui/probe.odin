@@ -214,7 +214,10 @@ probe_bounds :: proc(p: ^Probe, name: string) -> ops.Rect {
 }
 
 // probe_find returns the hit of the first area tagged name in the current
-// frame (the top-most hit when the area has several).
+// frame (the top-most hit when the area has several). A tag with no area
+// but with bounds (a label, a message: anything tagged with its box)
+// finds as a hit of no kinds over those bounds, so probe_bounds and
+// probe_center measure it and a click lands on whatever is under it.
 probe_find :: proc(p: ^Probe, name: string) -> (Hit, bool) {
 	f := probe_current(p)
 	for t in f.tags {
@@ -225,6 +228,9 @@ probe_find :: proc(p: ^Probe, name: string) -> (Hit, bool) {
 			if h.area == t.id {
 				return h, true
 			}
+		}
+		if t.bounds != {} {
+			return Hit{area = t.id, shape = t.bounds, transform = ops.IDENTITY, clip = NO_CLIP}, true
 		}
 	}
 	return {}, false

@@ -146,9 +146,13 @@ Input_Area :: struct {
 }
 
 // Tag names an area for the dump and the probe: probe.find("Save").
+// bounds is the tagged widget's box in the recording space, so a probe can
+// find a widget that has no input area (a label, a message); the zero rect
+// means unknown, and then only an area with the id is findable.
 Tag :: struct {
-	id:   Area_Id,
-	name: string,
+	id:     Area_Id,
+	name:   string,
+	bounds: Rect,
 }
 
 Op :: union {
@@ -332,8 +336,8 @@ observer_area :: proc(o: ^Scene, id: Area_Id, shape: Shape) {
 // against BOUNDS_COLOR's magenta for widget boxes.
 HIT_BOUNDS_COLOR :: Color{0, 200, 255, 160}
 
-tag :: proc(o: ^Scene, id: Area_Id, name: string) {
-	append(&o.ops, Tag{id, name})
+tag :: proc(o: ^Scene, id: Area_Id, name: string, bounds: Rect = {}) {
+	append(&o.ops, Tag{id, name, bounds})
 }
 
 // macro_open opens a macro; ops recorded until macro_close are not run

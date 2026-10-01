@@ -1820,7 +1820,7 @@ text_styled :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, color: ops.Colo
 	if italic {
 		ops.transform_pop(gtx.scene)
 	}
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s), {0, 0, sz.x, sz.y})
 	return ui.widget_close(gtx, &p, {sz, para.lines[0].baseline})
 }
 

@@ -520,7 +520,7 @@ text :: proc(
 		sel = base.selection_colors(lo, hi, focused)
 	}
 	draw_paragraph(gtx, para, {}, color, sel)
-	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s))
+	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, s), {0, 0, size.x, size.y})
 	baseline: f32
 	if len(para.lines) > 0 {
 		baseline = para.lines[0].baseline

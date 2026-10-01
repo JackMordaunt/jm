@@ -179,3 +179,40 @@ spy_proc :: proc(data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, o
 	}
 	return s.inner.procedure(s.inner.data, mode, size, alignment, old, old_size, loc)
 }
+
+// tagged_view is a column of a label, which has no input area, over a
+// button, which has one.
+@(private = "file")
+tagged_view :: proc(gtx: ^Ctx, user: rawptr) {
+	col := column_open(gtx, key = 1)
+	defer close(&col)
+	label(gtx, "Status: ready", key = 2)
+	p := widget_open(gtx, 3)
+	ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, 60, 20}, {.Press})
+	ops.tag(gtx.scene, p.id, "Go")
+	widget_close(gtx, &p, {size = {60, 20}})
+}
+
+@(test)
+probe_finds_a_tag_without_an_area_by_its_bounds :: proc(t: ^testing.T) {
+	p: Probe
+	probe_init(&p, tagged_view, nil, {200, 100})
+	defer probe_destroy(&p)
+	// The label's tag carries its box, so it is found and measured
+	// though no area has its id.
+	h, ok := probe_find(&p, "Status: ready")
+	testing.expect(t, ok)
+	testing.expect_value(t, h.kinds, ops.Event_Kinds{})
+	r := probe_bounds(&p, "Status: ready")
+	testing.expect(t, r.w > 0 && r.h > 0 && r.x == 0 && r.y == 0, "label bounds")
+	// The button below it starts where the label ends: tag bounds are in
+	// device space, as hits are.
+	b := probe_bounds(&p, "Go")
+	testing.expect_value(t, b.y, r.y + r.h)
+	testing.expect_value(t, b.w, f32(60))
+	// An area's hit still wins over its tag's bounds.
+	hb, _ := probe_find(&p, "Go")
+	testing.expect(t, .Press in hb.kinds)
+	_, missing := probe_find(&p, "nothing")
+	testing.expect(t, !missing)
+}

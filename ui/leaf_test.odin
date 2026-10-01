@@ -13,7 +13,7 @@ label :: proc(gtx: ^Ctx, text: string, color := ops.Color{0, 0, 0, 255}, key: u6
 	if painted(color) {
 		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {0, m.ascent}, color)
 	}
-	ops.tag(gtx.scene, p.id, frame_string(gtx, text))
+	ops.tag(gtx.scene, p.id, frame_string(gtx, text), {0, 0, size.x, size.y})
 	return widget_close(gtx, &p, {size, m.ascent})
 }
 

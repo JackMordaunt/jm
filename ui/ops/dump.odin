@@ -198,9 +198,15 @@ write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 	}
 }
 
+// write_tag writes a tag as `tag ID "name"`, then its bounds when it has
+// them, so a dump says where a label is as well as that it is.
 write_tag :: proc(sb: ^strings.Builder, t: Tag) {
 	fmt.sbprintf(sb, "tag %d ", t.id)
 	strings.write_quoted_string(sb, t.name)
+	if t.bounds != {} {
+		strings.write_byte(sb, ' ')
+		write_rect(sb, t.bounds)
+	}
 }
 
 // write_draw writes a draw op — a Fill, Stroke, Glyphs, Image or Shadow — as dump

@@ -26,7 +26,7 @@ ENCODE_MAGIC :: "UIOP"
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
 // covers and added Cover_End.
-ENCODE_VERSION :: u8(15)
+ENCODE_VERSION :: u8(16)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -370,6 +370,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 13)
 		put_u64(w, u64(v.id))
 		put_str(w, v.name)
+		put_rect(w, v.bounds)
 	case Defer:
 		append(w, 14)
 		put_u32(w, u32(v.id))
@@ -631,6 +632,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v: Tag
 		v.id = Area_Id(get_u64(r) or_return)
 		v.name = get_str(r) or_return
+		v.bounds = get_rect(r) or_return
 		return v, true
 	case 14:
 		v: Defer

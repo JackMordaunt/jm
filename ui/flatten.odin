@@ -141,7 +141,11 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 				},
 			)
 		case ops.Tag:
-			append(&st.f.tags, op)
+			t := op
+			if t.bounds != {} {
+				t.bounds = ops.transform_rect(st.transform, t.bounds)
+			}
+			append(&st.f.tags, t)
 		case ops.Debug_Box:
 			r := ops.transform_rect(st.transform, ops.Rect{0, 0, op.size.x, op.size.y})
 			append(&st.f.boxes, Layout_Box{op.id, r, op.min, op.max, op.depth, op.file, op.line, op.procedure, op.kind, st.clip, st.layer})

@@ -34,7 +34,7 @@ label :: proc(gtx: ^ui.Ctx, text: string, style := Label_Style{}, key: u64 = 0, 
 	} else if ui.painted(s.color) {
 		design.draw_paragraph(gtx, p, {}, s.color)
 	}
-	ops.tag(gtx.scene, w.id, ui.frame_string(gtx, text))
+	ops.tag(gtx.scene, w.id, ui.frame_string(gtx, text), {0, 0, size.x, size.y})
 	return ui.widget_close(gtx, &w, {size, p.metrics.ascent})
 }
 
