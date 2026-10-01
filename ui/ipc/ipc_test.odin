@@ -86,3 +86,21 @@ test_kill_on_a_zero_child_signals_nothing :: proc(t: ^testing.T) {
 	kill(&c)
 	testing.expect_value(t, c.process.pid, 0)
 }
+
+@(test)
+test_frames_in_memory_split_as_written :: proc(t: ^testing.T) {
+	buf := make([dynamic]byte, context.temp_allocator)
+	frame_append(&buf, {1, 2, 3})
+	frame_append(&buf, {})
+	frame_append(&buf, {9})
+	a, rest, ok := frame_next(buf[:])
+	testing.expect(t, ok && slice.equal(a, []byte{1, 2, 3}))
+	b, rest2, ok2 := frame_next(rest)
+	testing.expect(t, ok2 && len(b) == 0)
+	c, rest3, ok3 := frame_next(rest2)
+	testing.expect(t, ok3 && slice.equal(c, []byte{9}) && len(rest3) == 0)
+	_, _, ok4 := frame_next(rest3)
+	testing.expect(t, !ok4)
+	_, _, cut := frame_next(buf[:5]) // a frame cut short is not a frame
+	testing.expect(t, !cut)
+}

@@ -3,6 +3,7 @@ package render
 import "core:fmt"
 import "jm:ui/ops"
 import "core:mem"
+import "core:os"
 import "core:reflect"
 import "core:strconv"
 import "core:strings"
@@ -135,6 +136,7 @@ inspecting :: proc(h: ^Headless) {
 //	-move X Y          move the pointer to X, Y
 //	-hover NAME        move the pointer to the middle of the area tagged NAME
 //	-advance N         run N frames at 1/60 s
+//	-replay PATH       run every frame of a recording (ui.RECORD_ENV)
 //	-png PATH          write the current frame
 //	-dump              print the current frame's sc as text
 //	-overflow          print what the window or a clip cuts off at the sides
@@ -236,6 +238,21 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 			return true, false
 		}
 		ui.probe_advance(&h.p, n, 1.0 / 60)
+	case "-replay":
+		if !need(args, i, 1, flag) {
+			return true, false
+		}
+		i^ += 1
+		data, rerr := os.read_entire_file(args[i^], context.temp_allocator)
+		if rerr != nil {
+			fmt.eprintfln("-replay: cannot read %s: %v", args[i^], rerr)
+			return true, false
+		}
+		frames, rok := ui.probe_replay(&h.p, data)
+		if !rok {
+			fmt.eprintfln("-replay: %s stops being a recording after %d frame(s)", args[i^], frames)
+			return true, false
+		}
 	case "-png":
 		if !need(args, i, 1, flag) {
 			return true, false

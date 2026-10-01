@@ -59,6 +59,29 @@ read_frame :: proc(f: ^os.File, allocator := context.allocator) -> (payload: []b
 	return buf, true
 }
 
+// frame_append appends payload to w as one frame, in write_frame's
+// layout: how a recording of frames is built in memory or on disk.
+frame_append :: proc(w: ^[dynamic]byte, payload: []byte) {
+	head: [4]byte
+	endian.put_u32(head[:], .Little, u32(len(payload)))
+	append(w, ..head[:])
+	append(w, ..payload)
+}
+
+// frame_next splits the first frame off data, as read_frame reads one
+// from a file: its payload (a slice into data, not a copy) and what
+// follows it. False when data holds no whole frame.
+frame_next :: proc(data: []byte) -> (payload, rest: []byte, ok: bool) {
+	if len(data) < 4 {
+		return
+	}
+	n, _ := endian.get_u32(data[:4], .Little)
+	if n > MAX_FRAME || int(n) > len(data) - 4 {
+		return
+	}
+	return data[4:4 + n], data[4 + n:], true
+}
+
 @(private = "file")
 write_all :: proc(f: ^os.File, data: []byte) -> bool {
 	data := data

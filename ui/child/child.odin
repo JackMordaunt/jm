@@ -85,6 +85,9 @@ run :: proc(app: App) {
 	defer ops.frame_arena_destroy(&arenas[1])
 
 	env_debug := ui.debug_from_env()
+	rec: ui.Recorder // every input, when ui.RECORD_ENV names a file
+	ui.recorder_from_env(&rec)
+	defer ui.recorder_close(&rec)
 	tray: ui.Debug_Tray // ui.DEBUG_TOGGLE_KEY opens it
 	ui.debug_tray_init(&tray)
 	time: f64
@@ -97,6 +100,7 @@ run :: proc(app: App) {
 		if !ok {
 			return // the host closed the pipe: exit clean
 		}
+		ui.recorder_write(&rec, payload)
 		size, density, raw_dt, events, host, restore, dok := ui.decode_input(payload, allocator)
 		if !dok {
 			return // a corrupt request; nothing salvageable

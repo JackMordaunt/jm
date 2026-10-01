@@ -234,6 +234,7 @@ flashing :: proc(w: ^Window) -> bool {
 Loop :: struct {
 	app:           App,
 	w:             Window,
+	rec:           ui.Recorder, // every frame's input, when ui.RECORD_ENV names a file
 	scene:           ops.Scene,
 	frames:        [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
 	router:        ui.Router,
@@ -317,11 +318,13 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	}
 	l.last = sdl3.GetTicksNS()
 	ui.debug_tray_init(&l.tray)
+	ui.recorder_from_env(&l.rec)
 	return true
 }
 
 @(private)
 loop_destroy :: proc(l: ^Loop) {
+	ui.recorder_close(&l.rec)
 	virtual.arena_destroy(&l.events)
 	ops.frame_arena_destroy(&l.arenas[0])
 	ops.frame_arena_destroy(&l.arenas[1])
@@ -351,11 +354,17 @@ step :: proc(l: ^Loop) {
 		l.tray.open = !l.tray.open
 	}
 	debug := ui.debug_from_env() | ui.debug_tray_flags(&l.tray)
-	dt := ui.debug_dt(debug, min(f32(now - l.last) / 1e9, MAX_DT))
+	raw_dt := min(f32(now - l.last) / 1e9, MAX_DT)
+	dt := ui.debug_dt(debug, raw_dt)
 	l.last = now
 	l.time += f64(dt)
 
 	w := &l.w
+	if l.rec.f != nil {
+		// The frame's input as the hot-reload host would have sent it.
+		logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
+		ui.recorder_write(&l.rec, ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator))
+	}
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
 	ui.debug_tray_log(&l.tray, &l.router, prev if l.n > 0 else nil, l.n)
 	ops.reset(&l.scene)
