@@ -445,6 +445,44 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
 }
 
+// owned_scroll_frame is scroll_frame with the caller's offset.
+@(private)
+owned_scroll_frame :: proc(h: ^Harness, offset: ^Scroll_Offset) -> ops.Input_Area {
+	gtx := &h.gtx
+	{
+		sb := scroll_box_open(gtx, offset = offset); defer close(&sb)
+		col := column_open(gtx); defer close(&col)
+		spacer(gtx, 300)
+		label(gtx, "last")
+	}
+	return h.scene.ops[index_of(&h.scene, ops.Input_Area)].(ops.Input_Area)
+}
+
+@(test)
+test_scroll_box_scrolls_the_callers_offset_when_given_one :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	mine: Scroll_Offset
+	ia := owned_scroll_frame(&h, &mine)
+	// A scroll lands in the caller's offset, clamped to the overflow.
+	harness_frame(&h)
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	owned_scroll_frame(&h, &mine)
+	testing.expect_value(t, mine, Scroll_Offset{0, SCROLL_STEP})
+	testing.expect_value(t, scroll_offset(&h), f64(-SCROLL_STEP))
+	// The caller sets it, and the box shows that: a restored position.
+	clear(&h.router.events)
+	mine.y = 1e6
+	harness_frame(&h)
+	owned_scroll_frame(&h, &mine)
+	testing.expect_value(t, mine.y, f32(300 + 14 - 100))
+	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
+	// The box's own slot was never written.
+	_, kept := h.layout.data[Data_Key{ia.id, Scroll_Offset}]
+	testing.expect(t, !kept)
+}
+
 // thumb_of is the scroll bar thumb scroll_box drew in the track starting
 // at x, if any: a Round_Rect fill inside the track's width.
 @(private)

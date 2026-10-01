@@ -22,9 +22,9 @@
 //	material-kitchen-child -full -page Chips -png out.png  the whole page, trimmed
 //	material-kitchen-child -open ...                      every menu, dialog and snackbar open
 //
-// The selected page and scheme survive a hot-reload respawn through
-// ui.persist: the host keeps them, and a fresh child reads them back
-// with ui.restored on its first frame.
+// The selected page, scheme and each page's scroll position survive a
+// hot-reload respawn through ui.persist_struct: the host keeps them, and
+// a fresh child reads them back with ui.restore_struct on its first frame.
 package main
 
 import "core:fmt"
@@ -43,6 +43,10 @@ WIDTH :: 1400
 // class (layout.windowSizeClasses, 1200-1599dp).
 DOCKED_NAV_MIN :: 1200
 HEIGHT :: 900
+// MAX_PAGES sizes the per-page state in Model: it cannot be len(PAGES),
+// since the pages' procs take the Model.
+MAX_PAGES :: 64
+#assert(len(PAGES) <= MAX_PAGES)
 
 Page :: struct {
 	name: string,
@@ -99,7 +103,7 @@ Model :: struct {
 	date_view: m3.Date,
 	time:      m3.Time,
 	minutes:   bool,
-	persisted: [2]int, // page and dark as last written, to write only on change
+	scroll:    [MAX_PAGES]ui.Scroll_Offset, // each page's scroll position: the app owns it, so it persists
 	// actions
 	group_c:       [5]bool,
 	group_menu:    bool,
@@ -272,7 +276,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
 		ps := ui.scope_open(gtx, m.page)
 		defer ui.close(&ps)
-		sb := ui.scroll_box_open(gtx)
+		sb := ui.scroll_box_open(gtx, offset = &m.scroll[clamp(m.page, 0, len(PAGES) - 1)])
 		defer ui.close(&sb)
 		page := ui.inset_open(gtx, {24, 8, 24, 48})
 		defer ui.close(&page)
@@ -426,28 +430,24 @@ page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
 // reproducible.
 TODAY :: m3.Date{2026, 9, 28}
 
-// State that survives a respawn.
+// Session is the state that survives a respawn, as ui.persist_struct
+// writes it: `page 3`, `dark true`, `scroll[3].y 240`.
+Session :: struct {
+	page:   int,
+	dark:   bool,
+	scroll: [MAX_PAGES]ui.Scroll_Offset,
+}
 
 persist :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	now := [2]int{m.page, int(m.dark)}
-	if now == m.persisted {
-		return
-	}
-	m.persisted = now
-	ui.persist(gtx, transmute([]u8)fmt.aprintf("%d %d", now[0], now[1], allocator = gtx.allocator))
+	ui.persist_struct(gtx, Session{m.page, m.dark, m.scroll})
 }
 
 restore :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	data := ui.restored(gtx)
-	if data == nil {
-		return
+	s := Session{m.page, m.dark, m.scroll}
+	if ui.restore_struct(gtx, &s, gtx.allocator) {
+		m.page = clamp(s.page, 0, len(PAGES) - 1)
+		m.dark, m.scroll = s.dark, s.scroll
 	}
-	fields := strings.fields(string(data), gtx.allocator)
-	if len(fields) == 2 {
-		m.page = clamp(parse_int(fields[0]), 0, len(PAGES) - 1)
-		m.dark = parse_int(fields[1]) != 0
-	}
-	m.persisted = {m.page, int(m.dark)}
 }
 
 parse_int :: proc(s: string) -> int {

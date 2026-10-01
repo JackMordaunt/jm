@@ -43,6 +43,10 @@ Probe :: struct {
 	allocator:   mem.Allocator,
 	clipboard:   [dynamic]u8, // the fake system clipboard frames write and read
 	opened:      [dynamic]u8, // the last URL a frame asked to open
+	persisted:   [dynamic]u8, // what the last frame that called persist asked to keep: the host's copy, in a live loop
+	persists:    int, // frames that called persist
+	restore:     [dynamic]u8, // probe_restore's bytes, given to the next frame as restored
+	restoring:   bool,
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -66,6 +70,8 @@ probe_init :: proc(
 	p.allocator = allocator
 	p.clipboard = make([dynamic]u8, allocator)
 	p.opened = make([dynamic]u8, allocator)
+	p.persisted = make([dynamic]u8, allocator)
+	p.restore = make([dynamic]u8, allocator)
 	p.shaper = stub_shaper()
 	p.font = font
 	p.dt = 1.0 / 60
@@ -89,6 +95,8 @@ probe_destroy :: proc(p: ^Probe) {
 	ops.frame_arena_destroy(&p.arena)
 	delete(p.clipboard)
 	delete(p.opened)
+	delete(p.persisted)
+	delete(p.restore)
 	p^ = {}
 }
 
@@ -119,10 +127,17 @@ probe_frame :: proc(p: ^Probe) {
 		time        = p.time,
 		allocator   = ops.frame_arena_allocator(&p.arena),
 		debug       = debug,
+		restored    = p.restore[:] if p.restoring else nil,
 	}
+	p.restoring = false
 	ui_start := time.tick_now()
 	p.ui(&gtx, p.user)
 	ui_ms := ms(ui_start)
+	if gtx.persist != nil {
+		clear(&p.persisted)
+		append(&p.persisted, ..gtx.persist)
+		p.persists += 1
+	}
 	debug_inspect(&gtx, debug, &p.tray, &p.prev, p.router.pointer, 1)
 	debug_tray(&gtx, &p.tray) // last: over the inspector's highlight too
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
@@ -164,6 +179,21 @@ probe_clipboard :: proc(p: ^Probe) -> string {
 // valid until the next frame that opens one.
 probe_opened_url :: proc(p: ^Probe) -> string {
 	return string(p.opened[:])
+}
+
+// probe_persisted is what the last frame that called persist asked the
+// host to keep, as a host would hold it; empty until a frame does.
+probe_persisted :: proc(p: ^Probe) -> []byte {
+	return p.persisted[:]
+}
+
+// probe_restore gives data to the next frame as restored, as the host
+// gives a respawned child what the last one persisted: run probe_frame
+// to deliver it. The frame after sees nil again.
+probe_restore :: proc(p: ^Probe, data: []byte) {
+	clear(&p.restore)
+	append(&p.restore, ..data)
+	p.restoring = true
 }
 
 // probe_set_clipboard puts text on the fake clipboard, as another app would.

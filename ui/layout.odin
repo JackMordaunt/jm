@@ -86,8 +86,10 @@ Flex_Memo :: struct {
 	count:          int,
 }
 
-// Scroll_Offset is a scroll container's offset into its content.
-@(private)
+// Scroll_Offset is a scroll box's offset into its content, in pixels
+// from the content's top-left. The box keeps its own unless the caller
+// passes one to scroll_box_open: then the app owns the position, can
+// read and set it, and can persist it (persist_struct).
 Scroll_Offset :: struct {
 	x, y: f32,
 }
@@ -148,6 +150,7 @@ Container :: struct {
 	next:     f32, // weight for the next child, set by flexible
 	wrap:     bool, // wrap: children break into lines, line_gap apart
 	line_gap: f32,
+	scroll:   ^Scroll_Offset, // scroll: the caller's offset, else the box's own widget_data
 }
 
 Layout :: struct {
@@ -165,6 +168,8 @@ Layout :: struct {
 	frame:     u64,
 	allocator: mem.Allocator,
 	selection: Label_Selection, // the app's one selection in read-only text; see selectable.odin
+	persisted: [dynamic]u8, // what persist_struct last sent, to send only changes
+	persisted_once: bool,
 }
 
 // Placement is a widget's bracket: widget_open fills it, widget_close
@@ -193,6 +198,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.state = make(map[ops.Area_Id]^Widget_State, allocator)
 	l.data = make(map[Data_Key]Data_Entry, allocator)
 	l.retained = make(map[ops.Area_Id]u64, allocator)
+	l.persisted = make([dynamic]u8, allocator)
 }
 
 // layout_destroy frees l's storage.
@@ -211,6 +217,7 @@ layout_destroy :: proc(l: ^Layout) {
 	}
 	delete(l.data)
 	delete(l.retained)
+	delete(l.persisted)
 	text_destroy(&l.selection.state)
 	l^ = {}
 }
@@ -1170,18 +1177,20 @@ SCROLL_STEP :: f32(48)
 // get the box's width constraints and an unbounded height, and the box
 // takes the height it is offered (the content's, when unbounded). Scroll
 // events move the content, clamped to its overflow; the offset is kept in
-// the box's own widget state, so a distinct key gives a fresh offset. The
-// body is a macro, as in clip_box.
+// the box's own widget state, so a distinct key gives a fresh offset, or
+// in offset when the caller passes one (see Scroll_Offset). The body is a
+// macro, as in clip_box.
 //
 // min_width lays the content out at least that wide, however narrow the
 // box: content that cannot reflow narrower then scrolls sideways, by a
 // horizontal wheel or Shift and the vertical one, instead of being cut off.
-scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, loc := #caller_location) -> Scroll_Box {
+scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location) -> Scroll_Box {
 	p := widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	c := Container {
-		kind  = .Scroll,
-		inner = {min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}},
+		kind   = .Scroll,
+		inner  = {min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}},
+		scroll = offset,
 	}
 	return {gtx, container_push(gtx, c, p)}
 }
@@ -1382,7 +1391,7 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 	case .Scroll:
 		ops.macro_close(o, c.body)
 		size = constrain(c.cs, {content.x, is_finite(c.cs.max.y) ? c.cs.max.y : content.y})
-		sc := widget_data(gtx, c.place.id, Scroll_Offset)
+		sc := c.scroll != nil ? c.scroll : widget_data(gtx, c.place.id, Scroll_Offset)
 		for e in events(gtx, c.place.id) {
 			if e.kind != .Scroll {
 				continue

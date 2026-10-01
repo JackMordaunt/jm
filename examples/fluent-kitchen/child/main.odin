@@ -12,8 +12,9 @@
 //
 // The rest of the flags are ui/render's headless steps, as in
 // examples/material-kitchen: -dump, -click, -key, -advance, -layout,
-// -inspect, -reveal and -bounds. The selected page and theme survive a
-// hot-reload respawn through ui.persist and ui.restored.
+// -inspect, -reveal and -bounds. The selected page, theme and each page's
+// scroll position survive a hot-reload respawn through ui.persist_struct
+// and ui.restore_struct.
 package main
 
 import "core:fmt"
@@ -29,6 +30,10 @@ import "jm:ui/render"
 
 WIDTH :: 1400
 HEIGHT :: 900
+// MAX_PAGES sizes the per-page state in Model: it cannot be len(PAGES),
+// since the pages' procs take the Model.
+MAX_PAGES :: 128
+#assert(len(PAGES) <= MAX_PAGES)
 NAV_WIDTH :: 240
 
 Page :: struct {
@@ -42,7 +47,7 @@ Model :: struct {
 	theme:     fluent.Theme,
 	scheme:    fluent.Scheme,
 	clicks:    int,
-	persisted: [2]int,
+	scroll:    [MAX_PAGES]ui.Scroll_Offset, // each page's scroll position: the app owns it, so it persists
 	// form controls
 	checks:    [4]bool,
 	all:       bool,
@@ -270,7 +275,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
 		ps := ui.scope_open(gtx, m.page)
 		defer ui.close(&ps)
-		sb := ui.scroll_box_open(gtx)
+		sb := ui.scroll_box_open(gtx, offset = &m.scroll[clamp(m.page, 0, len(PAGES) - 1)])
 		defer ui.close(&sb)
 		page := ui.inset_open(gtx, {24, 8, 24, 48})
 		defer ui.close(&page)
@@ -423,28 +428,24 @@ page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
 	base.label(gtx, "See the build order in the fluent-kit handoff.", {color = s[.Neutral_Foreground2]})
 }
 
-// State that survives a respawn.
+// Session is the state that survives a respawn, as ui.persist_struct
+// writes it: `page 3`, `theme Teams_Dark`, `scroll[3].y 240`.
+Session :: struct {
+	page:   int,
+	theme:  fluent.Theme,
+	scroll: [MAX_PAGES]ui.Scroll_Offset,
+}
 
 persist :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	now := [2]int{m.page, int(m.theme)}
-	if now == m.persisted {
-		return
-	}
-	m.persisted = now
-	ui.persist(gtx, transmute([]u8)fmt.aprintf("%d %d", now[0], now[1], allocator = gtx.allocator))
+	ui.persist_struct(gtx, Session{m.page, m.theme, m.scroll})
 }
 
 restore :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	data := ui.restored(gtx)
-	if data == nil {
-		return
+	s := Session{m.page, m.theme, m.scroll}
+	if ui.restore_struct(gtx, &s, gtx.allocator) {
+		m.page = clamp(s.page, 0, len(PAGES) - 1)
+		m.theme, m.scroll = s.theme, s.scroll
 	}
-	fields := strings.fields(string(data), gtx.allocator)
-	if len(fields) == 2 {
-		m.page = clamp(parse_int(fields[0]), 0, len(PAGES) - 1)
-		m.theme = fluent.Theme(clamp(parse_int(fields[1]), 0, len(fluent.Theme) - 1))
-	}
-	m.persisted = {m.page, int(m.theme)}
 }
 
 // parse_int is s as a non-negative integer, 0 for anything else.

@@ -3,7 +3,7 @@
 // trip (hit-tested in this process, drawn in the host's window) to move
 // the count at all. Rebuild this binary alone and the host (examples/
 // hot-counter/host) respawns it, per ui/sdl's run_host; the count comes
-// back through ui.persist and ui.restored, the host holding it between.
+// back through ui.persist_struct and restore_struct, the host holding it.
 //
 //	hot-counter-child                          run as the subprocess
 //	hot-counter-child -dump                    the scene sc as text
@@ -13,7 +13,6 @@ package main
 import "core:fmt"
 import "jm:ui/ops"
 import "core:os"
-import "core:strconv"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
@@ -29,9 +28,7 @@ Model :: struct {
 
 counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
-	if r := ui.restored(gtx); r != nil {
-		m.count, _ = strconv.parse_int(string(r))
-	}
+	ui.restore_struct(gtx, m) // after a rebuild: the count the last build had
 	th := base.theme()
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, base.color(.Bg))
 
@@ -46,7 +43,7 @@ counter_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	if m3.button(gtx, "+") {
 		m.count += 1
 	}
-	ui.persist(gtx, transmute([]byte)fmt.aprintf("%d", m.count, allocator = gtx.allocator))
+	ui.persist_struct(gtx, m^) // the whole model is the session: one line, "count N"
 }
 
 main :: proc() {
