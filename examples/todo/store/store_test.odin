@@ -5,6 +5,8 @@ import "core:testing"
 
 import "jm:sqlite3"
 
+import "../../common"
+
 import "../logic"
 import "../shapes"
 
@@ -89,9 +91,9 @@ a_rolled_back_transaction_reports_nothing :: proc(t: ^testing.T) {
 	defer close(&st)
 	testing.expect(t, sqlite3.exec(st.db, "BEGIN") == nil)
 	apply(&st, logic.Write{op = .Insert, title = logic.text_make("never")})
-	testing.expect_value(t, st.batch.count, 1)
+	testing.expect_value(t, st.watcher.batch.count, 1)
 	testing.expect(t, sqlite3.exec(st.db, "ROLLBACK") == nil)
-	testing.expect_value(t, st.batch.count, 0)
+	testing.expect_value(t, st.watcher.batch.count, 0)
 	testing.expect_value(t, len(seen.batches), 0)
 	// A transaction that commits reports once, with every row.
 	testing.expect(t, sqlite3.exec(st.db, "BEGIN") == nil)
@@ -111,11 +113,11 @@ a_batch_past_its_capacity_says_so :: proc(t: ^testing.T) {
 	testing.expect(t, open(&st, sqlite3.MEMORY, record, &seen))
 	defer close(&st)
 	testing.expect(t, sqlite3.exec(st.db, "BEGIN") == nil)
-	for _ in 0 ..< MAX_CHANGES + 3 {
+	for _ in 0 ..< common.MAX_CHANGES + 3 {
 		apply(&st, logic.Write{op = .Insert, title = logic.text_make("x")})
 	}
 	testing.expect(t, sqlite3.exec(st.db, "COMMIT") == nil)
 	testing.expect_value(t, len(seen.batches), 1)
-	testing.expect_value(t, seen.batches[0].count, MAX_CHANGES)
+	testing.expect_value(t, seen.batches[0].count, common.MAX_CHANGES)
 	testing.expect(t, seen.batches[0].truncated)
 }

@@ -798,6 +798,75 @@ fluent-png page="Button": blend2d kb
     {{odin}} build examples/fluent-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-child{{exe}}
     build/debug/fluent-kitchen-child{{exe}} -page "{{page}}" -png "build/fluent-{{page}}.png"
 
+# ============================================================================
+# ui/example: whole applications on jm:ui, one directory under examples/
+# each, built and run as a user would.
+# ============================================================================
+
+# examples/todo: TodoMVC in Fluent, SQLite as the data engine, a stream
+# pipeline across four threads; see the README's UI section. `just todo`
+# keeps todo.db in the working directory; `just todo -memory` keeps
+# nothing, and `just todo path.db` opens that database.
+#
+# Build and open the todo application
+[group('ui/example')]
+todo args="": sqlite blend2d kb sdl3
+    mkdir -p build/debug
+    {{odin}} build examples/todo -debug {{flags}} {{cxx_link}} -out:build/debug/todo{{exe}}
+    build/debug/todo{{exe}} {{args}}
+
+# Run the todo application's suites, the end-to-end one on real threads and a database
+[group('ui/example')]
+todo-test: sqlite blend2d kb
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/test
+    for p in examples/todo/shapes examples/todo/logic examples/todo/store examples/todo/view examples/todo/app; do
+      {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+    done
+
+# examples/gallery: a grid of ten thousand pictures made on demand, each a
+# need while its row is in view, abandoned when scrolled away before it
+# is done. Pictures go under the temp directory, a folder per run.
+#
+# Build and open the gallery application
+[group('ui/example')]
+gallery: blend2d kb sdl3
+    mkdir -p build/debug
+    {{odin}} build examples/gallery -debug {{flags}} {{cxx_link}} -out:build/debug/gallery{{exe}}
+    build/debug/gallery{{exe}}
+
+# Run the gallery's suites, the end-to-end one on real workers and files
+[group('ui/example')]
+gallery-test: blend2d kb
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/test
+    for p in examples/gallery/shapes examples/gallery/gen examples/gallery/cache examples/gallery/view examples/gallery/app; do
+      {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+    done
+
+# examples/files: a file browser over the real filesystem, folders read
+# and thumbnails made on workers as they come into view, a double click
+# entering a folder or opening a file with the system.
+#
+# Build and open the file browser on a folder, the home folder by default
+[group('ui/example')]
+files path="": sqlite blend2d kb sdl3
+    mkdir -p build/debug
+    {{odin}} build examples/files -debug {{flags}} {{cxx_link}} -out:build/debug/files{{exe}}
+    build/debug/files{{exe}} {{path}}
+
+# Run the file browser's suites, the end-to-end one on a real folder
+[group('ui/example')]
+files-test: sqlite blend2d kb
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/test
+    for p in examples/files/shapes examples/files/fs examples/files/store examples/files/view examples/files/app; do
+      {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+    done
+
 # Fetch Selawik regular, semibold and bold (OFL-1.1) from microsoft/Selawik
 # release 1.01 into ~/.local/share/fonts/selawik for the fluent kitchen.
 #

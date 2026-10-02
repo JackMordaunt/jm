@@ -13,6 +13,9 @@ import "core:strings"
 import "jm:ui"
 import "jm:ui/ops"
 
+// MAX_PATH is the longest path a message between threads carries.
+MAX_PATH :: 1024
+
 // LOADING_DELAY is how long a wait lasts before a page says so, in
 // seconds. A shape that arrives sooner was never missed, so nothing
 // flashes.

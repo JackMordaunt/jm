@@ -9,3 +9,7 @@ ui/kb/lib/
 # the kits' pages for people, bundled by just material-kit-page and fluent-kit-page
 tools/*/kit/index.html
 zstd/lib/
+# the todo example's database, when run from the repository root
+/todo.db
+/todo.db-wal
+/todo.db-shm

@@ -11,10 +11,10 @@ writing it needs no codec.
 */
 package gallery_gen
 
-import "core:fmt"
 import "core:math"
-import "core:os"
 import "core:sync"
+
+import "../../common"
 
 ITERATIONS :: 8000
 
@@ -27,7 +27,7 @@ tile :: proc(index, px: int, path: string, cancel: ^bool, iterations := ITERATIO
 	if !render(index, px, pixels, cancel, iterations) {
 		return false
 	}
-	return write_bmp(path, px, px, pixels)
+	return common.write_bmp(path, px, px, pixels)
 }
 
 // render fills pixels, px by px, with the whole picture: the plane from
@@ -47,7 +47,7 @@ patch :: proc(index, level, x, y, px: int, path: string, cancel: ^bool, iteratio
 	if !region(index, px, -1.5 + f64(x) * size, -1.5 + f64(y) * size, size, pixels, cancel, iterations) {
 		return false
 	}
-	return write_bmp(path, px, px, pixels)
+	return common.write_bmp(path, px, px, pixels)
 }
 
 // region fills pixels, px by px, with the square of the plane at x0, y0
@@ -121,34 +121,4 @@ hsv_to_rgb :: proc(hue, s, v: f64) -> (r, g, b: u8) {
 		rf, gf, bf = v, p, q
 	}
 	return u8(rf * 255), u8(gf * 255), u8(bf * 255)
-}
-
-// write_bmp writes pixels, width by height BGRA, as a 32-bit BMP.
-write_bmp :: proc(path: string, width, height: int, pixels: []u32) -> bool {
-	row := width * 4
-	size := 54 + row * height
-	data := make([]u8, size)
-	defer delete(data)
-	put :: proc(d: []u8, at: int, v: u32) {
-		d[at] = u8(v)
-		d[at + 1] = u8(v >> 8)
-		d[at + 2] = u8(v >> 16)
-		d[at + 3] = u8(v >> 24)
-	}
-	data[0], data[1] = 'B', 'M'
-	put(data, 2, u32(size))
-	put(data, 10, 54)
-	put(data, 14, 40)
-	put(data, 18, u32(width))
-	put(data, 22, u32(-height)) // top-down rows
-	data[26], data[28] = 1, 32
-	put(data, 34, u32(row * height))
-	for p, ii in pixels {
-		put(data, 54 + ii * 4, p)
-	}
-	if err := os.write_entire_file(path, data); err != nil {
-		fmt.eprintln("gallery: write:", path, err)
-		return false
-	}
-	return true
 }

@@ -13,8 +13,6 @@ batch goes into a port of the pipeline, which re-runs the live queries.
 */
 package todo_store
 
-import "base:runtime"
-import "core:c"
 import "core:encoding/cbor"
 import "core:fmt"
 import "core:mem"
@@ -22,24 +20,12 @@ import "core:mem"
 import "jm:sqlite3"
 import "jm:ui"
 
+import "../../common"
 import "../logic"
 import "../shapes"
 
-// MAX_CHANGES is how many rows one batch names; past that it says only
-// that there were more, which is as good: a reader re-queries either way.
-MAX_CHANGES :: 64
-
-Change :: struct {
-	op:    sqlite3.Update_Op,
-	rowid: i64,
-}
-
-// Change_Batch is what one transaction changed.
-Change_Batch :: struct {
-	rows:      [MAX_CHANGES]Change,
-	count:     int,
-	truncated: bool,
-}
+// Change_Batch is what one transaction changed, as the hooks report it.
+Change_Batch :: common.Change_Batch
 
 // Query asks for the todos under a filter, to be answered under key.
 Query :: struct {
@@ -55,20 +41,14 @@ Input :: union {
 
 // Result is a shape for the ui: the answer to a Query, as cbor. The
 // consumer owns data and frees it with result_free.
-Result :: struct {
-	key:  ui.Need_Key,
-	data: []byte,
-}
+Result :: common.Result
 
 Store :: struct {
-	db:         sqlite3.Db,
-	allocator:  mem.Allocator, // results and the pending slice
-	batch:      Change_Batch, // what the transaction so far touched
-	on_changes: proc(user: rawptr, batch: Change_Batch),
-	user:       rawptr,
-	results:    [dynamic]Result, // apply's answer, until the stage has emitted it
-	problems:   int, // writes that failed, for the log
-	ctx:        runtime.Context, // for the hooks, which SQLite calls without one
+	db:        sqlite3.Db,
+	allocator: mem.Allocator, // results and the pending slice
+	watcher:   common.Watcher, // the hooks' buffer and where a batch goes
+	results:   [dynamic]Result, // apply's answer, until the stage has emitted it
+	problems:  int, // writes that failed, for the log
 }
 
 // open opens the database at path, creates the table, and installs the
@@ -95,18 +75,15 @@ open :: proc(
 	}
 	st.db = db
 	st.allocator = allocator
-	st.on_changes = on_changes
-	st.user = user
 	st.results = make([dynamic]Result, allocator)
-	st.ctx = context
-	sqlite3.hooks(db, on_update, on_commit, on_rollback, st)
+	common.watch(db, &st.watcher, on_changes, user)
 	return true
 }
 
 // close closes the connection. Results apply handed out are the caller's,
 // freed or not, so nothing pending here is touched.
 close :: proc(st: ^Store) {
-	sqlite3.hooks(st.db)
+	common.unwatch(st.db)
 	delete(st.results)
 	sqlite3.close(&st.db)
 	st^ = {}
@@ -198,38 +175,4 @@ query :: proc(st: ^Store, filter: shapes.Filter) -> (data: []byte, ok: bool) {
 		return nil, false
 	}
 	return bytes, true
-}
-
-// The hooks. SQLite calls them on the store's thread with no Odin context,
-// so each sets the one open saved. The buffer is the store's; nothing here
-// touches the connection.
-
-@(private)
-on_update :: proc "c" (user: rawptr, op: sqlite3.Update_Op, db_name, table: cstring, rowid: i64) {
-	st := (^Store)(user)
-	b := &st.batch
-	if b.count < MAX_CHANGES {
-		b.rows[b.count] = {op, rowid}
-		b.count += 1
-	} else {
-		b.truncated = true
-	}
-}
-
-@(private)
-on_commit :: proc "c" (user: rawptr) -> c.int {
-	st := (^Store)(user)
-	context = st.ctx
-	if st.batch.count > 0 || st.batch.truncated {
-		if st.on_changes != nil {
-			st.on_changes(st.user, st.batch)
-		}
-		st.batch = {}
-	}
-	return 0
-}
-
-@(private)
-on_rollback :: proc "c" (user: rawptr) {
-	(^Store)(user).batch = {}
 }

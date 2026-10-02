@@ -34,13 +34,13 @@ are never stored: the fold's state is the list.
 package todo_app
 
 import "core:mem"
-import "core:sync"
 import "core:thread"
 import "core:time"
 
 import "jm:stream"
 import "jm:ui"
 
+import "../../common"
 import "../logic"
 import "../shapes"
 import "../store"
@@ -82,18 +82,15 @@ Host :: struct {
 	p:         ^stream.Pipeline,
 	cmd_port:  stream.Port(logic.Request),
 	need_port: stream.Port(Need_Event),
-	chg_port:  stream.Port(store.Change_Batch),
 	inbox:     ui.Inbox,
 	workers:   ^stream.Workers, // the logic thread
 	logic:     logic.Logic,
 	route:     Route,
 	problems:  Problem_List,
 	store:     store.Store,
-	missed:    bool, // a change batch the port had no room for; see on_changes
-	db_wake:   sync.Sema,
-	stopping:  bool, // atomic
+	db:        common.Db_Thread, // the store's thread, and the changes port
+	sink:      common.Sink, // results to the inbox
 	pool:      ^thread.Thread,
-	db:        ^thread.Thread,
 	wake:      proc(), // runs a frame once a shape is in the inbox; nil for none
 }
 
@@ -104,7 +101,8 @@ init :: proc(h: ^Host, path: string, wake: proc() = nil) -> bool {
 	h.wake = wake
 	allocator := context.allocator
 	ui.inbox_init(&h.inbox, allocator)
-	if !store.open(&h.store, path, on_changes, h, allocator) {
+	h.sink = {&h.inbox, wake, allocator}
+	if !store.open(&h.store, path, common.db_on_changes, &h.db, allocator) {
 		return false
 	}
 	h.route.live = make(map[ui.Need_Key]shapes.Filter, allocator)
@@ -113,14 +111,11 @@ init :: proc(h: ^Host, path: string, wake: proc() = nil) -> bool {
 
 	p := stream.make_pipeline(allocator, cap = 64)
 	h.p = p
-	p.wake = db_wake
-	p.wake_data = h
+	changes := common.db_thread_open(&h.db, p)
 	commands: stream.Stream(logic.Request)
 	needs: stream.Stream(Need_Event)
-	changes: stream.Stream(store.Change_Batch)
 	commands, h.cmd_port = stream.port(p, logic.Request, name = "commands")
 	needs, h.need_port = stream.port(p, Need_Event, name = "needs")
-	changes, h.chg_port = stream.port(p, store.Change_Batch, cap = 256, name = "changes")
 
 	// The rules, on their own thread, one request at a time.
 	outcomes := stream.async_map(commands, h.workers, &h.logic, logic.process, concurrency = 1, name = "logic")
@@ -137,9 +132,9 @@ init :: proc(h: ^Host, path: string, wake: proc() = nil) -> bool {
 	inputs := stream.merge([]stream.Stream(store.Input){writes, queries}, name = "store in")
 	results := stream.flat_map_with(inputs, &h.store, store.apply, name = "store")
 	stream.pin(p, results.node)
-	stream.for_each_with(results, h, deliver_result, name = "deliver")
+	stream.for_each_with(results, &h.sink, common.deliver, name = "deliver")
 
-	h.db = thread.create_and_start_with_poly_data(h, db_main)
+	common.db_thread_start(&h.db)
 	h.pool = thread.create_and_start_with_poly_data(h, pool_main)
 	return true
 }
@@ -155,10 +150,7 @@ stop :: proc(h: ^Host) {
 	stream.stop(h.p)
 	thread.join(h.pool)
 	thread.destroy(h.pool)
-	sync.atomic_store(&h.stopping, true)
-	sync.sema_post(&h.db_wake)
-	thread.join(h.db)
-	thread.destroy(h.db)
+	common.db_thread_stop(&h.db)
 	stream.workers_stop(h.workers)
 	stream.destroy(h.p)
 	store.close(&h.store)
@@ -182,37 +174,6 @@ on_command :: proc(user: rawptr, c: ui.Command) {
 	h := (^Host)(user)
 	if r, ok := logic.request(c); ok {
 		stream.port_send(h.cmd_port, r)
-	}
-}
-
-// --- the db thread -------------------------------------------------------
-
-db_wake :: proc(data: rawptr) {
-	sync.sema_post(&(^Host)(data).db_wake)
-}
-
-db_main :: proc(h: ^Host) {
-	for {
-		sync.sema_wait(&h.db_wake)
-		if sync.atomic_load(&h.stopping) {
-			return
-		}
-		stream.drain_pinned(h.p)
-		if h.missed && stream.port_push(h.chg_port, store.Change_Batch{truncated = true}) {
-			h.missed = false
-		}
-		free_all(context.temp_allocator)
-	}
-}
-
-// on_changes runs inside the commit, on the db thread. It must not wait:
-// the pipeline's consumer of this port may be parked behind the very
-// stage that is committing, so a full port is noted and a catch-up batch
-// goes out once the stage has yielded.
-on_changes :: proc(user: rawptr, batch: store.Change_Batch) {
-	h := (^Host)(user)
-	if !stream.port_push(h.chg_port, batch) {
-		h.missed = true
 	}
 }
 
@@ -300,14 +261,6 @@ deliver_problems :: proc(h: ^Host, l: Problem_List) {
 		items[ii] = {l.items[ii].id, logic.text_of(&l.items[ii].message)}
 	}
 	ui.inbox_put_value(&h.inbox, shapes.Problems{}, shapes.Problems_Result{items = items[:l.count]})
-	if h.wake != nil {
-		h.wake()
-	}
-}
-
-deliver_result :: proc(h: ^Host, r: store.Result) {
-	ui.inbox_put(&h.inbox, r.key, r.data)
-	store.result_free(&h.store, r)
 	if h.wake != nil {
 		h.wake()
 	}
