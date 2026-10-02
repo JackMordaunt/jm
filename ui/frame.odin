@@ -34,6 +34,7 @@ Draw :: struct {
 	transform: ops.Affine,
 	clip:      Clip_Id,
 	cmd:       Draw_Cmd,
+	fade:      f32, // how far it is faded out by the opacity around it (ops.Push_Opacity): 0 opaque, 1 invisible
 }
 
 Hit :: struct {
@@ -124,6 +125,7 @@ Flatten_Stacks :: struct {
 	held:       [dynamic]Covering, // covering Defers met, waiting for their Cover_End
 	top:        [dynamic]Deferred, // top Defers met, run after every other
 	scopes:     [dynamic]Scope_Ref, // the focus scopes open around the current one, innermost last
+	alphas:     [dynamic]f32, // the opacities pushed so far, innermost last
 }
 
 // Covering is a Defer waiting for the end of the container it covers.
@@ -140,6 +142,7 @@ Deferred :: struct {
 	id:        ops.Macro_Id,
 	transform: ops.Affine,
 	scope:     Scope_Ref, // the focus scope open at the Defer, which the layer stays in
+	alpha:     f32, // the opacity at the Defer, which the layer is drawn at
 }
 
 frame_init :: proc(f: ^Frame, allocator := context.allocator) {
@@ -153,6 +156,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.placed = make([dynamic]Placed, allocator)
 	f.scopes = make([dynamic]Focus_Scope_Node, allocator)
 	f.stacks.scopes = make([dynamic]Scope_Ref, allocator)
+	f.stacks.alphas = make([dynamic]f32, allocator)
 	f.stacks.transforms = make([dynamic]ops.Affine, allocator)
 	f.stacks.clips = make([dynamic]Clip_Id, allocator)
 	f.stacks.deferred = make([dynamic]Deferred, allocator)
@@ -171,6 +175,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.placed)
 	clear(&f.scopes)
 	clear(&f.stacks.scopes)
+	clear(&f.stacks.alphas)
 	clear(&f.stacks.transforms)
 	clear(&f.stacks.clips)
 	clear(&f.stacks.deferred)
@@ -190,6 +195,7 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.placed)
 	delete(f.scopes)
 	delete(f.stacks.scopes)
+	delete(f.stacks.alphas)
 	delete(f.stacks.transforms)
 	delete(f.stacks.clips)
 	delete(f.stacks.deferred)

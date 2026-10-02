@@ -35,7 +35,7 @@ draw_run :: proc(r: ^Renderer, sc: ^ops.Scene, run: ops.Glyph_Run, img: ^bl.Imag
 	f.scene = sc
 	ops.reset(sc)
 	id := ops.add_run(sc, run)
-	append(&f.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, {4, 36}, {0, 0, 0, 255}}})
+	append(&f.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, {4, 36}, {0, 0, 0, 255}}, 0})
 	render(r, &f, img, {255, 255, 255, 255})
 }
 

@@ -494,6 +494,9 @@ draw_rec :: proc(f: ^ui.Frame, clips: []Clip_Rec, glyph_box: ^map[Font_Key]ops.R
 		h = hash_value(hash_value(h, 5), c)
 		rec.local = ops.shadow_bounds(c)
 	}
+	if d.fade != 0 {
+		h = hash_value(h, d.fade)
+	}
 	rec.content = h
 	clip_key, clip_box, clip_reach, clip_rects := ui.FNV_OFFSET, EVERYWHERE, EVERYWHERE, true
 	if d.clip != ui.NO_CLIP {
@@ -506,7 +509,7 @@ draw_rec :: proc(f: ^ui.Frame, clips: []Clip_Rec, glyph_box: ^map[Font_Key]ops.R
 	// What a scroll beneath may rely on: a solid axis-aligned fill is one
 	// color inside its corners and its clip's inner edge, and a stroked box
 	// paints nothing well inside its line.
-	if !ops.is_axis_aligned(rec.t) {
+	if !ops.is_axis_aligned(rec.t) || d.fade != 0 {
 		return rec
 	}
 	#partial switch c in d.cmd {

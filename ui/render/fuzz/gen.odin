@@ -267,7 +267,7 @@ build :: proc(m: ^Model, sc: ^ops.Scene, frame: ^ui.Frame, shaper: ui.Shaper, fo
 				cmd = ops.Fill{shape, paint}
 			}
 		}
-		append(&frame.draws, ui.Draw{t, ui.Clip_Id(it.clip), cmd})
+		append(&frame.draws, ui.Draw{t, ui.Clip_Id(it.clip), cmd, 0})
 	}
 }
 

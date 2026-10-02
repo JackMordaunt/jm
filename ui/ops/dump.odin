@@ -116,6 +116,10 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "focus scope %d%s", v.id, v.trap ? " trap" : "")
 		case Focus_Scope_End:
 			strings.write_string(&sb, "focus scope end")
+		case Push_Opacity:
+			fmt.sbprintf(&sb, "opacity %v", v.alpha)
+		case Pop_Opacity:
+			strings.write_string(&sb, "opacity end")
 		}
 		strings.write_byte(&sb, '\n')
 	}

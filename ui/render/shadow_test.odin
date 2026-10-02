@@ -24,7 +24,7 @@ shadow_alphas :: proc(m: ops.Affine, s: ops.Shadow, y: int) -> (row: [SIZE]u8) {
 	bl.image_init(&img)
 	defer bl.image_destroy(&img)
 	bl.image_create(&img, SIZE, SIZE, .PRGB32)
-	append(&f.draws, ui.Draw{m, ui.NO_CLIP, s})
+	append(&f.draws, ui.Draw{m, ui.NO_CLIP, s, 0})
 	render(&r, &f, &img, {0, 0, 0, 0})
 	for x in 0 ..< SIZE {
 		row[x] = pixel(&img, x, y)[3]
@@ -121,7 +121,7 @@ test_a_scaling_or_resizing_shadow_reuses_its_template :: proc(t: ^testing.T) {
 	bl.image_create(&img, SIZE, SIZE, .PRGB32)
 	draw :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, k: f32, w: f32) {
 		clear(&f.draws)
-		append(&f.draws, ui.Draw{ops.scale(k, k), ui.NO_CLIP, ops.Shadow{{0, 0, w, 300}, 8, 64, {0, 0, 0, 60}}})
+		append(&f.draws, ui.Draw{ops.scale(k, k), ui.NO_CLIP, ops.Shadow{{0, 0, w, 300}, 8, 64, {0, 0, 0, 60}}, 0})
 		render(r, f, img, {0, 0, 0, 0})
 	}
 	templates :: proc(r: ^Renderer) -> (n: int) {

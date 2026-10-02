@@ -261,7 +261,24 @@ Op :: union {
 	Push_Sticky,
 	Focus_Scope,
 	Focus_Scope_End,
+	Push_Opacity,
+	Pop_Opacity,
 }
+
+// Push_Opacity fades what is drawn until its Pop_Opacity, and the layers
+// deferred from inside it, by alpha: 1 leaves it as it is, 0 hides it;
+// nested pushes multiply. Each draw is faded on its own (the renderer's
+// global alpha), not composited as a group and then faded as CSS opacity
+// does, so where draws inside overlap the lower shows through the upper
+// while alpha is below 1: right for a surface fading in, whose content
+// sits on its own background, wrong for a stack of opaque cards. Input
+// is not faded: a faded area still takes its events.
+Push_Opacity :: struct {
+	alpha: f32,
+}
+
+// Pop_Opacity ends the innermost Push_Opacity.
+Pop_Opacity :: struct {}
 
 // Focus_Scope opens a region of keyboard focus, ended by the next
 // Focus_Scope_End: the areas recorded in between, and in every layer
@@ -442,6 +459,15 @@ input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cur
 		// Every area a user can reach, widget or painted row alike.
 		stroke(o, shape, HIT_BOUNDS_COLOR, {width = 1})
 	}
+}
+
+// opacity_push opens a Push_Opacity of alpha; opacity_pop closes it.
+opacity_push :: proc(o: ^Scene, alpha: f32) {
+	append(&o.ops, Push_Opacity{alpha})
+}
+
+opacity_pop :: proc(o: ^Scene) {
+	append(&o.ops, Pop_Opacity{})
 }
 
 // focus_scope opens a Focus_Scope; focus_scope_end closes it.

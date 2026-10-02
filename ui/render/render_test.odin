@@ -65,7 +65,7 @@ clip :: proc(fx: ^Fixture, parent: ui.Clip_Id, shape: ops.Shape, m: ops.Affine) 
 
 @(private = "file")
 fill :: proc(fx: ^Fixture, m: ops.Affine, c: ui.Clip_Id, shape: ops.Shape, paint: ops.Paint) {
-	append(&fx.frame.draws, ui.Draw{m, c, ops.Fill{shape, paint}})
+	append(&fx.frame.draws, ui.Draw{m, c, ops.Fill{shape, paint}, 0})
 }
 
 @(private = "file")
@@ -84,6 +84,26 @@ test_fill_identity :: proc(t: ^testing.T) {
 	testing.expect_value(t, at(&fx, {29, 29}), RED)
 	testing.expect_value(t, at(&fx, {5, 5}), WHITE)
 	testing.expect_value(t, at(&fx, {31, 20}), WHITE)
+}
+
+@(test)
+test_a_faded_draw_blends_and_the_next_is_whole :: proc(t: ^testing.T) {
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Rect{10, 10, 20, 20}, RED)
+	fx.frame.draws[0].fade = 0.5
+	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Rect{40, 10, 20, 20}, RED)
+	// Through the masked path too: a clip that is not a rect chain.
+	c := clip(&fx, ui.NO_CLIP, ops.Ellipse{{10, 40, 20, 20}}, ops.IDENTITY)
+	fill(&fx, ops.IDENTITY, c, ops.Rect{10, 40, 20, 20}, RED)
+	fx.frame.draws[2].fade = 0.5
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	half := at(&fx, {20, 20})
+	testing.expectf(t, half[0] == 255 && abs(int(half[1]) - 128) <= 1 && half[1] == half[2], "half-faded red on white is %v", half)
+	testing.expect_value(t, at(&fx, {50, 20}), RED) // the fade does not outlive its draw
+	masked := at(&fx, {20, 50})
+	testing.expectf(t, abs(int(masked[1]) - 128) <= 2, "half-faded red through a mask is %v", masked)
 }
 
 @(test)
@@ -188,7 +208,7 @@ test_text :: proc(t: ^testing.T) {
 
 	id := ops.add_run(&fx.scene, run)
 	origin := ops.Point{4, 44}
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}, 0})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	bl.image_write_to_file(&fx.img, "build/test/text.png", nil)
 
@@ -255,7 +275,7 @@ test_text_draws_each_glyph_in_its_font :: proc(t: ^testing.T) {
 	half := run.glyphs[1].x
 	id := ops.add_run(&fx.scene, run)
 	origin := ops.Point{4, 40}
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Glyphs{id, origin, {0, 0, 0, 255}}, 0})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 
 	dark :: proc(fx: ^Fixture, x0, x1, y0, y1: f32) -> int {
@@ -284,7 +304,7 @@ test_path_gradient_stroke :: proc(t: ^testing.T) {
 	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Path_Ref{tri}, RED)
 	stops := []ops.Gradient_Stop{{0, {0, 0, 255, 255}}, {1, {0, 255, 0, 255}}}
 	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Rect{0, 40, SIZE, 10}, ops.Linear_Gradient{{0, 0}, {SIZE, 0}, stops})
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Stroke{ops.Rect{40, 4, 20, 20}, RED, {4, .Butt, .Miter}}})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Stroke{ops.Rect{40, 4, 20, 20}, RED, {4, .Butt, .Miter}}, 0})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	testing.expect_value(t, at(&fx, {5, 5}), RED)
 	testing.expect_value(t, at(&fx, {25, 25}), WHITE)
@@ -497,8 +517,8 @@ test_an_image_draws_at_its_alpha :: proc(t: ^testing.T) {
 	setup(&fx)
 	defer teardown(&fx)
 	id := ops.add_image(&fx.scene, path)
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {0, 0, 16, 16}, {}, 128}})
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {32, 0, 16, 16}, {}, 255}})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {0, 0, 16, 16}, {}, 128}, 0})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {32, 0, 16, 16}, {}, 255}, 0})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	half := at(&fx, {8, 8})
 	testing.expect_value(t, half.r, 255)

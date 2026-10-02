@@ -12,6 +12,41 @@ near :: proc(p, q: ops.Point) -> bool {
 }
 
 @(test)
+test_flatten_fades_draws_by_the_opacity_around_them :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+	sc: ops.Scene
+	ops.init(&sc)
+	f: Frame
+	frame_init(&f)
+	red := ops.Color{255, 0, 0, 255}
+
+	ops.fill(&sc, ops.Rect{0, 0, 1, 1}, red) // 0: outside any
+	ops.opacity_push(&sc, 0.5)
+	ops.fill(&sc, ops.Rect{0, 0, 1, 1}, red) // 1: half
+	m := ops.macro_open(&sc)
+	ops.fill(&sc, ops.Rect{0, 0, 1, 1}, red) // 4: a layer raised inside, run last at its Defer's opacity
+	ops.macro_close(&sc, m)
+	ops.defer_call(&sc, m)
+	ops.opacity_push(&sc, 0.5)
+	ops.fill(&sc, ops.Rect{0, 0, 1, 1}, red) // 2: nested, a quarter
+	ops.opacity_pop(&sc)
+	ops.opacity_pop(&sc)
+	ops.fill(&sc, ops.Rect{0, 0, 1, 1}, red) // 3: after, opaque again
+	flatten(&sc, &f)
+
+	testing.expect_value(t, len(f.draws), 5)
+	if len(f.draws) == 5 {
+		testing.expect_value(t, f.draws[0].fade, 0)
+		testing.expect_value(t, f.draws[1].fade, 0.5)
+		testing.expect_value(t, f.draws[2].fade, 0.75)
+		testing.expect_value(t, f.draws[3].fade, 0)
+		testing.expect_value(t, f.draws[4].fade, 0.5)
+	}
+}
+
+@(test)
 test_flatten_transforms_compose_child_first :: proc(t: ^testing.T) {
 	arena: virtual.Arena
 	defer virtual.arena_destroy(&arena)

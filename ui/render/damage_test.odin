@@ -19,6 +19,27 @@ when ODIN_OS == .Windows {
 	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
 }
 
+// A draw whose fade changes, and nothing else, repaints where it lies.
+@(test)
+test_damage_sees_a_change_of_fade :: proc(t: ^testing.T) {
+	f: ui.Frame
+	ui.frame_init(&f)
+	defer ui.frame_destroy(&f)
+	sc: ops.Scene
+	ops.init(&sc)
+	defer ops.destroy(&sc)
+	f.scene = &sc
+	append(&f.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Ellipse{{0, 0, 128, 128}}, ops.Color{255, 0, 0, 255}}, 0})
+	d: Damage
+	defer damage_destroy(&d)
+	damage_update(&d, &f, 256, 256, {0, 0, 0, 0})
+	rects, _ := damage_update(&d, &f, 256, 256, {0, 0, 0, 0})
+	testing.expect_value(t, len(rects), 0) // the same frame twice repaints nothing
+	f.draws[0].fade = 0.5
+	rects, _ = damage_update(&d, &f, 256, 256, {0, 0, 0, 0})
+	testing.expect(t, len(rects) > 0, "a faded draw repaints")
+}
+
 // Text bounds must hold every pixel the text paints, swashes included; a
 // pixel outside them would never be repainted when the text changes.
 @(test)
@@ -48,7 +69,7 @@ test_damage_text_bounds :: proc(t: ^testing.T) {
 			ui.frame_init(&f)
 			defer ui.frame_destroy(&f)
 			f.scene = &sc
-			append(&f.draws, ui.Draw{ops.translate(60, 100), ui.NO_CLIP, ops.Glyphs{0, {0, 0}, {0, 0, 0, 255}}})
+			append(&f.draws, ui.Draw{ops.translate(60, 100), ui.NO_CLIP, ops.Glyphs{0, {0, 0}, {0, 0, 0, 255}}, 0})
 			render(&r, &f, &img, {0, 0, 0, 0})
 
 			d: Damage

@@ -26,7 +26,7 @@ test_mask_buffer_alignment :: proc(t: ^testing.T) {
 	f.scene = &sc
 	turn := ops.Affine{0.92, 0.39, -0.39, 0.92, 10, 18}
 	append(&f.clips, ui.Clip{ui.NO_CLIP, ops.Ellipse{{0, 0, 181, 79}}, turn})
-	append(&f.draws, ui.Draw{ops.IDENTITY, 0, ops.Fill{ops.Rect{0, 0, 200, 150}, RED}})
+	append(&f.draws, ui.Draw{ops.IDENTITY, 0, ops.Fill{ops.Rect{0, 0, 200, 150}, RED}, 0})
 
 	want, got: bl.ImageCore
 	for img in ([]^bl.ImageCore{&want, &got}) {

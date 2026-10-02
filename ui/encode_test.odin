@@ -32,6 +32,9 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.transform_pop(&src)
 	ops.focus_scope(&src, 8, trap = true)
 	ops.focus_scope_end(&src)
+	ops.opacity_push(&src, 0.5)
+	ops.fill(&src, ops.Rect{0, 0, 4, 4}, ops.Color{1, 2, 3, 255})
+	ops.opacity_pop(&src)
 	append(&src.ops, nil) // a nil op survives too
 
 	data := ops.encode(&src)

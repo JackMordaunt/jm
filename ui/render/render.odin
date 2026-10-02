@@ -548,6 +548,14 @@ fill_coverage :: proc(r: ^Renderer, f: ^ui.Frame, img: ^bl.ImageCore, node: ui.C
 // draw_cmd executes one command on ctx under the transform already set.
 @(private)
 draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) {
+	faded := d.fade > 0
+	whole := f64(1 - clamp(d.fade, 0, 1)) // the draw's alpha, which an image's own multiplies
+	if faded {
+		bl.context_set_global_alpha(ctx, whole)
+	}
+	defer if faded {
+		bl.context_set_global_alpha(ctx, 1)
+	}
 	switch cmd in d.cmd {
 	case ops.Fill:
 		style := make_style(r, f, cmd.paint)
@@ -575,10 +583,10 @@ draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) 
 			src = &area
 		}
 		if cmd.alpha < 255 {
-			bl.context_set_global_alpha(ctx, f64(cmd.alpha) / 255)
+			bl.context_set_global_alpha(ctx, whole * f64(cmd.alpha) / 255)
 		}
 		defer if cmd.alpha < 255 {
-			bl.context_set_global_alpha(ctx, 1)
+			bl.context_set_global_alpha(ctx, whole)
 		}
 		if cmd.dst.w > 0 && cmd.dst.h > 0 {
 			dst := bl.Rect{f64(cmd.dst.x), f64(cmd.dst.y), f64(cmd.dst.w), f64(cmd.dst.h)}

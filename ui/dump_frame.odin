@@ -32,6 +32,9 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 		case ops.Shadow:
 			ops.write_draw(&sb, f.scene, v)
 		}
+		if d.fade != 0 {
+			fmt.sbprintf(&sb, " fade=%v", d.fade)
+		}
 		strings.write_byte(&sb, '\n')
 	}
 	strings.write_string(&sb, "clips\n")
@@ -54,6 +57,9 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 		ops.write_shape(&sb, h.shape)
 		strings.write_string(&sb, " kinds=")
 		ops.write_kinds(&sb, h.kinds)
+		if h.scope != 0 {
+			fmt.sbprintf(&sb, " scope=%d", h.scope)
+		}
 		strings.write_byte(&sb, '\n')
 	}
 	strings.write_string(&sb, "tags\n")
@@ -78,7 +84,16 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "  key_interest %d %v", k.area, k.key)
 			ops.write_mods(&sb, " mods", k.mods)
 			ops.write_mods(&sb, " optional", k.optional)
+			if k.topmost {
+				strings.write_string(&sb, " topmost")
+			}
 			strings.write_byte(&sb, '\n')
+		}
+	}
+	if len(f.scopes) > 0 {
+		strings.write_string(&sb, "scopes\n")
+		for s, i in f.scopes {
+			fmt.sbprintf(&sb, "  scope %d id=%d in %d%s\n", i + 1, s.id, s.parent, s.trap ? " trap" : "")
 		}
 	}
 	return strings.to_string(sb)

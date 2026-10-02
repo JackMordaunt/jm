@@ -391,7 +391,7 @@ number_runs :: proc(c: ^Compositor, f: ^ui.Frame) {
 // barrier draws nothing and has no clip: between two draws it keeps render
 // from grouping them.
 @(private)
-barrier := ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{}, ops.Color{}}}
+barrier := ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{}, ops.Color{}}, 0}
 
 // paint_band renders the draws of f that touch r into the part of target
 // under r, through a view that shares target's pixels. picks are the
@@ -420,7 +420,7 @@ paint_band :: proc(w: ^Worker, f: ^ui.Frame, target: ^bl.ImageCore, r: ops.Rect,
 		if last >= 0 && d.clip == f.draws[last].clip && runs[i] != runs[last] {
 			append(&sub.draws, barrier)
 		}
-		append(&sub.draws, ui.Draw{ops.mul(d.transform, shift), d.clip, d.cmd})
+		append(&sub.draws, ui.Draw{ops.mul(d.transform, shift), d.clip, d.cmd, d.fade})
 		last = i
 	}
 
