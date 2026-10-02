@@ -37,6 +37,7 @@ import git_fuzz "jm:git/fuzz"
 import pg_query_fuzz "jm:pg_query/fuzz"
 import pq_fuzz "jm:pq/fuzz"
 import sqlite3_fuzz "jm:sqlite3/fuzz"
+import stream_fuzz "jm:stream/fuzz"
 import tar_fuzz "jm:tar/fuzz"
 import render_fuzz "jm:ui/render/fuzz"
 import wasm_fuzz "jm:wasm/fuzz"
@@ -60,6 +61,7 @@ runners := []Runner {
 	{"ui_render", render_fuzz.CORPUS, render_fuzz.run},
 	{"git", git_fuzz.CORPUS, git_fuzz.run},
 	{"zstd", zstd_fuzz.CORPUS, zstd_fuzz.run},
+	{"stream", stream_fuzz.CORPUS, stream_fuzz.run},
 }
 
 main :: proc() {
@@ -157,7 +159,7 @@ USAGE :: `usage: jm-fuzz [suite...] [-seed=N] [-iters=N] [-for=30s] [-entropy=N]
                [-shrink=N] [-no-shrink] [-corpus=DIR] [-no-corpus]
                [-isolate] [-stop] [-quiet]
 
-suites: sqlite3, tar, wasm, pg_query, pq, ui_render, git. With none named, every
+suites: sqlite3, tar, wasm, pg_query, pq, ui_render, git, zstd, stream. With none named, every
 suite runs.
 Each suite keeps its regressions beside its source and replays them first;
 -corpus=DIR uses DIR/<suite> instead, and -no-corpus skips them. pq needs
