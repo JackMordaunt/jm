@@ -55,7 +55,7 @@ done < <(for f in "${specs[@]}" foundations.json; do [ -f "$f" ] && refs "$f"; d
 # be vendored under source/.
 cited() { # every file a JSON file cites
     jq -r '(.. | objects | .source? // empty), (.references?.react // [] | .[])' "$1" |
-        tr ';' '\n' | sed 's/^ *//; s/:.*//' | grep -E '\.(css|tsx?|json|md)$' | sort -u
+        tr ';' '\n' | sed 's/^ *//; s/:.*//' | grep -E '\.(css|tsx?|m?js|json|md)$' | sort -u
 }
 # A path is looked up under source/react, then source/; a base name must
 # name exactly one file, since 43 base names repeat under source/.

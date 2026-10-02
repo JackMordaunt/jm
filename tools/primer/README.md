@@ -5,7 +5,9 @@ JSON with a JSON Schema: the tokens per theme, the system rules, and one spec
 per component. All of it derives from Primer React at the commit an
 `@primer/react` release names (`source/COMMIT`, `source/VERSIONS`), the
 `@primer/primitives` tokens and `@primer/octicons` icons at pinned versions,
-and primer.style where the code leaves something unsaid.
+the `@primer/behaviors` (anchored positioning, focus traps and zones) and
+`@github/relative-time-element` builds Primer React's lockfile resolves, and
+primer.style where the code leaves something unsaid.
 
 **Agents start at `kit.json`.** It gives the reading order, the conventions,
 and an index of every component.

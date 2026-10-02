@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Vendors the sources the kit is read from: primer/react at the commit an
 # @primer/react release tag names (each component's CSS module, docs JSON
-# and implementation, and the postcss mixins they use), and the published
-# @primer/primitives and @primer/octicons packages at pinned versions.
+# and implementation, and the postcss mixins they use), the published
+# @primer/primitives and @primer/octicons packages at pinned versions, and
+# the two behaviour packages Primer React depends on (@primer/behaviors:
+# anchored positioning, focus traps and zones; @github/relative-time-element)
+# at the versions its lockfile resolves.
 # Writes source/COMMIT and source/VERSIONS. Everything is assembled in a
 # temp directory, which also receives the previous source/.
 set -euo pipefail
@@ -45,8 +48,24 @@ jq -S 'map_values({keywords, heights: (.heights | map_values({width,
     d: [.ast | .. | objects | select(.name == "path") | .attributes.d]}))})' \
     "$tmp/octicons/build/data.json" >"$out/npm/octicons/build/data.json"
 
+locked() { # the version root's package-lock.json resolves package $1 to
+    jq -r --arg p "node_modules/$1" '.packages[$p].version' "$root/package-lock.json"
+}
+behaviors=$(locked @primer/behaviors)
+relative=$(locked @github/relative-time-element)
+(cd "$tmp" && npm pack --silent "@primer/behaviors@$behaviors" "@github/relative-time-element@$relative" >/dev/null)
+mkdir -p "$tmp/behaviors" "$tmp/relative" "$out/npm/behaviors" "$out/npm/relative-time-element"
+tar xzf "$tmp/primer-behaviors-$behaviors.tgz" -C "$tmp/behaviors" --strip-components 1
+tar xzf "$tmp/github-relative-time-element-$relative.tgz" -C "$tmp/relative" --strip-components 1
+cp -R "$tmp/behaviors/dist/esm" "$out/npm/behaviors/"
+find "$out/npm/behaviors" \( -name '*.d.ts' -o -name '*.map' -o -path '*/stories/*' \) -delete
+cp "$tmp/behaviors/package.json" "$tmp/behaviors/LICENSE" "$out/npm/behaviors/"
+cp "$tmp/relative/dist/relative-time-element.js" "$tmp/relative/dist/duration.js" "$tmp/relative/dist/duration-format-ponyfill.js" \
+    "$tmp/relative/package.json" "$tmp/relative/LICENSE" "$out/npm/relative-time-element/"
+
 echo "$sha" >"$out/COMMIT"
-printf '@primer/react %s\n@primer/primitives %s\n@primer/octicons %s\n' "$react" "$primitives" "$octicons" >"$out/VERSIONS"
+printf '@primer/react %s\n@primer/primitives %s\n@primer/octicons %s\n@primer/behaviors %s\n@github/relative-time-element %s\n' \
+    "$react" "$primitives" "$octicons" "$behaviors" "$relative" >"$out/VERSIONS"
 [ ! -e source ] || mv source "$tmp/previous-source"
 mv "$out" source
 echo "fetched primer/react@$sha ($react), primitives $primitives, octicons $octicons"

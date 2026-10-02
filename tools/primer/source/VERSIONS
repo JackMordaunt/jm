@@ -1,3 +1,5 @@
 @primer/react 38.40.1
 @primer/primitives 11.10.0
 @primer/octicons 19.38.0
+@primer/behaviors 1.10.3
+@github/relative-time-element 5.0.0
