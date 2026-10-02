@@ -214,13 +214,15 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 // kitchen_fonts is the system sans at normal, medium and semibold (font
-// ids 0, 1, 2): SF on macOS, else jm:ui's default font for all three.
+// ids 0, 1, 2): SF on macOS, one variable font drawn at each weight, else
+// jm:ui's default font, whose static outlines ignore the weight.
 kitchen_fonts :: proc() -> []ops.Font_Ref {
 	sf := "/System/Library/Fonts/SFNS.ttf"
 	path := os.exists(sf) ? sf : ui.default_font()
+	weights := [3]f32{400, 500, 600}
 	fonts := make([]ops.Font_Ref, 3)
-	for i in 0 ..< 3 {
-		fonts[i] = {id = ops.Font_Id(i), path = path}
+	for w, i in weights {
+		fonts[i] = {id = ops.Font_Id(i), path = path, weight = w}
 	}
 	return fonts
 }
