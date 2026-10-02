@@ -65,6 +65,7 @@ foreign lib {
 	node_set_disabled :: proc(node: ^Node) ---
 	node_set_read_only :: proc(node: ^Node) ---
 	node_set_required :: proc(node: ^Node) ---
+	node_set_invalid :: proc(node: ^Node, value: Invalid) ---
 	node_set_busy :: proc(node: ^Node) ---
 	node_set_modal :: proc(node: ^Node) ---
 	node_set_hidden :: proc(node: ^Node) ---

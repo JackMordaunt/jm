@@ -41,6 +41,7 @@ Snapshot_Node :: struct {
 	disabled:    bool,
 	read_only:   bool,
 	required:    bool,
+	invalid:     bool,
 	busy:        bool,
 	modal:       bool,
 	hidden:      bool, // its box lies wholly outside its clip: scrolled away
@@ -98,6 +99,7 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 			disabled    = .Disabled in n.semantics.states,
 			read_only   = .Readonly in n.semantics.states,
 			required    = .Required in n.semantics.states,
+			invalid     = .Invalid in n.semantics.states,
 			busy        = .Busy in n.semantics.states,
 			modal       = .Modal in n.semantics.states,
 		}

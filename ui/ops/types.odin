@@ -294,6 +294,7 @@ State :: enum u8 {
 	Disabled,
 	Readonly,
 	Required,
+	Invalid, // its value fails validation: a field in error (aria-invalid)
 	Busy,
 	Modal,
 }

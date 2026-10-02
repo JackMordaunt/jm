@@ -123,6 +123,32 @@ collapsed_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	ui.widget_close(gtx, &p, {size = {0, 300}})
 }
 
+@(private = "file")
+invalid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1)
+	defer ui.close(&col)
+	for name, i in ([]string{"Email", "Phone"}) {
+		p := ui.widget_open(gtx, u64(10 + i))
+		ui.semantics(gtx, &p, {role = .Text_Field, label = name, states = i == 0 ? {.Invalid} : {}})
+		ui.widget_close(gtx, &p, {size = {120, 24}})
+	}
+}
+
+@(test)
+test_an_invalid_field_reaches_accesskit_invalid :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, invalid_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Form")
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `label: "Email", invalid: True`), got)
+	testing.expect_value(t, strings.count(got, "invalid"), 1) // Phone is not
+}
+
 @(test)
 test_a_collapsed_node_is_hidden :: proc(t: ^testing.T) {
 	p: ui.Probe

@@ -282,6 +282,8 @@ state_name :: proc(s: ops.State) -> string {
 		return "readonly"
 	case .Required:
 		return "required"
+	case .Invalid:
+		return "invalid"
 	case .Busy:
 		return "busy"
 	case .Modal:

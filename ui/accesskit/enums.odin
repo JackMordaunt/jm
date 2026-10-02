@@ -220,6 +220,14 @@ Toggled :: enum u8 {
 	Mixed,
 }
 
+// Invalid is why a node's value is invalid (accesskit's Invalid); jm:ui
+// sets only True.
+Invalid :: enum u8 {
+	True,
+	Grammar,
+	Spelling,
+}
+
 Live :: enum u8 {
 	Off,
 	Polite,

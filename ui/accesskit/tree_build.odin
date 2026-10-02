@@ -61,6 +61,9 @@ tree_update :: proc(s: ^Snapshot) -> ^Tree_Update {
 		if r.required {
 			node_set_required(n)
 		}
+		if r.invalid {
+			node_set_invalid(n, .True)
+		}
 		if r.busy {
 			node_set_busy(n)
 		}
