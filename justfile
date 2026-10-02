@@ -810,6 +810,11 @@ primer_kit := "tools/primer"
 primer-tokens:
     {{odin}} run tools/design-tokens {{flags}} -- primer {{primer_kit}}/tokens/primer.resolved.json ui/primer/tokens/tokens.odin
 
+# Regenerate ui/primer/icon_data.odin from the kit's vendored octicons
+[group('ui/primer')]
+primer-icons:
+    {{odin}} run {{primer_kit}}/icon-data {{flags}} -- {{primer_kit}}/source/npm/octicons/data.json ui/primer/icon_data.odin
+
 # Replaces source/ wholesale: primer/react at the commit an @primer/react
 # release tag names, then @primer/primitives and @primer/octicons at the
 # versions given. Needs gh, npm and jq.

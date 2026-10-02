@@ -83,6 +83,7 @@ just's own release, and SDL3 has to be built from source there.
 | `ui/base` | the smallest design system on `ui`: a five-role palette bound light and dark as an instance of `ui/design`, checked by its axioms, and the plain widgets every page needs — label, text, divider, panel; a full system maps its scheme down to it |
 | `ui/material` | Material 3 Expressive on `ui`: the colour scheme, type scale, shape, motion springs and state tokens generated from the m3e-kit (`tools/material`) into `ui/material/tokens`, Material Symbols icons as paths, and the components (buttons, text fields, selection controls, chips, cards, lists, navigation, app bars, tabs), each able to paint any spec state on demand |
 | `ui/fluent` | Fluent 2 on `ui`: the five colour themes (web and Teams, light and dark, high contrast), type ramp, spacing, radii, strokes, shadows and motion generated from the fluent-kit (`tools/fluent`) into `ui/fluent/tokens`, with states read as separate tokens through a `design.Control` and colour changes eased over the kit's duration and curve |
+| `ui/primer` | GitHub's Primer on `ui`: the 14 colour themes (light, dark and dark dimmed, each with high-contrast, colorblind and tritanopia variants), type scale, control sizes, radii, borders, layered shadows and motion generated from the primer-kit (`tools/primer`) into `ui/primer/tokens`, and every Octicon at its 12, 16 and 24px designs |
 | `ui/testutil` | `count_ops`: assertions a `ui` package's own tests and a downstream package's tests both want, without an import cycle |
 | `pg_query` | `parse`, `split`, `is_utility`, `fingerprint`, `normalize`: PostgreSQL's own SQL parser, statically linked, with node types generated from its schema |
 | `pq`      | `connect`, `exec`, `escape_literal`, `escape_identifier`, `identity`: a PostgreSQL client over the system libpq, the one dynamically linked library |
@@ -175,6 +176,7 @@ ui/fluent    fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
              fluent-icons-fetch  fetch the icons icons.txt names at its pinned commit (or a ref given)
              fluent-kit-{tokens,fetch,index,check,page}  maintain the fluent-kit in tools/fluent
 ui/primer    primer-tokens  regenerate ui/primer/tokens from the primer-kit
+             primer-icons  regenerate ui/primer/icon_data.odin from the kit's octicons
              primer-kit-{tokens,fetch,index,check}  maintain the primer-kit in tools/primer
 ```
 
