@@ -464,7 +464,7 @@ kitchen_fonts :: proc() -> []ops.Font_Ref {
 	fonts := make([]ops.Font_Ref, 3)
 	for n, i in names {
 		p := strings.concatenate({dir, n})
-		fonts[i] = {ops.Font_Id(i), os.exists(p) ? p : ui.default_font()}
+		fonts[i] = {id = ops.Font_Id(i), path = os.exists(p) ? p : ui.default_font()}
 	}
 	return fonts
 }

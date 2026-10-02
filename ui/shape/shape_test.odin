@@ -1,8 +1,10 @@
 package shape
 
+import "core:os"
 import "core:testing"
 import "jm:ui"
 import "jm:ui/ops"
+import "jm:ui/testutil"
 
 when ODIN_OS == .Windows {
 	@(private = "file")
@@ -20,7 +22,7 @@ test_shape_clusters_are_byte_offsets :: proc(t: ^testing.T) {
 	s: Shaper
 	init(&s)
 	defer destroy(&s)
-	refs := []ops.Font_Ref{{0, FONT}}
+	refs := []ops.Font_Ref{{id = 0, path = FONT}}
 	s.refs = refs
 	run := shape(&s, 0, 20, "é€a", context.allocator)
 	defer delete(run.glyphs)
@@ -41,7 +43,7 @@ test_shape_composes_marks :: proc(t: ^testing.T) {
 	s: Shaper
 	init(&s)
 	defer destroy(&s)
-	refs := []ops.Font_Ref{{0, FONT}}
+	refs := []ops.Font_Ref{{id = 0, path = FONT}}
 	s.refs = refs
 	run := shape(&s, 0, 20, "e\u0301x", context.allocator)
 	defer delete(run.glyphs)
@@ -84,7 +86,7 @@ test_shape_text_directions_and_breaks :: proc(t: ^testing.T) {
 	s: Shaper
 	init(&s)
 	defer destroy(&s)
-	refs := []ops.Font_Ref{{0, FONT}}
+	refs := []ops.Font_Ref{{id = 0, path = FONT}}
 	s.refs = refs
 	text := "ab שלום cd" // ab שלום cd: Hebrew is 2 bytes a letter
 	st := shape_text(&s, 0, 20, text, context.temp_allocator)
@@ -131,7 +133,7 @@ test_shape_falls_back :: proc(t: ^testing.T) {
 	s: Shaper
 	init(&s)
 	defer destroy(&s)
-	refs := []ops.Font_Ref{{0, ASCII}, {1, FONT}}
+	refs := []ops.Font_Ref{{id = 0, path = ASCII}, {id = 1, path = FONT}}
 	s.refs = refs
 	defer free_all(context.temp_allocator)
 
@@ -145,4 +147,51 @@ test_shape_falls_back :: proc(t: ^testing.T) {
 	testing.expect_value(t, run.glyphs[0].font, 0)
 	testing.expect_value(t, run.glyphs[1].font, 1)
 	testing.expect(t, run.glyphs[1].id != 0, "the fallback's glyph for é")
+}
+
+// A variable font shapes wider at 700 than at 400: the fixture (see
+// testutil.variable_font) everywhere, and macOS's SFNS where it is.
+@(test)
+test_shape_variable_font_at_its_weight :: proc(t: ^testing.T) {
+	os.make_directory("build/test")
+	fixture := "build/test/shape-wght.ttf"
+	defer os.remove(fixture)
+	testing.expect(t, testutil.variable_font(fixture), "write the variable fixture")
+	regular, bold := advances_at(fixture, 400, 700)
+	// wght 700 is 0.6 of the way to 900, where the fixture is 25% wider.
+	want := regular * (1 + 0.6 * testutil.VARIABLE_STRETCH)
+	testing.expectf(t, abs(bold - want) < 1, "700 advance %v, want %v", bold, want)
+	if os.exists(testutil.SFNS) {
+		regular, bold = advances_at(testutil.SFNS, 400, 700)
+		testing.expectf(t, bold > regular, "SFNS 700 advance %v, 400 advance %v", bold, regular)
+	}
+}
+
+// advances_at is how far "Primer weights" advances in the font at path at
+// two weights.
+@(private = "file")
+advances_at :: proc(path: string, light, heavy: f32) -> (f32, f32) {
+	s: Shaper
+	init(&s)
+	defer destroy(&s)
+	refs := []ops.Font_Ref{{id = 0, path = path, weight = light}, {id = 1, path = path, weight = heavy}}
+	s.refs = refs
+	defer free_all(context.temp_allocator)
+	a := shape(&s, 0, 32, "Primer weights", context.temp_allocator)
+	b := shape(&s, 1, 32, "Primer weights", context.temp_allocator)
+	return a.advance, b.advance
+}
+
+@(test)
+test_shape_static_font_ignores_weight :: proc(t: ^testing.T) {
+	s: Shaper
+	init(&s)
+	defer destroy(&s)
+	refs := []ops.Font_Ref{{id = 0, path = ASCII}, {id = 1, path = ASCII, weight = 600}}
+	s.refs = refs
+	defer free_all(context.temp_allocator)
+	plain := shape(&s, 0, 20, "Weight", context.temp_allocator)
+	weighted := shape(&s, 1, 20, "Weight", context.temp_allocator)
+	testing.expect(t, len(weighted.glyphs) > 0, "a static font at a weight still shapes")
+	testing.expect_value(t, weighted.advance, plain.advance)
 }

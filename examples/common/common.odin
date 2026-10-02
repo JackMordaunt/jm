@@ -30,7 +30,7 @@ fonts :: proc(allocator := context.allocator) -> []ops.Font_Ref {
 	out := make([]ops.Font_Ref, 3, allocator)
 	for n, ii in names {
 		p := strings.concatenate({dir, n}, allocator)
-		out[ii] = {ops.Font_Id(ii), os.exists(p) ? p : ui.default_font()}
+		out[ii] = {id = ops.Font_Id(ii), path = os.exists(p) ? p : ui.default_font()}
 	}
 	return out
 }

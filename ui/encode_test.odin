@@ -15,7 +15,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	src: ops.Scene
 	ops.init(&src)
 	golden_scene(&src)
-	ops.add_font(&src, "mono.ttf")
+	ops.add_font(&src, "mono.ttf", 600)
 	ops.tag(&src, 99, "quote \" and\nnewline")
 	ops.defer_call(&src, 0) // golden_scene's first macro, run again on top
 	// and once more as a popup, which carries its placement on the wire
@@ -42,6 +42,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(dst.fonts), 2)
 	testing.expect_value(t, len(dst.images), 1)
 	testing.expect_value(t, dst.fonts[1].path, "mono.ttf")
+	testing.expect_value(t, dst.fonts[1].weight, 600)
 	testing.expect_value(t, dst.images[0].path, "logo.png")
 	testing.expect(t, slice.equal(dst.paths[0].verbs, src.paths[0].verbs))
 	testing.expect(t, slice.equal(dst.paths[0].points, src.paths[0].points))

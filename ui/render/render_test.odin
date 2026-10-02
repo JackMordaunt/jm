@@ -220,7 +220,7 @@ test_fonts_sharing_a_file_keep_their_ids :: proc(t: ^testing.T) {
 	path := "build/test/shared_font.png"
 	defer os.remove(path)
 	h: Headless
-	headless_init(&h, second_font_view, nil, {SIZE, SIZE}, {{0, FONT}, {1, FONT}})
+	headless_init(&h, second_font_view, nil, {SIZE, SIZE}, {{id = 0, path = FONT}, {id = 1, path = FONT}})
 	defer headless_destroy(&h)
 	testing.expect(t, headless_png(&h, path))
 

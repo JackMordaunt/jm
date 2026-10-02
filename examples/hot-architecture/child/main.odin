@@ -103,7 +103,7 @@ main :: proc() {
 	m := new_model()
 
 	if len(os.args) == 1 {
-		child.run({ui = architecture_ui, user = &m, fonts = {{0, ui.default_font()}}})
+		child.run({ui = architecture_ui, user = &m, fonts = {{id = 0, path = ui.default_font()}}})
 		return
 	}
 
@@ -122,7 +122,7 @@ main :: proc() {
 			}
 			i += 1
 			path := args[i]
-			if !render.snapshot(architecture_ui, &m, {WIDTH, HEIGHT}, {{0, ui.default_font()}}, path, frames = 15) {
+			if !render.snapshot(architecture_ui, &m, {WIDTH, HEIGHT}, {{id = 0, path = ui.default_font()}}, path, frames = 15) {
 				fmt.eprintfln("could not write %s", path)
 				os.exit(1)
 			}

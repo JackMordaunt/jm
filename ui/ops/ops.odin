@@ -244,9 +244,15 @@ Macro :: struct {
 	first, last: int,
 }
 
+// Font_Ref names the file a Font_Id draws from. weight is the value for
+// the font's wght variation axis, 0 for the font's default: one variable
+// font file, such as macOS's SFNS.ttf, serves several weights under
+// several ids. A font without a wght axis draws at its one weight
+// whatever weight says.
 Font_Ref :: struct {
-	id:   Font_Id,
-	path: string,
+	id:     Font_Id,
+	path:   string,
+	weight: f32,
 }
 
 Image_Ref :: struct {
@@ -442,16 +448,17 @@ add_run :: proc(o: ^Scene, r: Glyph_Run) -> Run_Id {
 	return Run_Id(len(o.runs) - 1)
 }
 
-// add_font registers a font file once; ids are stable for the life of Scene.
-add_font :: proc(o: ^Scene, path: string) -> Font_Id {
+// add_font registers a font file at a weight (see Font_Ref) once; ids are
+// stable for the life of Scene. The same file at two weights is two ids.
+add_font :: proc(o: ^Scene, path: string, weight: f32 = 0) -> Font_Id {
 	next := Font_Id(0)
 	for f in o.fonts {
-		if f.path == path {
+		if f.path == path && f.weight == weight {
 			return f.id
 		}
 		next = max(next, f.id + 1)
 	}
-	append(&o.fonts, Font_Ref{next, path})
+	append(&o.fonts, Font_Ref{next, path, weight})
 	return next
 }
 

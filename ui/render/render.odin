@@ -22,10 +22,17 @@ round rects under axis-aligned transforms covers pixels fully, its group
 draws there straight onto the target, and only the ring around that
 interior goes through the layer.
 
-Memory: fonts, font sizes and images are cached for the life of the Renderer,
-keyed by the ids in Ops, so an Ops must keep its ids stable (add_font and
-add_image do). Masks live for one render call; their pixels are buffers the
-Renderer reuses from call to call. Everything is released by destroy.
+Variable fonts: a Font_Ref whose weight moves a variable font off its
+default instance draws its glyphs as paths that jm:ui/glyf decodes at that
+weight (see variable.odin). At the revision the justfile builds
+(blend2d_rev, 3525b5f) no Blend2D source under src/blend2d/opentype reads
+'gvar', 'HVAR' or 'MVAR', so line metrics stay the default instance's.
+
+Memory: fonts, font sizes, images and a variable font's glyph outlines are
+cached for the life of the Renderer, keyed by the ids in Ops, so an Ops
+must keep its ids stable (add_font and add_image do). Masks live for one
+render call; their pixels are buffers the Renderer reuses from call to
+call. Everything is released by destroy.
 
 Threads: a Renderer is not thread-safe. The Shaper it hands out shares its
 font caches, so shape and render must happen on the same thread. Setting
@@ -41,6 +48,7 @@ import "core:strings"
 
 import "jm:ui"
 import bl "jm:ui/blend2d"
+import "jm:ui/glyf"
 import "jm:ui/shape"
 
 // Font_Key names one Blend2D font instance: a face at a pixel size.
@@ -66,6 +74,10 @@ Renderer :: struct {
 	layer:      bl.ImageCore, // at least as big as every target so far
 	layer_size: [2]i32,
 	path:       bl.PathCore,
+	variable:   map[ops.Font_Id]Variable, // see variable.odin
+	glyph_paths: map[Glyph_Key]bl.PathCore, // a Variable's outlines
+	glyph_scratch: ^glyf.Scratch, // decodes them, allocated on first use
+	glyph_run:  bl.PathCore, // a Variable's glyphs under construction
 	font_refs:  []ops.Font_Ref, // what the shaper loads from
 	text:       shape.Shaper, // shapes for shaper, see shaper.odin
 	allocator:  mem.Allocator,
@@ -94,6 +106,9 @@ init :: proc(r: ^Renderer, allocator := context.allocator) {
 	bl.context_init(&r.mask_ctx)
 	bl.image_init(&r.layer)
 	bl.path_init(&r.path)
+	bl.path_init(&r.glyph_run)
+	r.variable = make(map[ops.Font_Id]Variable, allocator)
+	r.glyph_paths = make(map[Glyph_Key]bl.PathCore, allocator)
 	r.faces = make(map[ops.Font_Id]bl.FontFaceCore, allocator)
 	r.fonts = make(map[Font_Key]bl.FontCore, allocator)
 	r.images = make(map[ops.Image_Id]bl.ImageCore, allocator)
@@ -111,6 +126,7 @@ destroy :: proc(r: ^Renderer) {
 	for _, &f in r.faces {
 		bl.font_face_destroy(&f)
 	}
+	destroy_variable(r)
 	for _, &img in r.images {
 		bl.image_destroy(&img)
 	}
@@ -621,7 +637,9 @@ draw_glyphs :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, g: ops.Gly
 			j += 1
 		}
 		font := font_for(r, run.glyphs[i].font, run.size, f.scene.fonts[:])
-		if font != nil {
+		if v, varied := &r.variable[run.glyphs[i].font]; varied && font != nil {
+			fill_variable(r, ctx, run.glyphs[i].font, v, ids[i:j], pts[i:j], origin, run.size, rgba32(g.color))
+		} else if font != nil {
 			// USER_UNITS: each placement is a bl.Point position relative to
 			// the origin, mapped by the user transform only (not the font
 			// matrix).
@@ -854,6 +872,8 @@ image :: proc(r: ^Renderer, sc: ^ops.Scene, id: ops.Image_Id) -> ^bl.ImageCore {
 
 // face returns the cached font face for id, loading it from the path refs
 // name on first use; nil when the id is unknown or the file does not load.
+// A ref whose weight varies its font also registers a Variable, and the
+// face shares its bytes.
 @(private)
 face :: proc(r: ^Renderer, id: ops.Font_Id, refs: []ops.Font_Ref) -> ^bl.FontFaceCore {
 	if fc, ok := &r.faces[id]; ok {
@@ -865,8 +885,14 @@ face :: proc(r: ^Renderer, id: ops.Font_Id, refs: []ops.Font_Ref) -> ^bl.FontFac
 		}
 		fc: bl.FontFaceCore
 		bl.font_face_init(&fc)
-		cpath := strings.clone_to_cstring(ref.path, context.temp_allocator)
-		if bl.font_face_create_from_file(&fc, cpath, .NO_FLAGS) != 0 {
+		res: bl.Result
+		if v := load_variable(r, ref); v != nil {
+			res = bl.font_face_create_from_data(&fc, &v.data, 0)
+		} else {
+			cpath := strings.clone_to_cstring(ref.path, context.temp_allocator)
+			res = bl.font_face_create_from_file(&fc, cpath, .NO_FLAGS)
+		}
+		if res != 0 {
 			bl.font_face_destroy(&fc)
 			return nil
 		}

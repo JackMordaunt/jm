@@ -25,6 +25,7 @@ _Static_assert(offsetof(kbts_shape_codepoint, ParagraphDirection) == 40, "kbts_s
 _Static_assert(KBTS_BREAK_FLAG_GRAPHEME == 1 << 2 && KBTS_BREAK_FLAG_LINE_SOFT == 1 << 4 && KBTS_BREAK_FLAG_LINE_HARD == 1 << 5 && KBTS_BREAK_FLAG_PARAGRAPH_DIRECTION == 1 << 7, "kbts_break_flags");
 _Static_assert(sizeof(kbts_font_info2_1) == 168, "kbts_font_info2_1");
 _Static_assert(offsetof(kbts_font_info2_1, UnitsPerEm) == 152, "kbts_font_info2_1.UnitsPerEm");
+_Static_assert(sizeof(kbts_variation) == 8, "kbts_variation");
 _Static_assert(sizeof(kbts_allocator_op) == 24, "kbts_allocator_op");
 _Static_assert(offsetof(kbts_allocator_op, Allocate.Size) == 16, "kbts_allocator_op.Allocate.Size");
 _Static_assert(KBTS_DIRECTION_LTR == 1 && KBTS_DIRECTION_RTL == 2, "kbts_direction");

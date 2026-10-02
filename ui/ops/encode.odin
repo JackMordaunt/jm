@@ -6,7 +6,7 @@ import "core:mem"
 // Binary wire form of Scene. Little-endian throughout:
 //
 //	"UIOP" u8(version)
-//	fonts   u32 n, n × (u32 id, str path)
+//	fonts   u32 n, n × (u32 id, str path, f32 weight)
 //	images  u32 n, n × (u32 id, str path)
 //	paths   u32 n, n × (u32 n, n × u8 verb; u32 n, n × (f32 x, f32 y))
 //	runs    u32 n, n × (u32 font, f32 size, u32 n, n × (u32 id, u32 cluster, f32 x, f32 y, u32 font), f32 advance)
@@ -26,8 +26,9 @@ ENCODE_MAGIC :: "UIOP"
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
 // covers and added Cover_End; 20 gave Defer top, bit 1 of its cover byte;
-// 21 added Key Browser_Back and Browser_Forward.
-ENCODE_VERSION :: u8(21)
+// 21 added Key Browser_Back and Browser_Forward; 22 gave each font its
+// weight.
+ENCODE_VERSION :: u8(22)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -50,6 +51,7 @@ encode :: proc(ops: ^Scene, allocator := context.allocator) -> []byte {
 	for f in ops.fonts {
 		put_u32(&w, u32(f.id))
 		put_str(&w, f.path)
+		put_f32(&w, f.weight)
 	}
 	put_u32(&w, u32(len(ops.images)))
 	for im in ops.images {
@@ -135,7 +137,8 @@ decode :: proc(data: []byte, ops: ^Scene) -> bool {
 	for _ in 0 ..< n {
 		id := get_u32(&r) or_return
 		path := get_str(&r) or_return
-		append(&ops.fonts, Font_Ref{Font_Id(id), path})
+		weight := get_f32(&r) or_return
+		append(&ops.fonts, Font_Ref{Font_Id(id), path, weight})
 	}
 	if n, ok = get_count(&r, 1); !ok {
 		return false

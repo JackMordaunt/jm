@@ -50,7 +50,7 @@ main :: proc() {
 	m: Model
 
 	if len(os.args) == 1 {
-		child.run({ui = counter_ui, user = &m, fonts = {{0, ui.default_font()}}})
+		child.run({ui = counter_ui, user = &m, fonts = {{id = 0, path = ui.default_font()}}})
 		return
 	}
 
@@ -69,7 +69,7 @@ main :: proc() {
 			}
 			i += 1
 			path := args[i]
-			if !render.snapshot(counter_ui, &m, {WIDTH, HEIGHT}, {{0, ui.default_font()}}, path) {
+			if !render.snapshot(counter_ui, &m, {WIDTH, HEIGHT}, {{id = 0, path = ui.default_font()}}, path) {
 				fmt.eprintfln("could not write %s", path)
 				os.exit(1)
 			}

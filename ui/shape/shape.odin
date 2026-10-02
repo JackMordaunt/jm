@@ -28,6 +28,10 @@ per grapheme (kb_text_shape.h, CONTEXT:FONT HANDLING, and
 test_shape_falls_back); each glyph carries the id of the font it came
 from.
 
+Weight: a Font_Ref's weight sets a variable font's wght axis, so its
+advances and feature-variation substitutions are those of that weight; a
+font without the axis ignores it (test_shape_variable_font_at_its_weight).
+
 Memory: faces are parsed once per Font_Id and live until destroy. Each
 font asked for gets a kb context with its fallbacks pushed under it, kept
 until the fallbacks change. A shape call allocates only what it returns.
@@ -64,10 +68,11 @@ Shaper :: struct {
 // body is `return !Font->Error;`, which a zeroed font passes.
 @(private)
 Face :: struct {
-	data: []byte,
-	font: kb.Font,
-	upem: f32,
-	ok:   bool,
+	data:   []byte,
+	font:   kb.Font,
+	upem:   f32,
+	weight: f32, // the ref's, set on the font as it is pushed
+	ok:     bool,
 }
 
 // init prepares s; everything it holds allocates from allocator.
@@ -146,12 +151,25 @@ context_for :: proc(s: ^Shaper, font: ops.Font_Id) -> ^kb.Shape_Context {
 	// HANDLING): the least preferred go in first, the font asked for last.
 	#reverse for id in s.fallbacks {
 		if f := face(s, id); f != nil && id != font {
-			_ = kb.ShapePushFont(c, &f.font)
+			push_face(c, f)
 		}
 	}
-	_ = kb.ShapePushFont(c, &primary.font)
+	push_face(c, primary)
 	s.contexts[font] = c
 	return c
+}
+
+// push_face pushes f onto c at its weight: a variable font's advances and
+// substitutions depend on it. kb applies a wght the font has no axis for
+// to nothing, so a static font shapes as it always did.
+@(private)
+push_face :: proc(c: ^kb.Shape_Context, f: ^Face) {
+	if f.weight == 0 {
+		_ = kb.ShapePushFont(c, &f.font)
+		return
+	}
+	wght := kb.Variation{kb.fourcc("wght"), f.weight}
+	_ = kb.ShapePushFont2(c, &f.font, {wght})
 }
 
 // face_of is the id and face of the loaded font at address font, as a kb
@@ -324,6 +342,7 @@ face :: proc(s: ^Shaper, font: ops.Font_Id) -> ^Face {
 			break
 		}
 		f.upem = f32(info.units_per_em)
+		f.weight = ref.weight
 		f.ok = true
 		break
 	}

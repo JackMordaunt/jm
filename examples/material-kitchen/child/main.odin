@@ -468,7 +468,7 @@ kitchen_fonts :: proc() -> []ops.Font_Ref {
 	paths := [3]string{NOTO + "Regular.ttf", NOTO + "Medium.ttf", NOTO + "Bold.ttf"}
 	fonts := make([]ops.Font_Ref, 3)
 	for p, i in paths {
-		fonts[i] = {ops.Font_Id(i), os.exists(p) ? p : ui.default_font()}
+		fonts[i] = {id = ops.Font_Id(i), path = os.exists(p) ? p : ui.default_font()}
 	}
 	return fonts
 }

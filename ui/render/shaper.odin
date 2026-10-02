@@ -10,7 +10,9 @@ import "jm:ui/shape"
 
 // SHAPER_ENV names the shaping engine for a whole app: unset or "kb" is
 // kb_text_shape (jm:ui/shape), "blend2d" is Blend2D's own font_shape, kept
-// to compare the two, as the text lab does.
+// to compare the two, as the text lab does. Blend2D at blend2d_rev reads
+// no 'HVAR', so it shapes every weight of a variable font with the default
+// instance's advances.
 SHAPER_ENV :: "JM_UI_SHAPER"
 
 // shaper returns a ui.Shaper that shapes with jm:ui/shape (or Blend2D, see

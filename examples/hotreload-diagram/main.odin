@@ -109,7 +109,7 @@ main :: proc() {
 				height = HEIGHT,
 				ui = diagram_ui,
 				user = &m,
-				fonts = {{0, sdl.default_font()}},
+				fonts = {{id = 0, path = sdl.default_font()}},
 				clear = base.color(.Bg),
 			},
 		)
@@ -133,7 +133,7 @@ main :: proc() {
 			path := args[i]
 			// frames = 15: catch the pulse partway through its loop, not at
 			// its resting start value.
-			if !render.snapshot(diagram_ui, &m, {WIDTH, HEIGHT}, {{0, sdl.default_font()}}, path, frames = 15) {
+			if !render.snapshot(diagram_ui, &m, {WIDTH, HEIGHT}, {{id = 0, path = sdl.default_font()}}, path, frames = 15) {
 				fmt.eprintfln("could not write %s", path)
 				os.exit(1)
 			}

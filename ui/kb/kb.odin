@@ -4,10 +4,11 @@ segmenter (https://github.com/JimmyLefevre/kb, zlib licence), vendored at
 v2.28d, commit 55036ab, in vendor/. `just kb` compiles it to lib/.
 
 Only what jm:ui/shape calls is bound: the context API, fonts from memory
-and font info. Names are kb's own without the kbts_ prefix. Structs are
-mirrored only as far as Odin reads them; every size and offset used is
-pinned by #assert here and _Static_assert in vendor/kb_text_shape.c, so a
-header update that moves one fails to build.
+pushed at chosen variation axis values, and font info. Names are kb's own
+without the kbts_ prefix. Structs are mirrored only as far as Odin reads
+them; every size and offset used is pinned by #assert here and
+_Static_assert in vendor/kb_text_shape.c, so a header update that moves
+one fails to build.
 */
 package kb
 
@@ -113,6 +114,15 @@ Font_Info2_1 :: struct #align (8) {
 	_:             [14]u8,
 }
 
+// Variation is kbts_variation: tag names a variation axis by its four
+// characters, the first in the low byte as KBTS_FOURCC packs them (see
+// fourcc), and value is in the axis' own units, 400 or 600 for a weight.
+// kb ignores a tag the font lacks (kb_text_shape.h, :ShapePushFont2).
+Variation :: struct {
+	tag:   u32,
+	value: f32,
+}
+
 Allocator_Op_Kind :: enum c.int {
 	None     = 0,
 	Allocate = 1,
@@ -143,6 +153,7 @@ Allocator_Function :: #type proc "c" (data: rawptr, op: ^Allocator_Op)
 #assert(offset_of(Shape_Codepoint, paragraph_direction) == 40)
 #assert(size_of(Font_Info2_1) == 168)
 #assert(offset_of(Font_Info2_1, units_per_em) == 152)
+#assert(size_of(Variation) == 8)
 #assert(size_of(Allocator_Op) == 24)
 #assert(offset_of(Allocator_Op, size) == 16)
 
@@ -151,6 +162,8 @@ foreign lib {
 	CreateShapeContext :: proc(allocator: Allocator_Function, data: rawptr) -> ^Shape_Context ---
 	DestroyShapeContext :: proc(ctx: ^Shape_Context) ---
 	ShapePushFont :: proc(ctx: ^Shape_Context, font: ^Font) -> ^Font ---
+	@(link_name = "kbts_ShapePushFont2")
+	_shape_push_font2 :: proc(ctx: ^Shape_Context, font: ^Font, variations: [^]Variation, count: c.int, handle: ^u32) -> ^Font ---
 	ShapePopFont :: proc(ctx: ^Shape_Context) -> ^Font ---
 	ShapeBegin :: proc(ctx: ^Shape_Context, paragraph: Direction, language: Language) ---
 	ShapeEnd :: proc(ctx: ^Shape_Context) ---
@@ -170,6 +183,19 @@ foreign lib {
 
 ShapeUtf8 :: proc(ctx: ^Shape_Context, text: string, mode: User_Id_Generation_Mode) {
 	_shape_utf8(ctx, raw_data(text), c.int(len(text)), mode)
+}
+
+// fourcc packs a four-character tag as KBTS_FOURCC does, the first
+// character lowest: the reverse of OpenType's own big-endian tags.
+fourcc :: proc(tag: string) -> u32 {
+	return u32(tag[0]) | u32(tag[1]) << 8 | u32(tag[2]) << 16 | u32(tag[3]) << 24
+}
+
+// ShapePushFont2 pushes font as ShapePushFont does, set to variations:
+// its advances, and the glyphs its feature variations substitute, are
+// those of that instance.
+ShapePushFont2 :: proc(ctx: ^Shape_Context, font: ^Font, variations: []Variation) -> ^Font {
+	return _shape_push_font2(ctx, font, raw_data(variations), c.int(len(variations)), nil)
 }
 
 // FontFromMemory parses font index of data; data must outlive the font.
