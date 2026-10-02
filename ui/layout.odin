@@ -394,6 +394,26 @@ widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location, self := #c
 	return p
 }
 
+// offer is the constraints the innermost container would give the widget
+// made next, without making it: what a component that records its parts
+// (record_open) before it opens its own widget lays them out against. At
+// the root, or without a layout, it is gtx.constraints.
+offer :: proc(gtx: ^Ctx) -> Constraints {
+	l := gtx.layout
+	c := innermost(l)
+	if c == nil {
+		return gtx.constraints
+	}
+	switch c.kind {
+	case .Flex:
+		return flex_child_constraints(l, c, c.next)
+	case .Grid:
+		return grid_child_constraints(c)
+	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
+	}
+	return c.inner
+}
+
 // BOUNDS_COLOR outlines widgets under Debug_Flag.Bounds: magenta, a colour
 // no theme uses, translucent so nested boxes read as nesting.
 BOUNDS_COLOR :: ops.Color{255, 0, 255, 140}

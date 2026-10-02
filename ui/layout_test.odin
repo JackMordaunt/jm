@@ -1746,3 +1746,34 @@ test_record_keeps_the_semantic_parent :: proc(t: ^testing.T) {
 	testing.expect_value(t, inside, group)
 	testing.expect_value(t, layer, 0)
 }
+
+// offer is what the next widget will be given, in every container kind,
+// before it is made: a weighted flex child's share included.
+@(test)
+test_offer_is_what_the_next_widget_gets :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {400, 300})
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	check :: proc(t: ^testing.T, gtx: ^Ctx, loc := #caller_location) {
+		want := offer(gtx)
+		p := widget_open(gtx)
+		got := gtx.constraints
+		widget_close(gtx, &p, {size = {10, 10}})
+		testing.expect_value(t, got, want, loc = loc)
+	}
+	testing.expect_value(t, offer(gtx), gtx.constraints) // at the root
+	{
+		col := column_open(gtx, align = .Fill); defer close(&col)
+		check(t, gtx)
+		inner := column_open(gtx); defer close(&inner)
+		sz := sized_open(gtx, {max = {120, 0}}); defer close(&sz)
+		testing.expect_value(t, offer(gtx).max.x, 120)
+		check(t, gtx)
+		r := row_open(gtx); defer close(&r)
+		check(t, gtx)
+		flexible(gtx, 1)
+		testing.expect_value(t, offer(gtx).min.x, 120 - 10) // the share beside the 10px child
+		check(t, gtx)
+	}
+}
