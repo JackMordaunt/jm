@@ -1,0 +1,778 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "select-panel",
+  "name": "SelectPanel",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React's docs file, though it is GitHub's label, assignee and reviewer picker. Several behaviours are still feature-flagged (selected-first ordering, fullscreen on narrow viewports, CSS anchor positioning), and an experimental SelectPanel2 exists; this spec is the shipped SelectPanel.",
+  "summary": "A button that opens an anchored (or modal) dialog holding a filter input above a selectable list, for choosing one or many items from a long or remote set. Choose it over ActionMenu when users need to filter, select several items, or confirm a choice; choose Autocomplete when the input itself is the field.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-24",
+    "--base-text-weight-semibold",
+    "--bgColor-accent-muted",
+    "--bgColor-attention-muted",
+    "--bgColor-danger-muted",
+    "--bgColor-inset",
+    "--bgColor-muted",
+    "--borderColor-accent-emphasis",
+    "--borderColor-accent-muted",
+    "--borderColor-attention-muted",
+    "--borderColor-danger-muted",
+    "--borderColor-default",
+    "--borderRadius-large",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--control-transparent-bgColor-selected",
+    "--fgColor-accent",
+    "--fgColor-attention",
+    "--fgColor-danger",
+    "--fgColor-muted",
+    "--overlay-backdrop-bgColor",
+    "--overlay-bgColor",
+    "--shadow-floating-small",
+    "--stack-gap-condensed",
+    "--text-body-size-medium",
+    "--text-body-size-small",
+    "--text-title-size-small"
+  ],
+  "references": {
+    "react": [
+      "SelectPanel/SelectPanel.tsx",
+      "SelectPanel/SelectPanel.module.css",
+      "SelectPanelMessage.tsx",
+      "SelectPanel/SelectPanel.docs.json",
+      "FilteredActionList.tsx",
+      "FilteredActionList.module.css",
+      "FilteredActionListInput.tsx",
+      "FilteredActionListLoaders.tsx",
+      "FilteredActionListLoaders.module.css",
+      "FilteredActionList/constants.ts",
+      "FilteredActionList/types.ts",
+      "useAnnouncements.tsx",
+      "AnchoredOverlay.tsx",
+      "Overlay.module.css",
+      "Overlay/constants.ts",
+      "useFocusZone.ts",
+      "useScrollFlash.ts",
+      "ActionList.module.css",
+      "activeIndicatorLine.css",
+      "TextInputWrapper.module.css"
+    ],
+    "primer": [
+      "select-panel"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The options currently shown, already filtered by the caller: text, description (inline or block), leadingVisual, trailingVisual, variant, disabled, id, groupId."
+    },
+    {
+      "name": "selected",
+      "type": "list",
+      "required": true,
+      "description": "The chosen item (single) or items (multiple); passing an array is what makes the panel multi-select. Items are matched by id, else by object identity."
+    },
+    {
+      "name": "onSelectedChange",
+      "type": "callback",
+      "required": true,
+      "description": "Called with the new selection."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": true,
+      "description": "Whether the panel is shown; the caller owns it."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": true,
+      "description": "Called with the requested open state and the gesture: anchor-click, anchor-key-press, click-outside, escape, selection or cancel."
+    },
+    {
+      "name": "onFilterChange",
+      "type": "callback",
+      "required": true,
+      "description": "Called with the filter text on every keystroke (and once on first open when items is empty). The panel never filters; the caller passes back the filtered items."
+    },
+    {
+      "name": "filterValue",
+      "type": "string",
+      "required": false,
+      "description": "Controlled filter text."
+    },
+    {
+      "name": "title",
+      "type": "string",
+      "required": false,
+      "default": "Select an item",
+      "description": "The dialog's heading and accessible name; \"Select items\" when multi-select."
+    },
+    {
+      "name": "subtitle",
+      "type": "string",
+      "required": false,
+      "description": "Muted line under the title; describes the dialog."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Anchor text when nothing is selected; otherwise the anchor shows the selected items' text joined by \", \"."
+    },
+    {
+      "name": "placeholderText",
+      "type": "string",
+      "required": false,
+      "default": "Filter items",
+      "description": "The filter input's placeholder."
+    },
+    {
+      "name": "inputLabel",
+      "type": "string",
+      "required": false,
+      "description": "The filter input's accessible name; defaults to placeholderText."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "anchored",
+        "modal"
+      ],
+      "required": false,
+      "default": "anchored",
+      "description": "anchored floats under the anchor and commits each choice at once; modal centres over a backdrop with Cancel and Save."
+    },
+    {
+      "name": "onCancel",
+      "type": "callback",
+      "required": false,
+      "description": "Required for modal: called on Cancel, the close button, or (modal) a click outside. On narrow fullscreen it adds a Cancel button."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "Force the loading state. Left unset, the panel infers loading from filter changes and item updates."
+    },
+    {
+      "name": "initialLoadingType",
+      "type": "enum",
+      "values": [
+        "spinner",
+        "skeleton"
+      ],
+      "required": false,
+      "default": "spinner",
+      "description": "What the body shows while the first load is pending."
+    },
+    {
+      "name": "message",
+      "type": "slot",
+      "required": false,
+      "description": "Replaces the list: title, body, variant (empty, error, warning), optional icon and action. Without it an empty list shows \"No items available\"."
+    },
+    {
+      "name": "notice",
+      "type": "slot",
+      "required": false,
+      "description": "A compact Banner (info, warning or error) between the header and the input, announced when the panel opens."
+    },
+    {
+      "name": "secondaryAction",
+      "type": "slot",
+      "required": false,
+      "description": "A footer action: SelectPanel.SecondaryActionButton (a block Button) or SelectPanel.SecondaryActionLink (an invisible block LinkButton)."
+    },
+    {
+      "name": "showSelectAll",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Multi-select only: a Select all / Deselect all checkbox row above the list that acts on the visible items."
+    },
+    {
+      "name": "showSelectedOptionsFirst",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Order items selected at open time first (behind the primer_react_select_panel_order_selected_at_top flag)."
+    },
+    {
+      "name": "groupMetadata",
+      "type": "list",
+      "required": false,
+      "description": "Groups (groupId, heading title, heading variant); items join a group by groupId and render under its heading in group order."
+    },
+    {
+      "name": "width",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge",
+        "auto"
+      ],
+      "required": false,
+      "description": "256, 320, 480, 640 or 960px; unset is content width, at least 192px."
+    },
+    {
+      "name": "height",
+      "type": "enum",
+      "values": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "auto",
+        "fit-content"
+      ],
+      "required": false,
+      "description": "192, 256, 320, 432 or 600px; unset is content height, capped by the viewport, with the position pinned so filtering does not make it jump."
+    },
+    {
+      "name": "align",
+      "type": "enum",
+      "values": [
+        "start",
+        "center",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Horizontal alignment to the anchor."
+    },
+    {
+      "name": "virtualized",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Render only the visible rows (plus 10 either side) for lists over about 100 items; ignored with groups."
+    },
+    {
+      "name": "disableFullscreenOnNarrow",
+      "type": "boolean",
+      "required": false,
+      "description": "Keep the panel anchored on narrow viewports when the fullscreen flag is on."
+    },
+    {
+      "name": "renderAnchor",
+      "type": "slot",
+      "required": false,
+      "description": "Custom anchor; null with anchorRef for a panel opened from elsewhere."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "anchor",
+      "name": "Anchor",
+      "description": "By default a Button with a trailing triangle-down showing the selection's text (or the placeholder), with aria-haspopup and aria-expanded."
+    },
+    {
+      "id": "overlay",
+      "name": "Overlay",
+      "description": "The dialog surface: --overlay-bgColor, --borderRadius-large, --shadow-floating-small, a flex column whose list region scrolls.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "Header",
+      "description": "Title (an h1 in semibold at body-medium size) and optional muted body-small subtitle, both 8px in from a header padded 8px top and sides; in modal on wide screens, a close IconButton at its end.",
+      "tokens": [
+        "--base-size-8",
+        "--text-body-size-medium",
+        "--base-text-weight-semibold",
+        "--text-body-size-small",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "notice",
+      "name": "Notice",
+      "optional": true,
+      "description": "A compact Banner with a hidden title, 4px below the header and 8px in from the sides, in the accent, attention or danger muted colours.",
+      "tokens": [
+        "--fgColor-accent",
+        "--bgColor-accent-muted",
+        "--borderColor-accent-muted",
+        "--fgColor-attention",
+        "--bgColor-attention-muted",
+        "--borderColor-attention-muted",
+        "--fgColor-danger",
+        "--bgColor-danger-muted",
+        "--borderColor-danger-muted"
+      ]
+    },
+    {
+      "id": "filter-input",
+      "name": "Filter input",
+      "description": "A full-width TextInput with a leading search icon and the contrast background, 8px margin all round, in a band separated from the list by a 1px --borderColor-default line drawn as a shadow; a leading spinner replaces the icon while filtering.",
+      "tokens": [
+        "--base-size-8",
+        "--bgColor-inset",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "select-all",
+      "name": "Select all row",
+      "optional": true,
+      "description": "A checkbox and a body-medium muted label (Select all or Deselect all) on a --bgColor-muted band, padded 4px by 16px, with a 1px --borderColor-default bottom border.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-16",
+        "--bgColor-muted",
+        "--borderColor-default",
+        "--fgColor-muted",
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "id": "list",
+      "name": "Option list",
+      "description": "A scrolling region holding an ActionList listbox (inset, or horizontal-inset with groups) of options with checkmarks (single), checkboxes (multiple) or radios (single in modal)."
+    },
+    {
+      "id": "message",
+      "name": "Message",
+      "optional": true,
+      "description": "Centred empty or error state in place of the list: optional 16px icon (attention, or danger for error) 8px above a semibold body-medium title, a muted body-small body, and an optional action 8px below; padded 24px, items 4px apart.",
+      "tokens": [
+        "--base-size-24",
+        "--base-size-4",
+        "--base-size-8",
+        "--text-body-size-medium",
+        "--base-text-weight-semibold",
+        "--text-body-size-small",
+        "--fgColor-muted",
+        "--fgColor-attention",
+        "--fgColor-danger",
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "loader",
+      "name": "Body loader",
+      "optional": true,
+      "description": "First-load placeholder: a centred Spinner padded 16px, or skeleton rows (a 16px square and a 10px bar of 80, 52.5, 67.5, 40 and 72.5% width, repeating) in a container padded 8px.",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "optional": true,
+      "description": "A row padded 8px with a 1px --borderColor-default top border: the secondary action, and Cancel and Save (primary) buttons --stack-gap-condensed apart at the end.",
+      "tokens": [
+        "--base-size-8",
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "backdrop",
+      "name": "Backdrop",
+      "optional": true,
+      "description": "Modal only: a fixed full-viewport fill of --overlay-backdrop-bgColor behind the panel.",
+      "tokens": [
+        "--overlay-backdrop-bgColor"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "anchored",
+      "default": true,
+      "description": "Floats below the anchor. Single-select commits and closes on choice; multi-select commits each toggle and stays open."
+    },
+    {
+      "axis": "variant",
+      "value": "modal",
+      "description": "Centred in the viewport over a backdrop, with a close button and a Cancel/Save footer; single-select holds a pending choice (radio indicators) until Save; page scroll is locked.",
+      "tokens": [
+        "--overlay-backdrop-bgColor"
+      ]
+    },
+    {
+      "axis": "selection",
+      "value": "single",
+      "default": true,
+      "description": "A checkmark column (radio in modal); aria-multiselectable false."
+    },
+    {
+      "axis": "selection",
+      "value": "multiple",
+      "description": "A checkbox column; aria-multiselectable true; optional Select all row."
+    },
+    {
+      "axis": "narrow",
+      "value": "fullscreen",
+      "description": "Behind the primer_react_select_panel_fullscreen_on_narrow flag: on narrow viewports the panel covers the screen, shows a close button, locks page scroll, enlarges the input text on iOS, and multi-select gains a Save (and Cancel when onCancel is set) footer.",
+      "tokens": [
+        "--text-title-size-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The panel is a column: header, optional notice, filter band, optional select-all row, the scrolling list (which takes the remaining height), optional footer. The list region inherits the overlay's height and max height so the list scrolls instead of the overlay.",
+      "source": "SelectPanel/SelectPanel.module.css:6-11,91-96; FilteredActionList.module.css:1-17"
+    },
+    {
+      "text": "Header padding is 8px top, left and right (none below); title and subtitle are indented a further 8px. In modal, and in anchored on narrow screens, the title gets 8px top margin to line up with the close button; fullscreen headers are at least 40px tall.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "values": [
+        {
+          "name": "fullscreenHeaderMinHeight",
+          "value": 40,
+          "unit": "px"
+        }
+      ],
+      "source": "SelectPanel/SelectPanel.module.css:13-53"
+    },
+    {
+      "text": "The filter input spans the panel less 8px each side, with 8px above and below it; the band under it draws a 1px --borderColor-default line as a box-shadow (not a border, so it takes no layout space) and sits above the list (z-index 1).",
+      "tokens": [
+        "--base-size-8",
+        "--borderColor-default"
+      ],
+      "source": "SelectPanel/SelectPanel.module.css:234-236; FilteredActionList.module.css:7-11; FilteredActionListInput.tsx:36-64"
+    },
+    {
+      "text": "Width is a preset (256, 320, 480, 640, 960px) or the content's width, never under 192px or over the viewport less 32px. Height is a preset (192 to 600px) or the content's, capped by the viewport; with no height the position is pinned so the panel does not jump as filtering changes its size.",
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 192,
+          "unit": "px"
+        }
+      ],
+      "source": "Overlay/constants.ts:1-19; Overlay.module.css:11-21,75-193; SelectPanel/SelectPanel.tsx:899-903"
+    },
+    {
+      "text": "Modal centres the panel on the viewport (top 50vh, left 50vw, translated back by half its size) and paints the backdrop behind it.",
+      "source": "SelectPanel/SelectPanel.tsx:861-885,1061; SelectPanel/SelectPanel.module.css:228-232"
+    },
+    {
+      "text": "The footer is a row padded 8px with a 1px top border. The secondary action grows to fill the row unless Cancel and Save are shown, in which case it keeps its width at the start and the buttons sit at the end --stack-gap-condensed apart. On narrow fullscreen multi-select without onCancel a single block Save and close button fills the footer.",
+      "tokens": [
+        "--base-size-8",
+        "--stack-gap-condensed",
+        "--borderColor-default"
+      ],
+      "source": "SelectPanel/SelectPanel.module.css:84-89,144-226; SelectPanel/SelectPanel.tsx:777-818,989-1058"
+    },
+    {
+      "text": "The skeleton loader draws one row per 24px of the list's height (at least 3) as a 16px square then a 10px-tall bar with 4px radius, rows and pieces --stack-gap-condensed apart, bar widths cycling 80, 52.5, 67.5, 40, 72.5%.",
+      "values": [
+        {
+          "name": "skeletonRowHeight",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "skeletonMinRows",
+          "value": 3,
+          "unit": "count"
+        },
+        {
+          "name": "skeletonBarHeight",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "skeletonBarRadius",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "FilteredActionListLoaders.tsx:11-54; FilteredActionListLoaders.module.css:1-40"
+    },
+    {
+      "text": "The select-all checkbox has 4px above, 8px after and 3px below it (4px less 1px to offset the row's bottom border).",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8"
+      ],
+      "source": "FilteredActionList.module.css:64-82"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "The anchor reports aria-expanded; the panel fades in over 200ms cubic-bezier(0.33, 1, 0.68, 1) (none under reduced motion) and focus moves to the filter input.",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Overlay.module.css:234-238; SelectPanel/SelectPanel.tsx:428-441,741"
+    },
+    {
+      "state": "other",
+      "label": "active-option",
+      "part": "list",
+      "text": "The option the input points at fills with --control-transparent-bgColor-selected and shows the 4px accent bar; this is the only keyboard highlight, since focus never leaves the input.",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--borderColor-accent-emphasis"
+      ],
+      "source": "ActionList.module.css:247-266; FilteredActionList.module.css:39-53; activeIndicatorLine.css"
+    },
+    {
+      "state": "selected",
+      "part": "list",
+      "text": "Selected options show a checkmark (single), a filled checkbox (multiple) or a filled radio (single in modal); the row fill does not change.",
+      "source": "SelectPanel/SelectPanel.tsx:969; Selection.tsx:31-52"
+    },
+    {
+      "state": "loading",
+      "text": "Before the first items arrive the body shows a spinner or skeleton; afterwards a leading spinner in the filter input replaces the search icon while the list stays.",
+      "source": "SelectPanel/SelectPanel.tsx:753-763,972-973; FilteredActionList.tsx:441-446,591; FilteredActionList/constants.ts:11-15"
+    },
+    {
+      "state": "other",
+      "label": "empty",
+      "text": "With no items and not loading, the message replaces the list: \"No items available\" by default, or the caller's message with an alert icon for error and warning.",
+      "tokens": [
+        "--fgColor-attention",
+        "--fgColor-danger"
+      ],
+      "source": "SelectPanel/SelectPanel.tsx:33-45,765-775; SelectPanelMessage.tsx:28-61; SelectPanel/SelectPanel.module.css:98-138"
+    },
+    {
+      "state": "indeterminate",
+      "part": "select-all",
+      "text": "The select-all checkbox is checked when every visible item is selected, indeterminate when some are, and its label reads Deselect all when checked, Select all otherwise.",
+      "source": "FilteredActionList.tsx:221-224,596-614"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "focus-model",
+      "text": "Focus stays in the filter input for the panel's whole life. The input is a combobox (aria-expanded true, aria-autocomplete list, aria-controls the list) whose aria-activedescendant names the highlighted option. ArrowDown, ArrowUp, PageDown and PageUp move the highlight; it wraps at the ends (stops instead when virtualized). Home and End are not bound and move the text caret.",
+      "source": "FilteredActionList.tsx:338-378; FilteredActionListInput.tsx:38-62; useFocusZone.ts:15-20"
+    },
+    {
+      "text": "Moving the pointer over an option makes it the highlighted option, unless disableSelectOnHover is set.",
+      "source": "FilteredActionList.tsx:97-100,373"
+    },
+    {
+      "text": "Enter in the input activates the highlighted option (the key event is re-dispatched to it). Space types a space into the filter; it never toggles an option.",
+      "source": "FilteredActionList.tsx:278-290; ActionList/Item.tsx:194-208"
+    },
+    {
+      "text": "When the highlight moves by keyboard, the option is scrolled into view with 0px margin at the top and 8px at the bottom of the list region; it is scrolled again after the items change.",
+      "values": [
+        {
+          "name": "scrollEndMargin",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "FilteredActionList.tsx:27,363-387"
+    },
+    {
+      "id": "selection",
+      "text": "Activating an option: multi-select toggles it and stays open; anchored single-select selects it (or clears it if it was the selection) and closes with gesture selection; modal single-select only marks it pending (activating the pending one clears it) until Save commits it.",
+      "source": "SelectPanel/SelectPanel.tsx:241-252,657-688,1025-1039"
+    },
+    {
+      "text": "Selected-first ordering uses the selection as it was when the panel opened (or when the filter was cleared, or when items first arrived), not the live selection, so options do not jump while the user toggles them.",
+      "source": "SelectPanel/SelectPanel.tsx:226,271-279,312-316,631-739"
+    },
+    {
+      "id": "filtering",
+      "text": "The panel does not filter. Each keystroke calls onFilterChange with the text; the caller returns new items. With loading unmanaged, the first open with no items calls onFilterChange immediately and shows the body loader at once; after data has loaded once, a filter change shows the input spinner only if new items take longer than 1000ms. New items end the loading state.",
+      "values": [
+        {
+          "name": "loadingDelay",
+          "value": 1000,
+          "unit": "ms"
+        }
+      ],
+      "source": "SelectPanel/SelectPanel.tsx:281-328,390-426,461-481"
+    },
+    {
+      "text": "Select all selects every visible (filtered) item and keeps selections hidden by the filter; Deselect all clears only the visible ones.",
+      "source": "SelectPanel/SelectPanel.tsx:330-368"
+    },
+    {
+      "text": "Escape closes with gesture escape and returns focus to the anchor. A click outside closes it; in modal it first calls onCancel. Cancel and the close button call onCancel and close with gesture cancel. Save in modal commits the pending single choice and closes with gesture selection.",
+      "source": "SelectPanel/SelectPanel.tsx:547-567,928-941,1015-1039; AnchoredOverlay.tsx:215-216"
+    },
+    {
+      "text": "Letter, digit and slash keys pressed while focus is in the panel but outside the input are stopped from reaching page shortcuts.",
+      "source": "SelectPanel/SelectPanel.tsx:838-859"
+    },
+    {
+      "id": "announcements",
+      "text": "A polite live region speaks, 500ms after the event: on input focus \"<input label>, filter text box and list of items, Focused item: <text>, selected|not selected, <i> of <n>\"; when the items, selection, loading state or filter change \"List updated, Focused item: <text>, selected|not selected, <i> of <n>\"; when the list empties \"<message title>. <message description>\"; \"Loading.\" after loading has lasted 1000ms; and the notice text on open.",
+      "values": [
+        {
+          "name": "announceDelay",
+          "value": 500,
+          "unit": "ms"
+        }
+      ],
+      "source": "useAnnouncements.tsx:9-183; SelectPanel/SelectPanel.tsx:33-60,523-539"
+    },
+    {
+      "text": "Modal, and fullscreen on narrow, lock page scroll while open. On narrow screens, when the on-screen keyboard shrinks the visual viewport by more than 10px, the panel's max height becomes the visible height (re-measured 100ms after viewport changes, ignoring zoom).",
+      "values": [
+        {
+          "name": "keyboardThreshold",
+          "value": 10,
+          "unit": "px"
+        },
+        {
+          "name": "viewportDebounce",
+          "value": 100,
+          "unit": "ms"
+        }
+      ],
+      "source": "SelectPanel/SelectPanel.tsx:230-232,370-388,483-521,876-880"
+    },
+    {
+      "text": "With virtualized, only the visible rows plus 10 on each side exist, each estimated at 32px until measured; moving the highlight outside the rendered range scrolls the target row into view first.",
+      "values": [
+        {
+          "name": "estimatedRowHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "overscan",
+          "value": 10,
+          "unit": "count"
+        }
+      ],
+      "source": "FilteredActionList.tsx:176-178,305-336,355-361"
+    }
+  ],
+  "accessibility": {
+    "role": "button (anchor) opening a dialog that contains a combobox input controlling a listbox of options",
+    "minTargetPx": 32,
+    "keyboard": [
+      "On the anchor: Enter, Space, ArrowDown or ArrowUp opens the panel and focuses the filter input.",
+      "In the input: typing filters; ArrowDown and ArrowUp move the highlighted option, wrapping; PageDown and PageUp move by page.",
+      "Enter activates the highlighted option: toggle (multiple), choose and close (anchored single), mark pending (modal single).",
+      "Tab moves to the select-all checkbox, footer buttons and close button; focus is trapped in the panel.",
+      "Escape closes the panel and returns focus to the anchor."
+    ],
+    "semantics": [
+      "The panel is role dialog, labelled by its title and described by its subtitle.",
+      "The input is role combobox with aria-expanded true, aria-autocomplete list, aria-controls the listbox, aria-activedescendant the highlighted option, and a hidden description \"Items will be filtered as you type\".",
+      "The listbox is labelled by the title and has aria-multiselectable; options carry aria-selected.",
+      "Result counts, the focused option and loading are announced through a live region rather than by moving focus.",
+      "Inside a FormControl whose label does not reference it, the anchor is labelled by the form label plus its selected-value text."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "aria-activedescendant focus is @primer/behaviors' focusZone in active-descendant mode (not read for this spec): DOM focus stays on the input, the zone stamps data-is-active-descendant on the highlighted option and points aria-activedescendant at it. A native immediate-mode build keeps keyboard focus on the text field and stores a separate highlightedIndex that Up/Down/PageUp/PageDown move (wrapping), hover sets, Enter activates, and a filter change re-clamps (first option when the old one vanished).",
+      "source": "FilteredActionList.tsx:338-378; useFocusZone.ts:15-20,41-62"
+    },
+    {
+      "kind": "inferred",
+      "text": "The first option is assumed to become highlighted as soon as the input has focus (focusInStrategy previous falls back to the first item), which is what the on-focus announcement reads back; the zone's code was not read for this spec, so verify against @primer/behaviors' focus-zone source.",
+      "source": "FilteredActionList.tsx:372; useAnnouncements.tsx:96-123"
+    },
+    {
+      "kind": "web-only",
+      "text": "Live-region announcements (@primer/live-region-element) carry result counts and the highlighted option because focus never moves; a native build must post the same strings to the platform accessibility API (an announcement notification) with the 500ms delay, clearing queued ones first.",
+      "source": "useAnnouncements.tsx:4-183"
+    },
+    {
+      "kind": "web-only",
+      "text": "Filtering is the caller's job and loading is inferred from item updates with timers; a native build exposes onFilterChange and, for async sources, debounces the request itself: Primer only delays the spinner (1000ms), it does not debounce the callback.",
+      "source": "SelectPanel/SelectPanel.tsx:281-328"
+    },
+    {
+      "kind": "web-only",
+      "text": "Long-list performance relies on TanStack virtualisation (opt-in) and, always, content-visibility: auto on offscreen rows with a 32px intrinsic size. An immediate-mode build gets the same by laying out only rows inside the scroll viewport from known row heights.",
+      "source": "FilteredActionList.module.css:13-33; FilteredActionList.tsx:305-336"
+    },
+    {
+      "kind": "web-only",
+      "text": "useScrollFlash nudges the list's scrollTop by 1px and back on mount so macOS overlay scrollbars flash; natively, flash the platform scrollbar (or skip it).",
+      "source": "useScrollFlash.ts:7-27"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Escape on the panel is handled by the overlay, not the input, so it closes the panel even with filter text present; it does not clear the filter first.",
+      "source": "AnchoredOverlay.tsx:215-216,420-426"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Home and End are deliberately unbound in the filter (the focus zone binds only vertical arrows and Page keys), so they edit the text, unlike in ActionMenu.",
+      "source": "FilteredActionList.tsx:342"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The narrow-screen Save and Save and close buttons report gesture click-outside to onOpenChange, not selection, because in anchored multi-select every toggle has already been committed.",
+      "source": "SelectPanel/SelectPanel.tsx:1035,1050"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Anchored single-select clears the selection only when the clicked item is the same object as selected (item === selected), unlike every other comparison, which matches by id; callers that rebuild item objects can never deselect by clicking.",
+      "source": "SelectPanel/SelectPanel.tsx:155-159,685-686"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Modal single-select toggles the pending choice by comparing ids; with items that have no id, undefined === undefined treats every click as clicking the pending item and clears it.",
+      "source": "SelectPanel/SelectPanel.tsx:675-682"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Announcements map the highlighted option to items by its position among rendered options, which is wrong when groups reorder items or virtualisation renders a window; the announced text and position can name the wrong item.",
+      "source": "useAnnouncements.tsx:37-55; FilteredActionList.tsx:452-507"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded, not tokens: the 500ms announcement delay, the 1000ms loading delay, the 10px keyboard threshold and 100ms viewport debounce, the 40px fullscreen header height, the 24px skeleton row pitch and 4px skeleton radius, the 32px row estimate and overscan of 10, and the 8px scroll end margin.",
+      "source": "SelectPanel/SelectPanel.tsx:34-35,232,502; SelectPanel/SelectPanel.module.css:22; FilteredActionListLoaders.tsx:11-12; FilteredActionListLoaders.module.css:4; FilteredActionList.tsx:27,308,315; useAnnouncements.tsx:10"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The filter input reads --control-bgColor-contrast with --bgColor-inset as fallback; only the fallback is a Primer token.",
+      "tokens": [
+        "--bgColor-inset"
+      ],
+      "source": "TextInputWrapper.module.css:46-50; SelectPanel/SelectPanel.tsx:743-751"
+    },
+    {
+      "kind": "density",
+      "text": "On narrow fullscreen in iOS Safari the filter input text grows to --text-title-size-small so the browser does not zoom on focus.",
+      "tokens": [
+        "--text-title-size-small"
+      ],
+      "source": "FilteredActionList.module.css:55-62"
+    }
+  ]
+}

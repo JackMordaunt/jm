@@ -1,0 +1,433 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "autocomplete",
+  "name": "Autocomplete",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React's docs file. It works and GitHub uses it, but the API carries known rough edges: openOnFocus is deprecated, the menu requires aria-labelledby by hand, and several behaviours are implemented as timing hacks.",
+  "summary": "A text input that suggests matching options in a listbox below it as the user types, with inline completion of the highlighted option, single or multiple selection, and an optional add-new item. Choose it when the field is the text input itself (with TextInputWithTokens for multiple values); choose SelectPanel when choosing happens in a panel opened from a button.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-16",
+    "--base-text-weight-semibold",
+    "--borderColor-accent-emphasis",
+    "--borderRadius-large",
+    "--borderRadius-medium",
+    "--control-checked-bgColor-rest",
+    "--control-checked-borderColor-rest",
+    "--control-checked-fgColor-rest",
+    "--control-fgColor-rest",
+    "--control-transparent-bgColor-hover",
+    "--control-transparent-bgColor-selected",
+    "--fgColor-muted",
+    "--overlay-bgColor",
+    "--shadow-floating-small"
+  ],
+  "references": {
+    "react": [
+      "Autocomplete.tsx",
+      "AutocompleteContext.tsx",
+      "AutocompleteInput.tsx",
+      "AutocompleteMenu.tsx",
+      "AutocompleteMenu.module.css",
+      "AutocompleteOverlay.tsx",
+      "AutocompleteOverlay.module.css",
+      "Autocomplete.docs.json",
+      "Overlay.module.css",
+      "useOverlay.tsx",
+      "useOpenAndCloseFocus.ts",
+      "useFocusZone.ts",
+      "ActionList.module.css",
+      "ActionList/Item.tsx",
+      "activeIndicatorLine.css"
+    ],
+    "primer": [
+      "autocomplete"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "All options: id (required, string), text, leadingVisual, trailingVisual, description, disabled and other ActionList item fields, plus free metadata."
+    },
+    {
+      "name": "selectedItemIds",
+      "type": "list",
+      "required": true,
+      "description": "Ids of the chosen options (unlike SelectPanel, ids, not objects). At most one for single."
+    },
+    {
+      "name": "selectionVariant",
+      "type": "enum",
+      "values": [
+        "single",
+        "multiple"
+      ],
+      "required": false,
+      "default": "single",
+      "description": "single fills the input with the chosen text and closes; multiple keeps the menu open and clears the input after each choice (pair with TextInputWithTokens)."
+    },
+    {
+      "name": "onSelectedChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new selection as an array of items. Default: set the input text to the last selected item's text."
+    },
+    {
+      "name": "filterFn",
+      "type": "callback",
+      "required": false,
+      "description": "Decides which items show for the current text. Default: case-insensitive prefix match on text."
+    },
+    {
+      "name": "sortOnCloseFn",
+      "type": "callback",
+      "required": false,
+      "description": "Reorders options each time the menu closes. Default: selected options first."
+    },
+    {
+      "name": "addNewItem",
+      "type": "slot",
+      "required": false,
+      "description": "An extra option appended after the matches (with a plus icon) whose handleAddItem creates a value from the typed text."
+    },
+    {
+      "name": "emptyStateText",
+      "type": "string",
+      "required": false,
+      "default": "No selectable options",
+      "description": "Shown (and announced) when nothing matches; false hides it."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "Show a spinner instead of the options."
+    },
+    {
+      "name": "menuLabelledBy",
+      "type": "string",
+      "required": true,
+      "description": "The id of the field's label; the listbox's aria-labelledby."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the menu's open state whenever it changes (and on mount)."
+    },
+    {
+      "name": "openOnFocus",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Deprecated: open the menu when the input gains focus."
+    },
+    {
+      "name": "inputComponent",
+      "type": "slot",
+      "required": false,
+      "description": "The input to render: TextInput by default, TextInputWithTokens for multiple values."
+    },
+    {
+      "name": "menuAnchor",
+      "type": "slot",
+      "required": false,
+      "description": "Element to position the menu under; defaults to the token field's box, else the input."
+    },
+    {
+      "name": "overlayProps",
+      "type": "slot",
+      "required": false,
+      "description": "Overlay sizing (width, height, maxHeight presets) and class."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "A TextInput (or TextInputWithTokens) acting as a combobox; it holds the typed text plus any selected inline completion."
+    },
+    {
+      "id": "overlay",
+      "name": "Overlay",
+      "description": "A floating surface below the anchor: --overlay-bgColor, --borderRadius-large, --shadow-floating-small, at least 192px wide, scrolling.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "menu",
+      "name": "Menu",
+      "description": "An inset ActionList with role listbox of option rows.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "option",
+      "name": "Option",
+      "description": "An ActionList item: optional leading visual, text, trailing visual; a checkbox column in multiple mode."
+    },
+    {
+      "id": "add-new-item",
+      "name": "Add-new option",
+      "optional": true,
+      "description": "The last option, with a plus octicon as its leading visual."
+    },
+    {
+      "id": "empty-state",
+      "name": "Empty state",
+      "optional": true,
+      "description": "The emptyStateText padded 16px.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "spinner",
+      "name": "Loading spinner",
+      "optional": true,
+      "description": "A Spinner centred in a row padded 16px.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "selection",
+      "value": "single",
+      "default": true,
+      "description": "No selection column; choosing writes the option's text into the input and closes."
+    },
+    {
+      "axis": "selection",
+      "value": "multiple",
+      "description": "A checkbox column; choosing toggles the option, clears the input and keeps the menu open.",
+      "tokens": [
+        "--control-checked-bgColor-rest",
+        "--control-checked-borderColor-rest",
+        "--control-checked-fgColor-rest"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The menu opens below its anchor, start edges aligned. The anchor is menuAnchor if given, else the TextInputWithTokens box around the input, else the input; the position is recomputed when the menu opens and when the number of selected items changes (tokens can wrap and change the field's height).",
+      "source": "AutocompleteOverlay.tsx:41-58"
+    },
+    {
+      "text": "The overlay is as wide as its widest option, at least 192px and at most the viewport less 32px; it does not take the input's width unless given a width. Its height is its content up to the viewport height, then it scrolls.",
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 192,
+          "unit": "px"
+        }
+      ],
+      "source": "Overlay.module.css:11-21; AutocompleteOverlay.module.css:1-3"
+    },
+    {
+      "text": "Options use the ActionList inset layout: 8px above and below the list, rows inset 8px, 32px per one-line row.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "ActionList.module.css:14-23,501-529"
+    },
+    {
+      "text": "The empty state and the loading spinner are padded 16px; the spinner is centred.",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "source": "AutocompleteMenu.module.css:1-9"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "The input reports aria-expanded true and the overlay fades in over 200ms cubic-bezier(0.33, 1, 0.68, 1) (none under reduced motion). Focus stays in the input.",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "AutocompleteInput.tsx:193; AutocompleteOverlay.tsx:70-84; Overlay.module.css:234-238"
+    },
+    {
+      "state": "other",
+      "label": "highlighted",
+      "part": "option",
+      "text": "The highlighted option is both the active descendant and active: it fills with --control-transparent-bgColor-selected, shows the 4px accent bar and sets its label semibold in --control-fgColor-rest.",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--borderColor-accent-emphasis",
+        "--base-text-weight-semibold",
+        "--control-fgColor-rest"
+      ],
+      "source": "AutocompleteMenu.tsx:170,181,296-305; ActionList.module.css:216-266; activeIndicatorLine.css"
+    },
+    {
+      "state": "selected",
+      "part": "option",
+      "text": "In multiple mode a selected option's checkbox is filled; in single mode selection shows nothing in the list (the input holds the text).",
+      "source": "AutocompleteMenu.tsx:182,250; ActionList.module.css:450-472"
+    },
+    {
+      "state": "loading",
+      "text": "The spinner replaces the options; the focus zone is re-created when loading changes.",
+      "source": "AutocompleteMenu.tsx:314,359-363"
+    },
+    {
+      "state": "other",
+      "label": "empty",
+      "text": "No matching options and no add-new item: the empty-state text shows, and is announced after 250ms of quiet.",
+      "source": "AutocompleteMenu.tsx:129-131,281-285,409-411"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open",
+      "text": "The menu opens when the input's text changes, or on ArrowDown or ArrowUp (without Alt) while closed, which then does not move the caret. With the deprecated openOnFocus it also opens on focus.",
+      "source": "AutocompleteInput.tsx:51-56,88-121"
+    },
+    {
+      "id": "close",
+      "text": "The menu closes when focus leaves the input for anything outside the menu (checked one tick after blur), on Escape, on a click outside, and after a single-select choice. Closing does not move focus; the input keeps it.",
+      "source": "AutocompleteInput.tsx:58-86; AutocompleteOverlay.tsx:62-84; AutocompleteMenu.tsx:196-202"
+    },
+    {
+      "text": "Escape in an input with text clears the text and the typed value; the same key also closes the menu.",
+      "source": "AutocompleteInput.tsx:104-107; useOverlay.tsx:34-39"
+    },
+    {
+      "id": "focus-model",
+      "text": "Focus never leaves the input; the input's aria-activedescendant names the highlighted option. Up and Down move the highlight and wrap at the ends; hovering an option highlights it. When the highlight moves by keyboard, the option is scrolled into view with 8px to spare at the bottom of the overlay (or of customScrollContainerRef).",
+      "values": [
+        {
+          "name": "scrollEndMargin",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "AutocompleteMenu.tsx:31,287-315"
+    },
+    {
+      "text": "Enter, while the menu is open and an option is highlighted, activates that option (the key event is re-dispatched to it) and does not submit the form.",
+      "source": "AutocompleteInput.tsx:134-146"
+    },
+    {
+      "id": "inline-completion",
+      "text": "When the highlighted option's text starts with the typed text (case-sensitive) and it is not already selected, the input shows the option's full text with the untyped remainder selected, so typing over it continues the query and Enter chooses the option. Backspace suppresses the completion until the key is released, so the user can delete it.",
+      "source": "AutocompleteInput.tsx:96-132,148-174; AutocompleteMenu.tsx:317-326"
+    },
+    {
+      "text": "If focus leaves while an inline completion is showing, the input reverts to the typed text.",
+      "source": "AutocompleteInput.tsx:75-81"
+    },
+    {
+      "id": "filtering",
+      "text": "Options are filtered on every text change by filterFn, by default a case-insensitive prefix match on text, using a deferred copy of the text so typing stays responsive; the add-new option always follows the matches.",
+      "source": "AutocompleteMenu.tsx:33-37,229-275; Autocomplete.tsx:111-114"
+    },
+    {
+      "id": "selection",
+      "text": "Choosing an option toggles its id in the selection and calls onSelectedChange with the selected items as an array. Single then closes the menu and puts the caret at the end of the input; multiple clears the input and the completion and stays open. Choosing add-new calls handleAddItem with the option (an id is generated if it has none).",
+      "source": "AutocompleteMenu.tsx:39-46,183-203,252-260"
+    },
+    {
+      "text": "Options keep their order while the menu is open; each time it closes they are re-sorted, by default with selected options first.",
+      "source": "AutocompleteMenu.tsx:29-30,219-235,328-344"
+    },
+    {
+      "text": "When closed, the menu stays mounted but visually hidden, so its state (sorting, highlight) survives between openings.",
+      "source": "AutocompleteOverlay.tsx:70-89; AutocompleteMenu.tsx:357-358"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox input (aria-autocomplete both) owning a listbox of options",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Typing filters the options and opens the menu.",
+      "ArrowDown or ArrowUp opens a closed menu; in an open menu they move the highlighted option, wrapping.",
+      "Enter chooses the highlighted option.",
+      "Escape clears the input's text and closes the menu.",
+      "Backspace deletes the selected inline completion first.",
+      "Tab leaves the field and closes the menu."
+    ],
+    "semantics": [
+      "The input is role combobox with aria-autocomplete both, aria-haspopup listbox, aria-expanded, and aria-controls and aria-owns pointing at the listbox; browser autocomplete is off.",
+      "The listbox is labelled by the id the caller passes; options carry aria-selected in multiple mode.",
+      "The empty-state text is announced through a live region, debounced 250ms; result counts are not announced."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The highlight is @primer/behaviors' focusZone in active-descendant mode on the menu, controlled from the input (not read for this spec). A native build keeps keyboard focus in the text field and a highlightedIndex over the filtered options that Up and Down move with wrap, hover sets, Enter activates, and a text change re-clamps.",
+      "source": "AutocompleteMenu.tsx:287-315; useFocusZone.ts:15-20,41-62"
+    },
+    {
+      "kind": "inferred",
+      "text": "The menu's focus zone passes no bindKeys, so it takes @primer/behaviors' default (assumed vertical arrows plus Home and End); if so, Home and End move the highlight, not the caret, while the menu is open. Verify before copying.",
+      "source": "AutocompleteMenu.tsx:287-295"
+    },
+    {
+      "kind": "web-only",
+      "text": "Inline completion writes the suggestion straight into the DOM input and selects the remainder with setSelectionRange. A native text field needs a distinct suggested suffix that renders as selected text after the caret, is replaced by the next typed character, is deleted by Backspace, becomes the value when Enter chooses the option, and is dropped (reverting to the typed text) when focus leaves.",
+      "source": "AutocompleteInput.tsx:75-81,148-174"
+    },
+    {
+      "kind": "web-only",
+      "text": "Closing on blur waits one tick and inspects relatedTarget so a click on an option lands first. An immediate-mode build processes the option click before reacting to focus loss in the same frame, or ignores focus loss caused by a press inside the overlay.",
+      "source": "AutocompleteInput.tsx:58-86"
+    },
+    {
+      "kind": "web-only",
+      "text": "Filtering runs on React's useDeferredValue of the text. A native build can filter synchronously for short lists; for long ones, filter incrementally or off-frame and keep the input responsive.",
+      "source": "Autocomplete.tsx:111-114; AutocompleteContext.tsx:33-41"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Inline completion matches case-sensitively (text.startsWith(input)) while the default filter is case-insensitive, so typing \"rea\" shows \"React\" in the list but completes nothing in the input.",
+      "source": "AutocompleteMenu.tsx:33-37,321; AutocompleteInput.tsx:168"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The highlighted option is drawn as active (semibold label, accent bar, selected fill), the same treatment NavList uses for the current page, rather than only the active-descendant fill.",
+      "source": "AutocompleteMenu.tsx:181; ActionList.module.css:216-245"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The menu is as wide as its content (min 192px), not as wide as the input; pass a width to match the field.",
+      "source": "Overlay.module.css:11-16"
+    },
+    {
+      "kind": "gotcha",
+      "text": "onSelectedChange always receives an array, even in single mode, and single mode throws if more than one id is selected.",
+      "source": "AutocompleteMenu.tsx:192-194,353-355"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The sort order is seeded from the item ids present at mount and never extended, so items that arrive later have no sort index and compare as NaN; their order after the menu closes is undefined. A native build should rebuild the order from the current items.",
+      "source": "AutocompleteMenu.tsx:171,219-235"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "onOpenChange is called from an effect that also runs when the selection or sort changes, so it fires repeatedly with an unchanged open state, including false on mount.",
+      "source": "AutocompleteMenu.tsx:328-344"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 250ms empty-state announcement debounce and the 8px scroll end margin are hard-coded.",
+      "source": "AutocompleteMenu.tsx:31,129-131"
+    }
+  ]
+}

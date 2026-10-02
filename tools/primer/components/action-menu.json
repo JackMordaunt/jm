@@ -1,0 +1,503 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "action-menu",
+  "name": "ActionMenu",
+  "status": "beta",
+  "statusNote": "Beta in Primer React's docs file; it is GitHub's standard dropdown menu. The anchor, overlay and list API are stable; native CSS anchor positioning and the narrow fullscreen variant are still opt-in.",
+  "summary": "A button that opens a floating menu of actions (an ActionList with menu semantics), optionally with single or multiple selection and nested submenus. Choose it for a short list of commands or a small set of options; choose SelectPanel when the list needs filtering, many selections or a confirm step.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-36",
+    "--borderRadius-large",
+    "--borderRadius-medium",
+    "--borderColor-accent-emphasis",
+    "--control-danger-bgColor-active",
+    "--control-danger-bgColor-hover",
+    "--control-danger-fgColor-hover",
+    "--control-danger-fgColor-rest",
+    "--control-medium-paddingBlock",
+    "--control-medium-paddingInline-condensed",
+    "--control-transparent-bgColor-active",
+    "--control-transparent-bgColor-hover",
+    "--control-transparent-bgColor-selected",
+    "--control-transparent-borderColor-active",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--focus-outline-color",
+    "--overlay-bgColor",
+    "--shadow-floating-small"
+  ],
+  "references": {
+    "react": [
+      "ActionMenu/ActionMenu.tsx",
+      "ActionMenu.module.css",
+      "ActionMenu.docs.json",
+      "AnchoredOverlay.tsx",
+      "AnchoredOverlay.module.css",
+      "Overlay.module.css",
+      "Overlay/constants.ts",
+      "useMenuKeyboardNavigation.ts",
+      "useMenuInitialFocus.ts",
+      "useMnemonics.ts",
+      "useOverlay.tsx",
+      "useOnEscapePress.ts",
+      "useOpenAndCloseFocus.ts",
+      "useFocusZone.ts",
+      "ActionList/Item.tsx",
+      "ActionList/List.tsx",
+      "Selection.tsx"
+    ],
+    "primer": [
+      "action-menu"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "anchor",
+      "type": "slot",
+      "required": true,
+      "description": "What opens the menu: ActionMenu.Button (a Button with a trailing triangle-down) or ActionMenu.Anchor wrapping any single focusable element (an IconButton, an ActionList.Item for a submenu). May be wrapped in a Tooltip."
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The menu's content: one ActionList whose items, groups and dividers become menu items, menu groups and separators."
+    },
+    {
+      "name": "selectionVariant",
+      "type": "enum",
+      "values": [
+        "single",
+        "multiple"
+      ],
+      "required": false,
+      "description": "Set on the ActionList or a group: items become menuitemradio (single) or menuitemcheckbox (multiple) with a checkmark column. Unset: plain menuitem commands."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "description": "Controlled open state; pair with onOpenChange. Uncontrolled starts closed."
+    },
+    {
+      "name": "onOpenChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new open state."
+    },
+    {
+      "name": "anchorRef",
+      "type": "slot",
+      "required": false,
+      "description": "An external element to position against and return focus to, for a menu opened from elsewhere (a keyboard shortcut)."
+    },
+    {
+      "name": "side",
+      "type": "enum",
+      "values": [
+        "outside-bottom",
+        "outside-top",
+        "outside-left",
+        "outside-right",
+        "inside-top",
+        "inside-bottom",
+        "inside-left",
+        "inside-right",
+        "inside-center"
+      ],
+      "required": false,
+      "default": "outside-bottom",
+      "description": "Which side of the anchor the menu opens on; submenus default to outside-right."
+    },
+    {
+      "name": "align",
+      "type": "enum",
+      "values": [
+        "start",
+        "center",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Alignment along the anchor's edge."
+    },
+    {
+      "name": "maxHeight",
+      "type": "enum",
+      "values": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "fit-content"
+      ],
+      "required": false,
+      "description": "Caps the menu at 192, 256, 320, 432 or 600px (never taller than the viewport); without it the cap is the viewport height."
+    },
+    {
+      "name": "overflow",
+      "type": "enum",
+      "values": [
+        "auto",
+        "hidden",
+        "scroll",
+        "visible"
+      ],
+      "required": false,
+      "description": "Overflow of the menu container."
+    },
+    {
+      "name": "narrowVariant",
+      "type": "enum",
+      "values": [
+        "anchored",
+        "fullscreen"
+      ],
+      "required": false,
+      "default": "anchored",
+      "description": "On narrow viewports, keep the floating menu or cover the screen with a close button."
+    },
+    {
+      "name": "displayInViewport",
+      "type": "boolean",
+      "required": false,
+      "description": "Keep the whole menu inside the viewport; defaults to true inside a Dialog, false elsewhere."
+    },
+    {
+      "name": "onSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Per item: its action. The menu closes afterwards unless the handler cancels the event."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "anchor",
+      "name": "Anchor",
+      "description": "The menu button (default ActionMenu.Button: a Button with a trailing triangle-down action) carrying aria-haspopup and aria-expanded; while open it keeps its pressed colours."
+    },
+    {
+      "id": "overlay",
+      "name": "Overlay",
+      "description": "A floating surface on --overlay-bgColor with --borderRadius-large corners and --shadow-floating-small (whose first layer is the 1px ring that serves as its border), at least 192px wide, at most the viewport width less 32px, scrolling when taller than its cap.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "menu-list",
+      "name": "Menu list",
+      "description": "An ActionList with role menu in its default inset variant: 8px above and below, items inset 8px each side.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "menu-item",
+      "name": "Menu item",
+      "description": "An ActionList item with menu semantics: 32px row, optional checkmark column, leading visual, label, description, trailing visual (often a keybinding hint).",
+      "tokens": [
+        "--control-medium-paddingBlock",
+        "--control-medium-paddingInline-condensed"
+      ]
+    },
+    {
+      "id": "submenu-anchor",
+      "name": "Submenu anchor",
+      "optional": true,
+      "description": "A menu item that opens a nested menu; it shows a chevron-right trailing visual by default."
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "optional": true,
+      "description": "ActionMenu.Divider, the ActionList divider."
+    },
+    {
+      "id": "close-button",
+      "name": "Close button",
+      "optional": true,
+      "description": "Fullscreen on narrow only: an invisible IconButton with an X, labelled Close, 8px from the top-right corner; the menu content starts 36px down.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-36"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "selection",
+      "value": "none",
+      "default": true,
+      "description": "Commands: items are menuitem and close the menu when chosen."
+    },
+    {
+      "axis": "selection",
+      "value": "single",
+      "description": "menuitemradio items; the chosen one shows a checkmark. Choosing closes the menu."
+    },
+    {
+      "axis": "selection",
+      "value": "multiple",
+      "description": "menuitemcheckbox items; checked ones show a checkmark (not a checkbox). Choosing closes the menu unless the item's handler cancels the event."
+    },
+    {
+      "axis": "narrow",
+      "value": "anchored",
+      "default": true,
+      "description": "The floating menu at every viewport width."
+    },
+    {
+      "axis": "narrow",
+      "value": "fullscreen",
+      "description": "On narrow viewports the menu covers the screen (no radius, 100% width and height, safe-area bottom padding) with a close button; Tab no longer closes it.",
+      "tokens": [
+        "--base-size-36"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The menu opens below the anchor (outside-bottom), its start edge aligned with the anchor's start edge; a submenu opens to the right of its item (outside-right). When it would not fit, the positioner flips or shifts it to stay in the viewport.",
+      "source": "ActionMenu/ActionMenu.tsx:277-286,357; AnchoredOverlay.tsx:170-171,254-275"
+    },
+    {
+      "text": "The menu sits 4px off the anchor's edge. The CSS anchor-positioning path states this; the default JavaScript positioner (@primer/behaviors, not read for this spec) is assumed to use the same 4px default offset.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "source": "AnchoredOverlay.module.css:37-41"
+    },
+    {
+      "text": "The overlay is at least 192px wide and grows to its widest item, up to the viewport width less 32px; its height is its content up to the viewport height (or the maxHeight preset, capped by the viewport), then it scrolls.",
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 192,
+          "unit": "px"
+        },
+        {
+          "name": "viewportMargin",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightXsmall",
+          "value": 192,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightSmall",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightMedium",
+          "value": 320,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightLarge",
+          "value": 432,
+          "unit": "px"
+        },
+        {
+          "name": "maxHeightXlarge",
+          "value": 600,
+          "unit": "px"
+        }
+      ],
+      "source": "Overlay.module.css:11-21; ActionMenu.module.css:1-70"
+    },
+    {
+      "text": "Fullscreen on narrow: the overlay is fixed over the whole viewport with no radius and bottom padding for the safe area; the menu container gets 36px top padding so the close button (8px from the top and right) does not cover the first item.",
+      "tokens": [
+        "--base-size-36",
+        "--base-size-8"
+      ],
+      "source": "Overlay.module.css:203-224; ActionMenu.module.css:5-7; AnchoredOverlay.module.css:1-14"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "The anchor reports aria-expanded true and keeps its pressed (-active) Button colours; the overlay fades in from transparent over 200ms cubic-bezier(0.33, 1, 0.68, 1), or appears instantly under reduced motion.",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Overlay.module.css:1-9,234-238; AnchoredOverlay.tsx:410-419"
+    },
+    {
+      "state": "hovered",
+      "part": "menu-item",
+      "text": "ActionList hover: --control-transparent-bgColor-hover fill with a 1px --control-transparent-borderColor-active ring; danger items fill --control-danger-bgColor-hover.",
+      "tokens": [
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-borderColor-active",
+        "--control-danger-bgColor-hover"
+      ],
+      "source": "ActionList.module.css:136-153,183-198"
+    },
+    {
+      "state": "focused",
+      "part": "menu-item",
+      "text": "The keyboard-focused item draws a 2px --focus-outline-color outline on its edge.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "source": "ActionList.module.css:166-173; focusOutline.css"
+    },
+    {
+      "state": "checked",
+      "part": "menu-item",
+      "text": "A checked menuitemradio or menuitemcheckbox shows the checkmark in its leading column; the row fill does not change.",
+      "source": "Selection.tsx:40-46; ActionList.module.css:474-496"
+    },
+    {
+      "state": "other",
+      "label": "closed",
+      "text": "Closing unmounts the overlay with no exit animation and returns focus to the anchor.",
+      "motion": {
+        "instant": true
+      },
+      "source": "AnchoredOverlay.tsx:420-476; useOpenAndCloseFocus.ts:30-34"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open-gestures",
+      "text": "A primary click on the anchor toggles the menu. With the menu closed, ArrowDown, ArrowUp, Space or Enter on the anchor opens it.",
+      "source": "AnchoredOverlay.tsx:218-246"
+    },
+    {
+      "id": "initial-focus",
+      "text": "Where focus goes on open depends on how it opened: a pointer click leaves focus on the anchor; Enter, Space or ArrowDown focuses the first item; ArrowUp focuses the last item; any other opening (a shortcut, controlled open) focuses the first item.",
+      "source": "useMenuInitialFocus.ts:14-76"
+    },
+    {
+      "text": "While open with focus still on the anchor (after a pointer open), ArrowDown moves focus to the first item and ArrowUp to the last.",
+      "source": "useMenuKeyboardNavigation.ts:78-113"
+    },
+    {
+      "text": "Inside the menu, Up and Down move between items and wrap at the ends; Home and End jump to the first and last item; focus is trapped in the overlay.",
+      "source": "ActionMenu/ActionMenu.tsx:362; AnchoredOverlay.tsx:285-294; useFocusZone.ts:33-76"
+    },
+    {
+      "id": "type-ahead",
+      "text": "Type-ahead is single-key: each item gets aria-keyshortcuts set to the first letter of its text (unless it already has one). Pressing a letter or digit with no Ctrl, Alt or Meta moves focus to the next item whose shortcut matches, cycling back to the first match after the last. There is no multi-character buffer or timeout, and the key is not handled while an input or textarea has focus.",
+      "source": "useMnemonics.ts:11-91"
+    },
+    {
+      "text": "Choosing an item runs its handler, then closes the menu and every parent menu, unless the handler cancelled the event.",
+      "source": "ActionMenu/ActionMenu.tsx:94-108,332; ActionList/Item.tsx:131-142"
+    },
+    {
+      "text": "Tab or Shift+Tab, pressed in the menu or on the anchor while open, closes the menu and its parents; the fullscreen narrow variant ignores Tab.",
+      "source": "useMenuKeyboardNavigation.ts:28-53; ActionMenu/ActionMenu.tsx:94-108,304-313"
+    },
+    {
+      "text": "Escape closes only the innermost open menu (each overlay's Escape handler stops the others) and focus returns to that menu's anchor. A click outside the overlay closes it; a click on the anchor toggles it instead.",
+      "source": "useOverlay.tsx:31-39; useOnEscapePress.ts:7-15; AnchoredOverlay.tsx:215-216,420-426; useOpenAndCloseFocus.ts:30-34"
+    },
+    {
+      "id": "submenu",
+      "text": "A submenu is an ActionMenu whose anchor is an item in the parent menu. Its anchor item shows a chevron-right and, when chosen (click, Enter or Space), opens the submenu instead of closing the parent. ArrowRight on the anchor item opens it; ArrowLeft inside the submenu closes it and returns focus to the anchor item.",
+      "source": "ActionMenu/ActionMenu.tsx:204-251,357; useMenuKeyboardNavigation.ts:55-76"
+    },
+    {
+      "text": "The menu is labelled by its anchor (or by the Tooltip that labels an icon-only anchor, or an explicit aria-labelledby). A list heading is not allowed in a menu.",
+      "source": "ActionMenu/ActionMenu.tsx:319-344; ActionList/Heading.tsx:29-33"
+    }
+  ],
+  "accessibility": {
+    "role": "button (anchor) with aria-haspopup, controlling a menu of menuitem, menuitemradio or menuitemcheckbox",
+    "minTargetPx": 32,
+    "keyboard": [
+      "On the anchor: Enter, Space or ArrowDown opens the menu and focuses the first item; ArrowUp opens it and focuses the last.",
+      "In the menu: ArrowDown and ArrowUp move to the next and previous item, wrapping; Home and End move to the first and last.",
+      "A letter or digit moves to the next item starting with that character.",
+      "Enter or Space chooses the focused item and closes the menu (or opens its submenu).",
+      "ArrowRight on a submenu item opens the submenu; ArrowLeft in a submenu closes it.",
+      "Escape closes the innermost menu and returns focus to its anchor.",
+      "Tab and Shift+Tab close the whole menu stack."
+    ],
+    "semantics": [
+      "The anchor has aria-haspopup true and aria-expanded reflecting the open state.",
+      "The menu is aria-labelledby the anchor.",
+      "Selectable items carry aria-checked.",
+      "Each item has aria-keyshortcuts naming its first letter.",
+      "Dividers are hidden; groups are role group with an aria-label from their heading."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Focus inside the menu is a roving tabindex from @primer/behaviors' focusZone (wrap) on the overlay, plus a focus trap. A native build keeps one focused row index, moves it with Up/Down/Home/End with wrap, skips disabled rows, scrolls the focused row into view, and holds keyboard input inside the menu until it closes.",
+      "source": "ActionMenu/ActionMenu.tsx:341,362; AnchoredOverlay.tsx:285-294; useFocusZone.ts:33-76"
+    },
+    {
+      "kind": "web-only",
+      "text": "Initial focus is moved on the next tick (setTimeout) to dodge React batching, and the opening gesture is inferred from click.detail (0 means keyboard). A native build passes the opening gesture to the menu explicitly: pointer keeps focus on the button, keyboard focuses the first or last item.",
+      "source": "useMenuInitialFocus.ts:16-71"
+    },
+    {
+      "kind": "web-only",
+      "text": "Positioning (side, align, flip and shift to stay in the viewport) is @primer/behaviors' getAnchoredPosition, or native CSS anchor positioning behind a flag. A native build computes the overlay rect from the anchor rect and the viewport each frame it is open.",
+      "source": "AnchoredOverlay.tsx:185-202,254-275"
+    },
+    {
+      "kind": "web-only",
+      "text": "The overlay is portalled to the document root and stacked above the page; a native build draws it in an overlay layer after the page, clipped to the viewport, not to the anchor's container.",
+      "source": "AnchoredOverlay.tsx:420-476"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A pointer-opened menu leaves focus on the anchor, so the first ArrowDown moves into the menu rather than to the second item. Type-ahead also only works once focus is inside the menu.",
+      "source": "useMenuInitialFocus.ts:54-56; useMnemonics.ts:33-80"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Multiple selection in a menu shows checkmarks, not checkboxes, and still closes the menu after each choice unless the item handler cancels the event.",
+      "source": "Selection.tsx:40-46; ActionList/Item.tsx:137-139"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Trailing actions and list headings are rejected inside a menu (invariants); a menu is labelled by its button, not a heading.",
+      "source": "ActionList/Item.tsx:162-167; ActionList/Heading.tsx:29-33"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "useMoveFocusToMenuItem's cleanup calls addEventListener instead of removeEventListener, so every open-close adds another anchor keydown handler; arrows on the anchor then schedule duplicate focus moves. A native build registers the handler once.",
+      "source": "useMenuKeyboardNavigation.ts:111-112"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The opening gesture is stored when the anchor sees a click or one of Space, Enter, ArrowDown, ArrowUp, and is never reset. ArrowRight, which opens a submenu, is not one of them, so a submenu opened by ArrowRight takes focus by whatever gesture last opened it: the first item if none, but the anchor itself if it was last opened by a click. A native build passes the actual gesture each time and focuses the submenu's first item on ArrowRight.",
+      "source": "useMenuInitialFocus.ts:14-71; ActionMenu/ActionMenu.tsx:92,207-212"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded, not tokens: the 192px minimum width, the viewport-less-32px maximum width, the max-height presets (192, 256, 320, 432 and 600px) and the 200ms opening fade with its curve. The fullscreen top padding is a token (--base-size-36).",
+      "source": "Overlay.module.css:13-15,234-238; ActionMenu.module.css:5-7,26-65",
+      "tokens": [
+        "--base-size-36"
+      ]
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the overlay draws a 1px transparent outline so it keeps a visible edge, and menu items use ActionList's transparent outlines.",
+      "source": "Overlay.module.css:50-53; ActionList.module.css:125-134"
+    }
+  ]
+}

@@ -1,0 +1,983 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "action-list",
+  "name": "ActionList",
+  "status": "beta",
+  "statusNote": "Beta in Primer React's docs file, but it is the row engine under ActionMenu, SelectPanel, Autocomplete and NavList, so its visuals and item API are settled. Some behaviour still sits behind feature flags (item gap in NavList, group heading trailing action) and is described as such.",
+  "summary": "A vertical list of rows, each an action, a link or a selectable option, with optional leading and trailing visuals, descriptions, groups and dividers. Use it bare for a list of actions or links on a page; ActionMenu, SelectPanel and Autocomplete wrap it and give it menu or listbox semantics, a selection model and keyboard focus management.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--bgColor-default",
+    "--bgColor-muted",
+    "--borderColor-accent-emphasis",
+    "--borderColor-muted",
+    "--borderRadius-medium",
+    "--borderRadius-small",
+    "--borderWidth-thin",
+    "--boxShadow-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-disabled",
+    "--control-borderColor-emphasis",
+    "--control-checked-bgColor-disabled",
+    "--control-checked-bgColor-rest",
+    "--control-checked-borderColor-rest",
+    "--control-checked-fgColor-disabled",
+    "--control-checked-fgColor-rest",
+    "--control-danger-bgColor-active",
+    "--control-danger-bgColor-hover",
+    "--control-danger-fgColor-hover",
+    "--control-danger-fgColor-rest",
+    "--control-fgColor-disabled",
+    "--control-fgColor-rest",
+    "--control-large-paddingBlock",
+    "--control-medium-gap",
+    "--control-medium-paddingBlock",
+    "--control-medium-paddingInline-condensed",
+    "--control-medium-size",
+    "--control-transparent-bgColor-active",
+    "--control-transparent-bgColor-hover",
+    "--control-transparent-bgColor-rest",
+    "--control-transparent-bgColor-selected",
+    "--control-transparent-borderColor-active",
+    "--fgColor-attention",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--focus-outline-color",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "ActionList.module.css",
+      "ActionList/List.tsx",
+      "ActionList/Item.tsx",
+      "LinkItem.tsx",
+      "Description.tsx",
+      "Visuals.tsx",
+      "Selection.tsx",
+      "TrailingAction.tsx",
+      "ActionList/Group.tsx",
+      "Group.module.css",
+      "GroupHeadingTrailingAction.tsx",
+      "ActionList/Heading.tsx",
+      "ActionList/Heading.module.css",
+      "ActionList/Divider.tsx",
+      "ActionList/shared.ts",
+      "ActionListContainerContext.tsx",
+      "ActionList.docs.json",
+      "useFocusZone.ts",
+      "activeIndicatorLine.css",
+      "focusOutline.css"
+    ],
+    "primer": [
+      "action-list"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The rows, in order: items, link items, groups and dividers. Each item takes the item* inputs below."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "inset",
+        "horizontal-inset",
+        "full"
+      ],
+      "required": false,
+      "default": "inset",
+      "description": "inset pads the list 8px top and bottom and the rows 8px each side; horizontal-inset keeps the side inset and pads only the bottom; full lays rows flush with the list's edges."
+    },
+    {
+      "name": "selectionVariant",
+      "type": "enum",
+      "values": [
+        "single",
+        "radio",
+        "multiple"
+      ],
+      "required": false,
+      "description": "Adds a leading selection column: a checkmark (single), a radio (radio) or a checkbox (multiple). Unset means items are actions, not options."
+    },
+    {
+      "name": "showDividers",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draw a 1px rule above each item's text block, except the first item and an item that follows a divider."
+    },
+    {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "description": "ARIA role of the list: list (default), listbox, menu, tablist. listbox and menu switch on arrow-key focus management and change item roles."
+    },
+    {
+      "name": "disableFocusZone",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Turn off arrow-key navigation for a listbox or menu list whose owner manages focus itself."
+    },
+    {
+      "name": "heading",
+      "type": "slot",
+      "required": false,
+      "description": "A heading above the list (h1 to h6, small, medium or large, optionally visually hidden) that labels it. Not allowed inside ActionMenu."
+    },
+    {
+      "name": "groups",
+      "type": "list",
+      "required": false,
+      "description": "Groups of items, each with a heading (subtle or filled), optional auxiliaryText under the heading, and an optional selectionVariant that overrides the list's (false turns selection off for that group)."
+    },
+    {
+      "name": "itemLabel",
+      "type": "string",
+      "required": true,
+      "description": "An item's primary text. It wraps; it never truncates."
+    },
+    {
+      "name": "itemVariant",
+      "type": "enum",
+      "values": [
+        "default",
+        "danger"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "danger colours the label and leading visual red and fills red on hover, for destructive actions."
+    },
+    {
+      "name": "itemSize",
+      "type": "enum",
+      "values": [
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Row height: 32px (medium) or 40px (large) for a one-line row."
+    },
+    {
+      "name": "itemLeadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "A 16px octicon, avatar or similar before the text, in --fgColor-muted."
+    },
+    {
+      "name": "itemTrailingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "An icon, short text, counter or keybinding hint after the text. It joins the item's accessible name."
+    },
+    {
+      "name": "itemDescription",
+      "type": "string",
+      "required": false,
+      "description": "Secondary text in small muted type."
+    },
+    {
+      "name": "itemDescriptionVariant",
+      "type": "enum",
+      "values": [
+        "inline",
+        "block"
+      ],
+      "required": false,
+      "default": "inline",
+      "description": "inline sets the description beside the label on the same baseline; block sets it on its own line under the label."
+    },
+    {
+      "name": "itemDescriptionTruncate",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Inline descriptions only: cut to one line with an ellipsis and show the full text in a tooltip on the item."
+    },
+    {
+      "name": "itemSelected",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the item is chosen, when the list or group has a selectionVariant."
+    },
+    {
+      "name": "itemActive",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The current item (the page you are on): selected fill, semibold label and a 4px accent bar. At most one per list."
+    },
+    {
+      "name": "itemDisabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Greyed out, aria-disabled, ignores activation."
+    },
+    {
+      "name": "itemInactiveText",
+      "type": "string",
+      "required": false,
+      "description": "Marks the item unavailable for a system reason (an outage) and says why: an alert icon with this text as a tooltip in a plain list, the text itself under the label in a menu or listbox."
+    },
+    {
+      "name": "itemLoading",
+      "type": "boolean",
+      "required": false,
+      "description": "Swap a visual for a small spinner, mute the text and ignore activation."
+    },
+    {
+      "name": "itemTrailingAction",
+      "type": "slot",
+      "required": false,
+      "description": "A secondary action at the row's end: an invisible IconButton (icon and label) or an invisible text Button, optionally a link, optionally loading. Not allowed in a menu or listbox."
+    },
+    {
+      "name": "itemHref",
+      "type": "string",
+      "required": false,
+      "description": "Makes the item a LinkItem: the row is a link; it takes active, variant, size and inactiveText but not selected or loading."
+    },
+    {
+      "name": "itemSubItems",
+      "type": "slot",
+      "required": false,
+      "description": "A nested list shown under the item; the item becomes an expandable parent (NavList's use)."
+    },
+    {
+      "name": "onSelect",
+      "type": "callback",
+      "required": false,
+      "description": "An item's activation by pointer, Enter or Space. Not called for disabled, inactive or loading items. Cancelling the event stops the container's after-select step (an ActionMenu closing)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "list",
+      "name": "List",
+      "description": "The unstyled list box; inset adds 8px block padding.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "heading",
+      "name": "List heading",
+      "optional": true,
+      "description": "A Heading above the list with 8px below it, indented to line up with the item text.",
+      "tokens": [
+        "--base-size-8",
+        "--control-medium-paddingInline-condensed"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "The row's outer box (li): medium radius, transparent fill that carries hover, pressed, selected and active colours, and the accent bar.",
+      "tokens": [
+        "--borderRadius-medium",
+        "--control-transparent-bgColor-rest"
+      ]
+    },
+    {
+      "id": "content",
+      "name": "Item content",
+      "description": "The focusable or clickable box inside the item (a button in a plain list, a div in a menu or listbox, an anchor for a link item): a four-column row of spacer, selection, leading visual and text block.",
+      "tokens": [
+        "--control-medium-paddingBlock",
+        "--control-medium-paddingInline-condensed",
+        "--control-medium-gap",
+        "--control-fgColor-rest"
+      ]
+    },
+    {
+      "id": "spacer",
+      "name": "Depth spacer",
+      "optional": true,
+      "description": "An empty column 8px wide per nesting level, shown only in items with sub-items."
+    },
+    {
+      "id": "selection",
+      "name": "Selection indicator",
+      "optional": true,
+      "description": "A 16px checkmark, radio or checkbox in the leading column when the list or group has a selectionVariant."
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "A 16px visual in a 20px-tall box centred on the first text line, in --fgColor-muted.",
+      "tokens": [
+        "--base-size-20",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "Body-medium text on a 20px line in --fgColor-default, normal weight (semibold with a description); wraps by word.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--base-text-weight-normal",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "description",
+      "name": "Description",
+      "optional": true,
+      "description": "Body-small text on a 16px line in --fgColor-muted, beside or under the label.",
+      "tokens": [
+        "--text-body-size-small",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "A visual or short text after the text block, at body-medium size, in --fgColor-muted.",
+      "tokens": [
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "id": "trailing-action",
+      "name": "Trailing action",
+      "optional": true,
+      "description": "An invisible Button or IconButton outside the content box, full row height, square on its left.",
+      "tokens": [
+        "--control-medium-size"
+      ]
+    },
+    {
+      "id": "inactive-warning",
+      "name": "Inactive warning",
+      "optional": true,
+      "description": "The inactiveText on a second row under the label, body-small on a 16px line, in --fgColor-attention (menu and listbox only).",
+      "tokens": [
+        "--fgColor-attention",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "active-indicator",
+      "name": "Active indicator",
+      "optional": true,
+      "description": "A 4px --borderColor-accent-emphasis bar with medium radius, 8px left of the item and 4px in from its top and bottom.",
+      "tokens": [
+        "--borderColor-accent-emphasis",
+        "--base-size-4",
+        "--base-size-8",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "group-heading",
+      "name": "Group heading",
+      "optional": true,
+      "description": "Small semibold muted text padded 6px by 16px, optionally on a --bgColor-muted band with --borderColor-muted rules (filled), with optional auxiliary text under it.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--fgColor-muted",
+        "--base-size-6",
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "optional": true,
+      "description": "A 1px --borderColor-muted rule between items or groups, 7px above and 8px below.",
+      "tokens": [
+        "--borderColor-muted",
+        "--borderWidth-thin"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "list",
+      "value": "inset",
+      "default": true,
+      "description": "8px block padding on the list and 8px inline margin on each item, so hover fills are rounded tiles inside the surface.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "axis": "list",
+      "value": "horizontal-inset",
+      "description": "8px inline margin on each item and 8px bottom padding only; SelectPanel uses it when the list has groups, so a filled group heading touches the top."
+    },
+    {
+      "axis": "list",
+      "value": "full",
+      "description": "Rows flush with the list's edges; no list padding, no item margin."
+    },
+    {
+      "axis": "item",
+      "value": "default",
+      "default": true,
+      "description": "Default text and muted visuals; transparent hover fill."
+    },
+    {
+      "axis": "item",
+      "value": "danger",
+      "description": "Label, leading visual and selection in danger red; hover and press fill red.",
+      "tokens": [
+        "--control-danger-fgColor-rest",
+        "--control-danger-fgColor-hover",
+        "--control-danger-bgColor-hover",
+        "--control-danger-bgColor-active",
+        "--bgColor-default"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "6px block padding around a 20px line: 32px for one line.",
+      "tokens": [
+        "--control-medium-paddingBlock"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "10px block padding around a 20px line: 40px for one line.",
+      "tokens": [
+        "--control-large-paddingBlock"
+      ]
+    },
+    {
+      "axis": "selection",
+      "value": "single",
+      "description": "A 16px check octicon in the leading column, visible only on the selected item; the column is reserved on every item so labels align."
+    },
+    {
+      "axis": "selection",
+      "value": "radio",
+      "description": "A Radio control's visuals in the leading column, hidden from assistive technology; SelectPanel uses it for single selection in a modal."
+    },
+    {
+      "axis": "selection",
+      "value": "multiple",
+      "description": "A 16px CSS-drawn checkbox in the leading column, except in a menu, where it is a checkmark.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-emphasis",
+        "--borderRadius-small",
+        "--control-checked-bgColor-rest",
+        "--control-checked-borderColor-rest",
+        "--control-checked-fgColor-rest"
+      ]
+    },
+    {
+      "axis": "group-heading",
+      "value": "subtle",
+      "default": true,
+      "description": "Muted heading text with no band."
+    },
+    {
+      "axis": "group-heading",
+      "value": "filled",
+      "description": "Heading on a --bgColor-muted band with 1px --borderColor-muted rules above and below, 7px above (0 when first) and 8px below.",
+      "tokens": [
+        "--bgColor-muted",
+        "--borderColor-muted",
+        "--borderWidth-thin"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "inset pads the list 8px top and bottom and gives every item 8px inline margin; horizontal-inset keeps the item margin and pads only the bottom; full does neither. Items inside a sub-group drop the inline margin.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "ActionList.module.css:14-27,715-723; ActionList/List.tsx:21"
+    },
+    {
+      "text": "The item content is a row of columns: depth spacer, selection, leading visual, then a text block that takes the remaining width (minmax(0, auto)); the text block is itself a row of label column, trailing visual and trailing action. Every present column except the last is followed by an 8px gap; an absent column takes no space and no gap.",
+      "tokens": [
+        "--control-medium-gap"
+      ],
+      "source": "ActionList.module.css:500-529,590-606"
+    },
+    {
+      "text": "Content padding is --control-medium-paddingBlock (6px) top and bottom and --control-medium-paddingInline-condensed (8px) each side; large uses --control-large-paddingBlock (10px). With a 20px text line that makes rows 32px or 40px tall for one line; rows grow with wrapped text.",
+      "tokens": [
+        "--control-medium-paddingBlock",
+        "--control-medium-paddingInline-condensed",
+        "--control-large-paddingBlock"
+      ],
+      "values": [
+        {
+          "name": "labelLineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList.module.css:515-517,538-541,702-713"
+    },
+    {
+      "text": "Columns align to the top (align-items: start). Visuals sit in a box at least 20px tall with a 20px line, centred, so a 16px icon lines up with the first line of text however many lines the label wraps to.",
+      "tokens": [
+        "--base-size-20"
+      ],
+      "values": [
+        {
+          "name": "visualLineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList.module.css:523,599,686-699"
+    },
+    {
+      "text": "The label wraps by word and never truncates. With a block description the label and description stack in a column 4px apart and the label turns semibold; with an inline description they sit in a row on a shared baseline 8px apart, the description on a 16px line.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-text-weight-semibold"
+      ],
+      "values": [
+        {
+          "name": "descriptionLineHeight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList.module.css:640-684"
+    },
+    {
+      "text": "If a list mixes items with and without descriptions, every label in it reverts to normal weight, so only all-described lists show semibold labels.",
+      "tokens": [
+        "--base-text-weight-normal"
+      ],
+      "source": "ActionList.module.css:101-106; ActionList/List.tsx:95-107"
+    },
+    {
+      "text": "An inline description with truncate is cut to one line with an ellipsis; when it actually overflows, the full text becomes a tooltip on the item (east, medium delay).",
+      "source": "Description.tsx:37-84; ActionList/Item.tsx:29-45,337"
+    },
+    {
+      "text": "With showDividers, a 1px --borderColor-muted rule is drawn 7px above each item's text block, spanning the text block only (not the selection or leading visual). It is hidden on the first item, on the item after a Divider, and on the item and its successor while either is hovered, focused or active.",
+      "tokens": [
+        "--borderColor-muted",
+        "--borderWidth-thin"
+      ],
+      "values": [
+        {
+          "name": "dividerOffsetTop",
+          "value": -7,
+          "unit": "px"
+        },
+        {
+          "name": "dividerHeight",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList.module.css:41-94,166-173,234-239,303-316"
+    },
+    {
+      "text": "A Divider row is a 1px --borderColor-muted rule with (8px less 1px) above and 8px below. A divider that is the list's first child is not drawn.",
+      "tokens": [
+        "--borderColor-muted",
+        "--borderWidth-thin",
+        "--base-size-8"
+      ],
+      "source": "ActionList.module.css:96-99,761-772; ActionList/Divider.tsx:14-23"
+    },
+    {
+      "text": "A group after the first has 8px above it. Its heading is small semibold --fgColor-muted text on an 18px line, padded 6px top and bottom and 16px each side; filled adds the muted band and rules. Auxiliary text sits under the heading in description style.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-6",
+        "--base-size-16",
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--fgColor-muted"
+      ],
+      "values": [
+        {
+          "name": "groupHeadingLineHeight",
+          "value": 18,
+          "unit": "px"
+        }
+      ],
+      "source": "Group.module.css:1-51; ActionList/Group.tsx:196-236"
+    },
+    {
+      "text": "A list heading has 8px below it and is indented 16px (paddingInline-condensed plus 8px) in inset lists, 8px in full lists, so it lines up with item text.",
+      "tokens": [
+        "--base-size-8",
+        "--control-medium-paddingInline-condensed"
+      ],
+      "source": "ActionList/Heading.module.css:1-12"
+    },
+    {
+      "text": "With a trailing action the item becomes a horizontal row of content then action; the action button is the full row height with square left corners. A text trailing action that is loading pads 24px on its left and none on its right, and centres a 32px spinner box at its end.",
+      "tokens": [
+        "--base-size-12",
+        "--control-medium-size"
+      ],
+      "source": "ActionList.module.css:117-121,631-638,725-749; TrailingAction.tsx:32-77"
+    },
+    {
+      "text": "Sub-item depth is an empty leading column 8px wide per level, shown only in items that have sub-items; sub-group labels drop to body-small. A collapsed parent hides its sub-group, and its expand icon flips vertically when open.",
+      "tokens": [
+        "--text-body-size-small"
+      ],
+      "values": [
+        {
+          "name": "depthStep",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList.module.css:319-340,543-558,610-616,715-723"
+    },
+    {
+      "text": "In a plain list the inactive indicator, an alert icon that shows inactiveText as a tooltip, takes the leading visual's place if there is one, else the trailing visual's; a loading spinner takes the same place. In a menu or listbox the inactiveText is written under the label instead, in --fgColor-attention on row 2.",
+      "tokens": [
+        "--fgColor-attention"
+      ],
+      "values": [
+        {
+          "name": "inactiveWarningLineHeight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "Visuals.tsx:44-87; ActionList/Item.tsx:124-129,384-392; ActionList.module.css:751-759,784-794"
+    },
+    {
+      "text": "In NavList, behind the primer_react_action_list_item_gap flag, consecutive items and an expanded sub-group are separated by 2px.",
+      "tokens": [
+        "--base-size-2"
+      ],
+      "source": "ActionList.module.css:29-39; ActionList/List.tsx:55-56"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Transparent item fill, --fgColor-default label, --fgColor-muted visuals and description.",
+      "tokens": [
+        "--control-transparent-bgColor-rest",
+        "--fgColor-default",
+        "--fgColor-muted"
+      ],
+      "source": "ActionList.module.css:111-115,674-713"
+    },
+    {
+      "state": "hovered",
+      "text": "On devices with hover, the item fills with --control-transparent-bgColor-hover and draws a 1px inset ring of --control-transparent-borderColor-active (unless it is active or keyboard-focused); dividers around it hide. Danger fills --control-danger-bgColor-hover and turns its text --control-danger-fgColor-hover. The fill change is effectively instant.",
+      "tokens": [
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-borderColor-active",
+        "--boxShadow-thin",
+        "--control-danger-bgColor-hover",
+        "--control-danger-fgColor-hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "ActionList.module.css:136-153,183-198,303-316"
+    },
+    {
+      "state": "pressed",
+      "text": "The item fills with --control-transparent-bgColor-active and keeps the 1px ring; danger fills --control-danger-bgColor-active. Pressed applies on touch devices too.",
+      "tokens": [
+        "--control-transparent-bgColor-active",
+        "--control-transparent-borderColor-active",
+        "--control-danger-bgColor-active"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "ActionList.module.css:155-164,200-213"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus on a menu or listbox item draws a 2px --focus-outline-color outline on the item's edge (offset 0, not inset) and hides the dividers around it.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": 0,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList.module.css:166-173; focusOutline.css"
+    },
+    {
+      "state": "other",
+      "label": "active-descendant",
+      "text": "The item a combobox input points at (aria-activedescendant) fills with --control-transparent-bgColor-selected and shows the accent bar; this is the keyboard highlight in SelectPanel and Autocomplete, where focus stays in the input.",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--borderColor-accent-emphasis"
+      ],
+      "source": "ActionList.module.css:247-266; activeIndicatorLine.css"
+    },
+    {
+      "state": "other",
+      "label": "active",
+      "text": "The current item fills with --control-transparent-bgColor-selected, sets its label semibold in --control-fgColor-rest and shows the 4px accent bar; hover still shows the hover fill. A collapsed parent whose sub-items hold the current item shows the same treatment.",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--control-fgColor-rest",
+        "--base-text-weight-semibold",
+        "--borderColor-accent-emphasis"
+      ],
+      "source": "ActionList.module.css:216-245,560-587; activeIndicatorLine.css"
+    },
+    {
+      "state": "selected",
+      "part": "selection",
+      "text": "single shows the checkmark; multiple fills the checkbox --control-checked-bgColor-rest with a --control-checked-borderColor-rest border and wipes in a --control-checked-fgColor-rest check from the top; unselected hides the check. Selection does not change the row fill.",
+      "tokens": [
+        "--control-checked-bgColor-rest",
+        "--control-checked-borderColor-rest",
+        "--control-checked-fgColor-rest"
+      ],
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "source": "ActionList.module.css:407-496; Selection.tsx:12-53"
+    },
+    {
+      "state": "disabled",
+      "text": "All content text turns --control-fgColor-disabled, hover shows no fill and a not-allowed cursor; a checkbox greys to --control-bgColor-disabled and --control-borderColor-disabled, or --control-checked-bgColor-disabled with a --control-checked-fgColor-disabled check when selected.",
+      "tokens": [
+        "--control-fgColor-disabled",
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled",
+        "--control-checked-bgColor-disabled",
+        "--control-checked-fgColor-disabled"
+      ],
+      "source": "ActionList.module.css:342-383"
+    },
+    {
+      "state": "loading",
+      "text": "A small Spinner replaces the leading visual (or the trailing visual when there is no leading one); label, description and visuals turn --fgColor-muted; the label gains a visually hidden \"Loading\"; activation is ignored.",
+      "tokens": [
+        "--fgColor-muted"
+      ],
+      "source": "ActionList.module.css:291-301; Visuals.tsx:62-86; ActionList/Item.tsx:186-208,368-370"
+    },
+    {
+      "state": "other",
+      "label": "inactive",
+      "text": "Every piece of text but the warning turns --fgColor-muted, hover and press show no fill, the cursor is not-allowed, and activation is ignored.",
+      "tokens": [
+        "--fgColor-muted"
+      ],
+      "source": "ActionList.module.css:268-289; ActionList/Item.tsx:186-208"
+    },
+    {
+      "state": "expanded",
+      "text": "A parent with sub-items moves hover and press to its own content row, flips its expand icon (scaleY(-1)) and shows the sub-group; collapsed hides the sub-group.",
+      "tokens": [
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-bgColor-active"
+      ],
+      "source": "ActionList.module.css:319-340,543-558"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "An item activates on click and on Enter or Space; Space does not scroll. Disabled, inactive and loading items ignore both. After the item's own handler, the container's after-select step runs (an ActionMenu closes) unless the handler cancelled the event.",
+      "source": "ActionList/Item.tsx:131-142,186-208"
+    },
+    {
+      "text": "The item's role comes from its container: in ActionMenu menuitem, menuitemradio (single) or menuitemcheckbox (multiple); in a listbox with selection, option; in a tablist, tab. Options and menu items carry aria-selected or aria-checked from itemSelected.",
+      "source": "ActionList/Item.tsx:148-174,223,247-260"
+    },
+    {
+      "text": "In a plain list each item's content is a button and Tab moves between them. When the list role is menu, menubar or listbox (or a container asks for it), arrow-key focus management turns on: Up and Down move between items, Home and End jump to the ends, Page Up and Page Down move by page; a menu wraps past the ends, a bare listbox stops.",
+      "source": "ActionList/List.tsx:58-68; useFocusZone.ts:33-76"
+    },
+    {
+      "text": "A trailing action renders only when the item is not inactive or loading and the list is not inside ActionMenu, SelectPanel or FilteredActionList; using one there is an error.",
+      "source": "ActionList/Item.tsx:125-127,162-167,316-319,397"
+    },
+    {
+      "text": "Checking a checkbox colours its box over 80ms cubic-bezier(0.32, 0, 0.67, 0), then, after an 80ms delay, wipes the check down from the top over 80ms cubic-bezier(0.65, 0, 0.35, 1). Unchecking wipes the check out over 80ms on the same curve, colours the box over 80ms cubic-bezier(0.33, 1, 0.68, 1), and hides the check after 230ms.",
+      "values": [
+        {
+          "name": "checkInDelay",
+          "value": 80,
+          "unit": "ms"
+        },
+        {
+          "name": "checkOutHideDelay",
+          "value": 230,
+          "unit": "ms"
+        },
+        {
+          "name": "checkMaskSize",
+          "value": 75,
+          "unit": "percent"
+        }
+      ],
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "source": "ActionList.module.css:417-440,455-464,796-814"
+    },
+    {
+      "text": "The content box's own background transitions over 33.333ms linear; this only reaches the parent row of an item with sub-items, whose content carries the hover fill.",
+      "motion": {
+        "durationMs": 33.333,
+        "easing": [
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      "source": "ActionList.module.css:513,319-335"
+    },
+    {
+      "text": "Group headings label their group: in a plain list the heading is a real heading element (h1 to h6, required) that the group's list is labelled by; in a menu or listbox the heading is presentational and hidden, and the group (role group) takes the heading text as its aria-label.",
+      "source": "ActionList/Group.tsx:99-127,180-236"
+    }
+  ],
+  "accessibility": {
+    "role": "list of listitems by default; listbox of options or menu of menuitems (menuitemradio, menuitemcheckbox) when the role or container says so; tablist of tabs",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Plain list: Tab and Shift+Tab move between items; Enter or Space activates.",
+      "Menu or listbox: Tab enters the list at one item; ArrowDown and ArrowUp move to the next and previous item (a menu wraps at the ends); Home and End move to the first and last; PageDown and PageUp move by page.",
+      "Enter or Space activates the focused item; disabled, inactive and loading items do nothing.",
+      "In a plain list, a trailing action is its own Tab stop after the item."
+    ],
+    "semantics": [
+      "An item is labelled by its label plus its trailing visual, so a count or shortcut is read as part of the name.",
+      "An item is described by its description and, in a menu or listbox, its inactive warning.",
+      "Selected state is aria-checked on menuitemradio and menuitemcheckbox, aria-selected on option.",
+      "Disabled items are aria-disabled.",
+      "A loading item's name ends in \"Loading\" (not when it is also inactive).",
+      "The list is labelled by its heading, or by its container (the menu button, the panel title).",
+      "Dividers and, in menus and listboxes, group headings are hidden from assistive technology; groups are role group with an aria-label.",
+      "The inactive indicator in a plain list is a button labelled by the item's label whose tooltip carries the reason."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Arrow-key navigation is @primer/behaviors' focusZone (not read for this spec): a roving tabindex in which one item holds tabindex 0 and the rest -1, arrow keys move DOM focus, and focusOutBehavior chooses wrap or stop. A native build implements the roving index itself: keep one focusable row per list, move it with Up, Down, Home, End, PageUp and PageDown, skip disabled rows, and remember the last index when focus re-enters.",
+      "source": "ActionList/List.tsx:58-68; useFocusZone.ts:33-76"
+    },
+    {
+      "kind": "web-only",
+      "text": "The item layout is two nested CSS grids with named areas (spacer, leadingAction, leadingVisual, content; label, trailingVisual, trailingAction), gaps applied as margin-right on present children only. Natively this is a horizontal stack of optional slots, top-aligned, with an 8px gap only between slots that exist, the text slot taking the remaining width.",
+      "source": "ActionList.module.css:500-606"
+    },
+    {
+      "kind": "web-only",
+      "text": "Whether a list mixes described and undescribed items is found by querying the rendered DOM after each render and stamping data-mixed-descriptions; a native build knows its items up front and computes the label weight from the data.",
+      "source": "ActionList/List.tsx:81-107"
+    },
+    {
+      "kind": "web-only",
+      "text": "Truncated descriptions decide their tooltip by comparing the element's scrollWidth to clientWidth after layout; a native build must measure the description against its slot width and attach the tooltip only when it is cut.",
+      "source": "Description.tsx:37-54"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus outline on an item uses offset 0, not the system's -2px inset, so it sits on the item's edge; and in a plain list the focusable element is the inner button, so the module's focus rule does not apply: BaseStyles only suppresses the ring after pointer focus, and the visible ring is the browser's (or the host page's) default. Natively, draw the system focus ring (2px --focus-outline-color) on the row in both cases.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "source": "ActionList.module.css:166-167; ActionList/Item.tsx:183-184,219; BaseStyles.module.css:40-47"
+    },
+    {
+      "kind": "gotcha",
+      "text": "In a menu, selectionVariant multiple still draws a checkmark, not a checkbox: Selection picks the checkmark when the variant is single or the list role is menu. Checkboxes appear only in listboxes (SelectPanel) and plain lists.",
+      "source": "Selection.tsx:40-52"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The selection column is reserved on every item once the list or group has a selectionVariant, even unselected ones, so labels align; a group can opt out with selectionVariant false.",
+      "source": "Selection.tsx:12-29; ActionList/Group.tsx:64-67"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Danger recolours the label, leading visual and selection only; the description and trailing visual keep their muted colour. Danger's hover sets any keybinding hint's background to --bgColor-default so it stays legible on the red fill.",
+      "tokens": [
+        "--bgColor-default"
+      ],
+      "source": "ActionList.module.css:175-214"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Hover styling is inside @media (hover: hover), so touch devices get no hover fill, while pressed still applies. Hover and press are drawn on the outer item box, so they include the trailing action's area.",
+      "source": "ActionList.module.css:136-164"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The type comment says disabled items cannot be navigated through, but the item keeps tabIndex 0 and only sets aria-disabled; whether the focus zone skips it depends on @primer/behaviors. Pick one behaviour natively and keep disabled rows unactivatable either way.",
+      "source": "ActionList/shared.ts:37-40; ActionList/Item.tsx:247-260"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The code comment says the inline inactive message is for items outside overlays, but the code does the opposite: the inline message renders in menus and listboxes, the icon-and-tooltip indicator in plain lists. Follow the code.",
+      "source": "ActionList/Item.tsx:124-129,384-392"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The checkbox's transition lists background-color with no duration before border-color 80ms, so the fill snaps instantly and only the border animates. A native build may animate both or match the snap.",
+      "source": "ActionList.module.css:417-419,455-457"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded in the module, not tokens: 20px label and visual line height, 16px description and inactive-warning line height, 18px group heading line height, the -7px divider offset, 8px per depth level, the 80ms checkbox timings and their curves, the 230ms check hide delay, and the 33.333ms content fill transition.",
+      "source": "ActionList.module.css:50,417-440,455-464,513,614,668,682,693,707,791; Group.module.css:20"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours focus and the active descendant draw a 1px transparent outline (so the system colour shows), hover and press add a 1px transparent outline, active items carry a 2px transparent outline, and a checked checkbox sets its border to 8px so the system border colour fills the box.",
+      "source": "ActionList.module.css:125-134,146-151,158-163,221,251,442-447,466-471"
+    }
+  ]
+}

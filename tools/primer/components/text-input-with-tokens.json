@@ -1,0 +1,560 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "text-input-with-tokens",
+  "name": "TextInputWithTokens",
+  "status": "deprecated",
+  "statusNote": "Deprecated in Primer React (the docs file and the component's JSDoc both say so) with no replacement named; it is still documented on primer.style and still the field Autocomplete uses for multiple values on GitHub. Build it only to pair with Autocomplete's multiple selection; it will not gain features.",
+  "summary": "A text input that shows the values already chosen as removable tokens (pills) inline before the caret, wrapping onto new lines as they grow. Use it as the input of a multi-select Autocomplete; for a single value use a plain TextInput.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-size-24",
+    "--base-size-28",
+    "--base-size-32",
+    "--base-size-40",
+    "--base-text-weight-semibold",
+    "--bgColor-default",
+    "--bgColor-inset",
+    "--bgColor-neutral-muted",
+    "--bgColor-success-emphasis",
+    "--borderColor-accent-emphasis",
+    "--borderColor-danger-emphasis",
+    "--borderColor-emphasis",
+    "--borderColor-muted",
+    "--borderRadius-full",
+    "--borderRadius-medium",
+    "--borderWidth-thick",
+    "--borderWidth-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-danger",
+    "--control-borderColor-disabled",
+    "--control-borderColor-rest",
+    "--control-transparent-bgColor-active",
+    "--control-transparent-bgColor-hover",
+    "--fgColor-default",
+    "--fgColor-disabled",
+    "--fgColor-muted",
+    "--shadow-inset",
+    "--shadow-resting-medium",
+    "--text-body-size-large",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "TextInputWithTokens.tsx",
+      "TextInputWithTokens.module.css",
+      "TextInputWithTokens.docs.json",
+      "TextInputWrapper.module.css",
+      "TextInputWrapper.tsx",
+      "UnstyledTextInput.module.css",
+      "Token.tsx",
+      "Token.module.css",
+      "TokenBase.tsx",
+      "TokenBase.module.css",
+      "_RemoveTokenButton.tsx",
+      "_RemoveTokenButton.module.css",
+      "Token/constants.ts",
+      "useFocusZone.ts"
+    ],
+    "primer": [
+      "text-input-with-tokens"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "tokens",
+      "type": "list",
+      "required": true,
+      "description": "The chosen values, each with id and text, optionally a leadingVisual (not shown at small) and the rest of Token's props."
+    },
+    {
+      "name": "onTokenRemove",
+      "type": "callback",
+      "required": true,
+      "description": "Called with a token's id when it is removed by its X button, Backspace or Delete on the token, or Backspace in the empty input (last token)."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "xlarge"
+      ],
+      "required": false,
+      "default": "xlarge",
+      "description": "Token height 16, 20, 24 or 32px; small and medium put the field in its small size, large and xlarge in its medium size."
+    },
+    {
+      "name": "tokenComponent",
+      "type": "slot",
+      "required": false,
+      "description": "The token to render: Token by default, or IssueLabelToken or AvatarToken."
+    },
+    {
+      "name": "preventTokenWrapping",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Keep tokens on one line and scroll the field horizontally instead of wrapping."
+    },
+    {
+      "name": "maxHeight",
+      "type": "number",
+      "required": false,
+      "description": "Cap the field's height; beyond it the field scrolls."
+    },
+    {
+      "name": "visibleTokenCount",
+      "type": "number",
+      "required": false,
+      "description": "When the field does not have focus, show only this many tokens and a +N count for the rest."
+    },
+    {
+      "name": "hideTokenRemoveButtons",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Omit the X buttons; keyboard removal still works."
+    },
+    {
+      "name": "validationStatus",
+      "type": "enum",
+      "values": [
+        "error",
+        "success"
+      ],
+      "required": false,
+      "description": "Error draws a danger border (and focus ring) and sets aria-invalid; success draws a success border."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disables the input and tokens and hides the X buttons."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "An icon before the tokens."
+    },
+    {
+      "name": "trailingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "An icon after the input."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "Show a spinner in the leading or trailing visual slot."
+    },
+    {
+      "name": "loaderPosition",
+      "type": "enum",
+      "values": [
+        "auto",
+        "leading",
+        "trailing"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "Where the loading spinner goes; auto is leading when there is a leading visual, else trailing."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the container's width."
+    },
+    {
+      "name": "contrast",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Use the inset (contrast) background."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The text being typed, as for a TextInput; usually owned by Autocomplete."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "field",
+      "name": "Field",
+      "description": "The TextInput chrome: --bgColor-default fill, 1px --control-borderColor-rest border, medium radius, --shadow-inset, at least 32px tall; padded 6px top and bottom and 12px on the left by this component.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-rest",
+        "--borderWidth-thin",
+        "--borderRadius-medium",
+        "--shadow-inset",
+        "--base-size-32",
+        "--base-size-6",
+        "--base-size-12"
+      ]
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "An icon (or loading spinner) in --fgColor-muted before the token row, centred vertically.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "token-row",
+      "name": "Token row",
+      "description": "A wrapping row of tokens followed by the text input, 4px between items horizontally and vertically, taking the remaining width.",
+      "tokens": [
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "token",
+      "name": "Token",
+      "description": "A pill: --bgColor-neutral-muted fill, 1px --borderColor-muted border, full radius, semibold --fgColor-muted text on a 1 line height, padded by size, with an optional leading visual and an X remove button at its end.",
+      "tokens": [
+        "--bgColor-neutral-muted",
+        "--borderColor-muted",
+        "--borderRadius-full",
+        "--base-text-weight-semibold",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "remove-button",
+      "name": "Remove button",
+      "optional": true,
+      "description": "A round transparent button as tall and wide as the token, 4px (6px from large) after the text, with a 12px X (16px from large), pulled 1px right and up to sit over the token's border.",
+      "tokens": [
+        "--borderRadius-full",
+        "--base-size-4",
+        "--base-size-6"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "An unstyled text input that fills the rest of the last line; it inherits the field's font and colour and draws no border or outline of its own."
+    },
+    {
+      "id": "overflow-count",
+      "name": "Overflow count",
+      "optional": true,
+      "description": "+N in --fgColor-muted after the visible tokens while visibleTokenCount hides some; small text for small tokens, medium for medium and large, large for xlarge.",
+      "tokens": [
+        "--fgColor-muted",
+        "--text-body-size-small",
+        "--text-body-size-medium",
+        "--text-body-size-large"
+      ]
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "An icon (or loading spinner) in --fgColor-muted after the token row.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "16px tokens padded 4px, small text, no leading visual; field in its small size (28px minimum, small text).",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-4",
+        "--text-body-size-small",
+        "--base-size-28"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "description": "20px tokens padded 6px, small text; field in its small size.",
+      "tokens": [
+        "--base-size-20",
+        "--base-size-6",
+        "--text-body-size-small",
+        "--base-size-28"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "24px tokens padded 8px, medium text; field in its medium size.",
+      "tokens": [
+        "--base-size-24",
+        "--base-size-8",
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "xlarge",
+      "default": true,
+      "description": "32px tokens padded 12px, medium text; field in its medium size.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-12",
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "wrapping",
+      "value": "wrap",
+      "default": true,
+      "description": "Tokens wrap onto new lines and the field grows taller."
+    },
+    {
+      "axis": "wrapping",
+      "value": "nowrap",
+      "description": "preventTokenWrapping: one line; the field scrolls horizontally."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The field is a row: leading visual, token row, trailing visual, 8px apart. This component pads it 6px top and bottom and 12px on the left, with no right padding unless there is a trailing visual (8px).",
+      "tokens": [
+        "--base-size-6",
+        "--base-size-12",
+        "--base-size-8"
+      ],
+      "source": "TextInputWithTokens.module.css:1-14; TextInputWrapper.module.css:152-187"
+    },
+    {
+      "text": "The token row wraps; every child (each token, the input, the overflow count) has 4px to its left and below it, and the row is pulled 4px left and up to cancel the outer edge, giving 4px gaps between items and lines. Tokens never shrink; the input takes the remaining width of its line.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "source": "TextInputWithTokens.module.css:20-42"
+    },
+    {
+      "text": "The input comes first in focus and reading order but is drawn after all the tokens (flex order 1), so the caret sits at the end of the token row.",
+      "source": "TextInputWithTokens.module.css:20-23; TextInputWithTokens.tsx:310-358"
+    },
+    {
+      "text": "The field's minimum height is 32px (28px in its small size); it grows with the token row. Computed from the CSS rather than measured: one line of default xlarge tokens makes the field 46px tall (1px border, 6px padding, 32px token, 6px padding, 1px border).",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-28"
+      ],
+      "values": [
+        {
+          "name": "oneLineXlargeHeight",
+          "value": 46,
+          "unit": "px"
+        }
+      ],
+      "source": "TextInputWrapper.module.css:1-16,98-111; TextInputWithTokens.module.css:1-4; TokenBase.module.css:46-54"
+    },
+    {
+      "text": "Token sizes: small 16px tall with 4px side padding and small text; medium 20px, 6px, small text; large 24px, 8px, medium text; xlarge 32px, 12px, medium text. Text is semibold on a line height of 1 and never wraps. A token with a remove button drops its right padding; the button is a square of the token's height.",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-20",
+        "--base-size-24",
+        "--base-size-32",
+        "--base-size-4",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-12"
+      ],
+      "source": "TokenBase.module.css:1-54; Token.module.css:21-23; _RemoveTokenButton.module.css:1-39"
+    },
+    {
+      "text": "A token's leading visual sits 4px before its text (6px at large and xlarge) and is omitted at small. The token's border is 1px, set inline.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-6"
+      ],
+      "values": [
+        {
+          "name": "tokenBorderWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "Token.tsx:26,75-81; Token.module.css:25-34"
+    },
+    {
+      "text": "With preventTokenWrapping or maxHeight the field scrolls (horizontally for nowrap, vertically past maxHeight).",
+      "source": "TextInputWithTokens.module.css:6-14,33-35; TextInputWithTokens.tsx:294-296"
+    }
+  ],
+  "states": [
+    {
+      "state": "focused",
+      "text": "While the input or any token has focus, the field's border turns --borderColor-accent-emphasis and a 2px outline of the same colour is drawn 1px inside its edge.",
+      "tokens": [
+        "--borderColor-accent-emphasis",
+        "--borderWidth-thick"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "TextInputWrapper.module.css:35-40"
+    },
+    {
+      "state": "selected",
+      "part": "token",
+      "text": "The keyboard-focused token turns its text --fgColor-default and its border --borderColor-emphasis.",
+      "tokens": [
+        "--fgColor-default",
+        "--borderColor-emphasis"
+      ],
+      "source": "Token.module.css:15-19; TextInputWithTokens.tsx:187-189,342"
+    },
+    {
+      "state": "hovered",
+      "part": "token",
+      "text": "An interactive token (all tokens here, since they take focus) turns its text --fgColor-default and lifts with --shadow-resting-medium. The remove button fills --control-transparent-bgColor-hover on hover or focus and --control-transparent-bgColor-active when pressed.",
+      "tokens": [
+        "--fgColor-default",
+        "--bgColor-neutral-muted",
+        "--shadow-resting-medium",
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-bgColor-active"
+      ],
+      "source": "Token.module.css:9-13; _RemoveTokenButton.module.css:41-48"
+    },
+    {
+      "state": "disabled",
+      "text": "The field takes --control-bgColor-disabled, --control-borderColor-disabled and --fgColor-disabled with no inset shadow and a not-allowed cursor; tokens are disabled, their X buttons hidden, and focusing one does not select it.",
+      "tokens": [
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled",
+        "--fgColor-disabled"
+      ],
+      "source": "TextInputWrapper.module.css:52-63; TextInputWithTokens.tsx:187-189,336,346"
+    },
+    {
+      "state": "error",
+      "text": "validationStatus error draws a --borderColor-danger-emphasis border and, focused, a --control-borderColor-danger border with a 2px outline in the same colour; the input is aria-invalid. Success draws a --bgColor-success-emphasis border.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger",
+        "--bgColor-success-emphasis"
+      ],
+      "source": "TextInputWrapper.module.css:69-83; TextInputWithTokens.tsx:324"
+    },
+    {
+      "state": "loading",
+      "text": "A spinner takes the leading slot (loaderPosition leading, or auto with a leading visual) or the trailing slot.",
+      "source": "TextInputWithTokens.tsx:275-309,359-366"
+    },
+    {
+      "state": "collapsed",
+      "text": "With visibleTokenCount, while neither the input nor a token has focus only the first N tokens show, followed by +K; focusing the input expands to all tokens, and losing focus to outside the field collapses again (checked one tick later).",
+      "source": "TextInputWithTokens.tsx:113,187-227,268,353-357"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "A click anywhere on the field focuses the input; a click on a token does not.",
+      "source": "TextInputWithTokens.tsx:260-266,293,341"
+    },
+    {
+      "id": "backspace-edit",
+      "text": "Backspace in the empty input removes the last token and puts its text, plus a trailing space, into the input with all of it selected, so the user can edit the value or type over it.",
+      "source": "TextInputWithTokens.tsx:229-258"
+    },
+    {
+      "id": "token-navigation",
+      "text": "The input and tokens form one Tab stop with arrow-key focus: from the input, ArrowLeft goes to the last token and ArrowRight to the first; from a token, ArrowLeft and ArrowRight go to the previous and next token, and past either end back to the input. Home and End move to the ends of that ring.",
+      "source": "TextInputWithTokens.tsx:132-162"
+    },
+    {
+      "text": "Backspace or Delete on a focused token removes it; focus then moves to the token that took its place, else the first focusable token, else the input. Escape on a token (on key release) returns focus to the input.",
+      "source": "TokenBase.tsx:60-66; TextInputWithTokens.tsx:164-185,204-208"
+    },
+    {
+      "text": "The X button removes its token on click without focusing it; it is hidden from assistive technology because the token itself is focusable.",
+      "source": "Token.tsx:53-57,87-95; _RemoveTokenButton.tsx:27-41"
+    }
+  ],
+  "accessibility": {
+    "role": "textbox (combobox when used by Autocomplete) followed by focusable token elements",
+    "minTargetPx": 16,
+    "keyboard": [
+      "Tab enters the field at the input (or the token last focused).",
+      "ArrowLeft and ArrowRight move between the input and tokens, wrapping; Home and End go to the ends.",
+      "Backspace in an empty input removes the last token into the input for editing.",
+      "Backspace or Delete on a focused token removes it.",
+      "Escape on a focused token returns to the input."
+    ],
+    "semantics": [
+      "Each token's text ends with a visually hidden \"(press backspace or delete to remove)\".",
+      "When the input is a combobox, it is described by a hidden \"Selected: a, b, c\" listing the token texts.",
+      "The input is aria-invalid when validationStatus is error.",
+      "The remove buttons are aria-hidden (mouse only) because the tokens themselves take focus and handle removal."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Token navigation is @primer/behaviors' focusZone (horizontal arrows, Home and End, wrap) with a custom getNextFocusable that indexes the row's DOM children (the input wrapper is child 0). A native build keeps one focus index over [input, token 0..n-1] and moves it as described; the zone's handling of arrows while the caret is mid-text was not read for this spec, so let the text field consume Left and Right unless the caret is at position 0 (Left) with no selection.",
+      "source": "TextInputWithTokens.tsx:132-162; useFocusZone.ts:33-76"
+    },
+    {
+      "kind": "web-only",
+      "text": "Several steps wait one tick (setTimeout 0): moving focus after a removal, selecting the restored text after Backspace, and collapsing the token list after blur. An immediate-mode build does these in order within the frame that handles the key or focus change.",
+      "source": "TextInputWithTokens.tsx:164-202,216-227,253-256"
+    },
+    {
+      "kind": "web-only",
+      "text": "The 4px gaps are emulated with child margins and a negative row margin, and the input is moved to the end with CSS order. Natively, lay out tokens then the input in a wrapping flow with 4px main and cross gaps, the input taking the rest of its line (with a sensible minimum width so it wraps rather than collapsing).",
+      "source": "TextInputWithTokens.module.css:20-42"
+    },
+    {
+      "kind": "gotcha",
+      "text": "After Backspace removes the last token from the empty input, the focus restore looks up the row's first child (the input wrapper, not focusable) and falls back to the first focusable child, which is the first remaining token, while the restored text is selected in the input. Confirm the intended target (the input) before copying.",
+      "source": "TextInputWithTokens.tsx:164-185,240-257"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The default size is xlarge (32px tokens), which makes a one-line field taller than a standard 32px TextInput; pass large or medium to match neighbouring inputs.",
+      "source": "TextInputWithTokens.tsx:92,269-274; TokenBase.module.css:46-54"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The field's contrast background reads --control-bgColor-contrast, which Primer does not define, falling back to --bgColor-inset.",
+      "tokens": [
+        "--bgColor-inset"
+      ],
+      "source": "TextInputWrapper.module.css:46-50"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The token border width (1px) is set inline from a constant, not a token, and the remove button is offset by translate(1px, -1px) to cover it.",
+      "source": "Token.tsx:26,75,89; _RemoveTokenButton.tsx:35-37,51-53"
+    },
+    {
+      "kind": "density",
+      "text": "Tokens and their remove buttons are as small as 16px with no coarse-pointer enlargement; on touch, prefer large or xlarge.",
+      "source": "TokenBase.module.css:22-28; _RemoveTokenButton.module.css:19-22"
+    }
+  ]
+}
