@@ -394,7 +394,7 @@ test_request_frame_soonest_wins :: proc(t: ^testing.T) {
 }
 
 // scroll_frame lays a scroll_box over 300px of content in h's window and
-// returns the box's input area.
+// returns the box's input area, the zero area when it laid none.
 @(private)
 scroll_frame :: proc(h: ^Harness) -> ops.Input_Area {
 	gtx := &h.gtx
@@ -404,7 +404,51 @@ scroll_frame :: proc(h: ^Harness) -> ops.Input_Area {
 		spacer(gtx, 300)
 		label(gtx, "last")
 	}
-	return h.scene.ops[index_of(&h.scene, ops.Input_Area)].(ops.Input_Area)
+	i := index_of(&h.scene, ops.Input_Area)
+	if i < 0 {
+		return {}
+	}
+	return h.scene.ops[i].(ops.Input_Area)
+}
+
+// A box whose content fits takes no wheel events, so they reach the box
+// around it; once the content overflows it takes them.
+@(test)
+test_scroll_box_takes_the_wheel_only_while_it_overflows :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 400})
+	defer harness_destroy(&h)
+	testing.expect_value(t, scroll_frame(&h).kinds, ops.Event_Kinds{})
+	h.size = {200, 100}
+	harness_frame(&h)
+	testing.expect_value(t, scroll_frame(&h).kinds, ops.Event_Kinds{.Scroll})
+}
+
+// wide lays content out at its own width, at least the box's: a row
+// wider than the box scrolls sideways, a narrow one is offered the box.
+@(test)
+test_scroll_box_wide_lays_content_at_its_own_width :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {100, 100})
+	defer harness_destroy(&h)
+	frame :: proc(h: ^Harness) -> Constraints {
+		gtx := &h.gtx
+		sb := scroll_box_open(gtx, wide = true); defer close(&sb)
+		r := row_open(gtx); defer close(&r)
+		label(gtx, "abcdefghijklmnop") // 16W = 134.4
+		return gtx.constraints
+	}
+	offered := frame(&h)
+	testing.expect_value(t, offered.max.x, INF)
+	testing.expect_value(t, offered.min.x, 100) // at least the box
+	clip := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip)
+	testing.expect_value(t, clip.shape.(ops.Rect).w, 100) // the box keeps its width
+	ia := h.scene.ops[index_of(&h.scene, ops.Input_Area)].(ops.Input_Area)
+	harness_frame(&h)
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {1e6, 0}})
+	frame(&h)
+	x := h.scene.ops[index_of(&h.scene, ops.Push_Clip) + 1].(ops.Push_Transform).m.e
+	testing.expectf(t, testutil.near(f32(x), -(16 * W - 100)), "x %v", x) // clamped to the overflow
 }
 
 // scroll_offset is the y of the transform scroll_box pushes right after its

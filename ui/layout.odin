@@ -1480,12 +1480,23 @@ SCROLL_STEP :: f32(48)
 // min_width lays the content out at least that wide, however narrow the
 // box: content that cannot reflow narrower then scrolls sideways, by a
 // horizontal wheel or Shift and the vertical one, instead of being cut off.
-scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location) -> Scroll_Box {
+// wide offers the content any width from the box's own up, so content
+// that sizes itself (a table whose columns fit their cells) is laid out at
+// its own width and scrolls sideways when wider than the box.
+//
+// A box takes wheel events only while its content overflows it, so one
+// with nothing to scroll lets the wheel through to the box around it.
+scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false) -> Scroll_Box {
 	p := widget_open(gtx, key, loc)
 	cs := gtx.constraints
+	inner := Constraints{min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}}
+	if wide {
+		inner.min.x = max(inner.min.x, is_finite(cs.max.x) ? cs.max.x : 0)
+		inner.max.x = INF
+	}
 	c := Container {
 		kind   = .Scroll,
-		inner  = {min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}},
+		inner  = inner,
 		scroll = offset,
 	}
 	return {gtx, container_push(gtx, c, p)}
@@ -1708,7 +1719,9 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 		sc.y = scroll_bar_handle(gtx, id_mix(c.place.id, 1), .Vertical, size, content.y, sc.y, both)
 		sc.x = scroll_bar_handle(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
 		view := ops.Rect{0, 0, size.x, size.y}
-		ops.input_area(o, c.place.id, view, {.Scroll})
+		if content.y > size.y || content.x > size.x {
+			ops.input_area(o, c.place.id, view, {.Scroll})
+		}
 		ops.clip_push(o, view)
 		ops.transform_push(o, ops.translate(-sc.x, -sc.y))
 		ops.call(o, c.body)
