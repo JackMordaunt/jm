@@ -23,6 +23,8 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view", "label"})
 	ops.shadow(&src, {4, 6, 30, 20}, 5, 8, {0, 0, 0, 60})
 	ops.semantic(&src, 7, 3, {role = .Checkbox, label = "Dark", labelled_by = 9, value = "on", description = "the scheme", states = {.Checked, .Disabled}}, {4, 6, 30, 20})
+	ops.semantic(&src, 8, 0, {role = .Heading, label = "Fruit", level = 3}, {0, 0, 30, 20})
+	ops.semantic(&src, 9, 0, {role = .Region, label = "Saved"}, {0, 0, 30, 20})
 	ops.key_interest(&src, 7, .Escape, {.Ctrl}, {.Shift})
 	append(&src.ops, nil) // a nil op survives too
 

@@ -209,3 +209,21 @@ a_pushed_focus_names_the_area_an_assistive_technology_asked_for :: proc(t: ^test
 	probe_frame(&p)
 	testing.expect_value(t, p.router.focus, field.area)
 }
+
+@(test)
+semantics_report_says_a_headings_level_and_names_a_region :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		col := column_open(gtx, key = 1)
+		defer close(&col)
+		container_semantics(gtx, {role = .Region, label = "Saved"})
+		h := widget_open(gtx, 2)
+		semantics(gtx, &h, {role = .Heading, label = "Saved", level = 2})
+		widget_close(gtx, &h, {size = {60, 20}})
+	}
+	defer free_all(context.temp_allocator)
+	p: Probe
+	probe_init(&p, view, nil, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect_value(t, probe_semantics(&p, context.temp_allocator), "region \"Saved\" at 0,0 300x300\n  heading \"Saved\" level 2 at 0,0 60x20\n")
+	testing.expect(t, strings.contains(probe_dump(&p), "Heading \"Saved\" level 2"), probe_dump(&p))
+}

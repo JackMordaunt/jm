@@ -110,7 +110,7 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 		}
 		#partial switch n.semantics.role {
 		case .Heading:
-			r.level = 1
+			r.level = max(n.semantics.level, 1)
 		case .Status:
 			r.live = .Polite
 		case .Alert:
@@ -267,6 +267,8 @@ role_of :: proc(r: ops.Role) -> Role {
 		return .List_Box
 	case .Option:
 		return .List_Box_Option
+	case .Region:
+		return .Region
 	case .Presentation:
 		return .Generic_Container
 	}

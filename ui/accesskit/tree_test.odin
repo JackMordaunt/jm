@@ -182,3 +182,37 @@ test_a_node_scrolled_out_of_its_clip_is_hidden :: proc(t: ^testing.T) {
 	testing.expect_value(t, hidden, 7) // 50px shows two rows and part of a third
 	testing.expect(t, strings.count(debug(&s, context.temp_allocator), "hidden: true") == 7)
 }
+
+// outline_view is a region holding an h3 and a heading with no level.
+@(private = "file")
+outline_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1)
+	defer ui.close(&col)
+	ui.container_semantics(gtx, {role = .Region, label = "Saved"})
+	{
+		h := ui.widget_open(gtx, 2)
+		ui.semantics(gtx, &h, {role = .Heading, label = "Third", level = 3})
+		ui.widget_close(gtx, &h, {size = {80, 20}})
+	}
+	{
+		h := ui.widget_open(gtx, 3)
+		ui.semantics(gtx, &h, {role = .Heading, label = "Plain"})
+		ui.widget_close(gtx, &h, {size = {80, 20}})
+	}
+}
+
+@(test)
+test_a_heading_carries_its_level_and_a_region_its_role :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, outline_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Outline")
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `role: Region, children:`), got)
+	testing.expect(t, strings.contains(got, `role: Heading, label: "Third", value: "Third", level: 3,`), got)
+	testing.expect(t, strings.contains(got, `role: Heading, label: "Plain", value: "Plain", level: 1,`), got) // no level reads as 1
+}

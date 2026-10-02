@@ -281,6 +281,7 @@ Role :: enum u8 {
 	Grid_Cell,
 	List_Box, // a list to pick from: a combo box's options
 	Option,
+	Region, // a landmark section a reader can jump to by its label: a page-level message
 	Presentation, // decoration: a reader skips the node and reads its children
 }
 
@@ -305,7 +306,7 @@ States :: bit_set[State;u16]
 // reader speaks for it, or the widget whose label names it (a slider
 // after its caption) when it has none of its own, its value when it has
 // one (a slider's, a field's text), a longer description (a tooltip's
-// text), and its states.
+// text), its states, and a heading's level in the page's outline.
 Semantics :: struct {
 	role:        Role,
 	label:       string,
@@ -313,4 +314,5 @@ Semantics :: struct {
 	value:       string,
 	description: string,
 	states:      States,
+	level:       u8, // a heading's outline level, 1 as h1 through 6 as h6; 0 is none, which a heading reads as 1
 }

@@ -162,7 +162,8 @@ Input_Area :: struct {
 // its own, 0 at the top (every overlay's), so a reader rebuilds the tree
 // by id whatever lies between; rect is the widget's box in the recording
 // space, zero for one with no box. A node with no label of its own may
-// name another by semantics.labelled_by, whose label a reader speaks.
+// name another by semantics.labelled_by, whose label a reader speaks,
+// and a heading gives its place in the page's outline by semantics.level.
 Semantic :: struct {
 	id:        Area_Id,
 	parent:    Area_Id,

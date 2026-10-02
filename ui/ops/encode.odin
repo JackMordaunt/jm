@@ -27,8 +27,9 @@ ENCODE_MAGIC :: "UIOP"
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
 // covers and added Cover_End; 20 gave Defer top, bit 1 of its cover byte;
 // 21 added Key Browser_Back and Browser_Forward; 22 gave each font its
-// weight.
-ENCODE_VERSION :: u8(23)
+// weight; 23 gave each Image an alpha; 24 gave Semantic a heading level
+// and Role Region.
+ENCODE_VERSION :: u8(24)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -414,6 +415,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_str(w, v.semantics.value)
 		put_str(w, v.semantics.description)
 		put_u32(w, u32(transmute(u16)v.semantics.states))
+		append(w, v.semantics.level)
 		put_rect(w, v.rect)
 	case Key_Interest:
 		append(w, 19)
@@ -731,6 +733,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			return nil, false
 		}
 		v.semantics.states = transmute(States)u16(states)
+		v.semantics.level = get_u8(r) or_return
 		v.rect = get_rect(r) or_return
 		return v, true
 	case 19:

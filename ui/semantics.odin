@@ -111,7 +111,7 @@ key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, op
 // semantics_report prints f's semantic tree, one node a line, children
 // indented under their parent: the role, the label (the labelled_by
 // node's when the node has none), the value and description when set,
-// the states, `focused` on the area focus names, and the device rect, in
+// a heading's level when set, the states, `focused` on the area focus names, and the device rect, in
 // document order: the order a reader is meant to take them in. A node
 // whose parent is in no frame node is a root; a Presentation node is not
 // printed, its children take its place.
@@ -156,6 +156,9 @@ write_semantic_children :: proc(b: ^strings.Builder, f: ^Frame, parent: []int, o
 		if n.semantics.description != "" {
 			strings.write_string(b, " desc ")
 			strings.write_quoted_string(b, n.semantics.description)
+		}
+		if n.semantics.level != 0 {
+			fmt.sbprintf(b, " level %d", n.semantics.level)
 		}
 		for st in ops.State {
 			if st in n.semantics.states {
@@ -257,6 +260,8 @@ role_name :: proc(r: ops.Role) -> string {
 		return "list box"
 	case .Option:
 		return "option"
+	case .Region:
+		return "region"
 	case .Presentation:
 		return "presentation"
 	}

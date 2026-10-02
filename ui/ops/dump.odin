@@ -208,7 +208,8 @@ write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 }
 
 // write_semantics writes s as `role "label"`, then ` value "…"`,
-// ` desc "…"` and the states that are set, each only when present.
+// ` desc "…"`, the states that are set and ` level n`, each only when
+// present.
 write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
 	fmt.sbprint(sb, s.role)
 	strings.write_byte(sb, ' ')
@@ -228,6 +229,9 @@ write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
 		if st in s.states {
 			fmt.sbprintf(sb, " %v", st)
 		}
+	}
+	if s.level != 0 {
+		fmt.sbprintf(sb, " level %d", s.level)
 	}
 }
 
