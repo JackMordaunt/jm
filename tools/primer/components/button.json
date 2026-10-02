@@ -139,7 +139,7 @@
       "Button.tsx",
       "LinkButton.tsx",
       "Button.docs.json",
-      "types.ts",
+      "Button/types.ts",
       "focusOutline.css",
       "focusOutlineOnEmphasis.css"
     ],

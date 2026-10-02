@@ -57,9 +57,16 @@ cited() { # every file a JSON file cites
     jq -r '(.. | objects | .source? // empty), (.references?.react // [] | .[])' "$1" |
         tr ';' '\n' | sed 's/^ *//; s/:.*//' | grep -E '\.(css|tsx?|json|md)$' | sort -u
 }
+# A path is looked up under source/react, then source/; a base name must
+# name exactly one file, since 43 base names repeat under source/.
 for f in "${specs[@]}" foundations.json; do
     while read -r s; do
-        [ -n "$(find source -name "$s" -print -quit)" ] || err "$f: cites $s, not under source/"
+        if [[ $s == */* ]]; then
+            [ -f "source/react/$s" ] || [ -f "source/$s" ] || err "$f: cites $s, not under source/react or source/"
+            continue
+        fi
+        n=$(find source -name "$s" | wc -l | tr -d " ")
+        [ "$n" -eq 1 ] || err "$f: cites $s, which names $n files under source/; cite its path"
     done < <(cited "$f")
 done
 
