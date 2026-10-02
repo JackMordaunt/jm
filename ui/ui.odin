@@ -72,6 +72,7 @@ Ctx :: struct {
 	shaper:      Shaper,
 	router:      ^Router,
 	layout:      ^Layout,
+	viewport:    ops.Size, // the window's size, in the units constraints use: what a layout keyed on the window rather than its own box (a CSS media query) reads from inside any container
 	frame:       u64,
 	dt:          f32, // seconds since the previous frame
 	time:        f64, // seconds of frame time since the app began: the sum of every frame's dt, so a looping animation read from it is deterministic in a probe

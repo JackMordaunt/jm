@@ -130,6 +130,7 @@ probe_frame :: proc(p: ^Probe) {
 	gtx := Ctx {
 		scene         = &p.scene,
 		constraints = exact(p.size),
+		viewport    = p.size,
 		font        = p.font,
 		shaper      = p.shaper,
 		router      = &p.router,

@@ -146,6 +146,7 @@ run :: proc(app: App) {
 		gtx := ui.Ctx {
 			scene         = &sc,
 			constraints = ui.exact(size),
+			viewport    = size,
 			font        = font,
 			shaper      = shaper,
 			router      = &router,

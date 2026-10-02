@@ -395,6 +395,7 @@ step :: proc(l: ^Loop) {
 	gtx := ui.Ctx {
 		scene         = &l.scene,
 		constraints = ui.exact(logical),
+		viewport    = logical,
 		font        = l.font,
 		shaper      = l.shaper,
 		router      = &l.router,

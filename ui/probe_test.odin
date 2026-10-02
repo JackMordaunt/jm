@@ -282,3 +282,32 @@ test_a_probe_hands_reduce_motion_to_every_frame :: proc(t: ^testing.T) {
 	// The platform read a host makes each frame answers without a window.
 	_ = reduce_motion_preferred()
 }
+
+// Viewport_Reading is what a widget deep in a layout read of the window.
+@(private = "file")
+Viewport_Reading :: struct {
+	viewport, offered: ops.Size,
+}
+
+@(test)
+test_a_widget_inside_containers_reads_the_window_size :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		seen := (^Viewport_Reading)(user)
+		r := row_open(gtx)
+		defer close(&r)
+		spacer(gtx, 100)
+		in_ := inset_open(gtx, pad_xy(20, 10))
+		defer close(&in_)
+		p := widget_open(gtx)
+		seen^ = {gtx.viewport, gtx.constraints.max}
+		widget_close(gtx, &p, {})
+	}
+	seen: Viewport_Reading
+	p: Probe
+	probe_init(&p, view, &seen, {640, 480}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, seen.viewport, ops.Size{640, 480}) // the window, through a row and an inset
+	testing.expect_value(t, seen.offered, ops.Size{640 - 100 - 40, 480 - 20}) // the constraints are the box's own
+}
+
