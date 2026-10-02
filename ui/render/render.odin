@@ -574,6 +574,12 @@ draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) 
 		if cmd.src.w > 0 && cmd.src.h > 0 {
 			src = &area
 		}
+		if cmd.alpha < 255 {
+			bl.context_set_global_alpha(ctx, f64(cmd.alpha) / 255)
+		}
+		defer if cmd.alpha < 255 {
+			bl.context_set_global_alpha(ctx, 1)
+		}
 		if cmd.dst.w > 0 && cmd.dst.h > 0 {
 			dst := bl.Rect{f64(cmd.dst.x), f64(cmd.dst.y), f64(cmd.dst.w), f64(cmd.dst.h)}
 			bl.context_blit_scaled_image_d(ctx, &dst, img, src)

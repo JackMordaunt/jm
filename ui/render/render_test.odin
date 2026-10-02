@@ -472,3 +472,36 @@ test_clip_interior_no_seam :: proc(t: ^testing.T) {
 		}
 	}
 }
+
+// An image drawn at an alpha blends over what is under it, and the next
+// image draws opaque again: the alpha does not leak.
+@(test)
+test_an_image_draws_at_its_alpha :: proc(t: ^testing.T) {
+	os.make_directory("build/test")
+	path := "build/test/red_square.png"
+	defer os.remove(path)
+	src: bl.ImageCore
+	bl.image_init(&src)
+	defer bl.image_destroy(&src)
+	bl.image_create(&src, 8, 8, .PRGB32)
+	ctx: bl.ContextCore
+	bl.context_init(&ctx)
+	defer bl.context_destroy(&ctx)
+	bl.context_begin(&ctx, &src, nil)
+	bl.context_fill_all_rgba32(&ctx, 0xFFFF0000)
+	bl.context_end(&ctx)
+	cpath := strings.clone_to_cstring(path, context.temp_allocator)
+	testing.expect_value(t, bl.image_write_to_file(&src, cpath, nil), bl.Result(0))
+
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	id := ops.add_image(&fx.scene, path)
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {0, 0, 16, 16}, {}, 128}})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {32, 0, 16, 16}, {}, 255}})
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	half := at(&fx, {8, 8})
+	testing.expect_value(t, half.r, 255)
+	testing.expectf(t, abs(int(half.g) - 127) <= 1 && half.g == half.b, "half alpha over white: %v", half)
+	testing.expect_value(t, at(&fx, {40, 8}), RED)
+}

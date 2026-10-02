@@ -295,6 +295,9 @@ write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
 		write_rect(sb, v.dst)
 		strings.write_string(sb, " src ")
 		write_rect(sb, v.src)
+		if v.alpha < 255 {
+			fmt.sbprintf(sb, " alpha %d", v.alpha)
+		}
 	case Shadow:
 		strings.write_string(sb, "shadow ")
 		write_rect(sb, v.rect)

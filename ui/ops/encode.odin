@@ -28,7 +28,7 @@ ENCODE_MAGIC :: "UIOP"
 // covers and added Cover_End; 20 gave Defer top, bit 1 of its cover byte;
 // 21 added Key Browser_Back and Browser_Forward; 22 gave each font its
 // weight.
-ENCODE_VERSION :: u8(22)
+ENCODE_VERSION :: u8(23)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -363,6 +363,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_u32(w, u32(v.id))
 		put_rect(w, v.dst)
 		put_rect(w, v.src)
+		append(w, v.alpha)
 	case Input_Area:
 		append(w, 12)
 		put_u64(w, u64(v.id))
@@ -628,6 +629,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.id = Image_Id(get_u32(r) or_return)
 		v.dst = get_rect(r) or_return
 		v.src = get_rect(r) or_return
+		v.alpha = get_u8(r) or_return
 		return v, true
 	case 12:
 		v: Input_Area

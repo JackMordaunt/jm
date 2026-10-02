@@ -125,10 +125,14 @@ Glyphs :: struct {
 	color:  Color,
 }
 
+// Image draws an image, or src of it, into dst at alpha (255 opaque): an
+// avatar faded in a stack. A literal must set alpha, as 0 draws nothing;
+// image sets it.
 Image :: struct {
-	id:  Image_Id,
-	dst: Rect,
-	src: Rect, // in image pixels; zero rect means the whole image
+	id:    Image_Id,
+	dst:   Rect,
+	src:   Rect, // in image pixels; zero rect means the whole image
+	alpha: u8,
 }
 
 // Input_Area registers a hit region under the current transform and clip.
@@ -355,8 +359,8 @@ shadow :: proc(o: ^Scene, r: Rect, radius, blur: f32, color: Color) {
 	append(&o.ops, Shadow{r, radius, blur, color})
 }
 
-image :: proc(o: ^Scene, id: Image_Id, dst: Rect, src: Rect = {}) {
-	append(&o.ops, Image{id, dst, src})
+image :: proc(o: ^Scene, id: Image_Id, dst: Rect, src: Rect = {}, alpha: u8 = 255) {
+	append(&o.ops, Image{id, dst, src, alpha})
 }
 
 input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cursor := Cursor.Default, yields := false) {
