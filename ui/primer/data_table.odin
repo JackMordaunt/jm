@@ -329,7 +329,11 @@ data_table_group :: proc(gtx: ^ui.Ctx, t: ^Data_Table, label: string, count: int
 	st := TABLE_TEXT
 	st.weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD
 	layout_text(gtx, label, st, color(.Fg_Color_Default), .Text)
-	layout_text(gtx, fmt.aprintf("%d rows", count, allocator = gtx.allocator), TABLE_TEXT, color(.Fg_Color_Muted), .Text)
+	// The count shows as a number; "row" or "rows" is spoken only
+	// (TableGroup.tsx:70-73).
+	shown := fmt.aprintf("%d", count, allocator = gtx.allocator)
+	spoken := fmt.aprintf("%d %s", count, count == 1 ? "row" : "rows", allocator = gtx.allocator)
+	layout_text(gtx, shown, TABLE_TEXT, color(.Fg_Color_Muted), .Text, spoken = spoken)
 }
 
 // SKELETON_WIDTHS are the skeleton bars' widths, cycling down a cell

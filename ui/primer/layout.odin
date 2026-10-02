@@ -445,7 +445,7 @@ card_image :: proc(gtx: ^ui.Ctx, img: Card_Image, pad, card_width: f32, loc := #
 // moving what follows. It is tagged by its text unless its container
 // already is (a card by its heading).
 @(private)
-layout_text :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, ink: ops.Color, role: ops.Role, lift: f32 = 0, tagged := true, key: u64 = 0, loc := #caller_location) -> ui.Dims {
+layout_text :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, ink: ops.Color, role: ops.Role, lift: f32 = 0, tagged := true, spoken := "", key: u64 = 0, loc := #caller_location) -> ui.Dims {
 	p := ui.widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	wrap := ui.is_finite(cs.max.x) ? cs.max.x : 0
@@ -456,7 +456,7 @@ layout_text :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style, ink: ops.Color,
 	if tagged {
 		ops.tag(gtx.scene, p.id, said, {0, -lift, size.x, size.y})
 	}
-	ui.semantics(gtx, &p, {role = role, label = said})
+	ui.semantics(gtx, &p, {role = role, label = spoken != "" ? ui.frame_string(gtx, spoken) : said})
 	base: f32
 	if len(para.lines) > 0 {
 		base = (para.pitch - para.metrics.ascent - para.metrics.descent) / 2 + para.metrics.ascent - lift

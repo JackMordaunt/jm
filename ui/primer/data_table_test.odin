@@ -1,6 +1,7 @@
 package primer
 
 import "core:slice"
+import "core:strings"
 import "core:testing"
 import "jm:ui"
 import "jm:ui/design"
@@ -245,3 +246,27 @@ test_pagination_shows_ends_and_two_either_side :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_tagged(&p, "Page 10")) // truncated
 }
 
+
+@(test)
+test_a_group_shows_its_count_and_speaks_row_or_rows :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		columns := []Column{{header = "Name"}}
+		sort := Table_Sort{-1, .Ascending}
+		tb, _ := data_table_open(gtx, columns, &sort, .Normal, label = "Groups")
+		data_table_group(gtx, tb, "Solo", 1)
+		data_table_cell(gtx, tb, "Ada")
+		data_table_group(gtx, tb, "Pair", 2)
+		data_table_cell(gtx, tb, "Grace")
+		data_table_cell(gtx, tb, "Linus")
+		data_table_close(tb)
+	}
+	p: ui.Probe
+	ui.probe_init(&p, view, nil, {400, 300}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "\"1 row\""), "one row is singular: %s", said)
+	testing.expectf(t, strings.contains(said, "\"2 rows\""), "two are plural: %s", said)
+	testing.expect(t, ui.probe_tagged(&p, "1"), "the count shows as a bare number")
+	testing.expect(t, !ui.probe_tagged(&p, "1 rows"))
+}
