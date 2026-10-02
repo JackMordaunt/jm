@@ -277,6 +277,54 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 	return false
 }
 
+// text_edit_lines is text_edit for a multi-line field whose text is laid
+// out as p: Enter inserts a newline, Up and Down move the caret to the
+// line above or below at the same x (staying put on the first or last
+// line), and Home and End go to the ends of the caret's line rather than
+// the text's, each extending the selection with Shift as text_edit's
+// moves do. Every other event is text_edit's. p must be s's text as it is
+// before e; lay it out again after a change.
+text_edit_lines :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: Text_Stops, p: Paragraph, read_only := false) -> bool {
+	if e.kind != .Key || len(p.lines) == 0 {
+		return text_edit(gtx, s, id, e, stops, read_only)
+	}
+	text_clamp(s)
+	extend := .Shift in e.mods
+	#partial switch e.key {
+	case .Enter:
+		if read_only {
+			return false
+		}
+		text_replace(s, "\n")
+		return true
+	case .Up, .Down:
+		line, x := paragraph_caret(p, s.cursor)
+		to := line + (e.key == .Up ? -1 : 1)
+		if to >= 0 && to < len(p.lines) {
+			text_move(s, paragraph_hit(p, {x, (f32(to) + 0.5) * p.pitch}), extend)
+		}
+		return false
+	case .Home:
+		text_move(s, p.lines[paragraph_line_of(p, s.cursor)].start, extend)
+		return false
+	case .End:
+		text_move(s, paragraph_line_end(p, paragraph_line_of(p, s.cursor)), extend)
+		return false
+	}
+	return text_edit(gtx, s, id, e, stops, read_only)
+}
+
+// text_scroll is the offset to scroll a view of length view by, along
+// one axis, so a caret spanning at to at + extent shows: scroll as it
+// was if the caret already shows, else moved just far enough, and never
+// past either end of content. A single-line field passes its text's
+// width and the caret's x; a multi-line one its text's height and the
+// caret line's top.
+text_scroll :: proc(scroll, content, at, extent, view: f32) -> f32 {
+	s := clamp(scroll, at + extent - view, at)
+	return clamp(s, 0, max(content - view, 0))
+}
+
 @(private = "file")
 text_selection_empty :: proc(s: ^Text_State) -> bool {
 	return s.cursor == s.anchor

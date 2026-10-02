@@ -333,13 +333,11 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 		}
 	}
 	fi.hovered, fi.focused = st.hovered, st.focused
-	// Horizontal scroll that keeps the caret in view, as ui.text_field.
+	// Horizontal scroll that keeps the caret in view (ui.text_scroll).
 	str := string(s.buf[:])
 	t := layout_style(gtx, str, g.input_font)
-	full := t.width
 	_, caret := ui.paragraph_caret(t, s.cursor)
-	cs.x = min(cs.x, max(full + CARET_W - g.inner, 0))
-	cs.x = max(clamp(cs.x, caret + CARET_W - g.inner, caret), 0)
+	cs.x = ui.text_scroll(cs.x, t.width + CARET_W, caret, CARET_W, g.inner)
 	fi.scroll = cs.x
 	return
 }

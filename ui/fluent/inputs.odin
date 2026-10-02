@@ -9,10 +9,10 @@ import tok "jm:ui/fluent/tokens"
 // Text entry and what names it: input, textarea, field, label and link,
 // on the fluent-kit's components/input.json, textarea.json, field.json,
 // label.json and link.json and the styles files they cite at the kit's
-// commit. Editing is jm:ui's single-line model (ui.Text_State,
-// ui.text_key, ui.text_hit); textarea keeps the same buffer with
-// newlines in it and does its own line wrapping and vertical caret
-// moves, as ui has no multi-line editor.
+// commit. Editing is jm:ui's (ui.Text_State, ui.text_edit,
+// ui.text_follow_pointer); textarea keeps the same buffer with newlines
+// in it, wraps it as a paragraph and moves between its lines with
+// ui.text_edit_lines.
 //
 // Departures: the native input types (email, password, number, ...),
 // resize handles, and the anchor/button element choice have no jm:ui
@@ -325,8 +325,7 @@ input :: proc(
 	_, caret := ui.paragraph_caret(t, s.cursor)
 	scroll: f32
 	if sc != nil {
-		sc.x = min(sc.x, max(t.width + CARET_W - inner, 0))
-		sc.x = max(clamp(sc.x, caret + CARET_W - inner, caret), 0)
+		sc.x = ui.text_scroll(sc.x, t.width + CARET_W, caret, CARET_W, inner)
 		scroll = sc.x
 	}
 
@@ -456,26 +455,10 @@ textarea :: proc(
 			case .Text, .Paste:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:
-				// Lines are the textarea's: moves along them extend with
-				// Shift like text_edit's own; the rest is text_edit's.
-				extend := .Shift in e.mods
-				#partial switch e.key {
-				case .Enter:
-					ui.text_replace(s, "\n")
-					r.changed = true
-				case .Up, .Down:
-					li, x := ui.paragraph_caret(para, s.cursor)
-					to := li + (e.key == .Up ? -1 : 1)
-					if to >= 0 && to < len(para.lines) {
-						ui.text_move(s, ui.paragraph_hit(para, {x, (f32(to) + 0.5) * para.pitch}), extend)
-					}
-				case .Home:
-					ui.text_move(s, para.lines[ui.paragraph_line_of(para, s.cursor)].start, extend)
-				case .End:
-					ui.text_move(s, ui.paragraph_line_end(para, ui.paragraph_line_of(para, s.cursor)), extend)
-				case:
-					r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
+				if r.changed {
+					para = layout_style(gtx, string(s.buf[:]), m.style, inner_w)
 				}
+				r.changed |= ui.text_edit_lines(gtx, s, p.id, e, text_stops(gtx, s, m.style), para)
 			}
 		}
 		if r.changed {
@@ -494,9 +477,7 @@ textarea :: proc(
 	if sc != nil {
 		sc.y = clamp(sc.y, 0, max(content_h - view_h, 0))
 		if r.focused {
-			// Keep the caret's line in view.
-			sc.y = clamp(sc.y, f32(li + 1) * lh - view_h, f32(li) * lh)
-			sc.y = clamp(sc.y, 0, max(content_h - view_h, 0))
+			sc.y = ui.text_scroll(sc.y, content_h, f32(li) * lh, lh, view_h) // the caret's line in view
 		}
 		scroll = sc.y
 	}

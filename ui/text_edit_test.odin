@@ -262,3 +262,60 @@ test_double_and_triple_press :: proc(t: ^testing.T) {
 	text_follow_pointer(&para, p, Event{kind = .Press, clicks = 3}, {10, 15}, text_stops(&g.gtx, &para, 0, 10))
 	testing.expect_value(t, text_selected(&para), "second line") // the paragraph, not its newlines
 }
+
+@(private = "file")
+press_lines :: proc(g: ^Rig, s: ^Text_State, k: Key, mods: Mods = {}) -> bool {
+	p := paragraph_layout(g.gtx.shaper, 0, 10, text_string(s), 0, context.temp_allocator)
+	return text_edit_lines(&g.gtx, s, 1, Event{kind = .Key, key = k, mods = mods}, text_stops(&g.gtx, s, 0, 10), p)
+}
+
+@(test)
+test_text_edit_lines_moves_between_and_along_lines :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("abc\nde\nfghij", 2) // after "ab"
+	defer text_destroy(&s)
+	press_lines(&g, &s, .Down)
+	testing.expect_value(t, s.cursor, 6) // after "d", at the x it left
+	press_lines(&g, &s, .Down, {.Shift})
+	testing.expect_value(t, [2]int{s.anchor, s.cursor}, [2]int{6, 9}) // extends down
+	press_lines(&g, &s, .Down)
+	testing.expect_value(t, s.cursor, 9) // the last line: stays
+	press_lines(&g, &s, .Home)
+	testing.expect_value(t, s.cursor, 7) // the line's start, not the text's
+	press_lines(&g, &s, .End)
+	testing.expect_value(t, s.cursor, 12)
+	press_lines(&g, &s, .Up)
+	press_lines(&g, &s, .Up)
+	press_lines(&g, &s, .Up)
+	testing.expect_value(t, s.cursor, 2) // up twice to "ab|"; up again stays
+	press_lines(&g, &s, .End)
+	testing.expect_value(t, s.cursor, 3) // before the newline, not after it
+}
+
+@(test)
+test_text_edit_lines_inserts_newlines_unless_read_only :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("ab", 1)
+	defer text_destroy(&s)
+	testing.expect(t, press_lines(&g, &s, .Enter))
+	testing.expect_value(t, text_string(&s), "a\nb")
+	testing.expect(t, press_lines(&g, &s, .Backspace)) // the rest is text_edit's
+	testing.expect_value(t, text_string(&s), "ab")
+	p := paragraph_layout(g.gtx.shaper, 0, 10, text_string(&s), 0, context.temp_allocator)
+	testing.expect(t, !text_edit_lines(&g.gtx, &s, 1, Event{kind = .Key, key = .Enter}, {}, p, read_only = true))
+	testing.expect_value(t, text_string(&s), "ab")
+}
+
+@(test)
+test_text_scroll_moves_only_as_far_as_the_caret_needs :: proc(t: ^testing.T) {
+	// A 100px view over 300px of text.
+	testing.expect_value(t, text_scroll(0, 300, 50, 1, 100), 0) // in view: unchanged
+	testing.expect_value(t, text_scroll(0, 300, 150, 1, 100), 51) // past the end: just in
+	testing.expect_value(t, text_scroll(120, 300, 80, 1, 100), 80) // before the start: to it
+	testing.expect_value(t, text_scroll(250, 300, 290, 1, 100), 200) // never past the content
+	testing.expect_value(t, text_scroll(40, 60, 10, 1, 100), 0) // content shorter than the view
+}
