@@ -1,0 +1,380 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "select",
+  "name": "Select",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. It is a styled native <select>, so the open list is the platform's, not Primer's.",
+  "summary": "A single choice from a short fixed list, drawn as TextInput's well with an up-down arrow and opening the platform's native option list. Choose it for plain-text options in a form; choose ActionMenu or SelectPanel for rich items, filtering or multiple selection.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-12",
+    "--base-size-20",
+    "--base-size-28",
+    "--base-size-32",
+    "--base-size-40",
+    "--bgColor-default",
+    "--bgColor-success-emphasis",
+    "--borderColor-accent-emphasis",
+    "--borderColor-danger-emphasis",
+    "--borderRadius-medium",
+    "--borderWidth-thick",
+    "--borderWidth-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-danger",
+    "--control-borderColor-disabled",
+    "--control-borderColor-rest",
+    "--fgColor-default",
+    "--fgColor-disabled",
+    "--shadow-inset",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "Select.tsx",
+      "Select.module.css",
+      "Select.docs.json",
+      "TextInputWrapper.tsx",
+      "TextInputWrapper.module.css"
+    ],
+    "primer": [
+      "select"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "options",
+      "type": "list",
+      "required": true,
+      "description": "Select.Option children, each a value and a plain-text label, optionally grouped under Select.OptGroup labels; options may be disabled."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The chosen option's value. Controlled when given; otherwise defaultValue seeds it."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Text shown as a first option with an empty value. When required it is disabled and hidden from the list, so it can only show before a choice."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "TextInput's heights: 28px minimum, 32px minimum, 40px."
+    },
+    {
+      "name": "validationStatus",
+      "type": "enum",
+      "values": [
+        "error",
+        "success"
+      ],
+      "required": false,
+      "description": "Border colour; error also sets aria-invalid."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the container's width."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Not interactive, not focusable."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "description": "A choice other than the placeholder is needed to submit."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the new value when the user picks an option."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "TextInput's well: 1px --control-borderColor-rest border, medium radius, --bgColor-default fill, --shadow-inset; clips its content and positions the arrow.",
+      "tokens": [
+        "--control-borderColor-rest",
+        "--borderWidth-thin",
+        "--borderRadius-medium",
+        "--bgColor-default",
+        "--shadow-inset"
+      ]
+    },
+    {
+      "id": "value-label",
+      "name": "Selected label",
+      "description": "The chosen option's label (or the placeholder) on one line in the container's text colour, inset 12px each side.",
+      "tokens": [
+        "--fgColor-default",
+        "--text-body-size-medium",
+        "--base-size-12"
+      ]
+    },
+    {
+      "id": "arrow",
+      "name": "Arrow indicator",
+      "description": "A 16px up-and-down double triangle in currentColor, 4px from the end edge, vertically centred, ignoring the pointer (Select.tsx:26 gives the path).",
+      "tokens": [
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "option-list",
+      "name": "Option list",
+      "description": "The platform's native popup list of options and group headings; Primer does not style it."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px minimum height, 3px block padding, small body text.",
+      "tokens": [
+        "--base-size-28",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px minimum height, medium body text.",
+      "tokens": [
+        "--base-size-32",
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px fixed height with 10px block padding.",
+      "tokens": [
+        "--base-size-40"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "error",
+      "description": "Border --borderColor-danger-emphasis; focused ring --control-borderColor-danger.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "success",
+      "description": "Border --bgColor-success-emphasis.",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is TextInput's with no visuals and no action: an inline row at least 32px tall (28px small, 40px fixed at large) whose select fills the full width and height.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-28",
+        "--base-size-40"
+      ],
+      "source": "Select.tsx:52-58; TextInputWrapper.module.css:1-16,96-123; Select.module.css:1-2"
+    },
+    {
+      "part": "value-label",
+      "text": "The label is inset 12px from both edges (the no-visuals padding), so the 16px arrow at 4px from the end overlaps the last 8px of the label's box; long labels run under the arrow before they are clipped.",
+      "tokens": [
+        "--base-size-12",
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "arrowSize",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "TextInputWrapper.module.css:204-209; Select.module.css:63-69; Select.tsx:16-27"
+    },
+    {
+      "part": "arrow",
+      "text": "The arrow is absolutely positioned in the container: 4px from the end, centred vertically, not hit-testable, so presses on it reach the select.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "source": "Select.module.css:42-44,63-69"
+    },
+    {
+      "text": "The select carries a 1px margin on top, bottom and start (a Firefox workaround that keeps an inset focus shadow visible); it is 100% wide, so it overflows the container by 1px at the end and is clipped.",
+      "values": [
+        {
+          "name": "selectMargin",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "Select.module.css:1-23"
+    },
+    {
+      "text": "Width hugs the native select's intrinsic width, which is the widest option's label plus padding, unless block.",
+      "source": "TextInputWrapper.module.css:2,85-89"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: --bgColor-default fill, --control-borderColor-rest border, --shadow-inset, pointer cursor. The select's own background inherits the container's, and its corners follow the container's radius.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-rest",
+        "--shadow-inset"
+      ],
+      "source": "TextInputWrapper.module.css:8-15,23-25; Select.module.css:18-22"
+    },
+    {
+      "state": "focused",
+      "text": "While the select has focus, by pointer or keyboard, the border turns --borderColor-accent-emphasis with a 2px outline of the same colour at offset -1px. No hover state.",
+      "tokens": [
+        "--borderColor-accent-emphasis",
+        "--borderWidth-thick"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "TextInputWrapper.module.css:35-40"
+    },
+    {
+      "state": "error",
+      "text": "Border --borderColor-danger-emphasis; focused, the border and outline turn --control-borderColor-danger.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger"
+      ],
+      "source": "TextInputWrapper.module.css:69-78"
+    },
+    {
+      "state": "other",
+      "label": "success",
+      "text": "Border --bgColor-success-emphasis.",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ],
+      "source": "TextInputWrapper.module.css:80-83"
+    },
+    {
+      "state": "disabled",
+      "text": "Text and arrow --fgColor-disabled, fill --control-bgColor-disabled, border --control-borderColor-disabled, no shadow, not-allowed cursor. The select's own background turns transparent so a translucent disabled fill is not painted twice.",
+      "tokens": [
+        "--fgColor-disabled",
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled"
+      ],
+      "source": "TextInputWrapper.module.css:52-63; Select.module.css:24-30"
+    },
+    {
+      "state": "open",
+      "part": "option-list",
+      "text": "Opening shows the platform's option list; the field keeps its focused look while it is open.",
+      "source": "Select.tsx:59-76"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "A press or the keyboard opens the native list; choosing an option closes it, shows its label and calls onChange.",
+      "source": "Select.tsx:59-76"
+    },
+    {
+      "text": "With a placeholder, a first option with an empty value and the placeholder text precedes the options. If required, that option is disabled and hidden, so once a real option is chosen the placeholder cannot be chosen again.",
+      "source": "Select.tsx:66-74"
+    },
+    {
+      "text": "Group headings (Select.OptGroup) label runs of options and are not selectable.",
+      "source": "Select.tsx:83-89"
+    }
+  ],
+  "accessibility": {
+    "role": "combobox (native select; listbox popup)",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Tab focuses it.",
+      "Space, Enter or Alt+Down opens the list (per platform); Up and Down move the choice, on some platforms without opening.",
+      "Typing a letter jumps to the next option starting with it.",
+      "Escape closes the list without changing the choice."
+    ],
+    "semantics": [
+      "Name from the FormControl label.",
+      "aria-invalid is always set: true for error, false otherwise.",
+      "required is the native attribute; the arrow is aria-hidden."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The open list, its positioning, scrolling, typeahead, keyboard model and option rendering are the browser's and the OS's (on macOS a native menu over the field, on mobile a picker sheet). A native build must provide the popup itself, conventionally an overlay list anchored to the field with the chosen option marked, or delegate to a platform menu.",
+      "source": "Select.tsx:59-76"
+    },
+    {
+      "kind": "web-only",
+      "text": "appearance: none removes the platform's own arrow and chrome; the drawn arrow is an SVG over the field. Long labels are clipped by the field, not ellipsised.",
+      "source": "Select.module.css:22,42-44; Select.tsx:16-33"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Select's intrinsic width is the widest option, not the chosen one, so the field does not change width as the choice changes. A native build measures every option label to size it.",
+      "source": "TextInputWrapper.module.css:2"
+    },
+    {
+      "kind": "gotcha",
+      "text": "defaultValue falls back to the placeholder text, which matches no option (the placeholder's value is the empty string); which option then shows first is left to React's and the browser's fallback, and with a required, disabled placeholder that can be the first real option. A native build shows the placeholder whenever the value is empty.",
+      "source": "Select.tsx:66-74"
+    },
+    {
+      "kind": "contradiction",
+      "text": "Select.docs.json lists a contrast prop, but SelectProps omits contrast and Select never passes it to the wrapper; there is no contrast Select.",
+      "source": "Select.docs.json; Select.tsx:9-14,52-58"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the arrow fills FieldText, GrayText when disabled; Firefox keeps a disabled select's background with -moz-combobox.",
+      "source": "Select.module.css:32-39,46-61"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The arrow's colour is currentColor of the container, so it follows the text colour: --fgColor-default at rest, --fgColor-disabled when disabled. It is not --fgColor-muted like TextInput's visuals.",
+      "tokens": [
+        "--fgColor-default",
+        "--fgColor-disabled"
+      ],
+      "source": "Select.tsx:22; TextInputWrapper.module.css:8,53"
+    }
+  ]
+}

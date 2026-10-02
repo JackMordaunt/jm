@@ -1,0 +1,618 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "segmented-control",
+  "name": "SegmentedControl",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. The subtle variant, Divider, Action and the anchor-positioned sliding knob are recent additions, so expect the visuals at the edges to move.",
+  "summary": "A row of two to five mutually exclusive buttons in a track, one always selected, for switching how content is viewed (list or grid, preview or source). Choose UnderlineNav or tabs for navigation between pages, RadioGroup for a form choice, ToggleSwitch for on/off.",
+  "tokenGroups": [
+    "--base-duration-200",
+    "--base-easing-easeInOut",
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--bgColor-muted",
+    "--borderColor-default",
+    "--borderRadius-large",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--controlKnob-bgColor-rest",
+    "--controlKnob-borderColor-rest",
+    "--controlTrack-bgColor-active",
+    "--controlTrack-bgColor-hover",
+    "--controlTrack-bgColor-rest",
+    "--controlTrack-borderColor-rest",
+    "--fgColor-accent",
+    "--fgColor-default",
+    "--fgColor-disabled",
+    "--fgColor-muted",
+    "--text-body-size-medium",
+    "--text-body-size-small",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide"
+  ],
+  "references": {
+    "react": [
+      "SegmentedControl.tsx",
+      "SegmentedControl.module.css",
+      "SegmentedControl.docs.json",
+      "SegmentedControlButton.tsx",
+      "SegmentedControlIconButton.tsx",
+      "SegmentedControlDivider.tsx",
+      "SegmentedControlAction.tsx",
+      "getResponsiveAttributes.ts"
+    ],
+    "primer": [
+      "segmented-control"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "segments",
+      "type": "list",
+      "required": true,
+      "description": "SegmentedControl.Button (a text label, optional leadingVisual icon and count) or SegmentedControl.IconButton (an icon with a required aria-label, optional description) children, with optional SegmentedControl.Divider between them."
+    },
+    {
+      "name": "selectedIndex",
+      "type": "number",
+      "required": false,
+      "description": "Which segment is selected: the segment with selected (controlled) or defaultSelected (uncontrolled); the first segment when none says so."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the pressed segment's index. Without it (or with any defaultSelected) the control manages its own selection."
+    },
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Names the control; use aria-labelledby with a visible label instead where possible. One of the two is needed."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "28px or 32px tall."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "default",
+        "subtle",
+        "hideLabels",
+        "dropdown"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "default draws a track with a sliding knob; subtle draws no track and a muted pill; hideLabels shows only icons; dropdown replaces the control with a menu button. default and subtle may be set directly; hideLabels and dropdown only per viewport range (narrow, regular, wide)."
+    },
+    {
+      "name": "fullWidth",
+      "type": "boolean",
+      "required": false,
+      "description": "Fill the container's width; may also be set per viewport range."
+    },
+    {
+      "name": "action",
+      "type": "slot",
+      "required": false,
+      "description": "SegmentedControl.Action: an icon, label, onClick, disabled and loading, shown as an invisible IconButton after the control, or as the last menu item in dropdown."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Per segment: aria-disabled, greyed and ignoring presses, but still focusable."
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "required": false,
+      "description": "Per text segment: a CounterLabel after the label."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "An inline row 32px tall (28px small), --controlTrack-bgColor-rest fill, 1px --controlTrack-borderColor-rest border, medium radius.",
+      "tokens": [
+        "--controlTrack-bgColor-rest",
+        "--controlTrack-borderColor-rest",
+        "--borderWidth-thin",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Segment",
+      "description": "One equal-growth cell holding a button the full height of the track, overlapping the track's border by 1px at top and bottom (and at the outer ends)."
+    },
+    {
+      "id": "content",
+      "name": "Segment content",
+      "description": "A centred row of optional icon, label and count with a 1px transparent border, inset 4px inside an unselected segment and filling a selected one.",
+      "tokens": [
+        "--base-size-4",
+        "--borderWidth-thin"
+      ]
+    },
+    {
+      "id": "knob",
+      "name": "Knob",
+      "description": "The selected segment's raised surface: --controlKnob-bgColor-rest with a 1px --controlKnob-borderColor-rest border and medium radius, covering the whole selected segment.",
+      "tokens": [
+        "--controlKnob-bgColor-rest",
+        "--controlKnob-borderColor-rest",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "separator",
+      "name": "Separator",
+      "description": "A 1px --borderColor-default line between segments, inset 8px from top and bottom, hidden on either side of the selected segment.",
+      "tokens": [
+        "--borderColor-default",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "Body text at the control's size, normal weight (semibold when selected), in the inherited text colour.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold"
+      ]
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "A 16px icon in --fgColor-muted, 4px before the label.",
+      "tokens": [
+        "--fgColor-muted",
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "counter",
+      "name": "Counter",
+      "optional": true,
+      "description": "A CounterLabel 8px after the label.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "optional": true,
+      "description": "SegmentedControl.Divider: a 1px --borderColor-default rule, inset 8px top and bottom, 8px before and 7px after; drawn only in the subtle variant.",
+      "tokens": [
+        "--borderColor-default",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "optional": true,
+      "description": "An invisible IconButton the control's height square (32px, 28px small), 4px after the track.",
+      "tokens": [
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "dropdown",
+      "name": "Dropdown",
+      "optional": true,
+      "description": "In the dropdown variant: an ActionMenu button showing the selected segment's icon and label, opening a single-select ActionList of the segments."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "default",
+      "default": true,
+      "description": "Track fill and border, inset hover pills, a knob under the selected segment, separators between segments.",
+      "tokens": [
+        "--controlTrack-bgColor-rest",
+        "--controlTrack-borderColor-rest",
+        "--controlKnob-bgColor-rest",
+        "--controlKnob-borderColor-rest",
+        "--controlTrack-bgColor-hover",
+        "--controlTrack-bgColor-active"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "subtle",
+      "description": "No track fill, border, knob or separators; labels --fgColor-muted, the selected one --fgColor-default on a --bgColor-muted pill with a large radius; Dividers show.",
+      "tokens": [
+        "--bgColor-muted",
+        "--fgColor-muted",
+        "--fgColor-default",
+        "--borderRadius-large"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "hideLabels",
+      "description": "Labels are not drawn; segments show only their leading visual (labels remain the names for assistive technology through the dropdown and tooltips)."
+    },
+    {
+      "axis": "variant",
+      "value": "dropdown",
+      "description": "The track is hidden and an ActionMenu button with the selected segment's icon and label takes its place."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px tall, medium body text.",
+      "tokens": [
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px tall, small body text; icon segments stay 32px wide.",
+      "tokens": [
+        "--text-body-size-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "part": "track",
+      "text": "The track is a fixed 32px tall (28px small), border included, and hugs its segments' width unless fullWidth makes it a full-width row.",
+      "values": [
+        {
+          "name": "mediumHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "smallHeight",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "SegmentedControl.module.css:98-112,136-149,279-283"
+    },
+    {
+      "part": "item",
+      "text": "Each segment grows equally into spare width (flex-grow 1 from its natural width, so segments are not equal-width in a full-width control). Segments overlap the track's 1px border: -1px top and bottom, -1px at the start of the first and the end of the last; each segment but the last keeps 1px after it for its separator.",
+      "values": [
+        {
+          "name": "borderOverlap",
+          "value": -1,
+          "unit": "px"
+        },
+        {
+          "name": "separatorGap",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "SegmentedControl.module.css:409-421,442-450"
+    },
+    {
+      "part": "separator",
+      "text": "The separator is 1px wide, drawn 2px past the segment's end edge, from 8px below the top to 8px above the bottom.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-2"
+      ],
+      "source": "SegmentedControl.module.css:422-431"
+    },
+    {
+      "part": "content",
+      "text": "An unselected segment pads its button 4px on every side and its content 8px more on each side (12px total inline); a selected segment drops the button padding and pads its content 12px each side, so a segment is the same width selected or not. The content's corners are the outer radius less half the inset (4px for default).",
+      "values": [
+        {
+          "name": "innerPadding",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "bgInset",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "tokens": [
+        "--borderRadius-medium"
+      ],
+      "source": "SegmentedControl.module.css:471-489,549-570,572-590"
+    },
+    {
+      "part": "label",
+      "text": "Each label reserves the width it would take in semibold (a hidden zero-height copy of the text in semibold under it), so selecting a segment does not change its width. A native build measures every label in semibold and uses that width.",
+      "tokens": [
+        "--base-text-weight-semibold"
+      ],
+      "source": "SegmentedControl.module.css:602-611; SegmentedControlButton.tsx:63-65"
+    },
+    {
+      "part": "leading-visual",
+      "text": "A leading icon sits 4px before the label; a count's CounterLabel sits 8px after it, centred vertically.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8"
+      ],
+      "source": "SegmentedControl.module.css:452-456,613-615; SegmentedControlButton.tsx:59-71"
+    },
+    {
+      "text": "An icon-only segment is 32px wide at either size, or fills its share of the width in a full-width control.",
+      "values": [
+        {
+          "name": "iconSegmentWidth",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "SegmentedControl.module.css:99-100,137-149,545-547"
+    },
+    {
+      "part": "divider",
+      "text": "A Divider is 1px wide, inset 8px top and bottom, with 8px before and 7px after it (16px with its own width); hidden in the default variant, where separators do its job.",
+      "tokens": [
+        "--base-size-8",
+        "--borderColor-default"
+      ],
+      "source": "SegmentedControl.module.css:17-19,64-66,151-162"
+    },
+    {
+      "part": "action",
+      "text": "With an action or a dropdown variant, the control, the dropdown button and the action sit in a row 4px apart; the action is a square 32px invisible IconButton (28px small). In a full-width group the control takes the remaining width.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "actionSize",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "actionSizeSmall",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "SegmentedControl.module.css:286-354,459-469; SegmentedControlAction.tsx:63-75; SegmentedControl.tsx:270-278"
+    },
+    {
+      "text": "Responsive values switch by viewport width: narrow below 768px, regular from 768px, wide from 1400px. A regular value also applies at wide unless wide overrides it.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "SegmentedControl.module.css:164-217,233-277; getResponsiveAttributes.ts:19-36"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Unselected segments: transparent, label in the inherited colour at normal weight, icons --fgColor-muted.",
+      "tokens": [
+        "--fgColor-muted",
+        "--base-text-weight-normal"
+      ],
+      "source": "SegmentedControl.module.css:471-494"
+    },
+    {
+      "state": "selected",
+      "text": "The selected segment's label is semibold, and the knob (--controlKnob-bgColor-rest, 1px --controlKnob-borderColor-rest, medium radius) covers the whole segment; the separators on both its sides disappear.",
+      "tokens": [
+        "--controlKnob-bgColor-rest",
+        "--controlKnob-borderColor-rest",
+        "--base-text-weight-semibold"
+      ],
+      "source": "SegmentedControl.module.css:115-125,433-439,572-590"
+    },
+    {
+      "state": "hovered",
+      "part": "content",
+      "text": "An unselected, enabled segment's inset content fills --controlTrack-bgColor-hover, fading over 200ms --base-easing-easeInOut.",
+      "tokens": [
+        "--controlTrack-bgColor-hover"
+      ],
+      "motion": {
+        "durationToken": "--base-duration-200",
+        "easing": "--base-easing-easeInOut",
+        "properties": [
+          "background-color"
+        ]
+      },
+      "source": "SegmentedControl.module.css:560,592-595"
+    },
+    {
+      "state": "pressed",
+      "part": "content",
+      "text": "An unselected, enabled segment's content fills --controlTrack-bgColor-active while pressed.",
+      "tokens": [
+        "--controlTrack-bgColor-active"
+      ],
+      "source": "SegmentedControl.module.css:592-600"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws a 2px --fgColor-accent outline at offset -1px around the segment's button (not --focus-outline-color), so it reaches 1px outside the button.",
+      "tokens": [
+        "--fgColor-accent",
+        "--base-size-2"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "SegmentedControl.module.css:496-513"
+    },
+    {
+      "state": "disabled",
+      "text": "A disabled, unselected segment draws its label and icons in --fgColor-disabled with a not-allowed cursor and no hover; a disabled selected segment keeps the selected look.",
+      "tokens": [
+        "--fgColor-disabled"
+      ],
+      "source": "SegmentedControl.module.css:521-530,592"
+    }
+  ],
+  "behaviour": [
+    {
+      "part": "knob",
+      "text": "When the selection changes, the knob slides from the old segment's box to the new one's (all four edges) over 200ms --base-easing-easeInOut; under reduced motion, or in a browser without anchor positioning, it jumps. When the number of segments changes, the slide is suppressed for one frame so the knob does not fly.",
+      "motion": {
+        "durationToken": "--base-duration-200",
+        "easing": "--base-easing-easeInOut",
+        "properties": [
+          "inset"
+        ]
+      },
+      "source": "SegmentedControl.module.css:115-134,583-588; SegmentedControl.tsx:58-72"
+    },
+    {
+      "text": "Pressing an enabled segment calls onChange with its index (even if it is already selected), selects it when uncontrolled, and then calls the segment's own onClick. Pressing a disabled segment does nothing. Exactly one segment is always selected; there is no 'none'.",
+      "source": "SegmentedControl.tsx:74-88,225-248"
+    },
+    {
+      "part": "dropdown",
+      "text": "In the dropdown variant, choosing a menu item selects that segment and calls onChange and the segment's onClick; the action, if any, follows a divider as the last item.",
+      "source": "SegmentedControl.tsx:139-200; SegmentedControlAction.tsx:40-60"
+    },
+    {
+      "text": "An icon-only segment shows its aria-label as a tooltip (or its description, with the aria-label kept as the name).",
+      "source": "SegmentedControlIconButton.tsx:46-61"
+    },
+    {
+      "text": "Arrow keys do nothing: each segment is its own tab stop, unlike a radio group or tab list.",
+      "source": "primer:segmented-control; SegmentedControlButton.tsx:52-58"
+    }
+  ],
+  "accessibility": {
+    "role": "list of toggle buttons (ul of buttons with aria-pressed)",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Tab and Shift+Tab move between segments; every segment, including disabled ones, is a tab stop.",
+      "Enter or Space selects the focused segment.",
+      "Arrow keys neither move focus nor change the selection."
+    ],
+    "semantics": [
+      "The list is named by aria-label or aria-labelledby.",
+      "Each segment is a button with aria-pressed true when selected; disabled segments are aria-disabled and stay focusable.",
+      "In the dropdown variant the menu button is named '<selected label>, <aria-label>' and the menu is a single-select list."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Measure before layout: a text segment's width is its label's semibold width (plus icon, 4px, count and 8px) plus 24px of padding and 2px of content border, whether selected or not. Getting this from the regular-weight width makes segments jump on selection.",
+      "source": "SegmentedControl.module.css:549-558,572-580,602-611"
+    },
+    {
+      "kind": "web-only",
+      "text": "The sliding knob is a ::before positioned with CSS anchor positioning (anchor-name on the selected content, inset: anchor(...)) and a transition on inset; browsers without it paint the knob on the selected content with no slide. A native build animates the knob rectangle between the old and new segment rectangles itself.",
+      "source": "SegmentedControl.module.css:115-134,581-589"
+    },
+    {
+      "kind": "web-only",
+      "text": "Hiding the separators beside the selected segment uses :has() (the segment before a selected one, including across a hidden Divider). A native build decides per gap: draw a separator only when neither neighbour is selected.",
+      "source": "SegmentedControl.module.css:433-439"
+    },
+    {
+      "kind": "web-only",
+      "text": "Variants and fullWidth switch with media queries on the viewport width, not the control's own width; a native build evaluates the window width against 768px and 1400px each frame.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "SegmentedControl.module.css:164-277"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Each segment receives an inline --separator-color (transparent next to the selection), but no CSS reads it; the :has() rules do the work.",
+      "source": "SegmentedControl.tsx:249-255"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "In the subtle variant the hover tint is meant to be --bgColor-muted at 50% (color-mix), but the base hover rule has equal specificity and comes later, so by the cascade the hover fill is --controlTrack-bgColor-hover and press --controlTrack-bgColor-active. LOW CONFIDENCE: inferred from specificity and source order after mixin expansion, not observed in a browser.",
+      "tokens": [
+        "--bgColor-muted",
+        "--controlTrack-bgColor-hover"
+      ],
+      "source": "SegmentedControl.module.css:41-44,224-226,592-600"
+    },
+    {
+      "kind": "gotcha",
+      "text": "In the subtle variant the button keeps its own 4px --segmented-control-button-bg-inset (set on the button, overriding the track's 0px), so the selected pill's radius is 12px less 2px (10px) though its padding is overridden to 12px.",
+      "tokens": [
+        "--borderRadius-large"
+      ],
+      "source": "SegmentedControl.module.css:1-3,21-31,471-475,567"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The rule meant to hide the separator under a focused segment targets the button's own ::after, but the separator is the list item's ::after and the button draws no ::after (and a text segment's button is its item's only child, failing :not(:last-child)), so the rule has no effect; the focus outline can meet the neighbouring separator.",
+      "source": "SegmentedControl.module.css:422-431,515-519; SegmentedControlButton.tsx:47-58"
+    },
+    {
+      "kind": "contradiction",
+      "text": "primer.style says pressing an already-selected segment does nothing; the code calls onChange again with the same index.",
+      "source": "primer:segmented-control; SegmentedControl.tsx:226-237"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Focus is drawn in --fgColor-accent at offset -1px, not the system --focus-outline-color at -2px; the two are the same blue in light but bind differently per theme.",
+      "tokens": [
+        "--fgColor-accent"
+      ],
+      "source": "SegmentedControl.module.css:496-513"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The fallback :focus rule draws the outline on any focus and then hides it with a 1px transparent outline when :focus-visible is supported; the net effect is keyboard-only focus rings.",
+      "source": "SegmentedControl.module.css:496-506"
+    },
+    {
+      "kind": "density",
+      "text": "For a coarse pointer each segment gets an invisible full-width layer at least 44px tall, centred, enlarging the target vertically.",
+      "tokens": [
+        "--control-minTarget-coarse"
+      ],
+      "source": "SegmentedControl.module.css:532-542"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 32px and 28px heights, 32px icon width and action size, 12px inner padding, 4px inset, the 1px overlaps and the 7px Divider end margin are literals (the module's TODOs name the control size tokens they should become).",
+      "source": "SegmentedControl.module.css:99-106,158,281,287,347,413-420,473-474"
+    },
+    {
+      "kind": "gotcha",
+      "text": "hideLabels hides every label, so a text segment without a leading visual draws empty; give every segment an icon if hideLabels is used.",
+      "source": "SegmentedControl.module.css:228-231"
+    }
+  ]
+}

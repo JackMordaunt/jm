@@ -1,0 +1,498 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "toggle-switch",
+  "name": "ToggleSwitch",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. Its CSS still carries fallbacks to the retired --color-switch-* palette, a sign the component predates the controlTrack and controlKnob tokens.",
+  "summary": "An on/off switch for a setting that takes effect immediately, with a visible 'On'/'Off' status label beside the track. Choose Checkbox when the choice is submitted later with a form; label it with a visible element whose id the switch names.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--borderRadius-default",
+    "--borderWidth-thick",
+    "--borderWidth-thin",
+    "--control-checked-bgColor-active",
+    "--control-checked-bgColor-hover",
+    "--control-checked-bgColor-rest",
+    "--control-checked-borderColor-rest",
+    "--control-checked-fgColor-disabled",
+    "--control-checked-fgColor-rest",
+    "--controlKnob-bgColor-disabled",
+    "--controlKnob-bgColor-rest",
+    "--controlKnob-borderColor-checked",
+    "--controlKnob-borderColor-rest",
+    "--controlTrack-bgColor-active",
+    "--controlTrack-bgColor-disabled",
+    "--controlTrack-bgColor-hover",
+    "--controlTrack-bgColor-rest",
+    "--controlTrack-borderColor-rest",
+    "--controlTrack-fgColor-disabled",
+    "--controlTrack-fgColor-rest",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--focus-outline",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "ToggleSwitch.tsx",
+      "ToggleSwitch.module.css",
+      "ToggleSwitch.docs.json",
+      "Spinner.tsx"
+    ],
+    "primer": [
+      "toggle-switch"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "ariaLabelledby",
+      "type": "string",
+      "required": true,
+      "description": "The id of the visible text that names the switch. The switch has no label of its own; 'On'/'Off' is its state, not its name."
+    },
+    {
+      "name": "checked",
+      "type": "boolean",
+      "required": false,
+      "description": "On or off. Controlled when given (the caller must update it from onChange); otherwise defaultChecked seeds it."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the requested new state on each toggle."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Called after onChange on each accepted press."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Track 48 by 24px or 64 by 32px."
+    },
+    {
+      "name": "statusLabelPosition",
+      "type": "enum",
+      "values": [
+        "start",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Status label before the track (start) or after it (end). Change it only to align the switch with content above or below."
+    },
+    {
+      "name": "buttonLabelOn",
+      "type": "string",
+      "required": false,
+      "default": "On",
+      "description": "Status text while on; customise only for a more specific word (Show, Enabled)."
+    },
+    {
+      "name": "buttonLabelOff",
+      "type": "string",
+      "required": false,
+      "default": "Off",
+      "description": "Status text while off."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Ignore input and draw the disabled look."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "The value is being saved: show a small spinner, ignore input, draw the disabled look, and announce loadingLabel after a delay."
+    },
+    {
+      "name": "loadingLabel",
+      "type": "string",
+      "required": false,
+      "default": "Loading",
+      "description": "What is announced while loading."
+    },
+    {
+      "name": "loadingLabelDelay",
+      "type": "number",
+      "required": false,
+      "default": 2000,
+      "description": "Milliseconds of loading before loadingLabel is announced."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "An inline row, items centred: spinner (while loading), status label, track; reversed when the label is at the end."
+    },
+    {
+      "id": "status-label",
+      "name": "Status label",
+      "description": "The current state's word ('On' or 'Off') in --fgColor-default, body text at the switch's size, right-aligned, with 8px on both sides. Both words occupy the box so it is as wide as the wider one.",
+      "tokens": [
+        "--fgColor-default",
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "A 64 by 32px (48 by 24px small) rounded rectangle, 1px border, --borderRadius-default (6px, not a pill), clipping its contents.",
+      "tokens": [
+        "--borderRadius-default",
+        "--borderWidth-thin"
+      ]
+    },
+    {
+      "id": "on-icon",
+      "name": "On icon",
+      "description": "A vertical line glyph (16px, 12px small) centred in the track's left half, in --control-checked-fgColor-rest; visible while on.",
+      "tokens": [
+        "--control-checked-fgColor-rest"
+      ]
+    },
+    {
+      "id": "off-icon",
+      "name": "Off icon",
+      "description": "A ring glyph (16px, 12px small) centred in the track's right half, in --controlTrack-fgColor-rest; visible while off.",
+      "tokens": [
+        "--controlTrack-fgColor-rest"
+      ]
+    },
+    {
+      "id": "knob",
+      "name": "Knob",
+      "description": "A half-track-wide rounded rectangle inset 1px in the track: --controlKnob-bgColor-rest fill, 1px border, radius --borderRadius-default less --borderWidth-thick (4px); it slides to the end when on.",
+      "tokens": [
+        "--controlKnob-bgColor-rest",
+        "--controlKnob-borderColor-rest",
+        "--borderWidth-thin",
+        "--borderRadius-default",
+        "--borderWidth-thick"
+      ]
+    },
+    {
+      "id": "spinner",
+      "name": "Loading spinner",
+      "optional": true,
+      "description": "A 16px Spinner before the status label (8px after the label when the label is at the end)."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Track 64 by 32px, 16px glyphs, medium body status text.",
+      "tokens": [
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Track 48 by 24px, 12px glyphs, small body status text.",
+      "tokens": [
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "axis": "statusLabelPosition",
+      "value": "start",
+      "default": true,
+      "description": "Spinner, label, then track."
+    },
+    {
+      "axis": "statusLabelPosition",
+      "value": "end",
+      "description": "Track, label, then spinner (the row reversed)."
+    }
+  ],
+  "layout": [
+    {
+      "part": "track",
+      "text": "The track is a fixed 64 by 32px at medium and 48 by 24px at small, border included; its corners are --borderRadius-default (6px).",
+      "tokens": [
+        "--borderRadius-default"
+      ],
+      "values": [
+        {
+          "name": "mediumWidth",
+          "value": 64,
+          "unit": "px"
+        },
+        {
+          "name": "mediumHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "smallWidth",
+          "value": 48,
+          "unit": "px"
+        },
+        {
+          "name": "smallHeight",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "ToggleSwitch.module.css:58-76,111-115"
+    },
+    {
+      "part": "knob",
+      "text": "The knob sits 1px inside the track's border on top, bottom and start, is 50% of the track's inner width, and translates by its own width less 2px when on, so it rests 1px from either end. At medium that is a 31 by 28px knob moving 29px; at small 23 by 20px moving 21px.",
+      "values": [
+        {
+          "name": "knobInset",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "knobWidth",
+          "value": 50,
+          "unit": "percent"
+        }
+      ],
+      "source": "ToggleSwitch.module.css:225-246,253-261"
+    },
+    {
+      "part": "knob",
+      "text": "The knob's corner radius is --borderRadius-default minus --borderWidth-thick (4px), so it nests inside the track's 6px corner.",
+      "tokens": [
+        "--borderRadius-default",
+        "--borderWidth-thick"
+      ],
+      "source": "ToggleSwitch.module.css:232-234"
+    },
+    {
+      "text": "Inside the track, a row holds two equal halves at full height; the line glyph is centred in the left half and the ring glyph in the right half (the button's default centred text alignment). The knob is drawn above both.",
+      "values": [
+        {
+          "name": "glyphMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "glyphSmall",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "ToggleSwitch.module.css:166-187,246; ToggleSwitch.tsx:53-77,185-206"
+    },
+    {
+      "part": "status-label",
+      "text": "The status label has 8px on both sides and stacks both words, the inactive one invisible and zero-height, so its width is the wider of the two words and does not change on toggle; text is right-aligned in that width.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "ToggleSwitch.module.css:26-33,48-56; ToggleSwitch.tsx:156-169"
+    },
+    {
+      "part": "root",
+      "text": "The root is an inline row with items centred vertically; statusLabelPosition end reverses it, and the spinner then gets an 8px start margin.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "ToggleSwitch.module.css:1-24"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Off: track --controlTrack-bgColor-rest with --controlTrack-borderColor-rest border; knob at the start, --controlKnob-bgColor-rest with --controlKnob-borderColor-rest; ring glyph showing in --controlTrack-fgColor-rest.",
+      "tokens": [
+        "--controlTrack-bgColor-rest",
+        "--controlTrack-borderColor-rest",
+        "--controlKnob-bgColor-rest",
+        "--controlKnob-borderColor-rest",
+        "--controlTrack-fgColor-rest"
+      ],
+      "source": "ToggleSwitch.module.css:130-134,207-210,221-231,253-255"
+    },
+    {
+      "state": "checked",
+      "text": "On: track --control-checked-bgColor-rest with --control-checked-borderColor-rest border; knob at the end with --controlKnob-borderColor-checked border; line glyph showing in --control-checked-fgColor-rest.",
+      "tokens": [
+        "--control-checked-bgColor-rest",
+        "--control-checked-borderColor-rest",
+        "--controlKnob-borderColor-checked",
+        "--control-checked-fgColor-rest"
+      ],
+      "source": "ToggleSwitch.module.css:148-152,189-201,257-261"
+    },
+    {
+      "state": "hovered",
+      "text": "Track fill only: --controlTrack-bgColor-hover when off, --control-checked-bgColor-hover when on. Keyboard focus applies the same fill.",
+      "tokens": [
+        "--controlTrack-bgColor-hover",
+        "--control-checked-bgColor-hover"
+      ],
+      "source": "ToggleSwitch.module.css:136-140,154-158"
+    },
+    {
+      "state": "pressed",
+      "text": "Track fill only: --controlTrack-bgColor-active when off, --control-checked-bgColor-active when on.",
+      "tokens": [
+        "--controlTrack-bgColor-active",
+        "--control-checked-bgColor-active"
+      ],
+      "source": "ToggleSwitch.module.css:142-146,160-164"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus: the --focus-outline outline (2px solid in the focus colour) 3px outside the track, plus the hover fill. A pointer press leaves a transparent 1px outline, invisible.",
+      "tokens": [
+        "--focus-outline"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": 3,
+          "unit": "px"
+        }
+      ],
+      "source": "ToggleSwitch.module.css:78-86,136-140,154-158"
+    },
+    {
+      "state": "disabled",
+      "text": "Track --controlTrack-bgColor-disabled with a transparent border; knob --controlKnob-bgColor-disabled bordered in --controlTrack-bgColor-disabled; line glyph --control-checked-fgColor-disabled, ring glyph --controlTrack-fgColor-disabled; status text --fgColor-muted; not-allowed cursor; no transitions. The same look whether on or off.",
+      "tokens": [
+        "--controlTrack-bgColor-disabled",
+        "--controlKnob-bgColor-disabled",
+        "--control-checked-fgColor-disabled",
+        "--controlTrack-fgColor-disabled",
+        "--fgColor-muted"
+      ],
+      "source": "ToggleSwitch.module.css:35-38,117-128,194-197,212-215,263-271"
+    },
+    {
+      "state": "loading",
+      "text": "A 16px spinner appears in the row, input is ignored, and the switch draws its disabled look (loading and disabled share one flag).",
+      "source": "ToggleSwitch.tsx:101,150-154,159,178-204"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "A press on the track or on the status label toggles the switch, unless disabled or loading. Uncontrolled, it flips its own state and calls onChange; controlled, it only calls onChange with the opposite of checked and waits for the caller. onClick follows.",
+      "source": "ToggleSwitch.tsx:99-125,156-162,171-179"
+    },
+    {
+      "text": "The knob and both glyphs slide (the on glyph from one half-width off the start, the off glyph towards the end), and the track's fill and border fade, over 80ms cubic-bezier(0.5, 1, 0.89, 1). Under reduced motion all of it is instant.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.5,
+          1,
+          0.89,
+          1
+        ]
+      },
+      "source": "ToggleSwitch.module.css:1-3,64-66,101-108,174-187,199-223,243-261"
+    },
+    {
+      "text": "The status label switches word at once, without animation.",
+      "source": "ToggleSwitch.module.css:48-56"
+    },
+    {
+      "text": "While loading, loadingLabel is announced through a status region after loadingLabelDelay (2000ms by default) and the switch is described by it; it clears when loading ends.",
+      "values": [
+        {
+          "name": "loadingLabelDelay",
+          "value": 2000,
+          "unit": "ms"
+        }
+      ],
+      "source": "ToggleSwitch.tsx:103-148,181"
+    }
+  ],
+  "accessibility": {
+    "role": "button with aria-pressed (a toggle button, not role switch)",
+    "minTargetPx": 24,
+    "keyboard": [
+      "Tab focuses it, even when disabled or loading.",
+      "Space or Enter toggles it."
+    ],
+    "semantics": [
+      "Name from aria-labelledby; the On/Off status text is aria-hidden.",
+      "aria-pressed true when on, false when off.",
+      "aria-disabled true when disabled or loading; it stays focusable.",
+      "While loading, after the delay, aria-describedby names the loading status (plus any caller description)."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The status label must be laid out at the width of the wider of its two words, measured before layout, so the track does not shift when toggled; Primer gets this by stacking both words with the inactive one invisible and zero-height.",
+      "source": "ToggleSwitch.module.css:48-56; ToggleSwitch.tsx:163-168"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The track is a rounded rectangle at --borderRadius-default (6px), not a pill; foundations' list of --borderRadius-full users names ToggleSwitch, but the module does not read --borderRadius-full.",
+      "tokens": [
+        "--borderRadius-default",
+        "--borderRadius-full"
+      ],
+      "source": "ToggleSwitch.module.css:67,234"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Loading uses the disabled look and aria-disabled; a loading switch cannot be told from a disabled one except by the spinner.",
+      "source": "ToggleSwitch.tsx:101,159,178-204"
+    },
+    {
+      "kind": "contradiction",
+      "text": "primer.style says a disabled ToggleSwitch has the disabled attribute; the code sets only aria-disabled, so it stays focusable and in the tab order.",
+      "source": "primer:toggle-switch; ToggleSwitch.tsx:171-184"
+    },
+    {
+      "kind": "gotcha",
+      "text": "It is announced as a toggle button (aria-pressed), not a switch; keep that role in a native accessibility tree for parity, or use the platform's switch role knowingly.",
+      "source": "ToggleSwitch.tsx:182"
+    },
+    {
+      "kind": "web-only",
+      "text": "The glyphs are centred in their halves only because a <button> centres its text by default; a native build centres them explicitly.",
+      "source": "ToggleSwitch.module.css:166-187"
+    },
+    {
+      "kind": "density",
+      "text": "For a coarse pointer an invisible layer at least 44px tall, full track width, is centred on the track to enlarge the hit target vertically; the visual size does not change.",
+      "tokens": [
+        "--control-minTarget-coarse"
+      ],
+      "source": "ToggleSwitch.module.css:88-99"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Track sizes, the 1px knob inset, the 2px knob travel correction, the 3px focus offset, the 80ms duration and its curve are literals; --toggleSwitch-transition-* are module-local variables, not tokens.",
+      "source": "ToggleSwitch.module.css:2-3,75-76,81,113-114,238-242,258"
+    },
+    {
+      "kind": "dead-token",
+      "text": "Every colour has a fallback to a retired --color-switch-* variable or a literal (#eaeef2, #0969da...); the controlTrack, controlKnob and control-checked tokens always resolve, so the fallbacks never apply.",
+      "source": "ToggleSwitch.module.css:120-266"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a disabled track borders in GrayText and a disabled knob's colour is GrayText.",
+      "source": "ToggleSwitch.module.css:125-127,268-270"
+    }
+  ]
+}

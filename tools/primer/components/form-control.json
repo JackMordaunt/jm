@@ -1,0 +1,417 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "form-control",
+  "name": "FormControl",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. It is the required wrapper for every Primer form input: it owns the label, caption, validation message and their accessibility wiring.",
+  "summary": "Pairs one input with its label, caption and validation message, and lays them out vertically for text-like inputs or horizontally (box, then label) for a checkbox or radio. Use it around every TextInput, Textarea, Select, Checkbox and Radio; group checkboxes or radios with CheckboxGroup or RadioGroup.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-24",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--control-fgColor-disabled",
+    "--fgColor-danger",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--fgColor-success",
+    "--stack-gap-condensed",
+    "--text-body-size-large",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "FormControl.tsx",
+      "FormControl.module.css",
+      "FormControl.docs.json",
+      "FormControlLabel.tsx",
+      "FormControlCaption.tsx",
+      "FormControlCaption.module.css",
+      "FormControlLeadingVisual.tsx",
+      "FormControlLeadingVisual.module.css",
+      "_FormControlValidation.tsx",
+      "_FormControlContext.tsx",
+      "InputLabel.tsx",
+      "InputLabel.module.css",
+      "InputValidation.tsx",
+      "InputValidation.module.css",
+      "ValidationAnimationContainer.tsx",
+      "ValidationAnimationContainer.module.css"
+    ],
+    "primer": [
+      "form-control"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "input",
+      "type": "slot",
+      "required": true,
+      "description": "The one input: TextInput, Textarea, Select, Checkbox, Radio, Autocomplete, TextInputWithTokens or SelectPanel (other children render as-is)."
+    },
+    {
+      "name": "label",
+      "type": "string",
+      "required": true,
+      "description": "FormControl.Label: the input's name. Always present; use visuallyHidden to hide it."
+    },
+    {
+      "name": "labelVisuallyHidden",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Label visuallyHidden: keep the name for assistive technology but draw nothing."
+    },
+    {
+      "name": "requiredText",
+      "type": "string",
+      "required": false,
+      "default": "*",
+      "description": "Label requiredText: the marker after a required label."
+    },
+    {
+      "name": "requiredIndicator",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Label requiredIndicator: when false the required marker is hidden from assistive technology (still drawn)."
+    },
+    {
+      "name": "caption",
+      "type": "string",
+      "required": false,
+      "description": "FormControl.Caption: hint text under the input (under the label for a checkbox or radio)."
+    },
+    {
+      "name": "validation",
+      "type": "slot",
+      "required": false,
+      "description": "FormControl.Validation with variant error or success: a message under the input that also sets the input's validationStatus. Not rendered for a checkbox or radio."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "FormControl.LeadingVisual: an icon between a checkbox or radio and its label; ignored for other inputs."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "vertical",
+        "horizontal"
+      ],
+      "required": false,
+      "default": "vertical",
+      "description": "Vertical stacks label, input, validation, caption; horizontal is input then label. Checkbox and Radio are always horizontal."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disable the input and grey the label and caption. A disabled CheckboxGroup or RadioGroup sets it too."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Mark the input required and show the label's marker. Ignored for a Radio."
+    },
+    {
+      "name": "id",
+      "type": "string",
+      "required": false,
+      "description": "The input's id; generated when absent. The label, caption and validation ids derive from it."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "Medium body text, semibold, --fgColor-default, pointer cursor; normal weight beside a checkbox or radio. A required label is followed by its marker 4px after it.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--base-text-weight-semibold",
+        "--base-text-weight-normal",
+        "--fgColor-default",
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "The wrapped input, given the control's id, disabled, required, validation status and description."
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "Checkbox and radio only: an icon at least 16px (24px when there is a caption), 8px after the box, before the label.",
+      "tokens": [
+        "--base-size-8",
+        "--text-body-size-large",
+        "--base-size-24",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "caption",
+      "name": "Caption",
+      "optional": true,
+      "description": "Small body text in --fgColor-muted, on its own line.",
+      "tokens": [
+        "--text-body-size-small",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "validation",
+      "name": "Validation message",
+      "optional": true,
+      "description": "A 12px AlertFill (error) or CheckCircleFill (success) icon and small semibold text, both in --fgColor-danger or --fgColor-success.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--fgColor-danger",
+        "--fgColor-success"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "layout",
+      "value": "vertical",
+      "default": true,
+      "description": "Label, input, other children, validation, caption, top to bottom, start-aligned, 4px apart.",
+      "tokens": [
+        "--base-size-4"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "horizontal",
+      "description": "Input, optional leading visual, then a column of label and caption, each label-column item inset 8px. Chosen automatically for Checkbox and Radio.",
+      "tokens": [
+        "--stack-gap-condensed",
+        "--base-text-weight-normal"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "Vertical: a start-aligned column in the order label, input, other children, validation message, caption, with 4px between consecutive visible items. Children keep their own width; the input does not stretch unless it is block.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "source": "FormControl.module.css:9-21; FormControl.tsx:200-233"
+    },
+    {
+      "text": "Horizontal: a row of the input (its horizontal margins zeroed), the optional leading visual, then a column of label and caption. Items stretch to the row's height with the box at the top of its cell, so the 16px box's 2px top margin centres it on the label's first 20px line; with a leading visual the row centres its items vertically instead.",
+      "tokens": [
+        "--base-size-2"
+      ],
+      "source": "FormControl.module.css:1-7,23-26; FormControl.tsx:135-198; shared.module.css:8-9"
+    },
+    {
+      "part": "label",
+      "text": "In horizontal layout the label and caption are each inset 8px from the box (or leading visual), and the label is normal weight rather than semibold.",
+      "tokens": [
+        "--stack-gap-condensed",
+        "--base-text-weight-normal"
+      ],
+      "source": "FormControl.module.css:28-37"
+    },
+    {
+      "part": "leading-visual",
+      "text": "The leading visual sits 8px after the box; its icon is at least 16px square (--text-body-size-large used as a size), at least 24px when there is a caption, filled in the text colour.",
+      "tokens": [
+        "--base-size-8",
+        "--text-body-size-large",
+        "--base-size-24"
+      ],
+      "values": [
+        {
+          "name": "iconMin",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconMinWithCaption",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "FormControl.module.css:39-57; FormControlLeadingVisual.module.css:1-21"
+    },
+    {
+      "part": "label",
+      "text": "A required label lays out its text and marker in a row with a 4px gap.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "source": "InputLabel.module.css:30-33; InputLabel.tsx:51-58"
+    },
+    {
+      "part": "validation",
+      "text": "The validation message is a row: a 12px icon with 2px above and 4px after it, then small semibold text on a 16px line (16/12).",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-4",
+        "--text-body-size-small",
+        "--base-text-weight-semibold"
+      ],
+      "values": [
+        {
+          "name": "iconSize",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "lineHeight",
+          "value": 1.3333,
+          "unit": "ratio"
+        }
+      ],
+      "source": "InputValidation.module.css:1-32; InputValidation.tsx:36-69"
+    },
+    {
+      "part": "label",
+      "text": "A visually hidden label is removed from layout (1px, clipped, absolutely positioned) and the next item takes no gap for it.",
+      "source": "InputLabel.module.css:14-27; FormControl.module.css:14-20; FormControl.tsx:134,202"
+    }
+  ],
+  "states": [
+    {
+      "state": "disabled",
+      "text": "Label and caption turn --control-fgColor-disabled, the label's cursor not-allowed, the leading visual --control-fgColor-disabled; the input takes its own disabled look.",
+      "tokens": [
+        "--control-fgColor-disabled"
+      ],
+      "source": "InputLabel.module.css:9-12; FormControlCaption.module.css:6-8; FormControl.module.css:43-45; FormControlLeadingVisual.module.css:8-10"
+    },
+    {
+      "state": "error",
+      "part": "validation",
+      "text": "An error Validation draws the AlertFill icon and message in --fgColor-danger and puts the input in its error state.",
+      "tokens": [
+        "--fgColor-danger"
+      ],
+      "source": "InputValidation.module.css:17-19; FormControl.tsx:70,213-216"
+    },
+    {
+      "state": "other",
+      "label": "success",
+      "part": "validation",
+      "text": "A success Validation draws CheckCircleFill and the message in --fgColor-success and puts the input in its success state.",
+      "tokens": [
+        "--fgColor-success"
+      ],
+      "source": "InputValidation.module.css:13-15; FormControl.tsx:70,213-216"
+    }
+  ],
+  "behaviour": [
+    {
+      "part": "label",
+      "text": "The label names and targets the input: a press on it focuses a text input or toggles a checkbox or radio. For SelectPanel it is not tied to the input.",
+      "source": "FormControlLabel.tsx:21-51; FormControl.tsx:87-89,185"
+    },
+    {
+      "part": "validation",
+      "text": "The validation message enters over 170ms cubic-bezier(0.44, 0.74, 0.36, 1), fading in while sliding down from one message-height above, clipped; instant under reduced motion.",
+      "motion": {
+        "durationMs": 170,
+        "easing": [
+          0.44,
+          0.74,
+          0.36,
+          1
+        ]
+      },
+      "source": "ValidationAnimationContainer.module.css:1-19; ValidationAnimationContainer.tsx:24-30; FormControl.tsx:229-231"
+    },
+    {
+      "text": "Vertical layout passes id, required, disabled, validationStatus and aria-describedby to the input only as defaults: props set on the input itself win. Horizontal layout imposes id, disabled and required (required never for a radio) over the input's own.",
+      "source": "FormControl.tsx:135-153,208-221"
+    },
+    {
+      "text": "Disabled is the control's disabled or its CheckboxGroup or RadioGroup's.",
+      "source": "FormControl.tsx:65-66"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a layout wrapper; the input carries the role)",
+    "minTargetPx": null,
+    "keyboard": [
+      "No keys of its own; the input's keys apply."
+    ],
+    "semantics": [
+      "The label is the input's accessible name (label for=id); the label has its own id for components that use aria-labelledby.",
+      "Vertical: the input is described by the validation message, then the caption. Horizontal (checkbox, radio): by the caption only.",
+      "The required marker is read unless requiredIndicator is false; the input's own aria-required carries the state.",
+      "A checkbox or radio never shows an individual validation message; validate the group instead."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The leading visual is wrapped twice: the outer wrapper is --fgColor-muted, but the inner element sets --fgColor-default, which wins, so the icon draws in --fgColor-default.",
+      "tokens": [
+        "--fgColor-muted",
+        "--fgColor-default"
+      ],
+      "source": "FormControl.module.css:39-41; FormControlLeadingVisual.module.css:1-4"
+    },
+    {
+      "kind": "gotcha",
+      "text": "In vertical layout the caption comes after the validation message, not before it; both sit under the input.",
+      "source": "FormControl.tsx:229-232"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The vertical column aligns children to the start and does not stretch them, so a TextInput keeps its intrinsic width inside a wide form unless block is set on it.",
+      "source": "FormControl.module.css:9-12"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The horizontal label is normal weight, the vertical label semibold; the group legend of CheckboxGroup and RadioGroup is semibold.",
+      "tokens": [
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold"
+      ],
+      "source": "FormControl.module.css:34-36; InputLabel.module.css:1-5"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The leading visual's minimum size reads --text-body-size-large, a font-size token, as a box dimension (16px).",
+      "tokens": [
+        "--text-body-size-large"
+      ],
+      "source": "FormControl.module.css:47-51"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The validation icon's min-height reads a unitless 16 from a custom property, which is invalid and dropped; only the 12px icon and its 2px top margin set the icon box's height.",
+      "source": "InputValidation.tsx:36-59; InputValidation.module.css:22-27"
+    },
+    {
+      "kind": "web-only",
+      "text": "Label-to-input association (focus or toggle on label press, accessible name) is the browser's label for=id behaviour; a native build wires the label's hit area to the input and names the input in its accessibility tree.",
+      "source": "FormControlLabel.tsx:40-51"
+    },
+    {
+      "kind": "web-only",
+      "text": "The visually hidden label uses the clip-path 1px technique to stay in the accessibility tree; a native build gives the input an accessible name with no drawn label.",
+      "source": "InputLabel.module.css:14-27"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 12px validation icon, the 16/12 line height, the 170ms entrance and the 16px/24px leading-visual minimums (as a local --leadingVisual-size) are literals.",
+      "source": "InputValidation.tsx:38-40; ValidationAnimationContainer.module.css:2; FormControlLeadingVisual.module.css:2,19"
+    }
+  ]
+}

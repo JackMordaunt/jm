@@ -1,0 +1,643 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "text-input",
+  "name": "TextInput",
+  "status": "alpha",
+  "statusNote": "TextInput has said alpha for years while GitHub ships it on nearly every form; the API is settled apart from deprecated props (variant, width, minWidth, maxWidth, icon) that still render.",
+  "summary": "A single-line text field in a bordered well, with optional leading and trailing visuals, an inline trailing action, a loading spinner and a character counter. Choose Textarea for multi-line text and Select for a fixed list; wrap it in a FormControl for its label, caption and validation message.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-size-20",
+    "--base-size-24",
+    "--base-size-28",
+    "--base-size-32",
+    "--base-size-40",
+    "--bgColor-default",
+    "--bgColor-inset",
+    "--bgColor-success-emphasis",
+    "--borderColor-accent-emphasis",
+    "--borderColor-danger-emphasis",
+    "--borderRadius-medium",
+    "--borderWidth-thick",
+    "--borderWidth-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-danger",
+    "--control-borderColor-disabled",
+    "--control-borderColor-rest",
+    "--control-xsmall-gap",
+    "--fgColor-danger",
+    "--fgColor-default",
+    "--fgColor-disabled",
+    "--fgColor-muted",
+    "--fontStack-monospace",
+    "--shadow-inset",
+    "--text-body-size-medium",
+    "--text-body-size-small",
+    "--text-body-lineHeight-small",
+    "--text-title-size-medium",
+    "--viewportRange-regular"
+  ],
+  "references": {
+    "react": [
+      "TextInput.tsx",
+      "TextInput.module.css",
+      "TextInput.docs.json",
+      "TextInputWrapper.tsx",
+      "TextInputWrapper.module.css",
+      "TextInputInnerVisualSlot.tsx",
+      "TextInputInnerVisualSlot.module.css",
+      "TextInputInnerAction.tsx",
+      "TextInputInnerAction.module.css",
+      "UnstyledTextInput.module.css",
+      "Spinner.tsx"
+    ],
+    "primer": [
+      "text-input"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The text. Controlled when given; otherwise defaultValue seeds an uncontrolled field."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Hint text drawn in --fgColor-muted while the field is empty. Not a label."
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "text",
+        "email",
+        "password",
+        "search",
+        "tel",
+        "url",
+        "number",
+        "date",
+        "time",
+        "datetime-local"
+      ],
+      "required": false,
+      "default": "text",
+      "description": "The native input type; password masks, date and time types have segmented editing."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "28px minimum, 32px minimum, or 40px fixed height."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "An icon or short text (a currency code, a prefix) inside the field before the typing area."
+    },
+    {
+      "name": "trailingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "An icon or short text inside the field after the typing area."
+    },
+    {
+      "name": "trailingAction",
+      "type": "slot",
+      "required": false,
+      "description": "A TextInput.Action: an invisible icon button (clear, reveal, copy) inside the field's end, with aria-label as its tooltip and name."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "Show a spinner in place of a visual and mark the field busy."
+    },
+    {
+      "name": "loaderPosition",
+      "type": "enum",
+      "values": [
+        "auto",
+        "leading",
+        "trailing"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "Where the spinner goes; auto means trailing unless a leadingVisual is set, then leading."
+    },
+    {
+      "name": "loaderText",
+      "type": "string",
+      "required": false,
+      "default": "Loading",
+      "description": "Visually hidden text that describes the field while loading."
+    },
+    {
+      "name": "characterLimit",
+      "type": "number",
+      "required": false,
+      "description": "Show an 'N characters remaining' counter under the field; exceeding it turns the field to error but does not stop typing."
+    },
+    {
+      "name": "validationStatus",
+      "type": "enum",
+      "values": [
+        "error",
+        "success"
+      ],
+      "required": false,
+      "description": "Border colour for a validated field; error also sets aria-invalid. FormControl sets it from its Validation child."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the container's width."
+    },
+    {
+      "name": "contrast",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the well with --bgColor-inset instead of --bgColor-default."
+    },
+    {
+      "name": "monospace",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Set the text in --fontStack-monospace."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Not editable, not focusable, drawn in the disabled colours."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "description": "Exposed as aria-required; FormControl also shows the label's asterisk."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called on every edit with the new text."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "The well: a 1px --control-borderColor-rest border, medium radius, --bgColor-default fill and an inset 1px top shadow; it clips its children and lays them out in a row.",
+      "tokens": [
+        "--control-borderColor-rest",
+        "--borderWidth-thin",
+        "--borderRadius-medium",
+        "--bgColor-default",
+        "--shadow-inset"
+      ]
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "An icon or short text in --fgColor-muted, vertically centred, never shrinking.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "input",
+      "name": "Input",
+      "description": "The editable text run: transparent, borderless, filling the remaining width, inheriting the container's font and colour.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "placeholder",
+      "name": "Placeholder",
+      "optional": true,
+      "description": "Hint text in --fgColor-muted, drawn only while the input is empty.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "An icon or short text in --fgColor-muted after the input.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "trailing-action",
+      "name": "Trailing action",
+      "optional": true,
+      "description": "An invisible-variant IconButton sized to the field (24px at medium, 20px at small, 28px at large), --fgColor-muted turning --fgColor-default on hover or focus, with a 4px margin each side.",
+      "tokens": [
+        "--fgColor-muted",
+        "--fgColor-default",
+        "--base-size-4",
+        "--base-size-20",
+        "--base-size-24",
+        "--base-size-28"
+      ]
+    },
+    {
+      "id": "spinner",
+      "name": "Loading spinner",
+      "optional": true,
+      "description": "A Spinner that takes a visual's place: 16px when the slot is empty, else drawn over the hidden visual at the visual's size."
+    },
+    {
+      "id": "character-counter",
+      "name": "Character counter",
+      "optional": true,
+      "description": "A line under the container in small body text: '<n> characters remaining' in --fgColor-muted, or an AlertFill icon and '<n> characters over' in --fgColor-danger, 4px apart.",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-lineHeight-small",
+        "--fgColor-muted",
+        "--fgColor-danger",
+        "--control-xsmall-gap"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px minimum height, 3px block padding, small body text on a 20px line; the trailing action is 20px.",
+      "tokens": [
+        "--base-size-28",
+        "--base-size-20",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px minimum height, no block padding, medium body text on a 20px line; the trailing action is 24px.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-24",
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px fixed height, 10px block padding, medium body text; visuals sit 12px from the edges and the trailing action is 28px.",
+      "tokens": [
+        "--base-size-40",
+        "--base-size-28",
+        "--base-size-12"
+      ]
+    },
+    {
+      "axis": "fill",
+      "value": "contrast",
+      "description": "The well fills with --bgColor-inset.",
+      "tokens": [
+        "--bgColor-inset"
+      ]
+    },
+    {
+      "axis": "font",
+      "value": "monospace",
+      "description": "The text is set in --fontStack-monospace.",
+      "tokens": [
+        "--fontStack-monospace"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "error",
+      "description": "Border --borderColor-danger-emphasis; the focus ring turns --control-borderColor-danger.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "success",
+      "description": "Border --bgColor-success-emphasis (a background token, see notes).",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is an inline row whose children stretch to its height; it is at least 32px tall at medium (28px at small) and grows only if a child is taller; large is exactly 40px. Borders are inside the height.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-28",
+        "--base-size-40"
+      ],
+      "source": "TextInputWrapper.module.css:1-4,16,96-123"
+    },
+    {
+      "text": "Text is medium body size on a 20px line (small body size at small); the input carries no vertical padding of its own and is centred in the stretched row by the platform text field.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--base-size-20"
+      ],
+      "source": "TextInputWrapper.module.css:5-7,108-110; UnstyledTextInput.module.css:1-9"
+    },
+    {
+      "text": "Block padding is 0 at medium, 3px top and bottom at small and 10px at large; the size rules' 8px inline padding is cancelled by the wrapper, so the inline insets come only from the visual rules below.",
+      "values": [
+        {
+          "name": "smallPaddingBlock",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "largePaddingBlock",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "TextInputWrapper.module.css:98-123,152-160"
+    },
+    {
+      "text": "Inline insets depend on which visuals are present. With none, the input pads 12px each side. With a leading visual, the container pads 8px before it (12px at large). With a trailing visual and no action, the container pads 8px after it (12px at large). Where an end has no visual, the input itself pads 8px on that side.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-12"
+      ],
+      "source": "TextInputWrapper.module.css:179-221"
+    },
+    {
+      "text": "Every child but the last is followed by an 8px gap; visuals and the action are vertically centred, keep their size and are coloured --fgColor-muted.",
+      "tokens": [
+        "--base-size-8",
+        "--fgColor-muted"
+      ],
+      "source": "TextInputWrapper.module.css:168-177"
+    },
+    {
+      "part": "trailing-action",
+      "text": "The trailing action sits 4px in from its neighbours on both sides, with 2px block and 4px inline padding inside a square button of --inner-action-size: 24px at medium, 20px at small, 28px at large. It draws Button's invisible variant otherwise.",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-4",
+        "--base-size-20",
+        "--base-size-24",
+        "--base-size-28"
+      ],
+      "source": "TextInputInnerAction.module.css:1-18,33-38; TextInputInnerAction.tsx:79-90; TextInputWrapper.module.css:96-114"
+    },
+    {
+      "text": "Width hugs the input's intrinsic width unless block, which makes the container a full-width flex row.",
+      "source": "TextInputWrapper.module.css:2,85-89"
+    },
+    {
+      "part": "spinner",
+      "text": "A spinner in an empty slot is the small 16px Spinner. A spinner over a visual is absolutely positioned to the visual's box (full height, capped at its width, pinned to the inner edge for a leading slot) while the visual is hidden but keeps its space.",
+      "values": [
+        {
+          "name": "spinnerSmall",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "TextInputInnerVisualSlot.tsx:42-60; TextInputInnerVisualSlot.module.css:1-24; Spinner.tsx:13"
+    },
+    {
+      "part": "character-counter",
+      "text": "The character counter is a separate row after the container (outside the border), in small body text, with a 16px AlertFill icon before the message when over the limit and a 4px gap.",
+      "tokens": [
+        "--control-xsmall-gap",
+        "--text-body-size-small"
+      ],
+      "source": "TextInput.tsx:266-291; TextInput.module.css:1-10; Text.module.css:2-5"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: --bgColor-default fill, --control-borderColor-rest border, --shadow-inset, --fgColor-default text, text cursor over the whole container.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-rest",
+        "--shadow-inset",
+        "--fgColor-default"
+      ],
+      "source": "TextInputWrapper.module.css:8-15"
+    },
+    {
+      "state": "focused",
+      "text": "While the input has focus (pointer or keyboard, not only focus-visible), the border turns --borderColor-accent-emphasis and a 2px outline of the same colour is drawn at offset -1px, so it covers the 1px border and reaches 1px outside the box. With a trailing action present, only focus in the input itself draws the ring; focusing the action does not. There is no hover state.",
+      "tokens": [
+        "--borderColor-accent-emphasis",
+        "--borderWidth-thick"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "TextInputWrapper.module.css:35-40; TextInputWrapper.tsx:74,77-78; TextInput.tsx:168-181"
+    },
+    {
+      "state": "error",
+      "text": "Border --borderColor-danger-emphasis; when focused, border and the 2px outline turn --control-borderColor-danger. Exceeding characterLimit forces this state.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "TextInputWrapper.module.css:69-78; TextInput.tsx:197"
+    },
+    {
+      "state": "other",
+      "label": "success",
+      "text": "Border --bgColor-success-emphasis. When focused the accent outline still draws over it, since the success border rule comes later at equal specificity.",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ],
+      "source": "TextInputWrapper.module.css:35-40,80-83"
+    },
+    {
+      "state": "disabled",
+      "text": "Text --fgColor-disabled, fill --control-bgColor-disabled, border --control-borderColor-disabled, no inset shadow, not-allowed cursor; not focusable.",
+      "tokens": [
+        "--fgColor-disabled",
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled"
+      ],
+      "source": "TextInputWrapper.module.css:52-63"
+    },
+    {
+      "state": "loading",
+      "part": "spinner",
+      "text": "The spinner replaces the trailing visual (auto, unless a leading visual exists, then the leading one) or sits where loaderPosition says; the field stays editable and is marked busy.",
+      "source": "TextInput.tsx:142-145,218,221-263"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "A press anywhere on the container focuses the input, except a press directly on a date, time or datetime-local input, which must keep the segment the press landed on.",
+      "source": "TextInput.tsx:147-155,217"
+    },
+    {
+      "text": "The character counter counts the current value's length (UTF-16 code units, as String.length does) against characterLimit: 'N character(s) remaining' at or under the limit, 'N character(s) over' above it, singular at 1. Over the limit the field takes the error state and aria-invalid, but input is not blocked.",
+      "source": "TextInput.tsx:125-138,183-197,266-291"
+    },
+    {
+      "text": "Focus and blur of the input drive the focused state; there is no transition on the ring or border colour.",
+      "motion": {
+        "instant": true
+      },
+      "source": "TextInput.tsx:115,168-181; TextInputWrapper.module.css:35-40"
+    },
+    {
+      "part": "trailing-action",
+      "text": "The trailing action's aria-label is also its tooltip, shown below it by default (tooltipDirection s); it is a separate tab stop after the input.",
+      "source": "TextInputInnerAction.tsx:62-97; TextInput.docs.json"
+    }
+  ],
+  "accessibility": {
+    "role": "textbox",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Tab focuses the input, then the trailing action if any.",
+      "Typing edits; the platform's text-editing keys apply (arrows, Home, End, selection, clipboard, undo)."
+    ],
+    "semantics": [
+      "Name from the FormControl label (or aria-label); a field without one is unlabelled.",
+      "aria-required when required; aria-invalid=true only for error (including over the character limit).",
+      "aria-describedby lists, in order: the static 'You can enter up to N characters' message (with a limit), the caller's describedby (FormControl's validation and caption), the leading visual, the trailing visual and the loading text; visuals are aria-hidden but still describe the field, so a text visual such as a unit is read.",
+      "While loading the container is aria-busy and the loaderText describes the field.",
+      "With a limit, the remaining or over message is announced through a polite status region debounced 500ms after the last change, not on first show; the visible counter is aria-hidden."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The input is a native <input>: caret, selection, IME, clipboard, undo, autofill (and the browser's autofill tint), password masking, spellcheck and the date/time segment editors are the browser's. A native build supplies every one of these, plus the --fgColor-muted placeholder that vanishes on the first character.",
+      "source": "UnstyledTextInput.module.css:1-13; TextInputWrapper.module.css:27-33"
+    },
+    {
+      "kind": "web-only",
+      "text": "Horizontal scrolling of text longer than the field, and keeping the caret in view while typing, is the native input's; the container clips (overflow hidden) and draws no fade or ellipsis.",
+      "source": "TextInputWrapper.module.css:4"
+    },
+    {
+      "kind": "web-only",
+      "text": "Without block or an explicit width the field's width is the browser's default for an <input> (about 20 average characters of the current font); a native build picks a default width, conventionally measured in the field's font, since nothing in the CSS gives one.",
+      "source": "TextInputWrapper.module.css:2; UnstyledTextInput.module.css:2"
+    },
+    {
+      "kind": "web-only",
+      "text": "The focus ring follows :focus-within, which also fires for a pointer press, unlike buttons' :focus-visible ring. A native build draws the ring whenever the field has focus.",
+      "source": "TextInputWrapper.module.css:35-40"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus outline straddles the edge: 2px at offset -1px lands 1px over the border and 1px outside the container. A native build must draw it outside the container's clip, or reserve 1px around the field.",
+      "source": "TextInputWrapper.module.css:4,35-40"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Success borders read --bgColor-success-emphasis, a background token, not --borderColor-success-emphasis; they differ in light (#1f883d against #1a7f37) and in high-contrast dark.",
+      "tokens": [
+        "--bgColor-success-emphasis",
+        "--borderColor-success-emphasis"
+      ],
+      "source": "TextInputWrapper.module.css:80-83"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Medium sets a minimum height, not a height; a tall child such as a 32px Spinner in an empty visual slot would grow it. Large sets a fixed 40px height, so its 10px block padding leaves 18px for content. Sizes differ in kind, not only in number.",
+      "source": "TextInputWrapper.module.css:3,101,116-122"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 3px and 10px block paddings and the 2px danger outline width are literals in the module; the accent outline reads --borderWidth-thick. --inner-action-size is a module-local variable, not a token.",
+      "source": "TextInputWrapper.module.css:38,75,96-122"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--control-bgColor-contrast is read for the contrast fill but is not a Primer token (a GitHub feature flag provides it), so the fill falls back to --bgColor-inset everywhere outside github.com.",
+      "tokens": [
+        "--bgColor-inset"
+      ],
+      "source": "TextInputWrapper.module.css:46-50"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The deprecated variant='small' sets font-size: (--text-body-size-small) without var(), which is invalid and dropped, so it keeps the medium size; size='small' is correct. The deprecated variant='large' sets --text-title-size-medium, a 20px title size, unlike size='large'.",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-title-size-medium"
+      ],
+      "source": "TextInputWrapper.module.css:125-149"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The rule commented 'ensures inputs don't zoom on mobile' sets the same 14px as the base rule under --viewportRange-regular, so it changes nothing; iOS Safari still zooms a focused input under 16px. A native build has no such zoom.",
+      "tokens": [
+        "--viewportRange-regular",
+        "--text-body-size-medium"
+      ],
+      "source": "TextInputWrapper.module.css:5,91-94"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The coarse-pointer 44px target for the trailing action is written as a nested bare ::after, which resolves to descendants' ::after rather than the button's own, so it may not enlarge the button's target. Give the action a 44px-tall hit area for a coarse pointer regardless.",
+      "tokens": [
+        "--control-minTarget-coarse"
+      ],
+      "source": "TextInputInnerAction.module.css:20-30"
+    },
+    {
+      "kind": "dead-token",
+      "text": "background-repeat and background-position (right 8px center) are leftovers for validation icons drawn as background images; nothing sets a background image now.",
+      "source": "TextInputWrapper.module.css:162-166"
+    },
+    {
+      "kind": "density",
+      "text": "No size changes for a coarse pointer, except the trailing action's intended 44px hit area.",
+      "source": "TextInputInnerAction.module.css:20-30"
+    }
+  ]
+}

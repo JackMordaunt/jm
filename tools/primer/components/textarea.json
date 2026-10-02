@@ -1,0 +1,437 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "textarea",
+  "name": "Textarea",
+  "status": "alpha",
+  "statusNote": "Long-shipped and stable; alpha is Primer's label, not a warning. It has no size variants and no visuals, unlike TextInput.",
+  "summary": "A multi-line text field in the same well as TextInput, resizable by the user and optionally growing with its content, with an optional character counter. Choose TextInput for one line; wrap it in a FormControl for label, caption and validation.",
+  "tokenGroups": [
+    "--base-size-12",
+    "--base-size-20",
+    "--base-size-32",
+    "--bgColor-default",
+    "--bgColor-inset",
+    "--bgColor-success-emphasis",
+    "--borderColor-accent-emphasis",
+    "--borderColor-danger-emphasis",
+    "--borderRadius-medium",
+    "--borderWidth-thick",
+    "--borderWidth-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-danger",
+    "--control-borderColor-disabled",
+    "--control-borderColor-rest",
+    "--control-xsmall-gap",
+    "--fgColor-danger",
+    "--fgColor-default",
+    "--fgColor-disabled",
+    "--fgColor-muted",
+    "--shadow-inset",
+    "--text-body-lineHeight-small",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "Textarea.tsx",
+      "TextArea.module.css",
+      "Textarea.docs.json",
+      "TextInputWrapper.tsx",
+      "TextInputWrapper.module.css",
+      "Text.module.css"
+    ],
+    "primer": [
+      "textarea"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The text, newlines included. Controlled when given; otherwise defaultValue seeds it."
+    },
+    {
+      "name": "placeholder",
+      "type": "string",
+      "required": false,
+      "description": "Hint text in --fgColor-muted while empty."
+    },
+    {
+      "name": "rows",
+      "type": "number",
+      "required": false,
+      "default": 7,
+      "description": "Visible lines; sets the intrinsic height."
+    },
+    {
+      "name": "cols",
+      "type": "number",
+      "required": false,
+      "default": 30,
+      "description": "Visible average-character columns; sets the intrinsic width."
+    },
+    {
+      "name": "resize",
+      "type": "enum",
+      "values": [
+        "both",
+        "horizontal",
+        "vertical",
+        "none"
+      ],
+      "required": false,
+      "default": "both",
+      "description": "Which axes the user may drag-resize. Forced to none while disabled."
+    },
+    {
+      "name": "autoSize",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Grow and shrink the height with the content, between minHeight and maxHeight."
+    },
+    {
+      "name": "minHeight",
+      "type": "number",
+      "required": false,
+      "description": "Minimum height of the text area in px."
+    },
+    {
+      "name": "maxHeight",
+      "type": "number",
+      "required": false,
+      "description": "Maximum height in px; beyond it the content scrolls."
+    },
+    {
+      "name": "characterLimit",
+      "type": "number",
+      "required": false,
+      "description": "Show a remaining-characters counter under the field; exceeding it sets the error state but does not block typing."
+    },
+    {
+      "name": "validationStatus",
+      "type": "enum",
+      "values": [
+        "error",
+        "success"
+      ],
+      "required": false,
+      "description": "Border colour for a validated field."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the container's width."
+    },
+    {
+      "name": "contrast",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the well with --bgColor-inset."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Not editable, not focusable, not resizable."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "description": "Exposed as aria-required."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called on every edit."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "TextInput's well: 1px --control-borderColor-rest border, medium radius, --bgColor-default fill, --shadow-inset, clipping its content.",
+      "tokens": [
+        "--control-borderColor-rest",
+        "--borderWidth-thin",
+        "--borderRadius-medium",
+        "--bgColor-default",
+        "--shadow-inset"
+      ]
+    },
+    {
+      "id": "text-area",
+      "name": "Text area",
+      "description": "The multi-line editable region, transparent and borderless, padded 12px on every side, in medium body text on a 20px line.",
+      "tokens": [
+        "--base-size-12",
+        "--text-body-size-medium",
+        "--base-size-20"
+      ]
+    },
+    {
+      "id": "placeholder",
+      "name": "Placeholder",
+      "optional": true,
+      "description": "Hint text in --fgColor-muted at the first line while empty.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "resize-handle",
+      "name": "Resize handle",
+      "optional": true,
+      "description": "The platform's drag grip at the bottom-end corner, present unless resize is none or the field is disabled."
+    },
+    {
+      "id": "character-counter",
+      "name": "Character counter",
+      "optional": true,
+      "description": "A line under the container in small body text: '<n> characters remaining' in --fgColor-muted, or a 16px AlertFill icon and '<n> characters over' in --fgColor-danger, 4px apart.",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-lineHeight-small",
+        "--fgColor-muted",
+        "--fgColor-danger",
+        "--control-xsmall-gap"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "fill",
+      "value": "contrast",
+      "description": "The well fills with --bgColor-inset.",
+      "tokens": [
+        "--bgColor-inset"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "error",
+      "description": "Border --borderColor-danger-emphasis; the focus ring turns --control-borderColor-danger.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "success",
+      "description": "Border --bgColor-success-emphasis.",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ]
+    },
+    {
+      "axis": "resize",
+      "value": "both",
+      "default": true,
+      "description": "The user may drag both width and height; horizontal, vertical and none restrict it."
+    }
+  ],
+  "layout": [
+    {
+      "text": "Textarea uses TextInput's base well only: no visuals, no trailing action, no size variants. The container is an inline row at least 32px tall; the text area stretches to its height and takes its full width.",
+      "tokens": [
+        "--base-size-32"
+      ],
+      "source": "Textarea.tsx:129-162; TextInputWrapper.module.css:1-16; TextArea.module.css:1-10"
+    },
+    {
+      "part": "text-area",
+      "text": "The text area pads 12px on all four sides and sets text at medium body size on a 20px line inherited from the container.",
+      "tokens": [
+        "--base-size-12",
+        "--text-body-size-medium",
+        "--base-size-20"
+      ],
+      "source": "TextInputWrapper.module.css:5-7,42-44; TextArea.module.css:1-5"
+    },
+    {
+      "part": "text-area",
+      "text": "Intrinsic size comes from rows and cols: the height is rows lines at the 20px line height plus 24px of padding (7 rows: 164px, 166px with the border), and the width is cols average character widths of the current font plus 24px. A native build measures the font's average character width for cols.",
+      "values": [
+        {
+          "name": "defaultRows",
+          "value": 7,
+          "unit": "count"
+        },
+        {
+          "name": "defaultCols",
+          "value": 30,
+          "unit": "count"
+        },
+        {
+          "name": "lineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "Textarea.tsx:15-17,78-80,146-147; TextInputWrapper.module.css:7,42-44"
+    },
+    {
+      "part": "text-area",
+      "text": "minHeight and maxHeight bound the text area itself (not the container); with block the container is a full-width flex row.",
+      "source": "Textarea.tsx:150-154; TextInputWrapper.module.css:85-89"
+    },
+    {
+      "part": "character-counter",
+      "text": "The character counter is a separate row after the container, in small body text, with the 16px AlertFill icon only when over the limit and a 4px gap.",
+      "tokens": [
+        "--control-xsmall-gap",
+        "--text-body-size-small",
+        "--text-body-lineHeight-small"
+      ],
+      "source": "Textarea.tsx:163-187; TextArea.module.css:40-49; Text.module.css:2-5"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Rest: --bgColor-default fill, --control-borderColor-rest border, --shadow-inset, --fgColor-default text.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-rest",
+        "--shadow-inset",
+        "--fgColor-default"
+      ],
+      "source": "TextInputWrapper.module.css:8-15"
+    },
+    {
+      "state": "focused",
+      "text": "While the text area has focus, by pointer or keyboard, the border turns --borderColor-accent-emphasis and a 2px outline of the same colour is drawn at offset -1px. There is no hover state.",
+      "tokens": [
+        "--borderColor-accent-emphasis",
+        "--borderWidth-thick"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "TextInputWrapper.module.css:35-40; TextInputWrapper.tsx:78"
+    },
+    {
+      "state": "error",
+      "text": "Border --borderColor-danger-emphasis; focused, the border and 2px outline turn --control-borderColor-danger. Exceeding characterLimit forces it.",
+      "tokens": [
+        "--borderColor-danger-emphasis",
+        "--control-borderColor-danger"
+      ],
+      "source": "TextInputWrapper.module.css:69-78; Textarea.tsx:125"
+    },
+    {
+      "state": "other",
+      "label": "success",
+      "text": "Border --bgColor-success-emphasis; the accent focus outline still draws over it.",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ],
+      "source": "TextInputWrapper.module.css:80-83"
+    },
+    {
+      "state": "disabled",
+      "text": "Text --fgColor-disabled, fill --control-bgColor-disabled, border --control-borderColor-disabled, no shadow, not-allowed cursor, no resize handle; not focusable.",
+      "tokens": [
+        "--fgColor-disabled",
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled"
+      ],
+      "source": "TextInputWrapper.module.css:52-63; TextArea.module.css:36-38"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Dragging the resize handle changes the text area's size along the axes resize allows; the container follows. The default allows both axes.",
+      "source": "TextArea.module.css:6,16-30; Textarea.tsx:80,140"
+    },
+    {
+      "text": "With autoSize the height follows the content (CSS field-sizing: content), bounded by minHeight and maxHeight; past maxHeight the text area scrolls vertically.",
+      "source": "TextArea.module.css:32-34; Textarea.tsx:141,150-154"
+    },
+    {
+      "text": "Text wraps at the text area's width; content taller than the area scrolls inside it, and the caret is kept in view.",
+      "source": "TextArea.module.css:1-10"
+    },
+    {
+      "text": "The character counter reads the value's length against characterLimit: 'N character(s) remaining', or 'N character(s) over' with the error state; typing is never blocked.",
+      "source": "Textarea.tsx:99-125,163-187"
+    }
+  ],
+  "accessibility": {
+    "role": "textbox (multi-line)",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab focuses it; Tab inside it moves focus on, it does not insert a tab character.",
+      "Enter inserts a newline; the platform's text-editing keys apply."
+    ],
+    "semantics": [
+      "Name from the FormControl label or aria-label.",
+      "aria-multiline is implied; aria-required when required.",
+      "aria-invalid is always set: true for error (including over the limit), false otherwise.",
+      "With a limit, 'You can enter up to N characters' describes the field ahead of the caller's describedby, and the remaining count is announced politely, debounced 500ms after the last change; the visible counter is aria-hidden."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The text area is a native <textarea>: wrapping, scrolling, caret, selection, IME, clipboard, undo, spellcheck and the resize grip are the browser's. A native build supplies all of them, including a drag grip that clamps to the resize axis.",
+      "source": "TextArea.module.css:1-38"
+    },
+    {
+      "kind": "web-only",
+      "text": "autoSize relies on field-sizing: content, which only some browsers support; elsewhere it silently does nothing and the area keeps its rows height. A native build measures the wrapped text height each frame (lines times 20px plus 24px padding) and clamps it to minHeight and maxHeight. That needs the text laid out at the current width before the field's own height is known.",
+      "source": "TextArea.module.css:32-34"
+    },
+    {
+      "kind": "web-only",
+      "text": "The default size comes from rows and cols, which the browser turns into a box from the font's line height and average character width. A native build must measure the font to reproduce it.",
+      "source": "Textarea.tsx:15-16,146-147"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The container's 32px min-height and inline-flex row are TextInput's; the 12px padding belongs to the textarea, not the container, so it scrolls with the text and the textarea, not the container, is what resizes.",
+      "source": "TextInputWrapper.module.css:1-4,42-44"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Disabled forces resize none whatever the resize prop says.",
+      "source": "TextArea.module.css:36-38"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Success borders read --bgColor-success-emphasis, a background token, not the border token of the same role.",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ],
+      "source": "TextInputWrapper.module.css:80-83"
+    },
+    {
+      "kind": "dead-token",
+      "text": "contrast reads --control-bgColor-contrast, which is not a Primer token, so it falls back to --bgColor-inset.",
+      "tokens": [
+        "--bgColor-inset"
+      ],
+      "source": "TextInputWrapper.module.css:46-50"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The focus outline reaches 1px outside the container (2px at offset -1px); do not clip it.",
+      "source": "TextInputWrapper.module.css:35-40"
+    }
+  ]
+}

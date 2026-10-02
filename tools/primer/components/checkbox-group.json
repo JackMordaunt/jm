@@ -1,0 +1,325 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "checkbox-group",
+  "name": "CheckboxGroup",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. It shares all of its markup and styling with RadioGroup through the internal CheckboxOrRadioGroup.",
+  "summary": "A labelled set of related checkboxes, each in its own FormControl, with one caption and one validation message for the whole set and an onChange that reports every checked value. Choose RadioGroup when only one option may be chosen.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-8",
+    "--base-text-weight-semibold",
+    "--fgColor-danger",
+    "--fgColor-muted",
+    "--fgColor-success",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "CheckboxGroup.tsx",
+      "CheckboxGroupContext.ts",
+      "CheckboxGroup.docs.json",
+      "CheckboxOrRadioGroup.tsx",
+      "CheckboxOrRadioGroup.module.css",
+      "CheckboxOrRadioGroupLabel.tsx",
+      "CheckboxOrRadioGroupCaption.tsx",
+      "CheckboxOrRadioGroupValidation.tsx",
+      "InputValidation.tsx",
+      "InputValidation.module.css",
+      "ValidationAnimationContainer.tsx",
+      "ValidationAnimationContainer.module.css",
+      "useRenderForcingRef.ts"
+    ],
+    "primer": [
+      "checkbox-group"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "label",
+      "type": "string",
+      "required": false,
+      "description": "CheckboxGroup.Label: the group's visible name (a legend). Without it, aria-labelledby must name the group."
+    },
+    {
+      "name": "labelVisuallyHidden",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Label visuallyHidden: keep the legend for assistive technology but draw nothing."
+    },
+    {
+      "name": "ariaLabelledby",
+      "type": "string",
+      "required": false,
+      "description": "The id of an existing heading or text that names the group, used when there is no Label."
+    },
+    {
+      "name": "caption",
+      "type": "string",
+      "required": false,
+      "description": "CheckboxGroup.Caption: a hint for the whole group, under the label."
+    },
+    {
+      "name": "validation",
+      "type": "slot",
+      "required": false,
+      "description": "CheckboxGroup.Validation with variant error or success: one message for the whole group, under the options."
+    },
+    {
+      "name": "options",
+      "type": "list",
+      "required": true,
+      "description": "FormControl children, each holding one Checkbox (with a value) and its label, optionally a caption and leading visual."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Disable every checkbox and dim the label."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Mark the group required: an asterisk after the label and ', required' for assistive technology."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called on any toggle with the array of checked values (in the order they were checked) and the event."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "group",
+      "name": "Group",
+      "description": "A borderless, unpadded fieldset (or a plain container with role group when there is no Label)."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "optional": true,
+      "description": "The legend: medium body text, semibold, on its own line; --fgColor-muted when the group is disabled; followed by an asterisk 8px after it when required.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--base-text-weight-semibold",
+        "--fgColor-muted",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "caption",
+      "name": "Caption",
+      "optional": true,
+      "description": "Group hint inside the legend, under the label: medium body text in --fgColor-muted (larger than FormControl's 12px caption).",
+      "tokens": [
+        "--text-body-size-medium",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "options",
+      "name": "Options",
+      "description": "A column of FormControls (checkbox, label, caption), 8px apart.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "validation",
+      "name": "Validation message",
+      "optional": true,
+      "description": "Under the options: a 12px AlertFill (error) or CheckCircleFill (success) icon and small semibold text, both in --fgColor-danger or --fgColor-success.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--fgColor-danger",
+        "--fgColor-success"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "validation",
+      "value": "error",
+      "description": "Validation message and icon in --fgColor-danger with AlertFillIcon.",
+      "tokens": [
+        "--fgColor-danger"
+      ]
+    },
+    {
+      "axis": "validation",
+      "value": "success",
+      "description": "Validation message and icon in --fgColor-success with CheckCircleFillIcon.",
+      "tokens": [
+        "--fgColor-success"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "part": "label",
+      "text": "The label sits on its own line with 8px below it before the options, when visible; a visually hidden label takes no space.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "CheckboxOrRadioGroup.module.css:23-29,36-39; CheckboxOrRadioGroup.tsx:65,97"
+    },
+    {
+      "part": "label",
+      "text": "Required adds an asterisk in a row after the label text, the text having an 8px end margin.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "CheckboxOrRadioGroupLabel.tsx:33-40; CheckboxOrRadioGroup.module.css:46-48"
+    },
+    {
+      "part": "caption",
+      "text": "The caption follows the label inside the legend, so the 8px gap before the options comes after the caption.",
+      "source": "CheckboxOrRadioGroup.tsx:97-104; CheckboxOrRadioGroup.module.css:23-34"
+    },
+    {
+      "part": "options",
+      "text": "Options stack in a column with 8px between consecutive items and no list bullets or padding.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "CheckboxOrRadioGroup.module.css:1-11"
+    },
+    {
+      "part": "validation",
+      "text": "With a validation message, the group gains 8px of bottom margin and the message follows it. Its icon is 12px with 2px above and 4px after it; its text is small body size on a 16px line (16/12).",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-2",
+        "--base-size-4",
+        "--text-body-size-small"
+      ],
+      "values": [
+        {
+          "name": "iconSize",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "lineHeight",
+          "value": 1.3333,
+          "unit": "ratio"
+        }
+      ],
+      "source": "CheckboxOrRadioGroup.module.css:13-21; InputValidation.module.css:1-32; InputValidation.tsx:36-69"
+    }
+  ],
+  "states": [
+    {
+      "state": "disabled",
+      "text": "Every checkbox in the group is disabled (FormControls read the group's disabled) and the label turns --fgColor-muted.",
+      "tokens": [
+        "--fgColor-muted"
+      ],
+      "source": "CheckboxOrRadioGroup.tsx:70-88; CheckboxOrRadioGroup.module.css:41-43; FormControl.tsx:65-66"
+    },
+    {
+      "state": "error",
+      "part": "validation",
+      "text": "An error Validation shows the AlertFill icon and message in --fgColor-danger; the checkboxes themselves do not change.",
+      "tokens": [
+        "--fgColor-danger"
+      ],
+      "source": "InputValidation.module.css:17-19; InputValidation.tsx:17-23"
+    },
+    {
+      "state": "other",
+      "label": "success",
+      "part": "validation",
+      "text": "A success Validation shows the CheckCircleFill icon and message in --fgColor-success.",
+      "tokens": [
+        "--fgColor-success"
+      ],
+      "source": "InputValidation.module.css:13-15; InputValidation.tsx:17-23"
+    }
+  ],
+  "behaviour": [
+    {
+      "part": "validation",
+      "text": "The validation message enters by fading from transparent while sliding down from one message-height above, over 170ms cubic-bezier(0.44, 0.74, 0.36, 1); under reduced motion it appears at once. It clips while sliding.",
+      "motion": {
+        "durationMs": 170,
+        "easing": [
+          0.44,
+          0.74,
+          0.36,
+          1
+        ]
+      },
+      "source": "ValidationAnimationContainer.module.css:1-19; ValidationAnimationContainer.tsx:24-30"
+    },
+    {
+      "text": "onChange runs only when given. The selection starts as the values of children whose Checkbox is checked or defaultChecked at first render; a toggle on adds the value at the end, a toggle off removes it; then onChange receives the whole array.",
+      "source": "CheckboxGroup.tsx:28-67; useRenderForcingRef.ts:10-27"
+    }
+  ],
+  "accessibility": {
+    "role": "group (fieldset with legend)",
+    "minTargetPx": null,
+    "keyboard": [
+      "No keys of its own; each checkbox is its own tab stop and toggles with Space."
+    ],
+    "semantics": [
+      "With a Label the group is a fieldset named by its legend; the legend also carries ', required' (visually hidden), the caption and a visually hidden copy of the validation text, so screen readers read them on entering the group. The visible validation message is then aria-hidden.",
+      "Without a Label the options container has role group, aria-labelledby from the prop, and aria-describedby naming the validation message, caption and a visually hidden 'Required'.",
+      "Disabled with a Label is the fieldset's disabled, which disables every control inside it."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The validation icon box's min-height is set to a custom property holding the unitless number 16 (12px icon times 16/12), which is invalid for min-height and is dropped; the box is only as tall as the 12px icon, kept off the text's top by its 2px margin. A native build aligns the 12px icon to the first 16px text line.",
+      "source": "InputValidation.tsx:36-59; InputValidation.module.css:22-27"
+    },
+    {
+      "kind": "gotcha",
+      "text": "onChange's array is in the order values were checked, not the order of the options, and it is seeded once at first render from children's checked/defaultChecked; later changes to those props are not re-read. A native build should derive the array from the options' current state in option order unless parity matters.",
+      "source": "CheckboxGroup.tsx:35-55"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Only FormControl children are searched for checked boxes when seeding the selection; a Checkbox placed directly in the group is not counted.",
+      "source": "CheckboxGroup.tsx:28-43"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The group caption is medium body size (14px); FormControl captions, including each option's, are small (12px). Both are --fgColor-muted.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-size-small"
+      ],
+      "source": "CheckboxOrRadioGroup.module.css:31-34; FormControlCaption.module.css:1-9"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A disabled group dims its label to --fgColor-muted while each option's FormControl label uses --control-fgColor-disabled; the two greys differ (#59636e against #818b98 in light), so the group label stays darker than its options' labels.",
+      "tokens": [
+        "--fgColor-muted",
+        "--control-fgColor-disabled"
+      ],
+      "source": "CheckboxOrRadioGroup.module.css:41-43; InputLabel.module.css:9-12"
+    },
+    {
+      "kind": "web-only",
+      "text": "fieldset and legend give the grouping semantics, the legend's announcement on entry and disabled propagation to every descendant control; a native build models the group in its accessibility tree and passes disabled down itself.",
+      "source": "CheckboxOrRadioGroup.tsx:67,80-104"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 12px validation icon, the 16/12 line height and the 170ms entrance with its curve are literals in the components, not tokens.",
+      "source": "InputValidation.tsx:38-40; ValidationAnimationContainer.module.css:2"
+    }
+  ]
+}

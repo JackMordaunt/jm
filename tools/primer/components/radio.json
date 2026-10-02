@@ -1,0 +1,265 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "radio",
+  "name": "Radio",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. It is the bare 16px circle; label and layout come from FormControl and grouping from RadioGroup.",
+  "summary": "A 16px circle for one choice among mutually exclusive options sharing a name. Use it inside a RadioGroup with a FormControl per option; choose Checkbox for independent choices and SegmentedControl for a compact view switch.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-16",
+    "--bgColor-default",
+    "--borderRadius-full",
+    "--borderWidth-thicker",
+    "--borderWidth-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-disabled",
+    "--control-borderColor-emphasis",
+    "--control-checked-bgColor-disabled",
+    "--control-checked-bgColor-rest",
+    "--control-checked-fgColor-disabled",
+    "--control-checked-fgColor-rest",
+    "--focus-outline-color"
+  ],
+  "references": {
+    "react": [
+      "Radio.tsx",
+      "Radio.module.css",
+      "shared.module.css",
+      "Radio.docs.json",
+      "RadioGroupContext.ts",
+      "focusOutline.css"
+    ],
+    "primer": [
+      "radio"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "value",
+      "type": "string",
+      "required": true,
+      "description": "A value never shown, identifying this option in the group and the form."
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": "The group name; radios sharing a name are exclusive. Taken from RadioGroup when not given."
+    },
+    {
+      "name": "checked",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether this option is chosen. Controlled when given; otherwise defaultChecked seeds it."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Not interactive, not focusable."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "description": "Some radio in the name group must be chosen to submit. FormControl strips it from an individual radio; set it on RadioGroup."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called when this radio becomes checked."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "circle",
+      "name": "Circle",
+      "description": "A 16px circle with a 1px --control-borderColor-emphasis ring inside it and a --bgColor-default fill.",
+      "tokens": [
+        "--base-size-16",
+        "--borderRadius-full",
+        "--borderWidth-thin",
+        "--control-borderColor-emphasis",
+        "--bgColor-default"
+      ]
+    },
+    {
+      "id": "dot",
+      "name": "Dot",
+      "description": "When checked, the ring thickens to 4px of --control-checked-bgColor-rest, leaving an 8px --control-checked-fgColor-rest centre: the 'dot' is the fill showing through, not a separate shape.",
+      "tokens": [
+        "--borderWidth-thicker",
+        "--control-checked-bgColor-rest",
+        "--control-checked-fgColor-rest"
+      ]
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "part": "circle",
+      "text": "The circle is exactly 16px, ring included, with 2px of top margin that centres it on a 20px text line beside it and no other margin.",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-2"
+      ],
+      "source": "shared.module.css:1-16; Radio.module.css:1-2"
+    },
+    {
+      "part": "dot",
+      "text": "Checked, the ring is 4px wide inside the 16px box, so the centre is an 8px disc.",
+      "tokens": [
+        "--borderWidth-thicker"
+      ],
+      "values": [
+        {
+          "name": "centreDiameter",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "Radio.module.css:7-14; shared.module.css:4-5"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Unchecked: --bgColor-default fill, 1px --control-borderColor-emphasis ring, pointer cursor.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-emphasis"
+      ],
+      "source": "shared.module.css:10-14"
+    },
+    {
+      "state": "hovered",
+      "text": "No hover change.",
+      "source": "Radio.module.css:1-33; shared.module.css:1-22"
+    },
+    {
+      "state": "checked",
+      "text": "Fill --control-checked-fgColor-rest, ring 4px of --control-checked-bgColor-rest (the background token, so dark high-contrast shows no separate border colour).",
+      "tokens": [
+        "--control-checked-fgColor-rest",
+        "--control-checked-bgColor-rest",
+        "--borderWidth-thicker"
+      ],
+      "source": "Radio.module.css:7-14"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus only: a 2px solid --focus-outline-color outline 2px outside the circle, no shadow. The outline follows the circle's round shape.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "Radio.module.css:25-27; focusOutline.css:1-5"
+    },
+    {
+      "state": "disabled",
+      "text": "Unchecked: fill --control-bgColor-disabled, ring --control-borderColor-disabled. Checked: centre --control-checked-fgColor-disabled, 4px ring --control-checked-bgColor-disabled. Not-allowed cursor.",
+      "tokens": [
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled",
+        "--control-checked-fgColor-disabled",
+        "--control-checked-bgColor-disabled"
+      ],
+      "source": "shared.module.css:18-21; Radio.module.css:16-22"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Choosing a radio checks it and unchecks the other radios with the same name; a checked radio cannot be unchecked by pressing it again.",
+      "source": "Radio.tsx:57-61,70-84"
+    },
+    {
+      "text": "The ring colour transitions over 80ms cubic-bezier(0.33, 1, 0.68, 1); the ring width and the fill change instantly, so the dot appears at once.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Radio.module.css:3-5"
+    },
+    {
+      "text": "Its name comes from the name prop, else from the enclosing RadioGroup; a radio with neither warns, since it would not be exclusive with anything.",
+      "source": "Radio.tsx:56,61-68"
+    }
+  ],
+  "accessibility": {
+    "role": "radio",
+    "minTargetPx": 16,
+    "keyboard": [
+      "Tab enters the group at the checked radio (or the first, if none is checked) and Tab again leaves it; the group is one tab stop.",
+      "Arrow keys move to the next or previous enabled radio in the name group and check it, wrapping at the ends.",
+      "Space checks the focused radio."
+    ],
+    "semantics": [
+      "Name from the associated label.",
+      "Checked state is the radio's own; the group is named by RadioGroup's legend."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Exclusivity by name, single-tab-stop roving focus and arrow-key selection are the browser's behaviour for <input type=radio>; Radio adds none of it. A native build implements the group model: one tab stop, arrows move and check, wrap at the ends, skip disabled radios.",
+      "source": "Radio.tsx:70-84"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "aria-checked is set from the checked prop, so an uncontrolled radio carries aria-checked=false even after the user checks it; browsers expose the native state, which is what a native build should expose.",
+      "source": "Radio.tsx:77-78"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "transition: background-color, border-color 80ms ... gives background-color no duration, so the fill snaps; only the ring colour fades.",
+      "source": "Radio.module.css:3-5"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The forced-colours rule (CanvasText fill and border) is not scoped to :checked, so under forced colours every radio, checked or not, draws as a filled disc and the states look alike. A native high-contrast build should fill only the checked one.",
+      "source": "Radio.module.css:29-32"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The dot is the 8px of fill left inside a 4px ring, in --control-checked-fgColor-rest (white, off-white in dark dimmed); dark themes do not darken it. Disabled-checked turns it --control-checked-fgColor-disabled, which is near-black in dark themes.",
+      "tokens": [
+        "--control-checked-fgColor-rest",
+        "--control-checked-fgColor-disabled"
+      ],
+      "source": "Radio.module.css:9,19"
+    },
+    {
+      "kind": "gotcha",
+      "text": "No hover or pressed colour, and the target is the 16px circle alone; the FormControl label extends it in practice.",
+      "source": "Radio.module.css:1-33"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 80ms duration and curve and the focus outline's 2px width and offset are literals.",
+      "source": "Radio.module.css:5,26"
+    },
+    {
+      "kind": "density",
+      "text": "No size change for a coarse pointer.",
+      "source": "shared.module.css:1-22"
+    }
+  ]
+}

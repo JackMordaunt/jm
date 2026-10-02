@@ -1,0 +1,337 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "checkbox",
+  "name": "Checkbox",
+  "status": "alpha",
+  "statusNote": "Stable in use; alpha is Primer's label. It is the bare 16px box only: its label, caption and layout come from FormControl, and groups from CheckboxGroup.",
+  "summary": "A 16px box that toggles an independent on/off choice, with an indeterminate (mixed) state for a parent of partly checked children. Choose ToggleSwitch for a setting that applies immediately and Radio for one of several exclusive options; pair it with a FormControl label.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-16",
+    "--bgColor-default",
+    "--borderRadius-small",
+    "--borderWidth-thin",
+    "--control-bgColor-disabled",
+    "--control-borderColor-disabled",
+    "--control-borderColor-emphasis",
+    "--control-checked-bgColor-disabled",
+    "--control-checked-bgColor-rest",
+    "--control-checked-borderColor-disabled",
+    "--control-checked-fgColor-disabled",
+    "--fgColor-onEmphasis",
+    "--focus-outline-color"
+  ],
+  "references": {
+    "react": [
+      "Checkbox.tsx",
+      "Checkbox.module.css",
+      "shared.module.css",
+      "Checkbox.docs.json",
+      "focusOutline.css"
+    ],
+    "primer": [
+      "checkbox"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "checked",
+      "type": "boolean",
+      "required": false,
+      "description": "On or off. Controlled when given; otherwise defaultChecked seeds it."
+    },
+    {
+      "name": "indeterminate",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show the mixed dash instead of the check; overrides checked, which is then treated as false."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "A value never shown, submitted with the form and reported to CheckboxGroup's onChange. Also used as the input's name unless a name is given."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Not interactive, not focusable. FormControl and CheckboxGroup set it."
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "required": false,
+      "description": "Must be checked to submit."
+    },
+    {
+      "name": "validationStatus",
+      "type": "enum",
+      "values": [
+        "error",
+        "success"
+      ],
+      "required": false,
+      "description": "Only sets aria-invalid for error; a single checkbox has no validation look."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called on every toggle with the new checked state."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "box",
+      "name": "Box",
+      "description": "A 16px square, 1px --control-borderColor-emphasis border inside it, small radius, --bgColor-default fill.",
+      "tokens": [
+        "--base-size-16",
+        "--borderWidth-thin",
+        "--control-borderColor-emphasis",
+        "--borderRadius-small",
+        "--bgColor-default"
+      ]
+    },
+    {
+      "id": "glyph",
+      "name": "Check or dash",
+      "description": "A 16px square of --fgColor-onEmphasis centred on the box and masked by a glyph at 75% of its width: a checkmark (12 by 9 at that scale) or, when indeterminate, a round-ended dash (12 by 2.4).",
+      "tokens": [
+        "--fgColor-onEmphasis",
+        "--base-size-16"
+      ]
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "part": "box",
+      "text": "The box is exactly 16px square, border included, with no margin except 2px on top, which centres it on a 20px text line beside it.",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-2"
+      ],
+      "source": "shared.module.css:1-16"
+    },
+    {
+      "part": "glyph",
+      "text": "The glyph layer is 16px square, centred in the 14px content box (so it overhangs the border by 1px each side, harmlessly, as the mask is smaller). Its mask is drawn at 75% of the layer's width with its aspect kept, centred, not repeated.",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "values": [
+        {
+          "name": "maskScale",
+          "value": 75,
+          "unit": "percent"
+        }
+      ],
+      "source": "Checkbox.module.css:9-21; shared.module.css:3,15-16"
+    },
+    {
+      "part": "glyph",
+      "text": "The checkmark mask is a 12 by 9 path: M11.7803 0.219625 C11.921 0.360427 12 0.551305 12 0.750313 C12 0.949321 11.921 1.14019 11.7803 1.281 L4.5186 8.54042 C4.37775 8.681 4.18682 8.76 3.98774 8.76 C3.78867 8.76 3.59773 8.681 3.45689 8.54042 L0.201622 5.2862 C0.0689277 5.14383 -0.00330905 4.95555 0.000116493 4.76098 C0.00355205 4.56643 0.0823894 4.38081 0.220032 4.24321 C0.357665 4.10562 0.543355 4.02681 0.73797 4.02338 C0.932584 4.01994 1.12093 4.09217 1.26334 4.22482 L3.98774 6.94835 L10.7186 0.219625 C10.8595 0.0789923 11.0504 0 11.2495 0 C11.4485 0 11.6395 0.0789923 11.7803 0.219625 Z. The dash is a 10 by 2 rounded bar: M0 1 C0 0.447715 0.447715 0 1 0 H9 C9.55229 0 10 0.447715 10 1 C10 1.55228 9.55229 2 9 2 H1 C0.447715 2 0 1.55228 0 1 Z (both base64 SVGs in the module).",
+      "source": "Checkbox.module.css:18,77"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Unchecked: --bgColor-default fill, --control-borderColor-emphasis border, no glyph, pointer cursor.",
+      "tokens": [
+        "--bgColor-default",
+        "--control-borderColor-emphasis"
+      ],
+      "source": "shared.module.css:10-14"
+    },
+    {
+      "state": "hovered",
+      "text": "No hover change; the box looks the same under the pointer.",
+      "source": "Checkbox.module.css:1-85; shared.module.css:1-22"
+    },
+    {
+      "state": "checked",
+      "text": "Fill and border both --control-checked-bgColor-rest (the border reads the background token so dark high-contrast shows no separate ring), with the checkmark in --fgColor-onEmphasis.",
+      "tokens": [
+        "--control-checked-bgColor-rest",
+        "--fgColor-onEmphasis"
+      ],
+      "source": "Checkbox.module.css:25-38,62-71"
+    },
+    {
+      "state": "indeterminate",
+      "text": "As checked, with the dash mask instead of the checkmark.",
+      "tokens": [
+        "--control-checked-bgColor-rest",
+        "--fgColor-onEmphasis"
+      ],
+      "source": "Checkbox.module.css:25-31,73-80"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus only: a 2px solid --focus-outline-color outline 2px outside the box (positive offset, unlike buttons' inset ring), no shadow. A disabled box never shows it.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "Checkbox.module.css:82-84; focusOutline.css:1-5"
+    },
+    {
+      "state": "disabled",
+      "text": "Unchecked: fill --control-bgColor-disabled, border --control-borderColor-disabled. Checked or indeterminate: fill --control-checked-bgColor-disabled, border --control-checked-borderColor-disabled, glyph --control-checked-fgColor-disabled, at full opacity. Not-allowed cursor.",
+      "tokens": [
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled",
+        "--control-checked-bgColor-disabled",
+        "--control-checked-borderColor-disabled",
+        "--control-checked-fgColor-disabled"
+      ],
+      "source": "shared.module.css:18-21; Checkbox.module.css:45-60"
+    }
+  ],
+  "behaviour": [
+    {
+      "part": "glyph",
+      "text": "Checking reveals the checkmark bottom-up: its clip inset animates from 16px at the top to 0 over 80ms cubic-bezier(0.65, 0, 0.35, 1), starting 80ms after the change, once the box has filled.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "values": [
+        {
+          "name": "checkmarkInDelay",
+          "value": 80,
+          "unit": "ms"
+        }
+      ],
+      "source": "Checkbox.module.css:40-43,67-70,87-95"
+    },
+    {
+      "part": "glyph",
+      "text": "Unchecking hides the checkmark top-down (clip inset from 0 back to 16px at the top) over 80ms on the same curve, with no delay; the glyph layer stays visible for 230ms so the exit plays out.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "values": [
+        {
+          "name": "visibilityDelay",
+          "value": 230,
+          "unit": "ms"
+        }
+      ],
+      "source": "Checkbox.module.css:12,16-17,22,97-105"
+    },
+    {
+      "part": "box",
+      "text": "The border colour transitions over 80ms: cubic-bezier(0.32, 0, 0.67, 0) when checking, cubic-bezier(0.33, 1, 0.68, 1) when unchecking. The fill changes instantly (see notes).",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Checkbox.module.css:4-7,62-65"
+    },
+    {
+      "text": "Activation toggles checked and calls onChange (and CheckboxGroup's onChange). An indeterminate box stays indeterminate after a click until the caller clears it.",
+      "source": "Checkbox.tsx:78-86,102-106"
+    },
+    {
+      "text": "The label beside it (FormControl) toggles it too: a press on the label is a press on the box.",
+      "source": "FormControlLabel.tsx:40-51"
+    }
+  ],
+  "accessibility": {
+    "role": "checkbox",
+    "minTargetPx": 16,
+    "keyboard": [
+      "Tab focuses it unless disabled.",
+      "Space toggles it."
+    ],
+    "semantics": [
+      "Name from the associated label.",
+      "aria-checked is true, false, or mixed when indeterminate; it is kept in sync after every render.",
+      "aria-required and aria-invalid are always set, as true or false."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "transition: background-color, border-color 80ms ... lists background-color with no duration, so it transitions in 0s; only the border animates. A faithful port snaps the fill and fades the border over 80ms; the checkmark animation then hides the snap.",
+      "source": "Checkbox.module.css:5-7,63-65"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The indeterminate glyph has no visibility override, so it inherits the 230ms visibility delay: by the CSS as written the dash appears about 230ms after the box fills, with no clip animation visible. A native build may show the dash with the box.",
+      "source": "Checkbox.module.css:16,40-43,73-80"
+    },
+    {
+      "kind": "gotcha",
+      "text": "There is no hover colour and no pressed colour on the box; Primer relies on the label and cursor. Do not borrow Button's hover tokens.",
+      "source": "Checkbox.module.css:1-85"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Checkbox sets the input's name to its value unless a name is passed; a native form model keyed by name should do the same.",
+      "source": "Checkbox.tsx:97-99"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The hit target is the 16px box alone; the realistic target is the box plus its FormControl label. There is no coarse-pointer enlargement.",
+      "source": "shared.module.css:4-5"
+    },
+    {
+      "kind": "web-only",
+      "text": "The box is a native <input type=checkbox> with appearance: none; the indeterminate state is a DOM property (not an attribute) that Checkbox re-applies after every render and change. A native build keeps tri-state as its own value: checked, unchecked, mixed.",
+      "source": "shared.module.css:15; Checkbox.tsx:82-85,102-119"
+    },
+    {
+      "kind": "web-only",
+      "text": "The glyph is a CSS mask over a solid colour and the reveal is a clip-path keyframe; a native build draws the path filled in the glyph colour, clipped by a rectangle whose top edge moves.",
+      "source": "Checkbox.module.css:9-23,87-105"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a checked or indeterminate box fills and borders in CanvasText.",
+      "source": "Checkbox.module.css:33-37"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 80ms durations, 80ms and 230ms delays, both curves and the 75% mask size are literals; the focus outline's 2px width and 2px offset come from the focusOutline mixin's argument, not tokens.",
+      "source": "Checkbox.module.css:7,16,19,22,42,65,83"
+    },
+    {
+      "kind": "density",
+      "text": "No size change for a coarse pointer.",
+      "source": "shared.module.css:1-22"
+    }
+  ]
+}
