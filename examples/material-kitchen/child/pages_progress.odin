@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
@@ -19,9 +20,9 @@ init_progress_values :: proc(m: ^Model) {
 // label: the 44dp pill sits value-indicator-active-bottom-space (12dp)
 // over the handle, which starts 2dp into its 48dp row, so it rises 54dp
 // over the row; this gap and the column's 10dp cover that.
-slider_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key: u64) {
+slider_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: kitchen.State_Cell, key: u64) {
 	gap(gtx, 44)
-	state_row(gtx, m, label, cell, key)
+	kitchen.state_row(gtx, m, label, cell, key, CELL_W)
 }
 
 page_sliders :: proc(gtx: ^ui.Ctx, m: ^Model) {
@@ -29,52 +30,52 @@ page_sliders :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	section(gtx, "Continuous", "16dp track, 4dp handle that halves while pressed or focused; the gaps widen with it; value label while pressed")
-	state_header(gtx)
-	cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	kitchen.state_header(gtx, CELL_W)
+	cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		v: f32 = 0.6
 		m3.slider(gtx, &v, width = 160, state = st, key = key)
 	}
 	slider_row(gtx, m, "Standard", cell, 1)
-	cell_c :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	cell_c :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		v: f32 = 40
 		m3.slider(gtx, &v, -100, 100, width = 160, track = .Centered, state = st, key = key)
 	}
 	slider_row(gtx, m, "Centered", cell_c, 2)
-	cell_i :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	cell_i :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		v: f32 = 0.5
 		m3.slider(gtx, &v, width = 160, start_icon = .Remove, end_icon = .Add, state = st, key = key)
 	}
 	slider_row(gtx, m, "Inset icons", cell_i, 3)
 
 	section(gtx, "Stops", "step 10: a stop dot at each step, in the other segment's colour, none in a gap")
-	state_header(gtx)
-	cell2 :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	kitchen.state_header(gtx, CELL_W)
+	cell2 :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		v: f32 = 40
 		m3.slider(gtx, &v, 0, 100, 10, width = 160, state = st, key = key)
 	}
 	slider_row(gtx, m, "Standard", cell2, 4)
-	cell2c :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	cell2c :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		v: f32 = -40
 		m3.slider(gtx, &v, -100, 100, 20, width = 160, track = .Centered, state = st, key = key)
 	}
 	slider_row(gtx, m, "Centered", cell2c, 5)
 
 	section(gtx, "Range", "two handles, each with its own gaps; Tab moves the keys to the other handle")
-	state_header(gtx)
-	cell3 :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	kitchen.state_header(gtx, CELL_W)
+	cell3 :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		a, b: f32 = 20, 70
 		m3.range_slider(gtx, &a, &b, 0, 100, width = 160, state = st, key = key)
 	}
 	slider_row(gtx, m, "Continuous", cell3, 6)
-	cell3s :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	cell3s :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		a, b: f32 = 20, 70
 		m3.range_slider(gtx, &a, &b, 0, 100, 10, width = 160, state = st, key = key)
 	}
 	slider_row(gtx, m, "Stops", cell3s, 7)
 
 	section(gtx, "Vertical", "lo at the top, or at the bottom with top_to_bottom = false; the label sits to the start side")
-	state_header(gtx)
-	cell_v :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+	kitchen.state_header(gtx, CELL_W)
+	cell_v :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 		v: f32 = 0.35
 		m3.slider(gtx, &v, width = 120, vertical = true, top_to_bottom = false, state = st, key = key)
 	}

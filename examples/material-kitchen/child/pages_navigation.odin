@@ -1,5 +1,6 @@
 package main
 
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
@@ -60,8 +61,8 @@ page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-		ui.spacer(gtx, max(LABEL_W - label_width(gtx, STATE_NAMES[i]), 0))
+		base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		ui.spacer(gtx, max(kitchen.LABEL_W - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		m3.drawer_item(gtx, {label = "Inbox", icon = .Inbox, badge = "24"}, false, 280, st, key = u64(10 + i))
@@ -107,10 +108,10 @@ page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // states: vertical items inactive, active and badged, then horizontal
 // items inactive and active.
 destination_states :: proc(gtx: ^ui.Ctx, m: ^Model, bar: bool) {
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Inactive", "Active", "With badge", "Start, inactive", "Start, active"}
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			v := key / 16
 			bar := v >= 10
 			v %= 10
@@ -120,7 +121,7 @@ destination_states :: proc(gtx: ^ui.Ctx, m: ^Model, bar: bool) {
 			}
 			m3.nav_destination(gtx, it, v == 2 || v == 3 || v == 5, bar, v >= 4, st, key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1 + (bar ? 10 : 0)))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1 + (bar ? 10 : 0)), CELL_W)
 	}
 }
 
@@ -236,8 +237,8 @@ page_tabs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
+		base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		ui.spacer(gtx, max(kitchen.LABEL_W - 16 - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		sel := 0
@@ -249,8 +250,8 @@ page_tabs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(30 + i))
 		defer ui.close(&r)
-		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
+		base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		ui.spacer(gtx, max(kitchen.LABEL_W - 16 - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		sel := 0

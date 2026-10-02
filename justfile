@@ -673,10 +673,11 @@ text-png page="Scripts": blend2d kb
 
 # examples/material-kitchen: every jm:ui/material component, one page
 # each. Build it and open its window; hot-watch runs in the background
-# while the window is open, watching ui and ui/material too, so editing a
-# component rebuilds and respawns it, and a change there rebuilds the host,
-# which restarts itself if the ops encoding changed. Ending the recipe,
-# however it ends, stops both.
+# while the window is open, watching ui, ui/material and examples/kitchen
+# too, so editing a component or the kitchen scaffold rebuilds and
+# respawns it, and a change there rebuilds the host, which restarts itself
+# if the ops encoding changed. Ending the recipe, however it ends, stops
+# both.
 #
 # Build and open the hot-reloaded Material 3 kitchen
 [group('ui/material')]
@@ -686,7 +687,7 @@ material-kitchen: blend2d kb sdl3
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
     {{odin}} build examples/material-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch -host examples/material-kitchen/host build/debug/material-kitchen-host{{exe}} ui ui/material &
+    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch -host examples/material-kitchen/host build/debug/material-kitchen-host{{exe}} ui ui/material examples/kitchen &
     watch=$!
     build/debug/material-kitchen-host{{exe}} build/debug/material-kitchen.watch &
     host=$!

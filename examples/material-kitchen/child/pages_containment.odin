@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
@@ -10,10 +11,10 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	section(gtx, "Cards", "corner 12; elevated 1dp on surface-container-low, filled on surface-container-highest, outlined 1dp outline-variant; elevation per state")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Elevated", "Filled", "Outlined"}
 	for n, i in NAMES {
-		state_row(gtx, m, n, card_cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, card_cell, u64(i + 1), CELL_W)
 		gap(gtx, 8)
 	}
 	section(gtx, "Dragged", "elevated 8dp, filled and outlined 6dp: the lift a host drag gives")
@@ -50,7 +51,7 @@ page_cards :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 // card_cell is one card of kind key/16 - 1 in state st.
-card_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+card_cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 	c := m3.card_open(gtx, m3.Card_Kind(key / 16 - 1), clickable = true, state = st, key = key)
 	defer ui.close(&c)
 	cc := ui.column_open(gtx, gap = 4)
@@ -282,8 +283,8 @@ list_state_rows :: proc(gtx: ^ui.Ctx, items: []m3.List_Item, base_key: u64) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = base_key + u64(i))
 		defer ui.close(&r)
-		base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-		ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, STATE_NAMES[i]), 0))
+		base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+		ui.spacer(gtx, max(kitchen.LABEL_W - 16 - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
 		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		for it, j in items {
@@ -494,8 +495,8 @@ page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	m3.snackbar(gtx, "Two lines: this message is long enough that it wraps onto a second line beside its action", "Undo", width = 480, key = 4)
 	m3.snackbar(gtx, "The action on its own row, for a long action label", "Open the settings", closable = true, width = 420, action_on_new_line = true, key = 5)
 	section(gtx, "Action and close icon states")
-	state_header(gtx, SNACKBAR_CELL_W)
-	state_row(gtx, m, "Snackbar", snackbar_cell, 6, SNACKBAR_CELL_W)
+	kitchen.state_header(gtx, SNACKBAR_CELL_W)
+	kitchen.state_row(gtx, m, "Snackbar", snackbar_cell, 6, SNACKBAR_CELL_W)
 	section(gtx, "Live", "shows at the bottom of the window; with an action it stays until acted on or closed (indefinite)")
 	{
 		r := ui.wrap_open(gtx, gap = 12)
@@ -540,6 +541,6 @@ page_snackbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 SNACKBAR_CELL_W :: f32(190)
 
 // snackbar_cell is a snackbar whose action and close icon take st.
-snackbar_cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+snackbar_cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 	m3.snackbar(gtx, "Archived", "Undo", closable = true, state = st, key = key)
 }

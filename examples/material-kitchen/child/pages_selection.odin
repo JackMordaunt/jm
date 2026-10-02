@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
@@ -9,15 +10,15 @@ page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	section(gtx, "Checkbox", "18dp box, corner 2, 2dp outline; a 40dp state layer in a 48dp target; hover and press recolour nothing")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Unselected", "Selected", "Indeterminate", "Error", "Error, selected", "Error, indeterminate"}
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			v := key / 16 - 1
 			on := v == 1 || v == 4
 			m3.checkbox(gtx, &on, indeterminate = v == 2 || v == 5, error = v >= 3, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CELL_W)
 	}
 	section(gtx, "Live", "the mark draws in on default-spatial and morphs to the parent's dash; unchecking holds it 100ms, then drops it")
 	all := m.checks[1] && m.checks[2] && m.checks[3]
@@ -41,14 +42,14 @@ page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	section(gtx, "Radio button", "20dp ring, 2dp; a 6dp dot; ring and dot share one colour; a 40dp state layer in a 48dp target")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Unselected", "Selected"}
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			v := int(key / 16 - 1)
 			m3.radio_button(gtx, &v, 1, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CELL_W)
 	}
 	section(gtx, "Live", "the dot grows and shrinks on fast-spatial; the colour moves on default-effects")
 	OPTIONS := [?]string{"Small", "Medium", "Large"}
@@ -61,15 +62,15 @@ page_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	section(gtx, "Switch", "52x32 track; handle 16dp off, 24dp on or with icons, 28dp pressed and hugging the near edge")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Off", "On", "Off, icons", "On, icons"}
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			v := key / 16 - 1
 			on := v % 2 == 1
 			m3.switch_(gtx, &on, icons = v >= 2, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CELL_W)
 	}
 	section(gtx, "Live", "the handle slides and resizes on fast-spatial; hold it to see the squish snap")
 	m3.switch_(gtx, &m.switches[0], "Wi-Fi", key = 40)
@@ -95,13 +96,13 @@ Field_Cell :: proc(gtx: ^ui.Ctx, col: int, st: m3.Interaction, key: u64)
 // the columns do not fit beside the labels, each state's fields wrap below
 // its label instead, each captioned with its head.
 field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
-	if gtx.constraints.max.x < LABEL_W + f32(len(heads)) * (FIELD_W + 24) {
+	if gtx.constraints.max.x < kitchen.LABEL_W + f32(len(heads)) * (FIELD_W + 24) {
 		s := m3.scheme()
 		for st, i in m3.STATES {
 			k := key * 100 + u64(10 * (i + 1))
 			col := ui.column_open(gtx, gap = 8, key = k)
 			defer ui.close(&col)
-			base.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface]})
+			base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = s[.On_Surface]})
 			wr := ui.wrap_open(gtx, gap = 24, line_gap = 12)
 			defer ui.close(&wr)
 			for h, c in heads {
@@ -117,7 +118,7 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 	{
 		r := ui.row_open(gtx, gap = 24, key = key)
 		defer ui.close(&r)
-		ui.spacer(gtx, LABEL_W - 24)
+		ui.spacer(gtx, kitchen.LABEL_W - 24)
 		for h, i in heads {
 			c := ui.stack_open(gtx, key = u64(i))
 			base.label(gtx, h, {size = 12, color = m3.scheme()[.On_Surface_Variant]})
@@ -133,10 +134,10 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 		defer ui.close(&r)
 		{
 			c := ui.inset_open(gtx, {0, 20, 0, 0})
-			base.label(gtx, STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
+			base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 			ui.close(&c)
 		}
-		ui.spacer(gtx, max(LABEL_W - 48 - label_width(gtx, STATE_NAMES[i]), 0))
+		ui.spacer(gtx, max(kitchen.LABEL_W - 48 - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
 		for _, c in heads {
 			cell(gtx, c, st, k + u64(c + 1))
 		}
@@ -217,7 +218,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 4)
 	defer ui.close(&col)
 	section(gtx, "Chips", "32dp, corner 8, label-large, in a 48dp target; outline-variant edge unless elevated or selected")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string {
 		"Assist",
 		"Assist, elevated",
@@ -234,7 +235,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		"Suggestion, elev.",
 	}
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			off, on := false, true
 			switch key / 16 - 1 {
 			case 0:
@@ -265,7 +266,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 				m3.chip(gtx, "Suggestion", .Suggestion, leading = .Bolt, elevated = true, state = st, key = key)
 			}
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CELL_W)
 	}
 	section(gtx, "Dragged", "every kind lifts to 8dp while dragged")
 	{

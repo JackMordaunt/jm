@@ -145,7 +145,8 @@ restore :: proc(gtx: ^ui.Ctx, page, theme: ^int, scroll: ^[MAX_PAGES]ui.Scroll_O
 
 // App is a kitchen as run sees it: its ui proc over user, its fonts, the
 // names of its pages and themes, and where the current page and theme
-// live in user, so the command line can pick them.
+// live in user, so the command line can pick them. flag, if set, is the
+// kitchen's own setting flags (see Flag).
 App :: struct {
 	ui:     proc(gtx: ^ui.Ctx, user: rawptr),
 	user:   rawptr,
@@ -155,18 +156,25 @@ App :: struct {
 	themes: []string,
 	page:   ^int,
 	theme:  ^int,
+	flag:   Flag,
 }
+
+// Flag applies a kitchen's own setting flag at args[i^] to user, moving
+// i^ past any value it takes, and reports whether it was one. run tries
+// it after its own settings and before ui/render's steps; like -page, it
+// may come anywhere, and a frame runs after it so a later step sees it.
+Flag :: proc(user: rawptr, args: []string, i: ^int) -> bool
 
 // run is a kitchen's main: with no arguments it is the hot-reload host's
 // child; otherwise it renders headlessly, running its flags in order:
 // the size (-size WxH), whole-page capture (-full) and debug overlays
-// (-reveal, -bounds) before any step; the page (-page) and theme (-theme)
-// anywhere, so one run can capture several; and ui/render's headless
-// steps (-png, -dump, -click, -key, -advance, -layout, -inspect...). A
-// step runs only the frames it needs (see render.headless_step), so
-// `-click Edit -png` captures the frame the click produced,
-// mid-animation; a setting after the first step runs one frame so the
-// next step sees it.
+// (-reveal, -bounds) before any step; the page (-page), theme (-theme)
+// and the kitchen's own flags (App.flag) anywhere, so one run can capture
+// several; and ui/render's headless steps (-png, -dump, -click, -key,
+// -advance, -layout, -inspect...). A step runs only the frames it needs
+// (see render.headless_step), so `-click Edit -png` captures the frame
+// the click produced, mid-animation; a setting after the first step runs
+// one frame so the next step sees it.
 run :: proc(app: App) {
 	if len(os.args) == 1 {
 		child.run({ui = app.ui, user = app.user, fonts = app.fonts})
@@ -234,7 +242,7 @@ setting :: proc(args: []string, i: ^int, app: App, open: bool, size: ^ops.Size, 
 	case "-page":
 		app.page^ = pick(app.pages, value(args, i), "page")
 	case:
-		return false
+		return app.flag != nil && app.flag(app.user, args, i)
 	}
 	return true
 }

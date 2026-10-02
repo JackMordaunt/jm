@@ -1,14 +1,15 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
 
-// state_label is a state grid's row label, padded to LABEL_W.
+// state_label is a state grid's row label, padded to kitchen.LABEL_W.
 state_label :: proc(gtx: ^ui.Ctx, name: string) {
 	base.label(gtx, name, {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-	ui.spacer(gtx, max(LABEL_W - 16 - label_width(gtx, name), 0))
+	ui.spacer(gtx, max(kitchen.LABEL_W - 16 - label_width(gtx, name), 0))
 }
 
 page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
@@ -22,7 +23,7 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		state_label(gtx, STATE_NAMES[i])
+		state_label(gtx, kitchen.STATE_NAMES[i])
 		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		sel := [3]bool{true, false, false}
@@ -83,7 +84,7 @@ page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		state_label(gtx, STATE_NAMES[i])
+		state_label(gtx, kitchen.STATE_NAMES[i])
 		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating, 2, key = u64(10 + i), state = st)
@@ -123,7 +124,7 @@ page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		state_label(gtx, STATE_NAMES[i])
+		state_label(gtx, kitchen.STATE_NAMES[i])
 		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		shut := false
@@ -161,7 +162,7 @@ page_bottom_app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for st, i in m3.STATES {
 		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
 		defer ui.close(&r)
-		state_label(gtx, STATE_NAMES[i])
+		state_label(gtx, kitchen.STATE_NAMES[i])
 		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
 		defer ui.close(&wr)
 		m3.bottom_app_bar(gtx, ACTIONS[:], .Add, width = W, state = st, key = u64(10 + i))

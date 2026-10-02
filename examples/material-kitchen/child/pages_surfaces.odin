@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import m3 "jm:ui/material"
@@ -11,20 +12,20 @@ page_search :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	section(gtx, "Search bar", "comp.search-bar: 56dp surface-container-high pill, 360-720dp wide, icons 16dp from the edges")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			q: ui.Text_State
 			m3.search_bar(gtx, &q, "Search", state = st, key = key)
 		}
-		state_row(gtx, m, "Placeholder", cell, 1)
+		kitchen.state_row(gtx, m, "Placeholder", cell, 1, CELL_W)
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			q: ui.Text_State
 			m3.search_bar(gtx, &q, "Search mail", .Menu, .Account_Circle, state = st, key = key)
 		}
-		state_row(gtx, m, "Menu + avatar", cell, 2)
+		kitchen.state_row(gtx, m, "Menu + avatar", cell, 2, CELL_W)
 	}
 
 	section(gtx, "Search view, expanded", "comp.search-view: docked (one popup, 28dp corners, a divider under the 56dp header) and docked with a gap (the bar stays)")
@@ -113,12 +114,12 @@ page_bottom_sheet :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 
 	section(gtx, "Drag handle", "comp.drag-handle: the grip between resizable panes, 4x48 outline, 12x52 on-surface pressed or dragged")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			m3.drag_handle(gtx, st, key = key)
 		}
-		state_row(gtx, m, "Drag handle", cell, 5)
+		kitchen.state_row(gtx, m, "Drag handle", cell, 5, CELL_W)
 	}
 	{
 		r := ui.row_open(gtx, gap = 8, align = .Center)
@@ -188,14 +189,14 @@ page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.close(&col)
 	s := m3.scheme()
 	section(gtx, "Day cells", "48dp touch target, 40dp circle; selected fills primary, today is ringed primary, a range band is secondary-container")
-	state_header(gtx)
+	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Unselected", "Selected", "Today", "In range"}
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: m3.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: m3.Interaction, key: u64) {
 			kind := key / 16 - 1
 			m3.date_cell(gtx, 14, selected = kind == 1, today = kind == 2, in_range = kind == 3, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CELL_W)
 	}
 
 	if m.range_view == {} {

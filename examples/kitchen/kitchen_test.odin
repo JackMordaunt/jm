@@ -104,6 +104,58 @@ test_the_session_survives_a_respawn_clamped_to_what_exists :: proc(t: ^testing.T
 }
 
 @(private = "file")
+Flag_Model :: struct {
+	page, theme: int,
+	open:        bool,
+}
+
+@(private = "file")
+apply_own_flag :: proc(user: rawptr, args: []string, i: ^int) -> bool {
+	f := (^Flag_Model)(user)
+	switch args[i^] {
+	case "-dark":
+		f.theme = 1
+	case "-open":
+		f.open = true
+	case:
+		return false
+	}
+	return true
+}
+
+@(test)
+test_a_kitchens_own_flags_run_beside_page_and_theme :: proc(t: ^testing.T) {
+	f: Flag_Model
+	app := App {
+		user   = &f,
+		pages  = {"Buttons", "Chips"},
+		themes = {"Light", "Dark"},
+		page   = &f.page,
+		theme  = &f.theme,
+		flag   = apply_own_flag,
+	}
+	args := []string{"-dark", "-page", "chips", "-open", "-png"}
+	size: ops.Size
+	debug: ui.Debug_Flags
+	full: bool
+	i := 0
+	for ; i < len(args); i += 1 {
+		if !setting(args, &i, app, false, &size, &debug, &full) {
+			break
+		}
+	}
+	testing.expect_value(t, i, 4) // -png is a step, not a setting
+	testing.expect_value(t, f.theme, 1)
+	testing.expect_value(t, f.page, 1)
+	testing.expect(t, f.open)
+
+	// Without a flag proc, a kitchen's own flag is no setting.
+	app.flag = nil
+	j := 0
+	testing.expect(t, !setting(args, &j, app, false, &size, &debug, &full))
+}
+
+@(private = "file")
 count_frames :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	(^int)(user)^ += 1
 }

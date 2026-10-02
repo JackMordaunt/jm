@@ -7,7 +7,7 @@
 //	material-kitchen-child                                run as the hot-reload subprocess
 //	material-kitchen-child -page Buttons -png out.png     render one page headlessly
 //	material-kitchen-child -page Buttons -dump            that page's sc as text
-//	material-kitchen-child -dark ...                      the dark scheme
+//	material-kitchen-child -dark ...                      the dark scheme (or -theme Dark)
 //	material-kitchen-child -size 950x1040 ...             at another window size
 //	material-kitchen-child -reveal ...                    show what hides until used
 //	material-kitchen-child -bounds ...                    outline every widget's box
@@ -22,31 +22,28 @@
 //	material-kitchen-child -full -page Chips -png out.png  the whole page, trimmed
 //	material-kitchen-child -open ...                      every menu, dialog and snackbar open
 //
-// The selected page, scheme and each page's scroll position survive a
-// hot-reload respawn through ui.persist_struct: the host keeps them, and
-// a fresh child reads them back with ui.restore_struct on its first frame.
+// The rest of the flags are kitchen.run's. The scaffolding (state grid,
+// session, command line) is examples/kitchen's; the section with its
+// wrapped note, the cell width and the docked or modal page drawer are
+// this kitchen's own.
 package main
 
-import "core:fmt"
-import "jm:ui/ops"
 import "core:os"
-import "core:strings"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
-import "jm:ui/child"
 import m3 "jm:ui/material"
-import "jm:ui/render"
+import "jm:ui/ops"
 
-WIDTH :: 1400
 // DOCKED_NAV_MIN is the narrowest window that keeps the page drawer
 // docked beside the page: the m3e-kit foundations.json large window
 // class (layout.windowSizeClasses, 1200-1599dp).
 DOCKED_NAV_MIN :: 1200
-HEIGHT :: 900
-// MAX_PAGES sizes the per-page state in Model: it cannot be len(PAGES),
-// since the pages' procs take the Model.
-MAX_PAGES :: 64
-#assert(len(PAGES) <= MAX_PAGES)
+#assert(len(PAGES) <= kitchen.MAX_PAGES)
+
+// THEMES are the kitchen's schemes by name, for -theme; -dark picks the
+// second.
+THEMES := []string{"Light", "Dark"}
 
 Page :: struct {
 	name: string,
@@ -57,7 +54,7 @@ Page :: struct {
 Model :: struct {
 	page:      int,
 	nav_open:  bool, // the modal page drawer, in a narrow window
-	dark:      bool,
+	theme:     int, // 0 light, 1 dark: an index into THEMES
 	scheme:    m3.Scheme,
 	clicks:    int,
 	toggles:   [8]bool,
@@ -103,7 +100,7 @@ Model :: struct {
 	date_view: m3.Date,
 	time:      m3.Time,
 	minutes:   bool,
-	scroll:    [MAX_PAGES]ui.Scroll_Offset, // each page's scroll position: the app owns it, so it persists
+	scroll:    [kitchen.MAX_PAGES]ui.Scroll_Offset, // each page's scroll position: the app owns it, so it persists
 	// actions
 	group_c:       [5]bool,
 	group_menu:    bool,
@@ -233,9 +230,10 @@ PAGES := [?]Page {
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
-	restore(gtx, m)
-	m.scheme = m.dark ? m3.dark_scheme() : m3.light_scheme()
-	m3.use(&m.scheme, m.dark ? .Dark : .Light)
+	kitchen.restore(gtx, &m.page, &m.theme, &m.scroll, len(PAGES), len(THEMES))
+	dark := m.theme == 1
+	m.scheme = dark ? m3.dark_scheme() : m3.light_scheme()
+	m3.use(&m.scheme, dark ? .Dark : .Light)
 	m3.use_fonts({0, 1, 2})
 	s := &m.scheme
 	m.window = gtx.constraints.max
@@ -283,10 +281,10 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		if p.draw != nil {
 			p.draw(gtx, m)
 		} else {
-			page_todo(gtx, p)
+			kitchen.page_todo(gtx, p.name, p.icon == .None)
 		}
 	}
-	persist(gtx, m)
+	kitchen.persist(gtx, m.page, m.theme, &m.scroll)
 }
 
 // app_bar is a plain small top app bar until the real component lands:
@@ -306,14 +304,17 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
 	}
 	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 22, color = s[.On_Surface]}, heading = true)
 	ui.fill_space(gtx)
-	if m3.icon_button(gtx, m.dark ? .Light_Mode : .Dark_Mode, tooltip = m.dark ? "Light scheme" : "Dark scheme") {
-		m.dark = !m.dark
+	dark := m.theme == 1
+	if m3.icon_button(gtx, dark ? .Light_Mode : .Dark_Mode, tooltip = dark ? "Light scheme" : "Dark scheme") {
+		m.theme = 1 - m.theme
 	}
 }
 
 // Page scaffolding.
 
 // section is a titled block: Title_Medium caption, then whatever follows.
+// It is not kitchen.section, whose note is one line in base's type: this
+// one's note wraps, in M3's Body_Small.
 section :: proc(gtx: ^ui.Ctx, title: string, note := "") {
 	s := m3.scheme()
 	ui.spacer(gtx, 12)
@@ -325,85 +326,17 @@ section :: proc(gtx: ^ui.Ctx, title: string, note := "") {
 	}
 }
 
-STATE_NAMES := [?]string{"Enabled", "Hovered", "Focused", "Pressed", "Disabled"}
-
-// LABEL_W is the width of a state grid's row-label column.
-LABEL_W :: 110
-
-// CELL_W is the width a state grid's cell needs by default: a grid whose
-// five states fit beside the labels at this width lays out as columns,
-// and one that does not stacks (see state_row). Grids of wider components
-// pass their own.
+// CELL_W is the width a state grid's cell needs here by default, rather
+// than kitchen.CELL_W: Material's components are narrower. Grids of wider
+// components pass their own.
 CELL_W :: f32(120)
-
-// grid_stacked reports whether a state grid of cell_w cells is too wide
-// for the width it is offered, so each row must stack instead.
-grid_stacked :: proc(gtx: ^ui.Ctx, cell_w: f32) -> bool {
-	return gtx.constraints.max.x < LABEL_W + f32(len(m3.STATES)) * cell_w
-}
-
-// state_header is the column headings of a state grid; a stacked grid
-// has none, as each of its cells carries its own.
-state_header :: proc(gtx: ^ui.Ctx, cell_w := CELL_W) {
-	if grid_stacked(gtx, cell_w) {
-		return
-	}
-	s := m3.scheme()
-	r := ui.row_open(gtx)
-	defer ui.close(&r)
-	cell_fixed(gtx, LABEL_W)
-	for name in STATE_NAMES {
-		ui.flexible(gtx, 1)
-		c := ui.stack_open(gtx)
-		base.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
-		ui.close(&c)
-	}
-}
 
 // cell_fixed takes w of a row's width.
 cell_fixed :: proc(gtx: ^ui.Ctx, w: f32, loc := #caller_location) {
 	ui.spacer(gtx, w, loc)
 }
 
-// State_Cell draws one component in state; key tells the cells apart.
-State_Cell :: proc(gtx: ^ui.Ctx, m: ^Model, state: m3.Interaction, key: u64)
-
-// state_row is one variant across every forced state, then a gap. Where
-// the five cells do not fit beside the label (see grid_stacked), the label
-// takes its own line and the cells, each captioned with its state, wrap
-// below it: the grid reflows rather than overflow the window.
-state_row :: proc(gtx: ^ui.Ctx, m: ^Model, label: string, cell: State_Cell, key: u64, cell_w := CELL_W) {
-	s := m3.scheme()
-	if grid_stacked(gtx, cell_w) {
-		col := ui.column_open(gtx, gap = 8, key = key)
-		defer ui.close(&col)
-		base.label(gtx, label, {size = 12, color = s[.On_Surface]})
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .End)
-		defer ui.close(&wr)
-		for st, i in m3.STATES {
-			c := ui.column_open(gtx, gap = 4, key = u64(i))
-			base.label(gtx, STATE_NAMES[i], {size = 12, color = s[.On_Surface_Variant]})
-			cell(gtx, m, st, key * 16 + u64(i))
-			ui.close(&c)
-		}
-		return
-	}
-	r := ui.row_open(gtx, align = .Center, key = key)
-	defer ui.close(&r)
-	{
-		c := ui.stack_open(gtx)
-		base.label(gtx, label, {size = 12, color = s[.On_Surface_Variant]})
-		ui.close(&c)
-	}
-	ui.spacer(gtx, max(LABEL_W - label_width(gtx, label), 0))
-	for st, i in m3.STATES {
-		ui.flexible(gtx, 1)
-		c := ui.stack_open(gtx, key = u64(i))
-		cell(gtx, m, st, key * 16 + u64(i))
-		ui.close(&c)
-	}
-}
-
+// label_width is s's advance at the state grid's label size.
 label_width :: proc(gtx: ^ui.Ctx, s: string) -> f32 {
 	return ui.shape(gtx.shaper, gtx.font, 12, s, gtx.allocator).advance
 }
@@ -412,54 +345,11 @@ gap :: proc(gtx: ^ui.Ctx, h: f32 = 20, loc := #caller_location) {
 	ui.spacer(gtx, h, loc)
 }
 
-page_todo :: proc(gtx: ^ui.Ctx, p: Page) {
-	s := m3.scheme()
-	col := ui.column_open(gtx, gap = 8)
-	defer ui.close(&col)
-	if p.icon == .None {
-		base.label(gtx, fmt.tprintf("%s: pick a component below this heading.", p.name), {color = s[.On_Surface_Variant]})
-		return
-	}
-	base.label(gtx, "Not built yet.", {size = 16, color = s[.On_Surface]})
-	base.label(gtx, "See the priority list in the material kitchen plan.", {color = s[.On_Surface_Variant]})
-}
-
 // Pages.
 
 // TODAY is fixed rather than read from the clock, so -png renders are
 // reproducible.
 TODAY :: m3.Date{2026, 9, 28}
-
-// Session is the state that survives a respawn, as ui.persist_struct
-// writes it: `page 3`, `dark true`, `scroll[3].y 240`.
-Session :: struct {
-	page:   int,
-	dark:   bool,
-	scroll: [MAX_PAGES]ui.Scroll_Offset,
-}
-
-persist :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	ui.persist_struct(gtx, Session{m.page, m.dark, m.scroll})
-}
-
-restore :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	s := Session{m.page, m.dark, m.scroll}
-	if ui.restore_struct(gtx, &s, gtx.allocator) {
-		m.page = clamp(s.page, 0, len(PAGES) - 1)
-		m.dark, m.scroll = s.dark, s.scroll
-	}
-}
-
-parse_int :: proc(s: string) -> int {
-	n := 0
-	for c in s {
-		if c < '0' || c > '9' {
-			return 0
-		}
-		n = n * 10 + int(c - '0')
-	}
-	return n
-}
 
 // kitchen_fonts is Noto Sans at 400, 500 and 700 (font ids 0, 1, 2) for
 // the type scale's weights, or jm:ui's default font for all three.
@@ -478,94 +368,24 @@ main :: proc() {
 	m.page = 1
 	m.volume, m.steps, m.range_lo, m.range_hi = 0.4, 30, 20, 70
 	m.date, m.time = TODAY, {9, 41}
-	fonts := kitchen_fonts()
-	if len(os.args) == 1 {
-		child.run({ui = kitchen_ui, user = &m, fonts = fonts})
-		return
+	pages := make([]string, len(PAGES))
+	for p, i in PAGES {
+		pages[i] = p.name
 	}
-	args := os.args[1:]
-	size := ops.Size{WIDTH, HEIGHT}
-	debug: ui.Debug_Flags
-	full := false
-	// One headless session runs every step (see render.headless_step), so
-	// a click, scroll or key press is still in effect when a later -png or
-	// -dump captures the frame. It opens at the first step; flags that set
-	// it up must come before that.
-	h: render.Headless
-	open := false
-	defer if open {
-		render.headless_destroy(&h)
+	kitchen.run({ui = kitchen_ui, user = &m, fonts = kitchen_fonts(), size = {1400, 900}, pages = pages, themes = THEMES, page = &m.page, theme = &m.theme, flag = flag})
+}
+
+// flag is this kitchen's own flags: -dark for the dark scheme, and -open
+// for every menu, dialog and snackbar open.
+flag :: proc(user: rawptr, args: []string, i: ^int) -> bool {
+	m := (^Model)(user)
+	switch args[i^] {
+	case "-dark":
+		m.theme = 1
+	case "-open":
+		m.menu_open, m.split_menu, m.dialog, m.snack, m.fab_open, m.bottom, m.side = true, true, true, true, true, true, true
+	case:
+		return false
 	}
-	setup :: proc(open: bool, flag: string) {
-		if open {
-			fmt.eprintfln("%s must come before the first step", flag)
-			os.exit(2)
-		}
-	}
-	for i := 0; i < len(args); i += 1 {
-		switch args[i] {
-		case "-reveal":
-			// Parts that hide until used (idle scroll bars) draw anyway.
-			setup(open, args[i])
-			debug += {.Reveal}
-		case "-bounds":
-			// Every widget's box outlined.
-			setup(open, args[i])
-			debug += {.Bounds}
-		case "-full":
-			// The whole page, not a window's height of it.
-			setup(open, args[i])
-			full = true
-		case "-size":
-			// -size WxH renders at another window size, to check the
-			// layout at a phone width or a half-screen tile.
-			setup(open, args[i])
-			i += 1
-			w, _, ht := strings.partition(i < len(args) ? args[i] : "", "x")
-			size = {f32(parse_int(w)), f32(parse_int(ht))}
-			if size.x <= 0 || size.y <= 0 {
-				fmt.eprintln("-size needs WxH, e.g. 950x1040")
-				os.exit(2)
-			}
-		case "-dark":
-			m.dark = true
-		case "-open":
-			m.menu_open, m.split_menu, m.dialog, m.snack, m.fab_open, m.bottom, m.side = true, true, true, true, true, true, true
-		case "-page":
-			if i + 1 >= len(args) {
-				fmt.eprintln("-page needs a name")
-				os.exit(2)
-			}
-			i += 1
-			found := false
-			for p, j in PAGES {
-				if strings.equal_fold(p.name, args[i]) {
-					m.page, found = j, true
-				}
-			}
-			if !found {
-				fmt.eprintfln("no page %q", args[i])
-				os.exit(2)
-			}
-		case:
-			if !open {
-				render.headless_init(&h, kitchen_ui, &m, size, fonts, debug, full = full)
-				open = true
-			}
-			handled, ok := render.headless_step(&h, args, &i)
-			if !handled {
-				fmt.eprintfln("unknown flag %s", args[i])
-				os.exit(2)
-			}
-			if !ok {
-				os.exit(1)
-			}
-			continue
-		}
-		// A model flag after the session opened shows from the next frame,
-		// so run one now: a -png that follows sees it.
-		if open {
-			ui.probe_frame(&h.p)
-		}
-	}
+	return true
 }
