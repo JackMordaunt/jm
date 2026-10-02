@@ -1,0 +1,131 @@
+{
+  "base-duration-0": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 0
+    }
+  },
+  "base-duration-100": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 100
+    }
+  },
+  "base-duration-1000": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 1000
+    }
+  },
+  "base-duration-200": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 200
+    }
+  },
+  "base-duration-300": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 300
+    }
+  },
+  "base-duration-400": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 400
+    }
+  },
+  "base-duration-50": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 50
+    }
+  },
+  "base-duration-500": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 500
+    }
+  },
+  "base-duration-600": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 600
+    }
+  },
+  "base-duration-700": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 700
+    }
+  },
+  "base-duration-800": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 800
+    }
+  },
+  "base-duration-900": {
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 900
+    }
+  },
+  "base-easing-ease": {
+    "type": "cubicBezier",
+    "value": [
+      0.25,
+      0.1,
+      0.25,
+      1
+    ]
+  },
+  "base-easing-easeIn": {
+    "type": "cubicBezier",
+    "value": [
+      0.7,
+      0.1,
+      0.75,
+      0.9
+    ]
+  },
+  "base-easing-easeInOut": {
+    "type": "cubicBezier",
+    "value": [
+      0.6,
+      0,
+      0.2,
+      1
+    ]
+  },
+  "base-easing-easeOut": {
+    "type": "cubicBezier",
+    "value": [
+      0.3,
+      0.8,
+      0.6,
+      1
+    ]
+  },
+  "base-easing-linear": {
+    "type": "cubicBezier",
+    "value": [
+      0,
+      0,
+      1,
+      1
+    ]
+  }
+}

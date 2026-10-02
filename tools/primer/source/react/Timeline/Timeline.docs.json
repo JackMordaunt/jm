@@ -1,0 +1,84 @@
+{
+  "id": "timeline",
+  "name": "Timeline",
+  "status": "alpha",
+  "a11yReviewed": "2025-01-08",
+  "stories": [
+    {
+      "id": "components-timeline--default"
+    },
+    {
+      "id": "components-timeline-features--clip-sidebar"
+    },
+    {
+      "id": "components-timeline-features--clip-sidebar-start"
+    },
+    {
+      "id": "components-timeline-features--clip-sidebar-end"
+    },
+    {
+      "id": "components-timeline-features--condensed-items"
+    },
+    {
+      "id": "components-timeline-features--timeline-break"
+    },
+    {
+      "id": "components-timeline-features--badge-variants"
+    },
+    {
+      "id": "components-timeline-features--with-inline-links"
+    },
+    {
+      "id": "components-timeline-features--with-actions"
+    },
+    {
+      "id": "components-timeline-features--with-avatar"
+    }
+  ],
+  "importPath": "@primer/react",
+  "props": [
+    {
+      "name": "clipSidebar",
+      "type": "| boolean | 'start' | 'end' | 'both'",
+      "description": "Controls which ends of the sidebar are clipped. When set to `true` or `'both'`, hides the sidebar above the first and below the last Timeline.Item. Use `'start'` to only clip the top or `'end'` to only clip the bottom."
+    }
+  ],
+  "subcomponents": [
+    {
+      "name": "Timeline.Item",
+      "props": [
+        {
+          "name": "condensed",
+          "type": "boolean",
+          "description": "Reduces vertical padding and removes background from an item's badge."
+        }
+      ]
+    },
+    {
+      "name": "Timeline.Badge",
+      "props": [
+        {
+          "name": "variant",
+          "type": "'accent' | 'success' | 'attention' | 'severe' | 'danger' | 'done' | 'open' | 'closed' | 'sponsors'",
+          "description": "The color variant of the badge."
+        }
+      ]
+    },
+    {
+      "name": "Timeline.Body",
+      "props": []
+    },
+    {
+      "name": "Timeline.Break",
+      "props": []
+    },
+    {
+      "name": "Timeline.Actions",
+      "props": []
+    },
+    {
+      "name": "Timeline.Avatar",
+      "props": []
+    }
+  ]
+}

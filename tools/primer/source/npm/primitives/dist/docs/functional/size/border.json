@@ -1,0 +1,49 @@
+{
+  "borderWidth-default": {
+    "alias": "{borderWidth.thin}",
+    "type": "dimension",
+    "value": "0.0625rem"
+  },
+  "borderWidth-thick": {
+    "type": "dimension",
+    "value": "0.125rem"
+  },
+  "borderWidth-thicker": {
+    "type": "dimension",
+    "value": "0.25rem"
+  },
+  "borderWidth-thin": {
+    "type": "dimension",
+    "value": "0.0625rem"
+  },
+  "boxShadow-thick": {
+    "type": "custom-string",
+    "value": "inset 0 0 0 0.125rem"
+  },
+  "boxShadow-thicker": {
+    "type": "custom-string",
+    "value": "inset 0 0 0 0.25rem"
+  },
+  "boxShadow-thin": {
+    "type": "custom-string",
+    "value": "inset 0 0 0 0.0625rem"
+  },
+  "focus-outline-offset": {
+    "type": "dimension",
+    "value": "-0.125rem"
+  },
+  "focus-outline-width": {
+    "type": "dimension",
+    "value": "0.125rem"
+  },
+  "outline-focus-offset": {
+    "alias": "{focus.outline-offset}",
+    "type": "dimension",
+    "value": "-0.125rem"
+  },
+  "outline-focus-width": {
+    "alias": "{focus.outline-width}",
+    "type": "dimension",
+    "value": "0.125rem"
+  }
+}

@@ -1,0 +1,177 @@
+import {announceFromElement} from '@primer/live-region-element'
+import type React from 'react'
+import {useEffect, useRef, type ElementRef} from 'react'
+import {useEffectOnce} from '../internal/hooks/useEffectOnce'
+import {useEffectCallback} from '../internal/hooks/useEffectCallback'
+import type {PolymorphicProps} from '../utils/modern-polymorphic'
+
+export type AnnounceProps<As extends React.ElementType> = PolymorphicProps<
+  As,
+  'div',
+  {
+    /**
+     * Specify if the content of the element should be announced when this
+     * component is rendered and is not hidden
+     * @default false
+     */
+    announceOnShow?: boolean
+
+    /**
+     * Specify if the element is hidden
+     * @default false
+     */
+    hidden?: boolean
+
+    /**
+     * Provide a delay in milliseconds before the announcement is made. This will
+     * only work with `polite` announcements
+     */
+    delayMs?: number
+
+    /**
+     * The politeness level to use for the announcement
+     * @default 'polite'
+     */
+    politeness?: 'assertive' | 'polite'
+  }
+>
+
+/**
+ * `Announce` is a component that will announce the text content of the
+ * `children` passed in to screen readers using the given politeness level. It
+ * will also announce any changes to the text content of `children`
+ */
+export function Announce<As extends React.ElementType = 'div'>(props: AnnounceProps<As>) {
+  const {
+    as: BaseComponent = 'div',
+    announceOnShow = true,
+    children,
+    delayMs,
+    hidden = false,
+    politeness = 'polite',
+    ...rest
+  } = props
+  const ref = useRef<ElementRef<'div'>>(null)
+  // Tracked in a ref rather than state because it is only used to dedupe
+  // announcements and is never rendered. Using state here would trigger a React
+  // commit on every content change (e.g. one per keystroke when tied to an input).
+  const previousAnnouncementText = useRef<string | null>(null)
+  const savedAnnouncement = useRef<ReturnType<typeof announceFromElement> | null>(null)
+  const announce = useEffectCallback(() => {
+    const {current: element} = ref
+    if (!element) {
+      return
+    }
+
+    if (hidden) {
+      return
+    }
+
+    // PERFORMANCE: Check text content before getComputedStyle to avoid forcing
+    // a style recalculation when there's nothing to announce. getComputedStyle
+    // triggers a synchronous reflow that can cost hundreds of milliseconds on
+    // large DOM trees (e.g. TreeView with 14K+ nodes).
+    const textContent = getTextContent(element)
+    if (!textContent) {
+      return
+    }
+
+    if (textContent === previousAnnouncementText.current) {
+      return
+    }
+
+    if (!isVisible(element)) {
+      return
+    }
+
+    savedAnnouncement.current?.cancel()
+    savedAnnouncement.current = announceFromElement(
+      element,
+      politeness === 'assertive'
+        ? {
+            politeness,
+          }
+        : {
+            politeness,
+            delayMs,
+          },
+    )
+    previousAnnouncementText.current = textContent
+  })
+
+  // Announce the initial message, this is wrapped in `useEffectOnce` so that it
+  // does not announce twice in StrictMode
+  useEffectOnce(() => {
+    if (announceOnShow) {
+      announce()
+    }
+  })
+
+  useEffect(() => {
+    const {current: container} = ref
+    if (container === null) {
+      return
+    }
+
+    // When the text of the container changes, announce the new text
+    const observer = new MutationObserver(() => {
+      announce()
+    })
+
+    observer.observe(container, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [announce])
+
+  useEffect(() => {
+    return () => {
+      if (savedAnnouncement.current !== null) {
+        savedAnnouncement.current.cancel()
+        savedAnnouncement.current = null
+      }
+    }
+  }, [])
+
+  return (
+    <BaseComponent {...rest} ref={ref}>
+      {children}
+    </BaseComponent>
+  )
+}
+
+function getTextContent(element: HTMLElement): string {
+  let value = ''
+  if (element.hasAttribute('aria-label')) {
+    value = element.getAttribute('aria-label')!
+  } else if (element.textContent) {
+    value = element.textContent
+  }
+  return value ? value.trim() : ''
+}
+
+/**
+ * Determine if an element is visible (not hidden via `display: none` or
+ * `visibility: hidden`). Prefers the native `checkVisibility()` API when
+ * available and falls back to `getComputedStyle` for older browsers.
+ */
+function isVisible(element: HTMLElement): boolean {
+  if (typeof element.checkVisibility === 'function') {
+    return element.checkVisibility({
+      // `visibilityProperty` is the standard option name (Chrome 116+, Firefox
+      // 125+, Safari 17.4+); `checkVisibilityCSS` is the legacy Chromium name
+      // (Chrome 105+). Unknown options are ignored, so passing both ensures
+      // `visibility: hidden` is treated as not visible across all engines.
+      visibilityProperty: true,
+      checkVisibilityCSS: true,
+    })
+  }
+
+  const style = window.getComputedStyle(element)
+  return style.display !== 'none' && style.visibility !== 'hidden'
+}

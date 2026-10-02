@@ -1,0 +1,38 @@
+import {clsx} from 'clsx'
+import React from 'react'
+import type {ForwardRefComponent as PolymorphicForwardRefComponent} from '../utils/polymorphic'
+import classes from './Flash.module.css'
+
+/**
+ * @deprecated Use `Banner` instead. If migration is not yet possible, import `Flash` from `@primer/react/deprecated`.
+ */
+export type FlashProps = React.ComponentPropsWithoutRef<'div'> & {
+  className?: string
+  variant?: 'default' | 'warning' | 'success' | 'danger'
+  full?: boolean
+}
+
+/**
+ * @deprecated Use `Banner` instead. If migration is not yet possible, import `Flash` from `@primer/react/deprecated`.
+ */
+const Flash = React.forwardRef(function Flash(
+  {as: BaseComponent = 'div', className, variant = 'default', full, ...rest},
+  ref,
+) {
+  return (
+    <BaseComponent
+      {...rest}
+      ref={ref}
+      className={clsx(classes.Flash, className)}
+      data-full={full ? '' : undefined}
+      data-variant={variant}
+      data-component="Flash"
+    />
+  )
+}) as PolymorphicForwardRefComponent<'div', FlashProps>
+
+if (__DEV__) {
+  Flash.displayName = 'Flash'
+}
+
+export default Flash

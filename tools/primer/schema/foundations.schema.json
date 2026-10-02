@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://primer-kit.local/schema/foundations.schema.json",
+  "title": "Primer foundations",
+  "description": "System rules every component spec assumes. Each section is prose with machine fields; every token path in it is checked to exist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "tokens",
+    "themes",
+    "color",
+    "typography",
+    "shape",
+    "spacing",
+    "elevation",
+    "interaction",
+    "motion",
+    "layout",
+    "icons",
+    "provenance"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "tokens": {
+      "type": "object",
+      "required": [
+        "resolvedFile",
+        "tiers",
+        "naming",
+        "rules",
+        "units",
+        "stateVocabulary"
+      ]
+    },
+    "themes": {
+      "type": "object",
+      "required": [
+        "list",
+        "modes",
+        "rules"
+      ]
+    },
+    "color": {
+      "type": "object",
+      "required": [
+        "families",
+        "pairing",
+        "semantic",
+        "rules"
+      ]
+    },
+    "typography": {
+      "type": "object",
+      "required": [
+        "ramp",
+        "weights",
+        "fontStacks",
+        "rules"
+      ]
+    },
+    "shape": {
+      "type": "object",
+      "required": [
+        "radii",
+        "borders",
+        "rules"
+      ]
+    },
+    "spacing": {
+      "type": "object",
+      "required": [
+        "scale",
+        "stack",
+        "rules"
+      ]
+    },
+    "elevation": {
+      "type": "object",
+      "required": [
+        "shadows",
+        "zIndex",
+        "rules"
+      ]
+    },
+    "interaction": {
+      "type": "object",
+      "required": [
+        "states",
+        "disabled",
+        "focus",
+        "targetSize"
+      ]
+    },
+    "motion": {
+      "type": "object",
+      "required": [
+        "durations",
+        "easings",
+        "transitions",
+        "rules",
+        "reducedMotion"
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "required": [
+        "controlSizes",
+        "density",
+        "breakpoints",
+        "overlay",
+        "rtl"
+      ]
+    },
+    "icons": {
+      "type": "object",
+      "required": [
+        "set",
+        "sizes",
+        "rules"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "text",
+        "sources"
+      ]
+    }
+  }
+}

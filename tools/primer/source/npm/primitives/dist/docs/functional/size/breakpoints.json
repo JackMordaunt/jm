@@ -1,0 +1,26 @@
+{
+  "breakpoint-large": {
+    "type": "dimension",
+    "value": "63.25rem"
+  },
+  "breakpoint-medium": {
+    "type": "dimension",
+    "value": "48rem"
+  },
+  "breakpoint-small": {
+    "type": "dimension",
+    "value": "34rem"
+  },
+  "breakpoint-xlarge": {
+    "type": "dimension",
+    "value": "80rem"
+  },
+  "breakpoint-xsmall": {
+    "type": "dimension",
+    "value": "20rem"
+  },
+  "breakpoint-xxlarge": {
+    "type": "dimension",
+    "value": "87.5rem"
+  }
+}

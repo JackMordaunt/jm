@@ -1,0 +1,62 @@
+import type React from 'react'
+import {useFormControlContext} from './_FormControlContext'
+import {InputLabel} from '../internal/components/InputLabel'
+import type {FCWithSlotMarker} from '../utils/types'
+
+export type Props = {
+  /**
+   * Whether the label should be visually hidden
+   */
+  visuallyHidden?: boolean
+  requiredText?: string
+  requiredIndicator?: boolean
+  id?: string
+  className?: string
+  style?: React.CSSProperties
+}
+
+const FormControlLabel: FCWithSlotMarker<
+  React.PropsWithChildren<{htmlFor?: string} & React.ComponentProps<typeof InputLabel> & Props>
+> = ({as, children, htmlFor, id, visuallyHidden, requiredIndicator = true, requiredText, className, ...props}) => {
+  const {disabled, id: formControlId, required, isReferenced, labelId} = useFormControlContext()
+  const resolvedId = id ?? labelId
+
+  /**
+   * Ensure we can pass through props correctly, since legend/span accept no defined 'htmlFor'
+   */
+  const labelProps: React.ComponentProps<typeof InputLabel> =
+    as === 'legend' || as === 'span'
+      ? {
+          as,
+          id: resolvedId,
+          className,
+          visuallyHidden,
+          required,
+          requiredText,
+          requiredIndicator,
+          disabled,
+          ...props,
+        }
+      : {
+          as,
+          id: resolvedId,
+          className,
+          visuallyHidden,
+          htmlFor: isReferenced === false ? undefined : htmlFor || formControlId,
+          required,
+          requiredText,
+          requiredIndicator,
+          disabled,
+          ...props,
+        }
+
+  return (
+    <InputLabel {...labelProps} data-component="FormControl.Label">
+      {children}
+    </InputLabel>
+  )
+}
+
+FormControlLabel.__SLOT__ = Symbol('FormControl.Label')
+
+export default FormControlLabel

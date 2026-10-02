@@ -1,0 +1,26 @@
+{
+  "viewportRange-landscape": {
+    "type": "custom-viewportRange",
+    "value": "(orientation: landscape)"
+  },
+  "viewportRange-narrow": {
+    "type": "custom-viewportRange",
+    "value": "(max-width: calc(48rem - 0.02px))"
+  },
+  "viewportRange-narrowLandscape": {
+    "type": "custom-viewportRange",
+    "value": "((max-width: calc(63.25rem - 0.02px)) and (max-height: calc(34rem - 0.02px)) and (orientation: landscape))"
+  },
+  "viewportRange-portrait": {
+    "type": "custom-viewportRange",
+    "value": "(orientation: portrait)"
+  },
+  "viewportRange-regular": {
+    "type": "custom-viewportRange",
+    "value": "(min-width: 48rem)"
+  },
+  "viewportRange-wide": {
+    "type": "custom-viewportRange",
+    "value": "(min-width: 87.5rem)"
+  }
+}

@@ -1,0 +1,40 @@
+.LoadingSkeleton {
+  width: var(--loading-skeleton-width);
+  /* stylelint-disable-next-line primer/borders */
+  border-radius: 4px;
+}
+
+.LoadingSkeletonRow {
+  --loading-skeleton-width: 80%;
+
+  &:nth-of-type(5n + 2) {
+    --loading-skeleton-width: 52.5%;
+  }
+
+  &:nth-of-type(5n + 3) {
+    --loading-skeleton-width: 67.5%;
+  }
+
+  &:nth-of-type(5n + 4) {
+    --loading-skeleton-width: 40%;
+  }
+
+  &:nth-of-type(5n + 5) {
+    --loading-skeleton-width: 72.5%;
+  }
+}
+
+.LoadingSpinner {
+  padding: var(--base-size-16);
+  flex-grow: 1;
+  align-content: center;
+  text-align: center;
+  height: 100%;
+}
+
+.LoadingSkeletonContainer {
+  padding: var(--base-size-8);
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+}

@@ -1,0 +1,144 @@
+{
+  "motion-duration-long": {
+    "alias": "{base.duration.500}",
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 500
+    }
+  },
+  "motion-duration-medium": {
+    "alias": "{base.duration.300}",
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 300
+    }
+  },
+  "motion-duration-micro": {
+    "alias": "{base.duration.100}",
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 100
+    }
+  },
+  "motion-duration-short": {
+    "alias": "{base.duration.200}",
+    "type": "duration",
+    "value": {
+      "unit": "ms",
+      "value": 200
+    }
+  },
+  "motion-easing-enter": {
+    "alias": "{base.easing.easeOut}",
+    "type": "cubicBezier",
+    "value": [
+      0.3,
+      0.8,
+      0.6,
+      1
+    ]
+  },
+  "motion-easing-exit": {
+    "alias": "{base.easing.easeIn}",
+    "type": "cubicBezier",
+    "value": [
+      0.7,
+      0.1,
+      0.75,
+      0.9
+    ]
+  },
+  "motion-easing-hover": {
+    "alias": "{base.easing.ease}",
+    "type": "cubicBezier",
+    "value": [
+      0.25,
+      0.1,
+      0.25,
+      1
+    ]
+  },
+  "motion-easing-linear": {
+    "alias": "{base.easing.linear}",
+    "type": "cubicBezier",
+    "value": [
+      0,
+      0,
+      1,
+      1
+    ]
+  },
+  "motion-easing-move": {
+    "alias": "{base.easing.easeInOut}",
+    "type": "cubicBezier",
+    "value": [
+      0.6,
+      0,
+      0.2,
+      1
+    ]
+  },
+  "motion-transition-enter": {
+    "type": "transition",
+    "value": {
+      "duration": {
+        "unit": "ms",
+        "value": 300
+      },
+      "timingFunction": [
+        0.3,
+        0.8,
+        0.6,
+        1
+      ]
+    }
+  },
+  "motion-transition-exit": {
+    "type": "transition",
+    "value": {
+      "duration": {
+        "unit": "ms",
+        "value": 200
+      },
+      "timingFunction": [
+        0.7,
+        0.1,
+        0.75,
+        0.9
+      ]
+    }
+  },
+  "motion-transition-hover": {
+    "type": "transition",
+    "value": {
+      "duration": {
+        "unit": "ms",
+        "value": 100
+      },
+      "timingFunction": [
+        0.25,
+        0.1,
+        0.25,
+        1
+      ]
+    }
+  },
+  "motion-transition-stateChange": {
+    "type": "transition",
+    "value": {
+      "duration": {
+        "unit": "ms",
+        "value": 200
+      },
+      "timingFunction": [
+        0.6,
+        0,
+        0.2,
+        1
+      ]
+    }
+  }
+}

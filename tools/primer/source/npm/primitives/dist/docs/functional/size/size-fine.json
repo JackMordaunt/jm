@@ -1,0 +1,22 @@
+{
+  "control-minTarget-auto": {
+    "alias": "{base.size.16}",
+    "type": "dimension",
+    "value": "1rem"
+  },
+  "controlStack-large-gap-auto": {
+    "alias": "{base.size.8}",
+    "type": "dimension",
+    "value": "0.5rem"
+  },
+  "controlStack-medium-gap-auto": {
+    "alias": "{base.size.8}",
+    "type": "dimension",
+    "value": "0.5rem"
+  },
+  "controlStack-small-gap-auto": {
+    "alias": "{base.size.8}",
+    "type": "dimension",
+    "value": "0.5rem"
+  }
+}

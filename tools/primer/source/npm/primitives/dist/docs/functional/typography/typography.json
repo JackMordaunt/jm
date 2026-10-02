@@ -1,0 +1,210 @@
+{
+  "fontStack-monospace": {
+    "type": "fontFamily",
+    "value": "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace"
+  },
+  "fontStack-sansSerif": {
+    "type": "fontFamily",
+    "value": "'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "fontStack-sansSerifDisplay": {
+    "type": "fontFamily",
+    "value": "'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "fontStack-system": {
+    "type": "fontFamily",
+    "value": "'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-body-lineHeight-large": {
+    "alias": "{base.text.lineHeight.normal}",
+    "type": "number",
+    "value": 1.5
+  },
+  "text-body-lineHeight-medium": {
+    "alias": "{base.text.lineHeight.normal}",
+    "type": "number",
+    "value": 1.5
+  },
+  "text-body-lineHeight-small": {
+    "alias": "{base.text.lineHeight.relaxed}",
+    "type": "number",
+    "value": 1.625
+  },
+  "text-body-shorthand-large": {
+    "type": "typography",
+    "value": "400 1rem/1.5 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-body-shorthand-medium": {
+    "type": "typography",
+    "value": "400 0.875rem/1.5 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-body-shorthand-small": {
+    "type": "typography",
+    "value": "400 0.75rem/1.625 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-body-size-large": {
+    "alias": "{base.text.size.md}",
+    "type": "dimension",
+    "value": "1rem"
+  },
+  "text-body-size-medium": {
+    "alias": "{base.text.size.sm}",
+    "type": "dimension",
+    "value": "0.875rem"
+  },
+  "text-body-size-small": {
+    "alias": "{base.text.size.xs}",
+    "type": "dimension",
+    "value": "0.75rem"
+  },
+  "text-body-weight": {
+    "alias": "{base.text.weight.normal}",
+    "type": "fontWeight",
+    "value": 400
+  },
+  "text-caption-lineHeight": {
+    "alias": "{base.text.lineHeight.tight}",
+    "type": "number",
+    "value": 1.25
+  },
+  "text-caption-shorthand": {
+    "type": "typography",
+    "value": "400 0.75rem/1.25 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-caption-size": {
+    "alias": "{base.text.size.xs}",
+    "type": "dimension",
+    "value": "0.75rem"
+  },
+  "text-caption-weight": {
+    "alias": "{base.text.weight.normal}",
+    "type": "fontWeight",
+    "value": 400
+  },
+  "text-codeBlock-lineHeight": {
+    "alias": "{base.text.lineHeight.normal}",
+    "type": "number",
+    "value": 1.5
+  },
+  "text-codeBlock-shorthand": {
+    "type": "typography",
+    "value": "400 0.8125rem/1.5 ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace"
+  },
+  "text-codeBlock-size": {
+    "type": "dimension",
+    "value": "0.8125rem"
+  },
+  "text-codeBlock-weight": {
+    "alias": "{base.text.weight.normal}",
+    "type": "fontWeight",
+    "value": 400
+  },
+  "text-codeInline-shorthand": {
+    "type": "typography",
+    "value": "400 0.9285em ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace"
+  },
+  "text-codeInline-size": {
+    "type": "dimension",
+    "value": "0.9285em"
+  },
+  "text-codeInline-weight": {
+    "alias": "{base.text.weight.normal}",
+    "type": "fontWeight",
+    "value": 400
+  },
+  "text-display-lineHeight": {
+    "alias": "{base.text.lineHeight.snug}",
+    "type": "number",
+    "value": 1.375
+  },
+  "text-display-shorthand": {
+    "type": "typography",
+    "value": "500 2.5rem/1.375 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-display-size": {
+    "alias": "{base.text.size.2xl}",
+    "type": "dimension",
+    "value": "2.5rem"
+  },
+  "text-display-weight": {
+    "alias": "{base.text.weight.medium}",
+    "type": "fontWeight",
+    "value": 500
+  },
+  "text-subtitle-lineHeight": {
+    "alias": "{base.text.lineHeight.relaxed}",
+    "type": "number",
+    "value": 1.625
+  },
+  "text-subtitle-shorthand": {
+    "type": "typography",
+    "value": "400 1.25rem/1.625 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-subtitle-size": {
+    "alias": "{base.text.size.lg}",
+    "type": "dimension",
+    "value": "1.25rem"
+  },
+  "text-subtitle-weight": {
+    "alias": "{base.text.weight.normal}",
+    "type": "fontWeight",
+    "value": 400
+  },
+  "text-title-lineHeight-large": {
+    "alias": "{base.text.lineHeight.normal}",
+    "type": "number",
+    "value": 1.5
+  },
+  "text-title-lineHeight-medium": {
+    "alias": "{base.text.lineHeight.relaxed}",
+    "type": "number",
+    "value": 1.625
+  },
+  "text-title-lineHeight-small": {
+    "alias": "{base.text.lineHeight.normal}",
+    "type": "number",
+    "value": 1.5
+  },
+  "text-title-shorthand-large": {
+    "type": "typography",
+    "value": "600 2rem/1.5 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-title-shorthand-medium": {
+    "type": "typography",
+    "value": "600 1.25rem/1.625 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-title-shorthand-small": {
+    "type": "typography",
+    "value": "600 1rem/1.5 'Mona Sans VF', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Backtick Fix', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'"
+  },
+  "text-title-size-large": {
+    "alias": "{base.text.size.xl}",
+    "type": "dimension",
+    "value": "2rem"
+  },
+  "text-title-size-medium": {
+    "alias": "{base.text.size.lg}",
+    "type": "dimension",
+    "value": "1.25rem"
+  },
+  "text-title-size-small": {
+    "alias": "{base.text.size.md}",
+    "type": "dimension",
+    "value": "1rem"
+  },
+  "text-title-weight-large": {
+    "alias": "{base.text.weight.semibold}",
+    "type": "fontWeight",
+    "value": 600
+  },
+  "text-title-weight-medium": {
+    "alias": "{base.text.weight.semibold}",
+    "type": "fontWeight",
+    "value": 600
+  },
+  "text-title-weight-small": {
+    "alias": "{base.text.weight.semibold}",
+    "type": "fontWeight",
+    "value": 600
+  }
+}

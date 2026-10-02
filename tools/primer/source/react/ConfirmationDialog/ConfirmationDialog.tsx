@@ -1,0 +1,137 @@
+import type React from 'react'
+import {useCallback} from 'react'
+import type {DialogButtonProps, DialogWidth, DialogHeight} from '../Dialog'
+import {Dialog} from '../Dialog'
+
+/**
+ * Props to customize the ConfirmationDialog.
+ */
+export interface ConfirmationDialogProps {
+  /**
+   * Required. This callback is invoked when a gesture to close the dialog
+   * is performed. The first argument indicates the gesture.
+   */
+  onClose: (gesture: 'confirm' | 'close-button' | 'cancel' | 'escape') => void
+
+  /**
+   * Required. The title of the ConfirmationDialog. This is usually a brief
+   * question.
+   */
+  title: React.ReactNode
+
+  /**
+   * The text to use for the cancel button. Default: "Cancel".
+   */
+  cancelButtonContent?: React.ReactNode
+
+  /**
+   * The text to use for the confirm button. Default: "OK".
+   */
+  confirmButtonContent?: React.ReactNode
+
+  /**
+   * The type of button to use for the confirm button. Default: Button.
+   */
+  confirmButtonType?: 'normal' | 'primary' | 'danger'
+
+  /**
+   * Whether the cancel button is in a loading state. Default: false.
+   */
+  cancelButtonLoading?: boolean
+
+  /**
+   * Whether the confirm button is in a loading state. Default: false.
+   */
+  confirmButtonLoading?: boolean
+
+  /**
+   * Overrides the button that should be initially focused when the dialog is opened. By default, the confirm button
+   * is focused initially unless it is a dangerous action, in which case the cancel button is focused. This should
+   * rarely be overridden, in order to ensure that the user does not accidentally confirm a dangerous action.
+   */
+  overrideButtonFocus?: 'cancel' | 'confirm'
+
+  /**
+   * Additional class names to apply to the dialog
+   */
+  className?: string
+
+  /**
+   * The width of the dialog.
+   * small: 296px
+   * medium: 320px
+   * large: 480px
+   * xlarge: 640px
+   * @default 'medium'
+   */
+  width?: DialogWidth
+
+  /**
+   * The height of the dialog.
+   * small: 480px
+   * large: 640px
+   * auto: variable based on contents
+   */
+  height?: DialogHeight
+}
+
+/**
+ * A ConfirmationDialog is a special kind of dialog with more rigid behavior. It
+ * is used to confirm a user action. ConfirmationDialogs always have exactly
+ * two buttons: one to cancel the action and one to confirm it. No custom
+ * rendering capabilities are provided for ConfirmationDialog.
+ */
+export const ConfirmationDialog: React.FC<React.PropsWithChildren<ConfirmationDialogProps>> = props => {
+  const {
+    onClose,
+    title,
+    cancelButtonContent = 'Cancel',
+    confirmButtonContent = 'OK',
+    confirmButtonType = 'normal',
+    cancelButtonLoading = false,
+    confirmButtonLoading = false,
+    children,
+    className,
+    width = 'medium',
+    height,
+    overrideButtonFocus,
+  } = props
+
+  const onCancelButtonClick = useCallback(() => {
+    onClose('cancel')
+  }, [onClose])
+  const onConfirmButtonClick = useCallback(() => {
+    onClose('confirm')
+  }, [onClose])
+  const isConfirmationDangerous = confirmButtonType === 'danger'
+  const buttonToFocus =
+    overrideButtonFocus !== undefined ? overrideButtonFocus : isConfirmationDangerous ? 'cancel' : 'confirm'
+  const cancelButton: DialogButtonProps = {
+    content: cancelButtonContent,
+    onClick: onCancelButtonClick,
+    autoFocus: buttonToFocus === 'cancel',
+    loading: cancelButtonLoading,
+  }
+  const confirmButton: DialogButtonProps = {
+    content: confirmButtonContent,
+    buttonType: confirmButtonType,
+    onClick: onConfirmButtonClick,
+    autoFocus: buttonToFocus === 'confirm',
+    loading: confirmButtonLoading,
+  }
+  const footerButtons = [cancelButton, confirmButton]
+  return (
+    <Dialog
+      data-component="ConfirmationDialog"
+      onClose={onClose}
+      title={title}
+      footerButtons={footerButtons}
+      role="alertdialog"
+      width={width}
+      height={height}
+      className={className}
+    >
+      {children}
+    </Dialog>
+  )
+}

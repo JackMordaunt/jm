@@ -1,0 +1,548 @@
+{
+  "$schema": "schema/foundations.schema.json",
+  "tokens": {
+    "resolvedFile": "tokens/primer.resolved.json",
+    "tiers": [
+      {
+        "tier": "base",
+        "text": "Raw scales: --base-size-<n> (px steps 2 to 128 and their negatives), --base-duration-<ms>, --base-easing-<name>, --base-zIndex-<n>, --base-text-weight-<name>. Base colour scales (base.color.<hue>.<step>) exist only in the token sources, never as properties; a functional colour's alias names its base step.",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "tier": "functional",
+        "text": "Purpose-named tokens components read: fgColor, bgColor, borderColor, shadow, control, controlStack, stack, space, borderRadius, borderWidth, text, motion, focus, overlay, zIndex, breakpoint.",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "tier": "component",
+        "text": "Some components have their own tier: --button-*, --buttonCounter-*, --buttonKeybindingHint-*, --label-*, --counter-*, --avatar-*, --avatarStack-*, --progressBar-*, --overlay-*, --tooltip-*, --underlineNav-*, --treeViewItem-*, --controlTrack-*, --controlKnob-*, --skeletonLoader-*, --timelineBadge-*, --topicTag-*, --selectMenu-*, --sideNav-*, --header-*, --headerSearch-*, --page-*, --menu-*, --reactionButton-*. Components without one compose functional tokens in their CSS module."
+      }
+    ],
+    "naming": "A token is named as the CSS custom property Primer's CSS reads, --<path joined by dashes>: --fgColor-default, --control-medium-paddingInline-normal, --button-primary-bgColor-hover. The last segment of a colour token is the state where it varies by state (rest, hover, active, disabled, selected).",
+    "rules": [
+      {
+        "text": "Never use a raw value where a token exists; read the token a component's CSS module names, even when two tokens resolve to the same value, because themes bind them apart.",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "text": "--borderRadius-default and --borderRadius-medium are the same token under two names, as are --borderWidth-default and --borderWidth-thin, --focus-outline-offset and --outline-focus-offset, --focus-outline-width and --outline-focus-width; read whichever the module names."
+      },
+      {
+        "text": "The display-*, data-*, prettylights-*, ansi-*, codeMirror-*, diffBlob-*, contribution-* and color-* families serve GitHub's product surfaces (issue label colours, charts, syntax and diff highlighting, deprecated aliases), not Primer React's components; a component spec names one only where its module reads it."
+      }
+    ],
+    "units": "px for dimensions (Primer writes rem; 1rem is 16px), em where Primer sizes relative to the font, ms for durations, cubicBezier as [x1, y1, x2, y2], colours as #rrggbb or #rrggbbaa, shadows as layers of {x, y, blur, spread, color, inset}.",
+    "stateVocabulary": "rest, hover, active (pressed), disabled, selected, plus checked for checkbox-like controls and focus-visible for keyboard focus. A state is its own token, not a layer blended over rest."
+  },
+  "themes": {
+    "list": [
+      "light",
+      "dark",
+      "dark-dimmed",
+      "light-high-contrast",
+      "dark-high-contrast",
+      "dark-dimmed-high-contrast",
+      "light-colorblind",
+      "dark-colorblind",
+      "light-colorblind-high-contrast",
+      "dark-colorblind-high-contrast",
+      "light-tritanopia",
+      "dark-tritanopia",
+      "light-tritanopia-high-contrast",
+      "dark-tritanopia-high-contrast"
+    ],
+    "modes": "In tokens/primer.resolved.json value is light and every other theme is a camel-case key (darkDimmed, lightHighContrast, darkColorblindHighContrast...), present only where that theme's value differs.",
+    "rules": [
+      {
+        "text": "Every theme binds the same names; a component never branches on the theme, only reads tokens."
+      },
+      {
+        "text": "Colorblind themes draw success and open in blue (--fgColor-success is #0969da in light-colorblind) and danger in orange (#bc4c00); tritanopia themes draw success in blue and keep danger red. Components that pair a colour with an icon or text (StateLabel, Banner, InlineMessage) stay legible in all of them; never encode state in hue alone.",
+        "tokens": [
+          "--fgColor-success",
+          "--fgColor-danger"
+        ]
+      },
+      {
+        "text": "High-contrast themes darken borders and muted foregrounds (--control-borderColor-rest is #d1d9e0 in light, #454c54 in light-high-contrast); read the border token even where it looks invisible in the default theme.",
+        "tokens": [
+          "--control-borderColor-rest"
+        ]
+      }
+    ]
+  },
+  "color": {
+    "families": "fgColor (text and icons), bgColor (surfaces), borderColor (strokes), each by role: default, muted, emphasis, inset, inverse, disabled, transparent, and the semantic roles below in -muted (tint) and -emphasis (solid) strengths.",
+    "semantic": [
+      "accent",
+      "success",
+      "attention",
+      "severe",
+      "danger",
+      "open",
+      "closed",
+      "done",
+      "draft",
+      "neutral",
+      "sponsors",
+      "upsell"
+    ],
+    "pairing": [
+      {
+        "text": "A --bgColor-<role>-emphasis surface takes --fgColor-onEmphasis text.",
+        "tokens": [
+          "--bgColor-accent-emphasis",
+          "--fgColor-onEmphasis"
+        ],
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "text": "A --bgColor-<role>-muted surface takes --fgColor-<role> text and --borderColor-<role>-muted strokes.",
+        "tokens": [
+          "--bgColor-accent-muted",
+          "--fgColor-accent",
+          "--borderColor-accent-muted"
+        ],
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "text": "--bgColor-default and --bgColor-muted take --fgColor-default; never --fgColor-muted on --bgColor-muted.",
+        "tokens": [
+          "--bgColor-default",
+          "--bgColor-muted",
+          "--fgColor-default",
+          "--fgColor-muted"
+        ],
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      }
+    ],
+    "rules": [
+      {
+        "text": "Text meets 4.5:1 against its surface and large text and UI strokes 3:1 (WCAG AA).",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "text": "The page is --bgColor-default with --fgColor-default text; links are --fgColor-accent (BaseStyles), underlined on hover.",
+        "tokens": [
+          "--bgColor-default",
+          "--fgColor-default",
+          "--fgColor-accent"
+        ],
+        "source": "BaseStyles.module.css:56-79"
+      },
+      {
+        "text": "Selected text is highlighted in --selection-bgColor.",
+        "tokens": [
+          "--selection-bgColor"
+        ]
+      }
+    ]
+  },
+  "typography": {
+    "ramp": [
+      {
+        "role": "display",
+        "tokens": [
+          "--text-display-shorthand"
+        ]
+      },
+      {
+        "role": "title-large",
+        "tokens": [
+          "--text-title-shorthand-large"
+        ]
+      },
+      {
+        "role": "title-medium",
+        "tokens": [
+          "--text-title-shorthand-medium"
+        ]
+      },
+      {
+        "role": "title-small",
+        "tokens": [
+          "--text-title-shorthand-small"
+        ]
+      },
+      {
+        "role": "subtitle",
+        "tokens": [
+          "--text-subtitle-shorthand"
+        ]
+      },
+      {
+        "role": "body-large",
+        "tokens": [
+          "--text-body-shorthand-large"
+        ]
+      },
+      {
+        "role": "body-medium",
+        "tokens": [
+          "--text-body-shorthand-medium"
+        ]
+      },
+      {
+        "role": "body-small",
+        "tokens": [
+          "--text-body-shorthand-small"
+        ]
+      },
+      {
+        "role": "caption",
+        "tokens": [
+          "--text-caption-shorthand"
+        ]
+      },
+      {
+        "role": "code-block",
+        "tokens": [
+          "--text-codeBlock-shorthand"
+        ]
+      },
+      {
+        "role": "code-inline",
+        "tokens": [
+          "--text-codeInline-shorthand"
+        ]
+      }
+    ],
+    "weights": {
+      "text": "light 300, normal 400, medium 500, semibold 600; controls (Button, SegmentedControl) set their label in medium; titles are semibold.",
+      "tokens": [
+        "--base-text-weight-light",
+        "--base-text-weight-normal",
+        "--base-text-weight-medium",
+        "--base-text-weight-semibold"
+      ]
+    },
+    "fontStacks": {
+      "text": "--fontStack-system (Mona Sans VF, then the platform UI face: -apple-system, Segoe UI, Noto Sans, Helvetica, Arial) for all UI text and --fontStack-monospace for code. A native build draws in the platform's UI sans and its monospace; Mona Sans is optional (OFL-1.1, github/mona-sans).",
+      "tokens": [
+        "--fontStack-system",
+        "--fontStack-monospace"
+      ]
+    },
+    "rules": [
+      {
+        "text": "Set text with a shorthand token so size, line height and weight move together; use the separate size and line-height tokens only where a module does (Button's label).",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "text": "Body default is body-medium (14px over 21px), which is also BaseStyles' 1.5 line height.",
+        "tokens": [
+          "--text-body-shorthand-medium"
+        ],
+        "source": "BaseStyles.module.css:56-62"
+      },
+      {
+        "text": "Never set multi-line body text in caption.",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      }
+    ]
+  },
+  "shape": {
+    "radii": {
+      "text": "small 3px (labels, tokens' inner parts), medium 6px (controls, cards, overlays: the default), large 12px (dialogs, large surfaces), full 9999px (pills: CounterLabel, Label, ToggleSwitch, avatars).",
+      "tokens": [
+        "--borderRadius-small",
+        "--borderRadius-medium",
+        "--borderRadius-large",
+        "--borderRadius-full"
+      ]
+    },
+    "borders": {
+      "text": "thin 1px for every control and surface border; thick 2px for the focus outline and emphasis indicators; thicker 4px for active markers. --boxShadow-thin/thick/thicker are the same widths as inset rings, for borders that must not take layout space.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderWidth-thick",
+        "--borderWidth-thicker",
+        "--boxShadow-thin"
+      ]
+    },
+    "rules": [
+      {
+        "text": "Borders are drawn inside the control's box (box-sizing: border-box): a 32px button is 32px including its 1px border.",
+        "source": "BaseStyles.module.css:7-9"
+      }
+    ]
+  },
+  "spacing": {
+    "scale": {
+      "text": "--base-size-<n> in px steps (2, 4, 6, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 64, 80, 96, 112, 128); --space-xxs..xl name 2, 4, 8, 12, 16, 24.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-16",
+        "--space-md"
+      ]
+    },
+    "stack": {
+      "text": "Layout gaps and paddings come in condensed, normal and spacious: --stack-gap-* and --stack-padding-*. Gaps between stacked controls are --controlStack-<size>-gap-<density>, where auto widens for a coarse pointer.",
+      "tokens": [
+        "--stack-gap-condensed",
+        "--stack-gap-normal",
+        "--stack-gap-spacious",
+        "--stack-padding-normal",
+        "--controlStack-medium-gap-auto"
+      ]
+    },
+    "rules": [
+      {
+        "text": "Interactive elements take control tokens for padding and gap; layout takes stack tokens.",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      }
+    ]
+  },
+  "elevation": {
+    "shadows": [
+      {
+        "name": "resting-xsmall",
+        "tokens": [
+          "--shadow-resting-xsmall"
+        ],
+        "use": "Subtle lift of a resting control."
+      },
+      {
+        "name": "resting-small",
+        "tokens": [
+          "--shadow-resting-small"
+        ],
+        "use": "Primary buttons, cards at rest."
+      },
+      {
+        "name": "resting-medium",
+        "tokens": [
+          "--shadow-resting-medium"
+        ],
+        "use": "Raised resting surfaces."
+      },
+      {
+        "name": "floating-small",
+        "tokens": [
+          "--shadow-floating-small"
+        ],
+        "use": "Menus, popovers, select panels (with a 1px ring as their border)."
+      },
+      {
+        "name": "floating-medium",
+        "tokens": [
+          "--shadow-floating-medium"
+        ],
+        "use": "Overlays and drawers."
+      },
+      {
+        "name": "floating-large",
+        "tokens": [
+          "--shadow-floating-large"
+        ],
+        "use": "Dialogs."
+      },
+      {
+        "name": "floating-xlarge",
+        "tokens": [
+          "--shadow-floating-xlarge"
+        ],
+        "use": "Full-screen and command surfaces."
+      },
+      {
+        "name": "inset",
+        "tokens": [
+          "--shadow-inset"
+        ],
+        "use": "Wells: text inputs' inner top shadow."
+      }
+    ],
+    "zIndex": {
+      "text": "behind -1, default 0, sticky 100, dropdown 200, overlay 300, modal 400, popover 500, skipLink 600. Resting shadows sit at default or sticky, floating small and medium at dropdown or overlay, floating large and xlarge at modal or popover.",
+      "tokens": [
+        "--zIndex-dropdown",
+        "--zIndex-overlay",
+        "--zIndex-modal",
+        "--zIndex-popover"
+      ],
+      "source": "DESIGN_TOKENS_GUIDE.md"
+    },
+    "rules": [
+      {
+        "text": "A shadow is a list of CSS box-shadow layers painted in order; layers carry spread (a 0 0 0 1px layer is a ring that serves as the surface's border) and may be inset. Paint inset layers inside the shape, clipped to it."
+      },
+      {
+        "text": "Floating shadows' first layer is the 1px border ring in --borderColor-default's colour at partial alpha; in dark themes it is the overlay border. Do not also stroke a border on a surface that takes a floating shadow unless its module does."
+      }
+    ]
+  },
+  "interaction": {
+    "states": [
+      {
+        "state": "hover",
+        "text": "Pointer over an enabled control: its -hover tokens. Hover changes background and border, never size."
+      },
+      {
+        "state": "active",
+        "text": "Pressed: its -active tokens, applied instantly (transition: none on :active)."
+      },
+      {
+        "state": "selected",
+        "text": "On (aria-expanded, aria-selected, aria-current, checked): -selected or -active tokens per the component's module."
+      }
+    ],
+    "disabled": {
+      "text": "Disabled controls read their -disabled tokens (--control-fgColor-disabled, --control-bgColor-disabled, --control-borderColor-disabled or the component tier's), drop their resting shadow, and show a not-allowed cursor. Never fade a disabled control with opacity.",
+      "tokens": [
+        "--control-fgColor-disabled",
+        "--control-bgColor-disabled",
+        "--control-borderColor-disabled"
+      ],
+      "source": "DESIGN_TOKENS_GUIDE.md; ButtonBase.module.css:82-91"
+    },
+    "focus": {
+      "text": "Keyboard focus (:focus-visible only, never after a pointer press) draws a 2px solid outline in --focus-outline-color, offset -2px so it sits inside the control's border box, and removes any box-shadow. On an emphasis fill (primary button) the outline adds an inset 3px ring of --fgColor-onEmphasis inside it. Text-like controls (link buttons) offset the outline +2px outside.",
+      "tokens": [
+        "--focus-outline-color",
+        "--focus-outline-width",
+        "--focus-outline-offset",
+        "--fgColor-onEmphasis"
+      ],
+      "values": [
+        {
+          "name": "onEmphasisRing",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "linkOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "focusOutline.css; focusOutlineOnEmphasis.css; BaseStyles.module.css:41-54; ButtonBase.module.css:36-38,370-372,601-604"
+    },
+    "targetSize": {
+      "text": "Controls are their visual size for a fine pointer; for a coarse pointer the hit target grows to --control-minTarget-coarse (44px) where a module reads --control-minTarget-auto.",
+      "tokens": [
+        "--control-minTarget-auto",
+        "--control-minTarget-fine",
+        "--control-minTarget-coarse"
+      ]
+    }
+  },
+  "motion": {
+    "durations": {
+      "text": "micro 100ms (hover, focus), short 200ms (state changes), medium 300ms (enter), long 500ms (the ceiling for UI).",
+      "tokens": [
+        "--motion-duration-micro",
+        "--motion-duration-short",
+        "--motion-duration-medium",
+        "--motion-duration-long"
+      ]
+    },
+    "easings": {
+      "text": "enter (ease-out), exit (ease-in), hover (ease), move (ease-in-out), linear (loaders).",
+      "tokens": [
+        "--motion-easing-enter",
+        "--motion-easing-exit",
+        "--motion-easing-hover",
+        "--motion-easing-move",
+        "--motion-easing-linear"
+      ]
+    },
+    "transitions": {
+      "text": "Composites of a duration and an easing: hover 100ms, stateChange 200ms, enter 300ms, exit 200ms.",
+      "tokens": [
+        "--motion-transition-hover",
+        "--motion-transition-stateChange",
+        "--motion-transition-enter",
+        "--motion-transition-exit"
+      ]
+    },
+    "rules": [
+      {
+        "text": "Interactive state changes are short time-based transitions of colour properties only; Primer has no springs and no ripples.",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      },
+      {
+        "text": "Many modules predate the motion tokens and hard-code their own curve; Button transitions color, fill, background-color and border-color over 80ms cubic-bezier(0.65, 0, 0.35, 1), and a press snaps with no transition. Follow the module, not the token, where they differ.",
+        "values": [
+          {
+            "name": "buttonTransition",
+            "value": 80,
+            "unit": "ms"
+          }
+        ],
+        "source": "ButtonBase.module.css:20-21,40-42"
+      },
+      {
+        "text": "Never exceed 500ms for UI motion, and never loop indefinitely without the user's control (spinners aside).",
+        "source": "DESIGN_TOKENS_GUIDE.md"
+      }
+    ],
+    "reducedMotion": "Under reduced motion every transition becomes instant; spinners keep spinning."
+  },
+  "layout": {
+    "controlSizes": {
+      "text": "xsmall 24, small 28, medium 32 (default), large 40, xlarge 48 px tall; each size has paddingBlock, gap and paddingInline in condensed, normal and spacious. Button and IconButton offer small, medium and large.",
+      "tokens": [
+        "--control-xsmall-size",
+        "--control-small-size",
+        "--control-medium-size",
+        "--control-large-size",
+        "--control-xlarge-size",
+        "--control-medium-paddingInline-normal",
+        "--control-medium-gap"
+      ]
+    },
+    "density": {
+      "text": "Primer has one density axis tied to the pointer: size-fine (default) and size-coarse. Only the -auto tokens change: --control-minTarget-auto 16 to 44px and --controlStack-*-gap-auto widen. In tokens/primer.resolved.json the coarse value is the coarse key.",
+      "tokens": [
+        "--control-minTarget-auto",
+        "--controlStack-small-gap-auto"
+      ]
+    },
+    "breakpoints": {
+      "text": "xsmall 320, small 544, medium 768, large 1012, xlarge 1280, xxlarge 1400 px. PageLayout and SplitPageLayout change pane placement at these; the viewport ranges narrow (below medium), regular and wide (above xlarge) name them.",
+      "tokens": [
+        "--breakpoint-small",
+        "--breakpoint-medium",
+        "--breakpoint-large",
+        "--breakpoint-xlarge"
+      ]
+    },
+    "overlay": {
+      "text": "Overlays size to xsmall 192, small 320, medium 480, large 640, xlarge 960 px wide and small 256, medium 320, large 432, xlarge 600 px tall, sit --overlay-offset 4px from their anchor, round at --overlay-borderRadius and pad condensed or normal.",
+      "tokens": [
+        "--overlay-width-small",
+        "--overlay-height-medium",
+        "--overlay-offset",
+        "--overlay-borderRadius",
+        "--overlay-padding-normal"
+      ]
+    },
+    "rtl": "Layout follows CSS logical properties (padding-inline, inset-inline); mirror horizontally for right-to-left."
+  },
+  "icons": {
+    "set": "Octicons (@primer/octicons, MIT; the GitHub marks follow GitHub's logo guidelines). Each icon is one or a few filled paths, no strokes, coloured by the current text colour.",
+    "sizes": "Drawn at 16px in every control up to large; 24px designs exist for larger uses and differ in detail, so draw the 24px paths at 24px rather than scaling the 16px ones. A few icons also have 12px designs.",
+    "rules": [
+      {
+        "text": "Leading and trailing visuals in controls are 16px icons coloured --fgColor-muted unless the variant names another token.",
+        "tokens": [
+          "--fgColor-muted"
+        ],
+        "source": "ButtonBase.module.css:99-104"
+      }
+    ]
+  },
+  "provenance": {
+    "text": "Every fact derives from Primer React at the commit in source/COMMIT (the @primer/react release in source/VERSIONS), the @primer/primitives and @primer/octicons packages at the versions there, and primer.style for prose the code leaves unsaid. CSS modules give metrics; .docs.json files give the API and status; .tsx files give behaviour; DESIGN_TOKENS_GUIDE.md gives the token rules.",
+    "sources": [
+      "source/react/<Component>/<Component>.module.css",
+      "source/react/<Component>/<Component>.docs.json",
+      "source/react/<Component>/<Component>.tsx",
+      "source/mixins/*.css",
+      "source/npm/primitives/DESIGN_TOKENS_GUIDE.md",
+      "source/npm/primitives/dist/docs",
+      "source/npm/octicons/build/data.json"
+    ]
+  }
+}

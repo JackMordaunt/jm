@@ -1,0 +1,501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://primer-kit.local/schema/resolved.schema.json",
+  "title": "Primer resolved tokens",
+  "description": "Every token flat, keyed by its CSS custom property name (--fgColor-default), with the value each theme gives it. value is the light theme; each other theme's key appears where that theme differs, and coarse where a coarse pointer changes a size. alias names the token the light value was written as.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "source",
+    "modes",
+    "units",
+    "tokens"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "commit",
+        "package",
+        "version"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "package": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "modes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "units": {
+      "type": "string"
+    },
+    "tokens": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^--[A-Za-z][A-Za-z0-9-]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "color",
+              "dimension",
+              "number",
+              "duration",
+              "cubicBezier",
+              "transition",
+              "fontFamily",
+              "fontWeight",
+              "shadow",
+              "border",
+              "typography",
+              "custom-string",
+              "custom-viewportRange"
+            ]
+          },
+          "value": {
+            "$ref": "#/$defs/value"
+          },
+          "alias": {
+            "type": "string",
+            "pattern": "^(--[A-Za-z][A-Za-z0-9-]*|base\\.color\\.[a-z0-9.-]+)$"
+          },
+          "coarse": {
+            "$ref": "#/$defs/value"
+          },
+          "dark": {
+            "$ref": "#/$defs/value"
+          },
+          "darkDimmed": {
+            "$ref": "#/$defs/value"
+          },
+          "lightHighContrast": {
+            "$ref": "#/$defs/value"
+          },
+          "darkHighContrast": {
+            "$ref": "#/$defs/value"
+          },
+          "darkDimmedHighContrast": {
+            "$ref": "#/$defs/value"
+          },
+          "lightColorblind": {
+            "$ref": "#/$defs/value"
+          },
+          "darkColorblind": {
+            "$ref": "#/$defs/value"
+          },
+          "lightColorblindHighContrast": {
+            "$ref": "#/$defs/value"
+          },
+          "darkColorblindHighContrast": {
+            "$ref": "#/$defs/value"
+          },
+          "lightTritanopia": {
+            "$ref": "#/$defs/value"
+          },
+          "darkTritanopia": {
+            "$ref": "#/$defs/value"
+          },
+          "lightTritanopiaHighContrast": {
+            "$ref": "#/$defs/value"
+          },
+          "darkTritanopiaHighContrast": {
+            "$ref": "#/$defs/value"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "color"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/color"
+                },
+                "dark": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkDimmed": {
+                  "$ref": "#/$defs/color"
+                },
+                "lightHighContrast": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkHighContrast": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkDimmedHighContrast": {
+                  "$ref": "#/$defs/color"
+                },
+                "lightColorblind": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkColorblind": {
+                  "$ref": "#/$defs/color"
+                },
+                "lightColorblindHighContrast": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkColorblindHighContrast": {
+                  "$ref": "#/$defs/color"
+                },
+                "lightTritanopia": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkTritanopia": {
+                  "$ref": "#/$defs/color"
+                },
+                "lightTritanopiaHighContrast": {
+                  "$ref": "#/$defs/color"
+                },
+                "darkTritanopiaHighContrast": {
+                  "$ref": "#/$defs/color"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "number",
+                    "duration",
+                    "fontWeight"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "dimension"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/dimension"
+                },
+                "coarse": {
+                  "$ref": "#/$defs/dimension"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "cubicBezier"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/bezier"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "shadow"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "dark": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkDimmed": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "lightHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkDimmedHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "lightColorblind": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkColorblind": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "lightColorblindHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkColorblindHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "lightTritanopia": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkTritanopia": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "lightTritanopiaHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                },
+                "darkTritanopiaHighContrast": {
+                  "$ref": "#/$defs/shadow"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "border"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/border"
+                },
+                "dark": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkDimmed": {
+                  "$ref": "#/$defs/border"
+                },
+                "lightHighContrast": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkHighContrast": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkDimmedHighContrast": {
+                  "$ref": "#/$defs/border"
+                },
+                "lightColorblind": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkColorblind": {
+                  "$ref": "#/$defs/border"
+                },
+                "lightColorblindHighContrast": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkColorblindHighContrast": {
+                  "$ref": "#/$defs/border"
+                },
+                "lightTritanopia": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkTritanopia": {
+                  "$ref": "#/$defs/border"
+                },
+                "lightTritanopiaHighContrast": {
+                  "$ref": "#/$defs/border"
+                },
+                "darkTritanopiaHighContrast": {
+                  "$ref": "#/$defs/border"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "typography"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "value": {
+                  "type": "object",
+                  "required": [
+                    "fontFamily",
+                    "fontWeight",
+                    "fontSize"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "fontFamily": {
+                      "type": "string"
+                    },
+                    "fontWeight": {
+                      "type": "number"
+                    },
+                    "fontSize": {
+                      "$ref": "#/$defs/dimension"
+                    },
+                    "lineHeight": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "value": {
+      "type": [
+        "number",
+        "string",
+        "array",
+        "object"
+      ]
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^(#[0-9a-f]{6}|#[0-9a-f]{8})$",
+      "description": "#rrggbb, or #rrggbbaa where the source keeps an alpha colour."
+    },
+    "shadow": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y",
+          "blur",
+          "spread",
+          "color",
+          "inset"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "blur": {
+            "type": "number"
+          },
+          "color": {
+            "$ref": "#/$defs/color"
+          },
+          "spread": {
+            "type": "number"
+          },
+          "inset": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Layers painted in order, as CSS box-shadow lists them: each an offset, blur, spread (negative shrinks), colour, and whether it is inset."
+    },
+    "dimension": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "unit"
+          ],
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "unit": {
+              "const": "em"
+            }
+          }
+        }
+      ],
+      "description": "px, or em where Primer sizes relative to the font."
+    },
+    "bezier": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "border": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "style",
+        "color"
+      ],
+      "properties": {
+        "width": {
+          "type": "number"
+        },
+        "style": {
+          "enum": [
+            "solid",
+            "dashed"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        }
+      }
+    }
+  }
+}

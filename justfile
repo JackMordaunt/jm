@@ -799,6 +799,39 @@ fluent-png page="Button": blend2d kb
     build/debug/fluent-kitchen-child{{exe}} -page "{{page}}" -png "build/fluent-{{page}}.png"
 
 # ============================================================================
+# ui/primer: the primer-kit at tools/primer, GitHub's Primer read from
+# Primer React, @primer/primitives and @primer/octicons.
+# ============================================================================
+
+primer_kit := "tools/primer"
+
+# Replaces source/ wholesale: primer/react at the commit an @primer/react
+# release tag names, then @primer/primitives and @primer/octicons at the
+# versions given. Needs gh, npm and jq.
+#
+# Re-vendor the kit's source/ at pinned Primer releases
+[group('ui/primer')]
+primer-kit-fetch react="38.40.1" primitives="11.10.0" octicons="19.38.0":
+    {{primer_kit}}/scripts/fetch.sh {{react}} {{primitives}} {{octicons}}
+
+# Regenerate the kit's tokens/primer.resolved.json from the vendored primitives
+[group('ui/primer')]
+primer-kit-tokens:
+    cd {{primer_kit}} && node scripts/tokens.mjs
+
+# Regenerate the kit's kit.json, the index an agent reads first
+[group('ui/primer')]
+primer-kit-index:
+    {{primer_kit}}/scripts/index.sh
+
+# Needs jq, node, and the jsonschema CLI or uv to run it.
+#
+# Validate the kit: schemas, token paths, cited sources, fresh kit.json and tokens
+[group('ui/primer')]
+primer-kit-check:
+    {{primer_kit}}/scripts/check.sh
+
+# ============================================================================
 # ui/example: whole applications on jm:ui, one directory under examples/
 # each, built and run as a user would.
 # ============================================================================

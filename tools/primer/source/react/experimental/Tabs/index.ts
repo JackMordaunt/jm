@@ -1,0 +1,5 @@
+export {Tabs} from './Tabs'
+export {useTab} from './useTab'
+export {useTabList} from './useTabList'
+export {useTabPanel} from './useTabPanel'
+export type {TabsProps, TabListProps, TabProps, TabPanelProps} from './types'

@@ -1,0 +1,134 @@
+import {clsx} from 'clsx'
+import {useMergedRefs, useProvidedRefOrCreate} from '../hooks'
+import {useFeatureFlag} from '../FeatureFlags'
+import React, {
+  useContext,
+  useEffect,
+  useRef,
+  type ChangeEventHandler,
+  type InputHTMLAttributes,
+  type ReactElement,
+} from 'react'
+import useLayoutEffect from '../utils/useIsomorphicLayoutEffect'
+import type {FormValidationStatus} from '../utils/types/FormValidationStatus'
+import {CheckboxGroupContext} from '../CheckboxGroup/CheckboxGroupContext'
+import classes from './Checkbox.module.css'
+import sharedClasses from './shared.module.css'
+import type {WithSlotMarker} from '../utils/types'
+
+export type CheckboxProps = {
+  /**
+   * Apply indeterminate visual appearance to the checkbox
+   */
+  indeterminate?: boolean
+  /**
+   * Apply inactive visual appearance to the checkbox
+   */
+  disabled?: boolean
+  /**
+   * Forward a ref to the underlying input element
+   */
+  ref?: React.RefObject<HTMLInputElement>
+  /**
+   * Indicates whether the checkbox must be checked
+   */
+  required?: boolean
+  /**
+   * Only used to inform ARIA attributes. Individual checkboxes do not have validation styles.
+   */
+  validationStatus?: FormValidationStatus
+  /**
+   * A unique value that is never shown to the user.
+   * Used during form submission and to identify which checkbox inputs are selected
+   */
+  value?: string
+  'data-component'?: string
+} & Exclude<InputHTMLAttributes<HTMLInputElement>, 'value'>
+
+/**
+ * An accessible, native checkbox component
+ */
+const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
+  (
+    {
+      checked,
+      className,
+      defaultChecked,
+      indeterminate,
+      disabled,
+      onChange,
+      required,
+      validationStatus,
+      value,
+      ['data-component']: dataComponent,
+      ...rest
+    },
+    ref,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): ReactElement<any> => {
+    const mergedRefEnabled = useFeatureFlag('primer_react_merged_forwarded_refs')
+    const checkboxRef = useRef<HTMLInputElement>(null)
+    const mergedRef = useMergedRefs(checkboxRef, ref)
+    // Feature-flag scaffolding for `primer_react_merged_forwarded_refs`.
+    // At graduation: remove the three declarations below, and replace all instances of `readRef` with `checkboxRef` and `appliedRef` with `mergedRef`.
+    const providedOrCreatedRef = useProvidedRefOrCreate(ref as React.RefObject<HTMLInputElement>)
+    const readRef = mergedRefEnabled ? checkboxRef : providedOrCreatedRef
+    const appliedRef = mergedRefEnabled ? mergedRef : providedOrCreatedRef
+    const checkboxGroupContext = useContext(CheckboxGroupContext)
+    const handleOnChange: ChangeEventHandler<HTMLInputElement> = e => {
+      checkboxGroupContext.onChange && checkboxGroupContext.onChange(e)
+      onChange && onChange(e)
+
+      if (indeterminate && readRef.current) {
+        readRef.current.indeterminate = true
+        readRef.current.setAttribute('aria-checked', 'mixed')
+      }
+    }
+    const inputProps = {
+      type: 'checkbox',
+      disabled,
+      ref: appliedRef,
+      checked: indeterminate ? false : checked,
+      defaultChecked,
+      required,
+      ['aria-required']: required ? ('true' as const) : ('false' as const),
+      ['aria-invalid']: validationStatus === 'error' ? ('true' as const) : ('false' as const),
+      onChange: handleOnChange,
+      value,
+      name: value,
+      ...rest,
+    }
+
+    useLayoutEffect(() => {
+      if (readRef.current) {
+        readRef.current.indeterminate = indeterminate || false
+      }
+    }, [indeterminate, checked, readRef])
+
+    useEffect(() => {
+      const {current: checkbox} = readRef
+      if (!checkbox) {
+        return
+      }
+
+      if (indeterminate) {
+        checkbox.setAttribute('aria-checked', 'mixed')
+      } else {
+        checkbox.setAttribute('aria-checked', checkbox.checked ? 'true' : 'false')
+      }
+    })
+    return (
+      // @ts-expect-error inputProp needs a non nullable ref
+      <input
+        {...inputProps}
+        data-component={dataComponent ?? 'Checkbox'}
+        className={clsx(className, sharedClasses.Input, classes.Checkbox)}
+      />
+    )
+  },
+)
+
+Checkbox.displayName = 'Checkbox'
+;(Checkbox as WithSlotMarker<typeof Checkbox>).__SLOT__ = Symbol('Checkbox')
+
+export default Checkbox as WithSlotMarker<typeof Checkbox>
