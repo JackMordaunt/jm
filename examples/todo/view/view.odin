@@ -14,6 +14,7 @@ import "jm:ui"
 import "jm:ui/fluent"
 import "jm:ui/ops"
 
+import "../../common"
 import "../shapes"
 
 WIDTH :: 560
@@ -23,9 +24,6 @@ WIDTH :: 560
 // its share from the frame before.
 TITLE_WIDTH :: WIDTH - 40 - 2 * (24 + 8)
 
-// LOADING_DELAY is how long a wait lasts before the page says so. A
-// shape that arrives sooner was never missed, so nothing flashes.
-LOADING_DELAY :: 0.15
 
 // Model is the ui's own state: what the frame needs between frames and
 // nothing the application knows. The text being typed is ui state until
@@ -46,7 +44,7 @@ Model :: struct {
 // and until then the page drawn last, which stays needed so it is not
 // released under us. Switching filters never shows an empty list for the
 // frame the new page takes; a wait is reported only once it has lasted
-// LOADING_DELAY, and a frame is asked for to report it. The second result
+// common.LOADING_DELAY, and a frame is asked for to report it. The second result
 // says whether there is a page at all.
 @(private)
 page_of :: proc(gtx: ^ui.Ctx, m: ^Model) -> (page: ^shapes.Todos_Result, ok: bool, loading: bool) {
@@ -60,8 +58,8 @@ page_of :: proc(gtx: ^ui.Ctx, m: ^Model) -> (page: ^shapes.Todos_Result, ok: boo
 		m.waiting = gtx.time
 	}
 	waited := gtx.time - m.waiting
-	if waited < LOADING_DELAY {
-		ui.request_frame(gtx, f32(LOADING_DELAY - waited))
+	if waited < common.LOADING_DELAY {
+		ui.request_frame(gtx, f32(common.LOADING_DELAY - waited))
 	} else {
 		loading = true
 	}
@@ -116,33 +114,17 @@ header :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := &m.scheme
 	r := ui.row_open(gtx, align = .Baseline)
 	defer ui.close(&r)
-	cell(gtx, WIDTH - 120, .Start)
+	common.cell_open(gtx, WIDTH - 120, .Start)
 	fluent.text(gtx, "todos", s[.Brand_Foreground1], .S1000, .Semibold, selectable = false)
-	cell_close(gtx)
-	cell(gtx, 120, .End)
+	common.cell_close(gtx)
+	common.cell_open(gtx, 120, .End)
 	dark := m.theme == .Web_Dark
 	if fluent.link(gtx, "Dark" if !dark else "Light") {
 		m.theme = .Web_Light if dark else .Web_Dark
 	}
-	cell_close(gtx)
+	common.cell_close(gtx)
 }
 
-// cell opens a column of exactly width that places its one child by
-// align across it; cell_close ends it. Two containers per cell, so the
-// closes are explicit rather than deferred.
-@(private)
-cell :: proc(gtx: ^ui.Ctx, width: f32, align: ui.Align) {
-	sized := ui.guard_hold(gtx, ui.Inset)
-	sized^ = ui.sized_open(gtx, {min = {width, 0}, max = {width, ui.INF}})
-	col := ui.guard_hold(gtx, ui.Flex)
-	col^ = ui.column_open(gtx, align = align)
-}
-
-@(private)
-cell_close :: proc(gtx: ^ui.Ctx) {
-	ui.close(ui.guard_take(gtx, ui.Flex))
-	ui.close(ui.guard_take(gtx, ui.Inset))
-}
 
 // problems shows what the application refused, one bar each, until
 // dismissed. Missing means none have been reported yet.
@@ -252,20 +234,20 @@ footer :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^shapes.Todos_Result) {
 	r := ui.row_open(gtx, align = .Center)
 	defer ui.close(&r)
 	left := page.active
-	cell(gtx, 150, .Start)
+	common.cell_open(gtx, 150, .Start)
 	fluent.text(gtx, fmt.tprintf("%d item%s left", left, "" if left == 1 else "s"), s[.Neutral_Foreground2], selectable = false)
-	cell_close(gtx)
-	cell(gtx, WIDTH - 300, .Center)
+	common.cell_close(gtx)
+	common.cell_open(gtx, WIDTH - 300, .Center)
 	selected := int(m.filter)
 	if fluent.tab_list(gtx, FILTERS, &selected, size = .Small) {
 		m.filter = shapes.Filter(selected)
 	}
-	cell_close(gtx)
-	cell(gtx, 150, .End)
+	common.cell_close(gtx)
+	common.cell_open(gtx, 150, .End)
 	if page.completed > 0 {
 		if fluent.button(gtx, "Clear completed", .Subtle, size = .Small) {
 			ui.command(gtx, shapes.Clear_Completed{})
 		}
 	}
-	cell_close(gtx)
+	common.cell_close(gtx)
 }

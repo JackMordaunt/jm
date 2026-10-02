@@ -12,13 +12,11 @@ the host that wires them; this is the window around app.
 package main
 
 import "core:os"
-import "core:strings"
 
 import "jm:sqlite3"
-import "jm:ui"
-import "jm:ui/ops"
 import "jm:ui/sdl"
 
+import "../common"
 import "app"
 import "view"
 
@@ -40,20 +38,7 @@ main :: proc() {
 	}
 	m: view.Model
 	defer view.model_destroy(&m)
-	sdl.run({title = "todos", width = WIDTH, height = HEIGHT, ui = view.view, user = &m, fonts = app_fonts(), data = app.data_host(h)})
+	sdl.run({title = "todos", width = WIDTH, height = HEIGHT, ui = view.view, user = &m, fonts = common.fonts(), data = app.data_host(h)})
 	app.stop(h)
 }
 
-// app_fonts is Selawik at regular, semibold and bold, the Fluent kit's
-// open stand-in for Segoe UI, from the user's font directory (just
-// fluent-fonts fetches it), or jm:ui's default font for all three.
-app_fonts :: proc() -> []ops.Font_Ref {
-	dir := strings.concatenate({os.get_env("HOME", context.allocator), "/.local/share/fonts/selawik/"})
-	names := [3]string{"selawk.ttf", "selawksb.ttf", "selawkb.ttf"}
-	fonts := make([]ops.Font_Ref, 3)
-	for n, ii in names {
-		p := strings.concatenate({dir, n})
-		fonts[ii] = {ops.Font_Id(ii), os.exists(p) ? p : ui.default_font()}
-	}
-	return fonts
-}
