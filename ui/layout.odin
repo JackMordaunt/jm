@@ -149,6 +149,7 @@ Container :: struct {
 	weights:  f32, // weights so far, slots included
 	next:     f32, // weight for the next child, set by flexible
 	wrap:     bool, // wrap: children break into lines, line_gap apart
+	natural:  bool, // overflow_row: children are offered an unbounded main axis
 	line_gap: f32,
 	scroll:   ^Scroll_Offset, // scroll: the caller's offset, else the box's own widget_data
 }
@@ -658,12 +659,104 @@ flexible :: proc(gtx: ^Ctx, weight: f32) {
 	}
 }
 
+// overflow_row_open is a row for a run that may not fit, a toolbar's or
+// a label group's: each child is measured at its natural width (offered
+// an unbounded width, as a wrap does), recorded and placed only at close,
+// so the caller can decide which to show (flex_fit, flex_truncate) once
+// it knows them all, and then add what stands for the rest. Children it
+// keeps past its width overflow it, as in any row.
+overflow_row_open :: proc(gtx: ^Ctx, gap: f32 = 0, align: Align = .Start, key: u64 = 0, loc := #caller_location) -> Flex {
+	p := widget_open(gtx, key, loc)
+	c := Container {
+		kind     = .Flex,
+		axis     = .Horizontal,
+		gap      = gap,
+		align    = align,
+		deferred = true,
+		natural  = true,
+	}
+	return {gtx, container_push(gtx, c, p)}
+}
+
+// flex_fit keeps the longest run of f's children so far, from the first,
+// that fits its width: every child when they all fit, else as many as
+// leave room after them, gap apart, for reserve, the width of what the
+// caller adds next (a "+N" button), dropping the rest by flex_truncate.
+// It returns how many it dropped; an unbounded row drops none. f is an
+// overflow_row, so each child was measured at its natural width.
+flex_fit :: proc(f: ^Flex, reserve: f32 = 0) -> (dropped: int) {
+	c := flex_container(f)
+	if c == nil {
+		return 0
+	}
+	kids := children_of(f.gtx.layout, c)
+	limit := main_of(c.axis, c.cs.max)
+	if !is_finite(limit) || c.cursor <= limit {
+		return 0
+	}
+	room := limit - reserve - c.gap
+	keep, end := 0, f32(0)
+	for k, i in kids {
+		next := (i > 0 ? end + c.gap : 0) + main_of(c.axis, k.size)
+		if next > room {
+			break
+		}
+		end = next
+		keep += 1
+	}
+	flex_truncate(f, keep)
+	return len(kids) - keep
+}
+
+// flex_truncate drops f's children from the nth on: they take no space,
+// and nothing they recorded (paint, input areas, tags, semantics) runs,
+// since each was recorded into a macro that is now never called. A child
+// added after this follows the nth. f must be deferred (a Center, End or
+// Baseline row, a column so aligned, or a wrap) and innermost: a child
+// placed directly was drawn as it closed and cannot be taken back. An
+// overflow_row is both.
+flex_truncate :: proc(f: ^Flex, n: int) {
+	c := flex_container(f)
+	if c == nil {
+		return
+	}
+	l := f.gtx.layout
+	kids := children_of(l, c)
+	if n >= len(kids) {
+		return
+	}
+	kept := make([]Child, max(n, 0), f.gtx.allocator)
+	copy(kept, kids)
+	c.cursor, c.count, c.weights, c.rigid, c.extent.y = 0, 0, 0, 0, 0
+	resize(&l.children, c.first)
+	for k in kept {
+		flex_add(l, c, k)
+	}
+}
+
+// flex_container is f's container when f is the innermost, deferred flex, as
+// flex_fit and flex_truncate need; nil without a layout.
+@(private = "file")
+flex_container :: proc(f: ^Flex) -> ^Container {
+	l := f.gtx.layout
+	if l == nil || f.index < 0 {
+		return nil
+	}
+	assert(f.index == depth(l) - 1, "ui: flex_fit or flex_truncate on a flex that is not innermost")
+	c := container_at(l, f.index)
+	assert(c.kind == .Flex && c.deferred, "ui: flex_fit or flex_truncate on a flex that places children directly")
+	return c
+}
+
 @(private)
 flex_child_constraints :: proc(l: ^Layout, c: ^Container, weight: f32) -> Constraints {
 	main_max := main_of(c.axis, c.cs.max)
 	cross_max := cross_of(c.axis, c.cs.max)
 	if c.wrap {
 		return {max = axis_vec(c.axis, main_max, INF)}
+	}
+	if c.natural {
+		return {max = axis_vec(c.axis, INF, cross_max)}
 	}
 	// An unweighted child is offered what the unweighted children before it
 	// left, as in Gio, so it measures at its natural size even when a

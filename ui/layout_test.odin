@@ -1440,3 +1440,101 @@ test_layout_drops_a_shape_nobody_asks_for :: proc(t: ^testing.T) {
 	layout_reset(&l)
 	testing.expect_value(t, len(l.shapes), 0)
 }
+
+// Fit_Model is flex_fit's test row: children of these widths, a reserve,
+// and what the row reported.
+@(private = "file")
+Fit_Model :: struct {
+	widths:  []f32,
+	reserve: f32,
+	n:       int, // flex_truncate to this many instead, when >= 0
+	dropped: int,
+}
+
+@(private = "file")
+fit_chip :: proc(gtx: ^Ctx, name: string, w: f32, key: u64) {
+	p := widget_open(gtx, key)
+	ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, w, 10}, {.Press})
+	ops.tag(gtx.scene, p.id, name)
+	widget_close(gtx, &p, {size = {w, 10}})
+}
+
+@(private = "file")
+fit_row :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Fit_Model)(user)
+	names := [?]string{"a", "b", "c", "d", "e"}
+	col := column_open(gtx) // loose: the window's constraints are exact
+	defer close(&col)
+	sz := sized_open(gtx, {max = {100, 0}})
+	defer close(&sz)
+	r := overflow_row_open(gtx, gap = 4, align = .Center)
+	defer close(&r)
+	for w, i in m.widths {
+		fit_chip(gtx, names[i], w, u64(i))
+	}
+	if m.n >= 0 {
+		flex_truncate(&r, m.n)
+	} else {
+		m.dropped = flex_fit(&r, m.reserve)
+	}
+	fit_chip(gtx, "more", m.reserve, 99)
+}
+
+@(test)
+test_flex_fit_keeps_the_prefix_that_fits_beside_the_reserve :: proc(t: ^testing.T) {
+	// 30 + 4 + 30 + 4 + 30 = 98 fits 100 whole: nothing drops.
+	m := Fit_Model{widths = {30, 30, 30}, reserve = 0, n = -1}
+	p: Probe
+	probe_init(&p, fit_row, &m, {400, 100}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, m.dropped, 0)
+	testing.expect(t, probe_tagged(&p, "c"))
+
+	// Five 30s overflow, each measured at its natural width; leaving a
+	// gap and a 20px reserve, 100 - 4 - 20 = 76 holds two (30 + 4 + 30 =
+	// 64; a third ends at 98).
+	m.widths = {30, 30, 30, 30, 30}
+	m.reserve = 20
+	probe_frame(&p)
+	testing.expect_value(t, m.dropped, 3)
+	testing.expect(t, probe_tagged(&p, "b"))
+	testing.expect(t, !probe_tagged(&p, "c")) // a dropped child's macro never runs
+	testing.expect(t, !probe_tagged(&p, "e"))
+	b, more := probe_bounds(&p, "b"), probe_bounds(&p, "more")
+	testing.expect_value(t, more.x - b.x, 30 + 4) // the next child follows the last kept
+
+	// A strict prefix: a narrow child after a wide one that missed stays
+	// dropped.
+	m.widths = {30, 60, 5}
+	m.reserve = 10
+	probe_frame(&p)
+	testing.expect_value(t, m.dropped, 2)
+	testing.expect(t, !probe_tagged(&p, "c"))
+
+	// The reserve keeps its gap: a third child ending at 94 would leave
+	// 6px for a 6px reserve, but not the 4px gap before it.
+	m.widths = {30, 30, 26, 30}
+	m.reserve = 6
+	probe_frame(&p)
+	testing.expect_value(t, m.dropped, 2)
+}
+
+@(test)
+test_flex_truncate_keeps_the_first_n :: proc(t: ^testing.T) {
+	m := Fit_Model{widths = {10, 10, 10}, reserve = 8, n = 1}
+	p: Probe
+	probe_init(&p, fit_row, &m, {400, 100}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, probe_tagged(&p, "a"))
+	testing.expect(t, !probe_tagged(&p, "b"))
+	testing.expect(t, !probe_click(&p, "c"))
+	a, more := probe_bounds(&p, "a"), probe_bounds(&p, "more")
+	testing.expect_value(t, more.x - a.x, 10 + 4)
+	m.n = 0
+	probe_frame(&p)
+	testing.expect(t, !probe_tagged(&p, "a"))
+	testing.expect(t, probe_tagged(&p, "more"))
+	testing.expect_value(t, probe_bounds(&p, "more").x, 0)
+}
