@@ -1362,18 +1362,19 @@ popup_open :: proc(
 	gap: f32 = 0,
 	cs := Constraints{max = {INF, INF}},
 ) -> Overlay {
+	return popup_place(gtx, {key = key, anchor = anchor, side = side, align = align, gap = gap}, cs)
+}
+
+// popup_place is popup_open for any placement: inside the anchor, nudged
+// along the edge, with orders of sides and alignments to fall back on
+// (see ops.Placement). place.size is popup_close's to set.
+popup_place :: proc(gtx: ^Ctx, place: ops.Placement, cs := Constraints{max = {INF, INF}}) -> Overlay {
 	o := overlay_open(gtx, cs = cs)
 	if l := gtx.layout; l != nil {
-		l.root_parent = key
+		l.root_parent = place.key
 	}
-	o.place = {
-		set    = true,
-		key    = key,
-		anchor = anchor,
-		side   = side,
-		align  = align,
-		gap    = gap,
-	}
+	o.place = place
+	o.place.set = true
 	return o
 }
 
@@ -1468,15 +1469,24 @@ placed_side :: proc(gtx: ^Ctx, key: ops.Area_Id, side: ops.Side) -> ops.Side {
 // meant to point at the anchor's centre moves by -shift within the popup.
 // Zero shift when it was not shown last frame.
 placed :: proc(gtx: ^Ctx, key: ops.Area_Id, side: ops.Side) -> (ops.Side, ops.Point) {
+	if p, ok := last_placed(gtx, key); ok {
+		return p.side, p.shift
+	}
+	return side, {}
+}
+
+// last_placed is where flatten put the popup keyed key last frame: its
+// side, alignment and shift; false when it was not shown.
+last_placed :: proc(gtx: ^Ctx, key: ops.Area_Id) -> (Placed, bool) {
 	if gtx.router == nil {
-		return side, {}
+		return {}, false
 	}
 	for p in gtx.router.placed {
 		if p.key == key {
-			return p.side, p.shift
+			return p, true
 		}
 	}
-	return side, {}
+	return {}, false
 }
 
 // SCROLL_THUMB_COLOR is the bar's thumb: a mid grey that reads on light and

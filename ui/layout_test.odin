@@ -1387,6 +1387,126 @@ test_popup_reports_its_shift_in_anchor_coordinates :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.shift, ops.Point{-50, 0})
 }
 
+// Fallback orders: @primer/behaviors' getAnchoredPosition, expressed in
+// a Placement (anchored-position.mjs:1-11,112-176).
+
+@(private = "file")
+Fallback_Model :: struct {
+	place: ops.Placement, // the anchor's rect is its position; key, sides and the rest as asked
+	size:  ops.Size, // the popup's
+	fit:   Placed, // last_placed as the popup's frame read it
+}
+
+// PRIMER_BELOW is outside-bottom's alternates and the alignment
+// alternates for start, with the overhang that lets an overlay that fits
+// nowhere hang off the bottom.
+@(private = "file")
+PRIMER_BELOW :: ops.Placement {
+	key         = 0x9292,
+	side        = .Below,
+	align       = .Start,
+	gap         = 4,
+	overhang    = true,
+	side_count  = 4,
+	sides       = {.Above, .After, .Before, .Below},
+	align_count = 2,
+	aligns      = {.End, .Center},
+}
+
+@(private = "file")
+fallback_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Fallback_Model)(user)
+	a := m.place.anchor
+	ops.transform_push(gtx.scene, ops.translate(a.x, a.y))
+	defer ops.transform_pop(gtx.scene)
+	m.fit, _ = last_placed(gtx, m.place.key)
+	pl := m.place
+	pl.anchor = {0, 0, a.w, a.h}
+	o := popup_place(gtx, pl)
+	ops.input_area(gtx.scene, 8, ops.Rect{0, 0, m.size.x, m.size.y}, {.Press})
+	ops.tag(gtx.scene, 8, "popup")
+	popup_close(&o, m.size)
+}
+
+@(private = "file")
+fallback_bounds :: proc(m: ^Fallback_Model, window: ops.Size) -> ops.Rect {
+	p: Probe
+	probe_init(&p, fallback_view, m, window, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	probe_frame(&p)
+	return probe_bounds(&p, "popup")
+}
+
+@(test)
+test_popup_tries_its_sides_in_order_and_takes_the_first_that_fits :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// 220 tall from a 20px anchor at y 100 in a 300 window: below runs to
+	// 344, above to -124; right is the first that fits on its own axis,
+	// start-aligned at the anchor's top, then shifted up into the window.
+	m := Fallback_Model{place = PRIMER_BELOW, size = {100, 220}}
+	m.place.anchor = {20, 100, 40, 20}
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{64, 80, 100, 220})
+	testing.expect_value(t, m.fit.side, ops.Side.After)
+	testing.expect_value(t, m.fit.align, ops.Side_Align.Start)
+	// jm:ui's own flip, with no order, keeps the side that overflows less.
+	m.place.side_count = 0
+	m.place.align_count = 0
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}).x, 20)
+}
+
+@(test)
+test_popup_that_fits_nowhere_hangs_off_the_bottom_with_overhang :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// Every side overflows: the order ends on below, and with the sides run
+	// out the bottom is left unclamped.
+	m := Fallback_Model{place = PRIMER_BELOW, size = {380, 260}}
+	m.place.anchor = {20, 100, 40, 20}
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{20, 124, 380, 260})
+	testing.expect_value(t, m.fit.side, ops.Side.Below)
+	// Without overhang it is shifted up to end at the window's bottom.
+	m.place.overhang = false
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{20, 40, 380, 260})
+}
+
+@(test)
+test_popup_realigns_before_it_shifts :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// Start-aligned at x 340, a 100 wide popup leaves a 400 window; end
+	// alignment fits, so it ends at the anchor's right edge.
+	m := Fallback_Model{place = PRIMER_BELOW, size = {100, 50}}
+	m.place.anchor = {340, 20, 40, 20}
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{280, 44, 100, 50})
+	testing.expect_value(t, m.fit.align, ops.Side_Align.End)
+	// End only tests the left edge: an anchor running off the right keeps
+	// end alignment and is shifted in.
+	m.place.align, m.place.aligns = .End, {.Start, .Center}
+	m.place.anchor = {380, 20, 40, 20}
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{300, 44, 100, 50})
+	testing.expect_value(t, m.fit.align, ops.Side_Align.End)
+	m.place.align, m.place.aligns = .Start, {.End, .Center}
+	// Beside the anchor the test stays horizontal: a popup on the right
+	// that runs off the bottom keeps its alignment and is shifted up.
+	m.place.side = .After
+	m.place.anchor = {20, 260, 40, 20}
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{64, 250, 100, 50})
+	testing.expect_value(t, m.fit.align, ops.Side_Align.Start)
+}
+
+@(test)
+test_popup_inside_its_anchor_sits_against_the_edge_nudged :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// inside-top, start: gap in from the top, nudged in from the left.
+	m := Fallback_Model{size = {50, 30}}
+	m.place = {key = 0x9393, anchor = {20, 20, 200, 100}, side = .Above, align = .Start, gap = 4, nudge = 4, inside = true}
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{24, 24, 50, 30})
+	// inside-right, end: against the right edge, nudged up from the bottom.
+	m.place.side, m.place.align = .After, .End
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{20 + 200 - 4 - 50, 20 + 100 - 30 - 4, 50, 30})
+	// Outside, end-aligned below: the nudge moves it in from the right edge.
+	m.place.side, m.place.inside = .Below, false
+	testing.expect_value(t, fallback_bounds(&m, {400, 300}), ops.Rect{20 + 200 - 50 - 4, 124, 50, 30})
+}
+
 @(test)
 test_a_cancelled_thumb_drag_stops_scrolling :: proc(t: ^testing.T) {
 	h: Harness

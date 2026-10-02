@@ -50,12 +50,13 @@ Hit :: struct {
 }
 
 // Placed is a popup flatten placed (see ops.Placement): its key, the
-// side it opened on, which is the asked side unless flatten flipped it,
-// and how far it was shifted along its edge to stay in the window, in
-// the anchor's own coordinates.
+// side it opened on and the alignment it took, which are the asked ones
+// unless flatten changed them to fit, and how far it was shifted to stay
+// in the window, in the anchor's own coordinates.
 Placed :: struct {
 	key:   ops.Area_Id,
 	side:  ops.Side,
+	align: ops.Side_Align,
 	shift: ops.Point,
 }
 

@@ -19,7 +19,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.tag(&src, 99, "quote \" and\nnewline")
 	ops.defer_call(&src, 0) // golden_scene's first macro, run again on top
 	// and once more as a popup, which carries its placement on the wire
-	ops.defer_place(&src, 0, {key = 5, anchor = {1, 2, 3, 4}, size = {10, 20}, side = .Above, align = .End, gap = 2})
+	ops.defer_place(&src, 0, {key = 5, anchor = {1, 2, 3, 4}, size = {10, 20}, side = .Above, align = .End, gap = 2, nudge = 3, inside = true, overhang = true, side_count = 2, sides = {.After, .Before, .Below, .Above}, align_count = 1, aligns = {.Center, .End}})
 	append(&src.ops, ops.Debug_Box{7, {30, 20}, {0, 0}, {100, INF}, 2, "view.odin", 42, "view", "label"})
 	ops.shadow(&src, {4, 6, 30, 20}, 5, 8, {0, 0, 0, 60})
 	ops.semantic(&src, 7, 3, {role = .Checkbox, label = "Dark", labelled_by = 9, value = "on", description = "the scheme", states = {.Checked, .Disabled}}, {4, 6, 30, 20})

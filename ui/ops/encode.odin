@@ -28,8 +28,9 @@ ENCODE_MAGIC :: "UIOP"
 // covers and added Cover_End; 20 gave Defer top, bit 1 of its cover byte;
 // 21 added Key Browser_Back and Browser_Forward; 22 gave each font its
 // weight; 23 gave each Image an alpha; 24 gave Semantic a heading level
-// and Role Region; 25 added Push_Sticky.
-ENCODE_VERSION :: u8(25)
+// and Role Region; 25 added Push_Sticky; 26 gave Placement its nudge,
+// inside, overhang and fallbacks.
+ENCODE_VERSION :: u8(26)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -394,6 +395,15 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 			put_point(w, v.place.size)
 			append(w, u8(v.place.side), u8(v.place.align))
 			put_f32(w, v.place.gap)
+			put_f32(w, v.place.nudge)
+			append(w, u8(v.place.inside) | u8(v.place.overhang) << 1)
+			append(w, v.place.side_count, v.place.align_count)
+			for s in v.place.sides {
+				append(w, u8(s))
+			}
+			for a in v.place.aligns {
+				append(w, u8(a))
+			}
 		}
 	case Cover_End:
 		append(w, 17)
@@ -694,6 +704,31 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 			}
 			v.place.side, v.place.align = Side(side), Side_Align(align)
 			v.place.gap = get_f32(r) or_return
+			v.place.nudge = get_f32(r) or_return
+			flags := get_u8(r) or_return
+			if flags > 3 {
+				return nil, false
+			}
+			v.place.inside, v.place.overhang = flags & 1 != 0, flags & 2 != 0
+			v.place.side_count = get_u8(r) or_return
+			v.place.align_count = get_u8(r) or_return
+			if int(v.place.side_count) > len(v.place.sides) || int(v.place.align_count) > len(v.place.aligns) {
+				return nil, false
+			}
+			for &s in v.place.sides {
+				b := get_u8(r) or_return
+				if int(b) >= len(Side) {
+					return nil, false
+				}
+				s = Side(b)
+			}
+			for &a in v.place.aligns {
+				b := get_u8(r) or_return
+				if int(b) >= len(Side_Align) {
+					return nil, false
+				}
+				a = Side_Align(b)
+			}
 		}
 		return v, true
 	case 16:

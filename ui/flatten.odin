@@ -114,10 +114,9 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			assert(0 <= m.first && m.first <= m.last && m.last <= len(sc), "flatten: macro range out of bounds")
 			t := op.root ? st.root : st.transform
 			if op.place.set {
-				side: ops.Side
-				shift: ops.Point
-				t, side, shift = place(t, op.place, st.viewport)
-				append(&st.f.placed, Placed{op.place.key, side, shift})
+				fit: Fit
+				t, fit = place(t, op.place, st.viewport)
+				append(&st.f.placed, Placed{op.place.key, fit.side, fit.align, fit.shift})
 			}
 			if op.top {
 				append(&st.top, Deferred{op.id, t})
@@ -191,80 +190,79 @@ sticky_shift :: proc(st: ^Flattener, s: ops.Push_Sticky) -> ops.Affine {
 	return ops.translate(0, clamp(dy, 0, max(s.room, 0)))
 }
 
-// place is the transform a popup's macro runs under, and the side it
-// chose. The popup opens on p.side unless that leaves it further outside
-// viewport than the opposite side does; then it is shifted along both
-// axes to lie inside, flush with viewport's start when larger than it.
-// The popup's origin is placed in its anchor's own coordinates first and
-// composed with t in f64, as a plain translate would be, so a popup that
-// fits lands exactly where an unplaced one would; only a flip or a shift
-// moves it. A zero viewport, or an anchor wholly outside it (a widget
-// scrolled out of view), keeps p.side and shifts nothing.
+// Fit is where place put a popup: the side and alignment it chose, and
+// the shift that kept it in the viewport in the anchor's coordinates.
 @(private = "file")
-place :: proc(t: ops.Affine, p: ops.Placement, viewport: ops.Rect) -> (ops.Affine, ops.Side, ops.Point) {
-	origin :: proc(a: ops.Rect, size: ops.Size, gap: f32, side: ops.Side, align: ops.Side_Align) -> ops.Point {
-		along :: proc(start, len, size: f32, align: ops.Side_Align) -> f32 {
-			switch align {
-			case .Center:
-				return start + (len - size) / 2
-			case .End:
-				return start + len - size
-			case .Start:
-			}
-			return start
-		}
-		switch side {
-		case .Below:
-			return {along(a.x, a.w, size.x, align), a.y + a.h + gap}
-		case .Above:
-			return {along(a.x, a.w, size.x, align), a.y - gap - size.y}
-		case .After:
-			return {a.x + a.w + gap, along(a.y, a.h, size.y, align)}
-		case .Before:
-			return {a.x - gap - size.x, along(a.y, a.h, size.y, align)}
-		}
-		return {}
-	}
-	// device is the popup's device rect with its local origin at o.
-	device :: proc(t: ops.Affine, o: ops.Point, size: ops.Size) -> ops.Rect {
-		return ops.transform_rect(ops.mul(ops.translate(o.x, o.y), t), {0, 0, size.x, size.y})
-	}
-	// overflow is how far r's main axis leaves the viewport.
-	overflow :: proc(r: ops.Rect, side: ops.Side, v: ops.Rect) -> f32 {
-		lo, hi, vlo, vhi := r.y, r.y + r.h, v.y, v.y + v.h
-		if side == .After || side == .Before {
-			lo, hi, vlo, vhi = r.x, r.x + r.w, v.x, v.x + v.w
-		}
-		return max(vlo - lo, 0) + max(hi - vhi, 0)
-	}
+Fit :: struct {
+	side:  ops.Side,
+	align: ops.Side_Align,
+	shift: ops.Point,
+}
+
+// place is the transform a popup's macro runs under, and where it put
+// the popup: see ops.Placement for the rules. The popup's origin is
+// placed in its anchor's own coordinates first and composed with t in
+// f64, as a plain translate would be, so a popup that fits lands exactly
+// where an unplaced one would; only a flip, a realignment or a shift
+// moves it. A zero viewport, or an anchor wholly outside it (a widget
+// scrolled out of view), keeps p.side and p.align and shifts nothing.
+@(private = "file")
+place :: proc(t: ops.Affine, p: ops.Placement, viewport: ops.Rect) -> (ops.Affine, Fit) {
 	OPPOSITE := [ops.Side]ops.Side {
 		.Below  = .Above,
 		.Above  = .Below,
 		.After  = .Before,
 		.Before = .After,
 	}
-	side := p.side
-	o := origin(p.anchor, p.size, p.gap, side, p.align)
+	side, align := p.side, p.align
+	o := popup_origin(p, side, align)
 	a := ops.transform_rect(t, p.anchor)
 	v := viewport
 	// Inclusive, so a zero-width or zero-height anchor (an edge or a point)
 	// counts as visible when it lies within the viewport.
 	visible := v.w > 0 && v.h > 0 && a.x <= v.x + v.w && a.x + a.w >= v.x && a.y <= v.y + v.h && a.y + a.h >= v.y
 	if !visible {
-		return ops.mul(ops.translate(o.x, o.y), t), side, {}
+		return ops.mul(ops.translate(o.x, o.y), t), {side, align, {}}
 	}
-	r := device(t, o, p.size)
-	if out := overflow(r, side, v); out > 0 {
-		flip := OPPOSITE[side]
-		fo := origin(p.anchor, p.size, p.gap, flip, p.align)
-		fr := device(t, fo, p.size)
-		if overflow(fr, flip, v) < out {
-			side, o, r = flip, fo, fr
+	r := popup_device(t, o, p.size)
+	ran_out := true
+	if p.inside {
+		// Inside the anchor there is no other side to try.
+	} else if p.side_count == 0 {
+		if out := overflow(r, side, v); out > 0 {
+			flip := OPPOSITE[side]
+			fo := popup_origin(p, flip, align)
+			fr := popup_device(t, fo, p.size)
+			if overflow(fr, flip, v) < out {
+				side, o, r = flip, fo, fr
+			}
 		}
+	} else {
+		tried := 0
+		for tried < int(p.side_count) && overflow(r, side, v) > 0 {
+			side = p.sides[tried]
+			tried += 1
+			o = popup_origin(p, side, align)
+			r = popup_device(t, o, p.size)
+		}
+		ran_out = tried == int(p.side_count)
+	}
+	for i in 0 ..< int(p.align_count) {
+		past_left := r.x < v.x
+		if !past_left && (align == .End || r.x + r.w <= v.x + v.w) {
+			break
+		}
+		align = p.aligns[i]
+		o = popup_origin(p, side, align)
+		r = popup_device(t, o, p.size)
 	}
 	out := ops.mul(ops.translate(o.x, o.y), t)
 	dx := max(min(r.x, v.x + v.w - r.w), v.x) - r.x
-	dy := max(min(r.y, v.y + v.h - r.h), v.y) - r.y
+	y := max(min(r.y, v.y + v.h - r.h), v.y)
+	if p.overhang && ran_out {
+		y = max(r.y, v.y)
+	}
+	dy := y - r.y
 	out.e += f64(dx)
 	out.f += f64(dy)
 	// The shift in the anchor's coordinates: the device shift through t's
@@ -273,7 +271,65 @@ place :: proc(t: ops.Affine, p: ops.Placement, viewport: ops.Rect) -> (ops.Affin
 	if inv, ok := ops.invert(t); ok {
 		shift = {f32(inv.a * f64(dx) + inv.c * f64(dy)), f32(inv.b * f64(dx) + inv.d * f64(dy))}
 	}
-	return out, side, shift
+	return out, {side, align, shift}
+}
+
+// popup_origin is p's popup's top-left in the anchor's coordinates, on
+// side with align (anchored-position.mjs:179-256 for each case).
+@(private = "file")
+popup_origin :: proc(p: ops.Placement, side: ops.Side, align: ops.Side_Align) -> ops.Point {
+	along :: proc(start, length, size, nudge: f32, align: ops.Side_Align) -> f32 {
+		switch align {
+		case .Center:
+			return start + (length - size) / 2 + nudge
+		case .End:
+			return start + length - size - nudge
+		case .Start:
+		}
+		return start + nudge
+	}
+	a, size, gap := p.anchor, p.size, p.gap
+	x := along(a.x, a.w, size.x, p.nudge, align)
+	y := along(a.y, a.h, size.y, p.nudge, align)
+	if p.inside {
+		switch side {
+		case .Below:
+			return {x, a.y + a.h - gap - size.y}
+		case .Above:
+			return {x, a.y + gap}
+		case .After:
+			return {a.x + a.w - gap - size.x, y}
+		case .Before:
+			return {a.x + gap, y}
+		}
+	}
+	switch side {
+	case .Below:
+		return {x, a.y + a.h + gap}
+	case .Above:
+		return {x, a.y - gap - size.y}
+	case .After:
+		return {a.x + a.w + gap, y}
+	case .Before:
+		return {a.x - gap - size.x, y}
+	}
+	return {}
+}
+
+// popup_device is a popup's device rect under t with its local origin at o.
+@(private = "file")
+popup_device :: proc(t: ops.Affine, o: ops.Point, size: ops.Size) -> ops.Rect {
+	return ops.transform_rect(ops.mul(ops.translate(o.x, o.y), t), {0, 0, size.x, size.y})
+}
+
+// overflow is how far r leaves the viewport v along side's axis.
+@(private = "file")
+overflow :: proc(r: ops.Rect, side: ops.Side, v: ops.Rect) -> f32 {
+	lo, hi, vlo, vhi := r.y, r.y + r.h, v.y, v.y + v.h
+	if side == .After || side == .Before {
+		lo, hi, vlo, vhi = r.x, r.x + r.w, v.x, v.x + v.w
+	}
+	return max(vlo - lo, 0) + max(hi - vhi, 0)
 }
 
 // release_held moves the held Defers covering container id — every one,

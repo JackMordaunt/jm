@@ -103,19 +103,49 @@ Side_Align :: enum u8 {
 
 // Placement is a popup's position asked of flatten, in the coordinates
 // current at the Defer: open on side of anchor, gap away, aligned along
-// the edge by align, the popup being size. flatten flips to the opposite
-// side when side leaves the popup outside the viewport and the opposite
-// side does not, or leaves it less outside; then it shifts the popup
-// along both axes to keep it inside. key names the popup, so the side
-// flatten chose can be read back the next frame (ui.placed_side).
+// the edge by align and moved nudge from the aligned edge toward the
+// centre (away from the anchor's end for End), the popup being size.
+// With inside it sits within the anchor against side's edge, gap in
+// from it, and never changes side.
+//
+// Fitting it into the viewport, each test along one axis only:
+//
+//   - Side. With no sides given, flatten flips to the opposite side when
+//     side leaves the popup outside the viewport on side's axis and the
+//     opposite leaves it less outside. With sides given (side_count of
+//     them), it tries them in order while the one placed overflows on its
+//     own axis; the first that fits wins, else the last tried stands.
+//   - Alignment. With aligns given, it tries them in order while the
+//     popup overflows the viewport horizontally, whatever the side: past
+//     either edge for Start and Center, past the left for End; the first
+//     that fits wins, else the last tried stands. A popup beside its
+//     anchor that overflows vertically is left to the shift.
+//   - Shift. Last, it shifts the popup along both axes to lie inside,
+//     flush with the viewport's start when larger than it. With overhang
+//     the bottom edge is left where it falls once the sides ran out or
+//     there were none to try (inside): the viewport is taken to scroll
+//     that way, as a web page does.
+//
+// This is @primer/behaviors' getAnchoredPosition when sides, aligns and
+// overhang are given (tools/primer/source/npm/behaviors/esm/
+// anchored-position.mjs:112-176), and jm:ui's own flip-and-shift without
+// them. key names the popup, so the side and alignment flatten chose can
+// be read back the next frame (ui.placed).
 Placement :: struct {
-	set:    bool,
-	key:    Area_Id,
-	anchor: Rect,
-	size:   Size,
-	side:   Side,
-	align:  Side_Align,
-	gap:    f32,
+	set:         bool,
+	key:         Area_Id,
+	anchor:      Rect,
+	size:        Size,
+	side:        Side,
+	align:       Side_Align,
+	gap:         f32,
+	nudge:       f32,
+	inside:      bool,
+	overhang:    bool,
+	side_count:  u8,
+	align_count: u8,
+	sides:       [4]Side,
+	aligns:      [2]Side_Align,
 }
 
 Fill :: struct {

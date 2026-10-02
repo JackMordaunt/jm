@@ -51,7 +51,24 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			}
 			if v.place.set {
 				a := v.place.anchor
-				fmt.sbprintf(&sb, " place %v %v of %v %v %v size %v %v gap %v", v.place.side, v.place.align, a.x, a.y, a.w, a.h, v.place.size.x, v.place.size.y, v.place.gap)
+				fmt.sbprintf(&sb, " place %v %v of %v %v %v %v size %v %v gap %v", v.place.side, v.place.align, a.x, a.y, a.w, a.h, v.place.size.x, v.place.size.y, v.place.gap)
+				if v.place.nudge != 0 {
+					fmt.sbprintf(&sb, " nudge %v", v.place.nudge)
+				}
+				if v.place.inside {
+					strings.write_string(&sb, " inside")
+				}
+				if v.place.overhang {
+					strings.write_string(&sb, " overhang")
+				}
+				if v.place.side_count > 0 {
+					sides := v.place.sides
+					fmt.sbprintf(&sb, " sides %v", sides[:v.place.side_count])
+				}
+				if v.place.align_count > 0 {
+					aligns := v.place.aligns
+					fmt.sbprintf(&sb, " aligns %v", aligns[:v.place.align_count])
+				}
 			}
 		case Fill:
 			write_draw(&sb, ops, v)
