@@ -2,6 +2,7 @@ package ui
 
 import "core:mem"
 import "core:slice"
+import "core:strings"
 import "core:unicode"
 import "core:unicode/utf8"
 import "jm:ui/ops"
@@ -142,6 +143,39 @@ balanced_width :: proc(st: Shaped_Text, m: Font_Metrics, text: string, max_width
 	return hi
 }
 
+// TAB_SIZE is CSS's default tab-size, 8 (CSS Text Module Level 3,
+// tab-size: initial value 8, an integer counting spaces).
+TAB_SIZE :: 8
+
+// expand_tabs is s with each tab replaced by the spaces that reach the
+// next multiple of TAB_SIZE characters into its line, counting runes, so
+// a column lines up in a monospace face and nearly so in another, where
+// CSS's stops are multiples of the space's advance. s itself when it has
+// no tab.
+expand_tabs :: proc(s: string, allocator := context.temp_allocator) -> string {
+	if strings.index_byte(s, '\t') < 0 {
+		return s
+	}
+	b := strings.builder_make(0, len(s) + TAB_SIZE, allocator)
+	column := 0
+	for r in s {
+		switch r {
+		case '\t':
+			for _ in 0 ..< TAB_SIZE - column % TAB_SIZE {
+				strings.write_byte(&b, ' ')
+			}
+			column += TAB_SIZE - column % TAB_SIZE
+		case '\n':
+			strings.write_rune(&b, r)
+			column = 0
+		case:
+			strings.write_rune(&b, r)
+			column += 1
+		}
+	}
+	return strings.to_string(b)
+}
+
 // White_Space is how text treats its spaces and line breaks, as CSS's
 // white-space property: whether runs of spaces collapse to one, whether
 // a newline breaks the line, and whether lines wrap at the box's width.
@@ -163,11 +197,14 @@ white_space_wraps :: proc(mode: White_Space) -> bool {
 // every run of spaces, tabs and line breaks becomes one space; under
 // Pre_Line each run of spaces and tabs does, and the spaces either side
 // of a line break go; the collapsing modes also drop the spaces at the
-// start and end. Pre and Pre_Wrap give s unchanged. s is returned
-// itself when nothing changes, else a copy from allocator.
+// start and end. Pre and Pre_Wrap keep every space and break, and
+// expand each tab to the next tab stop (expand_tabs): the system shaper
+// drew a tab as a missing-glyph box (the primer kitchen's Text page,
+// 2026-10-02). s is returned itself when nothing changes, else a copy from
+// allocator.
 white_space_text :: proc(s: string, mode: White_Space, allocator := context.temp_allocator) -> string {
 	if mode == .Pre || mode == .Pre_Wrap {
-		return s
+		return expand_tabs(s, allocator)
 	}
 	keep_breaks := mode == .Pre_Line
 	out := make([dynamic]u8, 0, len(s), allocator)

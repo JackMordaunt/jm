@@ -281,8 +281,11 @@ test_white_space_collapses_as_css_does :: proc(t: ^testing.T) {
 	testing.expect_value(t, white_space_text(s, .Nowrap), "one two three four")
 	testing.expect_value(t, white_space_text(s, .Pre_Line), "one two\nthree\nfour")
 	testing.expect_value(t, white_space_text("a\r\nb", .Pre_Line), "a\nb")
-	testing.expect_value(t, white_space_text(s, .Pre), s)
-	testing.expect_value(t, white_space_text(s, .Pre_Wrap), s)
+	// The preserving modes keep everything but expand a tab to its stop.
+	testing.expect_value(t, white_space_text(s, .Pre), "  one   two\n        three  \n four  ")
+	testing.expect_value(t, white_space_text("ab\tc\td\n\te", .Pre_Wrap), "ab      c       d\n        e")
+	no_tabs := "  kept  as is \n"
+	testing.expect(t, raw_data(white_space_text(no_tabs, .Pre)) == raw_data(no_tabs))
 	testing.expect_value(t, white_space_text("", .Normal), "")
 	testing.expect_value(t, white_space_text("   ", .Normal), "")
 	plain := "already plain"
