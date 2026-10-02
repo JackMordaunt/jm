@@ -16,3 +16,10 @@ count_ops :: proc(sc: []$E, $T: typeid) -> int {
 	}
 	return n
 }
+
+// near reports whether a and b agree within tol: a float equality for
+// positions built from fractional text widths and scaled layouts, whose
+// last bits round differently by the path that computed them.
+near :: proc(a, b: f32, tol: f32 = 1e-3) -> bool {
+	return abs(a - b) < tol
+}
