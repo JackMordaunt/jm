@@ -175,7 +175,9 @@ ui/fluent    fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
              fluent-icons  regenerate ui/fluent/icon_data.odin from the Fluent icons in tools/fluent/icons
              fluent-icons-fetch  fetch the icons icons.txt names at its pinned commit (or a ref given)
              fluent-kit-{tokens,fetch,index,check,page}  maintain the fluent-kit in tools/fluent
-ui/primer    primer-tokens  regenerate ui/primer/tokens from the primer-kit
+ui/primer    primer-kitchen  build and open the hot-reloaded Primer kitchen
+             primer-png page=Button theme=Light  render one Primer kitchen page to build/
+             primer-tokens  regenerate ui/primer/tokens from the primer-kit
              primer-icons  regenerate ui/primer/icon_data.odin from the kit's octicons
              primer-kit-{tokens,fetch,index,check}  maintain the primer-kit in tools/primer
 ```

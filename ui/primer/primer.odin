@@ -384,6 +384,22 @@ paint_focus_outline :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect, offset
 	design.paint_focus_ring(gtx, b, rr, focus_outline(offset))
 }
 
+// ON_EMPHASIS_RING is the inset ring an emphasis fill's focus adds inside
+// the outline (focusOutlineOnEmphasis.css: inset 0 0 0 3px).
+ON_EMPHASIS_RING :: f32(3)
+
+// paint_focus_on_emphasis is the focus indicator on an emphasis fill (a
+// primary button): an inset 3px --fgColor-onEmphasis ring, then the
+// outline over its outer 2px, so a light line shows between the outline
+// and the fill (focusOutlineOnEmphasis.css).
+paint_focus_on_emphasis :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect) {
+	if !c.focus_visible || c.disabled {
+		return
+	}
+	design.paint_inset_shadow(gtx, rr, {spread = ON_EMPHASIS_RING, color = color(.Fg_Color_On_Emphasis)})
+	paint_focus_outline(gtx, c, rr)
+}
+
 // paint_shadow paints shadow token sh under rr in the active theme. CSS
 // paints the first listed layer on top, so layers are painted last first;
 // an inset layer is cast inside rr.

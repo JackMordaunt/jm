@@ -803,6 +803,31 @@ fluent-png page="Button": blend2d kb
 # Primer React, @primer/primitives and @primer/octicons.
 # ============================================================================
 
+# examples/primer-kitchen: every jm:ui/primer component, one page each,
+# hot-reloaded like fluent-kitchen, in the system sans.
+#
+# Build and open the hot-reloaded Primer kitchen
+[group('ui/primer')]
+primer-kitchen: blend2d kb sdl3
+    #!/usr/bin/env bash
+    set -eu
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/primer-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/primer-kitchen-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/primer-kitchen/child build/debug/primer-kitchen.watch -host examples/primer-kitchen/host build/debug/primer-kitchen-host{{exe}} ui ui/primer examples/kitchen &
+    watch=$!
+    build/debug/primer-kitchen-host{{exe}} build/debug/primer-kitchen.watch &
+    host=$!
+    trap 'kill $watch $host 2>/dev/null' EXIT
+    wait $host
+
+# Render one primer-kitchen page to build/primer-<page>.png, no window
+[group('ui/primer')]
+primer-png page="Button" theme="Light": blend2d kb
+    mkdir -p build/debug
+    {{odin}} build examples/primer-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/primer-kitchen-child{{exe}}
+    build/debug/primer-kitchen-child{{exe}} -theme "{{theme}}" -page "{{page}}" -png "build/primer-{{page}}.png"
+
 primer_kit := "tools/primer"
 
 # Regenerate ui/primer/tokens from the primer-kit

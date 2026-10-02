@@ -99,14 +99,15 @@ test_mode_of_reads_every_dark_family_as_dark :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_every_icon_parses_at_every_height_it_has :: proc(t: ^testing.T) {
+test_every_icon_parses_whole_at_every_height_it_has :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
 	for i in Icon {
-		if i == .None {
-			continue
-		}
-		for size in ([]f32{12, 16, 24}) {
-			p, h := icon_path(i, size)
-			testing.expectf(t, len(p.points) > 0 && h > 0, "%v at %v: %d points, height %v", i, size, len(p.points), h)
+		for d, h in ([3]string{ICON_12[i], ICON_16[i], ICON_24[i]}) {
+			if d == "" {
+				continue
+			}
+			p, ok := design.parse_svg_path(d, context.temp_allocator)
+			testing.expectf(t, ok && len(p.points) > 0, "%v at height %d stopped after %d points", i, h, len(p.points))
 		}
 	}
 }
