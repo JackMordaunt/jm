@@ -55,7 +55,7 @@ PAGES := [?]Page {
 	{"Actions", nil, true},
 	{"Button", page_button, false},
 	{"Icon button", page_icon_button, false},
-	{"Button group", nil, false},
+	{"Button group", page_button_group, false},
 	{"Action bar", nil, false},
 	{"Link", page_link, false},
 	{"Keybinding hint", page_keybinding_hint, false},

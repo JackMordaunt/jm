@@ -176,6 +176,16 @@ paint_focus_ring_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corne
 	ops.stroke(gtx.scene, rounded(gtx, rect, grow_corners(k, o)), ring.color, {width = ring.width})
 }
 
+// paint_focus_visible_ring is paint_focus_ring_corners shown only while
+// c.focus_visible, keyboard focus: a control focused by a click shows
+// nothing. Fluent's and Primer's kits cite :focus-visible for their
+// indicators (createFocusOutlineStyle.ts, focusOutline.css).
+paint_focus_visible_ring :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners, ring: Focus_Ring) {
+	b := c
+	b.focused = c.focus_visible
+	paint_focus_ring_corners(gtx, b, r, k, ring)
+}
+
 // stroke_inside strokes the inside edge of rr at width w.
 stroke_inside :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, color: ops.Color, w: f32 = 1) {
 	h := w / 2

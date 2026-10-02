@@ -146,3 +146,36 @@ span :: proc(text, sub: string) -> primer.Link_Span {
 	i := strings.index(text, sub)
 	return {i, i + len(sub)}
 }
+
+page_button_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10, align = .Start)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Joined", "no gap; each over the next by 1px; the ends round, the joints square; a hovered item's border wins the joint")
+	kitchen.state_header(gtx, 220)
+	cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
+		g := primer.button_group_open(gtx, 3, "Views", key = key)
+		primer.button(gtx, "Code", group = &g, state = st, key = 1)
+		primer.button(gtx, "Preview", group = &g, key = 2)
+		primer.button(gtx, "Blame", group = &g, key = 3)
+		primer.button_group_close(&g)
+	}
+	kitchen.state_row(gtx, m, "First item", cell, 1, 220)
+	kitchen.section(gtx, "Icon buttons and a split button", "a toolbar: Left and Right move focus and wrap")
+	r := ui.row_open(gtx, gap = 24, align = .Center)
+	defer ui.close(&r)
+	{
+		g := primer.button_group_open(gtx, 3, "Formatting", toolbar = true, key = 10)
+		primer.icon_button(gtx, .Bold, "Bold", group = &g, key = 11)
+		primer.icon_button(gtx, .Italic, "Italic", group = &g, key = 12)
+		primer.icon_button(gtx, .Code, "Code", group = &g, key = 13)
+		primer.button_group_close(&g)
+	}
+	{
+		g := primer.button_group_open(gtx, 2, "Merge", key = 20)
+		if primer.button(gtx, "Merge pull request", .Primary, group = &g, key = 21) {
+			m.clicks += 1
+		}
+		primer.icon_button(gtx, .Triangle_Down, "More merge options", .Primary, group = &g, key = 22)
+		primer.button_group_close(&g)
+	}
+}

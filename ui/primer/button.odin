@@ -259,6 +259,7 @@ button :: proc(
 	inactive := false,
 	dot := Unread_Dot.None,
 	name := "",
+	group: ^Button_Group = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -295,7 +296,12 @@ button :: proc(
 	if inactive {
 		r = inactive_roles(r)
 	}
-	paint_button(gtx, c, {variant, r, area, mt, bc, align, pad, loading, inactive, dot})
+	bp := Button_Paint{variant, r, area, mt, bc, align, pad, loading, inactive, dot, nil, 0}
+	if group != nil {
+		bp.group, bp.member = group, group_join(group, p.id)
+		read_group_keys(gtx, group, p.id, bp.member)
+	}
+	paint_button(gtx, c, bp)
 	listen(gtx, c.st, p.id, area)
 	said := ui.frame_string(gtx, label)
 	ops.tag(gtx.scene, p.id, said)
@@ -318,6 +324,8 @@ Button_Paint :: struct {
 	pad:               f32,
 	loading, inactive: bool,
 	dot:               Unread_Dot,
+	group:             ^Button_Group, // nil unless in a ButtonGroup
+	member:            int, // its index there
 }
 
 // paint_button draws a button's box, content and focus.
@@ -339,11 +347,19 @@ paint_button :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint) {
 		if sh, ok := shadow_token(bp.r.shadow[shadow_index]); ok && !look.disabled {
 			paint_shadow(gtx, rr, sh)
 		}
-		if ui.painted(bg) {
-			ops.fill(gtx.scene, rr, bg)
-		}
-		if ui.painted(border) {
-			stroke_inside(gtx, rr, border, tok.BORDER_WIDTH_THIN)
+		if bp.group != nil {
+			k := group_corners(bp.member, bp.group.count)
+			if ui.painted(bg) {
+				ops.fill(gtx.scene, rounded(gtx, bp.area, k), bg)
+			}
+			paint_group_border(gtx, look, bp.area, k, border)
+		} else {
+			if ui.painted(bg) {
+				ops.fill(gtx.scene, rr, bg)
+			}
+			if ui.painted(border) {
+				stroke_inside(gtx, rr, border, tok.BORDER_WIDTH_THIN)
+			}
 		}
 	}
 	cw := content_width(bp.bc, bp.mt.gap)
@@ -355,6 +371,10 @@ paint_button :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint) {
 	paint_button_content(gtx, look, bp, x, {fg, visual})
 	if bp.dot == .Button {
 		paint_dot(gtx, {bp.area.x + bp.area.w + tok.BASE_SIZE_4 / 2 - tok.BASE_SIZE_8, bp.area.y - tok.BASE_SIZE_4 / 2})
+	}
+	if bp.group != nil && bp.variant != .Link {
+		design.paint_focus_visible_ring(gtx, c.base, bp.area, group_corners(bp.member, bp.group.count), focus_outline())
+		return
 	}
 	switch bp.variant {
 	case .Primary:
@@ -492,6 +512,7 @@ icon_button :: proc(
 	description := "",
 	tooltip_direction := Tooltip_Direction.S,
 	no_tooltip := false,
+	group: ^Button_Group = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -506,7 +527,7 @@ icon_button :: proc(
 	case .Primary, .Danger:
 		r.visual = r.fg
 	}
-	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip}
+	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, group}
 	return icon_button_in(gtx, ic, name, variant, size, r, st, key, loc)
 }
 
@@ -519,6 +540,7 @@ Icon_Button_State :: struct {
 	description:       string, // its tooltip's text in place of the name, describing it
 	tooltip_direction: Tooltip_Direction,
 	no_tooltip:        bool,
+	group:             ^Button_Group, // nil unless in a ButtonGroup
 }
 
 // icon_button_in is icon_button in roles r: a component that sets an
@@ -538,7 +560,12 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	}
 	bc := Button_Content{leading = ic}
 	pad := (sz.x - BUTTON_ICON) / 2
-	paint_button(gtx, c, {variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None})
+	bp := Button_Paint{variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None, nil, 0}
+	if st.group != nil {
+		bp.group, bp.member = st.group, group_join(st.group, p.id)
+		read_group_keys(gtx, st.group, p.id, bp.member)
+	}
+	paint_button(gtx, c, bp)
 	// The dot sits 2px outside the top-right corner, or 12px up and right
 	// of the centre over the icon (ButtonBase.module.css:67-75).
 	d, half := tok.BASE_SIZE_8, tok.BASE_SIZE_4 / 2

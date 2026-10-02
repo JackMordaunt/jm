@@ -391,9 +391,7 @@ paint_focus_outline :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect) {
 
 // paint_focus_outline_corners is paint_focus_outline for per-corner radii.
 paint_focus_outline_corners :: proc(gtx: ^ui.Ctx, c: Control, r: ops.Rect, k: Corners) {
-	b := c.base
-	b.focused = b.focus_visible
-	design.paint_focus_ring_corners(gtx, b, r, k, focus_outline())
+	design.paint_focus_visible_ring(gtx, c.base, r, k, focus_outline())
 }
 
 // paint_focus_inset is a button's focus indicator, drawn inside its box

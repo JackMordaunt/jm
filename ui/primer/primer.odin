@@ -393,9 +393,7 @@ focus_outline :: proc(offset := tok.FOCUS_OUTLINE_OFFSET) -> design.Focus_Ring {
 // paint_focus_outline is Primer's keyboard focus indicator on rr: shown
 // only while c.focus_visible (:focus-visible), never after a click.
 paint_focus_outline :: proc(gtx: ^ui.Ctx, c: Control, rr: ops.Round_Rect, offset := tok.FOCUS_OUTLINE_OFFSET) {
-	b := c.base
-	b.focused = b.focus_visible
-	design.paint_focus_ring(gtx, b, rr, focus_outline(offset))
+	design.paint_focus_visible_ring(gtx, c.base, rr.rect, corners_all(rr.radius), focus_outline(offset))
 }
 
 // ON_EMPHASIS_RING is the inset ring an emphasis fill's focus adds inside
