@@ -471,8 +471,15 @@ paint_dot :: proc(gtx: ^ui.Ctx, pos: ops.Point) {
 // icon-button.json notes, ButtonBase.module.css:520-526); primary and
 // danger in their label colour.
 //
-// Departure: the tooltip that shows name on hover and keyboard focus is
-// not drawn yet.
+// It shows a tooltip (tooltip.json, see tooltip): description when given,
+// describing the button, else name, labelling it; 50ms after the pointer
+// arrives or at once on keyboard focus, on tooltip_direction's side. A
+// disabled button, an empty name or no_tooltip shows none
+// (IconButton.tsx:28-80).
+//
+// Departure: the tooltip is not suppressed while the button's menu is
+// open, as the button has no expanded state yet, and shows no keybinding
+// hint.
 icon_button :: proc(
 	gtx: ^ui.Ctx,
 	ic: Icon,
@@ -482,6 +489,9 @@ icon_button :: proc(
 	loading := false,
 	inactive := false,
 	dot := Unread_Dot.None,
+	description := "",
+	tooltip_direction := Tooltip_Direction.S,
+	no_tooltip := false,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -496,7 +506,8 @@ icon_button :: proc(
 	case .Primary, .Danger:
 		r.visual = r.fg
 	}
-	return icon_button_in(gtx, ic, name, variant, size, r, {loading, inactive, dot, state}, key, loc)
+	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip}
+	return icon_button_in(gtx, ic, name, variant, size, r, st, key, loc)
 }
 
 // Icon_Button_State is an icon button's flags and forced state.
@@ -505,6 +516,9 @@ Icon_Button_State :: struct {
 	loading, inactive: bool,
 	dot:               Unread_Dot,
 	state:             Interaction,
+	description:       string, // its tooltip's text in place of the name, describing it
+	tooltip_direction: Tooltip_Direction,
+	no_tooltip:        bool,
 }
 
 // icon_button_in is icon_button in roles r: a component that sets an
@@ -538,7 +552,11 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	listen(gtx, c.st, p.id, area)
 	said := ui.frame_string(gtx, name)
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = .Button, label = said, states = design.state_if(c.disabled || loading, {.Disabled})})
+	if c.st != nil {
+		tip := st.description if st.description != "" else name
+		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || st.no_tooltip || name == "", false)
+	}
+	ui.semantics(gtx, &p, {role = .Button, label = said, description = ui.frame_string(gtx, st.description), states = design.state_if(c.disabled || loading, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, 0})
 	return c.clicked && !loading
 }
