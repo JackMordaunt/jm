@@ -1538,3 +1538,78 @@ test_flex_truncate_keeps_the_first_n :: proc(t: ^testing.T) {
 	testing.expect(t, probe_tagged(&p, "more"))
 	testing.expect_value(t, probe_bounds(&p, "more").x, 0)
 }
+
+// justify places a row's children in the space they leave over, which
+// it takes the whole of: 400px here, for children 3W + 10 wide.
+@(test)
+test_justify_shares_the_space_over_along_the_main_axis :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	free := 400 - (3 * W + 10)
+	cases := [Justify][2]f32 {
+		.Start         = {0, 2 * W + 10},
+		.Center        = {free / 2, free / 2 + 2 * W + 10},
+		.End           = {free, free + 2 * W + 10},
+		.Space_Between = {0, 400 - W},
+		.Space_Evenly  = {free / 3, 2 * free / 3 + 2 * W + 10},
+	}
+	for want, j in cases {
+		harness_frame(&h)
+		gtx := &h.gtx
+		{
+			outer := column_open(gtx); defer close(&outer)
+			r := row_open(gtx, gap = 10, justify = j); defer close(&r)
+			label(gtx, "ab")
+			label(gtx, "c")
+		}
+		p := pushes(&h.scene)
+		testing.expectf(t, len(p) >= 2, "%v: %d pushes", j, len(p))
+		xs := [2]f32{p[len(p) - 2].x, p[len(p) - 1].x}
+		testing.expectf(t, testutil.near(xs[0], want[0]) && testutil.near(xs[1], want[1]), "%v: children at %v, want %v", j, xs, want)
+	}
+}
+
+// A justified column spreads down a bounded height; a lone child in
+// Space_Between stays at the start, as in CSS.
+@(test)
+test_justify_works_down_a_column_and_keeps_a_lone_child_at_the_start :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {400, 300})
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		c := column_open(gtx, justify = .End); defer close(&c)
+		label(gtx, "a")
+	}
+	p := pushes(&h.scene)
+	testing.expect_value(t, p[len(p) - 1], ops.Point{0, 300 - 14})
+
+	harness_frame(&h)
+	gtx = &h.gtx
+	{
+		c := column_open(gtx, justify = .Space_Between); defer close(&c)
+		label(gtx, "a")
+	}
+	p = pushes(&h.scene)
+	testing.expect_value(t, p[len(p) - 1], ops.Point{0, 0})
+}
+
+// A wrap justifies each line on its own: two lines, each centred.
+@(test)
+test_wrap_justifies_each_line :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {100, 300})
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	{
+		w := wrap_open(gtx, gap = 4, justify = .Center); defer close(&w)
+		label(gtx, "abcdefghij") // 10W = 84: one per line
+		label(gtx, "abc")
+	}
+	p := pushes(&h.scene)
+	testing.expect(t, len(p) >= 2)
+	testing.expectf(t, testutil.near(p[len(p) - 2].x, (100 - 10 * W) / 2), "%v", p)
+	testing.expectf(t, testutil.near(p[len(p) - 1].x, (100 - 3 * W) / 2), "%v", p)
+	testing.expectf(t, testutil.near(p[len(p) - 1].y, 14 + 4), "%v", p)
+}

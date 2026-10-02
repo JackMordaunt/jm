@@ -63,6 +63,47 @@ Align :: enum u8 {
 	Baseline,
 }
 
+// Justify places a flex's children along its main axis when they leave
+// space over, as CSS's justify-content: Start packs them at the start,
+// Center and End move the pack, Space_Between shares the space over
+// between the children (one child stays at the start), and Space_Evenly
+// shares it equally before, between and after them. A justified flex
+// takes the whole of a bounded main axis and records each child into a
+// macro, as Center alignment does; on an unbounded main axis, or beside a
+// fill_space, nothing is over and every value packs at the start. In a
+// wrap each line is justified on its own.
+Justify :: enum u8 {
+	Start,
+	Center,
+	End,
+	Space_Between,
+	Space_Evenly,
+}
+
+// justify_offsets is where the first of n children starts and the space
+// added to each gap, for free main-axis space over.
+@(private)
+justify_offsets :: proc(j: Justify, free: f32, n: int) -> (lead, between: f32) {
+	if free <= 0 || n == 0 {
+		return
+	}
+	switch j {
+	case .Start:
+	case .Center:
+		lead = free / 2
+	case .End:
+		lead = free
+	case .Space_Between:
+		if n > 1 {
+			between = free / f32(n - 1)
+		}
+	case .Space_Evenly:
+		between = free / f32(n + 1)
+		lead = between
+	}
+	return
+}
+
 // Widget_State is what every widget keeps between frames, keyed by its
 // id: whether it is being pointed at, pressed or focused, and four spring
 // slots for whatever it animates. Anything one widget alone needs — a
@@ -140,6 +181,7 @@ Container :: struct {
 	// Flex only.
 	axis:     Axis,
 	align:    Align,
+	justify:  Justify,
 	gap:      f32,
 	deferred: bool,
 	cursor:   f32, // main-axis end of the last child
@@ -581,40 +623,45 @@ containers_attach :: proc(l: ^Layout, saved: [dynamic]Container) {
 	l.stack = saved
 }
 
-// column lays children top to bottom, gap apart. See Align for the cost of
-// each alignment; a flexible child or fill_space makes it measure first.
+// column lays children top to bottom, gap apart, placed along it by
+// justify. See Align for the cost of each alignment; a flexible child or
+// fill_space makes it measure first.
 column_open :: proc(
 	gtx: ^Ctx,
 	gap: f32 = 0,
 	align: Align = .Start,
 	key: u64 = 0,
 	loc := #caller_location,
+	justify := Justify.Start,
 ) -> Flex {
-	return flex_open(gtx, .Vertical, gap, align, key, loc)
+	return flex_open(gtx, .Vertical, gap, align, justify, key, loc)
 }
 
-// row lays children left to right, gap apart.
+// row lays children left to right, gap apart, placed along it by justify.
 row_open :: proc(
 	gtx: ^Ctx,
 	gap: f32 = 0,
 	align: Align = .Start,
 	key: u64 = 0,
 	loc := #caller_location,
+	justify := Justify.Start,
 ) -> Flex {
-	return flex_open(gtx, .Horizontal, gap, align, key, loc)
+	return flex_open(gtx, .Horizontal, gap, align, justify, key, loc)
 }
 
 // flex_open is column_open and row_open: a flex along axis, deferred when
-// its alignment needs the total before any child can be placed.
+// its alignment or justification needs the total before any child can be
+// placed.
 @(private)
-flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, key: u64, loc: runtime.Source_Code_Location, self := #caller_location) -> Flex {
+flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, justify: Justify, key: u64, loc: runtime.Source_Code_Location, self := #caller_location) -> Flex {
 	p := widget_open(gtx, key, loc, self)
 	c := Container {
 		kind     = .Flex,
 		axis     = axis,
 		gap      = gap,
 		align    = align,
-		deferred = align == .Center || align == .End || (align == .Baseline && axis == .Horizontal),
+		justify  = justify,
+		deferred = align == .Center || align == .End || (align == .Baseline && axis == .Horizontal) || justify != .Start,
 	}
 	return {gtx, container_push(gtx, c, p)}
 }
@@ -625,7 +672,8 @@ flex_open :: proc(gtx: ^Ctx, axis: Axis, gap: f32, align: Align, key: u64, loc: 
 // window narrows. Each child is offered the full width and measures at its
 // natural size; align places a child across its line (Start, Center,
 // End or Baseline; Fill acts as Start). A line_gap below 0 means gap. Weights do not
-// apply: a flexible child is laid out at its natural size.
+// apply: a flexible child is laid out at its natural size. justify places
+// each line's children along it.
 wrap_open :: proc(
 	gtx: ^Ctx,
 	gap: f32 = 0,
@@ -633,6 +681,7 @@ wrap_open :: proc(
 	align: Align = .Start,
 	key: u64 = 0,
 	loc := #caller_location,
+	justify := Justify.Start,
 ) -> Flex {
 	p := widget_open(gtx, key, loc)
 	c := Container {
@@ -640,6 +689,7 @@ wrap_open :: proc(
 		axis     = .Horizontal,
 		gap      = gap,
 		align    = align,
+		justify  = justify,
 		wrap     = true,
 		deferred = true, // every child is placed once the lines are known
 		line_gap = line_gap < 0 ? gap : line_gap,
@@ -865,12 +915,18 @@ flex_close :: proc(f: ^Flex) {
 		ascent, descent = baseline_extent(kids)
 		cross = max(cross, ascent + descent)
 	}
-	size := constrain(c.cs, axis_vec(c.axis, total, cross))
+	main := total
+	main_max := main_of(c.axis, c.cs.max)
+	if c.justify != .Start && is_finite(main_max) {
+		main = max(main, main_max)
+	}
+	size := constrain(c.cs, axis_vec(c.axis, main, cross))
 	cross = cross_of(c.axis, size)
-	at, baseline: f32
+	at, between := justify_offsets(c.justify, main_of(c.axis, size) - total, len(kids))
+	baseline: f32
 	for k, i in kids {
 		if i > 0 {
-			at += c.gap
+			at += c.gap + between
 		}
 		off: f32
 		#partial switch c.align {
@@ -943,7 +999,7 @@ wrap_close :: proc(f: ^Flex) {
 			ascent, descent = baseline_extent(kids[start:end])
 			h = max(h, ascent + descent)
 		}
-		x: f32
+		x, between := justify_offsets(c.justify, limit - w if is_finite(limit) else 0, end - start)
 		for k in kids[start:end] {
 			off: f32
 			#partial switch c.align {
@@ -960,9 +1016,12 @@ wrap_close :: proc(f: ^Flex) {
 			if baseline == 0 && k.baseline > 0 {
 				baseline = k.baseline + y + off
 			}
-			x += k.size.x + c.gap
+			x += k.size.x + c.gap + between
 		}
 		width = max(width, w)
+		if c.justify != .Start && is_finite(limit) {
+			width = limit
+		}
 		y += h
 		start = end
 		if start < len(kids) {

@@ -29,8 +29,9 @@ column :: proc(
 	align: Align = .Start,
 	key: u64 = 0,
 	loc := #caller_location,
+	justify := Justify.Start,
 ) -> bool {
-	column_open(gtx, gap, align, key, loc)
+	column_open(gtx, gap, align, key, loc, justify)
 	return true
 }
 
@@ -41,8 +42,9 @@ row :: proc(
 	align: Align = .Start,
 	key: u64 = 0,
 	loc := #caller_location,
+	justify := Justify.Start,
 ) -> bool {
-	row_open(gtx, gap, align, key, loc)
+	row_open(gtx, gap, align, key, loc, justify)
 	return true
 }
 
@@ -54,8 +56,9 @@ wrap :: proc(
 	align: Align = .Start,
 	key: u64 = 0,
 	loc := #caller_location,
+	justify := Justify.Start,
 ) -> bool {
-	wrap_open(gtx, gap, line_gap, align, key, loc)
+	wrap_open(gtx, gap, line_gap, align, key, loc, justify)
 	return true
 }
 
@@ -111,6 +114,7 @@ column_guard_close :: proc(
 	align: Align,
 	key: u64,
 	loc: runtime.Source_Code_Location,
+	justify: Justify,
 ) {
 	innermost_close(gtx, .Flex)
 }
@@ -122,6 +126,7 @@ row_guard_close :: proc(
 	align: Align,
 	key: u64,
 	loc: runtime.Source_Code_Location,
+	justify: Justify,
 ) {
 	innermost_close(gtx, .Flex)
 }
@@ -134,6 +139,7 @@ wrap_guard_close :: proc(
 	align: Align,
 	key: u64,
 	loc: runtime.Source_Code_Location,
+	justify: Justify,
 ) {
 	innermost_close(gtx, .Flex)
 }
