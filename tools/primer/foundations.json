@@ -500,12 +500,13 @@
       ]
     },
     "breakpoints": {
-      "text": "xsmall 320, small 544, medium 768, large 1012, xlarge 1280, xxlarge 1400 px. PageLayout and SplitPageLayout change pane placement at these; the viewport ranges narrow (below medium), regular and wide (above xlarge) name them.",
+      "text": "xsmall 320, small 544, medium 768, large 1012, xlarge 1280, xxlarge 1400 px. The viewport ranges components switch on are narrow (below 768), regular (768 and up) and wide (1400 and up, the xxlarge breakpoint), plus narrowLandscape (below 1012 wide and 544 tall, in landscape); PageLayout also hard-codes 1012 and 1280 for its spacing and pane presets.",
       "tokens": [
         "--breakpoint-small",
         "--breakpoint-medium",
         "--breakpoint-large",
-        "--breakpoint-xlarge"
+        "--breakpoint-xlarge",
+        "--breakpoint-xxlarge"
       ]
     },
     "overlay": {
