@@ -231,3 +231,325 @@ test_a_checkmark_is_revealed_after_the_fill_and_hidden_at_once :: proc(t: ^testi
 	ui.probe_advance(&p, 8, 0.01)
 	testing.expect_value(t, checkmark_clip_height(&p), -1)
 }
+
+@(private = "file")
+fields :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Forms_Model)(user)
+	col := ui.column_open(gtx, gap = 16, align = .Start)
+	defer ui.close(&col)
+	{
+		f := form_control_open(gtx, "Name", caption = "Your full name", disabled = m.disabled)
+		e := text_input(gtx, &m.name)
+		m.edited ||= e.changed
+		if e.submitted {
+			m.submits += 1
+		}
+		form_control_close(gtx, &f)
+	}
+	if text_input(gtx, &m.search, "Search", leading = .Search, action = .X_Circle_Fill, action_name = "Clear").action {
+		m.actions += 1
+	}
+	text_input(gtx, &m.limited, name = "Limited", character_limit = 5)
+	textarea(gtx, &m.bio, name = "Bio", auto_size = true, max_height = 4 * FIELD_LINE + 2 * TEXTAREA_PAD)
+	text_input(gtx, &m.name, name = "Small", size = .Small)
+	text_input(gtx, &m.name, name = "Large", size = .Large)
+}
+
+@(private = "file")
+fields_probe :: proc(p: ^ui.Probe, m: ^Forms_Model) {
+	ui.probe_init(p, fields, m, {800, 900}, allocator = context.temp_allocator)
+}
+
+@(test)
+test_a_text_input_edits_submits_and_ignores_input_when_disabled :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Name"))
+	ui.probe_type(&p, "Mona")
+	testing.expect_value(t, ui.text_string(&m.name), "Mona")
+	testing.expect(t, m.edited)
+	ui.probe_key(&p, .Enter)
+	testing.expect_value(t, m.submits, 1)
+	testing.expect_value(t, ui.text_string(&m.name), "Mona") // Enter is not text
+	m.disabled = true // the form control disables its input
+	ui.probe_frame(&p)
+	testing.expect(t, !ui.probe_click(&p, "Name"))
+	ui.probe_type(&p, "!")
+	testing.expect_value(t, ui.text_string(&m.name), "Mona")
+}
+
+@(test)
+test_a_form_label_focuses_its_input :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Name label"))
+	ui.probe_frame(&p) // the focus request lands at the next route
+	ui.probe_type(&p, "Hubot")
+	testing.expect_value(t, ui.text_string(&m.name), "Hubot")
+	report := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(report, `text field "Name" value "Hubot" desc "Your full name"`), report)
+}
+
+@(test)
+test_text_input_geometry_follows_the_wrapper_css :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	zero := text_width(&p, "0", field_style(.Medium))
+	name := ui.probe_bounds(&p, "Name")
+	testing.expect_value(t, name.h, tok.CONTROL_MEDIUM_SIZE)
+	// No visuals: 12px of input padding each side of 20ch, in the border.
+	testing.expect_value(t, name.w, 2 * FIELD_BORDER + 2 * tok.BASE_SIZE_12 + 20 * zero)
+	// A leading visual: the wrapper's 8px, the 16px icon and its 8px
+	// margin; an action: 8px, 4px, the 24px action and 4px.
+	search := ui.probe_bounds(&p, "Search")
+	testing.expect_value(t, search.w, 2 * FIELD_BORDER + 8 + 16 + 8 + 20 * zero + 8 + 4 + 24 + 4)
+	clear_ := ui.probe_bounds(&p, "Clear")
+	testing.expect_value(t, clear_, ops.Rect{search.x + search.w - FIELD_BORDER - 4 - 24, search.y + 4, 24, 24})
+	testing.expect_value(t, ui.probe_bounds(&p, "Small").h, tok.CONTROL_SMALL_SIZE)
+	testing.expect_value(t, ui.probe_bounds(&p, "Large").h, tok.CONTROL_LARGE_SIZE)
+	// The character counter adds its row under the well, before the
+	// column's 16px gap to the next field.
+	limited := ui.probe_bounds(&p, "Limited")
+	testing.expect_value(t, limited.h, tok.CONTROL_MEDIUM_SIZE)
+	testing.expect(t, testutil.near(ui.probe_bounds(&p, "Bio").y, limited.y + limited.h + counter_height() + 16))
+}
+
+@(test)
+test_the_trailing_action_activates_without_editing :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Clear"))
+	testing.expect_value(t, m.actions, 1)
+	ui.probe_key(&p, .Enter) // its own tab stop: focused, Enter activates it
+	testing.expect_value(t, m.actions, 2)
+	ui.probe_type(&p, "x")
+	testing.expect_value(t, ui.text_string(&m.search), "") // the field was never focused
+}
+
+@(private = "file")
+count_strokes :: proc(p: ^ui.Probe, c: ops.Color, width: f32) -> (n: int) {
+	for op in p.scene.ops {
+		if s, ok := op.(ops.Stroke); ok && s.style.width == width {
+			if got, solid := s.paint.(ops.Color); solid && got == c {
+				n += 1
+			}
+		}
+	}
+	return
+}
+
+@(test)
+test_a_field_rings_on_any_focus_in_its_status_colour :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	accent := color(.Border_Color_Accent_Emphasis)
+	testing.expect_value(t, count_strokes(&p, accent, 2), 0)
+	ui.probe_click(&p, "Name") // a pointer focus, not the keyboard's
+	ui.probe_frame(&p)
+	testing.expect_value(t, count_strokes(&p, accent, 2), 1)
+	// Over its limit a field is in error: its ring turns danger.
+	ui.probe_click(&p, "Limited")
+	ui.probe_type(&p, "123456")
+	testing.expect_value(t, count_strokes(&p, accent, 2), 0)
+	testing.expect_value(t, count_strokes(&p, color(.Control_Border_Color_Danger), 2), 1)
+	report := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(report, `text field "Limited" value "123456" desc "You can enter up to 5 characters" invalid`), report)
+	testing.expect_value(t, ui.text_string(&m.limited), "123456") // never blocked
+	testing.expect_value(t, ui.probe_bounds(&p, "Limited").h, tok.CONTROL_MEDIUM_SIZE)
+}
+
+@(test)
+test_a_character_counter_counts_utf16_units :: proc(t: ^testing.T) {
+	gtx := ui.Ctx{allocator = context.temp_allocator}
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, utf16_len("a😀é"), 4) // the emoji is a surrogate pair
+	msg, over := counter_message(&gtx, 4, 5)
+	testing.expect_value(t, msg, "1 character remaining")
+	testing.expect(t, !over)
+	msg, over = counter_message(&gtx, 7, 5)
+	testing.expect_value(t, msg, "2 characters over")
+	testing.expect(t, over)
+	msg, _ = counter_message(&gtx, 6, 5)
+	testing.expect_value(t, msg, "1 character over")
+}
+
+@(test)
+test_a_textarea_grows_by_line_with_auto_size_up_to_its_maximum :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	line_h :: proc(lines: int) -> f32 {
+		return f32(lines) * FIELD_LINE + 2 * TEXTAREA_PAD + 2 * FIELD_BORDER
+	}
+	testing.expect_value(t, ui.probe_bounds(&p, "Bio").h, line_h(1))
+	ui.probe_click(&p, "Bio")
+	ui.probe_type(&p, "one")
+	ui.probe_key(&p, .Enter)
+	ui.probe_type(&p, "two")
+	testing.expect_value(t, ui.text_string(&m.bio), "one\ntwo")
+	testing.expect_value(t, ui.probe_bounds(&p, "Bio").h, line_h(2))
+	for _ in 0 ..< 4 {
+		ui.probe_key(&p, .Enter)
+	}
+	testing.expect_value(t, ui.probe_bounds(&p, "Bio").h, line_h(4)) // max_height holds; the text scrolls
+	ui.probe_key(&p, .Up)
+	ui.probe_type(&p, "!")
+	testing.expect_value(t, ui.text_string(&m.bio), "one\ntwo\n\n\n!\n") // Up moved one line, not to the start
+}
+
+@(private = "file")
+resizable_textareas :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Forms_Model)(user)
+	col := ui.column_open(gtx)
+	defer ui.close(&col)
+	textarea(gtx, &m.bio, name = "Notes")
+	textarea(gtx, &m.search, name = "Fixed", rows = 2, resize = .None)
+}
+
+@(test)
+test_a_textarea_is_rows_tall_and_its_grip_resizes_it :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	ui.probe_init(&p, resizable_textareas, &m, {800, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	notes := ui.probe_bounds(&p, "Notes")
+	testing.expect_value(t, notes.h, 7 * FIELD_LINE + 2 * TEXTAREA_PAD + 2 * FIELD_BORDER) // 166
+	zero := text_width(&p, "0", field_style(.Medium))
+	testing.expect_value(t, notes.w, 30 * zero + 2 * TEXTAREA_PAD + 2 * FIELD_BORDER)
+	testing.expect(t, ui.probe_drag(&p, "Notes resize", 40, 30))
+	ui.probe_frame(&p)
+	grown := ui.probe_bounds(&p, "Notes")
+	testing.expect_value(t, grown.w, notes.w + 40)
+	testing.expect_value(t, grown.h, notes.h + 30)
+	testing.expect(t, !ui.probe_tagged(&p, "Fixed resize")) // resize none has no grip
+	ui.probe_move(&p, grown.x + grown.w - 4, grown.y + grown.h - 4)
+	ui.probe_move(&p, grown.x + grown.w + 20, grown.y + grown.h + 20) // hovering moves nothing
+	testing.expect_value(t, ui.probe_bounds(&p, "Notes"), grown)
+}
+
+@(private = "file")
+SIZES_OPTIONS := [?]Select_Option{{label = "Small"}, {label = "Medium", disabled = true}, {label = "Large"}, {label = "Extra large"}}
+
+@(private = "file")
+selects :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Forms_Model)(user)
+	col := ui.column_open(gtx, gap = 16)
+	defer ui.close(&col)
+	select(gtx, SIZES_OPTIONS[:], &m.choice, "Pick a size", name = "Size")
+	off := 0
+	select(gtx, SIZES_OPTIONS[:], &off, name = "Off", state = .Disabled)
+}
+
+@(test)
+test_a_select_changes_by_keys_and_by_its_list :: proc(t: ^testing.T) {
+	m := Forms_Model {
+		choice = -1,
+	}
+	p: ui.Probe
+	ui.probe_init(&p, selects, &m, {600, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	before := ui.probe_bounds(&p, "Size")
+	// As wide as its widest label, with its 1px start margin and 12px sides.
+	st := field_style(.Medium)
+	testing.expect_value(t, before.w, FIELD_BORDER + 1 + 12 + text_width(&p, "Extra large", st) + 12 + FIELD_BORDER)
+	testing.expect(t, ui.probe_click(&p, "Size")) // opens
+	testing.expect(t, ui.probe_tagged(&p, "Large"))
+	testing.expect(t, ui.probe_click(&p, "Large"))
+	testing.expect_value(t, m.choice, 2)
+	testing.expect(t, !ui.probe_tagged(&p, "Large")) // chosen: closed
+	testing.expect_value(t, ui.probe_bounds(&p, "Size"), before) // the width never follows the choice
+	ui.probe_key(&p, .Up) // closed: Up changes the choice, past the disabled one
+	testing.expect_value(t, m.choice, 0)
+	ui.probe_key(&p, .Up)
+	testing.expect_value(t, m.choice, 0) // stays at the end
+	ui.probe_key(&p, .E)
+	testing.expect_value(t, m.choice, 3) // a letter jumps
+	ui.probe_key(&p, .Space)
+	testing.expect(t, ui.probe_tagged(&p, "Small"))
+	ui.probe_key(&p, .Down) // open: Down moves the highlight, not the choice
+	testing.expect_value(t, m.choice, 3)
+	ui.probe_key(&p, .Escape)
+	testing.expect(t, !ui.probe_tagged(&p, "Small"))
+	testing.expect_value(t, m.choice, 3)
+	ui.probe_key(&p, .Enter)
+	ui.probe_key(&p, .Up)
+	ui.probe_key(&p, .Enter)
+	testing.expect_value(t, m.choice, 2)
+	testing.expect(t, !ui.probe_click(&p, "Off")) // disabled: no area
+}
+
+@(private = "file")
+validated_forms :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Forms_Model)(user)
+	col := ui.column_open(gtx, gap = 16, align = .Start)
+	defer ui.close(&col)
+	{
+		f := form_control_open(gtx, "Email", caption = "Never shared", validation = "Enter a whole address", required = true)
+		text_input(gtx, &m.name)
+		form_control_close(gtx, &f)
+	}
+	{
+		f := form_control_open(gtx, "Hidden", hide_label = true)
+		text_input(gtx, &m.search)
+		form_control_close(gtx, &f)
+	}
+}
+
+@(test)
+test_a_form_control_lays_out_label_input_message_caption_and_names_the_input :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	ui.probe_init(&p, validated_forms, &m, {600, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	label := ui.probe_bounds(&p, "Email label")
+	input := ui.probe_bounds(&p, "Email")
+	message := ui.probe_bounds(&p, "Enter a whole address")
+	caption_ := ui.probe_bounds(&p, "Never shared")
+	testing.expect_value(t, label.y, 0)
+	testing.expect_value(t, input.y, label.h + FORM_GAP)
+	testing.expect_value(t, message.y, input.y + input.h + FORM_GAP)
+	testing.expect_value(t, message.h, VALIDATION_LINE)
+	testing.expect_value(t, caption_.y, message.y + message.h + FORM_GAP) // the caption after the message
+	report := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(report, `text field "Email" desc "Enter a whole address Never shared" required invalid`), report)
+	testing.expect(t, strings.contains(report, `text field "Hidden"`), report) // named, though nothing is drawn
+	testing.expect(t, !ui.probe_tagged(&p, "Hidden label"))
+	testing.expect_value(t, ui.probe_bounds(&p, "Hidden").y, caption_.y + caption_.h + 16)
+}
