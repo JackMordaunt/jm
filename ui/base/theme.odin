@@ -54,13 +54,17 @@ Theme :: struct {
 // AXIOMS are what a valid base palette guarantees in every mode: text
 // reads on the window and on panels at 4.5:1 and secondary text at 3:1,
 // WCAG 2's AA ratios for normal and large text, and a border is visible
-// on a panel at 1.5:1, this palette's own floor for a hairline.
+// on a panel at 1.3:1. WCAG sets no ratio for a decorative hairline, so
+// the floor admits the faintest system on jm:ui: Primer's resting border
+// (--borderColor-default on --bgColor-muted) is 1.34:1 in its light
+// themes, where Material's and Fluent's met the 1.5 this floor was until
+// Primer; each system's base-theme test measures its own.
 AXIOMS := []design.Axiom(Role) {
 	{.Ratio_Min, .Fg, .Bg, 4.5},
 	{.Ratio_Min, .Fg, .Surface, 4.5},
 	{.Ratio_Min, .Muted, .Bg, 3},
 	{.Ratio_Min, .Muted, .Surface, 3},
-	{.Ratio_Min, .Outline, .Surface, 1.5},
+	{.Ratio_Min, .Outline, .Surface, 1.3},
 	// Selected text reads on its highlight, focused or not, and the
 	// highlight shows against the window and panels. 1.15 is this palette's
 	// floor for a tint that is seen but does not shout.
