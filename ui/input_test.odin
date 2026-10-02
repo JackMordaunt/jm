@@ -350,6 +350,163 @@ test_an_observer_hears_enter_and_leave_under_what_is_on_top :: proc(t: ^testing.
 	testing.expect_value(t, len(r.observed), 0)
 }
 
+@(private = "file")
+Focus_Model :: struct {
+	dialog, menu: bool, // a trapping dialog over the page, and a trapping menu raised inside it
+	keep:         bool, // b keeps Tab
+	first:        bool, // ask for the dialog's first area this frame
+	presses:      int, // presses a heard
+}
+
+// focus_view is three page buttons a, b, c in a row, b and c in a plain
+// scope; a dialog below them with d1 and d2 in a trap and a popup p1
+// raised in it; and a menu with m1 in a trap of its own raised from
+// inside the dialog.
+@(private = "file")
+focus_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Focus_Model)(user)
+	focusable :: proc(gtx: ^Ctx, id: ops.Area_Id, name: string, x: f32) {
+		ops.input_area(gtx.scene, id, ops.Rect{x, 0, 40, 20}, {.Press, .Release, .Key, .Focus, .Blur})
+		ops.tag(gtx.scene, id, name)
+	}
+	for e in events(gtx, 1) {
+		if e.kind == .Press {
+			m.presses += 1
+		}
+	}
+	focusable(gtx, 1, "a", 0)
+	focus_scope_open(gtx, 70) // a plain scope, named for focus_first
+	focusable(gtx, 2, "b", 50)
+	focusable(gtx, 3, "c", 100)
+	focus_scope_close(gtx)
+	ops.input_area(gtx.scene, 4, ops.Rect{150, 0, 40, 20}, {.Press, .Release}) // clickable, never focused
+	if m.keep {
+		key_interest(gtx, 2, .Tab)
+	}
+	if m.first {
+		focus_first(gtx, m.dialog ? 50 : 70)
+		m.first = false
+	}
+	if !m.dialog {
+		return
+	}
+	d := overlay_open(gtx, {0, 100})
+	focus_scope_open(gtx, 50, trap = true)
+	focusable(gtx, 10, "d1", 0)
+	if m.menu {
+		menu := popup_open(gtx, {0, 0, 40, 20}, 60)
+		focus_scope_open(gtx, 60, trap = true)
+		focusable(gtx, 20, "m1", 0)
+		focus_scope_close(gtx)
+		popup_close(&menu, {40, 20})
+	}
+	// A popup with no trap of its own stays in the dialog's.
+	tip := popup_open(gtx, {0, 0, 40, 20}, 61, .After)
+	focusable(gtx, 12, "p1", 0)
+	popup_close(&tip, {40, 20})
+	// Recorded after the menu's scope closed: the dialog's again.
+	focusable(gtx, 11, "d2", 50)
+	focus_scope_close(gtx)
+	focusable(gtx, 13, "x", 100) // in the dialog's layer, outside its trap
+	overlay_close(&d)
+}
+
+@(test)
+test_tab_walks_focusable_areas_in_order_and_wraps :: proc(t: ^testing.T) {
+	m: Focus_Model
+	p: Probe
+	probe_init(&p, focus_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	want :: proc(t: ^testing.T, p: ^Probe, area: ops.Area_Id, loc := #caller_location) {
+		testing.expect_value(t, p.router.focus, area, loc = loc)
+	}
+	probe_key(&p, .Tab)
+	want(t, &p, 1) // from nothing, the first
+	probe_key(&p, .Tab)
+	probe_key(&p, .Tab)
+	want(t, &p, 3) // the clickable area that wants no keys is no stop
+	probe_key(&p, .Tab)
+	want(t, &p, 1)
+	probe_key(&p, .Tab, {.Shift})
+	want(t, &p, 3)
+	probe_key(&p, .Tab, {.Ctrl})
+	want(t, &p, 3) // another modifier is not Tab traversal
+	testing.expect(t, focus_visible(&Ctx{router = &p.router}))
+	// An area that keeps Tab is not left by it.
+	m.keep = true
+	testing.expect(t, probe_click(&p, "b"))
+	probe_key(&p, .Tab)
+	want(t, &p, 2)
+	probe_key(&p, .Tab, {.Shift})
+	want(t, &p, 1) // it kept Tab, not Shift+Tab
+}
+
+@(test)
+test_a_trap_keeps_focus_in_and_a_newer_trap_suspends_it :: proc(t: ^testing.T) {
+	m: Focus_Model
+	p: Probe
+	probe_init(&p, focus_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_click(&p, "c"))
+	m.dialog = true
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(3)) // the trap moves nothing by itself
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(10))
+	probe_key(&p, .Tab)
+	probe_key(&p, .Tab)
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(10)) // d1, d2, the popup's p1, and round inside
+	probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, p.router.focus, ops.Area_Id(12))
+	// A press on the page cannot take focus out, but still lands.
+	testing.expect(t, probe_click(&p, "a"))
+	testing.expect_value(t, p.router.focus, ops.Area_Id(12))
+	testing.expect_value(t, m.presses, 1)
+	// A press on nothing leaves it too.
+	probe_move(&p, 280, 280)
+	router_push(&p.router, {kind = .Press, pos = {280, 280}, button = .Left})
+	probe_frame(&p)
+	router_push(&p.router, {kind = .Release, pos = {280, 280}, button = .Left})
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(12))
+	// The menu's trap, newer, holds Tab until it closes.
+	m.menu = true
+	probe_frame(&p)
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(20))
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(20))
+	m.menu = false
+	probe_frame(&p)
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(10))
+	// Gone, the dialog lets focus go anywhere again.
+	m.dialog = false
+	probe_frame(&p)
+	testing.expect(t, probe_click(&p, "b"))
+	testing.expect_value(t, p.router.focus, ops.Area_Id(2))
+}
+
+@(test)
+test_focus_first_focuses_the_first_area_in_a_scope :: proc(t: ^testing.T) {
+	m := Focus_Model{dialog = true}
+	p: Probe
+	probe_init(&p, focus_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect_value(t, focused(&Ctx{router = &p.router}), ops.Area_Id(0))
+	m.first = true
+	probe_frame(&p) // asks
+	probe_frame(&p) // routed
+	testing.expect_value(t, focused(&Ctx{router = &p.router}), ops.Area_Id(10))
+	// With no trap, the first area of a plain scope, not of the frame.
+	m.dialog = false
+	m.first = true
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, focused(&Ctx{router = &p.router}), ops.Area_Id(2))
+}
+
 @(test)
 test_outside_presses_walk_the_popups_from_the_top_until_one_holds_the_press :: proc(t: ^testing.T) {
 	f: Frame

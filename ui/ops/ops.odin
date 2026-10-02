@@ -259,7 +259,25 @@ Op :: union {
 	Semantic,
 	Key_Interest,
 	Push_Sticky,
+	Focus_Scope,
+	Focus_Scope_End,
 }
+
+// Focus_Scope opens a region of keyboard focus, ended by the next
+// Focus_Scope_End: the areas recorded in between, and in every layer
+// deferred from inside it, belong to it. Scopes nest. A trapping scope
+// keeps keyboard focus inside itself while it is the last trap in the
+// frame: Tab cycles its areas and a press cannot take focus out of it. A
+// dialog is a trap; a newer one, a menu opened inside it, suspends it
+// until it closes. A plain scope only names a region, for
+// ui.focus_first. See ui.focus_scope_open.
+Focus_Scope :: struct {
+	id:   Area_Id,
+	trap: bool,
+}
+
+// Focus_Scope_End closes the innermost Focus_Scope.
+Focus_Scope_End :: struct {}
 
 // Shadow is the soft shadow of a rounded rect, as a CSS box-shadow draws
 // one: rect is the shape casting it, already offset and spread by the
@@ -424,6 +442,15 @@ input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cur
 		// Every area a user can reach, widget or painted row alike.
 		stroke(o, shape, HIT_BOUNDS_COLOR, {width = 1})
 	}
+}
+
+// focus_scope opens a Focus_Scope; focus_scope_end closes it.
+focus_scope :: proc(o: ^Scene, id: Area_Id, trap := false) {
+	append(&o.ops, Focus_Scope{id, trap})
+}
+
+focus_scope_end :: proc(o: ^Scene) {
+	append(&o.ops, Focus_Scope_End{})
 }
 
 // outside_area records shape as part of id's inside for Outside presses

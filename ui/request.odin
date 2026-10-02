@@ -123,6 +123,37 @@ focus_request :: proc(gtx: ^Ctx, area: ops.Area_Id) {
 	r.focus_asked = true
 }
 
+// focus_first moves keyboard focus, at the next route, to the first area
+// that wants keys inside the focus scope named scope (ops.Focus_Scope) in
+// the frame just laid out: a dialog's or menu's first control, whatever
+// its id. With no such area focus stays where it is.
+focus_first :: proc(gtx: ^Ctx, scope: ops.Area_Id) {
+	r := gtx.router
+	if r == nil {
+		return
+	}
+	r.focus_into = scope
+	r.into_asked = true
+}
+
+// focused is the area that holds keyboard focus, 0 for none: what a popup
+// remembers as it opens, to give focus back as it closes.
+focused :: proc(gtx: ^Ctx) -> ops.Area_Id {
+	return gtx.router.focus if gtx.router != nil else 0
+}
+
+// focus_scope_open opens a focus scope named id over what is recorded
+// until focus_scope_close (see ops.Focus_Scope): with trap, keyboard
+// focus stays inside it while it is the newest trap.
+focus_scope_open :: proc(gtx: ^Ctx, id: ops.Area_Id, trap := false) {
+	ops.focus_scope(gtx.scene, id, trap)
+}
+
+// focus_scope_close closes the innermost focus scope.
+focus_scope_close :: proc(gtx: ^Ctx) {
+	ops.focus_scope_end(gtx.scene)
+}
+
 // focus_visible reports whether the focused area should show a focus
 // indicator: the last input was a key rather than a pointer press. A
 // design system reads it to draw its ring only for keyboard users.

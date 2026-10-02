@@ -33,6 +33,15 @@ import "jm:ui/ops"
 //   Focus to the new). A Press on no area clears focus. A Press on an area
 //   that wants neither leaves focus where it is, so clicking a toolbar
 //   button does not blur the text field it acts on.
+// - Tab moves focus to the next area that wants Key or Text, in frame
+//   order, Shift+Tab to the previous, wrapping at the ends; from no focus
+//   Tab goes to the first. The focused area hears the Tab first. An area
+//   that keeps Tab (a Key_Interest of its own for it) is not left by it.
+// - Focus scopes (ops.Focus_Scope) group areas for focus. While the frame
+//   has a trapping scope, the last one met is the trap: Tab cycles only
+//   the areas inside it, and a press cannot move focus out of it (a press
+//   outside leaves focus where it is). focus_first focuses the first area
+//   inside a named scope.
 // - Key and Text go to the focused area, else they are dropped. A Key
 //   also goes to every area with a Key_Interest it matches (ui.key_interest),
 //   focused or not, once per area, after the focused area has had it: a
@@ -102,6 +111,9 @@ Router :: struct {
 	readers:     [dynamic]ops.Area_Id, // areas awaiting a Paste
 	focus_next:  ops.Area_Id, // with focus_asked: focus to grant at the next route
 	focus_asked: bool,
+	focus_into:  ops.Area_Id, // with into_asked: the scope whose first area to focus at the next route
+	into_asked:  bool,
+	stops:       [dynamic]Hit, // scratch for Tab: the focusable areas in order
 	cursor:      ops.Cursor,
 	pointed:     bool, // a pointer event has set pointer
 
@@ -132,6 +144,7 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.commands = make([dynamic]Command, allocator)
 	r.readers = make([dynamic]ops.Area_Id, allocator)
 	r.observed = make([dynamic]Hit, allocator)
+	r.stops = make([dynamic]Hit, allocator)
 }
 
 // router_destroy frees everything r owns.
@@ -151,6 +164,7 @@ router_destroy :: proc(r: ^Router) {
 	delete(r.commands)
 	delete(r.readers)
 	delete(r.observed)
+	delete(r.stops)
 	r^ = {}
 }
 
@@ -189,6 +203,12 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			set_focus(r, h)
 		}
 	}
+	if r.into_asked {
+		r.into_asked = false
+		if f != nil && focus_stops(r, f, r.focus_into) > 0 {
+			set_focus(r, r.stops[0])
+		}
+	}
 	for e in r.queue {
 		switch e.kind {
 		case .Press:
@@ -202,7 +222,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			if r.yielder.area != 0 {
 				d := e.pos - r.yield_press.pos
 				if d.x * d.x + d.y * d.y > YIELD_DRAG * YIELD_DRAG {
-					take_yield(r)
+					take_yield(r, f)
 				}
 			}
 			if r.pressed != 0 {
@@ -221,6 +241,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			focused := r.focus != 0 && deliver(r, r.focus_hit, e, {})
 			if e.kind == .Key && f != nil {
 				route_key_interest(r, f, e, r.focus if focused else 0)
+				if e.key == .Tab && e.mods - {.Shift} == {} && !keeps_tab(f, r.focus, e.mods) {
+					route_tab(r, f, .Shift in e.mods)
+				}
 			} else if !focused {
 				free_strings(r, e)
 			}
@@ -538,7 +561,9 @@ route_press :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 		r.pressed_at = h.area if ok else 0
 	}
 	if !ok {
-		set_focus(r, {})
+		if active_trap(f) == 0 {
+			set_focus(r, {})
+		}
 		return
 	}
 	if h.yields {
@@ -550,12 +575,12 @@ route_press :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
 	}
 	r.pressed = h.area
 	r.pressed_hit = h
-	if h.kinds & {.Key, .Text} != {} {
+	if h.kinds & {.Key, .Text} != {} && may_focus(f, h) {
 		set_focus(r, h)
 	}
 	deliver_pointer(r, h, e)
 	if r.yielder.area != 0 && e.clicks >= 2 {
-		take_yield(r)
+		take_yield(r, f)
 	}
 }
 
@@ -575,7 +600,7 @@ hit_under :: proc(f: ^Frame, h: Hit, p: ops.Point) -> (Hit, bool) {
 // to the area that had it, then the press itself, replayed, to the
 // yielder, which becomes the grab (and the focus when it wants keys).
 @(private = "file")
-take_yield :: proc(r: ^Router) {
+take_yield :: proc(r: ^Router, f: ^Frame) {
 	y, press := r.yielder, r.yield_press
 	r.yielder = {}
 	if r.pressed != 0 {
@@ -584,7 +609,7 @@ take_yield :: proc(r: ^Router) {
 	r.pressed = y.area
 	r.pressed_hit = y
 	r.pressed_at = y.area
-	if y.kinds & {.Key, .Text} != {} {
+	if y.kinds & {.Key, .Text} != {} && may_focus(f, y) {
 		set_focus(r, y)
 	}
 	deliver_pointer(r, y, press)
@@ -660,6 +685,107 @@ update_observers :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 		append(&r.observed, h)
 		synth(r, h, .Enter, to_local(h, p))
 	}
+}
+
+// active_trap is the trapping focus scope that holds focus in f: the
+// last one met, 0 when f has none.
+@(private = "file")
+active_trap :: proc(f: ^Frame) -> Scope_Ref {
+	if f == nil {
+		return 0
+	}
+	#reverse for s, i in f.scopes {
+		if s.trap {
+			return Scope_Ref(i + 1)
+		}
+	}
+	return 0
+}
+
+// in_scope reports whether scope s is within, or nested in it; with id
+// set, whether it is or is nested in any scope named id instead.
+@(private = "file")
+in_scope :: proc(f: ^Frame, s: Scope_Ref, within: Scope_Ref, id: ops.Area_Id = 0) -> bool {
+	for at := s; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
+		if (id == 0 && at == within) || (id != 0 && f.scopes[at - 1].id == id) {
+			return true
+		}
+	}
+	return false
+}
+
+// may_focus reports whether a press may focus h: always, unless a trap
+// holds focus and h lies outside it.
+@(private = "file")
+may_focus :: proc(f: ^Frame, h: Hit) -> bool {
+	trap := active_trap(f)
+	return trap == 0 || in_scope(f, h.scope, trap)
+}
+
+// focus_stops fills r.stops with the areas of f Tab visits, in frame
+// order, once each: those that want Key or Text, inside the active trap
+// when there is one and inside a scope named within when within is set.
+// It returns how many there are.
+@(private = "file")
+focus_stops :: proc(r: ^Router, f: ^Frame, within: ops.Area_Id = 0) -> int {
+	clear(&r.stops)
+	trap := active_trap(f)
+	outer: for h in f.hits {
+		if h.observes || h.kinds & {.Key, .Text} == {} {
+			continue
+		}
+		if (trap != 0 && !in_scope(f, h.scope, trap)) || (within != 0 && !in_scope(f, h.scope, 0, within)) {
+			continue
+		}
+		for s in r.stops {
+			if s.area == h.area {
+				continue outer
+			}
+		}
+		append(&r.stops, h)
+	}
+	return len(r.stops)
+}
+
+// keeps_tab reports whether the focused area holds a Key_Interest for Tab
+// with mods: it uses Tab itself, so Tab does not move focus off it.
+@(private = "file")
+keeps_tab :: proc(f: ^Frame, focus: ops.Area_Id, mods: Mods) -> bool {
+	if focus == 0 {
+		return false
+	}
+	for k in f.keys {
+		if k.area == focus && k.key == .Tab && key_interest_matches(k, .Tab, mods) {
+			return true
+		}
+	}
+	return false
+}
+
+// route_tab moves focus to the next of f's focus stops after the focused
+// area, or the previous when back, wrapping at the ends.
+@(private = "file")
+route_tab :: proc(r: ^Router, f: ^Frame, back: bool) {
+	n := focus_stops(r, f)
+	if n == 0 {
+		return
+	}
+	at := -1
+	for s, i in r.stops {
+		if s.area == r.focus {
+			at = i
+		}
+	}
+	next: int
+	switch {
+	case at < 0:
+		next = back ? n - 1 : 0
+	case back:
+		next = (at + n - 1) % n
+	case:
+		next = (at + 1) % n
+	}
+	set_focus(r, r.stops[next])
 }
 
 // set_focus moves focus to h (a zero Hit clears it), sending Blur and Focus.

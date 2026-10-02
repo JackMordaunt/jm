@@ -44,9 +44,22 @@ Hit :: struct {
 	clip:      Clip_Id,
 	order:     int, // recording order; later areas are on top
 	layer:     i32, // 0 for the frame, higher for each overlay drawn over it (Defer)
+	scope:     Scope_Ref, // the innermost focus scope it was recorded in
 	cursor:    ops.Cursor, // the pointer's look over it
 	yields:    bool, // see ops.Input_Area
 	observes:  bool, // see ops.Input_Area
+}
+
+// Scope_Ref is a focus scope on the frame: Frame.scopes[ref - 1], or
+// none when 0, so a zero Hit sits in no scope.
+Scope_Ref :: distinct i32
+
+// Focus_Scope_Node is a Focus_Scope placed on the frame: its id, whether
+// it traps, and the scope it sits in.
+Focus_Scope_Node :: struct {
+	id:     ops.Area_Id,
+	parent: Scope_Ref,
+	trap:   bool,
 }
 
 // Placed is a popup flatten placed (see ops.Placement): its key, the
@@ -95,6 +108,7 @@ Frame :: struct {
 	keys:  [dynamic]ops.Key_Interest, // every Key_Interest, for the router
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
 	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
+	scopes: [dynamic]Focus_Scope_Node, // every Focus_Scope, in the order met: the last trap is the active one
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images //review:ignore odin-destroy-incomplete borrowed: flatten points it at the caller's scene
 	stacks:  Flatten_Stacks, // flatten's scratch, not part of the result
 }
@@ -109,6 +123,7 @@ Flatten_Stacks :: struct {
 	deferred:   [dynamic]Deferred, // the Defers met, run after everything else
 	held:       [dynamic]Covering, // covering Defers met, waiting for their Cover_End
 	top:        [dynamic]Deferred, // top Defers met, run after every other
+	scopes:     [dynamic]Scope_Ref, // the focus scopes open around the current one, innermost last
 }
 
 // Covering is a Defer waiting for the end of the container it covers.
@@ -124,6 +139,7 @@ Covering :: struct {
 Deferred :: struct {
 	id:        ops.Macro_Id,
 	transform: ops.Affine,
+	scope:     Scope_Ref, // the focus scope open at the Defer, which the layer stays in
 }
 
 frame_init :: proc(f: ^Frame, allocator := context.allocator) {
@@ -135,6 +151,8 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.keys = make([dynamic]ops.Key_Interest, allocator)
 	f.boxes = make([dynamic]Layout_Box, allocator)
 	f.placed = make([dynamic]Placed, allocator)
+	f.scopes = make([dynamic]Focus_Scope_Node, allocator)
+	f.stacks.scopes = make([dynamic]Scope_Ref, allocator)
 	f.stacks.transforms = make([dynamic]ops.Affine, allocator)
 	f.stacks.clips = make([dynamic]Clip_Id, allocator)
 	f.stacks.deferred = make([dynamic]Deferred, allocator)
@@ -151,6 +169,8 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.keys)
 	clear(&f.boxes)
 	clear(&f.placed)
+	clear(&f.scopes)
+	clear(&f.stacks.scopes)
 	clear(&f.stacks.transforms)
 	clear(&f.stacks.clips)
 	clear(&f.stacks.deferred)
@@ -168,6 +188,8 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.keys)
 	delete(f.boxes)
 	delete(f.placed)
+	delete(f.scopes)
+	delete(f.stacks.scopes)
 	delete(f.stacks.transforms)
 	delete(f.stacks.clips)
 	delete(f.stacks.deferred)

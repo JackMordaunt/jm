@@ -14,6 +14,7 @@ Flattener :: struct {
 	using stacks: ^Flatten_Stacks, // f's, reused frame to frame
 	transform:  ops.Affine,
 	clip:       Clip_Id,
+	scope:      Scope_Ref, // the innermost focus scope open
 	layer:      i32, // 0 for the frame, then 1, 2, ... for each deferred macro in the order run
 	viewport:   ops.Rect, // device space; zero leaves popups where they ask to be
 	root:       ops.Affine, // what a root Defer runs under
@@ -60,7 +61,7 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}, root := ops.I
 		}
 		d := st.deferred[i]
 		m := sc.macros[d.id]
-		st.transform, st.clip = d.transform, NO_CLIP
+		st.transform, st.clip, st.scope = d.transform, NO_CLIP, d.scope
 		st.layer = i32(i + 1)
 		flatten_range(&st, m.first, m.last, 1)
 	}
@@ -72,7 +73,7 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}, root := ops.I
 // seen on entry, and a range must leave both stacks as it found them.
 @(private = "file")
 flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
-	base_t, base_c := len(st.transforms), len(st.clips)
+	base_t, base_c, base_s := len(st.transforms), len(st.clips), len(st.scopes)
 	sc := st.scene.ops[:]
 	i := lo
 	for i < hi {
@@ -119,11 +120,11 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 				append(&st.f.placed, Placed{op.place.key, fit.side, fit.align, fit.shift})
 			}
 			if op.top {
-				append(&st.top, Deferred{op.id, t})
+				append(&st.top, Deferred{op.id, t, st.scope})
 			} else if op.cover {
-				append(&st.held, Covering{op.covers, {op.id, t}})
+				append(&st.held, Covering{op.covers, {op.id, t, st.scope}})
 			} else {
-				append(&st.deferred, Deferred{op.id, t})
+				append(&st.deferred, Deferred{op.id, t, st.scope})
 			}
 		case ops.Cover_End:
 			release_held(st, op.id)
@@ -148,6 +149,7 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 					clip = st.clip,
 					order = len(st.f.hits),
 					layer = st.layer,
+					scope = st.scope,
 					cursor = op.cursor,
 					yields = op.yields,
 					observes = op.observes,
@@ -167,11 +169,19 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			append(&st.f.nodes, Semantic_Node{op.id, op.parent, op.semantics, r, st.layer, st.clip})
 		case ops.Key_Interest:
 			append(&st.f.keys, op)
+		case ops.Focus_Scope:
+			append(&st.f.scopes, Focus_Scope_Node{op.id, st.scope, op.trap})
+			append(&st.scopes, st.scope)
+			st.scope = Scope_Ref(len(st.f.scopes))
+		case ops.Focus_Scope_End:
+			assert(len(st.scopes) > base_s, "flatten: focus_scope_end with no scope open")
+			st.scope = pop(&st.scopes)
 		}
 		i += 1
 	}
 	assert(len(st.transforms) == base_t, "flatten: transform_push without transform_pop")
 	assert(len(st.clips) == base_c, "flatten: clip_push without clip_pop")
+	assert(len(st.scopes) == base_s, "flatten: focus_scope without focus_scope_end")
 }
 
 // sticky_shift is the translation a Push_Sticky resolves to: down by as

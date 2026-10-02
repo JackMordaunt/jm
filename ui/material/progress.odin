@@ -92,8 +92,9 @@ slider :: proc(
 }
 
 // range_slider is slider with two handles, lo_value^ <= hi_value^. A
-// press takes whichever handle is nearer; Tab while focused moves the keys
-// to the other handle. Handles meet but never cross: the moving one stops
+// press takes whichever handle is nearer; the handles are two Tab stops,
+// so Tab on the low one moves the keys to the high one and Shift+Tab
+// back, and past them Tab leaves the slider. Handles meet but never cross: the moving one stops
 // at the other. It is horizontal and standard-track only: slider.json's
 // orientation input says Compose's VerticalSlider is single-value only,
 // and its centered track is a single slider's track slot. name and
@@ -127,6 +128,9 @@ range_slider :: proc(
 		apply_slider_input(gtx, p.id, c.st, g, vals[:], lo, hi, step, rh)
 		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
 		active = rh.active
+		// Keep the Tab that crosses to the other handle, so the router
+		// does not move focus off the slider for it.
+		ui.key_interest(gtx, p.id, .Tab, active == 0 ? {} : {.Shift})
 	}
 	paint_slider(gtx, c, g, lo, hi, {lo_value^, hi_value^}, true, false, active, {}, indicator)
 	listen(gtx, c, p.id, ops.Rect{0, 0, size.x, size.y}, SLIDER_KINDS)
@@ -141,7 +145,7 @@ range_slider :: proc(
 
 // Range_Handle is which of a range slider's handles the keys and a drag
 // move: 0 the low one, 1 the high one. A press picks the nearer; Tab
-// swaps.
+// and Shift+Tab cross between them.
 @(private = "file")
 Range_Handle :: struct {
 	active: int,
@@ -320,7 +324,13 @@ apply_slider_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, st: ^ui.Widget_State, 
 			st.pressed = false
 		case .Key:
 			if two && e.key == .Tab {
-				active = 1 - active
+				// The handles are two Tab stops: Tab from the low one and
+				// Shift+Tab from the high one cross over; past them focus
+				// leaves the slider (see range_slider's key interest).
+				back := .Shift in e.mods
+				if active == (back ? 1 : 0) {
+					active = 1 - active
+				}
 				continue
 			}
 			// One key step is one stop, or 1% of a continuous range; a page

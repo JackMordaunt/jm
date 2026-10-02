@@ -244,7 +244,7 @@ test_an_issue_labels_focus_outline_sits_2px_outside :: proc(t: ^testing.T) {
 	ui.probe_click(&p, "bug")
 	ui.probe_frame(&p)
 	testing.expect_value(t, strokes_of(&p, color(.Focus_Outline_Color)), 0) // a click shows no outline
-	ui.probe_key(&p, .Tab) // jm:ui has no Tab traversal: a key turns focus visible
+	ui.probe_key(&p, .Tab, {.Ctrl}) // any key turns focus visible; Ctrl+Tab does not move it
 	ui.probe_frame(&p)
 	bug := ui.probe_bounds(&p, "bug")
 	found := false

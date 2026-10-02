@@ -30,8 +30,8 @@ ENCODE_MAGIC :: "UIOP"
 // weight; 23 gave each Image an alpha; 24 gave Semantic a heading level
 // and Role Region; 25 added Push_Sticky; 26 gave Placement its nudge,
 // inside, overhang and fallbacks; 27 added Event_Kind Outside and
-// Key_Interest topmost.
-ENCODE_VERSION :: u8(27)
+// Key_Interest topmost; 28 added Focus_Scope and Focus_Scope_End.
+ENCODE_VERSION :: u8(28)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -439,6 +439,12 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, transmute(u8)v.mods)
 		append(w, transmute(u8)v.optional)
 		append(w, u8(v.topmost))
+	case Focus_Scope:
+		append(w, 21)
+		put_u64(w, u64(v.id))
+		append(w, u8(v.trap))
+	case Focus_Scope_End:
+		append(w, 22)
 	case:
 		append(w, 0)
 	}
@@ -803,6 +809,17 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.top = get_f32(r) or_return
 		v.room = get_f32(r) or_return
 		return v, true
+	case 21:
+		v: Focus_Scope
+		v.id = Area_Id(get_u64(r) or_return)
+		trap := get_u8(r) or_return
+		if trap > 1 {
+			return nil, false
+		}
+		v.trap = trap == 1
+		return v, true
+	case 22:
+		return Focus_Scope_End{}, true
 	}
 	return nil, false
 }

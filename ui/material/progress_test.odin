@@ -133,8 +133,9 @@ test_range_slider_takes_the_nearer_handle_and_never_crosses :: proc(t: ^testing.
 	release_at(&p, {track_x(0.8), 24})
 	testing.expect_value(t, m.hi, 80)
 	testing.expect_value(t, m.lo, 20)
-	// Tab hands the keys to the low handle, which stops at the high one.
-	ui.probe_key(&p, .Tab)
+	// Shift+Tab hands the keys back to the low handle (the handles are two
+	// Tab stops), which stops at the high one.
+	ui.probe_key(&p, .Tab, {.Shift})
 	ui.probe_key(&p, .Right)
 	testing.expect_value(t, m.lo, 21)
 	ui.probe_key(&p, .End)
