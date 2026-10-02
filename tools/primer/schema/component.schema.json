@@ -87,7 +87,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^([A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*\\.(module\\.css|css|tsx|ts|docs\\.json|md)(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?$"
+            "pattern": "^([A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z0-9_]+)*\\.(module\\.css|css|tsx|ts|docs\\.json|md)(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?$"
           },
           "description": "The Primer React files this spec was read from: <Name>.module.css, <Name>.tsx and <Name>.docs.json under source/react, mixins under source/mixins."
         },
@@ -377,7 +377,7 @@
     "source": {
       "type": "string",
       "description": "Where a fact comes from: one or more citations separated by \"; \". A citation is a file vendored under source/ with optional lines (ButtonBase.module.css:120-140, Button.tsx:32, focusOutline.css), or a primer.style page (primer:button). A file is named by its base name when that is unique under source/, else by its path under source/react (TooltipV2/Tooltip.tsx:40) or source/; scripts/check.sh rejects an ambiguous or missing one.",
-      "pattern": "^(primer:[a-z0-9-]+|([A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*\\.(module\\.css|css|tsx|ts|docs\\.json|md)(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?)(; (primer:[a-z0-9-]+|([A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)*\\.(module\\.css|css|tsx|ts|docs\\.json|md)(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?))*$"
+      "pattern": "^(primer:[a-z0-9-]+|([A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z0-9_]+)*\\.(module\\.css|css|tsx|ts|docs\\.json|md)(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?)(; (primer:[a-z0-9-]+|([A-Za-z0-9_.-]+/)*[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z0-9_]+)*\\.(module\\.css|css|tsx|ts|docs\\.json|md)(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?))*$"
     },
     "values": {
       "type": "array",
