@@ -15,6 +15,7 @@ Nav_Model :: struct {
 	docs:        bool,
 	checked:     bool,
 	small:       bool,
+	collapsed:   bool,
 }
 
 @(private = "file")
@@ -28,11 +29,17 @@ navigation :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Nav_Model)(user)
 	r := ui.row_open(gtx, align = .Start)
 	defer ui.close(&r)
-	if nav(gtx, density = m.small ? .Small : .Medium) {
-		nav_item(gtx, "Dashboard", "dashboard", &m.selected, .Home)
-		if nav_category(gtx, "Reports", &m.reports, .Document) {
-			nav_sub_item(gtx, "Sales", "sales", &m.selected)
-			nav_sub_item(gtx, "Costs", "costs", &m.selected)
+	if nav(gtx, density = m.small ? .Small : .Medium, collapsed = m.collapsed) {
+		if nav_header(gtx) {
+			hamburger(gtx)
+		}
+		if nav_body(gtx) {
+			nav_section_header(gtx, "Pages")
+			nav_item(gtx, "Dashboard", "dashboard", &m.selected, .Home)
+			if nav_category(gtx, "Reports", &m.reports, .Document) {
+				nav_sub_item(gtx, "Sales", "sales", &m.selected)
+				nav_sub_item(gtx, "Costs", "costs", &m.selected)
+			}
 		}
 	}
 	col := ui.column_open(gtx, gap = 16)
@@ -79,13 +86,51 @@ test_nav_selects_items_and_opens_categories :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_tagged(&p, "Sales"))
 	// Rows: spacingVerticalMNudge (10px) above and below a 20px line at
 	// medium, spacingVerticalXS (4px) at small; 260px wide less the body
-	// padding (MNudge 10 at the start, XS 4 at the end).
+	// padding (MNudge 10 at the start, XS 4 at the end), and the body's
+	// padding is the only padding: the row starts 10px in from the
+	// drawer's edge, the hamburger 14px.
 	row := ui.probe_bounds(&p, "Dashboard")
 	testing.expect_value(t, row.h, 40)
 	testing.expect_value(t, row.w, 260 - 10 - 4)
+	testing.expect_value(t, row.x, 10)
+	testing.expect_value(t, ui.probe_bounds(&p, "Navigation").x, 14)
 	m.small = true
 	ui.probe_frame(&p)
 	testing.expect_value(t, ui.probe_bounds(&p, "Dashboard").h, 28)
+}
+
+// Collapsed, an inline nav is a rail: 52px wide, each row its icon alone
+// and still the destination its tag names, the section heading gone;
+// expanded again it is the drawer it was.
+@(test)
+test_nav_collapses_to_a_rail :: proc(t: ^testing.T) {
+	m := Nav_Model{crumb = -1}
+	p: ui.Probe
+	ui.probe_init(&p, navigation, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_tagged(&p, "Pages"))
+	m.collapsed = true
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	row := ui.probe_bounds(&p, "Dashboard")
+	testing.expect_value(t, row.w, 52 - 10 - 4)
+	testing.expect_value(t, row.h, 40)
+	testing.expect_value(t, ui.probe_bounds(&p, "Navigation").w, 32)
+	testing.expect(t, !ui.probe_tagged(&p, "Pages"))
+	testing.expect(t, ui.probe_click(&p, "Dashboard"))
+	testing.expect_value(t, m.selected, "dashboard")
+	// A category row is its icon too, and still opens.
+	testing.expect_value(t, ui.probe_bounds(&p, "Reports").w, 52 - 10 - 4)
+	testing.expect(t, ui.probe_click(&p, "Reports"))
+	testing.expect(t, m.reports)
+
+	m.collapsed = false
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "Dashboard").w, 260 - 10 - 4)
+	testing.expect(t, ui.probe_tagged(&p, "Pages"))
 }
 
 @(test)

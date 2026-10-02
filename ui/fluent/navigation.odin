@@ -567,13 +567,14 @@ NAV_HEADER_PAD_BLOCK :: f32(5)
 
 // Nav is an open nav drawer between nav_open and nav_close.
 Nav :: struct {
-	visible: bool,
-	drawer:  Drawer,
-	inline:  bool,
-	fixed:   Fixed_Surface,
-	box:     ui.Box,
-	col:     ui.Flex,
-	density: Nav_Density,
+	visible:   bool,
+	drawer:    Drawer,
+	inline:    bool,
+	fixed:     Fixed_Surface,
+	box:       ui.Box,
+	col:       ui.Flex,
+	density:   Nav_Density,
+	collapsed: bool,
 }
 
 @(private, thread_local)
@@ -582,17 +583,41 @@ current_nav: ^Nav
 @(private, thread_local)
 nav_density: Nav_Density
 
+// nav_collapsed is whether the open nav is a rail, read by the rows laid
+// out inside it the way nav_density is.
+@(private, thread_local)
+nav_collapsed: bool
+
+// nav_rail_width is a collapsed inline nav's width: the body's padding
+// around a row that holds its icon alone between an item's start and end
+// padding, 52px at the tokens' values. The header's hamburger, 32px
+// inside its 14px and 4px, fits the same width.
+@(private)
+nav_rail_width :: proc() -> f32 {
+	pad := nav_padding()
+	return pad.left + tok.SPACING_HORIZONTAL_MNUDGE + NAV_ICON + tok.SPACING_HORIZONTAL_S + pad.right
+}
+
 // nav_open is a NavDrawer: a drawer filled Neutral_Background4, 260px
-// wide unless width says otherwise, whose body is a column of rows with
-// spacingVerticalXXS between, padded spacingHorizontalMNudge at the
-// start and spacingHorizontalXS at the end (useNavDrawerStyles.styles.ts:
-// 16-41, useNavDrawerBodyStyles.styles.ts:16-33). With open nil it is an
-// inline drawer always shown; otherwise an overlay drawer over window
-// while open^. Lay nav_item, nav_category, nav_section_header,
-// nav_divider, app_item and hamburger out inside, or as the guard's body.
-nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density := Nav_Density.Medium, width: f32 = NAV_WIDTH, key: u64 = 0, loc := #caller_location) -> (n: Nav) {
+// wide unless width says otherwise, a column of its parts with
+// spacingVerticalXXS between (useNavDrawerStyles.styles.ts:16-41). The
+// drawer itself has no padding: nav_header, nav_body and nav_footer each
+// bring the spec's own, so a hamburger sits 14px in and a row 10px, and
+// rows laid directly inside, without a body, are flush. With open nil it
+// is an inline drawer always shown; otherwise an overlay drawer over
+// window while open^.
+//
+// Extension: collapsed draws an inline nav as a rail - nav_rail_width
+// wide, each row its icon alone with the label as its tooltip, section
+// headers left out - the compact mode a hamburger in the header toggles,
+// which the React NavDrawer has no counterpart for (WinUI's NavigationView
+// LeftCompact). An overlay nav ignores it: a drawer over the page is shown
+// whole or not at all.
+nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density := Nav_Density.Medium, width: f32 = NAV_WIDTH, collapsed := false, key: u64 = 0, loc := #caller_location) -> (n: Nav) {
 	n.density = density
 	nav_density = density
+	n.collapsed = collapsed && open == nil
+	nav_collapsed = n.collapsed
 	fill := color(.Neutral_Background4)
 	id := ui.claim_id(gtx, key, loc)
 	if open == nil {
@@ -600,10 +625,10 @@ nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density
 		n.visible = true
 		// Exactly width wide; as tall as offered when that is bounded, else
 		// as tall as its rows.
-		n.fixed = fixed_open(gtx, width, key = u64(ui.id_mix(id, 1)), loc = loc)
+		n.fixed = fixed_open(gtx, n.collapsed ? nav_rail_width() : width, key = u64(ui.id_mix(id, 1)), loc = loc)
 		np := new(Nav_Paint, gtx.allocator)
 		np^ = {fill = fill, fixed = n.fixed.p.id}
-		n.box = ui.box_open(gtx, {padding = nav_padding(), paint = paint_nav, user = np}, u64(ui.id_mix(id, 2)), loc)
+		n.box = ui.box_open(gtx, {paint = paint_nav, user = np}, u64(ui.id_mix(id, 2)), loc)
 	} else {
 		n.drawer = drawer_open(gtx, open, window, .Overlay, .Start, .Small, fill = fill, key = u64(ui.id_mix(id, 3)), loc = loc)
 		n.visible = n.drawer.visible
@@ -630,19 +655,20 @@ nav_close :: proc(n: ^Nav) {
 		drawer_close(&n.drawer)
 	}
 	n.visible = false
+	nav_collapsed = false
 	current_nav = nil
 }
 
 // nav is nav_open as a guard: `if fluent.nav(gtx) { … }` for an inline
 // nav, `if fluent.nav(gtx, &open, window) { … }` for the overlay one.
 @(deferred_in = nav_guard_close)
-nav :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density := Nav_Density.Medium, width: f32 = NAV_WIDTH, key: u64 = 0, loc := #caller_location) -> bool {
-	n := nav_open(gtx, open, window, density, width, key, loc)
+nav :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density := Nav_Density.Medium, width: f32 = NAV_WIDTH, collapsed := false, key: u64 = 0, loc := #caller_location) -> bool {
+	n := nav_open(gtx, open, window, density, width, collapsed, key, loc)
 	return n.visible
 }
 
 @(private = "file")
-nav_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, density: Nav_Density, width: f32, key: u64, loc: runtime.Source_Code_Location) {
+nav_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, density: Nav_Density, width: f32, collapsed: bool, key: u64, loc: runtime.Source_Code_Location) {
 	if current_nav != nil {
 		nav_close(current_nav)
 	}
@@ -708,6 +734,10 @@ current_category: ^Nav_Category_Data
 // Neutral_Foreground2_Brand_Selected, and the 4 by 20px
 // Compound_Brand_Foreground1 indicator stands 16px before the padding
 // edge. A category row puts a chevron at its end. Returns the click.
+//
+// In a collapsed nav a row with an icon is the icon alone, the label its
+// tooltip; a row without one keeps its label, since an empty row would
+// be a destination nobody can find.
 @(private)
 nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selected, open: bool, state: Interaction, key: u64, loc: runtime.Source_Code_Location) -> bool {
 	p := ui.widget_open(gtx, key, loc)
@@ -717,13 +747,19 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 		pad_start = nav_density == .Small ? NAV_SUB_INDENT_SMALL : NAV_SUB_INDENT_MEDIUM
 	}
 	pad_end := tok.SPACING_HORIZONTAL_S
+	iconic := nav_collapsed && ic != .None
 	t := shape_style(gtx, label, selected ? tok.TYPOGRAPHY_STYLES_BODY1_STRONG : tok.TYPOGRAPHY_STYLES_BODY1)
-	content := pad_start + t.width + pad_end
-	if ic != .None {
-		content += NAV_ICON + NAV_GAP
-	}
-	if kind == .Category {
-		content += NAV_GAP + NAV_ICON
+	content := pad_start + pad_end
+	if iconic {
+		content += NAV_ICON
+	} else {
+		content += t.width
+		if ic != .None {
+			content += NAV_ICON + NAV_GAP
+		}
+		if kind == .Category {
+			content += NAV_GAP + NAV_ICON
+		}
 	}
 	cs := gtx.constraints
 	w := ui.is_finite(cs.max.x) ? cs.max.x : content
@@ -749,9 +785,13 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 		icon(gtx, shown, {x, (sz.y - NAV_ICON) / 2}, NAV_ICON, selected ? color(.Neutral_Foreground2_Brand_Selected) : fg)
 		x += NAV_ICON + NAV_GAP
 	}
-	draw_text(gtx, t, {x, (sz.y - t.height) / 2}, fg)
-	if kind == .Category {
-		chevron_at(gtx, {sz.x - pad_end - NAV_ICON, (sz.y - NAV_ICON) / 2}, NAV_ICON, open, fg)
+	if iconic {
+		tooltip(gtx, p.id, c, label, sz, position = .Below)
+	} else {
+		draw_text(gtx, t, {x, (sz.y - t.height) / 2}, fg)
+		if kind == .Category {
+			chevron_at(gtx, {sz.x - pad_end - NAV_ICON, (sz.y - NAV_ICON) / 2}, NAV_ICON, open, fg)
+		}
 	}
 	// Focus: a strokeWidthThick Stroke_Focus2 outline inset by the same,
 	// inside the row's edge (sharedNavStyles.styles.ts:62-66).
@@ -869,6 +909,9 @@ nav_category_guard_close :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, ic: I
 // nav_section_header is caption1Strong text 10px in from the start with
 // 8px above and below (useNavSectionHeaderStyles.styles.ts:15-21).
 nav_section_header :: proc(gtx: ^ui.Ctx, text: string, key: u64 = 0, loc := #caller_location) {
+	if nav_collapsed {
+		return // a rail has no room for a heading, and its rows need none
+	}
 	in_ := ui.inset_open(gtx, {NAV_SECTION_MARGIN_START, NAV_SECTION_MARGIN_BLOCK, 0, NAV_SECTION_MARGIN_BLOCK}, key, loc)
 	defer ui.close(&in_)
 	base_label(gtx, text, .Caption1_Strong, color(.Neutral_Foreground2))
