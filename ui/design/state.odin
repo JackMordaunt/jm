@@ -26,6 +26,12 @@ role_for :: proc(s: State_Roles($R), c: Control) -> R {
 	return s.rest
 }
 
+// state_if is states when on, else none: the states a flag adds to a
+// component's semantics.
+state_if :: proc(on: bool, states: ops.States) -> ops.States {
+	return states if on else {}
+}
+
 // Fades are a component's colour transitions: one per property it eases,
 // numbered by the component like animate's spring slots. A component
 // keeps them in its widget data (ui.widget_data) while it is Live.

@@ -1,6 +1,7 @@
 package fluent
 
 import "jm:ui"
+import "jm:ui/design"
 import "jm:ui/ops"
 import tok "jm:ui/fluent/tokens"
 
@@ -253,7 +254,7 @@ button :: proc(
 	listen(gtx, c.st, p.id, area)
 	said := ui.frame_string(gtx, icon_only ? name : label)
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = .Button, label = said, states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
 	return c.clicked
 }

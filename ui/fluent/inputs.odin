@@ -2,6 +2,7 @@ package fluent
 
 import "base:runtime"
 import "jm:ui"
+import "jm:ui/design"
 import "jm:ui/ops"
 import tok "jm:ui/fluent/tokens"
 
@@ -75,12 +76,12 @@ field_semantics :: proc(gtx: ^ui.Ctx, role: ops.Role, name, placeholder, value: 
 			s.label = f.label
 		}
 		s.description = f.hint
-		s.states += state_if(f.required, {.Required}) + state_if(f.disabled, {.Disabled})
+		s.states += design.state_if(f.required, {.Required}) + design.state_if(f.disabled, {.Disabled})
 	}
 	if s.label == "" && s.labelled_by == 0 {
 		s.label = placeholder
 	}
-	s.states += state_if(disabled, {.Disabled}) + state_if(readonly, {.Readonly})
+	s.states += design.state_if(disabled, {.Disabled}) + design.state_if(readonly, {.Readonly})
 	return
 }
 
@@ -571,7 +572,7 @@ label :: proc(gtx: ^ui.Ctx, text: string, required := false, size := Size.Medium
 		draw_text(gtx, star, {t.width + tok.SPACING_HORIZONTAL_XS, 0}, color(disabled ? .Neutral_Foreground_Disabled : .Palette_Red_Foreground3))
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
-	ui.semantics(gtx, &p, {role = .Text, label = text, states = state_if(disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Text, label = text, states = design.state_if(disabled, {.Disabled})})
 	return ui.widget_close(gtx, &p, {sz, baseline_of(t)}), p.id
 }
 
@@ -841,7 +842,7 @@ link :: proc(
 	}
 	listen(gtx, c.st, p.id, area, cursor = .Pointer) // a link, as a browser shows one
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
-	ui.semantics(gtx, &p, {role = .Link, label = text, states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Link, label = text, states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, base})
 	return c.clicked
 }

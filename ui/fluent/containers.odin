@@ -80,7 +80,7 @@ card_open :: proc(
 	// A card that takes a click is a button to a reader; one that only
 	// holds its children is a group.
 	role: ops.Role = interactive || selected != nil ? .Button : .Group
-	ui.container_semantics(gtx, {role = role, label = name, states = state_if(selected != nil && selected^, {.Selected}) + state_if(state == .Disabled, {.Disabled})})
+	ui.container_semantics(gtx, {role = role, label = name, states = design.state_if(selected != nil && selected^, {.Selected}) + design.state_if(state == .Disabled, {.Disabled})})
 	return box
 }
 
@@ -644,7 +644,7 @@ tab_list :: proc(
 		}
 		listen(gtx, c.st, id, rect)
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
-		ui.part_semantics(gtx, &p, id, rect, {role = .Tab, label = label, states = state_if(on, {.Selected}) + state_if(c.disabled, {.Disabled})})
+		ui.part_semantics(gtx, &p, id, rect, {role = .Tab, label = label, states = design.state_if(on, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
 	}
 	if !circular {
 		if bar_target.w > 0 && ui.painted(bar_color) {
@@ -938,7 +938,7 @@ accordion_header :: proc(gtx: ^ui.Ctx, header: string, open: ^bool, ic: Icon, si
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, header))
-	ui.semantics(gtx, &p, {role = .Button, label = header, states = ops.States{.Expandable} + state_if(open^, {.Expanded}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = header, states = ops.States{.Expandable} + design.state_if(open^, {.Expanded}) + design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 }
 

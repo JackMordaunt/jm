@@ -5,6 +5,7 @@ import "core:math"
 import "core:strconv"
 import "core:strings"
 import "jm:ui"
+import "jm:ui/design"
 import tok "jm:ui/fluent/tokens"
 import "jm:ui/ops"
 
@@ -395,7 +396,7 @@ option :: proc(gtx: ^ui.Ctx, lb: ops.Area_Id, id: ops.Area_Id, row: ops.Rect, la
 	}
 	listen(gtx, c.st, id, row)
 	ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
-	ui.child_semantics(gtx, lb, id, row, {role = .Option, label = label, states = state_if(selected, {.Selected})})
+	ui.child_semantics(gtx, lb, id, row, {role = .Option, label = label, states = design.state_if(selected, {.Selected})})
 	return c.clicked
 }
 
@@ -627,7 +628,7 @@ combobox :: proc(
 	}
 	r.opened = flag^
 	sem := field_semantics(gtx, .Combo_Box, name, placeholder, ui.frame_string(gtx, typed ? string(s.buf[:]) : sel_text), c.disabled)
-	sem.states += {.Expandable} + state_if(flag^, {.Expanded})
+	sem.states += {.Expandable} + design.state_if(flag^, {.Expanded})
 	ui.semantics(gtx, &p, sem)
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
@@ -770,7 +771,7 @@ select :: proc(
 	r.changed = selected^ != old
 	r.opened = d.open
 	sem := field_semantics(gtx, .Combo_Box, name, placeholder, selected^ >= 0 && selected^ < len(options) ? options[selected^] : "", c.disabled)
-	sem.states += {.Expandable} + state_if(d.open, {.Expanded})
+	sem.states += {.Expandable} + design.state_if(d.open, {.Expanded})
 	ui.semantics(gtx, &p, sem)
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
 	return
@@ -1047,8 +1048,8 @@ spin_button :: proc(
 	ops.tag(gtx.scene, up_id, "increment")
 	ops.tag(gtx.scene, down_id, "decrement")
 	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, shown), c.disabled, labelled_by = labelled_by))
-	ui.part_semantics(gtx, &p, up_id, up, {role = .Button, label = "increment", states = state_if(cu.disabled, {.Disabled})})
-	ui.part_semantics(gtx, &p, down_id, down, {role = .Button, label = "decrement", states = state_if(cd.disabled, {.Disabled})})
+	ui.part_semantics(gtx, &p, up_id, up, {role = .Button, label = "increment", states = design.state_if(cu.disabled, {.Disabled})})
+	ui.part_semantics(gtx, &p, down_id, down, {role = .Button, label = "decrement", states = design.state_if(cd.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y_text + baseline_of(t)})
 	return value^ != old
 }
@@ -1365,7 +1366,7 @@ tag_picker :: proc(
 	k := field_colors(appearance, c, invalid, .Outline_Only)
 	rad := paint_field(gtx, area, appearance, k)
 	sem := field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, query), c.disabled)
-	sem.states += {.Expandable} + state_if(flag^, {.Expanded})
+	sem.states += {.Expandable} + design.state_if(flag^, {.Expanded})
 	ui.semantics(gtx, &p, sem)
 	listen(gtx, c.st, p.id, area, FIELD_KINDS, .Text) // under the tags, which take their own clicks
 	end_pad := tok.SPACING_HORIZONTAL_M + m.icon + m.icon_gap
@@ -1438,7 +1439,7 @@ paint_tag :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, id: ops.Area_Id, pos: ops.Poin
 	paint_focus_outline(gtx, c, rr)
 	listen(gtx, c.st, id, r)
 	ops.tag(gtx.scene, id, ui.frame_string(gtx, label))
-	ui.part_semantics(gtx, p, id, r, {role = .Button, label = label, states = state_if(disabled, {.Disabled})})
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = label, states = design.state_if(disabled, {.Disabled})})
 	return c.clicked ? -w : w
 }
 
@@ -1530,7 +1531,7 @@ swatch_picker :: proc(
 	rows := cols > 0 ? (n + cols - 1) / cols : 0
 	sz := ui.constrain(gtx.constraints, {f32(cols) * m.side + f32(max(cols - 1, 0)) * gap, f32(rows) * m.side + f32(max(rows - 1, 0)) * gap})
 	old := selected^
-	ui.semantics(gtx, &p, {role = .Radio_Group, states = state_if(state == .Disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Radio_Group, states = design.state_if(state == .Disabled, {.Disabled})})
 	rad: f32
 	switch shape {
 	case .Square:
@@ -1608,7 +1609,7 @@ swatch_picker :: proc(
 		}
 		listen(gtx, c.st, id, r)
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, sw.name))
-		ui.part_semantics(gtx, &p, id, r, {role = .Radio, label = sw.name, states = state_if(is_sel, {.Checked}) + state_if(c.disabled, {.Disabled})})
+		ui.part_semantics(gtx, &p, id, r, {role = .Radio, label = sw.name, states = design.state_if(is_sel, {.Checked}) + design.state_if(c.disabled, {.Disabled})})
 	}
 	ui.widget_close(gtx, &p, {size = sz})
 	return selected^ != old
@@ -1948,7 +1949,7 @@ color_slider :: proc(
 	listen(gtx, c.st, p.id, area, COLOR_KINDS)
 	said := ui.frame_string(gtx, name != "" ? name : channel == .Hue ? "hue" : channel == .Saturation ? "saturation" : "value")
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(said, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(get(hsv, channel)))), states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(said, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(get(hsv, channel)))), states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return hsv^ != old
 }
@@ -2035,7 +2036,7 @@ alpha_slider :: proc(
 	paint_color_thumb(gtx, c, centre, {255, 255, 255, 255}, true, ring_fill = ops.with_alpha(base, hsv.a))
 	listen(gtx, c.st, p.id, area, COLOR_KINDS)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name))
-	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(value))), states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g", math.round(value))), states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return hsv^ != old
 }
@@ -2190,7 +2191,7 @@ rating :: proc(
 		paint_star(gtx, r, fill, filled_col, filled_col, false)
 		paint_focus_outline(gtx, cs[i], {r, tok.BORDER_RADIUS_MEDIUM})
 	}
-	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g of %d", shown, n)), states = state_if(state == .Disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Slider, label = labelled_name(name, labelled_by), labelled_by = labelled_by, value = ui.frame_string(gtx, fmt.tprintf("%g of %d", shown, n)), states = design.state_if(state == .Disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return value^ != old
 }

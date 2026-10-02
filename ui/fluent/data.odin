@@ -168,7 +168,7 @@ table_row_open :: proc(
 	rp := new(Table_Row_Paint, gtx.allocator)
 	rp^ = {t.size, appearance, selected, clicked, double_clicked, state, !interactive, name}
 	box := ui.box_open(gtx, {paint = paint_table_row, user = rp}, key, loc)
-	ui.container_semantics(gtx, {role = .Row, label = name, states = state_if(selected != nil && selected^, {.Selected}) + state_if(interactive && state == .Disabled, {.Disabled})})
+	ui.container_semantics(gtx, {role = .Row, label = name, states = design.state_if(selected != nil && selected^, {.Selected}) + design.state_if(interactive && state == .Disabled, {.Disabled})})
 	row := ui.row_open(gtx, align = .Center)
 	return {t, 0, box, row}
 }
@@ -516,7 +516,7 @@ table_header_cell :: proc(
 			sorted = "descending"
 		}
 	}
-	ui.semantics(gtx, &p, {role = .Cell, label = label, value = sorted, states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Cell, label = label, value = sorted, states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 	return c.clicked
 }
@@ -573,7 +573,7 @@ table_selection_cell :: proc(
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, kind == .Radio ? "radio" : "checkbox"))
 	if !hidden {
 		role: ops.Role = kind == .Radio ? .Radio : .Checkbox
-		ui.semantics(gtx, &p, {role = role, states = state_if(mixed, {.Mixed}) + state_if(checked^ && !mixed, {.Checked}) + state_if(state == .Disabled, {.Disabled})})
+		ui.semantics(gtx, &p, {role = role, states = design.state_if(mixed, {.Mixed}) + design.state_if(checked^ && !mixed, {.Checked}) + design.state_if(state == .Disabled, {.Disabled})})
 	}
 	ui.widget_close(gtx, &p, {size = sz})
 	return toggled
@@ -766,7 +766,7 @@ list_item :: proc(
 		listen(gtx, c.st, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
-	ui.semantics(gtx, &p, {role = .List_Item, label = label, states = state_if(on, {.Selected}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .List_Item, label = label, states = design.state_if(on, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 	return c.clicked
 }
@@ -1013,7 +1013,7 @@ tag :: proc(
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, text))
 	// A dismissible tag is a button, dismiss being its one action.
 	role: ops.Role = dismissible ? .Button : .Text
-	ui.semantics(gtx, &p, {role = role, label = text, description = secondary, states = state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = role, label = text, description = secondary, states = design.state_if(selected, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - k.primary.height) / 2 + baseline_of(k.primary)})
 	return c.clicked
 }
@@ -1067,7 +1067,7 @@ interaction_tag :: proc(
 	}
 	r := selected ? selected_tag_roles() : tag_roles(appearance)
 	radius := tag_radius(shape, sz.y)
-	ui.semantics(gtx, &p, {role = .Button, label = text, description = secondary, states = state_if(selected, {.Selected}) + state_if(pc.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = text, description = secondary, states = design.state_if(selected, {.Selected}) + design.state_if(pc.disabled, {.Disabled})})
 	// The primary keeps the right corners square when a secondary follows
 	// and drops its right border, drawn once by the secondary
 	// (tag.json gotcha).
@@ -1104,7 +1104,7 @@ interaction_tag :: proc(
 		paint_focus_outline_corners(gtx, sc, second, sk)
 		listen(gtx, sc.st, sid, second)
 		ops.tag(gtx.scene, sid, ui.frame_string(gtx, "dismiss"))
-		ui.part_semantics(gtx, &p, sid, second, {role = .Button, label = "dismiss", states = state_if(sc.disabled, {.Disabled})})
+		ui.part_semantics(gtx, &p, sid, second, {role = .Button, label = "dismiss", states = design.state_if(sc.disabled, {.Disabled})})
 	}
 	paint_focus_outline_corners(gtx, pc, primary, pk)
 	listen(gtx, pc.st, p.id, primary)
@@ -1529,7 +1529,7 @@ avatar_group :: proc(
 		listen(gtx, c.st, bid, ops.Ellipse{r})
 		said := ui.frame_string(gtx, count)
 		ops.tag(gtx.scene, bid, said)
-		ui.part_semantics(gtx, &p, bid, r, {role = .Button, label = said, states = ops.States{.Expandable} + state_if(is_open, {.Expanded}) + state_if(c.disabled, {.Disabled})})
+		ui.part_semantics(gtx, &p, bid, r, {role = .Button, label = said, states = ops.States{.Expandable} + design.state_if(is_open, {.Expanded}) + design.state_if(c.disabled, {.Disabled})})
 		if is_open {
 			paint_overflow_list(gtx, open, names[shown:], r, u64(bid))
 		}

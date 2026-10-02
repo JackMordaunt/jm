@@ -334,7 +334,7 @@ calendar :: proc(
 			listen(gtx, c.st, id, cell)
 			said := fmt.aprintf("%d %s %d", day.day, MONTH_SHORT[day.month - 1], day.year, allocator = gtx.allocator)
 			ops.tag(gtx.scene, id, said)
-			ui.part_semantics(gtx, &p, id, cell, {role = .Grid_Cell, label = said, states = state_if(day == selected^, {.Selected}) + state_if(c.disabled, {.Disabled})}, under = grid_id)
+			ui.part_semantics(gtx, &p, id, cell, {role = .Grid_Cell, label = said, states = design.state_if(day == selected^, {.Selected}) + design.state_if(c.disabled, {.Disabled})}, under = grid_id)
 		}
 	}
 	ops.clip_pop(gtx.scene)
@@ -421,7 +421,7 @@ calendar :: proc(
 		paint_focus_outline(gtx, c, {br, tok.BORDER_RADIUS_MEDIUM})
 		listen(gtx, c.st, id, br)
 		ops.tag(gtx.scene, id, "Go to today")
-		ui.part_semantics(gtx, &p, id, br, {role = .Button, label = "Go to today", states = state_if(c.disabled, {.Disabled})})
+		ui.part_semantics(gtx, &p, id, br, {role = .Button, label = "Go to today", states = design.state_if(c.disabled, {.Disabled})})
 	}
 	if view^ != d.seen_view {
 		// The month picker or go-to-today moved view after the grid laid
@@ -488,7 +488,7 @@ header_button :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, r: ops.Rect, tex
 		paint_focus_outline(gtx, c, {r, tok.BORDER_RADIUS_MEDIUM})
 		listen(gtx, c.st, id, r)
 		ops.tag(gtx.scene, id, said)
-		ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = state_if(c.disabled, {.Disabled})})
+		ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = design.state_if(c.disabled, {.Disabled})})
 	} else {
 		ui.part_semantics(gtx, p, id, r, {role = .Heading, label = said})
 	}
@@ -510,7 +510,7 @@ nav_button :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, r: ops.Rect, ic: Ic
 	paint_focus_outline(gtx, c, {r, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, id, r)
 	ops.tag(gtx.scene, id, name)
-	ui.part_semantics(gtx, p, id, r, {role = .Button, label = name, states = state_if(c.disabled, {.Disabled})})
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = name, states = design.state_if(c.disabled, {.Disabled})})
 	return c.clicked
 }
 
@@ -540,7 +540,7 @@ picker_item :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, key: u64, r: ops.Rect, text:
 	listen(gtx, c.st, id, r)
 	said := ui.frame_string(gtx, text)
 	ops.tag(gtx.scene, id, said)
-	ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = state_if(current || chosen, {.Selected}) + state_if(c.disabled, {.Disabled})})
+	ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = design.state_if(current || chosen, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
 	return c.clicked
 }
 
@@ -1031,7 +1031,7 @@ time_option :: proc(gtx: ^ui.Ctx, label: string, selected: bool, state: Interact
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
-	ui.semantics(gtx, &p, {role = .Option, label = label, states = state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Option, label = label, states = design.state_if(selected, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }

@@ -352,7 +352,7 @@ menu_item :: proc(
 			label = label,
 			value = secondary,
 			description = subtext,
-			states = state_if(check != .None && checked != nil && checked^, {.Checked}) + state_if(submenu, {.Expandable}) + state_if(c.disabled, {.Disabled}),
+			states = design.state_if(check != .None && checked != nil && checked^, {.Checked}) + design.state_if(submenu, {.Expandable}) + design.state_if(c.disabled, {.Disabled}),
 		},
 	)
 	ui.widget_close(gtx, &p, {sz, top + baseline_of(t)})
@@ -505,7 +505,7 @@ dialog_open :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, kind := Dialog_
 	d.col = ui.column_open(gtx, gap = DIALOG_GAP, align = .Fill, key = 3)
 	// Unlabelled until dialog_title names it: the title is a child laid
 	// out after the column opens.
-	ui.container_semantics(gtx, {role = .Dialog, states = state_if(kind != .Non_Modal, {.Modal})})
+	ui.container_semantics(gtx, {role = .Dialog, states = design.state_if(kind != .Non_Modal, {.Modal})})
 	current_dialog = ui.widget_data(gtx, id, Dialog)
 	current_dialog^ = d
 	return
@@ -569,7 +569,7 @@ dialog_title :: proc(gtx: ^ui.Ctx, text: string, close := false, key: u64 = 0, l
 	d := current_dialog
 	if d != nil {
 		// The title names the dialog's column, by its handle.
-		ui.container_semantics(gtx, {role = .Dialog, label = text, states = state_if(d.kind != .Non_Modal, {.Modal})}, d.col.index)
+		ui.container_semantics(gtx, {role = .Dialog, label = text, states = design.state_if(d.kind != .Non_Modal, {.Modal})}, d.col.index)
 	}
 	r := ui.row_open(gtx, align = .Start, key = key, loc = loc)
 	defer ui.close(&r)

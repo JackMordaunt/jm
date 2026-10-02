@@ -76,10 +76,8 @@ THEME_NAMES :: [Theme]string {
 	.Teams_Dark    = "Teams dark",
 }
 
-// hex is 0xRRGGBBAA as a Color.
-hex :: proc(v: u32) -> ops.Color {
-	return {u8(v >> 24), u8(v >> 16), u8(v >> 8), u8(v)}
-}
+// hex is 0xRRGGBBAA as a Color, the tables' encoding.
+hex :: ops.rgba
 
 // theme_scheme is theme t's binding from the kit.
 theme_scheme :: proc(t: Theme) -> (s: Scheme) {
@@ -372,12 +370,6 @@ CLICK_KINDS :: design.CLICK_KINDS
 // st is live, so a component passes c.st.
 listen :: design.listen
 
-// state_if is states when on, else none: the states a flag adds to a
-// component's semantics.
-@(private)
-state_if :: proc(on: bool, states: ops.States) -> ops.States {
-	return states if on else {}
-}
 
 // FOCUS_OUTLINE_WIDTH is the default indicator's stroke (foundations
 // interaction.focus.outline.widthPx, createFocusOutlineStyle.ts); the

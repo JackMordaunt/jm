@@ -801,9 +801,9 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 	}
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
-	states := state_if(selected, {.Selected}) + state_if(c.disabled, {.Disabled})
+	states := design.state_if(selected, {.Selected}) + design.state_if(c.disabled, {.Disabled})
 	if kind == .Category {
-		states += {.Expandable} + state_if(open, {.Expanded})
+		states += {.Expandable} + design.state_if(open, {.Expanded})
 	}
 	ui.semantics(gtx, &p, {role = .Tab, label = label, states = states})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
@@ -965,7 +965,7 @@ app_item :: proc(gtx: ^ui.Ctx, label: string, ic := Icon.None, static := false, 
 		listen(gtx, c.st, p.id, area)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
-	ui.semantics(gtx, &p, {role = static ? .Text : .Button, label = label, states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = static ? .Text : .Button, label = label, states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked && !static
 }
@@ -987,7 +987,7 @@ hamburger :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc := 
 	paint_focus_inset(gtx, c, area, k, paint_border = true)
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, "Navigation"))
-	ui.semantics(gtx, &p, {role = .Button, label = "Navigation", states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = "Navigation", states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }
@@ -1241,7 +1241,7 @@ crumb_button :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, m: Breadcrumb_Metric
 	// The overflow button is a button; every crumb is a link, the
 	// current page the selected one.
 	role: ops.Role = icon_only ? .Button : .Link
-	ui.semantics(gtx, &p, {role = role, label = tag, states = state_if(current, {.Selected}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = role, label = tag, states = design.state_if(current, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked && !current
 }
@@ -1488,9 +1488,9 @@ tree_row :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, level: int, size: Tre
 	}
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
-	states := state_if(c.disabled, {.Disabled})
+	states := design.state_if(c.disabled, {.Disabled})
 	if branch {
-		states += {.Expandable} + state_if(open^, {.Expanded})
+		states += {.Expandable} + design.state_if(open^, {.Expanded})
 	}
 	ui.semantics(gtx, &p, {role = .List_Item, label = label, value = aside, description = description, states = states})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})

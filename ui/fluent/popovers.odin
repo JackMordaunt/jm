@@ -894,7 +894,7 @@ info_button :: proc(gtx: ^ui.Ctx, open: ^bool, size: Size, state: Interaction, o
 	listen(gtx, c.st, p.id, area)
 	said := ui.frame_string(gtx, tprint_info(owner))
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = .Button, label = said, states = ops.States{.Expandable} + state_if(open^, {.Expanded}) + state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = ops.States{.Expandable} + design.state_if(open^, {.Expanded}) + design.state_if(c.disabled, {.Disabled})})
 	// Pulled up and down by spacingVerticalXXS so it does not stretch the
 	// line (useInfoLabelStyles.styles.ts:14-36): laid out that much shorter.
 	ui.widget_close(gtx, &p, {size = sz})
@@ -993,7 +993,7 @@ roles_button :: proc(
 	listen(gtx, c.st, p.id, area)
 	said := ui.frame_string(gtx, label != "" ? label : name)
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = .Button, label = said, states = state_if(c.disabled, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = said, states = design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - t.height) / 2 + baseline_of(t)})
 	return c.clicked
 }
@@ -1057,7 +1057,7 @@ nav_dot :: proc(
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
 	listen(gtx, c.st, p.id, area)
 	ops.tag(gtx.scene, p.id, name)
-	ui.semantics(gtx, &p, {role = .Tab, label = name, states = state_if(selected, {.Selected})})
+	ui.semantics(gtx, &p, {role = .Tab, label = name, states = design.state_if(selected, {.Selected})})
 	ui.widget_close(gtx, &p, {size = sz})
 	return c.clicked
 }

@@ -37,6 +37,12 @@ test_role_for_picks_disabled_then_pressed_then_hovered :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_state_if_adds_states_only_when_on :: proc(t: ^testing.T) {
+	testing.expect_value(t, state_if(true, {.Checked}), ops.States{.Checked})
+	testing.expect_value(t, state_if(false, {.Checked}), ops.States{})
+}
+
+@(test)
 test_blend_eases_over_its_duration_and_snaps_with_none :: proc(t: ^testing.T) {
 	red, blue := ops.Color{255, 0, 0, 255}, ops.Color{0, 0, 255, 255}
 	linear := Bezier{0, 0, 1, 1}

@@ -2,6 +2,12 @@ package ops
 
 // Colour arithmetic on Color.
 
+// rgba is 0xRRGGBBAA as a Color: how the design systems' generated token
+// tables write a colour.
+rgba :: proc(v: u32) -> Color {
+	return {u8(v >> 24), u8(v >> 16), u8(v >> 8), u8(v)}
+}
+
 // mix blends a toward b by t in [0, 1] with premultiplied alpha, and is
 // exactly a at t <= 0 and b at t >= 1. Premultiplying is what makes a
 // fade from a transparent colour read right: transparent black (a
