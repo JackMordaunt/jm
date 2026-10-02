@@ -201,6 +201,7 @@ Container :: struct {
 	column:     int, // the next cell's column
 	span_next:  bool, // grid_span was called for the next child
 	grid_paint: Grid_Paint, // called with style.user
+	fit:      bool, // scroll: take the content's height up to the height offered
 }
 
 Layout :: struct {
@@ -222,6 +223,24 @@ Layout :: struct {
 	selection: Label_Selection, // the app's one selection in read-only text; see selectable.odin
 	persisted: [dynamic]u8, // what persist_struct last sent, to send only changes
 	persisted_once: bool,
+	last:      Last_Widget, // the widget closed most recently; see last_widget
+}
+
+// Last_Widget is a widget just closed: its id and the size it took.
+Last_Widget :: struct {
+	id:   ops.Area_Id,
+	size: ops.Size,
+}
+
+// last_widget is the widget closed most recently: called right after a
+// widget proc returns, that widget's id and size. A popup anchored to a
+// control it did not draw (a menu's button) reads it to listen to the
+// control's keys and to place itself against it, both in a ui.stack.
+last_widget :: proc(gtx: ^Ctx) -> Last_Widget {
+	if gtx.layout == nil {
+		return {}
+	}
+	return gtx.layout.last
 }
 
 // Placement is a widget's bracket: widget_open fills it, widget_close
@@ -450,6 +469,9 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 	}
 	gtx.constraints = p.saved
 	l := gtx.layout
+	if l != nil {
+		l.last = {p.id, d.size}
+	}
 	if l == nil || p.parent < 0 {
 		return d
 	}
@@ -1516,7 +1538,11 @@ SCROLL_STEP :: f32(48)
 //
 // A box takes wheel events only while its content overflows it, so one
 // with nothing to scroll lets the wheel through to the box around it.
-scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false) -> Scroll_Box {
+//
+// With fit the box takes its content's height, up to the height offered
+// and at least the least it is offered, and scrolls only beyond that: a
+// popup's CSS max-height with overflow auto.
+scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false, fit := false) -> Scroll_Box {
 	p := widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	inner := Constraints{min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}}
@@ -1528,6 +1554,7 @@ scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Sc
 		kind   = .Scroll,
 		inner  = inner,
 		scroll = offset,
+		fit    = fit,
 	}
 	return {gtx, container_push(gtx, c, p)}
 }
@@ -1727,7 +1754,11 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 		ops.clip_pop(o)
 	case .Scroll:
 		ops.macro_close(o, c.body)
-		size = constrain(c.cs, {content.x, is_finite(c.cs.max.y) ? c.cs.max.y : content.y})
+		tall := content.y
+		if is_finite(c.cs.max.y) && !c.fit {
+			tall = c.cs.max.y
+		}
+		size = constrain(c.cs, {content.x, tall})
 		sc := c.scroll != nil ? c.scroll : widget_data(gtx, c.place.id, Scroll_Offset)
 		for e in events(gtx, c.place.id) {
 			if e.kind != .Scroll {

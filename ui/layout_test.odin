@@ -484,6 +484,45 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 	testing.expect_value(t, scroll_offset(&h), -(300 + 14 - 100))
 }
 
+@(private = "file")
+Scroll_Fit_Model :: struct {
+	content: f32, // the child's height
+	fit:     bool,
+	inner:   Last_Widget, // last_widget after the child
+	outer:   Last_Widget, // last_widget after the scroll box
+}
+
+@(private = "file")
+fit_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Scroll_Fit_Model)(user)
+	gtx.constraints = loose(gtx.viewport)
+	box := sized_open(gtx, {max = {100, 120}})
+	defer close(&box)
+	sb := scroll_box_open(gtx, fit = m.fit)
+	p := widget_open(gtx, 7)
+	widget_close(gtx, &p, {size = {500, m.content}}) // wider than offered: clamped to 100
+	m.inner = last_widget(gtx)
+	close(&sb)
+	m.outer = last_widget(gtx)
+}
+
+@(test)
+test_a_fitting_scroll_box_hugs_its_content_up_to_its_cap :: proc(t: ^testing.T) {
+	m := Scroll_Fit_Model{content = 40, fit = true}
+	p: Probe
+	probe_init(&p, fit_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect_value(t, m.inner.size, ops.Size{100, 40}) // the size it took, clamped
+	testing.expect(t, m.inner.id != 0 && m.outer.id != m.inner.id, "last_widget names the widget just closed")
+	testing.expect_value(t, m.outer.size.y, 40) // short content: its own height
+	m.content = 300
+	probe_frame(&p)
+	testing.expect_value(t, m.outer.size.y, 120) // tall content: the cap, and it scrolls
+	m.content, m.fit = 40, false
+	probe_frame(&p)
+	testing.expect_value(t, m.outer.size.y, 120) // without fit: the height offered, as before
+}
+
 @(test)
 test_widget_close_emits_semantics_with_the_widgets_depth :: proc(t: ^testing.T) {
 	h: Harness
