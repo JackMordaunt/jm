@@ -226,7 +226,7 @@ Box_Shadow :: struct {
 
 // paint_box_shadow paints layer s of rr's shadow: rr offset and spread,
 // corners growing with the spread, as an ops.Shadow the renderer computes
-// exactly.
+// exactly. paint_inset_shadow paints a layer cast inward instead.
 paint_box_shadow :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, s: Box_Shadow) {
 	if s.color[3] == 0 {
 		return
@@ -239,4 +239,27 @@ paint_box_shadow :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, s: Box_Shadow) {
 // paint_shadow_layer is paint_box_shadow for a layer with no spread.
 paint_shadow_layer :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, x, y, blur: f32, color: ops.Color) {
 	paint_box_shadow(gtx, rr, {x, y, blur, 0, color})
+}
+
+// paint_inset_shadow paints layer s cast inward, inside rr: CSS's inset
+// box-shadow, rr less a hole that is rr offset by x and y and shrunk by
+// spread, its corners shrinking with it, clipped to rr. Only a sharp
+// layer (blur 0) is drawn: ops.Shadow, which the renderer computes in
+// closed form, is the blur of a shape cast outward, and the one inset
+// token among the kits, the primer-kit's --shadow-inset, has blur 0.
+paint_inset_shadow :: proc(gtx: ^ui.Ctx, rr: ops.Round_Rect, s: Box_Shadow) {
+	assert(s.blur == 0, "design: a blurred inset shadow is not drawn; only blur 0 is supported")
+	if s.color[3] == 0 {
+		return
+	}
+	r, e := rr.rect, s.spread
+	hole := ops.Rect{r.x + s.x + e, r.y + s.y + e, r.w - 2 * e, r.h - 2 * e}
+	ops.clip_push(gtx.scene, rr)
+	defer ops.clip_pop(gtx.scene)
+	if hole.w <= 0 || hole.h <= 0 {
+		ops.fill(gtx.scene, rr, s.color)
+		return
+	}
+	k := corners_all(rr.radius)
+	ops.fill(gtx.scene, ring_path(gtx, r, k, hole, grow_corners(k, -e)), s.color)
 }
