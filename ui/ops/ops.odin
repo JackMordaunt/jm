@@ -39,7 +39,8 @@ Call :: struct {
 }
 
 // Defer runs a macro after the rest of the frame, on top of it, under the
-// transform current at the Defer (identity when root) and no clip. It is
+// transform current at the Defer (when root, the frame's root transform,
+// the host's density scale; see ui.flatten) and no clip. It is
 // how a menu or tooltip paints above everything while still positioned
 // against the widget that opened it — that widget cannot know its own
 // device position while recording, since a container may place it later

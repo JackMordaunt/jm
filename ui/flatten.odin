@@ -16,16 +16,19 @@ Flattener :: struct {
 	clip:       Clip_Id,
 	layer:      i32, // 0 for the frame, then 1, 2, ... for each deferred macro in the order run
 	viewport:   ops.Rect, // device space; zero leaves popups where they ask to be
+	root:       ops.Affine, // what a root Defer runs under
 }
 
 // flatten turns the scene sc into f: every draw and hit carries its device
 // transform and a clip reference. f is reset first and keeps a pointer to
 // sc for its resources. viewport is the window in device pixels: a placed
 // popup (ops.Placement) is kept inside it, and a zero viewport leaves
-// popups where they ask to be. Unbalanced push/pop, a Call to an
+// popups where they ask to be. root is the transform a root Defer runs
+// under: the host's scale from logical units to device pixels, the same
+// one it pushes around the ui proc. Unbalanced push/pop, a Call to an
 // unterminated or unknown macro, or calls nested deeper than
 // MAX_CALL_DEPTH assert.
-flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
+flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}, root := ops.IDENTITY) {
 	frame_reset(f)
 	f.scene = sc
 	st := Flattener {
@@ -35,6 +38,7 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
 		transform  = ops.IDENTITY,
 		clip       = NO_CLIP,
 		viewport   = viewport,
+		root       = root,
 	}
 	flatten_range(&st, 0, len(sc.ops), 0)
 	// Deferred macros run last, in the order met, so their draws and hits
@@ -105,7 +109,7 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			m := st.scene.macros[op.id]
 			assert(m.last >= 0, "flatten: defer of an unterminated macro")
 			assert(0 <= m.first && m.first <= m.last && m.last <= len(sc), "flatten: macro range out of bounds")
-			t := op.root ? ops.IDENTITY : st.transform
+			t := op.root ? st.root : st.transform
 			if op.place.set {
 				side: ops.Side
 				shift: ops.Point

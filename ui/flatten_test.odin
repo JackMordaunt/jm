@@ -281,3 +281,27 @@ test_top_defer_runs_after_a_window_cover :: proc(t: ^testing.T) {
 	testing.expect_value(t, under.r, u8(2))
 	testing.expect_value(t, over.r, u8(1))
 }
+
+// A root Defer escapes every transform met on the way to it but keeps the
+// host's density scale: on a 2x display a dialog laid out at the window's
+// logical size covers the whole window, not its top-left quarter.
+@(test)
+test_root_defer_runs_under_the_root_transform :: proc(t: ^testing.T) {
+	sc: ops.Scene
+	ops.init(&sc)
+	defer ops.destroy(&sc)
+	ops.transform_push(&sc, ops.scale(2, 2))
+	ops.transform_push(&sc, ops.translate(10, 20))
+	dialog := ops.macro_open(&sc)
+	ops.fill(&sc, ops.Rect{0, 0, 360, 300}, ops.Color{1, 1, 1, 255})
+	ops.macro_close(&sc, dialog)
+	ops.defer_call(&sc, dialog, root = true)
+	ops.transform_pop(&sc)
+	ops.transform_pop(&sc)
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+	flatten(&sc, &f, {0, 0, 720, 600}, ops.scale(2, 2))
+	testing.expect_value(t, len(f.draws), 1)
+	testing.expect_value(t, f.draws[0].transform, ops.scale(2, 2))
+}

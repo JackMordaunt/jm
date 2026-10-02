@@ -427,7 +427,7 @@ step :: proc(l: ^Loop) {
 		ops.transform_pop(&l.scene)
 	}
 	build_start := time.tick_now()
-	ui.flatten(&l.scene, frame, {0, 0, f32(w.size.x), f32(w.size.y)})
+	ui.flatten(&l.scene, frame, {0, 0, f32(w.size.x), f32(w.size.y)}, ops.scale(w.density, w.density))
 	build_ms := ui.ms(build_start)
 	present_start := time.tick_now()
 	host: ui.Host_Stats

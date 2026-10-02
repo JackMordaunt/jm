@@ -47,7 +47,7 @@ test_inspect_reports_the_widget_under_a_point :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_inspect_defers_one_root_panel_when_hovering :: proc(t: ^testing.T) {
+test_inspect_defers_one_panel_when_hovering :: proc(t: ^testing.T) {
 	p: Probe
 	probe_init(&p, inspect_view, nil, {200, 100}, debug = {.Inspect}, allocator = context.temp_allocator)
 	defer probe_destroy(&p)
@@ -56,7 +56,7 @@ test_inspect_defers_one_root_panel_when_hovering :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	deferred := 0
 	for op in p.scene.ops {
-		if d, ok := op.(ops.Defer); ok && d.root {
+		if _, ok := op.(ops.Defer); ok {
 			deferred += 1
 		}
 	}

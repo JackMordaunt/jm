@@ -210,7 +210,7 @@ paint_inspector :: proc(gtx: ^Ctx, f: ^Frame, p: ops.Point, scale: f32 = 1) -> (
 		ops.glyphs(o, ops.add_run(o, run), {card.x + pad, card.y + pad + f32(i) * lh + size}, ops.Color{240, 238, 245, 255})
 	}
 	ops.macro_close(o, m)
-	ops.defer_call(o, m, root = true)
+	ops.defer_call(o, m)
 	return card
 }
 
