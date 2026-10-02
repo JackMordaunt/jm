@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:strings"
 import "jm:ui"
 import "jm:ui/primer"
 
@@ -101,4 +102,47 @@ page_icon_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		m.clicks += 1
 	}
 	primer.icon_button(gtx, .Bell, "Notifications on the icon", .Invisible, dot = .Leading, key = 301)
+}
+
+page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10, align = .Start)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Standalone", "accent, underlined on hover; muted turns accent on hover with no underline")
+	if primer.link(gtx, "View all issues", key = 1) {
+		m.clicks += 1
+	}
+	primer.link(gtx, "Muted link", muted = true, key = 2)
+	kitchen.section(gtx, "In prose", "a link's hit area follows the lines it wraps across; with underlines on, links are underlined at rest")
+	box := ui.sized_open(gtx, {max = {420, ui.INF}})
+	defer ui.close(&box)
+	inner := ui.column_open(gtx, gap = 12)
+	defer ui.close(&inner)
+	text := "Read the contributing guide before you open a pull request, and check the code of conduct."
+	links := []primer.Link_Span{span(text, "contributing guide"), span(text, "code of conduct")}
+	primer.prose(gtx, text, links, key = 3)
+	primer.prose(gtx, text, links, underlines = true, key = 4)
+}
+
+page_keybinding_hint :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10, align = .Start)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Condensed and full", "one cap per chord, modifiers first, named for this platform; chords a space apart")
+	for keys, i in ([]string{"Mod+K", "Mod+Shift+P", "g i", "ArrowUp", "Escape"}) {
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		primer.keybinding_hint(gtx, keys, key = 1)
+		primer.keybinding_hint(gtx, keys, .Full, key = 2)
+		primer.keybinding_hint(gtx, keys, size = .Small, key = 3)
+		ui.close(&r)
+	}
+	kitchen.section(gtx, "On emphasis and on primary", "a filled cap with onEmphasis text, for tooltips and primary buttons")
+	r := ui.row_open(gtx, gap = 16, align = .Center)
+	defer ui.close(&r)
+	primer.keybinding_hint(gtx, "Mod+Enter", variant = .On_Emphasis, key = 10)
+	primer.keybinding_hint(gtx, "Mod+Enter", variant = .On_Primary, key = 11)
+}
+
+// span is the bytes of the first sub in text, as a link.
+span :: proc(text, sub: string) -> primer.Link_Span {
+	i := strings.index(text, sub)
+	return {i, i + len(sub)}
 }
