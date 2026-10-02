@@ -294,6 +294,25 @@ bench args="": wasm
     {{odin}} build tools/wasm-bench -o:speed {{flags}} -out:build/release/wasm-bench{{exe}}
     build/release/wasm-bench{{exe}} tools/wasm-bench/workloads {{args}}
 
+# stream: jm:stream's benchmark and stress tool, tools/stream-bench.
+# ============================================================================
+
+# `just stream-bench "-items=200000 -threads=0,3"`; `just stream-stress
+# "-nodes=2000 -for=5m"`. Stress is built with the quiescence check on, so a
+# pipeline that goes quiet unfinished fails loudly.
+#
+# Time jm:stream: what a message costs through each shape
+[group('stream')]
+stream-bench args="":
+    {{odin}} build tools/stream-bench -o:speed {{flags}} -out:build/release/stream-bench{{exe}}
+    build/release/stream-bench{{exe}} {{args}}
+
+# Stress jm:stream with random DAGs until the time is up
+[group('stream')]
+stream-stress args="-for=30s":
+    {{odin}} build tools/stream-bench -o:speed -define:STREAM_CHECK_YIELDS=true {{flags}} -out:build/release/stream-stress{{exe}}
+    build/release/stream-stress{{exe}} stress {{args}}
+
 # The .wasm files are committed, so this is only needed when a source changes.
 # It wants a clang with the wasm32 target and wasm-ld; zig cc has both, as
 # WASM_CC="zig cc".
