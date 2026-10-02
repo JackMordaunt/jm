@@ -8,7 +8,7 @@ import tok "jm:ui/primer/tokens"
 // Behaviour of overlay, anchored_overlay, popover, tooltip and details,
 // driven through ui.Probe by tags.
 
-@(private = "file")
+@(private)
 near :: proc(a, b: f32) -> bool {
 	return abs(a - b) < 0.01
 }
