@@ -144,7 +144,10 @@ focused :: proc(gtx: ^Ctx) -> ops.Area_Id {
 
 // focus_scope_open opens a focus scope named id over what is recorded
 // until focus_scope_close (see ops.Focus_Scope): with trap, keyboard
-// focus stays inside it while it is the newest trap.
+// focus stays inside it while it is the newest trap. Open and close it
+// inside one widget or layer, round all of that widget's content: opened
+// between the children of a row or column it does not hold them, since
+// the container places its children later, outside the pair.
 focus_scope_open :: proc(gtx: ^Ctx, id: ops.Area_Id, trap := false) {
 	ops.focus_scope(gtx.scene, id, trap)
 }
