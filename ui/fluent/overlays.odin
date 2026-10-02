@@ -446,9 +446,10 @@ current_dialog: ^Dialog
 // between open and close, or as the guard's body.
 //
 // Departures: the surface and body do not fade with the scale, and the
-// exit is instant (jm:ui's ops have no group alpha, and a closed dialog
-// takes no input); a non-modal dialog's title close button comes from
-// dialog_title; focus is not trapped (jm:ui has no Tab traversal).
+// exit is instant (a closed dialog takes no input, and the dialog does
+// not use ops' group opacity, Push_Opacity, to fade); a non-modal
+// dialog's title close button comes from dialog_title; focus is not
+// trapped, as the dialog opens no ops.Focus_Scope.
 dialog_open :: proc(gtx: ^ui.Ctx, open: ^bool, window: ops.Size, kind := Dialog_Kind.Modal, key: u64 = 0, loc := #caller_location) -> (d: Dialog) {
 	id := ui.claim_id(gtx, key, loc)
 	data := ui.widget_data(gtx, id, Dialog_Data)

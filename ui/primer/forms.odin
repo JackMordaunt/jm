@@ -462,9 +462,9 @@ checkbox_group_close :: proc(gtx: ^ui.Ctx, g: ^Choice_Group) {
 // notes). Each radio reports the frame it is chosen; the caller keeps
 // the choice.
 //
-// Departures: jm:ui has no Tab traversal yet, so the group is not one
-// tab stop; there is no name or value, as the caller's own choice is
-// the group's.
+// Departures: each radio is its own Tab stop, where the web's group is
+// one (arrow keys move within it); there is no name or value, as the
+// caller's own choice is the group's.
 radio_group_open :: proc(
 	gtx: ^ui.Ctx,
 	label: string,

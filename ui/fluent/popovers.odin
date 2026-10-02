@@ -141,7 +141,8 @@ current_popover: ^Popover
 // After a shift along the edge the arrow still points at the anchor's
 // centre (ui.placed reports the shift), clamped clear of the corners.
 //
-// Departures: focus is neither moved in nor trapped (jm:ui has no Tab traversal); hover-,
+// Departures: focus is neither moved in nor trapped (the popover opens no
+// ops.Focus_Scope); hover-,
 // context- and scroll-driven opening are not built; the arrow is not
 // shadowed (ops.Shadow casts rounded rects only); the 4px gap without an arrow
 // is the tooltip's, as the styles file gives none.
