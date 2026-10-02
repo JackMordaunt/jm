@@ -1,5 +1,6 @@
 package primer
 
+import "core:mem"
 import "core:strings"
 import "core:testing"
 import "jm:ui"
@@ -552,4 +553,92 @@ test_a_form_control_lays_out_label_input_message_caption_and_names_the_input :: 
 	testing.expect(t, strings.contains(report, `text field "Hidden"`), report) // named, though nothing is drawn
 	testing.expect(t, !ui.probe_tagged(&p, "Hidden label"))
 	testing.expect_value(t, ui.probe_bounds(&p, "Hidden").y, caption_.y + caption_.h + 16)
+}
+
+@(private = "file")
+VIEW_SEGMENTS := [?]Segment{{label = "Preview"}, {label = "Raw"}, {label = "Blame", disabled = true}, {label = "Grid", icon = .Apps, icon_only = true}}
+
+@(private = "file")
+segments_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Forms_Model)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+	if segmented_control(gtx, VIEW_SEGMENTS[:], &m.view, "View") {
+		m.view_presses += 1
+	}
+}
+
+@(test)
+test_a_segmented_control_selects_and_keeps_each_segment_s_width :: proc(t: ^testing.T) {
+	m: Forms_Model
+	p: ui.Probe
+	ui.probe_init(&p, segments_view, &m, {800, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	semi := segment_style(.Medium, true)
+	raw := ui.probe_bounds(&p, "Raw")
+	// The semibold width, 12px each side and the content's 1px border.
+	testing.expectf(t, testutil.near(raw.w, text_width(&p, "Raw", semi) + 2 * SEGMENT_PAD + 2), "Raw is %v wide", raw.w)
+	testing.expect_value(t, raw.h, tok.CONTROL_MEDIUM_SIZE) // overlapping the track's border
+	testing.expect_value(t, ui.probe_bounds(&p, "Grid").w, SEGMENT_ICON_WIDTH)
+	testing.expect_value(t, ui.probe_bounds(&p, "Preview").x, 0)
+	testing.expect(t, testutil.near(raw.x, ui.probe_bounds(&p, "Preview").w + 1)) // 1px for the separator
+	grid := ui.probe_bounds(&p, "Grid")
+	testing.expect(t, testutil.near(ui.probe_bounds(&p, "View").w, grid.x + grid.w)) // the last ends on the track's edge
+	testing.expect(t, ui.probe_click(&p, "Raw"))
+	testing.expect_value(t, m.view, 1)
+	testing.expect_value(t, ui.probe_bounds(&p, "Raw"), raw) // selected, the same width
+	testing.expect(t, ui.probe_click(&p, "Raw"))
+	testing.expect_value(t, m.view_presses, 2) // reported again when already selected
+	testing.expect(t, !ui.probe_click(&p, "Blame"))
+	testing.expect_value(t, m.view, 1)
+	testing.expect(t, ui.probe_click(&p, "Preview"))
+	ui.probe_key(&p, .Right) // arrows do nothing
+	testing.expect_value(t, m.view, 0)
+	report := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(report, `list "View"`), report)
+	testing.expect(t, strings.contains(report, `button "Preview" selected`), report)
+}
+
+// weighted_shaper is the stub shaper with every face wider than the one
+// before it: face 2, the semibold, sets text half again as wide as face 0.
+@(private = "file")
+weighted_shaper :: proc() -> ui.Shaper {
+	return {
+		shape = proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {
+			run := ui.stub_shaper().shape(data, font, size, text, allocator)
+			k := 1 + 0.25 * f32(font)
+			for &g in run.glyphs {
+				g.x *= k
+			}
+			run.advance *= k
+			return run
+		},
+		metrics = ui.stub_shaper().metrics,
+	}
+}
+
+@(test)
+test_a_segment_reserves_its_label_s_semibold_width :: proc(t: ^testing.T) {
+	m: Forms_Model
+	p: ui.Probe
+	ui.probe_init(&p, segments_view, &m, {800, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	use_fonts({normal = 0, medium = 1, semibold = 2})
+	defer loaded = false
+	p.shaper = weighted_shaper()
+	ui.probe_frame(&p)
+
+	gtx := ui.Ctx{shaper = p.shaper, allocator = context.temp_allocator}
+	semi := segment_style(.Medium, true)
+	bold := design.shape_style(&gtx, "Raw", semi, font_for(&gtx, semi.weight)).width
+	testing.expect(t, bold > design.shape_style(&gtx, "Raw", segment_style(.Medium, false), 0).width)
+	want := bold + 2 * SEGMENT_PAD + 2
+	raw := ui.probe_bounds(&p, "Raw") // unselected, set in normal weight
+	testing.expectf(t, testutil.near(raw.w, want), "Raw is %v wide, want %v", raw.w, want)
+	testing.expect(t, ui.probe_click(&p, "Raw"))
+	raw = ui.probe_bounds(&p, "Raw") // selected, set in semibold: the same box
+	testing.expectf(t, testutil.near(raw.w, want), "selected Raw is %v wide, want %v", raw.w, want)
 }
