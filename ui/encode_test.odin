@@ -26,6 +26,9 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.semantic(&src, 8, 0, {role = .Heading, label = "Fruit", level = 3}, {0, 0, 30, 20})
 	ops.semantic(&src, 9, 0, {role = .Region, label = "Saved"}, {0, 0, 30, 20})
 	ops.key_interest(&src, 7, .Escape, {.Ctrl}, {.Shift})
+	ops.sticky_push(&src, 12, 300)
+	ops.fill(&src, ops.Rect{0, 0, 5, 5}, ops.Color{9, 9, 9, 255})
+	ops.transform_pop(&src)
 	append(&src.ops, nil) // a nil op survives too
 
 	data := ops.encode(&src)

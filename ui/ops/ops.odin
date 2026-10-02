@@ -19,6 +19,16 @@ Push_Transform :: struct {
 Pop_Transform :: struct {
 }
 
+// Push_Sticky is a translation down that flatten works out, popped by
+// Pop_Transform: what follows moves down until its origin is top below
+// the top edge of the innermost clip (the scroll box it scrolls in), by
+// no more than room, as CSS position: sticky with top pins a box inside
+// its container while the page scrolls. Pinned content stays where it
+// is drawn for hit-testing too.
+Push_Sticky :: struct {
+	top, room: f32,
+}
+
 Push_Clip :: struct {
 	shape: Shape,
 }
@@ -212,6 +222,7 @@ Op :: union {
 	Cover_End,
 	Semantic,
 	Key_Interest,
+	Push_Sticky,
 }
 
 // Shadow is the soft shadow of a rounded rect, as a CSS box-shadow draws
@@ -325,6 +336,13 @@ transform_push :: proc(o: ^Scene, m: Affine) {
 
 transform_pop :: proc(o: ^Scene) {
 	append(&o.ops, Pop_Transform{})
+}
+
+// sticky_push pins what follows, up to transform_pop, top below the top
+// of the innermost clip, moving it down by no more than room (see
+// Push_Sticky).
+sticky_push :: proc(o: ^Scene, top, room: f32) {
+	append(&o.ops, Push_Sticky{top, room})
 }
 
 clip_push :: proc(o: ^Scene, shape: Shape) {

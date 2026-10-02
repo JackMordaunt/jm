@@ -29,6 +29,12 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			strings.write_string(&sb, "transform ")
 			write_affine(&sb, v.m)
 			depth += 1
+		case Push_Sticky:
+			strings.write_string(&sb, "sticky ")
+			write_num(&sb, f64(v.top))
+			strings.write_string(&sb, " ")
+			write_num(&sb, f64(v.room))
+			depth += 1
 		case Push_Clip:
 			strings.write_string(&sb, "clip ")
 			write_shape(&sb, v.shape)

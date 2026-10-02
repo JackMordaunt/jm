@@ -28,8 +28,8 @@ ENCODE_MAGIC :: "UIOP"
 // covers and added Cover_End; 20 gave Defer top, bit 1 of its cover byte;
 // 21 added Key Browser_Back and Browser_Forward; 22 gave each font its
 // weight; 23 gave each Image an alpha; 24 gave Semantic a heading level
-// and Role Region.
-ENCODE_VERSION :: u8(24)
+// and Role Region; 25 added Push_Sticky.
+ENCODE_VERSION :: u8(25)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -324,6 +324,10 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		}
 	case Pop_Transform:
 		append(w, 2)
+	case Push_Sticky:
+		append(w, 20)
+		put_f32(w, v.top)
+		put_f32(w, v.room)
 	case Push_Clip:
 		append(w, 3)
 		put_shape(w, v.shape)
@@ -751,6 +755,11 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		}
 		v.mods = transmute(Mods)mods
 		v.optional = transmute(Mods)optional
+		return v, true
+	case 20:
+		v: Push_Sticky
+		v.top = get_f32(r) or_return
+		v.room = get_f32(r) or_return
 		return v, true
 	}
 	return nil, false

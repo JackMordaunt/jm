@@ -305,3 +305,51 @@ test_root_defer_runs_under_the_root_transform :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(f.draws), 1)
 	testing.expect_value(t, f.draws[0].transform, ops.scale(2, 2))
 }
+
+// A sticky run inside a scroll box stays where it is laid out until the
+// scroll would carry it past top below the box's top edge; then it is
+// pinned there, until it has moved room; its input area moves with it.
+@(test)
+test_flatten_pins_a_sticky_run_to_its_scroll_box :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	frame :: proc(h: ^Harness, scroll: f32) -> (fill_y, hit_y: f32) {
+		harness_frame(h)
+		gtx := &h.gtx
+		offset := Scroll_Offset{0, scroll}
+		{
+			sb := scroll_box_open(gtx, offset = &offset); defer close(&sb)
+			col := column_open(gtx); defer close(&col)
+			spacer(gtx, 100)
+			p := widget_open(gtx)
+			ops.sticky_push(gtx.scene, 10, 120)
+			ops.fill(gtx.scene, ops.Rect{0, 0, 50, 20}, ops.Color{7, 7, 7, 255})
+			ops.input_area(gtx.scene, 99, ops.Rect{0, 0, 50, 20}, {.Press})
+			ops.transform_pop(gtx.scene)
+			widget_close(gtx, &p, {size = {50, 20}})
+			spacer(gtx, 400)
+		}
+		f: Frame
+		frame_init(&f, context.temp_allocator)
+		flatten(&h.scene, &f)
+		for d in f.draws {
+			if fl, ok := d.cmd.(ops.Fill); ok && fl.shape == ops.Shape(ops.Rect{0, 0, 50, 20}) {
+				fill_y = ops.apply(d.transform, {0, 0}).y
+			}
+		}
+		for hit in f.hits {
+			if hit.area == 99 {
+				hit_y = ops.apply(hit.transform, {0, 0}).y
+			}
+		}
+		return
+	}
+	y, hy := frame(&h, 0)
+	testing.expect_value(t, y, 100) // laid out below the top: not moved
+	y, hy = frame(&h, 150)
+	testing.expect_value(t, y, 10) // pinned 10 below the box's top
+	testing.expect_value(t, hy, 10)
+	y, _ = frame(&h, 300)
+	testing.expect_value(t, y, 100 - 300 + 120) // out of room: it scrolls on
+}

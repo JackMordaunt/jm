@@ -80,6 +80,9 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 		case ops.Push_Transform:
 			append(&st.transforms, st.transform)
 			st.transform = ops.mul(op.m, st.transform)
+		case ops.Push_Sticky:
+			append(&st.transforms, st.transform)
+			st.transform = ops.mul(sticky_shift(st, op), st.transform)
 		case ops.Pop_Transform:
 			assert(len(st.transforms) > base_t, "flatten: transform_pop with nothing pushed")
 			st.transform = pop(&st.transforms)
@@ -170,6 +173,22 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 	}
 	assert(len(st.transforms) == base_t, "flatten: transform_push without transform_pop")
 	assert(len(st.clips) == base_c, "flatten: clip_push without clip_pop")
+}
+
+// sticky_shift is the translation a Push_Sticky resolves to: down by as
+// much as puts the current origin s.top below the innermost clip's top
+// edge, between 0 and s.room. Outside any clip nothing scrolls, so
+// nothing moves.
+@(private = "file")
+sticky_shift :: proc(st: ^Flattener, s: ops.Push_Sticky) -> ops.Affine {
+	if st.clip == NO_CLIP || st.transform.d == 0 {
+		return ops.IDENTITY
+	}
+	c := st.f.clips[st.clip]
+	top := ops.transform_rect(c.transform, ops.shape_bounds(st.scene, c.shape)).y
+	origin := ops.apply(st.transform, {0, 0}).y
+	dy := (top - origin) / f32(st.transform.d) + s.top
+	return ops.translate(0, clamp(dy, 0, max(s.room, 0)))
 }
 
 // place is the transform a popup's macro runs under, and the side it
