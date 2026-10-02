@@ -239,8 +239,10 @@ content_width :: proc(bc: Button_Content, gap: f32) -> f32 {
 // shows a CounterLabel after the label unless trailing is set. block
 // fills the width offered, align places the content then. loading swaps
 // a visual (or the label) for a spinner and ignores clicks while keeping
-// focus; inactive looks disabled but stays live. Returns true on the
-// frame it is clicked, or activated by Enter or Space while focused.
+// focus; inactive looks disabled but stays live. name is what assistive
+// technology hears when it differs from the visible label (a "+3" that
+// means "Show +3 more"); the label when empty. Returns true on the frame
+// it is clicked, or activated by Enter or Space while focused.
 button :: proc(
 	gtx: ^ui.Ctx,
 	label: string,
@@ -255,6 +257,7 @@ button :: proc(
 	loading := false,
 	inactive := false,
 	dot := Unread_Dot.None,
+	name := "",
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -295,7 +298,8 @@ button :: proc(
 	listen(gtx, c.st, p.id, area)
 	said := ui.frame_string(gtx, label)
 	ops.tag(gtx.scene, p.id, said)
-	ui.semantics(gtx, &p, {role = variant == .Link ? .Link : .Button, label = said, states = design.state_if(c.disabled || loading, {.Disabled})})
+	heard := said if name == "" else ui.frame_string(gtx, name)
+	ui.semantics(gtx, &p, {role = variant == .Link ? .Link : .Button, label = heard, states = design.state_if(c.disabled || loading, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, (sz.y - bc.label.height) / 2 + baseline_of(bc.label)})
 	return c.clicked && !loading
 }

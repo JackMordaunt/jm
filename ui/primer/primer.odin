@@ -200,9 +200,11 @@ over :: proc(bg, c: ops.Color) -> ops.Color {
 // Fonts are the faces for the weights Primer sets: normal 400, medium 500
 // (control labels) and semibold 600 (titles, selected segments). The kit
 // names Mona Sans then the platform's UI face; jm:ui draws in whatever
-// the app gives it, the platform sans by default.
+// the app gives it, the platform sans by default. mono is the face for
+// --fontStack-monospace (a BranchName, code), the normal face when unset.
 Fonts :: struct {
 	normal, medium, semibold: ops.Font_Id,
+	mono:                     Maybe(ops.Font_Id),
 }
 
 // faces is the active Fonts as design's weight-to-face table; until
@@ -214,6 +216,9 @@ faces: [3]design.Font_Face
 @(private, thread_local)
 loaded: bool
 
+@(private, thread_local)
+mono_face: Maybe(ops.Font_Id)
+
 // use_fonts sets the faces text is drawn in on this thread.
 use_fonts :: proc(f: Fonts) {
 	faces = {
@@ -221,7 +226,16 @@ use_fonts :: proc(f: Fonts) {
 		{tok.BASE_TEXT_WEIGHT_MEDIUM, f.medium},
 		{tok.BASE_TEXT_WEIGHT_SEMIBOLD, f.semibold},
 	}
+	mono_face = f.mono
 	loaded = true
+}
+
+// mono_font is the monospace face: Fonts.mono, else the normal weight's.
+mono_font :: proc(gtx: ^ui.Ctx) -> ops.Font_Id {
+	if id, ok := mono_face.?; ok {
+		return id
+	}
+	return font_for(gtx, tok.BASE_TEXT_WEIGHT_NORMAL)
 }
 
 @(private)

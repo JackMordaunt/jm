@@ -71,17 +71,17 @@ PAGES := [?]Page {
 	{"Form control", nil, false},
 	{"Segmented control", nil, false},
 	{"Labels and status", nil, true},
-	{"Label", nil, false},
-	{"Label group", nil, false},
-	{"State label", nil, false},
+	{"Label", page_label, false},
+	{"Label group", page_label_group, false},
+	{"State label", page_state_label, false},
 	{"Counter label", page_counter_label, false},
-	{"Token", nil, false},
-	{"Issue label", nil, false},
-	{"Topic tag", nil, false},
-	{"Branch name", nil, false},
+	{"Token", page_token, false},
+	{"Issue label", page_issue_label, false},
+	{"Topic tag", page_topic_tag, false},
+	{"Branch name", page_branch_name, false},
 	{"Avatar", nil, false},
 	{"Avatar stack", nil, false},
-	{"Circle badge", nil, false},
+	{"Circle badge", page_circle_badge, false},
 	{"Spinner", page_spinner, false},
 	{"Progress bar", nil, false},
 	{"Skeleton box", nil, false},
@@ -134,7 +134,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	theme := primer.Theme(m.theme)
 	m.scheme = primer.theme_scheme(theme)
 	primer.use(&m.scheme, theme)
-	primer.use_fonts({0, 1, 2})
+	primer.use_fonts({0, 1, 2, 3})
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, m.scheme[.Bg_Color_Default])
 
 	r := ui.row_open(gtx, align = .Fill)
@@ -215,15 +215,19 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 // kitchen_fonts is the system sans at normal, medium and semibold (font
 // ids 0, 1, 2): SF on macOS, one variable font drawn at each weight, else
-// jm:ui's default font, whose static outlines ignore the weight.
+// jm:ui's default font, whose static outlines ignore the weight; and as
+// id 3 the monospace face at /System/Library/Fonts/SFNSMono.ttf where
+// that file exists, else the sans.
 kitchen_fonts :: proc() -> []ops.Font_Ref {
 	sf := "/System/Library/Fonts/SFNS.ttf"
 	path := os.exists(sf) ? sf : ui.default_font()
 	weights := [3]f32{400, 500, 600}
-	fonts := make([]ops.Font_Ref, 3)
+	fonts := make([]ops.Font_Ref, 4)
 	for w, i in weights {
 		fonts[i] = {id = ops.Font_Id(i), path = path, weight = w}
 	}
+	mono := "/System/Library/Fonts/SFNSMono.ttf"
+	fonts[3] = {id = 3, path = os.exists(mono) ? mono : path, weight = 400}
 	return fonts
 }
 
