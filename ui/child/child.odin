@@ -156,6 +156,7 @@ run :: proc(app: App) {
 			allocator   = allocator,
 			debug       = debug,
 			restored    = restore,
+			reduce_motion = ui.reduce_motion_preferred(),
 		}
 		scaled := density != 1
 		if scaled {

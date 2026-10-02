@@ -264,3 +264,21 @@ probe_drag_moves_in_steps_and_releases :: proc(t: ^testing.T) {
 	testing.expect(t, m.released)
 	testing.expect(t, !probe_drag(&p, "nothing", 1, 1))
 }
+
+@(test)
+test_a_probe_hands_reduce_motion_to_every_frame :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		(^bool)(user)^ = gtx.reduce_motion
+	}
+	seen := true
+	p: Probe
+	probe_init(&p, view, &seen, {10, 10}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, !seen) // off unless the test asks: never the machine's setting
+	p.reduce_motion = true
+	probe_frame(&p)
+	testing.expect(t, seen)
+	// The platform read a host makes each frame answers without a window.
+	_ = reduce_motion_preferred()
+}

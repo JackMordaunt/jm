@@ -81,6 +81,11 @@ Ctx :: struct {
 	debug:       Debug_Flags, // inspection switches; see Debug_Flag
 	restored:    []byte, // what the last child persisted, on the first frame after a hot-reload respawn; see restored
 	persist:     []byte, // what persist asked the host to keep this frame
+	// reduce_motion is the platform's reduce-motion setting
+	// (reduce_motion_preferred), which the host sets each frame: a
+	// decorative loop (a shimmer, a pulse) stands still while it is
+	// true, and motion that shows progress, such as a spinner, keeps going.
+	reduce_motion: bool,
 }
 
 // request_frame asks the host for another frame within after seconds; 0,

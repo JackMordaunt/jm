@@ -404,6 +404,7 @@ step :: proc(l: ^Loop) {
 		time        = l.time,
 		allocator   = allocator,
 		debug       = debug,
+		reduce_motion = ui.reduce_motion_preferred(),
 	}
 	scaled := w.density != 1
 	if scaled {

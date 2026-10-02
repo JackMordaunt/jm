@@ -38,6 +38,7 @@ Probe :: struct {
 	wants_frame: bool, // the last frame called request_frame
 	frame_after: f32, // then: the soonest it asked for, in seconds
 	debug:       Debug_Flags, // gtx.debug for every frame; probe_init takes it
+	reduce_motion: bool, // gtx.reduce_motion for every frame: a test sets it, never the platform
 	tray:        Debug_Tray, // DEBUG_TOGGLE_KEY opens it, as in a live loop; its stats are the last frame's
 	arena:       ops.Frame_Arena,
 	allocator:   mem.Allocator,
@@ -139,6 +140,7 @@ probe_frame :: proc(p: ^Probe) {
 		allocator   = ops.frame_arena_allocator(&p.arena),
 		debug       = debug,
 		restored    = p.restore[:] if p.restoring else nil,
+		reduce_motion = p.reduce_motion,
 	}
 	p.restoring = false
 	ui_start := time.tick_now()
