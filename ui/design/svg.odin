@@ -1,13 +1,14 @@
 package design
 
+import "core:math"
 import "core:strconv"
 import "jm:ui/ops"
 
-// parse_svg_path turns SVG path data into an ops.Path. It handles M L H
-// V C S Q T Z in both cases, which covers every icon the systems on
-// jm:ui draw (each system's icon test checks its own set); quadratics
-// become cubics. ok is false when it met anything else, such as an A
-// (arc), and stopped there; the partial path still draws.
+// parse_svg_path turns SVG path data into an ops.Path. It handles every
+// SVG 1.1 path command, M L H V C S Q T A Z, in both cases (each system's
+// icon test checks its own set parses); quadratics and elliptical arcs
+// become cubics. ok is false when it met anything else and stopped
+// there; the partial path still draws.
 parse_svg_path :: proc(d: string, allocator := context.allocator) -> (path: ops.Path, ok: bool) {
 	b := Svg_Builder {
 		verbs  = make([dynamic]ops.Path_Verb, allocator),
@@ -102,11 +103,95 @@ read_svg_command :: proc(b: ^Svg_Builder, d: string, i: ^int, cmd: ^u8) -> bool 
 		p := base + (read_svg_point(d, i) or_return)
 		append_svg_cubic(b, b.cur + (q - b.cur) * (2.0 / 3), p + (q - p) * (2.0 / 3), p)
 		b.ctrl = q // the quadratic's own control, for a following T
+	case 'A', 'a':
+		r := read_svg_point(d, i) or_return
+		rotation := read_svg_number(d, i) or_return
+		large := read_svg_flag(d, i) or_return
+		sweep := read_svg_flag(d, i) or_return
+		p := read_svg_point(d, i) or_return
+		append_svg_arc(b, r, rotation, large, sweep, base + p)
 	case:
 		return false
 	}
 	b.last = c
 	return true
+}
+
+// append_svg_arc appends the elliptical arc from the current point to p:
+// radii r, the ellipse rotated by rotation degrees, large and sweep
+// choosing among the four arcs that join the two points. It converts to
+// centre form (SVG 1.1 implementation notes, F.6.5), scaling radii too
+// small to reach p up as F.6.6 says, and emits a cubic per quarter turn
+// at most. A zero radius is a line, and an arc to the current point is
+// nothing (F.6.2).
+@(private = "file")
+append_svg_arc :: proc(b: ^Svg_Builder, r: ops.Point, rotation: f32, large, sweep: bool, p: ops.Point) {
+	p0 := b.cur
+	if p0 == p {
+		return
+	}
+	rx, ry := abs(r.x), abs(r.y)
+	if rx == 0 || ry == 0 {
+		append(&b.verbs, ops.Path_Verb.Line)
+		append(&b.points, p)
+		b.cur = p
+		return
+	}
+	phi := rotation * math.PI / 180
+	cos_phi, sin_phi := math.cos(phi), math.sin(phi)
+	// F.6.5.1: the midpoint, in the ellipse's own axes.
+	h := (p0 - p) / 2
+	x1 := cos_phi * h.x + sin_phi * h.y
+	y1 := -sin_phi * h.x + cos_phi * h.y
+	// F.6.6.2: grow the radii until the ellipse reaches both points.
+	lambda := (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry)
+	if lambda > 1 {
+		k := math.sqrt(lambda)
+		rx, ry = rx * k, ry * k
+	}
+	// F.6.5.2: the centre in the ellipse's axes, then back.
+	num := rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1
+	den := rx * rx * y1 * y1 + ry * ry * x1 * x1
+	co := math.sqrt(max(num / den, 0))
+	if large == sweep {
+		co = -co
+	}
+	cx1, cy1 := co * rx * y1 / ry, -co * ry * x1 / rx
+	mid := (p0 + p) / 2
+	c := ops.Point{cos_phi * cx1 - sin_phi * cy1 + mid.x, sin_phi * cx1 + cos_phi * cy1 + mid.y}
+	// F.6.5.5-6: the start angle and the sweep.
+	angle :: proc(u, v: ops.Point) -> f32 {
+		return math.atan2(u.x * v.y - u.y * v.x, u.x * v.x + u.y * v.y)
+	}
+	u := ops.Point{(x1 - cx1) / rx, (y1 - cy1) / ry}
+	v := ops.Point{(-x1 - cx1) / rx, (-y1 - cy1) / ry}
+	theta := angle({1, 0}, u)
+	delta := angle(u, v)
+	if !sweep && delta > 0 {
+		delta -= 2 * math.PI
+	} else if sweep && delta < 0 {
+		delta += 2 * math.PI
+	}
+	n := max(int(math.ceil(abs(delta) / (math.PI / 2) - 1e-4)), 1)
+	step := delta / f32(n)
+	k := 4.0 / 3.0 * math.tan(step / 4)
+	on :: proc(c: ops.Point, rx, ry, cos_phi, sin_phi, t: f32) -> (pt, d: ops.Point) {
+		x, y := rx * math.cos(t), ry * math.sin(t)
+		dx, dy := -rx * math.sin(t), ry * math.cos(t)
+		pt = c + {cos_phi * x - sin_phi * y, sin_phi * x + cos_phi * y}
+		d = {cos_phi * dx - sin_phi * dy, sin_phi * dx + cos_phi * dy}
+		return
+	}
+	t := theta
+	from, d0 := on(c, rx, ry, cos_phi, sin_phi, t)
+	for s in 0 ..< n {
+		to, d1 := on(c, rx, ry, cos_phi, sin_phi, t + step)
+		if s == n - 1 {
+			to = p // land exactly where the path says
+		}
+		append_svg_cubic(b, from + k * d0, to - k * d1, to)
+		from, d0, t = to, d1, t + step
+	}
 }
 
 // append_svg_cubic appends a cubic to p, remembering c2 for a following S.
@@ -154,6 +239,19 @@ read_svg_number :: proc(d: string, i: ^int) -> (f32, bool) {
 	v, ok := strconv.parse_f32(d[i^:j])
 	i^ = j
 	return v, ok
+}
+
+// read_svg_flag reads an arc flag: a single 0 or 1, which SVG lets run
+// into what follows (a1 1 0 01.5.5 is flags 0 and 1, then .5 .5).
+@(private = "file")
+read_svg_flag :: proc(d: string, i: ^int) -> (bool, bool) {
+	skip_separators(d, i)
+	if i^ >= len(d) || (d[i^] != '0' && d[i^] != '1') {
+		return false, false
+	}
+	on := d[i^] == '1'
+	i^ += 1
+	return on, true
 }
 
 @(private = "file")

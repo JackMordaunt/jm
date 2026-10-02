@@ -56,11 +56,11 @@ test_every_icon_parses :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_parse_svg_path_stops_at_an_arc :: proc(t: ^testing.T) {
-	p, ok := parse_svg_path("M3 4a5 5 0 0 1 10 0", context.temp_allocator)
+test_parse_svg_path_stops_at_a_command_it_does_not_know :: proc(t: ^testing.T) {
+	p, ok := parse_svg_path("M3 4R5 5", context.temp_allocator)
 	defer free_all(context.temp_allocator)
 	testing.expect(t, !ok)
-	// The moveto before the arc was kept; the arc is what stopped it.
+	// The moveto before it was kept; the unknown R is what stopped it.
 	testing.expect_value(t, len(p.verbs), 1)
 	testing.expect_value(t, p.points[0], ops.Point{3, 4})
 }
