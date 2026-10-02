@@ -23,7 +23,7 @@ The token sources with their aliases intact are Primer's own, DTCG-shaped,
 under `source/npm/primitives/src/tokens`.
 
 A component spec (`components/<id>.json`) holds:
-- **Identity:** `status` (stable, beta, alpha, draft, experimental or deprecated) and `summary`.
+- **Identity:** `status` (alpha, beta, draft, deprecated or experimental, verbatim from Primer's `.docs.json`) and `summary`.
 - **API and structure:** `inputs` (a framework-neutral API), `anatomy`, and `variants`, each variant naming the tokens it alone reads.
 - **Rules:** `layout`, `states` and `behaviour`. Each rule is one self-contained sentence plus machine fields:
   - `tokens`: token paths;

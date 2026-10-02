@@ -2,132 +2,689 @@
   "$schema": "../schema/component.schema.json",
   "id": "button",
   "name": "Button",
-  "status": "stable",
-  "statusNote": "Button.docs.json says alpha, a label it has carried since before Button was Primer's most used control; primer.style lists it without a status badge and GitHub ships it everywhere. Treated as stable.",
+  "status": "alpha",
+  "statusNote": "Primer has labelled Button alpha since before it became its most used control; GitHub ships it on every page. The API and visuals are settled.",
   "summary": "A labelled action. Choose emphasis by variant (primary for the one main action on a surface, default for the rest, danger for destructive actions, invisible for low-emphasis actions in dense UI, link for an action that reads as text), size by the density around it. A button with an href is a LinkButton: the same look, navigating instead of acting.",
   "tokenGroups": [
-    "--base-size-2", "--base-size-4", "--base-size-6", "--base-size-8", "--base-size-12",
-    "--base-text-weight-medium", "--bgColor-inset", "--borderRadius-full", "--borderRadius-medium", "--borderWidth-thin",
-    "--button-danger-bgColor-active", "--button-danger-bgColor-disabled", "--button-danger-bgColor-hover", "--button-danger-bgColor-rest",
-    "--button-danger-borderColor-active", "--button-danger-borderColor-hover",
-    "--button-danger-fgColor-active", "--button-danger-fgColor-disabled", "--button-danger-fgColor-hover", "--button-danger-fgColor-rest",
-    "--button-danger-iconColor-hover", "--button-danger-iconColor-rest", "--button-danger-shadow-selected",
-    "--button-default-bgColor-active", "--button-default-bgColor-disabled", "--button-default-bgColor-hover", "--button-default-bgColor-rest",
-    "--button-default-borderColor-active", "--button-default-borderColor-disabled", "--button-default-borderColor-hover", "--button-default-borderColor-rest",
-    "--button-default-fgColor-rest", "--button-default-shadow-resting",
-    "--button-inactive-bgColor", "--button-inactive-fgColor",
-    "--button-invisible-bgColor-active", "--button-invisible-bgColor-disabled", "--button-invisible-bgColor-hover",
-    "--button-invisible-borderColor-disabled", "--button-invisible-borderColor-hover", "--button-invisible-borderColor-rest",
-    "--button-invisible-fgColor-disabled", "--button-invisible-iconColor-hover", "--button-invisible-iconColor-rest",
-    "--button-primary-bgColor-active", "--button-primary-bgColor-disabled", "--button-primary-bgColor-hover", "--button-primary-bgColor-rest",
-    "--button-primary-borderColor-disabled", "--button-primary-borderColor-hover", "--button-primary-borderColor-rest",
-    "--button-primary-fgColor-disabled", "--button-primary-fgColor-rest", "--button-primary-shadow-selected",
-    "--buttonCounter-danger-bgColor-disabled", "--buttonCounter-danger-bgColor-hover", "--buttonCounter-danger-bgColor-rest",
-    "--buttonCounter-danger-fgColor-disabled", "--buttonCounter-danger-fgColor-hover", "--buttonCounter-danger-fgColor-rest",
-    "--buttonCounter-default-bgColor-rest", "--buttonCounter-invisible-bgColor-rest", "--buttonCounter-primary-bgColor-rest",
-    "--buttonKeybindingHint-danger-bgColor-active", "--buttonKeybindingHint-danger-bgColor-disabled", "--buttonKeybindingHint-danger-bgColor-hover", "--buttonKeybindingHint-danger-bgColor-rest",
-    "--buttonKeybindingHint-danger-borderColor-active", "--buttonKeybindingHint-danger-borderColor-disabled", "--buttonKeybindingHint-danger-borderColor-hover", "--buttonKeybindingHint-danger-borderColor-rest",
-    "--buttonKeybindingHint-danger-fgColor-active", "--buttonKeybindingHint-danger-fgColor-disabled", "--buttonKeybindingHint-danger-fgColor-hover", "--buttonKeybindingHint-danger-fgColor-rest",
-    "--buttonKeybindingHint-default-bgColor-disabled", "--buttonKeybindingHint-default-bgColor-rest",
-    "--buttonKeybindingHint-default-borderColor-disabled", "--buttonKeybindingHint-default-borderColor-rest",
-    "--buttonKeybindingHint-default-fgColor-disabled", "--buttonKeybindingHint-default-fgColor-rest",
-    "--buttonKeybindingHint-inactive-bgColor", "--buttonKeybindingHint-inactive-borderColor", "--buttonKeybindingHint-inactive-fgColor",
-    "--buttonKeybindingHint-invisible-bgColor-active", "--buttonKeybindingHint-invisible-bgColor-disabled", "--buttonKeybindingHint-invisible-bgColor-hover", "--buttonKeybindingHint-invisible-bgColor-rest",
-    "--buttonKeybindingHint-invisible-borderColor-disabled", "--buttonKeybindingHint-invisible-borderColor-rest",
-    "--buttonKeybindingHint-invisible-fgColor-disabled", "--buttonKeybindingHint-invisible-fgColor-rest",
-    "--buttonKeybindingHint-primary-bgColor-disabled", "--buttonKeybindingHint-primary-bgColor-rest",
-    "--buttonKeybindingHint-primary-borderColor-disabled", "--buttonKeybindingHint-primary-borderColor-rest",
-    "--buttonKeybindingHint-primary-fgColor-disabled", "--buttonKeybindingHint-primary-fgColor-rest",
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-text-weight-medium",
+    "--bgColor-inset",
+    "--borderRadius-full",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--button-danger-bgColor-active",
+    "--button-danger-bgColor-disabled",
+    "--button-danger-bgColor-hover",
+    "--button-danger-bgColor-rest",
+    "--button-danger-borderColor-active",
+    "--button-danger-borderColor-hover",
+    "--button-danger-fgColor-active",
+    "--button-danger-fgColor-disabled",
+    "--button-danger-fgColor-hover",
+    "--button-danger-fgColor-rest",
+    "--button-danger-iconColor-hover",
+    "--button-danger-iconColor-rest",
+    "--button-danger-shadow-selected",
+    "--button-default-bgColor-active",
+    "--button-default-bgColor-disabled",
+    "--button-default-bgColor-hover",
+    "--button-default-bgColor-rest",
+    "--button-default-borderColor-active",
+    "--button-default-borderColor-disabled",
+    "--button-default-borderColor-hover",
+    "--button-default-borderColor-rest",
+    "--button-default-fgColor-rest",
+    "--button-default-shadow-resting",
+    "--button-inactive-bgColor",
+    "--button-inactive-fgColor",
+    "--button-invisible-bgColor-active",
+    "--button-invisible-bgColor-disabled",
+    "--button-invisible-bgColor-hover",
+    "--button-invisible-borderColor-disabled",
+    "--button-invisible-borderColor-hover",
+    "--button-invisible-borderColor-rest",
+    "--button-invisible-fgColor-disabled",
+    "--button-invisible-iconColor-hover",
+    "--button-invisible-iconColor-rest",
+    "--button-primary-bgColor-active",
+    "--button-primary-bgColor-disabled",
+    "--button-primary-bgColor-hover",
+    "--button-primary-bgColor-rest",
+    "--button-primary-borderColor-disabled",
+    "--button-primary-borderColor-hover",
+    "--button-primary-borderColor-rest",
+    "--button-primary-fgColor-disabled",
+    "--button-primary-fgColor-rest",
+    "--button-primary-shadow-selected",
+    "--buttonCounter-danger-bgColor-disabled",
+    "--buttonCounter-danger-bgColor-hover",
+    "--buttonCounter-danger-bgColor-rest",
+    "--buttonCounter-danger-fgColor-disabled",
+    "--buttonCounter-danger-fgColor-hover",
+    "--buttonCounter-danger-fgColor-rest",
+    "--buttonCounter-default-bgColor-rest",
+    "--buttonCounter-invisible-bgColor-rest",
+    "--buttonCounter-primary-bgColor-rest",
+    "--buttonKeybindingHint-danger-bgColor-active",
+    "--buttonKeybindingHint-danger-bgColor-disabled",
+    "--buttonKeybindingHint-danger-bgColor-hover",
+    "--buttonKeybindingHint-danger-bgColor-rest",
+    "--buttonKeybindingHint-danger-borderColor-active",
+    "--buttonKeybindingHint-danger-borderColor-disabled",
+    "--buttonKeybindingHint-danger-borderColor-hover",
+    "--buttonKeybindingHint-danger-borderColor-rest",
+    "--buttonKeybindingHint-danger-fgColor-active",
+    "--buttonKeybindingHint-danger-fgColor-disabled",
+    "--buttonKeybindingHint-danger-fgColor-hover",
+    "--buttonKeybindingHint-danger-fgColor-rest",
+    "--buttonKeybindingHint-default-bgColor-disabled",
+    "--buttonKeybindingHint-default-bgColor-rest",
+    "--buttonKeybindingHint-default-borderColor-disabled",
+    "--buttonKeybindingHint-default-borderColor-rest",
+    "--buttonKeybindingHint-default-fgColor-disabled",
+    "--buttonKeybindingHint-default-fgColor-rest",
+    "--buttonKeybindingHint-inactive-bgColor",
+    "--buttonKeybindingHint-inactive-borderColor",
+    "--buttonKeybindingHint-inactive-fgColor",
+    "--buttonKeybindingHint-invisible-bgColor-active",
+    "--buttonKeybindingHint-invisible-bgColor-disabled",
+    "--buttonKeybindingHint-invisible-bgColor-hover",
+    "--buttonKeybindingHint-invisible-bgColor-rest",
+    "--buttonKeybindingHint-invisible-borderColor-disabled",
+    "--buttonKeybindingHint-invisible-borderColor-rest",
+    "--buttonKeybindingHint-invisible-fgColor-disabled",
+    "--buttonKeybindingHint-invisible-fgColor-rest",
+    "--buttonKeybindingHint-primary-bgColor-disabled",
+    "--buttonKeybindingHint-primary-bgColor-rest",
+    "--buttonKeybindingHint-primary-borderColor-disabled",
+    "--buttonKeybindingHint-primary-borderColor-rest",
+    "--buttonKeybindingHint-primary-fgColor-disabled",
+    "--buttonKeybindingHint-primary-fgColor-rest",
     "--control-fgColor-disabled",
-    "--control-small-size", "--control-small-gap", "--control-small-paddingBlock", "--control-small-paddingInline-condensed",
-    "--control-medium-size", "--control-medium-paddingBlock", "--control-medium-paddingInline-condensed", "--control-medium-paddingInline-normal",
-    "--control-large-size", "--control-large-gap", "--control-large-paddingBlock", "--control-large-paddingInline-normal", "--control-large-paddingInline-spacious",
+    "--control-small-size",
+    "--control-small-gap",
+    "--control-small-paddingBlock",
+    "--control-small-paddingInline-condensed",
+    "--control-medium-size",
+    "--control-medium-paddingBlock",
+    "--control-medium-paddingInline-condensed",
+    "--control-medium-paddingInline-normal",
+    "--control-large-size",
+    "--control-large-gap",
+    "--control-large-paddingBlock",
+    "--control-large-paddingInline-normal",
+    "--control-large-paddingInline-spacious",
     "--control-xsmall-paddingInline-condensed",
-    "--fgColor-accent", "--fgColor-link", "--fgColor-muted", "--fgColor-onEmphasis",
-    "--focus-outline-color", "--focus-outline-width", "--focus-outline-offset",
+    "--fgColor-accent",
+    "--fgColor-link",
+    "--fgColor-muted",
+    "--fgColor-onEmphasis",
+    "--focus-outline-color",
+    "--focus-outline-width",
+    "--focus-outline-offset",
     "--shadow-resting-small",
-    "--text-body-lineHeight-medium", "--text-body-lineHeight-small", "--text-body-size-medium", "--text-body-size-small"
+    "--text-body-lineHeight-medium",
+    "--text-body-lineHeight-small",
+    "--text-body-size-medium",
+    "--text-body-size-small"
   ],
   "references": {
-    "react": ["ButtonBase.module.css", "ButtonBase.tsx", "Button.tsx", "LinkButton.tsx", "Button.docs.json", "types.ts", "focusOutline.css", "focusOutlineOnEmphasis.css"],
-    "primer": ["button"]
+    "react": [
+      "ButtonBase.module.css",
+      "ButtonBase.tsx",
+      "Button.tsx",
+      "LinkButton.tsx",
+      "Button.docs.json",
+      "types.ts",
+      "focusOutline.css",
+      "focusOutlineOnEmphasis.css"
+    ],
+    "primer": [
+      "button"
+    ]
   },
   "inputs": [
-    {"name": "label", "type": "string", "required": true, "description": "The button's text (children). A button with no text is an IconButton; see icon-button."},
-    {"name": "variant", "type": "enum", "values": ["default", "primary", "danger", "invisible", "link"], "required": false, "default": "default", "description": "Emphasis and intent."},
-    {"name": "size", "type": "enum", "values": ["small", "medium", "large"], "required": false, "default": "medium", "description": "Control height and padding: 28, 32 or 40px."},
-    {"name": "leadingVisual", "type": "icon", "required": false, "description": "A 16px octicon (or any small visual) before the label."},
-    {"name": "trailingVisual", "type": "icon", "required": false, "description": "A visual after the label, inside the content box."},
-    {"name": "trailingAction", "type": "icon", "required": false, "description": "A visual at the button's far end, outside the content box, conventionally a triangle-down for a menu button."},
-    {"name": "count", "type": "number", "required": false, "description": "A CounterLabel after the label, in the variant's buttonCounter colours. Ignored when trailingVisual is set."},
-    {"name": "alignContent", "type": "enum", "values": ["center", "start"], "required": false, "default": "center", "description": "Where the label and visuals sit when the button is wider than its content (block buttons)."},
-    {"name": "block", "type": "boolean", "required": false, "default": false, "description": "Fill the container's width."},
-    {"name": "labelWrap", "type": "boolean", "required": false, "default": false, "description": "Let the label wrap; the height becomes a minimum."},
-    {"name": "loading", "type": "boolean", "required": false, "description": "Show a small Spinner in place of a visual (or the label) and ignore clicks while keeping focus."},
-    {"name": "loadingAnnouncement", "type": "string", "required": false, "default": "Loading", "description": "What assistive technology is told while loading."},
-    {"name": "inactive", "type": "boolean", "required": false, "description": "Looks disabled but stays focusable and clickable, for an action that is unavailable for a reason the click explains."},
-    {"name": "disabled", "type": "boolean", "required": false, "default": false, "description": "Not interactive and not focusable."},
-    {"name": "keybindingHint", "type": "string", "required": false, "description": "A KeybindingHint chord shown at the trailing end (rendered by the caller as a [data-kbd-chord] element); the module styles it per variant."},
-    {"name": "href", "type": "string", "required": false, "description": "Navigate instead of act: the LinkButton form, same visuals, link semantics."},
-    {"name": "onClick", "type": "callback", "required": false, "description": "Activation by pointer, Enter or Space."}
+    {
+      "name": "label",
+      "type": "string",
+      "required": true,
+      "description": "The button's text (children). A button with no text is an IconButton; see icon-button."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "default",
+        "primary",
+        "danger",
+        "invisible",
+        "link"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "Emphasis and intent."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Control height and padding: 28, 32 or 40px."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "A 16px octicon (or any small visual) before the label."
+    },
+    {
+      "name": "trailingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "A visual after the label, inside the content box."
+    },
+    {
+      "name": "trailingAction",
+      "type": "icon",
+      "required": false,
+      "description": "A visual at the button's far end, outside the content box, conventionally a triangle-down for a menu button."
+    },
+    {
+      "name": "count",
+      "type": "number",
+      "required": false,
+      "description": "A CounterLabel after the label, in the variant's buttonCounter colours. Ignored when trailingVisual is set."
+    },
+    {
+      "name": "alignContent",
+      "type": "enum",
+      "values": [
+        "center",
+        "start"
+      ],
+      "required": false,
+      "default": "center",
+      "description": "Where the label and visuals sit when the button is wider than its content (block buttons)."
+    },
+    {
+      "name": "block",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fill the container's width."
+    },
+    {
+      "name": "labelWrap",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Let the label wrap; the height becomes a minimum."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "Show a small Spinner in place of a visual (or the label) and ignore clicks while keeping focus."
+    },
+    {
+      "name": "loadingAnnouncement",
+      "type": "string",
+      "required": false,
+      "default": "Loading",
+      "description": "What assistive technology is told while loading."
+    },
+    {
+      "name": "inactive",
+      "type": "boolean",
+      "required": false,
+      "description": "Looks disabled but stays focusable and clickable, for an action that is unavailable for a reason the click explains."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Not interactive and not focusable."
+    },
+    {
+      "name": "keybindingHint",
+      "type": "string",
+      "required": false,
+      "description": "A KeybindingHint chord shown at the trailing end (rendered by the caller as a [data-kbd-chord] element); the module styles it per variant."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "Navigate instead of act: the LinkButton form, same visuals, link semantics."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Activation by pointer, Enter or Space."
+    }
   ],
   "anatomy": [
-    {"id": "container", "name": "Container", "description": "The bordered, rounded box: height by size, 1px border inside it, medium radius, the variant's background and resting shadow.", "tokens": ["--borderRadius-medium", "--borderWidth-thin"]},
-    {"id": "content", "name": "Content", "description": "A three-column row (leading visual, label, trailing visual) centred or start-aligned in the container; columns are separated by the size's gap."},
-    {"id": "leading-visual", "name": "Leading visual", "optional": true, "description": "A 16px icon in the variant's icon colour (fgColor-muted for default)."},
-    {"id": "label", "name": "Label", "description": "Body text at the size's font size, medium weight, one line by default.", "tokens": ["--text-body-size-medium", "--text-body-size-small", "--base-text-weight-medium", "--text-body-lineHeight-medium", "--text-body-lineHeight-small"]},
-    {"id": "trailing-visual", "name": "Trailing visual", "optional": true, "description": "An icon or the count's CounterLabel."},
-    {"id": "trailing-action", "name": "Trailing action", "optional": true, "description": "An icon at the far end, pulled 4px into the end padding."},
-    {"id": "counter", "name": "Counter", "optional": true, "description": "A CounterLabel pill in the variant's --buttonCounter-* background."},
-    {"id": "keybinding-hint", "name": "Keybinding hint", "optional": true, "description": "A KeybindingHint chord in the variant's --buttonKeybindingHint-* colours; its presence shrinks the end padding to 6px (8px at large)."},
-    {"id": "spinner", "name": "Loading spinner", "optional": true, "description": "A 16px Spinner that replaces the leading visual, else the trailing visual or counter, else the trailing action, else sits over the hidden label."},
-    {"id": "notification-dot", "name": "Notification indicator", "optional": true, "description": "An 8px --fgColor-accent dot with a 2px --bgColor-inset ring at the button's top-right corner (2px outside it) or the leading visual's (4px outside it).", "tokens": ["--fgColor-accent", "--bgColor-inset", "--borderRadius-full"]}
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "The bordered, rounded box: height by size, 1px border inside it, medium radius, the variant's background and resting shadow.",
+      "tokens": [
+        "--borderRadius-medium",
+        "--borderWidth-thin"
+      ]
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "description": "A three-column row (leading visual, label, trailing visual) centred or start-aligned in the container; columns are separated by the size's gap."
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "A 16px icon in the variant's icon colour (fgColor-muted for default)."
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "Body text at the size's font size, medium weight, one line by default.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--base-text-weight-medium",
+        "--text-body-lineHeight-medium",
+        "--text-body-lineHeight-small"
+      ]
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "An icon or the count's CounterLabel."
+    },
+    {
+      "id": "trailing-action",
+      "name": "Trailing action",
+      "optional": true,
+      "description": "An icon at the far end, pulled 4px into the end padding."
+    },
+    {
+      "id": "counter",
+      "name": "Counter",
+      "optional": true,
+      "description": "A CounterLabel pill in the variant's --buttonCounter-* background."
+    },
+    {
+      "id": "keybinding-hint",
+      "name": "Keybinding hint",
+      "optional": true,
+      "description": "A KeybindingHint chord in the variant's --buttonKeybindingHint-* colours; its presence shrinks the end padding to 6px (8px at large)."
+    },
+    {
+      "id": "spinner",
+      "name": "Loading spinner",
+      "optional": true,
+      "description": "A 16px Spinner that replaces the leading visual, else the trailing visual or counter, else the trailing action, else sits over the hidden label."
+    },
+    {
+      "id": "notification-dot",
+      "name": "Notification indicator",
+      "optional": true,
+      "description": "An 8px --fgColor-accent dot with a 2px --bgColor-inset ring at the button's top-right corner (2px outside it) or the leading visual's (4px outside it).",
+      "tokens": [
+        "--fgColor-accent",
+        "--bgColor-inset",
+        "--borderRadius-full"
+      ]
+    }
   ],
   "variants": [
-    {"axis": "variant", "value": "default", "default": true, "description": "Neutral fill with a border and a 1px bottom shadow.", "tokens": ["--button-default-fgColor-rest", "--button-default-bgColor-rest", "--button-default-borderColor-rest", "--button-default-shadow-resting", "--button-default-bgColor-hover", "--button-default-borderColor-hover", "--button-default-bgColor-active", "--button-default-borderColor-active", "--button-default-bgColor-disabled", "--button-default-borderColor-disabled", "--buttonCounter-default-bgColor-rest"]},
-    {"axis": "variant", "value": "primary", "description": "Green (blue in colorblind themes) fill, onEmphasis text, resting-small shadow; the one main action.", "tokens": ["--button-primary-fgColor-rest", "--button-primary-bgColor-rest", "--button-primary-borderColor-rest", "--shadow-resting-small", "--button-primary-bgColor-hover", "--button-primary-borderColor-hover", "--button-primary-bgColor-active", "--button-primary-shadow-selected", "--button-primary-fgColor-disabled", "--button-primary-bgColor-disabled", "--button-primary-borderColor-disabled", "--buttonCounter-primary-bgColor-rest"]},
-    {"axis": "variant", "value": "danger", "description": "Default-looking at rest with danger-coloured text and icon; fills red on hover and press.", "tokens": ["--button-danger-fgColor-rest", "--button-danger-bgColor-rest", "--button-danger-iconColor-rest", "--button-danger-fgColor-hover", "--button-danger-bgColor-hover", "--button-danger-borderColor-hover", "--button-danger-iconColor-hover", "--button-danger-fgColor-active", "--button-danger-bgColor-active", "--button-danger-borderColor-active", "--button-danger-shadow-selected", "--button-danger-fgColor-disabled", "--button-danger-bgColor-disabled", "--buttonCounter-danger-bgColor-rest", "--buttonCounter-danger-fgColor-rest"]},
-    {"axis": "variant", "value": "invisible", "description": "No fill, border or shadow at rest; a fill appears on hover.", "tokens": ["--button-invisible-borderColor-rest", "--button-invisible-iconColor-rest", "--button-invisible-bgColor-hover", "--button-invisible-borderColor-hover", "--button-invisible-iconColor-hover", "--button-invisible-bgColor-active", "--button-invisible-fgColor-disabled", "--button-invisible-bgColor-disabled", "--button-invisible-borderColor-disabled", "--buttonCounter-invisible-bgColor-rest"]},
-    {"axis": "variant", "value": "link", "description": "Text only, in --fgColor-link, no box: no height, padding, border or radius; underlined on hover.", "tokens": ["--fgColor-link"]},
-    {"axis": "size", "value": "small", "description": "28px tall, 8px side padding, 4px gap, small body text.", "tokens": ["--control-small-size", "--control-small-paddingInline-condensed", "--control-small-gap", "--text-body-size-small", "--text-body-lineHeight-small"]},
-    {"axis": "size", "value": "medium", "default": true, "description": "32px tall, 12px side padding, 8px gap, medium body text.", "tokens": ["--control-medium-size", "--control-medium-paddingInline-normal", "--text-body-size-medium"]},
-    {"axis": "size", "value": "large", "description": "40px tall, 16px side padding, 8px gap, medium body text.", "tokens": ["--control-large-size", "--control-large-paddingInline-spacious", "--control-large-gap"]}
+    {
+      "axis": "variant",
+      "value": "default",
+      "default": true,
+      "description": "Neutral fill with a border and a 1px bottom shadow.",
+      "tokens": [
+        "--button-default-fgColor-rest",
+        "--button-default-bgColor-rest",
+        "--button-default-borderColor-rest",
+        "--button-default-shadow-resting",
+        "--button-default-bgColor-hover",
+        "--button-default-borderColor-hover",
+        "--button-default-bgColor-active",
+        "--button-default-borderColor-active",
+        "--button-default-bgColor-disabled",
+        "--button-default-borderColor-disabled",
+        "--buttonCounter-default-bgColor-rest"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "primary",
+      "description": "Green (blue in colorblind themes) fill, onEmphasis text, resting-small shadow; the one main action.",
+      "tokens": [
+        "--button-primary-fgColor-rest",
+        "--button-primary-bgColor-rest",
+        "--button-primary-borderColor-rest",
+        "--shadow-resting-small",
+        "--button-primary-bgColor-hover",
+        "--button-primary-borderColor-hover",
+        "--button-primary-bgColor-active",
+        "--button-primary-shadow-selected",
+        "--button-primary-fgColor-disabled",
+        "--button-primary-bgColor-disabled",
+        "--button-primary-borderColor-disabled",
+        "--buttonCounter-primary-bgColor-rest"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "danger",
+      "description": "Default-looking at rest with danger-coloured text and icon; fills red on hover and press.",
+      "tokens": [
+        "--button-danger-fgColor-rest",
+        "--button-danger-bgColor-rest",
+        "--button-danger-iconColor-rest",
+        "--button-danger-fgColor-hover",
+        "--button-danger-bgColor-hover",
+        "--button-danger-borderColor-hover",
+        "--button-danger-iconColor-hover",
+        "--button-danger-fgColor-active",
+        "--button-danger-bgColor-active",
+        "--button-danger-borderColor-active",
+        "--button-danger-shadow-selected",
+        "--button-danger-fgColor-disabled",
+        "--button-danger-bgColor-disabled",
+        "--buttonCounter-danger-bgColor-rest",
+        "--buttonCounter-danger-fgColor-rest"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "invisible",
+      "description": "No fill, border or shadow at rest; a fill appears on hover.",
+      "tokens": [
+        "--button-invisible-borderColor-rest",
+        "--button-invisible-iconColor-rest",
+        "--button-invisible-bgColor-hover",
+        "--button-invisible-borderColor-hover",
+        "--button-invisible-iconColor-hover",
+        "--button-invisible-bgColor-active",
+        "--button-invisible-fgColor-disabled",
+        "--button-invisible-bgColor-disabled",
+        "--button-invisible-borderColor-disabled",
+        "--buttonCounter-invisible-bgColor-rest"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "link",
+      "description": "Text only, in --fgColor-link, no box: no height, padding, border or radius; underlined on hover.",
+      "tokens": [
+        "--fgColor-link"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px tall, 8px side padding, 4px gap, small body text.",
+      "tokens": [
+        "--control-small-size",
+        "--control-small-paddingInline-condensed",
+        "--control-small-gap",
+        "--text-body-size-small",
+        "--text-body-lineHeight-small"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px tall, 12px side padding, 8px gap, medium body text.",
+      "tokens": [
+        "--control-medium-size",
+        "--control-medium-paddingInline-normal",
+        "--text-body-size-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px tall, 16px side padding, 8px gap, medium body text.",
+      "tokens": [
+        "--control-large-size",
+        "--control-large-paddingInline-spacious",
+        "--control-large-gap"
+      ]
+    }
   ],
   "layout": [
-    {"text": "Height is the size's control size exactly (border included); width hugs the content (min-width: max-content) unless block, which fills the container.", "tokens": ["--control-small-size", "--control-medium-size", "--control-large-size"], "source": "ButtonBase.module.css:2-7,187-219,223-225"},
-    {"text": "Side padding is --control-medium-paddingInline-normal (12px) at medium, --control-small-paddingInline-condensed (8px) at small, --control-large-paddingInline-spacious (16px) at large; there is no vertical padding, the content is centred in the height.", "tokens": ["--control-medium-paddingInline-normal", "--control-small-paddingInline-condensed", "--control-large-paddingInline-spacious"], "source": "ButtonBase.module.css:7,190,207"},
-    {"text": "Leading visual, label and trailing visual are separated by 8px at medium (--base-size-8), the size's gap otherwise; the trailing action follows the content box at the same gap and is pulled 4px into the end padding.", "tokens": ["--base-size-8", "--control-small-gap", "--control-large-gap", "--base-size-4"], "source": "ButtonBase.module.css:25,144-183,191-197,208-213"},
-    {"text": "The label is one line (white-space: nowrap) at the body line height; with labelWrap it wraps by word, the height becomes a minimum and the content gains block padding of the size's paddingBlock less 2px.", "tokens": ["--control-medium-paddingBlock", "--control-small-paddingBlock", "--control-large-paddingBlock", "--base-size-2"], "source": "ButtonBase.module.css:171-175,229-268"},
-    {"text": "With a keybinding hint present the end padding shrinks to 6px (8px at large).", "tokens": ["--base-size-6", "--base-size-8"], "source": "ButtonBase.module.css:28-30,216-218"},
-    {"text": "A button whose only content is a leading visual and a count pads 8px at medium, 4px at small and 12px at large.", "tokens": ["--control-medium-paddingInline-condensed", "--control-xsmall-paddingInline-condensed", "--control-large-paddingInline-normal"], "source": "ButtonBase.module.css:700-713"},
-    {"text": "The link variant has no box: no height, padding, border or radius, its font size is the surrounding text's, and its text starts at the left.", "source": "ButtonBase.module.css:582-592"}
+    {
+      "text": "Height is the size's control size exactly (border included); width hugs the content (min-width: max-content) unless block, which fills the container.",
+      "tokens": [
+        "--control-small-size",
+        "--control-medium-size",
+        "--control-large-size"
+      ],
+      "source": "ButtonBase.module.css:2-7,187-219,223-225"
+    },
+    {
+      "text": "Side padding is --control-medium-paddingInline-normal (12px) at medium, --control-small-paddingInline-condensed (8px) at small, --control-large-paddingInline-spacious (16px) at large; there is no vertical padding, the content is centred in the height.",
+      "tokens": [
+        "--control-medium-paddingInline-normal",
+        "--control-small-paddingInline-condensed",
+        "--control-large-paddingInline-spacious"
+      ],
+      "source": "ButtonBase.module.css:7,190,207"
+    },
+    {
+      "text": "Leading visual, label and trailing visual are separated by 8px at medium (--base-size-8), the size's gap otherwise; the trailing action follows the content box at the same gap and is pulled 4px into the end padding.",
+      "tokens": [
+        "--base-size-8",
+        "--control-small-gap",
+        "--control-large-gap",
+        "--base-size-4"
+      ],
+      "source": "ButtonBase.module.css:25,144-183,191-197,208-213"
+    },
+    {
+      "text": "The label is one line (white-space: nowrap) at the body line height; with labelWrap it wraps by word, the height becomes a minimum and the content gains block padding of the size's paddingBlock less 2px.",
+      "tokens": [
+        "--control-medium-paddingBlock",
+        "--control-small-paddingBlock",
+        "--control-large-paddingBlock",
+        "--base-size-2"
+      ],
+      "source": "ButtonBase.module.css:171-175,229-268"
+    },
+    {
+      "text": "With a keybinding hint present the end padding shrinks to 6px (8px at large).",
+      "tokens": [
+        "--base-size-6",
+        "--base-size-8"
+      ],
+      "source": "ButtonBase.module.css:28-30,216-218"
+    },
+    {
+      "text": "A button whose only content is a leading visual and a count pads 8px at medium, 4px at small and 12px at large.",
+      "tokens": [
+        "--control-medium-paddingInline-condensed",
+        "--control-xsmall-paddingInline-condensed",
+        "--control-large-paddingInline-normal"
+      ],
+      "source": "ButtonBase.module.css:700-713"
+    },
+    {
+      "text": "The link variant has no box: no height, padding, border or radius, its font size is the surrounding text's, and its text starts at the left.",
+      "source": "ButtonBase.module.css:582-592"
+    }
   ],
   "states": [
-    {"state": "enabled", "text": "The variant's -rest tokens; default and danger carry --button-default-shadow-resting, primary --shadow-resting-small, invisible none.", "tokens": ["--button-default-shadow-resting", "--shadow-resting-small"], "source": "ButtonBase.module.css:303-306,354-358,412-415,511-514"},
-    {"state": "hovered", "text": "Background and border move to the variant's -hover tokens; danger also turns its text, icon, counter and shadow (--shadow-resting-small). Invisible shows a fill and its hover icon colour. Link underlines its label.", "motion": {"durationMs": 80, "easing": [0.65, 0, 0.35, 1]}, "source": "ButtonBase.module.css:20-21,32-34,313-316,365-368,428-449,520-532,593-599"},
-    {"state": "pressed", "text": "The variant's -active tokens, applied with no transition; primary and danger swap their shadow for --button-*-shadow-selected.", "motion": {"instant": true}, "tokens": ["--button-primary-shadow-selected", "--button-danger-shadow-selected"], "source": "ButtonBase.module.css:40-42,318-321,374-377,451-455,534-536"},
-    {"state": "open", "text": "While the button controls an open menu (aria-expanded), it keeps its -active background (and, for default, its active border; for primary and danger, the selected shadow).", "source": "ButtonBase.module.css:308-311,360-363,417-426,516-518"},
-    {"state": "focused", "text": "Keyboard focus only: a 2px --focus-outline-color outline inset 2px, no shadow. Primary adds an inset 3px --fgColor-onEmphasis ring inside the outline. Link offsets the outline 2px outside.", "tokens": ["--focus-outline-color", "--focus-outline-width", "--focus-outline-offset", "--fgColor-onEmphasis"], "values": [{"name": "onEmphasisRing", "value": 3, "unit": "px"}, {"name": "linkOutlineOffset", "value": 2, "unit": "px"}], "source": "ButtonBase.module.css:36-38,370-372,601-604; focusOutline.css; focusOutlineOnEmphasis.css"},
-    {"state": "disabled", "text": "The variant's -disabled tokens (default reads --control-fgColor-disabled for text), no shadow, visuals and counter inherit the text colour; not focusable, ignores input.", "tokens": ["--control-fgColor-disabled"], "source": "ButtonBase.module.css:82-91,323-335,379-391,474-491,547-559,606-611"},
-    {"state": "loading", "text": "A small Spinner replaces the first of leading visual, trailing visual or count, trailing action; with none, it takes the label's place and the label is hidden but keeps its width. The button is aria-disabled, ignores clicks, but stays focusable and keeps its enabled colours.", "source": "ButtonBase.tsx:62-69,101-127,139-191,195-199; ButtonBase.module.css:270-299"},
-    {"state": "other", "label": "inactive", "text": "Inactive looks disabled in --button-inactive-bgColor and --button-inactive-fgColor with no hover or press change, but stays focusable and clickable.", "tokens": ["--button-inactive-bgColor", "--button-inactive-fgColor"], "source": "ButtonBase.module.css:674-696"}
+    {
+      "state": "enabled",
+      "text": "The variant's -rest tokens; default and danger carry --button-default-shadow-resting, primary --shadow-resting-small, invisible none.",
+      "tokens": [
+        "--button-default-shadow-resting",
+        "--shadow-resting-small"
+      ],
+      "source": "ButtonBase.module.css:303-306,354-358,412-415,511-514"
+    },
+    {
+      "state": "hovered",
+      "text": "Background and border move to the variant's -hover tokens; danger also turns its text, icon, counter and shadow (--shadow-resting-small). Invisible shows a fill and its hover icon colour. Link underlines its label.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "source": "ButtonBase.module.css:20-21,32-34,313-316,365-368,428-449,520-532,593-599"
+    },
+    {
+      "state": "pressed",
+      "text": "The variant's -active tokens, applied with no transition; primary and danger swap their shadow for --button-*-shadow-selected.",
+      "motion": {
+        "instant": true
+      },
+      "tokens": [
+        "--button-primary-shadow-selected",
+        "--button-danger-shadow-selected"
+      ],
+      "source": "ButtonBase.module.css:40-42,318-321,374-377,451-455,534-536"
+    },
+    {
+      "state": "open",
+      "text": "While the button controls an open menu (aria-expanded), it keeps its -active background (and, for default, its active border; for primary and danger, the selected shadow).",
+      "source": "ButtonBase.module.css:308-311,360-363,417-426,516-518"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus only: a 2px --focus-outline-color outline inset 2px, no shadow. Primary adds an inset 3px --fgColor-onEmphasis ring inside the outline. Link offsets the outline 2px outside.",
+      "tokens": [
+        "--focus-outline-color",
+        "--focus-outline-width",
+        "--focus-outline-offset",
+        "--fgColor-onEmphasis"
+      ],
+      "values": [
+        {
+          "name": "onEmphasisRing",
+          "value": 3,
+          "unit": "px"
+        },
+        {
+          "name": "linkOutlineOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "ButtonBase.module.css:36-38,370-372,601-604; focusOutline.css; focusOutlineOnEmphasis.css"
+    },
+    {
+      "state": "disabled",
+      "text": "The variant's -disabled tokens (default reads --control-fgColor-disabled for text), no shadow, visuals and counter inherit the text colour; not focusable, ignores input.",
+      "tokens": [
+        "--control-fgColor-disabled"
+      ],
+      "source": "ButtonBase.module.css:82-91,323-335,379-391,474-491,547-559,606-611"
+    },
+    {
+      "state": "loading",
+      "text": "A small Spinner replaces the first of leading visual, trailing visual or count, trailing action; with none, it takes the label's place and the label is hidden but keeps its width. The button is aria-disabled, ignores clicks, but stays focusable and keeps its enabled colours.",
+      "source": "ButtonBase.tsx:62-69,101-127,139-191,195-199; ButtonBase.module.css:270-299"
+    },
+    {
+      "state": "other",
+      "label": "inactive",
+      "text": "Inactive looks disabled in --button-inactive-bgColor and --button-inactive-fgColor with no hover or press change, but stays focusable and clickable.",
+      "tokens": [
+        "--button-inactive-bgColor",
+        "--button-inactive-fgColor"
+      ],
+      "source": "ButtonBase.module.css:674-696"
+    }
   ],
   "behaviour": [
-    {"text": "Activate on pointer release inside the button, Enter or Space. A loading button does not activate.", "source": "ButtonBase.tsx:127"},
-    {"text": "Colour, fill, background and border transition over 80ms cubic-bezier(0.65, 0, 0.35, 1); a press is instant. The keybinding hint transitions over 80ms ease-in at rest and ease-out on hover and press.", "motion": {"durationMs": 80, "easing": [0.65, 0, 0.35, 1]}, "source": "ButtonBase.module.css:20-21,443,724-727"},
-    {"text": "Switching loading on or off must not move focus out of the button.", "source": "ButtonBase.tsx:92-99"}
+    {
+      "text": "Activate on pointer release inside the button, Enter or Space. A loading button does not activate.",
+      "source": "ButtonBase.tsx:127"
+    },
+    {
+      "text": "Colour, fill, background and border transition over 80ms cubic-bezier(0.65, 0, 0.35, 1); a press is instant. The keybinding hint transitions over 80ms ease-in at rest and ease-out on hover and press.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "source": "ButtonBase.module.css:20-21,443,724-727"
+    },
+    {
+      "text": "Switching loading on or off must not move focus out of the button.",
+      "source": "ButtonBase.tsx:92-99"
+    }
   ],
   "accessibility": {
     "role": "button (link when href is set)",
     "minTargetPx": 28,
-    "keyboard": ["Tab focuses it unless disabled.", "Enter and Space activate it (Enter only for a link)."],
-    "semantics": ["Its name is the label.", "Disabled is announced; inactive and loading are aria-disabled but focusable.", "While loading, the loadingAnnouncement is announced as a status and the button is described by it.", "aria-expanded when it opens a menu."]
+    "keyboard": [
+      "Tab focuses it unless disabled.",
+      "Enter and Space activate it (Enter only for a link)."
+    ],
+    "semantics": [
+      "Its name is the label.",
+      "Disabled is announced; inactive and loading are aria-disabled but focusable.",
+      "While loading, the loadingAnnouncement is announced as a status and the button is described by it.",
+      "aria-expanded when it opens a menu."
+    ]
   },
   "notes": [
-    {"kind": "gotcha", "text": "Default and danger read --button-default-shadow-resting, a 1px offset with no blur, not a soft shadow; it disappears when disabled or pressed (primary, danger) and on invisible.", "tokens": ["--button-default-shadow-resting"]},
-    {"kind": "gotcha", "text": "Danger's disabled border reads --button-default-borderColor-disabled; there is no --button-danger-borderColor-disabled.", "tokens": ["--button-default-borderColor-disabled"], "source": "ButtonBase.module.css:478"},
-    {"kind": "hard-coded", "text": "The 80ms transition and its curve are not tokens; the motion tokens' hover transition is 100ms.", "source": "ButtonBase.module.css:20"},
-    {"kind": "high-contrast", "text": "Under forced colours focus draws a 1px transparent outline so the system ring shows.", "source": "ButtonBase.module.css:93-97"},
-    {"kind": "web-only", "text": "LinkButton is Button rendered as an anchor; a native build navigates through the platform (or the app) and keeps Button's visuals.", "source": "LinkButton.tsx"}
+    {
+      "kind": "gotcha",
+      "text": "Default and danger read --button-default-shadow-resting, a 1px offset with no blur, not a soft shadow; it disappears when disabled or pressed (primary, danger) and on invisible.",
+      "tokens": [
+        "--button-default-shadow-resting"
+      ]
+    },
+    {
+      "kind": "gotcha",
+      "text": "Danger's disabled border reads --button-default-borderColor-disabled; there is no --button-danger-borderColor-disabled.",
+      "tokens": [
+        "--button-default-borderColor-disabled"
+      ],
+      "source": "ButtonBase.module.css:478"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 80ms transition and its curve are not tokens; the motion tokens' hover transition is 100ms.",
+      "source": "ButtonBase.module.css:20"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours focus draws a 1px transparent outline so the system ring shows.",
+      "source": "ButtonBase.module.css:93-97"
+    },
+    {
+      "kind": "web-only",
+      "text": "LinkButton is Button rendered as an anchor; a native build navigates through the platform (or the app) and keeps Button's visuals.",
+      "source": "LinkButton.tsx"
+    }
   ]
 }

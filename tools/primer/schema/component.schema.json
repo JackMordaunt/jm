@@ -34,18 +34,17 @@
     },
     "status": {
       "enum": [
-        "stable",
-        "beta",
         "alpha",
+        "beta",
         "draft",
-        "experimental",
-        "deprecated"
+        "deprecated",
+        "experimental"
       ],
-      "description": "The status Primer gives it: its .docs.json `status`, overridden by primer.style where the site disagrees (say so in statusNote). experimental: only under src/experimental."
+      "description": "The status Primer React's <Name>.docs.json gives, verbatim; experimental for a component only under src/experimental with no docs file. primer.style shows no status, so there is nothing to override it with."
     },
     "statusNote": {
       "type": "string",
-      "description": "What is draft, experimental or partial, and any disagreement about status."
+      "description": "What the status means for this component in practice: what is unfinished, or why a long-shipped component still says alpha."
     },
     "deprecated": {
       "type": "object",

@@ -39,7 +39,7 @@
     {
       "id": "button",
       "name": "Button",
-      "status": "stable",
+      "status": "alpha",
       "summary": "A labelled action. Choose emphasis by variant (primary for the one main action on a surface, default for the rest, danger for destructive actions, invisible for low-emphasis actions in dense UI, link for an action that reads as text), size by the density around it. A button with an href is a LinkButton: the same look, navigating instead of acting.",
       "tokenGroups": [
         "--base-size-2",
