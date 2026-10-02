@@ -57,3 +57,47 @@ test_blend_eases_over_its_duration_and_snaps_with_none :: proc(t: ^testing.T) {
 	testing.expect_value(t, blend(&gtx, &f, 2, red, 0, linear), red) // no duration: there at once
 	testing.expect_value(t, blend(&gtx, nil, 2, blue, 100, linear), blue) // forced: nothing retained
 }
+
+@(private = "file")
+Field_Seen :: struct {
+	text:    string,
+	scrolls: int,
+	clicks:  int,
+}
+
+@(private = "file")
+field_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	seen := (^Field_Seen)(user)
+	p := ui.widget_open(gtx)
+	area := ops.Rect{0, 0, 100, 30}
+	c := control(gtx, p.id, area, .Live)
+	if c.clicked {
+		seen.clicks += 1
+	}
+	for e in ui.events(gtx, p.id) {
+		#partial switch e.kind {
+		case .Text:
+			seen.text = e.text
+		case .Scroll:
+			seen.scrolls += 1
+		}
+	}
+	listen(gtx, c.st, p.id, area, EDIT_KINDS)
+	ops.tag(gtx.scene, p.id, "field")
+	ui.widget_close(gtx, &p, {size = {100, 30}})
+}
+
+@(test)
+test_a_field_listening_for_edit_kinds_takes_clicks_text_and_the_wheel :: proc(t: ^testing.T) {
+	seen: Field_Seen
+	p: ui.Probe
+	ui.probe_init(&p, field_view, &seen, {200, 100}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, ui.probe_click(&p, "field"))
+	testing.expect_value(t, seen.clicks, 1)
+	ui.probe_type(&p, "a") // focused by the click, it takes typed text
+	testing.expect_value(t, seen.text, "a")
+	testing.expect(t, ui.probe_scroll(&p, "field", 1))
+	testing.expect_value(t, seen.scrolls, 1)
+}

@@ -39,10 +39,6 @@ Edit :: struct {
 	id:        ops.Area_Id, // the field's area, for ui.focus_request
 }
 
-// EDIT_KINDS is what an input's area asks for: a click's kinds plus
-// typed text and the wheel.
-EDIT_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Text, .Focus, .Blur, .Scroll}
-
 // Field_Words is what an open field tells the control inside it: the
 // label a reader names it by, the hint that describes it, and whether
 // the field is required or disabled, so the control's semantics carry
@@ -364,7 +360,7 @@ input :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, area, underline ? 0 : BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
-	listen(gtx, c.st, p.id, area, EDIT_KINDS, .Text)
+	listen(gtx, c.st, p.id, area, design.EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, str), c.disabled))
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
@@ -509,7 +505,7 @@ textarea :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, box, BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
-	listen(gtx, c.st, p.id, box, EDIT_KINDS, .Text)
+	listen(gtx, c.st, p.id, box, design.EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, string(s.buf[:])), c.disabled))
 	ui.widget_close(gtx, &p, {sz, text_y + para.lines[0].baseline})

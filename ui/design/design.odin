@@ -113,6 +113,10 @@ effective_state :: proc(c: Control) -> Interaction {
 // CLICK_KINDS is what a clickable component's input area asks for.
 CLICK_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .Focus, .Blur}
 
+// EDIT_KINDS is what a text field's input area asks for: a click's kinds
+// plus typed text and the wheel, which scrolls a field's text.
+EDIT_KINDS :: CLICK_KINDS + {.Text, .Scroll}
+
 // listen registers id's input area when st is live (a Control's st, nil
 // for a forced state).
 listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS, cursor := ops.Cursor.Default) {

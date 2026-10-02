@@ -428,7 +428,7 @@ Combobox_Data :: struct {
 // FIELD_KINDS is what a typed field's area asks for: a click's kinds
 // plus typed text and the wheel.
 @(private = "file")
-FIELD_KINDS :: EDIT_KINDS
+FIELD_KINDS :: design.EDIT_KINDS
 
 // combobox is a Fluent combobox or dropdown (combobox.json): a field
 // that opens a listbox of options, selected^ being the chosen one, -1
