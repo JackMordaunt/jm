@@ -239,12 +239,12 @@
     {
       "id": "base-position",
       "text": "Base position from the anchor rect A and overlay size W x H. Outside sides: bottom puts top at A.bottom + anchorOffset; top puts top at A.top - anchorOffset - H; right puts left at A.right + anchorOffset; left puts left at A.left - anchorOffset - W. Inside sides mirror these within A: inside-top top = A.top + anchorOffset, inside-bottom top = A.bottom - anchorOffset - H, inside-left left = A.left + anchorOffset, inside-right left = A.right - anchorOffset - W, inside-center left = A.centre.x - W/2 + anchorOffset.",
-      "source": "useAnchoredPosition.ts:86-90; AnchoredOverlay.tsx:254-275"
+      "source": "npm/behaviors/esm/anchored-position.mjs:179-256; AnchoredOverlay.tsx:254-275"
     },
     {
       "id": "alignment",
       "text": "Cross-axis alignment for top and bottom sides: start left = A.left + alignmentOffset; center left = A.left - (W - A.width)/2 + alignmentOffset; end left = A.right - W - alignmentOffset. Left, right and inside-center sides apply the same formulas to top with heights.",
-      "source": "useAnchoredPosition.ts:86-90"
+      "source": "npm/behaviors/esm/anchored-position.mjs:196-217,233-254"
     },
     {
       "id": "defaults",
@@ -266,22 +266,22 @@
     {
       "id": "bounds",
       "text": "The bounds rectangle is the nearest ancestor of the overlay that clips (overflow not visible), inside its borders, else the page body, whose height is taken as at least the window height; with displayInViewport it is the window. The overlay is portalled to the page root, so in practice the bounds are the body's width by at least the window height, in document coordinates.",
-      "source": "useAnchoredPosition.ts:86-90; Overlay.tsx:242"
+      "source": "npm/behaviors/esm/anchored-position.mjs:12-23,24-61,77-90,112-127; Overlay.tsx:242"
     },
     {
       "id": "flip-side",
       "text": "Side flipping (outside sides only): if the overlay overflows the bounds along its side's axis (vertically for top and bottom, horizontally for left and right), try the alternates in order until one fits on its own axis: from outside-top try bottom, right, left, bottom; from outside-bottom try top, right, left, bottom; from outside-left try right, bottom, top, bottom; from outside-right try left, bottom, top, bottom. Each attempt keeps the requested alignment. Inside sides never flip.",
-      "source": "useAnchoredPosition.ts:86-90"
+      "source": "npm/behaviors/esm/anchored-position.mjs:1-6,133-147,257-266"
     },
     {
       "id": "flip-align",
-      "text": "Alignment flipping, after the side is settled: start or center that overflows the left or right bound tries the alternates (start: end then center; center: end then start); end that overflows the left bound tries start then center. The first that fits wins, else the last tried stands.",
-      "source": "useAnchoredPosition.ts:86-90"
+      "text": "Alignment flipping, after the side is settled: start or center that overflows the left or right bound tries the alternates (start: end then center; center: end then start); end that overflows the left bound tries start then center. The first that fits wins, else the last tried stands. The test is horizontal whatever the side, so for a side whose alignment moves the top (left, right, inside-left, inside-right, inside-center) a horizontal overflow walks every alternate and the last one stands.",
+      "source": "npm/behaviors/esm/anchored-position.mjs:7-11,148-161,267-275"
     },
     {
       "id": "clamp",
-      "text": "Clamp last: top is at least the bounds' top; left is at least the bounds' left; the right edge is pulled in to the bounds' right. The bottom edge is pulled up (to no less than 0) only when displayInViewport is set or a side fitted; when every side overflowed the overlay ends on outside-bottom and may run past the bottom, on the assumption the page scrolls that way.",
-      "source": "useAnchoredPosition.ts:86-90"
+      "text": "Clamp last: top is at least the bounds' top; left is at least the bounds' left; the right edge is then pulled in to the bounds' right, so an overlay wider than the bounds ends flush right. The bottom edge is pulled up (to no less than 0, the positioned parent's top) only when displayInViewport is set or the side alternates were not exhausted: when every outside side overflowed the overlay ends on outside-bottom and may run past the bottom, on the assumption the page scrolls that way, and an inside side, having no alternates, is never clamped at the bottom.",
+      "source": "npm/behaviors/esm/anchored-position.mjs:162-176"
     },
     {
       "id": "result",
@@ -378,19 +378,14 @@
   },
   "notes": [
     {
-      "kind": "inferred",
-      "text": "The placement algorithm (layout rules base-position through clamp) lives in @primer/behaviors' getAnchoredPosition, which is not vendored. This spec transcribes anchored-position.ts from primer/behaviors main as read on 2026-10-02; the vendored hook only calls it with side, align, anchorOffset, alignmentOffset and displayInViewport.",
-      "source": "useAnchoredPosition.ts:1-3,86-90"
-    },
-    {
       "kind": "gotcha",
       "text": "The side-alternate lists end with outside-bottom twice for top and bottom requests; when every side overflows, bottom wins and the bottom clamp is skipped, so the overlay hangs off the page bottom instead of covering the anchor. Keep that behaviour: it relies on the page scrolling.",
-      "source": "useAnchoredPosition.ts:86-90"
+      "source": "npm/behaviors/esm/anchored-position.mjs:1-6,133-176"
     },
     {
       "kind": "gotcha",
       "text": "Flipping only tests the side's own axis and alignment only tests the horizontal axis; a left or right placement that overflows vertically is fixed by the clamp, not by an alignment change.",
-      "source": "useAnchoredPosition.ts:86-90"
+      "source": "npm/behaviors/esm/anchored-position.mjs:148-161,257-275"
     },
     {
       "kind": "web-only",
