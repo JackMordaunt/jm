@@ -63,7 +63,7 @@ replay_runs_a_recording_through_the_probe :: proc(t: ^testing.T) {
 @(test)
 a_recorder_writes_what_replay_reads :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
-	path := "build/test/record_test.rec"
+	path, _ := os.join_path({os.temp_directory(context.temp_allocator) or_else ".", "jm-record_test.rec"}, context.temp_allocator)
 	defer os.remove(path)
 	r: Recorder
 	recorder_write(&r, {1}) // a zero recorder records nothing, and does not mind
