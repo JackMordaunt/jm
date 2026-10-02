@@ -107,6 +107,7 @@ Flatten_Stacks :: struct {
 	clips:      [dynamic]Clip_Id, // likewise the clips
 	deferred:   [dynamic]Deferred, // the Defers met, run after everything else
 	held:       [dynamic]Covering, // covering Defers met, waiting for their Cover_End
+	top:        [dynamic]Deferred, // top Defers met, run after every other
 }
 
 // Covering is a Defer waiting for the end of the container it covers.
@@ -137,6 +138,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.stacks.clips = make([dynamic]Clip_Id, allocator)
 	f.stacks.deferred = make([dynamic]Deferred, allocator)
 	f.stacks.held = make([dynamic]Covering, allocator)
+	f.stacks.top = make([dynamic]Deferred, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -152,6 +154,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.stacks.clips)
 	clear(&f.stacks.deferred)
 	clear(&f.stacks.held)
+	clear(&f.stacks.top)
 	f.scene = nil
 }
 
@@ -168,5 +171,6 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.stacks.clips)
 	delete(f.stacks.deferred)
 	delete(f.stacks.held)
+	delete(f.stacks.top)
 	f^ = {}
 }

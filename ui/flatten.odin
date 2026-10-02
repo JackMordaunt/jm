@@ -40,14 +40,19 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}) {
 	// Deferred macros run last, in the order met, so their draws and hits
 	// sit above everything else; one deferred from inside another runs
 	// after it. A covering one runs in the order of its container's end
-	// instead, and one covering the window once nothing else is left.
-	// Each starts unclipped.
+	// instead, and one covering the window once nothing else is left;
+	// a top one after all of those. Each starts unclipped.
 	for i := 0; ; i += 1 {
 		if i == len(st.deferred) {
 			if len(st.held) == 0 {
-				break
+				if len(st.top) == 0 {
+					break
+				}
+				append(&st.deferred, ..st.top[:])
+				clear(&st.top)
+			} else {
+				release_held(&st, 0, all = true)
 			}
-			release_held(&st, 0, all = true)
 		}
 		d := st.deferred[i]
 		m := sc.macros[d.id]
@@ -107,7 +112,9 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 				t, side, shift = place(t, op.place, st.viewport)
 				append(&st.f.placed, Placed{op.place.key, side, shift})
 			}
-			if op.cover {
+			if op.top {
+				append(&st.top, Deferred{op.id, t})
+			} else if op.cover {
 				append(&st.held, Covering{op.covers, {op.id, t}})
 			} else {
 				append(&st.deferred, Deferred{op.id, t})

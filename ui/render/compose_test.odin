@@ -397,7 +397,8 @@ test_compose_list_widget_scrolls :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	compose(&g.c, ui.probe_current(&p), &g.img, BG)
 	scrolled := 0
-	for dy in ([]f32{1, 1, 2, -1, 3, 1}) {
+	for units in ([]f32{1, 1, 2, -1, 3, 1}) {
+		dy := units / ui.SCROLL_STEP // a pixel a unit, as before the list took the step
 		if !testing.expect(t, ui.probe_scroll(&p, "Pick", dy), "found something to scroll over") {
 			return
 		}

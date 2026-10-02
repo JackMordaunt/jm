@@ -225,6 +225,11 @@ Key :: enum u8 {
 	N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
 	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9,
 	F11, // ui.DEBUG_TOGGLE_KEY: the frame loops take it before routing
+	// The mouse's back and forward buttons arrive as keys, as a browser
+	// takes them: an app reads them app-wide with ui.key_interest, like
+	// Alt with Left and Right, which mean the same.
+	Browser_Back,
+	Browser_Forward,
 }
 
 Mod :: enum u8 {

@@ -63,6 +63,7 @@ Control :: struct {
 	state:         Interaction, // never Live: the strongest of the flags, by effective_state's order
 	press:         bool, // a left press or keyboard activation landed this frame, at press_at
 	press_at:      ops.Point,
+	clicks:        u8, // that press's count: 2 for a double click
 }
 
 // control resolves state for the component with id and bounds. Live reads
@@ -74,7 +75,7 @@ control :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, bounds: ops.Rect, state: Interact
 	case .Live:
 		c.st = ui.widget_state(gtx, id)
 		a := ui.activate_from_events(gtx, id, c.st, bounds)
-		c.clicked, c.press, c.press_at = a.clicked, a.press, a.at
+		c.clicked, c.press, c.press_at, c.clicks = a.clicked, a.press, a.at, a.clicks
 		c.hovered, c.pressed, c.focused = c.st.hovered, c.st.pressed, c.st.focused
 		c.focus_visible = c.focused && ui.focus_visible(gtx)
 	case .Enabled:

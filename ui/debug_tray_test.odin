@@ -146,3 +146,28 @@ test_debug_tray_drags_by_its_title_and_stays_in_the_window :: proc(t: ^testing.T
 	probe_frame(&p)
 	testing.expect_value(t, ops.Point{p.tray.rect.x, p.tray.rect.y}, ops.Point{0, 0})
 }
+
+@(test)
+test_tray_collapses_to_its_title_and_sits_over_a_modal :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		// A modal that covers the window, as a dialog's scrim does.
+		o := overlay_open(gtx, {0, 0}, cs = loose({800, 600}), root = true, cover = true)
+		ops.fill(gtx.scene, ops.Rect{0, 0, 800, 600}, ops.Color{0, 0, 0, 128})
+		ops.input_area(gtx.scene, claim_id(gtx), ops.Rect{0, 0, 800, 600}, {.Press, .Release})
+		close(&o)
+	}
+	p: Probe
+	probe_init(&p, view, nil, {800, 600})
+	defer probe_destroy(&p)
+	probe_key(&p, DEBUG_TOGGLE_KEY)
+	open_h := p.tray.rect.h
+	testing.expect(t, open_h > TRAY_TITLE)
+	// The tray's title is hit over the modal's area: the tray is on top.
+	testing.expect(t, probe_tagged(&p, "Collapse tray"))
+	testing.expect(t, probe_click(&p, "Collapse tray"))
+	testing.expect(t, p.tray.collapsed)
+	testing.expect_value(t, p.tray.rect.h, TRAY_TITLE)
+	testing.expect(t, probe_click(&p, "Expand tray"))
+	testing.expect(t, !p.tray.collapsed)
+	testing.expect_value(t, p.tray.rect.h, open_h)
+}

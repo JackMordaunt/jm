@@ -54,10 +54,15 @@ Call :: struct {
 // where it is met but joins the run order at the Cover_End for covers, so
 // the container's later children and the Defers they raise sit under it.
 // covers 0 is the window: it joins once every other Defer has run.
+//
+// A top Defer runs after every other, covers of the window included, in
+// the order met among top ones: the debug tray, which must stay usable
+// over a modal that covers the window.
 Defer :: struct {
 	id:     Macro_Id,
 	root:   bool,
 	cover:  bool,
+	top:    bool,
 	covers: Area_Id,
 	place:  Placement,
 }
@@ -295,6 +300,7 @@ destroy :: proc(o: ^Scene) {
 	delete(o.runs)
 	delete(o.macros)
 	delete(o.fonts)
+	free_images(o)
 	delete(o.images)
 	o^ = {}
 }
@@ -409,8 +415,8 @@ defer_place :: proc(o: ^Scene, id: Macro_Id, place: Placement, cover := false, c
 
 // defer_call runs macro id after the rest of the frame, on top; with
 // cover, over all of container covers. See Defer.
-defer_call :: proc(o: ^Scene, id: Macro_Id, root := false, cover := false, covers := Area_Id(0)) {
-	append(&o.ops, Defer{id = id, root = root, cover = cover, covers = covers})
+defer_call :: proc(o: ^Scene, id: Macro_Id, root := false, cover := false, covers := Area_Id(0), top := false) {
+	append(&o.ops, Defer{id = id, root = root, cover = cover, covers = covers, top = top})
 }
 
 // cover_end marks the end of container id, where the Defers covering it
@@ -455,6 +461,9 @@ add_fonts :: proc(o: ^Scene, refs: []Font_Ref) {
 	append(&o.fonts, ..refs)
 }
 
+// add_image registers the image at path under an id, or returns the id
+// it already has. The path is copied: a caller's string may be a frame's
+// or a shape's, gone before the renderer reads the file.
 add_image :: proc(o: ^Scene, path: string) -> Image_Id {
 	for f in o.images {
 		if f.path == path {
@@ -462,6 +471,24 @@ add_image :: proc(o: ^Scene, path: string) -> Image_Id {
 		}
 	}
 	id := Image_Id(len(o.images))
-	append(&o.images, Image_Ref{id, path})
+	append(&o.images, Image_Ref{id, own_path(o, path)})
 	return id
+}
+
+// own_path is path copied into the scene's allocator: the scene owns
+// every image path it holds, whether add_image or decode put it there.
+@(private)
+own_path :: proc(o: ^Scene, path: string) -> string {
+	kept := make([]byte, len(path), o.images.allocator)
+	copy(kept, path)
+	return string(kept)
+}
+
+// free_images forgets the scene's images and their paths.
+@(private)
+free_images :: proc(o: ^Scene) {
+	for f in o.images {
+		delete(f.path, o.images.allocator)
+	}
+	clear(&o.images)
 }

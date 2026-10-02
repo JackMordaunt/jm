@@ -39,7 +39,7 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 		case Call:
 			fmt.sbprintf(&sb, "call %d", v.id)
 		case Defer:
-			fmt.sbprintf(&sb, "defer %d%s", v.id, v.root ? " root" : "")
+			fmt.sbprintf(&sb, "defer %d%s%s", v.id, v.root ? " root" : "", v.top ? " top" : "")
 			if v.cover {
 				fmt.sbprintf(&sb, " covers %d", v.covers)
 			}

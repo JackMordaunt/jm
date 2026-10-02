@@ -72,6 +72,7 @@ Debug_Tray :: struct {
 	panel:       ops.Rect, // the inspector's panel this frame, device space, or empty
 	offset:      ops.Point, // where its title bar has dragged it from the bottom-right corner
 	dragging:    bool,
+	collapsed:   bool, // only the title bar shows, to see more of the ui
 }
 
 // debug_tray_init gives t its opening toggles: what F11 turned on before
@@ -296,6 +297,17 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	log := event_log_lines(t, TRAY_EVENTS, gtx.allocator)
 	graph_h :: f32(36)
 	h := TRAY_TITLE + pad + row * f32(len(TOGGLES) + 2) + 6 + f32(len(lines)) * (text + 5) + 6 + graph_h + 8 + f32(TRAY_EVENTS) * (text + 3)
+	// The fold button, at the title's right end, collapses the tray to
+	// its title bar and expands it again.
+	fold := claim_id(gtx, 3)
+	for e in events(gtx, fold) {
+		if e.kind == .Release {
+			t.collapsed = !t.collapsed
+		}
+	}
+	if t.collapsed {
+		h = TRAY_TITLE
+	}
 
 	// The title bar drags it: by the pointer's travel, which holds however
 	// the bar itself moves (see Event.travel). Kept inside the window.
@@ -318,7 +330,9 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	at = {clamp(at.x, 0, max(window.x - TRAY_WIDTH, 0)), clamp(at.y, 0, max(window.y - h, 0))}
 	t.offset = at - corner // a drag past the edge does not bank distance to come back through
 
-	o := overlay_open(gtx, at, exact({TRAY_WIDTH, h}))
+	// Top: over a modal's scrim and anything else, or it could not be used
+	// to inspect them.
+	o := overlay_open(gtx, at, exact({TRAY_WIDTH, h}), top = true)
 	defer close(&o)
 	t.rect = {at.x, at.y, TRAY_WIDTH, h}
 	ops.fill(gtx.scene, ops.Round_Rect{{0, 0, TRAY_WIDTH, h}, 8}, ops.Color{24, 22, 30, 240})
@@ -331,9 +345,16 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	ops.fill(gtx.scene, ops.Round_Rect{title, 8}, title_color)
 	ops.fill(gtx.scene, ops.Rect{0, TRAY_TITLE / 2, TRAY_WIDTH, TRAY_TITLE / 2}, title_color) // square lower corners, flush with the body
 	tray_text(gtx, "Debug", {pad, TRAY_TITLE / 2 + 4}, 12, ops.Color{235, 233, 242, 255})
-	tray_text(gtx, t.dragging ? "moving" : "drag to move", {TRAY_WIDTH - pad - 76, TRAY_TITLE / 2 + 4}, 11, ops.Color{150, 148, 162, 255})
+	tray_text(gtx, t.dragging ? "moving" : "drag to move", {TRAY_WIDTH - pad - 100, TRAY_TITLE / 2 + 4}, 11, ops.Color{150, 148, 162, 255})
 	ops.input_area(gtx.scene, grip, title, {.Press, .Release, .Move, .Enter, .Leave})
 	ops.tag(gtx.scene, grip, "Debug tray")
+	fold_box := ops.Rect{TRAY_WIDTH - TRAY_TITLE, 0, TRAY_TITLE, TRAY_TITLE}
+	tray_text(gtx, t.collapsed ? "+" : "−", {fold_box.x + 7, TRAY_TITLE / 2 + 4}, 12, ops.Color{235, 233, 242, 255})
+	ops.input_area(gtx.scene, fold, fold_box, {.Press, .Release})
+	ops.tag(gtx.scene, fold, t.collapsed ? "Expand tray" : "Collapse tray")
+	if t.collapsed {
+		return
+	}
 
 	y := TRAY_TITLE + pad
 	for tg, i in TOGGLES {

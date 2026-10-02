@@ -255,3 +255,29 @@ test_flatten_reuses_its_stacks_once_grown :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(f.draws), 2)
 	testing.expect_value(t, f.draws[1].transform, ops.translate(11, 21)) // the deferred menu, under the push it met
 }
+
+@(test)
+test_top_defer_runs_after_a_window_cover :: proc(t: ^testing.T) {
+	sc: ops.Scene
+	ops.init(&sc)
+	defer ops.destroy(&sc)
+	// A top layer recorded first, a window cover second: the cover's
+	// draw still lands under the top layer's.
+	top := ops.macro_open(&sc)
+	ops.fill(&sc, ops.Rect{0, 0, 10, 10}, ops.Color{1, 1, 1, 255})
+	ops.macro_close(&sc, top)
+	ops.defer_call(&sc, top, root = true, top = true)
+	cover := ops.macro_open(&sc)
+	ops.fill(&sc, ops.Rect{0, 0, 20, 20}, ops.Color{2, 2, 2, 255})
+	ops.macro_close(&sc, cover)
+	ops.defer_call(&sc, cover, root = true, cover = true)
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+	flatten(&sc, &f, {0, 0, 100, 100})
+	testing.expect_value(t, len(f.draws), 2)
+	under := f.draws[0].cmd.(ops.Fill).paint.(ops.Color)
+	over := f.draws[1].cmd.(ops.Fill).paint.(ops.Color)
+	testing.expect_value(t, under.r, u8(2))
+	testing.expect_value(t, over.r, u8(1))
+}

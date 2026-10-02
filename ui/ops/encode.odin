@@ -25,8 +25,9 @@ ENCODE_MAGIC :: "UIOP"
 // cluster; 11 its font; 12 gave Input_Area a cursor and Event_Kind Paste;
 // 13 Input_Area yields and Event_Kind Cancel; 14 turned yields into a
 // flags byte, bit 0 yields and bit 1 observes; 15 gave Defer cover and
-// covers and added Cover_End.
-ENCODE_VERSION :: u8(19)
+// covers and added Cover_End; 20 gave Defer top, bit 1 of its cover byte;
+// 21 added Key Browser_Back and Browser_Forward.
+ENCODE_VERSION :: u8(21)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -102,7 +103,7 @@ encode :: proc(ops: ^Scene, allocator := context.allocator) -> []byte {
 decode :: proc(data: []byte, ops: ^Scene) -> bool {
 	reset(ops)
 	clear(&ops.fonts)
-	clear(&ops.images)
+	free_images(ops)
 	if !ops.has_decoded {
 		if frame_arena_init(&ops.decoded) != nil {
 			return false
@@ -142,7 +143,7 @@ decode :: proc(data: []byte, ops: ^Scene) -> bool {
 	for _ in 0 ..< n {
 		id := get_u32(&r) or_return
 		path := get_str(&r) or_return
-		append(&ops.images, Image_Ref{Image_Id(id), path})
+		append(&ops.images, Image_Ref{Image_Id(id), own_path(ops, path)})
 	}
 	if n, ok = get_count(&r, 1); !ok {
 		return false
@@ -375,7 +376,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 14)
 		put_u32(w, u32(v.id))
 		append(w, v.root ? 1 : 0)
-		append(w, v.cover ? 1 : 0)
+		append(w, (v.cover ? u8(1) : 0) | (v.top ? u8(2) : 0))
 		put_u64(w, u64(v.covers))
 		append(w, v.place.set ? 1 : 0)
 		if v.place.set {
@@ -660,10 +661,11 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		}
 		v.root = root == 1
 		cover := get_u8(r) or_return
-		if cover > 1 {
+		if cover > 3 {
 			return nil, false
 		}
-		v.cover = cover == 1
+		v.cover = cover & 1 != 0
+		v.top = cover & 2 != 0
 		v.covers = Area_Id(get_u64(r) or_return)
 		placed := get_u8(r) or_return
 		if placed > 1 {
