@@ -1,0 +1,170 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "branch-name",
+  "name": "BranchName",
+  "status": "alpha",
+  "statusNote": "BranchName is a single CSS rule over an anchor and has not changed in substance for years; alpha is Primer's label.",
+  "summary": "A git branch name set in monospace on a pale accent chip, linking to the branch by default. Choose it wherever a branch is named in running UI; it is not a Label or Token and has no remove or select behaviour.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-6",
+    "--bgColor-accent-muted",
+    "--borderRadius-medium",
+    "--fgColor-link",
+    "--fgColor-muted",
+    "--fontStack-monospace",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "BranchName.module.css",
+      "BranchName.tsx",
+      "BranchName.docs.json"
+    ],
+    "primer": [
+      "branch-name"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": "The branch name (children)."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "Where the chip links. Without a link, render it as plain text (the as: span form), which turns the text muted."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "chip",
+      "name": "Chip",
+      "description": "An inline box with 2px vertical and 6px horizontal padding, --bgColor-accent-muted fill and --borderRadius-medium corners; no border.",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-6",
+        "--bgColor-accent-muted",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "The branch name in --fontStack-monospace at the small body size, never underlined.",
+      "tokens": [
+        "--fontStack-monospace",
+        "--text-body-size-small"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "element",
+      "value": "link",
+      "default": true,
+      "description": "Rendered as an anchor: text in --fgColor-link.",
+      "tokens": [
+        "--fgColor-link"
+      ]
+    },
+    {
+      "axis": "element",
+      "value": "text",
+      "description": "Rendered as any other element: text in --fgColor-muted on the same accent chip.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The chip is inline-block: 2px top and bottom and 6px side padding around the text, on the surrounding text's baseline; its height is the inherited line height plus 4px.",
+      "part": "chip",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-6"
+      ],
+      "source": "BranchName.module.css:1-3"
+    },
+    {
+      "text": "The font is --fontStack-monospace at --text-body-size-small; the line height is inherited from the surrounding text, not set.",
+      "part": "text",
+      "tokens": [
+        "--fontStack-monospace",
+        "--text-body-size-small"
+      ],
+      "source": "BranchName.module.css:4-5"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "--fgColor-link text on --bgColor-accent-muted, no underline; a non-link chip uses --fgColor-muted text.",
+      "tokens": [
+        "--fgColor-link",
+        "--fgColor-muted",
+        "--bgColor-accent-muted"
+      ],
+      "source": "BranchName.module.css:6-13"
+    },
+    {
+      "state": "hovered",
+      "text": "No change: the module defines no hover style and suppresses the underline.",
+      "source": "BranchName.module.css:7"
+    },
+    {
+      "state": "focused",
+      "text": "The module draws no focus style; on the web a linked chip shows the browser's default focus ring on keyboard focus. A native build must draw one.",
+      "source": "BranchName.module.css:1-14"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "A linked chip navigates to href on pointer release or Enter; a text chip does nothing.",
+      "source": "BranchName.tsx:16-22"
+    }
+  ],
+  "accessibility": {
+    "role": "link (none when rendered as text)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab focuses a linked chip; Enter follows it."
+    ],
+    "semantics": [
+      "Its name is the branch name; nothing else is announced."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The text colour depends on the element, not a prop: an anchor is --fgColor-link, anything else --fgColor-muted. A native API should expose this as whether href is set.",
+      "tokens": [
+        "--fgColor-link",
+        "--fgColor-muted"
+      ],
+      "source": "BranchName.module.css:6,11-13; BranchName.tsx:17"
+    },
+    {
+      "kind": "gotcha",
+      "text": "There is no truncation or maximum width: a long branch name widens the chip, and the browser wraps it only where the name offers a break (after a hyphen), which splits the chip's fill across lines. A native build must choose: no wrap, wrap with a fragmented chip, or truncate with an ellipsis and expose the full name.",
+      "source": "BranchName.module.css:1-14"
+    },
+    {
+      "kind": "gotcha",
+      "text": "minTargetPx is null because the chip sets no height; it is the inherited line height plus 4px (22px when that resolves to 18px, as BaseStyles' unitless 1.5 does at the chip's 12px), and Primer sets no minimum target.",
+      "source": "BranchName.module.css:1-5"
+    },
+    {
+      "kind": "web-only",
+      "text": "The monospace face is the platform's first available from a CSS font stack (ui-monospace, SF Mono, Menlo, Consolas...); a native build resolves --fontStack-monospace to a concrete font itself.",
+      "tokens": [
+        "--fontStack-monospace"
+      ],
+      "source": "BranchName.module.css:4"
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "button-group",
+  "name": "ButtonGroup",
+  "status": "alpha",
+  "statusNote": "ButtonGroup is a thin layout wrapper around Button and IconButton and ships widely; alpha is Primer's label. Its CSS still carries a workaround for portal-based tooltips and a loading-button rule that, as written, does not match (see notes).",
+  "summary": "Joins related Buttons and IconButtons into one segmented strip whose borders touch. Choose it for a split button or a cluster of peer actions; choose ActionBar when the row must collapse into an overflow menu, and SegmentedControl when exactly one option is selected.",
+  "tokenGroups": [
+    "--borderRadius-medium"
+  ],
+  "references": {
+    "react": [
+      "ButtonGroup.module.css",
+      "ButtonGroup.tsx",
+      "ButtonGroup.docs.json",
+      "ButtonBase.tsx"
+    ],
+    "primer": [
+      "button-group"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "children",
+      "type": "list",
+      "required": true,
+      "description": "The buttons, in order: Button, IconButton or LinkButton, any variant, normally all the same size and variant."
+    },
+    {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "description": "Set to toolbar to turn on arrow-key navigation between the buttons; any other value (or none) leaves each button a separate Tab stop."
+    },
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Names the group; needed when role is toolbar."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "group",
+      "name": "Group",
+      "description": "An inline row with no gap and no styling of its own; it creates a stacking context so raised children never escape it."
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "A wrapper around each child; it pulls the next item 1px left so adjacent borders overlap into a single line, and rises above its neighbours while hovered or pressed."
+    },
+    {
+      "id": "button",
+      "name": "Button",
+      "description": "The child Button or IconButton, unchanged except for its corner radii: square inside the group, --borderRadius-medium on the outer corners of the first and last.",
+      "tokens": [
+        "--borderRadius-medium"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "role",
+      "value": "group",
+      "default": true,
+      "description": "No role: a visual grouping only; each button is its own Tab stop."
+    },
+    {
+      "axis": "role",
+      "value": "toolbar",
+      "description": "role=toolbar: arrow keys move focus between the buttons and wrap at the ends."
+    }
+  ],
+  "layout": [
+    {
+      "text": "Lay the children out in one row with no gap; the group is inline and vertically centred on the surrounding text.",
+      "part": "group",
+      "source": "ButtonGroup.module.css:1-4"
+    },
+    {
+      "text": "Every item but the last overlaps the next by 1px (a -1px end margin), so two 1px borders draw as one; the group is 1px narrower per joint than the sum of its buttons. The last item also carries the -1px margin, so the group's box ends 1px inside its last button.",
+      "part": "item",
+      "values": [
+        {
+          "name": "overlap",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "ButtonGroup.module.css:6-9"
+    },
+    {
+      "text": "Square every child's corners, then round the start corners of the first item and the end corners of the last item with --borderRadius-medium. A group of one button keeps all four corners round.",
+      "part": "button",
+      "tokens": [
+        "--borderRadius-medium"
+      ],
+      "source": "ButtonGroup.module.css:11-31"
+    },
+    {
+      "text": "Each child is wrapped in its own item box in order, so the corner rules depend on the wrapper's position, not on the button inside it.",
+      "part": "item",
+      "source": "ButtonGroup.tsx:28-32"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "item",
+      "text": "Raise the hovered item above its neighbours (z-index 1) so its hover border colour paints over the shared 1px edge instead of under it.",
+      "values": [
+        {
+          "name": "raisedZIndex",
+          "value": 1,
+          "unit": "count"
+        }
+      ],
+      "source": "ButtonGroup.module.css:33-37"
+    },
+    {
+      "state": "pressed",
+      "part": "item",
+      "text": "Raise the pressed item the same way, so its active border shows on both edges.",
+      "source": "ButtonGroup.module.css:33-37"
+    },
+    {
+      "state": "focused",
+      "part": "button",
+      "text": "The focused button draws its own inset focus outline (Button's rule); the group adds nothing, and because the outline sits 2px inside the border, the 1px overlap never hides it.",
+      "source": "ButtonGroup.module.css:33-37"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "With role toolbar, Left and Right arrows move focus between the buttons and wrap from last to first; with no role the group binds no keys.",
+      "source": "ButtonGroup.tsx:34-39"
+    },
+    {
+      "text": "Each child keeps its own variant, size, loading and disabled behaviour; the group does not propagate size or variant, so the caller must keep them consistent.",
+      "source": "ButtonGroup.tsx:28-50"
+    }
+  ],
+  "accessibility": {
+    "role": "none by default; toolbar when role is toolbar (each child keeps role button)",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Without role toolbar: Tab moves through the buttons one by one.",
+      "With role toolbar: Left and Right arrows move between buttons, wrapping at the ends."
+    ],
+    "semantics": [
+      "The group itself is announced only when it has a role; a toolbar needs an accessible name from ariaLabel.",
+      "Each button keeps its own name and state."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The rules for a loading button's wrapper (selector > *[data-loading-wrapper]) target a direct child of the group, but ButtonGroup wraps every child in an .Item div, so the loading wrapper is never a direct child and those rules never apply. The .Item rules already square and round the inner button, so a native build can ignore the loading branch.",
+      "source": "ButtonGroup.module.css:49-82; ButtonGroup.tsx:28-32; ButtonBase.tsx:92-100"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A child that renders nothing still gets an .Item wrapper, which takes a -1px margin and, if it is last, steals the last-item rounding. The group answers with a :has(div:last-child:empty) rule that rounds every button fully, which also rounds the inner joints. A native build should drop empty children before layout rather than copy this.",
+      "source": "ButtonGroup.module.css:40-47; ButtonGroup.tsx:28-32"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The raise rule lists :focus on the .Item div, which never takes focus itself; focus does not raise an item. Only hover and press do.",
+      "source": "ButtonGroup.module.css:33-37"
+    },
+    {
+      "kind": "inferred",
+      "text": "Arrow navigation comes from useFocusZone in @primer/behaviors, which is not vendored. It conventionally makes the toolbar one Tab stop with a roving tabindex; treat that as expected but unverified here.",
+      "source": "ButtonGroup.tsx:4,34-39"
+    },
+    {
+      "kind": "web-only",
+      "text": "Overlap and stacking come from negative margins, isolation and z-index; a native build draws the buttons in order with the hovered or pressed one last, and shares one border line at each joint.",
+      "source": "ButtonGroup.module.css:4,8,36"
+    }
+  ]
+}

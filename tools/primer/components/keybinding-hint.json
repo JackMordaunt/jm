@@ -1,0 +1,314 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "keybinding-hint",
+  "name": "KeybindingHint",
+  "status": "draft",
+  "statusNote": "Draft: the docs file lists no stories and omits the onPrimary variant the code supports, but Button, IconButton's tooltip and ActionList already render it, so its look is in production. Expect the API to change before it is promoted.",
+  "summary": "A visual, platform-aware rendering of a keyboard shortcut: one bordered key cap per chord, in symbols (condensed) or words (full), with spoken names for assistive technology. It only displays a shortcut; it binds nothing.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-text-weight-normal",
+    "--bgColor-transparent",
+    "--borderColor-default",
+    "--borderRadius-default",
+    "--borderRadius-medium",
+    "--borderRadius-small",
+    "--borderWidth-thin",
+    "--button-primary-bgColor-active",
+    "--counter-bgColor-emphasis",
+    "--fgColor-muted",
+    "--fgColor-onEmphasis",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "KeybindingHint.module.css",
+      "KeybindingHint.tsx",
+      "KeybindingHint.docs.json",
+      "KeybindingHint/props.ts",
+      "Chord.module.css",
+      "Chord.tsx",
+      "Key.tsx",
+      "Sequence.tsx",
+      "KeybindingHint/components/utils.ts",
+      "platform.ts"
+    ],
+    "primer": [
+      "keybinding-hint"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "keys",
+      "type": "string",
+      "required": true,
+      "description": "KeyboardEvent.key names joined by + into chords and by a space into sequences, e.g. \"Mod+Shift+p\" or \"g c\". Use Plus for the + key, Space for the space key, and Mod for Command on Apple platforms and Control elsewhere."
+    },
+    {
+      "name": "format",
+      "type": "enum",
+      "values": [
+        "condensed",
+        "full"
+      ],
+      "required": false,
+      "default": "condensed",
+      "description": "Symbols with no separators (menus, tooltips, buttons) or words joined by a visible + (prose)."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "normal",
+        "onEmphasis",
+        "onPrimary"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "The surface it sits on: normal backgrounds, an emphasis fill such as a tooltip, or a primary button."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "normal",
+        "small"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Key-cap size: 20px tall at normal, 14px at small."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "hint",
+      "name": "Hint",
+      "description": "An unstyled inline wrapper (a kbd element with every browser default reset) in the surrounding font, size and colour that never wraps; it holds the sequence."
+    },
+    {
+      "id": "chord",
+      "name": "Chord",
+      "description": "One bordered key cap per chord: an inline row of key labels separated by half a character width, at normal weight and the small body size.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--base-text-weight-normal",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "key",
+      "name": "Key",
+      "description": "One key's visible label (symbol or word) plus a hidden spoken name."
+    },
+    {
+      "id": "separator",
+      "name": "Separator",
+      "optional": true,
+      "description": "In full format, a visible + between keys of a chord, hidden from assistive technology. Between chords of a sequence, a plain space and a hidden \"then\"."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "normal",
+      "default": true,
+      "description": "Transparent cap with a --borderColor-default border and --fgColor-muted text.",
+      "tokens": [
+        "--bgColor-transparent",
+        "--fgColor-muted",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "onEmphasis",
+      "description": "--counter-bgColor-emphasis fill, --fgColor-onEmphasis text, transparent border; used inside tooltips.",
+      "tokens": [
+        "--counter-bgColor-emphasis",
+        "--fgColor-onEmphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "onPrimary",
+      "description": "--button-primary-bgColor-active fill, --fgColor-onEmphasis text, transparent border; for a primary button.",
+      "tokens": [
+        "--button-primary-bgColor-active",
+        "--fgColor-onEmphasis"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "normal",
+      "default": true,
+      "description": "12px text, 4px padding, 10px line height: a 20px-tall cap. The normal variant also gets a 20px minimum width and --borderRadius-medium; the others keep --borderRadius-default and no minimum width.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-size-4",
+        "--base-size-20",
+        "--borderRadius-medium",
+        "--borderRadius-default"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "11px text, 2px padding, 8px line height, 16px minimum width, --borderRadius-small: a 14px-tall cap.",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-8",
+        "--base-size-16",
+        "--borderRadius-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "A chord is an inline row (inline-flex) on the text baseline with a 1px border on every side, content centred horizontally, and its keys 0.5ch apart.",
+      "part": "chord",
+      "tokens": [
+        "--borderWidth-thin"
+      ],
+      "source": "Chord.module.css:1-14"
+    },
+    {
+      "text": "At normal size the cap is 4px padding around a 10px line box with 12px text, so it is 20px tall (border included); the normal variant also has a 20px minimum width so a single-letter cap is square.",
+      "part": "chord",
+      "tokens": [
+        "--base-size-4",
+        "--text-body-size-small",
+        "--base-size-20"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "Chord.module.css:1-14,42-48"
+    },
+    {
+      "text": "At small size the cap is 2px padding around an 8px line box with 11px text, 14px tall, with a 16px minimum width.",
+      "part": "chord",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-8",
+        "--base-size-16"
+      ],
+      "values": [
+        {
+          "name": "fontSize",
+          "value": 11,
+          "unit": "px"
+        }
+      ],
+      "source": "Chord.module.css:34-40"
+    },
+    {
+      "text": "Corner radius is --borderRadius-medium for normal-variant normal size, --borderRadius-small at small size, and --borderRadius-default otherwise.",
+      "part": "chord",
+      "tokens": [
+        "--borderRadius-medium",
+        "--borderRadius-small",
+        "--borderRadius-default"
+      ],
+      "source": "Chord.module.css:10,35,43"
+    },
+    {
+      "text": "Chords of a sequence sit one space character apart, and the whole hint never wraps.",
+      "part": "hint",
+      "source": "KeybindingHint.module.css:10; Sequence.tsx:8-21"
+    },
+    {
+      "text": "In full format a + is drawn between the keys of a chord, spaced from them by the 0.5ch gap.",
+      "part": "separator",
+      "source": "Chord.tsx:19-29"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "The hint is static and has no interactive states. Inside a Button its cap colours come from the button's --buttonKeybindingHint-* tokens per variant and state instead of these; see button.",
+      "source": "Chord.module.css:16-32; ButtonBase.module.css:341-345,724-727"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Split keys on spaces into chords and each chord on + into keys; lower-case every key and sort modifiers first in the order Control, Meta, Alt, Option, Shift, Function, other keys last in their given order.",
+      "source": "Sequence.tsx:6; KeybindingHint/components/utils.ts:9-27"
+    },
+    {
+      "text": "Detect the platform once: apple for macOS and iOS, windows for Windows, other otherwise (and on the server).",
+      "source": "platform.ts:12-37,58-62"
+    },
+    {
+      "text": "Condensed labels (condensedKeyName in key-names.ts, lines 14-38): Alt is ⌥ on apple and Alt elsewhere; Control ⌃; Shift ⇧; Meta ⌘ on apple, Win on Windows, Meta elsewhere; Mod ⌘ on apple and ⌃ elsewhere; arrows ↑ ↓ ← →; Backspace ⌫; Tab ⇥; Enter ⏎; Space ␣; Plus +; Escape Esc; Delete Del; PageUp PgUp; PageDown PgDn; anything else with its first letter capitalised.",
+      "part": "key",
+      "source": "Key.tsx:2,18"
+    },
+    {
+      "text": "Full labels (fullKeyName in key-names.ts, lines 44-58): Alt is Option on apple; Meta Command, Windows or Meta; Mod Command or Control; arrows Up Arrow and so on; Page Up, Page Down, Caps Lock, Print Screen; anything else capitalised (Control, Shift, Enter).",
+      "part": "key",
+      "source": "Key.tsx:2,18"
+    },
+    {
+      "text": "Spoken names (accessibleKeyName in key-names.ts, lines 65-116) are lower-case words (command, option, control, up arrow, and colloquial punctuation names such as dash, period, forward slash); keys of a chord are separated by spaces and chords of a sequence by \"then\".",
+      "part": "key",
+      "source": "Key.tsx:12-20; Sequence.tsx:13-18; KeybindingHint/components/utils.ts:31-41"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a kbd text run)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable."
+    ],
+    "semantics": [
+      "Visible symbols and the full-format + are hidden from assistive technology; each key is read by its spoken name.",
+      "A chord reads as its keys separated by spaces (\"control shift p\"); a sequence reads as chords joined by \"then\".",
+      "Where a plain string is needed (an aria-label or a tooltip label), the same spoken form is produced as text."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Condensed Control is the ⌃ symbol on every platform, so Windows and Linux users see ⌃ for Mod, not Ctrl (key-names.ts lines 17 and 20). Copy this deliberately or diverge deliberately.",
+      "source": "Key.tsx:18"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The line height (10px, or 8px at small) is smaller than the 12px or 11px text, so glyphs overflow the line box and are clipped by the cap's overflow:hidden at the padding edge. Measure caps from these numbers, not from the font's metrics, and expect tall glyphs to touch the border at small size.",
+      "source": "Chord.module.css:8,13,36-38,46"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The wrapper resets the kbd element's monospace font to the surrounding font; key caps are not monospaced.",
+      "source": "KeybindingHint.module.css:5"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The docs file lists only normal and onEmphasis variants; the code also has onPrimary, which Button's primary variant relies on through its own tokens.",
+      "source": "KeybindingHint.docs.json; KeybindingHint/props.ts:3,29"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 11px small font size, the 10px normal line height and the 0.5ch key gap (half the width of the 0 glyph) are hard-coded; the small 8px line height borrows the spacing token --base-size-8. Padding, radius, minimum width and colours are tokens.",
+      "source": "Chord.module.css:5,13,36,46"
+    },
+    {
+      "kind": "web-only",
+      "text": "Spoken names reach screen readers through visually hidden text beside aria-hidden symbols, and a space text node gives separation that the flex layout hides. A native build exposes one accessible string per hint built from the spoken names instead.",
+      "source": "Key.tsx:12-20; Chord.tsx:21-25"
+    },
+    {
+      "kind": "web-only",
+      "text": "Platform detection reads navigator.platform and the user agent; a native build takes the host OS directly.",
+      "source": "platform.ts:19-34"
+    }
+  ]
+}

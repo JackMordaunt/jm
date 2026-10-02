@@ -1,0 +1,206 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "counter-label",
+  "name": "CounterLabel",
+  "status": "alpha",
+  "statusNote": "CounterLabel ships on every tab and button with a count on GitHub; alpha is Primer's label. The scheme prop is a deprecated alias of variant.",
+  "summary": "A small pill showing a count next to a tab, button or heading. Choose secondary (the default) for ordinary counts and primary for one that needs attention; inside a Button, the button supplies the colours.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-6",
+    "--base-text-weight-semibold",
+    "--bgColor-neutral-emphasis",
+    "--bgColor-neutral-muted",
+    "--borderWidth-thin",
+    "--counter-borderColor",
+    "--fgColor-default",
+    "--fgColor-onEmphasis",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "CounterLabel.module.css",
+      "CounterLabel.tsx",
+      "CounterLabel.docs.json"
+    ],
+    "primer": [
+      "counter-label"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "count",
+      "type": "string",
+      "required": true,
+      "description": "The text shown (children), normally a number already formatted by the caller (\"5\", \"1.2k\"). Empty hides the pill."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "primary",
+        "secondary"
+      ],
+      "required": false,
+      "default": "secondary",
+      "description": "Emphasis: secondary is a pale neutral pill with default text, primary a dark neutral pill with onEmphasis text."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "pill",
+      "name": "Pill",
+      "description": "An inline box with 2px vertical and 6px horizontal padding, a 1px --counter-borderColor border (transparent in standard themes) and 20px corner radius.",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-6",
+        "--borderWidth-thin",
+        "--counter-borderColor"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "The count at the small body size, semibold, line height 1.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold"
+      ]
+    },
+    {
+      "id": "spoken-label",
+      "name": "Spoken label",
+      "description": "Visually hidden text \" (count)\" after the pill; the pill itself is hidden from assistive technology."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "secondary",
+      "default": true,
+      "description": "--bgColor-neutral-muted fill, --fgColor-default text.",
+      "tokens": [
+        "--bgColor-neutral-muted",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "primary",
+      "description": "--bgColor-neutral-emphasis fill, --fgColor-onEmphasis text.",
+      "tokens": [
+        "--bgColor-neutral-emphasis",
+        "--fgColor-onEmphasis"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The pill is inline-block: 2px top and bottom and 6px side padding, plus a 1px border, around a line box exactly one font size tall; at 12px text it is 18px tall.",
+      "part": "pill",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-6",
+        "--borderWidth-thin",
+        "--text-body-size-small"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 1,
+          "unit": "ratio"
+        }
+      ],
+      "source": "CounterLabel.module.css:1-8"
+    },
+    {
+      "text": "Corners are a hard-coded 20px radius, more than half the 18px height, so the ends are fully round.",
+      "part": "pill",
+      "values": [
+        {
+          "name": "cornerRadius",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "CounterLabel.module.css:9-10"
+    },
+    {
+      "text": "Width hugs the text with no minimum, so a single digit makes a pill about 20px wide rather than a circle.",
+      "part": "pill",
+      "source": "CounterLabel.module.css:1-10"
+    },
+    {
+      "text": "An empty count removes the pill from layout entirely.",
+      "part": "pill",
+      "source": "CounterLabel.module.css:22-24"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Static: the variant's fill and text colour with the --counter-borderColor border. It has no interactive states of its own.",
+      "tokens": [
+        "--counter-borderColor"
+      ],
+      "source": "CounterLabel.module.css:8,12-20"
+    },
+    {
+      "state": "other",
+      "label": "in-button",
+      "text": "Inside a Button the button overrides the pill's colours with its variant's --buttonCounter-* tokens, and a disabled or inactive button makes the text inherit its colour; see button.",
+      "source": "ButtonBase.module.css:87-90,337-339,393-396,493-496,565-567"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Display the count exactly as given; the component neither formats nor caps numbers (99+ and 1.2k are the caller's job).",
+      "source": "CounterLabel.tsx:31-41"
+    },
+    {
+      "text": "Variant falls back to the deprecated scheme, then to secondary.",
+      "source": "CounterLabel.tsx:22"
+    }
+  ],
+  "accessibility": {
+    "role": "none (text)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable."
+    ],
+    "semantics": [
+      "The visible pill is aria-hidden; screen readers read the hidden text \" (5)\" instead, so a count after a label reads as \"Issues (5)\".",
+      "Nothing announces a change in the count; a live count needs a caller-supplied live region."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The hidden spoken label is rendered even when the count is empty, so a hidden pill still reads as \" ()\". A native build should omit the spoken label with the pill.",
+      "source": "CounterLabel.tsx:20,31-41; CounterLabel.module.css:22-24"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "--counter-borderColor is transparent in standard and colourblind themes and a visible grey in the high-contrast themes, where the pill gains a real outline. The 1px border is always part of the box, so the pill's size does not change between themes.",
+      "tokens": [
+        "--counter-borderColor"
+      ],
+      "source": "CounterLabel.module.css:8"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 20px radius and line-height 1 are hard-coded rather than read from --borderRadius-full and a type token.",
+      "source": "CounterLabel.module.css:6-10"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Empty means no text at all; the count 0 is text and shows a \"0\" pill. Hide a zero count by passing nothing.",
+      "source": "CounterLabel.module.css:22-24"
+    },
+    {
+      "kind": "web-only",
+      "text": "The spoken form relies on a visually hidden sibling span with a leading non-breaking space; a native build sets the accessible text of the owning control (tab, button) to include \"(count)\" instead.",
+      "source": "CounterLabel.tsx:20"
+    }
+  ]
+}

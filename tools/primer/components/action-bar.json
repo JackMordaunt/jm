@@ -1,0 +1,431 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "action-bar",
+  "name": "ActionBar",
+  "status": "alpha",
+  "statusNote": "ActionBar is in use (the comment and markdown toolbars on GitHub) but its API is still growing: Group, Menu and the gap prop are recent, and its overflow detection was rewritten onto a shared IntersectionObserver. Expect the overflow mechanics to change; the visuals are just invisible buttons.",
+  "summary": "A single-row toolbar of invisible IconButtons and Buttons, optionally split by dividers and groups, that moves whatever does not fit into a trailing \"More items\" menu. Choose it for a toolbar that must survive narrow containers; choose ButtonGroup for a fixed cluster of joined buttons.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-20",
+    "--borderColor-muted",
+    "--borderWidth-thin",
+    "--button-default-fgColor-rest",
+    "--button-invisible-bgColor-active",
+    "--button-invisible-bgColor-disabled",
+    "--button-invisible-bgColor-hover",
+    "--button-invisible-borderColor-disabled",
+    "--button-invisible-borderColor-hover",
+    "--button-invisible-borderColor-rest",
+    "--button-invisible-fgColor-disabled",
+    "--button-invisible-iconColor-hover",
+    "--button-invisible-iconColor-rest",
+    "--control-large-size",
+    "--control-medium-size",
+    "--control-small-size",
+    "--focus-outline-color",
+    "--stack-gap-condensed"
+  ],
+  "references": {
+    "react": [
+      "ActionBar.module.css",
+      "ActionBar.tsx",
+      "ActionBar.docs.json",
+      "useOverflowObserver.ts",
+      "OverflowObserverProvider.tsx"
+    ],
+    "primer": [
+      "action-bar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": true,
+      "description": "Names the toolbar. Exactly one of ariaLabel and ariaLabelledby must be given."
+    },
+    {
+      "name": "ariaLabelledby",
+      "type": "string",
+      "required": false,
+      "description": "Name the toolbar by another element instead."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "The row's height (28, 32 or 40px) and the size of every IconButton and Button in it."
+    },
+    {
+      "name": "gap",
+      "type": "enum",
+      "values": [
+        "none",
+        "condensed"
+      ],
+      "required": false,
+      "default": "condensed",
+      "description": "Space between items: none, or --stack-gap-condensed (8px). With none, dividers gain 8px padding on each side instead."
+    },
+    {
+      "name": "flush",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Drop the 16px side padding so the bar is flush with its container."
+    },
+    {
+      "name": "children",
+      "type": "list",
+      "required": true,
+      "description": "Items in order: IconButton (icon, ariaLabel, disabled, onClick), Button (label, leadingVisual, disabled, onClick), Divider, Group (a run of items that overflows as one), Menu (an IconButton opening a menu of items)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "nav",
+      "name": "Outer row",
+      "description": "The outermost box: a flex row with 16px side padding (none when flush) that pushes the bar to its end and centres it vertically.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "list",
+      "name": "Toolbar",
+      "description": "The role=toolbar row, exactly the size's control height, clipping everything below its first line. It holds the overflow container and then the More button.",
+      "tokens": [
+        "--control-small-size",
+        "--control-medium-size",
+        "--control-large-size",
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "overflow-container",
+      "name": "Overflow container",
+      "description": "A wrapping, end-justified flex row holding a zero-width spacer and then the items. Items that do not fit wrap onto a second line, which the toolbar's fixed height clips."
+    },
+    {
+      "id": "spacer",
+      "name": "Spacer",
+      "description": "An empty, control-height, zero-width first item that lets the real first item wrap (a flex line always keeps at least one item)."
+    },
+    {
+      "id": "icon-button",
+      "name": "IconButton item",
+      "optional": true,
+      "description": "An invisible IconButton at the bar's size, with its tooltip; see icon-button.",
+      "tokens": [
+        "--button-invisible-iconColor-rest",
+        "--button-invisible-borderColor-rest",
+        "--button-invisible-bgColor-hover",
+        "--button-invisible-borderColor-hover",
+        "--button-invisible-bgColor-active"
+      ]
+    },
+    {
+      "id": "button",
+      "name": "Button item",
+      "optional": true,
+      "description": "An invisible Button at the bar's size; see button.",
+      "tokens": [
+        "--button-default-fgColor-rest",
+        "--button-invisible-iconColor-rest",
+        "--button-invisible-iconColor-hover"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "optional": true,
+      "description": "A 1px-wide, 20px-tall --borderColor-muted line, centred vertically in the row.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--base-size-20",
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "id": "group",
+      "name": "Group",
+      "optional": true,
+      "description": "A row of items at the same gap that is measured and hidden as a single unit."
+    },
+    {
+      "id": "menu-button",
+      "name": "Menu item",
+      "optional": true,
+      "description": "An invisible IconButton anchoring an ActionMenu of the caller's items, which may nest submenus and dividers."
+    },
+    {
+      "id": "more-button",
+      "name": "More button",
+      "description": "An invisible IconButton with the kebab-horizontal icon and label \"More items\", at the bar's size, after the overflow container. It is shown only while some item overflows, and opens an ActionMenu listing the overflowing items."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px row and small buttons.",
+      "tokens": [
+        "--control-small-size"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px row and medium buttons.",
+      "tokens": [
+        "--control-medium-size"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px row and large buttons.",
+      "tokens": [
+        "--control-large-size"
+      ]
+    },
+    {
+      "axis": "gap",
+      "value": "condensed",
+      "default": true,
+      "description": "8px between items, between groups' children, and before the More button.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "axis": "gap",
+      "value": "none",
+      "description": "Items touch; dividers gain 8px padding on each side.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The toolbar's height is fixed at the size's control height and it clips its overflow; the height is what turns a wrapped item into a hidden one.",
+      "part": "list",
+      "tokens": [
+        "--control-small-size",
+        "--control-medium-size",
+        "--control-large-size"
+      ],
+      "source": "ActionBar.module.css:12-14,32-42"
+    },
+    {
+      "text": "Items, groups' children and the More button are separated by the gap: --stack-gap-condensed by default, 0 for gap none. The overflow container and groups inherit the toolbar's gap.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ],
+      "source": "ActionBar.module.css:11,44-55,96-99,101-104"
+    },
+    {
+      "text": "The outer row pads 16px at each side unless flush, and justifies its content to the end, so a bar narrower than its container sits at the container's end.",
+      "part": "nav",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "source": "ActionBar.module.css:72-81"
+    },
+    {
+      "text": "The toolbar has a -1px bottom margin, hard-coded, with an upstream comment admitting nobody knows why.",
+      "part": "list",
+      "values": [
+        {
+          "name": "marginBottom",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionBar.module.css:6-8"
+    },
+    {
+      "text": "Items wrap in order, so overflow takes items from the end first; the first line is justified to the end, so the freed space opens at the start and the visible items stay against the More button.",
+      "part": "overflow-container",
+      "source": "ActionBar.module.css:101-106"
+    },
+    {
+      "text": "The spacer is a flex item, so the gap also opens between it and the first real item: with gap condensed the items are preceded by 8px of empty space inside the toolbar.",
+      "part": "spacer",
+      "tokens": [
+        "--stack-gap-condensed"
+      ],
+      "source": "ActionBar.module.css:101-104,111-113; ActionBar.tsx:240-242"
+    },
+    {
+      "text": "A divider is a 1px by 20px line in --borderColor-muted whose top margin is (row height - 20px) / 2, so it is centred in the row; it is 1px wide plus 8px padding per side when gap is none.",
+      "part": "divider",
+      "tokens": [
+        "--borderWidth-thin",
+        "--base-size-20",
+        "--borderColor-muted",
+        "--base-size-8"
+      ],
+      "source": "ActionBar.module.css:44-51,83-94"
+    },
+    {
+      "text": "Items align to the top of the row (align-items: flex-start), which matters only when an item is shorter or taller than the row.",
+      "part": "list",
+      "source": "ActionBar.module.css:10"
+    }
+  ],
+  "states": [
+    {
+      "state": "other",
+      "label": "overflowing",
+      "text": "An item counts as overflowing when less than 95% of it is visible inside the toolbar's box. An overflowing item is hidden (not just clipped): it cannot be seen, focused or reached by assistive technology, and it appears instead in the More menu.",
+      "values": [
+        {
+          "name": "visibleThreshold",
+          "value": 95,
+          "unit": "percent"
+        }
+      ],
+      "source": "OverflowObserverProvider.tsx:43-53,114-121; ActionBar.module.css:57-62; ActionBar.tsx:319-332"
+    },
+    {
+      "state": "other",
+      "label": "has-overflow",
+      "part": "more-button",
+      "text": "The More button is displayed while at least one item overflows and is removed from layout otherwise.",
+      "source": "ActionBar.module.css:27-30,116-118; ActionBar.tsx:211-216,238"
+    },
+    {
+      "state": "disabled",
+      "text": "A disabled IconButton or Button item is aria-disabled, not disabled: it takes the invisible variant's disabled colours, stays focusable, keeps its tooltip, and swallows clicks. In the More menu it is a disabled menu item.",
+      "tokens": [
+        "--button-invisible-fgColor-disabled",
+        "--button-invisible-bgColor-disabled",
+        "--button-invisible-borderColor-disabled"
+      ],
+      "source": "ActionBar.tsx:357-374,403-420,267-276"
+    },
+    {
+      "state": "focused",
+      "text": "The focused item draws the button's inset focus outline; the bar adds nothing.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "source": "ActionBar.tsx:365-374"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "overflow-measure",
+      "text": "Measure after layout: lay the items out in one line at their natural widths, with the spacer and gaps, in the width left after padding; every item (or whole group) that does not fit at least 95% within the row overflows. A native build can compute this directly instead of wrapping and clipping.",
+      "source": "OverflowObserverProvider.tsx:5-14,114-121; ActionBar.tsx:319-332"
+    },
+    {
+      "id": "more-button-reserve",
+      "text": "When any item overflows, show the More button after the items; its width plus a gap comes out of the row, which can push one more item into overflow. It hides again only when every item fits with it shown, so the bar has hysteresis of one More button width and does not oscillate.",
+      "source": "ActionBar.module.css:28-30,101-106,116-118; ActionBar.tsx:240-258"
+    },
+    {
+      "text": "A group overflows as a unit: its children are not measured individually, and when the group overflows every child reports overflowing and goes to the menu.",
+      "part": "group",
+      "source": "ActionBar.tsx:319-332,428-443"
+    },
+    {
+      "text": "The More menu lists the overflowing entries in render order: an IconButton becomes an item with its icon and ariaLabel; a Button becomes an item with its label and, if the leading visual is an icon component, that icon; a divider becomes a menu divider; a Menu becomes a submenu item (with overflowIcon, or its icon, unless overflowIcon is none) holding its items.",
+      "part": "more-button",
+      "source": "ActionBar.tsx:261-310,343-355,387-401,455-467"
+    },
+    {
+      "text": "Choosing an overflowed action in the More menu calls the same onClick the hidden item would have.",
+      "part": "more-button",
+      "source": "ActionBar.tsx:267-276"
+    },
+    {
+      "text": "Arrow Left and Right move focus among focusable items and wrap at the ends; Home and End jump to the first and last. Overflowing items, natively disabled elements and the More button while it has nothing to show are skipped; aria-disabled items are not.",
+      "source": "ActionBar.tsx:148-149,218-225"
+    },
+    {
+      "text": "A Menu item opens its ActionMenu from its IconButton; on close focus returns to returnFocusRef when given, else to the button.",
+      "part": "menu-button",
+      "source": "ActionBar.tsx:445-488; AnchoredOverlay.tsx:413-414,422"
+    },
+    {
+      "text": "Every IconButton, Button and the More button takes the bar's size and is forced to the invisible variant whatever the caller passes.",
+      "source": "ActionBar.tsx:251-258,365-374,411-420"
+    }
+  ],
+  "accessibility": {
+    "role": "toolbar",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Tab enters and leaves the toolbar.",
+      "Left and Right arrows move between visible items, wrapping at the ends.",
+      "Home and End move to the first and last visible item.",
+      "Enter or Space on the More button or a Menu item opens its menu; the menu's own keys apply inside it."
+    ],
+    "semantics": [
+      "The toolbar is named by ariaLabel or ariaLabelledby.",
+      "Dividers are aria-hidden.",
+      "Overflowing items are hidden from assistive technology; their menu items carry the same names.",
+      "The More button is named \"More items\"; it and every Menu item carry aria-haspopup and aria-expanded from the menu anchor.",
+      "Disabled items are announced as disabled but remain focusable."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "ActionBar.Menu's IconButton is not given the bar's size, so it is always medium (32px). In a small bar the row is 28px tall, so at most 87.5% of the menu button is visible, below the 95% threshold: it should always report overflowing and move into the More menu. A native build should size it to the bar.",
+      "source": "ActionBar.tsx:472-480; ActionBar.module.css:32-34; OverflowObserverProvider.tsx:119-121"
+    },
+    {
+      "kind": "web-only",
+      "text": "Overflow is detected by letting items flex-wrap inside a fixed-height overflow:hidden row and watching each with an IntersectionObserver rooted on the row. An immediate-mode build must instead measure every item's width before laying out the row (a two-pass layout, or last frame's measurements), decide the visible prefix, and only then draw.",
+      "source": "ActionBar.module.css:12-14,101-114; OverflowObserverProvider.tsx:43-53"
+    },
+    {
+      "kind": "web-only",
+      "text": "Before the first observer callback, a scroll-driven CSS animation shows the More button whenever the row's content overflows vertically. This is progressive enhancement for the first paint; a native build that measures synchronously does not need it.",
+      "source": "ActionBar.module.css:16-20,65-70"
+    },
+    {
+      "kind": "web-only",
+      "text": "Overflowing items stay mounted and keep their state; only visibility changes, and the menu entries are rebuilt from a registry of the items' props. A native build should keep one item list and render each entry either in the row or in the menu, never both.",
+      "source": "ActionBar.tsx:146,209-216,319-332"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Because the overflow state settles one observer callback after layout, the web bar can paint a frame with the old split; it also hides items whose visible part drops below 95%, a slack Primer added for Safari at large text sizes. A native build that measures exactly can use a strict fit.",
+      "source": "OverflowObserverProvider.tsx:114-121"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Overflow is always a suffix of the item list, and dividers count as entries, so when the first overflowing entry is a divider the More menu opens with a divider line, and a lone overflowing divider is enough to show the More button. Primer does not trim them.",
+      "source": "ActionBar.tsx:211-216,238,262-265,490-506"
+    },
+    {
+      "kind": "gotcha",
+      "text": "ActionBar.Button forwards its leading visual to the menu only when it is an icon component; a pre-rendered element is dropped, so the menu item shows text alone.",
+      "source": "ActionBar.tsx:393-395"
+    },
+    {
+      "kind": "inferred",
+      "text": "Arrow navigation comes from useFocusZone in @primer/behaviors, which is not vendored. It conventionally makes the toolbar one Tab stop with a roving tabindex; the Tab line in keyboard rests on that.",
+      "source": "ActionBar.tsx:9,218-225"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Only the toolbar's -1px bottom margin is a bare number; the divider's 20px height and the 16px side padding read base-scale tokens, not component tokens. The row height and gap go through module-local variables (--actionbar-height, --actionbar-gap) that resolve to control-size and stack-gap tokens; they are not in the token file.",
+      "source": "ActionBar.module.css:8,11,14,87"
+    }
+  ]
+}

@@ -1,0 +1,662 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "icon-button",
+  "name": "IconButton",
+  "status": "alpha",
+  "statusNote": "IconButton shares ButtonBase with Button and is as settled as it; alpha is Primer's label, not a sign of churn. The one moving part is the built-in tooltip, which the code still lets callers switch off with unsafeDisableTooltip, a prop its own comment calls temporary.",
+  "summary": "A square button whose only content is an icon, labelled by a tooltip that shows its accessible name. Choose it over Button in toolbars and dense rows where the icon is unambiguous; choose Button when the action needs words to be understood.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-12",
+    "--bgColor-inset",
+    "--borderRadius-full",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--button-danger-bgColor-active",
+    "--button-danger-bgColor-disabled",
+    "--button-danger-bgColor-hover",
+    "--button-danger-bgColor-rest",
+    "--button-danger-borderColor-active",
+    "--button-danger-borderColor-hover",
+    "--button-danger-fgColor-active",
+    "--button-danger-fgColor-disabled",
+    "--button-danger-fgColor-hover",
+    "--button-danger-fgColor-rest",
+    "--button-danger-shadow-selected",
+    "--button-default-bgColor-active",
+    "--button-default-bgColor-disabled",
+    "--button-default-bgColor-hover",
+    "--button-default-bgColor-rest",
+    "--button-default-borderColor-active",
+    "--button-default-borderColor-disabled",
+    "--button-default-borderColor-hover",
+    "--button-default-borderColor-rest",
+    "--button-default-shadow-resting",
+    "--button-inactive-bgColor",
+    "--button-inactive-fgColor",
+    "--button-invisible-bgColor-active",
+    "--button-invisible-bgColor-disabled",
+    "--button-invisible-bgColor-hover",
+    "--button-invisible-borderColor-disabled",
+    "--button-invisible-borderColor-hover",
+    "--button-invisible-borderColor-rest",
+    "--button-invisible-fgColor-disabled",
+    "--button-invisible-iconColor-rest",
+    "--button-primary-bgColor-active",
+    "--button-primary-bgColor-disabled",
+    "--button-primary-bgColor-hover",
+    "--button-primary-bgColor-rest",
+    "--button-primary-borderColor-disabled",
+    "--button-primary-borderColor-hover",
+    "--button-primary-borderColor-rest",
+    "--button-primary-fgColor-disabled",
+    "--button-primary-fgColor-rest",
+    "--button-primary-shadow-selected",
+    "--control-fgColor-disabled",
+    "--control-large-paddingInline-spacious",
+    "--control-large-size",
+    "--control-medium-size",
+    "--control-small-paddingInline-condensed",
+    "--control-small-size",
+    "--fgColor-accent",
+    "--fgColor-link",
+    "--fgColor-muted",
+    "--fgColor-onEmphasis",
+    "--focus-outline-color",
+    "--shadow-resting-small"
+  ],
+  "references": {
+    "react": [
+      "IconButton.tsx",
+      "IconButton.docs.json",
+      "ButtonBase.tsx",
+      "ButtonBase.module.css",
+      "Button/types.ts",
+      "TooltipV2/Tooltip.tsx",
+      "TooltipV2/Tooltip.module.css",
+      "focusOutline.css",
+      "focusOutlineOnEmphasis.css"
+    ],
+    "primer": [
+      "icon-button"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": true,
+      "description": "The octicon drawn at the centre, at its default 16px."
+    },
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": true,
+      "description": "The accessible name. It is also the tooltip's text unless description is set. Exactly one of ariaLabel and ariaLabelledby must be given."
+    },
+    {
+      "name": "ariaLabelledby",
+      "type": "string",
+      "required": false,
+      "description": "Name the button by another element instead of ariaLabel. With no ariaLabel there is no tooltip."
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "required": false,
+      "description": "Supplementary text: the tooltip shows this instead of the label and describes the button, while ariaLabel still names it."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "default",
+        "primary",
+        "danger",
+        "invisible",
+        "link"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "Emphasis and intent, as for Button. Invisible is the common choice in toolbars."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "A square of 28, 32 or 40px."
+    },
+    {
+      "name": "tooltipDirection",
+      "type": "enum",
+      "values": [
+        "n",
+        "ne",
+        "e",
+        "se",
+        "s",
+        "sw",
+        "w",
+        "nw"
+      ],
+      "required": false,
+      "default": "s",
+      "description": "The preferred side and alignment of the tooltip; it flips when there is no room."
+    },
+    {
+      "name": "keybindingHint",
+      "type": "list",
+      "required": false,
+      "description": "One or more key sequences in KeybindingHint format, shown in the tooltip after the text (several are joined with \"or\"). It only displays; it binds nothing."
+    },
+    {
+      "name": "unsafeDisableTooltip",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Suppress the built-in tooltip; the button is then named by ariaLabel alone."
+    },
+    {
+      "name": "notificationIndicator",
+      "type": "enum",
+      "values": [
+        "button",
+        "icon"
+      ],
+      "required": false,
+      "description": "Draw an 8px accent dot at the button's top-right corner or the icon's. The caller must convey its meaning in the label or description."
+    },
+    {
+      "name": "loading",
+      "type": "boolean",
+      "required": false,
+      "description": "Replace the icon with a small Spinner and ignore clicks while keeping focus."
+    },
+    {
+      "name": "loadingAnnouncement",
+      "type": "string",
+      "required": false,
+      "default": "Loading",
+      "description": "What assistive technology is told while loading."
+    },
+    {
+      "name": "inactive",
+      "type": "boolean",
+      "required": false,
+      "description": "Looks disabled but stays focusable and clickable."
+    },
+    {
+      "name": "disabled",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Not interactive, not focusable, and shows no tooltip."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "Render as a link with the same visuals."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Activation by pointer, Enter or Space."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "Button's bordered, rounded box, made square: width equals the size's control height.",
+      "tokens": [
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--control-small-size",
+        "--control-medium-size",
+        "--control-large-size"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "The octicon, centred on both axes, in the variant's icon colour (it inherits the container's text colour)."
+    },
+    {
+      "id": "spinner",
+      "name": "Loading spinner",
+      "optional": true,
+      "description": "A small Spinner drawn in the icon's place while loading."
+    },
+    {
+      "id": "notification-dot",
+      "name": "Notification indicator",
+      "optional": true,
+      "description": "An 8px --fgColor-accent circle with a 2px --bgColor-inset ring, at the container's top-right corner or overlapping the icon's top-right corner.",
+      "tokens": [
+        "--fgColor-accent",
+        "--bgColor-inset",
+        "--borderRadius-full",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "tooltip",
+      "name": "Tooltip",
+      "optional": true,
+      "description": "A TooltipV2 overlay anchored to the container showing the label (or description) and any keybinding hints; its visuals belong to the tooltip spec."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "default",
+      "default": true,
+      "description": "Button's default fill, border and resting shadow, but the icon is --fgColor-muted rather than the text colour.",
+      "tokens": [
+        "--button-default-bgColor-rest",
+        "--button-default-borderColor-rest",
+        "--button-default-shadow-resting",
+        "--fgColor-muted",
+        "--button-default-bgColor-hover",
+        "--button-default-borderColor-hover",
+        "--button-default-bgColor-active",
+        "--button-default-borderColor-active",
+        "--button-default-bgColor-disabled",
+        "--button-default-borderColor-disabled",
+        "--control-fgColor-disabled"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "primary",
+      "description": "Primary fill; the icon takes --button-primary-fgColor-rest.",
+      "tokens": [
+        "--button-primary-fgColor-rest",
+        "--button-primary-bgColor-rest",
+        "--button-primary-borderColor-rest",
+        "--shadow-resting-small",
+        "--button-primary-bgColor-hover",
+        "--button-primary-borderColor-hover",
+        "--button-primary-bgColor-active",
+        "--button-primary-shadow-selected",
+        "--button-primary-fgColor-disabled",
+        "--button-primary-bgColor-disabled",
+        "--button-primary-borderColor-disabled"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "danger",
+      "description": "Default-looking at rest with a danger-coloured icon; fills red on hover and press.",
+      "tokens": [
+        "--button-danger-fgColor-rest",
+        "--button-danger-bgColor-rest",
+        "--button-danger-fgColor-hover",
+        "--button-danger-bgColor-hover",
+        "--button-danger-borderColor-hover",
+        "--button-danger-fgColor-active",
+        "--button-danger-bgColor-active",
+        "--button-danger-borderColor-active",
+        "--button-danger-shadow-selected",
+        "--button-danger-fgColor-disabled",
+        "--button-danger-bgColor-disabled"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "invisible",
+      "description": "No fill, border or shadow at rest; the icon is --button-invisible-iconColor-rest and a fill appears on hover.",
+      "tokens": [
+        "--button-invisible-borderColor-rest",
+        "--button-invisible-iconColor-rest",
+        "--button-invisible-bgColor-hover",
+        "--button-invisible-borderColor-hover",
+        "--button-invisible-bgColor-active",
+        "--button-invisible-fgColor-disabled",
+        "--button-invisible-bgColor-disabled",
+        "--button-invisible-borderColor-disabled"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "link",
+      "description": "Accepted but degenerate: a borderless --fgColor-link icon, still the size's width but only as tall as the icon.",
+      "tokens": [
+        "--fgColor-link"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "28px square.",
+      "tokens": [
+        "--control-small-size"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px square.",
+      "tokens": [
+        "--control-medium-size"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "40px square.",
+      "tokens": [
+        "--control-large-size"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is a square: height is the size's control size (from ButtonBase) and width is the same token, border included; min-width is removed and it never shrinks in a flex row. Draw the icon at the exact centre of the square whatever the padding (see the padding note).",
+      "tokens": [
+        "--control-small-size",
+        "--control-medium-size",
+        "--control-large-size"
+      ],
+      "source": "ButtonBase.module.css:5,114-130,187-219"
+    },
+    {
+      "text": "The icon is centred on both axes; it is drawn at the octicon's default size because IconButton passes no size to it.",
+      "part": "icon",
+      "values": [
+        {
+          "name": "iconSize",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "ButtonBase.module.css:114-120; ButtonBase.tsx:129-136"
+    },
+    {
+      "text": "With notificationIndicator button the dot's top-right corner sits 2px outside the container's top-right corner; with icon it sits 12px up and 12px right of the container's centre, so the dot overlaps the 16px icon's top-right corner by 4px on each axis.",
+      "part": "notification-dot",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-12"
+      ],
+      "source": "ButtonBase.module.css:44-75"
+    },
+    {
+      "text": "The dot's ring is a 2px spread shadow in --bgColor-inset, so it cuts the dot out of whatever it overlaps; it is drawn outside the dot's 8px box.",
+      "part": "notification-dot",
+      "tokens": [
+        "--bgColor-inset"
+      ],
+      "values": [
+        {
+          "name": "ringWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "ButtonBase.module.css:64"
+    },
+    {
+      "text": "The tooltip is placed against the container on the requested side (default s, below and centred), separated by the tooltip's overlay offset, and moves to another side when it would not fit.",
+      "part": "tooltip",
+      "source": "TooltipV2/Tooltip.tsx:61-70,116,173-182"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "The variant's -rest container tokens. The icon colour is --fgColor-muted for default, --button-invisible-iconColor-rest for invisible, and the container's text colour for primary and danger.",
+      "part": "icon",
+      "tokens": [
+        "--fgColor-muted",
+        "--button-invisible-iconColor-rest",
+        "--button-primary-fgColor-rest",
+        "--button-danger-fgColor-rest"
+      ],
+      "source": "ButtonBase.module.css:347-349,355,413,575-577"
+    },
+    {
+      "state": "hovered",
+      "text": "Container background and border move to the variant's -hover tokens over 80ms; danger also turns its icon to --button-danger-fgColor-hover. The default and invisible icon colours do not change on hover.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "source": "ButtonBase.module.css:20-21,313-316,365-368,428-432,520-523"
+    },
+    {
+      "state": "pressed",
+      "text": "The variant's -active tokens with no transition; primary and danger swap their shadow for --button-*-shadow-selected.",
+      "motion": {
+        "instant": true
+      },
+      "tokens": [
+        "--button-primary-shadow-selected",
+        "--button-danger-shadow-selected"
+      ],
+      "source": "ButtonBase.module.css:40-42,318-321,374-377,451-455,534-535"
+    },
+    {
+      "state": "open",
+      "text": "While it controls an open menu (aria-expanded) it keeps its -active fill, and its tooltip is suppressed if it also declares aria-haspopup.",
+      "source": "ButtonBase.module.css:308-311,360-363,417-422,516-518; IconButton.tsx:32-38,66"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus only: a 2px --focus-outline-color outline inset 2px; primary adds an inset 3px --fgColor-onEmphasis ring. Keyboard focus also opens the tooltip.",
+      "tokens": [
+        "--focus-outline-color",
+        "--fgColor-onEmphasis"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": -2,
+          "unit": "px"
+        },
+        {
+          "name": "onEmphasisRing",
+          "value": 3,
+          "unit": "px"
+        }
+      ],
+      "source": "ButtonBase.module.css:36-38,370-372; focusOutline.css; focusOutlineOnEmphasis.css; TooltipV2/Tooltip.tsx:344-355"
+    },
+    {
+      "state": "disabled",
+      "text": "The variant's -disabled tokens, no shadow, not focusable, and no tooltip at all.",
+      "tokens": [
+        "--control-fgColor-disabled",
+        "--button-default-bgColor-disabled",
+        "--button-default-borderColor-disabled"
+      ],
+      "source": "ButtonBase.module.css:82-91,323-328,379-384,474-479,547-552; IconButton.tsx:40-41"
+    },
+    {
+      "state": "loading",
+      "text": "A small Spinner replaces the icon; the button is aria-disabled and ignores clicks but stays focusable and keeps its enabled colours.",
+      "part": "spinner",
+      "source": "ButtonBase.tsx:102,127,129-131,195-199; ButtonBase.module.css:83,324,380,475,548"
+    },
+    {
+      "state": "other",
+      "label": "inactive",
+      "text": "Looks disabled in --button-inactive-bgColor (fill and border) and --button-inactive-fgColor, with no hover or press change, but stays focusable and clickable.",
+      "tokens": [
+        "--button-inactive-bgColor",
+        "--button-inactive-fgColor"
+      ],
+      "source": "ButtonBase.module.css:676-689"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Activate on pointer release, Enter or Space; a loading button does not activate.",
+      "source": "ButtonBase.tsx:127"
+    },
+    {
+      "text": "Show the tooltip unless the button is disabled, has no ariaLabel (or an empty one), has unsafeDisableTooltip, or already sits inside a caller's Tooltip.",
+      "part": "tooltip",
+      "source": "IconButton.tsx:28-43"
+    },
+    {
+      "text": "The tooltip text is description when given, else ariaLabel; with no description it is a label tooltip (it names the button), with one it is a description tooltip (it describes it).",
+      "part": "tooltip",
+      "source": "IconButton.tsx:58-63,75"
+    },
+    {
+      "text": "Open the tooltip 50ms after the pointer enters (cancelled if it leaves first) or at once on keyboard focus; a pointer focus does not open it.",
+      "part": "tooltip",
+      "values": [
+        {
+          "name": "hoverDelay",
+          "value": 50,
+          "unit": "ms"
+        }
+      ],
+      "source": "TooltipV2/Tooltip.tsx:94-100,123,344-368"
+    },
+    {
+      "text": "Close the tooltip on blur, on pointer leave (the pointer may move onto the tooltip without closing it), and on Escape; an Escape that closes it is consumed so it does not also close a surrounding dialog.",
+      "part": "tooltip",
+      "source": "TooltipV2/Tooltip.tsx:289-298,333-336,369-372,384-386"
+    },
+    {
+      "text": "On touch, close the tooltip 10ms after the touch ends, so a tap never leaves a tooltip showing; touch-and-hold still shows it.",
+      "part": "tooltip",
+      "values": [
+        {
+          "name": "touchCloseDelay",
+          "value": 10,
+          "unit": "ms"
+        }
+      ],
+      "source": "TooltipV2/Tooltip.tsx:337-343"
+    },
+    {
+      "text": "The tooltip fades in over 100ms ease-in when the user allows motion, and appears at once otherwise; it closes without a transition.",
+      "part": "tooltip",
+      "motion": {
+        "durationMs": 100,
+        "easing": [
+          0.42,
+          0,
+          1,
+          1
+        ]
+      },
+      "source": "TooltipV2/Tooltip.module.css:1-10,102-123"
+    },
+    {
+      "text": "Container colours, background and border transition over 80ms cubic-bezier(0.65, 0, 0.35, 1); a press is instant.",
+      "motion": {
+        "durationMs": 80,
+        "easing": [
+          0.65,
+          0,
+          0.35,
+          1
+        ]
+      },
+      "source": "ButtonBase.module.css:20-21,40-42"
+    }
+  ],
+  "accessibility": {
+    "role": "button (link when href is set)",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Tab focuses it unless disabled; keyboard focus shows the tooltip.",
+      "Enter and Space activate it (Enter only for a link).",
+      "Escape closes an open tooltip and is consumed."
+    ],
+    "semantics": [
+      "With a label tooltip the button is named by the tooltip text through aria-labelledby and its own aria-label is dropped.",
+      "With a description tooltip the button keeps aria-label as its name and is described by the tooltip.",
+      "Keybinding hints are appended to the name as plain words in parentheses, e.g. \"Bold (control b)\"; the visible symbols are hidden from assistive technology.",
+      "The tooltip element itself is aria-hidden so its text is not read twice.",
+      "While loading, loadingAnnouncement is announced as a status and the button is aria-disabled."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "A disabled IconButton has no tooltip, so a pointer user cannot learn what it does. Primer's answer is inactive (focusable, still tooltipped) or not disabling at all.",
+      "source": "IconButton.tsx:40-41"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The icon is not wrapped in ButtonBase's .Visual span, so the per-variant .Visual hover rules never reach it: an invisible IconButton's icon stays --button-invisible-iconColor-rest on hover and press, although Button's visuals switch to --button-invisible-iconColor-hover. The two tokens differ only in the light high-contrast themes.",
+      "tokens": [
+        "--button-invisible-iconColor-rest"
+      ],
+      "source": "ButtonBase.tsx:129-136; ButtonBase.module.css:524-526,575-577"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Danger sets no rest border, so a danger IconButton at rest borrows --button-default-borderColor-rest from the base rule, and its disabled border reads --button-default-borderColor-disabled.",
+      "tokens": [
+        "--button-default-borderColor-rest",
+        "--button-default-borderColor-disabled"
+      ],
+      "source": "ButtonBase.module.css:18,412-415,478"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The IconButton rule unsets padding, but the small and large size rules come later at equal specificity and put Button's side padding back (8px small, 16px large); only medium is unpadded. With border-box sizing (BaseStyles sets it globally) the square keeps its width, the content box shrinks below 16px, and the grid centres the icon by overflowing both sides equally. A native layout that clamps content to the padded box will push the icon off-centre: ignore padding for IconButton and centre the icon in the border box.",
+      "tokens": [
+        "--control-small-paddingInline-condensed",
+        "--control-large-paddingInline-spacious"
+      ],
+      "source": "ButtonBase.module.css:114-130,187-190,204-207; BaseStyles.module.css:7-9"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The link variant rule comes after the IconButton rule at equal specificity, so it wins on display, height and padding: the result keeps the square's width but collapses to the icon's height with no border. Treat link as unsupported for IconButton.",
+      "source": "ButtonBase.module.css:114-130,582-592"
+    },
+    {
+      "kind": "density",
+      "text": "No IconButton rule reads --control-minTarget-*; at small size the hit area is 28px even under a coarse pointer. A native build that wants 44px touch targets must extend the hit area itself.",
+      "tokens": [
+        "--control-minTarget-coarse"
+      ],
+      "source": "ButtonBase.module.css:114-130"
+    },
+    {
+      "kind": "web-only",
+      "text": "The tooltip is a browser popover (popover=auto, polyfilled where unsupported) positioned by @primer/behaviors' getAnchoredPosition, with the arrow side recomputed after a flip. A native build needs its own top-layer overlay, collision-aware placement, and the hover-delay and focus-visible rules above.",
+      "source": "TooltipV2/Tooltip.tsx:157-183,278-287"
+    },
+    {
+      "kind": "web-only",
+      "text": "The tooltip opens on focus only when the browser reports :focus-visible, so a native build must track whether focus arrived by keyboard.",
+      "source": "TooltipV2/Tooltip.tsx:344-353"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 50ms hover delay, the 10ms touch close, the 100ms fade and the tooltip's 250px maximum width are hard-coded, not tokens.",
+      "source": "TooltipV2/Tooltip.tsx:96-100,342; TooltipV2/Tooltip.module.css:19,108"
+    }
+  ]
+}
