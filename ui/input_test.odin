@@ -349,3 +349,58 @@ test_an_observer_hears_enter_and_leave_under_what_is_on_top :: proc(t: ^testing.
 	}
 	testing.expect_value(t, len(r.observed), 0)
 }
+
+@(test)
+test_outside_presses_walk_the_popups_from_the_top_until_one_holds_the_press :: proc(t: ^testing.T) {
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+	r: Router
+	router_init(&r)
+	defer router_destroy(&r)
+	// The page's button (1); a menu (10) opened from it, which counts the
+	// button as inside; a submenu (20) opened from the menu, on top.
+	add_hit(&f, 1, ops.Rect{0, 0, 40, 20}, {.Press, .Release})
+	add_hit(&f, 10, ops.Rect{0, 0, 40, 20}, {.Outside}, observes = true)
+	add_hit(&f, 10, ops.Rect{0, 24, 100, 100}, {.Outside}, observes = true)
+	add_hit(&f, 11, ops.Rect{0, 24, 100, 30}, {.Press, .Release})
+	add_hit(&f, 20, ops.Rect{104, 24, 100, 100}, {.Outside}, observes = true)
+
+	// A press inside the submenu closes nothing.
+	evs := route(&r, &f, {kind = .Press, pos = {150, 50}, button = .Left})
+	for e in evs {
+		testing.expect(t, e.kind != .Outside, "a press in the top popup is outside nothing")
+	}
+	route(&r, &f, {kind = .Release, pos = {150, 50}, button = .Left})
+	// A press on the menu's item: the submenu above is pressed outside, the
+	// walk stops at the menu, and the item still takes the press.
+	evs = route(&r, &f, {kind = .Press, pos = {10, 30}, button = .Left})
+	testing.expect_value(t, len(evs), 2)
+	if len(evs) == 2 {
+		expect_event(t, evs[0], .Outside, 20, {10, 30})
+		expect_event(t, evs[1], .Press, 11, {10, 30})
+	}
+	route(&r, &f, {kind = .Release, pos = {10, 30}, button = .Left})
+	// A press on the page button is inside the menu (its anchor), so only
+	// the submenu hears it; the button takes it.
+	evs = route(&r, &f, {kind = .Press, pos = {5, 5}, button = .Right})
+	testing.expect_value(t, len(evs), 2)
+	if len(evs) == 2 {
+		expect_event(t, evs[0], .Outside, 20, {5, 5})
+		testing.expect_value(t, evs[0].button, Button.Right) // the popup decides which buttons dismiss
+		expect_event(t, evs[1], .Press, 1, {5, 5})
+	}
+	route(&r, &f, {kind = .Release, pos = {5, 5}, button = .Right})
+	// A press outside everything reaches every popup, top first, once each.
+	evs = route(&r, &f, {kind = .Press, pos = {300, 300}, button = .Left})
+	testing.expect_value(t, len(evs), 2)
+	if len(evs) == 2 {
+		expect_event(t, evs[0], .Outside, 20, {300, 300})
+		expect_event(t, evs[1], .Outside, 10, {300, 300})
+	}
+	// An area that wants only Outside takes neither hover nor the cursor.
+	f.hits[0].cursor = .Pointer
+	route(&r, &f, {kind = .Release, pos = {300, 300}, button = .Left}, {kind = .Move, pos = {5, 5}})
+	testing.expect_value(t, r.hover, ops.Area_Id(0)) // the button wants no hover kinds
+	testing.expect_value(t, router_cursor(&r), ops.Cursor.Pointer)
+}

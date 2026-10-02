@@ -109,6 +109,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "key_interest %d %v", v.area, v.key)
 			write_mods(&sb, " mods", v.mods)
 			write_mods(&sb, " optional", v.optional)
+			if v.topmost {
+				strings.write_string(&sb, " topmost")
+			}
 		}
 		strings.write_byte(&sb, '\n')
 	}

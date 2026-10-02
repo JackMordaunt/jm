@@ -105,8 +105,8 @@ semantic_parent :: proc(l: ^Layout, parent: int) -> ops.Area_Id {
 // for any) with mods, and optionally optional, whether or not it holds
 // focus: Escape for a dialog, a shortcut for an app. The focused area
 // still receives every key first. Record it each frame, with the area.
-key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, optional: Mods = {}) {
-	ops.key_interest(gtx.scene, area, key, mods, optional)
+key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, optional: Mods = {}, topmost := false) {
+	ops.key_interest(gtx.scene, area, key, mods, optional, topmost)
 }
 
 // semantics_report prints f's semantic tree, one node a line, children

@@ -176,17 +176,63 @@ key_interest_delivers_keys_without_focus :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.escapes, 2)
 }
 
+@(private = "file")
+Stack_Model :: struct {
+	menu:    bool, // the menu is open over the dialog
+	escapes: [3]int, // dialog, menu, shortcut
+}
+
+// stack_view is a dialog with a topmost Escape, a menu raised over it with
+// one of its own while m.menu, and a plain interest that hears every Escape.
+@(private = "file")
+stack_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Stack_Model)(user)
+	ids := [3]ops.Area_Id{40, 41, 42}
+	for e, i in ids {
+		for ev in events(gtx, e) {
+			if ev.kind == .Key && ev.key == .Escape {
+				m.escapes[i] += 1
+			}
+		}
+	}
+	key_interest(gtx, ids[2], .Escape)
+	d := overlay_open(gtx)
+	key_interest(gtx, ids[0], .Escape, topmost = true)
+	if m.menu {
+		menu := popup_open(gtx, {0, 0, 10, 10}, ids[1])
+		key_interest(gtx, ids[1], .Escape, topmost = true)
+		popup_close(&menu, {50, 50})
+	}
+	overlay_close(&d)
+}
+
+@(test)
+topmost_key_interest_goes_to_the_top_layer_alone :: proc(t: ^testing.T) {
+	m := Stack_Model{menu = true}
+	p: Probe
+	probe_init(&p, stack_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	probe_key(&p, .Escape)
+	probe_frame(&p)
+	testing.expect_value(t, m.escapes, [3]int{0, 1, 1}) // the menu, raised last, alone of the stack
+	m.menu = false
+	probe_frame(&p)
+	probe_key(&p, .Escape)
+	probe_frame(&p)
+	testing.expect_value(t, m.escapes, [3]int{1, 1, 2}) // with the menu gone, the dialog
+}
+
 @(test)
 key_interest_matches_by_key_and_modifiers :: proc(t: ^testing.T) {
-	save := ops.Key_Interest{1, .S, {.Ctrl}, {.Shift}}
+	save := ops.Key_Interest{1, .S, {.Ctrl}, {.Shift}, false}
 	testing.expect(t, key_interest_matches(save, .S, {.Ctrl}))
 	testing.expect(t, key_interest_matches(save, .S, {.Ctrl, .Shift}))
 	testing.expect(t, !key_interest_matches(save, .S, {}))
 	testing.expect(t, !key_interest_matches(save, .S, {.Ctrl, .Alt}))
 	testing.expect(t, !key_interest_matches(save, .A, {.Ctrl}))
-	any := ops.Key_Interest{1, .None, {}, {.Shift, .Ctrl, .Alt, .Super}}
+	any := ops.Key_Interest{1, .None, {}, {.Shift, .Ctrl, .Alt, .Super}, false}
 	testing.expect(t, key_interest_matches(any, .F11, {.Alt}))
-	testing.expect(t, !key_interest_matches(ops.Key_Interest{1, .None, {}, {}}, .A, {.Shift}))
+	testing.expect(t, !key_interest_matches(ops.Key_Interest{1, .None, {}, {}, false}, .A, {.Shift}))
 }
 
 @(test)

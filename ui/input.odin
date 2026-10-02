@@ -37,7 +37,15 @@ import "jm:ui/ops"
 //   also goes to every area with a Key_Interest it matches (ui.key_interest),
 //   focused or not, once per area, after the focused area has had it: a
 //   dialog's Escape, an app's shortcuts. The match is Gio v0.10.2's
-//   keyFilterMatch (io/input/key.go) for a key.Filter with no Focus.
+//   keyFilterMatch (io/input/key.go) for a key.Filter with no Focus. Of
+//   the topmost interests a key matches only the last in the frame, the
+//   top-most layer's, gets it.
+// - Overlays stack in frame order, the last drawn on top. That order is
+//   the dismissal stack: Escape through topmost interests, and presses
+//   through Outside. Before a Press is routed, the areas that ask for
+//   Outside are walked from the top-most down: each that does not contain
+//   the press in any of its shapes is sent Outside, and the walk stops at
+//   the first that does. The Press then routes as below.
 // - Paste goes to every area that asked with clipboard_read since the
 //   last Paste, then the askers are forgotten (see request.odin).
 // - A focus_request moves focus before the queued events are routed; a
@@ -185,6 +193,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 		switch e.kind {
 		case .Press:
 			r.keyboard = false
+			route_outside(r, f, e)
 			route_press(r, f, e)
 		case .Release:
 			route_release(r, f, e)
@@ -225,7 +234,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 				set_focus(r, h)
 				r.keyboard = true
 			}
-		case .Enter, .Leave, .Blur, .Cancel:
+		case .Enter, .Leave, .Blur, .Cancel, .Outside:
 		// Synthesized by the router; a pushed one is ignored.
 		}
 		if e.kind == .Press || e.kind == .Release || e.kind == .Move {
@@ -242,8 +251,14 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 @(private = "file")
 route_key_interest :: proc(r: ^Router, f: ^Frame, e: Raw_Event, had: ops.Area_Id) {
 	first := len(r.events)
-	for k in f.keys {
-		if k.area == had || !key_interest_matches(k, e.key, e.mods) {
+	top := -1 // the last topmost interest that matches: the only one of them to get the key
+	for k, i in f.keys {
+		if k.topmost && key_interest_matches(k, e.key, e.mods) {
+			top = i
+		}
+	}
+	for k, i in f.keys {
+		if k.area == had || !key_interest_matches(k, e.key, e.mods) || (k.topmost && i != top) {
 			continue
 		}
 		again := false
@@ -255,6 +270,33 @@ route_key_interest :: proc(r: ^Router, f: ^Frame, e: Raw_Event, had: ops.Area_Id
 		if !again {
 			append(&r.events, Event{kind = .Key, area = k.area, key = e.key, mods = e.mods})
 		}
+	}
+}
+
+// route_outside walks the areas that ask for Outside from the top-most
+// down, sending Outside to each that does not contain press e's point in
+// any of its shapes, until one does; see Event_Kind.Outside.
+@(private = "file")
+route_outside :: proc(r: ^Router, f: ^Frame, e: Raw_Event) {
+	if f == nil {
+		return
+	}
+	first := len(r.events)
+	walk: #reverse for h in f.hits {
+		if .Outside not_in h.kinds {
+			continue
+		}
+		for d in r.events[first:] {
+			if d.area == h.area {
+				continue walk
+			}
+		}
+		for o in f.hits {
+			if o.area == h.area && .Outside in o.kinds && hit_contains(f, o, e.pos) {
+				return
+			}
+		}
+		append(&r.events, Event{kind = .Outside, area = h.area, pos = to_local(h, e.pos), button = e.button})
 	}
 }
 

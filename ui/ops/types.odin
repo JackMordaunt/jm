@@ -130,6 +130,13 @@ Event_Kind :: enum u8 {
 	// the press without a click, and is delivered whatever kinds the area
 	// asked for, since a press it never hears the end of would stick.
 	Cancel,
+	// Outside tells an area a press landed outside it: what a popup reads
+	// to close. On each press the areas that ask for it are walked from the
+	// top-most down; each that does not contain the press is sent Outside,
+	// with the press's button, and the walk stops at the first that does,
+	// so a press inside a parent popup closes only the children above it.
+	// The press itself is routed as usual. See ops.outside_area.
+	Outside,
 }
 
 // Cursor is the pointer's look over an input area. An area that sets none

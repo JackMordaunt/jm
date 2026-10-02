@@ -215,11 +215,17 @@ Semantic :: struct {
 // any key) whose modifiers include mods and nothing outside mods and
 // optional, whether or not it is focused: a dialog's Escape, an app's
 // shortcuts. The focused area still gets every key first, as before.
+//
+// A topmost interest is one of a stack: of the topmost interests a key
+// matches, only the last recorded (the top-most layer's) is sent it. It
+// is how Escape closes the newest of several open popups and leaves the
+// ones beneath open.
 Key_Interest :: struct {
 	area:     Area_Id,
 	key:      Key,
 	mods:     Mods, // required
 	optional: Mods, // allowed as well
+	topmost:  bool,
 }
 
 // Tag names an area for the dump and the probe: probe.find("Save").
@@ -420,6 +426,16 @@ input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cur
 	}
 }
 
+// outside_area records shape as part of id's inside for Outside presses
+// (see Event_Kind.Outside): a press in any of id's outside areas is
+// inside it. It is an observer, so it takes no hover, press or cursor
+// from what lies under it: a popup records one over its surface and one
+// over its anchor, so a press on the anchor toggles it rather than
+// closing and reopening it.
+outside_area :: proc(o: ^Scene, id: Area_Id, shape: Shape) {
+	append(&o.ops, Input_Area{id = id, shape = shape, kinds = {.Outside}, observes = true})
+}
+
 // observer_area records an observer (Input_Area.observes) over shape:
 // id is sent Enter and Leave as the pointer crosses it, and nothing else.
 observer_area :: proc(o: ^Scene, id: Area_Id, shape: Shape) {
@@ -442,8 +458,8 @@ semantic :: proc(o: ^Scene, id, parent: Area_Id, s: Semantics, rect: Rect) {
 
 // key_interest records a Key_Interest for area; ui.key_interest is the
 // usual caller.
-key_interest :: proc(o: ^Scene, area: Area_Id, key: Key, mods: Mods = {}, optional: Mods = {}) {
-	append(&o.ops, Key_Interest{area, key, mods, optional})
+key_interest :: proc(o: ^Scene, area: Area_Id, key: Key, mods: Mods = {}, optional: Mods = {}, topmost := false) {
+	append(&o.ops, Key_Interest{area, key, mods, optional, topmost})
 }
 
 // macro_open opens a macro; ops recorded until macro_close are not run
