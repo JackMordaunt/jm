@@ -543,7 +543,7 @@
       "source/mixins/*.css",
       "source/npm/primitives/DESIGN_TOKENS_GUIDE.md",
       "source/npm/primitives/dist/docs",
-      "source/npm/octicons/build/data.json"
+      "source/npm/octicons/data.json"
     ]
   }
 }

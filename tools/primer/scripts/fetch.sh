@@ -16,7 +16,7 @@ octicons=${3:-19.38.0}
 sha=$(gh api "repos/primer/react/commits/%40primer%2Freact%40$react" --jq .sha)
 tmp=$(mktemp -d)
 out="$tmp/source"
-mkdir -p "$out/react" "$out/mixins" "$out/npm/primitives/dist" "$out/npm/octicons/build"
+mkdir -p "$out/react" "$out/mixins" "$out/npm/primitives/dist" "$out/npm/octicons"
 
 gh api "repos/primer/react/tarball/$sha" >"$tmp/react.tgz"
 tar xzf "$tmp/react.tgz" -C "$tmp"
@@ -37,7 +37,9 @@ done
 # Only what the kit reads: the token docs and sources, octicons' data.
 # The docs carry each token's Figma and LLM metadata (22 MB over the 14
 # themes); a token keeps its name, type, resolved value and the alias it
-# was written as. An icon keeps its keywords and each size's path data.
+# was written as. An icon keeps its keywords and each size's path data,
+# and whether any of its paths fills even-odd; build/data.json lands at
+# octicons/data.json, out of the repository's ignored build/ directories.
 cp -R "$tmp/primitives/src" "$out/npm/primitives/"
 (cd "$tmp/primitives/dist" && find docs -name '*.json') | while read -r f; do
     mkdir -p "$out/npm/primitives/dist/$(dirname "$f")"
@@ -45,8 +47,9 @@ cp -R "$tmp/primitives/src" "$out/npm/primitives/"
         then {alias: .original["$value"]} else {} end))' "$tmp/primitives/dist/$f" >"$out/npm/primitives/dist/$f"
 done
 jq -S 'map_values({keywords, heights: (.heights | map_values({width,
-    d: [.ast | .. | objects | select(.name == "path") | .attributes.d]}))})' \
-    "$tmp/octicons/build/data.json" >"$out/npm/octicons/build/data.json"
+    d: [.ast | .. | objects | select(.name == "path") | .attributes.d],
+    evenodd: ([.ast | .. | objects | select(.name == "path") | .attributes.fillRule == "evenodd"] | any)}))})' \
+    "$tmp/octicons/build/data.json" >"$out/npm/octicons/data.json"
 
 locked() { # the version root's package-lock.json resolves package $1 to
     jq -r --arg p "node_modules/$1" '.packages[$p].version' "$root/package-lock.json"
