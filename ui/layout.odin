@@ -207,6 +207,7 @@ Layout :: struct {
 	claims:    map[Claim_Key]u64, // this frame's unkeyed claims per call site and parent
 	claimed:   map[ops.Area_Id]runtime.Source_Code_Location, // this frame's ids and who claimed them
 	root_parent: ops.Area_Id, // what a widget with no container open claims under: 0, or an overlay's opener
+	root_semantic: ops.Area_Id, // the semantic parent of a node with none open: 0, or a recording's enclosing node
 	scope:     ops.Area_Id, // mixed into widget ids; scope and list set it
 	scope_root: ops.Area_Id, // the outermost open scope, which state records as its root
 	frame:     u64,
@@ -285,7 +286,7 @@ layout_reset :: proc(l: ^Layout) {
 	clear(&l.children)
 	clear(&l.claims)
 	clear(&l.claimed)
-	l.scope, l.scope_root, l.root_parent = 0, 0, 0
+	l.scope, l.scope_root, l.root_parent, l.root_semantic = 0, 0, 0, 0
 	l.frame += 1
 	stale := make([dynamic]ops.Area_Id, context.temp_allocator)
 	for k, v in l.state {
@@ -1214,6 +1215,7 @@ Overlay :: struct {
 	saved:  Constraints,
 	scope:  ops.Area_Id,
 	parent: ops.Area_Id, // the layout's root_parent, set aside
+	semantic: ops.Area_Id, // the layout's root_semantic, set aside: a layer's nodes start at the root
 	root:   bool,
 	cover:  bool, // stacks over the enclosing container's later children too
 	top:    bool, // runs after every other layer, window covers included
@@ -1260,10 +1262,11 @@ overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF
 		o.pushed = true
 	}
 	if l := gtx.layout; l != nil {
-		o.parent = l.root_parent
+		o.parent, o.semantic = l.root_parent, l.root_semantic
 		if c := innermost(l); c != nil {
 			l.root_parent = c.place.id
 		}
+		l.root_semantic = 0
 		o.stack = containers_detach(l, gtx.allocator)
 		o.scope = l.scope
 	}
@@ -1282,7 +1285,7 @@ overlay_close :: proc(o: ^Overlay) {
 	if l := gtx.layout; l != nil {
 		containers_attach(l, o.stack)
 		l.scope = o.scope
-		l.root_parent = o.parent
+		l.root_parent, l.root_semantic = o.parent, o.semantic
 		if c := innermost(l); o.cover && c != nil {
 			c.covered = true
 			covers = c.place.id
@@ -1345,6 +1348,76 @@ popup_open :: proc(
 popup_close :: proc(o: ^Overlay, size: ops.Size) {
 	o.place.size = size
 	overlay_close(o)
+}
+
+// Recording is a run of widgets laid out apart from the containers
+// around it; see record_open.
+Recording :: struct {
+	gtx:      ^Ctx,
+	macro:    ops.Macro_Id,
+	stack:    [dynamic]Container, // the enclosing containers, set aside
+	saved:    Constraints,
+	scope:    ops.Area_Id,
+	parent:   ops.Area_Id, // the layout's root_parent, set aside
+	semantic: ops.Area_Id, // the layout's root_semantic, set aside
+	index:    int, // the run's own container, -1 without a layout
+	active:   bool,
+}
+
+// record_open lays the widgets up to record_close out under cs, apart
+// from the containers open around it, into a macro that the caller
+// places once it knows the run's size: measure first, then decide where.
+// The run takes no space in the enclosing container and draws nothing
+// until the caller calls its macro (ops.call) under the transform and
+// clip it chooses; call it once, as its input areas are hit wherever it
+// is drawn. Its ids are claimed under the innermost container and its
+// semantic nodes sit under the enclosing node, as if it were laid out in
+// place. A component that sizes one part from another records each part
+// first: slots placed in an order other than their calls, a title that
+// wraps beside actions measured before it.
+record_open :: proc(gtx: ^Ctx, cs: Constraints, key: u64 = 0, loc := #caller_location) -> Recording {
+	r := Recording {
+		gtx    = gtx,
+		saved  = gtx.constraints,
+		index  = -1,
+		active = true,
+	}
+	r.macro = ops.macro_open(gtx.scene)
+	if l := gtx.layout; l != nil {
+		r.parent, r.semantic, r.scope = l.root_parent, l.root_semantic, l.scope
+		if c := innermost(l); c != nil {
+			l.root_parent = c.place.id
+		}
+		l.root_semantic = semantic_parent(l, depth(l) - 1)
+		r.stack = containers_detach(l, gtx.allocator)
+	}
+	gtx.constraints = cs
+	p := widget_open(gtx, key, loc)
+	r.index = container_push(gtx, {kind = .Inset, inner = cs}, p)
+	return r
+}
+
+// record_close ends the run record_open began and returns its macro and
+// the size and baseline it came to, within the constraints it was given.
+record_close :: proc(r: ^Recording) -> (ops.Macro_Id, Dims) {
+	if !r.active {
+		return r.macro, {}
+	}
+	r.active = false
+	gtx := r.gtx
+	d: Dims
+	if r.index >= 0 {
+		c := container_pop(gtx, r.index)
+		cover_close(gtx, &c)
+		d = widget_close(gtx, &c.place, {constrain(c.cs, c.extent), c.baseline})
+	}
+	if l := gtx.layout; l != nil {
+		containers_attach(l, r.stack)
+		l.root_parent, l.root_semantic, l.scope = r.parent, r.semantic, r.scope
+	}
+	gtx.constraints = r.saved
+	ops.macro_close(gtx.scene, r.macro)
+	return r.macro, d
 }
 
 // placed_side is the side the popup keyed key opened on last frame, or

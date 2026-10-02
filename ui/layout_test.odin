@@ -1613,3 +1613,82 @@ test_wrap_justifies_each_line :: proc(t: ^testing.T) {
 	testing.expectf(t, testutil.near(p[len(p) - 1].x, (100 - 3 * W) / 2), "%v", p)
 	testing.expectf(t, testutil.near(p[len(p) - 1].y, 14 + 4), "%v", p)
 }
+
+// A recorded run takes no space where it is recorded and is drawn where
+// its macro is called; its size is known before that.
+@(test)
+test_record_measures_a_run_before_it_is_placed :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	m: ops.Macro_Id
+	d: Dims
+	{
+		col := column_open(gtx, gap = 8); defer close(&col)
+		r := record_open(gtx, loose({100, 100}))
+		label(gtx, "abc")
+		label(gtx, "de")
+		m, d = record_close(&r)
+		testing.expect_value(t, gtx.constraints.max, h.size) // the column's offer is back
+		label(gtx, "after")
+		ops.transform_push(gtx.scene, ops.translate(50, 60))
+		ops.call(gtx.scene, m)
+		ops.transform_pop(gtx.scene)
+	}
+	testing.expect(t, testutil.near(d.size.x, 3 * W))
+	testing.expect_value(t, d.size.y, 14) // a recording overlays its children, as a stack
+	testing.expect(t, d.baseline > 0)
+	frame: Frame
+	frame_init(&frame)
+	defer frame_destroy(&frame)
+	flatten(&h.scene, &frame)
+	at := map[string]ops.Rect{}
+	defer delete(at)
+	for tg in frame.tags {
+		at[tg.name] = tg.bounds
+	}
+	// "after" is the column's first child: at y 0, not below the recording.
+	after, has_after := at["after"]
+	abc, has_abc := at["abc"]
+	testing.expect(t, has_after && has_abc)
+	testing.expect_value(t, after.y, 0)
+	testing.expect_value(t, abc.x, 50)
+	testing.expect_value(t, abc.y, 60)
+}
+
+// A recorded widget's semantic node hangs under the node around the
+// recording, not at the root; an overlay's still starts at the root.
+@(test)
+test_record_keeps_the_semantic_parent :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	group: ops.Area_Id
+	{
+		col := column_open(gtx); defer close(&col)
+		container_semantics(gtx, {role = .Group, label = "group"})
+		group = innermost(gtx.layout).place.id
+		r := record_open(gtx, loose({100, 100}))
+		label(gtx, "inside")
+		o := overlay_open(gtx)
+		label(gtx, "layer")
+		close(&o)
+		m, _ := record_close(&r)
+		ops.call(gtx.scene, m)
+	}
+	parents := map[string]ops.Area_Id{}
+	defer delete(parents)
+	for op in h.scene.ops {
+		if s, ok := op.(ops.Semantic); ok {
+			parents[s.semantics.label] = s.parent
+		}
+	}
+	inside, has_inside := parents["inside"]
+	layer, has_layer := parents["layer"]
+	testing.expect(t, has_inside && has_layer)
+	testing.expect(t, group != 0)
+	testing.expect_value(t, inside, group)
+	testing.expect_value(t, layer, 0)
+}

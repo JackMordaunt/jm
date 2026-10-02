@@ -86,7 +86,8 @@ child_semantics :: proc(gtx: ^Ctx, parent, id: ops.Area_Id, rect: ops.Rect, s: o
 }
 
 // semantic_parent is the id of the nearest container at or above stack
-// index parent that declared semantics, 0 when none has.
+// index parent that declared semantics; when none has, the node a
+// recording was opened under (record_open), else 0.
 @(private)
 semantic_parent :: proc(l: ^Layout, parent: int) -> ops.Area_Id {
 	if l == nil {
@@ -97,7 +98,7 @@ semantic_parent :: proc(l: ^Layout, parent: int) -> ops.Area_Id {
 			return c.place.id
 		}
 	}
-	return 0
+	return l.root_semantic
 }
 
 // key_interest asks that area be sent every Key event matching key (None
