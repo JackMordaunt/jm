@@ -125,7 +125,7 @@ PAGES := [?]Page {
 	{"Page header", page_page_header, false},
 	{"Header", page_header, false},
 	{"Card", page_card, false},
-	{"Data table", nil, false},
+	{"Data table", page_data_table, false},
 }
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {

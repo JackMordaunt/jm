@@ -18,6 +18,10 @@ Layouts :: struct {
 	saved:      int,
 	split_width: f32,
 	backs:      int,
+	table_sort: primer.Table_Sort, // the zero value sorts by the first column, ascending
+	density:    primer.Cell_Padding,
+	loading:    bool,
+	table_page: int,
 }
 
 // The layout and data pages, on the primer-kit's components/stack.json,
@@ -407,4 +411,124 @@ page_split_page_layout :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	region_box(gtx, "Footer", 40)
 	primer.page_layout_region_close(&pl)
 	primer.page_layout_close(&pl)
+}
+
+Repo :: struct {
+	name, language, updated, stars: string,
+}
+
+REPOS := [?]Repo {
+	{"primer/react", "TypeScript", "2026-10-01", "3200"},
+	{"primer/css", "SCSS", "2026-09-12", "12800"},
+	{"primer/octicons", "JavaScript", "2026-08-30", "8100"},
+	{"primer/primitives", "TypeScript", "2026-09-28", "420"},
+	{"primer/view_components", "Ruby", "2026-09-30", "900"},
+	{"primer/behaviors", "TypeScript", "2026-07-02", "75"},
+	{"primer/doctocat", "JavaScript", "2025-12-15", "40"},
+	{"primer/figma", "Figma", "2026-05-20", "12"},
+}
+
+DENSITY_NAMES := [primer.Cell_Padding]string {
+	.Normal    = "normal",
+	.Condensed = "condensed",
+	.Spacious  = "spacious",
+}
+
+// repo_field is column c's text for r, as the table shows and sorts it.
+repo_field :: proc(r: Repo, c: int) -> string {
+	switch c {
+	case 0:
+		return r.name
+	case 1:
+		return r.language
+	case 2:
+		return r.updated
+	}
+	return r.stars
+}
+
+// sorted_repos is REPOS's indices in sort's order: an insertion sort,
+// which keeps ties where they were, over eight rows.
+sorted_repos :: proc(sort: primer.Table_Sort) -> []int {
+	order := make([]int, len(REPOS), context.temp_allocator)
+	for &o, i in order {
+		o = i
+	}
+	if sort.column < 0 {
+		return order
+	}
+	desc := sort.direction == .Descending
+	for i in 1 ..< len(order) {
+		for j := i; j > 0; j -= 1 {
+			cmp := primer.compare_alphanumeric(repo_field(REPOS[order[j]], sort.column), repo_field(REPOS[order[j - 1]], sort.column))
+			if desc ? cmp <= 0 : cmp >= 0 {
+				break
+			}
+			order[j], order[j - 1] = order[j - 1], order[j]
+		}
+	}
+	return order
+}
+
+TABLE_COLUMNS := [?]primer.Column {
+	{header = "Repository", row_header = true, sortable = true, width = .Auto},
+	{header = "Language", sortable = true},
+	{header = "Updated", sortable = true, width = .Auto},
+	{header = "Stars", sortable = true, align = .End, width = .Auto},
+}
+
+page_data_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	l := &m.layouts
+	col := ui.column_open(gtx, gap = 10, align = .Fill)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Live", "columns sized from their widest cell; activate a header to sort it ascending, again to flip it; the caller orders and pages the rows")
+	{
+		r := ui.wrap_open(gtx, gap = 8, align = .Center)
+		if primer.button(gtx, fmt.tprintf("Density: %s", DENSITY_NAMES[l.density]), key = 1) {
+			l.density = primer.Cell_Padding((int(l.density) + 1) % len(primer.Cell_Padding))
+		}
+		if primer.button(gtx, l.loading ? "Show rows" : "Show loading", key = 2) {
+			l.loading = !l.loading
+		}
+		ui.close(&r)
+	}
+	{
+		h := primer.data_table_heading_open(gtx, "Repositories", "Primer's public repositories", divider = true)
+		primer.button(gtx, "New repository", .Primary, size = .Small, key = 3)
+		primer.data_table_heading_close(&h)
+	}
+	columns := TABLE_COLUMNS[:]
+	PAGE :: 5
+	order := sorted_repos(l.table_sort)
+	start := min(l.table_page * PAGE, len(order))
+	joined := ui.column_open(gtx, align = .Fill) // the bar continues the table: no gap
+	t, _ := primer.data_table_open(gtx, columns, &l.table_sort, l.density, loading = l.loading, skeleton_rows = 4, footer = true, label = "Repositories")
+	if !l.loading {
+		for i in order[start:min(start + PAGE, len(order))] {
+			for c in 0 ..< len(columns) {
+				primer.data_table_cell(gtx, t, repo_field(REPOS[i], c))
+			}
+		}
+	}
+	primer.data_table_close(t)
+	primer.data_table_pagination(gtx, "Repository pages", &l.table_page, len(REPOS), PAGE)
+	ui.close(&joined)
+
+	kitchen.section(gtx, "Groups and an empty table", "a group heading spans the row with its count; a table with no rows is its header, the caller shows a Blankslate")
+	{
+		g, _ := primer.data_table_open(gtx, columns[:2], nil, .Condensed, label = "Grouped")
+		primer.data_table_group(gtx, g, "TypeScript", 2)
+		primer.data_table_cell(gtx, g, "primer/react")
+		primer.data_table_cell(gtx, g, "TypeScript")
+		primer.data_table_cell(gtx, g, "primer/primitives")
+		primer.data_table_cell(gtx, g, "TypeScript")
+		primer.data_table_group(gtx, g, "Ruby", 1)
+		primer.data_table_cell(gtx, g, "primer/view_components")
+		primer.data_table_cell(gtx, g, "Ruby")
+		primer.data_table_close(g)
+	}
+	{
+		e, _ := primer.data_table_open(gtx, columns, nil, label = "Empty")
+		primer.data_table_close(e)
+	}
 }
