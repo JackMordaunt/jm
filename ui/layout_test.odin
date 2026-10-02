@@ -1425,3 +1425,18 @@ test_align_baseline_is_start_in_a_column_and_per_line_in_a_wrap :: proc(t: ^test
 		testing.expect_value(t, p[3], ops.Point{10, 30})
 	}
 }
+
+// A shape delivered for a need that no frame asks for again lives through
+// the frame after, as a widget's state does, then goes.
+@(test)
+test_layout_drops_a_shape_nobody_asks_for :: proc(t: ^testing.T) {
+	l: Layout
+	layout_init(&l)
+	defer layout_destroy(&l)
+	deliver(&l, 7, {1, 2, 3})
+	testing.expect_value(t, len(l.shapes), 1)
+	layout_reset(&l)
+	testing.expect_value(t, len(l.shapes), 1)
+	layout_reset(&l)
+	testing.expect_value(t, len(l.shapes), 0)
+}

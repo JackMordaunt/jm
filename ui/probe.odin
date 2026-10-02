@@ -47,6 +47,8 @@ Probe :: struct {
 	persists:    int, // frames that called persist
 	restore:     [dynamic]u8, // probe_restore's bytes, given to the next frame as restored
 	restoring:   bool,
+	subs:        Subscriptions, // the host's view of the frame's needs; see probe_added
+	inbox:       Inbox, // shapes on their way to the next frame; see probe_deliver
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -75,6 +77,8 @@ probe_init :: proc(
 	p.shaper = stub_shaper()
 	p.font = font
 	p.dt = 1.0 / 60
+	subscriptions_init(&p.subs, allocator)
+	inbox_init(&p.inbox, allocator)
 	ops.init(&p.scene, allocator)
 	frame_init(&p.frame, allocator)
 	frame_init(&p.prev, allocator)
@@ -97,6 +101,8 @@ probe_destroy :: proc(p: ^Probe) {
 	delete(p.opened)
 	delete(p.persisted)
 	delete(p.restore)
+	subscriptions_destroy(&p.subs)
+	inbox_destroy(&p.inbox)
 	p^ = {}
 }
 
@@ -113,6 +119,11 @@ probe_frame :: proc(p: ^Probe) {
 	ops.reset(&p.scene)
 	p.scene.outline_areas = .Bounds in debug
 	layout_reset(&p.layout)
+	// Last frame's needs and commands were readable until now, as a
+	// host reads them between frames; this frame's shapes land first.
+	router_needs_clear(&p.router)
+	router_commands_clear(&p.router)
+	inbox_drain(&p.inbox, &p.layout)
 	dt := debug_dt(debug, p.dt)
 	p.time += f64(dt)
 	gtx := Ctx {
@@ -147,6 +158,7 @@ probe_frame :: proc(p: ^Probe) {
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
 	probe_platform(p)
+	subscriptions_update(&p.subs, router_needs(&p.router))
 }
 
 // probe_platform carries out the frame's requests as a host would, on
@@ -194,6 +206,47 @@ probe_restore :: proc(p: ^Probe, data: []byte) {
 	clear(&p.restore)
 	append(&p.restore, ..data)
 	p.restoring = true
+}
+
+// probe_needs is the set of shapes the last frame asked for, each once, in
+// the order first asked: what a host would subscribe to. Valid until the
+// next frame.
+probe_needs :: proc(p: ^Probe) -> []Need {
+	return router_needs(&p.router)
+}
+
+// probe_commands is what the last frame asked the application to process,
+// in order. Valid until the next frame.
+probe_commands :: proc(p: ^Probe) -> []Command {
+	return router_commands(&p.router)
+}
+
+// probe_added is what the last frame needed that the frame before did not:
+// what a host starts. Valid until the next frame.
+probe_added :: proc(p: ^Probe) -> []Need {
+	return p.subs.added[:]
+}
+
+// probe_dropped is what the frame before needed and the last frame did not:
+// what a host cancels. Valid until the next frame.
+probe_dropped :: proc(p: ^Probe) -> []Need {
+	return p.subs.dropped[:]
+}
+
+// probe_needs_q reports whether the last frame needed the shape for q.
+probe_needs_q :: proc(p: ^Probe, q: $Q) -> bool {
+	return subscriptions_live(&p.subs, key_of(q))
+}
+
+// probe_deliver gives the next frame the shape v for query q, as a host
+// answering the need would: run probe_frame to deliver it.
+probe_deliver :: proc(p: ^Probe, q: $Q, v: $R, status: Status = .Ready) {
+	inbox_put_value(&p.inbox, q, v, status)
+}
+
+// probe_deliver_raw is probe_deliver with the shape as bytes under key.
+probe_deliver_raw :: proc(p: ^Probe, key: Need_Key, data: []byte, status: Status = .Ready) {
+	inbox_put(&p.inbox, key, data, status)
 }
 
 // probe_set_clipboard puts text on the fake clipboard, as another app would.

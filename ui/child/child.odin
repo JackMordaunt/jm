@@ -29,6 +29,8 @@ Ui_Proc :: ui.Ui_Proc
 // types are spelled through these aliases (as ui/sdl's App does).
 @(private)
 Font_Ref :: ops.Font_Ref
+@(private)
+Data_Host :: ui.Data_Host
 
 // App describes the ui proc to run and what it needs. size and density
 // come from the host with every Input, not from App: the subprocess never
@@ -40,11 +42,18 @@ App :: struct {
 	// fallbacks are font ids, of fonts, tried in order for a rune the font
 	// asked for lacks.
 	fallbacks: []ops.Font_Id,
+	// Where the frames' needs and commands go. Left empty, they go over
+	// the wire to the host's Host_App.data, and the host's answers come
+	// back with each input. Given, the application is in this process:
+	// the needs and commands are dispatched here and the inbox is drained
+	// here, and the wire carries none of it. See ui/need.odin.
+	data:  Data_Host,
 }
 
 // run drives app until the host closes stdin, then returns. It is meant
 // to be the whole of a subprocess's main.
 run :: proc(app: App) {
+	app := app
 	sc: ops.Scene
 	ops.init(&sc)
 	defer ops.destroy(&sc)
@@ -65,6 +74,11 @@ run :: proc(app: App) {
 	layout: ui.Layout
 	ui.layout_init(&layout)
 	defer ui.layout_destroy(&layout)
+
+	subs: ui.Subscriptions
+	ui.subscriptions_init(&subs)
+	defer ui.subscriptions_destroy(&subs)
+	local := app.data.on_need != nil || app.data.on_command != nil || app.data.inbox != nil
 
 	// r only shapes text (never rasterizes: the host's own Renderer, inside
 	// its Compositor, does that), so r.threads is never set.
@@ -101,7 +115,8 @@ run :: proc(app: App) {
 			return // the host closed the pipe: exit clean
 		}
 		ui.recorder_write(&rec, payload)
-		size, density, raw_dt, events, host, restore, dok := ui.decode_input(payload, allocator)
+		shapes: []ui.Delivery
+		size, density, raw_dt, events, host, restore, dok := ui.decode_input(payload, allocator, &shapes)
 		if !dok {
 			return // a corrupt request; nothing salvageable
 		}
@@ -121,6 +136,12 @@ run :: proc(app: App) {
 		sc.outline_areas = .Bounds in debug
 		ui.frame_reset(frame)
 		ui.layout_reset(&layout)
+		for d in shapes {
+			ui.deliver(&layout, d.key, d.data, d.status)
+		}
+		if app.data.inbox != nil {
+			ui.inbox_drain(app.data.inbox, &layout)
+		}
 
 		gtx := ui.Ctx {
 			scene         = &sc,
@@ -179,8 +200,22 @@ run :: proc(app: App) {
 			platform = &p
 			sent_cursor = cursor
 		}
+		// The data block: what the frame began and stopped needing, and
+		// its commands, for the host's application; or, with the
+		// application here, dispatched now and not sent.
+		rd: ui.Reply_Data
+		wants := gtx.wants_frame || tray.open
+		if local {
+			ui.data_after_frame(&app.data, &subs, &router)
+			if app.data.inbox != nil && ui.inbox_pending(app.data.inbox) {
+				wants = true
+			}
+		} else {
+			rd.added, rd.dropped = ui.subscriptions_update(&subs, ui.router_needs(&router))
+			rd.commands = ui.router_commands(&router)
+		}
 		reply := ui.encode_reply(
-			gtx.wants_frame || tray.open,
+			wants,
 			gtx.frame_after,
 			ops_bytes,
 			allocator,
@@ -190,8 +225,11 @@ run :: proc(app: App) {
 			platform,
 			gtx.persist,
 			router.focus,
+			&rd,
 		)
 		ui.router_requests_clear(&router)
+		ui.router_needs_clear(&router)
+		ui.router_commands_clear(&router)
 		if !ipc.write_frame(os.stdout, reply) {
 			return // the host is gone
 		}

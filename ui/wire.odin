@@ -12,7 +12,9 @@ import "jm:ui/ops"
 //
 //	Input: f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event,
 //	       [host stats], str restore (what the last child persisted,
-//	       sent once to a respawned child; "" otherwise)
+//	       sent once to a respawned child; "" otherwise), [shapes: u32 n,
+//	       n × (u64 key, u8 status, str data), written only when there
+//	       are any: what the host delivers for the child's needs]
 //	Raw_Event: u8 kind, f32 x, f32 y, u8 button, f32 sx, f32 sy, u8 key,
 //	           u8 mods, str text, str mime, u8 clicks, u64 area
 //	Reply: u8 flags, f32 frame_after, u64 focus (the focused area, 0 for
@@ -23,13 +25,17 @@ import "jm:ui/ops"
 //	       they end. Flags: 1 wants a frame, 2 full frames, 4 flash (a count
 //	       and rects follow), 8 platform (u8 cursor, u8 n, n × request:
 //	       u8 1 str mime str data for a clipboard write, u8 2 str mime for a
-//	       read), 16 persist (str data the host keeps for the next child).
+//	       read), 16 persist (str data the host keeps for the next child),
+//	       32 needs (u32 n, n × need, u32 m, m × need: what the frame began
+//	       to need and what it stopped needing; a need is u64 key, str kind,
+//	       str query), 64 commands (u32 n, n × str kind, str data).
 //	       The platform block is written only when the cursor changed or a
-//	       request is pending, so most replies are as before.
+//	       request is pending, so most replies are as before; the needs and
+//	       commands blocks likewise only when there is something to say.
 
 // encode_input serializes size, density, dt and events into a new byte
 // slice, the host's half of one frame's round trip.
-encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}, restore: []byte = nil) -> []byte {
+encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}, restore: []byte = nil, shapes: []Delivery = nil) -> []byte {
 	w := make([dynamic]byte, 0, 64, allocator)
 	ops.put_f32(&w, size.x)
 	ops.put_f32(&w, size.y)
@@ -47,6 +53,16 @@ encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allo
 	ops.put_u32(&w, u32(host.repaint_px))
 	ops.put_u64(&w, u64(max(host.rss_bytes, 0)))
 	ops.put_str(&w, string(restore))
+	// Shapes for the child's needs, only when there are any: a child from
+	// before the block reads an input without one as it always did.
+	if len(shapes) > 0 {
+		ops.put_u32(&w, u32(len(shapes)))
+		for d in shapes {
+			ops.put_u64(&w, u64(d.key))
+			append(&w, u8(d.status))
+			ops.put_str(&w, string(d.data))
+		}
+	}
 	return w[:]
 }
 
@@ -54,10 +70,13 @@ encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allo
 // allocator; every field is bounds-checked before it is read, the same
 // rule encode.odin's decode follows, so garbage input fails ok rather
 // than reading past the end (test_decode_input_survives_random_bytes
-// throws 1000 random and near-random slices at it as a check).
+// throws 1000 random and near-random slices at it as a check). The
+// shapes the host delivered, if any, are left in shapes^ when it is
+// given, their data slices into data.
 decode_input :: proc(
 	data: []byte,
 	allocator := context.allocator,
+	shapes: ^[]Delivery = nil,
 ) -> (
 	size: ops.Size,
 	density, dt: f32,
@@ -69,6 +88,9 @@ decode_input :: proc(
 	r := ops.Reader {
 		data      = data,
 		allocator = allocator,
+	}
+	if shapes != nil {
+		shapes^ = nil
 	}
 	size.x = ops.get_f32(&r) or_return
 	size.y = ops.get_f32(&r) or_return
@@ -95,6 +117,25 @@ decode_input :: proc(
 		s := ops.get_str(&r) or_return
 		if len(s) > 0 {
 			restore = transmute([]byte)s
+		}
+	}
+	if r.pos < len(r.data) {
+		count := ops.get_count(&r, 10) or_return
+		got := make([]Delivery, count, allocator)
+		for &d in got {
+			d.key = Need_Key(ops.get_u64(&r) or_return)
+			status := ops.get_u8(&r) or_return
+			if status > u8(max(Status)) {
+				return {}, 0, 0, nil, {}, nil, false
+			}
+			d.status = Status(status)
+			s := ops.get_str(&r) or_return
+			if len(s) > 0 {
+				d.data = transmute([]byte)s
+			}
+		}
+		if shapes != nil {
+			shapes^ = got
 		}
 	}
 	if r.pos != len(r.data) {
@@ -166,13 +207,17 @@ encode_reply :: proc(
 	platform: ^Reply_Platform = nil,
 	persist: []byte = nil,
 	focus: ops.Area_Id = 0,
+	data: ^Reply_Data = nil,
 ) -> []byte {
 	w := make([dynamic]byte, 0, 5 + len(ops_bytes), allocator)
 	// Bit 0: wants another frame. Bit 1: redraw it whole (the debug tray's
 	// full frames), since the compositor runs in the host. Bit 2: flash
 	// what it repaints, but not over keep_out, the debug panels, which
-	// follow as a count and rects. Bit 4: persist bytes follow.
-	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0) | (u8(8) if platform != nil else 0) | (u8(16) if persist != nil else 0))
+	// follow as a count and rects. Bit 4: persist bytes follow. Bit 5:
+	// needs that began and ended follow. Bit 6: commands follow.
+	needs := data != nil && (len(data.added) > 0 || len(data.dropped) > 0)
+	commands := data != nil && len(data.commands) > 0
+	append(&w, (u8(1) if wants_frame else 0) | (u8(2) if full_frames else 0) | (u8(4) if flash else 0) | (u8(8) if platform != nil else 0) | (u8(16) if persist != nil else 0) | (u8(32) if needs else 0) | (u8(64) if commands else 0))
 	ops.put_f32(&w, frame_after)
 	ops.put_u64(&w, u64(focus))
 	if flash {
@@ -203,23 +248,57 @@ encode_reply :: proc(
 	if persist != nil {
 		ops.put_str(&w, string(persist))
 	}
+	if needs {
+		encode_needs(&w, data.added)
+		encode_needs(&w, data.dropped)
+	}
+	if commands {
+		ops.put_u32(&w, u32(len(data.commands)))
+		for c in data.commands {
+			ops.put_str(&w, c.kind)
+			ops.put_str(&w, string(c.data))
+		}
+	}
 	append(&w, ..ops_bytes)
 	return w[:]
+}
+
+@(private = "file")
+encode_needs :: proc(w: ^[dynamic]byte, needs: []Need) {
+	ops.put_u32(w, u32(len(needs)))
+	for n in needs {
+		ops.put_u64(w, u64(n.key))
+		ops.put_str(w, n.kind)
+		ops.put_str(w, string(n.query))
+	}
+}
+
+@(private = "file")
+decode_needs :: proc(r: ^ops.Reader) -> (needs: []Need, ok: bool) {
+	n := ops.get_count(r, 10) or_return
+	needs = make([]Need, n, r.allocator)
+	for &need in needs {
+		need.key = Need_Key(ops.get_u64(r) or_return)
+		need.kind = ops.get_str(r) or_return
+		need.query = transmute([]byte)(ops.get_str(r) or_return)
+	}
+	return needs, true
 }
 
 // decode_reply is encode_reply's inverse: ops_bytes is a slice into data
 // (not copied), meant for an immediate ui.decode, and so is what the
 // child asked to persist, left in persist^ when it is given (nil when the
-// reply carries none): the host copies it before data goes.
-// keep_out is read into its fixed buffer; the reply's flags and keep_out
-// come back as Reply_Debug.
-decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Platform = nil, persist: ^[]byte = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
+// reply carries none): the host copies it before data goes. The needs and
+// commands are left in out^ when it is given, their strings in the temp
+// allocator. keep_out is read into its fixed buffer; the reply's flags and
+// keep_out come back as Reply_Debug.
+decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Platform = nil, persist: ^[]byte = nil, out: ^Reply_Data = nil) -> (wants_frame: bool, frame_after: f32, ops_bytes: []byte, ok: bool) {
 	r := ops.Reader {
 		data      = data,
 		allocator = context.temp_allocator,
 	}
 	flag := ops.get_u8(&r) or_return
-	if flag > 31 {
+	if flag > 127 {
 		return false, 0, nil, false
 	}
 	d: Reply_Debug
@@ -280,7 +359,33 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 			persist^ = data[start:start + n]
 		}
 	}
+	rd: Reply_Data
+	if flag & 32 != 0 {
+		rd.added = decode_needs(&r) or_return
+		rd.dropped = decode_needs(&r) or_return
+	}
+	if flag & 64 != 0 {
+		n := ops.get_count(&r, 2) or_return
+		rd.commands = make([]Command, n, r.allocator)
+		for &c in rd.commands {
+			c.kind = ops.get_str(&r) or_return
+			c.data = transmute([]byte)(ops.get_str(&r) or_return)
+		}
+	}
+	if out != nil {
+		out^ = rd
+	}
 	return wants_frame, frame_after, data[r.pos:], true
+}
+
+// Reply_Data is the data half of a reply: the needs the frame began and
+// stopped having, and the commands it asked the application to process.
+// A host starts the added, cancels the dropped and passes the commands on
+// (see need.odin). Strings are in the temp allocator.
+Reply_Data :: struct {
+	added:    []Need,
+	dropped:  []Need,
+	commands: []Command,
 }
 
 // Reply_Platform is what a reply asks of the host's platform: the cursor,

@@ -55,6 +55,11 @@ Host_App :: struct {
 	clear:         Color, // shown before the child's first reply arrives
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 	no_accessibility: bool, // leave assistive technology unserved: no bridge is made
+	// The application, here in the host: the child's frames send their
+	// needs and commands over the wire, this dispatches them, and what is
+	// put in its inbox goes to the child with the next input. See
+	// ui/need.odin.
+	data:          ui.Data_Host,
 }
 
 @(private)
@@ -296,7 +301,11 @@ host_step :: proc(l: ^Host_Loop) {
 
 	w := &l.w
 	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
-	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats, l.saved[:] if l.restoring else nil)
+	shapes: []ui.Delivery
+	if l.app.data.inbox != nil {
+		shapes = ui.inbox_take(l.app.data.inbox, context.temp_allocator)
+	}
+	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats, l.saved[:] if l.restoring else nil, shapes)
 	l.restoring = false
 	clear(&l.events)
 	virtual.arena_free_all(&l.text) // encode_input copied every Text string
@@ -319,7 +328,8 @@ host_step :: proc(l: ^Host_Loop) {
 	dbg: ui.Reply_Debug
 	plat: ui.Reply_Platform
 	persist: []byte
-	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg, &plat, &persist)
+	rd: ui.Reply_Data
+	wants_frame, frame_after, ops_bytes, dok := ui.decode_reply(reply, &dbg, &plat, &persist, &rd)
 	if persist != nil {
 		// Kept here, not in the child, so it outlives the child.
 		clear(&l.saved)
@@ -358,6 +368,12 @@ host_step :: proc(l: ^Host_Loop) {
 		}
 	}
 	apply_platform(w, plat.cursor, plat.changed, reqs, host_sink, l, virtual.arena_allocator(&l.text))
+	// The child's needs and commands, to the application here; an answer
+	// already waiting wants a frame to carry it over.
+	ui.data_dispatch(&l.app.data, rd.added, rd.dropped, rd.commands)
+	if l.app.data.inbox != nil && ui.inbox_pending(l.app.data.inbox) {
+		l.wants_frame, l.frame_after = true, 0
+	}
 	l.n += 1
 }
 

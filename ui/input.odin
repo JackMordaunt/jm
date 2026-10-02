@@ -89,6 +89,8 @@ Router :: struct {
 	placed:      [dynamic]Placed, // the popups the last frame placed, for placed_side
 
 	requests:    [dynamic]Request, // asked of the platform, until router_requests_clear
+	needs:       [dynamic]Need, // the shapes asked for, until router_needs_clear; see need.odin
+	commands:    [dynamic]Command, // asked of the application, until router_commands_clear
 	readers:     [dynamic]ops.Area_Id, // areas awaiting a Paste
 	focus_next:  ops.Area_Id, // with focus_asked: focus to grant at the next route
 	focus_asked: bool,
@@ -118,6 +120,8 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.events = make([dynamic]Event, allocator)
 	r.placed = make([dynamic]Placed, allocator)
 	r.requests = make([dynamic]Request, allocator)
+	r.needs = make([dynamic]Need, allocator)
+	r.commands = make([dynamic]Command, allocator)
 	r.readers = make([dynamic]ops.Area_Id, allocator)
 	r.observed = make([dynamic]Hit, allocator)
 }
@@ -129,10 +133,14 @@ router_destroy :: proc(r: ^Router) {
 		free_strings(r, e)
 	}
 	router_requests_clear(r)
+	router_needs_clear(r)
+	router_commands_clear(r)
 	delete(r.queue)
 	delete(r.events)
 	delete(r.placed)
 	delete(r.requests)
+	delete(r.needs)
+	delete(r.commands)
 	delete(r.readers)
 	delete(r.observed)
 	r^ = {}
@@ -682,6 +690,7 @@ Activation :: struct {
 	clicked: bool,
 	press:   bool,
 	at:      ops.Point,
+	clicks:  u8, // the press's count: 2 for a double click, as the platform counts them
 }
 
 // activate_from_events is click_from_events with the press it saw.
@@ -699,7 +708,7 @@ activate_from_events :: proc(gtx: ^Ctx, area: ops.Area_Id, st: ^Widget_State, bo
 		case .Press:
 			if e.button == .Left {
 				st.pressed = true
-				a.press, a.at = true, e.pos
+				a.press, a.at, a.clicks = true, e.pos, e.clicks
 			}
 		case .Release:
 			if e.button == .Left {

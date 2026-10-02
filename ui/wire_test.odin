@@ -131,7 +131,7 @@ test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) 
 		testing.expect_value(t, size, ops.Size{800, 600})
 		testing.expect_value(t, dt, f32(0.5))
 		testing.expect_value(t, host.rss_bytes, i < 2 ? 0 : 1 << 20)
-		testing.expect_value(t, host.present_ms, i == 0 ? 0 : 2) // the timings, when sent, still read
+		testing.expect_value(t, host.present_ms, f32(0) if i == 0 else 2) // the timings, when sent, still read
 		testing.expect_value(t, len(restore), 0)
 	}
 	_, _, _, _, host, _, ok := decode_input(full, context.temp_allocator)
@@ -205,4 +205,61 @@ test_reply_carries_what_the_child_persists :: proc(t: ^testing.T) {
 	_, _, got, ok = decode_reply(encode_reply(false, 0, sc_bytes, context.temp_allocator), persist = &persist)
 	testing.expect(t, ok && persist == nil)
 	testing.expect(t, slice.equal(got, sc_bytes))
+}
+
+@(test)
+reply_carries_needs_and_commands :: proc(t: ^testing.T) {
+	sc_bytes := []byte{9, 9}
+	rd := Reply_Data {
+		added    = {{1, "shapes.Users_Page", {1, 2}}, {2, "shapes.Avatar", {3}}},
+		dropped  = {{3, "shapes.Avatar", {4}}},
+		commands = {{"shapes.Delete_User", {5}}},
+	}
+	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, data = &rd)
+	got: Reply_Data
+	_, _, rest, ok := decode_reply(data, out = &got)
+	testing.expect(t, ok)
+	testing.expect(t, slice.equal(rest, sc_bytes))
+	testing.expect_value(t, len(got.added), 2)
+	testing.expect_value(t, got.added[1].key, Need_Key(2))
+	testing.expect_value(t, got.added[1].kind, "shapes.Avatar")
+	testing.expect(t, slice.equal(got.added[0].query, []byte{1, 2}))
+	testing.expect_value(t, len(got.dropped), 1)
+	testing.expect_value(t, got.dropped[0].key, Need_Key(3))
+	testing.expect_value(t, got.dropped[0].kind, "shapes.Avatar")
+	testing.expect(t, slice.equal(got.dropped[0].query, []byte{4}))
+	testing.expect_value(t, len(got.commands), 1)
+	testing.expect_value(t, got.commands[0].kind, "shapes.Delete_User")
+	testing.expect(t, slice.equal(got.commands[0].data, []byte{5}))
+
+	// A reply with nothing to say about data has neither block.
+	plain := encode_reply(false, 0, sc_bytes, context.temp_allocator, data = &Reply_Data{})
+	testing.expect_value(t, plain[0], u8(0))
+	none: Reply_Data
+	_, _, _, ok = decode_reply(plain, out = &none)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(none.added), 0)
+	testing.expect_value(t, len(none.commands), 0)
+}
+
+@(test)
+input_carries_shapes :: proc(t: ^testing.T) {
+	shapes := []Delivery{{7, .Ready, {1, 2, 3}}, {8, .Stale, nil}}
+	data := encode_input({10, 10}, 1, 0, nil, context.temp_allocator, shapes = shapes)
+	got: []Delivery
+	_, _, _, _, _, _, ok := decode_input(data, context.temp_allocator, &got)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(got), 2)
+	testing.expect_value(t, got[0].key, Need_Key(7))
+	testing.expect_value(t, got[0].status, Status.Ready)
+	testing.expect(t, slice.equal(got[0].data, []byte{1, 2, 3}))
+	testing.expect_value(t, got[1].status, Status.Stale)
+	testing.expect(t, got[1].data == nil)
+
+	// No shapes, no block: the input reads as before the block existed.
+	bare := encode_input({10, 10}, 1, 0, nil, context.temp_allocator)
+	testing.expect(t, slice.equal(bare, encode_input({10, 10}, 1, 0, nil, context.temp_allocator, shapes = {})))
+	_, _, _, _, _, _, ok = decode_input(bare, context.temp_allocator, &got)
+	testing.expect(t, ok)
+	testing.expect_value(t, len(got), 0)
 }

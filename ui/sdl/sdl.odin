@@ -82,6 +82,8 @@ Ui_Proc :: ui.Ui_Proc
 @(private)
 Font_Ref :: ops.Font_Ref
 @(private)
+Data_Host :: ui.Data_Host
+@(private)
 Color :: ops.Color
 
 // App describes a window and the ui proc that fills it.
@@ -95,6 +97,7 @@ App :: struct {
 	clear:         Color,
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 	no_accessibility: bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
+	data:          Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
 }
 
 // default_font is ui.default_font: kept here too since every existing
@@ -242,6 +245,7 @@ Loop :: struct {
 	frames:        [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
 	router:        ui.Router,
 	layout:        ui.Layout,
+	subs:          ui.Subscriptions, // the needs of the last frame, to diff the next against
 	r:             render.Renderer, // only shapes text; the compositor's workers draw
 	shaper:        ui.Shaper,
 	comp:          render.Compositor,
@@ -297,6 +301,7 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	if !open(&l.w, app) {
 		return false
 	}
+	ui.subscriptions_init(&l.subs)
 	ops.init(&l.scene)
 	ops.add_fonts(&l.scene, app.fonts)
 	ui.frame_init(&l.frames[0])
@@ -341,6 +346,7 @@ loop_destroy :: proc(l: ^Loop) {
 	render.destroy(&l.r)
 	ui.layout_destroy(&l.layout)
 	ui.router_destroy(&l.router)
+	ui.subscriptions_destroy(&l.subs)
 	ui.frame_destroy(&l.frames[0])
 	ui.frame_destroy(&l.frames[1])
 	ops.destroy(&l.scene)
@@ -380,6 +386,10 @@ step :: proc(l: ^Loop) {
 	l.scene.outline_areas = .Bounds in debug
 	ui.frame_reset(frame)
 	ui.layout_reset(&l.layout)
+	if l.app.data.inbox != nil {
+		// The shapes the application answered since the last frame.
+		ui.inbox_drain(l.app.data.inbox, &l.layout)
+	}
 
 	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 	gtx := ui.Ctx {
@@ -445,6 +455,12 @@ step :: proc(l: ^Loop) {
 	}
 	apply_platform(w, ui.router_cursor(&l.router), true, reqs, router_sink, &l.router)
 	ui.router_requests_clear(&l.router)
+	// What the frame needs and asks goes to the application; an answer
+	// that landed meanwhile wants a frame to show it.
+	ui.data_after_frame(&l.app.data, &l.subs, &l.router)
+	if l.app.data.inbox != nil && ui.inbox_pending(l.app.data.inbox) {
+		l.wants_frame, l.frame_after = true, 0
+	}
 	free_all(context.temp_allocator)
 	// Every event polled before this frame was routed in it.
 	virtual.arena_free_all(&l.events)
@@ -835,6 +851,15 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 		case .MOUSE_MOTION:
 			sink(user, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState())})
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
+			// The side buttons are navigation keys, as a browser takes
+			// them: pressed, not released, and routed to whatever asks
+			// for the key app-wide rather than to what is under the pointer.
+			if e.button.button == sdl3.BUTTON_X1 || e.button.button == sdl3.BUTTON_X2 {
+				if e.type == .MOUSE_BUTTON_DOWN {
+					sink(user, {kind = .Key, key = .Browser_Back if e.button.button == sdl3.BUTTON_X1 else .Browser_Forward, mods = mods(sdl3.GetModState())})
+				}
+				continue
+			}
 			btn, ok := button(e.button.button)
 			if !ok {
 				continue

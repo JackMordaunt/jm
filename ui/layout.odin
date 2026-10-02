@@ -158,6 +158,7 @@ Layout :: struct {
 	children:  [dynamic]Child,
 	state:     map[ops.Area_Id]^Widget_State, // each on the heap, so a pointer lasts until its widget is dropped
 	data:      map[Data_Key]Data_Entry, // widget_data's typed values
+	shapes:    map[Need_Key]Shape_Entry, // what the host delivered for the frame's needs; see need.odin
 	retained:  map[ops.Area_Id]u64, // root scope -> the last frame retain kept it
 	held:      [dynamic]Held, // guard handles between guard_hold and guard_take
 	claims:    map[Claim_Key]u64, // this frame's unkeyed claims per call site and parent
@@ -199,6 +200,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.claims = make(map[Claim_Key]u64, allocator)
 	l.claimed = make(map[ops.Area_Id]runtime.Source_Code_Location, allocator)
 	l.state = make(map[ops.Area_Id]^Widget_State, allocator)
+	l.shapes = make(map[Need_Key]Shape_Entry, allocator)
 	l.data = make(map[Data_Key]Data_Entry, allocator)
 	l.retained = make(map[ops.Area_Id]u64, allocator)
 	l.persisted = make([dynamic]u8, allocator)
@@ -219,6 +221,10 @@ layout_destroy :: proc(l: ^Layout) {
 		mem.free(e.ptr, l.allocator)
 	}
 	delete(l.data)
+	for _, &e in l.shapes {
+		shape_entry_free(l, &e)
+	}
+	delete(l.shapes)
 	delete(l.retained)
 	delete(l.persisted)
 	text_destroy(&l.selection.state)
@@ -263,6 +269,7 @@ layout_reset :: proc(l: ^Layout) {
 			delete_key(&l.retained, k)
 		}
 	}
+	shapes_reset(l)
 }
 
 // widget_state returns the retained state for id. The pointer stays valid
@@ -774,6 +781,13 @@ flex_close :: proc(f: ^Flex) {
 		at += main_of(c.axis, k.size)
 	}
 	memo := widget_data(gtx, c.place.id, Flex_Memo)
+	if c.weights > 0 && (memo.rigid != c.rigid || memo.weights != c.weights || memo.count != c.count) {
+		// A weighted child took its share from totals that were not this
+		// frame's: a first frame, or one whose unweighted children
+		// changed. The next frame lays it out exactly, so ask for one
+		// rather than leave the stale layout up until input comes.
+		request_frame(gtx)
+	}
 	memo.rigid = c.rigid
 	memo.weights = c.weights
 	memo.count = c.count
@@ -1029,6 +1043,7 @@ Overlay :: struct {
 	parent: ops.Area_Id, // the layout's root_parent, set aside
 	root:   bool,
 	cover:  bool, // stacks over the enclosing container's later children too
+	top:    bool, // runs after every other layer, window covers included
 	pushed: bool, // at was non-zero: a translate to pop
 	active: bool,
 	// discard, set before end, drops the layer: recorded, never drawn or
@@ -1054,13 +1069,16 @@ Overlay :: struct {
 // before or after, and every overlay that raises, sit under it, while an
 // overlay raised from inside it still sits above. That is a modal: a
 // dialog, a modal sheet or drawer and its scrim. At the root it covers the
-// window. Nothing else decides the order: no overlay knows of another.
-overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF, INF}}, root := false, cover := false) -> Overlay {
+// window. A top overlay runs after every other, window covers included:
+// the debug tray, which must stay usable over a modal. Nothing else
+// decides the order: no overlay knows of another.
+overlay_open :: proc(gtx: ^Ctx, at: ops.Point = {}, cs := Constraints{max = {INF, INF}}, root := false, cover := false, top := false) -> Overlay {
 	o := Overlay {
 		gtx    = gtx,
 		saved  = gtx.constraints,
 		root   = root,
 		cover  = cover,
+		top    = top,
 		active = true,
 	}
 	o.macro = ops.macro_open(gtx.scene)
@@ -1113,7 +1131,7 @@ overlay_close :: proc(o: ^Overlay) {
 	if o.place.set {
 		ops.defer_place(gtx.scene, o.macro, o.place, o.cover, covers)
 	} else {
-		ops.defer_call(gtx.scene, o.macro, o.root, o.cover, covers)
+		ops.defer_call(gtx.scene, o.macro, o.root, o.cover, covers, o.top)
 	}
 }
 
