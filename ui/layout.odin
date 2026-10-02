@@ -153,6 +153,7 @@ Container_Kind :: enum u8 {
 	Center,
 	List,
 	Scroll,
+	Grid,
 }
 
 @(private)
@@ -163,6 +164,7 @@ Child :: struct {
 	macro:    ops.Macro_Id,
 	deferred: bool, // recorded into macro; placed at the flex's end
 	slot:     bool, // fill_space: no content, size resolved at end
+	span:     bool, // grid_span: a grid row of its own
 }
 
 @(private)
@@ -194,6 +196,11 @@ Container :: struct {
 	natural:  bool, // overflow_row: children are offered an unbounded main axis
 	line_gap: f32,
 	scroll:   ^Scroll_Offset, // scroll: the caller's offset, else the box's own widget_data
+	// Grid only; gap is between columns, line_gap between rows.
+	tracks:     []Track,
+	column:     int, // the next cell's column
+	span_next:  bool, // grid_span was called for the next child
+	grid_paint: Grid_Paint, // called with style.user
 }
 
 Layout :: struct {
@@ -372,6 +379,10 @@ widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location, self := #c
 			ops.transform_push(gtx.scene, translate_to(axis_vec(c.axis, at, 0)))
 			p.pushed = true
 		}
+	case .Grid:
+		gtx.constraints = grid_child_constraints(c)
+		p.deferred = true
+		p.macro = ops.macro_open(gtx.scene)
 	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
 		gtx.constraints = c.inner
 		if c.offset != {} {
@@ -437,6 +448,8 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 				deferred = p.deferred,
 			},
 		)
+	case .Grid:
+		grid_add(l, c, {size = d.size, baseline = d.baseline, macro = p.macro, deferred = true})
 	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
 		c.extent = {max(c.extent.x, d.size.x), max(c.extent.y, d.size.y)}
 		if c.baseline == 0 && d.baseline > 0 {
@@ -527,6 +540,7 @@ close :: proc {
 	clip_box_close,
 	centered_close,
 	scroll_box_close,
+	grid_close,
 	overlay_close,
 	scope_close,
 }

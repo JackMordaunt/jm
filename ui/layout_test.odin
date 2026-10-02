@@ -1100,6 +1100,16 @@ test_openers_push_complete_containers :: proc(t: ^testing.T) {
 		testing.expect_value(t, c.inner.min, ops.Size{0, 0}) // loose: children may be any size up to the max
 		testing.expect_value(t, c.inner.max, c.cs.max)
 	}
+	{
+		tracks := []Track{{width = 40}, {grow = 1}}
+		g := grid_open(gtx, tracks, column_gap = 3, row_gap = 5); defer close(&g)
+		c := innermost(l)
+		testing.expect(t, c.kind == .Grid && c.deferred)
+		testing.expect_value(t, c.gap, 3)
+		testing.expect_value(t, c.line_gap, 5)
+		testing.expect(t, raw_data(c.tracks) != raw_data(tracks)) // its own copy, for the frame
+		testing.expect_value(t, len(c.tracks), 2)
+	}
 }
 
 @(test)
