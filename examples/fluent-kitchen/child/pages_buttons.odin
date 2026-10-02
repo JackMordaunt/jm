@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/fluent"
 
@@ -14,45 +15,45 @@ SHAPE_NAMES := [?]string{"Rounded", "Circular", "Square"}
 page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "medium: 32px, 96px minimum, body1 at semibold; focus draws inside the box, primary adds an on-brand ring")
-	state_header(gtx)
+	kitchen.section(gtx, "Appearances", "medium: 32px, 96px minimum, body1 at semibold; focus draws inside the box, primary adds an on-brand ring")
+	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.button(gtx, "Button", APPEARANCES[key / 16 - 1], state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1))
 	}
-	section(gtx, "With an icon", "20px icon, SNudge from the label; subtle and transparent turn it brand and filled on hover")
-	state_header(gtx)
+	kitchen.section(gtx, "With an icon", "20px icon, SNudge from the label; subtle and transparent turn it brand and filled on hover")
+	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.button(gtx, "Send", APPEARANCES[key / 16 - 11], .Send, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11))
 	}
-	section(gtx, "Sizes", "24 / 32 / 40px tall; small reads caption1 at regular, the ring radius follows the size")
-	state_header(gtx)
+	kitchen.section(gtx, "Sizes", "24 / 32 / 40px tall; small reads caption1 at regular, the ring radius follows the size")
+	kitchen.state_header(gtx)
 	for n, i in SIZE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.button(gtx, "Button", .Secondary, size = fluent.Size(key / 16 - 21), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 21))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 21))
 	}
-	section(gtx, "Shapes and icon-only", "rounded, circular and square; an icon-only button is square, 32px at medium")
-	state_header(gtx)
+	kitchen.section(gtx, "Shapes and icon-only", "rounded, circular and square; an icon-only button is square, 32px at medium")
+	kitchen.state_header(gtx)
 	for n, i in SHAPE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.button(gtx, "Button", .Primary, shape = fluent.Shape(key / 16 - 31), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 31))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 31))
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.button(gtx, "", .Secondary, .Settings, name = "Settings", state = st, key = key)
 		}
-		state_row(gtx, m, "Icon only", cell, 40)
+		kitchen.state_row(gtx, m, "Icon only", cell, 40)
 	}
-	section(gtx, "Live", "hover, press, Tab and Enter these")
+	kitchen.section(gtx, "Live", "hover, press, Tab and Enter these")
 	r := ui.wrap_open(gtx, gap = 12, align = .Center)
 	defer ui.close(&r)
 	for a, i in APPEARANCES {

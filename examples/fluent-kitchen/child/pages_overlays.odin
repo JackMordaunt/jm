@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/fluent"
@@ -13,28 +14,28 @@ import "jm:ui/ops"
 page_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Items", "32px rows in a 4px-padded popover; hover turns the icon brand and filled; nothing transitions")
-	state_header(gtx, 180)
+	kitchen.section(gtx, "Items", "32px rows in a 4px-padded popover; hover turns the icon brand and filled; nothing transitions")
+	kitchen.state_header(gtx, 180)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.menu_item(gtx, "Rename", .Edit, "F2", state = st, key = key)
 		}
-		state_row(gtx, m, "Item", cell, 1, 180)
+		kitchen.state_row(gtx, m, "Item", cell, 1, 180)
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			on := true
 			fluent.menu_item(gtx, "Word wrap", check = .Checkbox, checked = &on, state = st, key = key)
 		}
-		state_row(gtx, m, "Checked", cell, 2, 180)
+		kitchen.state_row(gtx, m, "Checked", cell, 2, 180)
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.menu_item(gtx, "Share", .Share, subtext = "Send a copy or a link", submenu = true, state = st, key = key)
 		}
-		state_row(gtx, m, "Multiline", cell, 3, 180)
+		kitchen.state_row(gtx, m, "Multiline", cell, 3, 180)
 	}
-	section(gtx, "Live", "a menu button and its menu: click, Enter, Space or ArrowDown open it; an item, Escape or a press outside closes it")
+	kitchen.section(gtx, "Live", "a menu button and its menu: click, Enter, Space or ArrowDown open it; an item, Escape or a press outside closes it")
 	r := ui.row_open(gtx, gap = 16)
 	defer ui.close(&r)
 	{
@@ -80,7 +81,7 @@ page_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Live", "modal: the backdrop dims and a press on it closes; alert: only an action or Escape; non-modal: no backdrop, a close button in the title")
+	kitchen.section(gtx, "Live", "modal: the backdrop dims and a press on it closes; alert: only an action or Escape; non-modal: no backdrop, a close button in the title")
 	r := ui.wrap_open(gtx, gap = 12)
 	defer ui.close(&r)
 	if fluent.button(gtx, "Open modal", .Primary) {
@@ -110,7 +111,7 @@ page_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_tooltip :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Live", "hover or focus an anchor for 250ms; the bubble hides 250ms after leaving, or at once on Escape")
+	kitchen.section(gtx, "Live", "hover or focus an anchor for 250ms; the bubble hides 250ms after leaving, or at once on Escape")
 	r := ui.wrap_open(gtx, gap = 24, line_gap = 40)
 	defer ui.close(&r)
 	tip_anchor(gtx, "Normal", "Saves the document", .Normal, .Above, false, 1)
@@ -141,25 +142,25 @@ tip_anchor :: proc(gtx: ^ui.Ctx, label, tip: string, appearance: fluent.Tooltip_
 page_toggle_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Checked", "the appearance's Selected tokens at rest; hover and press read the ordinary tokens, so on and off look alike under the pointer")
-	state_header(gtx)
+	kitchen.section(gtx, "Checked", "the appearance's Selected tokens at rest; hover and press read the ordinary tokens, so on and off look alike under the pointer")
+	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			on := true
 			fluent.toggle_button(gtx, "Bold", &on, APPEARANCES[key / 16 - 1], .Text_Bold, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1))
 	}
-	section(gtx, "Unchecked", "as button")
-	state_header(gtx)
+	kitchen.section(gtx, "Unchecked", "as button")
+	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			off := false
 			fluent.toggle_button(gtx, "Bold", &off, APPEARANCES[key / 16 - 11], .Text_Bold, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11))
 	}
-	section(gtx, "Live", "click, Enter or Space flips each")
+	kitchen.section(gtx, "Live", "click, Enter or Space flips each")
 	r := ui.wrap_open(gtx, gap = 12)
 	defer ui.close(&r)
 	fluent.toggle_button(gtx, "Bold", &m.fmt_bold, .Subtle, .Text_Bold, key = 100)
@@ -173,32 +174,32 @@ page_toggle_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_split_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "the primary action and a 24px-minimum menu half joined on the primary's end border; each half draws its own inset ring")
-	state_header(gtx, 150)
+	kitchen.section(gtx, "Appearances", "the primary action and a 24px-minimum menu half joined on the primary's end border; each half draws its own inset ring")
+	kitchen.state_header(gtx, 150)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := false
 			fluent.split_button(gtx, "Save", &open, APPEARANCES[key / 16 - 1], state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), 150)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), 150)
 	}
-	section(gtx, "Sizes and shapes")
-	state_header(gtx, 150)
+	kitchen.section(gtx, "Sizes and shapes")
+	kitchen.state_header(gtx, 150)
 	for n, i in SIZE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := false
 			fluent.split_button(gtx, "Save", &open, .Secondary, .Save, size = fluent.Size(key / 16 - 11), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11), 150)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11), 150)
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := false
 			fluent.split_button(gtx, "Save", &open, .Primary, shape = .Circular, state = st, key = key)
 		}
-		state_row(gtx, m, "Circular", cell, 20, 150)
+		kitchen.state_row(gtx, m, "Circular", cell, 20, 150)
 	}
-	section(gtx, "Live", "the primary half acts; the chevron half opens the menu")
+	kitchen.section(gtx, "Live", "the primary half acts; the chevron half opens the menu")
 	r := ui.row_open(gtx, gap = 16, align = .Center)
 	defer ui.close(&r)
 	{
@@ -222,34 +223,34 @@ page_split_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_menu_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Closed", "as button, with the 12px chevron (16px at large) spacingHorizontalXS after the label")
-	state_header(gtx)
+	kitchen.section(gtx, "Closed", "as button, with the 12px chevron (16px at large) spacingHorizontalXS after the label")
+	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := false
 			fluent.menu_button(gtx, "Options", &open, APPEARANCES[key / 16 - 1], state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1))
 	}
-	section(gtx, "Expanded", "while its menu is open: the Selected tokens and filled icons")
-	state_header(gtx)
+	kitchen.section(gtx, "Expanded", "while its menu is open: the Selected tokens and filled icons")
+	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := true
 			fluent.menu_button(gtx, "Options", &open, APPEARANCES[key / 16 - 11], .Settings, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11))
 	}
-	section(gtx, "Sizes")
-	state_header(gtx)
+	kitchen.section(gtx, "Sizes")
+	kitchen.state_header(gtx)
 	for n, i in SIZE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := false
 			fluent.menu_button(gtx, "Options", &open, .Secondary, size = fluent.Size(key / 16 - 21), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 21))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 21))
 	}
-	section(gtx, "Live", "click, Enter, Space or ArrowDown opens; the menu closes it")
+	kitchen.section(gtx, "Live", "click, Enter, Space or ArrowDown opens; the menu closes it")
 	r := ui.row_open(gtx, gap = 16)
 	defer ui.close(&r)
 	{
@@ -277,23 +278,23 @@ page_menu_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_compound_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "medium: 14px top, spacingHorizontalM sides and L bottom around the 40px icon, the label and the secondary line")
-	state_header(gtx, 230)
+	kitchen.section(gtx, "Appearances", "medium: 14px top, spacingHorizontalM sides and L bottom around the 40px icon, the label and the secondary line")
+	kitchen.state_header(gtx, 230)
 	for n, i in APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.compound_button(gtx, "Create", "Start from a blank file", APPEARANCES[key / 16 - 1], .Add, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), 230)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), 230)
 	}
-	section(gtx, "Sizes", "small 8/S/MNudge, medium 14/M/L, large 18/L/XL padding; large raises the secondary text to fontSizeBase300")
-	state_header(gtx, 230)
+	kitchen.section(gtx, "Sizes", "small 8/S/MNudge, medium 14/M/L, large 18/L/XL padding; large raises the secondary text to fontSizeBase300")
+	kitchen.state_header(gtx, 230)
 	for n, i in SIZE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.compound_button(gtx, "Create", "Start from a blank file", .Secondary, .Add, size = fluent.Size(key / 16 - 11), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11), 230)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11), 230)
 	}
-	section(gtx, "Without an icon, and icon-only", "48, 52 and 56px squares")
+	kitchen.section(gtx, "Without an icon, and icon-only", "48, 52 and 56px squares")
 	r := ui.wrap_open(gtx, gap = 12, align = .Center)
 	defer ui.close(&r)
 	if fluent.compound_button(gtx, "Open", "A file from this device", key = 100) {

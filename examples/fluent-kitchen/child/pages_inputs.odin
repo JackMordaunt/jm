@@ -1,5 +1,6 @@
 package main
 
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/fluent"
@@ -14,33 +15,36 @@ INPUT_CELL_W :: f32(170)
 page_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "medium: 32px, body1; the bottom edge is its own token, focus grows a 2px brand line from the centre")
-	state_header(gtx, INPUT_CELL_W)
+	kitchen.section(gtx, "Appearances", "medium: 32px, body1; the bottom edge is its own token, focus grows a 2px brand line from the centre")
+	kitchen.state_header(gtx, INPUT_CELL_W)
 	for n, i in INPUT_APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			s := &m.input_cells[key / 16 - 1]
 			fluent.input(gtx, s, "Placeholder", INPUT_APPEARANCES[key / 16 - 1], width = 150, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), INPUT_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), INPUT_CELL_W)
 	}
-	section(gtx, "Sizes and content", "24 / 32 / 40px; icons 16 / 20 / 24px in Foreground 3 before or after the text")
-	state_header(gtx, INPUT_CELL_W)
+	kitchen.section(gtx, "Sizes and content", "24 / 32 / 40px; icons 16 / 20 / 24px in Foreground 3 before or after the text")
+	kitchen.state_header(gtx, INPUT_CELL_W)
 	for n, i in SIZE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			s := &m.input_cells[key / 16 - 11 + 4]
 			fluent.input(gtx, s, "Search", size = fluent.Size(key / 16 - 11), before = .Search, after = .Dismiss, width = 150, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11), INPUT_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11), INPUT_CELL_W)
 	}
-	section(gtx, "Invalid", "aria-invalid: every border Palette_Red_Border2 until focus is within")
-	state_header(gtx, INPUT_CELL_W)
+	kitchen.section(gtx, "Invalid", "aria-invalid: every border Palette_Red_Border2 until focus is within")
+	kitchen.state_header(gtx, INPUT_CELL_W)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			fluent.input(gtx, &m.input_cells[7], "Required", invalid = true, width = 150, state = st, key = key)
 		}
-		state_row(gtx, m, "Outline", cell, 21, INPUT_CELL_W)
+		kitchen.state_row(gtx, m, "Outline", cell, 21, INPUT_CELL_W)
 	}
-	section(gtx, "Live", "click, type, Tab between them")
+	kitchen.section(gtx, "Live", "click, type, Tab between them")
 	r := ui.wrap_open(gtx, gap = 12, align = .Center)
 	defer ui.close(&r)
 	fluent.input(gtx, &m.first, "First name", width = 180, key = 100)
@@ -52,33 +56,35 @@ page_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_textarea :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "medium: 52 to 260px tall, growing with its lines, then scrolling; Enter adds a line")
-	state_header(gtx, INPUT_CELL_W)
+	kitchen.section(gtx, "Appearances", "medium: 52 to 260px tall, growing with its lines, then scrolling; Enter adds a line")
+	kitchen.state_header(gtx, INPUT_CELL_W)
 	for n, i in INPUT_APPEARANCE_NAMES {
 		if i == 1 {
 			continue // no underline textarea
 		}
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			fluent.textarea(gtx, &m.area_cells[key / 16 - 1], "Placeholder", INPUT_APPEARANCES[key / 16 - 1], width = 150, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), INPUT_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), INPUT_CELL_W)
 	}
-	section(gtx, "Sizes", "40 / 52 / 64px minimum")
-	state_header(gtx, INPUT_CELL_W)
+	kitchen.section(gtx, "Sizes", "40 / 52 / 64px minimum")
+	kitchen.state_header(gtx, INPUT_CELL_W)
 	for n, i in SIZE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			fluent.textarea(gtx, &m.area_cells[key / 16 - 11 + 4], "Notes", size = fluent.Size(key / 16 - 11), width = 150, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 11), INPUT_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 11), INPUT_CELL_W)
 	}
-	section(gtx, "Live", "type past the box's width to wrap; Up and Down move between lines")
+	kitchen.section(gtx, "Live", "type past the box's width to wrap; Up and Down move between lines")
 	fluent.textarea(gtx, &m.notes, "Write something", width = 360, key = 100)
 }
 
 page_field :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 16)
 	defer ui.close(&col)
-	section(gtx, "Vertical", "label above, then the control, the validation message with its state icon, and the hint")
+	kitchen.section(gtx, "Vertical", "label above, then the control, the validation message with its state icon, and the hint")
 	{
 		r := ui.wrap_open(gtx, gap = 24, line_gap = 16)
 		defer ui.close(&r)
@@ -101,7 +107,7 @@ page_field :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			fluent.input(gtx, &m.field_f, "Locked", width = 220, state = .Disabled)
 		}
 	}
-	section(gtx, "Horizontal", "the label takes a 33% column, padded to centre on a control of its size")
+	kitchen.section(gtx, "Horizontal", "the label takes a 33% column, padded to centre on a control of its size")
 	{
 		c := ui.column_open(gtx, gap = 12)
 		defer ui.close(&c)
@@ -121,7 +127,7 @@ page_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	col := ui.column_open(gtx, gap = 12)
 	defer ui.close(&col)
-	section(gtx, "Sizes", "caption1 / body1 / body2 line heights; large is always semibold")
+	kitchen.section(gtx, "Sizes", "caption1 / body1 / body2 line heights; large is always semibold")
 	{
 		r := ui.wrap_open(gtx, gap = 24, align = .End)
 		defer ui.close(&r)
@@ -129,7 +135,7 @@ page_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			fluent.label(gtx, n, size = fluent.Size(i), key = u64(i))
 		}
 	}
-	section(gtx, "Weight and required", "semibold at any size; the asterisk is Palette_Red_Foreground3, XS after the text")
+	kitchen.section(gtx, "Weight and required", "semibold at any size; the asterisk is Palette_Red_Foreground3, XS after the text")
 	{
 		r := ui.wrap_open(gtx, gap = 24, align = .End)
 		defer ui.close(&r)
@@ -138,7 +144,7 @@ page_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.label(gtx, "Required", required = true, key = 12)
 		fluent.label(gtx, "Required semibold", required = true, weight = .Semibold, key = 13)
 	}
-	section(gtx, "Disabled", "text and indicator both in the Disabled foreground")
+	kitchen.section(gtx, "Disabled", "text and indicator both in the Disabled foreground")
 	{
 		r := ui.wrap_open(gtx, gap = 24, align = .End)
 		defer ui.close(&r)
@@ -154,21 +160,21 @@ page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "underline on hover and press; keyboard focus double-underlines in Stroke_Focus2")
-	state_header(gtx)
+	kitchen.section(gtx, "Appearances", "underline on hover and press; keyboard focus double-underlines in Stroke_Focus2")
+	kitchen.state_header(gtx)
 	for n, i in LINK_APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.link(gtx, "Learn more", fluent.Link_Appearance(key / 16 - 1), state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1))
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1))
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.link(gtx, "Learn more", inline = true, state = st, key = key)
 		}
-		state_row(gtx, m, "Inline", cell, 3)
+		kitchen.state_row(gtx, m, "Inline", cell, 3)
 	}
-	section(gtx, "On other surfaces", "an inverted surface keeps one colour in every state; a brand surface steps the inverted link family")
+	kitchen.section(gtx, "On other surfaces", "an inverted surface keeps one colour in every state; a brand surface steps the inverted link family")
 	{
 		r := ui.wrap_open(gtx, gap = 16)
 		defer ui.close(&r)
@@ -183,7 +189,7 @@ page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			ui.close(&b)
 		}
 	}
-	section(gtx, "Live", "click, or Tab to it and press Enter")
+	kitchen.section(gtx, "Live", "click, or Tab to it and press Enter")
 	{
 		r := ui.row_open(gtx, gap = 4, align = .Center)
 		defer ui.close(&r)

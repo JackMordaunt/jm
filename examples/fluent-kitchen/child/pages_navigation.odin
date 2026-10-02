@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/fluent"
@@ -30,27 +31,27 @@ NAV_CELL_W :: f32(190)
 page_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Rows", "Background 4 rows padded MNudge (XS at small), each cell a 180px nav; selected: body1Strong, filled brand icon, a 4×20px Compound_Brand pill in the gutter")
-	state_header(gtx, NAV_CELL_W)
+	kitchen.section(gtx, "Rows", "Background 4 rows padded MNudge (XS at small), each cell a 180px nav; selected: body1Strong, filled brand icon, a 4×20px Compound_Brand pill in the gutter")
+	kitchen.state_header(gtx, NAV_CELL_W)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			none := ""
 			if fluent.nav(gtx, width = NAV_CELL_W - 10, key = key) {
 				fluent.nav_item(gtx, "Dashboard", "d", &none, .Home, state = st, key = key)
 			}
 		}
-		state_row(gtx, m, "Item", cell, 1, NAV_CELL_W)
+		kitchen.state_row(gtx, m, "Item", cell, 1, NAV_CELL_W)
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			on := "d"
 			if fluent.nav(gtx, width = NAV_CELL_W - 10, key = key) {
 				fluent.nav_item(gtx, "Dashboard", "d", &on, .Home, state = st, key = key)
 			}
 		}
-		state_row(gtx, m, "Selected", cell, 2, NAV_CELL_W)
+		kitchen.state_row(gtx, m, "Selected", cell, 2, NAV_CELL_W)
 	}
-	section(gtx, "Inline", "260px NavDrawer in the flow, medium and small density; click a category to open it")
+	kitchen.section(gtx, "Inline", "260px NavDrawer in the flow, medium and small density; click a category to open it")
 	r := ui.row_open(gtx, gap = 24, align = .Start)
 	if fluent.nav(gtx) {
 		if fluent.nav_header(gtx) {
@@ -67,7 +68,7 @@ page_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	ui.close(&r)
-	section(gtx, "Overlay", "the hamburger opens the nav drawer over the page; the backdrop, Escape or a pick closes it")
+	kitchen.section(gtx, "Overlay", "the hamburger opens the nav drawer over the page; the backdrop, Escape or a pick closes it")
 	base.label(gtx, fmt.tprintf("Selected: %s", m.nav_selected), {color = fluent.color(.Neutral_Foreground2)})
 	if fluent.hamburger(gtx, key = 9) {
 		m.nav_open = true
@@ -90,7 +91,7 @@ DRAWER_SIZE_NAMES := [?]string{"Small", "Medium", "Large", "Full"}
 page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Overlay", "320 / 592 / 940px or the whole window, sliding in over durationGentle / Slow / Slower / UltraSlow under shadow64 and the backdrop")
+	kitchen.section(gtx, "Overlay", "320 / 592 / 940px or the whole window, sliding in over durationGentle / Slow / Slower / UltraSlow under shadow64 and the backdrop")
 	{
 		r := ui.wrap_open(gtx, gap = 12)
 		defer ui.close(&r)
@@ -106,7 +107,7 @@ page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			m.drawer_size, m.drawer_position, m.drawer_open = .Small, .Bottom, true
 		}
 	}
-	section(gtx, "Inline", "in the flow beside the content, with the 1px Background 3 separator; its width grows with the motion")
+	kitchen.section(gtx, "Inline", "in the flow beside the content, with the 1px Background 3 separator; its width grows with the motion")
 	if fluent.button(gtx, m.drawer_inline ? "Close inline" : "Open inline", key = 20) {
 		m.drawer_inline = !m.drawer_inline
 	}
@@ -136,7 +137,7 @@ CRUMB_SHORT := [?]string{"Home", "Projects", "Contoso redesign"}
 page_breadcrumb :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Sizes", "subtle buttons with no minimum width, 24 / 32 / 40px; the current item reads as strong text and takes no input")
+	kitchen.section(gtx, "Sizes", "subtle buttons with no minimum width, 24 / 32 / 40px; the current item reads as strong text and takes no input")
 	SIZE_NAMES :: [?]string{"Small", "Medium", "Large"}
 	for name, i in SIZE_NAMES {
 		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
@@ -144,10 +145,10 @@ page_breadcrumb :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.breadcrumb(gtx, CRUMB_SHORT[:], fluent.Size(i), key = u64(10 + i))
 		ui.close(&r)
 	}
-	section(gtx, "With icons", "the icon turns brand and filled on hover")
+	kitchen.section(gtx, "With icons", "the icon turns brand and filled on hover")
 	icons := [?]fluent.Icon{.Home, .Folder, .Document}
 	fluent.breadcrumb(gtx, CRUMB_SHORT[:], icons = icons[:], key = 20)
-	section(gtx, "Overflow", "more than 6 items: the first stays, the run after it folds into a … menu")
+	kitchen.section(gtx, "Overflow", "more than 6 items: the first stays, the run after it folds into a … menu")
 	if i := fluent.breadcrumb(gtx, CRUMB_ITEMS[:], key = 30); i >= 0 {
 		m.crumb_pick = i
 	}
@@ -157,22 +158,22 @@ page_breadcrumb :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_tree :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Rows", "32px rows (24 at small) in the Subtle family; the chevron is Foreground 3; nothing transitions")
-	state_header(gtx, 180)
+	kitchen.section(gtx, "Rows", "32px rows (24 at small) in the Subtle family; the chevron is Foreground 3; nothing transitions")
+	kitchen.state_header(gtx, 180)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			open := false
 			fluent.tree_item(gtx, "Folder", &open, icon_before = .Folder, state = st, key = key)
 		}
-		state_row(gtx, m, "Branch", cell, 1, 180)
+		kitchen.state_row(gtx, m, "Branch", cell, 1, 180)
 	}
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			fluent.tree_item(gtx, "File", icon_before = .Document, state = st, key = key)
 		}
-		state_row(gtx, m, "Leaf", cell, 2, 180)
+		kitchen.state_row(gtx, m, "Leaf", cell, 2, 180)
 	}
-	section(gtx, "Live", "click or Right/Left on a branch; a leaf is indented one XXL step past its branch")
+	kitchen.section(gtx, "Live", "click or Right/Left on a branch; a leaf is indented one XXL step past its branch")
 	{
 		tc := ui.column_open(gtx, gap = 2, align = .Fill)
 		defer ui.close(&tc)
@@ -187,7 +188,7 @@ page_tree :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			fluent.tree_item(gtx, "Holiday", level = 2, icon_before = .Image, key = 1)
 		}
 	}
-	section(gtx, "Selection and small", "multiselect puts a checkbox before each row")
+	kitchen.section(gtx, "Selection and small", "multiselect puts a checkbox before each row")
 	sc := ui.column_open(gtx, gap = 2, align = .Start, key = 5)
 	if fluent.tree_item(gtx, "All tasks", &m.tree_open[3], size = .Small, checked = &m.tree_checks[0], mixed = m.tree_checks[1] != m.tree_checks[2], key = 10) {
 		fluent.tree_item(gtx, "Write spec", level = 2, size = .Small, checked = &m.tree_checks[1], key = 11)

@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/fluent"
@@ -26,21 +27,21 @@ card_cell :: proc(gtx: ^ui.Ctx, appearance: fluent.Card_Appearance, size := flue
 page_card :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "interactive cards: shadow4 at rest, shadow8 hovered, Stroke 1 Selected border when selected; disabled reads the Disabled tokens and shadow2")
-	state_header(gtx, CARD_CELL_W)
+	kitchen.section(gtx, "Appearances", "interactive cards: shadow4 at rest, shadow8 hovered, Stroke 1 Selected border when selected; disabled reads the Disabled tokens and shadow2")
+	kitchen.state_header(gtx, CARD_CELL_W)
 	for n, i in CARD_APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			card_cell(gtx, CARD_APPEARANCES[key / 16 - 1], state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), CARD_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CARD_CELL_W)
 	}
-	section(gtx, "Sizes", "8 / 12 / 16px padding with borderRadiusSmall / Medium / Large; a plain card is static")
+	kitchen.section(gtx, "Sizes", "8 / 12 / 16px padding with borderRadiusSmall / Medium / Large; a plain card is static")
 	if ui.row(gtx, gap = 16, align = .Start) {
 		for sz, i in ([?]fluent.Size{.Small, .Medium, .Large}) {
 			card_cell(gtx, .Filled, sz, interactive = false, key = u64(20 + i))
 		}
 	}
-	section(gtx, "Live", "selectable: click toggles the selection; the outline one is interactive but not selectable")
+	kitchen.section(gtx, "Live", "selectable: click toggles the selection; the outline one is interactive but not selectable")
 	if ui.row(gtx, gap = 16, align = .Start) {
 		for i in 0 ..< 3 {
 			card_cell(gtx, .Filled, selected = &m.card_sel[i], key = u64(30 + i))
@@ -61,19 +62,19 @@ page_divider :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "strokeWidthThin lines: Stroke 2 / 3 / 1 / Brand Stroke 1, labels in the matching foreground")
+	kitchen.section(gtx, "Appearances", "strokeWidthThin lines: Stroke 2 / 3 / 1 / Brand Stroke 1, labels in the matching foreground")
 	for n, i in DIVIDER_APPEARANCE_NAMES {
 		base.label(gtx, n, {size = 12, color = s[.Neutral_Foreground2]})
 		fluent.divider(gtx, appearance = DIVIDER_APPEARANCES[i], key = u64(i))
 		fluent.divider(gtx, n, appearance = DIVIDER_APPEARANCES[i], key = u64(10 + i))
 	}
-	section(gtx, "Alignment and inset", "the label 8px from the start or end; inset pulls the line in 12px at each end")
+	kitchen.section(gtx, "Alignment and inset", "the label 8px from the start or end; inset pulls the line in 12px at each end")
 	fluent.divider(gtx, "Start", align = .Start, key = 20)
 	fluent.divider(gtx, "Center", key = 21)
 	fluent.divider(gtx, "End", align = .End, key = 22)
 	fluent.divider(gtx, "Inset", inset = true, key = 23)
 	fluent.divider(gtx, inset = true, key = 24)
-	section(gtx, "Vertical", "at least 20px tall, 84px with a label; it takes the row's height")
+	kitchen.section(gtx, "Vertical", "at least 20px tall, 84px with a label; it takes the row's height")
 	if ui.row(gtx, gap = 16, align = .Fill) {
 		base.label(gtx, "Left", {color = s[.Neutral_Foreground1]})
 		fluent.divider(gtx, vertical = true, key = 30)
@@ -94,29 +95,29 @@ TAB_CELL_W :: f32(240)
 page_tab_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearances", "medium: 44px tall; the selected tab is body1Strong with a Compound Brand Stroke bar, a hovered one shows the Stroke 1 Hover bar under it")
-	state_header(gtx, TAB_CELL_W)
+	kitchen.section(gtx, "Appearances", "medium: 44px tall; the selected tab is body1Strong with a Compound Brand Stroke bar, a hovered one shows the Stroke 1 Hover bar under it")
+	kitchen.state_header(gtx, TAB_CELL_W)
 	for n, i in TAB_APPEARANCE_NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
 			sel := 1
 			fluent.tab_list(gtx, TAB_LABELS[:], &sel, TAB_APPEARANCES[key / 16 - 1], state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), TAB_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), TAB_CELL_W)
 	}
-	section(gtx, "Sizes", "32 / 44 / 56px tall with icons; large reads body2, subtitle2 when selected; a selected tab shows the filled icon")
+	kitchen.section(gtx, "Sizes", "32 / 44 / 56px tall with icons; large reads body2, subtitle2 when selected; a selected tab shows the filled icon")
 	if ui.row(gtx, gap = 24, align = .Start) {
 		for sz, i in ([?]fluent.Size{.Small, .Medium, .Large}) {
 			fluent.tab_list(gtx, TAB_LABELS[:], &m.tab_a, size = sz, icons = TAB_ICONS[:], key = u64(20 + i))
 		}
 	}
-	section(gtx, "Vertical", "24 / 32 / 40px rows, the bar along the left edge; Up and Down move the selection")
+	kitchen.section(gtx, "Vertical", "24 / 32 / 40px rows, the bar along the left edge; Up and Down move the selection")
 	if ui.row(gtx, gap = 24, align = .Start) {
 		for sz, i in ([?]fluent.Size{.Small, .Medium, .Large}) {
 			fluent.tab_list(gtx, TAB_LABELS[:], &m.tab_b, size = sz, vertical = true, icons = TAB_ICONS[:], key = u64(30 + i))
 		}
 		fluent.tab_list(gtx, TAB_LABELS[:], &m.tab_b, .Subtle_Circular, vertical = true, key = 34)
 	}
-	section(gtx, "Live", "click or Left and Right; the bar slides over durationSlow with curveDecelerateMax")
+	kitchen.section(gtx, "Live", "click or Left and Right; the bar slides over durationSlow with curveDecelerateMax")
 	if ui.column(gtx, gap = 12) {
 		fluent.tab_list(gtx, TAB_LABELS[:], &m.tab_c, key = 40)
 		fluent.tab_list(gtx, TAB_LABELS[:], &m.tab_d, .Filled_Circular, key = 41)
@@ -127,7 +128,7 @@ page_toolbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Sizes", "items edge to edge, subtle by default, 24 / 32 / 40px tall; padding 0 by 4, 4 by 8, 4 by 20px; a divider is 1px with 12px each side")
+	kitchen.section(gtx, "Sizes", "items edge to edge, subtle by default, 24 / 32 / 40px tall; padding 0 by 4, 4 by 8, 4 by 20px; a divider is 1px with 12px each side")
 	for sz, i in ([?]fluent.Size{.Small, .Medium, .Large}) {
 		base.label(gtx, SIZE_NAMES[i], {size = 12, color = s[.Neutral_Foreground2]})
 		if fluent.toolbar(gtx, sz, key = u64(i)) {
@@ -141,7 +142,7 @@ page_toolbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			fluent.toolbar_button(gtx, "Share", .Share, .Primary)
 		}
 	}
-	section(gtx, "Vertical", "a column as wide as its content, base padding at every size; dividers turn horizontal")
+	kitchen.section(gtx, "Vertical", "a column as wide as its content, base padding at every size; dividers turn horizontal")
 	if ui.row(gtx, gap = 24, align = .Start) {
 		if fluent.toolbar(gtx, .Medium, vertical = true, key = 10) {
 			fluent.toolbar_button(gtx, "", .Text_Bold, name = "Bold")
@@ -160,14 +161,14 @@ page_accordion :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Sizes", "32px minimum at small, 44px otherwise; the header has no hover colour, only the pointer and the focus outline")
+	kitchen.section(gtx, "Sizes", "32px minimum at small, 44px otherwise; the header has no hover colour, only the pointer and the focus outline")
 	for n, i in ACCORDION_SIZE_NAMES {
 		base.label(gtx, n, {size = 12, color = s[.Neutral_Foreground2]})
 		if fluent.accordion_item(gtx, "Accordion header", &m.acc_open[i], size = ACCORDION_SIZES[i], key = u64(i)) {
 			base.label(gtx, "Accordion panel", {color = s[.Neutral_Foreground1]})
 		}
 	}
-	section(gtx, "With an icon, chevron at the end, disabled", "the icon 20px after the chevron; at the end the chevron right-aligns")
+	kitchen.section(gtx, "With an icon, chevron at the end, disabled", "the icon 20px after the chevron; at the end the chevron right-aligns")
 	if fluent.accordion_item(gtx, "With an icon", &m.acc_open[4], .Folder, key = 10) {
 		base.label(gtx, "Panel", {color = s[.Neutral_Foreground1]})
 	}
@@ -179,7 +180,7 @@ page_accordion :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	off := false
 	fluent.accordion_item(gtx, "Disabled", &off, state = .Disabled, key = 13)
-	section(gtx, "Single open", "opening one closes the other: the caller owns the flags")
+	kitchen.section(gtx, "Single open", "opening one closes the other: the caller owns the flags")
 	for i in 0 ..< 3 {
 		before := m.acc_single[i]
 		if fluent.accordion_item(gtx, fmt.tprintf("Section %d", i + 1), &m.acc_single[i], key = u64(20 + i)) {

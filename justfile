@@ -784,7 +784,7 @@ fluent-kitchen: blend2d kb sdl3
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
     {{odin}} build examples/fluent-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/fluent-kitchen/child build/debug/fluent-kitchen.watch -host examples/fluent-kitchen/host build/debug/fluent-kitchen-host{{exe}} ui ui/fluent &
+    build/debug/hot-watch{{exe}} examples/fluent-kitchen/child build/debug/fluent-kitchen.watch -host examples/fluent-kitchen/host build/debug/fluent-kitchen-host{{exe}} ui ui/fluent examples/kitchen &
     watch=$!
     build/debug/fluent-kitchen-host{{exe}} build/debug/fluent-kitchen.watch &
     host=$!

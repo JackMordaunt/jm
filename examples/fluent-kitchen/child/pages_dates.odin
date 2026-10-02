@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/fluent"
 
@@ -20,7 +21,7 @@ MARKED := [?]fluent.Date{{2026, 9, 3}, {2026, 9, 14}, {2026, 9, 28}}
 page_calendar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Day grid and month picker", "440px: 28px cells with 24px buttons, a 20px brand disc for today, a 4px dot on marked days; the grid slides 20px on navigation over durationSlower")
+	kitchen.section(gtx, "Day grid and month picker", "440px: 28px cells with 24px buttons, a 20px brand disc for today, a 4px dot on marked days; the grid slides 20px on navigation over durationSlower")
 	{
 		r := ui.wrap_open(gtx, gap = 24, line_gap = 16)
 		defer ui.close(&r)
@@ -30,16 +31,16 @@ page_calendar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		picked := m.cal_selected.year != 0 ? fluent.format_date(m.cal_selected, context.temp_allocator) : "none"
 		fluent.label(gtx, fmt.tprintf("Selected: %s (%d picks)", picked, m.cal_picks))
 	}
-	section(gtx, "Day grid alone", "220px; the header names the month and only the arrows navigate")
+	kitchen.section(gtx, "Day grid alone", "220px; the header names the month and only the arrows navigate")
 	fluent.calendar(gtx, &m.cal_selected2, &m.cal_view2, TODAY, month_picker = .None, go_today = false, key = 1)
-	section(gtx, "States", "a forced state paints one day in it; disabled greys the whole calendar; days outside September 7 to 25 take no pointer here")
+	kitchen.section(gtx, "States", "a forced state paints one day in it; disabled greys the whole calendar; days outside September 7 to 25 take no pointer here")
 	{
 		r := ui.wrap_open(gtx, gap = 24, line_gap = 16)
 		defer ui.close(&r)
 		STATES := [?]fluent.Interaction{.Hovered, .Focused, .Pressed, .Disabled}
 		for st, i in STATES {
 			c := ui.column_open(gtx, gap = 4, key = u64(10 + i))
-			fluent.label(gtx, STATE_NAMES[i + 1], size = .Small, key = u64(30 + i))
+			fluent.label(gtx, kitchen.STATE_NAMES[i + 1], size = .Small, key = u64(30 + i))
 			sel := fluent.Date{2026, 9, 16}
 			view := fluent.Date{2026, 9, 1}
 			fluent.calendar(gtx, &sel, &view, TODAY, month_picker = .None, go_today = false, min_date = {2026, 9, 7}, max_date = {2026, 9, 25}, state = st, key = u64(20 + i))
@@ -52,18 +53,19 @@ page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
 	NAMES := [?]string{"Outline", "Underline", "Filled lighter"}
-	section(gtx, "Appearances", "the Input with the calendar icon after; the calendar pops up below-start on a Neutral_Background1 surface with shadow16")
-	state_header(gtx, DATE_CELL_W)
+	kitchen.section(gtx, "Appearances", "the Input with the calendar icon after; the calendar pops up below-start on a Neutral_Background1 surface with shadow16")
+	kitchen.state_header(gtx, DATE_CELL_W)
 	for n, i in NAMES {
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			APP := [?]fluent.Date_Picker_Appearance{.Outline, .Underline, .Filled_Lighter}
 			open := false
 			sel: fluent.Date
 			fluent.date_picker(gtx, &m.date_cells[key % 16 + 5 * (key / 16 - 1)], &sel, &open, TODAY, appearance = APP[key / 16 - 1], width = 190, state = st, key = key)
 		}
-		state_row(gtx, m, n, cell, u64(i + 1), DATE_CELL_W)
+		kitchen.state_row(gtx, m, n, cell, u64(i + 1), DATE_CELL_W)
 	}
-	section(gtx, "Live", "focus or Enter opens it; a pick, Escape or a press outside closes it; the second takes typed M/D/YYYY and validates on Enter and blur")
+	kitchen.section(gtx, "Live", "focus or Enter opens it; a pick, Escape or a press outside closes it; the second takes typed M/D/YYYY and validates on Enter and blur")
 	r := ui.wrap_open(gtx, gap = 24, line_gap = 16, align = .Start)
 	defer ui.close(&r)
 	{
@@ -99,17 +101,18 @@ page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_time_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "States", "the Input with the chevron after; the list holds every 30 minutes from midnight, at most 416px tall")
-	state_header(gtx, DATE_CELL_W)
+	kitchen.section(gtx, "States", "the Input with the chevron after; the list holds every 30 minutes from midnight, at most 416px tall")
+	kitchen.state_header(gtx, DATE_CELL_W)
 	{
-		cell :: proc(gtx: ^ui.Ctx, m: ^Model, st: fluent.Interaction, key: u64) {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: fluent.Interaction, key: u64) {
+			m := (^Model)(user)
 			open, valid := false, false
 			t: fluent.Time
 			fluent.time_picker(gtx, &m.time_cells[key % 16], &t, &valid, &open, width = 190, state = st, key = key)
 		}
-		state_row(gtx, m, "Outline", cell, 1, DATE_CELL_W)
+		kitchen.state_row(gtx, m, "Outline", cell, 1, DATE_CELL_W)
 	}
-	section(gtx, "Live", "a list from 9 AM to 5 PM by 15 minutes; a 24-hour list; and freeform, which parses typed text on Enter and blur")
+	kitchen.section(gtx, "Live", "a list from 9 AM to 5 PM by 15 minutes; a 24-hour list; and freeform, which parses typed text on Enter and blur")
 	r := ui.wrap_open(gtx, gap = 24, line_gap = 16, align = .Start)
 	defer ui.close(&r)
 	{

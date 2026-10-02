@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "jm:examples/kitchen"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/fluent"
@@ -27,7 +28,7 @@ variant_row_open :: proc(gtx: ^ui.Ctx, label: string, key: u64 = 0) -> (ui.Flex,
 		base.label(gtx, label, {size = 12, color = s[.Neutral_Foreground2]})
 		ui.close(&c)
 	}
-	ui.spacer(gtx, max(LABEL_W - label_width(gtx, label), 0))
+	ui.spacer(gtx, max(kitchen.LABEL_W - label_width(gtx, label), 0))
 	w := ui.wrap_open(gtx, gap = 12, line_gap = 8, align = .Center)
 	return r, w
 }
@@ -40,7 +41,7 @@ variant_row_close :: proc(r, w: ^ui.Flex) {
 page_badge :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Appearance by colour", "medium: 20px, caption1Strong; ghost and outline subtle are white, for dark surfaces")
+	kitchen.section(gtx, "Appearance by colour", "medium: 20px, caption1Strong; ghost and outline subtle are white, for dark surfaces")
 	for a, i in BADGE_APPEARANCES {
 		r, w := variant_row_open(gtx, BADGE_APPEARANCE_NAMES[i], u64(i + 1))
 		for c, j in BADGE_COLORS {
@@ -48,7 +49,7 @@ page_badge :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Sizes and shapes", "6 / 10 / 16 / 20 / 24 / 32px; tiny and extra-small are dots; rounded drops to borderRadiusSmall at small and below")
+	kitchen.section(gtx, "Sizes and shapes", "6 / 10 / 16 / 20 / 24 / 32px; tiny and extra-small are dots; rounded drops to borderRadiusSmall at small and below")
 	{
 		r, w := variant_row_open(gtx, "Circular", 10)
 		for sz, j in BADGE_SIZES {
@@ -70,7 +71,7 @@ page_badge :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "With an icon", "12px icon at medium; before, after, or alone")
+	kitchen.section(gtx, "With an icon", "12px icon at medium; before, after, or alone")
 	{
 		r, w := variant_row_open(gtx, "Icon", 13)
 		fluent.badge(gtx, "Sent", .Success, ic = .Checkmark, key = 1)
@@ -79,7 +80,7 @@ page_badge :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.badge(gtx, "Star", .Brand, .Outline, ic = .Star, size = .Extra_Large, key = 4)
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Counter badge", "capped at 99 with a plus; zero hides; dot is 6px")
+	kitchen.section(gtx, "Counter badge", "capped at 99 with a plus; zero hides; dot is 6px")
 	{
 		r, w := variant_row_open(gtx, "Counts", 14)
 		fluent.counter_badge(gtx, 5, key = 1)
@@ -90,7 +91,7 @@ page_badge :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.counter_badge(gtx, 3, color = .Brand, appearance = .Tint, size = .Large, key = 6)
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Presence badge", "the status colour on a Neutral_Background1 disc; out of office draws each as a ring")
+	kitchen.section(gtx, "Presence badge", "the status colour on a Neutral_Background1 disc; out of office draws each as a ring")
 	{
 		r, w := variant_row_open(gtx, "Status", 15)
 		for st, j in PRESENCE {
@@ -120,7 +121,7 @@ AVATAR_NAMES := [?]string{"Katri Ahokas", "Ada Lovelace", "Grace Hopper", "Alan 
 page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Sizes", "16 to 128px; initials semibold at the size's font step; only the first initial at 16")
+	kitchen.section(gtx, "Sizes", "16 to 128px; initials semibold at the size's font step; only the first initial at 16")
 	{
 		r, w := variant_row_open(gtx, "Circular", 1)
 		for sz, j in AVATAR_SIZES {
@@ -135,7 +136,7 @@ page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Colorful", "each name hashes to one of the 30 named colours, the same one every time")
+	kitchen.section(gtx, "Colorful", "each name hashes to one of the 30 named colours, the same one every time")
 	{
 		r, w := variant_row_open(gtx, "Names", 3)
 		for n, j in AVATAR_NAMES {
@@ -150,7 +151,7 @@ page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Icon and presence", "no initials shows the person icon; a presence badge sits bottom-right in a cutout")
+	kitchen.section(gtx, "Icon and presence", "no initials shows the person icon; a presence badge sits bottom-right in a cutout")
 	{
 		r, w := variant_row_open(gtx, "Icon", 5)
 		fluent.avatar(gtx, "", .S32, key = 1)
@@ -166,7 +167,7 @@ page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.avatar(gtx, "Katri Ahokas", .S96, color = .Colorful, presence = true, status = .Away, out_of_office = true, key = 20)
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Active", "ring, shadow or both outside the avatar; inactive shrinks to 0.875 and fades to 0.8")
+	kitchen.section(gtx, "Active", "ring, shadow or both outside the avatar; inactive shrinks to 0.875 and fades to 0.8")
 	{
 		r, w := variant_row_open(gtx, "Static", 7)
 		fluent.avatar(gtx, "Katri Ahokas", .S48, color = .Colorful, active = .Active, key = 1)
@@ -176,7 +177,7 @@ page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.avatar(gtx, "Ada Lovelace", .S72, .Square, .Brand, active = .Active, appearance = .Ring_Shadow, key = 5)
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Live", "toggle to see the ring grow out over durationUltraSlow")
+	kitchen.section(gtx, "Live", "toggle to see the ring grow out over durationUltraSlow")
 	{
 		r, w := variant_row_open(gtx, "Toggle", 8)
 		if fluent.button(gtx, m.avatar_active ? "Deactivate" : "Activate", key = 1) {
@@ -192,7 +193,7 @@ page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_progress_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Determinate", "2px medium or 4px large; the bar's colour by validation state, reading palette tokens")
+	kitchen.section(gtx, "Determinate", "2px medium or 4px large; the bar's colour by validation state, reading palette tokens")
 	bars :: proc(gtx: ^ui.Ctx, label: string, thickness: fluent.Progress_Thickness, shape: fluent.Progress_Shape, key: u64) {
 		r, w := variant_row_open(gtx, label, key)
 		colors := [?]fluent.Progress_Color{.Brand, .Success, .Warning, .Error}
@@ -205,14 +206,14 @@ page_progress_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	bars(gtx, "Medium", .Medium, .Rounded, 1)
 	bars(gtx, "Large", .Large, .Rounded, 2)
 	bars(gtx, "Square", .Large, .Square, 3)
-	section(gtx, "Indeterminate", "a 33% brand segment fading at both ends crosses the track every 3s; colour is ignored")
+	kitchen.section(gtx, "Indeterminate", "a 33% brand segment fading at both ends crosses the track every 3s; colour is ignored")
 	{
 		r, w := variant_row_open(gtx, "Loading", 4)
 		fluent.progress_bar(gtx, width = 240, key = 1)
 		fluent.progress_bar(gtx, thickness = .Large, width = 240, key = 2)
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Live", "width changes ease over 300ms; a reset to 0 jumps")
+	kitchen.section(gtx, "Live", "width changes ease over 300ms; a reset to 0 jumps")
 	{
 		r, w := variant_row_open(gtx, "Value", 5)
 		if fluent.button(gtx, "+10%", size = .Small, key = 1) {
@@ -233,7 +234,7 @@ page_spinner :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	col := ui.column_open(gtx, gap = 10)
 	defer ui.close(&col)
-	section(gtx, "Sizes", "16 to 44px in 4px steps; the arc spins every 1.5s and breathes from 30° to 255°")
+	kitchen.section(gtx, "Sizes", "16 to 44px in 4px steps; the arc spins every 1.5s and breathes from 30° to 255°")
 	{
 		r, w := variant_row_open(gtx, "Primary", 1)
 		for sz, j in SPINNER_SIZES {
@@ -241,7 +242,7 @@ page_spinner :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "With a label", "8px gap; body1 up to small, subtitle2 to extra-large, subtitle1 at huge")
+	kitchen.section(gtx, "With a label", "8px gap; body1 up to small, subtitle2 to extra-large, subtitle1 at huge")
 	{
 		r, w := variant_row_open(gtx, "Position", 2)
 		fluent.spinner(gtx, "After", key = 1)
@@ -252,7 +253,7 @@ page_spinner :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		fluent.spinner(gtx, "Tiny", .Extra_Tiny, key = 6)
 		variant_row_close(&r, &w)
 	}
-	section(gtx, "Inverted", "for brand or dark surfaces")
+	kitchen.section(gtx, "Inverted", "for brand or dark surfaces")
 	{
 		r, w := variant_row_open(gtx, "On brand", 3)
 		panel := ui.box_open(gtx, {fill = s[.Brand_Background], radius = 4, padding = ui.pad_all(16)})
