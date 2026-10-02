@@ -805,6 +805,11 @@ fluent-png page="Button": blend2d kb
 
 primer_kit := "tools/primer"
 
+# Regenerate ui/primer/tokens from the primer-kit
+[group('ui/primer')]
+primer-tokens:
+    {{odin}} run tools/design-tokens {{flags}} -- primer {{primer_kit}}/tokens/primer.resolved.json ui/primer/tokens/tokens.odin
+
 # Replaces source/ wholesale: primer/react at the commit an @primer/react
 # release tag names, then @primer/primitives and @primer/octicons at the
 # versions given. Needs gh, npm and jq.

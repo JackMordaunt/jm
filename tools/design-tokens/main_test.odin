@@ -173,3 +173,116 @@ test_the_checked_in_fluent_tokens_are_current :: proc(t: ^testing.T) {
 		"ui/fluent/tokens/tokens.odin is stale; run just fluent-tokens",
 	)
 }
+
+@(test)
+test_primer_gives_shadow_layers_roles_and_keeps_geometry_per_mode :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	toks := parse(`{
+		"--fgColor-default": {"type": "color", "value": "#1f2328", "dark": "#f0f6fc"},
+		"--display-blue-fgColor": {"type": "color", "value": "#0969da"},
+		"--shadow-floating-small": {"type": "shadow",
+			"value": [{"x": 0, "y": 0, "blur": 0, "spread": 1, "color": "#d1d9e040", "inset": false},
+				{"x": 0, "y": 6, "blur": 12, "spread": -3, "color": "#25292e0a", "inset": false}],
+			"dark": [{"x": 0, "y": 0, "blur": 0, "spread": 1, "color": "#3d444d", "inset": false},
+				{"x": 0, "y": 8, "blur": 24, "spread": 0, "color": "#01040966", "inset": false}]},
+		"--shadow-inset": {"type": "shadow", "value": [{"x": 0, "y": 1, "blur": 0, "spread": 0, "color": "#1f23280a", "inset": true}]},
+		"--control-minTarget-auto": {"type": "dimension", "value": 16, "coarse": 44},
+		"--text-codeInline-size": {"type": "dimension", "value": {"value": 0.9285, "unit": "em"}},
+		"--motion-transition-hover": {"type": "transition", "value": {"duration": 100, "timingFunction": [0.25, 0.1, 0.25, 1]}},
+		"--border-default": {"type": "border", "value": {"width": 1, "style": "solid", "color": "#d1d9e0"}},
+		"--breakpoint-medium": {"type": "dimension", "value": 768}
+	}`)
+	out, ok := generate(toks, PRIMER)
+	testing.expect(t, ok)
+	for want in ([]string {
+			"Role :: enum u8 {\n\tFg_Color_Default,\n\tShadow_Floating_Small_0,\n\tShadow_Floating_Small_1,\n\tShadow_Inset_0,\n}",
+			"LIGHT :: [Role]u32 {\n\t.Fg_Color_Default = 0x1f2328ff,\n\t.Shadow_Floating_Small_0 = 0xd1d9e040,\n\t.Shadow_Floating_Small_1 = 0x25292e0a,",
+			"DARK :: [Role]u32 {\n\t.Fg_Color_Default = 0xf0f6fcff,\n\t.Shadow_Floating_Small_0 = 0x3d444dff,\n\t.Shadow_Floating_Small_1 = 0x01040966,",
+			"Mode :: enum u8 {\n\tLight,\n\tDark,\n\tDark_Dimmed,",
+			"\t.Light = {count = 2, layers = {0 = {0, 0, 0, 1, false, .Shadow_Floating_Small_0}, 1 = {0, 6, 12, -3, false, .Shadow_Floating_Small_1}}},\n",
+			"\t.Dark = {count = 2, layers = {0 = {0, 0, 0, 1, false, .Shadow_Floating_Small_0}, 1 = {0, 8, 24, 0, false, .Shadow_Floating_Small_1}}},\n",
+			"\t.Light = {count = 1, layers = {0 = {0, 1, 0, 0, true, .Shadow_Inset_0}}},\n",
+			"CONTROL_MIN_TARGET_AUTO :: f32(16)\nCONTROL_MIN_TARGET_AUTO_COARSE :: f32(44)\n",
+			"TEXT_CODE_INLINE_SIZE :: Em(0.9285)\n",
+			"MOTION_TRANSITION_HOVER :: Transition{duration = 100, easing = {0.25, 0.1, 0.25, 1}}\n",
+			"BREAKPOINT_MEDIUM :: f32(768)\n",
+		}) {
+		testing.expectf(t, strings.contains(out, want), "missing %q", want)
+	}
+	testing.expect(t, !strings.contains(out, "Display_Blue"), "a skipped family is no role")
+	testing.expect(t, !strings.contains(out, "BORDER_DEFAULT"), "a skipped type is no constant")
+}
+
+@(test)
+test_primer_refuses_two_colours_with_one_role_name :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	apart := parse(`{
+		"--focus-outline-color": {"type": "color", "value": "#0969da"},
+		"--focus-outlineColor": {"type": "color", "value": "#0969da"},
+		"--overlay-bgColor": {"type": "color", "value": "#ffffff"}
+	}`)
+	out, ok := generate(apart, PRIMER) // the focus pair is one role, its fallback skipped
+	testing.expect(t, ok)
+	testing.expect(t, strings.count(out, "\tFocus_Outline_Color,\n") == 1)
+	clash := parse(`{
+		"--overlay-bgColor": {"type": "color", "value": "#ffffff"},
+		"--overlay-bg-color": {"type": "color", "value": "#ffffff"}
+	}`)
+	_, ok = generate(clash, PRIMER)
+	testing.expect(t, !ok)
+}
+
+@(test)
+test_primer_refuses_a_shadow_whose_layer_count_changes :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	same := parse(`{
+		"--shadow-resting-small": {"type": "shadow",
+			"value": [{"x": 0, "y": 1, "blur": 1, "spread": 0, "color": "#1f23280a", "inset": false}],
+			"dark": [{"x": 0, "y": 1, "blur": 3, "spread": 0, "color": "#01040999", "inset": false}]}
+	}`)
+	_, ok := generate(same, PRIMER) // geometry may change per mode
+	testing.expect(t, ok)
+	more := parse(`{
+		"--shadow-resting-small": {"type": "shadow",
+			"value": [{"x": 0, "y": 1, "blur": 1, "spread": 0, "color": "#1f23280a", "inset": false}],
+			"dark": [{"x": 0, "y": 1, "blur": 1, "spread": 0, "color": "#01040999", "inset": false},
+				{"x": 0, "y": 1, "blur": 3, "spread": 0, "color": "#01040999", "inset": false}]}
+	}`)
+	_, ok = generate(more, PRIMER) // the layer count may not
+	testing.expect(t, !ok)
+}
+
+@(test)
+test_primer_refuses_a_type_style_sized_in_em :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	px := parse(`{
+		"--text-code-shorthand": {"type": "typography", "value": {"fontWeight": 400, "fontSize": 13, "fontFamily": "ui-monospace"}}
+	}`)
+	out, ok := generate(px, PRIMER)
+	testing.expect(t, ok)
+	testing.expect(t, strings.contains(out, "TEXT_CODE_SHORTHAND :: Type_Style{weight = 400, size = 13,"))
+	em := parse(`{
+		"--text-code-shorthand": {"type": "typography", "value": {"fontWeight": 400, "fontSize": {"value": 0.9, "unit": "em"}, "fontFamily": "ui-monospace"}}
+	}`)
+	_, ok = generate(em, PRIMER)
+	testing.expect(t, !ok)
+}
+
+@(test)
+test_the_checked_in_primer_tokens_are_current :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	doc, err := json.parse(#load("../primer/tokens/primer.resolved.json"))
+	testing.expect(t, err == json.Error.None)
+	out, ok := generate(doc.(json.Object)["tokens"].(json.Object), PRIMER)
+	testing.expect(t, ok)
+	testing.expect(
+		t,
+		out == string(#load("../../ui/primer/tokens/tokens.odin")),
+		"ui/primer/tokens/tokens.odin is stale; run just primer-tokens",
+	)
+}

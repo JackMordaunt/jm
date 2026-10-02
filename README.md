@@ -174,7 +174,8 @@ ui/fluent    fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
              fluent-icons  regenerate ui/fluent/icon_data.odin from the Fluent icons in tools/fluent/icons
              fluent-icons-fetch  fetch the icons icons.txt names at its pinned commit (or a ref given)
              fluent-kit-{tokens,fetch,index,check,page}  maintain the fluent-kit in tools/fluent
-ui/primer    primer-kit-{tokens,fetch,index,check}  maintain the primer-kit in tools/primer
+ui/primer    primer-tokens  regenerate ui/primer/tokens from the primer-kit
+             primer-kit-{tokens,fetch,index,check}  maintain the primer-kit in tools/primer
 ```
 
 `just` alone lists the recipes in these sections: one per package or tool,
