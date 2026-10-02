@@ -119,12 +119,12 @@ PAGES := [?]Page {
 	{"Breadcrumbs", nil, false},
 	{"Sub nav", nil, false},
 	{"Layout and data", nil, true},
-	{"Stack", nil, false},
+	{"Stack", page_stack, false},
 	{"Page layout", nil, false},
 	{"Split page layout", nil, false},
 	{"Page header", nil, false},
-	{"Header", nil, false},
-	{"Card", nil, false},
+	{"Header", page_header, false},
+	{"Card", page_card, false},
 	{"Data table", nil, false},
 }
 
