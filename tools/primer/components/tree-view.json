@@ -1,0 +1,721 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tree-view",
+  "name": "TreeView",
+  "status": "beta",
+  "statusNote": "Beta. It is the file tree in GitHub's code view and is built for thousands of items: collapsed sub-trees are not rendered, styles hang off the root, and type-ahead uses a cached item list.",
+  "summary": "A hierarchical list of expandable items (files and folders, nested settings) with one current item, full ARIA tree keyboard navigation, type-ahead, and sub-trees that can load asynchronously. Choose it over NavList when the hierarchy is deep, data-driven or lazily loaded.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-12",
+    "--borderColor-muted",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--boxShadow-thick",
+    "--control-transparent-bgColor-hover",
+    "--control-transparent-bgColor-selected",
+    "--fgColor-accent",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--stack-gap-condensed",
+    "--text-body-lineHeight-medium",
+    "--text-body-size-medium",
+    "--treeViewItem-leadingVisual-iconColor-rest"
+  ],
+  "references": {
+    "react": [
+      "TreeView/TreeView.tsx",
+      "TreeView/TreeView.module.css",
+      "TreeView/TreeView.docs.json",
+      "TreeView/useRovingTabIndex.ts",
+      "TreeView/useTypeahead.ts",
+      "TreeView/useTreeItemCache.ts",
+      "TreeView/shared.ts"
+    ],
+    "primer": [
+      "tree-view"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Names the tree; give this or ariaLabelledby."
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "Nested items: {id (unique, required), label, current, expanded or defaultExpanded, leadingAction, leadingVisual, trailingVisual, secondaryActions, subTree}."
+    },
+    {
+      "name": "flat",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "No indentation, toggle or leading-action columns; for a flat list shown as a tree."
+    },
+    {
+      "name": "truncate",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "One line per item with an ellipsis; false wraps labels by word."
+    },
+    {
+      "name": "current",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Per item: marks the current item (at most one). The current item starts expanded and is where keyboard focus enters the tree."
+    },
+    {
+      "name": "expanded",
+      "type": "boolean",
+      "required": false,
+      "description": "Per item: controlled expanded state, with onExpandedChange. defaultExpanded seeds an uncontrolled item. Primer also accepts null (never expandable); that is internal."
+    },
+    {
+      "name": "onExpandedChange",
+      "type": "callback",
+      "required": false,
+      "description": "Per item: receives the new expanded state. Start async loading here."
+    },
+    {
+      "name": "onSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Per item: activation by click, middle-click, Enter or Space. When set, the row no longer toggles; only the chevron and arrow keys do."
+    },
+    {
+      "name": "subTreeState",
+      "type": "enum",
+      "values": [
+        "initial",
+        "loading",
+        "done",
+        "error"
+      ],
+      "required": false,
+      "description": "Per sub-tree: the async loading state. Absent means the children are known synchronously."
+    },
+    {
+      "name": "subTreeCount",
+      "type": "number",
+      "required": false,
+      "description": "Per sub-tree: the expected child count; while loading, that many skeleton rows show instead of a spinner."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: an icon before the label, optionally a function of expanded (DirectoryIcon swaps closed and open folder), with an optional accessible label."
+    },
+    {
+      "name": "trailingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: a visual after the label, optionally a function of expanded, with an optional accessible label."
+    },
+    {
+      "name": "leadingAction",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: a 24px control before the toggle (a drag handle, a checkbox), hidden from assistive technology."
+    },
+    {
+      "name": "secondaryActions",
+      "type": "list",
+      "required": false,
+      "description": "Per item: {label, icon, onClick, count} rendered as trailing invisible icon buttons outside the tab order and reachable by Shift+Cmd/Ctrl+U."
+    },
+    {
+      "name": "errorDialog",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: a TreeView.ErrorDialog {title (default \"Error\"), message, onRetry, onDismiss} rendered when its sub-tree failed to load."
+    },
+    {
+      "name": "containIntrinsicSize",
+      "type": "string",
+      "required": false,
+      "description": "Per item: a size hint that lets the web build skip rendering off-screen rows (content-visibility: auto)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "tree",
+      "name": "Tree",
+      "description": "The root list; it has no box of its own."
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "The treeitem: its row followed by its sub-tree. It is the focusable element; the row inside it draws every visual state."
+    },
+    {
+      "id": "row",
+      "name": "Row",
+      "description": "A rounded grid of spacer, leading action, toggle, content and trailing action, at least 32px tall, medium body text in --fgColor-default.",
+      "tokens": [
+        "--borderRadius-medium",
+        "--text-body-size-medium",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "level-lines",
+      "name": "Indentation lines",
+      "description": "One 1px vertical line per ancestor level in the spacer column, each at the right edge of an 8px slot, in --borderColor-muted.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "id": "leading-action",
+      "name": "Leading action",
+      "optional": true,
+      "description": "A 24px column before the toggle in --fgColor-muted, present only when the item has one.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "toggle",
+      "name": "Toggle",
+      "optional": true,
+      "description": "A 16px column holding a 12px chevron (right when collapsed, down when expanded) in --fgColor-muted; pointer only, never focusable.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "An icon in --fgColor-muted, in a box one line tall; the folder DirectoryIcon reads --treeViewItem-leadingVisual-iconColor-rest.",
+      "tokens": [
+        "--fgColor-muted",
+        "--treeViewItem-leadingVisual-iconColor-rest"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "Fills the content's remaining width; one line with an ellipsis by default."
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "A visual after the label in --fgColor-muted.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "trailing-action",
+      "name": "Secondary actions",
+      "optional": true,
+      "description": "Invisible IconButtons (Buttons when they carry a count) at the row's end in --fgColor-muted, each with a tooltip; see button.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "current-indicator",
+      "name": "Current-item indicator",
+      "optional": true,
+      "description": "A 4x24px --fgColor-accent bar with medium radius, centred vertically, 8px left of the current row.",
+      "tokens": [
+        "--fgColor-accent",
+        "--borderRadius-medium",
+        "--base-size-8",
+        "--base-size-12"
+      ]
+    },
+    {
+      "id": "sub-tree",
+      "name": "Sub-tree",
+      "optional": true,
+      "description": "The group of child items under an expanded item; not rendered while collapsed."
+    },
+    {
+      "id": "loading-item",
+      "name": "Loading item",
+      "optional": true,
+      "description": "A placeholder treeitem: a small Spinner and muted \"Loading...\", or with a count, that many skeleton rows (16px square + text bar) and a hidden \"Loading N items\"."
+    },
+    {
+      "id": "empty-item",
+      "name": "Empty item",
+      "optional": true,
+      "description": "A non-expandable treeitem reading \"No items found\" in muted text, shown when a sub-tree has no children."
+    },
+    {
+      "id": "error-dialog",
+      "name": "Error dialog",
+      "optional": true,
+      "description": "A modal ConfirmationDialog with Retry (confirm) and Dismiss (cancel) buttons; see dialog."
+    },
+    {
+      "id": "actions-dialog",
+      "name": "Supplemental actions dialog",
+      "optional": true,
+      "description": "A Dialog titled \"Supplemental actions\" listing the secondary actions as an ActionList, opened by the keyboard shortcut when there are two or more."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "layout",
+      "value": "nested",
+      "default": true,
+      "description": "Spacer, leading-action and toggle columns are present; items indent by level."
+    },
+    {
+      "axis": "layout",
+      "value": "flat",
+      "description": "The spacer, leading-action and toggle columns collapse to 0; every item starts at the left."
+    },
+    {
+      "axis": "text",
+      "value": "truncate",
+      "default": true,
+      "description": "Labels stay on one line with an ellipsis."
+    },
+    {
+      "axis": "text",
+      "value": "wrap",
+      "description": "Labels wrap by word; the toggle and visuals stay aligned with the first line."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The row is a grid with columns spacer, leading action, toggle, content (1fr) and trailing action (auto). The spacer is (level - 1) x half the toggle width: 8px per level at fine density, 12px at coarse. The leading-action column is 24px when the item has one, else 0.",
+      "part": "row",
+      "values": [
+        {
+          "name": "toggleWidth",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "indentPerLevel",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "leadingActionWidth",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:39-41,44-66"
+    },
+    {
+      "text": "The row's target height is 32px (2rem) at fine density and 44px (2.75rem) on a coarse pointer, where the toggle column also widens to 24px. The CSS reaches it through the content's and toggle's padding, not a min-height property (see the 31.2px gotcha).",
+      "part": "row",
+      "values": [
+        {
+          "name": "minItemHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "minItemHeightCoarse",
+          "value": 44,
+          "unit": "px"
+        },
+        {
+          "name": "toggleWidthCoarse",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:45-47,77-80"
+    },
+    {
+      "text": "The content pads 8px at the sides and (min height - 20.8px) / 2 above and below, using a hard-coded 1.3rem (20.8px) line, and lays out leading visual, label and trailing visual with --stack-gap-condensed (8px) between them. Its line height is --text-body-lineHeight-medium.",
+      "part": "label",
+      "tokens": [
+        "--base-size-8",
+        "--stack-gap-condensed",
+        "--text-body-lineHeight-medium"
+      ],
+      "values": [
+        {
+          "name": "assumedLineHeight",
+          "value": 20.8,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:151-169"
+    },
+    {
+      "text": "Visuals sit in a box one 20.8px line tall, centred, so they stay on the first line when a label wraps.",
+      "part": "leading-visual",
+      "values": [
+        {
+          "name": "visualBoxHeight",
+          "value": 20.8,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:182-190"
+    },
+    {
+      "text": "The 12px chevron is centred in the toggle column and padded (min height / 2 - 6px) from the top (10px at fine density), so it centres on a one-line row and stays at the top of a wrapped one.",
+      "part": "toggle",
+      "tokens": [
+        "--base-size-12"
+      ],
+      "values": [
+        {
+          "name": "chevronSize",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:128-140; TreeView/TreeView.tsx:99-100,459"
+    },
+    {
+      "text": "Indentation lines: the spacer holds level - 1 equal slots, each drawing a 1px right border in --borderColor-muted, so each ancestor level gets a line at the right edge of its 8px slot.",
+      "part": "level-lines",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-muted"
+      ],
+      "source": "TreeView/TreeView.module.css:212-227; TreeView/TreeView.tsx:434-436,505-513"
+    },
+    {
+      "text": "The current-item indicator is 4px wide and 24px tall, top at 50% - 12px, left -8px, in --fgColor-accent with medium radius. The item's paint clip extends 8px so the bar survives paint containment.",
+      "part": "current-indicator",
+      "tokens": [
+        "--base-size-12",
+        "--base-size-8",
+        "--fgColor-accent",
+        "--borderRadius-medium"
+      ],
+      "values": [
+        {
+          "name": "indicatorWidth",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "indicatorHeight",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:19-27,53-57,101-126"
+    },
+    {
+      "text": "With truncate the label is one line clipped with an ellipsis; without it the label wraps by word. The label takes the content's remaining width and may shrink to zero.",
+      "part": "label",
+      "source": "TreeView/TreeView.module.css:166-180; TreeView/TreeView.tsx:107,192"
+    },
+    {
+      "text": "In flat mode the spacer, leading-action and toggle columns are 0 wide.",
+      "source": "TreeView/TreeView.module.css:83-85; TreeView/TreeView.tsx:191"
+    },
+    {
+      "text": "A skeleton row is 32px tall (44px coarse) with 8px between a 16px square and a text bar whose width cycles 67%, 47%, 73%, 64%, 50% down the list.",
+      "part": "loading-item",
+      "values": [
+        {
+          "name": "skeletonRowHeight",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "skeletonGap",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "skeletonSquare",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/TreeView.module.css:258-291; TreeView/TreeView.tsx:662-675"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "text": "The row fills --control-transparent-bgColor-hover. The toggle cell also fills on its own hover, with rounded left corners. Placeholder loading rows show no hover.",
+      "part": "row",
+      "tokens": [
+        "--control-transparent-bgColor-hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "TreeView/TreeView.module.css:68-75,87-99,142-149"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus on an item draws an inset 2px (--boxShadow-thick) --fgColor-accent ring on its row, not around its sub-tree.",
+      "part": "row",
+      "tokens": [
+        "--boxShadow-thick",
+        "--fgColor-accent"
+      ],
+      "source": "TreeView/TreeView.module.css:29-37"
+    },
+    {
+      "state": "selected",
+      "label": "current",
+      "text": "The current item fills --control-transparent-bgColor-selected and shows the accent indicator.",
+      "part": "current-indicator",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--fgColor-accent"
+      ],
+      "source": "TreeView/TreeView.module.css:101-126; TreeView/TreeView.tsx:393"
+    },
+    {
+      "state": "expanded",
+      "text": "An expanded item shows a chevron-down and renders its sub-tree; the leading and trailing visuals may change with it (DirectoryIcon shows the open folder). The chevron swaps glyphs with no animation.",
+      "part": "toggle",
+      "motion": {
+        "instant": true
+      },
+      "source": "TreeView/TreeView.tsx:459,626-628,745-762,952-960"
+    },
+    {
+      "state": "collapsed",
+      "text": "A collapsed item shows a chevron-right and renders nothing below it; its children are unmounted.",
+      "part": "toggle",
+      "source": "TreeView/TreeView.tsx:459,626-628"
+    },
+    {
+      "state": "loading",
+      "text": "An expanded sub-tree in the loading state shows a single placeholder treeitem: spinner and \"Loading...\", or count skeleton rows. Entering loading announces \"<parent name> content loading\".",
+      "part": "loading-item",
+      "source": "TreeView/TreeView.tsx:590-593,642,681-707"
+    },
+    {
+      "state": "other",
+      "label": "loaded",
+      "text": "Leaving loading for done announces \"<parent name> content loaded\", or \"<parent name> is empty\" with no children. If the loading placeholder had focus, focus moves on the next tick to the first child, or to the parent when there is none.",
+      "part": "sub-tree",
+      "source": "TreeView/TreeView.tsx:554-589,596-624"
+    },
+    {
+      "state": "other",
+      "label": "empty",
+      "text": "A synchronous or done sub-tree with no children shows the \"No items found\" item. Once such an item is collapsed it reports no expanded state, like a leaf, though it still draws a chevron.",
+      "part": "empty-item",
+      "source": "TreeView/TreeView.tsx:540-552,643,709-715,392"
+    },
+    {
+      "state": "error",
+      "text": "A sub-tree in the error state renders its children as given; the caller shows the ErrorDialog. Retry calls onRetry; Dismiss (or closing) collapses the item and calls onDismiss. Either way focus returns to the item.",
+      "part": "error-dialog",
+      "source": "TreeView/TreeView.tsx:972-1008; TreeView/TreeView.docs.json"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "click",
+      "text": "Clicking a row runs onSelect if the item has one, else toggles it. The chevron toggles only when onSelect is set; without onSelect its click reaches the row, which toggles. A middle-click runs onSelect.",
+      "part": "row",
+      "source": "TreeView/TreeView.tsx:410-423,453-457"
+    },
+    {
+      "id": "expand-default",
+      "text": "An item's initial expanded state is, in order: its cached state from an earlier mount, defaultExpanded, then whether it is current.",
+      "source": "TreeView/TreeView.tsx:279-288"
+    },
+    {
+      "id": "expand-cache",
+      "text": "Every expand or collapse is cached by item id at the tree root, so an item unmounted by a collapsed ancestor reopens as it was. Item ids must be unique and stable.",
+      "source": "TreeView/TreeView.tsx:38-49,168-172,297-304"
+    },
+    {
+      "id": "aria-expanded",
+      "text": "An item reports expanded or collapsed when it has a sub-tree that is not known to be empty. It reports neither (a leaf, for keyboard purposes) when it has no sub-tree, when its loaded sub-tree is empty and it is collapsed, or when expanded is null.",
+      "source": "TreeView/TreeView.tsx:292,392,540-552"
+    },
+    {
+      "id": "focus-entry",
+      "text": "The tree is one tab stop. Focus entering by keyboard goes to the current item, else the item that last had focus, else the first item. A mouse press skips this so the pressed row (or chevron) works normally.",
+      "source": "TreeView/useRovingTabIndex.ts:17-71; TreeView/TreeView.tsx:112-132"
+    },
+    {
+      "id": "keys-vertical",
+      "text": "Down and Up Arrow move to the next and previous visible item in document order, skipping the contents of collapsed items. Home and End move to the first and last visible item. Focus stays put at either end; nothing wraps.",
+      "source": "TreeView/useRovingTabIndex.ts:109-128,153-177,190-219"
+    },
+    {
+      "id": "keys-right",
+      "text": "Right Arrow on a collapsed item expands it and keeps focus; on an expanded item it moves to the first child; on a leaf it does nothing. It is ignored with Alt or Meta held.",
+      "source": "TreeView/TreeView.tsx:341-347; TreeView/useRovingTabIndex.ts:83-102"
+    },
+    {
+      "id": "keys-left",
+      "text": "Left Arrow on an expanded item collapses it and keeps focus; on a collapsed item or a leaf it moves to the parent. It is ignored with Alt or Meta held. Backspace always moves to the parent.",
+      "source": "TreeView/TreeView.tsx:348-354; TreeView/useRovingTabIndex.ts:88-106,119-120,184-188"
+    },
+    {
+      "id": "keys-page",
+      "text": "Page Down and Page Up jump by a page of items, keeping the item's offset within its page: page size is floor(height of the nearest scroll container, else the window, / height of the first item's row), and the index clamps to the first or last item.",
+      "values": [
+        {
+          "name": "fallbackRowHeight",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "TreeView/useRovingTabIndex.ts:130-134,221-274"
+    },
+    {
+      "id": "keys-activate",
+      "text": "Enter or Space runs onSelect if the item has one, else toggles it.",
+      "source": "TreeView/TreeView.tsx:331-340"
+    },
+    {
+      "id": "typeahead",
+      "text": "Typing a printable character without Ctrl, Alt or Meta (Space excluded) appends it to a search string that clears 300ms after the last key, and focuses the first item whose accessible name starts with the string, case-insensitively. The search runs over all rendered items in order starting at the focused one, wrapping; a one-character search skips the focused item, so repeating a letter cycles through matches.",
+      "values": [
+        {
+          "name": "typeaheadResetMs",
+          "value": 300,
+          "unit": "ms"
+        }
+      ],
+      "source": "TreeView/useTypeahead.ts:24-98; TreeView/shared.ts:4-11"
+    },
+    {
+      "id": "secondary-actions",
+      "text": "Shift+Cmd+U on Apple platforms, Shift+Ctrl+U elsewhere, runs the only secondary action, or opens the Supplemental actions dialog when there are several. The item's accessible name gains \"Press (<shortcut>) for more actions.\" The action buttons are outside the tab order and return focus to the item on any key.",
+      "part": "trailing-action",
+      "source": "TreeView/TreeView.tsx:315-327,355-359,370-371,384-389,817-883,894-945"
+    },
+    {
+      "id": "scroll-into-view",
+      "text": "When an item gains focus its row scrolls into view by the least amount (nearest), at most once per frame, so a held arrow key does not reflow every press.",
+      "source": "TreeView/TreeView.tsx:142-166,398-408"
+    },
+    {
+      "id": "level-lines-visibility",
+      "text": "On a hover-capable pointer the indentation lines are transparent until the pointer is over the tree or focus is inside it; on a coarse pointer they always show.",
+      "part": "level-lines",
+      "tokens": [
+        "--borderColor-muted"
+      ],
+      "source": "TreeView/TreeView.module.css:217-236"
+    },
+    {
+      "id": "async-loading",
+      "text": "To load lazily, give the item a sub-tree in the initial state, start fetching in onExpandedChange, set loading (with the expected count if known), then done with the children or error with an ErrorDialog.",
+      "part": "sub-tree",
+      "source": "TreeView/TreeView.docs.json; TreeView/TreeView.tsx:518-528"
+    }
+  ],
+  "accessibility": {
+    "role": "tree, with treeitem items and group sub-trees",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab enters the tree once, at the current item, else the last focused item, else the first; Tab again leaves it.",
+      "Down Arrow / Up Arrow: next / previous visible item.",
+      "Right Arrow: expand a collapsed item; on an expanded item, go to its first child; on a leaf, nothing.",
+      "Left Arrow: collapse an expanded item; on a collapsed item or leaf, go to the parent.",
+      "Home / End: first / last visible item.",
+      "Page Down / Page Up: forward / back by one viewport of items.",
+      "Backspace: go to the parent.",
+      "Enter or Space: onSelect, else toggle.",
+      "Printable characters: type-ahead to the next item whose name starts with the typed text (300ms buffer).",
+      "Shift+Cmd+U (Apple) or Shift+Ctrl+U: run the secondary action, or open the actions dialog for several.",
+      "In the error and actions dialogs, arrows, Enter and Backspace stay inside the dialog."
+    ],
+    "semantics": [
+      "The root is role tree, named by ariaLabel or ariaLabelledby.",
+      "Each item is a treeitem with aria-level, aria-expanded per the rule above, and aria-current=\"true\" when current.",
+      "aria-selected is true on the focused item only, mirroring focus.",
+      "Visual labels are hidden text referenced by aria-describedby; the visuals themselves are aria-hidden.",
+      "A sub-tree is a group named by its aria-label or, by default, the parent item's name.",
+      "Loading, loaded and empty transitions are announced through a polite status live region."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Roving focus comes from Primer's focus zone over the DOM: one item is tabbable, arrow keys walk role=treeitem elements in document order, and a mouse-down flag suppresses the focus-in strategy. A native tree keeps a flat list of visible rows, one focused index, and runs the key map itself.",
+      "source": "TreeView/useRovingTabIndex.ts:5-75; TreeView/TreeView.tsx:112-132"
+    },
+    {
+      "kind": "web-only",
+      "text": "Type-ahead keeps a cached array of rendered treeitems invalidated by a MutationObserver, and reads each item's name from aria-label, aria-labelledby or text content. Natively, match against the item model's label for visible rows.",
+      "source": "TreeView/useTreeItemCache.ts:14-66; TreeView/useTypeahead.ts:31-50; TreeView/shared.ts:4-11"
+    },
+    {
+      "kind": "web-only",
+      "text": "Scroll-into-view (nearest, coalesced per animation frame) and Page Up/Down's page size both measure the DOM: the scroll container's client height and the first row's bounding box. A native build supplies its scroll view's height and its row height.",
+      "source": "TreeView/TreeView.tsx:142-158; TreeView/useRovingTabIndex.ts:221-236"
+    },
+    {
+      "kind": "web-only",
+      "text": "Announcements go through a visually hidden AriaStatus live region; a native build posts the same strings to the platform's accessibility announcement API.",
+      "source": "TreeView/TreeView.tsx:113-116,183-185,554-594"
+    },
+    {
+      "kind": "web-only",
+      "text": "containIntrinsicSize turns on content-visibility: auto so off-screen rows skip rendering; the native equivalent is row virtualisation.",
+      "source": "TreeView/TreeView.tsx:425-433"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "With secondaryActions and no aria-label, an item's aria-labelledby holds two ids. getAccessibleName passes that whole string to getElementById, finds nothing and returns an empty name, so type-ahead cannot match the item and load announcements say \" content loaded\".",
+      "source": "TreeView/TreeView.tsx:387-389; TreeView/shared.ts:4-11"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The toggle's hover fill and its rounded left corners are meant only for items with onSelect and for level 1; the conditions guard only the PRIVATE_ global class names, while the module classes that carry the styles are always applied.",
+      "source": "TreeView/TreeView.tsx:444-452; TreeView/TreeView.module.css:142-149"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The docs say the path to the current item is expanded by default; the code expands only the current item itself, and its ancestors stay collapsed unless the caller passes defaultExpanded or expanded. Since collapsed sub-trees are unmounted, nothing can discover a deeper current item.",
+      "source": "TreeView/TreeView.docs.json; TreeView/TreeView.tsx:279-288,626-628"
+    },
+    {
+      "kind": "gotcha",
+      "text": "With onSelect set, Enter, Space and row clicks select instead of toggling; only the chevron and Right/Left Arrow expand and collapse such an item.",
+      "source": "TreeView/TreeView.tsx:331-354,410-417,453-457"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The 32px minimum row is reached only through the visual box's 20.8px; a row with no visuals is 2 x ((32 - 20.8) / 2) + the body line height (20px) = 31.2px. Use 32px (44px coarse) as the row height.",
+      "source": "TreeView/TreeView.module.css:151-161,182-190"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded: the 16px toggle, 32px minimum row, 24px leading-action column, 12px chevron, 4x24px indicator, the 1.3rem line used in padding and visual boxes, the 8px clip margin, skeleton row sizes and widths, the 300ms type-ahead reset and the 32px fallback row height for paging.",
+      "source": "TreeView/TreeView.module.css:46-47,65,108-111,158,187,258-291; TreeView/TreeView.tsx:100; TreeView/useTypeahead.ts:78; TreeView/useRovingTabIndex.ts:221-223"
+    },
+    {
+      "kind": "density",
+      "text": "On a coarse pointer the toggle column widens from 16px to 24px (so the indent per level grows from 8px to 12px), the minimum row and the skeleton rows grow from 32px to 44px, and the indentation lines are always visible.",
+      "source": "TreeView/TreeView.module.css:77-80,217-236,264-266"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours focus draws a 2px HighlightText outline inset 2px, hover a 2px transparent outline, and the current indicator is HighlightText. The indicator uses --fgColor-accent rather than --bgColor-accent-emphasis because the latter failed visual tests in dark high contrast.",
+      "tokens": [
+        "--fgColor-accent"
+      ],
+      "source": "TreeView/TreeView.module.css:33-36,71-74,114-124"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The trailing action buttons, the spinner, skeletons and both dialogs are composed from Button, Spinner, SkeletonAvatar, SkeletonText, Dialog and ConfirmationDialog; their tokens live in those specs.",
+      "source": "TreeView/TreeView.tsx:662-707,817-1008"
+    }
+  ]
+}

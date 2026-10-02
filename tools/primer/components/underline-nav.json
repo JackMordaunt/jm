@@ -1,0 +1,635 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "underline-nav",
+  "name": "UnderlineNav",
+  "status": "beta",
+  "statusNote": "Beta. This is the current UnderlineNav; the version under deprecated/ measured item widths with a ResizeObserver. This one wraps items onto a clipped second line and detects the clipped ones with an IntersectionObserver.",
+  "summary": "A horizontal row of links between the views of one context (a repository's Code, Issues, Pull requests), marking the current view with a 2px underline. Items that do not fit move into a \"More\" menu at the end. Choose it for a few peer destinations; choose UnderlinePanels to switch panels on the same page, and NavList for many or nested destinations.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-24",
+    "--base-size-32",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--bgColor-neutral-muted",
+    "--borderColor-default",
+    "--borderColor-muted",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--control-xlarge-size",
+    "--fgColor-accent",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--stack-gap-condensed",
+    "--stack-padding-normal",
+    "--text-body-lineHeight-medium",
+    "--text-body-size-medium",
+    "--underlineNav-borderColor-active"
+  ],
+  "references": {
+    "react": [
+      "UnderlineNav/UnderlineNav.tsx",
+      "UnderlineNav/UnderlineNav.module.css",
+      "UnderlineNav/UnderlineNav.docs.json",
+      "UnderlineNav/UnderlineNavItem.tsx",
+      "UnderlineNav/UnderlineNavItem.module.css",
+      "UnderlineNav/UnderlineNavItemsRegistry.ts",
+      "UnderlineNav/utils.ts",
+      "internal/components/UnderlineTabbedInterface.tsx",
+      "internal/components/UnderlineTabbedInterface.module.css",
+      "internal/components/OverflowObserverProvider.tsx",
+      "internal/hooks/useOverflowObserver.ts"
+    ],
+    "primer": [
+      "underline-nav"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": true,
+      "description": "Names the nav landmark and a visually hidden \"<label> navigation\" h2. Primer asserts it in development."
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The links, in order: {label, href, current, leadingVisual, counter, onSelect}. href defaults to \"#\" for a plain anchor."
+    },
+    {
+      "name": "current",
+      "type": "enum",
+      "values": [
+        "page",
+        "step",
+        "location",
+        "date",
+        "time",
+        "true",
+        "false"
+      ],
+      "required": false,
+      "description": "Per item: aria-current. Any value except false marks the current item; at most one item may be current."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "Per item: a 16px octicon before the label (the older icon prop is the same slot)."
+    },
+    {
+      "name": "counter",
+      "type": "string",
+      "required": false,
+      "description": "Per item: a number or string shown in a CounterLabel after the label."
+    },
+    {
+      "name": "loadingCounters",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show a pulsing placeholder in place of every counter until all are ready, to avoid repeated layout shifts."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "inset",
+        "flush"
+      ],
+      "required": false,
+      "default": "inset",
+      "description": "inset pads the row 16px at each side; flush removes that padding so items align with content above and below."
+    },
+    {
+      "name": "hideIconsBreakpoint",
+      "type": "enum",
+      "values": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge",
+        "none"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Hide the row's leading icons while the component itself is narrower than this width. Primer's null (always show icons) is none here."
+    },
+    {
+      "name": "onSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Per item: called on click and on Enter or Space, before the href navigates, unless the event was already handled."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A one-line flex row, 48px tall at most, padded 8px on top and 16px at the sides (inset), with a 1px --borderColor-muted line along its bottom drawn as an inset shadow. It clips everything below its first line.",
+      "tokens": [
+        "--control-xlarge-size",
+        "--base-size-8",
+        "--stack-padding-normal",
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "id": "item-list",
+      "name": "Item list",
+      "description": "A wrapping flex list that takes the remaining width, with 8px between items. Its first child is an invisible zero-width spacer.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "A 32px-tall link, 8px side padding, medium radius, 8px margin below; it holds icon, label and counter in a row.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-8",
+        "--base-size-6",
+        "--borderRadius-medium",
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Leading icon",
+      "optional": true,
+      "description": "A 16px octicon in --fgColor-muted with 8px after it.",
+      "tokens": [
+        "--fgColor-muted",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "One line of text, semibold when current; ellipsis if the item is squeezed."
+    },
+    {
+      "id": "counter",
+      "name": "Counter",
+      "optional": true,
+      "description": "A CounterLabel 8px after the label (see counter-label), or the loading placeholder.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "underline",
+      "name": "Current underline",
+      "optional": true,
+      "description": "A 2px bar in --underlineNav-borderColor-active across the current item's full width, on the container's bottom edge.",
+      "tokens": [
+        "--underlineNav-borderColor-active"
+      ]
+    },
+    {
+      "id": "more-divider",
+      "name": "More divider",
+      "optional": true,
+      "description": "A 1px --borderColor-muted vertical rule, 24px tall, with 4px either side, before the More button.",
+      "tokens": [
+        "--borderColor-muted",
+        "--borderWidth-thin",
+        "--base-size-24",
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "more-button",
+      "name": "More button",
+      "optional": true,
+      "description": "An invisible ActionMenu button reading \"More\" (\"More items\" to assistive technology) with a trailing triangle; normal weight. See button for its tokens.",
+      "tokens": [
+        "--base-text-weight-normal"
+      ]
+    },
+    {
+      "id": "overflow-menu",
+      "name": "Overflow menu",
+      "optional": true,
+      "description": "An ActionMenu overlay listing the overflowed items as links, each with its counter as a trailing visual."
+    },
+    {
+      "id": "loading-counter",
+      "name": "Loading counter",
+      "optional": true,
+      "description": "A 24x16px --bgColor-neutral-muted pill with a 20px radius that pulses opacity while counters load.",
+      "tokens": [
+        "--bgColor-neutral-muted",
+        "--borderColor-default"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "inset",
+      "default": true,
+      "description": "The container pads 16px (--stack-padding-normal) at each side.",
+      "tokens": [
+        "--stack-padding-normal"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "flush",
+      "description": "No side padding: the first item's box starts at the container's edge."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is a flex row: the item list (flex-grow 1) and then the More container. It pads 8px on top, 0 at the bottom and --stack-padding-normal (16px) at the sides for inset, and is capped at --control-xlarge-size (48px) with overflow hidden. Its box model is pinned (border-box, no border) so the 48px budget cannot change.",
+      "part": "container",
+      "tokens": [
+        "--base-size-8",
+        "--stack-padding-normal",
+        "--control-xlarge-size"
+      ],
+      "values": [
+        {
+          "name": "containerMaxHeight",
+          "value": 48,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:1-37; UnderlineNav/UnderlineNav.tsx:95-105"
+    },
+    {
+      "text": "The bottom border is an inset 1px shadow in --borderColor-muted, not a border, so it does not take part in the height budget.",
+      "part": "container",
+      "tokens": [
+        "--borderColor-muted"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:12-14"
+    },
+    {
+      "text": "Items are laid out in a wrapping row with --stack-gap-condensed (8px) between them, vertically centred, never breaking text. A zero-width spacer with -8px end margin comes first, so the first real item starts at 0 yet is still free to wrap.",
+      "part": "item-list",
+      "tokens": [
+        "--stack-gap-condensed"
+      ],
+      "values": [
+        {
+          "name": "itemGap",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:31-47; UnderlineNav/UnderlineNav.module.css:72-76; UnderlineNav/UnderlineNav.tsx:107-108"
+    },
+    {
+      "text": "An item is --base-size-32 (32px) tall with 6px block and 8px inline padding, medium radius and an 8px bottom margin, so a line of items occupies 40px below the 8px top padding. A second line therefore starts at 48px, exactly where the container clips.",
+      "part": "item",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-6",
+        "--base-size-8",
+        "--borderRadius-medium"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:55-77"
+    },
+    {
+      "text": "The icon is followed by 8px, the counter preceded by 8px. Measure an item's width with its label set semibold: a hidden bold copy of the label reserves that width so selecting an item never shifts the row.",
+      "part": "label",
+      "tokens": [
+        "--base-size-8",
+        "--base-text-weight-semibold"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:105-133; internal/components/UnderlineTabbedInterface.tsx:74-98"
+    },
+    {
+      "text": "An item may be at most the list's width; its label then truncates with an ellipsis.",
+      "part": "label",
+      "source": "internal/components/UnderlineTabbedInterface.module.css:69,122-127; UnderlineNav/UnderlineNavItem.module.css:1-6"
+    },
+    {
+      "text": "The current underline is 2px tall, spans the item's width and is pulled 8px below the item box, so it lands on the container's bottom edge over the 1px border line.",
+      "part": "underline",
+      "values": [
+        {
+          "name": "underlineHeight",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "underlineDrop",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:135-143"
+    },
+    {
+      "text": "The More container is a centred flex row: a 1px --borderColor-muted rule 24px tall with 4px margin either side (9px in all), then the More button.",
+      "part": "more-divider",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-muted",
+        "--base-size-24",
+        "--base-size-4"
+      ],
+      "source": "UnderlineNav/UnderlineNav.module.css:78-81,100-106"
+    },
+    {
+      "text": "Icons in the row hide while the component's own width is below the breakpoint: xsmall 320px, small 544px, medium 768px (default), large 1012px, xlarge 1280px, xxlarge 1400px. The test is the component's width, not the window's; icons in the More menu are not affected.",
+      "part": "icon",
+      "values": [
+        {
+          "name": "hideIconsXsmall",
+          "value": 320,
+          "unit": "px"
+        },
+        {
+          "name": "hideIconsSmall",
+          "value": 544,
+          "unit": "px"
+        },
+        {
+          "name": "hideIconsMedium",
+          "value": 768,
+          "unit": "px"
+        },
+        {
+          "name": "hideIconsLarge",
+          "value": 1012,
+          "unit": "px"
+        },
+        {
+          "name": "hideIconsXlarge",
+          "value": 1280,
+          "unit": "px"
+        },
+        {
+          "name": "hideIconsXxlarge",
+          "value": 1400,
+          "unit": "px"
+        }
+      ],
+      "source": "UnderlineNav/UnderlineNav.module.css:24-70; UnderlineNav/UnderlineNav.tsx:51,102"
+    },
+    {
+      "text": "The loading counter is a 24x16px pill with a 20px radius in --bgColor-neutral-muted.",
+      "part": "loading-counter",
+      "tokens": [
+        "--bgColor-neutral-muted"
+      ],
+      "values": [
+        {
+          "name": "loadingCounterWidth",
+          "value": 24,
+          "unit": "px"
+        },
+        {
+          "name": "loadingCounterHeight",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "loadingCounterRadius",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:161-171"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Transparent item, --fgColor-default label, --fgColor-muted icon, no underline.",
+      "tokens": [
+        "--fgColor-default",
+        "--fgColor-muted"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:55-68,115-120,135-143"
+    },
+    {
+      "state": "hovered",
+      "text": "On a hover-capable pointer the item fills --bgColor-neutral-muted, fading in over 120ms ease-out.",
+      "part": "item",
+      "tokens": [
+        "--bgColor-neutral-muted"
+      ],
+      "motion": {
+        "durationMs": 120,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "internal/components/UnderlineTabbedInterface.module.css:79-85"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws an inset 2px ring in --fgColor-accent inside the item's rounded box, with a transparent outline for forced colours.",
+      "part": "item",
+      "tokens": [
+        "--fgColor-accent"
+      ],
+      "values": [
+        {
+          "name": "focusRing",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:88-103"
+    },
+    {
+      "state": "selected",
+      "label": "current",
+      "text": "The current item sets its label semibold and shows the 2px --underlineNav-borderColor-active underline.",
+      "part": "underline",
+      "tokens": [
+        "--underlineNav-borderColor-active",
+        "--base-text-weight-semibold"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:145-159; UnderlineNav/utils.ts:9-10"
+    },
+    {
+      "state": "other",
+      "label": "current-overflowed",
+      "text": "When the current item has moved into the menu, the More button takes its look: semibold text and the same 2px underline, pulled 9px below the button (8px plus the button's 1px border). In the menu the current item is semibold with a 2px --underlineNav-borderColor-active bar at its left edge, inset 2px top and bottom.",
+      "part": "more-button",
+      "tokens": [
+        "--base-text-weight-semibold",
+        "--underlineNav-borderColor-active",
+        "--base-size-2",
+        "--base-size-8",
+        "--borderWidth-thin"
+      ],
+      "source": "UnderlineNav/UnderlineNav.module.css:83-98,117-139; UnderlineNav/UnderlineNav.tsx:69,124-125"
+    },
+    {
+      "state": "loading",
+      "text": "With loadingCounters every counter, in the row and in the menu, is replaced by the loading pill, whose opacity alternates between 1 and 0.2 every 1.2s, ease-in-out, indefinitely.",
+      "part": "loading-counter",
+      "motion": {
+        "durationMs": 1200,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "internal/components/UnderlineTabbedInterface.module.css:161-181; internal/components/UnderlineTabbedInterface.tsx:85-95; UnderlineNav/UnderlineNav.tsx:151-163"
+    },
+    {
+      "state": "open",
+      "text": "The More menu is an ActionMenu; it closes by itself if nothing overflows any longer.",
+      "part": "overflow-menu",
+      "source": "UnderlineNav/UnderlineNav.tsx:87-90,119-170"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "overflow-layout",
+      "text": "Overflow is decided by line breaking, not by summing widths. Lay the items out in order on lines as wide as the item list, with 8px between items; the first line is visible and every later line is clipped. Lines fill in order, so once one item breaks to the second line every item after it is overflowed too: the visible set is always a prefix, and it can be empty.",
+      "part": "item-list",
+      "values": [
+        {
+          "name": "itemGap",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:21-36; UnderlineNav/UnderlineNav.tsx:106-114"
+    },
+    {
+      "id": "overflow-width",
+      "text": "The item list's width is the container's inner width (less 2 x 16px when inset) less, when anything overflows, the More container (9px divider plus the More button). A native build lays out in two passes: fit every item in the full width; if any item breaks, reserve the More container and fit again.",
+      "part": "item-list",
+      "tokens": [
+        "--stack-padding-normal"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:2-5,31-34; UnderlineNav/UnderlineNav.module.css:9-13,78-81,100-106"
+    },
+    {
+      "id": "overflow-threshold",
+      "text": "An item counts as overflowed when less than 95% of its box is visible within the container. The 5% tolerance absorbs rounding at large text sizes.",
+      "values": [
+        {
+          "name": "visibleThreshold",
+          "value": 95,
+          "unit": "percent"
+        }
+      ],
+      "source": "internal/components/OverflowObserverProvider.tsx:43-53,114-121; internal/hooks/useOverflowObserver.ts:20-46"
+    },
+    {
+      "id": "overflowed-item",
+      "text": "An overflowed item stays in the row but is hidden from view and from assistive technology, and removed from the tab order. It appears in the More menu instead, in its original order (the item registry keeps render order).",
+      "part": "overflow-menu",
+      "source": "UnderlineNav/UnderlineNavItem.tsx:27-31,51,63; UnderlineNav/UnderlineNavItem.module.css:7-11; UnderlineNav/UnderlineNavItemsRegistry.ts:56-57; UnderlineNav/UnderlineNav.tsx:61-63,139"
+    },
+    {
+      "id": "more-visibility",
+      "text": "The More divider and button show only while at least one item is overflowed.",
+      "part": "more-button",
+      "source": "UnderlineNav/UnderlineNav.tsx:61-65,104,116-130; UnderlineNav/UnderlineNav.module.css:9-13,78-81"
+    },
+    {
+      "id": "menu-items",
+      "text": "Each menu entry is a link with the item's href and props; choosing it calls the item's onSelect. Its counter, or the loading pill, is the entry's trailing visual. Before the first overflow measurement the menu shows one skeleton row.",
+      "part": "overflow-menu",
+      "source": "UnderlineNav/UnderlineNav.tsx:132-169"
+    },
+    {
+      "id": "select",
+      "text": "Click, Enter or Space on an item calls onSelect unless the event is already handled; the link then navigates to its href (\"#\" by default for a plain anchor).",
+      "part": "item",
+      "source": "UnderlineNav/UnderlineNavItem.tsx:21,33-48"
+    },
+    {
+      "id": "relayout",
+      "text": "Recompute overflow whenever the container's width, an item's content (label, icon, counter, loading state) or the text size changes.",
+      "source": "internal/components/OverflowObserverProvider.tsx:5-14"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation landmark holding a list of links",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab and Shift+Tab move through the visible items and then the More button; overflowed items are skipped.",
+      "Enter follows a link; Enter or Space also fires onSelect.",
+      "On the More button, Enter, Space or Down Arrow opens the menu; the menu's arrows move between entries and Escape closes it, returning focus to the button."
+    ],
+    "semantics": [
+      "The nav is named by ariaLabel and preceded by a visually hidden h2 reading \"<ariaLabel> navigation\".",
+      "The list has role list; the current link carries aria-current.",
+      "Overflowed items are aria-hidden in the row.",
+      "The More button's name is \"More items\", or \"More items, including current item\" when the current item has overflowed."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Overflow detection rests on the browser: flex-wrap places items on a clipped second line and a shared IntersectionObserver, rooted at the nav, reports each li's visible ratio. A native build has no observer; it measures every item (label at semibold width, icon, counter, 16px padding) and runs the line-breaking pass itself on every layout.",
+      "source": "internal/components/OverflowObserverProvider.tsx:15-56; UnderlineNav/UnderlineNavItem.tsx:27-31"
+    },
+    {
+      "kind": "web-only",
+      "text": "Before React runs, a scroll-driven CSS animation shows the More button whenever the container is block-scrollable, i.e. something wrapped. This exists only to avoid a layout shift during hydration; a native build decides More from its own layout pass.",
+      "source": "UnderlineNav/UnderlineNav.module.css:1-22"
+    },
+    {
+      "kind": "web-only",
+      "text": "Icon hiding is a CSS container query on the component's inline size; a native build compares its own allotted width with the breakpoint on every layout.",
+      "source": "UnderlineNav/UnderlineNav.module.css:24-70"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The More container's width changes the list's width, which can push further items onto the hidden line. Lay out once without More and, if anything breaks, once with it; do not toggle More inside one pass or the row oscillates.",
+      "source": "UnderlineNav/UnderlineNav.module.css:78-81; internal/components/UnderlineTabbedInterface.module.css:31-35"
+    },
+    {
+      "kind": "gotcha",
+      "text": "GAP = 8 in UnderlineTabbedInterface.tsx says it is used to compute how many items fit; nothing in the current code reads it. It is a leftover of the deprecated measuring algorithm. The live gap is --stack-gap-condensed.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.tsx:13-14"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded: the 2px underline and its 8px drop, the 120ms ease-out hover fade, the 24x16px loading pill with a 20px radius, its 1.2s pulse to 0.2 opacity, the 95% visibility threshold, and the container-query breakpoints in rem (20, 34, 48, 63.25, 80, 87.5).",
+      "source": "internal/components/UnderlineTabbedInterface.module.css:83,128-181; internal/components/OverflowObserverProvider.tsx:52,120; UnderlineNav/UnderlineNav.module.css:25-69"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--underlineNav-borderColor-hover and --underlineNav-iconColor-rest exist, but no CSS module reads them: hover has no underline, and the icon reads --fgColor-muted.",
+      "tokens": [
+        "--underlineNav-borderColor-hover",
+        "--underlineNav-iconColor-rest",
+        "--fgColor-muted"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:79-86,115-120"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the current underline (and the More button's when the current item has overflowed) is drawn in LinkText; the focus ring keeps a 2px transparent outline so the system ring shows.",
+      "source": "internal/components/UnderlineTabbedInterface.module.css:88-103,150-159; UnderlineNav/UnderlineNav.module.css:134-137"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The More button, its menu and the counters are composed from Button (invisible), ActionMenu, ActionList and CounterLabel; their tokens are in those specs and are not repeated here.",
+      "source": "UnderlineNav/UnderlineNav.tsx:119-170"
+    }
+  ]
+}

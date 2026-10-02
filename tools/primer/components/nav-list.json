@@ -1,0 +1,682 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "nav-list",
+  "name": "NavList",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React's docs file, yet it drives GitHub's repository settings and side navigation. The visuals are ActionList's; NavList adds link semantics, sub-navigation and the current-item treatment. A 2px item gap sits behind a feature flag that defaults off.",
+  "summary": "A vertical list of links for moving between pages of a section, with one current item marked by an accent line, optional groups with headings, collapsible sub-navigation up to four levels deep, and a \"Show more\" expander. Choose it over UnderlineNav when the destinations are many or hierarchical, and over ActionList when the items navigate rather than act.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--bgColor-muted",
+    "--borderColor-accent-emphasis",
+    "--borderColor-muted",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--boxShadow-thin",
+    "--control-fgColor-rest",
+    "--control-large-paddingBlock",
+    "--control-medium-gap",
+    "--control-medium-paddingBlock",
+    "--control-medium-paddingInline-condensed",
+    "--control-transparent-bgColor-active",
+    "--control-transparent-bgColor-hover",
+    "--control-transparent-bgColor-rest",
+    "--control-transparent-bgColor-selected",
+    "--control-transparent-borderColor-active",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--focus-outline-color",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "NavList/NavList.tsx",
+      "NavList/NavList.module.css",
+      "NavList/NavList.docs.json",
+      "ActionList/ActionList.module.css",
+      "ActionList/Group.module.css",
+      "ActionList/Item.tsx",
+      "ActionList/LinkItem.tsx",
+      "ActionList/List.tsx",
+      "ActionList/TrailingAction.tsx",
+      "FeatureFlags/DefaultFeatureFlags.ts",
+      "mixins/activeIndicatorLine.css",
+      "mixins/focusOutline.css"
+    ],
+    "primer": [
+      "nav-list"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The rows, in order: items, groups and dividers. An item is {label, href, current, leadingVisual, trailingVisual, description, trailingAction, inactiveText, tooltipText, subItems, defaultOpen}; a group is {title or heading, hideDivider, items}."
+    },
+    {
+      "name": "heading",
+      "type": "string",
+      "required": false,
+      "description": "NavList.Heading: names the nav landmark. Level h2 (default) or h3; groups default one level deeper. visuallyHidden keeps it for assistive technology only."
+    },
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Names the nav landmark when there is no heading; a caller-supplied label or labelledby wins over the heading."
+    },
+    {
+      "name": "current",
+      "type": "enum",
+      "values": [
+        "page",
+        "step",
+        "location",
+        "date",
+        "time",
+        "true",
+        "false"
+      ],
+      "required": false,
+      "description": "Per item: its aria-current value. Any value except false makes the item the current one. location marks an ancestor of the current page."
+    },
+    {
+      "name": "subItems",
+      "type": "list",
+      "required": false,
+      "description": "Per item: a NavList.SubNav of nested items. The item becomes a disclosure button and stops being a link."
+    },
+    {
+      "name": "defaultOpen",
+      "type": "boolean",
+      "required": false,
+      "description": "Per item with subItems: open on first render. An item whose sub-tree holds the current item opens regardless."
+    },
+    {
+      "name": "inactiveText",
+      "type": "string",
+      "required": false,
+      "description": "Per item: why the item cannot be used. The item renders muted, ignores activation, and shows the text."
+    },
+    {
+      "name": "tooltipText",
+      "type": "string",
+      "required": false,
+      "description": "Per item: a tooltip shown east of the item after the medium delay."
+    },
+    {
+      "name": "trailingAction",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: {icon, label, href} for an invisible IconButton (a Button when icon is absent) at the item's end, outside the link."
+    },
+    {
+      "name": "groupExpand",
+      "type": "list",
+      "required": false,
+      "description": "NavList.GroupExpand: hidden items revealed by a \"Show more\" row, with label (default \"Show more\") and pages (default 0, meaning reveal all at once)."
+    },
+    {
+      "name": "disableItemGap",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Suppress the 2px gap between items when the item-gap feature flag is on."
+    },
+    {
+      "name": "onNavigate",
+      "type": "callback",
+      "required": false,
+      "description": "Activation of a link item (the href navigates by default)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "nav",
+      "name": "Nav landmark",
+      "description": "The outer navigation region, named by the heading or the caller's label."
+    },
+    {
+      "id": "heading",
+      "name": "Heading",
+      "optional": true,
+      "description": "A small heading above the list, indented 16px so it lines up with item labels.",
+      "tokens": [
+        "--base-size-8",
+        "--control-medium-paddingInline-condensed"
+      ]
+    },
+    {
+      "id": "list",
+      "name": "List",
+      "description": "An inset ActionList: 8px block padding, items inset 8px from each side so the current-item line has room to their left.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "A rounded row (link, or disclosure button for a parent) with a grid of spacer, leading visual and content; the content is label, trailing visual and trailing action.",
+      "tokens": [
+        "--borderRadius-medium",
+        "--control-transparent-bgColor-rest"
+      ]
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "A 16px octicon in --fgColor-muted, centred in a 20px-tall box.",
+      "tokens": [
+        "--fgColor-muted",
+        "--base-size-20"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "description": "Medium body text, normal weight, 20px line height, wrapping by word; semibold when current.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--base-text-weight-normal",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "description",
+      "name": "Description",
+      "optional": true,
+      "description": "Small muted text at a 16px line height, inline after the label or as a block below it.",
+      "tokens": [
+        "--text-body-size-small",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "An icon or count at the end of the content. On a parent item it is the expand chevron."
+    },
+    {
+      "id": "expand-icon",
+      "name": "Expand chevron",
+      "optional": true,
+      "description": "A chevron-down octicon in the trailing-visual slot of an item with sub-items; flipped vertically while open."
+    },
+    {
+      "id": "trailing-action",
+      "name": "Trailing action",
+      "optional": true,
+      "description": "An invisible IconButton (or Button) after the content, full row height, square on its left corners."
+    },
+    {
+      "id": "active-indicator",
+      "name": "Current-item line",
+      "optional": true,
+      "description": "A 4px accent bar 8px left of the current item (or of a collapsed parent that holds it), inset 4px top and bottom, medium radius.",
+      "tokens": [
+        "--borderColor-accent-emphasis",
+        "--borderRadius-medium",
+        "--base-size-4",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "sub-nav",
+      "name": "Sub-navigation",
+      "optional": true,
+      "description": "A nested list under a parent item; its items indent 8px per level and use small label text.",
+      "tokens": [
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "group-heading",
+      "name": "Group heading",
+      "optional": true,
+      "description": "Small semibold muted text above a group, 6px block and 16px inline padding; may hold a link.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--fgColor-muted",
+        "--base-size-6",
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "optional": true,
+      "description": "A 1px --borderColor-muted rule drawn before each group unless hidden.",
+      "tokens": [
+        "--borderColor-muted",
+        "--borderWidth-thin"
+      ]
+    },
+    {
+      "id": "group-expand",
+      "name": "Show more",
+      "optional": true,
+      "description": "A button row labelled \"Show more\" with a trailing plus icon that reveals the group's hidden items."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "group-heading",
+      "value": "subtle",
+      "default": true,
+      "description": "The group heading is plain muted text."
+    },
+    {
+      "axis": "group-heading",
+      "value": "filled",
+      "description": "The group heading sits on a --bgColor-muted band with 1px --borderColor-muted rules above and below and 7px/8px outer margins.",
+      "tokens": [
+        "--bgColor-muted",
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "axis": "description",
+      "value": "inline",
+      "default": true,
+      "description": "The description follows the label on its baseline, 8px after it."
+    },
+    {
+      "axis": "description",
+      "value": "block",
+      "description": "The description sits below the label, 4px under it; the label turns semibold.",
+      "tokens": [
+        "--base-text-weight-semibold"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The list is ActionList's inset variant: 8px block padding on the list and 8px inline margin on each top-level item; items inside a sub-navigation have no inline margin.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "ActionList/List.tsx:21; ActionList/ActionList.module.css:14-23,715-723"
+    },
+    {
+      "text": "An item row is a grid of spacer, leading visual and content. It pads --control-medium-paddingBlock (6px) top and bottom and --control-medium-paddingInline-condensed (8px) at the sides; each present column is followed by --control-medium-gap (8px).",
+      "tokens": [
+        "--control-medium-paddingBlock",
+        "--control-medium-paddingInline-condensed",
+        "--control-medium-gap"
+      ],
+      "source": "ActionList/ActionList.module.css:501-529"
+    },
+    {
+      "text": "The label is medium body text at a hard-coded 20px line height, so a one-line row is 32px tall. Long labels wrap by word; nothing truncates.",
+      "tokens": [
+        "--text-body-size-medium"
+      ],
+      "values": [
+        {
+          "name": "labelLineHeight",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "rowHeight",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList/ActionList.module.css:702-713"
+    },
+    {
+      "text": "The content area is a second grid of label, trailing visual and trailing action, with --control-medium-gap after each present column. Visuals sit in a box at least 20px tall with a 20px line height, centred, so they align with the first label line.",
+      "part": "leading-visual",
+      "tokens": [
+        "--control-medium-gap",
+        "--base-size-20"
+      ],
+      "values": [
+        {
+          "name": "visualLineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList/ActionList.module.css:591-606,622-629,688-699"
+    },
+    {
+      "text": "A description is small text at a hard-coded 16px line height. Inline, it follows the label on the baseline 8px later; as a block, it sits 4px below the label.",
+      "part": "description",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--text-body-size-small"
+      ],
+      "values": [
+        {
+          "name": "descriptionLineHeight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList/ActionList.module.css:642-684"
+    },
+    {
+      "text": "Sub-items indent by a leading spacer of depth x 8px: depth 1 for a parent's children, 2 for theirs, up to 4. The spacer is drawn only inside a parent that has sub-items, and sub-item labels use small body text.",
+      "part": "sub-nav",
+      "values": [
+        {
+          "name": "indentPerLevel",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "maxDepth",
+          "value": 4,
+          "unit": "count"
+        }
+      ],
+      "source": "ActionList/ActionList.module.css:337-339,612-616,715-718; NavList/NavList.tsx:172,190,309-314"
+    },
+    {
+      "text": "The current-item line is absolutely placed: top 4px, left -8px, width 4px, height the row less 8px, in --borderColor-accent-emphasis with medium radius. It falls in the item's 8px inline margin.",
+      "part": "active-indicator",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--borderColor-accent-emphasis",
+        "--borderRadius-medium"
+      ],
+      "source": "mixins/activeIndicatorLine.css:1-11; ActionList/ActionList.module.css:241-244"
+    },
+    {
+      "text": "A trailing action makes the row a non-wrapping flex box: the link fills the row and the action button follows it at full row height, with square left corners.",
+      "part": "trailing-action",
+      "source": "ActionList/ActionList.module.css:117-121,727-731; ActionList/TrailingAction.tsx:34-72"
+    },
+    {
+      "text": "A divider is 1px of --borderColor-muted with 7px above and 8px below; a divider that is the list's first child is hidden. A group draws a divider before itself unless hideDivider, and a group that is not first has 8px above it.",
+      "part": "divider",
+      "tokens": [
+        "--borderColor-muted",
+        "--borderWidth-thin",
+        "--base-size-8"
+      ],
+      "source": "ActionList/ActionList.module.css:96-99,761-772; ActionList/Group.module.css:1-7; NavList/NavList.tsx:416"
+    },
+    {
+      "text": "A group heading is small semibold muted text at a hard-coded 18px line height, padded 6px block and 16px inline. The filled variant adds a --bgColor-muted band with 1px rules and 7px/8px outer margins, dropping the top margin when first.",
+      "part": "group-heading",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--fgColor-muted",
+        "--base-size-6",
+        "--base-size-16",
+        "--bgColor-muted",
+        "--borderColor-muted"
+      ],
+      "values": [
+        {
+          "name": "groupHeadingLineHeight",
+          "value": 18,
+          "unit": "px"
+        }
+      ],
+      "source": "ActionList/Group.module.css:13-51"
+    },
+    {
+      "text": "The NavList heading has 8px below it and starts --control-medium-paddingInline-condensed + 8px (16px) in, level with item labels. A link inside a group heading is --fgColor-default and underlines on hover.",
+      "part": "heading",
+      "tokens": [
+        "--base-size-8",
+        "--control-medium-paddingInline-condensed",
+        "--fgColor-default"
+      ],
+      "source": "NavList/NavList.module.css:1-14"
+    },
+    {
+      "text": "With the item-gap flag on (it defaults off) and disableItemGap unset, consecutive items and an open sub-navigation are separated by 2px.",
+      "tokens": [
+        "--base-size-2"
+      ],
+      "source": "ActionList/ActionList.module.css:29-39; ActionList/List.tsx:55-56,121; FeatureFlags/DefaultFeatureFlags.ts:9"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Transparent background (--control-transparent-bgColor-rest), --fgColor-default label, muted visuals.",
+      "tokens": [
+        "--control-transparent-bgColor-rest",
+        "--fgColor-default",
+        "--fgColor-muted"
+      ],
+      "source": "ActionList/ActionList.module.css:111-115,688-713"
+    },
+    {
+      "state": "hovered",
+      "text": "On a hover-capable pointer the row fills --control-transparent-bgColor-hover and, unless it is current or keyboard-focused, gains a 1px inset ring of --control-transparent-borderColor-active. On a parent item the hover lands on its own row only, never on its sub-items.",
+      "tokens": [
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-borderColor-active",
+        "--boxShadow-thin"
+      ],
+      "motion": {
+        "durationMs": 33.333,
+        "easing": [
+          0,
+          0,
+          1,
+          1
+        ]
+      },
+      "source": "ActionList/ActionList.module.css:136-153,319-335,513"
+    },
+    {
+      "state": "pressed",
+      "text": "The row fills --control-transparent-bgColor-active with the same 1px inset ring unless it is current.",
+      "tokens": [
+        "--control-transparent-bgColor-active",
+        "--control-transparent-borderColor-active",
+        "--boxShadow-thin"
+      ],
+      "source": "ActionList/ActionList.module.css:155-164,332-334"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws a 2px --focus-outline-color outline at offset 0 with no shadow, and hides the dividers next to the row.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "source": "ActionList/ActionList.module.css:166-173; mixins/focusOutline.css:1-5"
+    },
+    {
+      "state": "selected",
+      "label": "current",
+      "text": "The current item (aria-current set and not false) fills --control-transparent-bgColor-selected, sets its label semibold in --control-fgColor-rest, and shows the current-item line. Hovering it switches the fill to the hover colour.",
+      "part": "item",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--control-fgColor-rest",
+        "--base-text-weight-semibold",
+        "--borderColor-accent-emphasis"
+      ],
+      "source": "ActionList/ActionList.module.css:216-245; NavList/NavList.tsx:187-189"
+    },
+    {
+      "state": "collapsed",
+      "text": "A collapsed parent hides its sub-navigation and shows the chevron pointing down. If the current item is inside it, the parent takes the current treatment instead: selected fill, semibold label and the accent line.",
+      "part": "expand-icon",
+      "tokens": [
+        "--control-transparent-bgColor-selected",
+        "--base-text-weight-semibold",
+        "--borderColor-accent-emphasis"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "ActionList/ActionList.module.css:551-587; NavList/NavList.tsx:273"
+    },
+    {
+      "state": "expanded",
+      "text": "An open parent flips its chevron vertically (scaleY -1) with no transition and shows its sub-navigation; it never carries the current treatment itself.",
+      "part": "expand-icon",
+      "motion": {
+        "instant": true
+      },
+      "source": "ActionList/ActionList.module.css:545-549; NavList/NavList.tsx:269-283"
+    },
+    {
+      "state": "other",
+      "label": "inactive",
+      "text": "An item with inactiveText renders all its text and visuals in --fgColor-muted, shows a not-allowed cursor, has no hover or press fill, ignores activation, and shows the inactive text.",
+      "tokens": [
+        "--fgColor-muted"
+      ],
+      "source": "ActionList/ActionList.module.css:268-289; ActionList/Item.tsx:186-207,384-392"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "navigate",
+      "text": "A leaf item is a link: pointer release or Enter follows its href. The caller sets which item is current; NavList does not track navigation.",
+      "source": "NavList/NavList.tsx:183-196; ActionList/LinkItem.tsx:48-86"
+    },
+    {
+      "id": "disclose",
+      "text": "An item with sub-items is a disclosure button, not a link: activation toggles its sub-navigation open or closed. Any href on it is dropped.",
+      "source": "NavList/NavList.tsx:165-176,269-286"
+    },
+    {
+      "id": "open-on-current",
+      "text": "A parent starts open when defaultOpen is set or its sub-tree holds the current item, searched recursively. Whenever the sub-tree changes and holds the current item, the parent opens again.",
+      "source": "NavList/NavList.tsx:221-265"
+    },
+    {
+      "id": "indicate-collapsed-current",
+      "text": "The parent shows the current treatment exactly when it is closed and holds the current item; opening it moves the treatment to the current descendant.",
+      "source": "NavList/NavList.tsx:273; ActionList/ActionList.module.css:560-586"
+    },
+    {
+      "id": "depth-limit",
+      "text": "Sub-navigation nests at most four levels; a deeper SubNav renders nothing and logs an error.",
+      "source": "NavList/NavList.tsx:309-314"
+    },
+    {
+      "id": "show-more",
+      "text": "Show more reveals hidden items. With pages 0 the first press reveals all and the button goes. With pages N each press reveals ceil(count / N x pressCount) items, and the button goes after the Nth press.",
+      "part": "group-expand",
+      "source": "NavList/NavList.tsx:448-528"
+    },
+    {
+      "id": "show-more-focus",
+      "text": "After Show more reveals items, focus moves to the first newly revealed item: the first item on the first press, else the item at the new count less floor(count / N).",
+      "part": "group-expand",
+      "source": "NavList/NavList.tsx:453-455,505-516"
+    },
+    {
+      "id": "trailing-action",
+      "text": "A trailing action is a separate control after the link with its own label and tooltip (default direction west); it is not rendered while the item is inactive or loading.",
+      "part": "trailing-action",
+      "source": "ActionList/Item.tsx:319,397; ActionList/TrailingAction.tsx:34-72"
+    },
+    {
+      "id": "tooltip",
+      "text": "tooltipText shows a tooltip east of the item after the medium delay.",
+      "source": "ActionList/LinkItem.tsx:74-82; ActionList/Item.tsx:29-45,337"
+    },
+    {
+      "id": "heading-levels",
+      "text": "The NavList heading is h2 by default (h3 allowed) and names the landmark; group headings default one level deeper (h3 without a NavList heading) and never go below h4.",
+      "source": "NavList/NavList.tsx:39-47,64-71,404-428,539-551"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation landmark holding a list of links; a parent item is a button with aria-expanded",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab and Shift+Tab move through every link, parent button and trailing action in order; NavList has no arrow-key navigation.",
+      "Enter follows a link.",
+      "Enter or Space toggles a parent item's sub-navigation.",
+      "Enter or Space on Show more reveals the next page of items and focuses the first new one."
+    ],
+    "semantics": [
+      "The nav is named by the NavList heading unless the caller supplies aria-label or aria-labelledby.",
+      "The current link carries aria-current (page, location and so on).",
+      "A parent button carries aria-expanded and aria-controls naming its sub-list; the sub-list is labelled by the parent button.",
+      "An item is labelled by its label plus its trailing visual and described by its description and, when inactive, its inactive text.",
+      "Group headings are real headings one level below the NavList heading."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "A parent item cannot also be a link: when an item has sub-items, NavList renders a disclosure button and ignores href and the other link props.",
+      "source": "NavList/NavList.tsx:165-176"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A closed sub-navigation stays in the tree and is hidden with display: none; a native build may skip laying it out but must keep its open state.",
+      "source": "ActionList/ActionList.module.css:556-558"
+    },
+    {
+      "kind": "web-only",
+      "text": "NavList also finds the current descendant with a DOM query for [aria-current] after layout, for custom link components that set aria-current internally. A native build computes \"holds the current item\" from its own model.",
+      "source": "NavList/NavList.tsx:254-265"
+    },
+    {
+      "kind": "web-only",
+      "text": "Show more moves focus with flushSync and a document query for data-expand-focus-target; a native build focuses the first newly revealed item directly after revealing it.",
+      "source": "NavList/NavList.tsx:505-516"
+    },
+    {
+      "kind": "web-only",
+      "text": "Hover fills apply only under (hover: hover); on a touch pointer only the press fill shows.",
+      "source": "ActionList/ActionList.module.css:137-153"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The Show more button always reports aria-expanded=\"false\", even after it has revealed items.",
+      "source": "NavList/NavList.tsx:501-504"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The module's focus-visible rule targets the li, which is never focusable; the focused element is the link or button inside it, which no module rule styles. Draw the focusOutline ring (2px --focus-outline-color, offset 0) on the row as the rule intends.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "source": "ActionList/ActionList.module.css:166-173; ActionList/Item.tsx:323-344"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded in the module: the 20px label and visual line height, the 16px description line height, the 18px group-heading line height, the 8px-per-level indent, and the 33.333ms linear background transition.",
+      "source": "ActionList/ActionList.module.css:513,614,682,693,707; ActionList/Group.module.css:20"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours a hovered or pressed row draws a 1px transparent outline, a focused row a 1px transparent outline, and the current row a 2px transparent outline, so the system colours mark each state.",
+      "source": "ActionList/ActionList.module.css:125-134,146-151,158-163,220-221"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The 2px item gap is behind the primer_react_action_list_item_gap flag, which defaults to false; build without it unless matching a flagged GitHub surface.",
+      "source": "FeatureFlags/DefaultFeatureFlags.ts:9; ActionList/List.tsx:55-56"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Inside the list the current-item line sits 8px outside the row; anything that clips the row's box (a scroll view flush with the item) cuts it off. Keep the list's 8px inline inset.",
+      "source": "mixins/activeIndicatorLine.css:4; ActionList/ActionList.module.css:18-23"
+    }
+  ]
+}

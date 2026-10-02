@@ -1,0 +1,415 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "underline-panels",
+  "name": "UnderlinePanels",
+  "status": "draft",
+  "statusNote": "Draft and exported from the experimental entry point. It shares UnderlineNav's item visuals but is an ARIA tabs widget. It has no overflow menu: the tab row scrolls sideways. Its icon-hiding logic computes a flag that nothing reads.",
+  "summary": "Tabs in the underline style that switch between panels of content on the same page, marking the selected tab with a 2px underline. Choose it over UnderlineNav when the tabs show and hide panels instead of navigating, and over SegmentedControl when each choice owns a large region of content.",
+  "tokenGroups": [
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-32",
+    "--base-text-weight-semibold",
+    "--bgColor-neutral-muted",
+    "--borderColor-default",
+    "--borderColor-muted",
+    "--borderRadius-medium",
+    "--control-xlarge-size",
+    "--fgColor-accent",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--stack-gap-condensed",
+    "--stack-padding-normal",
+    "--text-body-lineHeight-medium",
+    "--text-body-size-medium",
+    "--underlineNav-borderColor-active"
+  ],
+  "references": {
+    "react": [
+      "experimental/UnderlinePanels/UnderlinePanels.tsx",
+      "experimental/UnderlinePanels/UnderlinePanels.module.css",
+      "experimental/UnderlinePanels/UnderlinePanels.docs.json",
+      "experimental/Tabs/Tabs.tsx",
+      "experimental/Tabs/useTab.ts",
+      "experimental/Tabs/useTabList.ts",
+      "experimental/Tabs/useTabPanel.ts",
+      "internal/components/UnderlineTabbedInterface.tsx",
+      "internal/components/UnderlineTabbedInterface.module.css"
+    ],
+    "primer": [
+      "underline-panels"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Names the tab list; give this or ariaLabelledby."
+    },
+    {
+      "name": "ariaLabelledby",
+      "type": "string",
+      "required": false,
+      "description": "Id of an element that names the tab list."
+    },
+    {
+      "name": "tabs",
+      "type": "list",
+      "required": true,
+      "description": "The tabs, in order: {value, label, icon, counter, onSelect}. value defaults to the tab's index as a string. Each tab needs a panel with the same value."
+    },
+    {
+      "name": "panels",
+      "type": "list",
+      "required": true,
+      "description": "The panels: {value, content}. value defaults to the panel's index; tab and panel counts must match."
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "required": false,
+      "description": "The selected tab's value, for a controlled component; pair with onChange."
+    },
+    {
+      "name": "defaultValue",
+      "type": "string",
+      "required": false,
+      "description": "The initially selected value for an uncontrolled component; without it the first tab is selected."
+    },
+    {
+      "name": "onChange",
+      "type": "callback",
+      "required": false,
+      "description": "Receives {value} on every selection change, whether by pointer, Enter or Space, or (in automatic mode) arrow keys."
+    },
+    {
+      "name": "activationMode",
+      "type": "enum",
+      "values": [
+        "automatic",
+        "manual"
+      ],
+      "required": false,
+      "default": "automatic",
+      "description": "automatic selects a tab when it receives focus; manual moves focus only and selects on Enter, Space or click. Use manual when showing a panel is slow."
+    },
+    {
+      "name": "loadingCounters",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show the pulsing placeholder in every counter until all are ready."
+    },
+    {
+      "name": "onSelect",
+      "type": "callback",
+      "required": false,
+      "description": "Per tab: fires on click and on Enter or Space only, never on arrow-key selection; use onChange to follow every change."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Tab strip",
+      "description": "A full-width row at least 48px tall, padded 8px on top and 16px at the sides, with a 1px --borderColor-muted line along its bottom drawn as an inset shadow. It scrolls horizontally when the tabs are wider than it.",
+      "tokens": [
+        "--control-xlarge-size",
+        "--base-size-8",
+        "--stack-padding-normal",
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "id": "tab-list",
+      "name": "Tab list",
+      "description": "A single non-wrapping row of tabs with 8px between them.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "tab",
+      "name": "Tab",
+      "description": "A 32px-tall button, 8px side padding, medium radius, 8px margin below, holding icon, label and counter.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-6",
+        "--base-size-8",
+        "--borderRadius-medium",
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "optional": true,
+      "description": "A 16px octicon in --fgColor-muted with 8px after it.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "counter",
+      "name": "Counter",
+      "optional": true,
+      "description": "A CounterLabel 8px after the label (see counter-label), or the loading pill."
+    },
+    {
+      "id": "underline",
+      "name": "Selected underline",
+      "description": "A 2px --underlineNav-borderColor-active bar across the selected tab on the strip's bottom edge.",
+      "tokens": [
+        "--underlineNav-borderColor-active"
+      ]
+    },
+    {
+      "id": "panel",
+      "name": "Panel",
+      "description": "The content region for one tab, shown only while its tab is selected; it carries no styling of its own."
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "text": "The strip is a full-width flex row padded 8px on top and --stack-padding-normal (16px) at the sides, at least --control-xlarge-size (48px) tall. It clips vertically and scrolls horizontally instead of wrapping or moving tabs into a menu.",
+      "part": "container",
+      "tokens": [
+        "--base-size-8",
+        "--stack-padding-normal",
+        "--control-xlarge-size"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:1-14; experimental/UnderlinePanels/UnderlinePanels.module.css:1-6"
+    },
+    {
+      "text": "The strip's bottom border is an inset 1px --borderColor-muted shadow, so overflow-y: hidden cannot clip it.",
+      "part": "container",
+      "tokens": [
+        "--borderColor-muted"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:12-14"
+    },
+    {
+      "text": "Tabs sit in one non-wrapping row with --stack-gap-condensed (8px) between them, vertically centred.",
+      "part": "tab-list",
+      "tokens": [
+        "--stack-gap-condensed"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:39-53"
+    },
+    {
+      "text": "A tab is 32px tall with 6px block and 8px inline padding, medium radius and an 8px bottom margin. A hidden semibold copy of the label reserves the width the label needs when selected, so selection never shifts the row.",
+      "part": "tab",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-6",
+        "--base-size-8",
+        "--borderRadius-medium",
+        "--base-text-weight-semibold"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:55-77,105-113"
+    },
+    {
+      "text": "The icon is followed by 8px and the counter preceded by 8px; the label truncates with an ellipsis if the tab is squeezed.",
+      "part": "icon",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:115-133"
+    },
+    {
+      "text": "The selected underline is 2px tall across the tab, pulled 8px below the tab box onto the strip's bottom edge.",
+      "part": "underline",
+      "values": [
+        {
+          "name": "underlineHeight",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "underlineDrop",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:135-143"
+    },
+    {
+      "text": "Panels render after the strip, in order; only the selected one is shown.",
+      "part": "panel",
+      "source": "experimental/UnderlinePanels/UnderlinePanels.tsx:331-348; experimental/Tabs/useTabPanel.ts:11-18"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Transparent tab, --fgColor-default label, --fgColor-muted icon, no underline.",
+      "tokens": [
+        "--fgColor-default",
+        "--fgColor-muted"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:55-68,115-120"
+    },
+    {
+      "state": "hovered",
+      "text": "On a hover-capable pointer the tab fills --bgColor-neutral-muted over 120ms ease-out.",
+      "part": "tab",
+      "tokens": [
+        "--bgColor-neutral-muted"
+      ],
+      "motion": {
+        "durationMs": 120,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "internal/components/UnderlineTabbedInterface.module.css:79-85"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws an inset 2px --fgColor-accent ring inside the tab, with a transparent outline for forced colours.",
+      "part": "tab",
+      "tokens": [
+        "--fgColor-accent"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:88-103"
+    },
+    {
+      "state": "selected",
+      "text": "The selected tab (aria-selected) sets its label semibold and shows the 2px --underlineNav-borderColor-active underline; its panel is shown and every other panel hidden.",
+      "part": "underline",
+      "tokens": [
+        "--underlineNav-borderColor-active",
+        "--base-text-weight-semibold"
+      ],
+      "source": "internal/components/UnderlineTabbedInterface.module.css:145-159; experimental/Tabs/useTabPanel.ts:11-18"
+    },
+    {
+      "state": "loading",
+      "text": "With loadingCounters each counter is a 24x16px --bgColor-neutral-muted pill pulsing between opacity 1 and 0.2 every 1.2s, ease-in-out.",
+      "part": "counter",
+      "tokens": [
+        "--bgColor-neutral-muted",
+        "--borderColor-default"
+      ],
+      "motion": {
+        "durationMs": 1200,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "internal/components/UnderlineTabbedInterface.module.css:161-181; experimental/UnderlinePanels/UnderlinePanels.tsx:378"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "select-pointer",
+      "text": "A primary-button press without Ctrl selects the tab on mouse-down, not on release; any other button, or Ctrl, does nothing and suppresses the press.",
+      "part": "tab",
+      "source": "experimental/Tabs/useTab.ts:25-31"
+    },
+    {
+      "id": "select-key",
+      "text": "Enter or Space on a tab selects it and then fires the tab's onSelect.",
+      "part": "tab",
+      "source": "experimental/Tabs/useTab.ts:19-23; experimental/UnderlinePanels/UnderlinePanels.tsx:365-375"
+    },
+    {
+      "id": "arrows",
+      "text": "Right and Left Arrow move focus to the next and previous tab, wrapping at either end; Home and End move to the first and last. These keys are consumed by the tab list.",
+      "part": "tab-list",
+      "source": "experimental/Tabs/useTabList.ts:19-72"
+    },
+    {
+      "id": "activation",
+      "text": "In automatic mode a tab that gains focus becomes selected. In manual mode focus only marks the tab as focused, and Enter, Space or a press selects it.",
+      "source": "experimental/Tabs/useTab.ts:33-43"
+    },
+    {
+      "id": "tab-stop",
+      "text": "Exactly one tab is in the tab order: the selected tab, or in manual mode the tab last focused by arrows until something is selected.",
+      "source": "experimental/Tabs/useTab.ts:16-17,55"
+    },
+    {
+      "id": "change",
+      "text": "Selecting a different tab calls onChange with its value and, uncontrolled, updates the selection; reselecting the selected tab does nothing.",
+      "source": "experimental/Tabs/Tabs.tsx:39-46; experimental/UnderlinePanels/UnderlinePanels.tsx:213-218"
+    },
+    {
+      "id": "pairing",
+      "text": "Tabs and panels pair by value; without values the nth tab pairs with the nth panel. A selected value that matches no tab falls back to the first tab without calling onChange.",
+      "source": "experimental/UnderlinePanels/UnderlinePanels.tsx:148-211"
+    },
+    {
+      "id": "scroll",
+      "text": "When the tabs are wider than the strip, the strip scrolls horizontally; nothing wraps or moves into a menu.",
+      "part": "container",
+      "source": "experimental/UnderlinePanels/UnderlinePanels.module.css:1-6"
+    }
+  ],
+  "accessibility": {
+    "role": "tablist of tabs, each controlling a tabpanel",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab moves into the tab list at the selected tab and on into the selected panel.",
+      "Right Arrow and Left Arrow move to the next and previous tab, wrapping; in automatic mode they also select it.",
+      "Home and End move to the first and last tab.",
+      "Enter and Space select the focused tab."
+    ],
+    "semantics": [
+      "The tab list is named by ariaLabel or ariaLabelledby and has aria-orientation horizontal.",
+      "Each tab has role tab, aria-selected and aria-controls naming its panel; ids derive from the group id and the tab's value.",
+      "Each panel has role tabpanel, is labelled by its tab and is hidden unless selected."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "UnderlinePanels measures the tab list and the strip with two ResizeObservers and sets iconsVisible, but no tab and no CSS rule reads it, so icons never hide. Build icons as always visible, or implement the intended rule (hide icons while the strip is narrower than the list's width with icons) knowingly.",
+      "source": "experimental/UnderlinePanels/UnderlinePanels.tsx:141,226-270,333,354-380"
+    },
+    {
+      "kind": "web-only",
+      "text": "Horizontal overflow is the browser's scroll container; a native build supplies a horizontally scrolling strip and scrolls the focused tab into view, which the web gets from focus().",
+      "source": "experimental/UnderlinePanels/UnderlinePanels.module.css:1-6; experimental/Tabs/useTabList.ts:47-71"
+    },
+    {
+      "kind": "web-only",
+      "text": "Roving tab order is done with tabIndex 0 on one tab and -1 on the rest; a native focus system needs the same single tab stop.",
+      "source": "experimental/Tabs/useTab.ts:16-17,55"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Selection happens on mouse-down, so a press that is dragged off the tab still selects it.",
+      "source": "experimental/Tabs/useTab.ts:25-31"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A tab's onSelect does not fire for arrow-key selection in automatic mode; only onChange sees every change.",
+      "source": "experimental/UnderlinePanels/UnderlinePanels.tsx:51-55,365-375"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 2px underline, its 8px drop, the 120ms ease-out hover fade and the loading pill's size and 1.2s pulse are hard-coded in the shared module.",
+      "source": "internal/components/UnderlineTabbedInterface.module.css:83,135-181"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the selected underline is drawn in LinkText.",
+      "source": "internal/components/UnderlineTabbedInterface.module.css:150-159"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Tabs do not expose disabled even though the shared tab list skips aria-disabled tabs; every tab is reachable.",
+      "source": "experimental/Tabs/useTabList.ts:86-88; experimental/UnderlinePanels/UnderlinePanels.tsx:79-102"
+    }
+  ]
+}

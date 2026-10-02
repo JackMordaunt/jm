@@ -1,0 +1,237 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "sub-nav",
+  "name": "SubNav",
+  "status": "alpha",
+  "statusNote": "Alpha and little changed for years: a joined row of bordered links with an optional actions slot. Two documented props (align, full) have no implementation.",
+  "summary": "A compact, segmented row of links that switch between a few related views (Labels / Milestones), with room for an action such as a search field or button at the opposite end. Choose it over UnderlineNav for a secondary, button-like switch inside a page section; choose SegmentedControl when the choice changes state rather than navigating.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-16",
+    "--base-text-weight-medium",
+    "--bgColor-accent-emphasis",
+    "--bgColor-muted",
+    "--borderColor-default",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--fgColor-default",
+    "--fgColor-onEmphasis",
+    "--text-body-size-medium"
+  ],
+  "references": {
+    "react": [
+      "SubNav/SubNav.tsx",
+      "SubNav/SubNav.module.css",
+      "SubNav/SubNav.docs.json"
+    ],
+    "primer": [
+      "sub-nav"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "label",
+      "type": "string",
+      "required": false,
+      "description": "The nav landmark's accessible name (aria-label also works)."
+    },
+    {
+      "name": "links",
+      "type": "list",
+      "required": true,
+      "description": "The links, in order: {label, href, selected}. selected marks the current view."
+    },
+    {
+      "name": "actions",
+      "type": "slot",
+      "required": false,
+      "description": "Content placed at the far end of the row, vertically centred (a button, a search input)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A nav that lays out its body and its actions at opposite ends of one row."
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "description": "A row holding the link group and any other children, 8px apart, pulled 1px down."
+    },
+    {
+      "id": "links",
+      "name": "Link group",
+      "description": "A row of links joined edge to edge into one bordered, rounded segment."
+    },
+    {
+      "id": "link",
+      "name": "Link",
+      "description": "A segment at least 34px tall with 16px side padding, medium-weight medium body text on a 20px line, centred, with 1px --borderColor-default borders that it shares with its neighbours.",
+      "tokens": [
+        "--base-size-16",
+        "--text-body-size-medium",
+        "--base-text-weight-medium",
+        "--fgColor-default",
+        "--borderWidth-thin",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "Actions",
+      "optional": true,
+      "description": "The caller's actions, centred vertically at the row's end."
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "text": "The container is a flex row with space between its body and its actions; the actions centre vertically.",
+      "part": "container",
+      "source": "SubNav/SubNav.module.css:1-4,20-22; SubNav/SubNav.tsx:22-30"
+    },
+    {
+      "text": "The body is a flex row whose children after the first sit 8px apart; it has a -1px bottom margin so the segment's bottom border can overlap a rule beneath the SubNav.",
+      "part": "body",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "values": [
+        {
+          "name": "bodyMarginBottom",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "SubNav/SubNav.module.css:6-18"
+    },
+    {
+      "text": "Each link is a flex box at least 34px tall, padded 16px left and right, with a hard-coded 20px line height, its text centred both ways.",
+      "part": "link",
+      "tokens": [
+        "--base-size-16",
+        "--text-body-size-medium",
+        "--base-text-weight-medium"
+      ],
+      "values": [
+        {
+          "name": "minHeight",
+          "value": 34,
+          "unit": "px"
+        },
+        {
+          "name": "lineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "SubNav/SubNav.module.css:24-43"
+    },
+    {
+      "text": "Links share borders: each draws a 1px --borderColor-default top, right and bottom border, the first also a left border with medium radius on its left corners, the last medium radius on its right corners. The result is one segmented box with 1px dividers.",
+      "part": "links",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--borderRadius-medium"
+      ],
+      "source": "SubNav/SubNav.module.css:40-54"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Links are --fgColor-default on no fill, undecorated.",
+      "part": "link",
+      "tokens": [
+        "--fgColor-default"
+      ],
+      "source": "SubNav/SubNav.module.css:37-39"
+    },
+    {
+      "state": "hovered",
+      "text": "Hover, and focus by any means, fill the link with --bgColor-muted, fading over 200ms ease.",
+      "part": "link",
+      "tokens": [
+        "--bgColor-muted"
+      ],
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "source": "SubNav/SubNav.module.css:56-61"
+    },
+    {
+      "state": "focused",
+      "text": "Focus gets the same --bgColor-muted fill as hover; the module draws no focus ring, so the platform's default focus indicator is the only other cue.",
+      "part": "link",
+      "tokens": [
+        "--bgColor-muted"
+      ],
+      "source": "SubNav/SubNav.module.css:56-61"
+    },
+    {
+      "state": "selected",
+      "text": "The selected link fills --bgColor-accent-emphasis with --fgColor-onEmphasis text and turns its borders the same accent colour.",
+      "part": "link",
+      "tokens": [
+        "--bgColor-accent-emphasis",
+        "--fgColor-onEmphasis"
+      ],
+      "source": "SubNav/SubNav.module.css:63-68; SubNav/SubNav.tsx:55-56"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "navigate",
+      "text": "Each link navigates to its href; SubNav keeps no state, and the caller sets which link is selected.",
+      "source": "SubNav/SubNav.tsx:49-64"
+    },
+    {
+      "id": "actions",
+      "text": "When actions are given they render after the body at the row's far end; with none, the body takes the row alone.",
+      "part": "actions",
+      "source": "SubNav/SubNav.tsx:29-30"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation landmark of links",
+    "minTargetPx": 34,
+    "keyboard": [
+      "Tab and Shift+Tab move through the links and then the actions.",
+      "Enter follows the focused link."
+    ],
+    "semantics": [
+      "The nav is named by label or aria-label.",
+      "The selected link carries aria-current=\"true\" (not \"page\")."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "align (\"right\") and full are documented and typed, but SubNav implements neither: both pass through to the nav element as attributes and no CSS reads them. Do not build them.",
+      "source": "SubNav/SubNav.tsx:8-13,17-27; SubNav/SubNav.module.css:1-69; SubNav/SubNav.docs.json"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Selection is announced as aria-current=\"true\", unlike UnderlineNav and NavList which let the caller say \"page\".",
+      "source": "SubNav/SubNav.tsx:55-56"
+    },
+    {
+      "kind": "gotcha",
+      "text": "There is no focus-visible ring: keyboard focus looks like hover. A native build should still draw the system focus indicator (Primer's is a 2px --focus-outline-color outline) or the focused link is indistinguishable from a hovered one.",
+      "source": "SubNav/SubNav.module.css:56-61"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 34px minimum height and 20px line height are marked as custom values for SubNav; the 200ms ease fade and the -1px body margin are also hard-coded.",
+      "source": "SubNav/SubNav.module.css:9,30,36,60"
+    }
+  ]
+}

@@ -294,6 +294,32 @@
       ]
     },
     {
+      "id": "breadcrumbs",
+      "name": "Breadcrumbs",
+      "status": "alpha",
+      "summary": "A trail of links from the root of a hierarchy to the current page, separated by slashes. Long trails either wrap onto more lines or fold their leading crumbs into a \"…\" menu. Use it to show location in a hierarchy, not for tabs or steps.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-6",
+        "--base-text-weight-semibold",
+        "--borderRadius-large",
+        "--borderRadius-medium",
+        "--borderRadius-small",
+        "--control-small-size",
+        "--control-transparent-bgColor-hover",
+        "--fgColor-default",
+        "--fgColor-link",
+        "--fgColor-muted",
+        "--focus-outline-color",
+        "--overlay-bgColor",
+        "--overlay-offset",
+        "--overlay-width-small",
+        "--overlay-width-xsmall",
+        "--shadow-floating-small",
+        "--text-body-size-medium"
+      ]
+    },
+    {
       "id": "button",
       "name": "Button",
       "status": "alpha",
@@ -963,6 +989,43 @@
       ]
     },
     {
+      "id": "nav-list",
+      "name": "NavList",
+      "status": "alpha",
+      "summary": "A vertical list of links for moving between pages of a section, with one current item marked by an accent line, optional groups with headings, collapsible sub-navigation up to four levels deep, and a \"Show more\" expander. Choose it over UnderlineNav when the destinations are many or hierarchical, and over ActionList when the items navigate rather than act.",
+      "tokenGroups": [
+        "--base-size-2",
+        "--base-size-4",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-20",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold",
+        "--bgColor-muted",
+        "--borderColor-accent-emphasis",
+        "--borderColor-muted",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--boxShadow-thin",
+        "--control-fgColor-rest",
+        "--control-large-paddingBlock",
+        "--control-medium-gap",
+        "--control-medium-paddingBlock",
+        "--control-medium-paddingInline-condensed",
+        "--control-transparent-bgColor-active",
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-bgColor-rest",
+        "--control-transparent-bgColor-selected",
+        "--control-transparent-borderColor-active",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--focus-outline-color",
+        "--text-body-size-medium",
+        "--text-body-size-small"
+      ]
+    },
+    {
       "id": "overlay",
       "name": "Overlay",
       "status": "alpha",
@@ -1022,6 +1085,26 @@
         "--viewportRange-narrow",
         "--viewportRange-regular",
         "--viewportRange-wide"
+      ]
+    },
+    {
+      "id": "pagination",
+      "name": "Pagination",
+      "status": "alpha",
+      "summary": "Previous and Next links around a run of numbered page links, with ellipses standing in for long runs, for moving through a paginated list. Use it when the reader may want to jump to a specific page; for a simple \"load more\" use a button.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-20",
+        "--base-size-32",
+        "--bgColor-accent-emphasis",
+        "--borderColor-muted",
+        "--borderRadius-medium",
+        "--control-transparent-bgColor-hover",
+        "--fgColor-accent",
+        "--fgColor-default",
+        "--fgColor-disabled",
+        "--fgColor-onEmphasis"
       ]
     },
     {
@@ -1354,6 +1437,25 @@
       ]
     },
     {
+      "id": "sub-nav",
+      "name": "SubNav",
+      "status": "alpha",
+      "summary": "A compact, segmented row of links that switch between a few related views (Labels / Milestones), with room for an action such as a search field or button at the opposite end. Choose it over UnderlineNav for a secondary, button-like switch inside a page section; choose SegmentedControl when the choice changes state rather than navigating.",
+      "tokenGroups": [
+        "--base-size-8",
+        "--base-size-16",
+        "--base-text-weight-medium",
+        "--bgColor-accent-emphasis",
+        "--bgColor-muted",
+        "--borderColor-default",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--fgColor-default",
+        "--fgColor-onEmphasis",
+        "--text-body-size-medium"
+      ]
+    },
+    {
       "id": "text",
       "name": "Text",
       "status": "alpha",
@@ -1626,11 +1728,89 @@
       ]
     },
     {
+      "id": "tree-view",
+      "name": "TreeView",
+      "status": "beta",
+      "summary": "A hierarchical list of expandable items (files and folders, nested settings) with one current item, full ARIA tree keyboard navigation, type-ahead, and sub-trees that can load asynchronously. Choose it over NavList when the hierarchy is deep, data-driven or lazily loaded.",
+      "tokenGroups": [
+        "--base-size-8",
+        "--base-size-12",
+        "--borderColor-muted",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--boxShadow-thick",
+        "--control-transparent-bgColor-hover",
+        "--control-transparent-bgColor-selected",
+        "--fgColor-accent",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--stack-gap-condensed",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium",
+        "--treeViewItem-leadingVisual-iconColor-rest"
+      ]
+    },
+    {
       "id": "truncate",
       "name": "Truncate",
       "status": "alpha",
       "summary": "Clips one line of text to a maximum width with an ellipsis and shows the full text in a native tooltip; optionally expands to full width on hover. Use it only where wrapping or more room is impossible, and never around focusable content.",
       "tokenGroups": []
+    },
+    {
+      "id": "underline-nav",
+      "name": "UnderlineNav",
+      "status": "beta",
+      "summary": "A horizontal row of links between the views of one context (a repository's Code, Issues, Pull requests), marking the current view with a 2px underline. Items that do not fit move into a \"More\" menu at the end. Choose it for a few peer destinations; choose UnderlinePanels to switch panels on the same page, and NavList for many or nested destinations.",
+      "tokenGroups": [
+        "--base-size-2",
+        "--base-size-4",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-24",
+        "--base-size-32",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold",
+        "--bgColor-neutral-muted",
+        "--borderColor-default",
+        "--borderColor-muted",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--control-xlarge-size",
+        "--fgColor-accent",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--stack-gap-condensed",
+        "--stack-padding-normal",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium",
+        "--underlineNav-borderColor-active"
+      ]
+    },
+    {
+      "id": "underline-panels",
+      "name": "UnderlinePanels",
+      "status": "draft",
+      "summary": "Tabs in the underline style that switch between panels of content on the same page, marking the selected tab with a 2px underline. Choose it over UnderlineNav when the tabs show and hide panels instead of navigating, and over SegmentedControl when each choice owns a large region of content.",
+      "tokenGroups": [
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-32",
+        "--base-text-weight-semibold",
+        "--bgColor-neutral-muted",
+        "--borderColor-default",
+        "--borderColor-muted",
+        "--borderRadius-medium",
+        "--control-xlarge-size",
+        "--fgColor-accent",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--stack-gap-condensed",
+        "--stack-padding-normal",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium",
+        "--underlineNav-borderColor-active"
+      ]
     }
   ]
 }

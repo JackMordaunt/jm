@@ -1,0 +1,410 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "breadcrumbs",
+  "name": "Breadcrumbs",
+  "status": "alpha",
+  "statusNote": "Alpha. The wrap mode is long-standing; the menu overflow modes and the spacious variant are newer, measure the DOM at runtime, and carry a TODO about the menu button's assumed width. The variant prop exists in code but not in the docs file.",
+  "summary": "A trail of links from the root of a hierarchy to the current page, separated by slashes. Long trails either wrap onto more lines or fold their leading crumbs into a \"…\" menu. Use it to show location in a hierarchy, not for tabs or steps.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-6",
+    "--base-text-weight-semibold",
+    "--borderRadius-large",
+    "--borderRadius-medium",
+    "--borderRadius-small",
+    "--control-small-size",
+    "--control-transparent-bgColor-hover",
+    "--fgColor-default",
+    "--fgColor-link",
+    "--fgColor-muted",
+    "--focus-outline-color",
+    "--overlay-bgColor",
+    "--overlay-offset",
+    "--overlay-width-small",
+    "--overlay-width-xsmall",
+    "--shadow-floating-small",
+    "--text-body-size-medium"
+  ],
+  "references": {
+    "react": [
+      "Breadcrumbs/Breadcrumbs.tsx",
+      "Breadcrumbs/Breadcrumbs.module.css",
+      "Breadcrumbs/Breadcrumbs.docs.json",
+      "mixins/focusOutline.css"
+    ],
+    "primer": [
+      "breadcrumbs"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The crumbs from root to current: {label, href, selected}. selected marks the current page."
+    },
+    {
+      "name": "overflow",
+      "type": "enum",
+      "values": [
+        "wrap",
+        "menu",
+        "menu-with-root"
+      ],
+      "required": false,
+      "default": "wrap",
+      "description": "wrap lets the trail wrap onto more lines; menu folds the leading crumbs (root included) into a menu; menu-with-root keeps the root visible and folds the crumbs after it."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "normal",
+        "spacious"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "normal shows link-coloured text crumbs; spacious shows default-coloured crumbs with padding and a hover fill."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A full-width nav labelled \"Breadcrumbs\" holding an ordered list with no indent."
+    },
+    {
+      "id": "crumb",
+      "name": "Crumb",
+      "description": "A link at medium body size; in the normal variant --fgColor-link, in spacious --fgColor-default with 6px/4px padding and medium radius.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--fgColor-link",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "separator",
+      "name": "Separator",
+      "description": "A slash in --fgColor-muted after every crumb but the last. In wrap mode it is a rotated 0.1em rule, 0.8em tall, with 0.5em either side; in the menu modes it is a 16px slash glyph.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "overflow-button",
+      "name": "Overflow button",
+      "optional": true,
+      "description": "A small invisible IconButton with a kebab-horizontal icon (see icon-button), first in the trail or after the root."
+    },
+    {
+      "id": "overflow-menu",
+      "name": "Overflow menu",
+      "optional": true,
+      "description": "A floating panel below the button listing the folded crumbs as ActionList links.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--shadow-floating-small",
+        "--borderRadius-large",
+        "--overlay-width-xsmall",
+        "--overlay-width-small"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "normal",
+      "default": true,
+      "description": "Crumbs in --fgColor-link that underline on hover; the current crumb is --fgColor-default and does not underline.",
+      "tokens": [
+        "--fgColor-link",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "spacious",
+      "description": "Crumbs in --fgColor-default padded 6px inline and 4px block with medium radius; hover fills --control-transparent-bgColor-hover; the current crumb is semibold.",
+      "tokens": [
+        "--fgColor-default",
+        "--base-size-6",
+        "--base-size-4",
+        "--borderRadius-medium",
+        "--control-transparent-bgColor-hover",
+        "--base-text-weight-semibold"
+      ]
+    },
+    {
+      "axis": "overflow",
+      "value": "wrap",
+      "default": true,
+      "description": "Crumbs are inline boxes that wrap onto further lines; nothing is measured."
+    },
+    {
+      "axis": "overflow",
+      "value": "menu",
+      "description": "One non-wrapping row; leading crumbs, root first, fold into the overflow menu."
+    },
+    {
+      "axis": "overflow",
+      "value": "menu-with-root",
+      "description": "One non-wrapping row; the root stays first, then the overflow button, then the remaining crumbs."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is a full-width flex row; the list has no left padding and no block margins. In the menu modes the list is a single non-wrapping flex row.",
+      "part": "container",
+      "source": "Breadcrumbs/Breadcrumbs.module.css:1-20"
+    },
+    {
+      "text": "In wrap mode each crumb is an inline box followed by a separator drawn as a 0.1em --fgColor-muted rule, 0.8em tall, rotated 15 degrees, nudged down 0.0625em, with 0.5em either side; the last crumb has none.",
+      "part": "separator",
+      "tokens": [
+        "--fgColor-muted",
+        "--text-body-size-medium"
+      ],
+      "values": [
+        {
+          "name": "separatorHeight",
+          "value": 0.8,
+          "unit": "em"
+        },
+        {
+          "name": "separatorStroke",
+          "value": 0.1,
+          "unit": "em"
+        },
+        {
+          "name": "separatorMargin",
+          "value": 0.5,
+          "unit": "em"
+        },
+        {
+          "name": "separatorAngle",
+          "value": 15,
+          "unit": "deg"
+        }
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.module.css:31-57"
+    },
+    {
+      "text": "In the menu modes each crumb is an inline grid of crumb and a 16px slash glyph in --fgColor-muted, vertically centred, non-wrapping, and shrinks almost before anything else (flex-shrink 99999); the last crumb has no separator.",
+      "part": "separator",
+      "tokens": [
+        "--fgColor-muted"
+      ],
+      "values": [
+        {
+          "name": "separatorGlyph",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.module.css:22-29,110-134; Breadcrumbs/Breadcrumbs.tsx:364-372"
+    },
+    {
+      "text": "The overflow menu is absolutely placed under the button at --overlay-offset + --control-small-size from its top, with --overlay-bgColor, --shadow-floating-small, large radius, width between --overlay-width-xsmall and --overlay-width-small, height at most the viewport, and items that may wrap.",
+      "part": "overflow-menu",
+      "tokens": [
+        "--overlay-offset",
+        "--control-small-size",
+        "--overlay-bgColor",
+        "--shadow-floating-small",
+        "--borderRadius-large",
+        "--overlay-width-xsmall",
+        "--overlay-width-small"
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.module.css:119-124,136-166"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "text": "Normal: a non-current crumb underlines. Spacious: the crumb fills --control-transparent-bgColor-hover, with no underline.",
+      "part": "crumb",
+      "tokens": [
+        "--control-transparent-bgColor-hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "Breadcrumbs/Breadcrumbs.module.css:75-80,99-102"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus draws a 2px --focus-outline-color outline 2px outside the crumb with a small radius; in normal the underline is removed while focused.",
+      "part": "crumb",
+      "tokens": [
+        "--focus-outline-color",
+        "--borderRadius-small"
+      ],
+      "values": [
+        {
+          "name": "outlineOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.module.css:59-68,81-83; mixins/focusOutline.css:1-5"
+    },
+    {
+      "state": "selected",
+      "label": "current",
+      "text": "The current crumb (selected) is --fgColor-default in normal and semibold in spacious; it remains a link.",
+      "part": "crumb",
+      "tokens": [
+        "--fgColor-default",
+        "--base-text-weight-semibold"
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.module.css:85-87,104-106; Breadcrumbs/Breadcrumbs.tsx:389-397"
+    },
+    {
+      "state": "open",
+      "text": "The overflow menu appears with a 200ms cubic-bezier(0.33, 1, 0.68, 1) entrance unless reduced motion is requested; the button reports aria-expanded.",
+      "part": "overflow-menu",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Breadcrumbs/Breadcrumbs.module.css:163-165; Breadcrumbs/Breadcrumbs.tsx:106-118"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "measure",
+      "text": "The menu modes first lay out every crumb unfolded and measure each crumb's width (separator included) and the container's width, then fold. Re-measure when the crumbs change; re-fold whenever the container width changes. Wrap mode measures nothing.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:229-303"
+    },
+    {
+      "id": "min-visible",
+      "text": "The fold keeps at most a minimum number of crumbs after the menu: 3 in menu-with-root (plus the root), 4 in menu, or 1 in menu when the container is narrower than 544px and there are more than 2 crumbs. It folds down to that number even when everything would fit.",
+      "values": [
+        {
+          "name": "narrowBreakpoint",
+          "value": 544,
+          "unit": "px"
+        },
+        {
+          "name": "maxVisibleMenu",
+          "value": 4,
+          "unit": "count"
+        },
+        {
+          "name": "maxVisibleWithRoot",
+          "value": 3,
+          "unit": "count"
+        }
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.tsx:178-188,201-204"
+    },
+    {
+      "id": "fold",
+      "text": "Folding loop: the needed width is the sum over remaining crumbs of (width + 16px), plus the root's width in menu-with-root, plus the menu button's width once anything is folded. While the needed width exceeds the container or more crumbs remain than the minimum, fold the next leading crumb into the menu. If a single crumb remains and still does not fit, hide the root too and stop.",
+      "values": [
+        {
+          "name": "separatorAllowance",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.tsx:190-219"
+    },
+    {
+      "id": "render-folded",
+      "text": "Folded, the trail reads overflow button then the remaining crumbs (menu), or root, overflow button, then the remaining crumbs (menu-with-root). The menu lists the folded crumbs in order, without the root when the root is still shown; the current page is never folded while anything else can be.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:305-347"
+    },
+    {
+      "id": "menu-button-width",
+      "text": "Until the menu button has been measured its width is assumed to be 32px; after that its real width (a small IconButton, 28px) is used. The container is assumed 800px wide before its first measurement.",
+      "values": [
+        {
+          "name": "menuButtonFallback",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "containerFallback",
+          "value": 800,
+          "unit": "px"
+        }
+      ],
+      "source": "Breadcrumbs/Breadcrumbs.tsx:148-149,234-249,296"
+    },
+    {
+      "id": "menu",
+      "text": "The overflow button toggles the menu. Escape closes it and returns focus to the button; a click outside the menu (other than on the button) closes it. Folded crumbs are links in the menu; the selected one carries aria-current page.",
+      "part": "overflow-menu",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:65-135"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation landmark containing an ordered list of links",
+    "minTargetPx": 20,
+    "keyboard": [
+      "Tab and Shift+Tab move through the crumbs and the overflow button.",
+      "Enter follows a crumb.",
+      "Enter or Space on the overflow button opens or closes the menu; Tab moves through its links; Escape closes it and refocuses the button."
+    ],
+    "semantics": [
+      "The nav is labelled \"Breadcrumbs\"; the crumbs are an ordered list.",
+      "The current crumb carries aria-current=\"page\".",
+      "Separators are hidden from assistive technology.",
+      "The overflow button is a button named \"<n> more breadcrumb items\" with aria-expanded."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The fold depends on DOM measurement: offsetWidth of every li in an unfolded first pass, of the container, and of the rendered menu button, kept current by a ResizeObserver. A native build measures each crumb's text plus its separator, and the menu button, in its own layout pass.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:241-284"
+    },
+    {
+      "kind": "web-only",
+      "text": "The menu is a details/summary disclosure with document-level Escape and outside-click listeners; a native build supplies the popover, its dismissal and the focus return.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:50-139"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "In menu-with-root, when exactly one crumb is folded the only folded crumb is the root, which is dropped from the menu because the root stays visible. The trail then shows root, an empty overflow menu (\"0 more breadcrumb items\") and the rest.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:195-216,310-321"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "In menu-with-root the first fit test counts the root twice: once as rootItemWidth and once in the list of crumb widths, which still includes the root until it is folded.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:179,190-199"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The measured widths come from the unfolded pass, whose separators are the 0.5em-margined CSS rule, but the folded trail uses the 16px glyph and the loop adds a flat 16px per crumb; the fold point is approximate by a few pixels.",
+      "source": "Breadcrumbs/Breadcrumbs.module.css:36-46; Breadcrumbs/Breadcrumbs.tsx:191,256-267,364-372"
+    },
+    {
+      "kind": "gotcha",
+      "text": "menu caps the visible crumbs at 4 (1 when narrow) even with room to spare; it is a fold-by-count as much as by width.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:183-188,201-204"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Hard-coded: the 544px narrow breakpoint, the minimum visible counts, the 16px separator allowance, the 32px and 800px fallbacks, the separator's em geometry and 15 degree angle, and the menu's 200ms entrance curve.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:148-149,180-191; Breadcrumbs/Breadcrumbs.module.css:36-46,163-165"
+    },
+    {
+      "kind": "inferred",
+      "text": "A normal crumb is inline text with no padding, so its hit area is one line of the inherited body text (about 20px at the 14px body size); spacious adds 4px above and below. The module sets no height.",
+      "source": "Breadcrumbs/Breadcrumbs.module.css:59-62,91-97"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The overflow button and the menu's links are IconButton and ActionList; their tokens live in those specs.",
+      "source": "Breadcrumbs/Breadcrumbs.tsx:106-134"
+    }
+  ]
+}

@@ -1,0 +1,400 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "pagination",
+  "name": "Pagination",
+  "status": "alpha",
+  "statusNote": "Alpha, though long shipped on GitHub's issue and search lists. The module still hard-codes the 32px control size and its own 200ms transition rather than reading control tokens.",
+  "summary": "Previous and Next links around a run of numbered page links, with ellipses standing in for long runs, for moving through a paginated list. Use it when the reader may want to jump to a specific page; for a simple \"load more\" use a button.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-20",
+    "--base-size-32",
+    "--bgColor-accent-emphasis",
+    "--borderColor-muted",
+    "--borderRadius-medium",
+    "--control-transparent-bgColor-hover",
+    "--fgColor-accent",
+    "--fgColor-default",
+    "--fgColor-disabled",
+    "--fgColor-onEmphasis"
+  ],
+  "references": {
+    "react": [
+      "Pagination/Pagination.tsx",
+      "Pagination/Pagination.module.css",
+      "Pagination/Pagination.docs.json",
+      "Pagination/model.tsx",
+      "hooks/useResponsiveValue.ts"
+    ],
+    "primer": [
+      "pagination"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "pageCount",
+      "type": "number",
+      "required": true,
+      "description": "Total number of pages."
+    },
+    {
+      "name": "currentPage",
+      "type": "number",
+      "required": true,
+      "description": "The selected page, 1-based. Not clamped."
+    },
+    {
+      "name": "onPageChange",
+      "type": "callback",
+      "required": false,
+      "description": "Called with (event, page number) when a page, Previous or Next is clicked."
+    },
+    {
+      "name": "hrefBuilder",
+      "type": "callback",
+      "required": false,
+      "description": "Maps a page number to the link's href; the default is \"#<n>\"."
+    },
+    {
+      "name": "marginPageCount",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "Pages always shown at each end."
+    },
+    {
+      "name": "surroundingPageCount",
+      "type": "number",
+      "required": false,
+      "default": 2,
+      "description": "Pages shown on each side of the current page."
+    },
+    {
+      "name": "showPages",
+      "type": "enum",
+      "values": [
+        "true",
+        "false",
+        "responsive"
+      ],
+      "required": false,
+      "default": "true",
+      "description": "Whether the numbered pages show. responsive is a map {narrow, regular, wide} of booleans; a range set to false hides the numbers in that viewport range."
+    },
+    {
+      "name": "renderPage",
+      "type": "callback",
+      "required": false,
+      "description": "Renders each link (Previous, Next and numbers, not ellipses) from {number, children, className, href, rel, aria-*, onClick}, e.g. to use a router link."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A nav named \"Pagination\" with 20px above and 15px below, centring an inline run of pages."
+    },
+    {
+      "id": "previous",
+      "name": "Previous",
+      "description": "A link reading \"Previous\" after a 1em chevron-left, in --fgColor-accent; disabled on the first page.",
+      "tokens": [
+        "--fgColor-accent",
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "page",
+      "name": "Page link",
+      "description": "A rounded box at least 32x32px, the page number centred at line height 1, --fgColor-default on a transparent fill.",
+      "tokens": [
+        "--fgColor-default",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "ellipsis",
+      "name": "Ellipsis",
+      "optional": true,
+      "description": "A non-interactive \"…\" in the page-box shape, in --fgColor-disabled.",
+      "tokens": [
+        "--fgColor-disabled"
+      ]
+    },
+    {
+      "id": "next",
+      "name": "Next",
+      "description": "A link reading \"Next\" before a 1em chevron-right, in --fgColor-accent; disabled on the last page.",
+      "tokens": [
+        "--fgColor-accent",
+        "--base-size-4"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "pages",
+      "value": "shown",
+      "default": true,
+      "description": "Previous, the page model, Next."
+    },
+    {
+      "axis": "pages",
+      "value": "hidden",
+      "description": "Previous and Next only, with no gap between them."
+    }
+  ],
+  "layout": [
+    {
+      "text": "Each entry (Previous, page, ellipsis, Next) is an inline flex box at least 32px wide and exactly 32px tall, padded 8px top and bottom and (32 - 20) / 2 = 6px at the sides, with 4px after it except the last; content is centred at line height 1 and never wraps.",
+      "part": "page",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-32",
+        "--base-size-20",
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "height",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "lineHeight",
+          "value": 1,
+          "unit": "ratio"
+        }
+      ],
+      "source": "Pagination/Pagination.module.css:1-22,39-41"
+    },
+    {
+      "text": "Previous and Next carry a chevron sized 1em (it scales with the inherited font size) with 4px between it and the text, chevron outermost.",
+      "part": "previous",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "chevronSize",
+          "value": 1,
+          "unit": "em"
+        }
+      ],
+      "source": "Pagination/Pagination.module.css:24-37; Pagination/Pagination.tsx:52-58"
+    },
+    {
+      "text": "The container centres its content and has a hard-coded 20px top and 15px bottom margin. The font size is inherited; the module sets none.",
+      "part": "container",
+      "values": [
+        {
+          "name": "marginTop",
+          "value": 20,
+          "unit": "px"
+        },
+        {
+          "name": "marginBottom",
+          "value": 15,
+          "unit": "px"
+        }
+      ],
+      "source": "Pagination/Pagination.module.css:88-98"
+    },
+    {
+      "text": "Responsive hiding: in each viewport range listed as hidden, every entry except the first (Previous) and last (Next) is hidden and the margins between those two are removed. narrow is below 768px, regular is 768px and up, wide is 1400px and up.",
+      "values": [
+        {
+          "name": "regularMin",
+          "value": 768,
+          "unit": "px"
+        },
+        {
+          "name": "wideMin",
+          "value": 1400,
+          "unit": "px"
+        }
+      ],
+      "source": "Pagination/Pagination.module.css:100-140; Pagination/Pagination.tsx:9-21,152-155; hooks/useResponsiveValue.ts:9-13"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Page numbers are --fgColor-default on a transparent fill; Previous and Next are --fgColor-accent.",
+      "tokens": [
+        "--fgColor-default",
+        "--fgColor-accent"
+      ],
+      "source": "Pagination/Pagination.module.css:9,16,60-63"
+    },
+    {
+      "state": "hovered",
+      "text": "Hover, and focus by any means, fill --control-transparent-bgColor-hover over 100ms; the fill fades back out over 200ms. Both use cubic-bezier(0.3, 0, 0.5, 1).",
+      "part": "page",
+      "tokens": [
+        "--control-transparent-bgColor-hover"
+      ],
+      "motion": {
+        "durationMs": 100,
+        "easing": [
+          0.3,
+          0,
+          0.5,
+          1
+        ]
+      },
+      "source": "Pagination/Pagination.module.css:18,43-49"
+    },
+    {
+      "state": "focused",
+      "text": "Keyboard focus adds a 2px --bgColor-accent-emphasis outline inset 2px. On the current page, which is already filled with that colour, a 3px inset --fgColor-onEmphasis ring inside the outline keeps the focus visible.",
+      "part": "page",
+      "tokens": [
+        "--bgColor-accent-emphasis",
+        "--fgColor-onEmphasis"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": -2,
+          "unit": "px"
+        },
+        {
+          "name": "currentInnerRing",
+          "value": 3,
+          "unit": "px"
+        }
+      ],
+      "source": "Pagination/Pagination.module.css:43-54,72-77"
+    },
+    {
+      "state": "selected",
+      "label": "current",
+      "text": "The current page fills --bgColor-accent-emphasis with --fgColor-onEmphasis text, and keeps that fill on hover.",
+      "part": "page",
+      "tokens": [
+        "--bgColor-accent-emphasis",
+        "--fgColor-onEmphasis"
+      ],
+      "source": "Pagination/Pagination.module.css:65-70; Pagination/model.tsx:194-205"
+    },
+    {
+      "state": "disabled",
+      "text": "Previous on page 1 and Next on the last page render in --fgColor-disabled with a default cursor and no fill, have no href, and are hidden from assistive technology. The ellipsis looks the same.",
+      "tokens": [
+        "--fgColor-disabled"
+      ],
+      "source": "Pagination/Pagination.module.css:79-86; Pagination/model.tsx:164-193,208-212"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "model-ends",
+      "text": "The model always starts with Previous (to currentPage - 1, disabled when currentPage is 1) and ends with Next (to currentPage + 1, disabled when currentPage equals pageCount). With pages hidden it is only those two; with pageCount 0 or less, Next is also disabled.",
+      "source": "Pagination/model.tsx:8-16"
+    },
+    {
+      "id": "model-short",
+      "text": "Let gap = surroundingPageCount + marginPageCount. If pageCount is at most 2 x gap + 3 (9 with the defaults), every page from 1 to pageCount is shown and there is no ellipsis.",
+      "values": [
+        {
+          "name": "defaultMaxVisible",
+          "value": 9,
+          "unit": "count"
+        }
+      ],
+      "source": "Pagination/model.tsx:23-34"
+    },
+    {
+      "id": "model-long",
+      "text": "Otherwise compute startGap = currentPage - gap - 1 if that exceeds 1 (else 0, with startOffset = currentPage - gap - 2) and endGap = pageCount - currentPage - gap if that exceeds 1 (else 0, with endOffset = pageCount - currentPage - gap - 1). Emit pages 1..marginPageCount, an ellipsis if startGap > 0, pages from marginPageCount + startGap + endOffset + 1 to pageCount - startOffset - endGap - marginPageCount, an ellipsis if endGap > 0, then the last marginPageCount pages. The visible count stays 2 x gap + 3 entries, and an ellipsis never stands for a single page.",
+      "source": "Pagination/model.tsx:36-109"
+    },
+    {
+      "id": "model-examples",
+      "text": "With the defaults and 15 pages: page 1 gives 1 2 3 4 5 6 7 … 15; page 6 gives 1 … 4 5 6 7 8 … 15; page 9 gives 1 … 7 8 9 10 11 … 15; page 15 gives 1 … 9 10 11 12 13 14 15.",
+      "source": "Pagination/model.tsx:20-28,36-44"
+    },
+    {
+      "id": "activate",
+      "text": "Clicking a page, Previous or Next calls onPageChange(event, n) and then follows the href unless the handler prevents it.",
+      "source": "Pagination/Pagination.tsx:70,98-103; Pagination/model.tsx:170-175,185-206"
+    },
+    {
+      "id": "responsive",
+      "text": "showPages false removes the numbers from the model. A responsive map keeps them in the model and hides them in each range set to false; ranges omitted from the map keep their numbers.",
+      "source": "Pagination/Pagination.tsx:9-21,72-74,152-155"
+    },
+    {
+      "id": "render-page",
+      "text": "renderPage, when given, renders every link entry (not the ellipsis) from the computed props and the page's label content; the chevrons are part of that content.",
+      "source": "Pagination/Pagination.tsx:76-104"
+    }
+  ],
+  "accessibility": {
+    "role": "navigation landmark of links",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab and Shift+Tab move through Previous, each page and Next; disabled ends and ellipses are skipped.",
+      "Enter follows the focused link."
+    ],
+    "semantics": [
+      "The nav is labelled \"Pagination\".",
+      "Previous and Next are named \"Previous Page\" and \"Next Page\".",
+      "Each page link is named \"Page <n>\"; the page just before an ellipsis is \"Page <n>...\" so the screen reader's tone signals the skip.",
+      "The current page carries aria-current=\"page\".",
+      "Disabled Previous/Next are aria-hidden and aria-disabled; ellipses are presentational."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The viewport ranges overlap: regular is min-width 768px and wide is min-width 1400px, so at 1400px and up both match. showPages {regular: false, wide: true} therefore hides the numbers on wide screens too. A native build should treat regular as 768-1399px if it wants the documented intent, and say so.",
+      "source": "hooks/useResponsiveValue.ts:9-13; Pagination/Pagination.module.css:114-138"
+    },
+    {
+      "kind": "web-only",
+      "text": "Responsive hiding is CSS media queries on the viewport (not the component's width); a native build re-evaluates the range against the window width on resize.",
+      "source": "Pagination/Pagination.module.css:100-140"
+    },
+    {
+      "kind": "web-only",
+      "text": "Each entry is an anchor with an href (\"#<n>\" by default) that the browser follows after onPageChange; a native build has no implicit navigation and treats onPageChange as the activation.",
+      "source": "Pagination/Pagination.tsx:162-164; Pagination/model.tsx:170-206"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Hover and focus share one rule, so a mouse-focused page keeps the hover fill after the pointer leaves until focus moves.",
+      "source": "Pagination/Pagination.module.css:43-49"
+    },
+    {
+      "kind": "gotcha",
+      "text": "currentPage is not validated: a value outside 1..pageCount yields a model with no current page and enabled Previous/Next pointing outside the range.",
+      "source": "Pagination/model.tsx:8-9,118-126"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 32px size (commented as primer.control.medium.size but not read from --control-medium-size), line height 1, the 200ms/100ms cubic-bezier(0.3, 0, 0.5, 1) transition, the 3px current-focus ring and the container's 20px/15px margins are hard-coded.",
+      "source": "Pagination/Pagination.module.css:2-3,8,18,48,76,90-92"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The pressed rule sets --borderColor-muted on a border the entries do not have, so pressing shows no change.",
+      "tokens": [
+        "--borderColor-muted"
+      ],
+      "source": "Pagination/Pagination.module.css:56-58"
+    }
+  ]
+}
