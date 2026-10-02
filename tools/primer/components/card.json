@@ -1,0 +1,433 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "card",
+  "name": "Card",
+  "status": "draft",
+  "statusNote": "Card is new and its API is still being designed: the layout prop is missing from its docs file, the slots are fixed, and its tokens (--card-bgColor) are not yet wired in. Expect changes before it reaches alpha.",
+  "summary": "A bordered, raised box summarising one item: an icon or edge-to-edge image on top, a heading and description, a metadata row, and one corner action. Choose it for grids or lists of browsable items; use a plain bordered box for arbitrary grouped content.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-16",
+    "--base-size-32",
+    "--bgColor-default",
+    "--bgColor-muted",
+    "--borderColor-default",
+    "--borderRadius-large",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--shadow-resting-small",
+    "--stack-gap-condensed",
+    "--stack-gap-normal",
+    "--stack-padding-condensed",
+    "--stack-padding-normal",
+    "--stack-padding-spacious",
+    "--text-body-shorthand-medium",
+    "--text-body-shorthand-small",
+    "--text-body-size-medium",
+    "--text-title-shorthand-small"
+  ],
+  "references": {
+    "react": [
+      "Card.module.css",
+      "Card.tsx",
+      "Card.docs.json"
+    ],
+    "primer": [
+      "card"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "padding",
+      "type": "enum",
+      "values": [
+        "none",
+        "condensed",
+        "normal"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Inner padding: 0, 8px, or 24px (16px in the compact layout)."
+    },
+    {
+      "name": "borderRadius",
+      "type": "enum",
+      "values": [
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "large",
+      "description": "Corner radius."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "default",
+        "compact"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "default stacks header over body; compact puts the icon beside the body with tighter spacing, no icon tile and a smaller heading."
+    },
+    {
+      "name": "standalone",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Render as a section labelled by its heading (as='section'); leave false for a card inside a list item."
+    },
+    {
+      "name": "icon",
+      "type": "icon",
+      "required": false,
+      "description": "Card.Icon: an octicon, decorative unless given an aria-label."
+    },
+    {
+      "name": "image",
+      "type": "string",
+      "required": false,
+      "description": "Card.Image: an image source, drawn edge to edge across the top; alt defaults to empty (decorative). Takes precedence over icon."
+    },
+    {
+      "name": "heading",
+      "type": "string",
+      "required": false,
+      "description": "Card.Heading: the title, h3 by default (h2 to h6)."
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "required": false,
+      "description": "Card.Description: one paragraph of muted text."
+    },
+    {
+      "name": "metadata",
+      "type": "slot",
+      "required": false,
+      "description": "Card.Metadata: a row of small muted items (text, icons, a Label) under the content."
+    },
+    {
+      "name": "action",
+      "type": "slot",
+      "required": false,
+      "description": "Card.Action: one control (an IconButton or menu) in the top-right corner, labelled with the card's name."
+    },
+    {
+      "name": "children",
+      "type": "slot",
+      "required": false,
+      "description": "Free content, used only when no Card.* slot is given; the card then lays it out in its padded grid."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A grid box clipping its content: 1px --borderColor-default border, --shadow-resting-small, --bgColor-default fill, radius by borderRadius, padding by padding, rows separated by --stack-gap-normal.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--shadow-resting-small",
+        "--bgColor-default",
+        "--borderRadius-large",
+        "--borderRadius-medium",
+        "--stack-gap-normal"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "Header",
+      "optional": true,
+      "description": "Row 1: the image, pulled out to the card's edges, or the icon."
+    },
+    {
+      "id": "image",
+      "name": "Image",
+      "optional": true,
+      "description": "Full width of the card, natural aspect ratio, flush with the top and side edges."
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "optional": true,
+      "description": "In the default layout, a 32px --bgColor-muted tile with --borderRadius-medium corners and the icon centred in --fgColor-muted; in compact, the bare icon.",
+      "tokens": [
+        "--base-size-32",
+        "--bgColor-muted",
+        "--borderRadius-medium",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "description": "Row 2: content then metadata, --stack-gap-normal apart.",
+      "tokens": [
+        "--stack-gap-normal"
+      ]
+    },
+    {
+      "id": "heading",
+      "name": "Heading",
+      "optional": true,
+      "description": "Small title text in --fgColor-default, no margin.",
+      "tokens": [
+        "--text-title-shorthand-small",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "description",
+      "name": "Description",
+      "optional": true,
+      "description": "Medium body text in --fgColor-muted, no margin, --stack-gap-condensed below the heading.",
+      "tokens": [
+        "--text-body-shorthand-medium",
+        "--fgColor-muted",
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "metadata",
+      "name": "Metadata",
+      "optional": true,
+      "description": "A centred row of small muted items with --stack-gap-condensed between an item's icon and text.",
+      "tokens": [
+        "--text-body-shorthand-small",
+        "--fgColor-muted",
+        "--stack-gap-condensed",
+        "--stack-gap-normal"
+      ]
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "optional": true,
+      "description": "One control pinned 16px from the top and right edges, above the content.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "padding",
+      "value": "normal",
+      "default": true,
+      "description": "24px on all sides; 16px in the compact layout.",
+      "tokens": [
+        "--stack-padding-spacious",
+        "--stack-padding-normal"
+      ]
+    },
+    {
+      "axis": "padding",
+      "value": "condensed",
+      "description": "8px on all sides.",
+      "tokens": [
+        "--stack-padding-condensed"
+      ]
+    },
+    {
+      "axis": "padding",
+      "value": "none",
+      "description": "No padding."
+    },
+    {
+      "axis": "borderRadius",
+      "value": "large",
+      "default": true,
+      "description": "Large corners.",
+      "tokens": [
+        "--borderRadius-large"
+      ]
+    },
+    {
+      "axis": "borderRadius",
+      "value": "medium",
+      "description": "Medium corners.",
+      "tokens": [
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "default",
+      "default": true,
+      "description": "Header row over body row; icon in a 32px muted tile; small title heading.",
+      "tokens": [
+        "--stack-gap-normal",
+        "--base-size-32",
+        "--bgColor-muted"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "compact",
+      "description": "Icon beside the body, top-aligned, --stack-gap-condensed apart; no icon tile; heading at body-medium size raised 4px; normal padding becomes 16px.",
+      "tokens": [
+        "--stack-gap-condensed",
+        "--text-body-size-medium",
+        "--base-size-4",
+        "--stack-padding-normal"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The card is a grid of auto rows (the first sized to its content), with --stack-gap-normal between header and body; it clips its children to its rounded border box.",
+      "part": "container",
+      "tokens": [
+        "--stack-gap-normal"
+      ],
+      "source": "Card.module.css:1-9"
+    },
+    {
+      "text": "Padding normal is --stack-padding-spacious, condensed --stack-padding-condensed, none 0; in the compact layout normal is --stack-padding-normal.",
+      "part": "container",
+      "tokens": [
+        "--stack-padding-spacious",
+        "--stack-padding-condensed",
+        "--stack-padding-normal"
+      ],
+      "source": "Card.module.css:19-31,39-42"
+    },
+    {
+      "text": "An image header extends past the padding to the card's top, left and right edges by --stack-padding-spacious on each side and is full width at its natural aspect ratio.",
+      "part": "image",
+      "tokens": [
+        "--stack-padding-spacious"
+      ],
+      "source": "Card.module.css:56-69; Card.tsx:180-182"
+    },
+    {
+      "text": "In the default layout the icon sits in a 32px square tile of --bgColor-muted with --borderRadius-medium corners, icon centred in --fgColor-muted.",
+      "part": "icon",
+      "tokens": [
+        "--base-size-32",
+        "--bgColor-muted",
+        "--borderRadius-medium",
+        "--fgColor-muted"
+      ],
+      "source": "Card.module.css:71-84"
+    },
+    {
+      "text": "The body stacks content then metadata --stack-gap-normal apart; inside content the heading and description are --stack-gap-condensed apart.",
+      "part": "body",
+      "tokens": [
+        "--stack-gap-normal",
+        "--stack-gap-condensed"
+      ],
+      "source": "Card.module.css:86-98; Card.tsx:183-189"
+    },
+    {
+      "text": "The metadata row centres its items vertically in --text-body-shorthand-medium and --fgColor-muted with --stack-gap-normal between items; each item is itself a row in --text-body-shorthand-small with --stack-gap-condensed between its icon and text.",
+      "part": "metadata",
+      "tokens": [
+        "--text-body-shorthand-medium",
+        "--text-body-shorthand-small",
+        "--fgColor-muted",
+        "--stack-gap-normal",
+        "--stack-gap-condensed"
+      ],
+      "source": "Card.module.css:118-131; Card.tsx:188,276-285"
+    },
+    {
+      "text": "The action is absolutely placed --base-size-16 from the card's top and right edges, above the content (z-index 1), whatever the padding.",
+      "part": "action",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "values": [
+        {
+          "name": "zIndex",
+          "value": 1,
+          "unit": "count"
+        }
+      ],
+      "source": "Card.module.css:133-138; Card.tsx:190"
+    },
+    {
+      "text": "In the compact layout the card is a top-aligned row with --stack-gap-condensed: the header (icon) keeps its content width and the body takes the rest; the heading drops to --text-body-size-medium and moves up --base-size-4 to align with the icon.",
+      "part": "container",
+      "tokens": [
+        "--stack-gap-condensed",
+        "--text-body-size-medium",
+        "--base-size-4"
+      ],
+      "source": "Card.module.css:33-37,45-54,90-92,105-109"
+    }
+  ],
+  "states": [],
+  "behaviour": [
+    {
+      "text": "The card itself is not interactive and has no hover or press state; only the action control and any links inside it respond.",
+      "source": "Card.module.css:1-138"
+    },
+    {
+      "text": "Slot children are recognised by type and placed in a fixed order (header, heading, description, metadata, action) regardless of source order; a card with no children renders nothing.",
+      "source": "Card.tsx:116-149,169-192"
+    }
+  ],
+  "accessibility": {
+    "role": "none (div) by default; region (section) when standalone, labelled by its heading",
+    "minTargetPx": null,
+    "keyboard": [
+      "The card is not focusable; Tab reaches the action and any links inside it."
+    ],
+    "semantics": [
+      "A standalone card is a section whose aria-labelledby points at the heading, unless a label is supplied.",
+      "The icon is hidden from assistive technology unless it has an aria-label, then it is an img.",
+      "The image's alt defaults to empty, so it is decorative unless alt is given.",
+      "The action's label should name the card, since several cards show the same control."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The edge-to-edge image always uses --stack-padding-spacious negative margins, so with condensed or none padding (or the compact layout's 16px) it overshoots the card and is cropped by the clip on both sides and the top.",
+      "tokens": [
+        "--stack-padding-spacious"
+      ],
+      "source": "Card.module.css:19-31,56-63"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Only one of each slot survives: a second Card.Metadata (or heading, description, icon, image, action) replaces the first, and an image suppresses an icon. Any non-slot child is dropped once a slot child is present; put several metadata items inside one Card.Metadata.",
+      "source": "Card.tsx:116-149,180-181"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The action is pinned 16px from the corner and nothing reserves room for it, so a long heading runs under it; leave space in the heading or the image area.",
+      "source": "Card.module.css:133-138"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--card-bgColor exists (aliasing --bgColor-default) but the module reads --bgColor-default directly.",
+      "tokens": [
+        "--card-bgColor",
+        "--bgColor-default"
+      ],
+      "source": "Card.module.css:8"
+    },
+    {
+      "kind": "contradiction",
+      "text": "Card.docs.json omits the layout prop that Card.tsx accepts (default or compact); build to the code.",
+      "source": "Card.docs.json; Card.tsx:25-30"
+    },
+    {
+      "kind": "web-only",
+      "text": "The card clips its children with overflow: hidden to its rounded border box; a native build needs a rounded clip rect (or a rounded image mask) for the image header.",
+      "source": "Card.module.css:4,11-17"
+    },
+    {
+      "kind": "web-only",
+      "text": "The image keeps its natural aspect ratio at full width (height: auto) once loaded; a native build must know the image size before layout or reserve a box and re-layout when it arrives.",
+      "source": "Card.module.css:65-69"
+    }
+  ]
+}

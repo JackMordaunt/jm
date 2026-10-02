@@ -1,0 +1,792 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "data-table",
+  "name": "DataTable",
+  "status": "alpha",
+  "statusNote": "DataTable ships on GitHub settings and security pages, but its scope is deliberately small: columns, sorting, row groups, densities, a skeleton and a separate pagination footer. It has no row selection, sticky header, column resizing or virtualisation, and its responsive column widths are still a TODO.",
+  "summary": "A grid table of rows built from a column definition list: per-column width rules, start or end alignment, row headers, client-side or external sorting, optional row groups, three cell densities, a loading skeleton, and a container with title, subtitle, actions and a pagination footer. Choose it for tabular records the user scans and sorts; choose an ActionList or a plain list for single-column items.",
+  "tokenGroups": [
+    "--base-duration-1000",
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-size-32",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--bgColor-accent-emphasis",
+    "--bgColor-default",
+    "--bgColor-muted",
+    "--borderColor-default",
+    "--borderRadius-medium",
+    "--borderRadius-small",
+    "--borderWidth-thin",
+    "--control-transparent-bgColor-hover",
+    "--fgColor-accent",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--fgColor-onEmphasis",
+    "--skeletonLoader-bgColor",
+    "--text-body-lineHeight-medium",
+    "--text-body-size-medium",
+    "--text-body-size-small",
+    "--text-title-lineHeight-small",
+    "--breakpoint-medium",
+    "--breakpoint-xxlarge"
+  ],
+  "references": {
+    "react": [
+      "Table.module.css",
+      "DataTable/Table.tsx",
+      "DataTable.tsx",
+      "DataTable.docs.json",
+      "useTable.ts",
+      "column.ts",
+      "sorting.ts",
+      "TableGroup.tsx",
+      "DataTable/Pagination.module.css",
+      "DataTable/Pagination.tsx",
+      "ScrollableRegion.module.css",
+      "ScrollableRegion.tsx",
+      "ButtonReset.module.css",
+      "SkeletonText.module.css",
+      "SkeletonBox.module.css"
+    ],
+    "primer": [
+      "data-table"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "columns",
+      "type": "list",
+      "required": true,
+      "description": "Column definitions: header (text or render function), field (dot path into the row) or id, renderCell, align (start or end), rowHeader, sortBy (true, 'alphanumeric', 'basic', 'datetime' or a comparator), width ('grow' default, 'growCollapse', 'auto' or an explicit length), minWidth, maxWidth."
+    },
+    {
+      "name": "data",
+      "type": "list",
+      "required": true,
+      "description": "Rows (each with a unique id, or use getRowId), row groups ({groupId, label, rows, aria-label}), or a mix in display order."
+    },
+    {
+      "name": "cellPadding",
+      "type": "enum",
+      "values": [
+        "condensed",
+        "normal",
+        "spacious"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Cell density."
+    },
+    {
+      "name": "initialSortColumn",
+      "type": "string",
+      "required": false,
+      "description": "Column id or field the data arrives sorted by; the column must be sortable."
+    },
+    {
+      "name": "initialSortDirection",
+      "type": "enum",
+      "values": [
+        "ASC",
+        "DESC"
+      ],
+      "required": false,
+      "description": "Direction of the initial sort; without initialSortColumn it applies to the first sortable column."
+    },
+    {
+      "name": "externalSorting",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Do not reorder rows; only track and show the sort state and report clicks, for server-side sorting."
+    },
+    {
+      "name": "onToggleSort",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the column id and the new direction (ASC or DESC) on every sortable header click."
+    },
+    {
+      "name": "getRowId",
+      "type": "callback",
+      "required": false,
+      "description": "Returns a row's unique id; defaults to row.id."
+    },
+    {
+      "name": "ariaLabelledBy",
+      "type": "string",
+      "required": false,
+      "description": "Id of the Table.Title that names the table (and its scroll region)."
+    },
+    {
+      "name": "ariaDescribedBy",
+      "type": "string",
+      "required": false,
+      "description": "Id of the Table.Subtitle that describes the table."
+    },
+    {
+      "name": "title",
+      "type": "slot",
+      "required": false,
+      "description": "Table.Title in Table.Container: the table's heading (h2 by default) with an id."
+    },
+    {
+      "name": "subtitle",
+      "type": "slot",
+      "required": false,
+      "description": "Table.Subtitle in Table.Container, with an id."
+    },
+    {
+      "name": "actions",
+      "type": "slot",
+      "required": false,
+      "description": "Table.Actions in Table.Container: buttons at the end of the title row."
+    },
+    {
+      "name": "divider",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Table.Divider in Table.Container: a rule under the title row."
+    },
+    {
+      "name": "pagination",
+      "type": "slot",
+      "required": false,
+      "description": "Table.Pagination in Table.Container: aria-label (required), totalCount (required), pageSize (default 25), defaultPageIndex, showPages (boolean or per range; default hides page numbers at narrow widths), onChange({pageIndex}). It does not slice data; the caller does."
+    },
+    {
+      "name": "skeletonRows",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "description": "Table.Skeleton rows: placeholder lines per column while loading; Table.Skeleton takes the same columns and cellPadding."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "optional": true,
+      "description": "A two-column grid (title | actions, then full-width divider, subtitle, filter, table and footer rows) with 8px between the columns.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "optional": true,
+      "description": "Body-medium semibold text in --fgColor-default on a 20px line, centred against the actions.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--base-text-weight-semibold",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "subtitle",
+      "name": "Subtitle",
+      "optional": true,
+      "description": "Body-small normal text in --fgColor-default.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-normal",
+        "--text-title-lineHeight-small",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "Actions",
+      "optional": true,
+      "description": "A row of controls 8px apart, end-aligned in the title row.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "divider",
+      "name": "Divider",
+      "optional": true,
+      "description": "A 1px --borderColor-default rule, 16px above and 8px below.",
+      "tokens": [
+        "--borderColor-default",
+        "--base-size-16",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "scroll-region",
+      "name": "Scroll region",
+      "description": "A box around the table that scrolls it horizontally (and vertically if constrained) when it overflows."
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "description": "A grid whose columns come from the column definitions, 12px text on 20px lines, on --bgColor-default.",
+      "tokens": [
+        "--bgColor-default"
+      ]
+    },
+    {
+      "id": "header-cell",
+      "name": "Header cell",
+      "description": "Semibold --fgColor-muted text on --bgColor-muted, with a top border; --fgColor-default when the column is sorted.",
+      "tokens": [
+        "--base-text-weight-semibold",
+        "--fgColor-muted",
+        "--bgColor-muted",
+        "--fgColor-default",
+        "--borderWidth-thin",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "sort-button",
+      "name": "Sort button",
+      "optional": true,
+      "description": "An unstyled button filling a sortable header's content: the header text, then the sort icon 8px after it (before it for end-aligned columns)."
+    },
+    {
+      "id": "cell",
+      "name": "Cell",
+      "description": "A flex box, content centred vertically, padded by density, 1px --borderColor-default bottom border; the row's first and last cells carry the table's side borders.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "row-header-cell",
+      "name": "Row header cell",
+      "optional": true,
+      "description": "A cell in a rowHeader column: semibold --fgColor-default.",
+      "tokens": [
+        "--base-text-weight-semibold",
+        "--fgColor-default"
+      ]
+    },
+    {
+      "id": "group-header",
+      "name": "Group header",
+      "optional": true,
+      "description": "A full-width row before a group's rows: label (semibold --fgColor-default) then row count (--fgColor-muted), 8px apart, on --bgColor-muted with side and bottom borders.",
+      "tokens": [
+        "--bgColor-muted",
+        "--fgColor-muted",
+        "--fgColor-default",
+        "--base-text-weight-semibold",
+        "--base-size-8",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "skeleton",
+      "name": "Skeleton",
+      "optional": true,
+      "description": "Loading state: the real header row, then one row whose cells each stack skeletonRows shimmering text bars separated by row borders.",
+      "tokens": [
+        "--skeletonLoader-bgColor",
+        "--borderRadius-small",
+        "--base-duration-1000",
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium"
+      ]
+    },
+    {
+      "id": "pagination",
+      "name": "Pagination",
+      "optional": true,
+      "description": "A footer bar continuing the table's border (no top border, rounded bottom corners): the range text at the start, Previous, page numbers and Next at the end.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--borderRadius-medium",
+        "--base-size-8",
+        "--base-size-16"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "cellPadding",
+      "value": "condensed",
+      "description": "4px block and 8px inline cell padding."
+    },
+    {
+      "axis": "cellPadding",
+      "value": "normal",
+      "default": true,
+      "description": "8px block and 12px inline cell padding."
+    },
+    {
+      "axis": "cellPadding",
+      "value": "spacious",
+      "description": "12px block and 16px inline cell padding."
+    },
+    {
+      "axis": "align",
+      "value": "start",
+      "default": true,
+      "description": "Cell content and header text start-aligned."
+    },
+    {
+      "axis": "align",
+      "value": "end",
+      "description": "Cell content end-aligned; a sortable header puts its icon before its text."
+    }
+  ],
+  "layout": [
+    {
+      "id": "column-widths",
+      "text": "Each column becomes one grid track: grow (the default) is minmax(max-content, 1fr), sharing free width but never narrower than its widest cell; grow with a maxWidth is minmax(auto, maxWidth); growCollapse is minmax(0, 1fr), shrinking below its content; auto is sized to its widest cell and never takes free width; an explicit width (number = px) is exactly that. A minWidth or maxWidth replaces the computed lower or upper bound.",
+      "part": "table",
+      "source": "useTable.ts:387-433; column.ts:5,31-41,61-69"
+    },
+    {
+      "text": "The table is a grid on --bgColor-default at 12px text with 20px lines; head, body, group and row boxes adopt the table's column tracks (subgrid, or pass-through where subgrid is unsupported), so every cell in a column shares one width.",
+      "part": "table",
+      "tokens": [
+        "--bgColor-default"
+      ],
+      "values": [
+        {
+          "name": "fontSize",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "lineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "Table.module.css:69-86,273-289; DataTable/Table.tsx:63"
+    },
+    {
+      "id": "cell-padding",
+      "text": "Cells are padded block/inline 4/8px (condensed), 8/12px (normal) or 12/16px (spacious); the first cell of every row pads 16px at its start and the last cell 16px at its end in every density, so text aligns with the container edge.",
+      "part": "cell",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "values": [
+        {
+          "name": "condensedBlock",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "condensedInline",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "normalBlock",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "normalInline",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "spaciousBlock",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "spaciousInline",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "Table.module.css:72,88-102,116-124,171-179"
+    },
+    {
+      "text": "Cells are flex boxes with content centred vertically; an end-aligned cell or header justifies its content to the end.",
+      "part": "cell",
+      "source": "Table.module.css:116-131"
+    },
+    {
+      "id": "borders",
+      "text": "Borders are drawn per cell, each --borderWidth-thin --borderColor-default: every header and body cell has a bottom border, header cells a top border, the first cell of each row a start border and the last cell an end border; there is no outer frame.",
+      "part": "cell",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default"
+      ],
+      "source": "Table.module.css:105-124,138-140,182-187"
+    },
+    {
+      "id": "corner-radius",
+      "text": "The header row's outer top corners round at 6px; the last body row's outer bottom corners round at 6px only when the scroll region is the last child of its parent, so a pagination footer below squares them off and draws its own rounded bottom.",
+      "part": "table",
+      "values": [
+        {
+          "name": "tableRadius",
+          "value": 6,
+          "unit": "px"
+        }
+      ],
+      "source": "Table.module.css:71,142-165"
+    },
+    {
+      "text": "A sortable header's button holds the text and the sort icon 8px apart; in an end-aligned column the icon comes first.",
+      "part": "sort-button",
+      "values": [
+        {
+          "name": "iconGap",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "Table.module.css:133-136,268-270; DataTable/Table.tsx:149-181"
+    },
+    {
+      "text": "A group header spans all columns, padded like a cell, with label and count on a shared baseline 8px apart, its own side and bottom borders, on --bgColor-muted.",
+      "part": "group-header",
+      "tokens": [
+        "--bgColor-muted",
+        "--base-size-8",
+        "--borderColor-default"
+      ],
+      "source": "Table.module.css:291-319; TableGroup.tsx:49-77"
+    },
+    {
+      "id": "container-grid",
+      "text": "The container is a grid of two equal columns: title and actions share row 1, then divider, subtitle, filter, table and footer each span both columns, with 8px between columns. The title is body-medium semibold on a 20px line; the divider is 1px with 16px above and 8px below; a table directly after the title, subtitle or actions gets 8px above it.",
+      "part": "container",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16",
+        "--text-body-size-medium",
+        "--base-text-weight-semibold",
+        "--borderColor-default"
+      ],
+      "values": [
+        {
+          "name": "titleLineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "Table.module.css:2-66"
+    },
+    {
+      "id": "skeleton-layout",
+      "text": "The skeleton keeps the real header row and column tracks; each body cell drops its padding and stacks skeletonRows items, each padded like a cell and separated by bottom borders, holding a text bar whose width cycles 85, 67.5, 80, 60 and 75% of the cell.",
+      "part": "skeleton",
+      "values": [
+        {
+          "name": "barWidth1",
+          "value": 85,
+          "unit": "percent"
+        },
+        {
+          "name": "barWidth2",
+          "value": 67.5,
+          "unit": "percent"
+        },
+        {
+          "name": "barWidth3",
+          "value": 80,
+          "unit": "percent"
+        },
+        {
+          "name": "barWidth4",
+          "value": 60,
+          "unit": "percent"
+        },
+        {
+          "name": "barWidth5",
+          "value": 75,
+          "unit": "percent"
+        }
+      ],
+      "source": "Table.module.css:225-266; DataTable/Table.tsx:363-402"
+    },
+    {
+      "text": "Each skeleton bar is a SkeletonText line: --text-body-size-medium tall, --borderRadius-small corners, --skeletonLoader-bgColor, with half the leading of --text-body-lineHeight-medium above and below.",
+      "part": "skeleton",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--borderRadius-small",
+        "--skeletonLoader-bgColor"
+      ],
+      "source": "SkeletonText.module.css:1-13; SkeletonBox.module.css:11-16"
+    },
+    {
+      "id": "pagination-layout",
+      "text": "The pagination bar spans the container's footer row: 8px block and 16px inline padding, the range text at the start and the steps at the end (space-between, 16px apart at least), a --borderWidth-thin --borderColor-default border without a top edge, and --borderRadius-medium bottom corners.",
+      "part": "pagination",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16",
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--borderRadius-medium"
+      ],
+      "source": "DataTable/Pagination.module.css:1-13"
+    },
+    {
+      "text": "The range reads 'start‒end of total' in --text-body-size-small --fgColor-muted. Previous and Next are body-medium buttons with 8px padding and --borderRadius-medium, 16px from the page numbers, in --fgColor-accent with a chevron when available and --fgColor-muted without one when not. Page buttons are at least 32px square with 8px block and 6px inline padding and --borderRadius-medium; a truncation step is a 32px square ellipsis.",
+      "part": "pagination",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-size-medium",
+        "--fgColor-muted",
+        "--fgColor-accent",
+        "--borderRadius-medium",
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-20",
+        "--base-size-32"
+      ],
+      "values": [
+        {
+          "name": "pageMinSize",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "pageLineHeight",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "DataTable/Pagination.module.css:60-113,134-141; DataTable/Pagination.tsx:113-169,181-199"
+    },
+    {
+      "text": "Page numbers show the first and last page, two pages either side of the current one and ellipses for the gaps; with showPages false for a range (by default narrow, below 768px) only Previous and Next show and their 16px margins collapse. Regular is from 768px, wide from 1400px.",
+      "part": "pagination",
+      "tokens": [
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ],
+      "values": [
+        {
+          "name": "marginPages",
+          "value": 1,
+          "unit": "count"
+        },
+        {
+          "name": "surroundingPages",
+          "value": 2,
+          "unit": "count"
+        }
+      ],
+      "source": "DataTable/Pagination.tsx:53-55,83-99; DataTable/Pagination.module.css:15-58"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "cell",
+      "text": "Hovering a row fills its cells (not skeleton cells) with --control-transparent-bgColor-hover; rows are not otherwise interactive.",
+      "tokens": [
+        "--control-transparent-bgColor-hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "Table.module.css:211-214"
+    },
+    {
+      "state": "hovered",
+      "part": "sort-button",
+      "text": "Hovering an unsorted sortable header (or focusing its button) reveals the ascending icon as a preview; at rest an unsorted header shows no icon.",
+      "source": "Table.module.css:194-203; DataTable/Table.tsx:159-170"
+    },
+    {
+      "state": "selected",
+      "part": "header-cell",
+      "text": "The sorted column's header text turns --fgColor-default and shows the ascending or descending icon permanently.",
+      "tokens": [
+        "--fgColor-default"
+      ],
+      "source": "Table.module.css:189-209; DataTable/Table.tsx:144,159-181"
+    },
+    {
+      "state": "loading",
+      "part": "skeleton",
+      "text": "The skeleton bars shimmer: a 75-degree mask sweeps across over --base-duration-1000, repeating, only when the user has not asked for reduced motion.",
+      "motion": {
+        "durationToken": "--base-duration-1000"
+      },
+      "source": "SkeletonBox.module.css:1-24"
+    },
+    {
+      "state": "hovered",
+      "part": "pagination",
+      "text": "Hovering or focusing an available Previous or Next or any page number fills it with --control-transparent-bgColor-hover.",
+      "tokens": [
+        "--control-transparent-bgColor-hover"
+      ],
+      "source": "DataTable/Pagination.module.css:115-120"
+    },
+    {
+      "state": "selected",
+      "part": "pagination",
+      "text": "The current page is --fgColor-onEmphasis on --bgColor-accent-emphasis; with keyboard focus it adds a 2px --bgColor-accent-emphasis outline inset 2px and a 3px inset --fgColor-onEmphasis ring.",
+      "tokens": [
+        "--bgColor-accent-emphasis",
+        "--fgColor-onEmphasis"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "innerRing",
+          "value": 3,
+          "unit": "px"
+        }
+      ],
+      "source": "DataTable/Pagination.module.css:122-132"
+    },
+    {
+      "state": "disabled",
+      "part": "pagination",
+      "text": "Previous on the first page and Next on the last are aria-disabled: muted, no chevron, no hover fill, and activation does nothing, but they stay focusable.",
+      "tokens": [
+        "--fgColor-muted"
+      ],
+      "source": "DataTable/Pagination.tsx:113-168; DataTable/Pagination.module.css:85-99"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "sort-cycle",
+      "text": "Activating a sortable header sorts by it ascending; activating the sorted header again flips between descending and ascending. There is no unsorted step after the first sort, and only one column sorts at a time.",
+      "source": "useTable.ts:131-139; sorting.ts:16-25; DataTable.tsx:146-163"
+    },
+    {
+      "text": "Client-side sorting sorts a copy of the rows: true and 'basic' compare with < and ===, 'alphanumeric' compares digit runs numerically and other runs with localeCompare, 'datetime' compares Dates or timestamps, a function is a custom comparator on whole rows. Blank values (null, undefined, empty string) sort last in both directions, except with a custom comparator.",
+      "source": "useTable.ts:153-216; sorting.ts:34-135"
+    },
+    {
+      "text": "Row groups keep their positions while sorting; rows sort within each group and within each run of ungrouped rows.",
+      "source": "useTable.ts:218-237"
+    },
+    {
+      "text": "With externalSorting the rows keep the caller's order; the header still shows the sort state and onToggleSort reports each click, so the caller re-fetches.",
+      "source": "useTable.ts:141-148; DataTable.tsx:154-159"
+    },
+    {
+      "text": "New data is re-sorted by the current sort; new columns drop the sort if its column is gone.",
+      "source": "useTable.ts:85-96,123-126"
+    },
+    {
+      "text": "There is no empty state: with no rows the table renders its header row over an empty body, and the caller shows a Blankslate or message.",
+      "source": "useTable.ts:274-300"
+    },
+    {
+      "text": "Pagination is separate from the table: it tracks pageIndex (from defaultPageIndex, else 0), pageSize (default 25) and totalCount, and calls onChange({pageIndex}) on every page change; the caller slices the rows shown. The range announces 'Showing start through end of total' through a status live region on change.",
+      "values": [
+        {
+          "name": "defaultPageSize",
+          "value": 25,
+          "unit": "count"
+        }
+      ],
+      "source": "DataTable/Pagination.tsx:57-65,181-199,323-387"
+    }
+  ],
+  "accessibility": {
+    "role": "table (with rowgroup, row, columnheader, rowheader and cell set explicitly); the overflowing scroll box is region; pagination is navigation",
+    "minTargetPx": 20,
+    "keyboard": [
+      "Tab reaches each sortable header's button, then the scroll region if the table overflows, then the pagination buttons.",
+      "Enter or Space on a sortable header toggles its sort.",
+      "Enter or Space on Previous, Next or a page number changes page."
+    ],
+    "semantics": [
+      "The table is named by aria-labelledby (the title) and described by aria-describedby (the subtitle); the scroll region reuses the label when it becomes a focusable region.",
+      "A sorted header carries aria-sort ascending or descending; its button's description is 'Sort ascending' or 'Sort descending' for the next action.",
+      "Row headers are th scope=row; in a table with groups every cell lists its column header, row headers and group header in headers.",
+      "A group header is a colgroup columnheader reading 'label, N rows'.",
+      "Skeleton cells read 'Loading'.",
+      "The current page has aria-current; page buttons read 'Page N'; Previous and Next read 'Previous page' and 'Next page'."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "There is no sticky header: the header row scrolls away with the body, and the scroll region scrolls the whole table. A native build that wants a pinned header adds it itself and must keep the header cells on the body's column tracks.",
+      "source": "Table.module.css:1-323"
+    },
+    {
+      "kind": "gotcha",
+      "text": "There is no row selection, row click or keyboard row navigation; rows are inert apart from the hover fill. Selection is built by the caller with a checkbox column via renderCell.",
+      "source": "DataTable.tsx:121-135; Table.module.css:211-214"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Pagination does not page the data; DataTable renders every row it is given, so the caller passes only the current page's slice.",
+      "source": "DataTable/Pagination.tsx:323-387; DataTable.tsx:173-188"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The alphanumeric comparator returns -1, not 0, for two equal strings (it falls through to comparing group counts), so equal keys are not treated as ties; a port should return 0.",
+      "source": "sorting.ts:56-89"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Skeleton bars use body-medium (14px) metrics while table text is 12px on 20px lines, so loading rows are slightly taller than loaded rows and the table jumps when data arrives.",
+      "source": "SkeletonText.module.css:1-13; Table.module.css:71-80"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The table's font size (0.75rem), line height (20/12), radius (0.375rem), cell paddings, title line height (20px), sort icon gap (0.5rem), page button minimum (2rem) and pagination gap (1rem) are literals, not tokens; the cell paddings live in component-local --cell-padding-block and --cell-padding-inline.",
+      "source": "Table.module.css:21,71-102,268-270; DataTable/Pagination.module.css:5,102-103"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Pagination's ranges are literal px media queries (below 768px, from 768px, from 1400px), matching --breakpoint-medium and --breakpoint-xxlarge.",
+      "tokens": [
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ],
+      "source": "DataTable/Pagination.module.css:15,30,45"
+    },
+    {
+      "kind": "inferred",
+      "text": "Sort buttons and Previous/Next carry no focus style in their modules (only the current page does); GitHub's global :focus-visible outline supplies one. A native build should draw the standard focus outline on them.",
+      "source": "ButtonReset.module.css:1-17; DataTable/Pagination.module.css:85-132"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours each skeleton bar gets a 1px transparent outline so it stays visible.",
+      "source": "SkeletonBox.module.css:26-29"
+    },
+    {
+      "kind": "web-only",
+      "text": "Column sizing is the CSS grid track algorithm over every cell (minmax with max-content, fr shares, subgrid rows); an immediate-mode build must measure every cell's content width in a first pass (or cache it per column), resolve tracks (fixed, then auto/max-content minimums, then share the remaining width by fr among grow and growCollapse columns, capped by maxWidth), then lay out rows. A table wider than its box scrolls rather than squeezing grow columns below their content.",
+      "source": "useTable.ts:393-433; Table.module.css:75-86,273-289"
+    },
+    {
+      "kind": "web-only",
+      "text": "Horizontal overflow is an overflow: auto box that becomes a focusable labelled region only once a ResizeObserver sees overflow; a native build clips the table, scrolls it horizontally, and makes the scroll box focusable (arrow keys scroll) when content exceeds it.",
+      "source": "ScrollableRegion.tsx:18-47; ScrollableRegion.module.css:1-8"
+    },
+    {
+      "kind": "web-only",
+      "text": "Header and cell text are not truncated; cells grow in height to fit wrapped content, and every cell in a row takes the row's tallest height (grid row sizing), which a native build must compute before painting row borders and the hover fill.",
+      "source": "Table.module.css:116-124,273-289"
+    },
+    {
+      "kind": "web-only",
+      "text": "The shimmer is a CSS mask animation that respects prefers-reduced-motion; a native build animates a gradient over the bar and checks the platform's reduced-motion setting.",
+      "source": "SkeletonBox.module.css:1-24"
+    }
+  ]
+}

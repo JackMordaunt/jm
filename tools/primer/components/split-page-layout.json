@@ -1,0 +1,294 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "split-page-layout",
+  "name": "SplitPageLayout",
+  "status": "alpha",
+  "statusNote": "SplitPageLayout is PageLayout with different defaults and no code of its own; it changes when PageLayout does, and shares its alpha status and its newer resizing and sidebar APIs.",
+  "summary": "A full-bleed page frame: a sticky start pane edge-to-edge against the page, a line divider, and padded content, with lined header and footer. Choose it for settings and list-detail pages that fill the window; choose page-layout for a centred, width-capped page with gaps around the pane.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-24",
+    "--bgColor-accent-emphasis",
+    "--bgColor-default",
+    "--bgColor-inset",
+    "--bgColor-neutral-muted",
+    "--borderColor-default",
+    "--breakpoint-large",
+    "--breakpoint-medium",
+    "--breakpoint-xlarge",
+    "--breakpoint-xxlarge",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide"
+  ],
+  "references": {
+    "react": [
+      "SplitPageLayout.tsx",
+      "SplitPageLayout.docs.json",
+      "PageLayout.tsx",
+      "PageLayout.module.css",
+      "usePaneWidth.ts",
+      "DragHandle.tsx"
+    ],
+    "primer": [
+      "split-page-layout"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "header",
+      "type": "slot",
+      "required": false,
+      "description": "SplitPageLayout.Header: PageLayout.Header with padding normal and divider line by default."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "SplitPageLayout.Content: PageLayout.Content with width large and padding normal by default."
+    },
+    {
+      "name": "pane",
+      "type": "slot",
+      "required": false,
+      "description": "SplitPageLayout.Pane: PageLayout.Pane with position start, sticky, padding normal and divider line by default. It takes every page-layout pane input (width, minWidth, resizable, currentWidth, onResizeEnd, widthStorageKey, offsetHeader, hidden)."
+    },
+    {
+      "name": "panePosition",
+      "type": "enum",
+      "values": [
+        "start",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Pane side; at narrow widths start puts it above the content. Responsive."
+    },
+    {
+      "name": "paneSticky",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "The pane stays pinned at regular widths, scrolling internally."
+    },
+    {
+      "name": "paneDivider",
+      "type": "enum",
+      "values": [
+        "none",
+        "line",
+        "filled"
+      ],
+      "required": false,
+      "default": "line",
+      "description": "Divider between pane and content; filled exists only at narrow widths. Responsive."
+    },
+    {
+      "name": "sidebar",
+      "type": "slot",
+      "required": false,
+      "description": "SplitPageLayout.Sidebar: PageLayout.Sidebar with position start, padding normal and divider line by default."
+    },
+    {
+      "name": "footer",
+      "type": "slot",
+      "required": false,
+      "description": "SplitPageLayout.Footer: PageLayout.Footer with padding normal and divider line by default."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "A PageLayout root with no padding."
+    },
+    {
+      "id": "header",
+      "name": "Header",
+      "optional": true,
+      "description": "A padded banner with a 1px --borderColor-default line below it, edge to edge.",
+      "tokens": [
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "pane",
+      "name": "Pane",
+      "optional": true,
+      "description": "A padded, sticky side region flush with the page's start edge."
+    },
+    {
+      "id": "pane-divider",
+      "name": "Pane divider",
+      "description": "A 1px line between pane and content (vertical at regular widths, horizontal at narrow), touching both since there is no column gap.",
+      "tokens": [
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "drag-handle",
+      "name": "Drag handle",
+      "optional": true,
+      "description": "As page-layout's, when the pane is resizable."
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "description": "The main region filling the rest of the width; its padded inner box is centred and capped at 1012px."
+    },
+    {
+      "id": "sidebar",
+      "name": "Sidebar",
+      "optional": true,
+      "description": "As page-layout's sidebar, padded and lined by default."
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "optional": true,
+      "description": "A padded contentinfo region with a 1px line above it."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "panePosition",
+      "value": "start",
+      "default": true,
+      "description": "Pane flush at the start edge, content after it."
+    },
+    {
+      "axis": "panePosition",
+      "value": "end",
+      "description": "Pane flush at the end edge, content before it."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The root is a PageLayout with containerWidth full, padding none, columnGap none and rowGap none: regions meet each other and the page edges with no gaps, separated only by their divider lines.",
+      "part": "root",
+      "source": "SplitPageLayout.tsx:17-33"
+    },
+    {
+      "text": "Header and footer default to padding normal (16px, 24px from 1012px) and a line divider; with rowGap none the divider touches the padded header or footer content.",
+      "part": "header",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-24",
+        "--borderColor-default"
+      ],
+      "source": "SplitPageLayout.tsx:42-49,122-129; PageLayout.module.css:21-28,109-124"
+    },
+    {
+      "text": "Content defaults to width large and padding normal: it takes all width beside the pane, and its padded inner box is centred and capped at 1012px (equal to --breakpoint-large).",
+      "part": "content",
+      "tokens": [
+        "--breakpoint-large"
+      ],
+      "values": [
+        {
+          "name": "contentMaxWidth",
+          "value": 1012,
+          "unit": "px"
+        }
+      ],
+      "source": "SplitPageLayout.tsx:58-64; PageLayout.module.css:395-419"
+    },
+    {
+      "text": "The pane defaults to position start, padding normal, divider line and sticky; its width, presets, resizing bounds and narrow-width stacking are page-layout's, with zero gutters, so the 1px divider sits directly between pane and content.",
+      "part": "pane",
+      "source": "SplitPageLayout.tsx:73-90; PageLayout.module.css:30-49,469-513,536-547"
+    },
+    {
+      "text": "At regular widths the sticky pane pins at offsetHeader (default 0) from the viewport top with a maximum height of the viewport and scrolls internally.",
+      "part": "pane",
+      "source": "SplitPageLayout.tsx:75; PageLayout.module.css:478-483,597-599"
+    },
+    {
+      "text": "The sidebar defaults to position start, padding normal and divider line; everything else is page-layout's sidebar.",
+      "part": "sidebar",
+      "source": "SplitPageLayout.tsx:98-113"
+    },
+    {
+      "text": "Responsive ranges, spacing scale, divider styles and hidden rules are page-layout's: narrow below 768px (--breakpoint-medium), regular from 768px, wide from 1400px (--breakpoint-xxlarge).",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide",
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ],
+      "source": "useResponsiveValue.ts:9-13; PageLayout.module.css:104-212"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "drag-handle",
+      "text": "As page-layout: a --bgColor-neutral-muted fill fades in over 150ms ease.",
+      "tokens": [
+        "--bgColor-neutral-muted"
+      ],
+      "motion": {
+        "durationMs": 150,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "source": "PageLayout.module.css:725-739"
+    },
+    {
+      "state": "dragged",
+      "part": "drag-handle",
+      "text": "As page-layout: a --bgColor-accent-emphasis fill, no transition.",
+      "tokens": [
+        "--bgColor-accent-emphasis"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "paneUtils.ts:10-21"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Resizing, keyboard steps, double-click reset, persistence and viewport clamping are page-layout's; because the default position is the plain value start, pointer drag direction is correct unless a responsive position is passed.",
+      "source": "SplitPageLayout.tsx:73-90; PageLayout.tsx:620-622,755-811"
+    }
+  ],
+  "accessibility": {
+    "role": "as page-layout: banner, main, contentinfo, region for an overflowing pane, slider for the drag handle",
+    "minTargetPx": 5,
+    "keyboard": [
+      "As page-layout: Tab reaches the drag handle and an overflowing pane; arrows resize by 3px."
+    ],
+    "semantics": [
+      "As page-layout; a sticky pane that overflows the viewport height becomes a scrollable, focusable region and needs an aria-label."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The pane is sticky by default, so on a long page it stays pinned and scrolls on its own; a pane taller than the viewport is only fully reachable through its internal scroll.",
+      "source": "SplitPageLayout.tsx:75; PageLayout.module.css:478-483"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The root's typed props are only className, but the spread after the defaults lets a caller override containerWidth, padding and the gaps; a native API should fix them to match the documented component.",
+      "source": "SplitPageLayout.tsx:15-31"
+    },
+    {
+      "kind": "gotcha",
+      "text": "With columnGap none the divider's margins are zero, so the drag handle's 2px outset overlaps the edges of the pane and content.",
+      "source": "SplitPageLayout.tsx:23; PageLayout.module.css:536-547,715-718"
+    },
+    {
+      "kind": "web-only",
+      "text": "Sticky positioning, flex ordering, media-query ranges, pointer capture and localStorage persistence are as page-layout's web-only notes; a native build reuses that implementation with these defaults.",
+      "source": "PageLayout.module.css:469-513; DragHandle.tsx:113-182; usePaneWidth.ts:163-186"
+    }
+  ]
+}

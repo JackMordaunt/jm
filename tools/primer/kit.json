@@ -302,6 +302,35 @@
       ]
     },
     {
+      "id": "card",
+      "name": "Card",
+      "status": "draft",
+      "summary": "A bordered, raised box summarising one item: an icon or edge-to-edge image on top, a heading and description, a metadata row, and one corner action. Choose it for grids or lists of browsable items; use a plain bordered box for arbitrary grouped content.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-16",
+        "--base-size-32",
+        "--bgColor-default",
+        "--bgColor-muted",
+        "--borderColor-default",
+        "--borderRadius-large",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--shadow-resting-small",
+        "--stack-gap-condensed",
+        "--stack-gap-normal",
+        "--stack-padding-condensed",
+        "--stack-padding-normal",
+        "--stack-padding-spacious",
+        "--text-body-shorthand-medium",
+        "--text-body-shorthand-small",
+        "--text-body-size-medium",
+        "--text-title-shorthand-small"
+      ]
+    },
+    {
       "id": "confirmation-dialog",
       "name": "ConfirmationDialog",
       "status": "alpha",
@@ -340,6 +369,40 @@
       ]
     },
     {
+      "id": "data-table",
+      "name": "DataTable",
+      "status": "alpha",
+      "summary": "A grid table of rows built from a column definition list: per-column width rules, start or end alignment, row headers, client-side or external sorting, optional row groups, three cell densities, a loading skeleton, and a container with title, subtitle, actions and a pagination footer. Choose it for tabular records the user scans and sorts; choose an ActionList or a plain list for single-column items.",
+      "tokenGroups": [
+        "--base-duration-1000",
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-20",
+        "--base-size-32",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold",
+        "--bgColor-accent-emphasis",
+        "--bgColor-default",
+        "--bgColor-muted",
+        "--borderColor-default",
+        "--borderRadius-medium",
+        "--borderRadius-small",
+        "--borderWidth-thin",
+        "--control-transparent-bgColor-hover",
+        "--fgColor-accent",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--fgColor-onEmphasis",
+        "--skeletonLoader-bgColor",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--text-title-lineHeight-small",
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ]
+    },
+    {
       "id": "details",
       "name": "Details",
       "status": "alpha",
@@ -369,6 +432,21 @@
         "--text-title-weight-large",
         "--base-text-weight-normal",
         "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "Header",
+      "status": "alpha",
+      "summary": "GitHub's dark global bar: a horizontal row of items (logo link, navigation links, a full-width spacer item, avatar) on the header background. Choose it for an app-wide top bar; choose page-header for a page's own title block.",
+      "tokenGroups": [
+        "--base-size-16",
+        "--header-bgColor",
+        "--header-fgColor-default",
+        "--header-fgColor-logo",
+        "--text-body-size-medium",
+        "--text-title-lineHeight-large",
+        "--text-title-weight-large"
       ]
     },
     {
@@ -516,6 +594,56 @@
       ]
     },
     {
+      "id": "page-header",
+      "name": "PageHeader",
+      "status": "beta",
+      "summary": "The top of a page or view: a title with optional leading and trailing visuals, actions beside it, a leading back action, breadcrumbs, a description and local navigation below, and a context area (parent link, context bar, context actions) above it that by default appears only at narrow widths. Choose it for a page's own heading block; choose header for GitHub's global site bar.",
+      "tokenGroups": [
+        "--base-size-8",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold",
+        "--borderColor-default",
+        "--borderWidth-thin",
+        "--fgColor-accent",
+        "--fgColor-muted",
+        "--stack-gap-condensed",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium",
+        "--text-title-lineHeight-large",
+        "--text-title-lineHeight-medium",
+        "--text-title-size-large",
+        "--text-title-size-medium",
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide",
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ]
+    },
+    {
+      "id": "page-layout",
+      "name": "PageLayout",
+      "status": "alpha",
+      "summary": "The page frame: an optional header, a content region with one side pane, an optional footer, and an optional full-height sidebar outside them, with spacing, dividers, pane width and pane position that change at viewport ranges. Choose it for a whole page with a centred, width-capped container; choose split-page-layout for full-bleed, edge-to-edge panes.",
+      "tokenGroups": [
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-24",
+        "--bgColor-accent-emphasis",
+        "--bgColor-default",
+        "--bgColor-inset",
+        "--bgColor-neutral-muted",
+        "--borderColor-default",
+        "--breakpoint-large",
+        "--breakpoint-medium",
+        "--breakpoint-xlarge",
+        "--breakpoint-xxlarge",
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ]
+    },
+    {
       "id": "popover",
       "name": "Popover",
       "status": "alpha",
@@ -545,6 +673,49 @@
       "status": "alpha",
       "summary": "Inline text that renders a timestamp relative to now (\"3 hours ago\", \"in 2 days\") or as a short localised date past a threshold, with the precise date in a hover title. Use it for activity times in lists and timelines; show the full date instead where users must read it reliably.",
       "tokenGroups": []
+    },
+    {
+      "id": "split-page-layout",
+      "name": "SplitPageLayout",
+      "status": "alpha",
+      "summary": "A full-bleed page frame: a sticky start pane edge-to-edge against the page, a line divider, and padded content, with lined header and footer. Choose it for settings and list-detail pages that fill the window; choose page-layout for a centred, width-capped page with gaps around the pane.",
+      "tokenGroups": [
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-24",
+        "--bgColor-accent-emphasis",
+        "--bgColor-default",
+        "--bgColor-inset",
+        "--bgColor-neutral-muted",
+        "--borderColor-default",
+        "--breakpoint-large",
+        "--breakpoint-medium",
+        "--breakpoint-xlarge",
+        "--breakpoint-xxlarge",
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ]
+    },
+    {
+      "id": "stack",
+      "name": "Stack",
+      "status": "alpha",
+      "summary": "A one-dimensional layout primitive: children in a row or column with a gap from the stack spacing scale, cross-axis alignment, main-axis distribution, optional wrapping and padding, each settable per viewport range. Choose it for arranging siblings; choose page-layout for page regions.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-12",
+        "--stack-gap-condensed",
+        "--stack-gap-normal",
+        "--stack-gap-spacious",
+        "--stack-padding-condensed",
+        "--stack-padding-normal",
+        "--stack-padding-spacious",
+        "--viewportRange-regular",
+        "--viewportRange-wide",
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ]
     },
     {
       "id": "text",

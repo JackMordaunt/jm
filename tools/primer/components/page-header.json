@@ -1,0 +1,537 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "page-header",
+  "name": "PageHeader",
+  "status": "beta",
+  "statusNote": "PageHeader's slots and responsive visibility defaults are settled, and it is the only beta in the layout family (the rest are alpha or draft). Recent work moved title size and navigation state onto the root as attributes without changing what renders.",
+  "summary": "The top of a page or view: a title with optional leading and trailing visuals, actions beside it, a leading back action, breadcrumbs, a description and local navigation below, and a context area (parent link, context bar, context actions) above it that by default appears only at narrow widths. Choose it for a page's own heading block; choose header for GitHub's global site bar.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--borderColor-default",
+    "--borderWidth-thin",
+    "--fgColor-accent",
+    "--fgColor-muted",
+    "--stack-gap-condensed",
+    "--text-body-lineHeight-medium",
+    "--text-body-size-medium",
+    "--text-title-lineHeight-large",
+    "--text-title-lineHeight-medium",
+    "--text-title-size-large",
+    "--text-title-size-medium",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide",
+    "--breakpoint-medium",
+    "--breakpoint-xxlarge"
+  ],
+  "references": {
+    "react": [
+      "PageHeader.module.css",
+      "PageHeader.tsx",
+      "PageHeader.docs.json",
+      "getBreakpointDeclarations.ts",
+      "Link.module.css",
+      "Heading/Heading.module.css"
+    ],
+    "primer": [
+      "page-header"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "title",
+      "type": "string",
+      "required": true,
+      "description": "PageHeader.Title inside PageHeader.TitleArea: a heading (h2 by default, h1 to h6) in the title area's size."
+    },
+    {
+      "name": "titleVariant",
+      "type": "enum",
+      "values": [
+        "subtitle",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "TitleArea variant: large 32px normal weight, medium 20px semibold, subtitle 20px normal weight. Responsive."
+    },
+    {
+      "name": "titleLevel",
+      "type": "enum",
+      "values": [
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6"
+      ],
+      "required": false,
+      "default": "h2",
+      "description": "Heading level of the title; it changes semantics, not size."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.LeadingVisual: an icon or avatar before the title, inside the title area."
+    },
+    {
+      "name": "trailingVisual",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.TrailingVisual: a label or icon after the title, inside the title area."
+    },
+    {
+      "name": "leadingAction",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.LeadingAction: conventionally a back IconButton, left of the title; hidden at narrow widths by default."
+    },
+    {
+      "name": "breadcrumbs",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.Breadcrumbs: a breadcrumb trail between the leading action and the title."
+    },
+    {
+      "name": "trailingAction",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.TrailingAction: an action right after the title (an edit button); hidden at narrow widths by default."
+    },
+    {
+      "name": "actions",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.Actions: buttons at the far end of the title row."
+    },
+    {
+      "name": "parentLink",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.ParentLink in the context area: a muted link with a leading arrow-left icon to the parent page (href, label); visible only at narrow widths by default."
+    },
+    {
+      "name": "contextBar",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.ContextBar in the context area: custom context such as breadcrumbs; visible only at narrow widths by default."
+    },
+    {
+      "name": "contextAreaActions",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.ContextAreaActions: actions pushed to the end of the context area; visible only at narrow widths by default."
+    },
+    {
+      "name": "description",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.Description: a row of text or metadata below the title row."
+    },
+    {
+      "name": "navigation",
+      "type": "slot",
+      "required": false,
+      "description": "PageHeader.Navigation: local navigation (an UnderlineNav) at the bottom; rendered as nav (needs a label) or div."
+    },
+    {
+      "name": "hidden",
+      "type": "boolean",
+      "required": false,
+      "description": "Every slot takes hidden, a boolean or {narrow, regular, wide}, overriding its default visibility."
+    },
+    {
+      "name": "hasBorder",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draws a bottom border under the header when there is no visible navigation."
+    },
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Accessible name for the root, with role, when it is rendered as a landmark."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "A five-column grid in four rows: context area; leading action, breadcrumbs, title area, trailing action, actions; description; navigation. It sets the title font for its descendants."
+    },
+    {
+      "id": "context-area",
+      "name": "Context area",
+      "optional": true,
+      "description": "Row 1: a flex row of parent link, context bar and context actions at body size, 8px gap, 8px below.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--base-text-weight-normal",
+        "--stack-gap-condensed",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "parent-link",
+      "name": "Parent link",
+      "optional": true,
+      "description": "A muted link: arrow-left octicon and text, 8px apart.",
+      "tokens": [
+        "--fgColor-muted",
+        "--fgColor-accent",
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "context-bar",
+      "name": "Context bar",
+      "optional": true,
+      "description": "A flex slot after the parent link."
+    },
+    {
+      "id": "context-actions",
+      "name": "Context area actions",
+      "optional": true,
+      "description": "A flex row filling the rest of the context area, its items end-aligned, 8px apart.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "leading-action",
+      "name": "Leading action",
+      "optional": true,
+      "description": "Column 1 of row 2, 8px end padding, as tall as one title line.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "breadcrumbs",
+      "name": "Breadcrumbs",
+      "optional": true,
+      "description": "Column 2 of row 2 at body size, 8px end padding.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "title-area",
+      "name": "Title area",
+      "description": "Column 3 of row 2: leading visual, title and trailing visual in a row, 8px apart, top-aligned.",
+      "tokens": [
+        "--stack-gap-condensed"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "description": "The heading, inheriting the root's title size, weight and line height, no margin."
+    },
+    {
+      "id": "leading-visual",
+      "name": "Leading visual",
+      "optional": true,
+      "description": "Centred in a box one title line tall."
+    },
+    {
+      "id": "trailing-visual",
+      "name": "Trailing visual",
+      "optional": true,
+      "description": "Centred in a box one title line tall."
+    },
+    {
+      "id": "trailing-action",
+      "name": "Trailing action",
+      "optional": true,
+      "description": "Column 4 of row 2, 8px start padding, one title line tall.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "Actions",
+      "optional": true,
+      "description": "Column 5 of row 2, which takes the remaining width: items end-aligned, 8px apart, never narrower than their content, one title line tall.",
+      "tokens": [
+        "--stack-gap-condensed",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "description",
+      "name": "Description",
+      "optional": true,
+      "description": "Row 3: a flex row at body size, 8px above, 8px gap.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--stack-gap-condensed",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "navigation",
+      "name": "Navigation",
+      "optional": true,
+      "description": "Row 4: a block at body size, 8px above.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "border",
+      "name": "Bottom border",
+      "optional": true,
+      "description": "A 1px --borderColor-default line under the root with 8px above it, when hasBorder is set and no navigation shows.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--base-size-8"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "titleVariant",
+      "value": "medium",
+      "default": true,
+      "description": "20px semibold title at the medium title line height (a 32.5px line).",
+      "tokens": [
+        "--text-title-size-medium",
+        "--base-text-weight-semibold",
+        "--text-title-lineHeight-medium"
+      ]
+    },
+    {
+      "axis": "titleVariant",
+      "value": "large",
+      "description": "32px normal-weight title at the large title line height (48px line).",
+      "tokens": [
+        "--text-title-size-large",
+        "--base-text-weight-normal",
+        "--text-title-lineHeight-large"
+      ]
+    },
+    {
+      "axis": "titleVariant",
+      "value": "subtitle",
+      "description": "Medium's size and line height at normal weight, for a secondary heading.",
+      "tokens": [
+        "--text-title-size-medium",
+        "--base-text-weight-normal",
+        "--text-title-lineHeight-medium"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "grid",
+      "text": "The root is a grid of five columns sized auto, auto, auto, auto and 1fr, in four rows: the context area spans row 1, row 2 holds leading action, breadcrumbs, title area, trailing action and actions in that order, the description spans row 3 and navigation spans row 4. An empty slot takes no space, so the title follows the leading action directly and the actions column takes all remaining width.",
+      "part": "root",
+      "source": "PageHeader.module.css:1-30"
+    },
+    {
+      "id": "title-size",
+      "text": "The title area's variant sets the root's font: large reads --text-title-size-large, --base-text-weight-normal and --text-title-lineHeight-large; medium reads --text-title-size-medium, --base-text-weight-semibold and --text-title-lineHeight-medium; subtitle is medium at --base-text-weight-normal. The title inherits it.",
+      "part": "title",
+      "tokens": [
+        "--text-title-size-large",
+        "--text-title-size-medium",
+        "--text-title-lineHeight-large",
+        "--text-title-lineHeight-medium",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold"
+      ],
+      "source": "PageHeader.module.css:41-63,272-278; PageHeader.tsx:101-102,171"
+    },
+    {
+      "text": "Leading action, trailing action, actions, leading visual and trailing visual are each exactly one title line tall (title line height times title font size: 32.5px for medium and subtitle, 20 x 1.625; 48px for large, 32 x 1.5), with content centred, so controls align with the title's first line however far the title wraps.",
+      "part": "actions",
+      "source": "PageHeader.module.css:171-177,246-252,265-270,284-309"
+    },
+    {
+      "text": "Inside the title area, leading visual, title and trailing visual sit in a top-aligned row with --stack-gap-condensed between them.",
+      "part": "title-area",
+      "tokens": [
+        "--stack-gap-condensed"
+      ],
+      "source": "PageHeader.module.css:237-244,265-289"
+    },
+    {
+      "text": "Leading action and breadcrumbs pad 8px on their end side; trailing action and actions pad 8px on their start side; actions never shrink below their content and end-align their items 8px apart.",
+      "tokens": [
+        "--base-size-8",
+        "--stack-gap-condensed"
+      ],
+      "source": "PageHeader.module.css:246-263,291-309"
+    },
+    {
+      "text": "The context area is a centred flex row at body size with 8px below it; the parent link (arrow-left icon then text, 8px apart) comes first, the context bar second, and the context actions fill the rest and end-align.",
+      "part": "context-area",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--stack-gap-condensed",
+        "--base-size-8"
+      ],
+      "source": "PageHeader.module.css:202-235; PageHeader.tsx:217-230"
+    },
+    {
+      "text": "The description is a centred flex row at body size with 8px above and an 8px gap; navigation is a block at body size with 8px above.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--base-size-8",
+        "--stack-gap-condensed"
+      ],
+      "source": "PageHeader.module.css:311-332"
+    },
+    {
+      "text": "With hasBorder, the root draws a --borderWidth-thin --borderColor-default bottom border with 8px padding above it when there is no navigation, or when the navigation is hidden at the current range.",
+      "part": "border",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--base-size-8"
+      ],
+      "source": "PageHeader.module.css:144-169; PageHeader.tsx:169-172"
+    },
+    {
+      "id": "responsive-visibility",
+      "text": "Default visibility: parent link, context bar, context actions and the context area show only below 768px (narrow); leading action and trailing action show only from 768px; title area, breadcrumbs, visuals, actions, description and navigation always show. A hidden value per range (narrow below 768px, regular from 768px, wide from 1400px) replaces the default.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide",
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ],
+      "values": [
+        {
+          "name": "regularMinWidth",
+          "value": 768,
+          "unit": "px"
+        },
+        {
+          "name": "wideMinWidth",
+          "value": 1400,
+          "unit": "px"
+        }
+      ],
+      "source": "PageHeader.tsx:27-39,186-200,214,241-273,307-323,386-400; PageHeader.module.css:179-199"
+    },
+    {
+      "text": "A responsive title variant applies each range's size only within that range (narrow below 768px, regular from 768px, wide from 1400px); a range with no value gets no title font from the header and inherits the surrounding text size.",
+      "part": "title",
+      "source": "PageHeader.module.css:65-142"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "parent-link",
+      "text": "The parent link turns from --fgColor-muted to --fgColor-accent on hover, without an underline.",
+      "tokens": [
+        "--fgColor-muted",
+        "--fgColor-accent"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "Link.module.css:34-41; PageHeader.tsx:221"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "PageHeader has no behaviour of its own; actions, links and navigation behave as their own components. Crossing 768px or 1400px swaps slot visibility instantly.",
+      "motion": {
+        "instant": true
+      },
+      "source": "PageHeader.module.css:179-199"
+    }
+  ],
+  "accessibility": {
+    "role": "none by default (a div); with as=header or role it becomes a landmark named by ariaLabel. The title is a heading; navigation is a nav landmark when rendered as nav.",
+    "minTargetPx": null,
+    "keyboard": [
+      "Focus order is source order: the title area renders first in the DOM even when a context area or leading action shows above or before it, so interactive content inside the title area would be reached before them."
+    ],
+    "semantics": [
+      "The title is a heading at its level (h2 by default).",
+      "Navigation rendered as nav needs aria-label or aria-labelledby.",
+      "The parent link's name is its text, or its aria-label."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "contradiction",
+      "text": "PageHeader.docs.json gives ContextArea, ContextBar, ContextAreaActions and LeadingAction a hidden default of false, but the code hides the context area pieces from 768px and hides leading and trailing actions below 768px unless hidden is passed. Build to the code.",
+      "source": "PageHeader.docs.json; PageHeader.tsx:27-39,189,244,262,310,389"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "A hidden value with regular true and wide false still hides at wide: the regular rule (from 768px) also matches at 1400px and nothing un-hides at wide; only 'hidden' attributes are emitted, never 'shown'.",
+      "source": "PageHeader.tsx:461-516; PageHeader.module.css:183-199"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Title size is hoisted from the TitleArea onto the root only when the TitleArea is a direct child (or inside a fragment); wrapped in anything else, the root gets no title font and the title falls back to the surrounding text size.",
+      "source": "PageHeader.tsx:62-110"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The CSS carries fallbacks (2rem, 1.25rem, 1.5, 1.6, 0.875rem, 1.4285) that differ from current token values for the medium title line height (1.6 against the token's 1.625) and body line height; they apply only if the tokens are missing, so read the tokens.",
+      "tokens": [
+        "--text-title-lineHeight-medium",
+        "--text-body-lineHeight-medium"
+      ],
+      "source": "PageHeader.module.css:42-62,205-207"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--page-header-bgColor exists but PageHeader reads no background; the header is transparent.",
+      "tokens": [
+        "--page-header-bgColor"
+      ],
+      "source": "PageHeader.module.css:1-332"
+    },
+    {
+      "kind": "gotcha",
+      "text": "There is no back button component: the narrow-width back affordance is ParentLink (a muted link with an arrow-left icon), and the regular-width one is whatever the caller puts in LeadingAction, conventionally an invisible IconButton.",
+      "source": "PageHeader.tsx:212-234,305-321"
+    },
+    {
+      "kind": "web-only",
+      "text": "Placement uses CSS grid template areas with auto-sized columns that collapse when a slot is empty or display: none; a native build measures each present slot in row 2, gives leading action, breadcrumbs, title area and trailing action their content widths, and gives actions the remainder (but never less than its content width, so a long title must wrap instead).",
+      "source": "PageHeader.module.css:22-30,299-309"
+    },
+    {
+      "kind": "web-only",
+      "text": "Responsive visibility and title size are media queries on the window width; a native build computes the range from the window width each frame.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "PageHeader.module.css:65-142,179-199"
+    },
+    {
+      "kind": "web-only",
+      "text": "Action and visual heights are calc(title line height * 1em), relative to the root's computed font size; a native build multiplies the resolved title font size by its line-height token.",
+      "source": "PageHeader.module.css:171-177"
+    }
+  ]
+}

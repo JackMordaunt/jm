@@ -1,0 +1,923 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "page-layout",
+  "name": "PageLayout",
+  "status": "alpha",
+  "statusNote": "PageLayout lays out most of GitHub's repository and settings pages and its region API is settled. The parts still moving are the resizable pane's persistence and controlled-width API (onResizeEnd, currentWidth) and the Sidebar region.",
+  "summary": "The page frame: an optional header, a content region with one side pane, an optional footer, and an optional full-height sidebar outside them, with spacing, dividers, pane width and pane position that change at viewport ranges. Choose it for a whole page with a centred, width-capped container; choose split-page-layout for full-bleed, edge-to-edge panes.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-24",
+    "--bgColor-accent-emphasis",
+    "--bgColor-default",
+    "--bgColor-inset",
+    "--bgColor-neutral-muted",
+    "--borderColor-default",
+    "--breakpoint-large",
+    "--breakpoint-medium",
+    "--breakpoint-xlarge",
+    "--breakpoint-xxlarge",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide"
+  ],
+  "references": {
+    "react": [
+      "PageLayout.module.css",
+      "PageLayout.tsx",
+      "PageLayout.docs.json",
+      "usePaneWidth.ts",
+      "DragHandle.tsx",
+      "paneUtils.ts",
+      "useOverflow.ts",
+      "useResponsiveValue.ts",
+      "getResponsiveAttributes.ts"
+    ],
+    "primer": [
+      "page-layout"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "containerWidth",
+      "type": "enum",
+      "values": [
+        "full",
+        "medium",
+        "large",
+        "xlarge"
+      ],
+      "required": false,
+      "default": "xlarge",
+      "description": "Max width of the centred container holding header, content, pane and footer: none, 768, 1012 or 1280px."
+    },
+    {
+      "name": "padding",
+      "type": "enum",
+      "values": [
+        "none",
+        "condensed",
+        "normal"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Space between the page edge and the container."
+    },
+    {
+      "name": "rowGap",
+      "type": "enum",
+      "values": [
+        "none",
+        "condensed",
+        "normal"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Vertical space between header, content row and footer, and between pane and content when they stack at narrow widths."
+    },
+    {
+      "name": "columnGap",
+      "type": "enum",
+      "values": [
+        "none",
+        "condensed",
+        "normal"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Horizontal space on each side of the pane's (and sidebar's) vertical divider."
+    },
+    {
+      "name": "header",
+      "type": "slot",
+      "required": false,
+      "description": "PageLayout.Header. Takes padding (default none), divider (none or line; narrow may also be filled), hidden (responsive) and an accessible label."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "PageLayout.Content, the main region. Takes width (full, medium, large, xlarge; default full), padding (default none), hidden (responsive) and an accessible label."
+    },
+    {
+      "name": "pane",
+      "type": "slot",
+      "required": false,
+      "description": "PageLayout.Pane, the side region next to the content. Its options are the pane* inputs below."
+    },
+    {
+      "name": "panePosition",
+      "type": "enum",
+      "values": [
+        "start",
+        "end"
+      ],
+      "required": false,
+      "default": "end",
+      "description": "Pane side at regular widths; at narrow widths start puts it above the content and end below. Responsive."
+    },
+    {
+      "name": "paneWidth",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "custom"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "A preset width, or a custom {min, default, max} in px. For a resizable pane it sets the default and the drag bounds."
+    },
+    {
+      "name": "paneMinWidth",
+      "type": "number",
+      "required": false,
+      "default": 256,
+      "description": "Smallest width a resizable preset-width pane can be dragged to, in px; ignored for a custom width, whose min applies."
+    },
+    {
+      "name": "paneResizable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Adds a drag handle on the pane's divider (forcing a line divider) for pointer and keyboard resizing."
+    },
+    {
+      "name": "paneCurrentWidth",
+      "type": "number",
+      "required": false,
+      "description": "Controlled width in px; must come with onPaneResizeEnd. Undefined while a stored value loads."
+    },
+    {
+      "name": "onPaneResizeEnd",
+      "type": "callback",
+      "required": false,
+      "description": "Called with the rounded width when a drag ends, an arrow key is released or the handle is double-clicked; replaces local persistence."
+    },
+    {
+      "name": "paneWidthStorageKey",
+      "type": "string",
+      "required": false,
+      "default": "paneWidth",
+      "description": "Key under which a resizable pane persists its width when onPaneResizeEnd is absent."
+    },
+    {
+      "name": "paneSticky",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "At regular widths the pane stays in view while the page scrolls, capped at the viewport height and scrolling internally."
+    },
+    {
+      "name": "paneOffsetHeader",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "Distance from the viewport top at which a sticky pane pins, in px (or any CSS length), to clear a fixed site header."
+    },
+    {
+      "name": "panePadding",
+      "type": "enum",
+      "values": [
+        "none",
+        "condensed",
+        "normal"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Padding inside the pane."
+    },
+    {
+      "name": "paneDivider",
+      "type": "enum",
+      "values": [
+        "none",
+        "line",
+        "filled"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Divider between pane and content: vertical at regular widths, horizontal at narrow; filled exists only at narrow. Responsive."
+    },
+    {
+      "name": "paneHidden",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Hide the pane, optionally per viewport range."
+    },
+    {
+      "name": "sidebar",
+      "type": "slot",
+      "required": false,
+      "description": "PageLayout.Sidebar, a full-height column beside the whole container (header and footer included). Its options are the sidebar* inputs below."
+    },
+    {
+      "name": "sidebarPosition",
+      "type": "enum",
+      "values": [
+        "start",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Sidebar side; not responsive."
+    },
+    {
+      "name": "sidebarWidth",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "custom"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "As paneWidth, for the sidebar; a custom max is also capped to the viewport."
+    },
+    {
+      "name": "sidebarResizable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "As paneResizable, for the sidebar."
+    },
+    {
+      "name": "sidebarWidthStorageKey",
+      "type": "string",
+      "required": false,
+      "description": "Persistence key for a resizable sidebar; unlike the pane there is no default, so without it nothing is persisted."
+    },
+    {
+      "name": "sidebarSticky",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "The sidebar pins to the viewport top at full viewport height."
+    },
+    {
+      "name": "sidebarResponsiveVariant",
+      "type": "enum",
+      "values": [
+        "default",
+        "fullscreen"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "At narrow widths, default keeps the sidebar inline; fullscreen makes it cover the viewport."
+    },
+    {
+      "name": "sidebarDivider",
+      "type": "enum",
+      "values": [
+        "none",
+        "line"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Vertical divider between sidebar and container; not responsive."
+    },
+    {
+      "name": "footer",
+      "type": "slot",
+      "required": false,
+      "description": "PageLayout.Footer. Takes padding (default none), divider (as header), hidden (responsive) and an accessible label."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "root",
+      "name": "Root",
+      "description": "The outer box, padded by the padding spacing; becomes a row when a sidebar is present."
+    },
+    {
+      "id": "sidebar",
+      "name": "Sidebar",
+      "optional": true,
+      "description": "A full-height column outside the container with its own vertical divider and optional drag handle."
+    },
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A centred, wrapping flex row capped at containerWidth, holding header, content row and footer."
+    },
+    {
+      "id": "header",
+      "name": "Header",
+      "optional": true,
+      "description": "A full-width banner region with its own padding and an optional horizontal divider below it."
+    },
+    {
+      "id": "content-row",
+      "name": "Content row",
+      "description": "A wrapping flex row holding the pane and the content; a column at narrow widths."
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "description": "The main region: takes all width the pane leaves, with an inner box centred and capped at the content width."
+    },
+    {
+      "id": "pane",
+      "name": "Pane",
+      "optional": true,
+      "description": "The side region, width by preset, custom or drag, scrolling internally at regular widths."
+    },
+    {
+      "id": "pane-divider",
+      "name": "Pane divider",
+      "optional": true,
+      "description": "A vertical rule between pane and content at regular widths, a horizontal rule between them at narrow widths.",
+      "tokens": [
+        "--borderColor-default",
+        "--bgColor-inset",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "drag-handle",
+      "name": "Drag handle",
+      "optional": true,
+      "description": "An invisible strip over the vertical divider, 2px wider on each side, that shows a fill on hover and drag.",
+      "tokens": [
+        "--bgColor-neutral-muted",
+        "--bgColor-accent-emphasis"
+      ]
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "optional": true,
+      "description": "A full-width contentinfo region with an optional horizontal divider above it."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "containerWidth",
+      "value": "xlarge",
+      "default": true,
+      "description": "Container capped at 1280px (equal to --breakpoint-xlarge).",
+      "tokens": [
+        "--breakpoint-xlarge"
+      ]
+    },
+    {
+      "axis": "containerWidth",
+      "value": "large",
+      "description": "Container capped at 1012px (equal to --breakpoint-large).",
+      "tokens": [
+        "--breakpoint-large"
+      ]
+    },
+    {
+      "axis": "containerWidth",
+      "value": "medium",
+      "description": "Container capped at 768px (equal to --breakpoint-medium).",
+      "tokens": [
+        "--breakpoint-medium"
+      ]
+    },
+    {
+      "axis": "containerWidth",
+      "value": "full",
+      "description": "No cap; the container fills the root."
+    },
+    {
+      "axis": "spacing",
+      "value": "none",
+      "description": "0px, for padding, rowGap, columnGap and each region's padding."
+    },
+    {
+      "axis": "spacing",
+      "value": "condensed",
+      "description": "16px at every width.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    },
+    {
+      "axis": "spacing",
+      "value": "normal",
+      "default": true,
+      "description": "16px below 1012px, 24px from 1012px (--breakpoint-large).",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-24"
+      ]
+    },
+    {
+      "axis": "divider",
+      "value": "line",
+      "description": "A 1px --borderColor-default rule.",
+      "tokens": [
+        "--borderColor-default"
+      ]
+    },
+    {
+      "axis": "divider",
+      "value": "filled",
+      "description": "Narrow only: an 8px --bgColor-inset band with 1px --borderColor-default lines on both long edges.",
+      "tokens": [
+        "--bgColor-inset",
+        "--borderColor-default",
+        "--base-size-8"
+      ]
+    },
+    {
+      "axis": "paneWidth",
+      "value": "small",
+      "description": "100% below 768px, 240px from 768px, 256px from 1012px; resizable default 256px."
+    },
+    {
+      "axis": "paneWidth",
+      "value": "medium",
+      "default": true,
+      "description": "100% below 768px, 256px from 768px, 296px from 1012px; resizable default 296px."
+    },
+    {
+      "axis": "paneWidth",
+      "value": "large",
+      "description": "100% below 768px, 256px from 768px, 320px from 1012px; resizable default 320px."
+    }
+  ],
+  "layout": [
+    {
+      "id": "viewport-ranges",
+      "text": "Three viewport ranges drive every responsive value: narrow below 768px (--viewportRange-narrow), regular from 768px (--viewportRange-regular, --breakpoint-medium), wide from 1400px (--viewportRange-wide, --breakpoint-xxlarge). Wide is a subset of regular, so regular rules also hold at wide unless a wide value overrides them.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide",
+        "--breakpoint-medium",
+        "--breakpoint-xxlarge"
+      ],
+      "values": [
+        {
+          "name": "regularMinWidth",
+          "value": 768,
+          "unit": "px"
+        },
+        {
+          "name": "wideMinWidth",
+          "value": 1400,
+          "unit": "px"
+        }
+      ],
+      "source": "useResponsiveValue.ts:9-13; PageLayout.module.css:104,137,161,185"
+    },
+    {
+      "id": "spacing-scale",
+      "text": "Spacing values are none 0, condensed --base-size-16, normal --base-size-16 below 1012px and --base-size-24 from 1012px (--breakpoint-large). padding pads the root on all sides; each region's own padding pads its inner box.",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-24",
+        "--breakpoint-large"
+      ],
+      "values": [
+        {
+          "name": "spacingNormalBreakpoint",
+          "value": 1012,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:21-28,69; PageLayout.tsx:134"
+    },
+    {
+      "text": "The container is a wrapping flex row, centred by auto side margins, full width and height of the root, capped at 768px (medium), 1012px (large) or 1280px (xlarge, the default); full has no cap.",
+      "part": "container",
+      "tokens": [
+        "--breakpoint-medium",
+        "--breakpoint-large",
+        "--breakpoint-xlarge"
+      ],
+      "values": [
+        {
+          "name": "mediumMaxWidth",
+          "value": 768,
+          "unit": "px"
+        },
+        {
+          "name": "largeMaxWidth",
+          "value": 1012,
+          "unit": "px"
+        },
+        {
+          "name": "xlargeMaxWidth",
+          "value": 1280,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:72-96; PageLayout.tsx:70,109"
+    },
+    {
+      "text": "Regions take a fixed order: header 0, pane at start 1, content 2, pane at end 3, footer 4; the header spans the full width with rowGap below it (and its divider rowGap below the header content), the footer spans the full width with rowGap above it (and its divider rowGap above the footer content).",
+      "part": "container",
+      "source": "PageLayout.module.css:14-19,312-351,669-710; PageLayout.tsx:372-405,1144-1179"
+    },
+    {
+      "text": "The content row is a wrapping flex row taking the full container width; at narrow widths it becomes a column so the pane stacks above or below the content.",
+      "part": "content-row",
+      "source": "PageLayout.module.css:98-107"
+    },
+    {
+      "text": "Content takes all width the pane and gutters leave (flex-basis 0, grow 1, minimum width 1px so overflowing content cannot push the pane to a new line); its inner box is padded by its padding and centred with a max width of 768, 1012 or 1280px (medium, large, xlarge) or none (full, the default).",
+      "part": "content",
+      "values": [
+        {
+          "name": "contentMinWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:353-419; PageLayout.tsx:442-473"
+    },
+    {
+      "id": "pane-width-presets",
+      "text": "A non-resizable preset pane is 100% wide below 768px; from 768px small, medium and large are 240, 256 and 256px; from 1012px they are 256, 296 and 320px. A custom width fixes a non-resizable pane at its default; its min and max apply only when resizable.",
+      "part": "pane",
+      "tokens": [
+        "--breakpoint-medium",
+        "--breakpoint-large"
+      ],
+      "values": [
+        {
+          "name": "smallRegular",
+          "value": 240,
+          "unit": "px"
+        },
+        {
+          "name": "mediumRegular",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "largeRegular",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "smallLarge",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "mediumLarge",
+          "value": 296,
+          "unit": "px"
+        },
+        {
+          "name": "largeLarge",
+          "value": 320,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:30-49,592-593; PageLayout.tsx:713-716"
+    },
+    {
+      "id": "pane-regular-placement",
+      "text": "From 768px the pane wrapper shrinks to the pane: at start it is [pane][divider] with columnGap after it, at end [divider][pane] with columnGap before it; the divider has columnGap on its pane-facing side, so it sits centred in a gutter of twice columnGap. The pane scrolls its own overflow.",
+      "part": "pane",
+      "source": "PageLayout.module.css:469-513,536-590,597-599; PageLayout.tsx:677-679,741-745"
+    },
+    {
+      "id": "pane-narrow-placement",
+      "text": "Below 768px the pane is full width: at start it sits above the content with rowGap below it and its horizontal divider below the pane; at end it sits below the content with rowGap above it and its divider above the pane.",
+      "part": "pane",
+      "source": "PageLayout.module.css:431-467,614-667"
+    },
+    {
+      "text": "A line divider is 1px of --borderColor-default; a filled divider is 8px of --bgColor-inset with 1px --borderColor-default lines on both long edges (inset shadows). The vertical divider spans the pane wrapper's height.",
+      "part": "pane-divider",
+      "tokens": [
+        "--borderColor-default",
+        "--bgColor-inset",
+        "--base-size-8"
+      ],
+      "values": [
+        {
+          "name": "lineThickness",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:109-134,214-237"
+    },
+    {
+      "text": "Below 768px a horizontal divider extends past the content box by the root's padding on both sides (negative side margins), reaching the page edge; from 768px its side margins are zero.",
+      "part": "pane-divider",
+      "source": "PageLayout.module.css:109-113,208-211; PageLayout.tsx:162,170-174"
+    },
+    {
+      "text": "The pane divider shows only at its own range: a plain divider value draws the horizontal rule at narrow and the vertical rule at regular; a resizable pane always draws a vertical line at regular and wide, whatever divider says.",
+      "part": "pane-divider",
+      "source": "PageLayout.tsx:687-746"
+    },
+    {
+      "id": "resizable-width",
+      "text": "A resizable pane is 100% wide below 768px; from 768px its width is the current width clamped between min (paneMinWidth, or the custom min) and max.",
+      "part": "pane",
+      "source": "PageLayout.module.css:601-611; PageLayout.tsx:713-717"
+    },
+    {
+      "id": "resizable-max",
+      "text": "A preset-width resizable pane's max is the viewport width less 511px below 1280px (--breakpoint-xlarge) and less 959px from 1280px, never below min; a custom max is used as given. A sidebar's max is the viewport width less 256px at every width, and a custom sidebar max is capped to that.",
+      "part": "pane",
+      "tokens": [
+        "--breakpoint-xlarge"
+      ],
+      "values": [
+        {
+          "name": "paneMaxDiff",
+          "value": 511,
+          "unit": "px"
+        },
+        {
+          "name": "paneMaxDiffWide",
+          "value": 959,
+          "unit": "px"
+        },
+        {
+          "name": "paneMaxDiffBreakpoint",
+          "value": 1280,
+          "unit": "px"
+        },
+        {
+          "name": "sidebarMaxDiff",
+          "value": 256,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:1-11,34-37,51-54; usePaneWidth.ts:135-138,235-243"
+    },
+    {
+      "id": "sticky-pane",
+      "text": "A sticky pane, from 768px, pins its wrapper offsetHeader below the viewport top while the page scrolls and caps its height at the viewport height; the pane scrolls internally.",
+      "part": "pane",
+      "source": "PageLayout.module.css:478-483,597-599; PageLayout.tsx:677,685"
+    },
+    {
+      "text": "The drag handle covers the vertical divider and 2px beyond each side (5px over a line divider), full height, with a column-resize cursor.",
+      "part": "drag-handle",
+      "values": [
+        {
+          "name": "hitOutset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.module.css:715-723; PageLayout.module.css:214-216"
+    },
+    {
+      "id": "sidebar-placement",
+      "text": "With a sidebar the root becomes a row: the sidebar sits outside the container at the start (with columnGap after it) or end (with columnGap before it), full height, never shrinking; the container shrinks with a minimum width of 0. The sidebar's width follows the pane presets and resizing rules.",
+      "part": "sidebar",
+      "source": "PageLayout.module.css:753-795,840-851; PageLayout.tsx:1005-1060"
+    },
+    {
+      "text": "A sticky sidebar pins at the viewport top at full viewport height.",
+      "part": "sidebar",
+      "source": "PageLayout.module.css:797-802"
+    },
+    {
+      "text": "With the fullscreen responsive variant, below 768px the sidebar becomes a fixed layer covering the viewport (z-index 999) on --bgColor-default, with its divider hidden; the default variant keeps it inline beside the container at every width.",
+      "part": "sidebar",
+      "tokens": [
+        "--bgColor-default"
+      ],
+      "values": [
+        {
+          "name": "fullscreenZIndex",
+          "value": 999,
+          "unit": "count"
+        }
+      ],
+      "source": "PageLayout.module.css:804-823,853-861,877-882"
+    },
+    {
+      "text": "Header, content, pane, sidebar and footer can each be hidden at all widths or per range; a hidden region takes no space.",
+      "source": "PageLayout.module.css:317-340,369-392,427-435,469-472,515-518,676-699,779-837"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "drag-handle",
+      "text": "Hovering the handle fades in a --bgColor-neutral-muted fill over the whole handle strip.",
+      "tokens": [
+        "--bgColor-neutral-muted"
+      ],
+      "motion": {
+        "durationMs": 150,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "source": "PageLayout.module.css:725-739"
+    },
+    {
+      "state": "dragged",
+      "part": "drag-handle",
+      "text": "While dragging (pointer, or an arrow key held), the handle fill is --bgColor-accent-emphasis at full opacity with no transition, and the pane and content ignore pointer input.",
+      "tokens": [
+        "--bgColor-accent-emphasis"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "paneUtils.ts:10-21; PageLayout.module.css:746-750"
+    },
+    {
+      "state": "focused",
+      "part": "drag-handle",
+      "text": "The handle is focusable but its module draws no focus style; it relies on the browser's default focus ring (see notes).",
+      "source": "DragHandle.tsx:240; PageLayout.module.css:715-739"
+    },
+    {
+      "state": "scrolled",
+      "part": "pane",
+      "text": "A pane whose content overflows becomes a focusable, labelled region so keyboard users can scroll it.",
+      "source": "PageLayout.tsx:579,652-670,704; useOverflow.ts:11-19"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "pointer-resize",
+      "text": "A primary-button press on the handle captures the pointer and records the start x and the pane's rendered width; each move sets width = start width + (x - start x) for a start pane or - (x - start x) for an end pane, clamped to [min, max], at most once per frame. Releasing (losing capture) ends the drag and saves the width rounded to whole px.",
+      "part": "drag-handle",
+      "source": "DragHandle.tsx:113-182; PageLayout.tsx:755-801; usePaneWidth.ts:315-343"
+    },
+    {
+      "id": "keyboard-resize",
+      "text": "Arrow keys on the focused handle step the width by 3px: Left and Down shrink, Right and Up grow, clamped to [min, max]; the first keydown enters the dragging look, and releasing the arrow key ends it and saves.",
+      "part": "drag-handle",
+      "values": [
+        {
+          "name": "arrowKeyStep",
+          "value": 3,
+          "unit": "px"
+        }
+      ],
+      "source": "DragHandle.tsx:6-8,191-216; usePaneWidth.ts:105; PageLayout.tsx:768-776"
+    },
+    {
+      "text": "Double-clicking the handle resets the width to the default (small 256, medium 296, large 320px, or the custom default) and saves it.",
+      "part": "drag-handle",
+      "values": [
+        {
+          "name": "defaultSmall",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "defaultMedium",
+          "value": 296,
+          "unit": "px"
+        },
+        {
+          "name": "defaultLarge",
+          "value": 320,
+          "unit": "px"
+        }
+      ],
+      "source": "PageLayout.tsx:802-810; usePaneWidth.ts:108,121-128"
+    },
+    {
+      "id": "persistence",
+      "text": "Initial width is the controlled currentWidth if given, else the stored width under the storage key (when resizable and no onResizeEnd), else the default. Saving calls onResizeEnd instead of storing when it is given.",
+      "source": "usePaneWidth.ts:248-267,315-343"
+    },
+    {
+      "text": "On window resize the max is recomputed and a current width above it is clamped down (and kept), throttled to one update per 16ms; the pane and content get the dragging containment until resizing has been quiet for 150ms.",
+      "values": [
+        {
+          "name": "resizeThrottle",
+          "value": 16,
+          "unit": "ms"
+        },
+        {
+          "name": "resizeSettle",
+          "value": 150,
+          "unit": "ms"
+        }
+      ],
+      "source": "usePaneWidth.ts:361-497"
+    }
+  ],
+  "accessibility": {
+    "role": "header is banner, content is main, footer is contentinfo; an overflowing pane or sidebar is region; the drag handle is slider",
+    "minTargetPx": 5,
+    "keyboard": [
+      "Tab reaches the drag handle, and an overflowing pane or sidebar, in source order.",
+      "Left and Down arrows shrink the pane by 3px; Right and Up grow it."
+    ],
+    "semantics": [
+      "Header, content and footer take an optional aria-label or aria-labelledby for their landmark.",
+      "An overflowing pane needs a label; it is announced as a region.",
+      "The handle is a slider named 'Draggable pane splitter' with aria-valuemin, aria-valuemax and aria-valuenow in px and aria-valuetext 'Pane width N pixels', updated as it moves and when the viewport changes the max."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "Pointer-drag direction is decided from a non-responsive position; a responsive position object is treated as end, so a pane positioned {regular: start} grows when dragged toward the content instead of away from it.",
+      "source": "PageLayout.tsx:620-622,781-785"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The pane's arrow keys do not mirror for an end pane (Right always grows it, though its handle is on its left edge), while the sidebar inverts them for an end sidebar so Left grows it. Pick one rule for a native build; the sidebar's is the more natural.",
+      "source": "PageLayout.tsx:266-278,768-776"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Toggling resizable changes the pane's width: non-resizable presets are 240/256/256px between 768 and 1011px and 256/296/320px above, but a resizable pane starts at 256/296/320px at every regular width, and the default min of 256px exceeds the small preset's 240px.",
+      "source": "PageLayout.module.css:39-49; usePaneWidth.ts:108; PageLayout.tsx:589"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Every resizable pane shares the default storage key 'paneWidth', so two pages with resizable panes overwrite each other's width; give each pane its own key.",
+      "source": "PageLayout.tsx:594; PageLayout.docs.json"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The narrow-only filled divider, and the narrow horizontal rule generally, come from a plain divider value too: divider line on a pane draws a horizontal line at narrow and a vertical line at regular.",
+      "source": "PageLayout.tsx:687-690,731-735"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The wide range begins at 1400px (--breakpoint-xxlarge), not at --breakpoint-xlarge; separately, the pane max and container widths use 1280px (--breakpoint-xlarge) and the spacing and pane presets use 1012px (--breakpoint-large), so four thresholds matter: 768, 1012, 1280, 1400.",
+      "tokens": [
+        "--breakpoint-medium",
+        "--breakpoint-large",
+        "--breakpoint-xlarge",
+        "--breakpoint-xxlarge"
+      ],
+      "source": "PageLayout.module.css:26,39,45,52; useResponsiveValue.ts:9-13"
+    },
+    {
+      "kind": "gotcha",
+      "text": "With the default responsive variant the sidebar stays beside the container at narrow widths and squeezes it; the fullscreen variant covers the viewport, but PageLayout has no open or close control, so the caller hides it with hidden.",
+      "source": "PageLayout.module.css:753-823; PageLayout.tsx:888-899"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Breakpoints in the regular-range rules for pane width, spacing, sticky and divider margins are literal px media queries (768, 1012, 1280), not tokens; the pane max diffs (511, 959, 256px), the 999 fullscreen z-index, the 2px handle outset, the 150ms ease hover fade and the 3px keyboard step are literals too.",
+      "source": "PageLayout.module.css:1-11,26,39,45,52,208,469,597,604,717,732,820; usePaneWidth.ts:105"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The handle's hover and drag fills are its only visual feedback and carry no forced-colours fallback; the divider line beneath it remains the visible target.",
+      "source": "PageLayout.module.css:715-739"
+    },
+    {
+      "kind": "inferred",
+      "text": "The drag handle has no focus style in the module; GitHub's global :focus-visible outline supplies one on the web. A native build should draw the system focus outline (--focus-outline-*) around the 5px handle strip.",
+      "source": "PageLayout.module.css:715-739"
+    },
+    {
+      "kind": "web-only",
+      "text": "Range switching is media queries on the window width (rem-based tokens, px in JS) re-evaluated by the browser on resize; a native build must compute the range from the window width each frame and apply placement, widths, spacing and visibility from it.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "useResponsiveValue.ts:5-13"
+    },
+    {
+      "kind": "web-only",
+      "text": "Region placement uses flexbox order, row-reverse and column-reverse, and flex-wrap; a native build places header, pane, divider, content and footer explicitly: pane width first, then gutters, then content gets the remainder (never less than 1px).",
+      "source": "PageLayout.module.css:14-19,98-107,353-367,437-512"
+    },
+    {
+      "kind": "web-only",
+      "text": "The sticky pane and sidebar use position: sticky with max-height or height 100vh and overflow: auto; a native build must pin the pane's rectangle within the page scroll (top = max(natural top, scroll top + offsetHeader), clamped to the content row's bottom) and give it its own scroll region capped at the viewport height.",
+      "source": "PageLayout.module.css:478-483,597-599,797-802"
+    },
+    {
+      "kind": "web-only",
+      "text": "Dragging relies on pointer capture so moves outside the 5px strip keep resizing; an immediate-mode build must latch the drag to the handle's id on press and keep reading the pointer until release, ignoring hover elsewhere, and should suppress text selection meanwhile.",
+      "source": "DragHandle.tsx:113-182; PageLayout.module.css:720-722"
+    },
+    {
+      "kind": "web-only",
+      "text": "Persistence is localStorage (rounded integer px, read failures ignored); a native build supplies its own key-value store under the storage key, or the onResizeEnd callback.",
+      "source": "usePaneWidth.ts:163-186"
+    },
+    {
+      "kind": "web-only",
+      "text": "The max is computed from window.innerWidth, which includes a vertical scrollbar; a native build uses its window width directly.",
+      "source": "usePaneWidth.ts:135-138,235-238"
+    },
+    {
+      "kind": "web-only",
+      "text": "Making an overflowing pane focusable depends on a ResizeObserver comparing scroll and client sizes; a native build checks content height against the pane's height after layout.",
+      "source": "useOverflow.ts:11-19"
+    }
+  ]
+}

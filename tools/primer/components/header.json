@@ -1,0 +1,213 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "header",
+  "name": "Header",
+  "status": "alpha",
+  "statusNote": "Header is an old, minimal component: three styled boxes with no responsive behaviour, menus or search. GitHub's production site header is built elsewhere; this one serves simple apps, and it has stayed alpha because little has been invested in it.",
+  "summary": "GitHub's dark global bar: a horizontal row of items (logo link, navigation links, a full-width spacer item, avatar) on the header background. Choose it for an app-wide top bar; choose page-header for a page's own title block.",
+  "tokenGroups": [
+    "--base-size-16",
+    "--header-bgColor",
+    "--header-fgColor-default",
+    "--header-fgColor-logo",
+    "--text-body-size-medium",
+    "--text-title-lineHeight-large",
+    "--text-title-weight-large"
+  ],
+  "references": {
+    "react": [
+      "Header/Header.module.css",
+      "Header/Header.tsx",
+      "Header/Header.docs.json"
+    ],
+    "primer": []
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "Header.Item children, laid out left to right."
+    },
+    {
+      "name": "itemFull",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Header.Item full: the item grows to take the free width, pushing later items to the end."
+    },
+    {
+      "name": "linkHref",
+      "type": "string",
+      "required": false,
+      "description": "Header.Link href (or a router location): a bold, unwrapped link in the logo colour, usually holding the mark and the product name."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "bar",
+      "name": "Bar",
+      "description": "A flex row on --header-bgColor in --header-fgColor-default, 16px padding on all sides, items centred vertically, no wrapping, horizontally scrollable when it overflows.",
+      "tokens": [
+        "--header-bgColor",
+        "--header-fgColor-default",
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "A flex box stretched to the bar's content height, its content centred vertically, 16px after it.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "link",
+      "name": "Link",
+      "optional": true,
+      "description": "A flex link in --header-fgColor-logo at title weight, no underline, no wrapping, its icon and text centred.",
+      "tokens": [
+        "--header-fgColor-logo",
+        "--text-title-weight-large"
+      ]
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "text": "The bar is a non-wrapping flex row with 16px padding on all sides and items centred on the cross axis; its text is --text-body-size-medium at the --text-title-lineHeight-large line height. Its height is its tallest item plus 32px.",
+      "part": "bar",
+      "tokens": [
+        "--base-size-16",
+        "--text-body-size-medium",
+        "--text-title-lineHeight-large"
+      ],
+      "source": "Header/Header.module.css:1-12"
+    },
+    {
+      "text": "The bar overflows by scrolling horizontally rather than wrapping or collapsing items.",
+      "part": "bar",
+      "source": "Header/Header.module.css:5,11"
+    },
+    {
+      "text": "The bar stacks at z-index 32 so overlays and sticky content below it pass underneath.",
+      "part": "bar",
+      "values": [
+        {
+          "name": "zIndex",
+          "value": 32,
+          "unit": "count"
+        }
+      ],
+      "source": "Header/Header.module.css:2"
+    },
+    {
+      "text": "Each item stretches to the bar's content height, centres its content vertically and keeps 16px after it (the last item too); a full item grows to fill the free width.",
+      "part": "item",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "source": "Header/Header.module.css:14-24; Header/Header.tsx:24-39"
+    },
+    {
+      "text": "A link is a flex row of icon and text, centred, never wrapping, at --text-title-weight-large in --header-fgColor-logo.",
+      "part": "link",
+      "tokens": [
+        "--text-title-weight-large",
+        "--header-fgColor-logo"
+      ],
+      "source": "Header/Header.module.css:26-33"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "part": "link",
+      "text": "A hovered link dims from --header-fgColor-logo to --header-fgColor-default.",
+      "tokens": [
+        "--header-fgColor-logo",
+        "--header-fgColor-default"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "Header/Header.module.css:35-38"
+    },
+    {
+      "state": "focused",
+      "part": "link",
+      "text": "A focused link (any focus, not only keyboard) dims the same way; the module draws no outline.",
+      "tokens": [
+        "--header-fgColor-default"
+      ],
+      "source": "Header/Header.module.css:35-38"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "A link navigates on activation; Header has no menus, collapse or responsive behaviour of its own.",
+      "source": "Header/Header.tsx:43-57"
+    }
+  ],
+  "accessibility": {
+    "role": "banner (a header element at page level)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab moves through links and controls in the items in order."
+    ],
+    "semantics": [
+      "The bar is a header element; at the top level of a page it is the banner landmark.",
+      "Links are named by their text, or by aria-label for an icon-only logo link."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Hover and focus make the link dimmer, not brighter: --header-fgColor-default is white at 70% alpha, while --header-fgColor-logo is opaque.",
+      "tokens": [
+        "--header-fgColor-default",
+        "--header-fgColor-logo"
+      ],
+      "source": "Header/Header.module.css:29,35-38"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The bar is dark in every theme (--header-bgColor is neutral 12 in light themes), so it pairs with the header foreground tokens, never the page's --fgColor-* tokens; controls placed in it need on-dark styling.",
+      "tokens": [
+        "--header-bgColor"
+      ],
+      "source": "Header/Header.module.css:8-9"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--header-borderColor-divider, --headerSearch-bgColor and --headerSearch-borderColor exist for GitHub's site header but nothing in this component reads them.",
+      "tokens": [
+        "--header-borderColor-divider",
+        "--headerSearch-bgColor",
+        "--headerSearch-borderColor"
+      ],
+      "source": "Header/Header.module.css:1-39"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "z-index 32 is a literal, not a --zIndex-* token.",
+      "source": "Header/Header.module.css:2"
+    },
+    {
+      "kind": "inferred",
+      "text": "No visible focus outline is drawn by the module (only the colour dims); a native build should add the standard --focus-outline-color ring on keyboard focus, as GitHub's global styles do.",
+      "source": "Header/Header.module.css:35-38"
+    },
+    {
+      "kind": "web-only",
+      "text": "Overflow is handled by overflow: auto, a horizontal scroll of the bar; a native build must clip the row and scroll it horizontally (or decide to collapse items, which Primer does not do).",
+      "source": "Header/Header.module.css:5"
+    },
+    {
+      "kind": "web-only",
+      "text": "Header.Link with a router location renders as the router's link; a native build navigates through the app's own router.",
+      "source": "Header/Header.tsx:9,43-57"
+    }
+  ]
+}
