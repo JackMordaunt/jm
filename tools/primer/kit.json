@@ -65,6 +65,71 @@
       ]
     },
     {
+      "id": "banner",
+      "name": "Banner",
+      "status": "alpha",
+      "summary": "A bordered, tinted message block that highlights page- or section-level information (critical, warning, success, info, upsell) with an icon, a title, an optional description and up to two actions, optionally dismissible. Choose it over InlineMessage when the message stands on its own as a landmark; choose InlineMessage for a one-line status next to the thing it describes.",
+      "tokenGroups": [
+        "--base-size-2",
+        "--base-size-4",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-12",
+        "--base-size-16",
+        "--base-size-20",
+        "--base-size-32",
+        "--base-text-weight-semibold",
+        "--bgColor-accent-muted",
+        "--bgColor-attention-muted",
+        "--bgColor-danger-muted",
+        "--bgColor-success-muted",
+        "--bgColor-upsell-muted",
+        "--borderColor-accent-muted",
+        "--borderColor-attention-muted",
+        "--borderColor-danger-muted",
+        "--borderColor-success-muted",
+        "--borderColor-upsell-muted",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--fgColor-accent",
+        "--fgColor-attention",
+        "--fgColor-danger",
+        "--fgColor-success",
+        "--fgColor-upsell",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium",
+        "--viewportRange-narrow"
+      ]
+    },
+    {
+      "id": "blankslate",
+      "name": "Blankslate",
+      "status": "draft",
+      "summary": "A centred empty state: an optional muted icon, a heading, a muted description and up to two actions (a primary Button and a secondary Link). Use it where a list, table or page has nothing to show yet, or to explain a missing feature; it is not a message about an event (use Banner).",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-12",
+        "--base-size-16",
+        "--base-size-20",
+        "--base-size-24",
+        "--base-size-28",
+        "--base-size-32",
+        "--base-size-40",
+        "--base-size-44",
+        "--base-size-80",
+        "--borderColor-default",
+        "--borderRadius-medium",
+        "--borderWidth-thin",
+        "--fgColor-muted",
+        "--text-body-shorthand-large",
+        "--text-body-shorthand-medium",
+        "--text-title-shorthand-large",
+        "--text-title-shorthand-medium",
+        "--text-title-shorthand-small"
+      ]
+    },
+    {
       "id": "branch-name",
       "name": "BranchName",
       "status": "alpha",
@@ -241,6 +306,19 @@
       ]
     },
     {
+      "id": "heading",
+      "name": "Heading",
+      "status": "alpha",
+      "summary": "A section heading: an h1-h6 element set in one of the title presets. Choose the element for the document outline and the variant for the visual weight, independently; use Text for running copy.",
+      "tokenGroups": [
+        "--base-text-weight-semibold",
+        "--text-title-shorthand-large",
+        "--text-title-shorthand-medium",
+        "--text-title-shorthand-small",
+        "--text-title-size-large"
+      ]
+    },
+    {
       "id": "icon-button",
       "name": "IconButton",
       "status": "alpha",
@@ -308,6 +386,23 @@
       ]
     },
     {
+      "id": "inline-message",
+      "name": "InlineMessage",
+      "status": "alpha",
+      "summary": "A short status line, an icon and coloured text, placed next to the thing it describes (a form field, a row, a section). Choose it over Banner when the message is part of the flow rather than a standalone landmark; it has no background, border, title or actions.",
+      "tokenGroups": [
+        "--fgColor-attention",
+        "--fgColor-danger",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--fgColor-success",
+        "--text-body-lineHeight-medium",
+        "--text-body-lineHeight-small",
+        "--text-body-size-medium",
+        "--text-body-size-small"
+      ]
+    },
+    {
       "id": "keybinding-hint",
       "name": "KeybindingHint",
       "status": "draft",
@@ -341,6 +436,71 @@
         "--fgColor-accent",
         "--fgColor-muted"
       ]
+    },
+    {
+      "id": "relative-time",
+      "name": "RelativeTime",
+      "status": "alpha",
+      "summary": "Inline text that renders a timestamp relative to now (\"3 hours ago\", \"in 2 days\") or as a short localised date past a threshold, with the precise date in a hover title. Use it for activity times in lists and timelines; show the full date instead where users must read it reliably.",
+      "tokenGroups": []
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "status": "alpha",
+      "summary": "A run of body text with optional size (body small, medium, large), weight and white-space presets. Use it for copy and labels inside other layouts; use Heading for titles and Truncate to clip one line.",
+      "tokenGroups": [
+        "--base-text-weight-light",
+        "--base-text-weight-medium",
+        "--base-text-weight-normal",
+        "--base-text-weight-semibold",
+        "--text-body-lineHeight-large",
+        "--text-body-lineHeight-medium",
+        "--text-body-lineHeight-small",
+        "--text-body-size-large",
+        "--text-body-size-medium",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "timeline",
+      "name": "Timeline",
+      "status": "alpha",
+      "summary": "A vertical sequence of events joined by a 2px line: each item has a round badge (an icon on a coloured disc) on the line, body text beside it, optional trailing actions and an optional avatar in the left gutter; a break marks a gap in time. Use it for activity feeds and histories; use a plain list when the items are not ordered in time.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-12",
+        "--base-size-16",
+        "--base-size-24",
+        "--base-size-32",
+        "--base-size-40",
+        "--bgColor-accent-emphasis",
+        "--bgColor-attention-emphasis",
+        "--bgColor-closed-emphasis",
+        "--bgColor-danger-emphasis",
+        "--bgColor-default",
+        "--bgColor-done-emphasis",
+        "--bgColor-open-emphasis",
+        "--bgColor-severe-emphasis",
+        "--bgColor-sponsors-emphasis",
+        "--bgColor-success-emphasis",
+        "--borderColor-default",
+        "--borderColor-muted",
+        "--borderWidth-thick",
+        "--borderWidth-thicker",
+        "--fgColor-muted",
+        "--fgColor-onEmphasis",
+        "--text-body-size-medium",
+        "--timelineBadge-bgColor"
+      ]
+    },
+    {
+      "id": "truncate",
+      "name": "Truncate",
+      "status": "alpha",
+      "summary": "Clips one line of text to a maximum width with an ellipsis and shows the full text in a native tooltip; optionally expands to full width on hover. Use it only where wrapping or more room is impossible, and never around focusable content.",
+      "tokenGroups": []
     }
   ]
 }

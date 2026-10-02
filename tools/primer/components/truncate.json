@@ -1,0 +1,187 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "truncate",
+  "name": "Truncate",
+  "status": "alpha",
+  "statusNote": "Alpha and long stable: a single CSS rule set around one line of text. Primer's own accessibility guidance discourages relying on it, since the full text is reachable only by mouse hover.",
+  "summary": "Clips one line of text to a maximum width with an ellipsis and shows the full text in a native tooltip; optionally expands to full width on hover. Use it only where wrapping or more room is impossible, and never around focusable content.",
+  "tokenGroups": [],
+  "references": {
+    "react": [
+      "Truncate.module.css",
+      "Truncate.tsx",
+      "Truncate.docs.json"
+    ],
+    "primer": [
+      "truncate"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "slot",
+      "required": true,
+      "description": "The content to clip (children); it is laid out on one line."
+    },
+    {
+      "name": "title",
+      "type": "string",
+      "required": true,
+      "description": "The full text, shown as the native hover tooltip."
+    },
+    {
+      "name": "maxWidth",
+      "type": "number",
+      "required": false,
+      "default": 125,
+      "description": "The width at which the text is clipped: a number is px, a string is any CSS length (e.g. 100%)."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Lay out as an inline block that sits in a line of text, top-aligned."
+    },
+    {
+      "name": "expandable",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show the full text while the pointer is over it."
+    },
+    {
+      "name": "element",
+      "type": "string",
+      "required": false,
+      "default": "div",
+      "description": "The element rendered (the as prop)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "box",
+      "name": "Box",
+      "description": "A box at most maxWidth wide that keeps its content on one line, hides what overflows and ends the visible part with an ellipsis."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "display",
+      "value": "inherit",
+      "default": true,
+      "description": "The box takes its parent's display value (block in normal flow)."
+    },
+    {
+      "axis": "display",
+      "value": "inline",
+      "description": "Inline block, vertical-align top, so it can sit inside a sentence or a row of labels."
+    },
+    {
+      "axis": "hover",
+      "value": "expandable",
+      "description": "On hover the width cap rises to 10000px, revealing the whole line."
+    }
+  ],
+  "layout": [
+    {
+      "text": "Keep the content on one line (white-space: nowrap), cap the box at maxWidth (125px by default), clip the overflow and draw an ellipsis where the visible text ends.",
+      "values": [
+        {
+          "name": "defaultMaxWidth",
+          "value": 125,
+          "unit": "px"
+        }
+      ],
+      "source": "Truncate.module.css:1-6; Truncate.tsx:14,25-31"
+    },
+    {
+      "text": "A numeric maxWidth is pixels; a string is used as given, so a percentage resolves against the parent's width.",
+      "source": "Truncate.tsx:28-29"
+    },
+    {
+      "text": "The box's display is inherited from its parent; inline makes it an inline block aligned to the top of the line.",
+      "source": "Truncate.module.css:2,12-15"
+    },
+    {
+      "text": "max-width is only a cap: as a block the box fills its parent up to maxWidth, as an inline block it hugs its content up to maxWidth; when the text fits, nothing is clipped and no ellipsis is drawn.",
+      "source": "Truncate.module.css:3-6"
+    }
+  ],
+  "states": [
+    {
+      "state": "hovered",
+      "text": "With expandable, the width cap jumps to 10000px while the pointer is over the box, with no transition; the box grows to the full line and neighbours in an inline row move.",
+      "values": [
+        {
+          "name": "expandedMaxWidth",
+          "value": 10000,
+          "unit": "px"
+        }
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "Truncate.module.css:8-10"
+    },
+    {
+      "state": "enabled",
+      "text": "Truncate sets no colour or font; the text keeps the surrounding style.",
+      "source": "Truncate.module.css:1-16"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Hovering shows the browser's native tooltip with the title text after the platform delay.",
+      "source": "Truncate.tsx:24; primer:truncate"
+    },
+    {
+      "text": "Expansion follows pointer hover only; keyboard focus does not expand the box.",
+      "source": "Truncate.module.css:8-10"
+    }
+  ],
+  "accessibility": {
+    "role": "none (generic container)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable; nothing reveals the clipped text from the keyboard."
+    ],
+    "semantics": [
+      "Truncation is visual only: assistive technology reads the full text.",
+      "The title tooltip is mouse-only; keyboard and speech users never see the hidden text.",
+      "Do not truncate text that contains or is a focusable control."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "text-overflow: ellipsis is the browser measuring the line, cutting it at the last grapheme that fits with room for the ellipsis glyph, and drawing the ellipsis in the text's own font and colour. A native build must measure the full run, compare it with the resolved max width, and shape a shortened run plus U+2026 (falling back to three dots if the font lacks it); in an immediate-mode toolkit cache the cut point per text and width.",
+      "source": "Truncate.module.css:3-6"
+    },
+    {
+      "kind": "web-only",
+      "text": "The title attribute is the browser's native tooltip: delay, placement and styling belong to the platform. A native build either uses the platform tooltip or draws the kit's Tooltip on hover with the title text.",
+      "source": "Truncate.tsx:24"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "data-expandable and data-inline receive the boolean props directly. React renders a false data attribute as the string \"false\", so the attribute is present and the [data-expandable] and [data-inline] selectors match: passing expandable={false} or inline={false} turns the behaviour on. Only an omitted prop leaves it off. A native build should treat false as off.",
+      "source": "Truncate.tsx:22-23; Truncate.module.css:8,12"
+    },
+    {
+      "kind": "gotcha",
+      "text": "display: inherit copies the parent's display. Inside a flex parent the box becomes a flex container, its text becomes an anonymous flex item, and text-overflow on the box no longer draws an ellipsis. Treat the box as a block in a native port and clip regardless of the parent.",
+      "source": "Truncate.module.css:2"
+    },
+    {
+      "kind": "gotcha",
+      "text": "An inline block with overflow hidden takes its bottom edge as its baseline, which would lift it above the surrounding text; vertical-align: top avoids that. A native build should align an inline Truncate's first line with the surrounding line rather than its box bottom.",
+      "source": "Truncate.module.css:12-15"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 125px default and the 10000px expanded cap are literals with no token.",
+      "source": "Truncate.tsx:14; Truncate.module.css:9"
+    }
+  ]
+}

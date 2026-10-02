@@ -1,0 +1,292 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "relative-time",
+  "name": "RelativeTime",
+  "status": "alpha",
+  "statusNote": "Alpha, and a thin React wrapper: every feature comes from GitHub's relative-time custom element (@github/relative-time-element), which is not vendored in this kit. The wrapper itself only converts props and supplies fallback text.",
+  "summary": "Inline text that renders a timestamp relative to now (\"3 hours ago\", \"in 2 days\") or as a short localised date past a threshold, with the precise date in a hover title. Use it for activity times in lists and timelines; show the full date instead where users must read it reliably.",
+  "tokenGroups": [],
+  "references": {
+    "react": [
+      "RelativeTime.tsx",
+      "RelativeTime.docs.json"
+    ],
+    "primer": [
+      "relative-time"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "datetime",
+      "type": "string",
+      "required": false,
+      "description": "An ISO 8601 timestamp. The wrapper parses it with new Date() and passes the result as date; it wins over date. The docs mark it required, but either it or date suffices."
+    },
+    {
+      "name": "date",
+      "type": "string",
+      "required": false,
+      "description": "A Date object (the docs type it as string) used when datetime is absent."
+    },
+    {
+      "name": "format",
+      "type": "enum",
+      "values": [
+        "auto",
+        "micro",
+        "elapsed"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "auto: relative within threshold, a localised date beyond it. micro: a compact relative form. elapsed: a duration down to precision."
+    },
+    {
+      "name": "tense",
+      "type": "enum",
+      "values": [
+        "auto",
+        "past",
+        "future"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "Force past or future phrasing; auto follows the sign of the difference."
+    },
+    {
+      "name": "precision",
+      "type": "enum",
+      "values": [
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "second"
+      ],
+      "required": false,
+      "default": "second",
+      "description": "The smallest unit an elapsed time shows."
+    },
+    {
+      "name": "threshold",
+      "type": "string",
+      "required": false,
+      "default": "P30D",
+      "description": "An ISO 8601 duration; within it auto renders relative text, beyond it a date."
+    },
+    {
+      "name": "prefix",
+      "type": "string",
+      "required": false,
+      "default": "on",
+      "description": "The word before a non-relative date (\"on Jan 2\"); empty for none."
+    },
+    {
+      "name": "second",
+      "type": "enum",
+      "values": [
+        "numeric",
+        "2-digit"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat second style for the date form."
+    },
+    {
+      "name": "minute",
+      "type": "enum",
+      "values": [
+        "numeric",
+        "2-digit"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat minute style for the date form."
+    },
+    {
+      "name": "hour",
+      "type": "enum",
+      "values": [
+        "numeric",
+        "2-digit"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat hour style for the date form."
+    },
+    {
+      "name": "weekday",
+      "type": "enum",
+      "values": [
+        "short",
+        "long",
+        "narrow"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat weekday style for the date form."
+    },
+    {
+      "name": "day",
+      "type": "enum",
+      "values": [
+        "numeric",
+        "2-digit"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat day style for the date form."
+    },
+    {
+      "name": "month",
+      "type": "enum",
+      "values": [
+        "numeric",
+        "2-digit",
+        "short",
+        "long",
+        "narrow"
+      ],
+      "required": false,
+      "default": "numeric",
+      "description": "Intl.DateTimeFormat month style for the date form (the docs give numeric as the default)."
+    },
+    {
+      "name": "year",
+      "type": "enum",
+      "values": [
+        "numeric",
+        "2-digit"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat year style for the date form."
+    },
+    {
+      "name": "timeZoneName",
+      "type": "enum",
+      "values": [
+        "long",
+        "short",
+        "shortOffset",
+        "longOffset",
+        "shortGeneric",
+        "longGeneric"
+      ],
+      "required": false,
+      "description": "Intl.DateTimeFormat time-zone name style for the date form."
+    },
+    {
+      "name": "noTitle",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Omit the title (the precise date on hover); set it when the caller shows the date another way, such as a Tooltip."
+    },
+    {
+      "name": "fallback",
+      "type": "slot",
+      "required": false,
+      "description": "Children: light-DOM text shown before the element upgrades (server rendering, no script). Defaults to the date as \"Jan 2, 2020\" in English and UTC."
+    },
+    {
+      "name": "onRelativeTimeUpdated",
+      "type": "callback",
+      "required": false,
+      "description": "Called when the element re-renders its text."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "One inline run of text in the surrounding font and colour; RelativeTime has no styles of its own."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "format",
+      "value": "auto",
+      "default": true,
+      "description": "Relative phrase (\"5 minutes ago\") within threshold, else prefix plus a localised date."
+    },
+    {
+      "axis": "format",
+      "value": "micro",
+      "description": "A compact relative form, for dense lists."
+    },
+    {
+      "axis": "format",
+      "value": "elapsed",
+      "description": "A duration down to precision, for timers and ages (the docs' count-down-timer story)."
+    }
+  ],
+  "layout": [
+    {
+      "text": "RelativeTime is unstyled inline text: it has no CSS module, sets no size, colour or spacing, and takes the surrounding text style.",
+      "source": "RelativeTime.tsx:1-23"
+    },
+    {
+      "text": "Its text, and so its width, changes as time passes (a seconds phrase becomes a minutes phrase), so anything after it on the same line can move.",
+      "source": "RelativeTime.docs.json"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Static text with no interactive states; hovering shows the precise date as a native title tooltip unless noTitle is set.",
+      "source": "RelativeTime.tsx:16; primer:relative-time"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "When datetime is given the wrapper replaces date with new Date(datetime), so an unparsable string yields an Invalid Date and the fallback text reads \"Invalid Date\".",
+      "source": "RelativeTime.tsx:13-14,17"
+    },
+    {
+      "text": "The wrapper renders the relative-time element with date as a property, a no-title attribute when noTitle is set, and the children (else the date in short-month English, UTC) as light-DOM fallback content.",
+      "source": "RelativeTime.tsx:5-12,15-18"
+    },
+    {
+      "text": "The element chooses relative or absolute text by format, tense, precision and threshold, formats it for the page's locale, sets the precise date as its title, and re-renders as time passes (the docs include a count-down-timer story and an update method), calling onRelativeTimeUpdated.",
+      "source": "RelativeTime.docs.json; primer:relative-time"
+    }
+  ],
+  "accessibility": {
+    "role": "none (generic inline text)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable; the title tooltip cannot be reached from the keyboard."
+    ],
+    "semantics": [
+      "Screen readers read the visible relative text and ignore the title on this generic element, so the precise date is not available to them by default.",
+      "Inside a link or button, set noTitle and give the precise date through an accessible Tooltip; for static text, prefer showing the full date.",
+      "Every user, including keyboard and screen-reader users, must have some way to reach the precise date."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "All formatting lives in @github/relative-time-element, which this kit does not vendor: the relative phrases, the micro and elapsed forms, the threshold switch, the date form and the title text. The date-form options are Intl.DateTimeFormat's option names and values, so the browser's Intl APIs do the locale work. A native build must supply its own: compute the difference from now, pick the largest whole unit (or the date form past the threshold), and format it with the platform's locale-aware date and relative-time formatters (ICU, NSDateFormatter and NSRelativeDateTimeFormatter, or equivalent).",
+      "source": "RelativeTime.tsx:1,5-12; RelativeTime.docs.json; primer:relative-time"
+    },
+    {
+      "kind": "web-only",
+      "text": "The element re-renders itself on a timer as time passes. An immediate-mode build gets this almost free by recomputing the text each frame it draws, but must still request a redraw when the displayed text would next change (the next second, minute or hour boundary) or the label goes stale on an idle screen.",
+      "source": "primer:relative-time"
+    },
+    {
+      "kind": "web-only",
+      "text": "The title tooltip is the browser's native hover tooltip with its platform delay; a native build uses the platform tooltip or the kit's Tooltip, and skips it under noTitle.",
+      "source": "RelativeTime.tsx:16; primer:relative-time"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The fallback text is always English and always in UTC (toLocaleDateString('en', {month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'})), so before upgrade it can show a different language from the page and a date one day off from the user's local date. A native build has no upgrade step and should never show it.",
+      "source": "RelativeTime.tsx:7-12,17"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The docs mark datetime required and type date as a string; the code accepts either prop and date is a Date object.",
+      "source": "RelativeTime.docs.json; RelativeTime.tsx:13-14"
+    },
+    {
+      "kind": "inferred",
+      "text": "LOW CONFIDENCE: the element's update cadence, the exact unit-rounding rules and the default title format are not in any vendored file; they come from the element's own package. Treat the relative-text rules a native build writes as its own design, matched by eye against GitHub."
+    }
+  ]
+}

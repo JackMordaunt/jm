@@ -1,0 +1,445 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "timeline",
+  "name": "Timeline",
+  "status": "alpha",
+  "statusNote": "Alpha, and in transition: list semantics (ol/li) sit behind the primer_react_timeline_list_semantics feature flag, so by default the timeline is still made of divs. Actions and Avatar are recent additions.",
+  "summary": "A vertical sequence of events joined by a 2px line: each item has a round badge (an icon on a coloured disc) on the line, body text beside it, optional trailing actions and an optional avatar in the left gutter; a break marks a gap in time. Use it for activity feeds and histories; use a plain list when the items are not ordered in time.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-size-16",
+    "--base-size-24",
+    "--base-size-32",
+    "--base-size-40",
+    "--bgColor-accent-emphasis",
+    "--bgColor-attention-emphasis",
+    "--bgColor-closed-emphasis",
+    "--bgColor-danger-emphasis",
+    "--bgColor-default",
+    "--bgColor-done-emphasis",
+    "--bgColor-open-emphasis",
+    "--bgColor-severe-emphasis",
+    "--bgColor-sponsors-emphasis",
+    "--bgColor-success-emphasis",
+    "--borderColor-default",
+    "--borderColor-muted",
+    "--borderWidth-thick",
+    "--borderWidth-thicker",
+    "--fgColor-muted",
+    "--fgColor-onEmphasis",
+    "--text-body-size-medium",
+    "--timelineBadge-bgColor"
+  ],
+  "references": {
+    "react": [
+      "Timeline.module.css",
+      "Timeline.tsx",
+      "Timeline/constants.ts",
+      "Timeline.docs.json"
+    ],
+    "primer": [
+      "timeline"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "Timeline.Item and Timeline.Break children, in display order."
+    },
+    {
+      "name": "clipSidebar",
+      "type": "enum",
+      "values": [
+        "none",
+        "start",
+        "end",
+        "both"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Trim the line so it does not run past the first item's badge (start), the last item's bottom padding (end), or both; true means both."
+    },
+    {
+      "name": "condensed",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Per item: a compact row with a bare 16px icon in place of the disc, for minor events."
+    },
+    {
+      "name": "badgeVariant",
+      "type": "enum",
+      "values": [
+        "accent",
+        "success",
+        "attention",
+        "severe",
+        "danger",
+        "done",
+        "open",
+        "closed",
+        "sponsors"
+      ],
+      "required": false,
+      "description": "Per badge: an emphasis-coloured disc with an onEmphasis icon; with none, a muted disc and a muted icon."
+    },
+    {
+      "name": "badgeIcon",
+      "type": "icon",
+      "required": false,
+      "description": "Per item: the octicon inside Timeline.Badge (16px by convention)."
+    },
+    {
+      "name": "body",
+      "type": "slot",
+      "required": true,
+      "description": "Per item: Timeline.Body, the event text."
+    },
+    {
+      "name": "actions",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: Timeline.Actions, controls at the item's trailing end (under the body when the timeline is narrower than 480px)."
+    },
+    {
+      "name": "avatar",
+      "type": "slot",
+      "required": false,
+      "description": "Per item: Timeline.Avatar, an actor avatar placed in the gutter 72px left of the line, centred on the badge."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "timeline",
+      "name": "Timeline",
+      "description": "A column of items with no padding or margin; it is the inline-size query container for the narrow layout."
+    },
+    {
+      "id": "item",
+      "name": "Item",
+      "description": "A row (badge, body, actions) inset 16px from the timeline's left edge, with 16px block padding.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "line",
+      "name": "Line",
+      "description": "A 2px vertical bar in --borderColor-muted along each item's left edge, full item height; consecutive items join into one line.",
+      "tokens": [
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "id": "badge",
+      "name": "Badge",
+      "description": "A 32px disc centred on the line with a 2px --bgColor-default ring that cuts the line around it; the icon centred inside.",
+      "tokens": [
+        "--timelineBadge-bgColor",
+        "--fgColor-muted",
+        "--bgColor-default",
+        "--borderWidth-thick"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "description": "The event text in body-medium size and --fgColor-muted, filling the row, 8px after the badge.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "actions",
+      "name": "Actions",
+      "optional": true,
+      "description": "A row of controls 8px apart, pushed to the trailing end, at least 32px tall so it centres on the badge.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-32"
+      ]
+    },
+    {
+      "id": "avatar",
+      "name": "Avatar",
+      "optional": true,
+      "description": "An absolutely placed actor avatar in the left gutter, vertically centred on the badge, above the line.",
+      "tokens": [
+        "--base-size-40",
+        "--base-size-32",
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "break",
+      "name": "Break",
+      "optional": true,
+      "description": "A 24px band in --bgColor-default with a 4px --borderColor-default rule along its top, spanning the timeline's full width and covering the line.",
+      "tokens": [
+        "--base-size-24",
+        "--bgColor-default",
+        "--borderWidth-thicker",
+        "--borderColor-default"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "badgeVariant",
+      "value": "none",
+      "default": true,
+      "description": "Muted disc (--timelineBadge-bgColor) with a --fgColor-muted icon.",
+      "tokens": [
+        "--timelineBadge-bgColor",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "axis": "badgeVariant",
+      "value": "accent | success | attention | severe | danger | done | open | closed | sponsors",
+      "description": "Disc in --bgColor-<variant>-emphasis with an --fgColor-onEmphasis icon.",
+      "tokens": [
+        "--fgColor-onEmphasis",
+        "--bgColor-accent-emphasis",
+        "--bgColor-success-emphasis",
+        "--bgColor-attention-emphasis",
+        "--bgColor-severe-emphasis",
+        "--bgColor-danger-emphasis",
+        "--bgColor-done-emphasis",
+        "--bgColor-open-emphasis",
+        "--bgColor-closed-emphasis",
+        "--bgColor-sponsors-emphasis"
+      ]
+    },
+    {
+      "axis": "density",
+      "value": "condensed",
+      "description": "4px top padding and none below (16px on the last item); the badge is a 16px-tall, borderless --bgColor-default patch with 8px above and below, its icon --fgColor-muted whatever the variant.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-16",
+        "--bgColor-default",
+        "--fgColor-muted"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "Each item is a flex row inset 16px from the timeline's left edge with 16px top and bottom padding; the line is a 2px bar at the item's left edge spanning its full height, so adjacent items draw one continuous line.",
+      "part": "item",
+      "tokens": [
+        "--base-size-16",
+        "--borderColor-muted"
+      ],
+      "values": [
+        {
+          "name": "lineWidth",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "Timeline.module.css:45-61"
+    },
+    {
+      "text": "The badge is a 32px circle shifted 15px left so its centre sits on the line's centre (1px in), with 8px between it and the body; it never shrinks, clips its content, and sits above the line. Its 2px ring in --bgColor-default leaves a gap in the line around the disc.",
+      "part": "badge",
+      "tokens": [
+        "--base-size-8",
+        "--borderWidth-thick",
+        "--bgColor-default"
+      ],
+      "values": [
+        {
+          "name": "badgeSize",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "badgeMarginLeft",
+          "value": -15,
+          "unit": "px"
+        }
+      ],
+      "source": "Timeline.module.css:97-121"
+    },
+    {
+      "text": "The body fills the remaining width (flex auto, min-width 0 so long content wraps instead of overflowing) and starts 5px down (4px + 1px) so its first 21px line centres on the 32px badge.",
+      "part": "body",
+      "tokens": [
+        "--base-size-4",
+        "--text-body-size-medium"
+      ],
+      "values": [
+        {
+          "name": "bodyOffsetTop",
+          "value": 5,
+          "unit": "px"
+        }
+      ],
+      "source": "Timeline.module.css:164-172"
+    },
+    {
+      "text": "Actions sit at the row's trailing end (margin-left auto), top-aligned, never shrinking, at least 32px tall with their content centred, 8px apart.",
+      "part": "actions",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-8"
+      ],
+      "source": "Timeline.module.css:191-200"
+    },
+    {
+      "text": "The avatar is positioned 72px (40 + 32) left of the line and centred vertically on the badge: its centre is 32px below the item top (16px padding + half the badge), 20px for a condensed item, 16px for a clipped first item.",
+      "part": "avatar",
+      "tokens": [
+        "--base-size-40",
+        "--base-size-32",
+        "--base-size-16",
+        "--base-size-8",
+        "--base-size-4"
+      ],
+      "source": "Timeline.module.css:17-29,80-83,87-95"
+    },
+    {
+      "text": "A condensed item has 4px top padding and no bottom padding (16px when it is the last item); its badge is 16px tall (still 32px wide), borderless, in --bgColor-default with 8px above and below, so the badge wrapper is still 32px tall.",
+      "part": "badge",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-16",
+        "--bgColor-default"
+      ],
+      "values": [
+        {
+          "name": "condensedBadgeHeight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "Timeline.module.css:63-84"
+    },
+    {
+      "text": "A break is a 24px band with a 4px --borderColor-default top border, painted in --bgColor-default above the line, starting at the timeline's left edge (not inset); it overlaps the next item by 16px (12px when the next item is condensed).",
+      "part": "break",
+      "tokens": [
+        "--base-size-24",
+        "--borderWidth-thicker",
+        "--borderColor-default",
+        "--bgColor-default",
+        "--base-size-16",
+        "--base-size-12"
+      ],
+      "source": "Timeline.module.css:174-189"
+    },
+    {
+      "text": "clipSidebar start removes the first item's top padding, so the line starts at its badge; on a condensed first item the line starts 12px down. clipSidebar end removes the last item's bottom padding, so the line ends at its content; on a condensed last item the line is 12px long.",
+      "tokens": [
+        "--base-size-12"
+      ],
+      "source": "Timeline.module.css:12-42; Timeline.tsx:11-15"
+    },
+    {
+      "id": "narrow",
+      "text": "When the timeline is narrower than 480px, each item becomes a two-column grid (badge | body) and the actions move to a second row under the body, start-aligned, 8px below it, with no minimum height.",
+      "part": "actions",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "values": [
+        {
+          "name": "containerBreakpoint",
+          "value": 480,
+          "unit": "px"
+        }
+      ],
+      "source": "Timeline.module.css:7-10,202-230"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Static: the line is --borderColor-muted, body text --fgColor-muted, and the badge colours follow its variant. Timeline has no hover, focus or selection of its own; controls in Actions carry theirs.",
+      "tokens": [
+        "--borderColor-muted",
+        "--fgColor-muted"
+      ],
+      "source": "Timeline.module.css:60,111-114,123-161,170"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "With the primer_react_timeline_list_semantics flag on, the timeline renders as an ol with role list, items as li and a break as an li with role presentation; with it off (the default) all of them are divs.",
+      "source": "Timeline.tsx:17-46,59-83,122-145"
+    },
+    {
+      "text": "Timeline.Badge wraps the badge in a relatively positioned wrapper that lifts it above the line; the badge itself takes any extra props.",
+      "part": "badge",
+      "source": "Timeline.tsx:96-102; Timeline.module.css:97-100"
+    }
+  ],
+  "accessibility": {
+    "role": "list (behind a feature flag; otherwise generic)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable; Tab moves through links and controls in the bodies and actions in document order."
+    ],
+    "semantics": [
+      "With list semantics on, the list announces its item count and each item's position; breaks are hidden from that count (role presentation).",
+      "role=list is set explicitly because Safari drops list semantics from a list styled with list-style: none.",
+      "A badge icon that carries meaning (merged, closed) needs a text alternative; the timeline supplies none."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The narrow layout is a CSS container query on the timeline's own inline size (below 480px), not the viewport. A native build must know the timeline's width before laying out items, since it decides whether actions share the body's row or take a row of their own, which changes every item's height.",
+      "source": "Timeline.module.css:7-10,202-230"
+    },
+    {
+      "kind": "gotcha",
+      "text": "container-type: inline-size gives the timeline inline-size containment: its width cannot come from its content. In a shrink-to-fit parent (inline-block, a flex item sized by content, a float) it collapses to zero width. A native port should size the timeline from its parent, never from its items.",
+      "source": "Timeline.module.css:10"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The line is not one stroke: it is each item's own 2px bar, and the badge's 2px --bgColor-default ring and the condensed badge's --bgColor-default fill paint over it. Draw the line first, then the badges, on the timeline's actual background; on a surface other than --bgColor-default the ring shows as a visible halo.",
+      "tokens": [
+        "--bgColor-default"
+      ],
+      "source": "Timeline.module.css:51-61,97-121,71-77"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A condensed item ignores the badge variant: its rule sets the icon to --fgColor-muted and the fill to --bgColor-default and outranks the variant rules, which sit inside :where().",
+      "source": "Timeline.module.css:71-77,123-161"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The avatar is absolutely positioned 72px left of the line, which is itself 16px inside the timeline, so the avatar starts 56px outside the timeline's left edge; the timeline's parent must leave that gutter, since nothing in the component reserves it.",
+      "source": "Timeline.module.css:49,87-95"
+    },
+    {
+      "kind": "web-only",
+      "text": "The break's tighter overlap before a condensed item uses :has(+ [data-condensed]), a look-ahead at the next sibling. A native build decides it while iterating the children: check the next item's condensed flag before placing the break.",
+      "source": "Timeline.module.css:186-188"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 2px line, 32px badge, -15px badge offset, 16px condensed badge height, 1px body nudge and 480px container breakpoint are literals; the badge radius is 50%.",
+      "source": "Timeline.module.css:57,104-108,119,72,168,205"
+    },
+    {
+      "kind": "gotcha",
+      "text": "An uncoloured badge fills with --timelineBadge-bgColor (an alias of --bgColor-muted), not a bgColor token directly; a TODO beside it says the migration to that token was uncertain, so do not substitute --bgColor-muted, which themes may later bind apart.",
+      "tokens": [
+        "--timelineBadge-bgColor"
+      ],
+      "source": "Timeline.module.css:113-114"
+    }
+  ]
+}

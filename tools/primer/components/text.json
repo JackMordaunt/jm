@@ -1,0 +1,232 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "text",
+  "name": "Text",
+  "status": "alpha",
+  "statusNote": "Alpha in name only: Text is an inline span with optional size, weight and white-space presets, stable across several majors.",
+  "summary": "A run of body text with optional size (body small, medium, large), weight and white-space presets. Use it for copy and labels inside other layouts; use Heading for titles and Truncate to clip one line.",
+  "tokenGroups": [
+    "--base-text-weight-light",
+    "--base-text-weight-medium",
+    "--base-text-weight-normal",
+    "--base-text-weight-semibold",
+    "--text-body-lineHeight-large",
+    "--text-body-lineHeight-medium",
+    "--text-body-lineHeight-small",
+    "--text-body-size-large",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "Text.module.css",
+      "Text.tsx",
+      "Text.docs.json"
+    ],
+    "primer": [
+      "text"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "slot",
+      "required": true,
+      "description": "The content (children)."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "large",
+        "medium",
+        "small"
+      ],
+      "required": false,
+      "description": "Body size and line height. With none, both are inherited."
+    },
+    {
+      "name": "weight",
+      "type": "enum",
+      "values": [
+        "light",
+        "normal",
+        "medium",
+        "semibold"
+      ],
+      "required": false,
+      "description": "Font weight: 300, 400, 500 or 600. With none, inherited."
+    },
+    {
+      "name": "whiteSpace",
+      "type": "enum",
+      "values": [
+        "pre",
+        "normal",
+        "nowrap",
+        "pre-wrap",
+        "pre-line"
+      ],
+      "required": false,
+      "description": "How spaces and line breaks in the content are treated and whether lines wrap. With none, inherited."
+    },
+    {
+      "name": "element",
+      "type": "string",
+      "required": false,
+      "default": "span",
+      "description": "The element rendered (the as prop): span by default, p or div for block text."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "An inline text run in the inherited colour and family."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "12px at line height 1.625 (19.5px).",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-lineHeight-small"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "description": "14px at line height 1.5 (21px).",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "16px at line height 1.5 (24px).",
+      "tokens": [
+        "--text-body-size-large",
+        "--text-body-lineHeight-large"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "light",
+      "description": "300.",
+      "tokens": [
+        "--base-text-weight-light"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "normal",
+      "description": "400.",
+      "tokens": [
+        "--base-text-weight-normal"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "medium",
+      "description": "500.",
+      "tokens": [
+        "--base-text-weight-medium"
+      ]
+    },
+    {
+      "axis": "weight",
+      "value": "semibold",
+      "description": "600.",
+      "tokens": [
+        "--base-text-weight-semibold"
+      ]
+    },
+    {
+      "axis": "whiteSpace",
+      "value": "pre | normal | nowrap | pre-wrap | pre-line",
+      "description": "The CSS white-space value of the same name: pre keeps spaces and breaks and never wraps; nowrap collapses spaces and never wraps; pre-wrap keeps both and wraps; pre-line keeps breaks, collapses spaces and wraps; normal collapses both and wraps."
+    }
+  ],
+  "layout": [
+    {
+      "text": "A size sets font size and line height from separate body tokens (not the shorthand), so the family and weight stay inherited unless weight is also set.",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-lineHeight-small",
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-large",
+        "--text-body-lineHeight-large"
+      ],
+      "source": "Text.module.css:2-15"
+    },
+    {
+      "text": "The line-height tokens are unitless ratios: multiply by the font size (12 x 1.625 = 19.5px, 14 x 1.5 = 21px, 16 x 1.5 = 24px).",
+      "tokens": [
+        "--text-body-lineHeight-small",
+        "--text-body-lineHeight-medium",
+        "--text-body-lineHeight-large"
+      ],
+      "source": "Text.module.css:4,9,14"
+    },
+    {
+      "text": "Each unset axis inherits from the surroundings; Text sets no colour, margin or display, so it flows inline as a span.",
+      "source": "Text.module.css:1-52; Text.tsx:20-31"
+    },
+    {
+      "text": "whiteSpace maps one to one onto CSS white-space.",
+      "source": "Text.module.css:33-51"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Static text; Text has no interactive states and no colour of its own.",
+      "source": "Text.module.css:1-52"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Text renders the element named by as (span by default) with the size, weight and whiteSpace presets as data attributes; any other props pass through and can override them.",
+      "source": "Text.tsx:19-33"
+    }
+  ],
+  "accessibility": {
+    "role": "none (generic text)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable."
+    ],
+    "semantics": [
+      "Exposed as plain text; the element passed as as (p, strong, em...) supplies any semantics."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Every preset sits inside :where(), so it has zero specificity and any caller class overrides it. Unset presets inherit rather than default to body-medium: a bare Text inside a 12px parent is 12px.",
+      "source": "Text.module.css:1-52"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Weight light (300) and medium (500) rely on the drawn font having those faces; a browser falls back to the nearest available weight. A native build drawing in a platform face should map each weight to a face that exists and accept the nearest one, as the browser does.",
+      "tokens": [
+        "--base-text-weight-light"
+      ],
+      "source": "Text.module.css:17-19"
+    },
+    {
+      "kind": "web-only",
+      "text": "White-space handling (collapsing runs of spaces, honouring newlines, wrap or no wrap) is the browser's text engine. A native build must implement each of the five modes in its text layout: collapse whitespace for normal, nowrap and pre-line; keep newlines for pre, pre-wrap and pre-line; disable wrapping for pre and nowrap.",
+      "source": "Text.module.css:33-51"
+    },
+    {
+      "kind": "inferred",
+      "text": "Inline text inherits colour from its container; Text sets none, so the default is the page's --fgColor-default under BaseStyles."
+    }
+  ]
+}

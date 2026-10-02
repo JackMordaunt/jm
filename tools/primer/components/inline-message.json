@@ -1,0 +1,242 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "inline-message",
+  "name": "InlineMessage",
+  "status": "alpha",
+  "statusNote": "InlineMessage is alpha and is exported from @primer/react/experimental, so its import path may still change. It passed an accessibility review on 2025-01-08.",
+  "summary": "A short status line, an icon and coloured text, placed next to the thing it describes (a form field, a row, a section). Choose it over Banner when the message is part of the flow rather than a standalone landmark; it has no background, border, title or actions.",
+  "tokenGroups": [
+    "--fgColor-attention",
+    "--fgColor-danger",
+    "--fgColor-default",
+    "--fgColor-muted",
+    "--fgColor-success",
+    "--text-body-lineHeight-medium",
+    "--text-body-lineHeight-small",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "InlineMessage.module.css",
+      "InlineMessage.tsx",
+      "InlineMessage.docs.json"
+    ],
+    "primer": []
+  },
+  "inputs": [
+    {
+      "name": "message",
+      "type": "slot",
+      "required": true,
+      "description": "The message (children): text, optionally with inline links. It fills the second grid column."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "critical",
+        "success",
+        "unavailable",
+        "warning"
+      ],
+      "required": false,
+      "description": "Intent: picks the text and icon colour and the default icon. The docs mark it required; the code accepts none and then draws a neutral InfoIcon message in the default foreground."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Body-small (12px) or body-medium (14px) text; small also swaps to 12px filled icons."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "A custom icon (or any node) in place of the variant's icon. A component type is rendered with the icon class but no size, so an octicon comes out at its 16px default even at size small."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A two-column grid (auto | 1fr) with an 8px column gap, top-aligned, setting font size, line height and colour for both columns."
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "The variant's octicon in the text colour (octicons fill with currentColor), given a minimum height of one line box so it centres on the first line."
+    },
+    {
+      "id": "message",
+      "name": "Message",
+      "description": "The children, in the second column, wrapping freely."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "none",
+      "default": true,
+      "description": "No variant: InfoIcon (16px at both sizes) in the default foreground.",
+      "tokens": [
+        "--fgColor-default"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "critical",
+      "description": "Danger text; AlertIcon at medium, AlertFillIcon at small.",
+      "tokens": [
+        "--fgColor-danger"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "warning",
+      "description": "Attention text; AlertIcon at medium, AlertFillIcon at small.",
+      "tokens": [
+        "--fgColor-attention"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "success",
+      "description": "Success text; CheckCircleIcon at medium, CheckCircleFillIcon at small.",
+      "tokens": [
+        "--fgColor-success"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "unavailable",
+      "description": "Muted text for something that cannot be used; AlertIcon at medium, AlertFillIcon at small.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "14px text at the medium body line height (21px); 16px outline icons.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "12px text at the small body line height (19.5px); 12px filled icons.",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-lineHeight-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "Lay the message out as a two-column grid: the icon column sizes to the icon, the message column takes the rest; the columns are 8px apart and both align to the top.",
+      "values": [
+        {
+          "name": "columnGap",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "InlineMessage.module.css:1-11"
+    },
+    {
+      "text": "The icon's minimum height is the line height times the font size (19.5px small, 21px medium), so a 12px or 16px glyph sits centred on the first line of text however many lines the message wraps to.",
+      "part": "icon",
+      "tokens": [
+        "--text-body-lineHeight-small",
+        "--text-body-size-small",
+        "--text-body-lineHeight-medium",
+        "--text-body-size-medium"
+      ],
+      "source": "InlineMessage.module.css:15-23,42-44"
+    },
+    {
+      "text": "Icons are 16px at medium (and for no variant or a component-type leadingVisual at either size) and 12px at small for the four variants.",
+      "part": "icon",
+      "values": [
+        {
+          "name": "iconMedium",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "iconSmall",
+          "value": 12,
+          "unit": "px"
+        }
+      ],
+      "source": "InlineMessage.tsx:25-60"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "The whole message, text and icon, takes the variant's foreground colour: --fgColor-danger, --fgColor-attention, --fgColor-success or --fgColor-muted, else --fgColor-default.",
+      "tokens": [
+        "--fgColor-default",
+        "--fgColor-danger",
+        "--fgColor-attention",
+        "--fgColor-success",
+        "--fgColor-muted"
+      ],
+      "source": "InlineMessage.module.css:8,13,25-39"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "InlineMessage is static: it has no interaction, no dismissal and no motion. Showing or hiding it is the caller's job.",
+      "source": "InlineMessage.tsx:39-74"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a plain div)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable; links inside the message keep their own keyboard behaviour."
+    ],
+    "semantics": [
+      "No role and no live region: a message that appears after user input is not announced unless the caller puts it in a live region or ties it to its control (aria-describedby).",
+      "Colour is never the only signal: each variant pairs its colour with a distinct icon, and the text must say what happened.",
+      "The icon carries no text alternative; the message text must stand alone."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "The container is a CSS grid, so every child node becomes its own grid item: text followed by a link would spill onto a second row under the icon. Pass the message as one element. A native build should treat the children as one text flow in the second column.",
+      "source": "InlineMessage.module.css:2,10; InlineMessage.tsx:70-71"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Without a variant the icon is InfoIcon at 16px even at size small, and the colour is --fgColor-default; only the four variants get 12px filled icons at small.",
+      "source": "InlineMessage.tsx:55-60"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 8px (0.5rem) column gap is a literal. The line-height fallbacks 1.6666 and 1.4285 are stale: the tokens resolve to 1.625 and 1.5, so the fallbacks never apply and do not match.",
+      "source": "InlineMessage.module.css:9,17,22"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The docs mark variant required and spell one value 'unvailable'; the code makes variant optional and spells it 'unavailable'.",
+      "source": "InlineMessage.docs.json; InlineMessage.tsx:6,17"
+    },
+    {
+      "kind": "web-only",
+      "text": "Announcement is left to the browser's live-region machinery, which InlineMessage does not even opt into. A native build that wants dynamic messages announced must post them to the platform accessibility API itself."
+    }
+  ]
+}

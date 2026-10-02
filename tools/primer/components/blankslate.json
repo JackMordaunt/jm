@@ -1,0 +1,385 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "blankslate",
+  "name": "Blankslate",
+  "status": "draft",
+  "statusNote": "Draft and exported from @primer/react/experimental: the API may change without a major release. GitHub uses it widely for empty states; the visuals are stable.",
+  "summary": "A centred empty state: an optional muted icon, a heading, a muted description and up to two actions (a primary Button and a secondary Link). Use it where a list, table or page has nothing to show yet, or to explain a missing feature; it is not a message about an event (use Banner).",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-size-24",
+    "--base-size-28",
+    "--base-size-32",
+    "--base-size-40",
+    "--base-size-44",
+    "--base-size-80",
+    "--borderColor-default",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--fgColor-muted",
+    "--text-body-shorthand-large",
+    "--text-body-shorthand-medium",
+    "--text-title-shorthand-large",
+    "--text-title-shorthand-medium",
+    "--text-title-shorthand-small"
+  ],
+  "references": {
+    "react": [
+      "Blankslate.module.css",
+      "Blankslate.tsx",
+      "BlankslateContext.ts",
+      "Blankslate.docs.json"
+    ],
+    "primer": [
+      "blankslate"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Type scale and padding; small also caps the visual at 24px and makes the primary action a small Button."
+    },
+    {
+      "name": "border",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Draw a 1px default border with a medium radius."
+    },
+    {
+      "name": "narrow",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Cap the width at 485px and centre the block horizontally."
+    },
+    {
+      "name": "spacious",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "More padding: 80px block and 40px inline (44px and 28px at small)."
+    },
+    {
+      "name": "visual",
+      "type": "icon",
+      "required": false,
+      "description": "Blankslate.Visual: an icon or illustration above the heading, in --fgColor-muted."
+    },
+    {
+      "name": "heading",
+      "type": "string",
+      "required": false,
+      "description": "Blankslate.Heading: the title text."
+    },
+    {
+      "name": "headingLevel",
+      "type": "enum",
+      "values": [
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6"
+      ],
+      "required": false,
+      "default": "h2",
+      "description": "The heading element (Blankslate.Heading's as); it changes semantics only, not size."
+    },
+    {
+      "name": "description",
+      "type": "slot",
+      "required": false,
+      "description": "Blankslate.Description: a paragraph of muted supporting text."
+    },
+    {
+      "name": "primaryAction",
+      "type": "slot",
+      "required": false,
+      "description": "Blankslate.PrimaryAction: a primary Button, or a primary-styled anchor when href is given."
+    },
+    {
+      "name": "secondaryAction",
+      "type": "slot",
+      "required": false,
+      "description": "Blankslate.SecondaryAction: a Link; its href is required."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "An outer wrapper that is the inline-size query container named blankslate; it fills the width its parent offers."
+    },
+    {
+      "id": "blankslate",
+      "name": "Blankslate",
+      "description": "A one-column grid that centres every child horizontally, padded by size; optionally bordered and width-capped.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "visual",
+      "name": "Visual",
+      "optional": true,
+      "description": "The icon, in --fgColor-muted, 8px above the heading.",
+      "tokens": [
+        "--fgColor-muted",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "heading",
+      "name": "Heading",
+      "optional": true,
+      "description": "Centred, balanced title text in the size's title shorthand and the inherited foreground colour."
+    },
+    {
+      "id": "description",
+      "name": "Description",
+      "optional": true,
+      "description": "A centred, balanced paragraph in the size's body shorthand and --fgColor-muted.",
+      "tokens": [
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "action",
+      "name": "Action",
+      "optional": true,
+      "description": "A wrapper per action (primary Button, secondary Link), 16px below what precedes it, in the description's type."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "Heading title-small, description body-medium, 16px padding, visual capped at 24px, small primary Button, 12px under the last action.",
+      "tokens": [
+        "--text-title-shorthand-small",
+        "--text-body-shorthand-medium",
+        "--base-size-16",
+        "--base-size-24",
+        "--base-size-12"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "Heading title-medium, description body-large, 32px padding, 16px under the last action.",
+      "tokens": [
+        "--text-title-shorthand-medium",
+        "--text-body-shorthand-large",
+        "--base-size-32",
+        "--base-size-16"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "Heading title-large with 8px above it, description body-large with 8px below it, 32px padding, 16px under the last action.",
+      "tokens": [
+        "--text-title-shorthand-large",
+        "--text-body-shorthand-large",
+        "--base-size-32",
+        "--base-size-8",
+        "--base-size-16"
+      ]
+    },
+    {
+      "axis": "padding",
+      "value": "spacious",
+      "description": "80px block by 40px inline at medium and large; 44px by 28px at small and in a narrow container.",
+      "tokens": [
+        "--base-size-80",
+        "--base-size-40",
+        "--base-size-44",
+        "--base-size-28"
+      ]
+    },
+    {
+      "axis": "width",
+      "value": "narrow",
+      "description": "At most 485px wide, centred.",
+      "tokens": []
+    },
+    {
+      "axis": "frame",
+      "value": "border",
+      "description": "1px default border, medium radius.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderColor-default",
+        "--borderRadius-medium"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The blankslate is a single-column grid that centres each child horizontally; heading and description centre their text and balance their line breaks.",
+      "source": "Blankslate.module.css:5-9,60-65"
+    },
+    {
+      "text": "Padding is 32px at medium and large and 16px at small; spacious makes it 80px block by 40px inline at medium and large, 44px by 28px at small.",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-16",
+        "--base-size-80",
+        "--base-size-40",
+        "--base-size-44",
+        "--base-size-28"
+      ],
+      "source": "Blankslate.module.css:21-57"
+    },
+    {
+      "text": "The heading has 4px below it at every size and 8px above it at large only; the description has 8px below it at large only.",
+      "part": "heading",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8"
+      ],
+      "source": "Blankslate.module.css:23,35,48,50,67-80"
+    },
+    {
+      "text": "The visual sits 8px above the heading. At small its width is capped at 24px and an SVG inside scales down to fit; at medium and large it keeps its own size.",
+      "part": "visual",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-24"
+      ],
+      "source": "Blankslate.module.css:39,82-92"
+    },
+    {
+      "text": "Each action wrapper is 16px below what precedes it and sets the description's font; the last one has 12px (small) or 16px (medium, large) below it.",
+      "part": "action",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-12"
+      ],
+      "source": "Blankslate.module.css:26,38,52,94-103"
+    },
+    {
+      "text": "narrow caps the width at 485px and centres the block with auto inline margins.",
+      "values": [
+        {
+          "name": "narrowMaxWidth",
+          "value": 485,
+          "unit": "px"
+        }
+      ],
+      "source": "Blankslate.module.css:16-19"
+    },
+    {
+      "id": "narrow-container",
+      "text": "When the outer container is 544px (34rem) wide or less, every size uses title-small for the heading and body-medium for the description; padding becomes 20px (16px at small, 44px by 28px when spacious); the visual is capped at 24px; the first action is 16px below the description, later ones 8px, and the last has 4px below it.",
+      "tokens": [
+        "--text-title-shorthand-small",
+        "--text-body-shorthand-medium",
+        "--base-size-20",
+        "--base-size-16",
+        "--base-size-44",
+        "--base-size-28",
+        "--base-size-24",
+        "--base-size-8",
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "containerBreakpoint",
+          "value": 544,
+          "unit": "px"
+        }
+      ],
+      "source": "Blankslate.module.css:1-3,105-139"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Static: the visual and description are --fgColor-muted, the heading inherits the surrounding foreground, the border (when on) is --borderColor-default. Actions carry their own Button and Link states.",
+      "tokens": [
+        "--fgColor-muted",
+        "--borderColor-default"
+      ],
+      "source": "Blankslate.module.css:11-14,74-83"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "The primary action is a primary-variant Button, small when the blankslate is small and medium otherwise (large does not enlarge it); with href it renders as an anchor with the same look.",
+      "part": "action",
+      "source": "Blankslate.tsx:110-125"
+    },
+    {
+      "text": "The secondary action is a Link to href; it has no button form.",
+      "part": "action",
+      "source": "Blankslate.tsx:127-137"
+    },
+    {
+      "text": "Children render in the order given; Blankslate does not reorder visual, heading, description and actions.",
+      "source": "Blankslate.tsx:43-58"
+    }
+  ],
+  "accessibility": {
+    "role": "none (generic container)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable; Tab reaches the primary action, then the secondary link.",
+      "Enter activates the actions (Space too for a button primary action)."
+    ],
+    "semantics": [
+      "The heading is an h2 by default; pick the level that fits the page outline, independent of size.",
+      "Blankslate gives the visual no text alternative; treat it as decorative and let the heading carry the meaning.",
+      "Nothing is announced when a blankslate replaces content; the caller announces the change if it matters."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The compact layout is a CSS container query on the outer wrapper's inline size (544px or less), not on the viewport and not on the narrow-capped inner block. A native build must know the width offered to the blankslate before it picks the heading and description type, since that choice changes their measured heights.",
+      "source": "Blankslate.module.css:1-3,105-139"
+    },
+    {
+      "kind": "web-only",
+      "text": "text-wrap: balance evens out line lengths in the heading and description. A native build without it can search for the narrowest width that keeps the same line count, or accept greedy wrapping.",
+      "source": "Blankslate.module.css:64"
+    },
+    {
+      "kind": "gotcha",
+      "text": "--blankslate-visual-size is set only at small, so at medium and large max-width resolves to none and the visual is as large as the icon the caller passes; only small and the narrow container cap it at 24px.",
+      "source": "Blankslate.module.css:39,87,122-123"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The heading and description use the font shorthand tokens, which set family, weight, size and line height together; the heading is semibold through the title shorthand, not a separate weight rule.",
+      "source": "Blankslate.module.css:22-24,34-36,47-49,69,76"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The last-action spacing keys on :last-of-type, which counts sibling divs: a caller div after the actions moves that margin to it.",
+      "source": "Blankslate.module.css:99-102,135-137"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 485px narrow cap and the 34rem (544px) container breakpoint are literals; the CSS comment says 34rem was the small breakpoint when written, which --breakpoint-small still equals.",
+      "source": "Blankslate.module.css:17,105-106"
+    }
+  ]
+}

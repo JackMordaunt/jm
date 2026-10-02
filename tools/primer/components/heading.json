@@ -1,0 +1,170 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "heading",
+  "name": "Heading",
+  "status": "alpha",
+  "statusNote": "Alpha in name only: Heading is a thin h1-h6 wrapper with three type presets and has been stable for several majors. The docs list no stories.",
+  "summary": "A section heading: an h1-h6 element set in one of the title presets. Choose the element for the document outline and the variant for the visual weight, independently; use Text for running copy.",
+  "tokenGroups": [
+    "--base-text-weight-semibold",
+    "--text-title-shorthand-large",
+    "--text-title-shorthand-medium",
+    "--text-title-shorthand-small",
+    "--text-title-size-large"
+  ],
+  "references": {
+    "react": [
+      "Heading/Heading.module.css",
+      "Heading/Heading.tsx",
+      "Heading.docs.json"
+    ],
+    "primer": [
+      "heading"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": "The heading content (children)."
+    },
+    {
+      "name": "level",
+      "type": "enum",
+      "values": [
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6"
+      ],
+      "required": false,
+      "default": "h2",
+      "description": "The heading element (the as prop). It sets the outline level only; it does not change the size."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "large",
+        "medium",
+        "small"
+      ],
+      "required": false,
+      "description": "The title preset. With none the heading is 32px semibold in the inherited family and line height."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "heading",
+      "name": "Heading",
+      "description": "One text run, no margin, in the inherited foreground colour."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "none",
+      "default": true,
+      "description": "32px (--text-title-size-large) semibold; family and line height come from the surroundings (BaseStyles gives 1.5).",
+      "tokens": [
+        "--text-title-size-large",
+        "--base-text-weight-semibold"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "large",
+      "description": "Title large: 32px over 48px, semibold, system stack.",
+      "tokens": [
+        "--text-title-shorthand-large"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "medium",
+      "description": "Title medium: 20px over 32.5px, semibold, system stack.",
+      "tokens": [
+        "--text-title-shorthand-medium"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "small",
+      "description": "Title small: 16px over 24px, semibold, system stack.",
+      "tokens": [
+        "--text-title-shorthand-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The heading has no margin; spacing around it is the container's job. It wraps like any block text.",
+      "source": "Heading/Heading.module.css:1-2"
+    },
+    {
+      "text": "Without a variant the module sets only font size and weight; the line height and font family are inherited, so they follow the surrounding text (1.5 and the system stack under BaseStyles).",
+      "tokens": [
+        "--text-title-size-large",
+        "--base-text-weight-semibold"
+      ],
+      "source": "Heading/Heading.module.css:1-4; BaseStyles.module.css:56-59"
+    },
+    {
+      "text": "A variant sets the whole font through the title shorthand token, so size, line height, weight and family move together.",
+      "tokens": [
+        "--text-title-shorthand-large",
+        "--text-title-shorthand-medium",
+        "--text-title-shorthand-small"
+      ],
+      "source": "Heading/Heading.module.css:6-16"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Static text in the inherited foreground colour; Heading sets no colour of its own.",
+      "source": "Heading/Heading.module.css:1-17"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Heading renders the element named by as (h2 by default); in development it warns when that element is not an h1-h6.",
+      "source": "Heading/Heading.tsx:16-36"
+    }
+  ],
+  "accessibility": {
+    "role": "heading",
+    "minTargetPx": null,
+    "keyboard": [
+      "Not focusable."
+    ],
+    "semantics": [
+      "Exposed as a heading at the level of its element (h1 is level 1); screen-reader users navigate by these levels.",
+      "The level must fit the page outline, whatever the visual variant."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The heading level comes from the HTML element and reaches assistive technology through the browser. A native build must expose a heading role and its level to the platform accessibility API itself, separately from the visual variant.",
+      "source": "Heading/Heading.tsx:9,16,28-34; primer:heading"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Every rule sits inside :where(), so it has zero specificity: any class a caller adds overrides the size, weight and margin. A native port should treat a caller's style as winning outright.",
+      "source": "Heading/Heading.module.css:1-17"
+    },
+    {
+      "kind": "gotcha",
+      "text": "No variant and variant large share size and weight but differ in line height and family: the default inherits them, large sets 48px and the system stack.",
+      "tokens": [
+        "--text-title-size-large",
+        "--text-title-shorthand-large"
+      ],
+      "source": "Heading/Heading.module.css:3-8"
+    }
+  ]
+}

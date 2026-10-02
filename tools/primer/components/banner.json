@@ -1,0 +1,559 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "banner",
+  "name": "Banner",
+  "status": "alpha",
+  "statusNote": "Banner is labelled alpha but ships from the main @primer/react entry point and passed an accessibility review (2025-01-08). The prop set is settled except the deprecated icon prop, which leadingVisual replaces.",
+  "summary": "A bordered, tinted message block that highlights page- or section-level information (critical, warning, success, info, upsell) with an icon, a title, an optional description and up to two actions, optionally dismissible. Choose it over InlineMessage when the message stands on its own as a landmark; choose InlineMessage for a one-line status next to the thing it describes.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-size-16",
+    "--base-size-20",
+    "--base-size-32",
+    "--base-text-weight-semibold",
+    "--bgColor-accent-muted",
+    "--bgColor-attention-muted",
+    "--bgColor-danger-muted",
+    "--bgColor-success-muted",
+    "--bgColor-upsell-muted",
+    "--borderColor-accent-muted",
+    "--borderColor-attention-muted",
+    "--borderColor-danger-muted",
+    "--borderColor-success-muted",
+    "--borderColor-upsell-muted",
+    "--borderRadius-medium",
+    "--borderWidth-thin",
+    "--fgColor-accent",
+    "--fgColor-attention",
+    "--fgColor-danger",
+    "--fgColor-success",
+    "--fgColor-upsell",
+    "--text-body-lineHeight-medium",
+    "--text-body-size-medium",
+    "--viewportRange-narrow"
+  ],
+  "references": {
+    "react": [
+      "Banner.module.css",
+      "Banner.tsx",
+      "Banner.docs.json"
+    ],
+    "primer": [
+      "banner"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "title",
+      "type": "slot",
+      "required": true,
+      "description": "The heading text; it is also the section's accessible name. Required unless a Banner.Title child is given instead (a dev-only check throws when neither is present)."
+    },
+    {
+      "name": "titleLevel",
+      "type": "enum",
+      "values": [
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6"
+      ],
+      "required": false,
+      "default": "h2",
+      "description": "The heading level of Banner.Title (its `as` prop). The title prop always renders an h2."
+    },
+    {
+      "name": "hideTitle",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Keep the title for assistive technology only; the description carries the visible message."
+    },
+    {
+      "name": "description",
+      "type": "slot",
+      "required": false,
+      "description": "Supporting text under the title, in body-medium. Further children render after it in the content column."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "critical",
+        "info",
+        "success",
+        "upsell",
+        "warning"
+      ],
+      "required": false,
+      "default": "info",
+      "description": "Intent: picks the tint, border, icon colour and default icon."
+    },
+    {
+      "name": "leadingVisual",
+      "type": "icon",
+      "required": false,
+      "description": "A custom icon, honoured only for info and upsell; the other variants always show their own. Replaces the deprecated icon prop."
+    },
+    {
+      "name": "primaryAction",
+      "type": "slot",
+      "required": false,
+      "description": "A Banner.PrimaryAction: a default-variant Button."
+    },
+    {
+      "name": "secondaryAction",
+      "type": "slot",
+      "required": false,
+      "description": "A Banner.SecondaryAction: an invisible-variant Button."
+    },
+    {
+      "name": "onDismiss",
+      "type": "callback",
+      "required": false,
+      "description": "When set, an invisible XIcon IconButton named \"Dismiss banner\" appears at the trailing edge and calls this on activation. The banner does not hide itself; the caller removes it."
+    },
+    {
+      "name": "layout",
+      "type": "enum",
+      "values": [
+        "default",
+        "compact"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "Compact halves the outer padding to 4px."
+    },
+    {
+      "name": "actionsLayout",
+      "type": "enum",
+      "values": [
+        "default",
+        "inline",
+        "stacked"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "default: actions sit beside the content when the banner is at least 500px wide, under it otherwise. inline: always beside, except on a narrow viewport. stacked: always under."
+    },
+    {
+      "name": "flush",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Drop the side borders and the radius, for a banner spanning a dialog, table or card edge to edge."
+    },
+    {
+      "name": "ariaLabel",
+      "type": "string",
+      "required": false,
+      "description": "Overrides the landmark's accessible name; when set the section is no longer labelled by the title."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A section laid out as a three-column grid (icon | body | dismiss), 8px padding, a 1px border and medium radius in the variant's colours.",
+      "tokens": [
+        "--base-size-8",
+        "--borderWidth-thin",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "description": "A cell with 8px padding holding the variant's octicon (StopIcon, InfoIcon, CheckCircleIcon, InfoIcon, AlertIcon) in the variant's foreground colour, set 20px tall.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-20"
+      ]
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "description": "The middle column (BannerContainer): content and actions, in body-medium text, with 4px row and column gaps.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "description": "A one-column grid of title, description and any children, 4px apart, with 8px block margin.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "description": "An h2 (or h3-h6) at the body's font size in semibold, no margin; visually hidden with hideTitle.",
+      "tokens": [
+        "--base-text-weight-semibold"
+      ]
+    },
+    {
+      "id": "description",
+      "name": "Description",
+      "optional": true,
+      "description": "Unstyled body text inheriting body-medium and the surrounding foreground colour."
+    },
+    {
+      "id": "actions",
+      "name": "Actions",
+      "optional": true,
+      "description": "A row of the secondary and primary Buttons, 12px apart, centred vertically, with 2px block margin. Its order depends on the layout: primary first when under the content, primary last when beside it.",
+      "tokens": [
+        "--base-size-12",
+        "--base-size-2"
+      ]
+    },
+    {
+      "id": "dismiss",
+      "name": "Dismiss button",
+      "optional": true,
+      "description": "An invisible-variant medium IconButton with XIcon in the variant's foreground colour, 4px from the body, with 2px block margin when actions are present.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-2",
+        "--base-size-8"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "info",
+      "default": true,
+      "description": "Accent tint, InfoIcon; accepts a custom leading visual.",
+      "tokens": [
+        "--bgColor-accent-muted",
+        "--borderColor-accent-muted",
+        "--fgColor-accent"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "critical",
+      "description": "Danger tint, StopIcon.",
+      "tokens": [
+        "--bgColor-danger-muted",
+        "--borderColor-danger-muted",
+        "--fgColor-danger"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "success",
+      "description": "Success tint, CheckCircleIcon.",
+      "tokens": [
+        "--bgColor-success-muted",
+        "--borderColor-success-muted",
+        "--fgColor-success"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "upsell",
+      "description": "Upsell (purple) tint, InfoIcon; accepts a custom leading visual.",
+      "tokens": [
+        "--bgColor-upsell-muted",
+        "--borderColor-upsell-muted",
+        "--fgColor-upsell"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "warning",
+      "description": "Attention (yellow) tint, AlertIcon.",
+      "tokens": [
+        "--bgColor-attention-muted",
+        "--borderColor-attention-muted",
+        "--fgColor-attention"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "default",
+      "default": true,
+      "description": "8px outer padding.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    },
+    {
+      "axis": "layout",
+      "value": "compact",
+      "description": "4px outer padding.",
+      "tokens": [
+        "--base-size-4"
+      ]
+    },
+    {
+      "axis": "actionsLayout",
+      "value": "default",
+      "default": true,
+      "description": "Actions beside the content (secondary then primary) when the banner's content box is at least 500px wide; under it (primary then secondary) below that."
+    },
+    {
+      "axis": "actionsLayout",
+      "value": "inline",
+      "description": "Actions always beside the content on one unwrapped row, except on a narrow viewport (below 768px), where they go under it.",
+      "tokens": [
+        "--viewportRange-narrow"
+      ]
+    },
+    {
+      "axis": "actionsLayout",
+      "value": "stacked",
+      "description": "Actions always under the content, primary first."
+    },
+    {
+      "axis": "edge",
+      "value": "flush",
+      "description": "No left or right border and no radius; top and bottom borders remain."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The banner is a three-column grid: icon (auto), body (minmax(0, 1fr), so long words cannot widen it), dismiss button (auto); all three align to the top. The border is 1px all round with a medium radius, and the padding is 8px (4px compact).",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-4",
+        "--borderWidth-thin",
+        "--borderRadius-medium"
+      ],
+      "source": "Banner.module.css:1-10,64-66; Banner.tsx:172-199"
+    },
+    {
+      "text": "The icon cell pads 8px on all sides and centres an icon whose height is 20px (the line box of the action buttons); when the title is hidden and there are no actions the icon is 16px tall instead.",
+      "part": "icon",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-20",
+        "--base-size-16"
+      ],
+      "source": "Banner.module.css:154-172"
+    },
+    {
+      "text": "Content is a grid of title, description and children with a 4px row gap and 8px block margin; with the title hidden and no actions the block margin is 6px. The title is semibold at the body's 14px, with no margin.",
+      "part": "content",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-6",
+        "--base-text-weight-semibold"
+      ],
+      "source": "Banner.module.css:129-138,146-150"
+    },
+    {
+      "text": "The body sets body-medium type and lays content and actions out with 4px row and column gaps. Without container-query support it is a wrapping flex row with space-between, actions in leading order.",
+      "part": "body",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium",
+        "--base-size-4"
+      ],
+      "source": "Banner.module.css:107-119,201-203"
+    },
+    {
+      "id": "default-narrow",
+      "text": "actionsLayout default, banner content box under 500px wide: the body is one grid column, actions on a second row under the content with 6px below them, primary before secondary.",
+      "part": "body",
+      "tokens": [
+        "--base-size-6"
+      ],
+      "values": [
+        {
+          "name": "containerBreakpoint",
+          "value": 500,
+          "unit": "px"
+        }
+      ],
+      "source": "Banner.module.css:12-16,223-243"
+    },
+    {
+      "id": "default-wide",
+      "text": "actionsLayout default, banner content box 500px wide or more (500 itself counts as wide): the body is two auto-width grid columns, content then actions; the actions row is secondary then primary, at least 32px tall. A lone link-variant trailing action on a non-dismissible banner gets 0 start and 12px end padding.",
+      "part": "body",
+      "tokens": [
+        "--base-size-32",
+        "--base-size-12"
+      ],
+      "values": [
+        {
+          "name": "containerBreakpoint",
+          "value": 500,
+          "unit": "px"
+        }
+      ],
+      "source": "Banner.module.css:245-265"
+    },
+    {
+      "text": "A dismissible banner whose title is visible, in any actionsLayout but inline, always stacks: the body is a single grid column, the actions sit under the content in leading order (primary first) with 6px below them. This beats the 500px container rule.",
+      "part": "body",
+      "tokens": [
+        "--base-size-6"
+      ],
+      "source": "Banner.module.css:121-125,205-219"
+    },
+    {
+      "text": "actionsLayout stacked: the body is a flex column and the actions are in leading order. actionsLayout inline: the body is one unwrapped row, the actions do not shrink and are in trailing order, except on a narrow viewport (below 768px) where the body becomes a column with leading-order actions.",
+      "part": "body",
+      "tokens": [
+        "--viewportRange-narrow"
+      ],
+      "source": "Banner.module.css:18-62"
+    },
+    {
+      "text": "From a 544px viewport up, content takes flex: 1 1 0% so it fills the row beside the actions in the flex layouts.",
+      "part": "content",
+      "values": [
+        {
+          "name": "viewportMin",
+          "value": 544,
+          "unit": "px"
+        }
+      ],
+      "source": "Banner.module.css:140-144"
+    },
+    {
+      "text": "Actions are a flex row, 12px apart, vertically centred, with 2px block margin.",
+      "part": "actions",
+      "tokens": [
+        "--base-size-12",
+        "--base-size-2"
+      ],
+      "source": "Banner.module.css:194-199"
+    },
+    {
+      "text": "The dismiss button is 4px from the body, carries 8px padding, and gains 2px block margin when actions are present so its centre lines up with theirs.",
+      "part": "dismiss",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-2"
+      ],
+      "source": "Banner.module.css:176-185"
+    },
+    {
+      "text": "flush removes the left and right borders and sets the radius to 0.",
+      "source": "Banner.module.css:68-72"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "The variant sets three colours: the background (--bgColor-<role>-muted), the border (--borderColor-<role>-muted) and the icon and dismiss-icon colour (--fgColor-<role>). Title and description keep the inherited foreground colour, not the variant's.",
+      "source": "Banner.module.css:5-7,74-102,160-167,187-190"
+    },
+    {
+      "state": "other",
+      "label": "title hidden",
+      "text": "With hideTitle the title moves into a visually hidden wrapper but still names the landmark; without actions the icon shrinks to 16px and the content's block margin to 6px.",
+      "tokens": [
+        "--base-size-16",
+        "--base-size-6"
+      ],
+      "source": "Banner.tsx:177-185; Banner.module.css:136-138,170-172"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Activating the dismiss button calls onDismiss; the banner neither hides itself nor animates. The caller removes it and moves focus somewhere useful.",
+      "part": "dismiss",
+      "source": "Banner.tsx:191-199; primer:banner"
+    },
+    {
+      "text": "The banner is focusable programmatically (tabIndex -1) but not by Tab, so a caller can move focus to a banner that appears with essential information.",
+      "source": "Banner.tsx:167; primer:banner"
+    },
+    {
+      "text": "Banner.PrimaryAction is a default-variant Button and Banner.SecondaryAction an invisible-variant Button; callers cannot change the variant.",
+      "part": "actions",
+      "source": "Banner.tsx:260-294"
+    }
+  ],
+  "accessibility": {
+    "role": "region (a section landmark)",
+    "minTargetPx": 32,
+    "keyboard": [
+      "The banner is not in the Tab order; Tab reaches its actions, then the dismiss button.",
+      "Enter and Space activate the actions and the dismiss button."
+    ],
+    "semantics": [
+      "The section is labelled by the title's id unless aria-label or aria-labelledby is given.",
+      "The title is a heading (h2 by default) so the banner appears in the heading outline; with hideTitle it stays in the accessibility tree.",
+      "The variant icon is decorative (aria-hidden); the title must say what kind of message it is.",
+      "The dismiss button's name is \"Dismiss banner\".",
+      "The banner is not a live region: a banner that appears dynamically must be announced by the caller through a live region, or receive focus when essential."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The default actionsLayout is decided by a CSS container query on the banner's own content-box width (500px). A native build must know the banner's width before it lays out the body: use the width the parent offers this frame (or last frame's measured width), subtract 16px padding (8px compact) and 2px border, and pick the narrow or wide arrangement before measuring heights.",
+      "source": "Banner.module.css:12-16,223-265"
+    },
+    {
+      "kind": "web-only",
+      "text": "actionsLayout inline switches to stacked on the viewport width (below 768px), not the banner's width, and the content's flex sizing switches at a 544px viewport. A native build needs the window width as well as the banner's.",
+      "tokens": [
+        "--viewportRange-narrow"
+      ],
+      "source": "Banner.module.css:49-61,140-144"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Banner renders the actions twice, in trailing order (secondary, primary) and leading order (primary, secondary), and CSS hides one copy. A native build renders them once, in the order its layout decision picks; Tab order follows that visual order.",
+      "source": "Banner.tsx:245-258; Banner.module.css:201-203,236-242,257-264"
+    },
+    {
+      "kind": "gotcha",
+      "text": "A dismissible banner with a visible title always stacks its actions under the content, whatever the width, unless actionsLayout is inline; the dismissible selectors outrank the container-query ones.",
+      "source": "Banner.module.css:121-125,205-219"
+    },
+    {
+      "kind": "gotcha",
+      "text": "leadingVisual (and the deprecated icon) is ignored for critical, success and warning; those always show their own icon.",
+      "source": "Banner.tsx:131,172-174"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 500px container breakpoint and the 544px viewport breakpoint are literals; 544px equals --breakpoint-small but the module does not read it.",
+      "source": "Banner.module.css:140,223,245"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Banner.SecondaryAction gets the class name BannerPrimaryAction, a copy-paste slip; nothing styles either name, so it has no visual effect.",
+      "source": "Banner.tsx:285"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "layout is not destructured, so it reaches the section through the rest spread as a stray layout attribute alongside data-layout.",
+      "source": "Banner.tsx:106-124,158,169"
+    },
+    {
+      "kind": "inferred",
+      "text": "Octicons draw their glyph at the size given in their width and height attributes (16); the module overrides only the CSS height, so the 20px icon is most likely a 16px glyph centred in a 16 by 20 box. Draw a 16px glyph centred on the first line of the title. Octicons React is not vendored, so this is not verified against its code.",
+      "source": "Banner.module.css:160-167"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The border reads --borderColor-<role>-muted, which the high-contrast themes darken; draw it even where it is faint in light.",
+      "tokens": [
+        "--borderColor-accent-muted"
+      ]
+    }
+  ]
+}
