@@ -1,0 +1,291 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "state-label",
+  "name": "StateLabel",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React, accessibility-reviewed 2025-01-08; GitHub uses it on every issue, pull request and alert. The legacy variant prop (normal/small) is deprecated in favour of size.",
+  "summary": "A filled pill with an octicon that states an issue's, pull request's or alert's lifecycle state (Open, Closed, Merged, Draft...). Choose it over Label only for that state; the status picks both colour and icon.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-text-weight-semibold",
+    "--bgColor-attention-emphasis",
+    "--bgColor-closed-emphasis",
+    "--bgColor-done-emphasis",
+    "--bgColor-draft-emphasis",
+    "--bgColor-neutral-emphasis",
+    "--bgColor-open-emphasis",
+    "--borderColor-attention-emphasis",
+    "--borderColor-closed-emphasis",
+    "--borderColor-done-emphasis",
+    "--borderColor-draft-emphasis",
+    "--borderColor-neutral-emphasis",
+    "--borderColor-open-emphasis",
+    "--borderRadius-full",
+    "--boxShadow-thin",
+    "--fgColor-onEmphasis",
+    "--text-body-size-medium",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "StateLabel.module.css",
+      "StateLabel.tsx",
+      "StateLabel.docs.json"
+    ],
+    "primer": [
+      "state-label"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "status",
+      "type": "enum",
+      "values": [
+        "issueOpened",
+        "issueClosed",
+        "issueClosedNotPlanned",
+        "issueDraft",
+        "pullOpened",
+        "pullClosed",
+        "pullMerged",
+        "pullQueued",
+        "draft",
+        "unavailable",
+        "alertOpened",
+        "alertFixed",
+        "alertDismissed",
+        "alertClosed",
+        "open",
+        "closed",
+        "archived"
+      ],
+      "required": true,
+      "description": "The state; it fixes the colour, the icon and the icon's spoken label."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "24px or 32px tall."
+    },
+    {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": "The visible state word (children), e.g. Open, Closed, Merged."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A filled pill in the status's emphasis background with a 1px inset ring in the matching emphasis border colour.",
+      "tokens": [
+        "--borderRadius-full",
+        "--boxShadow-thin"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Status icon",
+      "optional": true,
+      "description": "The status's 16px octicon in --fgColor-onEmphasis, 4px before the text; absent for open and closed. At small it is drawn 1em (12px) wide.",
+      "tokens": [
+        "--base-size-4",
+        "--fgColor-onEmphasis"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "Semibold body text in --fgColor-onEmphasis on a 16px line.",
+      "tokens": [
+        "--base-text-weight-semibold",
+        "--fgColor-onEmphasis"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "status",
+      "value": "open",
+      "description": "issueOpened (issue-opened icon), pullOpened (git-pull-request), alertOpened (shield) and open (no icon): the open colour.",
+      "tokens": [
+        "--bgColor-open-emphasis",
+        "--borderColor-open-emphasis"
+      ]
+    },
+    {
+      "axis": "status",
+      "value": "done",
+      "description": "issueClosed (issue-closed), pullMerged (git-merge), alertFixed (shield-check) and closed (no icon): the done (purple) colour.",
+      "tokens": [
+        "--bgColor-done-emphasis",
+        "--borderColor-done-emphasis"
+      ]
+    },
+    {
+      "axis": "status",
+      "value": "closed",
+      "description": "pullClosed (git-pull-request-closed) and alertClosed (shield-x): the closed (red) colour.",
+      "tokens": [
+        "--bgColor-closed-emphasis",
+        "--borderColor-closed-emphasis"
+      ]
+    },
+    {
+      "axis": "status",
+      "value": "attention",
+      "description": "pullQueued (git-merge-queue): the attention colour.",
+      "tokens": [
+        "--bgColor-attention-emphasis",
+        "--borderColor-attention-emphasis"
+      ]
+    },
+    {
+      "axis": "status",
+      "value": "draft",
+      "description": "draft (git-pull-request-draft), issueDraft (issue-draft) and alertDismissed (shield-slash): the draft colour, falling back to neutral.",
+      "tokens": [
+        "--bgColor-draft-emphasis",
+        "--borderColor-draft-emphasis"
+      ]
+    },
+    {
+      "axis": "status",
+      "value": "neutral",
+      "description": "issueClosedNotPlanned (skip), unavailable (alert) and archived (archive): the neutral colour.",
+      "tokens": [
+        "--bgColor-neutral-emphasis",
+        "--borderColor-neutral-emphasis"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "4px by 8px padding, small body text: 24px tall.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "8px by 12px padding, medium body text: 32px tall.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-12",
+        "--text-body-size-medium"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "Height comes from padding around a fixed 16px line: --base-size-4 by --base-size-8 at small (24px tall), --base-size-8 by --base-size-12 at medium (32px tall). Width hugs the icon and text.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-12"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "StateLabel.module.css:6,13-21"
+    },
+    {
+      "text": "Icon and text sit in a centred row; the icon has a --base-size-4 (4px) end margin and, at small, a width of 1em so it scales to the 12px text.",
+      "part": "icon",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "smallIconWidth",
+          "value": 1,
+          "unit": "em"
+        }
+      ],
+      "source": "StateLabel.module.css:1-3,129-135; StateLabel.tsx:91-98"
+    },
+    {
+      "text": "The border is a 1px inset ring (--boxShadow-thin) in the status's --borderColor-*-emphasis, drawn inside the box so it takes no layout space; text is centred and semibold in --fgColor-onEmphasis.",
+      "tokens": [
+        "--boxShadow-thin",
+        "--fgColor-onEmphasis",
+        "--base-text-weight-semibold"
+      ],
+      "source": "StateLabel.module.css:4-9,24-127"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "One static appearance per status: no hover, press, focus or disabled styling.",
+      "source": "StateLabel.module.css:1-135"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "The status alone selects the icon and colour; the visible text is the caller's and is not derived from the status.",
+      "source": "StateLabel.tsx:24-42,74-101"
+    },
+    {
+      "text": "The deprecated variant prop maps small to small and anything else to medium; size wins when both are given.",
+      "source": "StateLabel.tsx:79-80"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a generic span containing an img icon and text)",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "The icon carries an aria-label naming the object type: Issue, Pull request, Issue, not planned, Alert, or Archived; unavailable has an empty label. The visible text follows, so a reader hears e.g. \"Pull request Merged\".",
+      "open and closed render no icon, so only the text is read."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "closed and issueClosed are done (purple), not closed (red); only pullClosed and alertClosed read the closed colour. Merged is also done.",
+      "source": "StateLabel.module.css:24-28,36-40,92-96,117-121"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Draft statuses fall back to the neutral tokens when the draft tokens are undefined; the resolved file defines both draft tokens, so read them.",
+      "tokens": [
+        "--bgColor-draft-emphasis",
+        "--borderColor-draft-emphasis",
+        "--bgColor-neutral-emphasis",
+        "--borderColor-neutral-emphasis"
+      ],
+      "source": "StateLabel.module.css:66-78,110-115"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The ring's border token equals or nearly equals the fill token in the resolved themes (done is identical; open's border is a shade darker in light), so the ring is barely visible. Draw it anyway: the tokens are bound separately and a theme may set them apart.",
+      "tokens": [
+        "--boxShadow-thin"
+      ],
+      "source": "StateLabel.module.css:27"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 16px line height and the small icon's 1em width are literals, not tokens.",
+      "source": "StateLabel.module.css:6,133-135"
+    }
+  ]
+}

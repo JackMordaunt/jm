@@ -1,0 +1,146 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "skeleton-avatar",
+  "name": "SkeletonAvatar",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React. A SkeletonBox with Avatar's size and shape rules.",
+  "summary": "A shimmering placeholder of an Avatar's exact size and shape, shown while the avatar's data loads. Pair it with SkeletonText for a loading list row.",
+  "tokenGroups": [
+    "--base-duration-1000",
+    "--borderRadius-medium",
+    "--skeletonLoader-bgColor",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide"
+  ],
+  "references": {
+    "react": [
+      "SkeletonAvatar.module.css",
+      "SkeletonAvatar.tsx",
+      "SkeletonAvatar.docs.json",
+      "SkeletonBox.module.css",
+      "Avatar.module.css"
+    ],
+    "primer": [
+      "skeleton-avatar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "number",
+      "required": false,
+      "default": 20,
+      "description": "Size in px, or {narrow, regular, wide}, as Avatar."
+    },
+    {
+      "name": "square",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Rounded square instead of a circle, as Avatar."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "shape",
+      "name": "Shape",
+      "description": "A size by size circle (or rounded square) of --skeletonLoader-bgColor, with no ring.",
+      "tokens": [
+        "--skeletonLoader-bgColor"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "shape",
+      "value": "circle",
+      "default": true,
+      "description": "Radius 50%."
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "Radius clamp(4px, size - 24px, --borderRadius-medium), as Avatar.",
+      "tokens": [
+        "--borderRadius-medium"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The placeholder is an inline size by size box (default 20px) with a 50% radius, replacing SkeletonBox's block display, 16px height and small radius.",
+      "part": "shape",
+      "values": [
+        {
+          "name": "defaultSize",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "SkeletonAvatar.module.css:1-9; SkeletonAvatar.tsx:16-37; SkeletonBox.module.css:11-15"
+    },
+    {
+      "text": "Square: radius clamp(4px, size - 24px, --borderRadius-medium): 4px at 28px and below, 6px at 30px and above.",
+      "part": "shape",
+      "tokens": [
+        "--borderRadius-medium"
+      ],
+      "source": "SkeletonAvatar.module.css:11-14"
+    },
+    {
+      "text": "A responsive size switches at the same viewport ranges as Avatar: narrow below 768px, regular from 768px, wide from 1400px.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "SkeletonAvatar.module.css:16-31; SkeletonAvatar.tsx:17-26"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "Shimmers as skeleton-box (1000ms repeating mask sweep, off under reduced motion).",
+      "tokens": [
+        "--base-duration-1000"
+      ],
+      "motion": {
+        "durationToken": "--base-duration-1000",
+        "properties": [
+          "mask-position"
+        ]
+      },
+      "source": "SkeletonBox.module.css:1-24"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Not interactive; it takes the same space the Avatar will, so swapping one for the other does not shift layout.",
+      "source": "SkeletonAvatar.module.css:1-9; Avatar.module.css:1-9"
+    }
+  ],
+  "accessibility": {
+    "role": "none",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "Nothing is exposed; the loading region should carry aria-busy or a status message."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "SkeletonAvatar has no 1px ring, while Avatar draws one outside its box; the swap is therefore not pixel-identical at the edge, though the layout box is.",
+      "tokens": [
+        "--avatar-borderColor"
+      ],
+      "source": "SkeletonAvatar.module.css:1-32; Avatar.module.css:10-11"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Its size and shape rules override SkeletonBox's only because its stylesheet loads after SkeletonBox's (equal specificity); a native build simply uses the avatar geometry.",
+      "source": "SkeletonAvatar.tsx:5-6,29-36; SkeletonAvatar.module.css:2-9"
+    }
+  ]
+}

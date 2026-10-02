@@ -1,0 +1,182 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "avatar",
+  "name": "Avatar",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React, accessibility-reviewed 2025-01-08; stable in practice. It is a bare img: Primer supplies no placeholder, loading state or fallback initials.",
+  "summary": "A user's or organisation's image, round for people and rounded-square for organisations, bots and apps. Use AvatarStack for several and SkeletonAvatar while the image's data loads.",
+  "tokenGroups": [
+    "--avatar-borderColor",
+    "--borderRadius-medium",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide"
+  ],
+  "references": {
+    "react": [
+      "Avatar.module.css",
+      "Avatar.tsx",
+      "Avatar.docs.json"
+    ],
+    "primer": [
+      "avatar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "src",
+      "type": "string",
+      "required": true,
+      "description": "The image URL."
+    },
+    {
+      "name": "size",
+      "type": "number",
+      "required": false,
+      "default": 20,
+      "description": "Width and height in px; or a responsive object {narrow, regular, wide} of px sizes."
+    },
+    {
+      "name": "square",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Rounded square instead of a circle (organisations, apps, bots)."
+    },
+    {
+      "name": "alt",
+      "type": "string",
+      "required": false,
+      "default": "",
+      "description": "Alternative text; leave empty when a name is shown beside the avatar."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "image",
+      "name": "Image",
+      "description": "The picture, scaled into a size by size box, clipped to a circle or rounded square, with a 1px --avatar-borderColor ring drawn just outside its edge.",
+      "tokens": [
+        "--avatar-borderColor"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "shape",
+      "value": "circle",
+      "default": true,
+      "description": "Radius 50%."
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "Radius clamp(4px, size - 24px, --borderRadius-medium): 4px up to 28px, rising 1px per px to 6px from 30px.",
+      "tokens": [
+        "--borderRadius-medium"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The avatar is a size by size box (default 20px), inline and vertically centred on the text line, with overflow clipped.",
+      "values": [
+        {
+          "name": "defaultSize",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "source": "Avatar.module.css:1-9; Avatar.tsx:7,23,29-46"
+    },
+    {
+      "text": "A square avatar's corner radius is clamp(4px, size - 24px, --borderRadius-medium): 4px at 28px and below, 5px at 29px, --borderRadius-medium (6px) at 30px and above.",
+      "tokens": [
+        "--borderRadius-medium"
+      ],
+      "values": [
+        {
+          "name": "minRadius",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "sizeOffset",
+          "value": 24,
+          "unit": "px"
+        }
+      ],
+      "source": "Avatar.module.css:13-16"
+    },
+    {
+      "text": "The ring is a 1px spread shadow, 0 0 0 1px --avatar-borderColor: it is drawn outside the box and takes no layout space.",
+      "tokens": [
+        "--avatar-borderColor"
+      ],
+      "values": [
+        {
+          "name": "ringWidth",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "Avatar.module.css:10-11"
+    },
+    {
+      "text": "With a responsive size the box takes the narrow size below 768px (--viewportRange-narrow), the regular size from 768px (--viewportRange-regular) and the wide size from 1400px (--viewportRange-wide), which overrides regular.",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "Avatar.module.css:18-33; Avatar.tsx:26-35"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "One static appearance: no hover, focus or press styling. A caller wraps it in a link or button for interaction.",
+      "source": "Avatar.module.css:1-34"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "The image is drawn at the box size; the img's width and height attributes are set to the size so the box is reserved before the image loads (not for responsive sizes).",
+      "source": "Avatar.tsx:37-56"
+    }
+  ],
+  "accessibility": {
+    "role": "img (presentational when alt is empty)",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "alt defaults to empty, so the avatar is ignored by screen readers; give alt (e.g. @login) when no name accompanies it."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Image loading, decoding, caching and failure are the browser's. Primer draws no placeholder or fallback: before load the box is empty (transparent, with the ring), and a failed load shows whatever the browser shows for a broken img, clipped to the shape. A native build needs an async loader, a cache, and a defined empty state; a muted fill (as SkeletonAvatar) or initials are reasonable but are not Primer's.",
+      "source": "Avatar.tsx:37-56; Avatar.module.css:5"
+    },
+    {
+      "kind": "web-only",
+      "text": "The picture is scaled to fill the box with the img element's default object-fit (fill), which stretches a non-square source; avatars are square at source on GitHub. A native build should scale to fill and centre-crop if the source is not square.",
+      "source": "Avatar.module.css:1-12"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--avatar-bgColor and --avatar-shadow exist but no CSS module reads them; only the legacy theme object references them.",
+      "tokens": [
+        "--avatar-bgColor",
+        "--avatar-shadow"
+      ],
+      "source": "Avatar.module.css:1-34"
+    },
+    {
+      "kind": "gotcha",
+      "text": "In a responsive size, a viewport key the caller leaves out leaves its custom property undefined, so the CSS width is invalid and the img falls back to its intrinsic size; supply all three keys or default the missing ones (AvatarStack defaults them to 20px).",
+      "source": "Avatar.tsx:29-32; Avatar.module.css:18-33"
+    }
+  ]
+}

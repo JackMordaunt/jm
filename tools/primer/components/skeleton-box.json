@@ -1,0 +1,188 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "skeleton-box",
+  "name": "SkeletonBox",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React. It is the primitive under SkeletonText and SkeletonAvatar, which share its fill and shimmer.",
+  "summary": "A muted rounded rectangle that stands in for content of known shape while it loads, shimmering unless the user prefers reduced motion. Use SkeletonText for text lines and SkeletonAvatar for avatars; use Spinner when the shape is unknown.",
+  "tokenGroups": [
+    "--base-duration-1000",
+    "--borderRadius-small",
+    "--skeletonLoader-bgColor"
+  ],
+  "references": {
+    "react": [
+      "SkeletonBox.module.css",
+      "Skeleton/SkeletonBox.tsx",
+      "SkeletonBox.docs.json"
+    ],
+    "primer": [
+      "skeleton-box"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "width",
+      "type": "string",
+      "required": false,
+      "description": "Any CSS width; unset fills the container (block)."
+    },
+    {
+      "name": "height",
+      "type": "string",
+      "required": false,
+      "default": "1rem",
+      "description": "Any CSS height; 16px when unset."
+    },
+    {
+      "name": "delay",
+      "type": "enum",
+      "values": [
+        "none",
+        "short",
+        "long",
+        "ms"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Render nothing until the delay passes: short 300ms, long 1000ms, or a number of ms."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "box",
+      "name": "Box",
+      "description": "A block of --skeletonLoader-bgColor with --borderRadius-small corners.",
+      "tokens": [
+        "--skeletonLoader-bgColor",
+        "--borderRadius-small"
+      ]
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "text": "The box is a block: full container width unless width is given, 16px (1rem) tall unless height is given, with --borderRadius-small corners.",
+      "part": "box",
+      "tokens": [
+        "--borderRadius-small"
+      ],
+      "values": [
+        {
+          "name": "defaultHeight",
+          "value": 16,
+          "unit": "px"
+        }
+      ],
+      "source": "SkeletonBox.module.css:11-15; Skeleton/SkeletonBox.tsx:41-48"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "With no reduced-motion preference the fill shimmers: its opacity is masked by a 75deg gradient (opaque to 30%, 65% opaque from 80%) twice the box's width, which slides across it once per --base-duration-1000 (1000ms), forever, with CSS's default ease curve. With reduced motion the box is static.",
+      "tokens": [
+        "--base-duration-1000"
+      ],
+      "values": [
+        {
+          "name": "gradientAngle",
+          "value": 75,
+          "unit": "deg"
+        },
+        {
+          "name": "opaqueUntil",
+          "value": 30,
+          "unit": "percent"
+        },
+        {
+          "name": "fadedFrom",
+          "value": 80,
+          "unit": "percent"
+        },
+        {
+          "name": "fadedAlpha",
+          "value": 0.65,
+          "unit": "ratio"
+        },
+        {
+          "name": "maskSize",
+          "value": 200,
+          "unit": "percent"
+        }
+      ],
+      "motion": {
+        "durationToken": "--base-duration-1000",
+        "properties": [
+          "mask-position"
+        ]
+      },
+      "source": "SkeletonBox.module.css:1-9,16-24"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "shimmer",
+      "text": "The shimmer moves a repeating mask from position 200% to 0%, exactly one tile of width 2w for box width w, so it loops seamlessly: alpha(x) = g(((x / w - 2e) mod 2) / 2), with e the eased progress through each second and g(u) 1 for u <= 0.3, falling linearly to 0.65 at u = 0.8 and 0.65 to u = 1. The timing curve is CSS's default ease (cubic-bezier(0.25, 0.1, 0.25, 1)) applied per iteration.",
+      "motion": {
+        "durationMs": 1000,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "source": "SkeletonBox.module.css:1-9,18-24"
+    },
+    {
+      "text": "With a delay nothing renders (and no space is taken) until 300ms (short), 1000ms (long) or the given ms pass; unmounting first cancels it.",
+      "values": [
+        {
+          "name": "shortDelay",
+          "value": 300,
+          "unit": "ms"
+        },
+        {
+          "name": "longDelay",
+          "value": 1000,
+          "unit": "ms"
+        }
+      ],
+      "source": "Skeleton/SkeletonBox.tsx:22-39"
+    }
+  ],
+  "accessibility": {
+    "role": "none (an empty div)",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "The box exposes nothing to assistive technology: no role, label or busy state. The surrounding region should carry aria-busy or a status message while loading."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The shimmer is a CSS mask animation gated on prefers-reduced-motion: no-preference; a native build reads the platform's reduce-motion setting, and when it animates must keep requesting frames while any skeleton is visible.",
+      "source": "SkeletonBox.module.css:18-24"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the box gains a 1px transparent outline inset 1px, which the system paints in its forced colour so the placeholder stays visible after its fill is removed. Native: in a forced-colour mode, stroke the box 1px in the system text colour.",
+      "source": "SkeletonBox.module.css:26-29"
+    },
+    {
+      "kind": "gotcha",
+      "text": "--skeletonLoader-bgColor is a translucent neutral, so the box tints whatever surface it sits on rather than painting an opaque grey.",
+      "tokens": [
+        "--skeletonLoader-bgColor"
+      ],
+      "source": "SkeletonBox.module.css:14"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 1rem default height, the gradient stops and the 200% mask size are literals; only the duration is a token, and the curve is CSS's default rather than a motion token.",
+      "source": "SkeletonBox.module.css:13,19-22"
+    }
+  ]
+}

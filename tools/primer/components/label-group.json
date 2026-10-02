@@ -1,0 +1,266 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "label-group",
+  "name": "LabelGroup",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React, accessibility-reviewed 2025-01-08. The truncation logic is DOM-measurement driven (IntersectionObserver plus a measured button rect) and carries a TODO to reduce re-renders, so its timing details are implementation, not contract.",
+  "summary": "A row of Labels, Tokens or IssueLabels that either wraps freely or truncates to a count or to the available width, collapsing the rest behind a \"+N\" button that expands them inline or in an overlay. Use it for any list of labels attached to one object.",
+  "tokenGroups": [
+    "--base-size-4",
+    "--base-size-8"
+  ],
+  "references": {
+    "react": [
+      "LabelGroup.module.css",
+      "LabelGroup.tsx",
+      "LabelGroup.docs.json"
+    ],
+    "primer": [
+      "label-group"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "items",
+      "type": "list",
+      "required": true,
+      "description": "The labels, tokens or issue labels to show (children), in order."
+    },
+    {
+      "name": "visibleChildCount",
+      "type": "string",
+      "required": false,
+      "default": null,
+      "description": "Truncation: unset never truncates (the row wraps); \"auto\" shows as many as fit on one line; a number n shows the first n."
+    },
+    {
+      "name": "overflowStyle",
+      "type": "enum",
+      "values": [
+        "overlay",
+        "inline"
+      ],
+      "required": false,
+      "default": "overlay",
+      "description": "How the hidden items are revealed: overlay opens a dialog over the row showing every item; inline unhides them in place and wraps the row. Only matters when visibleChildCount is set."
+    },
+    {
+      "name": "list",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Render as a list (the default ul, or ol) with each item in a list item; false renders a plain container."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A flex row with a 4px gap, line height 1, clipped to its width; it wraps when not truncating or when expanded inline.",
+      "tokens": [
+        "--base-size-4"
+      ]
+    },
+    {
+      "id": "item",
+      "name": "Item wrapper",
+      "description": "Wraps each child when truncating: centres it vertically in a 28px minimum height. Hidden items stay in the row, invisible and moved to its end."
+    },
+    {
+      "id": "toggle",
+      "name": "Toggle",
+      "optional": true,
+      "description": "A small invisible Button reading \"+N\" (N hidden items) after the last visible item; inline mode swaps it for \"Show less\" while expanded."
+    },
+    {
+      "id": "overlay",
+      "name": "Overflow overlay",
+      "optional": true,
+      "description": "Overlay mode only: an anchored dialog over the row with 8px padding, every item wrapping with a 4px gap, and an invisible close IconButton (X) at the top right.",
+      "tokens": [
+        "--base-size-4",
+        "--base-size-8"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "truncation",
+      "value": "none",
+      "default": true,
+      "description": "visibleChildCount unset: every item shows and the row wraps onto as many lines as needed."
+    },
+    {
+      "axis": "truncation",
+      "value": "count",
+      "description": "visibleChildCount = n: items 0..n-1 show, the rest hide behind +N."
+    },
+    {
+      "axis": "truncation",
+      "value": "auto",
+      "description": "visibleChildCount = auto: items that fit fully on one line beside the toggle show, the rest hide behind +N."
+    },
+    {
+      "axis": "overflowStyle",
+      "value": "overlay",
+      "default": true,
+      "description": "+N opens a dialog laid over the row listing every item."
+    },
+    {
+      "axis": "overflowStyle",
+      "value": "inline",
+      "description": "+N unhides every item in place, the row wraps, and the toggle becomes Show less."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is a single non-wrapping flex row with a --base-size-4 (4px) gap, max-width 100% and overflow hidden; with no truncation, or while expanded inline, it wraps instead.",
+      "part": "container",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "source": "LabelGroup.module.css:1-17; LabelGroup.tsx:297-303,344-350"
+    },
+    {
+      "text": "When truncating, every item sits in a wrapper with a 28px minimum height (the small Button's height) so rows do not shift when the toggle appears or the row wraps.",
+      "part": "item",
+      "values": [
+        {
+          "name": "itemMinHeight",
+          "value": 28,
+          "unit": "px"
+        }
+      ],
+      "source": "LabelGroup.module.css:27-36"
+    },
+    {
+      "text": "A hidden item keeps its place in layout but is invisible, ignores the pointer, and is reordered after the toggle (order 9999), so the toggle follows the last visible item and the hidden items fall off the clipped end of the row.",
+      "part": "item",
+      "values": [
+        {
+          "name": "hiddenOrder",
+          "value": 9999,
+          "unit": "count"
+        }
+      ],
+      "source": "LabelGroup.module.css:38-42; LabelGroup.tsx:305-316"
+    },
+    {
+      "text": "In auto mode an item is visible only when its whole box lies inside the container's box shrunk on the right by the toggle button's measured width (an IntersectionObserver rooted on the container, threshold 1, right root margin of minus the button width).",
+      "values": [
+        {
+          "name": "intersectionThreshold",
+          "value": 1,
+          "unit": "ratio"
+        }
+      ],
+      "source": "LabelGroup.tsx:213-247"
+    },
+    {
+      "text": "In count mode items with index below n are visible and the rest hidden; nothing is measured.",
+      "source": "LabelGroup.tsx:165-177,248-252"
+    },
+    {
+      "text": "The overflow overlay is anchored to the +N button (side inside-right, align start, offset -8px on both axes) and is 8px plus the distance from the container's left edge to the button's right edge wide, with 8px padding, so it covers the visible row and the button. Inside, the items wrap with a 4px gap beside a close button that does not shrink and aligns to the top.",
+      "part": "overlay",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "values": [
+        {
+          "name": "overlayPadding",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "LabelGroup.tsx:19-24,76-107,135,141-145; LabelGroup.module.css:44-57"
+    }
+  ],
+  "states": [
+    {
+      "state": "collapsed",
+      "text": "Truncated: some items hidden, the toggle shows +N with N the number hidden. With nothing hidden there is no toggle.",
+      "part": "toggle",
+      "source": "LabelGroup.tsx:42-51,75,136"
+    },
+    {
+      "state": "expanded",
+      "label": "inline",
+      "text": "Inline mode, expanded: every item visible, the row wraps, the toggle reads Show less.",
+      "part": "toggle",
+      "source": "LabelGroup.tsx:42-45,201-204,300"
+    },
+    {
+      "state": "open",
+      "text": "Overlay mode, open: the dialog shows every item over the row; the row underneath keeps its truncated state.",
+      "part": "overlay",
+      "source": "LabelGroup.tsx:76-107"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Inline +N: unhide every item, wrap the row, and move focus to the first focusable element inside the first previously hidden item, or to the Show less button when that item has none.",
+      "source": "LabelGroup.tsx:201-204,255-289"
+    },
+    {
+      "text": "Inline Show less: collapse, re-apply the count (count mode) or re-measure (auto mode), then focus the +N button about 10ms later, after it has re-rendered.",
+      "values": [
+        {
+          "name": "refocusDelay",
+          "value": 10,
+          "unit": "ms"
+        }
+      ],
+      "source": "LabelGroup.tsx:185-199,206-212"
+    },
+    {
+      "text": "Overlay +N opens the dialog; the close button, Escape and an outside click close it (AnchoredOverlay's dismissal). The dialog does not trap arrow-key focus (its focus zone is disabled).",
+      "source": "LabelGroup.tsx:76-105,179-183"
+    },
+    {
+      "text": "Auto mode re-measures whenever the container or the toggle's width or right edge changes; the toggle's rect is measured each time the button mounts and stored, which triggers another pass.",
+      "source": "LabelGroup.tsx:147-163,206-253"
+    }
+  ],
+  "accessibility": {
+    "role": "list (ul by default) with listitem children; the overlay is a modal dialog",
+    "minTargetPx": 28,
+    "keyboard": [
+      "Tab reaches each visible interactive item, then the toggle; hidden items are not reachable (visibility hidden).",
+      "Enter or Space on +N expands; on Show less collapses.",
+      "In the overlay, Tab moves through the items and the close button; Escape closes it."
+    ],
+    "semantics": [
+      "The toggle's accessible name is \"Show +N more\" (visually hidden); the visible \"+N\" is aria-hidden.",
+      "The overlay is role dialog, aria-modal, labelled \"All <total> labels\".",
+      "The close button is labelled Close."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "Auto truncation needs measurement before layout settles: the browser lays out every item, an IntersectionObserver reports which fit, React re-renders, and the measured toggle width feeds back into the next observation. An immediate-mode build should measure each item's width (and the toggle's \"+N\" width for the worst-case N) first, then decide visibility in the same frame: walk the items accumulating width plus 4px gaps and hide those that do not fit within container width minus toggle width.",
+      "source": "LabelGroup.tsx:147-163,213-247"
+    },
+    {
+      "kind": "inferred",
+      "text": "Because a hidden item is moved to the end of the row, a later, narrower item can slide into the gap and become visible, so auto mode is a greedy fit that can skip an item rather than a strict prefix. Count mode is always a prefix. Decide deliberately which a native build replicates; a strict prefix is the less surprising choice.",
+      "source": "LabelGroup.module.css:38-42; LabelGroup.tsx:213-232"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The overlay renders a second copy of every item, not the hidden ones alone; interactive items exist twice while it is open.",
+      "source": "LabelGroup.tsx:97-98,339"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 8px overlay padding is a JavaScript constant used in the width maths (commented as --base-size-8), the 28px item minimum height mirrors the small Button, and the 10ms refocus delay is a timer.",
+      "source": "LabelGroup.tsx:135,195-198; LabelGroup.module.css:35"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The +N count and the overlay label use different numbers: +N is the hidden count, \"All <total> labels\" is the total.",
+      "source": "LabelGroup.tsx:48-49,95"
+    }
+  ]
+}

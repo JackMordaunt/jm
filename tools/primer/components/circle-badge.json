@@ -1,0 +1,168 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "circle-badge",
+  "name": "CircleBadge",
+  "status": "deprecated",
+  "statusNote": "Deprecated in Primer React and slated for removal in the next major; primer.style still documents it. Primer names no replacement component: callers are told to draw the octicon directly with their own styling. Build it only to match existing screens (Marketplace and integration logos).",
+  "summary": "A large white disc with a soft shadow that frames a logo or octicon, used to connect third-party services visually. Do not choose it for new work.",
+  "tokenGroups": [
+    "--bgColor-default",
+    "--shadow-resting-medium"
+  ],
+  "references": {
+    "react": [
+      "CircleBadge.module.css",
+      "CircleBadge.tsx",
+      "CircleBadge.docs.json"
+    ],
+    "primer": [
+      "circle-badge"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "Diameter 56, 96 or 128px; ignored when size is set."
+    },
+    {
+      "name": "size",
+      "type": "number",
+      "required": false,
+      "description": "Diameter in px; overrides variant."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Sit inline in text instead of as a block."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "A CircleBadge.Icon (an octicon) or an image, centred in the disc."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "disc",
+      "name": "Disc",
+      "description": "A circle of the given diameter in --bgColor-default with --shadow-resting-medium.",
+      "tokens": [
+        "--bgColor-default",
+        "--shadow-resting-medium"
+      ]
+    },
+    {
+      "id": "icon",
+      "name": "Icon",
+      "optional": true,
+      "description": "CircleBadge.Icon: an octicon centred in the disc, no wider than 60% and no taller than 55% of it, keeping its aspect ratio."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "56px diameter."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "96px diameter."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "128px diameter."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The disc is a square of side 56, 96 or 128px (small, medium, large), or the numeric size, with a 50% radius; its content is centred on both axes.",
+      "part": "disc",
+      "values": [
+        {
+          "name": "small",
+          "value": 56,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 96,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 128,
+          "unit": "px"
+        }
+      ],
+      "source": "CircleBadge.tsx:9-29; CircleBadge.module.css:1-7"
+    },
+    {
+      "text": "The icon is limited to 60% of the disc's width and 55% of its height, height auto.",
+      "part": "icon",
+      "values": [
+        {
+          "name": "iconMaxWidth",
+          "value": 60,
+          "unit": "percent"
+        },
+        {
+          "name": "iconMaxHeight",
+          "value": 55,
+          "unit": "percent"
+        }
+      ],
+      "source": "CircleBadge.module.css:14-18"
+    },
+    {
+      "text": "Block by default (a flex box on its own line); inline makes it an inline box.",
+      "source": "CircleBadge.module.css:2,9-11; CircleBadge.tsx:36"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "One static appearance; no hover, focus or press styling even when rendered as a link.",
+      "source": "CircleBadge.module.css:1-18"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Non-interactive by default (a div); a caller may render it as a link, which the module does not style.",
+      "source": "CircleBadge.tsx:31-39"
+    }
+  ],
+  "accessibility": {
+    "role": "none (div); link when rendered as an anchor",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "The disc has no name; give the icon an aria-label (e.g. \"Launch badge\") or the image alt text."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Primer's deprecation names no replacement component, so there is no replacedBy; GitHub's guidance is a plain octicon import with custom styling.",
+      "source": "CircleBadge.tsx:49-53; CircleBadge.docs.json"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The three diameters are a JavaScript map, not tokens, and the icon limits are CSS percentages.",
+      "source": "CircleBadge.tsx:9-13; CircleBadge.module.css:16-17"
+    }
+  ]
+}

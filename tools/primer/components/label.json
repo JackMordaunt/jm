@@ -1,0 +1,299 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "label",
+  "name": "Label",
+  "status": "alpha",
+  "statusNote": "Label has been stable for years; the alpha flag reflects Primer React's review process, not an unsettled API. It was accessibility-reviewed on 2025-01-08.",
+  "summary": "A small outlined pill of text that adds metadata or a status to an object (Beta, Private, Required). Choose it over StateLabel when the label is not the object's open/closed state, over Token when the user cannot select or remove it, and over IssueLabel for user-defined colours.",
+  "tokenGroups": [
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-20",
+    "--base-size-24",
+    "--base-text-weight-medium",
+    "--bgColor-accent-emphasis",
+    "--bgColor-attention-emphasis",
+    "--bgColor-done-emphasis",
+    "--bgColor-severe-emphasis",
+    "--bgColor-sponsors-emphasis",
+    "--bgColor-success-emphasis",
+    "--borderColor-danger-emphasis",
+    "--borderColor-default",
+    "--borderColor-muted",
+    "--borderRadius-full",
+    "--borderWidth-thin",
+    "--fgColor-accent",
+    "--fgColor-attention",
+    "--fgColor-danger",
+    "--fgColor-default",
+    "--fgColor-done",
+    "--fgColor-muted",
+    "--fgColor-severe",
+    "--fgColor-sponsors",
+    "--fgColor-success",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "Label.module.css",
+      "Label.tsx",
+      "Label.docs.json"
+    ],
+    "primer": [
+      "label"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": "The label's content (children). Short: one or two words."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "default",
+        "primary",
+        "secondary",
+        "accent",
+        "success",
+        "attention",
+        "severe",
+        "danger",
+        "done",
+        "sponsors"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "Text and border colour."
+    },
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "large"
+      ],
+      "required": false,
+      "default": "small",
+      "description": "20px or 24px tall."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A fixed-height pill with a 1px border in the variant's colour and no fill; the text is centred vertically.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderRadius-full"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "One line of small body text at medium weight with a line height of 1, in the variant's text colour.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-medium"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "default",
+      "default": true,
+      "description": "Default text in a default border.",
+      "tokens": [
+        "--fgColor-default",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "primary",
+      "description": "Default text in a border drawn in the default text colour: the strongest neutral outline.",
+      "tokens": [
+        "--fgColor-default"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "secondary",
+      "description": "Muted text in a muted border: the quietest label.",
+      "tokens": [
+        "--fgColor-muted",
+        "--borderColor-muted"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "accent",
+      "description": "Accent text in an accent-emphasis border.",
+      "tokens": [
+        "--fgColor-accent",
+        "--bgColor-accent-emphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "success",
+      "description": "Success text in a success-emphasis border.",
+      "tokens": [
+        "--fgColor-success",
+        "--bgColor-success-emphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "attention",
+      "description": "Attention text in an attention-emphasis border.",
+      "tokens": [
+        "--fgColor-attention",
+        "--bgColor-attention-emphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "severe",
+      "description": "Severe text in a severe-emphasis border.",
+      "tokens": [
+        "--fgColor-severe",
+        "--bgColor-severe-emphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "danger",
+      "description": "Danger text in a danger-emphasis border.",
+      "tokens": [
+        "--fgColor-danger",
+        "--borderColor-danger-emphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "done",
+      "description": "Done text in a done-emphasis border.",
+      "tokens": [
+        "--fgColor-done",
+        "--bgColor-done-emphasis"
+      ]
+    },
+    {
+      "axis": "variant",
+      "value": "sponsors",
+      "description": "Sponsors text in a sponsors-emphasis border.",
+      "tokens": [
+        "--fgColor-sponsors",
+        "--bgColor-sponsors-emphasis"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "small",
+      "default": true,
+      "description": "20px tall, 6px side padding.",
+      "tokens": [
+        "--base-size-20",
+        "--base-size-6"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "24px tall, 8px side padding; the text stays small body size.",
+      "tokens": [
+        "--base-size-24",
+        "--base-size-8"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "Height is exactly --base-size-20 (20px) at small and --base-size-24 (24px) at large, border included; there is no vertical padding and the text is centred in the height.",
+      "tokens": [
+        "--base-size-20",
+        "--base-size-24"
+      ],
+      "source": "Label.module.css:2,13,15-23"
+    },
+    {
+      "text": "Side padding is --base-size-6 (6px) at small and --base-size-8 (8px) at large; width hugs the text.",
+      "tokens": [
+        "--base-size-6",
+        "--base-size-8"
+      ],
+      "source": "Label.module.css:15-23"
+    },
+    {
+      "text": "Text is small body size (12px at both sizes), medium weight, line height 1, never wrapping.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-medium"
+      ],
+      "values": [
+        {
+          "name": "lineHeight",
+          "value": 1,
+          "unit": "ratio"
+        }
+      ],
+      "source": "Label.module.css:3-8"
+    },
+    {
+      "text": "The border is 1px solid in the variant's border colour with a full radius; the background is transparent, so the label shows the surface it sits on.",
+      "tokens": [
+        "--borderWidth-thin",
+        "--borderRadius-full"
+      ],
+      "source": "Label.module.css:9-12,25-78"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Label has one static appearance per variant: no hover, press, focus or disabled styling.",
+      "source": "Label.module.css:1-79"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Label is not interactive. A caller may render it as another element (a link, say) but the module adds no interaction styling for that.",
+      "source": "Label.tsx:27-41"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a generic inline span; its text is read in reading order)",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "The text is the only content; colour carries no meaning on its own, so the text must say the status."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Most coloured variants draw their border in a --bgColor-<role>-emphasis token, not the --borderColor-<role>-emphasis one that also exists; danger alone reads --borderColor-danger-emphasis, and primary's border is --fgColor-default. Read exactly the token listed per variant, because themes bind the bg and border emphasis tokens apart.",
+      "tokens": [
+        "--bgColor-accent-emphasis",
+        "--borderColor-danger-emphasis",
+        "--fgColor-default"
+      ],
+      "source": "Label.module.css:29-78"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Label does not read the --label-<hue>-* component tokens; those belong to IssueLabel. Label composes functional tokens only.",
+      "source": "Label.module.css:1-79"
+    },
+    {
+      "kind": "web-only",
+      "text": "Long text never wraps and never truncates: white-space is nowrap and there is no max-width or overflow rule, so the pill grows and overflows its parent. A native build that needs a bound must add its own ellipsis.",
+      "source": "Label.module.css:8"
+    }
+  ]
+}

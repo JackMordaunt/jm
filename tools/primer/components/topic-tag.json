@@ -1,0 +1,179 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "topic-tag",
+  "name": "TopicTag",
+  "status": "draft",
+  "statusNote": "Draft: exported from @primer/react/experimental, not accessibility-reviewed, no stories and no primer.style page. It replaces the old .topic-tag CSS class used for repository topics.",
+  "summary": "A blue pill linking to a repository topic. It is a link by default; use TopicTag.Group to lay several out. Choose Label for non-navigating metadata.",
+  "tokenGroups": [
+    "--base-size-2",
+    "--base-size-8",
+    "--base-size-12",
+    "--base-text-weight-semibold",
+    "--bgColor-accent-emphasis",
+    "--bgColor-accent-muted",
+    "--borderRadius-full",
+    "--borderWidth-thin",
+    "--fgColor-accent",
+    "--fgColor-onEmphasis",
+    "--text-body-lineHeight-small",
+    "--text-body-size-small",
+    "--topicTag-borderColor"
+  ],
+  "references": {
+    "react": [
+      "TopicTag.module.css",
+      "TopicTag.tsx",
+      "TopicTagGroup.module.css",
+      "TopicTagGroup.tsx",
+      "TopicTag/index.ts",
+      "TopicTag.docs.json",
+      "buttonReset.css"
+    ],
+    "primer": []
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": "The topic name (children)."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "The topic's page; the default element is a link."
+    },
+    {
+      "name": "element",
+      "type": "enum",
+      "values": [
+        "link",
+        "button",
+        "span"
+      ],
+      "required": false,
+      "default": "link",
+      "description": "The as prop: any element; link and button get a pointer cursor and no text selection."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A full-radius accent-muted pill with a 1px --topicTag-borderColor border (transparent except in high-contrast themes).",
+      "tokens": [
+        "--bgColor-accent-muted",
+        "--borderRadius-full",
+        "--borderWidth-thin",
+        "--topicTag-borderColor"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "Small semibold accent text on one line.",
+      "tokens": [
+        "--fgColor-accent",
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--text-body-lineHeight-small"
+      ]
+    },
+    {
+      "id": "group",
+      "name": "Group",
+      "optional": true,
+      "description": "TopicTag.Group: a wrapping row with 2px between tags and 8px between lines.",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-8"
+      ]
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "text": "Padding is --base-size-2 (2px) top and bottom and --base-size-12 (12px) at the sides around a --text-body-lineHeight-small line of --text-body-size-small text, plus the 1px border: 25.5px tall. Width hugs the text, which never wraps.",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-12",
+        "--text-body-lineHeight-small",
+        "--text-body-size-small",
+        "--borderWidth-thin"
+      ],
+      "source": "TopicTag.module.css:13-23"
+    },
+    {
+      "text": "A group is a wrapping flex row with a --base-size-2 (2px) column gap and a --base-size-8 (8px) row gap.",
+      "part": "group",
+      "tokens": [
+        "--base-size-2",
+        "--base-size-8"
+      ],
+      "source": "TopicTagGroup.module.css:1-6; TopicTagGroup.tsx:7-13"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "--fgColor-accent text on --bgColor-accent-muted.",
+      "tokens": [
+        "--fgColor-accent",
+        "--bgColor-accent-muted"
+      ],
+      "source": "TopicTag.module.css:14-15"
+    },
+    {
+      "state": "hovered",
+      "text": "Fills --bgColor-accent-emphasis with --fgColor-onEmphasis text, with no transition. The hover rule applies whatever the element, so even a static span tag changes on hover.",
+      "tokens": [
+        "--bgColor-accent-emphasis",
+        "--fgColor-onEmphasis"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "TopicTag.module.css:25-28"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "As a link it navigates, with the underline removed; as a button it is reset to an unstyled inline row before the tag styles apply. Link and button show a pointer cursor and disable text selection.",
+      "source": "TopicTag.module.css:1-11,30-34; TopicTag.tsx:17-24; buttonReset.css:1-18"
+    }
+  ],
+  "accessibility": {
+    "role": "link (default); button or none by the element chosen",
+    "minTargetPx": 25.5,
+    "keyboard": [
+      "Tab focuses a link or button tag.",
+      "Enter follows a link; Enter or Space activates a button."
+    ],
+    "semantics": [
+      "The name is the topic text.",
+      "The group is a plain container with no list semantics."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The module draws no focus ring and no pressed state; keyboard focus shows the browser's default outline. A native build must draw a focus ring (the foundations' --focus-outline-color outline).",
+      "source": "TopicTag.module.css:13-35"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "--topicTag-borderColor is transparent in the standard themes and a solid accent blue in the high-contrast themes, where it gives the pill an outline.",
+      "tokens": [
+        "--topicTag-borderColor"
+      ],
+      "source": "TopicTag.module.css:21"
+    },
+    {
+      "kind": "inferred",
+      "text": "The 25.5px height is computed from 12px text at the 1.625 small line height (19.5px) plus 2px padding and 1px border each side; no rule fixes the height, so it follows the line box.",
+      "source": "TopicTag.module.css:16-21"
+    }
+  ]
+}

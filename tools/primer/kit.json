@@ -79,6 +79,33 @@
       ]
     },
     {
+      "id": "avatar",
+      "name": "Avatar",
+      "status": "alpha",
+      "summary": "A user's or organisation's image, round for people and rounded-square for organisations, bots and apps. Use AvatarStack for several and SkeletonAvatar while the image's data loads.",
+      "tokenGroups": [
+        "--avatar-borderColor",
+        "--borderRadius-medium",
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ]
+    },
+    {
+      "id": "avatar-stack",
+      "name": "AvatarStack",
+      "status": "alpha",
+      "summary": "Up to five overlapping avatars that represent a group (assignees, contributors) and fan out on hover or focus to show them all. Use it where space allows one avatar's height and a short run of width.",
+      "tokenGroups": [
+        "--avatar-borderColor",
+        "--base-size-4",
+        "--borderRadius-medium",
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ]
+    },
+    {
       "id": "banner",
       "name": "Banner",
       "status": "alpha",
@@ -370,6 +397,16 @@
       ]
     },
     {
+      "id": "circle-badge",
+      "name": "CircleBadge",
+      "status": "deprecated",
+      "summary": "A large white disc with a soft shadow that frames a logo or octicon, used to connect third-party services visually. Do not choose it for new work.",
+      "tokenGroups": [
+        "--bgColor-default",
+        "--shadow-resting-medium"
+      ]
+    },
+    {
       "id": "confirmation-dialog",
       "name": "ConfirmationDialog",
       "status": "alpha",
@@ -609,6 +646,137 @@
       ]
     },
     {
+      "id": "issue-label",
+      "name": "IssueLabel",
+      "status": "alpha",
+      "summary": "A filled pill for a GitHub issue label in one of 19 named label hues, or in an arbitrary hex colour with black or white text. Choose it for user-defined labels; choose Label for fixed metadata and Token or IssueLabelToken when the label is removable.",
+      "tokenGroups": [
+        "--base-size-8",
+        "--base-size-20",
+        "--base-text-weight-semibold",
+        "--borderRadius-full",
+        "--boxShadow-thin",
+        "--focus-outline-color",
+        "--focus-outlineColor",
+        "--label-auburn-bgColor-active",
+        "--label-auburn-bgColor-hover",
+        "--label-auburn-bgColor-rest",
+        "--label-auburn-fgColor-active",
+        "--label-auburn-fgColor-hover",
+        "--label-auburn-fgColor-rest",
+        "--label-blue-bgColor-active",
+        "--label-blue-bgColor-hover",
+        "--label-blue-bgColor-rest",
+        "--label-blue-fgColor-active",
+        "--label-blue-fgColor-hover",
+        "--label-blue-fgColor-rest",
+        "--label-brown-bgColor-active",
+        "--label-brown-bgColor-hover",
+        "--label-brown-bgColor-rest",
+        "--label-brown-fgColor-active",
+        "--label-brown-fgColor-hover",
+        "--label-brown-fgColor-rest",
+        "--label-coral-bgColor-active",
+        "--label-coral-bgColor-hover",
+        "--label-coral-bgColor-rest",
+        "--label-coral-fgColor-active",
+        "--label-coral-fgColor-hover",
+        "--label-coral-fgColor-rest",
+        "--label-cyan-bgColor-active",
+        "--label-cyan-bgColor-hover",
+        "--label-cyan-bgColor-rest",
+        "--label-cyan-fgColor-active",
+        "--label-cyan-fgColor-hover",
+        "--label-cyan-fgColor-rest",
+        "--label-gray-bgColor-active",
+        "--label-gray-bgColor-hover",
+        "--label-gray-bgColor-rest",
+        "--label-gray-fgColor-active",
+        "--label-gray-fgColor-hover",
+        "--label-gray-fgColor-rest",
+        "--label-green-bgColor-active",
+        "--label-green-bgColor-hover",
+        "--label-green-bgColor-rest",
+        "--label-green-fgColor-active",
+        "--label-green-fgColor-hover",
+        "--label-green-fgColor-rest",
+        "--label-indigo-bgColor-active",
+        "--label-indigo-bgColor-hover",
+        "--label-indigo-bgColor-rest",
+        "--label-indigo-fgColor-active",
+        "--label-indigo-fgColor-hover",
+        "--label-indigo-fgColor-rest",
+        "--label-lemon-bgColor-active",
+        "--label-lemon-bgColor-hover",
+        "--label-lemon-bgColor-rest",
+        "--label-lemon-fgColor-active",
+        "--label-lemon-fgColor-hover",
+        "--label-lemon-fgColor-rest",
+        "--label-lime-bgColor-active",
+        "--label-lime-bgColor-hover",
+        "--label-lime-bgColor-rest",
+        "--label-lime-fgColor-active",
+        "--label-lime-fgColor-hover",
+        "--label-lime-fgColor-rest",
+        "--label-olive-bgColor-active",
+        "--label-olive-bgColor-hover",
+        "--label-olive-bgColor-rest",
+        "--label-olive-fgColor-active",
+        "--label-olive-fgColor-hover",
+        "--label-olive-fgColor-rest",
+        "--label-orange-bgColor-active",
+        "--label-orange-bgColor-hover",
+        "--label-orange-bgColor-rest",
+        "--label-orange-fgColor-active",
+        "--label-orange-fgColor-hover",
+        "--label-orange-fgColor-rest",
+        "--label-pine-bgColor-active",
+        "--label-pine-bgColor-hover",
+        "--label-pine-bgColor-rest",
+        "--label-pine-fgColor-active",
+        "--label-pine-fgColor-hover",
+        "--label-pine-fgColor-rest",
+        "--label-pink-bgColor-active",
+        "--label-pink-bgColor-hover",
+        "--label-pink-bgColor-rest",
+        "--label-pink-fgColor-active",
+        "--label-pink-fgColor-hover",
+        "--label-pink-fgColor-rest",
+        "--label-plum-bgColor-active",
+        "--label-plum-bgColor-hover",
+        "--label-plum-bgColor-rest",
+        "--label-plum-fgColor-active",
+        "--label-plum-fgColor-hover",
+        "--label-plum-fgColor-rest",
+        "--label-purple-bgColor-active",
+        "--label-purple-bgColor-hover",
+        "--label-purple-bgColor-rest",
+        "--label-purple-fgColor-active",
+        "--label-purple-fgColor-hover",
+        "--label-purple-fgColor-rest",
+        "--label-red-bgColor-active",
+        "--label-red-bgColor-hover",
+        "--label-red-bgColor-rest",
+        "--label-red-fgColor-active",
+        "--label-red-fgColor-hover",
+        "--label-red-fgColor-rest",
+        "--label-teal-bgColor-active",
+        "--label-teal-bgColor-hover",
+        "--label-teal-bgColor-rest",
+        "--label-teal-fgColor-active",
+        "--label-teal-fgColor-hover",
+        "--label-teal-fgColor-rest",
+        "--label-yellow-bgColor-active",
+        "--label-yellow-bgColor-hover",
+        "--label-yellow-bgColor-rest",
+        "--label-yellow-fgColor-active",
+        "--label-yellow-fgColor-hover",
+        "--label-yellow-fgColor-rest",
+        "--text-body-lineHeight-small",
+        "--text-body-size-small"
+      ]
+    },
+    {
       "id": "keybinding-hint",
       "name": "KeybindingHint",
       "status": "draft",
@@ -631,6 +799,50 @@
         "--fgColor-muted",
         "--fgColor-onEmphasis",
         "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "label",
+      "name": "Label",
+      "status": "alpha",
+      "summary": "A small outlined pill of text that adds metadata or a status to an object (Beta, Private, Required). Choose it over StateLabel when the label is not the object's open/closed state, over Token when the user cannot select or remove it, and over IssueLabel for user-defined colours.",
+      "tokenGroups": [
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-20",
+        "--base-size-24",
+        "--base-text-weight-medium",
+        "--bgColor-accent-emphasis",
+        "--bgColor-attention-emphasis",
+        "--bgColor-done-emphasis",
+        "--bgColor-severe-emphasis",
+        "--bgColor-sponsors-emphasis",
+        "--bgColor-success-emphasis",
+        "--borderColor-danger-emphasis",
+        "--borderColor-default",
+        "--borderColor-muted",
+        "--borderRadius-full",
+        "--borderWidth-thin",
+        "--fgColor-accent",
+        "--fgColor-attention",
+        "--fgColor-danger",
+        "--fgColor-default",
+        "--fgColor-done",
+        "--fgColor-muted",
+        "--fgColor-severe",
+        "--fgColor-sponsors",
+        "--fgColor-success",
+        "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "label-group",
+      "name": "LabelGroup",
+      "status": "alpha",
+      "summary": "A row of Labels, Tokens or IssueLabels that either wraps freely or truncates to a count or to the available width, collapsing the rest behind a \"+N\" button that expands them inline or in an overlay. Use it for any list of labels attached to one object.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-8"
       ]
     },
     {
@@ -727,6 +939,26 @@
         "--overlay-height-medium",
         "--overlay-height-large",
         "--overlay-height-xlarge"
+      ]
+    },
+    {
+      "id": "progress-bar",
+      "name": "ProgressBar",
+      "status": "alpha",
+      "summary": "A thin horizontal bar showing determinate progress, either one fill or several coloured segments (ProgressBar.Item) for a breakdown such as language shares. Use Spinner when progress is unknown.",
+      "tokenGroups": [
+        "--bgColor-accent-emphasis",
+        "--bgColor-attention-emphasis",
+        "--bgColor-danger-emphasis",
+        "--bgColor-done-emphasis",
+        "--bgColor-neutral-emphasis",
+        "--bgColor-severe-emphasis",
+        "--bgColor-sponsors-emphasis",
+        "--bgColor-success-emphasis",
+        "--base-duration-1000",
+        "--borderRadius-small",
+        "--progressBar-track-bgColor",
+        "--progressBar-track-borderColor"
       ]
     },
     {
@@ -842,6 +1074,69 @@
       ]
     },
     {
+      "id": "skeleton-avatar",
+      "name": "SkeletonAvatar",
+      "status": "alpha",
+      "summary": "A shimmering placeholder of an Avatar's exact size and shape, shown while the avatar's data loads. Pair it with SkeletonText for a loading list row.",
+      "tokenGroups": [
+        "--base-duration-1000",
+        "--borderRadius-medium",
+        "--skeletonLoader-bgColor",
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ]
+    },
+    {
+      "id": "skeleton-box",
+      "name": "SkeletonBox",
+      "status": "alpha",
+      "summary": "A muted rounded rectangle that stands in for content of known shape while it loads, shimmering unless the user prefers reduced motion. Use SkeletonText for text lines and SkeletonAvatar for avatars; use Spinner when the shape is unknown.",
+      "tokenGroups": [
+        "--base-duration-1000",
+        "--borderRadius-small",
+        "--skeletonLoader-bgColor"
+      ]
+    },
+    {
+      "id": "skeleton-text",
+      "name": "SkeletonText",
+      "status": "alpha",
+      "summary": "Placeholder bars the height of a text style's glyphs, spaced to that style's line height, standing in for one or more lines of text while it loads. Use SkeletonBox for non-text shapes.",
+      "tokenGroups": [
+        "--base-duration-1000",
+        "--borderRadius-medium",
+        "--borderRadius-small",
+        "--skeletonLoader-bgColor",
+        "--text-body-lineHeight-large",
+        "--text-body-lineHeight-medium",
+        "--text-body-lineHeight-small",
+        "--text-body-size-large",
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--text-display-lineHeight",
+        "--text-display-size",
+        "--text-subtitle-lineHeight",
+        "--text-subtitle-size",
+        "--text-title-lineHeight-large",
+        "--text-title-lineHeight-medium",
+        "--text-title-lineHeight-small",
+        "--text-title-size-large",
+        "--text-title-size-medium",
+        "--text-title-size-small"
+      ]
+    },
+    {
+      "id": "spinner",
+      "name": "Spinner",
+      "status": "alpha",
+      "summary": "An indeterminate loading indicator: a rotating quarter arc over a faint ring. Use it when the wait has no known length; use ProgressBar when progress is measurable and skeletons when the shape of the coming content is known.",
+      "tokenGroups": [
+        "--base-duration-1000",
+        "--base-easing-linear"
+      ]
+    },
+    {
       "id": "split-page-layout",
       "name": "SplitPageLayout",
       "status": "alpha",
@@ -882,6 +1177,35 @@
         "--viewportRange-wide",
         "--breakpoint-medium",
         "--breakpoint-xxlarge"
+      ]
+    },
+    {
+      "id": "state-label",
+      "name": "StateLabel",
+      "status": "alpha",
+      "summary": "A filled pill with an octicon that states an issue's, pull request's or alert's lifecycle state (Open, Closed, Merged, Draft...). Choose it over Label only for that state; the status picks both colour and icon.",
+      "tokenGroups": [
+        "--base-size-4",
+        "--base-size-8",
+        "--base-size-12",
+        "--base-text-weight-semibold",
+        "--bgColor-attention-emphasis",
+        "--bgColor-closed-emphasis",
+        "--bgColor-done-emphasis",
+        "--bgColor-draft-emphasis",
+        "--bgColor-neutral-emphasis",
+        "--bgColor-open-emphasis",
+        "--borderColor-attention-emphasis",
+        "--borderColor-closed-emphasis",
+        "--borderColor-done-emphasis",
+        "--borderColor-draft-emphasis",
+        "--borderColor-neutral-emphasis",
+        "--borderColor-open-emphasis",
+        "--borderRadius-full",
+        "--boxShadow-thin",
+        "--fgColor-onEmphasis",
+        "--text-body-size-medium",
+        "--text-body-size-small"
       ]
     },
     {
@@ -1043,6 +1367,37 @@
       ]
     },
     {
+      "id": "token",
+      "name": "Token",
+      "status": "alpha",
+      "summary": "A compact pill for one selected value (a user, a label, a filter) that may be clickable, selectable and removable. Choose it over Label when the user acts on the value; use IssueLabelToken, its sibling, when the value is a GitHub label with an arbitrary colour.",
+      "tokenGroups": [
+        "--base-size-2",
+        "--base-size-4",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-12",
+        "--base-size-16",
+        "--base-size-20",
+        "--base-size-24",
+        "--base-size-32",
+        "--base-text-lineHeight-normal",
+        "--base-text-weight-semibold",
+        "--bgColor-neutral-muted",
+        "--borderColor-emphasis",
+        "--borderColor-muted",
+        "--borderRadius-full",
+        "--borderWidth-thin",
+        "--control-transparent-bgColor-active",
+        "--control-transparent-bgColor-hover",
+        "--fgColor-default",
+        "--fgColor-muted",
+        "--shadow-resting-medium",
+        "--text-body-size-medium",
+        "--text-body-size-small"
+      ]
+    },
+    {
       "id": "tooltip",
       "name": "Tooltip",
       "status": "beta",
@@ -1057,6 +1412,27 @@
         "--text-body-shorthand-small",
         "--base-size-6",
         "--base-size-8"
+      ]
+    },
+    {
+      "id": "topic-tag",
+      "name": "TopicTag",
+      "status": "draft",
+      "summary": "A blue pill linking to a repository topic. It is a link by default; use TopicTag.Group to lay several out. Choose Label for non-navigating metadata.",
+      "tokenGroups": [
+        "--base-size-2",
+        "--base-size-8",
+        "--base-size-12",
+        "--base-text-weight-semibold",
+        "--bgColor-accent-emphasis",
+        "--bgColor-accent-muted",
+        "--borderRadius-full",
+        "--borderWidth-thin",
+        "--fgColor-accent",
+        "--fgColor-onEmphasis",
+        "--text-body-lineHeight-small",
+        "--text-body-size-small",
+        "--topicTag-borderColor"
       ]
     },
     {

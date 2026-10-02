@@ -1,0 +1,315 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "progress-bar",
+  "name": "ProgressBar",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React, accessibility-reviewed 2025-01-08. Its docs still list the default bg as 'bg.successInverse', a pre-token name; the code's default is 'success.emphasis'.",
+  "summary": "A thin horizontal bar showing determinate progress, either one fill or several coloured segments (ProgressBar.Item) for a breakdown such as language shares. Use Spinner when progress is unknown.",
+  "tokenGroups": [
+    "--bgColor-accent-emphasis",
+    "--bgColor-attention-emphasis",
+    "--bgColor-danger-emphasis",
+    "--bgColor-done-emphasis",
+    "--bgColor-neutral-emphasis",
+    "--bgColor-severe-emphasis",
+    "--bgColor-sponsors-emphasis",
+    "--bgColor-success-emphasis",
+    "--base-duration-1000",
+    "--borderRadius-small",
+    "--progressBar-track-bgColor",
+    "--progressBar-track-borderColor"
+  ],
+  "references": {
+    "react": [
+      "ProgressBar.module.css",
+      "ProgressBar.tsx",
+      "ProgressBar.docs.json"
+    ],
+    "primer": [
+      "progress-bar"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "progress",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "Percent filled, 0-100, for the single-fill form. Must not be combined with items."
+    },
+    {
+      "name": "bg",
+      "type": "string",
+      "required": false,
+      "default": "success.emphasis",
+      "description": "Fill colour as '<role>' or '<role>.<strength>', read as --bgColor-<role>-<strength> (strength defaults to emphasis)."
+    },
+    {
+      "name": "barSize",
+      "type": "enum",
+      "values": [
+        "small",
+        "default",
+        "large"
+      ],
+      "required": false,
+      "default": "default",
+      "description": "Bar height 5, 8 or 10px."
+    },
+    {
+      "name": "inline",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Inline instead of block; the caller must then give it a width."
+    },
+    {
+      "name": "animated",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Shimmer the single fill (not items) to show ongoing work."
+    },
+    {
+      "name": "items",
+      "type": "list",
+      "required": false,
+      "description": "ProgressBar.Item segments, each with progress, bg and an aria-label, laid side by side."
+    },
+    {
+      "name": "label",
+      "type": "string",
+      "required": false,
+      "description": "aria-label for the single fill (or each item's own)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "The full-width bar: --progressBar-track-bgColor with a 1px inset --progressBar-track-borderColor outline and a small radius, clipping its segments.",
+      "tokens": [
+        "--progressBar-track-bgColor",
+        "--progressBar-track-borderColor",
+        "--borderRadius-small"
+      ]
+    },
+    {
+      "id": "segment",
+      "name": "Segment",
+      "description": "A fill as wide as its progress percent of the track, in --bgColor-<role>-<strength>; segments sit in order with 2px gaps, square-ended (the track's radius clips the ends).",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "barSize",
+      "value": "small",
+      "description": "5px tall."
+    },
+    {
+      "axis": "barSize",
+      "value": "default",
+      "default": true,
+      "description": "8px tall."
+    },
+    {
+      "axis": "barSize",
+      "value": "large",
+      "description": "10px tall."
+    },
+    {
+      "axis": "bg",
+      "value": "role",
+      "description": "Any role the bgColor family has: success (default), accent, attention, severe, danger, done, sponsors, neutral, and so on, at emphasis unless a strength is given.",
+      "tokens": [
+        "--bgColor-success-emphasis",
+        "--bgColor-accent-emphasis",
+        "--bgColor-attention-emphasis",
+        "--bgColor-severe-emphasis",
+        "--bgColor-danger-emphasis",
+        "--bgColor-done-emphasis",
+        "--bgColor-sponsors-emphasis",
+        "--bgColor-neutral-emphasis"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The track is a flex row 8px tall (5px small, 10px large), as wide as its container (block) or as the caller sets (inline), with --borderRadius-small corners and its overflow clipped.",
+      "part": "track",
+      "tokens": [
+        "--borderRadius-small"
+      ],
+      "values": [
+        {
+          "name": "heightSmall",
+          "value": 5,
+          "unit": "px"
+        },
+        {
+          "name": "heightDefault",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 10,
+          "unit": "px"
+        }
+      ],
+      "source": "ProgressBar.module.css:31-55; ProgressBar.tsx:104-111"
+    },
+    {
+      "text": "The track's border is a 1px solid --progressBar-track-borderColor outline offset -1px, drawn inside the box over its edge (transparent in the default theme).",
+      "part": "track",
+      "tokens": [
+        "--progressBar-track-borderColor"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 1,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "source": "ProgressBar.module.css:37-38"
+    },
+    {
+      "text": "Each segment's width is its progress as a percent of the track width; segments are separated by 2px gaps. Widths are not normalised: segments summing to 100% plus their gaps overflow and the last one is clipped.",
+      "part": "segment",
+      "values": [
+        {
+          "name": "segmentGap",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "ProgressBar.module.css:11-18,36; ProgressBar.tsx:46-53"
+    },
+    {
+      "text": "bg 'role' or 'role.strength' maps to --bgColor-role-strength, strength defaulting to emphasis; no bg gives --bgColor-success-emphasis.",
+      "part": "segment",
+      "tokens": [
+        "--bgColor-success-emphasis"
+      ],
+      "source": "ProgressBar.tsx:50-53,83"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "label": "animated",
+      "text": "animated, with no reduced-motion preference: the single fill's opacity is masked by a 75deg gradient (opaque to 30%, 65% opaque from 80%) twice the fill's width, which slides across it once per second, forever, with CSS's default ease curve. Under reduced motion there is no shimmer.",
+      "values": [
+        {
+          "name": "gradientAngle",
+          "value": 75,
+          "unit": "deg"
+        },
+        {
+          "name": "opaqueUntil",
+          "value": 30,
+          "unit": "percent"
+        },
+        {
+          "name": "fadedFrom",
+          "value": 80,
+          "unit": "percent"
+        },
+        {
+          "name": "fadedAlpha",
+          "value": 0.65,
+          "unit": "ratio"
+        },
+        {
+          "name": "maskSize",
+          "value": 200,
+          "unit": "percent"
+        }
+      ],
+      "motion": {
+        "durationMs": 1000,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "source": "ProgressBar.module.css:1-9,20-28; ProgressBar.tsx:115-117"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Giving both progress and items is an error (the React component throws).",
+      "source": "ProgressBar.tsx:95-97"
+    },
+    {
+      "text": "Progress is not clamped: a negative value draws nothing and over 100 is clipped by the track; the reported value is the rounded progress, or 0 when it is missing or negative.",
+      "source": "ProgressBar.tsx:36-44,51"
+    },
+    {
+      "text": "The shimmer moves the mask from position 200% to 0%; with a mask twice the fill's width that is exactly one repeat, so the loop is seamless. The mask repeats (CSS default), so for fill width w and eased progress e in [0, 1) through each second, alpha(x) = g(((x / w - 2e) mod 2) / 2), where g(u) is 1 for u <= 0.3, falls linearly to 0.65 at u = 0.8 and stays 0.65 to u = 1; the pattern travels rightwards 2w per second. The 75deg angle tilts the bands slightly; on a bar 5-10px tall the tilt is negligible.",
+      "source": "ProgressBar.module.css:1-9,22-23"
+    }
+  ],
+  "accessibility": {
+    "role": "progressbar (on each segment, not on the track)",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "Each segment has role progressbar, aria-valuemin 0, aria-valuemax 100, aria-valuenow the rounded progress (or the caller's value), optional aria-valuetext, and an aria-label.",
+      "The track itself has no role or name; a multi-segment bar is several progressbars, so label each."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "dead-token",
+      "text": "--progressBar-bgColor-<role> tokens exist for every role, but the component builds --bgColor-<role>-emphasis names instead and never reads them.",
+      "tokens": [
+        "--progressBar-bgColor-accent",
+        "--progressBar-bgColor-attention",
+        "--progressBar-bgColor-danger",
+        "--progressBar-bgColor-done",
+        "--progressBar-bgColor-neutral",
+        "--progressBar-bgColor-severe",
+        "--progressBar-bgColor-sponsors",
+        "--progressBar-bgColor-success"
+      ],
+      "source": "ProgressBar.tsx:50-53"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The docs give the default bg as 'bg.successInverse', which the code would turn into the non-existent --bgColor-bg-successInverse; the code's actual default is 'success.emphasis'.",
+      "source": "ProgressBar.docs.json; ProgressBar.tsx:50-53,83"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the module redefines the track colour as CanvasText and the fill as LinkText at :root and opts both out of forced-colour adjustment. The fill override never wins because each segment sets its colour inline, and the track override only wins if no theme scope redefines the token below :root. A native build in a forced-colour mode should draw the track in the system text colour and the fill in the system link colour.",
+      "source": "ProgressBar.module.css:57-67; ProgressBar.tsx:52-53,63"
+    },
+    {
+      "kind": "web-only",
+      "text": "The shimmer is a CSS mask animation guarded by prefers-reduced-motion: no-preference; a native build reads the platform's reduce-motion setting and skips it.",
+      "source": "ProgressBar.module.css:20-28"
+    },
+    {
+      "kind": "gotcha",
+      "text": "An inline bar has no intrinsic width (its segments are percentages of it), so it collapses to zero unless the caller sets a width.",
+      "source": "ProgressBar.module.css:40-42"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "Heights 5, 8 and 10px, the 2px gap, the 1px outline and the 1s shimmer are literals, not tokens.",
+      "source": "ProgressBar.module.css:25,36-38,44-54"
+    }
+  ]
+}

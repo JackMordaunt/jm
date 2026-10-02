@@ -1,0 +1,316 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "avatar-stack",
+  "name": "AvatarStack",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React, accessibility-reviewed 2025-01-08. The geometry is pure CSS (masks, negative margins, nth-child rules) and has several upstream quirks listed in the notes.",
+  "summary": "Up to five overlapping avatars that represent a group (assignees, contributors) and fan out on hover or focus to show them all. Use it where space allows one avatar's height and a short run of width.",
+  "tokenGroups": [
+    "--avatar-borderColor",
+    "--base-size-4",
+    "--borderRadius-medium",
+    "--viewportRange-narrow",
+    "--viewportRange-regular",
+    "--viewportRange-wide"
+  ],
+  "references": {
+    "react": [
+      "AvatarStack.module.css",
+      "AvatarStack.tsx",
+      "AvatarStack.docs.json",
+      "hasInteractiveNodes.ts",
+      "Avatar.tsx"
+    ],
+    "primer": [
+      "avatar-stack"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "avatars",
+      "type": "list",
+      "required": true,
+      "description": "Avatar children, first drawn on top. More than five are hidden until expanded."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "cascade",
+        "stack"
+      ],
+      "required": false,
+      "default": "cascade",
+      "description": "cascade overlaps the third and later avatars more and fades them; stack overlaps uniformly at full opacity."
+    },
+    {
+      "name": "shape",
+      "type": "enum",
+      "values": [
+        "circle",
+        "square"
+      ],
+      "required": false,
+      "default": "circle",
+      "description": "square forces every child Avatar square."
+    },
+    {
+      "name": "size",
+      "type": "number",
+      "required": false,
+      "description": "Avatar size in px, or {narrow, regular, wide}; unset uses the smallest child Avatar size per viewport range (20px for a child without one)."
+    },
+    {
+      "name": "alignRight",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Anchor the stack at its right edge and overlap leftwards (right-to-left order)."
+    },
+    {
+      "name": "disableExpand",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Do not fan out on hover or focus."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "An inline box one avatar tall whose minimum width is the collapsed stack's width; it isolates its stacking order."
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "description": "The row of avatars, absolutely positioned at the container's start so that fanning out overlays neighbouring content instead of reflowing it (in flow when expand is disabled). Focusable when no child is interactive."
+    },
+    {
+      "id": "item",
+      "name": "Avatar item",
+      "description": "Each avatar, size by size, overlapping the previous one, with a 1px transparent gap cut where the previous avatar covers it.",
+      "tokens": [
+        "--avatar-borderColor"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "variant",
+      "value": "cascade",
+      "default": true,
+      "description": "Second avatar overlaps the first by 55% of the size; third and later by 85%. Third, fourth and fifth fade to 70%, 55% and 40% opacity."
+    },
+    {
+      "axis": "variant",
+      "value": "stack",
+      "description": "Every avatar after the first overlaps its predecessor by 55% of the size, all at full opacity."
+    },
+    {
+      "axis": "shape",
+      "value": "circle",
+      "default": true,
+      "description": "Round avatars with a circular cut-out."
+    },
+    {
+      "axis": "shape",
+      "value": "square",
+      "description": "Rounded-square avatars (Avatar's square radius) separated by a 1px white edge shadow instead of a cut-out.",
+      "tokens": [
+        "--borderRadius-medium"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "overlap",
+      "text": "Let S be the avatar size. Avatar k (k >= 2) starts at the previous avatar's start plus S - O_k, where O_k is the overlap: cascade O_2 = 0.55 S and O_k = 0.85 S for k >= 3; stack O_k = 0.55 S for all k. With alignRight the same offsets run leftwards from the right edge.",
+      "part": "item",
+      "values": [
+        {
+          "name": "overlap",
+          "value": 0.55,
+          "unit": "ratio"
+        },
+        {
+          "name": "cascadeOverlapThreePlus",
+          "value": 0.85,
+          "unit": "ratio"
+        }
+      ],
+      "source": "AvatarStack.module.css:14-22,110-114,164-170,204-205"
+    },
+    {
+      "text": "Paint order: avatar 1 on top, then 2, 3, 4, 5 beneath it (z-index 5 down to 1). Avatars 6 and later are hidden, transparent and out of flow until expanded.",
+      "part": "item",
+      "values": [
+        {
+          "name": "maxVisible",
+          "value": 5,
+          "unit": "count"
+        }
+      ],
+      "source": "AvatarStack.module.css:223-247"
+    },
+    {
+      "id": "cut-out",
+      "text": "Circle shape: each avatar k >= 2 is masked to exclude a disc centred on avatar k-1, of diameter S + 2px, so a 1px transparent gap (not a coloured ring) separates every overlapping pair and the page background shows through it.",
+      "part": "item",
+      "values": [
+        {
+          "name": "gap",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "AvatarStack.module.css:3-5,168-195"
+    },
+    {
+      "text": "Cascade opacity: avatar 3 at 70%, avatar 4 at 55%, avatar 5 at 40% (100% minus 2, 3, 4 steps of 15%); stack keeps 100%.",
+      "part": "item",
+      "values": [
+        {
+          "name": "opacityStep",
+          "value": 15,
+          "unit": "percent"
+        }
+      ],
+      "source": "AvatarStack.module.css:6,203-221"
+    },
+    {
+      "text": "The container's minimum width is the collapsed width of the first four avatars: 1 avatar S; 2 avatars 2S - O_2; 3 cascade S + (S - 0.55 S) + (S - 0.85 S); 3 stack S + 2(S - 0.55 S); 4 or more cascade S + (S - 0.55 S) + 2(S - 0.85 S); 4 or more stack S + 3(S - 0.55 S). Its height is S.",
+      "part": "container",
+      "source": "AvatarStack.module.css:8-11,55-108; AvatarStack.tsx:166"
+    },
+    {
+      "text": "Size: a numeric size sets S directly. Otherwise S follows the viewport range (narrow below 768px, regular from 768px, wide from 1400px), from the size object (20px for a missing key) or, with no size, the smallest child Avatar size in each range (20px default).",
+      "tokens": [
+        "--viewportRange-narrow",
+        "--viewportRange-regular",
+        "--viewportRange-wide"
+      ],
+      "source": "AvatarStack.tsx:77-116,138-159,168; AvatarStack.module.css:24-36"
+    },
+    {
+      "text": "Square shape: every child Avatar is made square (Avatar's clamped radius) and gets a 1px hard white shadow on its trailing side (leading side when alignRight) as the separator; non-Avatar children are clipped round unless they contain a square avatar.",
+      "values": [
+        {
+          "name": "edgeShadow",
+          "value": 1,
+          "unit": "px"
+        }
+      ],
+      "source": "AvatarStack.tsx:11-20; AvatarStack.module.css:148-162"
+    }
+  ],
+  "states": [
+    {
+      "state": "collapsed",
+      "text": "At rest: overlapped, masked, faded (cascade), at most five shown.",
+      "source": "AvatarStack.module.css:126-247"
+    },
+    {
+      "state": "expanded",
+      "text": "While the pointer is over the body or focus is inside it (unless expand is disabled): every avatar, including the sixth and later, shows at full opacity, side by side with --base-size-4 (4px) between them, and the cut-out mask slides fully off each avatar. The body grows to fit and overlays what follows it.",
+      "tokens": [
+        "--base-size-4"
+      ],
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "AvatarStack.module.css:117-124,135-139,250-274"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Margin, opacity and the mask's position and size transition over 200ms ease-in-out in both directions; visibility of the sixth and later avatars switches at once.",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.42,
+          0,
+          0.58,
+          1
+        ]
+      },
+      "source": "AvatarStack.module.css:135-139,243-247,250-260"
+    },
+    {
+      "text": "The body is a tab stop (tabIndex 0) only when expand is enabled and no child is interactive, so keyboard users can expand a stack of plain images; with interactive children (links, buttons) focus lands on them and focus-within expands the stack.",
+      "part": "body",
+      "source": "AvatarStack.tsx:54,118-136; hasInteractiveNodes.ts:8-55"
+    },
+    {
+      "text": "Interactivity is re-checked whenever the body's direct children change.",
+      "part": "body",
+      "source": "AvatarStack.tsx:118-136"
+    }
+  ],
+  "accessibility": {
+    "role": "group of img (no role on the container; each Avatar is an img)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab focuses the body (no interactive children) or each avatar link in turn; focus inside expands the stack."
+    ],
+    "semantics": [
+      "The container carries no label or role; each avatar's alt is its only text. Give each avatar alt text, since the stack shows no names.",
+      "Hidden sixth and later avatars are visibility hidden, so screen readers skip them until expanded."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The square mask is written as linear-gradient(at 50% 50%, ...), which is invalid CSS (the declaration carries a stylelint disable for exactly that), so browsers drop it: square stacks get no cut-out and rely only on the 1px white edge shadow.",
+      "source": "AvatarStack.module.css:197-201"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "The square separator is hard-coded white (and black for a single square avatar), not a token, so it shows as a white seam in dark themes.",
+      "source": "AvatarStack.module.css:45-53,153-162"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "A single circular avatar is meant to keep Avatar's --avatar-borderColor ring, but the rule that clears the ring for circle stacks (.AvatarItem:is(img), specificity 0,2,1) outranks the one that restores it (0,2,0), so even a lone avatar has a transparent ring.",
+      "tokens": [
+        "--avatar-borderColor"
+      ],
+      "source": "AvatarStack.module.css:38-43,142-145"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The minimum width counts four avatars but five are drawn; the fifth overhangs the container by 0.15 S (cascade) or 0.45 S (stack). Because the body is absolutely positioned, nothing reserves that space. Reserve it in a native layout, or reproduce the overhang deliberately.",
+      "source": "AvatarStack.module.css:86-108,117-124,239-241"
+    },
+    {
+      "kind": "web-only",
+      "text": "The cut-out is a CSS mask with mask-composite exclude; a native build clips each avatar k >= 2 by subtracting a circle of radius S/2 + 1px centred on avatar k-1 (or draws avatar k-1's outline in the surface colour, which differs on non-solid backgrounds). Animate that circle's offset to S on expand.",
+      "source": "AvatarStack.module.css:168-195,255-269"
+    },
+    {
+      "kind": "web-only",
+      "text": "Expansion is driven by :hover and :focus-within on the body; a native build must track pointer containment and focus within the stack itself, and lay the expanded row over following content without reflowing it.",
+      "source": "AvatarStack.module.css:117-124,250-252"
+    },
+    {
+      "kind": "dead-token",
+      "text": "--avatarStack-fade-bgColor-default and --avatarStack-fade-bgColor-muted exist but the module reads neither; only the legacy theme object refers to them.",
+      "tokens": [
+        "--avatarStack-fade-bgColor-default",
+        "--avatarStack-fade-bgColor-muted"
+      ],
+      "source": "AvatarStack.module.css:1-275"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 1px border width, the 0.55 and 0.85 overlaps, the 15% opacity step, the 200ms ease-in-out transitions and the 0.1px padding hack against mask edge artefacts are literals.",
+      "source": "AvatarStack.module.css:3-22,135-139,187-189"
+    }
+  ]
+}

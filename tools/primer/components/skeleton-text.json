@@ -1,0 +1,274 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "skeleton-text",
+  "name": "SkeletonText",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React. A SkeletonBox sized from the type ramp; the multi-line wrapper's data-component name is slated to change in the next major.",
+  "summary": "Placeholder bars the height of a text style's glyphs, spaced to that style's line height, standing in for one or more lines of text while it loads. Use SkeletonBox for non-text shapes.",
+  "tokenGroups": [
+    "--base-duration-1000",
+    "--borderRadius-medium",
+    "--borderRadius-small",
+    "--skeletonLoader-bgColor",
+    "--text-body-lineHeight-large",
+    "--text-body-lineHeight-medium",
+    "--text-body-lineHeight-small",
+    "--text-body-size-large",
+    "--text-body-size-medium",
+    "--text-body-size-small",
+    "--text-display-lineHeight",
+    "--text-display-size",
+    "--text-subtitle-lineHeight",
+    "--text-subtitle-size",
+    "--text-title-lineHeight-large",
+    "--text-title-lineHeight-medium",
+    "--text-title-lineHeight-small",
+    "--text-title-size-large",
+    "--text-title-size-medium",
+    "--text-title-size-small"
+  ],
+  "references": {
+    "react": [
+      "SkeletonText.module.css",
+      "SkeletonText.tsx",
+      "SkeletonText.docs.json",
+      "SkeletonBox.module.css"
+    ],
+    "primer": [
+      "skeleton-text"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "display",
+        "titleLarge",
+        "titleMedium",
+        "titleSmall",
+        "subtitle",
+        "bodyLarge",
+        "bodyMedium",
+        "bodySmall"
+      ],
+      "required": false,
+      "default": "bodyMedium",
+      "description": "The text style being replaced; sets bar height, spacing and radius."
+    },
+    {
+      "name": "lines",
+      "type": "number",
+      "required": false,
+      "default": 1,
+      "description": "Number of bars; 2 or more uses the multi-line layout."
+    },
+    {
+      "name": "maxWidth",
+      "type": "string",
+      "required": false,
+      "description": "Any CSS max-width for the line (or the block of lines)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "line",
+      "name": "Line",
+      "description": "A SkeletonBox (fill, radius and shimmer as skeleton-box) as tall as the style's font size.",
+      "tokens": [
+        "--skeletonLoader-bgColor",
+        "--borderRadius-small"
+      ]
+    },
+    {
+      "id": "wrapper",
+      "name": "Wrapper",
+      "optional": true,
+      "description": "Multi-line only: a block holding the lines, carrying maxWidth, with 0.1px block padding so the lines' margins stay inside it."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "display",
+      "description": "Display size and line height; medium radius.",
+      "tokens": [
+        "--text-display-size",
+        "--text-display-lineHeight",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "titleLarge",
+      "description": "Large title size and line height; medium radius.",
+      "tokens": [
+        "--text-title-size-large",
+        "--text-title-lineHeight-large",
+        "--borderRadius-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "titleMedium",
+      "description": "Medium title size and line height.",
+      "tokens": [
+        "--text-title-size-medium",
+        "--text-title-lineHeight-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "titleSmall",
+      "description": "Small title size and line height.",
+      "tokens": [
+        "--text-title-size-small",
+        "--text-title-lineHeight-small"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "subtitle",
+      "description": "Subtitle size and line height.",
+      "tokens": [
+        "--text-subtitle-size",
+        "--text-subtitle-lineHeight"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "bodyLarge",
+      "description": "Large body size and line height.",
+      "tokens": [
+        "--text-body-size-large",
+        "--text-body-lineHeight-large"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "bodyMedium",
+      "default": true,
+      "description": "Medium body size and line height: a 14px bar on a 21px line.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium"
+      ]
+    },
+    {
+      "axis": "size",
+      "value": "bodySmall",
+      "description": "Small body size and line height.",
+      "tokens": [
+        "--text-body-size-small",
+        "--text-body-lineHeight-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "line-metrics",
+      "text": "For the style's font size F and unitless line height H, the bar is F tall and the leading is L = F * H - F (CSS mod(F * H, F) where supported, equal for every current token since H < 2). A single line has L / 2 margin above and below, so it occupies exactly one line box (F * H): bodyMedium is a 14px bar in 21px.",
+      "part": "line",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-body-lineHeight-medium"
+      ],
+      "source": "SkeletonText.module.css:1-13"
+    },
+    {
+      "text": "A single line is 100% wide, capped by maxWidth.",
+      "part": "line",
+      "source": "SkeletonText.tsx:19-33"
+    },
+    {
+      "text": "Multi-line: lines are full-width blocks in the wrapper; each has L / 2 above and 2L below, and the adjacent margins collapse, so consecutive bars are separated by 2L (14px for bodyMedium), not by the line height. The last bar has no bottom margin, a 50px minimum width and a 65% maximum width.",
+      "part": "line",
+      "values": [
+        {
+          "name": "lastLineMinWidth",
+          "value": 50,
+          "unit": "px"
+        },
+        {
+          "name": "lastLineMaxWidth",
+          "value": 65,
+          "unit": "percent"
+        }
+      ],
+      "source": "SkeletonText.module.css:13-24; SkeletonText.tsx:35-56"
+    },
+    {
+      "text": "The wrapper's 0.1px top and bottom padding stops the first bar's top margin and the margins of the block from collapsing through it, so the block's height is L / 2 + n * F + (n - 1) * 2L plus 0.2px.",
+      "part": "wrapper",
+      "values": [
+        {
+          "name": "paddingBlock",
+          "value": 0.1,
+          "unit": "px"
+        }
+      ],
+      "source": "SkeletonText.module.css:67-70"
+    },
+    {
+      "text": "Radius is --borderRadius-small, --borderRadius-medium for display and titleLarge.",
+      "part": "line",
+      "tokens": [
+        "--borderRadius-small",
+        "--borderRadius-medium"
+      ],
+      "source": "SkeletonText.module.css:11,26-29"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "Each bar shimmers exactly as skeleton-box (1000ms repeating mask sweep, off under reduced motion); bars animate independently but in phase, since they mount together.",
+      "tokens": [
+        "--base-duration-1000"
+      ],
+      "motion": {
+        "durationToken": "--base-duration-1000",
+        "properties": [
+          "mask-position"
+        ]
+      },
+      "source": "SkeletonBox.module.css:1-24; SkeletonText.tsx:21-31,45-54"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "lines below 2 render one bar; 2 or more render the wrapper with that many bars.",
+      "source": "SkeletonText.tsx:18-57"
+    }
+  ],
+  "accessibility": {
+    "role": "none",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "Nothing is exposed; the loading region should carry aria-busy or a status message."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Multi-line bars sit 2L apart because sibling margins collapse; a native stack layout that adds margins instead of collapsing them would put 2.5L between bars. Use a gap of exactly 2L.",
+      "source": "SkeletonText.module.css:13-17"
+    },
+    {
+      "kind": "gotcha",
+      "text": "In multi-line mode the caller's className and other props go on every bar, while style and maxWidth go on the wrapper.",
+      "source": "SkeletonText.tsx:36-54"
+    },
+    {
+      "kind": "web-only",
+      "text": "The leading uses CSS mod() behind @supports, with a calc() fallback; a native build computes F * H - F directly.",
+      "source": "SkeletonText.module.css:4-8"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 50px minimum and 65% maximum width of the last line and the 0.1px padding hack are literals.",
+      "source": "SkeletonText.module.css:19-23,67-70"
+    }
+  ]
+}

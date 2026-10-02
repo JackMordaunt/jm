@@ -1,0 +1,402 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "issue-label",
+  "name": "IssueLabel",
+  "status": "alpha",
+  "statusNote": "IssueLabel's docs file says alpha, but it is exported only from @primer/react/experimental and has no primer.style page; treat the API as unstable. It is the newer, token-driven replacement for coloured labels; IssueLabelToken (see token) remains the removable form.",
+  "summary": "A filled pill for a GitHub issue label in one of 19 named label hues, or in an arbitrary hex colour with black or white text. Choose it for user-defined labels; choose Label for fixed metadata and Token or IssueLabelToken when the label is removable.",
+  "tokenGroups": [
+    "--base-size-8",
+    "--base-size-20",
+    "--base-text-weight-semibold",
+    "--borderRadius-full",
+    "--boxShadow-thin",
+    "--focus-outline-color",
+    "--focus-outlineColor",
+    "--label-auburn-bgColor-active",
+    "--label-auburn-bgColor-hover",
+    "--label-auburn-bgColor-rest",
+    "--label-auburn-fgColor-active",
+    "--label-auburn-fgColor-hover",
+    "--label-auburn-fgColor-rest",
+    "--label-blue-bgColor-active",
+    "--label-blue-bgColor-hover",
+    "--label-blue-bgColor-rest",
+    "--label-blue-fgColor-active",
+    "--label-blue-fgColor-hover",
+    "--label-blue-fgColor-rest",
+    "--label-brown-bgColor-active",
+    "--label-brown-bgColor-hover",
+    "--label-brown-bgColor-rest",
+    "--label-brown-fgColor-active",
+    "--label-brown-fgColor-hover",
+    "--label-brown-fgColor-rest",
+    "--label-coral-bgColor-active",
+    "--label-coral-bgColor-hover",
+    "--label-coral-bgColor-rest",
+    "--label-coral-fgColor-active",
+    "--label-coral-fgColor-hover",
+    "--label-coral-fgColor-rest",
+    "--label-cyan-bgColor-active",
+    "--label-cyan-bgColor-hover",
+    "--label-cyan-bgColor-rest",
+    "--label-cyan-fgColor-active",
+    "--label-cyan-fgColor-hover",
+    "--label-cyan-fgColor-rest",
+    "--label-gray-bgColor-active",
+    "--label-gray-bgColor-hover",
+    "--label-gray-bgColor-rest",
+    "--label-gray-fgColor-active",
+    "--label-gray-fgColor-hover",
+    "--label-gray-fgColor-rest",
+    "--label-green-bgColor-active",
+    "--label-green-bgColor-hover",
+    "--label-green-bgColor-rest",
+    "--label-green-fgColor-active",
+    "--label-green-fgColor-hover",
+    "--label-green-fgColor-rest",
+    "--label-indigo-bgColor-active",
+    "--label-indigo-bgColor-hover",
+    "--label-indigo-bgColor-rest",
+    "--label-indigo-fgColor-active",
+    "--label-indigo-fgColor-hover",
+    "--label-indigo-fgColor-rest",
+    "--label-lemon-bgColor-active",
+    "--label-lemon-bgColor-hover",
+    "--label-lemon-bgColor-rest",
+    "--label-lemon-fgColor-active",
+    "--label-lemon-fgColor-hover",
+    "--label-lemon-fgColor-rest",
+    "--label-lime-bgColor-active",
+    "--label-lime-bgColor-hover",
+    "--label-lime-bgColor-rest",
+    "--label-lime-fgColor-active",
+    "--label-lime-fgColor-hover",
+    "--label-lime-fgColor-rest",
+    "--label-olive-bgColor-active",
+    "--label-olive-bgColor-hover",
+    "--label-olive-bgColor-rest",
+    "--label-olive-fgColor-active",
+    "--label-olive-fgColor-hover",
+    "--label-olive-fgColor-rest",
+    "--label-orange-bgColor-active",
+    "--label-orange-bgColor-hover",
+    "--label-orange-bgColor-rest",
+    "--label-orange-fgColor-active",
+    "--label-orange-fgColor-hover",
+    "--label-orange-fgColor-rest",
+    "--label-pine-bgColor-active",
+    "--label-pine-bgColor-hover",
+    "--label-pine-bgColor-rest",
+    "--label-pine-fgColor-active",
+    "--label-pine-fgColor-hover",
+    "--label-pine-fgColor-rest",
+    "--label-pink-bgColor-active",
+    "--label-pink-bgColor-hover",
+    "--label-pink-bgColor-rest",
+    "--label-pink-fgColor-active",
+    "--label-pink-fgColor-hover",
+    "--label-pink-fgColor-rest",
+    "--label-plum-bgColor-active",
+    "--label-plum-bgColor-hover",
+    "--label-plum-bgColor-rest",
+    "--label-plum-fgColor-active",
+    "--label-plum-fgColor-hover",
+    "--label-plum-fgColor-rest",
+    "--label-purple-bgColor-active",
+    "--label-purple-bgColor-hover",
+    "--label-purple-bgColor-rest",
+    "--label-purple-fgColor-active",
+    "--label-purple-fgColor-hover",
+    "--label-purple-fgColor-rest",
+    "--label-red-bgColor-active",
+    "--label-red-bgColor-hover",
+    "--label-red-bgColor-rest",
+    "--label-red-fgColor-active",
+    "--label-red-fgColor-hover",
+    "--label-red-fgColor-rest",
+    "--label-teal-bgColor-active",
+    "--label-teal-bgColor-hover",
+    "--label-teal-bgColor-rest",
+    "--label-teal-fgColor-active",
+    "--label-teal-fgColor-hover",
+    "--label-teal-fgColor-rest",
+    "--label-yellow-bgColor-active",
+    "--label-yellow-bgColor-hover",
+    "--label-yellow-bgColor-rest",
+    "--label-yellow-fgColor-active",
+    "--label-yellow-fgColor-hover",
+    "--label-yellow-fgColor-rest",
+    "--text-body-lineHeight-small",
+    "--text-body-size-small"
+  ],
+  "references": {
+    "react": [
+      "IssueLabel.module.css",
+      "IssueLabel.tsx",
+      "IssueLabel.docs.json",
+      "focusOutline.css"
+    ],
+    "primer": []
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": "The label name (children)."
+    },
+    {
+      "name": "variant",
+      "type": "enum",
+      "values": [
+        "pink",
+        "plum",
+        "purple",
+        "indigo",
+        "blue",
+        "cyan",
+        "teal",
+        "pine",
+        "green",
+        "lime",
+        "olive",
+        "lemon",
+        "yellow",
+        "orange",
+        "red",
+        "coral",
+        "gray",
+        "brown",
+        "auburn"
+      ],
+      "required": false,
+      "default": "gray",
+      "description": "A named label hue; ignored when fillColor is set."
+    },
+    {
+      "name": "fillColor",
+      "type": "string",
+      "required": false,
+      "description": "A #hex background; overrides variant and derives black or white text."
+    },
+    {
+      "name": "onClick",
+      "type": "callback",
+      "required": false,
+      "description": "Renders the label as a button."
+    },
+    {
+      "name": "href",
+      "type": "string",
+      "required": false,
+      "description": "Renders the label as a link (takes precedence over onClick)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "A full-radius filled pill at least 20px tall with 8px side padding, no border, and a transparent 1px inset ring reserved for a future high-contrast border.",
+      "tokens": [
+        "--base-size-20",
+        "--base-size-8",
+        "--borderRadius-full",
+        "--boxShadow-thin"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "Small body text, semibold, at the small body line height, never wrapping.",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--text-body-lineHeight-small"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "colour",
+      "value": "named",
+      "default": true,
+      "description": "variant = <hue> (gray by default): fill --label-<hue>-bgColor-rest, text --label-<hue>-fgColor-rest, with -hover and -active tokens when interactive. All 19 hues have the same six tokens.",
+      "tokens": [
+        "--label-gray-bgColor-rest",
+        "--label-gray-fgColor-rest",
+        "--label-gray-bgColor-hover",
+        "--label-gray-fgColor-hover",
+        "--label-gray-bgColor-active",
+        "--label-gray-fgColor-active"
+      ]
+    },
+    {
+      "axis": "colour",
+      "value": "hex",
+      "description": "fillColor = #rrggbb: the fill is that colour exactly and the text is black or white by WCAG relative luminance; no hover or press change (see notes)."
+    },
+    {
+      "axis": "element",
+      "value": "span",
+      "default": true,
+      "description": "Static."
+    },
+    {
+      "axis": "element",
+      "value": "button",
+      "description": "onClick: hover and press colours, pointer cursor, focus ring."
+    },
+    {
+      "axis": "element",
+      "value": "link",
+      "description": "href: as button, with no underline."
+    }
+  ],
+  "layout": [
+    {
+      "text": "Minimum height --base-size-20 (20px); side padding --base-size-8 (8px), no vertical padding; content centred vertically; width hugs the text, which never wraps.",
+      "tokens": [
+        "--base-size-20",
+        "--base-size-8"
+      ],
+      "source": "IssueLabel.module.css:2-20"
+    },
+    {
+      "text": "Text is --text-body-size-small (12px), semibold, line height --text-body-lineHeight-small.",
+      "part": "text",
+      "tokens": [
+        "--text-body-size-small",
+        "--base-text-weight-semibold",
+        "--text-body-lineHeight-small"
+      ],
+      "source": "IssueLabel.module.css:5-7"
+    },
+    {
+      "text": "No border; a --boxShadow-thin inset ring in transparent sits where a high-contrast border will go, full radius.",
+      "tokens": [
+        "--boxShadow-thin",
+        "--borderRadius-full"
+      ],
+      "source": "IssueLabel.module.css:13-17"
+    }
+  ],
+  "states": [
+    {
+      "state": "enabled",
+      "text": "Named: --label-<hue>-bgColor-rest fill, --label-<hue>-fgColor-rest text. Hex: the fillColor fill and its readable text colour.",
+      "tokens": [
+        "--label-gray-bgColor-rest",
+        "--label-gray-fgColor-rest"
+      ],
+      "source": "IssueLabel.module.css:9-12,46-215; IssueLabel.tsx:73-83"
+    },
+    {
+      "state": "hovered",
+      "text": "Button or link only: --label-<hue>-bgColor-hover fill and --label-<hue>-fgColor-hover text, pointer cursor.",
+      "tokens": [
+        "--label-gray-bgColor-hover",
+        "--label-gray-fgColor-hover"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "IssueLabel.module.css:23-32"
+    },
+    {
+      "state": "pressed",
+      "text": "Button or link only: --label-<hue>-bgColor-active fill and --label-<hue>-fgColor-active text.",
+      "tokens": [
+        "--label-gray-bgColor-active",
+        "--label-gray-fgColor-active"
+      ],
+      "motion": {
+        "instant": true
+      },
+      "source": "IssueLabel.module.css:34-39"
+    },
+    {
+      "state": "focused",
+      "text": "Button or link with keyboard focus: a 2px solid --focus-outline-color outline offset 2px outside the pill (not the usual -2px inside), and no shadow.",
+      "tokens": [
+        "--focus-outline-color"
+      ],
+      "values": [
+        {
+          "name": "outlineWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "outlineOffset",
+          "value": 2,
+          "unit": "px"
+        }
+      ],
+      "source": "IssueLabel.module.css:41-43; focusOutline.css:1-5"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "The element is chosen by props: an explicit as wins, then href makes a link, then onClick makes a button (type button), else a span.",
+      "source": "IssueLabel.tsx:85-114"
+    },
+    {
+      "id": "hex-text-colour",
+      "text": "Hex text colour (color2k 2.0.3 readableColor): linearise each sRGB channel c/255 as c/12.92 when c <= 0.04045 else ((c + 0.055) / 1.055)^2.4; luminance Y = 0.2126 R + 0.7152 G + 0.0722 B; text is #000 when Y > 0.179, else #fff. The rule is theme-independent.",
+      "values": [
+        {
+          "name": "luminanceThreshold",
+          "value": 0.179,
+          "unit": "ratio"
+        }
+      ],
+      "source": "IssueLabel.tsx:4,75-82"
+    },
+    {
+      "text": "A hex label sets no data-variant; the module then points its colour variables at --label-bgColor-light-rest, --label-fgColor-dark and similar names by colour mode, but nothing defines those names, and the inline fill and text colour win regardless.",
+      "source": "IssueLabel.module.css:218-274; IssueLabel.tsx:75-82"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a span); button with onClick; link with href",
+    "minTargetPx": 20,
+    "keyboard": [
+      "Tab focuses a button or link label.",
+      "Enter activates; Space also activates a button."
+    ],
+    "semantics": [
+      "The name is the label text; the colour carries no meaning on its own."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "A hex label (fillColor) has no hover or press feedback even as a button or link: its fill and text are inline styles, which outrank the module's :hover and :active rules, and the variables those rules read are undefined for it.",
+      "source": "IssueLabel.module.css:26-39,218-274; IssueLabel.tsx:76-82"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Two different algorithms colour arbitrary labels in Primer: IssueLabel (this) fills with the hex and picks black or white by WCAG luminance in every theme; IssueLabelToken derives tinted fills, borders and text per light or dark theme from perceived lightness (token spec). Do not mix them.",
+      "source": "IssueLabel.tsx:75-82; IssueLabelToken.module.css:1-64"
+    },
+    {
+      "kind": "dead-token",
+      "text": "Every hue also has a --label-<hue>-borderColor token; IssueLabel does not read it (its ring is transparent).",
+      "tokens": [
+        "--label-gray-borderColor"
+      ],
+      "source": "IssueLabel.module.css:16-17"
+    },
+    {
+      "kind": "web-only",
+      "text": "color2k is not vendored; the readable-colour algorithm above was read from color2k 2.0.3 on unpkg (the vendored @primer/primitives package.json pins ^2.0.3; Primer React's own pin is not vendored). A native build implements it directly.",
+      "source": "IssueLabel.tsx:4"
+    },
+    {
+      "kind": "web-only",
+      "text": "Long names never wrap or truncate (white-space nowrap, no max-width); a native build that needs a bound adds its own ellipsis.",
+      "source": "IssueLabel.module.css:10"
+    }
+  ]
+}

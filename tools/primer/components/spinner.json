@@ -1,0 +1,219 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "spinner",
+  "name": "Spinner",
+  "status": "alpha",
+  "statusNote": "Alpha in Primer React, accessibility-reviewed 2025-01-08; stable in practice and used inside Button's loading state. The aria-label prop is deprecated in favour of srText.",
+  "summary": "An indeterminate loading indicator: a rotating quarter arc over a faint ring. Use it when the wait has no known length; use ProgressBar when progress is measurable and skeletons when the shape of the coming content is known.",
+  "tokenGroups": [
+    "--base-duration-1000",
+    "--base-easing-linear"
+  ],
+  "references": {
+    "react": [
+      "Spinner.module.css",
+      "Spinner.tsx",
+      "Spinner.docs.json"
+    ],
+    "primer": [
+      "spinner"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "size",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "16, 32 or 64px square."
+    },
+    {
+      "name": "srText",
+      "type": "string",
+      "required": false,
+      "default": "Loading",
+      "description": "Text for assistive technology; null when the loading state is already described by visible text."
+    },
+    {
+      "name": "delay",
+      "type": "enum",
+      "values": [
+        "none",
+        "short",
+        "long",
+        "ms"
+      ],
+      "required": false,
+      "default": "none",
+      "description": "Render nothing until the delay passes: short 300ms, long (or true) 1000ms, or a number of ms."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "track",
+      "name": "Track",
+      "description": "A full circle of radius 7 in a 16-unit viewBox, stroked 2px in the current text colour at 25% opacity."
+    },
+    {
+      "id": "arc",
+      "name": "Arc",
+      "description": "A quarter of the same circle, from 3 o'clock to 12 o'clock, stroked 2px in the current text colour with round caps; the whole drawing rotates."
+    },
+    {
+      "id": "sr-text",
+      "name": "Screen-reader text",
+      "optional": true,
+      "description": "Visually hidden srText after the graphic."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "size",
+      "value": "small",
+      "description": "16px; the size Button uses for its loading state."
+    },
+    {
+      "axis": "size",
+      "value": "medium",
+      "default": true,
+      "description": "32px."
+    },
+    {
+      "axis": "size",
+      "value": "large",
+      "description": "64px."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The spinner is a square of 16, 32 or 64px (small, medium, large) drawn from a 16 by 16 viewBox scaled to fit; its box adds no line height (inline-flex).",
+      "values": [
+        {
+          "name": "small",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "medium",
+          "value": 32,
+          "unit": "px"
+        },
+        {
+          "name": "large",
+          "value": 64,
+          "unit": "px"
+        }
+      ],
+      "source": "Spinner.tsx:12-16,41,70-74; Spinner.module.css:1-3"
+    },
+    {
+      "text": "Track: circle centre (8, 8), radius 7 viewBox units (7px at small, scaling with size), stroke width 2px at 25% opacity. Arc: path M15 8 a7 7 0 0 0 -7 -7 (a 90 degree arc from the rightmost point to the top), stroke width 2px, round caps. Both strokes are non-scaling: they stay 2px at every size while the radius scales.",
+      "values": [
+        {
+          "name": "radiusAtSmall",
+          "value": 7,
+          "unit": "px"
+        },
+        {
+          "name": "strokeWidth",
+          "value": 2,
+          "unit": "px"
+        },
+        {
+          "name": "trackOpacity",
+          "value": 0.25,
+          "unit": "ratio"
+        }
+      ],
+      "source": "Spinner.tsx:83-98"
+    },
+    {
+      "text": "Both strokes use the current text colour (currentColor); the spinner has no colour token of its own and takes the colour of its context (e.g. a button's text).",
+      "source": "Spinner.tsx:87,94"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "Always animating while rendered: one full clockwise turn per --base-duration-1000 (1000ms), --base-easing-linear, repeating forever.",
+      "motion": {
+        "durationToken": "--base-duration-1000",
+        "easing": "--base-easing-linear",
+        "properties": [
+          "transform"
+        ]
+      },
+      "source": "Spinner.module.css:5-13"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "With a delay the spinner renders nothing (takes no space) until 300ms (short), 1000ms (true or long) or the given ms have passed; unmounting before then cancels it.",
+      "values": [
+        {
+          "name": "shortDelay",
+          "value": 300,
+          "unit": "ms"
+        },
+        {
+          "name": "longDelay",
+          "value": 1000,
+          "unit": "ms"
+        }
+      ],
+      "source": "Spinner.tsx:45-64"
+    },
+    {
+      "text": "Every spinner is phase-locked to one global clock: on becoming visible it starts its animation at -(now mod 1000ms), so all spinners on screen show the same angle. Native: angle = 360 deg * ((clockMs mod 1000) / 1000).",
+      "values": [
+        {
+          "name": "period",
+          "value": 1000,
+          "unit": "ms"
+        }
+      ],
+      "source": "Spinner.tsx:10,45-56,66,107-118"
+    },
+    {
+      "text": "Under prefers-reduced-motion: reduce the spinner still rotates; only the phase lock is skipped.",
+      "source": "Spinner.tsx:40,66; Spinner.module.css:11-13"
+    }
+  ],
+  "accessibility": {
+    "role": "none (the graphic is aria-hidden; the srText is plain text)",
+    "minTargetPx": null,
+    "keyboard": [],
+    "semantics": [
+      "The svg is aria-hidden; a visually hidden span with srText (\"Loading\" by default) follows it and is read in reading order.",
+      "srText null renders no text, for when visible text already says what is loading.",
+      "It is not a live region: appearing does not announce anything. A caller that needs an announcement (as Button's loading does) adds a status region."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The animation is a CSS rotation of an SVG; a native build redraws each frame while a spinner is visible (an immediate-mode loop must keep requesting frames while one is on screen). Angle comes from a shared clock, not per-instance start time.",
+      "source": "Spinner.module.css:5-13; Spinner.tsx:107-118"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Reduced motion does not stop the spinner, unlike ProgressBar's and SkeletonBox's shimmer, which only run under prefers-reduced-motion: no-preference. Follow Primer (keep rotating) or choose deliberately; an indeterminate spinner that stops reads as frozen.",
+      "source": "Spinner.module.css:11-13; Spinner.tsx:40,66"
+    },
+    {
+      "kind": "web-only",
+      "text": "vector-effect non-scaling-stroke keeps the stroke 2px at 32 and 64px; a native build scales the radius with size but not the stroke.",
+      "source": "Spinner.tsx:90,97"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The size map, 25% track opacity, 2px stroke, the 300ms and 1000ms delays and the 1000ms sync period are literals; the animation itself reads --base-duration-1000 and --base-easing-linear.",
+      "source": "Spinner.tsx:10-16,53,88-89"
+    }
+  ]
+}
