@@ -1,0 +1,556 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "overlay",
+  "name": "Overlay",
+  "status": "alpha",
+  "statusNote": "Overlay is the floating surface under AnchoredOverlay, ActionMenu, SelectPanel and Autocomplete; it has been alpha for years and its API is settled. Primer's site files it under internal components: product code reaches it through AnchoredOverlay or Dialog rather than directly.",
+  "summary": "A floating, elevated surface placed at explicit coordinates, with Escape, outside-press and focus-on-open/return-on-close behaviour built in. Build it once as the base layer; choose anchored-overlay when the surface hangs off a trigger, dialog when it is modal with a backdrop.",
+  "tokenGroups": [
+    "--overlay-bgColor",
+    "--borderRadius-large",
+    "--shadow-floating-small",
+    "--viewportRange-narrow"
+  ],
+  "references": {
+    "react": [
+      "Overlay.module.css",
+      "Overlay.tsx",
+      "Overlay/constants.ts",
+      "Overlay.docs.json",
+      "useOverlay.tsx",
+      "useOnEscapePress.ts",
+      "useOnOutsideClick.tsx",
+      "useOpenAndCloseFocus.ts",
+      "Portal.tsx",
+      "portalRoot.ts"
+    ],
+    "primer": [
+      "overlay"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "The overlay's children. Overlay adds no padding; content brings its own."
+    },
+    {
+      "name": "top",
+      "type": "number",
+      "required": false,
+      "description": "Top edge in px, relative to the portal root (the page's top-left, since the default portal root is absolutely positioned at 0,0 over the body)."
+    },
+    {
+      "name": "left",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "Left edge in px. Defaults to 0 only when neither left nor right is given."
+    },
+    {
+      "name": "right",
+      "type": "number",
+      "required": false,
+      "description": "Right edge in px, used instead of left."
+    },
+    {
+      "name": "bottom",
+      "type": "number",
+      "required": false,
+      "description": "Bottom edge in px, used instead of top."
+    },
+    {
+      "name": "position",
+      "type": "enum",
+      "values": [
+        "absolute",
+        "fixed",
+        "relative",
+        "static",
+        "sticky"
+      ],
+      "required": false,
+      "default": "absolute",
+      "description": "Positioning scheme. absolute scrolls with the page; fixed pins to the viewport."
+    },
+    {
+      "name": "width",
+      "type": "enum",
+      "values": [
+        "auto",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "Fixed width: 256, 320, 480, 640 or 960px; auto hugs content between the 192px minimum and the viewport less 32px."
+    },
+    {
+      "name": "height",
+      "type": "enum",
+      "values": [
+        "auto",
+        "initial",
+        "fit-content",
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "Fixed height: 192, 256, 320, 432 or 600px. initial measures the first rendered height and freezes it, so later content changes scroll instead of resizing."
+    },
+    {
+      "name": "maxWidth",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "required": false,
+      "description": "Caps the width at 256, 320, 480, 640 or 960px."
+    },
+    {
+      "name": "maxHeight",
+      "type": "enum",
+      "values": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "fit-content"
+      ],
+      "required": false,
+      "description": "Caps the height at 192, 256, 320, 432 or 600px, and never above the viewport height. Without it the cap is the viewport height."
+    },
+    {
+      "name": "overflow",
+      "type": "enum",
+      "values": [
+        "auto",
+        "hidden",
+        "scroll",
+        "visible"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "How content beyond the box is handled. The CSS default is auto; the docs file's 'hidden' default is wrong."
+    },
+    {
+      "name": "visibility",
+      "type": "enum",
+      "values": [
+        "visible",
+        "hidden"
+      ],
+      "required": false,
+      "default": "visible",
+      "description": "hidden lays the overlay out (so it can be measured) without painting it; AnchoredOverlay uses this until it has a position."
+    },
+    {
+      "name": "anchorSide",
+      "type": "enum",
+      "values": [
+        "outside-top",
+        "outside-bottom",
+        "outside-left",
+        "outside-right",
+        "inside-top",
+        "inside-bottom",
+        "inside-left",
+        "inside-right",
+        "inside-center"
+      ],
+      "required": false,
+      "description": "The side of the anchor the overlay sits on. Given, it drives the 8px slide-in from the anchor; absent, the overlay only fades in."
+    },
+    {
+      "name": "responsiveVariant",
+      "type": "enum",
+      "values": [
+        "fullscreen"
+      ],
+      "required": false,
+      "description": "fullscreen makes the overlay cover the viewport below the narrow breakpoint."
+    },
+    {
+      "name": "returnFocusTarget",
+      "type": "slot",
+      "required": true,
+      "description": "The element that receives focus when the overlay closes (React's returnFocusRef)."
+    },
+    {
+      "name": "initialFocusTarget",
+      "type": "slot",
+      "required": false,
+      "description": "The element focused on open; without it the first focusable descendant is focused (React's initialFocusRef)."
+    },
+    {
+      "name": "preventFocusOnOpen",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Leave focus where it is on open. Focus is still returned on close."
+    },
+    {
+      "name": "ignorePressTargets",
+      "type": "list",
+      "required": false,
+      "description": "Elements whose presses do not count as outside presses, normally the trigger, so pressing it toggles once rather than closing and reopening (React's ignoreClickRefs)."
+    },
+    {
+      "name": "onEscape",
+      "type": "callback",
+      "required": true,
+      "description": "Called on Escape while this is the topmost overlay. The caller closes the overlay."
+    },
+    {
+      "name": "onClickOutside",
+      "type": "callback",
+      "required": true,
+      "description": "Called on a primary-button press outside the overlay and outside ignorePressTargets. The caller closes the overlay."
+    },
+    {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "default": "none",
+      "description": "ARIA role for the surface, typically dialog or menu when used directly."
+    },
+    {
+      "name": "preventOverflow",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Documented as letting the width shrink to fit; in the CSS both settings cap the width at the viewport less 32px, so it has no visible effect."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "surface",
+      "name": "Surface",
+      "description": "One box: --overlay-bgColor fill, --borderRadius-large corners, --shadow-floating-small (whose first layer is a 1px ring that serves as the border), no padding, scrolls its own content.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "portal-layer",
+      "name": "Portal layer",
+      "description": "Not drawn. The surface is mounted outside the trigger's tree, in a layer above the page; each open overlay gets its own layer and later layers paint over earlier ones."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "width",
+      "value": "auto",
+      "default": true,
+      "description": "Hugs content between 192px and the viewport width less 32px."
+    },
+    {
+      "axis": "width",
+      "value": "small",
+      "description": "256px."
+    },
+    {
+      "axis": "width",
+      "value": "medium",
+      "description": "320px."
+    },
+    {
+      "axis": "width",
+      "value": "large",
+      "description": "480px."
+    },
+    {
+      "axis": "width",
+      "value": "xlarge",
+      "description": "640px."
+    },
+    {
+      "axis": "width",
+      "value": "xxlarge",
+      "description": "960px."
+    },
+    {
+      "axis": "responsive",
+      "value": "fullscreen",
+      "description": "Below the narrow breakpoint the surface covers the viewport, square-cornered, with bottom padding for the device's safe-area inset.",
+      "tokens": [
+        "--viewportRange-narrow"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "Width is auto by default, at least 192px and at most the viewport width less 32px (2rem); height is auto and at most the viewport height. Content that does not fit scrolls inside the surface.",
+      "values": [
+        {
+          "name": "minWidth",
+          "value": 192,
+          "unit": "px"
+        },
+        {
+          "name": "viewportWidthInset",
+          "value": 32,
+          "unit": "px"
+        }
+      ],
+      "source": "Overlay.module.css:11-21"
+    },
+    {
+      "text": "Fixed heights are xsmall 192, small 256, medium 320, large 432 and xlarge 600px; fit-content hugs content; auto and initial use the content height. With height initial the first measured height is written back as a fixed height.",
+      "values": [
+        {
+          "name": "heightXsmall",
+          "value": 192,
+          "unit": "px"
+        },
+        {
+          "name": "heightSmall",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "heightMedium",
+          "value": 320,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 432,
+          "unit": "px"
+        },
+        {
+          "name": "heightXlarge",
+          "value": 600,
+          "unit": "px"
+        }
+      ],
+      "source": "Overlay.module.css:75-102; Overlay.tsx:192-196; Overlay/constants.ts:1-10"
+    },
+    {
+      "text": "Fixed widths are small 256, medium 320, large 480, xlarge 640 and xxlarge 960px; maxWidth caps at the same steps. A fixed width is still clipped by the viewport-less-32px maximum unless maxWidth replaces it.",
+      "values": [
+        {
+          "name": "widthSmall",
+          "value": 256,
+          "unit": "px"
+        },
+        {
+          "name": "widthMedium",
+          "value": 320,
+          "unit": "px"
+        },
+        {
+          "name": "widthLarge",
+          "value": 480,
+          "unit": "px"
+        },
+        {
+          "name": "widthXlarge",
+          "value": 640,
+          "unit": "px"
+        },
+        {
+          "name": "widthXxlarge",
+          "value": 960,
+          "unit": "px"
+        }
+      ],
+      "source": "Overlay.module.css:148-193; Overlay/constants.ts:12-19"
+    },
+    {
+      "text": "maxHeight steps are the height steps, each further capped at the viewport height (the dynamic viewport height where available, so mobile browser toolbars do not clip it).",
+      "source": "Overlay.module.css:104-146"
+    },
+    {
+      "text": "Placement is by the top, left, right and bottom inputs, in px from the portal root; when neither left nor right is given, left is 0. The portal root sits at the page origin, so absolute coordinates are document coordinates and scroll with the page.",
+      "source": "Overlay.module.css:23-44; Overlay.tsx:98-101,214-215; portalRoot.ts:16-35"
+    },
+    {
+      "text": "Fullscreen below the narrow breakpoint: position fixed at 0,0, the full viewport width and (dynamic) height, no max size, no margin, no corner radius, and bottom padding equal to the safe-area inset.",
+      "tokens": [
+        "--viewportRange-narrow"
+      ],
+      "source": "Overlay.module.css:203-224"
+    },
+    {
+      "text": "Each overlay mounts in its own layer appended to a shared root at the end of the body; every layer has the same z-index (1), so overlays stack in the order they opened, the newest on top.",
+      "source": "Portal.tsx:70-104"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "On mount the surface fades from opacity 0 to 1 over 200ms with cubic-bezier(0.33, 1, 0.68, 1) (an ease-out cubic), unless the user prefers reduced motion.",
+      "values": [
+        {
+          "name": "fadeInDuration",
+          "value": 200,
+          "unit": "ms"
+        }
+      ],
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Overlay.module.css:1-9,234-238"
+    },
+    {
+      "state": "open",
+      "label": "slide-in",
+      "text": "With anchorSide set, the surface also slides 8px toward its resting place from the anchor's direction over 200ms on the same curve: from 8px above for a bottom side, 8px below for a top side, 8px left for a right side, 8px right for a left side, and no slide for inside-center. It runs once each time anchorSide changes while visible, so a flip to another side replays it.",
+      "values": [
+        {
+          "name": "slideDistance",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "slideDuration",
+          "value": 200,
+          "unit": "ms"
+        }
+      ],
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Overlay.tsx:25-39,178-179,198-212"
+    },
+    {
+      "state": "other",
+      "label": "closed",
+      "text": "Closing unmounts the surface at once; there is no exit animation.",
+      "motion": {
+        "instant": true
+      },
+      "source": "Overlay.module.css:234-238; Overlay.tsx:198-212"
+    },
+    {
+      "state": "focused",
+      "text": "The surface itself shows no focus outline when it holds focus; focus indication belongs to its content.",
+      "source": "Overlay.module.css:46-48"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "initial-focus",
+      "text": "On open, focus initialFocusTarget if given, else the first focusable descendant, unless preventFocusOnOpen. On close, focus returnFocusTarget. Overlay does not trap focus: Tab can leave it (AnchoredOverlay and Dialog add a trap).",
+      "source": "useOpenAndCloseFocus.ts:18-35; useOverlay.tsx:21-41"
+    },
+    {
+      "id": "escape",
+      "text": "Escape goes to the most recently opened overlay only: open overlays register Escape handlers in a stack, the newest runs first, and Overlay consumes the key after calling onEscape so the overlays beneath it stay open.",
+      "source": "useOnEscapePress.ts:7-15,53-80; useOverlay.tsx:34-39"
+    },
+    {
+      "id": "outside-press",
+      "text": "Outside dismissal fires on primary-button press-down (not release) anywhere outside the surface and outside ignorePressTargets, before the pressed element sees the event. Handlers run newest first; a press inside an overlay stops the walk, so a press inside a parent overlay closes only the children above it, and a press outside everything closes every open overlay. Secondary and middle buttons never dismiss.",
+      "source": "useOnOutsideClick.tsx:13-29,44-83"
+    },
+    {
+      "id": "reduced-motion",
+      "text": "Under reduced motion the fade is skipped; the slide-in is a script animation that is not gated on the preference and still runs.",
+      "source": "Overlay.module.css:234-238; Overlay.tsx:198-212"
+    }
+  ],
+  "accessibility": {
+    "role": "none by default (the surface is a plain container); callers pass dialog or menu",
+    "minTargetPx": null,
+    "keyboard": [
+      "Escape calls onEscape on the topmost overlay only.",
+      "Focus moves into the overlay on open and back to returnFocusTarget on close."
+    ],
+    "semantics": [
+      "The role comes from the caller; Overlay adds no label, no aria-modal and no live region.",
+      "Content outside the overlay stays reachable by assistive technology; Overlay sets nothing inert."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "Overlay's width steps (small 256, medium 320, large 480, xlarge 640, xxlarge 960px) are hard-coded and do not match the --overlay-width-* tokens (xsmall 192, small 320, medium 480, large 640, xlarge 960). A name like 'small' means 256px here and 320px in Popover. Use the module's numbers for Overlay.",
+      "tokens": [
+        "--overlay-width-small",
+        "--overlay-width-medium"
+      ],
+      "source": "Overlay.module.css:148-169; Popover.module.css:208-226"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Overlay rounds at --borderRadius-large (12px), not --overlay-borderRadius (6px).",
+      "tokens": [
+        "--borderRadius-large",
+        "--overlay-borderRadius"
+      ],
+      "source": "Overlay.module.css:20"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 200ms duration, the cubic-bezier(0.33, 1, 0.68, 1) curve and the 8px slide distance are not tokens; the code comments that 8 stands for --base-size-8.",
+      "source": "Overlay.tsx:25,178-179; Overlay.module.css:236"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "preventOverflow does nothing visible: false adds a rule setting max-width to calc(100vw - 2rem), which is already the base max-width.",
+      "source": "Overlay.module.css:13,55-57; Overlay.tsx:221"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The docs file gives overflow a default of hidden; the CSS sets overflow auto and only overrides it when the prop is passed.",
+      "source": "Overlay.docs.json; Overlay.module.css:18,59-73"
+    },
+    {
+      "kind": "web-only",
+      "text": "Escape and outside-press dismissal are document-level listeners kept in a stack across all open overlays. A native build keeps one ordered stack of open overlays, routes Escape to the top entry, and on a press walks from the top down, dismissing each overlay that does not contain the press until one does.",
+      "source": "useOnEscapePress.ts:19-80; useOnOutsideClick.tsx:31-83"
+    },
+    {
+      "kind": "web-only",
+      "text": "The portal moves the surface out of the trigger's clip and stacking context into a root over the page. A native build draws overlays in a separate pass after the page, in open order, unclipped by the trigger's scroll containers.",
+      "source": "Portal.tsx:70-104"
+    },
+    {
+      "kind": "web-only",
+      "text": "Fullscreen at narrow widths relies on a media query, dynamic viewport units and the safe-area inset. A native build switches on window width below 768px (--viewportRange-narrow) and pads the bottom by the platform's safe-area inset.",
+      "tokens": [
+        "--viewportRange-narrow"
+      ],
+      "source": "Overlay.module.css:203-231"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the surface draws a 1px transparent outline so the system paints a visible edge in place of the shadow.",
+      "source": "Overlay.module.css:50-53"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The fade-in is a CSS animation that starts on mount even while visibility is hidden, so when AnchoredOverlay reveals the surface after positioning it, part of the fade may already have elapsed. Start the fade when the surface first becomes visible.",
+      "source": "Overlay.module.css:195-201,234-238"
+    }
+  ]
+}

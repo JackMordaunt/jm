@@ -1,0 +1,679 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "dialog",
+  "name": "Dialog",
+  "status": "alpha",
+  "statusNote": "This is Dialog v2 (Dialog/), the current dialog; deprecated/DialogV1 is the old one. It ships across GitHub; alpha reflects ongoing additions (responsive positions, align) rather than an unsettled core.",
+  "summary": "A modal window over a dimming backdrop, with a title bar and close button, a scrolling body and an optional row of footer buttons; focus is trapped inside and the page behind stops scrolling. Use it for short tasks and decisions that block the page; use confirmation-dialog for a plain yes/no, anchored-overlay for non-modal panels.",
+  "tokenGroups": [
+    "--overlay-backdrop-bgColor",
+    "--overlay-bgColor",
+    "--borderRadius-large",
+    "--shadow-floating-small",
+    "--borderColor-default",
+    "--borderWidth-default",
+    "--borderWidth-thin",
+    "--base-size-4",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-64",
+    "--text-body-size-medium",
+    "--text-body-size-small",
+    "--text-title-weight-large",
+    "--base-text-weight-normal",
+    "--fgColor-muted"
+  ],
+  "references": {
+    "react": [
+      "Dialog/Dialog.tsx",
+      "Dialog/Dialog.module.css",
+      "Dialog/Dialog.docs.json",
+      "useFocusTrap.ts",
+      "useFocusZone.ts",
+      "useOnEscapePress.ts",
+      "ScrollableRegion.tsx",
+      "Portal.tsx"
+    ],
+    "primer": [
+      "dialog"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "title",
+      "type": "string",
+      "required": false,
+      "default": "Dialog",
+      "description": "The heading in the title bar and the dialog's accessible name. Always supply one; the default is a placeholder."
+    },
+    {
+      "name": "subtitle",
+      "type": "string",
+      "required": false,
+      "description": "A smaller muted line under the title; it becomes the dialog's description."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": false,
+      "description": "The body's children."
+    },
+    {
+      "name": "footerButtons",
+      "type": "list",
+      "required": false,
+      "description": "Buttons for the footer, in order, each {content, buttonType: default | primary | danger | normal (= default), autoFocus, onClick, loading, disabled...}. No list, no footer."
+    },
+    {
+      "name": "header",
+      "type": "slot",
+      "required": false,
+      "description": "Replaces the default title bar (React's renderHeader or a Dialog.Header child); it receives the ids to label and describe the dialog."
+    },
+    {
+      "name": "body",
+      "type": "slot",
+      "required": false,
+      "description": "Replaces the padded body (renderBody or Dialog.Body)."
+    },
+    {
+      "name": "footer",
+      "type": "slot",
+      "required": false,
+      "description": "Replaces the footer (renderFooter or Dialog.Footer)."
+    },
+    {
+      "name": "onClose",
+      "type": "callback",
+      "required": true,
+      "description": "Called with the gesture, close-button or escape (a backdrop click also reports escape). The caller unmounts the dialog."
+    },
+    {
+      "name": "role",
+      "type": "enum",
+      "values": [
+        "dialog",
+        "alertdialog"
+      ],
+      "required": false,
+      "default": "dialog",
+      "description": "alertdialog for an urgent interruption that needs a response."
+    },
+    {
+      "name": "width",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "custom"
+      ],
+      "required": false,
+      "default": "xlarge",
+      "description": "296, 320, 480 or 640px, or any length (React accepts a CSS width or a number of px)."
+    },
+    {
+      "name": "height",
+      "type": "enum",
+      "values": [
+        "auto",
+        "small",
+        "large"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "auto hugs content; small is 480px tall, large 640px."
+    },
+    {
+      "name": "position",
+      "type": "enum",
+      "values": [
+        "center",
+        "left",
+        "right"
+      ],
+      "required": false,
+      "default": "center",
+      "description": "center floats in the middle; left and right are full-height side sheets. A responsive form sets regular (center, left, right) and narrow (center, bottom, fullscreen) separately."
+    },
+    {
+      "name": "narrowPosition",
+      "type": "enum",
+      "values": [
+        "center",
+        "bottom",
+        "fullscreen"
+      ],
+      "required": false,
+      "default": "center",
+      "description": "Below 768px: center keeps the floating window, bottom makes a bottom sheet, fullscreen fills the viewport (React's position.narrow)."
+    },
+    {
+      "name": "align",
+      "type": "enum",
+      "values": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "required": false,
+      "default": "center",
+      "description": "Vertical placement of a centred dialog: top sits 64px below the viewport top, bottom 64px above its bottom."
+    },
+    {
+      "name": "initialFocusTarget",
+      "type": "slot",
+      "required": false,
+      "description": "Element focused on open (React's initialFocusRef)."
+    },
+    {
+      "name": "returnFocusTarget",
+      "type": "slot",
+      "required": false,
+      "description": "Element focused on close instead of whatever had focus before the dialog opened (React's returnFocusRef)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "backdrop",
+      "name": "Backdrop",
+      "description": "A full-viewport scrim in --overlay-backdrop-bgColor (a translucent grey) that centres the window and receives presses outside it.",
+      "tokens": [
+        "--overlay-backdrop-bgColor"
+      ]
+    },
+    {
+      "id": "window",
+      "name": "Window",
+      "description": "A vertical stack of header, body and footer: --overlay-bgColor fill, --borderRadius-large corners, --shadow-floating-small.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "header",
+      "name": "Header",
+      "description": "8px padding around a row of title block and close button, with a 1px --borderColor-default line drawn under it as a shadow; never taller than 35% of the viewport, scrolling beyond.",
+      "tokens": [
+        "--base-size-8",
+        "--borderColor-default"
+      ]
+    },
+    {
+      "id": "title",
+      "name": "Title",
+      "description": "A level-1 heading at --text-body-size-medium (14px) and --text-title-weight-large (semibold), inside a block padded 6px vertically and 8px horizontally.",
+      "tokens": [
+        "--text-body-size-medium",
+        "--text-title-weight-large",
+        "--base-size-6",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "subtitle",
+      "name": "Subtitle",
+      "optional": true,
+      "description": "A level-2 heading 4px under the title at --text-body-size-small, normal weight, --fgColor-muted.",
+      "tokens": [
+        "--base-size-4",
+        "--text-body-size-small",
+        "--base-text-weight-normal",
+        "--fgColor-muted"
+      ]
+    },
+    {
+      "id": "close-button",
+      "name": "Close button",
+      "description": "An invisible-variant IconButton with the X octicon and the label Close, at the header's trailing end; it shows a 'Close' tooltip on keyboard focus. See icon-button."
+    },
+    {
+      "id": "body",
+      "name": "Body",
+      "description": "16px padding, grows to fill the window and scrolls when content overflows.",
+      "tokens": [
+        "--base-size-16"
+      ]
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "optional": true,
+      "description": "A right-aligned row of Buttons with 8px gaps and 16px padding; a 1px --borderColor-default line separates it from the body when the body scrolls.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16",
+        "--borderColor-default",
+        "--borderWidth-thin"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "position",
+      "value": "center",
+      "default": true,
+      "description": "Floating window centred in the backdrop, all corners rounded; enters with a scale-and-fade."
+    },
+    {
+      "axis": "position",
+      "value": "left",
+      "description": "Full-height sheet against the left edge, square on its left corners; slides in from the left."
+    },
+    {
+      "axis": "position",
+      "value": "right",
+      "description": "Full-height sheet against the right edge, square on its right corners; slides in from the right."
+    },
+    {
+      "axis": "narrow-position",
+      "value": "bottom",
+      "description": "Below 768px: full-width sheet on the bottom edge, top corners rounded, at most the viewport height less 64px; slides up."
+    },
+    {
+      "axis": "narrow-position",
+      "value": "fullscreen",
+      "description": "Below 768px: fills the viewport with no corner radius; scale-and-fades in."
+    },
+    {
+      "axis": "width",
+      "value": "xlarge",
+      "default": true,
+      "description": "640px."
+    },
+    {
+      "axis": "width",
+      "value": "large",
+      "description": "480px."
+    },
+    {
+      "axis": "width",
+      "value": "medium",
+      "description": "320px."
+    },
+    {
+      "axis": "width",
+      "value": "small",
+      "description": "296px."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The backdrop covers the viewport and centres the window both ways. For position left or right it keeps vertical centring and pushes the window to that edge; align top or bottom moves a centred window to the top or bottom edge.",
+      "part": "backdrop",
+      "source": "Dialog/Dialog.module.css:62-104"
+    },
+    {
+      "text": "The window is its width step (640px by default, or a caller length), at least 296px, at most the viewport less 64px each way; height hugs content (or 480px for small, 640px for large) up to that limit. It is a column: header and footer keep their size and the body takes the rest.",
+      "values": [
+        {
+          "name": "defaultWidth",
+          "value": 640,
+          "unit": "px"
+        },
+        {
+          "name": "minWidth",
+          "value": 296,
+          "unit": "px"
+        },
+        {
+          "name": "viewportInset",
+          "value": 64,
+          "unit": "px"
+        },
+        {
+          "name": "heightSmall",
+          "value": 480,
+          "unit": "px"
+        },
+        {
+          "name": "heightLarge",
+          "value": 640,
+          "unit": "px"
+        }
+      ],
+      "part": "window",
+      "source": "Dialog/Dialog.module.css:132-166; Dialog/Dialog.tsx:200-213,423-431"
+    },
+    {
+      "text": "Width steps: small 296, medium 320, large 480, xlarge 640px.",
+      "values": [
+        {
+          "name": "widthSmall",
+          "value": 296,
+          "unit": "px"
+        },
+        {
+          "name": "widthMedium",
+          "value": 320,
+          "unit": "px"
+        },
+        {
+          "name": "widthLarge",
+          "value": 480,
+          "unit": "px"
+        },
+        {
+          "name": "widthXlarge",
+          "value": 640,
+          "unit": "px"
+        }
+      ],
+      "source": "Dialog/Dialog.module.css:135,147-158"
+    },
+    {
+      "text": "Align top adds a 64px top margin and align bottom a 64px bottom margin, only when the regular position is center.",
+      "tokens": [
+        "--base-size-64"
+      ],
+      "source": "Dialog/Dialog.module.css:172-187"
+    },
+    {
+      "text": "Side sheets (left, right) are the full dynamic viewport height with no height cap, square on the edge they touch.",
+      "source": "Dialog/Dialog.module.css:189-211"
+    },
+    {
+      "id": "narrow",
+      "text": "Below 768px wide the narrow position wins: center keeps the width and height steps; bottom is the full viewport width, at most the viewport height less 64px, bottom corners square, any align margin removed; fullscreen fills the viewport, unrounded. On a viewport also under 280px tall the size caps tighten to the viewport less 12px.",
+      "values": [
+        {
+          "name": "narrowBreakpoint",
+          "value": 768,
+          "unit": "px"
+        },
+        {
+          "name": "shortViewportInset",
+          "value": 12,
+          "unit": "px"
+        },
+        {
+          "name": "shortViewportHeight",
+          "value": 280,
+          "unit": "px"
+        }
+      ],
+      "source": "Dialog/Dialog.module.css:106-129,213-285"
+    },
+    {
+      "part": "header",
+      "text": "The header pads 8px and draws a 1px --borderColor-default rule along its bottom edge; inside, the title block pads 6px top and bottom, 8px left and right, and grows, and the close button follows it. A header taller than 35% of the viewport scrolls.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-6",
+        "--borderColor-default"
+      ],
+      "values": [
+        {
+          "name": "headerMaxHeight",
+          "value": 35,
+          "unit": "percent"
+        }
+      ],
+      "source": "Dialog/Dialog.module.css:323-343; Dialog/Dialog.tsx:239-249"
+    },
+    {
+      "part": "body",
+      "text": "The body pads 16px on every side, fills the space between header and footer and scrolls vertically.",
+      "tokens": [
+        "--base-size-16"
+      ],
+      "source": "Dialog/Dialog.module.css:298-300,359-363"
+    },
+    {
+      "id": "footer-layout",
+      "part": "footer",
+      "text": "Footer buttons sit at the end of the row with 8px gaps inside 16px padding and wrap onto more rows when they do not fit. If wrapping would leave the body less than 48px tall, the footer becomes one unwrapped row that scrolls horizontally instead. Re-check whenever the dialog resizes.",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16"
+      ],
+      "values": [
+        {
+          "name": "minBodyHeight",
+          "value": 48,
+          "unit": "px"
+        }
+      ],
+      "source": "Dialog/Dialog.module.css:365-380; Dialog/Dialog.tsx:271-273,364-389"
+    },
+    {
+      "part": "footer",
+      "text": "With a footer, draw a 1px --borderColor-default line between body and footer only while the body is scrollable; where the browser cannot detect that, the line is always drawn.",
+      "tokens": [
+        "--borderColor-default",
+        "--borderWidth-thin",
+        "--borderWidth-default"
+      ],
+      "source": "Dialog/Dialog.module.css:54-60,302-321"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "part": "backdrop",
+      "text": "The backdrop fades from opacity 0 to 1 over 200ms with cubic-bezier(0.33, 1, 0.68, 1).",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Dialog/Dialog.module.css:14-22,70"
+    },
+    {
+      "state": "open",
+      "part": "window",
+      "text": "A centred (or narrow center or fullscreen) window scale-fades in: opacity 0 to 1 and scale 0.5 to 1 about its centre, over 200ms with cubic-bezier(0.33, 1, 0.68, 1), after a 1ms delay.",
+      "values": [
+        {
+          "name": "startScale",
+          "value": 0.5,
+          "unit": "ratio"
+        },
+        {
+          "name": "delay",
+          "value": 1,
+          "unit": "ms"
+        }
+      ],
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Dialog/Dialog.module.css:24-34,168-177,281-283"
+    },
+    {
+      "state": "open",
+      "part": "window",
+      "label": "sheet",
+      "text": "A left sheet slides in from fully off-screen left (translateX -100%) and a right sheet from fully off-screen right, a narrow bottom sheet up from fully below (translateY 100%), each over 250ms with cubic-bezier(0.33, 1, 0.68, 1); there is no fade.",
+      "values": [
+        {
+          "name": "sheetDuration",
+          "value": 250,
+          "unit": "ms"
+        }
+      ],
+      "motion": {
+        "durationMs": 250,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Dialog/Dialog.module.css:36-52,196-198,208-210,262-264"
+    },
+    {
+      "state": "other",
+      "label": "closed",
+      "text": "Closing unmounts backdrop and window at once; there is no exit animation.",
+      "motion": {
+        "instant": true
+      },
+      "source": "Dialog/Dialog.module.css:14-52; Dialog/Dialog.tsx:401-443"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "initial-focus",
+      "text": "On open, focus initialFocusTarget if given, else the first footer button marked autoFocus, else the first focusable element, which with the default header is the close button.",
+      "source": "Dialog/Dialog.tsx:299-305,327-333,500-524"
+    },
+    {
+      "id": "focus-trap",
+      "text": "Trap focus: Tab and Shift+Tab cycle through the window's focusable elements and wrap at the ends, and focus that lands outside is pulled back to the last focused element inside. A trap opened inside the dialog (a menu, a nested dialog) suspends this one until it closes.",
+      "source": "Dialog/Dialog.tsx:327-333; useFocusTrap.ts:84-99"
+    },
+    {
+      "id": "return-focus",
+      "text": "On close, focus returnFocusTarget if given, else the element that had focus when the dialog opened.",
+      "source": "Dialog/Dialog.tsx:327-333; useFocusTrap.ts:62-82"
+    },
+    {
+      "id": "escape",
+      "text": "Escape calls onClose('escape') and stops there, so overlays beneath stay open; an overlay or tooltip opened above the dialog gets Escape first.",
+      "source": "Dialog/Dialog.tsx:335-341; useOnEscapePress.ts:7-15"
+    },
+    {
+      "id": "close-button-escape",
+      "text": "Escape on the focused close button closes the dialog directly, because its tooltip would otherwise take the first Escape.",
+      "part": "close-button",
+      "source": "Dialog/Dialog.tsx:222-238"
+    },
+    {
+      "id": "backdrop-press",
+      "text": "A primary click whose press and release both land on the backdrop itself (not the window) calls onClose('escape'). A drag that starts inside the window and ends on the backdrop does not close.",
+      "part": "backdrop",
+      "source": "Dialog/Dialog.tsx:306-316,410-413"
+    },
+    {
+      "id": "scroll-lock",
+      "text": "While any dialog is open the page behind does not scroll, and the page is padded on the right by the width of the scrollbar it lost so content does not shift. Count open dialogs and release only when the last closes.",
+      "source": "Dialog/Dialog.tsx:24-29,343-357; Dialog/Dialog.module.css:1-12,288-296"
+    },
+    {
+      "id": "footer-keys",
+      "text": "In the default footer, ArrowLeft and ArrowRight move between buttons as well as Tab, and Tab into the footer lands on the button nearest the direction of travel.",
+      "part": "footer",
+      "source": "Dialog/Dialog.tsx:254-264"
+    },
+    {
+      "id": "footer-buttons",
+      "text": "Each footer button is a medium Button in its buttonType's variant (normal maps to default) that calls its own onClick; the dialog does not close itself when one is pressed.",
+      "part": "footer",
+      "source": "Dialog/Dialog.tsx:490-532"
+    },
+    {
+      "id": "scrollable-body",
+      "text": "When the body's content overflows, the body becomes a focusable region labelled by the title so keyboard users can scroll it; when it fits, it is a plain container.",
+      "part": "body",
+      "source": "Dialog/Dialog.tsx:435-437; ScrollableRegion.tsx:18-47"
+    },
+    {
+      "id": "stacking",
+      "text": "Each dialog mounts in its own layer above the page; a later dialog paints over an earlier one.",
+      "source": "Dialog/Dialog.tsx:403; Portal.tsx:70-104"
+    }
+  ],
+  "accessibility": {
+    "role": "dialog (or alertdialog), aria-modal",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Tab and Shift+Tab cycle within the dialog and wrap.",
+      "Escape closes the dialog (after any tooltip or overlay above it).",
+      "ArrowLeft and ArrowRight move between footer buttons.",
+      "Enter or Space activates the focused button."
+    ],
+    "semantics": [
+      "Labelled by the title (aria-labelledby) and described by the subtitle (aria-describedby).",
+      "aria-modal tells assistive technology the rest of the page is unavailable.",
+      "The title is a level-1 heading and the subtitle a level-2 heading.",
+      "The close button is named Close."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "contradiction",
+      "text": "The component's own doc comment says clicking outside will not close the dialog; the code closes it on a click that starts and ends on the backdrop, and reports the gesture as escape rather than a gesture of its own. Follow the code.",
+      "source": "Dialog/Dialog.tsx:563-566,306-316"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "aria-describedby always points at the subtitle id, even when there is no subtitle and so no element with that id. Expose a description only when a subtitle exists.",
+      "source": "Dialog/Dialog.tsx:244,281,417-420"
+    },
+    {
+      "kind": "web-only",
+      "text": "The page behind is not made inert; only aria-modal and the focus trap keep users inside. Pointer events still reach nothing behind because the backdrop covers the viewport. A native build must block input to everything under the backdrop, route keyboard focus only within the topmost modal, and hide the background from accessibility.",
+      "source": "Dialog/Dialog.tsx:405-420"
+    },
+    {
+      "kind": "web-only",
+      "text": "Scroll lock is done by setting overflow hidden on the page body and padding it by the measured scrollbar width. A native build stops wheel and keyboard scrolling of the page while a modal is open and must not reflow the page when the scrollbar disappears.",
+      "source": "Dialog/Dialog.tsx:343-357; Dialog/Dialog.module.css:288-296"
+    },
+    {
+      "kind": "web-only",
+      "text": "The body/footer divider is driven by a scroll-timeline animation that flips a custom property when the body can scroll. A native build compares the body's content height with its viewport each frame and draws the 1px line only when it overflows.",
+      "source": "Dialog/Dialog.module.css:54-60,302-321"
+    },
+    {
+      "kind": "web-only",
+      "text": "The responsive positions are media queries at a hard-coded max-width of 767px. A native build switches on window width below 768px and re-evaluates on resize.",
+      "source": "Dialog/Dialog.module.css:106,213"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Regular-position rules are not gated to wide viewports: they apply at every width and the narrow rules override them below 768px. A wide key in a responsive position is accepted by the type but read by no CSS, and narrow left or right is not styled.",
+      "source": "Dialog/Dialog.module.css:74-87,172-211,213-285; Dialog/Dialog.tsx:391-398"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Dialog wears --shadow-floating-small, the menu shadow, though the token guide pairs dialogs with floating large or xlarge. Follow the module.",
+      "tokens": [
+        "--shadow-floating-small",
+        "--shadow-floating-large"
+      ],
+      "source": "Dialog/Dialog.module.css:144; DESIGN_TOKENS_GUIDE.md:131"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Dialog widths (296, 320, 480, 640px) are hard-coded and match neither Overlay's steps nor the --overlay-width-* tokens.",
+      "source": "Dialog/Dialog.module.css:135,147-158"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "No z-index token is read: the backdrop has none and dialogs stack by the order their portal layers were added. Animations (200ms scale-fade from 0.5, 250ms sheet slides, 200ms backdrop fade, all cubic-bezier(0.33, 1, 0.68, 1)), the 64px viewport inset, 296px minimum width and 35vh header cap are raw values.",
+      "source": "Dialog/Dialog.module.css:62-72,132-170,323-331"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Reduced motion disables the window's animations but not the backdrop's 200ms fade, which is not wrapped in the reduced-motion query.",
+      "source": "Dialog/Dialog.module.css:70,168-170"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The dialog does not close when a footer button is pressed; each button's onClick must call the close path. ConfirmationDialog does this for its two buttons.",
+      "source": "Dialog/Dialog.tsx:514-528"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The title sets size and weight but no line height, so it inherits the page's; use the body line height for 14px text.",
+      "source": "Dialog/Dialog.module.css:345-349"
+    }
+  ]
+}

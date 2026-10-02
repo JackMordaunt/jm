@@ -1,0 +1,389 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "tooltip",
+  "name": "Tooltip",
+  "status": "beta",
+  "statusNote": "This is TooltipV2, exported as Tooltip; the older Tooltip under Tooltip/ is the deprecated one. Beta means the API is settled and in wide use; IconButton builds a tooltip from its aria-label by default.",
+  "summary": "A small dark label that appears beside an interactive element on hover (after a short delay) or keyboard focus, either naming the element (type label) or adding a description to it. Use it for icon-only controls and brief supplementary text; never put interactive content in it, and prefer visible text where space allows.",
+  "tokenGroups": [
+    "--tooltip-bgColor",
+    "--tooltip-fgColor",
+    "--overlay-padding-condensed",
+    "--overlay-paddingBlock-condensed",
+    "--overlay-offset",
+    "--borderRadius-medium",
+    "--text-body-shorthand-small",
+    "--base-size-6",
+    "--base-size-8"
+  ],
+  "references": {
+    "react": [
+      "TooltipV2/Tooltip.tsx",
+      "TooltipV2/Tooltip.module.css",
+      "TooltipV2/Tooltip.docs.json",
+      "TooltipV2/TooltipContext.ts",
+      "IconButton.tsx",
+      "useOnEscapePress.ts"
+    ],
+    "primer": [
+      "tooltip"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": "The tooltip's text."
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "description",
+        "label"
+      ],
+      "required": false,
+      "default": "description",
+      "description": "label: the text is the trigger's accessible name (for icon-only controls). description: the text describes a trigger that already has a name."
+    },
+    {
+      "name": "direction",
+      "type": "enum",
+      "values": [
+        "n",
+        "ne",
+        "e",
+        "se",
+        "s",
+        "sw",
+        "w",
+        "nw"
+      ],
+      "required": false,
+      "default": "s",
+      "description": "Preferred placement relative to the trigger; it flips when there is no room."
+    },
+    {
+      "name": "delay",
+      "type": "enum",
+      "values": [
+        "short",
+        "medium",
+        "long"
+      ],
+      "required": false,
+      "default": "short",
+      "description": "Hover delay before showing: 50, 400 or 1200ms. Keyboard focus ignores it."
+    },
+    {
+      "name": "keybindingHint",
+      "type": "list",
+      "required": false,
+      "description": "One or more key chords shown after the text as small onEmphasis KeybindingHints, joined by 'or'."
+    },
+    {
+      "name": "trigger",
+      "type": "slot",
+      "required": true,
+      "description": "Exactly one interactive element (button, link, summary, input, select, textarea, or role button), or an element with one within two levels."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "bubble",
+      "name": "Bubble",
+      "description": "A dark rounded box: --tooltip-bgColor fill, --borderRadius-medium corners, 4px block and 8px inline padding, no border, no shadow, no caret.",
+      "tokens": [
+        "--tooltip-bgColor",
+        "--borderRadius-medium",
+        "--overlay-paddingBlock-condensed",
+        "--overlay-padding-condensed"
+      ]
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "description": "Small body text (--text-body-shorthand-small: 12px regular) in --tooltip-fgColor, centred, wrapping by word with balanced lines.",
+      "tokens": [
+        "--text-body-shorthand-small",
+        "--tooltip-fgColor"
+      ]
+    },
+    {
+      "id": "keybinding-hint",
+      "name": "Keybinding hints",
+      "optional": true,
+      "description": "Small condensed KeybindingHints in their onEmphasis colours after the text, 6px after it (8px when there are several hints), separated by the word 'or'. See keybinding-hint.",
+      "tokens": [
+        "--base-size-6",
+        "--base-size-8"
+      ]
+    },
+    {
+      "id": "hover-bridge",
+      "name": "Hover bridge",
+      "description": "An invisible strip filling the gap between bubble and trigger, so the pointer can cross from one to the other: the bubble's width by --overlay-offset tall above or below, or 8px wide by the bubble's height beside it.",
+      "tokens": [
+        "--overlay-offset"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "type",
+      "value": "description",
+      "default": true,
+      "description": "Describes the trigger; exposed as role tooltip and referenced by the trigger's aria-describedby."
+    },
+    {
+      "axis": "type",
+      "value": "label",
+      "description": "Names the trigger; referenced by aria-labelledby and given no role. The trigger must not also carry aria-label."
+    },
+    {
+      "axis": "delay",
+      "value": "short",
+      "default": true,
+      "description": "50ms hover delay."
+    },
+    {
+      "axis": "delay",
+      "value": "medium",
+      "description": "400ms hover delay."
+    },
+    {
+      "axis": "delay",
+      "value": "long",
+      "description": "1200ms hover delay."
+    }
+  ],
+  "layout": [
+    {
+      "text": "The bubble sizes to its text up to 250px wide, then wraps (by word, breaking long words, with balanced line lengths). Padding is --overlay-paddingBlock-condensed top and bottom, --overlay-padding-condensed left and right.",
+      "values": [
+        {
+          "name": "maxWidth",
+          "value": 250,
+          "unit": "px"
+        }
+      ],
+      "tokens": [
+        "--overlay-paddingBlock-condensed",
+        "--overlay-padding-condensed"
+      ],
+      "source": "TooltipV2/Tooltip.module.css:16-39"
+    },
+    {
+      "id": "direction-map",
+      "text": "Direction maps to an anchored placement: n outside-top center, ne outside-top start, nw outside-top end, s outside-bottom center, se outside-bottom start, sw outside-bottom end, e outside-right center, w outside-left center. Note that ne aligns the bubble's left edge with the trigger's (so it extends right), nw its right edge.",
+      "source": "TooltipV2/Tooltip.tsx:60-70"
+    },
+    {
+      "id": "placement",
+      "text": "Placement uses the anchored-overlay algorithm with its defaults: 4px from the trigger, no alignment offset, flipping side then alignment when clipped and clamping into the window; bounds are the page body at least the window tall, since the bubble lives in the top layer. The resolved side and alignment map back to a direction, which only moves the hover bridge.",
+      "values": [
+        {
+          "name": "gap",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "TooltipV2/Tooltip.tsx:157-183,72-82"
+    },
+    {
+      "id": "bridge",
+      "part": "hover-bridge",
+      "text": "For n, ne and nw the bridge hangs below the bubble; for s, se and sw above it; for w an 8px strip to its right; for e an 8px strip to its left, each spanning the bubble's full width or height.",
+      "tokens": [
+        "--overlay-offset"
+      ],
+      "values": [
+        {
+          "name": "sideBridgeWidth",
+          "value": 8,
+          "unit": "px"
+        }
+      ],
+      "source": "TooltipV2/Tooltip.module.css:56-100"
+    },
+    {
+      "part": "keybinding-hint",
+      "text": "With text before them, hints start 6px after the text, 8px when there is more than one hint.",
+      "tokens": [
+        "--base-size-6",
+        "--base-size-8"
+      ],
+      "source": "TooltipV2/Tooltip.module.css:126-132; TooltipV2/Tooltip.tsx:390-418"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "On show the bubble fades from opacity 0 to 1 over 100ms ease-in, unless the user prefers reduced motion. It does not slide or scale.",
+      "values": [
+        {
+          "name": "fadeDuration",
+          "value": 100,
+          "unit": "ms"
+        }
+      ],
+      "motion": {
+        "durationMs": 100,
+        "easing": [
+          0.42,
+          0,
+          1,
+          1
+        ]
+      },
+      "source": "TooltipV2/Tooltip.module.css:1-10,102-123"
+    },
+    {
+      "state": "other",
+      "label": "closed",
+      "text": "Hiding is instant; there is no exit fade and no close delay.",
+      "motion": {
+        "instant": true
+      },
+      "source": "TooltipV2/Tooltip.tsx:200-232"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "hover-open",
+      "text": "Pointer entering the trigger starts a timer of the delay (50, 400 or 1200ms); if the pointer is still on the trigger when it fires, show the tooltip. Leaving the trigger cancels the timer and hides at once.",
+      "values": [
+        {
+          "name": "delayShort",
+          "value": 50,
+          "unit": "ms"
+        },
+        {
+          "name": "delayMedium",
+          "value": 400,
+          "unit": "ms"
+        },
+        {
+          "name": "delayLong",
+          "value": 1200,
+          "unit": "ms"
+        }
+      ],
+      "source": "TooltipV2/Tooltip.tsx:94-100,356-372"
+    },
+    {
+      "id": "hover-bubble",
+      "text": "Pointer entering the bubble (via the hover bridge) shows it again immediately and leaving the bubble hides it, so the user can move onto the tooltip to read or select its text.",
+      "source": "TooltipV2/Tooltip.tsx:384-386; TooltipV2/Tooltip.module.css:56-64"
+    },
+    {
+      "id": "focus-open",
+      "text": "Keyboard focus on the trigger shows the tooltip immediately with no delay, but only when focus is keyboard-visible (focus-visible); a mouse click that focuses the trigger does not show it. Blur hides it.",
+      "source": "TooltipV2/Tooltip.tsx:333-355"
+    },
+    {
+      "id": "escape",
+      "text": "Escape while the tooltip shows hides it and swallows the key, so an enclosing dialog or menu does not also close on that press. A second Escape reaches them.",
+      "source": "TooltipV2/Tooltip.tsx:289-298"
+    },
+    {
+      "id": "touch",
+      "text": "On touch, a tap hides the tooltip 10ms after the touch ends, so tooltips effectively only appear on press-and-hold.",
+      "values": [
+        {
+          "name": "touchHideDelay",
+          "value": 10,
+          "unit": "ms"
+        }
+      ],
+      "source": "TooltipV2/Tooltip.tsx:337-343"
+    },
+    {
+      "id": "one-at-a-time",
+      "text": "Only one tooltip shows at a time: showing one hides any other, and a press anywhere outside hides it.",
+      "source": "TooltipV2/Tooltip.tsx:285-286"
+    },
+    {
+      "id": "position-once",
+      "text": "Place the bubble once when it shows; it does not follow the trigger if the page scrolls while it is visible.",
+      "source": "TooltipV2/Tooltip.tsx:157-183"
+    },
+    {
+      "id": "icon-button",
+      "text": "IconButton wraps itself in a Tooltip by default: text is its description if given (type description, and the button keeps its aria-label as its name), else its aria-label (type label, and the button drops aria-label so the tooltip names it). direction comes from tooltipDirection (default s), keybindingHint from keybindingHint or keyshortcuts. It adds no tooltip when disabled, when aria-label is empty, when unsafeDisableTooltip is set, or when an outer Tooltip already wraps it, and suppresses it while the button's menu is open (aria-expanded with aria-haspopup).",
+      "source": "IconButton.tsx:28-80"
+    },
+    {
+      "id": "disabled-tooltip",
+      "text": "A suppressed tooltip (React's _privateDisableTooltip) never shows, whatever the gesture.",
+      "source": "TooltipV2/Tooltip.tsx:157-165"
+    }
+  ],
+  "accessibility": {
+    "role": "tooltip for type description; none for type label (the trigger is labelled by it)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab onto the trigger shows the tooltip at once.",
+      "Escape hides it without moving focus or closing an enclosing overlay.",
+      "Tab away hides it."
+    ],
+    "semantics": [
+      "type label: the trigger's aria-labelledby points at the tooltip, and the trigger must have no aria-label.",
+      "type description: the tooltip id is appended to the trigger's aria-describedby.",
+      "The bubble itself is aria-hidden so its text is announced once, through the trigger.",
+      "Keybinding hints are folded into the label as plain text in parentheses, e.g. 'Search (Control K)', and the visual hint chips are hidden from assistive technology."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "The bubble is a popover=auto element in the browser's top layer, which supplies three behaviours a native build must add: it paints above everything including modal dialogs, opening one auto popover closes any other open one, and a press outside or Escape light-dismisses it. A polyfill provides this in older browsers.",
+      "source": "TooltipV2/Tooltip.tsx:278-286; TooltipV2/Tooltip.module.css:12-50"
+    },
+    {
+      "kind": "web-only",
+      "text": "Focus-opening depends on the browser's focus-visible heuristic (keyboard focus yes, pointer focus no, programmatic focus inherits the last input modality). A native build tracks whether the last input was a key press and shows the tooltip on focus only then.",
+      "source": "TooltipV2/Tooltip.tsx:344-355"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Leaving the trigger hides the tooltip instantly and entering the bubble re-shows it; there is no grace period. The hover bridge only works because the bubble is 4px away. A native build that hit-tests trigger, bridge and bubble as one hover region gets the intended result without the flicker.",
+      "source": "TooltipV2/Tooltip.tsx:369-372,384-386; TooltipV2/Tooltip.module.css:56-64"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Because a focused dialog close button shows its 'Close' tooltip, and the tooltip swallows Escape, Dialog's close button handles Escape itself so the dialog still closes on the first press. Any control that both shows a tooltip and lives in a dismissible overlay needs the same care.",
+      "source": "TooltipV2/Tooltip.tsx:289-298; Dialog/Dialog.tsx:225-238"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The direction names read like compass corners but ne and se align start (the bubble extends to the right of the trigger's left edge) and nw and sw align end.",
+      "source": "TooltipV2/Tooltip.tsx:61-70"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 100ms ease-in fade, the 250px maximum width, the 8px side bridge and the 50, 400 and 1200ms delays are not tokens. The side bridge is 8px though the gap it spans is 4px.",
+      "source": "TooltipV2/Tooltip.module.css:19,84,95,108-111; TooltipV2/Tooltip.tsx:96-100"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "The bubble has no shadow and no border; contrast comes from the token pair alone. --tooltip-bgColor follows --bgColor-emphasis and in the high-contrast dark themes flips to a light fill with dark --tooltip-fgColor text, so never hard-code a dark chip.",
+      "tokens": [
+        "--tooltip-bgColor",
+        "--tooltip-fgColor"
+      ],
+      "source": "TooltipV2/Tooltip.module.css:28-35"
+    },
+    {
+      "kind": "high-contrast",
+      "text": "Under forced colours the bubble draws a 1px transparent outline so the system paints its edge.",
+      "source": "TooltipV2/Tooltip.module.css:52-54"
+    },
+    {
+      "kind": "contradiction",
+      "text": "primer.style says the tooltip never breaks outside the viewport; the code places it once and does not reposition on scroll, so a scrolled page can carry it off-screen until it is next shown.",
+      "source": "primer:tooltip; TooltipV2/Tooltip.tsx:157-183"
+    }
+  ]
+}

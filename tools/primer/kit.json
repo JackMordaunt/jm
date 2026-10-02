@@ -65,6 +65,20 @@
       ]
     },
     {
+      "id": "anchored-overlay",
+      "name": "AnchoredOverlay",
+      "status": "alpha",
+      "summary": "An Overlay that opens from a trigger and positions itself against it: on a chosen side and alignment, offset 4px, flipping to another side and alignment when it would be clipped, then clamped into bounds. Use it for menus, pickers and any non-modal floating panel tied to a control; use popover for a static callout with a caret and tooltip for hover text.",
+      "tokenGroups": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small",
+        "--viewportRange-narrow",
+        "--base-size-4",
+        "--base-size-8"
+      ]
+    },
+    {
       "id": "banner",
       "name": "Banner",
       "status": "alpha",
@@ -288,6 +302,26 @@
       ]
     },
     {
+      "id": "confirmation-dialog",
+      "name": "ConfirmationDialog",
+      "status": "alpha",
+      "summary": "A Dialog that asks one question and offers exactly two buttons, cancel and confirm, and reports which closed it. Use it to confirm an action, especially a destructive one; use dialog when the task needs a form or more than two choices.",
+      "tokenGroups": [
+        "--overlay-backdrop-bgColor",
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small",
+        "--borderColor-default",
+        "--borderWidth-default",
+        "--borderWidth-thin",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-16",
+        "--text-body-size-medium",
+        "--text-title-weight-large"
+      ]
+    },
+    {
       "id": "counter-label",
       "name": "CounterLabel",
       "status": "alpha",
@@ -303,6 +337,38 @@
         "--fgColor-default",
         "--fgColor-onEmphasis",
         "--text-body-size-small"
+      ]
+    },
+    {
+      "id": "details",
+      "name": "Details",
+      "status": "alpha",
+      "summary": "A disclosure: a summary that toggles the visibility of the content after it. Use it for show-more sections and simple native-feeling dropdowns; use anchored-overlay for menus that must float, position and trap focus.",
+      "tokenGroups": []
+    },
+    {
+      "id": "dialog",
+      "name": "Dialog",
+      "status": "alpha",
+      "summary": "A modal window over a dimming backdrop, with a title bar and close button, a scrolling body and an optional row of footer buttons; focus is trapped inside and the page behind stops scrolling. Use it for short tasks and decisions that block the page; use confirmation-dialog for a plain yes/no, anchored-overlay for non-modal panels.",
+      "tokenGroups": [
+        "--overlay-backdrop-bgColor",
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small",
+        "--borderColor-default",
+        "--borderWidth-default",
+        "--borderWidth-thin",
+        "--base-size-4",
+        "--base-size-6",
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-64",
+        "--text-body-size-medium",
+        "--text-body-size-small",
+        "--text-title-weight-large",
+        "--base-text-weight-normal",
+        "--fgColor-muted"
       ]
     },
     {
@@ -438,6 +504,42 @@
       ]
     },
     {
+      "id": "overlay",
+      "name": "Overlay",
+      "status": "alpha",
+      "summary": "A floating, elevated surface placed at explicit coordinates, with Escape, outside-press and focus-on-open/return-on-close behaviour built in. Build it once as the base layer; choose anchored-overlay when the surface hangs off a trigger, dialog when it is modal with a backdrop.",
+      "tokenGroups": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small",
+        "--viewportRange-narrow"
+      ]
+    },
+    {
+      "id": "popover",
+      "name": "Popover",
+      "status": "alpha",
+      "summary": "A padded card with a caret pointing at the thing it explains, placed by the caller. Use it for a non-modal callout tied to a spot on the page (onboarding, feature discovery); use anchored-overlay for menus and pickers that open from a control, tooltip for short hover text.",
+      "tokenGroups": [
+        "--overlay-bgColor",
+        "--borderRadius-medium",
+        "--shadow-floating-small",
+        "--borderColor-default",
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-24",
+        "--overlay-width-xsmall",
+        "--overlay-width-small",
+        "--overlay-width-medium",
+        "--overlay-width-large",
+        "--overlay-width-xlarge",
+        "--overlay-height-small",
+        "--overlay-height-medium",
+        "--overlay-height-large",
+        "--overlay-height-xlarge"
+      ]
+    },
+    {
       "id": "relative-time",
       "name": "RelativeTime",
       "status": "alpha",
@@ -493,6 +595,23 @@
         "--fgColor-onEmphasis",
         "--text-body-size-medium",
         "--timelineBadge-bgColor"
+      ]
+    },
+    {
+      "id": "tooltip",
+      "name": "Tooltip",
+      "status": "beta",
+      "summary": "A small dark label that appears beside an interactive element on hover (after a short delay) or keyboard focus, either naming the element (type label) or adding a description to it. Use it for icon-only controls and brief supplementary text; never put interactive content in it, and prefer visible text where space allows.",
+      "tokenGroups": [
+        "--tooltip-bgColor",
+        "--tooltip-fgColor",
+        "--overlay-padding-condensed",
+        "--overlay-paddingBlock-condensed",
+        "--overlay-offset",
+        "--borderRadius-medium",
+        "--text-body-shorthand-small",
+        "--base-size-6",
+        "--base-size-8"
       ]
     },
     {

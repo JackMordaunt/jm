@@ -1,0 +1,269 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "confirmation-dialog",
+  "name": "ConfirmationDialog",
+  "status": "alpha",
+  "statusNote": "A thin, fixed configuration of Dialog that has shipped for years; alpha because it inherits Dialog's status. It allows no custom header, body renderer or footer.",
+  "summary": "A Dialog that asks one question and offers exactly two buttons, cancel and confirm, and reports which closed it. Use it to confirm an action, especially a destructive one; use dialog when the task needs a form or more than two choices.",
+  "tokenGroups": [
+    "--overlay-backdrop-bgColor",
+    "--overlay-bgColor",
+    "--borderRadius-large",
+    "--shadow-floating-small",
+    "--borderColor-default",
+    "--borderWidth-default",
+    "--borderWidth-thin",
+    "--base-size-6",
+    "--base-size-8",
+    "--base-size-16",
+    "--text-body-size-medium",
+    "--text-title-weight-large"
+  ],
+  "references": {
+    "react": [
+      "ConfirmationDialog.tsx",
+      "useConfirm.ts",
+      "ConfirmationDialog.docs.json",
+      "Dialog/Dialog.tsx",
+      "Dialog/Dialog.module.css"
+    ],
+    "primer": [
+      "confirmation-dialog"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "title",
+      "type": "string",
+      "required": true,
+      "description": "The question, usually short. It is the dialog's heading and accessible name."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": false,
+      "description": "Body text explaining the consequences."
+    },
+    {
+      "name": "cancelButtonContent",
+      "type": "string",
+      "required": false,
+      "default": "Cancel",
+      "description": "Label of the cancel button."
+    },
+    {
+      "name": "confirmButtonContent",
+      "type": "string",
+      "required": false,
+      "default": "OK",
+      "description": "Label of the confirm button. Prefer a verb that names the action."
+    },
+    {
+      "name": "confirmButtonType",
+      "type": "enum",
+      "values": [
+        "normal",
+        "primary",
+        "danger"
+      ],
+      "required": false,
+      "default": "normal",
+      "description": "Variant of the confirm button; normal is Button's default variant. danger also moves initial focus to cancel."
+    },
+    {
+      "name": "cancelButtonLoading",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show the cancel button in its loading state."
+    },
+    {
+      "name": "confirmButtonLoading",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show the confirm button in its loading state, e.g. while the confirmed action runs."
+    },
+    {
+      "name": "overrideButtonFocus",
+      "type": "enum",
+      "values": [
+        "cancel",
+        "confirm"
+      ],
+      "required": false,
+      "description": "Force which button takes initial focus. Rarely right: it can make a dangerous action one keypress away."
+    },
+    {
+      "name": "width",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "xlarge"
+      ],
+      "required": false,
+      "default": "medium",
+      "description": "296, 320, 480 or 640px; narrower than Dialog's 640px default."
+    },
+    {
+      "name": "height",
+      "type": "enum",
+      "values": [
+        "auto",
+        "small",
+        "large"
+      ],
+      "required": false,
+      "default": "auto",
+      "description": "As dialog."
+    },
+    {
+      "name": "onClose",
+      "type": "callback",
+      "required": true,
+      "description": "Called with confirm, cancel, close-button or escape (a backdrop click reports escape). The caller closes the dialog."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "dialog",
+      "name": "Dialog",
+      "description": "A Dialog with role alertdialog: backdrop, window, title bar with close button, body. See dialog for all geometry, motion and tokens.",
+      "tokens": [
+        "--overlay-backdrop-bgColor",
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "cancel-button",
+      "name": "Cancel button",
+      "description": "The first footer button, Button default variant, labelled cancelButtonContent."
+    },
+    {
+      "id": "confirm-button",
+      "name": "Confirm button",
+      "description": "The second (trailing) footer button, in confirmButtonType's variant, labelled confirmButtonContent."
+    }
+  ],
+  "variants": [
+    {
+      "axis": "confirmButtonType",
+      "value": "normal",
+      "default": true,
+      "description": "Confirm is a default Button; it takes initial focus."
+    },
+    {
+      "axis": "confirmButtonType",
+      "value": "primary",
+      "description": "Confirm is a primary Button; it takes initial focus."
+    },
+    {
+      "axis": "confirmButtonType",
+      "value": "danger",
+      "description": "Confirm is a danger Button; cancel takes initial focus so Enter does not destroy."
+    }
+  ],
+  "layout": [
+    {
+      "text": "Width defaults to medium (320px); everything else (backdrop, centring, header, 16px body, right-aligned footer with 8px gaps) is Dialog's.",
+      "values": [
+        {
+          "name": "defaultWidth",
+          "value": 320,
+          "unit": "px"
+        }
+      ],
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16"
+      ],
+      "source": "ConfirmationDialog.tsx:95,124-135; Dialog/Dialog.module.css:151-153,359-373"
+    },
+    {
+      "text": "The footer always holds cancel then confirm, in that order, so confirm sits at the trailing end.",
+      "source": "ConfirmationDialog.tsx:109-122"
+    }
+  ],
+  "states": [
+    {
+      "state": "loading",
+      "text": "cancelButtonLoading and confirmButtonLoading put that button in Button's loading state (spinner, ignores activation, keeps focus); the dialog stays open and the other button stays live.",
+      "source": "ConfirmationDialog.tsx:109-121"
+    },
+    {
+      "state": "open",
+      "text": "Enters as Dialog does: 200ms backdrop fade and a 200ms scale-fade of the window from 0.5.",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "Dialog/Dialog.module.css:24-34,70,168-170"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "initial-focus",
+      "text": "Initial focus goes to confirm, unless confirmButtonType is danger, in which case it goes to cancel; overrideButtonFocus replaces that choice.",
+      "source": "ConfirmationDialog.tsx:106-120"
+    },
+    {
+      "id": "gestures",
+      "text": "Cancel calls onClose('cancel'); confirm calls onClose('confirm'); the header X calls onClose('close-button'); Escape and a backdrop click call onClose('escape'). The dialog never closes itself.",
+      "source": "ConfirmationDialog.tsx:100-105,124-135; Dialog/Dialog.tsx:306-316,335-341"
+    },
+    {
+      "id": "imperative",
+      "text": "useConfirm offers an awaitable form: it mounts a ConfirmationDialog in a fresh root, resolves true when the gesture was confirm and false for any other, and unmounts on close.",
+      "source": "useConfirm.ts:8-39"
+    },
+    {
+      "id": "inherited",
+      "text": "Focus trap, focus return to the element focused before opening, Escape handling, scroll lock and footer arrow-key navigation all come from Dialog.",
+      "source": "Dialog/Dialog.tsx:254-264,327-357"
+    }
+  ],
+  "accessibility": {
+    "role": "alertdialog, aria-modal",
+    "minTargetPx": 32,
+    "keyboard": [
+      "Enter or Space activates the focused button; with a danger confirm that is Cancel by default.",
+      "ArrowLeft and ArrowRight move between Cancel and the confirm button.",
+      "Escape cancels (reported as escape)."
+    ],
+    "semantics": [
+      "role alertdialog, labelled by the title.",
+      "Content is in the body; it is not wired as the description (there is no subtitle), so assistive technology reads it as the dialog's content, not its description."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "gotcha",
+      "text": "A backdrop click reports escape, so callers that treat anything but confirm as cancel get the right result, but a caller cannot tell a backdrop click from the Escape key.",
+      "source": "Dialog/Dialog.tsx:309-316"
+    },
+    {
+      "kind": "web-only",
+      "text": "useConfirm creates a new React root on the document body for each call and resolves a promise. A native build exposes the same outcome as a modal call or a pending result the frame loop polls: true only for confirm.",
+      "source": "useConfirm.ts:8-27"
+    },
+    {
+      "kind": "gotcha",
+      "text": "There is no subtitle, so the dialog's aria-describedby points at an element that does not exist (Dialog's dangling description id). A native build should describe the alertdialog by its body text instead, which is what an alert dialog needs.",
+      "source": "ConfirmationDialog.tsx:124-135; Dialog/Dialog.tsx:417-420"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Initial focus relies on Dialog's autoFocus footer button; Dialog also re-focuses that button on its second render to recover when the dialog opened from inside another focus trap. A native build sets focus once after the dialog's trap is active.",
+      "source": "Dialog/Dialog.tsx:500-510"
+    }
+  ]
+}

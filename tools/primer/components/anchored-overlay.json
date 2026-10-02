@@ -1,0 +1,430 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "anchored-overlay",
+  "name": "AnchoredOverlay",
+  "status": "alpha",
+  "statusNote": "AnchoredOverlay is the positioning engine under ActionMenu, SelectPanel and Autocomplete and ships on most GitHub pages; the alpha label reflects an evolving API (a feature-flagged CSS anchor-positioning path, the popover render mode), not an unstable core. Build the script-positioned path described here.",
+  "summary": "An Overlay that opens from a trigger and positions itself against it: on a chosen side and alignment, offset 4px, flipping to another side and alignment when it would be clipped, then clamped into bounds. Use it for menus, pickers and any non-modal floating panel tied to a control; use popover for a static callout with a caret and tooltip for hover text.",
+  "tokenGroups": [
+    "--overlay-bgColor",
+    "--borderRadius-large",
+    "--shadow-floating-small",
+    "--viewportRange-narrow",
+    "--base-size-4",
+    "--base-size-8"
+  ],
+  "references": {
+    "react": [
+      "AnchoredOverlay.tsx",
+      "AnchoredOverlay.module.css",
+      "AnchoredOverlay.docs.json",
+      "useAnchoredPosition.ts",
+      "useFocusTrap.ts",
+      "useFocusZone.ts",
+      "Overlay.tsx",
+      "Overlay.module.css",
+      "Overlay/constants.ts"
+    ],
+    "primer": [
+      "anchored-overlay"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": true,
+      "default": false,
+      "description": "Whether the overlay is shown. The component is controlled: it reports gestures through onOpen and onClose and the caller flips open."
+    },
+    {
+      "name": "anchor",
+      "type": "slot",
+      "required": false,
+      "description": "The trigger the component renders and wires (React's renderAnchor), or an existing element to position against (anchorRef with renderAnchor null)."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "The overlay's children."
+    },
+    {
+      "name": "side",
+      "type": "enum",
+      "values": [
+        "outside-bottom",
+        "outside-top",
+        "outside-left",
+        "outside-right",
+        "inside-top",
+        "inside-bottom",
+        "inside-left",
+        "inside-right",
+        "inside-center"
+      ],
+      "required": false,
+      "default": "outside-bottom",
+      "description": "Which edge of the anchor the overlay attaches to. outside-* sits beyond the edge; inside-* sits within the anchor's box against that edge; inside-center centres horizontally within it."
+    },
+    {
+      "name": "align",
+      "type": "enum",
+      "values": [
+        "start",
+        "center",
+        "end"
+      ],
+      "required": false,
+      "default": "start",
+      "description": "Alignment along the attached edge: start lines up the overlay's left (or top) edge with the anchor's, end its right (or bottom) edge, center centres it."
+    },
+    {
+      "name": "anchorOffset",
+      "type": "number",
+      "required": false,
+      "default": 4,
+      "description": "Gap in px between the anchor edge and the overlay (further inside for inside sides). Defaults to 0 for inside-center."
+    },
+    {
+      "name": "alignmentOffset",
+      "type": "number",
+      "required": false,
+      "default": 0,
+      "description": "Shift in px from the aligning edge toward centre. Defaults to 4 for inside sides with start or end alignment, else 0."
+    },
+    {
+      "name": "displayInViewport",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Fit within the window rather than the nearest clipping ancestor, and always clamp the bottom edge; for anchors inside a dialog or another non-scrolling container."
+    },
+    {
+      "name": "pinPosition",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When the overlay sits above its anchor and its content shrinks, keep its height instead of letting it jump, while it still fits above."
+    },
+    {
+      "name": "width",
+      "type": "enum",
+      "values": [
+        "auto",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "required": false,
+      "description": "Overlay width step (256 to 960px); see overlay."
+    },
+    {
+      "name": "height",
+      "type": "enum",
+      "values": [
+        "auto",
+        "initial",
+        "fit-content",
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge"
+      ],
+      "required": false,
+      "description": "Overlay height step (192 to 600px); see overlay."
+    },
+    {
+      "name": "narrowVariant",
+      "type": "enum",
+      "values": [
+        "anchored",
+        "fullscreen"
+      ],
+      "required": false,
+      "default": "anchored",
+      "description": "Below the narrow breakpoint, fullscreen covers the viewport and shows a close button (React's variant.narrow; variant.regular is always anchored)."
+    },
+    {
+      "name": "displayCloseButton",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Show the close button in the fullscreen narrow variant."
+    },
+    {
+      "name": "closeButtonLabel",
+      "type": "string",
+      "required": false,
+      "default": "Close",
+      "description": "Accessible name of the fullscreen close button (closeButtonProps aria-label)."
+    },
+    {
+      "name": "onOpen",
+      "type": "callback",
+      "required": false,
+      "description": "Called while closed with the gesture: anchor-click or anchor-key-press."
+    },
+    {
+      "name": "onClose",
+      "type": "callback",
+      "required": false,
+      "description": "Called while open with the gesture: anchor-click, click-outside, escape, or close (the fullscreen close button)."
+    },
+    {
+      "name": "onPositionChange",
+      "type": "callback",
+      "required": false,
+      "description": "Receives the resolved {top, left, anchorSide, anchorAlign} after each placement, so callers can react to a flip."
+    },
+    {
+      "name": "focusTrapSettings",
+      "type": "slot",
+      "required": false,
+      "description": "Overrides for the focus trap, e.g. an initial focus target or disabling the trap."
+    },
+    {
+      "name": "focusZoneSettings",
+      "type": "slot",
+      "required": false,
+      "description": "Overrides for the arrow-key focus zone, e.g. which keys move focus or disabling it."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "anchor",
+      "name": "Anchor",
+      "description": "The trigger. It receives aria-haspopup, aria-expanded, a tab stop, and the click and key handlers that open and close the overlay."
+    },
+    {
+      "id": "surface",
+      "name": "Overlay surface",
+      "description": "An Overlay (see overlay): --overlay-bgColor, --borderRadius-large, --shadow-floating-small, its width and height steps, fade and slide-in.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-large",
+        "--shadow-floating-small"
+      ]
+    },
+    {
+      "id": "close-button",
+      "name": "Close button",
+      "optional": true,
+      "description": "An invisible IconButton with an X octicon, 8px from the surface's top and right edges, shown only in the fullscreen variant below the narrow breakpoint. See icon-button.",
+      "tokens": [
+        "--base-size-8"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "narrow",
+      "value": "anchored",
+      "default": true,
+      "description": "Below the narrow breakpoint the overlay still hangs off its anchor."
+    },
+    {
+      "axis": "narrow",
+      "value": "fullscreen",
+      "description": "Below the narrow breakpoint the overlay covers the viewport (see overlay's fullscreen) and shows the close button.",
+      "tokens": [
+        "--viewportRange-narrow"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "id": "base-position",
+      "text": "Base position from the anchor rect A and overlay size W x H. Outside sides: bottom puts top at A.bottom + anchorOffset; top puts top at A.top - anchorOffset - H; right puts left at A.right + anchorOffset; left puts left at A.left - anchorOffset - W. Inside sides mirror these within A: inside-top top = A.top + anchorOffset, inside-bottom top = A.bottom - anchorOffset - H, inside-left left = A.left + anchorOffset, inside-right left = A.right - anchorOffset - W, inside-center left = A.centre.x - W/2 + anchorOffset.",
+      "source": "useAnchoredPosition.ts:86-90; AnchoredOverlay.tsx:254-275"
+    },
+    {
+      "id": "alignment",
+      "text": "Cross-axis alignment for top and bottom sides: start left = A.left + alignmentOffset; center left = A.left - (W - A.width)/2 + alignmentOffset; end left = A.right - W - alignmentOffset. Left, right and inside-center sides apply the same formulas to top with heights.",
+      "source": "useAnchoredPosition.ts:86-90"
+    },
+    {
+      "id": "defaults",
+      "text": "Defaults: side outside-bottom, align start, anchorOffset 4px (0 for inside-center), alignmentOffset 0 (4px for inside sides when align is not center).",
+      "values": [
+        {
+          "name": "anchorOffset",
+          "value": 4,
+          "unit": "px"
+        },
+        {
+          "name": "insideAlignmentOffset",
+          "value": 4,
+          "unit": "px"
+        }
+      ],
+      "source": "AnchoredOverlay.tsx:170-173; AnchoredOverlay.docs.json"
+    },
+    {
+      "id": "bounds",
+      "text": "The bounds rectangle is the nearest ancestor of the overlay that clips (overflow not visible), inside its borders, else the page body, whose height is taken as at least the window height; with displayInViewport it is the window. The overlay is portalled to the page root, so in practice the bounds are the body's width by at least the window height, in document coordinates.",
+      "source": "useAnchoredPosition.ts:86-90; Overlay.tsx:242"
+    },
+    {
+      "id": "flip-side",
+      "text": "Side flipping (outside sides only): if the overlay overflows the bounds along its side's axis (vertically for top and bottom, horizontally for left and right), try the alternates in order until one fits on its own axis: from outside-top try bottom, right, left, bottom; from outside-bottom try top, right, left, bottom; from outside-left try right, bottom, top, bottom; from outside-right try left, bottom, top, bottom. Each attempt keeps the requested alignment. Inside sides never flip.",
+      "source": "useAnchoredPosition.ts:86-90"
+    },
+    {
+      "id": "flip-align",
+      "text": "Alignment flipping, after the side is settled: start or center that overflows the left or right bound tries the alternates (start: end then center; center: end then start); end that overflows the left bound tries start then center. The first that fits wins, else the last tried stands.",
+      "source": "useAnchoredPosition.ts:86-90"
+    },
+    {
+      "id": "clamp",
+      "text": "Clamp last: top is at least the bounds' top; left is at least the bounds' left; the right edge is pulled in to the bounds' right. The bottom edge is pulled up (to no less than 0) only when displayInViewport is set or a side fitted; when every side overflowed the overlay ends on outside-bottom and may run past the bottom, on the assumption the page scrolls that way.",
+      "source": "useAnchoredPosition.ts:86-90"
+    },
+    {
+      "id": "result",
+      "text": "Placement yields {top, left, anchorSide, anchorAlign}; top and left become the Overlay's position and the resolved anchorSide drives its slide-in direction.",
+      "source": "AnchoredOverlay.tsx:427-433"
+    },
+    {
+      "id": "close-button-position",
+      "text": "The fullscreen close button sits absolutely 8px from the top and right of the surface, before the content, and is hidden at regular widths.",
+      "tokens": [
+        "--base-size-8"
+      ],
+      "part": "close-button",
+      "source": "AnchoredOverlay.module.css:1-14; AnchoredOverlay.tsx:400,455-472"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "On open the overlay mounts laid out but invisible, is measured and placed, then becomes visible at that position and plays Overlay's 200ms fade and 8px slide from the resolved side.",
+      "motion": {
+        "durationMs": 200,
+        "easing": [
+          0.33,
+          1,
+          0.68,
+          1
+        ]
+      },
+      "source": "AnchoredOverlay.tsx:420-433; Overlay.tsx:198-212"
+    },
+    {
+      "state": "expanded",
+      "part": "anchor",
+      "text": "The anchor reports aria-expanded true while open and false while closed.",
+      "source": "AnchoredOverlay.tsx:408-419"
+    },
+    {
+      "state": "other",
+      "label": "closed",
+      "text": "Closing unmounts the overlay immediately (no exit animation) and returns focus to the anchor; the next open re-measures from scratch.",
+      "motion": {
+        "instant": true
+      },
+      "source": "AnchoredOverlay.tsx:277-283,420-424"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "open-gestures",
+      "text": "A primary-button click on the anchor toggles: onOpen('anchor-click') when closed, onClose('anchor-click') when open. While closed, ArrowDown, ArrowUp, Space or Enter on the focused anchor calls onOpen('anchor-key-press') and consumes the key.",
+      "source": "AnchoredOverlay.tsx:218-246"
+    },
+    {
+      "id": "dismiss",
+      "text": "A press outside the overlay calls onClose('click-outside'), except a press on the anchor, which is left to the anchor's own toggle. Escape calls onClose('escape') and stops there, so overlays underneath stay open.",
+      "source": "AnchoredOverlay.tsx:215-216,421-425; useOverlay.tsx:34-39"
+    },
+    {
+      "id": "focus",
+      "text": "Once open and positioned, a focus trap keeps Tab inside the overlay (wrapping at the ends) and a focus zone moves focus between items with ArrowUp and ArrowDown (Home and End to the ends, stopping at the ends, one Tab stop for the whole list). Focus starts on the first focusable item and returns to the anchor on close.",
+      "source": "AnchoredOverlay.tsx:285-294,421-422; useFocusTrap.ts:84-99; useFocusZone.ts:50-73; useOpenAndCloseFocus.ts:18-35"
+    },
+    {
+      "id": "reposition",
+      "text": "While open, re-run placement when the window resizes, when the overlay's own size changes, and on scroll of any scrollable ancestor of the anchor or the window (at most once per frame). Stop listening while closed.",
+      "source": "useAnchoredPosition.ts:118-198; AnchoredOverlay.tsx:254-275"
+    },
+    {
+      "id": "pin-position",
+      "text": "With pinPosition, if the overlay was on a top side and a new placement would change side or move it down (its content shrank), and it still fits above the anchor, keep the old placement and freeze the overlay at its previous height.",
+      "source": "useAnchoredPosition.ts:62-107"
+    },
+    {
+      "id": "close-button",
+      "text": "In the fullscreen narrow variant, the close button calls onClose('close'). It is not rendered when onClose is absent or displayCloseButton is false.",
+      "part": "close-button",
+      "source": "AnchoredOverlay.tsx:400-402,455-472"
+    }
+  ],
+  "accessibility": {
+    "role": "The surface has role none; the anchor carries aria-haspopup=true and aria-expanded. The content supplies the meaningful role (menu, listbox, dialog).",
+    "minTargetPx": null,
+    "keyboard": [
+      "On the anchor, ArrowDown, ArrowUp, Space and Enter open the overlay.",
+      "Inside, Tab and Shift+Tab cycle within the overlay; ArrowUp and ArrowDown move between items; Home and End jump to the first and last.",
+      "Escape closes the topmost overlay and returns focus to the anchor."
+    ],
+    "semantics": [
+      "aria-haspopup is the string true, not a specific popup type; menus and listboxes set their own role inside.",
+      "The anchor gets an id the content can reference for labelling.",
+      "The fullscreen close button is named Close unless closeButtonLabel says otherwise."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "inferred",
+      "text": "The placement algorithm (layout rules base-position through clamp) lives in @primer/behaviors' getAnchoredPosition, which is not vendored. This spec transcribes anchored-position.ts from primer/behaviors main as read on 2026-10-02; the vendored hook only calls it with side, align, anchorOffset, alignmentOffset and displayInViewport.",
+      "source": "useAnchoredPosition.ts:1-3,86-90"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The side-alternate lists end with outside-bottom twice for top and bottom requests; when every side overflows, bottom wins and the bottom clamp is skipped, so the overlay hangs off the page bottom instead of covering the anchor. Keep that behaviour: it relies on the page scrolling.",
+      "source": "useAnchoredPosition.ts:86-90"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Flipping only tests the side's own axis and alignment only tests the horizontal axis; a left or right placement that overflows vertically is fixed by the clamp, not by an alignment change.",
+      "source": "useAnchoredPosition.ts:86-90"
+    },
+    {
+      "kind": "web-only",
+      "text": "With the primer_react_css_anchor_positioning flag on and browser support, the browser positions the overlay with CSS anchor positioning and position-try fallbacks (flip-block, flip-inline, centred inline-start and inline-end tries, and fit-to-block tries 8px from the viewport edge), z-index 100 (hard-coded), position fixed, optionally in the top layer via the Popover API. The flag is off by default; a native build implements the script algorithm above instead.",
+      "source": "AnchoredOverlay.tsx:185-202,305-398; AnchoredOverlay.module.css:16-155; DefaultFeatureFlags.ts:4"
+    },
+    {
+      "kind": "web-only",
+      "text": "The focus trap is @primer/behaviors' focusTrap: invisible sentinels at both ends redirect focus, any focus that lands outside is pulled back to the last focused element inside, and traps nest as a stack, the newest active and the rest suspended until it is released. A native build keeps a trap stack and redirects Tab and programmatic focus itself.",
+      "source": "useFocusTrap.ts:2,84-99"
+    },
+    {
+      "kind": "web-only",
+      "text": "Repositioning follows the browser's ResizeObserver and scroll events on every scrollable ancestor. An immediate-mode build can simply re-run the placement every frame the overlay is open, using the anchor's current rect; the algorithm is cheap and pure.",
+      "source": "useAnchoredPosition.ts:118-198"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The overlay is hidden until the first placement, so a frame with no position must not draw it at (0,0). Draw nothing until a placement exists.",
+      "source": "AnchoredOverlay.tsx:426-431"
+    },
+    {
+      "kind": "contradiction",
+      "text": "The docs file lists onClose gestures as anchor-click, click-outside and escape; the code also sends close from the fullscreen close button.",
+      "source": "AnchoredOverlay.docs.json; AnchoredOverlay.tsx:77,467-469"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The 4px anchor gap is a behaviours default, not --overlay-offset, though the two agree. The CSS anchor path spells it --base-size-4.",
+      "tokens": [
+        "--overlay-offset",
+        "--base-size-4"
+      ],
+      "source": "AnchoredOverlay.module.css:40,67,99,107"
+    }
+  ]
+}

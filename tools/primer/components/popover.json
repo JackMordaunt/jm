@@ -1,0 +1,421 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "popover",
+  "name": "Popover",
+  "status": "alpha",
+  "statusNote": "Popover is old and stable but minimal: it draws a card with a caret and leaves placement, focus and dismissal to the caller. Primer positions it for onboarding callouts and feature announcements, not for menus.",
+  "summary": "A padded card with a caret pointing at the thing it explains, placed by the caller. Use it for a non-modal callout tied to a spot on the page (onboarding, feature discovery); use anchored-overlay for menus and pickers that open from a control, tooltip for short hover text.",
+  "tokenGroups": [
+    "--overlay-bgColor",
+    "--borderRadius-medium",
+    "--shadow-floating-small",
+    "--borderColor-default",
+    "--base-size-8",
+    "--base-size-16",
+    "--base-size-24",
+    "--overlay-width-xsmall",
+    "--overlay-width-small",
+    "--overlay-width-medium",
+    "--overlay-width-large",
+    "--overlay-width-xlarge",
+    "--overlay-height-small",
+    "--overlay-height-medium",
+    "--overlay-height-large",
+    "--overlay-height-xlarge"
+  ],
+  "references": {
+    "react": [
+      "Popover.module.css",
+      "Popover.tsx",
+      "Popover.docs.json",
+      "useOnOutsideClick.tsx",
+      "useOnEscapePress.ts"
+    ],
+    "primer": [
+      "popover"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Show the popover. Closed, it is not drawn (but stays mounted)."
+    },
+    {
+      "name": "caret",
+      "type": "enum",
+      "values": [
+        "top",
+        "bottom",
+        "left",
+        "right",
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+        "left-top",
+        "left-bottom",
+        "right-top",
+        "right-bottom"
+      ],
+      "required": false,
+      "default": "top",
+      "description": "The edge the caret sits on, then where along it. top-left is on the top edge near the left; left-top is on the left edge near the top."
+    },
+    {
+      "name": "relative",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Place in normal flow (position relative) instead of absolutely."
+    },
+    {
+      "name": "width",
+      "type": "enum",
+      "values": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "auto"
+      ],
+      "required": false,
+      "default": "small",
+      "description": "Content width from the --overlay-width-* tokens (192, 320, 480, 640, 960px) or auto."
+    },
+    {
+      "name": "height",
+      "type": "enum",
+      "values": [
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "fit-content",
+        "auto"
+      ],
+      "required": false,
+      "default": "fit-content",
+      "description": "Content height from the --overlay-height-* tokens (256, 320, 432, 600px), fit-content or auto."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": true,
+      "description": "The card's children (Popover.Content)."
+    },
+    {
+      "name": "onEscape",
+      "type": "callback",
+      "required": false,
+      "description": "Called on Escape while open; the caller closes the popover."
+    },
+    {
+      "name": "onClickOutside",
+      "type": "callback",
+      "required": false,
+      "description": "Called on a primary-button press outside the card."
+    },
+    {
+      "name": "ignorePressTargets",
+      "type": "list",
+      "required": false,
+      "description": "Elements whose presses do not count as outside (React's ignoreClickRefs)."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "The positioned wrapper (Popover): absolute (or relative), z-index 100, not drawn while closed. It carries the caret placement."
+    },
+    {
+      "id": "card",
+      "name": "Card",
+      "description": "Popover.Content: --overlay-bgColor fill, --borderRadius-medium corners, --shadow-floating-small, 24px padding on every side, centred horizontally in the container.",
+      "tokens": [
+        "--overlay-bgColor",
+        "--borderRadius-medium",
+        "--shadow-floating-small",
+        "--base-size-24"
+      ]
+    },
+    {
+      "id": "caret",
+      "name": "Caret",
+      "description": "Two stacked isosceles triangles on the chosen edge pointing outward: an outer one 16px wide and 8px deep in --borderColor-default, and an inner one 14px wide and 7px deep in --overlay-bgColor over it, both with their base on the card's edge. The 1px of outer triangle left showing is the caret's border.",
+      "tokens": [
+        "--borderColor-default",
+        "--overlay-bgColor",
+        "--base-size-8",
+        "--base-size-16"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "axis": "caret",
+      "value": "top",
+      "default": true,
+      "description": "Caret centred on the top edge, pointing up."
+    },
+    {
+      "axis": "caret",
+      "value": "bottom",
+      "description": "Caret centred on the bottom edge, pointing down."
+    },
+    {
+      "axis": "caret",
+      "value": "left",
+      "description": "Caret centred on the left edge, pointing left."
+    },
+    {
+      "axis": "caret",
+      "value": "right",
+      "description": "Caret centred on the right edge, pointing right."
+    },
+    {
+      "axis": "caret",
+      "value": "top-left",
+      "description": "Caret on the top edge 24px from the left; the card shifts 9px left."
+    },
+    {
+      "axis": "caret",
+      "value": "top-right",
+      "description": "Caret on the top edge 20px from the right; the card shifts 9px right."
+    },
+    {
+      "axis": "caret",
+      "value": "bottom-left",
+      "description": "Caret on the bottom edge 24px from the left; the card shifts 9px left."
+    },
+    {
+      "axis": "caret",
+      "value": "bottom-right",
+      "description": "Caret on the bottom edge 20px from the right; the card shifts 9px right."
+    },
+    {
+      "axis": "caret",
+      "value": "left-top",
+      "description": "Caret on the left edge 24px from the top."
+    },
+    {
+      "axis": "caret",
+      "value": "left-bottom",
+      "description": "Caret on the left edge 16px from the bottom."
+    },
+    {
+      "axis": "caret",
+      "value": "right-top",
+      "description": "Caret on the right edge 24px from the top."
+    },
+    {
+      "axis": "caret",
+      "value": "right-bottom",
+      "description": "Caret on the right edge 16px from the bottom."
+    },
+    {
+      "axis": "width",
+      "value": "small",
+      "default": true,
+      "description": "320px.",
+      "tokens": [
+        "--overlay-width-small"
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "text": "The container is position absolute (relative when relative is set) at z-index 100; the caller sets its coordinates. Popover does not compute a position.",
+      "values": [
+        {
+          "name": "zIndex",
+          "value": 100,
+          "unit": "count"
+        }
+      ],
+      "source": "Popover.module.css:1-13; Popover.tsx:37-54"
+    },
+    {
+      "text": "The card pads 24px on every side and is centred horizontally within the container (auto inline margins).",
+      "tokens": [
+        "--base-size-24"
+      ],
+      "source": "Popover.module.css:15-22"
+    },
+    {
+      "text": "Width steps read --overlay-width-xsmall, -small (the default), -medium, -large and -xlarge; height steps read --overlay-height-small, -medium, -large and -xlarge; height defaults to fit-content.",
+      "tokens": [
+        "--overlay-width-xsmall",
+        "--overlay-width-small",
+        "--overlay-width-medium",
+        "--overlay-width-large",
+        "--overlay-width-xlarge",
+        "--overlay-height-small",
+        "--overlay-height-medium",
+        "--overlay-height-large",
+        "--overlay-height-xlarge"
+      ],
+      "source": "Popover.module.css:208-254; Popover.tsx:76-79"
+    },
+    {
+      "id": "caret-top",
+      "text": "Top caret: the outer triangle's apex is 8px above the card's top edge and the inner's 7px; both are centred on the card's horizontal midpoint less 1px. Bottom carets mirror this below the bottom edge.",
+      "part": "caret",
+      "values": [
+        {
+          "name": "outerBase",
+          "value": 16,
+          "unit": "px"
+        },
+        {
+          "name": "outerDepth",
+          "value": 8,
+          "unit": "px"
+        },
+        {
+          "name": "innerBase",
+          "value": 14,
+          "unit": "px"
+        },
+        {
+          "name": "innerDepth",
+          "value": 7,
+          "unit": "px"
+        },
+        {
+          "name": "centreNudge",
+          "value": -1,
+          "unit": "px"
+        }
+      ],
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16"
+      ],
+      "source": "Popover.module.css:24-54,56-77"
+    },
+    {
+      "id": "caret-corner",
+      "text": "Corner carets on the top or bottom edge: -left puts the caret's left at 24px (inner 25px) and moves the card 9px left; -right puts the caret's right at 20px (inner 21px) and moves the card 9px right, so the tip still lands over the anchor point the caller aimed the container at.",
+      "part": "caret",
+      "values": [
+        {
+          "name": "cardShift",
+          "value": 9,
+          "unit": "px"
+        },
+        {
+          "name": "rightInset",
+          "value": 20,
+          "unit": "px"
+        }
+      ],
+      "tokens": [
+        "--base-size-24"
+      ],
+      "source": "Popover.module.css:79-120"
+    },
+    {
+      "id": "caret-side",
+      "text": "Side carets: the triangles point left or right with their apex 8px (inner 7px) beyond the edge, centred vertically at 50% (outer nudged up 9px, inner 8px, so both centre 1px above the midpoint); -top puts them 24px from the top, -bottom 16px (inner 17px) from the bottom.",
+      "part": "caret",
+      "tokens": [
+        "--base-size-8",
+        "--base-size-16",
+        "--base-size-24"
+      ],
+      "source": "Popover.module.css:122-206"
+    }
+  ],
+  "states": [
+    {
+      "state": "open",
+      "text": "Open draws the container (display block); closed hides it. There is no transition either way.",
+      "motion": {
+        "instant": true
+      },
+      "source": "Popover.module.css:1-8; Popover.tsx:47"
+    }
+  ],
+  "behaviour": [
+    {
+      "text": "Escape while open calls onEscape and consumes the key so overlays beneath stay open; while closed Escape is ignored.",
+      "source": "Popover.tsx:96-104; useOnEscapePress.ts:7-15"
+    },
+    {
+      "text": "A primary-button press outside the card calls onClickOutside, presses on ignorePressTargets excepted. Popover never closes itself; the caller sets open false.",
+      "source": "Popover.tsx:88-94; useOnOutsideClick.tsx:44-67"
+    },
+    {
+      "text": "Popover does not move focus on open, trap it, or return it on close. If it holds interactive content, the caller moves focus in and back.",
+      "source": "Popover.tsx:76-116"
+    }
+  ],
+  "accessibility": {
+    "role": "none (a plain container; give it a heading and, when it holds actions, manage focus as for a non-modal dialog)",
+    "minTargetPx": null,
+    "keyboard": [
+      "Escape calls onEscape while open."
+    ],
+    "semantics": [
+      "Popover sets no role, label, aria-expanded or live region; the caller supplies them.",
+      "The caret is decoration and is not exposed."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "upstream-bug",
+      "text": "The outside-press handler is registered for as long as Popover.Content is mounted, open or not, so onClickOutside fires on every outside press even while the popover is closed. Gate it on open.",
+      "source": "Popover.tsx:88-94"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "Popover.Content accepts an overflow prop (documented default auto) but never uses it; it falls through to the DOM as an unknown attribute and the card's overflow stays visible.",
+      "source": "Popover.tsx:57-84; Popover.docs.json"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Popover's width steps read the --overlay-width-* tokens (small 320px), while Overlay hard-codes its own steps (small 256px). The same name means different widths in the two components.",
+      "tokens": [
+        "--overlay-width-small"
+      ],
+      "source": "Popover.module.css:212-214; Overlay.module.css:148-150"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The card rounds at --borderRadius-medium (6px), not --borderRadius-large as Overlay and Dialog do.",
+      "tokens": [
+        "--borderRadius-medium"
+      ],
+      "source": "Popover.module.css:21"
+    },
+    {
+      "kind": "gotcha",
+      "text": "The caret's border colour is --borderColor-default at full strength, while the card's edge is the 1px ring inside --shadow-floating-small, which is lighter (partial alpha). The caret outline is visibly darker than the card edge; match the module rather than blending them.",
+      "tokens": [
+        "--borderColor-default",
+        "--shadow-floating-small"
+      ],
+      "source": "Popover.module.css:22,41"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "The caret geometry is in raw px beside the size tokens: the 9px and 1px centring nudges, the 7px inner triangle, the 14px inner offset, and the 20px and 21px right insets.",
+      "source": "Popover.module.css:36,46,51,73,83,94,99,107,118,139,158,175,204"
+    },
+    {
+      "kind": "hard-coded",
+      "text": "z-index 100 is hard-coded; it reads none of the --zIndex-* tokens.",
+      "source": "Popover.module.css:3"
+    },
+    {
+      "kind": "web-only",
+      "text": "The container is placed by CSS relative to its nearest positioned ancestor and is clipped by that ancestor's overflow, since Popover does not portal. A native build places it at caller-given coordinates in the page layer and decides whether it should escape clipping.",
+      "source": "Popover.module.css:1-13"
+    }
+  ]
+}

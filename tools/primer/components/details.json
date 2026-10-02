@@ -1,0 +1,172 @@
+{
+  "$schema": "../schema/component.schema.json",
+  "id": "details",
+  "name": "Details",
+  "status": "alpha",
+  "statusNote": "Details is a styled wrapper on the HTML details element and is stable; it has almost no styling of its own. Its companion hook useDetails (controlled open state and close-on-outside-click) is what ActionMenu-era dropdowns were built on.",
+  "summary": "A disclosure: a summary that toggles the visibility of the content after it. Use it for show-more sections and simple native-feeling dropdowns; use anchored-overlay for menus that must float, position and trap focus.",
+  "tokenGroups": [],
+  "references": {
+    "react": [
+      "Details.tsx",
+      "Details.module.css",
+      "Details.docs.json",
+      "useDetails.tsx"
+    ],
+    "primer": [
+      "details"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "summary",
+      "type": "slot",
+      "required": true,
+      "description": "The always-visible toggle (Details.Summary). It may render as another component, such as a Button, which then acts as the summary."
+    },
+    {
+      "name": "content",
+      "type": "slot",
+      "required": false,
+      "description": "Shown only while open."
+    },
+    {
+      "name": "open",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Whether the content is shown. Uncontrolled by default; useDetails makes it controlled."
+    },
+    {
+      "name": "defaultOpen",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Initial open state for useDetails."
+    },
+    {
+      "name": "closeOnOutsideClick",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "useDetails: close when a click lands outside this details element while open."
+    },
+    {
+      "name": "onToggle",
+      "type": "callback",
+      "required": false,
+      "description": "Called after the open state changes."
+    },
+    {
+      "name": "onClickOutside",
+      "type": "callback",
+      "required": false,
+      "description": "useDetails: called on an outside click before closing; it can cancel the close."
+    }
+  ],
+  "anatomy": [
+    {
+      "id": "container",
+      "name": "Container",
+      "description": "The details element; no box styling of its own."
+    },
+    {
+      "id": "summary",
+      "name": "Summary",
+      "description": "The first child, the toggle. The browser's disclosure triangle is removed, so the summary shows only what the caller puts in it (usually a button with a chevron or caret octicon)."
+    },
+    {
+      "id": "content",
+      "name": "Content",
+      "optional": true,
+      "description": "Everything after the summary; not laid out at all while closed."
+    }
+  ],
+  "variants": [],
+  "layout": [
+    {
+      "text": "Details draws nothing itself: no padding, border, background or marker. The summary's list marker and the WebKit disclosure marker are hidden.",
+      "source": "Details.module.css:1-7"
+    },
+    {
+      "text": "Content follows the summary in normal flow and is removed from layout while closed. Floating it as a dropdown is the caller's job (absolute positioning in the content).",
+      "source": "Details.tsx:29-37"
+    }
+  ],
+  "states": [
+    {
+      "state": "expanded",
+      "text": "Open: the content is laid out and drawn below the summary. There is no transition.",
+      "motion": {
+        "instant": true
+      },
+      "source": "Details.tsx:29-37"
+    },
+    {
+      "state": "collapsed",
+      "text": "Closed: only the summary is drawn.",
+      "source": "Details.tsx:29-37"
+    }
+  ],
+  "behaviour": [
+    {
+      "id": "toggle",
+      "text": "Activating the summary (click, or Enter or Space while it has focus) toggles open and fires onToggle; the summary is a single tab stop.",
+      "source": "Details.tsx:29-37,52-58; useDetails.tsx:41-46"
+    },
+    {
+      "id": "controlled",
+      "text": "With useDetails the open state lives in the caller: the toggle event is read back into state unless a handler cancelled it, and setOpen opens or closes programmatically.",
+      "source": "useDetails.tsx:10-13,41-52"
+    },
+    {
+      "id": "outside-click",
+      "text": "With closeOnOutsideClick, while open, a click (on release, at the document) whose nearest enclosing details element is not this one calls onClickOutside and then closes unless the handler cancelled the event.",
+      "source": "useDetails.tsx:15-39"
+    },
+    {
+      "id": "summary-check",
+      "text": "In development a Details without a summary child logs a warning; the browser would otherwise invent a default 'Details' summary.",
+      "source": "Details.tsx:13-27"
+    }
+  ],
+  "accessibility": {
+    "role": "group (details) with a summary that acts as a disclosure button",
+    "minTargetPx": null,
+    "keyboard": [
+      "Tab focuses the summary.",
+      "Enter or Space toggles it."
+    ],
+    "semantics": [
+      "The summary exposes expanded or collapsed state.",
+      "Escape does nothing; useDetails adds no Escape handling."
+    ]
+  },
+  "notes": [
+    {
+      "kind": "web-only",
+      "text": "All behaviour is the browser's details element: the summary's focusability, Enter and Space toggling, the expanded state exposed to assistive technology, removing closed content from layout and the accessibility tree, and the toggle event. A native build implements a disclosure: a focusable summary control with aria-expanded semantics that shows or hides the content region.",
+      "source": "Details.tsx:29-37"
+    },
+    {
+      "kind": "upstream-bug",
+      "text": "useDetails' outside test asks whether the click's nearest details ancestor is this one, so a click inside a nested details element within the open one counts as outside and closes the parent. Test containment instead.",
+      "source": "useDetails.tsx:15-26"
+    },
+    {
+      "kind": "gotcha",
+      "text": "useDetails listens for click (on release, bubbling) where Overlay listens for mousedown (on press, capture); a press that starts inside and releases outside behaves differently between the two, and a handler that stops propagation can keep a Details open.",
+      "source": "useDetails.tsx:31-39; useOnOutsideClick.tsx:69-82"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Details.Summary rendered as another component passes it as='summary', so a Button summary still renders a summary element and keeps the toggle; a component that ignores as loses it.",
+      "source": "Details.tsx:52-58"
+    },
+    {
+      "kind": "gotcha",
+      "text": "Details reads no tokens; its look comes entirely from the summary and content the caller supplies.",
+      "source": "Details.module.css:1-7"
+    }
+  ]
+}
