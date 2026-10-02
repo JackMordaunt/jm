@@ -1,5 +1,6 @@
 package primer
 
+import "base:runtime"
 import "jm:ui"
 import "jm:ui/design"
 import "jm:ui/ops"
@@ -485,11 +486,6 @@ icon_button :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
-	p := ui.widget_open(gtx, key, loc)
-	side := button_metrics(size).height
-	sz := ui.constrain_min(gtx.constraints, {side, side})
-	area := ops.Rect{0, 0, sz.x, sz.y}
-	c := control(gtx, p.id, area, state)
 	r := variant_roles(variant == .Link ? .Default : variant)
 	switch variant {
 	case .Default, .Link:
@@ -500,6 +496,29 @@ icon_button :: proc(
 	case .Primary, .Danger:
 		r.visual = r.fg
 	}
+	return icon_button_in(gtx, ic, name, variant, size, r, {loading, inactive, dot, state}, key, loc)
+}
+
+// Icon_Button_State is an icon button's flags and forced state.
+@(private)
+Icon_Button_State :: struct {
+	loading, inactive: bool,
+	dot:               Unread_Dot,
+	state:             Interaction,
+}
+
+// icon_button_in is icon_button in roles r: a component that sets an
+// icon button's icon colour (Banner's dismiss button takes its variant's
+// foreground) passes its own.
+@(private)
+icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Variant, size: Button_Size, roles: Button_Roles, st: Icon_Button_State, key: u64, loc: runtime.Source_Code_Location) -> bool {
+	p := ui.widget_open(gtx, key, loc)
+	side := button_metrics(size).height
+	sz := ui.constrain_min(gtx.constraints, {side, side})
+	area := ops.Rect{0, 0, sz.x, sz.y}
+	c := control(gtx, p.id, area, st.state)
+	r := roles
+	loading, inactive, dot := st.loading, st.inactive, st.dot
 	if inactive {
 		r = inactive_roles(r)
 	}
