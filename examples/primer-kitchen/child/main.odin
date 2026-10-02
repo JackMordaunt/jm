@@ -30,13 +30,23 @@ Page :: struct {
 	head: bool,
 }
 
+// Model is the kitchen's state: the page, theme and scroll the session
+// keeps, and each family's demo state, declared in its pages file.
 Model :: struct {
-	page:    int,
-	theme:   int,
-	scheme:  primer.Scheme,
-	scroll:  [kitchen.MAX_PAGES]ui.Scroll_Offset,
-	clicks:  int,
-	loading: bool,
+	page:     int,
+	theme:    int,
+	scheme:   primer.Scheme,
+	scroll:   [kitchen.MAX_PAGES]ui.Scroll_Offset,
+	clicks:   int,
+	loading:  bool,
+	forms:    Forms,
+	status:   Status,
+	messages: Messages,
+	overlays: Overlays,
+	lists:    Lists,
+	navs:     Navs,
+	layouts:  Layouts,
+	actions:  Actions,
 }
 
 // PAGES follows the primer-kit's families, in the plan's build order; a

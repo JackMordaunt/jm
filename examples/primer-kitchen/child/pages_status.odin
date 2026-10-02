@@ -5,6 +5,9 @@ import "jm:ui/primer"
 
 import "../../kitchen"
 
+// Status is the status pages' demo state.
+Status :: struct {}
+
 // The label and status pages, on the primer-kit's components/
 // counter-label.json and spinner.json.
 

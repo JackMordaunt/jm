@@ -6,6 +6,9 @@ import "jm:ui/primer"
 
 import "../../kitchen"
 
+// Actions is the actions pages' demo state.
+Actions :: struct {}
+
 // The action pages, on the primer-kit's components/button.json and
 // icon-button.json.
 
