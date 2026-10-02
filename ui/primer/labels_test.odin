@@ -1,6 +1,7 @@
 package primer
 
 import "core:fmt"
+import "core:strings"
 import "core:testing"
 import "jm:ui"
 import "jm:ui/design"
@@ -22,7 +23,7 @@ solid :: proc(p: ops.Paint, c: ops.Color) -> bool {
 }
 
 // fills_of counts the scene's fills in c.
-@(private = "file")
+@(private)
 fills_of :: proc(p: ^ui.Probe, c: ops.Color) -> (n: int) {
 	for op in p.scene.ops {
 		if f, ok := op.(ops.Fill); ok && solid(f.paint, c) {
@@ -102,22 +103,12 @@ test_a_state_label_says_the_object_before_its_state :: proc(t: ^testing.T) {
 	defer ui.probe_destroy(&p)
 	defer free_all(context.temp_allocator)
 	sem := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, contains(sem, `"Pull request Merged"`), "semantics: %s", sem)
-	testing.expectf(t, contains(sem, `"Open"`), "open has no icon, so no object: %s", sem)
+	testing.expectf(t, strings.contains(sem, `"Pull request Merged"`), "semantics: %s", sem)
+	testing.expectf(t, strings.contains(sem, `"Open"`), "open has no icon, so no object: %s", sem)
 	// closed and issueClosed are done, not closed (state-label.json notes).
 	testing.expect_value(t, state_look(.Closed).fill, tok.Role.Bg_Color_Done_Emphasis)
 	testing.expect_value(t, state_look(.Pull_Closed).fill, tok.Role.Bg_Color_Closed_Emphasis)
 	testing.expect_value(t, state_look(.Unavailable).name, "")
-}
-
-@(private = "file")
-contains :: proc(s, sub: string) -> bool {
-	for i in 0 ..= len(s) - len(sub) {
-		if s[i:][:len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
 
 @(test)
@@ -349,8 +340,8 @@ test_a_tokens_remove_button_removes_without_activating_it :: proc(t: ^testing.T)
 	ui.probe_key(&p, .Delete)
 	testing.expect_value(t, m.standalone_removes, 3)
 	sem := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, contains(sem, `"Remove token"`), "semantics: %s", sem)
-	testing.expectf(t, contains(sem, `"two (press backspace or delete to remove)"`), "semantics: %s", sem)
+	testing.expectf(t, strings.contains(sem, `"Remove token"`), "semantics: %s", sem)
+	testing.expectf(t, strings.contains(sem, `"two (press backspace or delete to remove)"`), "semantics: %s", sem)
 }
 
 @(test)
@@ -417,7 +408,7 @@ test_label_group_count_shows_the_first_n_and_inline_expands :: proc(t: ^testing.
 	testing.expect_value(t, plus.x, two.x + two.w + LABEL_GROUP_GAP)
 	testing.expect_value(t, plus.h, LABEL_GROUP_ROW)
 	sem := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, contains(sem, `"Show +4 more"`), "the toggle's spoken name: %s", sem)
+	testing.expectf(t, strings.contains(sem, `"Show +4 more"`), "the toggle's spoken name: %s", sem)
 
 	// +4: every item shows and the toggle, keeping its id and so focus,
 	// says Show less; Enter on it collapses the row again.
@@ -485,7 +476,7 @@ test_label_group_overlay_opens_with_every_item_and_closes :: proc(t: ^testing.T)
 	testing.expect(t, ui.probe_tagged(&p, "four")) // the overlay holds every item
 	testing.expect(t, ui.probe_tagged(&p, "Close"))
 	sem := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, contains(sem, `"All 4 labels"`), "the dialog's name counts every item: %s", sem)
+	testing.expectf(t, strings.contains(sem, `"All 4 labels"`), "the dialog's name counts every item: %s", sem)
 	// The dialog reaches 8px past the toggle's right edge; inside its 8px
 	// padding, the Close button ends where the toggle does.
 	plus, closer := ui.probe_bounds(&p, "+3"), ui.probe_bounds(&p, "Close")

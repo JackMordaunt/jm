@@ -300,6 +300,151 @@ page_counter_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	primer.counter_label(gtx, "")
 }
 
+// AVATARS are identicons drawn for the kitchen, found from the repository
+// root, where the kitchen runs.
+AVATARS := [?]primer.Avatar_Source {
+	{"examples/primer-kitchen/avatars/mona.png", "@mona"},
+	{"examples/primer-kitchen/avatars/hubot.png", "@hubot"},
+	{"examples/primer-kitchen/avatars/octocat.png", "@octocat"},
+	{"examples/primer-kitchen/avatars/primer.png", "@primer"},
+	{"examples/primer-kitchen/avatars/odin.png", "@odin"},
+	{"examples/primer-kitchen/avatars/blend2d.png", "@blend2d"},
+	{"examples/primer-kitchen/avatars/jm.png", "@jm"},
+}
+
+page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Sizes", "a size-px square clipped round, with a 1px avatar-borderColor ring outside its box")
+	{
+		r := ui.wrap_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
+		for s, i in ([]f32{16, 20, 24, 32, 40, 64}) {
+			primer.avatar(gtx, AVATARS[i % len(AVATARS)].src, s, alt = AVATARS[i % len(AVATARS)].alt, key = u64(i))
+		}
+	}
+	kitchen.section(gtx, "Square", "radius clamp(4px, size - 24px, 6px): 4px to 28px, 6px from 30px")
+	{
+		r := ui.wrap_open(gtx, gap = 16, align = .Center)
+		defer ui.close(&r)
+		for s, i in ([]f32{20, 28, 29, 32, 64}) {
+			primer.avatar(gtx, AVATARS[3].src, s, square = true, key = u64(i))
+		}
+	}
+	kitchen.section(gtx, "No image", "the avatar-bgColor placeholder in its ring; SkeletonAvatar takes the same box")
+	r := ui.wrap_open(gtx, gap = 16, align = .Center)
+	defer ui.close(&r)
+	primer.avatar(gtx, size = 32, key = 1)
+	primer.avatar(gtx, size = 32, square = true, key = 2)
+	primer.skeleton_avatar(gtx, 32, key = 3)
+	primer.skeleton_avatar(gtx, 32, true, key = 4)
+}
+
+page_avatar_stack :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Cascade", "55% then 85% overlap, the 3rd to 5th at 70 / 55 / 40%; a 1px gap cut round each overlap")
+	kitchen.state_header(gtx)
+	{
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
+			primer.avatar_stack(gtx, AVATARS[:], size = 24, state = st, key = key)
+		}
+		kitchen.state_row(gtx, m, "Cascade", cell, 1)
+	}
+	{
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
+			primer.avatar_stack(gtx, AVATARS[:4], .Stack, 24, state = st, key = key)
+		}
+		kitchen.state_row(gtx, m, "Stack", cell, 2)
+	}
+	{
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
+			primer.avatar_stack(gtx, AVATARS[:3], .Stack, 24, square = true, state = st, key = key)
+		}
+		kitchen.state_row(gtx, m, "Square", cell, 3)
+	}
+	kitchen.section(gtx, "Live", "hover or focus a stack: it fans out over 200ms, over what follows; the right one is aligned right")
+	r := ui.row_open(gtx, gap = 16, align = .Center)
+	defer ui.close(&r)
+	primer.avatar_stack(gtx, AVATARS[:], size = 32, key = 10)
+	primer.label(gtx, "after the stack")
+	primer.avatar_stack(gtx, AVATARS[:5], .Stack, 32, align_right = true, key = 11)
+	primer.avatar_stack(gtx, AVATARS[:2], size = 32, disable_expand = true, key = 12)
+}
+
+page_progress_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 12)
+	defer ui.close(&col)
+	sz := ui.sized_open(gtx, {max = {480, 0}})
+	defer ui.close(&sz)
+	inner := ui.column_open(gtx, gap = 12, align = .Fill)
+	defer ui.close(&inner)
+	kitchen.section(gtx, "Sizes", "5 / 8 / 10px tracks with small corners; the fill bgColor-success-emphasis by default")
+	primer.progress_bar(gtx, 30, size = .Small, label = "Small", key = 1)
+	primer.progress_bar(gtx, 50, label = "Default", key = 2)
+	primer.progress_bar(gtx, 70, size = .Large, label = "Large", key = 3)
+	kitchen.section(gtx, "Roles and segments", "any bgColor emphasis role; segments 2px apart, not normalised")
+	primer.progress_bar(gtx, 64, .Bg_Color_Accent_Emphasis, label = "Accent", key = 4)
+	segs := [?]primer.Progress_Item{{40, .Bg_Color_Success_Emphasis, "Done"}, {25, .Bg_Color_Attention_Emphasis, "Review"}, {15, .Bg_Color_Danger_Emphasis, "Blocked"}}
+	primer.progress_bar_items(gtx, segs[:], .Large, key = 5)
+	kitchen.section(gtx, "Animated", "a mask twice the fill's width sweeps it once a second; still under reduced motion")
+	primer.progress_bar(gtx, 80, animated = true, label = "Uploading", key = 6)
+	primer.progress_bar(gtx, 45, .Bg_Color_Done_Emphasis, .Large, animated = true, label = "Indexing", key = 7)
+}
+
+page_skeleton_box :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 12)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Boxes", "skeletonLoader-bgColor, small corners, 16px tall by default, full width unless given one; shimmering")
+	{
+		sz := ui.sized_open(gtx, {max = {480, 0}}, key = 1)
+		primer.skeleton_box(gtx, key = 1)
+		ui.close(&sz)
+	}
+	r := ui.wrap_open(gtx, gap = 12, align = .Center)
+	defer ui.close(&r)
+	primer.skeleton_box(gtx, 120, 80, key = 2)
+	primer.skeleton_box(gtx, 64, 64, key = 3)
+	primer.skeleton_box(gtx, 200, 24, delay = .Long, key = 4)
+}
+
+SKELETON_ROLES := [?]primer.Type_Role{.Display, .Title_Large, .Title_Medium, .Title_Small, .Subtitle, .Body_Large, .Body_Medium, .Body_Small}
+SKELETON_ROLE_NAMES := [?]string{"Display", "Title large", "Title medium", "Title small", "Subtitle", "Body large", "Body medium", "Body small"}
+
+page_skeleton_text :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 8)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Sizes", "a bar the font size tall in one line box; display and title large take medium corners")
+	for role, i in SKELETON_ROLES {
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		lbl := ui.sized_open(gtx, {min = {120, 0}, max = {120, 0}}, key = u64(i))
+		primer.label(gtx, SKELETON_ROLE_NAMES[i], .Secondary)
+		ui.close(&lbl)
+		bar := ui.sized_open(gtx, {max = {320, 0}}, key = u64(100 + i))
+		primer.skeleton_text(gtx, role, key = u64(i))
+		ui.close(&bar)
+		ui.close(&r)
+	}
+	kitchen.section(gtx, "Lines", "bars 2 x leading apart; the last at most 65% wide, at least 50px")
+	sz := ui.sized_open(gtx, {max = {360, 0}})
+	defer ui.close(&sz)
+	primer.skeleton_text(gtx, lines = 4, key = 50)
+}
+
+page_skeleton_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	kitchen.section(gtx, "Sizes and shapes", "an avatar's box in shimmering skeletonLoader-bgColor, no ring; the avatar beside it for the swap")
+	for square, row in ([]bool{false, true}) {
+		r := ui.wrap_open(gtx, gap = 16, align = .Center, key = u64(row))
+		for s, i in ([]f32{20, 32, 48, 64}) {
+			primer.skeleton_avatar(gtx, s, square, key = u64(i))
+			primer.avatar(gtx, AVATARS[i].src, s, square, key = u64(10 + i))
+		}
+		ui.close(&r)
+	}
+}
+
 SPINNER_SIZES := [?]primer.Spinner_Size{.Small, .Medium, .Large}
 
 page_spinner :: proc(gtx: ^ui.Ctx, m: ^Model) {
