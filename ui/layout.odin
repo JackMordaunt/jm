@@ -734,6 +734,27 @@ flex_truncate :: proc(f: ^Flex, n: int) {
 	}
 }
 
+// flex_count is how many children f holds so far: those it measured,
+// less any that flex_fit or flex_truncate dropped. 0 once f is closed.
+flex_count :: proc(f: ^Flex) -> int {
+	l := f.gtx.layout
+	if l == nil || f.index < 0 {
+		return 0
+	}
+	return container_at(l, f.index).count
+}
+
+// flex_extent is where f's children so far end along its main axis,
+// from its start, gaps included: where the next child goes, less a gap.
+// 0 once f is closed.
+flex_extent :: proc(f: ^Flex) -> f32 {
+	l := f.gtx.layout
+	if l == nil || f.index < 0 {
+		return 0
+	}
+	return container_at(l, f.index).cursor
+}
+
 // flex_container is f's container when f is the innermost, deferred flex, as
 // flex_fit and flex_truncate need; nil without a layout.
 @(private = "file")

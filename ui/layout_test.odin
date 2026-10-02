@@ -1449,6 +1449,8 @@ Fit_Model :: struct {
 	reserve: f32,
 	n:       int, // flex_truncate to this many instead, when >= 0
 	dropped: int,
+	count:   int, // flex_count after the fit
+	extent:  f32, // flex_extent after the fit
 }
 
 @(private = "file")
@@ -1477,6 +1479,7 @@ fit_row :: proc(gtx: ^Ctx, user: rawptr) {
 	} else {
 		m.dropped = flex_fit(&r, m.reserve)
 	}
+	m.count, m.extent = flex_count(&r), flex_extent(&r)
 	fit_chip(gtx, "more", m.reserve, 99)
 }
 
@@ -1498,6 +1501,8 @@ test_flex_fit_keeps_the_prefix_that_fits_beside_the_reserve :: proc(t: ^testing.
 	m.reserve = 20
 	probe_frame(&p)
 	testing.expect_value(t, m.dropped, 3)
+	testing.expect_value(t, m.count, 2)
+	testing.expect_value(t, m.extent, 64) // where the kept children end
 	testing.expect(t, probe_tagged(&p, "b"))
 	testing.expect(t, !probe_tagged(&p, "c")) // a dropped child's macro never runs
 	testing.expect(t, !probe_tagged(&p, "e"))
