@@ -68,6 +68,17 @@
         "tokens": [
           "--control-borderColor-rest"
         ]
+      },
+      {
+        "text": "Dark dimmed is the softer dark and binds nine pairings under the AA ratios the other 13 themes meet: --fgColor-accent and --fgColor-link on --bgColor-default at 4.33:1, --focus-outline-color on the page at 2.96:1, each semantic --fgColor-<role> on its --bgColor-<role>-muted at 3.3 to 4.4:1, and the danger button's label on its fill. Measure contrast with translucent tints composited over --bgColor-default.",
+        "tokens": [
+          "--fgColor-accent",
+          "--fgColor-link",
+          "--focus-outline-color",
+          "--bgColor-default",
+          "--bgColor-done-muted",
+          "--fgColor-done"
+        ]
       }
     ]
   },
