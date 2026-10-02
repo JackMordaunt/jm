@@ -341,24 +341,14 @@ control :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, bounds: ops.Rect, state: Interact
 // in: the rest token and its Hover, Pressed and Disabled twins
 // (foundations tokens.rules: states are separate tokens, never blends).
 // A property with no token for a state repeats its rest role there.
-State_Roles :: struct {
-	rest, hover, pressed, disabled: tok.Role,
-}
+State_Roles :: design.State_Roles(tok.Role)
 
 // role_for is the role s binds for c's state: disabled, then pressed,
 // then hovered (foundations interaction.states.priority); focused and
 // enabled read the rest role, as the only focus colour tokens are the
 // ring's own, Stroke_Focus1 and 2 (foundations interaction.focus).
 role_for :: proc(s: State_Roles, c: Control) -> tok.Role {
-	#partial switch c.state {
-	case .Disabled:
-		return s.disabled
-	case .Pressed, .Dragged:
-		return s.pressed
-	case .Hovered:
-		return s.hover
-	}
-	return s.rest
+	return design.role_for(s, c.base)
 }
 
 // color_for is role_for's role in the active scheme.
@@ -366,47 +356,14 @@ color_for :: proc(s: State_Roles, c: Control) -> ops.Color {
 	return color(role_for(s, c))
 }
 
-// Fades are a component's colour transitions: one per property it
-// eases, numbered by the component like design's spring slots.
-Fades :: struct {
-	slots: [4]Fade,
-}
+// Fades are a component's colour transitions, design's.
+Fades :: design.Fades
+Fade :: design.Fade
 
-Fade :: struct {
-	from, to: ops.Color,
-	tween:    ui.Tween,
-	live:     bool, // a value has been seen; until then there is nothing to ease from
-}
-
-// blend is target eased from the colour slot last showed: a change of
-// target starts a transition of duration ms along curve, the defaults
-// being every control's colour transition (foundations motion.rules).
-// A forced state (c.fades nil) has no retained colour, so it is target
-// at once, as is the first frame of a live one.
+// blend is design.blend over c's retained colours, the defaults being
+// every control's colour transition (foundations motion.rules).
 blend :: proc(gtx: ^ui.Ctx, c: Control, slot: int, target: ops.Color, duration := tok.DURATION_FASTER, curve := tok.CURVE_EASY_EASE) -> ops.Color {
-	if c.fades == nil {
-		return target
-	}
-	f := &c.fades.slots[slot]
-	if !f.live {
-		f^ = {from = target, to = target, live = true}
-		return target
-	}
-	if target != f.to {
-		f.from = fade_value(f, curve)
-		f.to = target
-		f.tween = {to = 1, duration = duration / 1000}
-	}
-	ui.tween_update(&f.tween, gtx)
-	return fade_value(f, curve)
-}
-
-@(private = "file")
-fade_value :: proc(f: ^Fade, curve: tok.Bezier) -> ops.Color {
-	if f.tween.duration <= 0 {
-		return f.to
-	}
-	return ops.mix(f.from, f.to, design.bezier_ease(curve, f.tween.t / f.tween.duration))
+	return design.blend(gtx, c.fades, slot, target, duration, curve)
 }
 
 CLICK_KINDS :: design.CLICK_KINDS

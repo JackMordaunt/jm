@@ -17,7 +17,8 @@ parts:
   - Interaction: the states a control can be in and Control, one frame's
     resolved state for a widget (control, listen, animate). How a state
     is painted is the system's: Material overlays a translucent layer,
-    Fluent binds a colour role per state. Both read the same Control.
+    Fluent and Primer bind a colour role per state, which State_Roles
+    and role_for pick and blend eases between. All read the same Control.
   - Geometry: per-corner radii (Corners, rounded), arcs, inside strokes,
     focus rings, touch targets, box-shadow layers and CSS easing.
   - Text: a composite type style, a weight-to-face lookup, and shaping
