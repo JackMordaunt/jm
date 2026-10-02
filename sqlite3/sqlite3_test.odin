@@ -1,5 +1,7 @@
 package sqlite3
 
+import "base:runtime"
+import "core:c"
 import "core:os"
 import "core:path/filepath"
 import "core:slice"
@@ -400,4 +402,67 @@ file_takes_wal :: proc(t: ^testing.T) {
 	defer finish(&rows)
 	testing.expect(t, next(&rows))
 	testing.expect_value(t, text(rows, 0), "wal")
+}
+
+@(private = "file")
+Hook_Log :: struct {
+	rows:      [dynamic]i64,
+	commits:   int,
+	rollbacks: int,
+}
+
+@(private = "file")
+log_update :: proc "c" (user: rawptr, op: Update_Op, db_name, table: cstring, rowid: i64) {
+	context = runtime.default_context()
+	l := (^Hook_Log)(user)
+	append(&l.rows, rowid if op != .Delete else -rowid)
+}
+
+@(private = "file")
+log_commit :: proc "c" (user: rawptr) -> c.int {
+	(^Hook_Log)(user).commits += 1
+	return 0
+}
+
+@(private = "file")
+log_rollback :: proc "c" (user: rawptr) {
+	(^Hook_Log)(user).rollbacks += 1
+}
+
+@(test)
+hooks_report_rows_commits_and_rollbacks :: proc(t: ^testing.T) {
+	db, err := open(MEMORY)
+	testing.expect(t, err == nil)
+	defer close(&db)
+	testing.expect(t, exec(db, "CREATE TABLE todo(id INTEGER PRIMARY KEY, title TEXT)") == nil)
+	l: Hook_Log
+	defer delete(l.rows)
+	hooks(db, log_update, log_commit, log_rollback, &l)
+
+	// Autocommit: one statement, one row, one commit.
+	testing.expect(t, exec_args(db, "INSERT INTO todo(title) VALUES (?)", "a") == nil)
+	testing.expect_value(t, len(l.rows), 1)
+	testing.expect_value(t, l.commits, 1)
+
+	// A transaction: rows report as they happen, the commit once at the end.
+	testing.expect(t, exec(db, "BEGIN") == nil)
+	testing.expect(t, exec_args(db, "INSERT INTO todo(title) VALUES (?)", "b") == nil)
+	testing.expect(t, exec(db, "DELETE FROM todo WHERE id = 1") == nil)
+	testing.expect_value(t, l.commits, 1)
+	testing.expect(t, exec(db, "COMMIT") == nil)
+	testing.expect_value(t, l.commits, 2)
+	testing.expect_value(t, len(l.rows), 3)
+	testing.expect_value(t, l.rows[2], i64(-1))
+
+	// A rollback reports as one, and the rows it undid were reported before it.
+	testing.expect(t, exec(db, "BEGIN") == nil)
+	testing.expect(t, exec_args(db, "INSERT INTO todo(title) VALUES (?)", "c") == nil)
+	testing.expect(t, exec(db, "ROLLBACK") == nil)
+	testing.expect_value(t, l.rollbacks, 1)
+	testing.expect_value(t, l.commits, 2)
+
+	// Removed hooks say nothing.
+	hooks(db)
+	testing.expect(t, exec_args(db, "INSERT INTO todo(title) VALUES (?)", "d") == nil)
+	testing.expect_value(t, l.commits, 2)
 }

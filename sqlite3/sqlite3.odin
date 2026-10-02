@@ -511,6 +511,22 @@ interrupt :: proc(db: Db) {
 	}
 }
 
+// hooks installs the connection's change hooks, replacing any installed
+// before; nil removes one. update is called for each row an INSERT,
+// UPDATE or DELETE touches, with the table and rowid, bar what SQLite
+// leaves out: a DELETE with no WHERE, which it truncates instead, and
+// the rows a REPLACE conflict removes; commit once a
+// transaction commits, which in autocommit mode is after every such
+// statement; rollback when one rolls back. A caller watching for changes
+// buffers what update reports and hands the buffer on at commit, since a
+// change inside a transaction that rolls back never happened. The procs
+// run inside SQLite with no Odin context (see ffi.odin).
+hooks :: proc(db: Db, update: Update_Proc = nil, commit: Commit_Proc = nil, rollback: Rollback_Proc = nil, user: rawptr = nil) {
+	sqlite3_update_hook(db.handle, update, user)
+	sqlite3_commit_hook(db.handle, commit, user)
+	sqlite3_rollback_hook(db.handle, rollback, user)
+}
+
 // changes is how many rows the last INSERT, UPDATE or DELETE touched.
 changes :: proc(db: Db) -> i64 {
 	return sqlite3_changes64(db.handle)

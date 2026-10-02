@@ -40,6 +40,22 @@ OPEN_READWRITE :: 0x00000002
 OPEN_CREATE    :: 0x00000004
 OPEN_URI       :: 0x00000040
 
+// Update_Op is what sqlite3_update_hook reports a row change as: the
+// SQLITE_INSERT, SQLITE_DELETE and SQLITE_UPDATE authorizer codes.
+Update_Op :: enum c.int {
+	Delete = 9,
+	Insert = 18,
+	Update = 23,
+}
+
+// The hook procs. They run on the thread that executed the statement,
+// inside SQLite, with no Odin context: set one up before calling into
+// anything that needs it, and never touch the connection from inside.
+// A commit hook returning non-zero turns the commit into a rollback.
+Update_Proc :: proc "c" (user: rawptr, op: Update_Op, db_name, table: cstring, rowid: i64)
+Commit_Proc :: proc "c" (user: rawptr) -> c.int
+Rollback_Proc :: proc "c" (user: rawptr)
+
 // Column storage classes, as sqlite3_column_type reports them.
 TYPE_INTEGER :: 1
 TYPE_FLOAT   :: 2
@@ -60,6 +76,9 @@ foreign lib {
 	sqlite3_interrupt         :: proc(db: ^Connection) ---
 	sqlite3_changes64         :: proc(db: ^Connection) -> i64 ---
 	sqlite3_last_insert_rowid :: proc(db: ^Connection) -> i64 ---
+	sqlite3_update_hook       :: proc(db: ^Connection, cb: Update_Proc, user: rawptr) -> rawptr ---
+	sqlite3_commit_hook       :: proc(db: ^Connection, cb: Commit_Proc, user: rawptr) -> rawptr ---
+	sqlite3_rollback_hook     :: proc(db: ^Connection, cb: Rollback_Proc, user: rawptr) -> rawptr ---
 
 	sqlite3_prepare_v2           :: proc(db: ^Connection, sql: [^]u8, n: c.int, stmt: ^^Statement, tail: ^[^]u8) -> c.int ---
 	sqlite3_finalize             :: proc(stmt: ^Statement) -> c.int ---
