@@ -290,6 +290,8 @@ Role :: enum u8 {
 	Option,
 	Region, // a landmark section a reader can jump to by its label: a page-level message
 	Presentation, // decoration: a reader skips the node and reads its children
+	Menu_Item_Checkbox, // a menu item that toggles: Checked says whether it is on
+	Menu_Item_Radio, // one of a menu's mutually exclusive choices: Checked marks the chosen
 }
 
 // State is one of the states a Semantic op may carry.
@@ -313,13 +315,15 @@ States :: bit_set[State;u16]
 // reader speaks for it, or the widget whose label names it (a slider
 // after its caption) when it has none of its own, its value when it has
 // one (a slider's, a field's text), a longer description (a tooltip's
-// text), its states, and a heading's level in the page's outline.
+// text), its states, a heading's level in the page's outline, and the
+// descendant it points a reader at while it keeps focus itself.
 Semantics :: struct {
-	role:        Role,
-	label:       string,
-	labelled_by: Area_Id, // another node, whose label is read when label is ""
-	value:       string,
-	description: string,
-	states:      States,
-	level:       u8, // a heading's outline level, 1 as h1 through 6 as h6; 0 is none, which a heading reads as 1
+	role:              Role,
+	label:             string,
+	labelled_by:       Area_Id, // another node, whose label is read when label is ""
+	value:             string,
+	description:       string,
+	states:            States,
+	level:             u8, // a heading's outline level, 1 as h1 through 6 as h6; 0 is none, which a heading reads as 1
+	active_descendant: Area_Id, // the node a focused control points a reader at while it keeps focus (aria-activedescendant): a combo box's highlighted option; 0 is none
 }

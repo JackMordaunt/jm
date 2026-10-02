@@ -203,7 +203,10 @@ Input_Area :: struct {
 // by id whatever lies between; rect is the widget's box in the recording
 // space, zero for one with no box. A node with no label of its own may
 // name another by semantics.labelled_by, whose label a reader speaks,
-// and a heading gives its place in the page's outline by semantics.level.
+// a heading gives its place in the page's outline by semantics.level,
+// and a control that keeps focus while it highlights a node (a combo
+// box's option) names that node by semantics.active_descendant (AccessKit's
+// active_descendant, aria-activedescendant on the web).
 Semantic :: struct {
 	id:        Area_Id,
 	parent:    Area_Id,

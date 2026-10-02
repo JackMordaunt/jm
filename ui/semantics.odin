@@ -112,8 +112,10 @@ key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, op
 // semantics_report prints f's semantic tree, one node a line, children
 // indented under their parent: the role, the label (the labelled_by
 // node's when the node has none), the value and description when set,
-// a heading's level when set, the states, `focused` on the area focus names, and the device rect, in
-// document order: the order a reader is meant to take them in. A node
+// a heading's level when set, the states, the active descendant's label
+// (`active "…"`) when set, `focused` on the area focus names, and the
+// device rect, in document order: the order a reader is meant to take
+// them in. A node
 // whose parent is in no frame node is a root; a Presentation node is not
 // printed, its children take its place.
 semantics_report :: proc(f: ^Frame, focus: ops.Area_Id = 0, allocator := context.allocator) -> string {
@@ -166,6 +168,10 @@ write_semantic_children :: proc(b: ^strings.Builder, f: ^Frame, parent: []int, o
 				fmt.sbprintf(b, " %s", state_name(st))
 			}
 		}
+		if n.semantics.active_descendant != 0 {
+			strings.write_string(b, " active ")
+			strings.write_quoted_string(b, node_label(f, n.semantics.active_descendant))
+		}
 		if focus != 0 && n.id == focus {
 			strings.write_string(b, " focused")
 		}
@@ -180,8 +186,14 @@ semantic_label :: proc(f: ^Frame, s: ops.Semantics) -> string {
 	if s.label != "" || s.labelled_by == 0 {
 		return s.label
 	}
+	return node_label(f, s.labelled_by)
+}
+
+// node_label is the label of f's node id, "" when f has none.
+@(private = "file")
+node_label :: proc(f: ^Frame, id: ops.Area_Id) -> string {
 	for n in f.nodes {
-		if n.id == s.labelled_by {
+		if n.id == id {
 			return n.semantics.label
 		}
 	}
@@ -265,6 +277,10 @@ role_name :: proc(r: ops.Role) -> string {
 		return "region"
 	case .Presentation:
 		return "presentation"
+	case .Menu_Item_Checkbox:
+		return "menu item checkbox"
+	case .Menu_Item_Radio:
+		return "menu item radio"
 	}
 	return "unknown"
 }

@@ -71,6 +71,7 @@ foreign lib {
 	node_set_hidden :: proc(node: ^Node) ---
 	node_set_live :: proc(node: ^Node, value: Live) ---
 	node_set_level :: proc(node: ^Node, value: c.size_t) ---
+	node_set_active_descendant :: proc(node: ^Node, value: Node_Id) ---
 	node_push_child :: proc(node: ^Node, item: Node_Id) ---
 	node_add_action :: proc(node: ^Node, action: Action) ---
 	// The caller frees the string with string_free.

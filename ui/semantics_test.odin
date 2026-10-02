@@ -1,5 +1,6 @@
 package ui
 
+import "core:fmt"
 import "jm:ui/ops"
 import "core:strings"
 import "core:testing"
@@ -272,4 +273,41 @@ semantics_report_says_a_headings_level_and_names_a_region :: proc(t: ^testing.T)
 	defer probe_destroy(&p)
 	testing.expect_value(t, probe_semantics(&p, context.temp_allocator), "region \"Saved\" at 0,0 300x300\n  heading \"Saved\" level 2 at 0,0 60x20\n")
 	testing.expect(t, strings.contains(probe_dump(&p), "Heading \"Saved\" level 2"), probe_dump(&p))
+}
+
+@(test)
+semantics_report_names_an_active_descendant_and_the_checkable_menu_items :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		col := column_open(gtx, key = 1)
+		defer close(&col)
+		field := widget_open(gtx, 2)
+		option := id_mix(field.id, 1)
+		semantics(gtx, &field, {role = .Combo_Box, label = "Fruit", active_descendant = option})
+		part_semantics(gtx, &field, option, {0, 20, 60, 20}, {role = .Option, label = "Apple"})
+		widget_close(gtx, &field, {size = {60, 40}})
+		a := widget_open(gtx, 3)
+		semantics(gtx, &a, {role = .Menu_Item_Checkbox, label = "Wrap", states = {.Checked}})
+		widget_close(gtx, &a, {size = {60, 20}})
+		b := widget_open(gtx, 4)
+		semantics(gtx, &b, {role = .Menu_Item_Radio, label = "Dark"})
+		widget_close(gtx, &b, {size = {60, 20}})
+	}
+	defer free_all(context.temp_allocator)
+	p: Probe
+	probe_init(&p, view, nil, {300, 300})
+	defer probe_destroy(&p)
+	got := probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(got, "combo box \"Fruit\" active \"Apple\" at 0,0 60x40\n  option \"Apple\""), got)
+	testing.expect(t, strings.contains(got, "menu item checkbox \"Wrap\" checked"), got)
+	testing.expect(t, strings.contains(got, "menu item radio \"Dark\" at"), got)
+	apple: ops.Area_Id
+	for n in probe_current(&p).nodes {
+		if n.semantics.label == "Apple" {
+			apple = n.id
+		}
+	}
+	testing.expect(t, apple != 0)
+	context.allocator = context.temp_allocator // the dump's builder
+	dump := probe_dump(&p)
+	testing.expect(t, strings.contains(dump, fmt.tprintf("Combo_Box \"Fruit\" active_descendant %d", apple)), dump)
 }

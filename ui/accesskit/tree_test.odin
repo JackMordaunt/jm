@@ -216,3 +216,54 @@ test_a_heading_carries_its_level_and_a_region_its_role :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(got, `role: Heading, label: "Third", value: "Third", level: 3,`), got)
 	testing.expect(t, strings.contains(got, `role: Heading, label: "Plain", value: "Plain", level: 1,`), got) // no level reads as 1
 }
+
+// picker_view is a combo box pointing at its second option, beside a
+// checked menu item checkbox and an unchecked menu item radio.
+@(private = "file")
+picker_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1)
+	defer ui.close(&col)
+	field := ui.widget_open(gtx, 2)
+	second := ui.id_mix(field.id, 2)
+	ui.semantics(gtx, &field, {role = .Combo_Box, label = "Fruit", active_descendant = second})
+	ui.part_semantics(gtx, &field, ui.id_mix(field.id, 1), {0, 20, 80, 20}, {role = .Option, label = "Apple"})
+	ui.part_semantics(gtx, &field, second, {0, 40, 80, 20}, {role = .Option, label = "Pear"})
+	ui.widget_close(gtx, &field, {size = {80, 60}})
+	a := ui.widget_open(gtx, 3)
+	ui.semantics(gtx, &a, {role = .Menu_Item_Checkbox, label = "Wrap", states = {.Checked}})
+	ui.widget_close(gtx, &a, {size = {80, 20}})
+	b := ui.widget_open(gtx, 4)
+	ui.semantics(gtx, &b, {role = .Menu_Item_Radio, label = "Dark"})
+	ui.widget_close(gtx, &b, {size = {80, 20}})
+}
+
+@(test)
+test_a_combo_box_names_its_active_descendant_and_menu_items_toggle :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, picker_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Picker")
+	pear: Node_Id
+	wrap, dark: Snapshot_Node
+	for r in s.records {
+		switch r.label >= 0 ? string(text(&s, r.label)) : "" {
+		case "Pear":
+			pear = r.id
+		case "Wrap":
+			wrap = r
+		case "Dark":
+			dark = r
+		}
+	}
+	testing.expect(t, pear != 0)
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, fmt.tprintf(`active_descendant: #%d, label: "Fruit"`, pear)), got)
+	testing.expect_value(t, wrap.role, Role.Menu_Item_Check_Box)
+	testing.expect(t, wrap.has_toggled && wrap.toggled == .True)
+	testing.expect_value(t, dark.role, Role.Menu_Item_Radio)
+	testing.expect(t, dark.has_toggled && dark.toggled == .False)
+}

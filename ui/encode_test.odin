@@ -25,6 +25,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.semantic(&src, 7, 3, {role = .Checkbox, label = "Dark", labelled_by = 9, value = "on", description = "the scheme", states = {.Checked, .Disabled}}, {4, 6, 30, 20})
 	ops.semantic(&src, 8, 0, {role = .Heading, label = "Fruit", level = 3}, {0, 0, 30, 20})
 	ops.semantic(&src, 9, 0, {role = .Region, label = "Saved"}, {0, 0, 30, 20})
+	ops.semantic(&src, 10, 0, {role = .Menu_Item_Radio, label = "Light", states = {.Checked}, active_descendant = 7}, {0, 0, 30, 20})
 	ops.key_interest(&src, 7, .Escape, {.Ctrl}, {.Shift}, topmost = true)
 	ops.outside_area(&src, 7, ops.Rect{1, 2, 3, 4})
 	ops.sticky_push(&src, 12, 300)

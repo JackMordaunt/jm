@@ -47,6 +47,7 @@ Snapshot_Node :: struct {
 	hidden:      bool, // its box lies wholly outside its clip: scrolled away
 	live:        Live,
 	level:       u8, // headings: 1
+	active:      Node_Id, // the active descendant a focused combo box points at, 0 for none
 	focusable:   bool, // an input area of the id wants Key or Focus
 	clickable:   bool, // one wants Press
 }
@@ -102,10 +103,11 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 			invalid     = .Invalid in n.semantics.states,
 			busy        = .Busy in n.semantics.states,
 			modal       = .Modal in n.semantics.states,
+			active      = Node_Id(n.semantics.active_descendant),
 		}
 		if .Mixed in n.semantics.states {
 			r.toggled, r.has_toggled = .Mixed, true
-		} else if n.semantics.role == .Checkbox || n.semantics.role == .Radio || n.semantics.role == .Switch {
+		} else if checkable(n.semantics.role) {
 			r.toggled, r.has_toggled = .True if .Checked in n.semantics.states else .False, true
 		}
 		#partial switch n.semantics.role {
@@ -182,11 +184,21 @@ put_text :: proc(s: ^Snapshot, str: string) -> i32 {
 	return off
 }
 
+// checkable reports whether r carries a toggled state: Checked on it
+// reads as on, its absence as off.
+checkable :: proc(r: ops.Role) -> bool {
+	#partial switch r {
+	case .Checkbox, .Radio, .Switch, .Menu_Item_Checkbox, .Menu_Item_Radio:
+		return true
+	}
+	return false
+}
+
 // interactive reports whether r is a control the reader may focus or
 // click, rather than content it reads past.
 interactive :: proc(r: ops.Role) -> bool {
 	#partial switch r {
-	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Link, .Option, .Grid_Cell, .Row, .Cell:
+	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Menu_Item_Checkbox, .Menu_Item_Radio, .Link, .Option, .Grid_Cell, .Row, .Cell:
 		return true
 	}
 	return false
@@ -271,6 +283,10 @@ role_of :: proc(r: ops.Role) -> Role {
 		return .Region
 	case .Presentation:
 		return .Generic_Container
+	case .Menu_Item_Checkbox:
+		return .Menu_Item_Check_Box
+	case .Menu_Item_Radio:
+		return .Menu_Item_Radio
 	}
 	return .Unknown
 }

@@ -31,8 +31,9 @@ ENCODE_MAGIC :: "UIOP"
 // and Role Region; 25 added Push_Sticky; 26 gave Placement its nudge,
 // inside, overhang and fallbacks; 27 added Event_Kind Outside and
 // Key_Interest topmost; 28 added Focus_Scope and Focus_Scope_End; 29
-// added Push_Opacity and Pop_Opacity.
-ENCODE_VERSION :: u8(29)
+// added Push_Opacity and Pop_Opacity; 30 gave Semantic an active
+// descendant and Role Menu_Item_Checkbox and Menu_Item_Radio.
+ENCODE_VERSION :: u8(30)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -432,6 +433,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_str(w, v.semantics.description)
 		put_u32(w, u32(transmute(u16)v.semantics.states))
 		append(w, v.semantics.level)
+		put_u64(w, u64(v.semantics.active_descendant))
 		put_rect(w, v.rect)
 	case Key_Interest:
 		append(w, 19)
@@ -787,6 +789,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		}
 		v.semantics.states = transmute(States)u16(states)
 		v.semantics.level = get_u8(r) or_return
+		v.semantics.active_descendant = Area_Id(get_u64(r) or_return)
 		v.rect = get_rect(r) or_return
 		return v, true
 	case 19:
