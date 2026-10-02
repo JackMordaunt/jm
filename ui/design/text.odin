@@ -72,8 +72,9 @@ baseline_of :: proc(t: Text) -> f32 {
 // (not at all when width <= 0), each line st's line height tall, into the
 // frame allocator. max_lines > 0 truncates it to that many lines, the last
 // ending in ellipsis: max_lines = 1 truncates rather than wraps at width.
-layout_style :: proc(gtx: ^ui.Ctx, s: string, st: Type_Style, font: ops.Font_Id, width: f32 = 0, max_lines := 0, ellipsis := ui.ELLIPSIS) -> ui.Paragraph {
-	return ui.paragraph_layout(gtx.shaper, font, st.size, s, width, gtx.allocator, line_pitch = st.line_height, max_lines = max_lines, ellipsis = ellipsis)
+// balance evens the lines out (ui.balanced_width).
+layout_style :: proc(gtx: ^ui.Ctx, s: string, st: Type_Style, font: ops.Font_Id, width: f32 = 0, max_lines := 0, ellipsis := ui.ELLIPSIS, balance := false) -> ui.Paragraph {
+	return ui.paragraph_layout(gtx.shaper, font, st.size, s, width, gtx.allocator, line_pitch = st.line_height, max_lines = max_lines, ellipsis = ellipsis, balance = balance)
 }
 
 // Selection_Paint is a selected byte range of a paragraph and its colours:

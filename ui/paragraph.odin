@@ -79,6 +79,8 @@ Cluster_Span :: struct {
 // tall with the font's ascent and descent centred in it, as a type style's
 // line box is. max_lines > 0 truncates the text to that many lines,
 // ending in ellipsis ("" to leave the last line unwrapped for clipping).
+// balance breaks the lines at the narrowest width that keeps their count
+// (balanced_width) rather than filling each in turn.
 paragraph_layout :: proc(
 	s: Shaper,
 	font: ops.Font_Id,
@@ -89,12 +91,113 @@ paragraph_layout :: proc(
 	line_pitch: f32 = 0,
 	max_lines := 0,
 	ellipsis := ELLIPSIS,
+	balance := false,
 ) -> Paragraph {
 	ell: Shaped_Text
 	if max_lines > 0 && ellipsis != "" {
 		ell = shape_text(s, font, size, ellipsis, context.temp_allocator)
 	}
-	return paragraph_from_shaped(shape_text(s, font, size, text, allocator), metrics(s, font, size), text, max_width, allocator, line_pitch, max_lines, ell)
+	st := shape_text(s, font, size, text, allocator)
+	m := metrics(s, font, size)
+	width := max_width
+	if balance && max_lines <= 0 {
+		width = balanced_width(st, m, text, max_width, line_pitch)
+	}
+	return paragraph_from_shaped(st, m, text, width, allocator, line_pitch, max_lines, ell)
+}
+
+// BALANCE_MAX_LINES is the most lines balanced_width evens out; a longer
+// paragraph fills each line in turn, as Chromium limits text-wrap:
+// balance to six wrapped lines (developer.chrome.com/docs/css-ui/
+// css-text-wrap-balance, Limitations, read 2026-10-02).
+BALANCE_MAX_LINES :: 6
+
+// balanced_width is the narrowest width, at most max_width, at which st
+// still breaks into as many lines as it does at max_width: CSS's
+// text-wrap: balance, which evens a short paragraph's lines out instead
+// of leaving its last one short. A paragraph of one line, or of more than
+// BALANCE_MAX_LINES, or one with no width to wrap at, keeps max_width.
+balanced_width :: proc(st: Shaped_Text, m: Font_Metrics, text: string, max_width: f32, line_pitch: f32 = 0) -> f32 {
+	if max_width <= 0 {
+		return max_width
+	}
+	count :: proc(st: Shaped_Text, m: Font_Metrics, text: string, width, line_pitch: f32) -> int {
+		return len(paragraph_from_shaped(st, m, text, width, context.temp_allocator, line_pitch).lines)
+	}
+	lines := count(st, m, text, max_width, line_pitch)
+	if lines < 2 || lines > BALANCE_MAX_LINES {
+		return max_width
+	}
+	// A narrower width never takes fewer lines, so the count is monotonic
+	// in the width: bisect to a sixteenth of a pixel.
+	lo, hi := f32(0), max_width
+	for hi - lo > 1.0 / 16 {
+		mid := (lo + hi) / 2
+		if count(st, m, text, mid, line_pitch) <= lines {
+			hi = mid
+		} else {
+			lo = mid
+		}
+	}
+	return hi
+}
+
+// White_Space is how text treats its spaces and line breaks, as CSS's
+// white-space property: whether runs of spaces collapse to one, whether
+// a newline breaks the line, and whether lines wrap at the box's width.
+White_Space :: enum u8 {
+	Normal, // collapse spaces and newlines alike; wrap
+	Nowrap, // collapse as Normal; never wrap
+	Pre, // keep spaces and newlines; never wrap
+	Pre_Wrap, // keep spaces and newlines; wrap
+	Pre_Line, // collapse spaces, keep newlines; wrap
+}
+
+// white_space_wraps is whether lines wrap at the box's width under mode.
+white_space_wraps :: proc(mode: White_Space) -> bool {
+	return mode != .Nowrap && mode != .Pre
+}
+
+// white_space_text is s as mode lays it out, for paragraph_layout, which
+// keeps every space and breaks at every newline: under Normal and Nowrap
+// every run of spaces, tabs and line breaks becomes one space; under
+// Pre_Line each run of spaces and tabs does, and the spaces either side
+// of a line break go; the collapsing modes also drop the spaces at the
+// start and end. Pre and Pre_Wrap give s unchanged. s is returned
+// itself when nothing changes, else a copy from allocator.
+white_space_text :: proc(s: string, mode: White_Space, allocator := context.temp_allocator) -> string {
+	if mode == .Pre || mode == .Pre_Wrap {
+		return s
+	}
+	keep_breaks := mode == .Pre_Line
+	out := make([dynamic]u8, 0, len(s), allocator)
+	pending := false // a collapsed space waits for the next visible character
+	for i := 0; i < len(s); i += 1 {
+		c := s[i]
+		is_break := c == '\n' || c == '\r' || c == '\f'
+		if keep_breaks && is_break {
+			if c == '\r' && i + 1 < len(s) && s[i + 1] == '\n' {
+				continue // a CR LF is one break, written at its LF
+			}
+			append(&out, '\n')
+			pending = false
+			continue
+		}
+		if c == ' ' || c == '\t' || is_break {
+			pending = len(out) > 0 && out[len(out) - 1] != '\n'
+			continue
+		}
+		if pending {
+			append(&out, ' ')
+			pending = false
+		}
+		append(&out, c)
+	}
+	if string(out[:]) == s {
+		delete(out)
+		return s
+	}
+	return string(out[:])
 }
 
 // ELLIPSIS is what truncated text ends in by default.

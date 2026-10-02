@@ -254,3 +254,39 @@ test_selecting_through_an_ellipsis_selects_the_hidden_text :: proc(t: ^testing.T
 	text_select(&s, 5, paragraph_hit(p, {60, 5}))
 	testing.expect_value(t, text_selected(&s), "bbbb cccc")
 }
+
+@(test)
+test_a_balanced_paragraph_evens_its_lines_out :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// Six four-rune words, 24px each with 6px spaces: greedy at 120px
+	// takes four then two; balanced keeps two lines, three and three.
+	six := "aaaa bbbb cccc dddd eeee ffff"
+	expect_lines(t, lay(six, 120), {{0, 20}, {20, 29}})
+	b := paragraph_layout(stub_shaper(), 0, SIZE, six, 120, context.temp_allocator, balance = true)
+	expect_lines(t, b, {{0, 15}, {15, 29}})
+	testing.expect_value(t, b.width, 84)
+	// Five words at 90px are three then two either way: no split is more even.
+	five := paragraph_layout(stub_shaper(), 0, SIZE, "aaaa bbbb cccc dddd eeee", 90, context.temp_allocator, balance = true)
+	expect_lines(t, five, {{0, 15}, {15, 24}})
+	// One line, or no width to wrap at, stays as it is.
+	testing.expect_value(t, paragraph_layout(stub_shaper(), 0, SIZE, "aaaa", 120, context.temp_allocator, balance = true).width, 24)
+	testing.expect_value(t, len(paragraph_layout(stub_shaper(), 0, SIZE, six, 0, context.temp_allocator, balance = true).lines), 1)
+}
+
+@(test)
+test_white_space_collapses_as_css_does :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	s := "  one   two\n\tthree  \n four  "
+	testing.expect_value(t, white_space_text(s, .Normal), "one two three four")
+	testing.expect_value(t, white_space_text(s, .Nowrap), "one two three four")
+	testing.expect_value(t, white_space_text(s, .Pre_Line), "one two\nthree\nfour")
+	testing.expect_value(t, white_space_text("a\r\nb", .Pre_Line), "a\nb")
+	testing.expect_value(t, white_space_text(s, .Pre), s)
+	testing.expect_value(t, white_space_text(s, .Pre_Wrap), s)
+	testing.expect_value(t, white_space_text("", .Normal), "")
+	testing.expect_value(t, white_space_text("   ", .Normal), "")
+	plain := "already plain"
+	testing.expect(t, raw_data(white_space_text(plain, .Normal)) == raw_data(plain)) // nothing to change: no copy
+	testing.expect(t, white_space_wraps(.Normal) && white_space_wraps(.Pre_Wrap) && white_space_wraps(.Pre_Line))
+	testing.expect(t, !white_space_wraps(.Nowrap) && !white_space_wraps(.Pre))
+}
