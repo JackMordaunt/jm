@@ -54,13 +54,14 @@ Table_Row :: struct {
 // selection state and the results it reports back.
 @(private)
 Table_Row_Paint :: struct {
-	size:       Table_Size,
-	appearance: Table_Selection,
-	selected:   ^bool,
-	clicked:    ^bool,
-	state:      Interaction,
-	header:     bool,
-	name:       string,
+	size:           Table_Size,
+	appearance:     Table_Selection,
+	selected:       ^bool,
+	clicked:        ^bool,
+	double_clicked: ^bool,
+	state:          Interaction,
+	header:         bool,
+	name:           string,
 }
 
 // TABLE_CELL_HEIGHT is a cell's height per size (useTableCellStyles.
@@ -146,10 +147,11 @@ current_table :: proc() -> ^Table {
 // cells (Subtle Hover and Pressed, the appearance's selection tint,
 // the bottom Stroke 2 border at medium and small) with a flex row for
 // the cells. selected non-nil makes the row selectable, a click
-// flipping it; clicked reports the click; name is what the row's input
-// area is tagged, for a probe. The row's text colour does
-// not reach its cells (no inherited colour): a cell picks its own.
-// Close it with table_row_close.
+// flipping it; clicked reports the click, double_clicked a press the
+// platform counts as the second of a double click, on the frame of the
+// press; name is what the row's input area is tagged, for a probe. The
+// row's text colour does not reach its cells (no inherited colour): a
+// cell picks its own. Close it with table_row_close.
 table_row_open :: proc(
 	gtx: ^ui.Ctx,
 	t: ^Table,
@@ -161,9 +163,10 @@ table_row_open :: proc(
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
+	double_clicked: ^bool = nil,
 ) -> Table_Row {
 	rp := new(Table_Row_Paint, gtx.allocator)
-	rp^ = {t.size, appearance, selected, clicked, state, !interactive, name}
+	rp^ = {t.size, appearance, selected, clicked, double_clicked, state, !interactive, name}
 	box := ui.box_open(gtx, {paint = paint_table_row, user = rp}, key, loc)
 	ui.container_semantics(gtx, {role = .Row, label = name, states = state_if(selected != nil && selected^, {.Selected}) + state_if(interactive && state == .Disabled, {.Disabled})})
 	row := ui.row_open(gtx, align = .Center)
@@ -264,6 +267,9 @@ paint_table_row :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: raw
 		if rp.clicked != nil {
 			rp.clicked^ = c.clicked
 		}
+		if rp.double_clicked != nil {
+			rp.double_clicked^ = c.press && c.clicks == 2
+		}
 	}
 	on := rp.selected != nil && rp.selected^
 	bg := color_for({.Subtle_Background, .Subtle_Background_Hover, .Subtle_Background_Pressed, .Subtle_Background}, c)
@@ -361,11 +367,16 @@ draw_clipped_line :: proc(gtx: ^ui.Ctx, t: Text, pos: ops.Point, width: f32, fg:
 	ops.clip_pop(gtx.scene)
 }
 
-// Cell_Media is a cell layout's leading media: an icon, or an avatar of
-// a name.
+// Cell_Media is a cell layout's leading media: an icon, an avatar of a
+// name, or an image, a thumbnail say, drawn in a rounded square. size,
+// when given, is the media's side instead of the spec's 16 to 24px: a
+// thumbnail wants more.
 Cell_Media :: struct {
-	icon: Icon,
-	name: string, // an avatar's name; "" for none
+	icon:      Icon,
+	name:      string, // an avatar's name; "" for none
+	image:     ops.Image_Id,
+	has_image: bool,
+	size:      f32,
 }
 
 // table_cell_layout is a cell with media, a main line and an optional
@@ -391,7 +402,10 @@ table_cell_layout :: proc(
 	t := shape_style(gtx, main, st)
 	d := shape_text(gtx, description, .Caption1)
 	media_px: f32 = primary ? 24 : r.table.size == .Extra_Small ? 16 : 20
-	has_media := media.icon != .None || media.name != ""
+	if media.size > 0 {
+		media_px = media.size
+	}
+	has_media := media.icon != .None || media.name != "" || media.has_image
 	x := content.x
 	natural := t.width
 	if description != "" {
@@ -406,7 +420,11 @@ table_cell_layout :: proc(
 	y := (sz.y - text_h) / 2
 	if has_media {
 		my := (sz.y - media_px) / 2
-		if media.name != "" {
+		if media.has_image {
+			ops.clip_push(gtx.scene, ops.Round_Rect{{x, my, media_px, media_px}, tok.BORDER_RADIUS_SMALL})
+			ops.image(gtx.scene, media.image, {x, my, media_px, media_px})
+			ops.clip_pop(gtx.scene)
+		} else if media.name != "" {
 			paint_avatar_disc(gtx, {x, my, media_px, media_px}, media.name, .Circular, .Colorful)
 		} else {
 			icon(gtx, media.icon, {x, my}, media_px, role_color(.Neutral_Foreground2))

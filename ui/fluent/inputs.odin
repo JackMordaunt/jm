@@ -35,6 +35,7 @@ Edit :: struct {
 	changed:   bool, // the text is not what it was
 	submitted: bool, // Enter while focused (input only)
 	focused:   bool,
+	id:        ops.Area_Id, // the field's area, for ui.focus_request
 }
 
 // EDIT_KINDS is what an input's area asks for: a click's kinds plus
@@ -317,6 +318,7 @@ input :: proc(
 		}
 	}
 	r.focused = c.focused && !c.disabled
+	r.id = p.id
 	str := string(s.buf[:])
 	t := layout_style(gtx, str, m.style)
 	_, caret := ui.paragraph_caret(t, s.cursor)
@@ -483,6 +485,7 @@ textarea :: proc(
 	}
 	text_h := box.h - 2 * BORDER
 	r.focused = c.focused && !c.disabled
+	r.id = p.id
 	li, cx := ui.paragraph_caret(para, s.cursor)
 	content_h := para.height
 	view_h := text_h - 2 * m.pad_v
