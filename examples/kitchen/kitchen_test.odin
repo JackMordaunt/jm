@@ -1,5 +1,6 @@
 package kitchen
 
+import "core:os"
 import "core:slice"
 import "core:testing"
 import "jm:ui"
@@ -100,4 +101,27 @@ test_the_session_survives_a_respawn_clamped_to_what_exists :: proc(t: ^testing.T
 	ui.probe_frame(&c)
 	testing.expect_value(t, few.page, 4)
 	testing.expect_value(t, few.theme, 1)
+}
+
+@(private = "file")
+count_frames :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	(^int)(user)^ += 1
+}
+
+// frames_run is how many frames run draws for the command line args.
+@(private = "file")
+frames_run :: proc(args: ..string) -> (frames: int) {
+	saved := os.args
+	defer os.args = saved
+	os.args = slice.concatenate([][]string{{"kitchen"}, args}, context.temp_allocator)
+	run({ui = count_frames, user = &frames, size = {100, 100}, page = new(int, context.temp_allocator), theme = new(int, context.temp_allocator)})
+	return
+}
+
+@(test)
+test_a_step_runs_only_the_frames_it_needs :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	one := frames_run("-advance", "3")
+	two := frames_run("-advance", "3", "-advance", "3")
+	testing.expect_value(t, two - one, 3) // no extra frame after a step, as a capture would see
 }

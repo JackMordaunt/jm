@@ -162,7 +162,11 @@ App :: struct {
 // the size (-size WxH), whole-page capture (-full) and debug overlays
 // (-reveal, -bounds) before any step; the page (-page) and theme (-theme)
 // anywhere, so one run can capture several; and ui/render's headless
-// steps (-png, -dump, -click, -key, -advance, -layout, -inspect...).
+// steps (-png, -dump, -click, -key, -advance, -layout, -inspect...). A
+// step runs only the frames it needs (see render.headless_step), so
+// `-click Edit -png` captures the frame the click produced,
+// mid-animation; a setting after the first step runs one frame so the
+// next step sees it.
 run :: proc(app: App) {
 	if len(os.args) == 1 {
 		child.run({ui = app.ui, user = app.user, fonts = app.fonts})
@@ -196,7 +200,6 @@ run :: proc(app: App) {
 		if !ok {
 			os.exit(1)
 		}
-		ui.probe_frame(&h.p)
 	}
 }
 
