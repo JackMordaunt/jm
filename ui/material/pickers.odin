@@ -1000,21 +1000,18 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, edit
 	inner := DIAL * TIME_INNER_RING
 	id := ui.id_mix(pid, 30)
 	st := ui.widget_state(gtx, id)
-	grab := ui.widget_data(gtx, id, Dial_Grab)
+	// A press that moves at all is a drag (whole minutes), one that does
+	// not a tap (minutes snapped to five).
+	grab := ui.drag(gtx, id, slop = 0)
 	if live {
 		for e in ui.events(gtx, id) {
 			#partial switch e.kind {
 			case .Press:
 				st.pressed = true
-				grab.moved = false
-			case .Move:
-				if st.pressed {
-					grab.moved = true
-				}
 			case .Release:
 				if st.pressed && !editing_minute^ {
 					editing_minute^ = true // an hour picked: on to minutes
-				} else if st.pressed && !grab.moved {
+				} else if st.pressed && grab.tapped {
 					// A tap snaps minutes to the nearest five.
 					t.minute = (t.minute + 2) / 5 * 5 % 60
 				}
@@ -1045,7 +1042,7 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, edit
 		ops.input_area(gtx.scene, id, face, {.Press, .Release, .Move})
 		ops.tag(gtx.scene, id, "clock dial")
 	}
-	dragging := st.pressed && grab.moved
+	dragging := st.pressed && grab.phase == .Dragging
 
 	// The handle's angle, in turns, springs to the value (default-spatial)
 	// the short way round; a drag follows the pointer directly.
@@ -1102,14 +1099,6 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, edit
 	ops.clip_push(gtx.scene, handle)
 	labels(gtx, dc, outer, inner, ring_m, is_24h, color(tok.TIME_PICKER_CLOCK_DIAL_SELECTED_LABEL_TEXT_COLOR))
 	ops.clip_pop(gtx.scene)
-}
-
-// Dial_Grab is the clock dial's grab: whether the pointer has moved since
-// the press, which makes it a drag (whole minutes) rather than a tap
-// (minutes snapped to five).
-@(private)
-Dial_Grab :: struct {
-	moved: bool,
 }
 
 // Carousel_Item is one carousel tile: a two-colour gradient standing in
@@ -1187,6 +1176,11 @@ carousel :: proc(
 	// internally the snap's value always ends a frame equal to it.
 	scrolled := cs.position != st.springs[0].value
 	clicked := -1
+	ui.drag_update(&cs.drag, ui.events(gtx, p.id), .Horizontal, CAROUSEL_SLOP)
+	if cs.drag.delta.x != 0 {
+		cs.position -= cs.drag.delta.x / (kl.large + item_spacing)
+		scrolled = true
+	}
 	for e in ui.events(gtx, p.id) {
 		#partial switch e.kind {
 		case .Scroll:
@@ -1194,15 +1188,8 @@ carousel :: proc(
 			scrolled = true
 		case .Press:
 			st.pressed = true
-			cs.grab_x, cs.grab_position, cs.moved = e.pos.x, cs.position, false
-		case .Move:
-			if st.pressed {
-				cs.position = cs.grab_position - (e.pos.x - cs.grab_x) / (kl.large + item_spacing)
-				cs.moved |= abs(e.pos.x - cs.grab_x) > 4
-				scrolled = true
-			}
 		case .Release:
-			if st.pressed && !cs.moved {
+			if st.pressed && cs.drag.tapped {
 				clicked = carousel_hit(kl, cs.position, n, e.pos.x, item_spacing)
 			}
 			st.pressed = false
@@ -1277,11 +1264,13 @@ carousel :: proc(
 Carousel_State :: struct {
 	// position is the scroll position in items: 0 puts the first item on
 	// the first focal keyline, 1 the second, and fractions lie between.
-	position:      f32,
-	grab_x:        f32, // the pointer's x where the press landed
-	grab_position: f32, // position when the press landed
-	moved:         bool, // the press has moved past 4dp: a drag, not a click
+	position: f32,
+	drag:     ui.Drag, // a press, a drag once past CAROUSEL_SLOP rather than a click
 }
+
+// CAROUSEL_SLOP is how far, in dp, a press on a carousel moves sideways
+// before it scrolls rather than clicks an item.
+CAROUSEL_SLOP :: f32(4)
 
 // Carousel_Rest is how long a carousel's scrolling has rested, counting
 // up to CAROUSEL_SETTLE_DELAY before the snap starts.

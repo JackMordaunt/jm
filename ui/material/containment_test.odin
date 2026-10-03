@@ -134,6 +134,28 @@ test_reveal_row_uncovers_its_actions :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_click(&p, "Reveal action 1"))
 }
 
+@(test)
+test_reveal_row_follows_the_pointer_while_dragged :: proc(t: ^testing.T) {
+	m := Rows{action = -1}
+	p: ui.Probe
+	ui.probe_init(&p, rows, &m, {400, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	// Held 30 dp left, before any release, the row has slid by 30: its
+	// pressable part, all that is still over the row, is 30 narrower.
+	before, ok := ui.probe_find(&p, "Reveal")
+	testing.expect(t, ok)
+	c, _ := ui.probe_center(&p, "Reveal")
+	ui.router_push(&p.router, {kind = .Move, pos = c})
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Left})
+	ui.probe_frame(&p)
+	ui.router_push(&p.router, {kind = .Move, pos = c + {-30, 0}})
+	ui.probe_frame(&p)
+	held, _ := ui.probe_find(&p, "Reveal")
+	testing.expect_value(t, held.shape.(ops.Rect).w, before.shape.(ops.Rect).w - 30)
+}
+
 @(private = "file")
 Menus :: struct {
 	open, dialog: bool,

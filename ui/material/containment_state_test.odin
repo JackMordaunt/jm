@@ -56,5 +56,5 @@ test_list_item_row_state_is_honoured_and_nil_keeps_its_own :: proc(t: ^testing.T
 	testing.expect(t, ui.probe_click(&p, "Kept action 0"))
 	testing.expect_value(t, m.action, 0)
 	testing.expect_value(t, m.owned.reveal.target, f32(0))
-	testing.expect_value(t, m.owned.drag, f32(0))
+	testing.expect_value(t, m.owned.drag.phase, ui.Drag_Phase.Idle)
 }

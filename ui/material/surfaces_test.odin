@@ -4,6 +4,7 @@ import "core:math"
 import "jm:ui/ops"
 import "core:testing"
 import "jm:ui"
+import "jm:ui/testutil"
 
 // Behaviour of the surfaces group: search, sheets, the drag handle, the
 // date and time pickers and the carousel, driven through ui.Probe.
@@ -487,6 +488,44 @@ test_carousel_steps_by_key_and_reports_clicks :: proc(t: ^testing.T) {
 	press_at(&p, left)
 	release_at(&p, left)
 	testing.expect_value(t, m.hit, 2)
+}
+
+@(test)
+test_carousel_follows_a_drag_which_is_not_a_click :: proc(t: ^testing.T) {
+	M :: struct {
+		hit:   int,
+		state: Carousel_State,
+	}
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		m := (^M)(user)
+		items := [?]Carousel_Item{{"A", {}, {}}, {"B", {}, {}}, {"C", {}, {}}, {"D", {}, {}}, {"E", {}, {}}}
+		if i := carousel(gtx, items[:], 400, 200, item_spacing = 8, state = &m.state); i >= 0 {
+			m.hit = i
+		}
+	}
+	m := M{hit = -1}
+	p: ui.Probe
+	ui.probe_init(&p, view, &m, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	k := carousel_keylines(.Multi_Browse, 400, 186, 8, CAROUSEL_MIN_SMALL, CAROUSEL_MAX_SMALL)
+	pitch := k.large + 8
+	// Dragged left by half an item, held: it has scrolled half an item.
+	c, _ := ui.probe_center(&p, "carousel")
+	c.x += 20
+	press_at(&p, c)
+	move_to(&p, c - {pitch / 4, 0})
+	move_to(&p, c - {pitch / 2, 0})
+	testing.expect(t, testutil.near(m.state.position, 0.5))
+	// Letting go there, over an item, is not a click on it.
+	testing.expect(t, carousel_hit(k, 0.5, 5, c.x - pitch / 2, 8) >= 0)
+	release_at(&p, c - {pitch / 2, 0})
+	testing.expect_value(t, m.hit, -1)
+	// A press that stays within the slop is.
+	press_at(&p, c)
+	move_to(&p, c + {CAROUSEL_SLOP / 2, 0})
+	release_at(&p, c + {CAROUSEL_SLOP / 2, 0})
+	testing.expect(t, m.hit >= 0)
 }
 
 @(private = "file")

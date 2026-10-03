@@ -509,8 +509,7 @@ DRAG_SLOP :: f32(8)
 // list, to persist it, or to open or close a reveal row from outside by
 // setting reveal.target.
 List_Item_State :: struct {
-	drag:   f32, // the pointer's travel along the row's drag axis since the press, once past DRAG_SLOP; 0 when not dragging
-	grab:   ops.Point, // where that press landed, local to the row
+	drag:   ui.Drag, // the press on the row, a drag once past DRAG_SLOP along the row's axis
 	reveal: ui.Spring, // a reveal row's offset (dp, 0 or less); its target is where it rests: 0 closed, minus the actions' width open
 }
 
@@ -584,19 +583,11 @@ list_item :: proc(
 	gs: ^List_Item_State
 	if c.st != nil && (it.kind == .Reorder || it.kind == .Reveal) {
 		gs = row_state if row_state != nil else ui.widget_data(gtx, p.id, List_Item_State)
+		axis := ui.Drag_Axis.Vertical if it.kind == .Reorder else .Horizontal
+		ui.drag_update(&gs.drag, ui.events(gtx, p.id), axis, DRAG_SLOP)
+		along := gs.drag.total.y if it.kind == .Reorder else gs.drag.total.x
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
-			case .Press:
-				if e.button == .Left {
-					gs.grab = e.pos
-				}
-			case .Move:
-				if c.st.pressed {
-					d := it.kind == .Reorder ? e.pos.y - gs.grab.y : e.pos.x - gs.grab.x
-					if abs(d) > DRAG_SLOP || gs.drag != 0 {
-						gs.drag = d
-					}
-				}
 			case .Key:
 				#partial switch e.key {
 				case .Up:
@@ -618,22 +609,23 @@ list_item :: proc(
 				}
 			}
 		}
-		drag = gs.drag
-		if !c.st.pressed && drag != 0 {
+		if gs.drag.phase == .Dragging {
+			drag = along
+		}
+		if gs.drag.released {
 			// Released after a drag: it was not a click.
 			activated = false
 			if it.kind == .Reorder && it.moved != nil {
-				it.moved^ = int(math.round(drag / size.y))
+				it.moved^ = int(math.round(along / size.y))
 			}
 			if it.kind == .Reveal {
 				rv := &gs.reveal
-				rv.value = clamp(rv.target + drag, -reveal_w, 0)
+				rv.value = clamp(rv.target + along, -reveal_w, 0)
 				rv.velocity = 0
 				rv.target = rv.value < -reveal_w / 2 ? -reveal_w : 0
 				rv.x0 = rv.value - rv.target
 				rv.v0, rv.t = 0, 0
 			}
-			gs.drag, drag = 0, 0
 		}
 	}
 	if activated {

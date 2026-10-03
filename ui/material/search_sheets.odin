@@ -1095,11 +1095,12 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	#partial switch state {
 	case .Live:
 		st := ui.widget_state(gtx, p.id)
-		grab := ui.widget_data(gtx, p.id, Handle_Grab)
-		// Each Move adds its travel, which (unlike a difference of positions
-		// local to the handle) does not change when the handle itself moves,
-		// so the handle following the pointer cannot feed back into the next
-		// delta.
+		// ui.drag sums each Move's travel, which (unlike a difference of
+		// positions local to the handle) does not change when the handle
+		// itself moves, so the handle following the pointer cannot feed
+		// back into the next delta. Any sideways travel makes it a drag.
+		d := ui.drag(gtx, p.id, .Horizontal, slop = 0)
+		dx = d.delta.x
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Enter:
@@ -1112,21 +1113,12 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 				st.focused = false
 			case .Press:
 				st.pressed = true
-				grab.moved = false
-			case .Move:
-				if st.pressed {
-					dx += e.travel.x
-					if e.travel.x != 0 {
-						grab.moved = true
-					}
-				}
 			case .Release:
 				st.pressed = false
-				grab.moved = false
 			}
 		}
 		c = {st = st, hovered = st.hovered, pressed = st.pressed, focused = st.focused}
-		dragged = st.pressed && grab.moved
+		dragged = d.phase == .Dragging
 	case:
 		c = control(gtx, p.id, hit, state)
 	}
@@ -1151,13 +1143,6 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	ops.tag(gtx.scene, p.id, "drag_handle")
 	ui.widget_close(gtx, &p, {size = {W, H}})
 	return dx
-}
-
-// Handle_Grab is a drag handle's grab: whether it has moved since the
-// press, which makes it a drag (the Dragged look) rather than a press.
-@(private)
-Handle_Grab :: struct {
-	moved: bool,
 }
 
 // strut is an empty widget w wide and 0 tall: a minimum width for the
