@@ -68,17 +68,6 @@ click_at :: proc(p: ^ui.Probe, pos: ops.Point) {
 	ui.probe_frame(p)
 }
 
-// focused_tag is the tag of the area holding keyboard focus.
-@(private)
-focused_tag :: proc(p: ^ui.Probe) -> string {
-	for tg in ui.probe_current(p).tags {
-		if tg.id == p.router.focus {
-			return tg.name
-		}
-	}
-	return ""
-}
-
 @(test)
 test_tab_list_selects_by_click_and_enter_and_roves_by_arrows :: proc(t: ^testing.T) {
 	m: Containers_Model
@@ -92,21 +81,21 @@ test_tab_list_selects_by_click_and_enter_and_roves_by_arrows :: proc(t: ^testing
 	testing.expect_value(t, m.changes, 1)
 	// Right moves focus on from the focused tab, wrapping; the selection stays.
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Documents")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Documents")
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Home")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Home")
 	testing.expect_value(t, m.tab, 1)
 	// Up and Down mean nothing to a horizontal list.
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Home")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Home")
 	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.tab, 0)
 	// One tab stop, entered at the selected tab.
 	ui.probe_key(&p, .End)
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Alpha")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Alpha")
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Home")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Home")
 	// A horizontal medium tab is 44px tall (useTabStyles.styles.ts:64-90).
 	testing.expect_value(t, ui.probe_bounds(&p, "Home").h, 44)
 }
@@ -122,13 +111,13 @@ test_vertical_tab_list_takes_up_and_down :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Alpha"))
 	testing.expect_value(t, m.vtab, 0)
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Beta")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Beta")
 	ui.probe_key(&p, .Right) // Left and Right mean nothing to a vertical list
-	testing.expect_value(t, focused_tag(&p), "Beta")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Beta")
 	ui.probe_key(&p, .Space)
 	testing.expect_value(t, m.vtab, 1)
 	ui.probe_key(&p, .Up)
-	testing.expect_value(t, focused_tag(&p), "Alpha")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Alpha")
 	testing.expect_value(t, ui.probe_bounds(&p, "Alpha").h, 32) // a vertical medium tab row
 }
 
@@ -278,11 +267,11 @@ test_a_toolbar_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 
 	testing.expect(t, ui.probe_click(&p, "Bold"))
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Italic") // over the divider
+	testing.expect_value(t, ui.probe_focus_name(&p), "Italic") // over the divider
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Bold") // wraps
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold") // wraps
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Home") // past Italic: last on the page, round to the first
+	testing.expect_value(t, ui.probe_focus_name(&p), "Home") // past Italic: last on the page, round to the first
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Bold")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold")
 }

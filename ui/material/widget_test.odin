@@ -347,17 +347,6 @@ test_a_dialogs_supporting_text_selects :: proc(t: ^testing.T) {
 	testing.expect(t, m.dialog_open, "selecting leaves the dialog open")
 }
 
-// focused_tag is the tag of the area holding keyboard focus.
-@(private)
-focused_tag :: proc(p: ^ui.Probe) -> string {
-	for tg in ui.probe_current(p).tags {
-		if tg.id == p.router.focus {
-			return tg.name
-		}
-	}
-	return ""
-}
-
 @(test)
 test_tabs_and_navigation_bar_are_one_tab_stop_each :: proc(t: ^testing.T) {
 	m: Model
@@ -370,26 +359,26 @@ test_tabs_and_navigation_bar_are_one_tab_stop_each :: proc(t: ^testing.T) {
 	// Tabs: arrows move focus, wrapping; Enter or Space selects.
 	testing.expect(t, ui.probe_click(&p, "Video"))
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Photos")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Photos")
 	testing.expect_value(t, m.tab, 0)
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Video")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Video")
 	ui.probe_key(&p, .Left)
 	ui.probe_key(&p, .Space)
 	testing.expect_value(t, m.tab, 1)
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Lunch") // one stop: on to the chip
+	testing.expect_value(t, ui.probe_focus_name(&p), "Lunch") // one stop: on to the chip
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Photos") // entered at the selected tab
+	testing.expect_value(t, ui.probe_focus_name(&p), "Photos") // entered at the selected tab
 
 	// The navigation bar likewise.
 	testing.expect(t, ui.probe_click(&p, "Inbox"))
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Sent")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Sent")
 	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.selected, 1)
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Save") // past the disabled Off
+	testing.expect_value(t, ui.probe_focus_name(&p), "Save") // past the disabled Off
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Sent") // entered at the selected destination
+	testing.expect_value(t, ui.probe_focus_name(&p), "Sent") // entered at the selected destination
 }

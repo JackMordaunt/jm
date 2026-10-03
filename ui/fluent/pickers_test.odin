@@ -217,11 +217,11 @@ test_swatch_selects_by_click_and_enter_and_roves_by_arrows :: proc(t: ^testing.T
 	testing.expect(t, ui.probe_click(&p, "green"))
 	testing.expect_value(t, m.swatch, 1)
 	ui.probe_key(&p, .Right) // moves focus, not the selection (swatch-picker.json)
-	testing.expect_value(t, focused_tag(&p), "blue")
+	testing.expect_value(t, ui.probe_focus_name(&p), "blue")
 	testing.expect_value(t, m.swatch, 1)
 	ui.probe_key(&p, .End)
 	ui.probe_key(&p, .Right) // wraps
-	testing.expect_value(t, focused_tag(&p), "red")
+	testing.expect_value(t, ui.probe_focus_name(&p), "red")
 	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.swatch, 0)
 	testing.expect_value(t, ui.probe_bounds(&p, "red").w, 28) // medium swatches

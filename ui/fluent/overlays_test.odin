@@ -343,19 +343,19 @@ test_menu_focuses_its_first_item_roves_and_gives_focus_back :: proc(t: ^testing.
 
 	testing.expect(t, ui.probe_click(&p, "Edit"))
 	ui.probe_advance(&p, 30, 0.02)
-	testing.expect_value(t, focused_tag(&p), "Cut") // opening focuses the first item
+	testing.expect_value(t, ui.probe_focus_name(&p), "Cut") // opening focuses the first item
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Copy")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Copy")
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Bold") // past the divider and header
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold") // past the divider and header
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Cut") // past the disabled Paste, and round
+	testing.expect_value(t, ui.probe_focus_name(&p), "Cut") // past the disabled Paste, and round
 	ui.probe_key(&p, .End)
-	testing.expect_value(t, focused_tag(&p), "Bold")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold")
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Bold") // the trap holds Tab, and the menu is one stop
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold") // the trap holds Tab, and the menu is one stop
 	ui.probe_key(&p, .Escape)
 	ui.probe_frame(&p)
 	testing.expect(t, !m.menu)
-	testing.expect_value(t, focused_tag(&p), "Edit") // back to the trigger
+	testing.expect_value(t, ui.probe_focus_name(&p), "Edit") // back to the trigger
 }

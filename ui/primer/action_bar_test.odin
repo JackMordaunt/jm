@@ -118,21 +118,21 @@ test_an_action_bar_is_one_tab_stop_with_arrows_that_wrap :: proc(t: ^testing.T) 
 
 	ui.probe_click(&p, "Before")
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focus_name(&p), "Bold")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold")
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focus_name(&p), "After") // past the toolbar in one stop
+	testing.expect_value(t, ui.probe_focus_name(&p), "After") // past the toolbar in one stop
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focus_name(&p), "Bold")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold")
 	ui.probe_key(&p, .Right)
 	ui.probe_key(&p, .Right) // a key straight after a move still lands
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "More items")
+	testing.expect_value(t, ui.probe_focus_name(&p), "More items")
 	ui.probe_key(&p, .Right)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "Bold") // wraps
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold") // wraps
 	ui.probe_key(&p, .End)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "More items")
+	testing.expect_value(t, ui.probe_focus_name(&p), "More items")
 	ui.probe_key(&p, .Home)
 	ui.probe_frame(&p)
 	ui.probe_key(&p, .Right)

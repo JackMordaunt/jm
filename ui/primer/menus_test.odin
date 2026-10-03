@@ -55,17 +55,6 @@ menu_probe :: proc(p: ^ui.Probe, m: ^Menu_Model) {
 	ui.probe_init(p, menu_view, m, {800, 600}, allocator = context.temp_allocator)
 }
 
-// focus_name is the tag of the focused area, "?" for an untagged one.
-@(private)
-focus_name :: proc(p: ^ui.Probe) -> string {
-	for t in ui.probe_current(p).tags {
-		if t.id == p.router.focus {
-			return t.name
-		}
-	}
-	return "?"
-}
-
 @(test)
 test_a_menu_opened_by_click_keeps_focus_on_its_button :: proc(t: ^testing.T) {
 	m: Menu_Model
@@ -78,11 +67,11 @@ test_a_menu_opened_by_click_keeps_focus_on_its_button :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, m.open)
 	testing.expect(t, ui.probe_tagged(&p, "Copy"))
-	testing.expect_value(t, focus_name(&p), ("Menu"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Menu"))
 	// ArrowDown on the button moves focus to the first item, ArrowUp the last.
 	ui.probe_key(&p, .Down)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("Copy"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Copy"))
 	ui.probe_click(&p, "Menu") // closes it
 	ui.probe_frame(&p)
 	testing.expect(t, !m.open)
@@ -90,7 +79,7 @@ test_a_menu_opened_by_click_keeps_focus_on_its_button :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	ui.probe_key(&p, .Up)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("Delete"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Delete"))
 }
 
 @(test)
@@ -103,29 +92,29 @@ test_a_menu_opened_by_key_focuses_an_item_and_escape_returns_focus :: proc(t: ^t
 
 	ui.probe_click(&p, "Page")
 	ui.probe_key(&p, .Tab) // to the menu button
-	testing.expect_value(t, focus_name(&p), ("Menu"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Menu"))
 	ui.probe_key(&p, .Enter)
 	ui.probe_frame(&p)
 	testing.expect(t, m.open)
-	testing.expect_value(t, focus_name(&p), ("Copy"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Copy"))
 	sem := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expectf(t, strings.contains(sem, "button \"Menu\" expandable expanded"), "%s", sem)
 	ui.probe_key(&p, .Escape)
 	ui.probe_frame(&p)
 	testing.expect(t, !m.open)
-	testing.expect_value(t, focus_name(&p), ("Menu"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Menu"))
 	// ArrowUp on the closed button opens it at the last item.
 	ui.probe_key(&p, .Up)
 	ui.probe_frame(&p)
 	testing.expect(t, m.open)
-	testing.expect_value(t, focus_name(&p), ("Delete"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Delete"))
 	// Arrows wrap; letters jump.
 	ui.probe_key(&p, .Down)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("Copy"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Copy"))
 	ui.probe_key(&p, .Q)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("Quote"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Quote"))
 }
 
 @(test)
@@ -142,7 +131,7 @@ test_choosing_an_item_or_tab_closes_the_menu :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.chosen, "Quote")
 	testing.expect(t, !m.open)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("Menu"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Menu"))
 	// A disabled item does nothing and the menu stays.
 	ui.probe_click(&p, "Menu")
 	ui.probe_frame(&p)
@@ -183,19 +172,19 @@ test_a_submenu_opens_on_right_and_closes_on_left :: proc(t: ^testing.T) {
 		ui.probe_key(&p, .Down)
 	}
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("More"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("More"))
 	ui.probe_key(&p, .Right)
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
 	testing.expect(t, m.sub)
-	testing.expect_value(t, focus_name(&p), ("Alpha"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Alpha"))
 	// It hangs to the right of its item.
 	more, alpha := ui.probe_bounds(&p, "More"), ui.probe_bounds(&p, "Alpha")
 	testing.expect(t, alpha.x > more.x + more.w)
 	ui.probe_key(&p, .Left)
 	ui.probe_frame(&p)
 	testing.expect(t, !m.sub && m.open)
-	testing.expect_value(t, focus_name(&p), ("More"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("More"))
 	// Choosing in the submenu closes every menu.
 	ui.probe_key(&p, .Right)
 	ui.probe_frame(&p)
@@ -206,7 +195,7 @@ test_a_submenu_opens_on_right_and_closes_on_left :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.chosen, "Beta")
 	testing.expect(t, !m.sub && !m.open)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), ("Menu"))
+	testing.expect_value(t, ui.probe_focus_name(&p), ("Menu"))
 }
 
 @(test)

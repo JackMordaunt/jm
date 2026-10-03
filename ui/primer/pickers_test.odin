@@ -80,35 +80,35 @@ test_a_token_field_is_one_tab_stop_with_arrows_between_tokens :: proc(t: ^testin
 
 	ui.probe_click(&p, "Before")
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focus_name(&p), "Labels") // the input, not a token
+	testing.expect_value(t, ui.probe_focus_name(&p), "Labels") // the input, not a token
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focus_name(&p), "After")
+	testing.expect_value(t, ui.probe_focus_name(&p), "After")
 	ui.probe_key(&p, .Tab, {.Shift})
 	// ArrowLeft at the caret's start reaches the last token, then the one before.
 	ui.probe_key(&p, .Left)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "ui")
+	testing.expect_value(t, ui.probe_focus_name(&p), "ui")
 	ui.probe_key(&p, .Left)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "docs")
+	testing.expect_value(t, ui.probe_focus_name(&p), "docs")
 	ui.probe_key(&p, .Right)
 	ui.probe_key(&p, .Right)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "Labels") // past the last: the input
+	testing.expect_value(t, ui.probe_focus_name(&p), "Labels") // past the last: the input
 	// Backspace on a token removes it; focus takes the token in its place.
 	ui.probe_key(&p, .Left)
 	ui.probe_key(&p, .Left)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "docs")
+	testing.expect_value(t, ui.probe_focus_name(&p), "docs")
 	ui.probe_key(&p, .Backspace)
 	testing.expect_value(t, len(m.tokens), 2)
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "ui")
+	testing.expect_value(t, ui.probe_focus_name(&p), "ui")
 	// Escape returns to the input; Backspace in it pulls the last token back.
 	ui.probe_key(&p, .Escape)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "Labels")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Labels")
 	ui.probe_key(&p, .Backspace)
 	testing.expect_value(t, len(m.tokens), 1)
 	testing.expect(t, m.pulled)
@@ -180,7 +180,7 @@ test_autocomplete_filters_completes_and_chooses_with_focus_in_the_input :: proc(
 	ui.probe_frame(&p)
 	testing.expect(t, m.result.open)
 	testing.expect(t, ui.probe_tagged(&p, "Apple") && ui.probe_tagged(&p, "Apricot") && !ui.probe_tagged(&p, "Banana"))
-	testing.expect_value(t, focus_name(&p), "Fruit")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Fruit")
 	// The highlighted option completes inline, its rest selected.
 	testing.expect_value(t, ui.text_string(&m.text), "Apple")
 	lo, hi := ui.text_selection(&m.text)
@@ -347,13 +347,13 @@ test_a_select_panel_keeps_focus_in_its_filter_and_highlights_with_arrows :: proc
 	testing.expect(t, ui.probe_click(&p, "Labels"))
 	ui.probe_frame(&p)
 	testing.expect(t, m.open)
-	testing.expect_value(t, focus_name(&p), "Filter items") // focus went to the filter
+	testing.expect_value(t, ui.probe_focus_name(&p), "Filter items") // focus went to the filter
 	sem := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expectf(t, strings.contains(sem, "active \"bug\""), "the first option is the active descendant\n%s", sem)
 	ui.probe_key(&p, .Down)
 	ui.probe_key(&p, .Enter)
 	testing.expect(t, m.selected[1] && m.open) // multiple: toggled, still open
-	testing.expect_value(t, focus_name(&p), "Filter items")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Filter items")
 	ui.probe_key(&p, .Up)
 	ui.probe_key(&p, .Up) // wraps to the last
 	ui.probe_frame(&p)
@@ -374,7 +374,7 @@ test_a_select_panel_keeps_focus_in_its_filter_and_highlights_with_arrows :: proc
 	ui.probe_key(&p, .Escape)
 	testing.expect_value(t, m.result.closed, Panel_Gesture.Escape)
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "docs") // the button now shows the selection
+	testing.expect_value(t, ui.probe_focus_name(&p), "docs") // the button now shows the selection
 }
 
 @(test)
@@ -413,7 +413,7 @@ test_a_modal_single_panel_holds_its_choice_until_save :: proc(t: ^testing.T) {
 
 	ui.probe_click(&p, "Labels")
 	ui.probe_frame(&p)
-	testing.expect_value(t, focus_name(&p), "Filter items")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Filter items")
 	ui.probe_click(&p, "ui")
 	testing.expect(t, m.open && !m.selected[2]) // only pending
 	testing.expect(t, ui.probe_click(&p, "Save"))

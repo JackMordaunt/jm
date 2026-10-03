@@ -134,7 +134,7 @@ test_teaching_popover_pages_and_finishes :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.page, 0)
 	ui.probe_frame(&p) // the selected bar widens a frame later, moving the dots after it
 	ui.probe_key(&p, .Right) // arrows move focus between the dots, not the page
-	testing.expect_value(t, focused_tag(&p), "Page 2 of 4")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Page 2 of 4")
 	testing.expect_value(t, m.page, 0)
 	testing.expect(t, ui.probe_click(&p, "Page 4 of 4"))
 	testing.expect_value(t, m.page, 3)
@@ -206,15 +206,15 @@ test_carousel_pages_by_buttons_dots_and_autoplay :: proc(t: ^testing.T) {
 	testing.expect(t, !m.carousel_auto)
 	// The dots are one tab stop whose arrows move focus; Enter selects.
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, focused_tag(&p), "Page 3 of 3")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Page 3 of 3")
 	testing.expect_value(t, m.slide, 1)
 	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.slide, 2)
 	ui.probe_advance(&p, 30, 0.02)
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Autoplay") // Next is disabled on the last page
+	testing.expect_value(t, ui.probe_focus_name(&p), "Autoplay") // Next is disabled on the last page
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Page 3 of 3")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Page 3 of 3")
 }
 
 // bottom_popover asks for a popover below a trigger 40px from the

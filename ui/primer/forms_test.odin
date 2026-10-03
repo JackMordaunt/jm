@@ -145,9 +145,9 @@ test_radio_group_arrows_check_the_next_enabled_radio_and_wrap :: proc(t: ^testin
 	// One Tab stop, entered at the checked radio, which Tab does not change.
 	changes := m.radio_changes
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focus_name(&p), "Terms") // out of the group, last on the page: round to the first
+	testing.expect_value(t, ui.probe_focus_name(&p), "Terms") // out of the group, last on the page: round to the first
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focus_name(&p), "Secret")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Secret")
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.radio, 3)
 	testing.expect_value(t, m.radio_changes, changes)

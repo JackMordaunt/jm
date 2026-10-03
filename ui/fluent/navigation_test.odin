@@ -241,21 +241,21 @@ test_nav_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 
 	testing.expect(t, ui.probe_click(&p, "Dashboard"))
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Reports")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Reports")
 	ui.probe_key(&p, .Enter) // a category opens on Enter (nav.json)
 	ui.probe_frame(&p)
 	testing.expect(t, m.reports)
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Sales")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Sales")
 	ui.probe_key(&p, .End)
-	testing.expect_value(t, focused_tag(&p), "Costs")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Costs")
 	ui.probe_key(&p, .Down) // wraps to the nav's first row, the header's hamburger
-	testing.expect_value(t, focused_tag(&p), "Navigation")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Navigation")
 	// One tab stop, entered at the selected row.
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Home") // the breadcrumb's first crumb
+	testing.expect_value(t, ui.probe_focus_name(&p), "Home") // the breadcrumb's first crumb
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Dashboard")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Dashboard")
 }
 
 @(test)
@@ -269,16 +269,16 @@ test_tree_is_one_tab_stop_its_arrows_walk_visible_rows :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Docs")) // opens the branch
 	testing.expect(t, m.docs)
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Readme") // past the row's own selector
+	testing.expect_value(t, ui.probe_focus_name(&p), "Readme") // past the row's own selector
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Notes")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Notes")
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, focused_tag(&p), "Notes") // no wrap
+	testing.expect_value(t, ui.probe_focus_name(&p), "Notes") // no wrap
 	ui.probe_key(&p, .Home)
-	testing.expect_value(t, focused_tag(&p), "Docs")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Docs")
 	ui.probe_key(&p, .End)
 	ui.probe_key(&p, .Tab)
-	testing.expect_value(t, focused_tag(&p), "Open drawer")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Open drawer")
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focused_tag(&p), "Notes") // back where focus left the tree
+	testing.expect_value(t, ui.probe_focus_name(&p), "Notes") // back where focus left the tree
 }

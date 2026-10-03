@@ -276,9 +276,9 @@ test_underline_panels_manual_mode_moves_focus_only :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.tab, 0) // focus moved, the selection did not
 	// One Tab stop, held by the tab the arrows reached until Enter selects.
 	ui.probe_key(&p, .Tab)
-	testing.expect(t, focus_name(&p) != "Pull requests")
+	testing.expect(t, ui.probe_focus_name(&p) != "Pull requests")
 	ui.probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, focus_name(&p), "Issues")
+	testing.expect_value(t, ui.probe_focus_name(&p), "Issues")
 	ui.probe_key(&p, .Enter)
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.tab, 1)

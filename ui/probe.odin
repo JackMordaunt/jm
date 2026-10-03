@@ -299,6 +299,17 @@ probe_bounds :: proc(p: ^Probe, name: string) -> ops.Rect {
 	return ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape))
 }
 
+// probe_focus_name is the tag of the area holding keyboard focus in the
+// current frame, "" when none does or it has no tag.
+probe_focus_name :: proc(p: ^Probe) -> string {
+	for t in probe_current(p).tags {
+		if t.id == p.router.focus {
+			return t.name
+		}
+	}
+	return ""
+}
+
 // probe_find returns the hit of the first area tagged name in the current
 // frame (the top-most hit when the area has several). A tag with no area
 // but with bounds (a label, a message: anything tagged with its box)
