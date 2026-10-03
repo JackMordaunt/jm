@@ -6,10 +6,9 @@
 //
 //	icon-data tools/primer/source/npm/octicons/data.json ui/primer/icon_data.odin
 //
-// An icon drawn from several <path>s keeps them as one path's subpaths,
-// filled non-zero like the separate paths. A height whose paths fill
-// even-odd is left out, since the renderer fills non-zero only; the icon
-// keeps its other heights, and the header lists what was dropped.
+// An icon drawn from several <path>s keeps them apart, a design.Icon_Paths
+// entry each, so each fills with its own rule and starts where its own
+// first moveto says; an icon of more paths than an entry holds is refused.
 package main
 
 import "core:encoding/json"
@@ -17,6 +16,7 @@ import "core:fmt"
 import "core:os"
 import "core:slice"
 import "core:strings"
+import "jm:ui/design"
 
 HEIGHTS :: [3]string{"12", "16", "24"}
 
@@ -40,11 +40,17 @@ main :: proc() {
 	}
 }
 
-// Octicon is one icon at the heights drawn: its path data ("" where it has
-// no design at that height, or one that fills even-odd) and width.
+// Octicon_Path is one <path>: its data and whether it fills even-odd.
+Octicon_Path :: struct {
+	d:        string,
+	even_odd: bool,
+}
+
+// Octicon is one icon at the heights drawn: its paths (none where it has
+// no design at that height) and width.
 Octicon :: struct {
 	member: string,
-	d:      [3]string,
+	paths:  [3][]Octicon_Path,
 	width:  [3]int,
 }
 
@@ -56,9 +62,9 @@ generate :: proc(data: []u8) -> (string, bool) {
 		return "", false
 	}
 	icons := make([dynamic]Octicon)
-	dropped := make([dynamic]string)
 	for name, v in doc.(json.Object) {
 		o := Octicon{member = member_name(name)}
+		drawn := false
 		heights := v.(json.Object)["heights"].(json.Object)
 		for h, i in HEIGHTS {
 			entry, has := heights[h]
@@ -66,26 +72,25 @@ generate :: proc(data: []u8) -> (string, bool) {
 				continue
 			}
 			e := entry.(json.Object)
-			if e["evenodd"].(json.Boolean) {
-				append(&dropped, fmt.aprintf("%s-%s", name, h))
-				continue
+			paths := e["paths"].(json.Array)
+			if len(paths) > design.ICON_MAX_PATHS {
+				fmt.eprintfln("octicon %s-%s has %d paths; an entry holds %d", name, h, len(paths), design.ICON_MAX_PATHS)
+				return "", false
 			}
-			paths := e["d"].(json.Array)
-			ds := make([]string, len(paths))
+			o.paths[i] = make([]Octicon_Path, len(paths))
 			for p, j in paths {
-				ds[j] = p.(json.String)
+				po := p.(json.Object)
+				o.paths[i][j] = {po["d"].(json.String), po["evenodd"].(json.Boolean)}
 			}
-			o.d[i] = strings.join(ds, " ")
 			o.width[i] = int(e["width"].(json.Float))
+			drawn = true
 		}
-		if o.d == {} {
-			continue
+		if drawn {
+			append(&icons, o)
 		}
-		append(&icons, o)
 	}
 	slice.sort_by(icons[:], proc(a, b: Octicon) -> bool {return a.member < b.member})
-	slice.sort(dropped[:])
-	return emit(icons[:], dropped[:]), true
+	return emit(icons[:]), true
 }
 
 // member_name is triangle-down as Triangle_Down.
@@ -97,11 +102,11 @@ member_name :: proc(name: string) -> string {
 	return strings.join(parts, "_")
 }
 
-emit :: proc(icons: []Octicon, dropped: []string) -> string {
+emit :: proc(icons: []Octicon) -> string {
 	b := strings.builder_make()
 	fmt.sbprint(&b, HEADER)
-	fmt.sbprint(&b, wrap_comment(fmt.tprintf("Left out, filling even-odd: %s.", strings.join(dropped, ", "))))
 	fmt.sbprintln(&b, "package primer\n")
+	fmt.sbprintln(&b, "import \"jm:ui/design\"\n")
 	fmt.sbprintln(&b, "// Icon is one octicon.")
 	fmt.sbprintln(&b, "Icon :: enum u16 {")
 	fmt.sbprintln(&b, "\tNone,")
@@ -110,12 +115,12 @@ emit :: proc(icons: []Octicon, dropped: []string) -> string {
 	}
 	fmt.sbprintln(&b, "}\n")
 	for h, i in HEIGHTS {
-		fmt.sbprintfln(&b, "// ICON_%s is each icon's path data at %spx, \"\" where it has none.", h, h)
+		fmt.sbprintfln(&b, "// ICON_%s is each icon's paths at %spx, none where it has no design there.", h, h)
 		fmt.sbprintln(&b, "@(private)")
-		fmt.sbprintfln(&b, "ICON_%s := #partial [Icon]string {{", h)
+		fmt.sbprintfln(&b, "ICON_%s := #partial [Icon]design.Icon_Paths {{", h)
 		for ic in icons {
-			if ic.d[i] != "" {
-				fmt.sbprintfln(&b, "\t.%s = %q,", ic.member, ic.d[i])
+			if len(ic.paths[i]) > 0 {
+				fmt.sbprintfln(&b, "\t.%s = %s,", ic.member, entry(ic.paths[i]))
 			}
 		}
 		fmt.sbprintln(&b, "}\n")
@@ -123,7 +128,7 @@ emit :: proc(icons: []Octicon, dropped: []string) -> string {
 		fmt.sbprintln(&b, "@(private)")
 		fmt.sbprintfln(&b, "ICON_WIDTH_%s := #partial [Icon]u8 {{", h)
 		for ic in icons {
-			if ic.d[i] != "" && fmt.tprint(ic.width[i]) != h {
+			if len(ic.paths[i]) > 0 && fmt.tprint(ic.width[i]) != h {
 				fmt.sbprintfln(&b, "\t.%s = %d,", ic.member, ic.width[i])
 			}
 		}
@@ -132,30 +137,32 @@ emit :: proc(icons: []Octicon, dropped: []string) -> string {
 	return strings.to_string(b)
 }
 
-// wrap_comment is s as // lines of at most 72 columns, broken at spaces.
-wrap_comment :: proc(s: string) -> string {
+// entry is paths as a design.Icon_Paths literal: {d = {0 = "M…", 1 = "m…"}},
+// with even_odd = {1} naming the paths that fill even-odd.
+entry :: proc(paths: []Octicon_Path) -> string {
 	b := strings.builder_make()
-	line := 0
-	for w in strings.split(s, " ") {
-		if line > 0 && line + 1 + len(w) > 72 {
-			fmt.sbprintln(&b)
-			line = 0
-		}
-		if line == 0 {
-			fmt.sbprint(&b, "//")
-			line = 2
-		}
-		fmt.sbprintf(&b, " %s", w)
-		line += 1 + len(w)
+	fmt.sbprint(&b, "{d = {")
+	for p, j in paths {
+		fmt.sbprintf(&b, "%s%d = %q", j > 0 ? ", " : "", j, p.d)
 	}
-	fmt.sbprintln(&b)
+	fmt.sbprint(&b, "}")
+	odd := make([dynamic]string)
+	for p, j in paths {
+		if p.even_odd {
+			append(&odd, fmt.tprint(j))
+		}
+	}
+	if len(odd) > 0 {
+		fmt.sbprintf(&b, ", even_odd = {{%s}}", strings.join(odd[:], ", "))
+	}
+	fmt.sbprint(&b, "}")
 	return strings.to_string(b)
 }
 
 HEADER :: `// Code generated by tools/primer/icon-data from @primer/octicons' build
 // data (MIT, tools/primer/source/npm/octicons/LICENSE, whose README puts
 // the GitHub marks under github.com/logos), the primer-kit's
-// source/npm/octicons/data.json: each entry is an icon's SVG path data at
-// one natural height, its paths joined as subpaths. DO NOT EDIT; run
-// just primer-icons.
+// source/npm/octicons/data.json: each entry is an icon's SVG paths at
+// one natural height, each filled on its own with its own rule. DO NOT
+// EDIT; run just primer-icons.
 `

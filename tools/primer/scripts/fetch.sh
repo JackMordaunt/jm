@@ -37,18 +37,33 @@ done
 # Only what the kit reads: the token docs and sources, octicons' data.
 # The docs carry each token's Figma and LLM metadata (22 MB over the 14
 # themes); a token keeps its name, type, resolved value and the alias it
-# was written as. An icon keeps its keywords and each size's path data,
-# and whether any of its paths fills even-odd; build/data.json lands at
+# was written as. An icon keeps its keywords and, at each size, its width
+# and every <path>'s data and fill rule; build/data.json lands at
 # octicons/data.json, out of the repository's ignored build/ directories.
+# An icon drawn with anything else (another element, a transform, a
+# stroke, a fill other than currentColor) stops the fetch: jm:ui draws
+# filled paths only, and dropping the rest would draw the icon wrong.
 cp -R "$tmp/primitives/src" "$out/npm/primitives/"
 (cd "$tmp/primitives/dist" && find docs -name '*.json') | while read -r f; do
     mkdir -p "$out/npm/primitives/dist/$(dirname "$f")"
     jq -S 'map_values({type, value} + (if (.original["$value"] | type) == "string" and (.original["$value"] | startswith("{"))
         then {alias: .original["$value"]} else {} end))' "$tmp/primitives/dist/$f" >"$out/npm/primitives/dist/$f"
 done
-jq -S 'map_values({keywords, heights: (.heights | map_values({width,
-    d: [.ast | .. | objects | select(.name == "path") | .attributes.d],
-    evenodd: ([.ast | .. | objects | select(.name == "path") | .attributes.fillRule == "evenodd"] | any)}))})' \
+jq -S '
+def svg_paths($at):
+    .ast as $s
+    | if ($s.attributes | keys - ["fill", "height", "viewBox", "width", "xmlns"]) != []
+        or ($s.attributes.fill // "none") != "none"
+      then error("octicon \($at): <svg> has \($s.attributes | tojson)") else . end
+    | [$s.children[]
+        | if .type != "element" or .name != "path" or (.children | length) > 0
+            or (.attributes | keys - ["clipRule", "d", "fill", "fillRule"]) != []
+            or (.attributes.fill // $s.attributes.fill // "currentColor") != "currentColor"
+            or ((.attributes.fillRule // "nonzero") | IN("nonzero", "evenodd") | not)
+          then error("octicon \($at): cannot draw \(tojson)")
+          else {d: .attributes.d, evenodd: (.attributes.fillRule == "evenodd")} end];
+with_entries(.key as $name | .value |= {keywords,
+    heights: (.heights | with_entries(.key as $h | .value |= {width, paths: svg_paths("\($name)-\($h)")}))})' \
     "$tmp/octicons/build/data.json" >"$out/npm/octicons/data.json"
 
 locked() { # the version root's package-lock.json resolves package $1 to

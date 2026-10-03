@@ -4,35 +4,43 @@ import "core:strings"
 import "core:testing"
 
 @(test)
-test_icons_join_their_paths_and_drop_even_odd_heights :: proc(t: ^testing.T) {
+test_icons_keep_each_path_and_its_fill_rule :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	defer free_all(context.temp_allocator)
 	data := `{
-		"triangle-down": {"keywords": [], "heights": {
-			"16": {"width": 16, "evenodd": false, "d": ["M1 1L2 2Z"]},
-			"24": {"width": 24, "evenodd": false, "d": ["M3 3L4 4Z", "M5 5L6 6Z"]}}},
+		"agent": {"keywords": [], "heights": {
+			"16": {"width": 16, "paths": [{"d": "M1 1L2 2Z", "evenodd": false}, {"d": "m3 3 1 1Z", "evenodd": false}]}}},
 		"logo-gist": {"keywords": [], "heights": {
-			"16": {"width": 25, "evenodd": false, "d": ["M7 7Z"]}}},
-		"comment-fill": {"keywords": [], "heights": {
-			"16": {"width": 16, "evenodd": true, "d": ["M8 8Z"]},
-			"24": {"width": 24, "evenodd": true, "d": ["M9 9Z"]}}},
+			"16": {"width": 25, "paths": [{"d": "M7 7Z", "evenodd": false}]}}},
 		"chat-add": {"keywords": [], "heights": {
-			"16": {"width": 16, "evenodd": true, "d": ["M1 2Z"]},
-			"24": {"width": 24, "evenodd": false, "d": ["M3 4Z"]}}}
+			"16": {"width": 16, "paths": [{"d": "M1 2Z", "evenodd": false}, {"d": "M5 6Z", "evenodd": true}]},
+			"24": {"width": 24, "paths": [{"d": "M3 4Z", "evenodd": true}]}}}
 	}`
 	out, ok := generate(transmute([]u8)data)
 	testing.expect(t, ok)
 	for want in ([]string {
-			"Icon :: enum u16 {\n\tNone,\n\tChat_Add,\n\tLogo_Gist,\n\tTriangle_Down,\n}",
-			"\t.Triangle_Down = \"M3 3L4 4Z M5 5L6 6Z\",", // two paths, one path's subpaths
-			"\t.Chat_Add = \"M3 4Z\",", // its 24px design stays
+			"Icon :: enum u16 {\n\tNone,\n\tAgent,\n\tChat_Add,\n\tLogo_Gist,\n}",
+			// apart, so the relative m stays relative to the origin
+			"\t.Agent = {d = {0 = \"M1 1L2 2Z\", 1 = \"m3 3 1 1Z\"}},",
+			"\t.Chat_Add = {d = {0 = \"M1 2Z\", 1 = \"M5 6Z\"}, even_odd = {1}},",
+			"\t.Chat_Add = {d = {0 = \"M3 4Z\"}, even_odd = {0}},",
 			"ICON_WIDTH_16 := #partial [Icon]u8 {\n\t.Logo_Gist = 25,\n}", // only the one not square
-			"// Left out, filling even-odd: chat-add-16, comment-fill-16,\n// comment-fill-24.",
 		}) {
 		testing.expectf(t, strings.contains(out, want), "missing %q", want)
 	}
-	testing.expect(t, !strings.contains(out, "Comment_Fill"), "an icon with no height left is no member")
-	testing.expect(t, !strings.contains(out, "M1 2Z"), "an even-odd height is no entry")
+}
+
+@(test)
+test_an_icon_of_more_paths_than_an_entry_holds_is_refused :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	defer free_all(context.temp_allocator)
+	p := `{"d": "M0 0Z", "evenodd": false}`
+	four := strings.concatenate({`{"full": {"keywords": [], "heights": {"16": {"width": 16, "paths": [`, p, ",", p, ",", p, ",", p, `]}}}}`})
+	_, fits := generate(transmute([]u8)four)
+	testing.expect(t, fits, "an icon of as many paths as an entry holds is drawn")
+	five := strings.concatenate({`{"many": {"keywords": [], "heights": {"16": {"width": 16, "paths": [`, p, ",", p, ",", p, ",", p, ",", p, `]}}}}`})
+	_, ok := generate(transmute([]u8)five)
+	testing.expect(t, !ok)
 }
 
 @(test)

@@ -102,14 +102,74 @@ test_mode_of_reads_every_dark_family_as_dark :: proc(t: ^testing.T) {
 test_every_icon_parses_whole_at_every_height_it_has :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
 	for i in Icon {
-		for d, h in ([3]string{ICON_12[i], ICON_16[i], ICON_24[i]}) {
-			if d == "" {
-				continue
+		for paths, h in ([3]design.Icon_Paths{ICON_12[i], ICON_16[i], ICON_24[i]}) {
+			for d, n in paths.d {
+				if d == "" {
+					continue
+				}
+				p, ok := design.parse_svg_path(d, context.temp_allocator)
+				testing.expectf(t, ok && len(p.points) > 0, "%v at height %d, path %d, stopped after %d points", i, h, n, len(p.points))
 			}
-			p, ok := design.parse_svg_path(d, context.temp_allocator)
-			testing.expectf(t, ok && len(p.points) > 0, "%v at height %d stopped after %d points", i, h, len(p.points))
 		}
 	}
+}
+
+// A path that starts with a relative moveto starts from the origin (SVG
+// 1.1 paths, 8.3.2), so every point of every icon lies in its own box; a
+// path read on from the end of the one before it would land outside
+// (agent's prompt did, when an icon's paths were joined into one).
+@(test)
+test_every_icon_stays_inside_its_box :: proc(t: ^testing.T) {
+	for i in Icon {
+		for size in ([]f32{12, 16, 24}) {
+			paths, h := icon_paths(i, size)
+			w := icon_width(i, h)
+			for p in paths {
+				if q, out := point_outside(p, w, h); out {
+					testing.expectf(t, false, "%v at %v: point %v outside %vx%v", i, h, q, w, h)
+				}
+			}
+		}
+	}
+}
+
+// point_outside is a point on p, its curves sampled rather than their
+// control points (which may stand off an arc), more than a quarter unit
+// outside the w by h box.
+@(private = "file")
+point_outside :: proc(p: ops.Path, w, h: f32) -> (ops.Point, bool) {
+	outside :: proc(q: ops.Point, w, h: f32) -> bool {
+		return q.x < -0.25 || q.y < -0.25 || q.x > w + 0.25 || q.y > h + 0.25
+	}
+	at, cur, start := 0, ops.Point{}, ops.Point{}
+	for v in p.verbs {
+		switch v {
+		case .Move, .Line:
+			cur = p.points[at]
+			at += 1
+			if v == .Move {
+				start = cur
+			}
+			if outside(cur, w, h) {
+				return cur, true
+			}
+		case .Cubic:
+			c1, c2, end := p.points[at], p.points[at + 1], p.points[at + 2]
+			at += 3
+			for n in 1 ..= 8 {
+				s := f32(n) / 8
+				r := 1 - s
+				q := r * r * r * cur + 3 * r * r * s * c1 + 3 * r * s * s * c2 + s * s * s * end
+				if outside(q, w, h) {
+					return q, true
+				}
+			}
+			cur = end
+		case .Close:
+			cur = start
+		}
+	}
+	return {}, false
 }
 
 @(test)
@@ -119,14 +179,14 @@ test_an_icon_draws_from_the_largest_natural_height_that_fits :: proc(t: ^testing
 			i:          Icon,
 			size, want: f32,
 		}{{.Alert_Fill, 12, 12}, {.Alert_Fill, 14, 12}, {.Alert_Fill, 16, 16}, {.Alert_Fill, 20, 16}, {.Alert_Fill, 32, 24}, {.Accessibility, 12, 16}}) {
-		_, h := icon_path(c.i, c.size)
+		_, h := icon_paths(c.i, c.size)
 		testing.expectf(t, h == c.want, "%v at %v: drawn from %v, want %v", c.i, c.size, h, c.want)
 	}
 	testing.expect_value(t, icon_width(.Logo_Gist, 16), f32(25))
 	testing.expect_value(t, icon_width(.Logo_Gist, 32), f32(32 * 38.0 / 24))
 	testing.expect_value(t, icon_width(.X, 20), f32(20))
-	p, _ := icon_path(.None, 16)
-	testing.expect_value(t, len(p.points), 0)
+	p, _ := icon_paths(.None, 16)
+	testing.expect_value(t, len(p), 0)
 }
 
 @(test)

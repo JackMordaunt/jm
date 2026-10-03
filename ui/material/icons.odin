@@ -24,8 +24,8 @@ icons: design.Icon_Set(Icon)
 // icon_source is each symbol's path data and box; a 960 box's viewBox
 // starts at y = -960, so its points move down by that.
 @(private = "file")
-icon_source :: proc(i: Icon) -> (d: string, box: f32, offset: ops.Point) {
-	d, box = icon_svg(i)
+icon_source :: proc(i: Icon) -> (paths: design.Icon_Paths, box: f32, offset: ops.Point) {
+	paths.d[0], box = icon_svg(i)
 	if box == 960 {
 		offset.y = 960
 	}
@@ -36,7 +36,12 @@ icon_source :: proc(i: Icon) -> (d: string, box: f32, offset: ops.Point) {
 // top-left (box is 960 for current symbols, 24 for a few older ones),
 // parsed on first use and kept for the life of the thread.
 icon_path :: proc(i: Icon) -> (path: ops.Path, box: f32) {
-	return design.icon_path(&icons, icon_source, i)
+	paths: []ops.Path
+	paths, box = design.icon_paths(&icons, icon_source, i)
+	if len(paths) > 0 {
+		path = paths[0] // a symbol is one path
+	}
+	return
 }
 
 // icon fills i at size pixels with its top-left at pos.

@@ -14,15 +14,20 @@ import "jm:ui/ops"
 icons: design.Icon_Set(Icon)
 
 @(private = "file")
-icon_source :: proc(i: Icon) -> (d: string, box: f32, offset: ops.Point) {
-	d, box = icon_svg(i)
+icon_source :: proc(i: Icon) -> (paths: design.Icon_Paths, box: f32, offset: ops.Point) {
+	paths.d[0], box = icon_svg(i)
 	return
 }
 
 // icon_path is i's outline in its 20-unit square with the origin at the
 // top-left, parsed on first use and kept for the life of the thread.
 icon_path :: proc(i: Icon) -> (path: ops.Path, box: f32) {
-	return design.icon_path(&icons, icon_source, i)
+	paths: []ops.Path
+	paths, box = design.icon_paths(&icons, icon_source, i)
+	if len(paths) > 0 {
+		path = paths[0] // icon-data refuses an icon of several paths
+	}
+	return
 }
 
 // icon fills i at size pixels with its top-left at pos; None, whose

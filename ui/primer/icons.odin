@@ -17,32 +17,32 @@ sets: [3]design.Icon_Set(Icon)
 NATURAL := [3]f32{12, 16, 24}
 
 @(private = "file")
-source_12 :: proc(i: Icon) -> (string, f32, ops.Point) {
+source_12 :: proc(i: Icon) -> (design.Icon_Paths, f32, ops.Point) {
 	return ICON_12[i], 12, {}
 }
 
 @(private = "file")
-source_16 :: proc(i: Icon) -> (string, f32, ops.Point) {
+source_16 :: proc(i: Icon) -> (design.Icon_Paths, f32, ops.Point) {
 	return ICON_16[i], 16, {}
 }
 
 @(private = "file")
-source_24 :: proc(i: Icon) -> (string, f32, ops.Point) {
+source_24 :: proc(i: Icon) -> (design.Icon_Paths, f32, ops.Point) {
 	return ICON_24[i], 24, {}
 }
 
 @(private = "file")
-SOURCES := [3]proc(i: Icon) -> (string, f32, ops.Point){source_12, source_16, source_24}
+SOURCES := [3]proc(i: Icon) -> (design.Icon_Paths, f32, ops.Point){source_12, source_16, source_24}
 
 @(private = "file")
 has_height :: proc(i: Icon, n: int) -> bool {
 	switch n {
 	case 0:
-		return ICON_12[i] != ""
+		return ICON_12[i].d[0] != ""
 	case 1:
-		return ICON_16[i] != ""
+		return ICON_16[i].d[0] != ""
 	}
-	return ICON_24[i] != ""
+	return ICON_24[i].d[0] != ""
 }
 
 // natural_index is the index into NATURAL of the design i is drawn from
@@ -65,14 +65,15 @@ natural_index :: proc(i: Icon, size: f32) -> int {
 	return pick
 }
 
-// icon_path is i's outline at the natural height drawn for size, in that
-// height's units with the origin at the top-left, and that height.
-icon_path :: proc(i: Icon, size: f32) -> (path: ops.Path, height: f32) {
+// icon_paths is i's outline at the natural height drawn for size, one
+// path per <path> of its design, in that height's units with the origin
+// at the top-left, and that height.
+icon_paths :: proc(i: Icon, size: f32) -> (paths: []ops.Path, height: f32) {
 	n := natural_index(i, size)
 	if n < 0 {
 		return
 	}
-	return design.icon_path(&sets[n], SOURCES[n], i)
+	return design.icon_paths(&sets[n], SOURCES[n], i)
 }
 
 // icon_width is i's drawn width at size: size for a square icon, wider

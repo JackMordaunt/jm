@@ -126,7 +126,8 @@ test_a_sortable_header_sorts_ascending_then_flips :: proc(t: ^testing.T) {
 
 @(private = "file")
 icon_drawn :: proc(p: ^ui.Probe, i: Icon, c: ops.Color) -> bool {
-	path, _ := icon_path(i, BUTTON_ICON)
+	paths, _ := icon_paths(i, BUTTON_ICON)
+	path := paths[0]
 	for op in p.scene.ops {
 		if f, ok := op.(ops.Fill); ok {
 			if pr, is_path := f.shape.(ops.Path_Ref); is_path {
