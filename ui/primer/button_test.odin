@@ -264,3 +264,60 @@ test_a_button_out_of_the_tab_order_is_skipped_by_tab_and_still_clicks :: proc(t:
 	testing.expect(t, ui.probe_click(&p, "Skipped"))
 	testing.expect_value(t, m.hits, 1)
 }
+
+@(private = "file")
+hint_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, gap = 16, align = .Start)
+	defer ui.close(&col)
+	button(gtx, "Search", keybinding = "Mod+K")
+	button(gtx, "Search bare")
+	icon_button(gtx, .Bold, "Bold", keybinding = {"Mod+B"})
+	icon_button(gtx, .Italic, "Italic")
+}
+
+@(test)
+test_a_keybinding_hint_takes_the_trailing_slot_and_shortens_the_end :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, hint_view, nil, {600, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	gtx := ui.Ctx{shaper = p.shaper, allocator = context.temp_allocator}
+	st := button_metrics(.Medium).style
+	label := design.shape_style(&gtx, "Search", st, font_for(&gtx, st.weight))
+	hint := layout_hint(&gtx, "Mod+K", .Condensed, .Normal, .Normal)
+	// 12px at the start, the label, the 8px gap, the caps, then only 6px.
+	want := tok.CONTROL_MEDIUM_PADDING_INLINE_NORMAL + label.width + tok.BASE_SIZE_8 + hint.size.x + tok.BASE_SIZE_6
+	got := ui.probe_bounds(&p, "Search").w
+	testing.expectf(t, abs(got - want) < 0.01, "button with a hint %v wide, want %v", got, want)
+}
+
+@(test)
+test_an_icon_buttons_shortcut_is_said_with_its_name_and_shown_in_its_tooltip :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, hint_view, nil, {600, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	want := strings.concatenate({"\"Bold (", spoken_hint("Mod+B", PLATFORM, context.temp_allocator), ")\""}, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, want), "want %s in %s", want, said)
+	testing.expect(t, strings.contains(said, "\"Italic\""))
+	// Hovered past the delay, the tooltip holds the caps beside the name:
+	// its padding, the name, a 6px margin, the small on-emphasis caps.
+	at, _ := ui.probe_center(&p, "Bold")
+	ui.probe_move(&p, at.x, at.y)
+	ui.probe_advance(&p, 10, 0.02)
+	bubble: f32
+	for op in p.scene.ops {
+		if f, ok := op.(ops.Fill); ok && is_color(f.paint, color(.Tooltip_Bg_Color)) {
+			if rr, is_rr := f.shape.(ops.Round_Rect); is_rr {
+				bubble = rr.rect.w
+			}
+		}
+	}
+	gtx := ui.Ctx{shaper = p.shaper, allocator = context.temp_allocator}
+	st := style(.Body_Small)
+	name := design.shape_style(&gtx, "Bold", st, font_for(&gtx, st.weight))
+	caps := layout_hint(&gtx, "Mod+B", .Condensed, .On_Emphasis, .Small)
+	wide := 2 * tok.OVERLAY_PADDING_CONDENSED + name.width + tok.BASE_SIZE_6 + caps.size.x
+	testing.expectf(t, abs(bubble - wide) < 0.5, "tooltip %v wide, want %v", bubble, wide)
+}

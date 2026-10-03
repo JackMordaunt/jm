@@ -1,6 +1,7 @@
 package primer
 
 import "base:runtime"
+import "core:strings"
 import "jm:ui"
 import "jm:ui/design"
 import "jm:ui/ops"
@@ -1297,8 +1298,13 @@ tooltip_owner: ops.Area_Id
 // shows: true then. A Description tooltip reaches a reader as a tooltip
 // node; a Label tooltip names its trigger, which the trigger declares.
 //
-// Departures: keybinding hints are not drawn (KeybindingHint is not
-// built); a touch's press-and-hold is not distinguished from a tap
+// keybinding is shortcuts shown after the text as small on-emphasis key
+// caps, 6px after it (8px for several, joined by "or"), and said after the
+// label as "(keys or keys)" (Tooltip.tsx:390-415, Tooltip.module.css:126-
+// 132).
+//
+// Departures: the key caps sit beside the whole text block, where the web
+// flows them after its last line; a touch's press-and-hold is not distinguished from a tap
 // (jm:ui has no touch events); the bubble follows its trigger while it shows, where Primer places it once;
 // and a Description tooltip is its own node beside the trigger, as jm:ui
 // cannot add a description to a node it did not draw.
@@ -1310,8 +1316,9 @@ tooltip :: proc(
 	direction := Tooltip_Direction.S,
 	delay := Tooltip_Delay.Short,
 	disabled := false,
+	keybinding: []string = nil,
 ) -> bool {
-	return tooltip_run(gtx, trigger.id, {0, 0, trigger.size.x, trigger.size.y}, text, direction, delay, disabled, type == .Description)
+	return tooltip_run(gtx, trigger.id, {0, 0, trigger.size.x, trigger.size.y}, text, direction, delay, disabled, type == .Description, keybinding)
 }
 
 // tooltip_run runs the tooltip of trigger, whose box is area in the space
@@ -1326,6 +1333,7 @@ tooltip_run :: proc(
 	direction: Tooltip_Direction,
 	delay: Tooltip_Delay,
 	disabled, node: bool,
+	keybinding: []string = nil,
 ) -> bool {
 	watch := ui.id_mix(trigger, 0x7700)
 	bubble := ui.id_mix(trigger, 0x7701)
@@ -1391,17 +1399,18 @@ tooltip_run :: proc(
 		d.on_bubble = false
 		return false
 	}
-	paint_tooltip(gtx, d, bubble, dismiss, area, text, direction, node)
+	paint_tooltip(gtx, d, bubble, dismiss, area, text, direction, node, keybinding)
 	return true
 }
 
 // paint_tooltip draws a shown tooltip's bubble in a popup placed against
 // area, with the bridge to it and the areas that dismiss it.
 @(private)
-paint_tooltip :: proc(gtx: ^ui.Ctx, d: ^Tooltip_Data, bubble, dismiss: ops.Area_Id, area: ops.Rect, text: string, direction: Tooltip_Direction, node: bool) {
+paint_tooltip :: proc(gtx: ^ui.Ctx, d: ^Tooltip_Data, bubble, dismiss: ops.Area_Id, area: ops.Rect, text: string, direction: Tooltip_Direction, node: bool, keybinding: []string) {
 	pad := ops.Point{tok.OVERLAY_PADDING_CONDENSED, tok.OVERLAY_PADDING_BLOCK_CONDENSED}
-	para := tooltip_text(gtx, text, TOOLTIP_MAX_WIDTH - 2 * pad.x)
-	w, h := para.width + 2 * pad.x, para.height + 2 * pad.y
+	hints := tooltip_hints(gtx, keybinding, text != "")
+	para := tooltip_text(gtx, text, TOOLTIP_MAX_WIDTH - 2 * pad.x - hints.size.x)
+	w, h := para.width + hints.size.x + 2 * pad.x, max(para.height, hints.size.y) + 2 * pad.y
 	at := TOOLTIP_PLACE[direction]
 	place := anchored_placement(bubble, area, at.side, at.align, nil, nil, false)
 	side := place.side
@@ -1410,7 +1419,7 @@ paint_tooltip :: proc(gtx: ^ui.Ctx, d: ^Tooltip_Data, bubble, dismiss: ops.Area_
 	}
 	o := ui.popup_place(gtx, place)
 	if node {
-		ui.overlay_semantics(gtx, &o, {role = .Tooltip, label = ui.frame_string(gtx, text)}, id = ui.id_mix(bubble, 1))
+		ui.overlay_semantics(gtx, &o, {role = .Tooltip, label = tooltip_label(gtx, text, keybinding)}, id = ui.id_mix(bubble, 1))
 	}
 	alpha := bezier_ease(TOOLTIP_FADE.easing, ui.tween_update(&d.fade, gtx))
 	if gtx.reduce_motion {
@@ -1421,7 +1430,8 @@ paint_tooltip :: proc(gtx: ^ui.Ctx, d: ^Tooltip_Data, bubble, dismiss: ops.Area_
 	}
 	rr := ops.Round_Rect{{0, 0, w, h}, tok.BORDER_RADIUS_MEDIUM}
 	ops.fill(gtx.scene, rr, color(.Tooltip_Bg_Color))
-	design.draw_paragraph(gtx, para, pad, color(.Tooltip_Fg_Color))
+	design.draw_paragraph(gtx, para, {pad.x, pad.y + (h - 2 * pad.y - para.height) / 2}, color(.Tooltip_Fg_Color))
+	paint_tooltip_hints(gtx, hints, {pad.x + para.width, (h - hints.size.y) / 2})
 	// The bridge fills the gap to the trigger, so the pointer can cross it
 	// (TooltipV2/Tooltip.module.css:56-100).
 	gap := place.gap
@@ -1446,6 +1456,74 @@ paint_tooltip :: proc(gtx: ^ui.Ctx, d: ^Tooltip_Data, bubble, dismiss: ops.Area_
 		ops.opacity_pop(gtx.scene)
 	}
 	ui.popup_close(&o, {w, h})
+}
+
+// Tooltip_Hints are a tooltip's key caps, shaped: each hint, the " or "
+// between them, the margin before them, and the size of the whole run.
+@(private)
+Tooltip_Hints :: struct {
+	hints:  [4]Hint_Layout,
+	n:      int,
+	or_:    Text,
+	margin: f32,
+	size:   ops.Size,
+}
+
+// tooltip_hints shapes up to four keybinding hints as small on-emphasis
+// caps joined by " or ", after a 6px margin (8px for several) when text
+// comes first (Tooltip.module.css:126-132).
+@(private)
+tooltip_hints :: proc(gtx: ^ui.Ctx, keybinding: []string, after_text: bool) -> (t: Tooltip_Hints) {
+	if len(keybinding) == 0 {
+		return
+	}
+	t.n = min(len(keybinding), len(t.hints))
+	st := style(.Body_Small)
+	t.or_ = design.shape_style(gtx, " or ", st, font_for(gtx, st.weight))
+	if after_text {
+		t.margin = t.n > 1 ? tok.BASE_SIZE_8 : tok.BASE_SIZE_6
+	}
+	t.size.x = t.margin
+	for i in 0 ..< t.n {
+		t.hints[i] = layout_hint(gtx, keybinding[i], .Condensed, .On_Emphasis, .Small)
+		t.size.x += t.hints[i].size.x + (i > 0 ? t.or_.width : 0)
+		t.size.y = max(t.size.y, t.hints[i].size.y)
+	}
+	return
+}
+
+// paint_tooltip_hints draws t's caps from pos, the run's top-left.
+@(private)
+paint_tooltip_hints :: proc(gtx: ^ui.Ctx, t: Tooltip_Hints, pos: ops.Point) {
+	x := pos.x + t.margin
+	for i in 0 ..< t.n {
+		if i > 0 {
+			draw_text(gtx, t.or_, {x, pos.y + (t.size.y - t.or_.height) / 2}, color(.Tooltip_Fg_Color))
+			x += t.or_.width
+		}
+		paint_hint(gtx, t.hints[i], {x, pos.y + (t.size.y - t.hints[i].size.y) / 2}, hint_colors(.On_Emphasis))
+		x += t.hints[i].size.x
+	}
+}
+
+// tooltip_label is text and its shortcuts as a reader hears them: "Save
+// (command s or control s)" (Tooltip.tsx:398-401).
+@(private)
+tooltip_label :: proc(gtx: ^ui.Ctx, text: string, keybinding: []string) -> string {
+	if len(keybinding) == 0 {
+		return ui.frame_string(gtx, text)
+	}
+	b := strings.builder_make(gtx.allocator)
+	strings.write_string(&b, text)
+	strings.write_string(&b, " (")
+	for k, i in keybinding {
+		if i > 0 {
+			strings.write_string(&b, " or ")
+		}
+		strings.write_string(&b, spoken_hint(k, PLATFORM, gtx.allocator))
+	}
+	strings.write_byte(&b, ')')
+	return strings.to_string(b)
 }
 
 // tooltip_text lays text out as a tooltip's: body small, wrapped by word

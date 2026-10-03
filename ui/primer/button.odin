@@ -12,7 +12,11 @@ import tok "jm:ui/primer/tokens"
 // tokens per state (--button-<variant>-<property>-<state>), picked by
 // color_for and faded by blend over CONTROL_TRANSITION; a press snaps.
 //
-// Departures: the keybinding hint is not drawn yet; inactive has no
+// A keybinding hint takes the trailing visual's place, in the variant's
+// --buttonKeybindingHint-* colours per state, and shortens the end padding
+// to 6px (8px at large) (ButtonBase.module.css:28-30,216-218,330-345).
+//
+// Departures: inactive has no
 // semantics of its own, as jm:ui has no aria-disabled-but-focusable
 // state; and a link button's underline sits 2px under the baseline
 // whether or not it has visuals, where the browser places a bare text
@@ -208,6 +212,8 @@ Button_Content :: struct {
 	label, count:              Text,
 	leading, trailing, action: Icon,
 	has_label, has_count:      bool,
+	hint:                      Hint_Layout, // a keybinding hint, in the trailing slot
+	has_hint:                  bool,
 }
 
 // content_width is the content box's width: the parts that show, the
@@ -224,7 +230,10 @@ content_width :: proc(bc: Button_Content, gap: f32) -> f32 {
 		w += bc.label.width
 		n += 1
 	}
-	if bc.has_count && bc.trailing == .None {
+	if bc.has_hint {
+		w += bc.hint.size.x
+		n += 1
+	} else if bc.has_count && bc.trailing == .None {
 		w += counter_size(bc.count).x
 		n += 1
 	} else if bc.trailing != .None {
@@ -268,6 +277,7 @@ button :: proc(
 	expanded: Maybe(bool) = nil,
 	tab_stop := true,
 	group: ^Button_Group = nil,
+	keybinding := "",
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -284,12 +294,19 @@ button :: proc(
 	bc.label = design.shape_style(gtx, label, mt.style, font_for(gtx, mt.style.weight))
 	cst := counter_style()
 	bc.count = design.shape_style(gtx, count, cst, font_for(gtx, cst.weight))
+	if keybinding != "" {
+		bc.hint, bc.has_hint = layout_hint(gtx, keybinding, .Condensed, hint_variant(variant), .Normal), true
+	}
 	pad := mt.pad
 	if bc.has_count && !bc.has_label && leading != .None {
 		pad = mt.pad_count
 	}
+	pad_end := pad
+	if bc.has_hint {
+		pad_end = size == .Large ? tok.BASE_SIZE_8 : tok.BASE_SIZE_6
+	}
 	cw := content_width(bc, mt.gap)
-	w := 2 * pad + cw
+	w := pad + pad_end + cw
 	if action != .None {
 		w += mt.gap + BUTTON_ICON - tok.BASE_SIZE_4
 	}
@@ -305,7 +322,7 @@ button :: proc(
 		r = inactive_roles(r)
 	}
 	open := expanded.? or_else false
-	bp := Button_Paint{variant, r, area, mt, bc, align, pad, loading, inactive, dot, open, nil, 0}
+	bp := Button_Paint{variant, r, area, mt, bc, align, pad, loading, inactive, dot, open, nil, 0, pad_end}
 	if group != nil {
 		bp.group, bp.member = group, group_join(group, p.id)
 		read_group_keys(gtx, group, p.id, bp.member)
@@ -336,6 +353,7 @@ Button_Paint :: struct {
 	expanded:          bool, // it controls an open menu: pressed colours until hovered
 	group:             ^Button_Group, // nil unless in a ButtonGroup
 	member:            int, // its index there
+	pad_end:           f32, // the end padding, less than pad beside a keybinding hint; 0 means pad
 }
 
 // button_kinds is a button's input kinds: a click's, less Key when it is
@@ -393,7 +411,8 @@ paint_button :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint) {
 		}
 	}
 	cw := content_width(bp.bc, bp.mt.gap)
-	inner := bp.area.w - 2 * bp.pad - (bp.bc.action != .None ? bp.mt.gap + BUTTON_ICON - tok.BASE_SIZE_4 : 0)
+	pad_end := bp.pad_end if bp.pad_end > 0 else bp.pad
+	inner := bp.area.w - bp.pad - pad_end - (bp.bc.action != .None ? bp.mt.gap + BUTTON_ICON - tok.BASE_SIZE_4 : 0)
 	x := bp.pad + (bp.align == .Center ? max((inner - cw) / 2, 0) : 0)
 	if bp.variant == .Link {
 		x = 0
@@ -446,7 +465,10 @@ paint_button_content :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint, x0: f32
 		}
 		x += bp.bc.label.width + bp.mt.gap
 	}
-	if bp.bc.trailing != .None {
+	if bp.bc.has_hint {
+		paint_hint(gtx, bp.bc.hint, {x, (bp.area.h - bp.bc.hint.size.y) / 2}, button_hint_colors(bp.variant, c, bp.inactive))
+		x += bp.bc.hint.size.x + bp.mt.gap
+	} else if bp.bc.trailing != .None {
 		paint_visual(gtx, bp.bc.trailing, {x, icon_y}, visual, spin_on == .Trailing)
 		x += BUTTON_ICON + bp.mt.gap
 	} else if bp.bc.has_count {
@@ -462,6 +484,57 @@ paint_button_content :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint, x0: f32
 		ax := x0 + content_width(bp.bc, bp.mt.gap) + bp.mt.gap
 		paint_visual(gtx, bp.bc.action, {ax, icon_y}, visual, spin_on == .Action)
 	}
+}
+
+// hint_variant is the key-cap colouring a hint in a v button starts from.
+@(private)
+hint_variant :: proc(v: Button_Variant) -> Hint_Variant {
+	return v == .Primary ? .On_Primary : .Normal
+}
+
+// button_hint_colors is a keybinding hint's caps in a v button in c's
+// state: --buttonKeybindingHint-<variant>-<property>-<state>, rest where a
+// variant has no token for the state, the inactive ones for an inactive
+// button (ButtonBase.module.css:330-345,386-402,439-502,528-573,691-695).
+@(private)
+button_hint_colors :: proc(v: Button_Variant, c: Control, inactive: bool) -> Hint_Colors {
+	H :: struct {
+		bg, fg, border: State_Roles,
+	}
+	h: H
+	switch {
+	case inactive:
+		h = {
+			{.Button_Keybinding_Hint_Inactive_Bg_Color, .Button_Keybinding_Hint_Inactive_Bg_Color, .Button_Keybinding_Hint_Inactive_Bg_Color, .Button_Keybinding_Hint_Inactive_Bg_Color},
+			{.Button_Keybinding_Hint_Inactive_Fg_Color, .Button_Keybinding_Hint_Inactive_Fg_Color, .Button_Keybinding_Hint_Inactive_Fg_Color, .Button_Keybinding_Hint_Inactive_Fg_Color},
+			{.Button_Keybinding_Hint_Inactive_Border_Color, .Button_Keybinding_Hint_Inactive_Border_Color, .Button_Keybinding_Hint_Inactive_Border_Color, .Button_Keybinding_Hint_Inactive_Border_Color},
+		}
+	case v == .Primary:
+		h = {
+			{.Button_Keybinding_Hint_Primary_Bg_Color_Rest, .Button_Keybinding_Hint_Primary_Bg_Color_Rest, .Button_Keybinding_Hint_Primary_Bg_Color_Rest, .Button_Keybinding_Hint_Primary_Bg_Color_Disabled},
+			{.Button_Keybinding_Hint_Primary_Fg_Color_Rest, .Button_Keybinding_Hint_Primary_Fg_Color_Rest, .Button_Keybinding_Hint_Primary_Fg_Color_Rest, .Button_Keybinding_Hint_Primary_Fg_Color_Disabled},
+			{.Button_Keybinding_Hint_Primary_Border_Color_Rest, .Button_Keybinding_Hint_Primary_Border_Color_Rest, .Button_Keybinding_Hint_Primary_Border_Color_Rest, .Button_Keybinding_Hint_Primary_Border_Color_Disabled},
+		}
+	case v == .Danger:
+		h = {
+			{.Button_Keybinding_Hint_Danger_Bg_Color_Rest, .Button_Keybinding_Hint_Danger_Bg_Color_Hover, .Button_Keybinding_Hint_Danger_Bg_Color_Active, .Button_Keybinding_Hint_Danger_Bg_Color_Disabled},
+			{.Button_Keybinding_Hint_Danger_Fg_Color_Rest, .Button_Keybinding_Hint_Danger_Fg_Color_Hover, .Button_Keybinding_Hint_Danger_Fg_Color_Active, .Button_Keybinding_Hint_Danger_Fg_Color_Disabled},
+			{.Button_Keybinding_Hint_Danger_Border_Color_Rest, .Button_Keybinding_Hint_Danger_Border_Color_Hover, .Button_Keybinding_Hint_Danger_Border_Color_Active, .Button_Keybinding_Hint_Danger_Border_Color_Disabled},
+		}
+	case v == .Invisible:
+		h = {
+			{.Button_Keybinding_Hint_Invisible_Bg_Color_Rest, .Button_Keybinding_Hint_Invisible_Bg_Color_Hover, .Button_Keybinding_Hint_Invisible_Bg_Color_Active, .Button_Keybinding_Hint_Invisible_Bg_Color_Disabled},
+			{.Button_Keybinding_Hint_Invisible_Fg_Color_Rest, .Button_Keybinding_Hint_Invisible_Fg_Color_Rest, .Button_Keybinding_Hint_Invisible_Fg_Color_Rest, .Button_Keybinding_Hint_Invisible_Fg_Color_Disabled},
+			{.Button_Keybinding_Hint_Invisible_Border_Color_Rest, .Button_Keybinding_Hint_Invisible_Border_Color_Rest, .Button_Keybinding_Hint_Invisible_Border_Color_Rest, .Button_Keybinding_Hint_Invisible_Border_Color_Disabled},
+		}
+	case:
+		h = {
+			{.Button_Keybinding_Hint_Default_Bg_Color_Rest, .Button_Keybinding_Hint_Default_Bg_Color_Rest, .Button_Keybinding_Hint_Default_Bg_Color_Rest, .Button_Keybinding_Hint_Default_Bg_Color_Disabled},
+			{.Button_Keybinding_Hint_Default_Fg_Color_Rest, .Button_Keybinding_Hint_Default_Fg_Color_Rest, .Button_Keybinding_Hint_Default_Fg_Color_Rest, .Button_Keybinding_Hint_Default_Fg_Color_Disabled},
+			{.Button_Keybinding_Hint_Default_Border_Color_Rest, .Button_Keybinding_Hint_Default_Border_Color_Rest, .Button_Keybinding_Hint_Default_Border_Color_Rest, .Button_Keybinding_Hint_Default_Border_Color_Disabled},
+		}
+	}
+	return {color_for(h.bg, c), color_for(h.fg, c), color_for(h.border, c)}
 }
 
 // Spinner_Slot is which part a loading button's spinner replaces.
@@ -531,7 +604,8 @@ paint_dot :: proc(gtx: ^ui.Ctx, pos: ops.Point) {
 // stays down (IconButton.tsx: a button with aria-haspopup and
 // aria-expanded shows none; icon-button.json states).
 //
-// Departure: it shows no keybinding hint.
+// keybinding is shortcuts its tooltip shows after the name and its label
+// says, "Bold (command b)" (IconButton.tsx:65, Tooltip.tsx:390-415).
 icon_button :: proc(
 	gtx: ^ui.Ctx,
 	ic: Icon,
@@ -547,6 +621,7 @@ icon_button :: proc(
 	expanded: Maybe(bool) = nil,
 	tab_stop := true,
 	group: ^Button_Group = nil,
+	keybinding: []string = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -561,7 +636,7 @@ icon_button :: proc(
 	case .Primary, .Danger:
 		r.visual = r.fg
 	}
-	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, expanded, !tab_stop, group}
+	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, expanded, !tab_stop, group, keybinding}
 	return icon_button_in(gtx, ic, name, variant, size, r, st, key, loc)
 }
 
@@ -577,6 +652,7 @@ Icon_Button_State :: struct {
 	expanded:          Maybe(bool),
 	no_tab:            bool, // out of Tab's order: tab_stop false
 	group:             ^Button_Group, // nil unless in a ButtonGroup
+	keybinding:        []string, // shortcuts its tooltip shows and its label says
 }
 
 // icon_button_in is icon_button in roles r: a component that sets an
@@ -597,7 +673,7 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	bc := Button_Content{leading = ic}
 	pad := (sz.x - BUTTON_ICON) / 2
 	open := st.expanded.? or_else false
-	bp := Button_Paint{variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None, open, nil, 0}
+	bp := Button_Paint{variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None, open, nil, 0, 0}
 	if st.group != nil {
 		bp.group, bp.member = st.group, group_join(st.group, p.id)
 		read_group_keys(gtx, st.group, p.id, bp.member)
@@ -618,9 +694,10 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	ops.tag(gtx.scene, p.id, said)
 	if c.st != nil {
 		tip := st.description if st.description != "" else name
-		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || st.no_tooltip || name == "" || open, false)
+		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || st.no_tooltip || name == "" || open, false, st.keybinding)
 	}
-	ui.semantics(gtx, &p, {role = .Button, label = said, description = ui.frame_string(gtx, st.description), states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(st.expanded)})
+	heard := said if st.description != "" else tooltip_label(gtx, name, st.keybinding)
+	ui.semantics(gtx, &p, {role = .Button, label = heard, description = ui.frame_string(gtx, st.description), states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(st.expanded)})
 	ui.widget_close(gtx, &p, {sz, 0})
 	return c.clicked && !loading
 }

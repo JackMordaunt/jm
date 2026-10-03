@@ -47,6 +47,14 @@ page_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		kitchen.state_row(gtx, m, n, cell, u64(i + 21))
 	}
+	kitchen.section(gtx, "Keybinding hint", "the hint takes the trailing slot in the variant's hint colours; the end padding shortens to 6px")
+	kitchen.state_header(gtx)
+	for n, i in VARIANT_NAMES[:4] {
+		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
+			primer.button(gtx, "Search", VARIANTS[key / 16 - 41], keybinding = "Mod+K", state = st, key = key)
+		}
+		kitchen.state_row(gtx, m, n, cell, u64(i + 41))
+	}
 	kitchen.section(gtx, "Loading and inactive", "loading swaps the first visual for a spinner and keeps focus; inactive looks disabled but stays live")
 	kitchen.state_header(gtx)
 	{
@@ -105,6 +113,8 @@ page_icon_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		m.clicks += 1
 	}
 	primer.icon_button(gtx, .Bell, "Notifications on the icon", .Invisible, dot = .Leading, key = 301)
+	primer.icon_button(gtx, .Bold, "Bold", keybinding = {"Mod+B"}, key = 302)
+	primer.icon_button(gtx, .Search, "Search", keybinding = {"Mod+K", "/"}, key = 303)
 }
 
 page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
