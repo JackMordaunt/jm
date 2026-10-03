@@ -7,8 +7,11 @@ import "jm:ui/primer"
 
 import "../../kitchen"
 
-// Actions is the actions pages' demo state.
-Actions :: struct {}
+// Actions is the actions pages' demo state: what a live toolbar last
+// reported.
+Actions :: struct {
+	said: string,
+}
 
 // The action pages, on the primer-kit's components/button.json and
 // icon-button.json.
@@ -145,6 +148,56 @@ page_keybinding_hint :: proc(gtx: ^ui.Ctx, m: ^Model) {
 span :: proc(text, sub: string) -> primer.Link_Span {
 	i := strings.index(text, sub)
 	return {i, i + len(sub)}
+}
+
+// toolbar is a formatting toolbar, as ActionBar's stories show one, in a
+// band w wide; what it reports goes to a.said.
+@(private = "file")
+toolbar :: proc(gtx: ^ui.Ctx, a: ^Actions, w: f32, size: primer.Button_Size, gap: primer.Action_Bar_Gap, key: u64) {
+	band := ui.sized_open(gtx, {min = {w, 0}, max = {w, ui.INF}}, key = key)
+	defer ui.close(&band)
+	b := primer.action_bar_open(gtx, "Formatting tools", size, gap, key = key + 1)
+	names := [3]string{"Bold", "Italic", "Code"}
+	icons := [3]primer.Icon{.Bold, .Italic, .Code}
+	for n, i in names {
+		if primer.action_bar_icon_button(&b, icons[i], n) {
+			a.said = fmt.aprintf("%s", n)
+		}
+	}
+	primer.action_bar_divider(&b)
+	primer.action_bar_group_open(&b)
+	if primer.action_bar_icon_button(&b, .List_Unordered, "Bulleted list") {
+		a.said = "Bulleted list"
+	}
+	if primer.action_bar_icon_button(&b, .List_Ordered, "Numbered list") {
+		a.said = "Numbered list"
+	}
+	primer.action_bar_group_close(&b)
+	primer.action_bar_divider(&b)
+	if primer.action_bar_button(&b, "Mention", leading = .Mention) {
+		a.said = "Mention"
+	}
+	primer.action_bar_icon_button(&b, .Image, "Add image", disabled = true)
+	primer.action_bar_close(&b)
+}
+
+page_action_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	a := &m.actions
+	kitchen.section(gtx, "Sizes", "28, 32 or 40px rows of invisible buttons, 8px apart, 16px side padding, at the container's end")
+	for s, i in ([3]primer.Button_Size{.Small, .Medium, .Large}) {
+		toolbar(gtx, a, 560, s, .Condensed, u64(10 * (i + 1)))
+	}
+	kitchen.section(gtx, "Overflow", "what does not fit moves, from the end, into the More items menu; a group goes as one")
+	for w, i in ([3]f32{400, 260, 160}) {
+		toolbar(gtx, a, w, .Medium, .Condensed, u64(100 + 10 * i))
+	}
+	kitchen.section(gtx, "No gap", "items touch; dividers pad 8px each side")
+	toolbar(gtx, a, 560, .Medium, .None, 200)
+	if a.said != "" {
+		kitchen.section(gtx, "Live", a.said)
+	}
 }
 
 page_button_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
