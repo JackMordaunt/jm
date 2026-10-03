@@ -575,9 +575,9 @@ GRIP :: f32(12)
 // scroll and the size a drag on the grip set, zero until dragged.
 @(private)
 Textarea_View :: struct {
-	scroll:   f32,
-	w, h:     f32,
-	dragging: bool, // the grip is pressed
+	scroll: f32,
+	w, h:   f32,
+	grip:   ui.Drag, // the press on the grip
 }
 
 // textarea is Primer's Textarea (textarea.json): a multi-line field in
@@ -740,28 +740,23 @@ textarea_grip :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, view: ^Textarea_View, box:
 	id := ui.id_mix(p.id, 0x9e1b)
 	g := ops.Rect{box.w - FIELD_BORDER - GRIP, box.h - FIELD_BORDER - GRIP, GRIP, GRIP}
 	if live {
-		for e in ui.events(gtx, id) {
-			#partial switch e.kind {
-			case .Press:
-				view.dragging = e.button == .Left
-			case .Release, .Cancel:
-				view.dragging = false
-			}
-			if e.kind != .Move || !view.dragging {
-				continue
-			}
+		axis := ui.Drag_Axis.Both
+		#partial switch resize {
+		case .Horizontal:
+			axis = .Horizontal
+		case .Vertical:
+			axis = .Vertical
+		}
+		ui.drag_update(&view.grip, ui.events(gtx, id), axis, slop = 0)
+		if d := view.grip.delta; d != {} {
 			if view.w == 0 {
 				view.w = box.w
 			}
 			if view.h == 0 {
 				view.h = box.h - 2 * FIELD_BORDER
 			}
-			if resize != .Vertical {
-				view.w = max(view.w + e.travel.x, 2 * TEXTAREA_PAD + GRIP)
-			}
-			if resize != .Horizontal {
-				view.h = max(view.h + e.travel.y, tok.CONTROL_MEDIUM_SIZE - 2 * FIELD_BORDER)
-			}
+			view.w = max(view.w + d.x, 2 * TEXTAREA_PAD + GRIP)
+			view.h = max(view.h + d.y, tok.CONTROL_MEDIUM_SIZE - 2 * FIELD_BORDER)
 		}
 		cursor := ops.Cursor.Resize_NWSE
 		#partial switch resize {

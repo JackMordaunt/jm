@@ -597,12 +597,12 @@ Page_Layout :: struct {
 }
 
 // Pane_Drag is a resizable side's handle state between frames: the width
-// it holds when the caller keeps none, and whether a drag is under way.
+// it holds when the caller keeps none, and the press on the handle.
 @(private)
 Pane_Drag :: struct {
-	width:    f32,
-	dragging: bool,
-	fades:    design.Fades,
+	width: f32,
+	drag:  ui.Drag,
+	fades: design.Fades,
 }
 
 // page_layout_open opens Primer's PageLayout (page-layout.json,
@@ -1083,6 +1083,10 @@ side_handle :: proc(l: ^Page_Layout, s: Side, div: ops.Rect) {
 	lo, hi := pane_bounds(rules, l.vw)
 	sign: f32 = rules.position == .Start ? 1 : -1
 	before := w^
+	// The width follows the handle from its first pixel and settles on a
+	// whole one when the press ends, dragged or not.
+	ui.drag_update(&drag.drag, ui.events(gtx, id), .Horizontal, slop = 0)
+	ended := false
 	for e in ui.events(gtx, id) {
 		#partial switch e.kind {
 		case .Press:
@@ -1090,17 +1094,8 @@ side_handle :: proc(l: ^Page_Layout, s: Side, div: ops.Rect) {
 				w^ = pane_default(rules)
 				l.settled = true
 			}
-			drag.dragging = true
-		case .Move:
-			if drag.dragging && c.st.pressed {
-				w^ = clamp(w^ + sign * e.travel.x, lo, hi)
-			}
 		case .Release, .Cancel:
-			if drag.dragging {
-				w^ = f32(int(w^ + 0.5))
-				l.settled = true
-			}
-			drag.dragging = false
+			ended = true
 		case .Key:
 			step: f32
 			#partial switch e.key {
@@ -1118,12 +1113,19 @@ side_handle :: proc(l: ^Page_Layout, s: Side, div: ops.Rect) {
 			}
 		}
 	}
+	if drag.drag.delta.x != 0 {
+		w^ = clamp(w^ + sign * drag.drag.delta.x, lo, hi)
+	}
+	if ended {
+		w^ = f32(int(w^ + 0.5))
+		l.settled = true
+	}
 	if w^ != before {
 		ui.request_frame(gtx) // the regions were laid out at the old width
 	}
 	fill: ops.Color
 	switch {
-	case drag.dragging:
+	case drag.drag.phase != .Idle:
 		fill = color(.Bg_Color_Accent_Emphasis)
 	case:
 		target := c.hovered ? color(.Bg_Color_Neutral_Muted) : ops.with_alpha(color(.Bg_Color_Neutral_Muted), 0)
