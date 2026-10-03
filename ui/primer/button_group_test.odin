@@ -60,6 +60,11 @@ test_a_toolbar_group_moves_focus_by_arrows_and_wraps :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.hits[2], 2) // the click and this Enter
+	// One Tab stop: Tab leaves for the next group's button.
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focus_name(&p), "Settings")
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focus_name(&p), "Code")
 }
 
 @(test)

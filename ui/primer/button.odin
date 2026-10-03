@@ -324,8 +324,7 @@ button :: proc(
 	open := expanded.? or_else false
 	bp := Button_Paint{variant, r, area, mt, bc, align, pad, loading, inactive, dot, open, nil, 0, pad_end}
 	if group != nil {
-		bp.group, bp.member = group, group_join(group, p.id)
-		read_group_keys(gtx, group, p.id, bp.member)
+		bp.group, bp.member = group, group_join(group)
 	}
 	paint_button(gtx, c, bp)
 	listen(gtx, c.st, p.id, area, CLICK_KINDS, no_tab = !tab_stop)
@@ -668,8 +667,7 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	open := st.expanded.? or_else false
 	bp := Button_Paint{variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None, open, nil, 0, 0}
 	if st.group != nil {
-		bp.group, bp.member = st.group, group_join(st.group, p.id)
-		read_group_keys(gtx, st.group, p.id, bp.member)
+		bp.group, bp.member = st.group, group_join(st.group)
 	}
 	paint_button(gtx, c, bp)
 	// The dot sits 2px outside the top-right corner, or 12px up and right

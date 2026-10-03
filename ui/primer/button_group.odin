@@ -9,7 +9,8 @@ import tok "jm:ui/primer/tokens"
 // next by 1px so a joint is one border, the first item's start corners and
 // the last item's end corners rounded and every other corner square. A
 // hovered or pressed item draws its border over its neighbours'. As a
-// toolbar, Left and Right move focus among its buttons and wrap.
+// toolbar it is one roving focus scope, so one Tab stop: Left and Right
+// move focus among its buttons and wrap, Home and End go to the ends.
 //
 //	g := primer.button_group_open(gtx, 3, "Formatting")
 //	primer.button(gtx, "Bold", group = &g)
@@ -19,27 +20,22 @@ import tok "jm:ui/primer/tokens"
 // count is how many buttons follow: the caller knows it, where the web
 // counts its DOM children, and an empty child is left out rather than
 // given a slot (button-group.json notes).
-//
-// Departures: each button is its own Tab stop in a toolbar too, where
-// focus-zone makes the web's one (button-group.json notes, inferred).
 
 // MAX_GROUP_BUTTONS bounds a group's buttons.
 MAX_GROUP_BUTTONS :: 16
 
 Button_Group :: struct {
 	gtx:     ^ui.Ctx,
+	box:     ui.Inset, // a toolbar's: holds its roving scope round the row
 	row:     ui.Flex,
 	count:   int,
 	joined:  int,
 	toolbar: bool,
-	ids:     [MAX_GROUP_BUTTONS]ops.Area_Id,
-	from:    int, // the member an arrow key was pressed on, with move
-	move:    int,
 }
 
 // button_group_open starts a group of count buttons, labelled label for
-// assistive technology; toolbar makes it a toolbar whose arrows move
-// focus. Close it with button_group_close.
+// assistive technology; toolbar makes it a toolbar, one Tab stop whose
+// arrows move focus. Close it with button_group_close.
 button_group_open :: proc(gtx: ^ui.Ctx, count: int, label := "", toolbar := false, key: u64 = 0, loc := #caller_location) -> Button_Group {
 	assert(count >= 1 && count <= MAX_GROUP_BUTTONS, "primer: a button group holds 1 to MAX_GROUP_BUTTONS buttons")
 	g := Button_Group {
@@ -47,29 +43,35 @@ button_group_open :: proc(gtx: ^ui.Ctx, count: int, label := "", toolbar := fals
 		count   = count,
 		toolbar = toolbar,
 	}
-	g.row = ui.row_open(gtx, gap = -tok.BORDER_WIDTH_THIN, align = .Center, key = key, loc = loc)
+	if toolbar {
+		id := ui.claim_id(gtx, key, loc)
+		g.box = ui.inset_open(gtx, {}, key = u64(ui.id_mix(id, 1)))
+		ui.focus_scope_open(gtx, id, rove = .Horizontal, wrap = true)
+		g.row = ui.row_open(gtx, gap = -tok.BORDER_WIDTH_THIN, align = .Center, key = u64(ui.id_mix(id, 2)))
+	} else {
+		g.row = ui.row_open(gtx, gap = -tok.BORDER_WIDTH_THIN, align = .Center, key = key, loc = loc)
+	}
 	ui.container_semantics(gtx, {role = toolbar ? .Toolbar : .Group, label = ui.frame_string(gtx, label)})
 	return g
 }
 
-// button_group_close ends g, moving focus if an arrow key asked to.
+// button_group_close ends g.
 button_group_close :: proc(g: ^Button_Group) {
 	// The last item's -1px end margin too: the group's box ends 1px inside
 	// its last button (ButtonGroup.module.css:6-9).
 	ui.spacer(g.gtx, -tok.BORDER_WIDTH_THIN)
 	ui.close(&g.row)
-	if g.move != 0 && g.joined > 0 {
-		n := g.joined
-		ui.focus_request(g.gtx, g.ids[((g.from + g.move) % n + n) % n])
+	if g.toolbar {
+		ui.focus_scope_close(g.gtx)
+		ui.close(&g.box)
 	}
 }
 
-// group_join enrols the button with id in g and returns its index.
+// group_join enrols the next button in g and returns its index.
 @(private)
-group_join :: proc(g: ^Button_Group, id: ops.Area_Id) -> int {
+group_join :: proc(g: ^Button_Group) -> int {
 	assert(g.joined < g.count, "primer: more buttons than the group's count")
 	i := g.joined
-	g.ids[i] = id
 	g.joined += 1
 	return i
 }
@@ -87,26 +89,6 @@ group_corners :: proc(i, n: int) -> Corners {
 		k.tr, k.br = r, r
 	}
 	return k
-}
-
-// read_group_keys reads a toolbar member's arrow keys: Left and Right ask the
-// group to move focus from item i when the button closes the group.
-@(private)
-read_group_keys :: proc(gtx: ^ui.Ctx, g: ^Button_Group, id: ops.Area_Id, i: int) {
-	if !g.toolbar {
-		return
-	}
-	for e in ui.events(gtx, id) {
-		if e.kind != .Key || e.mods != {} {
-			continue
-		}
-		#partial switch e.key {
-		case .Left:
-			g.from, g.move = i, -1
-		case .Right:
-			g.from, g.move = i, 1
-		}
-	}
 }
 
 // paint_group_border draws a grouped item's border in k, and again above
