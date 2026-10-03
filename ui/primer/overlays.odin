@@ -578,7 +578,8 @@ Anchored_Overlay :: struct {
 // max_height caps an auto height at a height step (a menu's maxHeight,
 // ActionMenu.module.css:26-65) where height fixes it; scroll keeps the
 // content's scroll offset where its owner can move it (to keep a focused
-// item in view).
+// item in view); scrolls false leaves the scrolling to the content (a
+// panel whose header stays while its list scrolls).
 anchored_overlay_open :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
@@ -599,6 +600,7 @@ anchored_overlay_open :: proc(
 	name := "",
 	max_height := Overlay_Height.Auto,
 	scroll: ^ui.Scroll_Offset = nil,
+	scrolls := true,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (a: Anchored_Overlay) {
@@ -629,7 +631,7 @@ anchored_overlay_open :: proc(
 		limits = overlay_limits(gtx.viewport, width, height),
 		radius = corners_all(tok.BORDER_RADIUS_LARGE),
 		trap   = trap,
-		scroll = true,
+		scroll = scrolls,
 		offset = scroll,
 		name   = name,
 	}

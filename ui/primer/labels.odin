@@ -587,6 +587,8 @@ Token_Opts :: struct {
 	leading:                                              Icon,
 	removable, hide_remove, selected, interactive, issue: bool,
 	fill:                                                 ops.Color,
+	no_tab:                                               bool, // out of Tab's order: a token field's tokens, which arrows reach
+	focus_selects:                                        bool, // looks selected while it holds focus: a token field's
 }
 
 // token is Primer's Token: a full-radius pill with a 1px border and one
@@ -623,7 +625,7 @@ token :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Token_Result {
-	return token_widget(gtx, {text, size, leading, removable, hide_remove, selected, interactive, false, {}}, state, key, loc)
+	return token_widget(gtx, {text, size, leading, removable, hide_remove, selected, interactive, false, {}, false, false}, state, key, loc)
 }
 
 // issue_label_token is Primer's IssueLabelToken: a Token whose every
@@ -646,7 +648,7 @@ issue_label_token :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> Token_Result {
-	return token_widget(gtx, {text, size, .None, removable, hide_remove, selected, interactive, true, fill}, state, key, loc)
+	return token_widget(gtx, {text, size, .None, removable, hide_remove, selected, interactive, true, fill, false, false}, state, key, loc)
 }
 
 // HSL is a colour's hue in degrees and saturation and lightness in
@@ -782,10 +784,11 @@ token_widget :: proc(gtx: ^ui.Ctx, o: Token_Opts, state: Interaction, key: u64, 
 		c = control(gtx, p.id, box, state)
 	}
 	look: Token_Look
+	selected := o.selected || (o.focus_selects && c.focused && !c.disabled)
 	if o.issue {
-		look = issue_label_token_look(o.fill, mode_of(theme()), o.selected, o.interactive && c.hovered && !c.disabled)
+		look = issue_label_token_look(o.fill, mode_of(theme()), selected, o.interactive && c.hovered && !c.disabled)
 	} else {
-		look = {color(.Bg_Color_Neutral_Muted), color(o.selected ? .Border_Color_Emphasis : .Border_Color_Muted), color(o.selected ? .Fg_Color_Default : .Fg_Color_Muted), {}, false}
+		look = {color(.Bg_Color_Neutral_Muted), color(selected ? .Border_Color_Emphasis : .Border_Color_Muted), color(selected ? .Fg_Color_Default : .Fg_Color_Muted), {}, false}
 	}
 	if look.lift {
 		paint_shadow(gtx, rr, tok.SHADOW_RESTING_MEDIUM)
@@ -819,7 +822,7 @@ token_widget :: proc(gtx: ^ui.Ctx, o: Token_Opts, state: Interaction, key: u64, 
 	}
 	if o.interactive {
 		paint_focus_outline(gtx, c, rr)
-		listen(gtx, c.st, p.id, box, cursor = .Pointer)
+		listen(gtx, c.st, p.id, box, button_kinds(!o.no_tab), .Pointer)
 		res.clicked = c.clicked
 		res.removed = o.removable && removal_key(gtx, p.id, c)
 	}

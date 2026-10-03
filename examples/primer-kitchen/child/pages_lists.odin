@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "jm:ui"
+import "jm:ui/base"
 import "jm:ui/primer"
 
 import "../../kitchen"
@@ -18,6 +19,20 @@ Lists :: struct {
 	sub:      bool,
 	view:     int, // the live menu's single selection
 	shown:    [3]bool, // its multiple-selection group
+	seeded:   bool,
+	sizes:    [4]Token_Demo,
+	collapse: Token_Demo,
+	invalid:  Token_Demo,
+	disabled: Token_Demo,
+	fruit_text, tag_text: ui.Text_State,
+	fruit, tags: [8]bool,
+}
+
+// Token_Demo is a live token field's text and labels.
+Token_Demo :: struct {
+	text:   ui.Text_State,
+	labels: [8]string,
+	n:      int,
 }
 
 // The list and picker pages, on the primer-kit's components/action-list
@@ -192,4 +207,100 @@ page_action_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	primer.action_menu_close(&mn)
 	ui.close(&st)
 	said(gtx, ls.said)
+}
+
+
+// remove_label drops label i from a field's labels.
+@(private = "file")
+remove_label :: proc(f: ^Token_Demo, i: int) {
+	if i < 0 || i >= f.n {
+		return
+	}
+	copy(f.labels[i:f.n - 1], f.labels[i + 1:f.n])
+	f.n -= 1
+}
+
+page_text_input_with_tokens :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	ls := &m.lists
+	if !ls.seeded {
+		seed_lists(ls)
+	}
+	kitchen.section(gtx, "Sizes", "tokens 16, 20, 24 or 32px, 4px apart; small and medium put the field in its 28px size; the field pads 6px by 12px")
+	for name, i in TOKEN_SIZE_NAMES {
+		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i + 1))
+		{
+			b := ui.sized_open(gtx, {min = {110, 0}, max = {110, ui.INF}})
+			base.label(gtx, name, {size = 12, color = base.color(.Muted)})
+			ui.close(&b)
+		}
+		f := &ls.sizes[i]
+		res := primer.text_input_with_tokens(gtx, &f.text, f.labels[:f.n], primer.Token_Size(i), placeholder = "Add a label", width = 360, key = u64(i + 1))
+		remove_label(f, res.removed)
+		ui.close(&r)
+	}
+	kitchen.section(gtx, "Visuals, validation and collapse", "leading and trailing octicons; error borders the field; visible_count shows +N until the field has focus")
+	{
+		f := &ls.collapse
+		res := primer.text_input_with_tokens(gtx, &f.text, f.labels[:f.n], .Large, placeholder = "Reviewers", leading = .Person, trailing = .Search, visible_count = 2, width = 360)
+		remove_label(f, res.removed)
+		f2 := &ls.invalid
+		res2 := primer.text_input_with_tokens(gtx, &f2.text, f2.labels[:f2.n], .Large, placeholder = "Labels", validation = .Error, width = 360)
+		remove_label(f2, res2.removed)
+		f3 := &ls.disabled
+		primer.text_input_with_tokens(gtx, &f3.text, f3.labels[:f3.n], .Large, placeholder = "Disabled", width = 360, state = .Disabled)
+	}
+}
+
+page_autocomplete :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	ls := &m.lists
+	kitchen.section(gtx, "Single", "typing opens matches; Up and Down move the highlight, which completes inline; Enter chooses and writes its text")
+	{
+		b := ui.sized_open(gtx, {min = {300, 0}, max = {300, ui.INF}})
+		r := primer.autocomplete(gtx, &ls.fruit_text, FRUITS[:], ls.fruit[:], placeholder = "Choose a fruit", block = true)
+		if r.changed {
+			ls.said = "chose a fruit"
+		}
+		ui.close(&b)
+	}
+	kitchen.section(gtx, "Multiple, with tokens", "choices become tokens; choosing clears the input and keeps the menu open; Backspace in the empty input takes the last back")
+	{
+		b := ui.sized_open(gtx, {min = {360, 0}, max = {360, ui.INF}})
+		r := primer.autocomplete(gtx, &ls.tag_text, FRUITS[:], ls.tags[:], tokens = true, placeholder = "Add fruits", add_new = "Add a new fruit", block = true)
+		if r.added {
+			ls.said = "add new"
+		}
+		ui.close(&b)
+	}
+	said(gtx, ls.said)
+}
+
+FRUITS := [8]primer.Autocomplete_Item {
+	{text = "Apple", leading = .Star},
+	{text = "Apricot"},
+	{text = "Banana"},
+	{text = "Blueberry"},
+	{text = "Cherry", description = "out of season", disabled = true},
+	{text = "Grape"},
+	{text = "Lemon"},
+	{text = "Lime"},
+}
+
+// seed_lists gives the token fields their first labels.
+@(private = "file")
+seed_lists :: proc(ls: ^Lists) {
+	ls.seeded = true
+	for &f in ls.sizes {
+		f.labels[0], f.labels[1], f.labels[2] = "bug", "enhancement", "docs"
+		f.n = 3
+	}
+	ls.collapse.labels = {"mona", "hubot", "octocat", "monalisa", "", "", "", ""}
+	ls.collapse.n = 4
+	ls.invalid.labels[0] = "wontfix"
+	ls.invalid.n = 1
+	ls.disabled.labels[0], ls.disabled.labels[1] = "frozen", "locked"
+	ls.disabled.n = 2
 }

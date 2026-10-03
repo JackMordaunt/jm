@@ -16,6 +16,27 @@ import tok "jm:ui/primer/tokens"
 // ui.text_follow_pointer); the caret, placeholder, scrolling and
 // Select's list, which a browser supplies, are drawn here.
 
+// Combobox is what a text field that drives a list of options says to a
+// reader (aria-expanded, aria-activedescendant): whether the list shows,
+// and the option it points at while keeping focus itself.
+Combobox :: struct {
+	expanded: bool,
+	active:   ops.Area_Id,
+}
+
+// combobox_semantics turns a field's semantics into a combo box's when
+// combo is set.
+@(private)
+combobox_semantics :: proc(s: ^ops.Semantics, combo: Maybe(Combobox)) {
+	cb, ok := combo.?
+	if !ok {
+		return
+	}
+	s.role = .Combo_Box
+	s.states += {.Expandable} + design.state_if(cb.expanded, {.Expanded})
+	s.active_descendant = cb.active
+}
+
 // Field_Edit is what one frame of a text field did.
 Field_Edit :: struct {
 	changed:   bool, // the text is not what it was
@@ -347,7 +368,9 @@ TEXT_INPUT_COLUMNS :: 20
 // with --bgColor-inset. name is the accessible name and tag, else the
 // open FormControl's label, else the placeholder. The ring shows
 // whenever the field has focus, from a press or a key; there is no hover
-// state. Typing edits s; Enter sets submitted.
+// state. Typing edits s; Enter sets submitted. combobox makes it a combo
+// box to a reader: one whose list of options SelectPanel or Autocomplete
+// draws.
 //
 // Departures: the native input types (password, email, number, date) and
 // monospace are not offered (no masking editor, and the kit's fonts have
@@ -375,6 +398,7 @@ text_input :: proc(
 	required := false,
 	width: f32 = 0,
 	name := "",
+	combobox: Maybe(Combobox) = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -486,7 +510,9 @@ text_input :: proc(
 		desc = join_words(gtx, desc, "Loading")
 	}
 	states := design.state_if(c.disabled, {.Disabled}) + design.state_if(fc.required, {.Required}) + design.state_if(status == .Error, {.Invalid}) + design.state_if(loading, {.Busy})
-	ui.semantics(gtx, &p, {role = .Text_Field, label = ui.frame_string(gtx, tag), value = ui.frame_string(gtx, str), description = desc, states = states})
+	sem := ops.Semantics{role = .Text_Field, label = ui.frame_string(gtx, tag), value = ui.frame_string(gtx, str), description = desc, states = states}
+	combobox_semantics(&sem, combobox)
+	ui.semantics(gtx, &p, sem)
 	ui.widget_close(gtx, &p, {sz, text_y + (len(t.lines) > 0 ? t.lines[0].baseline : 0)})
 	return
 }

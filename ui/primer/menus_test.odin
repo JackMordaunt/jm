@@ -55,7 +55,8 @@ menu_probe :: proc(p: ^ui.Probe, m: ^Menu_Model) {
 	ui.probe_init(p, menu_view, m, {800, 600}, allocator = context.temp_allocator)
 }
 
-@(private = "file")
+// focus_name is the tag of the focused area, "?" for an untagged one.
+@(private)
 focus_name :: proc(p: ^ui.Probe) -> string {
 	for t in ui.probe_current(p).tags {
 		if t.id == p.router.focus {
