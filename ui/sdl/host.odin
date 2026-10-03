@@ -95,6 +95,30 @@ Host_Loop :: struct {
 	a11y:        Bridge, // what assistive technology reads of the child's frames
 }
 
+// run_host_from_args is run_host with the child named by the one
+// command-line argument, the main of every hot-reloaded example's host: a
+// path ending .watch is the pointer file tools/hot-watch republishes, any
+// other a fixed child executable. It exits with a usage line otherwise.
+run_host_from_args :: proc(app: Host_App) {
+	if len(os.args) != 2 {
+		fmt.eprintfln("usage: %s <pointer-file.watch | child exe>", os.args[0])
+		os.exit(2)
+	}
+	run_host(host_app_for(app, os.args[1:]))
+}
+
+// host_app_for is app with args[0] as its watch pointer file or its child.
+@(private)
+host_app_for :: proc(app: Host_App, args: []string) -> Host_App {
+	app := app
+	if strings.has_suffix(args[0], ".watch") {
+		app.watch = args[0]
+	} else {
+		app.child = args[:1]
+	}
+	return app
+}
+
 // run_host opens the window, spawns app.child, and loops until the window
 // is closed or Escape is pressed. It reports failure to open or spawn on
 // stderr and returns; the child, if it started, is killed first.

@@ -260,3 +260,15 @@ test_wait_for_child_outlasts_the_first_build :: proc(t: ^testing.T) {
 	testing.expect(t, !ok)
 	testing.expect(t, time.tick_since(start) < 3 * time.Second)
 }
+
+@(test)
+test_a_host_argument_ending_watch_is_the_pointer_file :: proc(t: ^testing.T) {
+	base := Host_App{title = "t", child = {"stale"}}
+	watched := host_app_for(base, {"build/debug/x.watch"})
+	testing.expect_value(t, watched.watch, "build/debug/x.watch")
+	testing.expect_value(t, watched.child[0], "stale")
+	fixed := host_app_for(base, {"build/debug/x-child"})
+	testing.expect_value(t, fixed.watch, "")
+	testing.expect_value(t, len(fixed.child), 1)
+	testing.expect_value(t, fixed.child[0], "build/debug/x-child")
+}
