@@ -47,10 +47,12 @@ navigation :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	if i := breadcrumb(gtx, CRUMBS[:]); i >= 0 {
 		m.crumb = i
 	}
-	if tree_item(gtx, "Docs", &m.docs, checked = &m.checked) {
-		tree_item(gtx, "Readme", level = 2)
+	if tree(gtx) {
+		if tree_item(gtx, "Docs", &m.docs, checked = &m.checked) {
+			tree_item(gtx, "Readme", level = 2)
+		}
+		tree_item(gtx, "Notes", size = .Small, key = 1)
 	}
-	tree_item(gtx, "Notes", size = .Small, key = 1)
 	if button(gtx, "Open drawer") {
 		m.drawer_open = true
 	}
@@ -254,4 +256,29 @@ test_nav_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 	testing.expect_value(t, focused_tag(&p), "Home") // the breadcrumb's first crumb
 	ui.probe_key(&p, .Tab, {.Shift})
 	testing.expect_value(t, focused_tag(&p), "Dashboard")
+}
+
+@(test)
+test_tree_is_one_tab_stop_its_arrows_walk_visible_rows :: proc(t: ^testing.T) {
+	m := Nav_Model{crumb = -1}
+	p: ui.Probe
+	ui.probe_init(&p, navigation, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Docs")) // opens the branch
+	testing.expect(t, m.docs)
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Readme") // past the row's own selector
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Notes")
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Notes") // no wrap
+	ui.probe_key(&p, .Home)
+	testing.expect_value(t, focused_tag(&p), "Docs")
+	ui.probe_key(&p, .End)
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focused_tag(&p), "Open drawer")
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focused_tag(&p), "Notes") // back where focus left the tree
 }

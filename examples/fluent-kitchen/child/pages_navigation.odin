@@ -173,10 +173,8 @@ page_tree :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		kitchen.state_row(gtx, m, "Leaf", cell, 2, 180)
 	}
-	kitchen.section(gtx, "Live", "click or Right/Left on a branch; a leaf is indented one XXL step past its branch")
-	{
-		tc := ui.column_open(gtx, gap = 2, align = .Fill)
-		defer ui.close(&tc)
+	kitchen.section(gtx, "Live", "one Tab stop; Up/Down move between rows, click or Right/Left on a branch; a leaf is indented one XXL step past its branch")
+	if fluent.tree(gtx) {
 		if fluent.tree_item(gtx, "Documents", &m.tree_open[0], icon_before = .Folder, aside = "3 items") {
 			if fluent.tree_item(gtx, "Reports", &m.tree_open[1], level = 2, icon_before = .Folder) {
 				fluent.tree_item(gtx, "Q3 summary", level = 3, icon_before = .Document, description = "Edited today")
@@ -189,10 +187,12 @@ page_tree :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	kitchen.section(gtx, "Selection and small", "multiselect puts a checkbox before each row")
-	sc := ui.column_open(gtx, gap = 2, align = .Start, key = 5)
-	if fluent.tree_item(gtx, "All tasks", &m.tree_open[3], size = .Small, checked = &m.tree_checks[0], mixed = m.tree_checks[1] != m.tree_checks[2], key = 10) {
-		fluent.tree_item(gtx, "Write spec", level = 2, size = .Small, checked = &m.tree_checks[1], key = 11)
-		fluent.tree_item(gtx, "Review", level = 2, size = .Small, checked = &m.tree_checks[2], key = 12)
+	sc := ui.column_open(gtx, align = .Start, key = 5)
+	if fluent.tree(gtx, key = 6) {
+		if fluent.tree_item(gtx, "All tasks", &m.tree_open[3], size = .Small, checked = &m.tree_checks[0], mixed = m.tree_checks[1] != m.tree_checks[2], key = 10) {
+			fluent.tree_item(gtx, "Write spec", level = 2, size = .Small, checked = &m.tree_checks[1], key = 11)
+			fluent.tree_item(gtx, "Review", level = 2, size = .Small, checked = &m.tree_checks[2], key = 12)
+		}
 	}
 	ui.close(&sc)
 }

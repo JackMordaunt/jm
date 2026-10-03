@@ -87,6 +87,7 @@ checkbox :: proc(
 	side := Label_Side.After,
 	circular := false,
 	state := Interaction.Live,
+	no_tab := false, // out of Tab's order: a tree row's selector, which the row stands for
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -142,7 +143,7 @@ checkbox :: proc(
 		draw_text(gtx, t, at, color(label_role))
 	}
 	paint_focus_outline(gtx, c, {area, tok.BORDER_RADIUS_MEDIUM})
-	listen(gtx, c.st, p.id, area)
+	listen(gtx, c.st, p.id, area, no_tab = no_tab)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label))
 	ui.semantics(gtx, &p, {role = .Checkbox, label = label, states = design.state_if(mixed, {.Mixed}) + design.state_if(on, {.Checked}) + design.state_if(c.disabled, {.Disabled})})
 	ui.widget_close(gtx, &p, {sz, at.y + baseline_of(t)})

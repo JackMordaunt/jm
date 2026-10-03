@@ -42,8 +42,10 @@ semantic_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		input(gtx, &m.name, "Enter a name")
 	}
 	tab_list(gtx, TABS[:], &m.tab)
-	if tree_item(gtx, "Docs", &m.docs) {
-		tree_item(gtx, "Readme", level = 2)
+	if tree(gtx) {
+		if tree_item(gtx, "Docs", &m.docs) {
+			tree_item(gtx, "Readme", level = 2)
+		}
 	}
 	if dialog(gtx, &m.dialog, WINDOW) {
 		dialog_title(gtx, "Discard changes?")
@@ -82,9 +84,10 @@ test_components_declare_their_roles_and_states :: proc(t: ^testing.T) {
 			"tab list \"\" at",
 			"  tab \"Home\" at",
 			"  tab \"Pages\" selected at",
-			"list item \"Docs\" expandable expanded at",
-			"list \"\" at",
-			"  list item \"Readme\" at",
+			"tree \"\" at",
+			"  tree item \"Docs\" level 1 expandable expanded at",
+			"  group \"\" at",
+			"    tree item \"Readme\" level 2 at",
 		}) {
 		testing.expectf(t, strings.contains(got, want), "missing %q in:\n%s", want, got)
 	}
@@ -95,7 +98,7 @@ test_components_declare_their_roles_and_states :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Docs"))
 	got = ui.probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, strings.contains(got, "switch \"Wi-Fi\" at"), got)
-	testing.expect(t, strings.contains(got, "list item \"Docs\" expandable focused at"), got)
+	testing.expect(t, strings.contains(got, "tree item \"Docs\" level 1 expandable focused at"), got)
 	testing.expect(t, !strings.contains(got, "Readme"), got)
 }
 

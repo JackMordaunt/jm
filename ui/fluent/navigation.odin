@@ -17,9 +17,7 @@ import "jm:ui/ops"
 // Departures shared by the group: jm:ui has no group opacity, so the
 // fades that ride with the slide and collapse motions (a drawer's
 // surface, a nav category's sub-item group, a tree's subtree) are
-// skipped and only the geometry moves. The tree's roving arrow-key focus
-// is not built: its rows stand alone, with no tree container to hold a
-// focus scope, so each row is a Tab stop and Left and Right act on it.
+// skipped and only the geometry moves.
 
 // --- Drawer -----------------------------------------------------------
 
@@ -1303,6 +1301,49 @@ tree_row_roles :: proc(a: Tree_Appearance) -> State_Roles {
 	return {}
 }
 
+// Tree is an open tree between tree_open and tree_close.
+Tree :: struct {
+	box: ui.Inset,
+	col: ui.Flex,
+}
+
+// tree_open opens a tree (tree.json): a column of tree_item rows,
+// spacingVerticalXXS apart, that is one roving focus scope, so one tab
+// stop: Up and Down move between visible rows and Home and End to the
+// ends, without wrapping; a branch row's own Right and Left open and
+// close it. Close it with tree_close.
+//
+// Departures: Tab enters at the last focused row, else the first, as the
+// kit has no current row; Right on an open branch does not move to its
+// first child, nor Left on a child to its parent.
+tree_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> (t: Tree) {
+	id := ui.claim_id(gtx, key, loc)
+	t.box = ui.inset_open(gtx, {}, key = u64(ui.id_mix(id, 1)))
+	ui.focus_scope_open(gtx, id, rove = .Vertical)
+	t.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 2)))
+	ui.container_semantics(gtx, {role = .Tree})
+	return
+}
+
+tree_close :: proc(t: ^Tree) {
+	ui.close(&t.col)
+	ui.focus_scope_close(t.box.gtx)
+	ui.close(&t.box)
+}
+
+// tree is tree_open as a guard: `if fluent.tree(gtx) { … }`.
+@(deferred_in = tree_guard_close)
+tree :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> bool {
+	t := ui.guard_hold(gtx, Tree)
+	t^ = tree_open(gtx, key, loc)
+	return true
+}
+
+@(private = "file")
+tree_guard_close :: proc(gtx: ^ui.Ctx, key: u64, loc: runtime.Source_Code_Location) {
+	tree_close(ui.guard_take(gtx, Tree))
+}
+
 // Tree_Item is an open item between tree_item_open and tree_item_close.
 Tree_Item :: struct {
 	open:   bool,
@@ -1311,7 +1352,8 @@ Tree_Item :: struct {
 	branch: bool,
 }
 
-// tree_item_open is one row of a tree at level (1 at the top): a branch
+// tree_item_open is one row of a tree (inside tree_open) at level (1 at
+// the top): a branch
 // when open is non-nil, whose chevron (Chevron_Right, down when open)
 // stands in a 24px box after (level - 1) indent steps of
 // spacingHorizontalXXL, or a leaf indented level steps; then the
@@ -1350,7 +1392,7 @@ tree_item_open :: proc(
 	it.open = open != nil && open^
 	if it.open {
 		it.body = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = key ~ 0x5375627472656501, loc = loc)
-		ui.container_semantics(gtx, {role = .List})
+		ui.container_semantics(gtx, {role = .Group})
 	}
 	return
 }
@@ -1474,7 +1516,7 @@ tree_row :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, level: int, size: Tre
 		// side, so it is placed a margin out.
 		hit := 16 + 2 * CONTROL_MARGIN
 		sel := ui.overlay_open(gtx, {x - CONTROL_MARGIN, (sz.y - hit) / 2}, cs = ui.loose({hit, hit}))
-		checkbox(gtx, checked, mixed = mixed, state = state, key = key ~ 0x53656c6563746f72, loc = loc)
+		checkbox(gtx, checked, mixed = mixed, state = state, no_tab = true, key = key ~ 0x53656c6563746f72, loc = loc)
 		ui.close(&sel)
 		x += 16 + tok.SPACING_HORIZONTAL_XS
 	}
@@ -1505,7 +1547,7 @@ tree_row :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, level: int, size: Tre
 	if branch {
 		states += {.Expandable} + design.state_if(open^, {.Expanded})
 	}
-	ui.semantics(gtx, &p, {role = .List_Item, label = label, value = aside, description = description, states = states})
+	ui.semantics(gtx, &p, {role = .Tree_Item, label = label, value = aside, description = description, states = states, level = u8(clamp(level, 1, 255))})
 	ui.widget_close(gtx, &p, {sz, y + baseline_of(t)})
 	return c.clicked
 }
