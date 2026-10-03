@@ -47,6 +47,7 @@ Model :: struct {
 	navs:     Navs,
 	layouts:  Layouts,
 	actions:  Actions,
+	icons:    Icons,
 }
 
 // PAGES follows the primer-kit's families, in the plan's build order; a
@@ -126,6 +127,8 @@ PAGES := [?]Page {
 	{"Header", page_header, false},
 	{"Card", page_card, false},
 	{"Data table", page_data_table, false},
+	{"Icons", nil, true},
+	{"Octicons", page_octicons, false},
 }
 
 kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
@@ -155,14 +158,22 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		p := PAGES[at]
 		ps := ui.scope_open(gtx, at)
 		defer ui.close(&ps)
-		sb := ui.scroll_box_open(gtx, offset = &m.scroll[at])
-		defer ui.close(&sb)
-		page := ui.inset_open(gtx, {24, 8, 24, 48})
-		defer ui.close(&page)
-		if p.draw != nil {
+		// The octicon page is given the window's height, not a scroll
+		// box, and scrolls itself, in m.scroll[m.page].
+		if p.draw == page_octicons {
+			page := ui.inset_open(gtx, {24, 8, 24, 0})
 			p.draw(gtx, m)
+			ui.close(&page)
 		} else {
-			kitchen.page_todo(gtx, p.name, p.head)
+			sb := ui.scroll_box_open(gtx, offset = &m.scroll[at])
+			defer ui.close(&sb)
+			page := ui.inset_open(gtx, {24, 8, 24, 48})
+			defer ui.close(&page)
+			if p.draw != nil {
+				p.draw(gtx, m)
+			} else {
+				kitchen.page_todo(gtx, p.name, p.head)
+			}
 		}
 	}
 	kitchen.persist(gtx, m.page, m.theme, &m.scroll)
