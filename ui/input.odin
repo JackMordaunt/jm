@@ -959,7 +959,7 @@ route_rove :: proc(r: ^Router, f: ^Frame, key: Key) {
 	case .Right, .Down:
 		next = at < n - 1 ? at + 1 : (f.scopes[g - 1].wrap ? 0 : n - 1)
 	}
-	set_focus(r, r.stops[next])
+	set_focus(r, r.stops[next], key)
 }
 
 // memory_of is mem's entry for scope, zero when it has none.
@@ -1070,7 +1070,7 @@ route_tab :: proc(r: ^Router, f: ^Frame, back: bool) {
 	case:
 		next = (at + 1) % n
 	}
-	set_focus(r, r.stops[next])
+	set_focus(r, r.stops[next], .Tab, back ? {.Shift} : {})
 }
 
 // tab_step_origin places focus that is no stop itself (a no_tab area) among
@@ -1096,9 +1096,13 @@ tab_step_origin :: proc(stops: []Hit, order: int, back: bool) -> int {
 	return at
 }
 
-// set_focus moves focus to h (a zero Hit clears it), sending Blur and Focus.
+// set_focus moves focus to h (a zero Hit clears it), sending Blur and
+// Focus. by is the key that moved it, with its mods: Tab, or a roving
+// scope's arrow, Home or End; None for a press or a request. The Focus
+// carries it, so a radio can check the one the arrows reach but not the
+// one Tab enters at.
 @(private = "file")
-set_focus :: proc(r: ^Router, h: Hit) {
+set_focus :: proc(r: ^Router, h: Hit, by := Key.None, mods := Mods{}) {
 	if h.area == r.focus {
 		return
 	}
@@ -1108,7 +1112,7 @@ set_focus :: proc(r: ^Router, h: Hit) {
 	r.focus = h.area
 	r.focus_hit = h
 	if h.area != 0 {
-		synth(r, h, .Focus, {})
+		deliver(r, h, Raw_Event{kind = .Focus, key = by, mods = mods}, {})
 	}
 }
 

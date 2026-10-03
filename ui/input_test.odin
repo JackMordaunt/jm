@@ -651,6 +651,14 @@ test_a_roving_scope_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 	// The toolbar's arrows run along it and stop at its ends.
 	probe_key(&p, .Right)
 	want(t, &p, 33)
+	came: Event
+	for e in p.router.events {
+		if e.kind == .Focus {
+			came = e
+		}
+	}
+	testing.expect_value(t, came.area, ops.Area_Id(33))
+	testing.expect_value(t, came.key, Key.Right) // the Focus names the key that moved it
 	probe_key(&p, .Down)
 	want(t, &p, 33) // not its axis
 	probe_key(&p, .Home)

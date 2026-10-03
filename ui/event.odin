@@ -19,7 +19,7 @@ Event :: struct {
 	travel: ops.Point, // pointer kinds: how far the pointer moved since the previous pointer event, in local units. Unlike differences of pos, it does not change when the area itself moves between frames, so a drag that moves its own widget adds it up without feeding back.
 	button: Button,
 	scroll: [2]f32,
-	key:    Key,
+	key:    Key, // Focus: the key that moved focus (Tab, an arrow), None for a press or request
 	mods:   Mods,
 	text:   string, // Text: the inserted UTF-8; Paste: the clipboard's bytes
 	mime:   string, // Paste: the type of text
