@@ -498,9 +498,11 @@ tab_colors :: proc(a: Tab_Appearance, on: bool, c: Control) -> (k: Tab_Colors) {
 }
 
 // tab_list is a row (or column when vertical) of tabs, one selected.
-// Clicking a tab, or Enter or Space on the focused one, selects it;
-// Left and Right (Up and Down when vertical) on the focused tab move the
-// selection, since jm:ui moves keyboard focus only by Tab. icons, when
+// Clicking a tab, or Enter or Space on the focused one, selects it. The
+// list is one roving focus scope, so one tab stop, entered at the
+// selected tab; Left and Right (Up and Down when vertical) move focus
+// between tabs, wrapping, and Home and End to the ends (tab-list.json
+// accessibility). icons, when
 // given, pair with labels; a selected tab shows its icon's filled twin.
 // The indicator bar of the transparent and subtle appearances slides
 // between tabs; the circular ones fill the selected pill instead.
@@ -557,6 +559,7 @@ tab_list :: proc(
 	}
 	sz := ui.constrain(gtx.constraints, total)
 	ui.semantics(gtx, &p, {role = .Tab_List})
+	ui.focus_scope_open(gtx, p.id, rove = vertical ? .Vertical : .Horizontal, wrap = true)
 	changed := false
 	ind := ui.widget_data(gtx, p.id, Tab_Indicator) if state == .Live else nil
 	pos: f32 = 0
@@ -577,27 +580,6 @@ tab_list :: proc(
 		if c.clicked && selected^ != i {
 			selected^ = i
 			changed = true
-		}
-		if c.st != nil && c.focused {
-			for e in ui.events(gtx, id) {
-				if e.kind != .Key {
-					continue
-				}
-				step := 0
-				#partial switch e.key {
-				case .Left, .Up:
-					step = -1
-				case .Right, .Down:
-					step = 1
-				}
-				if vertical ? (e.key == .Left || e.key == .Right) : (e.key == .Up || e.key == .Down) {
-					step = 0
-				}
-				if step != 0 {
-					selected^ = (selected^ + step + n) % n
-					changed = true
-				}
-			}
 		}
 		on := i == selected^
 		k := tab_colors(appearance, on, c)
@@ -652,6 +634,7 @@ tab_list :: proc(
 			ops.fill(gtx.scene, ops.Round_Rect{bar, min(bar.w, bar.h) / 2}, bar_color)
 		}
 	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(max(selected^, 0))))
 	ui.widget_close(gtx, &p, {size = sz})
 	return changed
 }

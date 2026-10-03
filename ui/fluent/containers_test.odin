@@ -68,8 +68,19 @@ click_at :: proc(p: ^ui.Probe, pos: ops.Point) {
 	ui.probe_frame(p)
 }
 
+// focused_tag is the tag of the area holding keyboard focus.
+@(private = "file")
+focused_tag :: proc(p: ^ui.Probe) -> string {
+	for tg in ui.probe_current(p).tags {
+		if tg.id == p.router.focus {
+			return tg.name
+		}
+	}
+	return ""
+}
+
 @(test)
-test_tab_list_selects_by_click_and_arrow_keys :: proc(t: ^testing.T) {
+test_tab_list_selects_by_click_and_enter_and_roves_by_arrows :: proc(t: ^testing.T) {
 	m: Containers_Model
 	p: ui.Probe
 	ui.probe_init(&p, containers, &m, {600, 600}, allocator = context.temp_allocator)
@@ -79,14 +90,23 @@ test_tab_list_selects_by_click_and_arrow_keys :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Pages"))
 	testing.expect_value(t, m.tab, 1)
 	testing.expect_value(t, m.changes, 1)
-	// Right moves the selection on from the focused tab, wrapping.
+	// Right moves focus on from the focused tab, wrapping; the selection stays.
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, m.tab, 2)
+	testing.expect_value(t, focused_tag(&p), "Documents")
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, m.tab, 0)
+	testing.expect_value(t, focused_tag(&p), "Home")
+	testing.expect_value(t, m.tab, 1)
 	// Up and Down mean nothing to a horizontal list.
 	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Home")
+	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.tab, 0)
+	// One tab stop, entered at the selected tab.
+	ui.probe_key(&p, .End)
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focused_tag(&p), "Alpha")
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focused_tag(&p), "Home")
 	// A horizontal medium tab is 44px tall (useTabStyles.styles.ts:64-90).
 	testing.expect_value(t, ui.probe_bounds(&p, "Home").h, 44)
 }
@@ -102,11 +122,13 @@ test_vertical_tab_list_takes_up_and_down :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Alpha"))
 	testing.expect_value(t, m.vtab, 0)
 	ui.probe_key(&p, .Down)
-	testing.expect_value(t, m.vtab, 1)
+	testing.expect_value(t, focused_tag(&p), "Beta")
 	ui.probe_key(&p, .Right) // Left and Right mean nothing to a vertical list
+	testing.expect_value(t, focused_tag(&p), "Beta")
+	ui.probe_key(&p, .Space)
 	testing.expect_value(t, m.vtab, 1)
 	ui.probe_key(&p, .Up)
-	testing.expect_value(t, m.vtab, 0)
+	testing.expect_value(t, focused_tag(&p), "Alpha")
 	testing.expect_value(t, ui.probe_bounds(&p, "Alpha").h, 32) // a vertical medium tab row
 }
 
