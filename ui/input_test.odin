@@ -353,6 +353,7 @@ test_an_observer_hears_enter_and_leave_under_what_is_on_top :: proc(t: ^testing.
 @(private = "file")
 Focus_Model :: struct {
 	dialog, menu: bool, // a trapping dialog over the page, and a trapping menu raised inside it
+	closing:      bool, // the dialog still drawn as it plays out its close, no longer trapping
 	keep:         bool, // b keeps Tab
 	first:        bool, // ask for the dialog's first area this frame
 	presses:      int, // presses a heard
@@ -391,7 +392,7 @@ focus_view :: proc(gtx: ^Ctx, user: rawptr) {
 		return
 	}
 	d := overlay_open(gtx, {0, 100})
-	focus_scope_open(gtx, 50, trap = true)
+	focus_scope_open(gtx, 50, trap = !m.closing)
 	focusable(gtx, 10, "d1", 0)
 	if m.menu {
 		menu := popup_open(gtx, {0, 0, 40, 20}, 60)
@@ -804,4 +805,21 @@ test_a_trap_focused_as_it_opens_gives_back_the_focus_before :: proc(t: ^testing.
 	probe_frame(&p)
 	probe_frame(&p)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(3)) // c, not d1
+}
+
+@(test)
+test_a_trap_that_stops_trapping_gives_focus_back_while_still_drawn :: proc(t: ^testing.T) {
+	m: Focus_Model
+	p: Probe
+	probe_init(&p, focus_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_click(&p, "c"))
+	m.dialog = true
+	probe_frame(&p)
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(10))
+	m.closing = true // still drawn, its scope no longer a trap
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(3))
 }

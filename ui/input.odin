@@ -1007,14 +1007,26 @@ scope_named :: proc(f: ^Frame, id: ops.Area_Id) -> Scope_Ref {
 	return 0
 }
 
+// traps reports whether f has a trapping scope named id.
+@(private = "file")
+traps :: proc(f: ^Frame, id: ops.Area_Id) -> bool {
+	for s in f.scopes {
+		if s.id == id && s.trap {
+			return true
+		}
+	}
+	return false
+}
+
 // track_traps gives focus back from the traps the last route saw that f
-// no longer has, when the trap still held it, and starts remembering
-// where focus was for the traps f is the first frame to have.
+// no longer has, or has but no longer trapping (a menu playing out its
+// close), when the trap still held it, and starts remembering where focus
+// was for the traps f is the first frame to have.
 @(private = "file")
 track_traps :: proc(r: ^Router, f: ^Frame) {
 	for i := len(r.traps) - 1; i >= 0; i -= 1 {
 		m := r.traps[i]
-		if scope_named(f, m.scope) != 0 {
+		if traps(f, m.scope) {
 			continue
 		}
 		ordered_remove(&r.traps, i)
