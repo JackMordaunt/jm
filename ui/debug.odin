@@ -20,6 +20,10 @@ Debug_Flag :: enum u8 {
 	// Slow runs time at a quarter speed, dt and time both, so a spring or
 	// a transition can be watched frame by frame.
 	Slow,
+	// Focus draws the focus scopes over the frame, each a translucent box
+	// so nested ones darken, numbers the stops in Tab's order, and rings
+	// the focused area.
+	Focus,
 }
 
 Debug_Flags :: bit_set[Debug_Flag;u8]
@@ -57,6 +61,8 @@ debug_flag_name :: proc(f: Debug_Flag) -> string {
 		return "slow"
 	case .Inspect:
 		return "inspect"
+	case .Focus:
+		return "focus"
 	}
 	return ""
 }

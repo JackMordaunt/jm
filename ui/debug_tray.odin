@@ -196,11 +196,15 @@ frame_stats :: proc(gtx: ^Ctx, f: ^Frame, ui_ms, build_ms: f32, arena_bytes: int
 	return s
 }
 
-// debug_inspect paints the inspector for device point p when flags ask for
-// it and p is not over the open tray t (which it would otherwise inspect).
-// density is the display scale; call it outside the scale transform.
+// debug_inspect paints the focus map when flags ask for it, then the
+// inspector for device point p when flags ask for it and p is not over
+// the open tray t (which it would otherwise inspect). density is the
+// display scale; call it outside the scale transform.
 debug_inspect :: proc(gtx: ^Ctx, flags: Debug_Flags, t: ^Debug_Tray, prev: ^Frame, p: ops.Point, density: f32) {
 	t.panel = {}
+	if .Focus in flags && prev != nil && gtx.router != nil {
+		paint_focus_map(gtx, focus_map(prev, gtx.router, density, gtx.allocator), density)
+	}
 	if .Inspect not_in flags || prev == nil {
 		return
 	}
@@ -291,7 +295,7 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	TOGGLES :: [?]struct {
 		flag: Debug_Flag,
 		name: string,
-	}{{.Bounds, "Outline widgets and input areas"}, {.Inspect, "Inspect under the pointer"}, {.Reveal, "Reveal hidden parts"}, {.Slow, "Slow motion (quarter speed)"}}
+	}{{.Bounds, "Outline widgets and input areas"}, {.Inspect, "Inspect under the pointer"}, {.Reveal, "Reveal hidden parts"}, {.Focus, "Focus scopes and Tab stops"}, {.Slow, "Slow motion (quarter speed)"}}
 	pad, row, text :: f32(10), f32(22), f32(12)
 	lines := stats_lines(t.last, gtx.allocator)
 	log := event_log_lines(t, TRAY_EVENTS, gtx.allocator)

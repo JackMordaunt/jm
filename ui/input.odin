@@ -722,7 +722,7 @@ update_observers :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 
 // active_trap is the trapping focus scope that holds focus in f: the
 // last one met, 0 when f has none.
-@(private = "file")
+@(private)
 active_trap :: proc(f: ^Frame) -> Scope_Ref {
 	if f == nil {
 		return 0
@@ -785,6 +785,13 @@ focus_stops :: proc(r: ^Router, f: ^Frame, within: ops.Area_Id = 0) -> int {
 		append(&r.stops, h)
 	}
 	return len(r.stops)
+}
+
+// router_tab_stops is the stops Tab visits in f as r routes it, in order:
+// r.stops, valid until r next routes or is asked again.
+@(private)
+router_tab_stops :: proc(r: ^Router, f: ^Frame) -> int {
+	return focus_stops(r, f)
 }
 
 // tab_reachable reports whether h is an area focus may move to by key:
