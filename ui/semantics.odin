@@ -112,7 +112,7 @@ key_interest :: proc(gtx: ^Ctx, area: ops.Area_Id, key: Key, mods: Mods = {}, op
 // semantics_report prints f's semantic tree, one node a line, children
 // indented under their parent: the role, the label (the labelled_by
 // node's when the node has none), the value and description when set,
-// a heading's level when set, the states, the active descendant's label
+// a heading's or tree item's level when set, the states, the active descendant's label
 // (`active "…"`) when set, `focused` on the area focus names, and the
 // device rect, in document order: the order a reader is meant to take
 // them in. A node
@@ -281,6 +281,12 @@ role_name :: proc(r: ops.Role) -> string {
 		return "menu item checkbox"
 	case .Menu_Item_Radio:
 		return "menu item radio"
+	case .Tree:
+		return "tree"
+	case .Tree_Item:
+		return "tree item"
+	case .Tab_Panel:
+		return "tab panel"
 	}
 	return "unknown"
 }
@@ -310,6 +316,10 @@ state_name :: proc(s: ops.State) -> string {
 		return "busy"
 	case .Modal:
 		return "modal"
+	case .Current:
+		return "current"
+	case .Current_Page:
+		return "current page"
 	}
 	return ""
 }

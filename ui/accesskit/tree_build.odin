@@ -82,6 +82,9 @@ tree_update :: proc(s: ^Snapshot) -> ^Tree_Update {
 		if r.active != 0 && known[r.active] {
 			node_set_active_descendant(n, r.active)
 		}
+		if r.current != .False {
+			node_set_aria_current(n, r.current)
+		}
 		if r.focusable {
 			node_add_action(n, .Focus)
 		}

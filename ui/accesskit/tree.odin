@@ -46,7 +46,8 @@ Snapshot_Node :: struct {
 	modal:       bool,
 	hidden:      bool, // its box lies wholly outside its clip: scrolled away
 	live:        Live,
-	level:       u8, // headings: 1
+	level:       u8, // a heading's, at least 1, or a tree item's depth
+	current:     Aria_Current,
 	active:      Node_Id, // the active descendant a focused combo box points at, 0 for none
 	focusable:   bool, // an input area of the id wants Key or Focus
 	clickable:   bool, // one wants Press
@@ -105,6 +106,12 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 			modal       = .Modal in n.semantics.states,
 			active      = Node_Id(n.semantics.active_descendant),
 		}
+		switch {
+		case .Current_Page in n.semantics.states:
+			r.current = .Page
+		case .Current in n.semantics.states:
+			r.current = .True
+		}
 		if .Mixed in n.semantics.states {
 			r.toggled, r.has_toggled = .Mixed, true
 		} else if checkable(n.semantics.role) {
@@ -113,6 +120,8 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 		#partial switch n.semantics.role {
 		case .Heading:
 			r.level = max(n.semantics.level, 1)
+		case .Tree_Item:
+			r.level = n.semantics.level
 		case .Status:
 			r.live = .Polite
 		case .Alert:
@@ -198,7 +207,7 @@ checkable :: proc(r: ops.Role) -> bool {
 // click, rather than content it reads past.
 interactive :: proc(r: ops.Role) -> bool {
 	#partial switch r {
-	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Menu_Item_Checkbox, .Menu_Item_Radio, .Link, .Option, .Grid_Cell, .Row, .Cell:
+	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Menu_Item_Checkbox, .Menu_Item_Radio, .Link, .Option, .Grid_Cell, .Row, .Cell, .Tree_Item:
 		return true
 	}
 	return false
@@ -287,6 +296,12 @@ role_of :: proc(r: ops.Role) -> Role {
 		return .Menu_Item_Check_Box
 	case .Menu_Item_Radio:
 		return .Menu_Item_Radio
+	case .Tree:
+		return .Tree
+	case .Tree_Item:
+		return .Tree_Item
+	case .Tab_Panel:
+		return .Tab_Panel
 	}
 	return .Unknown
 }

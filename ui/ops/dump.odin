@@ -242,8 +242,8 @@ write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 }
 
 // write_semantics writes s as `role "label"`, then ` value "…"`,
-// ` desc "…"`, the states that are set, ` level n` and
-// ` active_descendant id`, each only when present.
+// ` desc "…"`, the states that are set, ` level n` (a heading's or a
+// tree item's) and ` active_descendant id`, each only when present.
 write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
 	fmt.sbprint(sb, s.role)
 	strings.write_byte(sb, ' ')

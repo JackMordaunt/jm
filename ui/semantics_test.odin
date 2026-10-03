@@ -311,3 +311,33 @@ semantics_report_names_an_active_descendant_and_the_checkable_menu_items :: proc
 	dump := probe_dump(&p)
 	testing.expect(t, strings.contains(dump, fmt.tprintf("Combo_Box \"Fruit\" active_descendant %d", apple)), dump)
 }
+
+@(test)
+semantics_report_names_a_tree_its_items_levels_and_the_current_one :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		col := column_open(gtx, key = 1)
+		defer close(&col)
+		container_semantics(gtx, {role = .Tree, label = "Files"})
+		a := widget_open(gtx, 2)
+		semantics(gtx, &a, {role = .Tree_Item, label = "src", level = 1, states = {.Expanded}})
+		widget_close(gtx, &a, {size = {60, 20}})
+		b := widget_open(gtx, 3)
+		semantics(gtx, &b, {role = .Tree_Item, label = "main.odin", level = 2, states = {.Current}})
+		widget_close(gtx, &b, {size = {60, 20}})
+		c := widget_open(gtx, 4)
+		semantics(gtx, &c, {role = .Link, label = "Home", states = {.Current_Page}})
+		widget_close(gtx, &c, {size = {60, 20}})
+		d := widget_open(gtx, 5)
+		semantics(gtx, &d, {role = .Tab_Panel, label = "Code"})
+		widget_close(gtx, &d, {size = {60, 20}})
+	}
+	defer free_all(context.temp_allocator)
+	p: Probe
+	probe_init(&p, view, nil, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect_value(
+		t,
+		probe_semantics(&p, context.temp_allocator),
+		"tree \"Files\" at 0,0 300x300\n  tree item \"src\" level 1 expanded at 0,0 60x20\n  tree item \"main.odin\" level 2 current at 0,20 60x20\n  link \"Home\" current page at 0,40 60x20\n  tab panel \"Code\" at 0,60 60x20\n",
+	)
+}

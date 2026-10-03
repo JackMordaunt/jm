@@ -32,8 +32,9 @@ ENCODE_MAGIC :: "UIOP"
 // inside, overhang and fallbacks; 27 added Event_Kind Outside and
 // Key_Interest topmost; 28 added Focus_Scope and Focus_Scope_End; 29
 // added Push_Opacity and Pop_Opacity; 30 gave Semantic an active
-// descendant and Role Menu_Item_Checkbox and Menu_Item_Radio.
-ENCODE_VERSION :: u8(30)
+// descendant and Role Menu_Item_Checkbox and Menu_Item_Radio; 31 added
+// Role Tree, Tree_Item and Tab_Panel and State Current and Current_Page.
+ENCODE_VERSION :: u8(31)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.

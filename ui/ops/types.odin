@@ -292,6 +292,9 @@ Role :: enum u8 {
 	Presentation, // decoration: a reader skips the node and reads its children
 	Menu_Item_Checkbox, // a menu item that toggles: Checked says whether it is on
 	Menu_Item_Radio, // one of a menu's mutually exclusive choices: Checked marks the chosen
+	Tree, // a hierarchy of items that expand and collapse: a file tree
+	Tree_Item, // one item of a tree; its level is its depth, 1 at the top
+	Tab_Panel, // the content a tab shows
 }
 
 // State is one of the states a Semantic op may carry.
@@ -307,6 +310,8 @@ State :: enum u8 {
 	Invalid, // its value fails validation: a field in error (aria-invalid)
 	Busy,
 	Modal,
+	Current, // the current item of a set (aria-current="true"): a tree's open file
+	Current_Page, // the link to the page being shown (aria-current="page")
 }
 
 States :: bit_set[State;u16]
@@ -315,8 +320,9 @@ States :: bit_set[State;u16]
 // reader speaks for it, or the widget whose label names it (a slider
 // after its caption) when it has none of its own, its value when it has
 // one (a slider's, a field's text), a longer description (a tooltip's
-// text), its states, a heading's level in the page's outline, and the
-// descendant it points a reader at while it keeps focus itself.
+// text), its states, a heading's level in the page's outline or a tree
+// item's depth in its tree, and the descendant it points a reader at
+// while it keeps focus itself.
 Semantics :: struct {
 	role:              Role,
 	label:             string,
@@ -324,6 +330,6 @@ Semantics :: struct {
 	value:             string,
 	description:       string,
 	states:            States,
-	level:             u8, // a heading's outline level, 1 as h1 through 6 as h6; 0 is none, which a heading reads as 1
+	level:             u8, // a heading's outline level, 1 as h1 through 6 as h6, or a tree item's depth, 1 at the top; 0 is none, which a heading reads as 1
 	active_descendant: Area_Id, // the node a focused control points a reader at while it keeps focus (aria-activedescendant): a combo box's highlighted option; 0 is none
 }

@@ -267,3 +267,45 @@ test_a_combo_box_names_its_active_descendant_and_menu_items_toggle :: proc(t: ^t
 	testing.expect_value(t, dark.role, Role.Menu_Item_Radio)
 	testing.expect(t, dark.has_toggled && dark.toggled == .False)
 }
+
+// tree_view is a tree of two items, the second current, and a link to
+// the page shown.
+@(private = "file")
+tree_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1)
+	defer ui.close(&col)
+	ui.container_semantics(gtx, {role = .Tree, label = "Files"})
+	{
+		a := ui.widget_open(gtx, 2)
+		ui.semantics(gtx, &a, {role = .Tree_Item, label = "src", level = 1, states = {.Expanded}})
+		ui.widget_close(gtx, &a, {size = {80, 20}})
+	}
+	{
+		b := ui.widget_open(gtx, 3)
+		ui.semantics(gtx, &b, {role = .Tree_Item, label = "main.odin", level = 2, states = {.Current}})
+		ui.widget_close(gtx, &b, {size = {80, 20}})
+	}
+	{
+		c := ui.widget_open(gtx, 4)
+		ui.semantics(gtx, &c, {role = .Link, label = "Home", states = {.Current_Page}})
+		ui.widget_close(gtx, &c, {size = {80, 20}})
+	}
+}
+
+@(test)
+test_a_tree_item_carries_its_level_and_current_items_say_so :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, tree_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Tree")
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `role: Tree, children:`), got)
+	testing.expect(t, strings.contains(got, `level: 1,`), got)
+	testing.expect(t, strings.contains(got, `level: 2,`), got)
+	testing.expect(t, strings.contains(got, `aria_current: True`), got)
+	testing.expect(t, strings.contains(got, `aria_current: Page`), got)
+}

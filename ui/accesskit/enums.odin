@@ -228,6 +228,18 @@ Invalid :: enum u8 {
 	Spelling,
 }
 
+// Aria_Current is accesskit_aria_current (accesskit.h 0.23.1, lines
+// 152-166): which item of a set is the current one, and of what kind.
+Aria_Current :: enum u8 {
+	False,
+	True,
+	Page,
+	Step,
+	Location,
+	Date,
+	Time,
+}
+
 Live :: enum u8 {
 	Off,
 	Polite,
