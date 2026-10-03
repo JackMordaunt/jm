@@ -17,6 +17,8 @@ Layouts :: struct {
 	pane_width: f32, // the resizable pane's, saved by the page when it settles
 	saved:      int,
 	split_width: f32,
+	sidebar_width: f32, // the resizable sidebar's
+	sidebar_open:  bool, // the fullscreen sidebar shows
 	backs:      int,
 	table_sort: primer.Table_Sort, // the zero value sorts by the first column, ascending
 	density:    primer.Cell_Padding,
@@ -384,6 +386,60 @@ page_page_layout :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		p := preview_open(gtx, 600, key = 2)
 		demo_page_layout(gtx, m, .Start, .Filled, 160, 2)
 		preview_close(&p)
+	}
+	l := &m.layouts
+	kitchen.section(gtx, "Sidebar", "a full-height column outside the container, beside header, content and footer alike; resizable from 256px to the window less 256px behind its line divider")
+	{
+		b := ui.box_open(gtx, {outline = primer.color(.Border_Color_Default), stroke = 1}, key = 3)
+		defer ui.close(&b)
+		side := primer.Sidebar{resizable = true, width = &l.sidebar_width, label = "Sidebar splitter"}
+		demo_sidebar_layout(gtx, m, side, fmt.tprintf("Sidebar, %dpx", int(l.sidebar_width)), 3)
+	}
+	kitchen.section(gtx, "Sidebar at the end, narrow (a 600px window)", "the default variant stays beside the container below 768px and squeezes it")
+	{
+		p := preview_open(gtx, 600, key = 4)
+		demo_sidebar_layout(gtx, m, {position = .End, divider = .Line}, "Sidebar", 4)
+		preview_close(&p)
+	}
+	kitchen.section(gtx, "Fullscreen sidebar (a 600px window)", "below 768px the fullscreen variant covers the window on the default background; the page shows and hides it")
+	{
+		p := preview_open(gtx, 600, key = 5)
+		stack := ui.column_open(gtx, gap = 10, align = .Start)
+		if primer.button(gtx, l.sidebar_open ? "Close the sidebar" : "Open the sidebar", key = 5) {
+			l.sidebar_open = !l.sidebar_open
+		}
+		demo_sidebar_layout(gtx, m, {variant = .Fullscreen, hidden = !l.sidebar_open}, "Fullscreen sidebar", 5)
+		ui.close(&stack)
+		preview_close(&p)
+	}
+}
+
+// demo_sidebar_layout is a page layout of placeholder regions with
+// sidebar beside them, its width saved when it settles.
+demo_sidebar_layout :: proc(gtx: ^ui.Ctx, m: ^Model, sidebar: primer.Sidebar, label: string, key: u64) {
+	l := &m.layouts
+	pl := primer.page_layout_open(gtx, sidebar = sidebar, key = key)
+	primer.page_layout_region_open(&pl, .Sidebar)
+	{
+		col := ui.column_open(gtx, gap = 8, align = .Fill)
+		defer ui.close(&col)
+		region_box(gtx, label, 120)
+		if sidebar.variant == .Fullscreen && primer.button(gtx, "Close the sidebar", key = key + 100) {
+			l.sidebar_open = false
+		}
+	}
+	primer.page_layout_region_close(&pl)
+	primer.page_layout_region_open(&pl, .Header, divider = .Line)
+	region_box(gtx, "Header", 48)
+	primer.page_layout_region_close(&pl)
+	primer.page_layout_region_open(&pl, .Content)
+	region_box(gtx, "Content", 160)
+	primer.page_layout_region_close(&pl)
+	primer.page_layout_region_open(&pl, .Footer, divider = .Line)
+	region_box(gtx, "Footer", 40)
+	primer.page_layout_region_close(&pl)
+	if primer.page_layout_close(&pl) {
+		l.saved += 1
 	}
 }
 

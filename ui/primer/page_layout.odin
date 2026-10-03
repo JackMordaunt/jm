@@ -424,8 +424,38 @@ Pane :: struct {
 	label:         string, // the drag handle's and the pane's accessible name
 }
 
+// Sidebar_Variant is a sidebar's look below 768px: Default keeps it
+// beside the container, Fullscreen makes it cover the window.
+Sidebar_Variant :: enum u8 {
+	Default,
+	Fullscreen,
+}
+
+// Sidebar is a page layout's sidebar's options (page-layout.json inputs
+// sidebar*): its side, width preset or custom bounds, resizing, divider
+// (none or line), stickiness and narrow variant. width is as Pane.width:
+// the caller's record of a resizable sidebar's width, nil keeping it for
+// the session only.
+Sidebar :: struct {
+	position:  Pane_Position,
+	preset:    Pane_Width,
+	custom:    Pane_Custom,
+	min_width: f32, // a resizable preset sidebar's floor; 0 means 256
+	resizable: bool,
+	width:     ^f32,
+	sticky:    bool,
+	divider:   Pane_Divider,
+	variant:   Sidebar_Variant,
+	hidden:    bool,
+	label:     string, // the drag handle's accessible name
+}
+
 // PANE_MIN_WIDTH is a resizable preset pane's default floor (paneMinWidth).
 PANE_MIN_WIDTH :: f32(256)
+
+// SIDEBAR_MAX_DIFF is how much narrower than the window a resizable
+// sidebar's max is, at every width (PageLayout.module.css:7-8,36-37).
+SIDEBAR_MAX_DIFF :: f32(256)
 
 // PANE_KEY_STEP is how far an arrow key moves the drag handle
 // (DragHandle.tsx:6-8).
@@ -439,10 +469,33 @@ PANE_HANDLE_OUTSET :: f32(2)
 // (PageLayout.module.css:725-739).
 PANE_HOVER_FADE :: tok.Transition{150, {0.25, 0.1, 0.25, 1}}
 
-// pane_default is a pane's width with nothing stored: a resizable preset
-// starts at its wide value, a custom pane at its default.
+// Side is one of the two regions with a width of their own, the pane and
+// the sidebar, which share width presets, resizing, the vertical divider
+// and its drag handle.
 @(private)
-pane_default :: proc(p: Pane) -> f32 {
+Side :: enum u8 {
+	Pane,
+	Sidebar,
+}
+
+// Side_Rules is what that shared machinery reads from a Pane or Sidebar.
+@(private)
+Side_Rules :: struct {
+	side:      Side,
+	position:  Pane_Position,
+	preset:    Pane_Width,
+	custom:    Pane_Custom,
+	min_width: f32,
+	resizable: bool,
+	width:     ^f32,
+	divider:   Pane_Divider,
+	label:     string,
+}
+
+// pane_default is a side's width with nothing stored: a resizable preset
+// starts at its wide value, a custom one at its default.
+@(private)
+pane_default :: proc(p: Side_Rules) -> f32 {
 	switch p.preset {
 	case .Small:
 		return 256
@@ -456,24 +509,34 @@ pane_default :: proc(p: Pane) -> f32 {
 	return 296
 }
 
-// pane_bounds is a resizable pane's [min, max] in a window vw wide: a
-// preset's max is the window less 511px, less 959px from 1280px, never
-// below min; a custom pane's bounds are its own (usePaneWidth.ts:135-138).
+// pane_bounds is a resizable side's [min, max] in a window vw wide. A
+// pane preset's max is the window less 511px, less 959px from 1280px; a
+// custom pane's bounds are its own. A sidebar's max is the window less
+// 256px at every width, which caps a custom max too. No max falls below
+// min (usePaneWidth.ts:135-138,235-243).
 @(private)
-pane_bounds :: proc(p: Pane, vw: f32) -> (lo, hi: f32) {
-	if p.preset == .Custom {
-		return p.custom.min, max(p.custom.max, p.custom.min)
+pane_bounds :: proc(p: Side_Rules, vw: f32) -> (lo, hi: f32) {
+	custom := p.preset == .Custom
+	lo = custom ? p.custom.min : (p.min_width > 0 ? p.min_width : PANE_MIN_WIDTH)
+	if p.side == .Sidebar {
+		hi = max(vw - SIDEBAR_MAX_DIFF, lo)
+		if custom {
+			hi = max(min(p.custom.max, hi), lo)
+		}
+		return
 	}
-	lo = p.min_width > 0 ? p.min_width : PANE_MIN_WIDTH
+	if custom {
+		return lo, max(p.custom.max, lo)
+	}
 	diff := vw >= tok.BREAKPOINT_XLARGE ? f32(959) : f32(511)
 	return lo, max(vw - diff, lo)
 }
 
-// pane_preset_width is a non-resizable preset pane's regular width: 240,
-// 256 or 256px from 768px, 256, 296 or 320px from 1012px
+// pane_preset_width is a non-resizable side's width from 768px: 240, 256
+// or 256px, then 256, 296 or 320px from 1012px; a custom one's default
 // (PageLayout.module.css:30-49).
 @(private)
-pane_preset_width :: proc(p: Pane, vw: f32) -> f32 {
+pane_preset_width :: proc(p: Side_Rules, vw: f32) -> f32 {
 	wide := vw >= tok.BREAKPOINT_LARGE
 	switch p.preset {
 	case .Small:
@@ -494,6 +557,7 @@ Page_Region :: enum u8 {
 	Content,
 	Pane,
 	Footer,
+	Sidebar,
 }
 
 // Region_Options are a region's padding, divider and visibility, and for
@@ -513,11 +577,17 @@ Page_Layout :: struct {
 	loc:                runtime.Source_Code_Location,
 	pane:               Pane,
 	has_pane:           bool,
+	sidebar:            Sidebar,
+	has_sidebar:        bool,
+	fullscreen:         bool, // the sidebar covers the window
+	sides:              [Side]Side_Rules,
 	narrow:             bool,
 	vw, vh:             f32,
 	width, container:   f32, // the offered width and the container's
+	room_x, room:       f32, // where the container's row starts, and its width
 	pad, row, column:   f32,
 	pane_w, content_w:  f32,
+	sidebar_w:          f32,
 	regions:            [Page_Region]Region_Run,
 	options:            [Page_Region]Region_Options,
 	open:               Page_Region,
@@ -526,8 +596,8 @@ Page_Layout :: struct {
 	settled:            bool,
 }
 
-// Pane_Drag is a resizable pane's handle state between frames: the width
-// it holds when the caller keeps none, and a press's start.
+// Pane_Drag is a resizable side's handle state between frames: the width
+// it holds when the caller keeps none, and whether a drag is under way.
 @(private)
 Pane_Drag :: struct {
 	width:    f32,
@@ -541,30 +611,40 @@ Pane_Drag :: struct {
 // content and an optional pane, and an optional footer, row_gap apart;
 // the pane sits column_gap from a divider between it and the content, or
 // below 768px stacks above (start) or below (end) the content at full
-// width. Fill regions with page_layout_region_open and close each with
+// width. A sidebar sits outside the container, beside header, content
+// and footer alike, at the start or end of the root's row, column_gap
+// from its divider, the container shrinking to the rest. Fill regions
+// with page_layout_region_open and close each with
 // page_layout_region_close, in any order; page_layout_close places them
-// and returns true on the frame a resizable pane's width settles (a drag
-// ends, an arrow key moves it, a double-click resets it), when the
-// caller saves *pane.width.
+// and returns true on the frame a resizable pane's or sidebar's width
+// settles (a drag ends, an arrow key moves it, a double-click resets
+// it), when the caller saves *pane.width and *sidebar.width.
 //
-// A resizable pane has a 5px handle over its line divider: drag it, or
-// focus it and press arrows to step 3px, double-click to reset; its width
-// is clamped between its min (256px) and the window less 511px (959px
-// from 1280px). A sticky pane pins offset_header below the top of the
-// scroll box it scrolls in, no taller than the window, scrolling its own
-// overflow.
+// A resizable pane or sidebar has a 5px handle over its line divider:
+// drag it, or focus it and press arrows to step 3px, double-click to
+// reset; its width is clamped between its min (256px) and the window less
+// 511px (959px from 1280px) for a pane, 256px for a sidebar. A sticky
+// pane pins offset_header below the top of the scroll box it scrolls in,
+// no taller than the window, scrolling its own overflow; a sticky sidebar
+// pins at that top exactly the window's height. Below 768px a fullscreen
+// sidebar covers the window on --bgColor-default, above the page and
+// without a divider, taking no room in the row (PageLayout.module.css:
+// 753-861).
 //
-// Departures: the width lives in the caller's Pane.width, so two panes
-// never share the web's default 'paneWidth' storage key (page-layout.json
-// gotcha). Arrow keys mirror for an end pane, Left growing it, as the
-// sidebar's do (the pane's do not: page-layout.json contradiction). The
-// pane's position is a plain value, so the web's drag-direction bug with a
-// responsive position cannot arise (page-layout.json upstream-bug).
-// Pane.hidden and the region's hidden
-// are plain values the caller resolves per range (responsive). There is no
-// Sidebar: the full-height column outside the container is not built. An
-// overflowing pane is not made a focusable region, and jm:ui has no
-// banner, main or contentinfo landmarks.
+// Departures: the widths live in the caller's Pane.width and
+// Sidebar.width, so two panes never share the web's default 'paneWidth'
+// storage key (page-layout.json gotcha). Arrow keys mirror for an end
+// pane, Left growing it, as the sidebar's do (the pane's do not:
+// page-layout.json contradiction). The pane's position is a plain value,
+// so the web's drag-direction bug with a responsive position cannot arise
+// (page-layout.json upstream-bug). Pane.hidden, Sidebar.hidden and the
+// region's hidden are plain values the caller resolves per range
+// (responsive). Below 768px an inline sidebar keeps its 768px width; the
+// CSS gives it 100% of a shrink-to-fit box, its content's max-content
+// width, which a paragraph stretches until the container is squeezed to
+// nothing (PageLayout.module.css:30-33,840-851). An overflowing pane or
+// sidebar is not made a focusable region, and jm:ui has no banner, main
+// or contentinfo landmarks.
 page_layout_open :: proc(
 	gtx: ^ui.Ctx,
 	container_width := Container_Width.XLarge,
@@ -572,6 +652,7 @@ page_layout_open :: proc(
 	row_gap := Layout_Spacing.Normal,
 	column_gap := Layout_Spacing.Normal,
 	pane: Maybe(Pane) = nil,
+	sidebar: Maybe(Sidebar) = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (l: Page_Layout) {
@@ -587,64 +668,95 @@ page_layout_open :: proc(
 	l.pad = layout_spacing(padding, l.vw)
 	l.row = layout_spacing(row_gap, l.vw)
 	l.column = layout_spacing(column_gap, l.vw)
-	l.container = min(max(l.width - 2 * l.pad, 0), container_cap(container_width))
 	p, has := pane.?
 	l.pane, l.has_pane = p, has && !p.hidden
+	l.sides[.Pane] = {.Pane, p.position, p.preset, p.custom, p.min_width, p.resizable, p.width, p.divider, p.label}
+	b, has_b := sidebar.?
+	l.sidebar, l.has_sidebar = b, has_b && !b.hidden
+	l.sides[.Sidebar] = {.Sidebar, b.position, b.preset, b.custom, b.min_width, b.resizable, b.width, b.divider, b.label}
+	l.fullscreen = l.has_sidebar && l.narrow && b.variant == .Fullscreen
+	l.room_x, l.room = l.pad, max(l.width - 2 * l.pad, 0)
+	if l.fullscreen {
+		l.sidebar_w = l.vw
+	} else if l.has_sidebar {
+		l.sidebar_w = side_width(&l, .Sidebar)
+		take := l.sidebar_w + side_gutter(&l, .Sidebar)
+		l.room = max(l.room - take, 0)
+		if b.position == .Start {
+			l.room_x += take
+		}
+	}
+	l.container = min(l.room, container_cap(container_width))
 	l.content_w = l.container
 	if l.has_pane {
 		l.pane_w = l.container
 		if !l.narrow {
-			l.pane_w = pane_width(&l)
-			l.content_w = max(l.container - l.pane_w - pane_gutter(&l), 1)
+			l.pane_w = side_width(&l, .Pane)
+			l.content_w = max(l.container - l.pane_w - side_gutter(&l, .Pane), 1)
 		}
 	}
 	return
 }
 
-// pane_gutter is the space between pane and content at regular widths:
-// column_gap, or a visible divider centred in twice it.
+// side_gutter is the space between a side and the content or container
+// beside it: column_gap, or a visible divider centred in twice it.
 @(private)
-pane_gutter :: proc(l: ^Page_Layout) -> f32 {
-	d := pane_divider(l)
+side_gutter :: proc(l: ^Page_Layout, s: Side) -> f32 {
+	d := side_divider(l, s)
 	if d == .None {
 		return l.column
 	}
-	return 2 * l.column + (d == .Filled ? tok.BASE_SIZE_8 : tok.BORDER_WIDTH_THIN)
+	return 2 * l.column + divider_thickness(d)
 }
 
-// pane_divider is the pane's divider at the current width: a resizable
-// pane always draws a line at regular widths (PageLayout.tsx:687-746).
+// side_divider is a side's vertical divider: a resizable side always
+// draws a line, the pane only at regular widths, where it has one
+// (PageLayout.tsx:244,687-746); a fullscreen sidebar draws none
+// (PageLayout.module.css:853-861).
 @(private)
-pane_divider :: proc(l: ^Page_Layout) -> Pane_Divider {
-	if l.pane.resizable && !l.narrow {
+side_divider :: proc(l: ^Page_Layout, s: Side) -> Pane_Divider {
+	r := l.sides[s]
+	switch {
+	case s == .Sidebar && l.fullscreen:
+		return .None
+	case r.resizable && (s == .Sidebar || !l.narrow):
 		return .Line
 	}
-	return l.pane.divider
+	return r.divider
 }
 
-// pane_width is the pane's regular width: a resizable pane's current
-// width clamped to its bounds, else its preset.
+// side_width is a side's width beside the content: a resizable side's
+// current width clamped to its bounds, else its preset.
 @(private)
-pane_width :: proc(l: ^Page_Layout) -> f32 {
-	if !l.pane.resizable {
-		return pane_preset_width(l.pane, l.vw)
+side_width :: proc(l: ^Page_Layout, s: Side) -> f32 {
+	r := l.sides[s]
+	if !r.resizable {
+		return pane_preset_width(r, l.vw)
 	}
-	lo, hi := pane_bounds(l.pane, l.vw)
-	return clamp(pane_current(l)^, lo, hi)
+	lo, hi := pane_bounds(r, l.vw)
+	return clamp(side_current(l, s)^, lo, hi)
 }
 
-// pane_current is where the pane's width is kept: the caller's, else the
+// side_current is where a side's width is kept: the caller's, else the
 // layout's own state; it starts at the default.
 @(private)
-pane_current :: proc(l: ^Page_Layout) -> ^f32 {
-	w := l.pane.width
+side_current :: proc(l: ^Page_Layout, s: Side) -> ^f32 {
+	r := l.sides[s]
+	w := r.width
 	if w == nil {
-		w = &ui.widget_data(l.gtx, ui.id_mix(l.id, 0x9a7e), Pane_Drag).width
+		w = &ui.widget_data(l.gtx, side_id(l, s, 0x7e), Pane_Drag).width
 	}
 	if w^ <= 0 {
-		w^ = pane_default(l.pane)
+		w^ = pane_default(r)
 	}
 	return w
+}
+
+// side_id is an id for a side's state (0x7e) or handle (0x7f), the pane's
+// at the ids it always had.
+@(private)
+side_id :: proc(l: ^Page_Layout, s: Side, what: u64) -> ops.Area_Id {
+	return ui.id_mix(l.id, 0x9a00 + 0x100 * u64(s) + what)
 }
 
 // page_layout_region_open starts region r, which the caller lays out up
@@ -663,7 +775,7 @@ page_layout_region_open :: proc(
 	gtx := l.gtx
 	l.open = r
 	l.options[r] = {padding, divider, width}
-	l.regions[r].shown = !hidden && (r != .Pane || l.has_pane)
+	l.regions[r].shown = !hidden && (r != .Pane || l.has_pane) && (r != .Sidebar || l.has_sidebar)
 	w := l.container
 	pad := layout_spacing(padding, l.vw)
 	switch r {
@@ -672,6 +784,8 @@ page_layout_region_open :: proc(
 	case .Pane:
 		w = l.pane_w
 		pad = layout_spacing(l.pane.padding, l.vw)
+	case .Sidebar:
+		w = l.sidebar_w
 	case .Header, .Footer:
 	}
 	l.rec = ui.record_open(gtx, {min = {w, 0}, max = {w, ui.INF}}, u64(ui.id_mix(l.id, u64(r) + 1)), loc)
@@ -727,21 +841,23 @@ paint_divider :: proc(gtx: ^ui.Ctx, d: Pane_Divider, r: ops.Rect, vertical: bool
 	}
 }
 
-// Placed_Pane is where the pane, its divider and handle go in the root.
+// Placed_Pane is where a side, its divider and handle go in the root.
 @(private)
 Placed_Pane :: struct {
 	at:       ops.Point,
 	h:        f32, // shown height: capped at the window when sticky
 	divider:  ops.Rect,
-	room:     f32, // how far a sticky pane may move down its row
+	room:     f32, // how far a sticky side may move down its row
+	sticky:   bool,
+	top:      f32, // how far below the scroll box's top a sticky side pins
 }
 
 // page_layout_close places every region, paints the dividers, runs the
-// drag handle and closes the layout. It returns true on the frame the
-// pane's width settles.
+// drag handles and closes the layout. It returns true on the frame the
+// pane's or sidebar's width settles.
 page_layout_close :: proc(l: ^Page_Layout) -> bool {
 	gtx := l.gtx
-	x0 := l.pad + max(l.width - 2 * l.pad - l.container, 0) / 2
+	x0 := l.room_x + max(l.room - l.container, 0) / 2
 	y := l.pad
 	header_at, footer_at, content_at: ops.Point
 	header_div, footer_div: ops.Rect
@@ -775,6 +891,11 @@ page_layout_close :: proc(l: ^Page_Layout) -> bool {
 		footer_at = {x0, y}
 		y += l.regions[.Footer].size.y
 	}
+	side: Placed_Pane
+	side_shown := l.has_sidebar && region_shown(l, .Sidebar)
+	if side_shown && !l.fullscreen {
+		y = l.pad + place_sidebar(l, y - l.pad, &side)
+	}
 	y += l.pad
 
 	root := ui.sized_open(gtx, {min = {l.width, y}, max = {l.width, y}}, u64(l.id), l.loc)
@@ -789,13 +910,64 @@ page_layout_close :: proc(l: ^Page_Layout) -> bool {
 		place_at(gtx, l.regions[.Content].macro, content_at)
 	}
 	if pane_shown {
-		place_pane(l, pane)
+		place_side(l, .Pane, pane)
 	}
 	if region_shown(l, .Footer) {
 		paint_divider(gtx, l.options[.Footer].divider, footer_div, false)
 		place_at(gtx, l.regions[.Footer].macro, footer_at)
 	}
+	switch {
+	case side_shown && l.fullscreen:
+		place_fullscreen(l)
+	case side_shown:
+		place_side(l, .Sidebar, side)
+	}
 	return l.settled
+}
+
+// place_sidebar sets an inline sidebar at the start or end of the root's
+// row, beside the container's column stack_h tall, and returns the row's
+// height. A sidebar runs the row's full height; a sticky one is exactly
+// the window's height, scrolling its overflow (PageLayout.module.css:
+// 753-802).
+@(private)
+place_sidebar :: proc(l: ^Page_Layout, stack_h: f32, pp: ^Placed_Pane) -> f32 {
+	row_h := max(stack_h, l.regions[.Sidebar].size.y)
+	pp.h = row_h
+	if l.sidebar.sticky && l.vh > 0 {
+		row_h = max(stack_h, l.vh)
+		pp.h = l.vh
+		pp.sticky = true
+		pp.room = row_h - l.vh
+	}
+	start := l.sidebar.position == .Start
+	x := start ? l.pad : l.width - l.pad - l.sidebar_w
+	pp.at = {x, l.pad}
+	t := divider_thickness(side_divider(l, .Sidebar))
+	dx := start ? x + l.sidebar_w + l.column : x - l.column - t
+	pp.divider = {dx, l.pad, t, pp.h}
+	return row_h
+}
+
+// place_fullscreen lays the sidebar over the whole window from its
+// top-left, on --bgColor-default above the rest of the page, taking the
+// window's presses and scrolling what overflows it
+// (PageLayout.module.css:804-823).
+@(private)
+place_fullscreen :: proc(l: ^Page_Layout) {
+	gtx := l.gtx
+	r := l.regions[.Sidebar]
+	size := ops.Size{l.vw, l.vh > 0 ? l.vh : r.size.y}
+	whole := ops.Rect{0, 0, size.x, size.y}
+	layer := ui.overlay_open(gtx, cs = ui.exact(size), root = true, cover = true)
+	defer ui.overlay_close(&layer)
+	ops.fill(gtx.scene, whole, color(.Bg_Color_Default))
+	ops.input_area(gtx.scene, side_id(l, .Sidebar, 0x7d), whole, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+	box := ui.sized_open(gtx, {min = size, max = size})
+	defer ui.close(&box)
+	sb := ui.scroll_box_open(gtx)
+	defer ui.close(&sb)
+	place_recording(gtx, r.macro, r.size, {})
 }
 
 // place_narrow stacks the pane above (start) or below (end) the content,
@@ -831,7 +1003,7 @@ place_narrow :: proc(l: ^Page_Layout, x0, y, content_h, pane_h: f32, pane_shown:
 place_regular :: proc(l: ^Page_Layout, x0, y, content_h, pane_h: f32, pane_shown: bool, content_at: ^ops.Point, pane: ^Placed_Pane) -> f32 {
 	cx := x0
 	if pane_shown && l.pane.position == .Start {
-		cx = x0 + l.pane_w + pane_gutter(l)
+		cx = x0 + l.pane_w + side_gutter(l, .Pane)
 	}
 	inner := l.regions[.Content].size.x
 	content_at^ = {cx + max(l.content_w - inner, 0) / 2, y}
@@ -845,41 +1017,42 @@ place_regular :: proc(l: ^Page_Layout, x0, y, content_h, pane_h: f32, pane_shown
 	row_h := max(content_h, shown_h)
 	px := l.pane.position == .Start ? x0 : x0 + l.container - l.pane_w
 	pane.at = {px, y}
-	d := pane_divider(l)
-	t := divider_thickness(d)
+	t := divider_thickness(side_divider(l, .Pane))
 	dx := l.pane.position == .Start ? px + l.pane_w + l.column : px - l.column - t
 	wrapper_h := l.pane.sticky ? shown_h : row_h
 	pane.divider = {dx, y, t, wrapper_h}
 	pane.h = shown_h
 	if l.pane.sticky {
+		pane.sticky = true
+		pane.top = l.pane.offset_header
 		pane.room = row_h - shown_h
 	}
 	return row_h
 }
 
-// place_pane draws the pane, scrolling its overflow, with its divider and
-// drag handle, pinned when sticky.
+// place_side draws a pane or inline sidebar, scrolling its overflow, with
+// its divider and drag handle, pinned when sticky. The pane's divider and
+// handle run across it below 768px, the sidebar's always down its side.
 @(private)
-place_pane :: proc(l: ^Page_Layout, pp: Placed_Pane) {
+place_side :: proc(l: ^Page_Layout, s: Side, pp: Placed_Pane) {
 	gtx := l.gtx
-	sticky := l.pane.sticky && !l.narrow
 	pp := pp
-	if sticky {
-		// Pinning measures the origin, so the run starts at the pane's top.
+	if pp.sticky {
+		// Pinning measures the origin, so the run starts at the side's top.
 		ops.transform_push(gtx.scene, ops.translate(0, pp.at.y))
-		ops.sticky_push(gtx.scene, l.pane.offset_header, pp.room)
+		ops.sticky_push(gtx.scene, pp.top, pp.room)
 		pp.divider.y -= pp.at.y
 		pp.at.y = 0
 	}
-	defer if sticky {
+	defer if pp.sticky {
 		ops.transform_pop(gtx.scene)
 		ops.transform_pop(gtx.scene)
 	}
-	r := l.regions[.Pane]
+	r := l.regions[s == .Pane ? Page_Region.Pane : .Sidebar]
 	if pp.h < r.size.y {
 		at := ui.inset_open(gtx, {pp.at.x, pp.at.y, 0, 0})
 		box := ui.sized_open(gtx, {min = {r.size.x, pp.h}, max = {r.size.x, pp.h}})
-		sb := ui.scroll_box_open(gtx)
+		sb := ui.scroll_box_open(gtx, key = u64(side_id(l, s, 0x7c)))
 		place_recording(gtx, r.macro, r.size, {})
 		ui.close(&sb)
 		ui.close(&box)
@@ -887,33 +1060,34 @@ place_pane :: proc(l: ^Page_Layout, pp: Placed_Pane) {
 	} else {
 		place_at(gtx, r.macro, pp.at)
 	}
-	d := l.narrow ? l.pane.divider : pane_divider(l)
-	paint_divider(gtx, d, pp.divider, !l.narrow)
-	if l.pane.resizable && !l.narrow {
-		pane_handle(l, pp.divider)
+	vertical := s == .Sidebar || !l.narrow
+	paint_divider(gtx, side_divider(l, s), pp.divider, vertical)
+	if l.sides[s].resizable && vertical {
+		side_handle(l, s, pp.divider)
 	}
 }
 
-// pane_handle is the drag handle over the vertical divider: 2px past it
+// side_handle is the drag handle over the vertical divider: 2px past it
 // each side, a --bgColor-neutral-muted fill fading in on hover, a
 // --bgColor-accent-emphasis fill while dragged. It reads the drag, arrow
-// keys and a double-click, and moves the pane's width.
+// keys and a double-click, and moves side s's width.
 @(private)
-pane_handle :: proc(l: ^Page_Layout, div: ops.Rect) {
+side_handle :: proc(l: ^Page_Layout, s: Side, div: ops.Rect) {
 	gtx := l.gtx
-	id := ui.id_mix(l.id, 0x9a7f)
+	rules := l.sides[s]
+	id := side_id(l, s, 0x7f)
 	area := ops.Rect{div.x - PANE_HANDLE_OUTSET, div.y, div.w + 2 * PANE_HANDLE_OUTSET, div.h}
 	c := design.control(gtx, id, area, .Live)
 	drag := ui.widget_data(gtx, id, Pane_Drag)
-	w := pane_current(l)
-	lo, hi := pane_bounds(l.pane, l.vw)
-	sign: f32 = l.pane.position == .Start ? 1 : -1
+	w := side_current(l, s)
+	lo, hi := pane_bounds(rules, l.vw)
+	sign: f32 = rules.position == .Start ? 1 : -1
 	before := w^
 	for e in ui.events(gtx, id) {
 		#partial switch e.kind {
 		case .Press:
 			if e.clicks >= 2 {
-				w^ = pane_default(l.pane)
+				w^ = pane_default(rules)
 				l.settled = true
 			}
 			drag.dragging = true
@@ -935,7 +1109,7 @@ pane_handle :: proc(l: ^Page_Layout, div: ops.Rect) {
 			case .Right, .Up:
 				step = PANE_KEY_STEP
 			}
-			if l.pane.position == .End && (e.key == .Left || e.key == .Right) {
+			if rules.position == .End && (e.key == .Left || e.key == .Right) {
 				step = -step
 			}
 			if step != 0 {
@@ -962,7 +1136,7 @@ pane_handle :: proc(l: ^Page_Layout, div: ops.Rect) {
 	b.focused = c.focus_visible
 	design.paint_focus_ring(gtx, b, {area, 0}, focus_outline(0))
 	design.listen(gtx, c.st, id, area, design.CLICK_KINDS, .Resize_EW)
-	name := l.pane.label != "" ? l.pane.label : "Draggable pane splitter"
+	name := rules.label != "" ? rules.label : "Draggable pane splitter"
 	said := ui.frame_string(gtx, name)
 	ops.tag(gtx.scene, id, said)
 	ui.child_semantics(gtx, 0, id, area, {role = .Slider, label = said, value = pane_value_text(gtx, w^)})
@@ -980,7 +1154,7 @@ pane_value_text :: proc(gtx: ^ui.Ctx, w: f32) -> string {
 // a line divider unless pane says otherwise. Fill it as a page layout;
 // split_page_layout_region_open gives each region the split defaults.
 split_page_layout_open :: proc(gtx: ^ui.Ctx, pane: Maybe(Pane) = SPLIT_PANE, key: u64 = 0, loc := #caller_location) -> Page_Layout {
-	return page_layout_open(gtx, .Full, .None, .None, .None, pane, key, loc)
+	return page_layout_open(gtx, .Full, .None, .None, .None, pane, key = key, loc = loc)
 }
 
 // SPLIT_PANE is a split page layout's pane: start, sticky, padding
@@ -1002,7 +1176,7 @@ split_page_layout_region_open :: proc(l: ^Page_Layout, r: Page_Region, hidden :=
 		page_layout_region_open(l, r, .Normal, .Line, hidden = hidden, loc = loc)
 	case .Content:
 		page_layout_region_open(l, r, .Normal, width = .Large, hidden = hidden, loc = loc)
-	case .Pane:
+	case .Pane, .Sidebar:
 		page_layout_region_open(l, r, hidden = hidden, loc = loc)
 	}
 }

@@ -245,3 +245,229 @@ test_a_sticky_pane_stays_in_view_while_the_page_scrolls :: proc(t: ^testing.T) {
 	testing.expect_value(t, ui.probe_bounds(&p, "pane").y, 10)
 	testing.expect_value(t, ui.probe_bounds(&p, "content").y, start - 800)
 }
+
+@(private = "file")
+Sidebar_Model :: struct {
+	sidebar: Sidebar,
+	width:   f32,
+	settled: int,
+	scroll:  ui.Scroll_Offset,
+	tall:    f32, // the sidebar's content height; 0 means 100
+	content: f32, // the content's height; 0 means 400
+}
+
+@(private = "file")
+sidebar_layout_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Sidebar_Model)(user)
+	sb := ui.scroll_box_open(gtx, offset = &m.scroll)
+	defer ui.close(&sb)
+	side := m.sidebar
+	side.width = &m.width
+	l := page_layout_open(gtx, sidebar = side)
+	page_layout_region_open(&l, .Sidebar) // first: placement is the layout's
+	tagged_box(gtx, "sidebar", {50, m.tall > 0 ? m.tall : 100})
+	page_layout_region_close(&l)
+	page_layout_region_open(&l, .Header, divider = .Line)
+	tagged_box(gtx, "header", {100, 30})
+	page_layout_region_close(&l)
+	page_layout_region_open(&l, .Content)
+	tagged_box(gtx, "content", {100, m.content > 0 ? m.content : 400})
+	page_layout_region_close(&l)
+	page_layout_region_open(&l, .Footer)
+	tagged_box(gtx, "footer", {100, 20})
+	page_layout_region_close(&l)
+	if page_layout_close(&l) {
+		m.settled += 1
+	}
+}
+
+// filled reports whether the scene fills exactly r.
+@(private = "file")
+filled :: proc(p: ^ui.Probe, r: ops.Rect) -> bool {
+	for op in p.scene.ops {
+		if f, ok := op.(ops.Fill); ok {
+			if got, is_rect := f.shape.(ops.Rect); is_rect && got == r {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// SIDEBAR_STACK is the container's column at 1100px: the header, rowGap,
+// its line, rowGap, the 400px content, rowGap, the footer.
+@(private = "file")
+SIDEBAR_STACK :: f32(30 + 24 + 1 + 24 + 400 + 24 + 20)
+
+@(test)
+test_a_sidebar_sits_at_the_start_beside_header_content_and_footer :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {position = .Start}}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	// Medium is 296px from 1012px; no divider leaves columnGap after it.
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar"), ops.Rect{24, 24, 296, 100})
+	x := f32(24 + 296 + 24)
+	w := f32(1100 - 24) - x
+	testing.expect_value(t, ui.probe_bounds(&p, "header"), ops.Rect{x, 24, w, 30})
+	footer := ui.probe_bounds(&p, "footer")
+	testing.expect_value(t, footer.x, x)
+	testing.expect_value(t, footer.y, 24 + SIDEBAR_STACK - 20)
+	testing.expect_value(t, ui.probe_bounds(&p, "content").w, w)
+}
+
+@(test)
+test_a_sidebar_at_the_end_runs_its_divider_the_full_height :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {position = .End, divider = .Line}}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	side := ui.probe_bounds(&p, "sidebar")
+	testing.expect_value(t, side, ops.Rect{1100 - 24 - 296, 24, 296, 100})
+	// The line sits columnGap before the sidebar and columnGap after the
+	// container, down the whole row though the sidebar is shorter.
+	testing.expect(t, filled(&p, {side.x - 24 - 1, 24, 1, SIDEBAR_STACK}))
+	testing.expect_value(t, ui.probe_bounds(&p, "header"), ops.Rect{24, 24, side.x - 24 - 1 - 24 - 24, 30})
+}
+
+@(test)
+test_a_taller_sidebar_sets_the_rows_height :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {divider = .Line}, tall = 1000}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, filled(&p, {24 + 296 + 24, 24, 1, 1000}))
+	testing.expect_value(t, ui.probe_bounds(&p, "footer").y, 24 + SIDEBAR_STACK - 20) // the column keeps its top
+}
+
+@(test)
+test_sidebar_width_presets_follow_the_panes :: proc(t: ^testing.T) {
+	Case :: struct {
+		vw:     f32,
+		preset: Pane_Width,
+		want:   f32,
+	}
+	cases := [?]Case {
+		{1100, .Small, 256},
+		{1100, .Medium, 296},
+		{1100, .Large, 320},
+		{900, .Small, 240},
+		{900, .Medium, 256},
+		{900, .Large, 256},
+		{600, .Medium, 256}, // below 768px an inline sidebar keeps its 768px width
+	}
+	for c in cases {
+		m := Sidebar_Model{sidebar = {preset = c.preset}}
+		p: ui.Probe
+		ui.probe_init(&p, sidebar_layout_view, &m, {c.vw, 900}, allocator = context.temp_allocator)
+		got := ui.probe_bounds(&p, "sidebar").w
+		testing.expectf(t, got == c.want, "%v at %v: %v, want %v", c.preset, c.vw, got, c.want)
+		ui.probe_destroy(&p)
+	}
+	free_all(context.temp_allocator)
+}
+
+@(test)
+test_a_hidden_sidebar_takes_no_room :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {hidden = true}}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar"), ops.Rect{})
+	testing.expect_value(t, ui.probe_bounds(&p, "header"), ops.Rect{24, 24, 1052, 30})
+}
+
+@(test)
+test_a_resizable_sidebar_clamps_to_the_window_less_256 :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {resizable = true, label = "Sidebar splitter"}}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	handle :: "Sidebar splitter"
+	testing.expect_value(t, m.width, 296)
+	// Resizable draws a line; the handle reaches 2px past it, full height.
+	testing.expect_value(t, ui.probe_bounds(&p, handle), ops.Rect{24 + 296 + 24 - 2, 24, 5, SIDEBAR_STACK})
+	testing.expect(t, ui.probe_drag(&p, handle, 40, 0))
+	testing.expect_value(t, m.width, 336)
+	testing.expect_value(t, m.settled, 1)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar").w, 336)
+	ui.probe_drag(&p, handle, 1000, 0)
+	testing.expect_value(t, m.width, 1100 - 256) // not the pane's 511
+	ui.probe_drag(&p, handle, -1000, 0)
+	testing.expect_value(t, m.width, 256)
+	ui.probe_click(&p, handle)
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, m.width, 259)
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, m.width, 256)
+}
+
+// At the end, Left grows the sidebar and a drag left widens it; a custom
+// max is capped to the window less 256px.
+@(test)
+test_an_end_sidebar_mirrors_its_keys_and_caps_a_custom_max :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {position = .End, resizable = true, preset = .Custom, custom = {200, 300, 2000}, label = "Sidebar splitter"}}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	handle :: "Sidebar splitter"
+	testing.expect_value(t, m.width, 300)
+	ui.probe_click(&p, handle)
+	ui.probe_key(&p, .Left)
+	testing.expect_value(t, m.width, 303)
+	ui.probe_drag(&p, handle, -10, 0)
+	testing.expect_value(t, m.width, 313)
+	ui.probe_drag(&p, handle, -2000, 0)
+	testing.expect_value(t, m.width, 1100 - 256)
+	ui.probe_drag(&p, handle, 2000, 0)
+	testing.expect_value(t, m.width, 200)
+}
+
+// A sticky sidebar is the window's height, pinned at the top of the
+// page's scroll box while the page scrolls; its overflow scrolls inside.
+@(test)
+test_a_sticky_sidebar_pins_at_the_top_at_the_windows_height :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {sticky = true, divider = .Line}, tall = 1000, content = 2000}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {1100, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar").y, 24)
+	testing.expect(t, filled(&p, {24 + 296 + 24, 0, 1, 600})) // its divider is as tall, and moves with it
+	m.scroll.y = 800
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar").y, 0)
+	testing.expect_value(t, ui.probe_bounds(&p, "header").y, 24 - 800)
+}
+
+// Below 768px a fullscreen sidebar covers the window and leaves the
+// container the whole row; the default variant stays inline, as the
+// fullscreen one does from 768px.
+@(test)
+test_a_fullscreen_sidebar_covers_the_window_below_768 :: proc(t: ^testing.T) {
+	m := Sidebar_Model{sidebar = {variant = .Fullscreen, divider = .Line}}
+	p: ui.Probe
+	ui.probe_init(&p, sidebar_layout_view, &m, {600, 900}, allocator = context.temp_allocator)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar"), ops.Rect{0, 0, 600, 100})
+	testing.expect(t, filled(&p, {0, 0, 600, 900}))
+	testing.expect_value(t, ui.probe_bounds(&p, "header"), ops.Rect{16, 16, 600 - 32, 30})
+
+	m.sidebar.variant = .Default
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar"), ops.Rect{16, 16, 256, 100})
+	testing.expect_value(t, ui.probe_bounds(&p, "header").x, 16 + 256 + 16 + 1 + 16) // its line stays
+	ui.probe_destroy(&p)
+
+	m.sidebar.variant = .Fullscreen
+	ui.probe_init(&p, sidebar_layout_view, &m, {800, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "sidebar"), ops.Rect{16, 16, 256, 100})
+}
