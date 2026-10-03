@@ -192,8 +192,9 @@ is_group_role :: proc(role: ops.Role) -> bool {
 // one of the stops Tab visits as r routes it: a group being its items'
 // nearest ancestor of a group role (is_group_role) in f's semantics. A
 // kit's group widget that forgets its roving focus scope shows up here;
-// it is what the kitchens' tests assert is empty.
-group_stop_report :: proc(f: ^Frame, r: ^Router, allocator := context.allocator) -> []string {
+// it is what the kitchens' tests assert is empty. groups is how many
+// groups held a stop at all: what was checked.
+group_stop_report :: proc(f: ^Frame, r: ^Router, allocator := context.allocator) -> (lines: []string, groups_seen: int) {
 	n := router_tab_stops(r, f)
 	groups := make([dynamic]ops.Area_Id, context.temp_allocator)
 	names := make([dynamic][dynamic]string, context.temp_allocator)
@@ -223,7 +224,7 @@ group_stop_report :: proc(f: ^Frame, r: ^Router, allocator := context.allocator)
 		node := node_of(f, g)
 		append(&out, fmt.aprintf("%v %q: %d stops %v", node.semantics.role, node.semantics.label, len(names[k]), names[k][:], allocator = allocator))
 	}
-	return out[:]
+	return out[:], len(groups)
 }
 
 // node_of is f's semantic node with id, zero when it has none.

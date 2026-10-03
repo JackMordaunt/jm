@@ -12,6 +12,7 @@ test_every_group_on_every_page_is_one_tab_stop :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	defer free_all(context.temp_allocator)
 	m: Model
-	got := kitchen.group_stop_violations(kitchen_app(&m))
+	got, groups := kitchen.group_stop_violations(kitchen_app(&m))
+	testing.expect(t, groups > 0, "no group on any page held a Tab stop: the check did not run")
 	testing.expectf(t, len(got) == 0, "groups with more than one Tab stop:\n%s", strings.join(got, "\n"))
 }

@@ -109,12 +109,15 @@ test_the_group_stop_report_names_a_group_with_several_stops :: proc(t: ^testing.
 	probe_init(&p, view, &m, {200, 100}, allocator = context.temp_allocator)
 	defer probe_destroy(&p)
 	defer free_all(context.temp_allocator)
-	got := group_stop_report(probe_current(&p), &p.router, context.temp_allocator)
+	got, seen := group_stop_report(probe_current(&p), &p.router, context.temp_allocator)
+	testing.expect_value(t, seen, 1)
 	testing.expect_value(t, len(got), 1)
 	if len(got) == 1 {
 		testing.expect_value(t, got[0], `Tab_List "Views": 2 stops ["Grid", "List"]`)
 	}
 	m.rove = true
 	probe_frame(&p)
-	testing.expect_value(t, len(group_stop_report(probe_current(&p), &p.router, context.temp_allocator)), 0)
+	got, seen = group_stop_report(probe_current(&p), &p.router, context.temp_allocator)
+	testing.expect_value(t, len(got), 0)
+	testing.expect_value(t, seen, 1) // still checked, now one stop
 }
