@@ -1499,18 +1499,17 @@ swatch_metrics :: proc(size: Swatch_Size) -> Swatch_Metrics {
 }
 
 // swatch_picker is a row, or a grid of columns per row, of swatches of
-// which selected^ is chosen (swatch-picker.json). A click selects and
-// returns true; arrow keys on a focused swatch move the selection. Each
+// which selected^ is chosen (swatch-picker.json). A click, or Enter or
+// Space on the focused swatch, selects and returns true. The picker is
+// focusMode arrow: one roving focus scope, so one tab stop, entered at
+// the selected swatch, Left and Right moving focus through the swatches,
+// wrapping, Up and Down by a row in a grid. Each
 // swatch is a square clipped to the shape, its own border replaced by
 // two inset rings when hovered, pressed, focused or selected; a
 // disabled swatch keeps its colour and takes nothing. An empty swatch
 // draws a dashed Neutral_Foreground4 border, as short dashes on its
 // straight edges, or a solid ring when circular (ops strokes no
 // dashes).
-//
-// Departure: focusMode arrow, one tab stop with arrows moving focus,
-// has no jm:ui equivalent; every swatch is a tab stop and arrows move
-// the selection instead.
 swatch_picker :: proc(
 	gtx: ^ui.Ctx,
 	swatches: []Swatch,
@@ -1532,6 +1531,7 @@ swatch_picker :: proc(
 	sz := ui.constrain(gtx.constraints, {f32(cols) * m.side + f32(max(cols - 1, 0)) * gap, f32(rows) * m.side + f32(max(rows - 1, 0)) * gap})
 	old := selected^
 	ui.semantics(gtx, &p, {role = .Radio_Group, states = design.state_if(state == .Disabled, {.Disabled})})
+	ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
 	rad: f32
 	switch shape {
 	case .Square:
@@ -1548,24 +1548,11 @@ swatch_picker :: proc(
 		if c.clicked && !sw.disabled {
 			selected^ = i
 		}
-		if c.st != nil && c.focused {
+		if c.st != nil && c.focused && columns > 0 {
+			// The scope walks the row; a grid's Up and Down step a row.
 			for e in ui.events(gtx, id) {
-				if e.kind != .Key {
-					continue
-				}
-				#partial switch e.key {
-				case .Right:
-					selected^ = (i + 1) %% n
-				case .Left:
-					selected^ = (i - 1 + n) %% n
-				case .Down:
-					if columns > 0 && i + cols < n {
-						selected^ = i + cols
-					}
-				case .Up:
-					if columns > 0 && i - cols >= 0 {
-						selected^ = i - cols
-					}
+				if e.kind == .Key && e.mods == {} && (e.key == .Down && i + cols < n || e.key == .Up && i - cols >= 0) {
+					ui.focus_request(gtx, ui.id_mix(p.id, u64(e.key == .Down ? i + cols : i - cols)))
 				}
 			}
 		}
@@ -1611,6 +1598,7 @@ swatch_picker :: proc(
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, sw.name))
 		ui.part_semantics(gtx, &p, id, r, {role = .Radio, label = sw.name, states = design.state_if(is_sel, {.Checked}) + design.state_if(c.disabled, {.Disabled})})
 	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(max(selected^, 0))))
 	ui.widget_close(gtx, &p, {size = sz})
 	return selected^ != old
 }

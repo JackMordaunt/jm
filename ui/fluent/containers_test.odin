@@ -69,7 +69,7 @@ click_at :: proc(p: ^ui.Probe, pos: ops.Point) {
 }
 
 // focused_tag is the tag of the area holding keyboard focus.
-@(private = "file")
+@(private)
 focused_tag :: proc(p: ^ui.Probe) -> string {
 	for tg in ui.probe_current(p).tags {
 		if tg.id == p.router.focus {

@@ -159,16 +159,15 @@ RADIO_DOT :: f32(10)
 // radio_group is a Fluent RadioGroup (radio-group.json): one radio per
 // label, stacked as touching 32px rows, or abutting in a row with
 // horizontal. selected^ is the index of the chosen one, -1 for none. A
-// click on a radio's row selects it; while one has keyboard focus the
-// arrow keys move the selection to the next or previous radio, wrapping,
-// and Space selects the focused one when none is. Each radio is its own
-// input area tagged with its label. Returns true on the frame selected^
-// changed.
+// click on a radio's row selects it. The group is one roving focus
+// scope, so one tab stop, entered at the selected radio (the first, with
+// none); the arrow keys move focus and the selection to the next or
+// previous radio, wrapping, and Space selects the focused one when none
+// is (radio-group.json accessibility). Each radio is its own input area
+// tagged with its label. Returns true on the frame selected^ changed.
 //
 // A forced state paints the selected radio (the first, with none) in
-// that state and the rest enabled. jm:ui moves focus by pointer and
-// Tab, not between siblings, so an arrow key moves the selection and
-// the focus outline but the focused area stays where it was.
+// that state and the rest enabled.
 radio_group :: proc(
 	gtx: ^ui.Ctx,
 	labels: []string,
@@ -205,6 +204,7 @@ radio_group :: proc(
 		}
 	}
 	ui.semantics(gtx, &p, {role = .Radio_Group, states = design.state_if(state == .Disabled, {.Disabled})})
+	ui.focus_scope_open(gtx, p.id, rove = .Both, wrap = true)
 	for i in 0 ..< n {
 		id := ui.id_mix(p.id, u64(i))
 		st := state
@@ -215,17 +215,10 @@ radio_group :: proc(
 		if c.clicked {
 			selected^ = i
 		}
-		if c.st != nil {
-			for e in ui.events(gtx, id) {
-				if e.kind != .Key {
-					continue
-				}
-				#partial switch e.key {
-				case .Down, .Right:
-					selected^ = (max(selected^, -1) + 1) % n
-				case .Up, .Left:
-					selected^ = selected^ <= 0 ? n - 1 : selected^ - 1
-				}
+		// The scope moved focus here by an arrow: the selection follows.
+		for e in ui.events(gtx, id) {
+			if c.st != nil && e.kind == .Focus && e.key != .None && e.key != .Tab {
+				selected^ = i
 			}
 		}
 		paint_radio(gtx, c, rows[i], texts[i], i == selected^)
@@ -233,6 +226,7 @@ radio_group :: proc(
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
 		ui.part_semantics(gtx, &p, id, rows[i], {role = .Radio, label = labels[i], states = design.state_if(i == selected^, {.Checked}) + design.state_if(c.disabled, {.Disabled})})
 	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(max(selected^, 0))))
 	ui.widget_close(gtx, &p, {size = sz})
 	return selected^ != old
 }

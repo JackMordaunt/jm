@@ -68,6 +68,13 @@ test_radio_group_selects_by_click_and_arrows :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.choice, 2)
 	ui.probe_key(&p, .Left)
 	testing.expect_value(t, m.choice, 1)
+	testing.expect_value(t, focused_tag(&p), "Second") // focus moves with the selection
+	// One Tab stop, entered at the selected radio, which Tab does not change.
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focused_tag(&p), "Dark") // out of the group to the switch
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focused_tag(&p), "Second")
+	testing.expect_value(t, m.choice, 1)
 	testing.expect(t, ui.probe_click(&p, "First"))
 	testing.expect_value(t, m.choice, 0)
 }
