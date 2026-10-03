@@ -147,6 +147,13 @@ test_toolbar_clicks_actions_fab_and_collapses :: proc(t: ^testing.T) {
 
 	testing.expect(t, ui.probe_click(&p, "Redo"))
 	testing.expect_value(t, m.picked, 1)
+	// Each toolbar is one tab stop whose arrows move between its actions.
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Undo") // wraps
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Format_Bold")
+	ui.probe_key(&p, .End)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Edit") // the paired FAB is the toolbar's too
 	testing.expect(t, ui.probe_click(&p, "Palette"))
 	testing.expect_value(t, m.picked, 2)
 	testing.expect(t, ui.probe_click(&p, "Edit"))

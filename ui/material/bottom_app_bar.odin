@@ -41,6 +41,9 @@ BOTTOM_BAR_FAB_PADDING :: [2]f32{12, 8}
 // the flexible one reads the top app bar's level 0 (bottom-app-bar.json
 // notes). A forced state applies to the first action. Returns the
 // clicked action's index, TOOLBAR_FAB for the FAB, or -1.
+//
+// The bar is a toolbar: one roving focus scope, so one tab stop, whose
+// Left and Right move between its actions and FAB, wrapping.
 bottom_app_bar :: proc(
 	gtx: ^ui.Ctx,
 	actions: []Icon,
@@ -56,6 +59,7 @@ bottom_app_bar :: proc(
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
 	ui.semantics(gtx, &p, {role = .Toolbar})
+	ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
 	h := tok.BOTTOM_APP_BAR_CONTAINER_HEIGHT
 	if flexible {
 		h = height > 0 ? height : tok.DOCKED_TOOLBAR_CONTAINER_HEIGHT
@@ -66,6 +70,7 @@ bottom_app_bar :: proc(
 	w = size.x
 	clicked := -1
 	if shown <= 0 {
+		ui.focus_scope_close(gtx)
 		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
@@ -107,6 +112,7 @@ bottom_app_bar :: proc(
 			}
 		}
 		ops.clip_pop(gtx.scene)
+		ui.focus_scope_close(gtx)
 		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
@@ -151,6 +157,7 @@ bottom_app_bar :: proc(
 		x += e + g
 	}
 	ops.clip_pop(gtx.scene)
+	ui.focus_scope_close(gtx)
 	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }

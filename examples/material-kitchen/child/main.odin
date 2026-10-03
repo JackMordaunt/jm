@@ -365,6 +365,12 @@ kitchen_fonts :: proc() -> []ops.Font_Ref {
 
 main :: proc() {
 	m: Model
+	kitchen.run(kitchen_app(&m))
+}
+
+// kitchen_app is the kitchen over m, as main runs it and the tests
+// render it.
+kitchen_app :: proc(m: ^Model) -> kitchen.App {
 	m.page = 1
 	m.volume, m.steps, m.range_lo, m.range_hi = 0.4, 30, 20, 70
 	m.date, m.time = TODAY, {9, 41}
@@ -372,7 +378,7 @@ main :: proc() {
 	for p, i in PAGES {
 		pages[i] = p.name
 	}
-	kitchen.run({ui = kitchen_ui, user = &m, fonts = kitchen_fonts(), size = {1400, 900}, pages = pages, themes = THEMES, page = &m.page, theme = &m.theme, flag = flag})
+	return {ui = kitchen_ui, user = m, fonts = kitchen_fonts(), size = {1400, 900}, pages = pages, themes = THEMES, page = &m.page, theme = &m.theme, flag = flag}
 }
 
 // flag is this kitchen's own flags: -dark for the dark scheme, and -open

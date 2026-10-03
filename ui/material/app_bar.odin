@@ -59,6 +59,10 @@ BAR_ICON_TARGET :: MIN_TOUCH
 // has no nested-scroll connection. Titles do not wrap (jm:ui text does
 // not), and the on-scroll elevation is tonal, not a shadow (app-bar.json
 // notes: AppBar.kt fills a plain rectangle).
+//
+// The bar is a toolbar: one roving focus scope, so one tab stop, whose
+// Left and Right move between its buttons, wrapping, as the toolbar
+// pattern has them.
 top_app_bar :: proc(
 	gtx: ^ui.Ctx,
 	title: string,
@@ -75,6 +79,7 @@ top_app_bar :: proc(
 ) -> App_Bar_Result {
 	p := ui.widget_open(gtx, key, loc)
 	ui.semantics(gtx, &p, {role = .Toolbar, label = title})
+	ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
 	res := App_Bar_Result {
 		action = -1,
 	}
@@ -186,6 +191,7 @@ top_app_bar :: proc(
 		}
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, title))
+	ui.focus_scope_close(gtx)
 	ui.widget_close(gtx, &p, {size = size})
 	return res
 }

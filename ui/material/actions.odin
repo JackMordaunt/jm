@@ -257,9 +257,6 @@ button_group :: proc(
 		ui.part_semantics(gtx, &p, id, r, said)
 		x += w + gap
 	}
-	if radios {
-		ui.focus_scope_close(gtx, entry)
-	}
 
 	if has_ind {
 		// The overflow indicator: a filled icon button with a "more" glyph
@@ -304,6 +301,11 @@ button_group :: proc(
 				}
 			}
 		}
+	}
+	// The overflow indicator is in the scope too: the arrows reach it, as
+	// a toolbar's More button, though reaching it selects nothing.
+	if radios {
+		ui.focus_scope_close(gtx, entry)
 	}
 
 	natural := ops.Size{max(x - gap, 0), H}
@@ -434,6 +436,10 @@ ACTION_SLOT :: MIN_TOUCH
 // what sets it apart. A forced state applies to the selected action (the
 // first when none), as a pointer would. Returns the clicked action's
 // index, TOOLBAR_FAB for the FAB, or -1.
+//
+// The toolbar is one roving focus scope, so one tab stop, whose arrows
+// along it (Up and Down when vertical) move between its actions and
+// FAB, wrapping.
 toolbar :: proc(
 	gtx: ^ui.Ctx,
 	actions: []Icon,
@@ -452,6 +458,7 @@ toolbar :: proc(
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
 	ui.semantics(gtx, &p, {role = .Toolbar})
+	ui.focus_scope_open(gtx, p.id, rove = vertical ? .Vertical : .Horizontal, wrap = true)
 	n := len(actions)
 	docked := kind == .Docked || kind == .Docked_Vibrant
 	vibrant := kind == .Floating_Vibrant || kind == .Docked_Vibrant
@@ -487,6 +494,7 @@ toolbar :: proc(
 			}
 			x += ACTION_SLOT + g
 		}
+		ui.focus_scope_close(gtx)
 		ui.widget_close(gtx, &p, {size = size})
 		return clicked
 	}
@@ -571,6 +579,7 @@ toolbar :: proc(
 			clicked = TOOLBAR_FAB
 		}
 	}
+	ui.focus_scope_close(gtx)
 	ui.widget_close(gtx, &p, {size = size})
 	return clicked
 }
