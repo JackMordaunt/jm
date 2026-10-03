@@ -67,7 +67,7 @@ it); `app` the host that wires them, a worker thread for the rules and a
 pool for the rest; `main` the window. A need for a filter subscribes a
 query the pipeline re-runs on every change batch while the need is live.
 Problems are never stored: a fold in the pipeline keeps the list and
-delivers it as a shape. `odin test examples/todo/app` runs the view in a
+delivers it as a shape. `just test examples/todo/app` runs the view in a
 probe against the real pipeline, threads and database, with no window.
 
 ```

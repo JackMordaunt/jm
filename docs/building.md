@@ -3,8 +3,8 @@
 Every task is a `just` recipe, grouped by the package it serves.
 
 ```
-general      check    3-target type-check of every package and program
-             test     every package's tests
+general      check    3-target type-check of every package and program, or of those named
+             test     every package's tests, or the named packages'; -flags go to odin test
              link     build every program into build/debug
              clean    drop build/ and every package's compiled C library
              readme   render the README and docs to build/readme and open them
@@ -62,6 +62,10 @@ ignored, a `package main` directory being a program and one with an
 `@(test)` proc a test package. `SKIP="pq tools/jm-fuzz"` leaves those
 directories and everything under them out, as on a machine without libpq.
 Packages run in parallel, except the `serial_tests` the justfile names.
+`just check ui/primer` and `just test ui/primer` take the same flags for
+one package, and `just test ui/primer -define:ODIN_TEST_NAMES=primer.<test>`
+runs one test; a run that matches no test fails, and each `ok` line counts
+the tests that ran.
 
 GitHub Actions runs `just check`, then `just link test` on Linux, macOS
 and Windows (`.github/workflows/test.yml`), building the vendored C libraries, libgit2

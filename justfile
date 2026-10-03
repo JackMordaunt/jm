@@ -38,15 +38,25 @@ skip := env("SKIP", "")
 # measure a split of work or its cost and fail under load.
 serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/sdl tar flow"
 
-# Packages run in parallel; a program keeps its entry point. A job's output is held until it ends, and
-# every failure prints before the recipe fails.
+# Packages run in parallel; a program keeps its entry point. A job's output
+# is held until it ends, and every failure prints before the recipe fails.
+# Name packages to check only those: `just check ui/primer examples/kitchen`.
 #
-# Type-check every package and program for linux, darwin and windows
+# Type-check packages and programs for linux, darwin and windows, or all
 [group('general')]
-check:
+[positional-arguments]
+check *pkgs:
     #!/usr/bin/env bash
     set -euo pipefail
-    { {{just}} _dirs package | sed 's/$/ -no-entry-point/'; {{just}} _dirs program | sed 's/$/ -entry-point/'; } \
+    if [ $# -eq 0 ]; then
+      { {{just}} _dirs package | sed 's/$/ -no-entry-point/'; {{just}} _dirs program | sed 's/$/ -entry-point/'; }
+    else
+      for d in "$@"; do
+        d=${d%/}
+        [ -d "$d" ] || { echo "check: no package at $d" >&2; exit 1; }
+        if grep -qs '^package main' "$d"/*.odin; then echo "$d -entry-point"; else echo "$d -no-entry-point"; fi
+      done
+    fi \
       | while read -r d entry; do for t in {{targets}}; do printf '%s %s %s\n' "$d" "$t" "$entry"; done; done \
       | xargs -P {{num_cpus()}} -n 3 sh -c '
       entry=$2
@@ -58,22 +68,38 @@ check:
 # Packages run in parallel, then serial_tests one at a time on one thread.
 # Every package links with cxx_link, a superset of what any one needs. A
 # job's output is held until it ends, and every failure prints before the
-# recipe fails.
+# recipe fails. Name packages to test only those; arguments starting with
+# a dash go to every odin test, so one test runs as
+# `just test ui/primer -define:ODIN_TEST_NAMES=primer.test_button_activates`.
 #
-# Run every package's tests
+# Run the named packages' tests, or every package's
 [group('general')]
-test: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-child
+[positional-arguments]
+test *args: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-child
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/test
     # vendor:sdl3 loads SDL3.dll at start-up on Windows, so ui/sdl's test
     # binary needs it beside it.
     if [ "{{os()}}" = windows ]; then cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/test/; cp ui/accesskit/lib/accesskit.dll build/test/ 2>/dev/null || true; fi
+    pkgs=() extra=()
+    for a in "$@"; do
+      case "$a" in
+        -*) extra+=("$a");;
+        *) a=${a%/}; [ -d "$a" ] || { echo "test: no package at $a" >&2; exit 1; }; pkgs+=("$a");;
+      esac
+    done
+    if [ ${#pkgs[@]} -eq 0 ]; then pkgs=($({{just}} _dirs test)); fi
+    export EXTRA="${extra[*]-}"
     run() {
       local p=$1 out
       shift
-      if out=$({{odin}} test "$p" {{flags}} {{cxx_link}} "$@" -out:build/test/$(echo "$p" | tr / -){{exe}} 2>&1); then
-        echo "ok   $p"
+      # EXTRA is split on purpose: it holds one or more odin flags.
+      # shellcheck disable=SC2086
+      # A name filter that matches nothing still exits 0, so it fails here.
+      if out=$({{odin}} test "$p" {{flags}} {{cxx_link}} "$@" $EXTRA -out:build/test/$(echo "$p" | tr / -){{exe}} 2>&1) \
+        && ! grep -q '^No tests to run' <<<"$out"; then
+        echo "ok   $p ($(grep -o 'Finished [0-9]* tests*' <<<"$out" | tail -1 | cut -d' ' -f2) tests)"
         return 0
       fi
       printf 'FAIL %s\n%s\n' "$p" "$out" >&2
@@ -81,12 +107,14 @@ test: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-child
     }
     export -f run
     parallel=() serial=()
-    for d in $({{just}} _dirs test); do
+    for d in "${pkgs[@]}"; do
       case " {{serial_tests}} " in *" $d "*) serial+=("$d");; *) parallel+=("$d");; esac
     done
     failed=0
-    printf '%s\n' "${parallel[@]}" | xargs -P {{num_cpus()}} -n 1 bash -c 'run "$0"' || failed=1
-    for d in "${serial[@]}"; do run "$d" -define:ODIN_TEST_THREADS=1 || failed=1; done
+    if [ ${#parallel[@]} -gt 0 ]; then
+      printf '%s\n' "${parallel[@]}" | xargs -P {{num_cpus()}} -n 1 bash -c 'run "$0"' || failed=1
+    fi
+    for d in "${serial[@]+"${serial[@]}"}"; do run "$d" -define:ODIN_TEST_THREADS=1 || failed=1; done
     exit $failed
 
 # Each is named for its directory, built in parallel: type-checking misses a
