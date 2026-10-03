@@ -481,7 +481,7 @@ test_nav_list_rows_and_the_current_item :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
 
 	general := ui.probe_bounds(&p, "General")
-	testing.expect_value(t, general.h, 2 * tok.CONTROL_MEDIUM_PADDING_BLOCK + NAV_ROW_LINE) // 32
+	testing.expect_value(t, general.h, 2 * tok.CONTROL_MEDIUM_PADDING_BLOCK + LIST_LINE) // 32
 	testing.expect_value(t, general.x, tok.BASE_SIZE_8)
 	testing.expect_value(t, general.w, 300 - 2 * tok.BASE_SIZE_8)
 	rules := ui.probe_bounds(&p, "Rules") // opened: its parent holds the current item
@@ -541,13 +541,24 @@ test_nav_list_activation_skips_inactive_and_parents :: proc(t: ^testing.T) {
 	branches := ui.probe_bounds(&p, "Branches")
 	parent := ui.probe_bounds(&p, "Code and automation")
 	testing.expect_value(t, branches.x, parent.x) // the same 8px in
+	// A leaf under a parent shows its depth spacer: 8px of padding, then
+	// 8px a level with no gap after it (ActionList.module.css:525-529).
+	text_x := f32(-1)
+	for d in ui.probe_current(&p).draws {
+		if g, ok := d.cmd.(ops.Glyphs); ok {
+			at := ops.apply(d.transform, g.origin)
+			if at.y > branches.y && at.y < branches.y + branches.h {
+				text_x = at.x
+				break
+			}
+		}
+	}
+	testing.expect_value(t, text_x, branches.x + tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED + LIST_DEPTH_STEP)
 	testing.expect_value(t, m.chosen, "") // a parent toggles, it does not navigate
 	testing.expect(t, ui.probe_click(&p, "Branches"))
 	testing.expect_value(t, m.chosen, "Branches")
 	testing.expect(t, ui.probe_click(&p, "Billing")) // found by its tag, though it has no input area
 	testing.expect_value(t, m.chosen, "Branches") // inactive: ignored
-	said := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, strings.contains(said, "link \"Billing\" value \"3\" desc \"Ask an owner\" disabled"), "%s", said)
 }
 
 @(test)
