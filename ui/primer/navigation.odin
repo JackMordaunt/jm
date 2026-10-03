@@ -1163,7 +1163,8 @@ Underline_Nav_Memo :: struct {
 
 // underline_nav is Primer's UnderlineNav (underline-nav.json,
 // UnderlineNav.tsx, UnderlineTabbedInterface.module.css): a navigation
-// landmark named label holding a row of links, items[current] marked
+// landmark named label, headed by a hidden h2 "<label> navigation",
+// holding a row of links, items[current] marked
 // with a 2px --underlineNav-borderColor-active underline on the row's
 // bottom edge. The row is 48px: 8px above 32px items with 8px under them,
 // a 1px --borderColor-muted line along its bottom, padded 16px at the
@@ -1211,6 +1212,15 @@ underline_nav :: proc(
 	ui.container_semantics(gtx, {role = .Navigation, label = ui.frame_string(gtx, label)})
 	pad := ui.inset_open(gtx, {side, tok.BASE_SIZE_8, side, 0}, key = u64(ui.id_mix(id, 2)))
 	defer ui.close(&pad)
+	{
+		// The visually hidden h2, here the landmark's first child, where
+		// the web puts it just before the landmark (UnderlineNav.tsx:93):
+		// a zero-size sibling would take a gap in the caller's stack.
+		h := ui.widget_open(gtx, u64(ui.id_mix(id, 10)))
+		said := fmt.aprintf("%s navigation", label, allocator = gtx.allocator)
+		ui.semantics(gtx, &h, {role = .Heading, label = said, level = 2})
+		ui.widget_close(gtx, &h, {})
+	}
 	outer := ui.row_open(gtx, align = .Start, key = u64(ui.id_mix(id, 3)))
 	defer ui.close(&outer)
 	list := ui.overflow_row_open(gtx, tok.STACK_GAP_CONDENSED, key = u64(ui.id_mix(id, 4)))

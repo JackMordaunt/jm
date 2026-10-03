@@ -418,6 +418,7 @@ test_underline_nav_moves_items_that_break_into_more :: proc(t: ^testing.T) {
 	testing.expect(t, more.x + more.w <= 500 - 16 + 0.01)
 	said := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expectf(t, strings.contains(said, "\"More items, including current item\""), "%s", said)
+	testing.expectf(t, strings.contains(said, "heading \"Repository navigation\" level 2"), "%s", said)
 	testing.expect(t, ui.probe_click(&p, "More"))
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_click(&p, "Security"))
