@@ -1049,6 +1049,28 @@ files-test: sqlite blend2d kb
       {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 
+# examples/7guis: the seven tasks of the 7GUIs benchmark, a program each
+# with its tests beside it. `just sevenguis cells -png build/cells.png`
+# renders a task's first frame with no window.
+#
+# Build and open one 7GUIs task
+[group('ui/example')]
+[arg("task", pattern="counter|temperature|flight|timer|crud|circles|cells")]
+sevenguis task *args: blend2d kb sdl3
+    mkdir -p build/debug
+    {{odin}} build examples/7guis/{{task}} -debug {{flags}} {{link}} -out:build/debug/7guis-{{task}}{{exe}}
+    build/debug/7guis-{{task}}{{exe}} {{args}}
+
+# Run the suites of all seven 7GUIs tasks
+[group('ui/example')]
+sevenguis-test: blend2d kb
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/test
+    for task in counter temperature flight timer crud circles cells; do
+      {{odin}} test examples/7guis/$task {{flags}} {{link}} -out:build/test/7guis-$task{{exe}}
+    done
+
 # Fetch Selawik regular, semibold and bold (OFL-1.1) from microsoft/Selawik
 # release 1.01 into ~/.local/share/fonts/selawik for the fluent kitchen.
 #

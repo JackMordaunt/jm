@@ -138,6 +138,27 @@ just todo-test                   its suites, the last on real threads and a data
 
 </details>
 
+### 7GUIs
+
+<img src="images/7guis-cells.png" alt="The Cells task: a spreadsheet with a sum, an error and a cell being edited" width="540">
+
+The seven tasks of the [7GUIs](https://eugenkiss.github.io/7guis/) benchmark, each a program
+with its tests beside it. A task is a model struct and a ui proc, and every test drives it with
+`ui.Probe` and no window. `just sevenguis <task>` opens one, `just sevenguis-test` runs every
+suite, and `just sevenguis cells -png out.png` renders a first frame headlessly.
+
+| Task | Lines | Tests | What it shows |
+|------|------:|------:|---------------|
+| `counter` | 35 | 20 | The model is read and written in one proc; nothing is kept in sync |
+| `temperature` | 67 | 48 | Two-way binding as two `if`s, and an invalid field |
+| `flight` | 82 | 68 | Constraints computed from the text each frame, and disabled controls |
+| `timer` | 56 | 39 | Time as `gtx.dt`, a frame asked for only while it runs, a test stepping time |
+| `crud` | 138 | 63 | A filtered list derived in the frame, not cached beside the data |
+| `circles` | 228 | 101 | A canvas from core ops, a context menu, a popover, undo as a list of actions |
+| `cells` | 510 | 188 | 2,727 cell widgets a frame in a two-way scroll box, editing in place, a formula engine tested without ui |
+
+Lines count comments. The shared window and theme are `examples/7guis/shell`, 48 lines.
+
 ### Design-system kitchens
 
 | Material 3 Expressive | Fluent 2 | Primer |
