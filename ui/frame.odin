@@ -50,6 +50,7 @@ Hit :: struct {
 	yields:    bool, // see ops.Input_Area
 	observes:  bool, // see ops.Input_Area
 	no_tab:    bool, // see ops.Input_Area
+	tab:       i32, // its place in reading order, Frame.tab_order (see Tab_Key)
 }
 
 // Scope_Ref is a focus scope on the frame: Frame.scopes[ref - 1], or
@@ -114,6 +115,7 @@ Frame :: struct {
 	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
 	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
 	scopes: [dynamic]Focus_Scope_Node, // every Focus_Scope, in the order met: the last trap is the active one
+	tab_order: [dynamic]i32, // hits' indices in reading order, which Tab walks (see Tab_Key)
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images //review:ignore odin-destroy-incomplete borrowed: flatten points it at the caller's scene
 	stacks:  Flatten_Stacks, // flatten's scratch, not part of the result
 }
@@ -130,7 +132,32 @@ Flatten_Stacks :: struct {
 	top:        [dynamic]Deferred, // top Defers met, run after every other
 	scopes:     [dynamic]Scope_Ref, // the focus scopes open around the current one, innermost last
 	alphas:     [dynamic]f32, // the opacities pushed so far, innermost last
+	tab_keys:   [dynamic]Tab_Entry, // each hit's reading-order key and index, sorted at the end
 }
+
+// Tab_Entry is a hit's reading-order key and its index in Frame.hits.
+@(private)
+Tab_Entry :: struct {
+	key: Tab_Key,
+	hit: i32,
+}
+
+// Tab_Key places a hit in reading order: the order the ui recorded it,
+// with a deferred layer's hits where its Defer was recorded, not after
+// the frame as they are drawn. A layer's prefix is its parent's path and
+// then 2k-1, k the hits its parent had recorded before the Defer; its
+// own hits append 2i, i their index in it, so a layer sorts between the
+// hits recorded either side of its Defer. Paths deeper than TAB_KEY_DEPTH
+// stop growing, and ties fall back to the hit's index.
+@(private)
+Tab_Key :: struct {
+	path: [TAB_KEY_DEPTH]i32,
+	n:    u8,
+}
+
+// TAB_KEY_DEPTH is the deepest nesting of deferred layers Tab_Key orders.
+@(private)
+TAB_KEY_DEPTH :: 8
 
 // Covering is a Defer waiting for the end of the container it covers.
 @(private)
@@ -147,6 +174,7 @@ Deferred :: struct {
 	transform: ops.Affine,
 	scope:     Scope_Ref, // the focus scope open at the Defer, which the layer stays in
 	alpha:     f32, // the opacity at the Defer, which the layer is drawn at
+	tab:       Tab_Key, // where the Defer was recorded, which its hits read at
 }
 
 frame_init :: proc(f: ^Frame, allocator := context.allocator) {
@@ -159,6 +187,8 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.boxes = make([dynamic]Layout_Box, allocator)
 	f.placed = make([dynamic]Placed, allocator)
 	f.scopes = make([dynamic]Focus_Scope_Node, allocator)
+	f.tab_order = make([dynamic]i32, allocator)
+	f.stacks.tab_keys = make([dynamic]Tab_Entry, allocator)
 	f.stacks.scopes = make([dynamic]Scope_Ref, allocator)
 	f.stacks.alphas = make([dynamic]f32, allocator)
 	f.stacks.transforms = make([dynamic]ops.Affine, allocator)
@@ -178,6 +208,8 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.boxes)
 	clear(&f.placed)
 	clear(&f.scopes)
+	clear(&f.tab_order)
+	clear(&f.stacks.tab_keys)
 	clear(&f.stacks.scopes)
 	clear(&f.stacks.alphas)
 	clear(&f.stacks.transforms)
@@ -198,6 +230,8 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.boxes)
 	delete(f.placed)
 	delete(f.scopes)
+	delete(f.tab_order)
+	delete(f.stacks.tab_keys)
 	delete(f.stacks.scopes)
 	delete(f.stacks.alphas)
 	delete(f.stacks.transforms)

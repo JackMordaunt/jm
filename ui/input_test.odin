@@ -456,9 +456,11 @@ test_a_trap_keeps_focus_in_and_a_newer_trap_suspends_it :: proc(t: ^testing.T) {
 	probe_key(&p, .Tab)
 	probe_key(&p, .Tab)
 	probe_key(&p, .Tab)
-	testing.expect_value(t, p.router.focus, ops.Area_Id(10)) // d1, d2, the popup's p1, and round inside
+	testing.expect_value(t, p.router.focus, ops.Area_Id(10)) // d1, the popup's p1 raised after it, d2, and round inside
 	probe_key(&p, .Tab, {.Shift})
-	testing.expect_value(t, p.router.focus, ops.Area_Id(12))
+	testing.expect_value(t, p.router.focus, ops.Area_Id(11))
+	probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, p.router.focus, ops.Area_Id(12)) // read where it was raised, though drawn after
 	// A press on the page cannot take focus out, but still lands.
 	testing.expect(t, probe_click(&p, "a"))
 	testing.expect_value(t, p.router.focus, ops.Area_Id(12))
@@ -754,4 +756,35 @@ test_a_trap_raised_inside_a_roving_scope_is_none_of_its_stop :: proc(t: ^testing
 	testing.expect_value(t, p.router.focus, ops.Area_Id(38)) // each menu item a stop of the trap
 	probe_key(&p, .Right)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(38)) // the toolbar's arrows stop at the trap
+}
+
+@(test)
+test_tab_reads_a_deferred_layer_where_it_was_recorded :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		focusable :: proc(gtx: ^Ctx, id: ops.Area_Id, name: string, x: f32) {
+			ops.input_area(gtx.scene, id, ops.Rect{x, 0, 40, 20}, {.Press, .Release, .Key, .Focus, .Blur})
+			ops.tag(gtx.scene, id, name)
+		}
+		focusable(gtx, 1, "a", 0)
+		// A layer drawn over the page, recorded between a and d, with
+		// another raised inside it between b and c.
+		o := overlay_open(gtx, {0, 100})
+		focusable(gtx, 2, "b", 0)
+		inner := overlay_open(gtx, {0, 30})
+		focusable(gtx, 3, "b2", 0)
+		overlay_close(&inner)
+		focusable(gtx, 4, "c", 50)
+		overlay_close(&o)
+		focusable(gtx, 5, "d", 100)
+	}
+	p: Probe
+	probe_init(&p, view, nil, {300, 300})
+	defer probe_destroy(&p)
+	want := [?]ops.Area_Id{1, 2, 3, 4, 5, 1}
+	for w, i in want {
+		probe_key(&p, .Tab)
+		testing.expectf(t, p.router.focus == w, "Tab %d: want %v, got %v", i + 1, w, p.router.focus)
+	}
+	probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, p.router.focus, ops.Area_Id(5))
 }

@@ -1,5 +1,6 @@
 package ui
 
+import "core:slice"
 import "jm:ui/ops"
 
 // MAX_CALL_DEPTH bounds macro Call nesting in flatten. Each level is one
@@ -17,6 +18,8 @@ Flattener :: struct {
 	scope:      Scope_Ref, // the innermost focus scope open
 	alpha:      f32, // the opacity draws are made at: the product of the pushes open
 	layer:      i32, // 0 for the frame, then 1, 2, ... for each deferred macro in the order run
+	tab:        Tab_Key, // the running layer's reading-order prefix
+	tab_n:      i32, // hits the running layer has recorded
 	viewport:   ops.Rect, // device space; zero leaves popups where they ask to be
 	root:       ops.Affine, // what a root Defer runs under
 }
@@ -65,8 +68,10 @@ flatten :: proc(sc: ^ops.Scene, f: ^Frame, viewport := ops.Rect{}, root := ops.I
 		m := sc.macros[d.id]
 		st.transform, st.clip, st.scope, st.alpha = d.transform, NO_CLIP, d.scope, d.alpha
 		st.layer = i32(i + 1)
+		st.tab, st.tab_n = d.tab, 0
 		flatten_range(&st, m.first, m.last, 1)
 	}
+	sort_tab_order(f)
 	assert(len(st.transforms) == 0, "flatten: transform_push without transform_pop")
 	assert(len(st.clips) == 0, "flatten: clip_push without clip_pop")
 }
@@ -121,12 +126,13 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 				t, fit = place(t, op.place, st.viewport)
 				append(&st.f.placed, Placed{op.place.key, fit.side, fit.align, fit.shift})
 			}
+			d := Deferred{op.id, t, st.scope, st.alpha, tab_key(st.tab, 2 * st.tab_n - 1)}
 			if op.top {
-				append(&st.top, Deferred{op.id, t, st.scope, st.alpha})
+				append(&st.top, d)
 			} else if op.cover {
-				append(&st.held, Covering{op.covers, {op.id, t, st.scope, st.alpha}})
+				append(&st.held, Covering{op.covers, d})
 			} else {
-				append(&st.deferred, Deferred{op.id, t, st.scope, st.alpha})
+				append(&st.deferred, d)
 			}
 		case ops.Cover_End:
 			release_held(st, op.id)
@@ -158,6 +164,8 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 					no_tab = op.no_tab,
 				},
 			)
+			append(&st.tab_keys, Tab_Entry{tab_key(st.tab, 2 * st.tab_n), i32(len(st.f.hits) - 1)})
+			st.tab_n += 1
 		case ops.Tag:
 			t := op
 			if t.bounds != {} {
@@ -367,4 +375,40 @@ release_held :: proc(st: ^Flattener, id: ops.Area_Id, all := false) {
 		}
 	}
 	resize(&st.held, kept)
+}
+
+// tab_key is prefix with step appended, or prefix itself once it is
+// TAB_KEY_DEPTH deep.
+@(private = "file")
+tab_key :: proc(prefix: Tab_Key, step: i32) -> Tab_Key {
+	k := prefix
+	if int(k.n) < TAB_KEY_DEPTH {
+		k.path[k.n] = step
+		k.n += 1
+	}
+	return k
+}
+
+// sort_tab_order fills f.tab_order with f's hit indices in reading order
+// (see Tab_Key).
+@(private = "file")
+sort_tab_order :: proc(f: ^Frame) {
+	keys := f.stacks.tab_keys[:]
+	slice.sort_by(keys, proc(a, b: Tab_Entry) -> bool {
+		n := min(a.key.n, b.key.n)
+		for i in 0 ..< n {
+			if a.key.path[i] != b.key.path[i] {
+				return a.key.path[i] < b.key.path[i]
+			}
+		}
+		if a.key.n != b.key.n {
+			return a.key.n < b.key.n
+		}
+		return a.hit < b.hit
+	})
+	resize(&f.tab_order, len(keys))
+	for e, i in keys {
+		f.tab_order[i] = e.hit
+		f.hits[e.hit].tab = i32(i)
+	}
 }

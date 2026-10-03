@@ -764,11 +764,11 @@ may_focus :: proc(f: ^Frame, h: Hit) -> bool {
 focus_stops :: proc(r: ^Router, f: ^Frame, within: ops.Area_Id = 0) -> int {
 	clear(&r.stops)
 	trap := active_trap(f)
-	outer: for h in f.hits {
+	outer: for i in 0 ..< len(f.hits) {
+		h := tab_hit(f, i)
 		if !tab_reachable(f, h, trap, within) {
 			continue
 		}
-		h := h
 		if g := outer_roving(f, h.scope); g != 0 {
 			for s in r.stops {
 				if outer_roving(f, s.scope) == g {
@@ -792,6 +792,24 @@ focus_stops :: proc(r: ^Router, f: ^Frame, within: ops.Area_Id = 0) -> int {
 @(private)
 router_tab_stops :: proc(r: ^Router, f: ^Frame) -> int {
 	return focus_stops(r, f)
+}
+
+// tab_hit is f's i-th hit in reading order (Frame.tab_order), or in
+// recording order for a frame built without flatten.
+@(private = "file")
+tab_hit :: proc(f: ^Frame, i: int) -> Hit {
+	if len(f.tab_order) == len(f.hits) {
+		return f.hits[f.tab_order[i]]
+	}
+	h := f.hits[i]
+	h.tab = i32(i)
+	return h
+}
+
+// tab_place is h's place in reading order, as tab_hit numbers them.
+@(private = "file")
+tab_place :: proc(f: ^Frame, h: Hit) -> i32 {
+	return h.tab if len(f.tab_order) == len(f.hits) else i32(h.order)
 }
 
 // tab_reachable reports whether h is an area focus may move to by key:
@@ -847,7 +865,8 @@ roving_entry :: proc(r: ^Router, f: ^Frame, g: Scope_Ref, trap: Scope_Ref, withi
 	node := f.scopes[g - 1]
 	last := memory_of(r.roved[:], node.id).area
 	first, remembered, entry: Hit
-	for h in f.hits {
+	for i in 0 ..< len(f.hits) {
+		h := tab_hit(f, i)
 		if !tab_reachable(f, h, trap, within) || !in_scope(f, h.scope, g) {
 			continue
 		}
@@ -930,7 +949,8 @@ route_rove :: proc(r: ^Router, f: ^Frame, key: Key) {
 	}
 	clear(&r.stops)
 	at := -1
-	outer: for m in f.hits {
+	outer: for i in 0 ..< len(f.hits) {
+		m := tab_hit(f, i)
 		if !tab_reachable(f, m, 0, 0) || nearest_roving(f, m.scope) != g {
 			continue
 		}
@@ -1059,7 +1079,7 @@ route_tab :: proc(r: ^Router, f: ^Frame, back: bool) {
 	}
 	h: Hit
 	if at < 0 && refresh(f, r.focus, &h) {
-		at = tab_step_origin(r.stops[:], h.order, back)
+		at = tab_step_origin(r.stops[:], tab_place(f, h), back)
 	}
 	next: int
 	switch {
@@ -1074,14 +1094,14 @@ route_tab :: proc(r: ^Router, f: ^Frame, back: bool) {
 }
 
 // tab_step_origin places focus that is no stop itself (a no_tab area) among
-// stops, by recording order: the index Tab steps on from, the last stop
+// stops, by reading order (Hit.tab): the index Tab steps on from, the last stop
 // before order, or for Shift+Tab the first after it; -1 when it lies
 // past the end Tab is heading for, so Tab wraps.
 @(private = "file")
-tab_step_origin :: proc(stops: []Hit, order: int, back: bool) -> int {
+tab_step_origin :: proc(stops: []Hit, place: i32, back: bool) -> int {
 	if back {
 		for s, i in stops {
-			if s.order > order {
+			if s.tab > place {
 				return i
 			}
 		}
@@ -1089,7 +1109,7 @@ tab_step_origin :: proc(stops: []Hit, order: int, back: bool) -> int {
 	}
 	at := -1
 	for s, i in stops {
-		if s.order < order {
+		if s.tab < place {
 			at = i
 		}
 	}
