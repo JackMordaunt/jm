@@ -105,11 +105,13 @@ MENU_TRIGGER_GAP :: f32(4)
 // persists. It slides in from the anchor's side, whichever side it
 // opened on. Returns visible false, and lays nothing out, when closed.
 //
-// Not done, for want of jm:ui support: arrow-key travel between items,
-// Home/End and typeahead (jm:ui moves focus only by press; a focused
-// item still takes Enter, Space and Escape), hover- and context-opened
-// menus, and submenus (an item can show the chevron; the caller
-// composes the second menu).
+// The items are one trapping, roving focus scope: opening focuses the
+// first item, Up and Down move between items and wrap, Home and End go
+// to the ends, and focus goes back to where it was when the menu closes,
+// by Escape or a click (menu.json behaviour).
+//
+// Not done: typeahead, hover- and context-opened menus, and submenus (an
+// item can show the chevron; the caller composes the second menu).
 menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, key: u64 = 0, loc := #caller_location) -> (m: Menu) {
 	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Menu_Data)
@@ -138,6 +140,7 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, ke
 		d.was_open = true
 		d.enter = {to = 1, duration = tok.DURATION_SLOWER / 1000}
 		d.width = 0
+		ui.focus_first(gtx, id)
 	}
 	t := design.bezier_ease(tok.CURVE_DECELERATE_MID, ui.tween_update(&d.enter, gtx))
 	m.visible = true
@@ -163,6 +166,7 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, ke
 	mp^ = {id = id, alpha = t}
 	m.paint = mp
 	m.box = ui.box_open(gtx, {padding = ui.pad_all(MENU_PAD + tok.STROKE_WIDTH_THIN), paint = paint_menu, user = mp}, key = 1)
+	ui.focus_scope_open(gtx, id, trap = true, rove = .Vertical, wrap = true)
 	m.col = ui.column_open(gtx, gap = MENU_GAP, key = 2)
 	ui.container_semantics(gtx, {role = .Menu})
 	current_menu = ui.widget_data(gtx, id, Menu)
@@ -176,6 +180,7 @@ menu_close :: proc(m: ^Menu) {
 		return
 	}
 	ui.close(&m.col)
+	ui.focus_scope_close(m.box.gtx)
 	ui.close(&m.box)
 	// Closed by an item this frame: draw nothing and catch nothing, or
 	// the scrim would take the next click (input routes against the

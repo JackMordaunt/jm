@@ -332,3 +332,30 @@ test_a_dialogs_text_block_selects_and_copies :: proc(t: ^testing.T) {
 	testing.expect_value(t, ui.probe_clipboard(&p), "Your edits will be lost.")
 	testing.expect(t, m.dialog, "selecting in the dialog leaves it open")
 }
+
+@(test)
+test_menu_focuses_its_first_item_roves_and_gives_focus_back :: proc(t: ^testing.T) {
+	m: Overlay_Model
+	p: ui.Probe
+	ui.probe_init(&p, overlays, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Edit"))
+	ui.probe_advance(&p, 30, 0.02)
+	testing.expect_value(t, focused_tag(&p), "Cut") // opening focuses the first item
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Copy")
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Bold") // past the divider and header
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Cut") // past the disabled Paste, and round
+	ui.probe_key(&p, .End)
+	testing.expect_value(t, focused_tag(&p), "Bold")
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focused_tag(&p), "Bold") // the trap holds Tab, and the menu is one stop
+	ui.probe_key(&p, .Escape)
+	ui.probe_frame(&p)
+	testing.expect(t, !m.menu)
+	testing.expect_value(t, focused_tag(&p), "Edit") // back to the trigger
+}
