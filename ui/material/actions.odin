@@ -50,6 +50,10 @@ GROUP_MAX :: 16
 // A forced Hovered, Focused or Pressed applies to the second child (the
 // first when alone), as a pointer would, so the neighbour squeeze shows;
 // a forced Disabled applies to every child. Returns the clicked index, or -1.
+//
+// Single-select toggles are a radio group (button-group.json): one roving
+// focus scope, so one tab stop entered at the selected child, whose Left
+// and Right move the selection with focus, wrapping.
 button_group :: proc(
 	gtx: ^ui.Ctx,
 	labels: []string,
@@ -68,8 +72,9 @@ button_group :: proc(
 	loc := #caller_location,
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
-	ui.semantics(gtx, &p, {role = .Group})
 	toggles := selected != nil
+	radios := toggles && single
+	ui.semantics(gtx, &p, {role = radios ? .Radio_Group : .Group})
 	n := min(toggles ? min(len(labels), len(selected)) : len(labels), GROUP_MAX)
 	// The group's height tokens are dead (button-group.json notes): the
 	// children are small buttons, so the row is their height.
@@ -177,6 +182,10 @@ button_group :: proc(
 	}
 
 	changed := -1
+	if radios {
+		ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
+	}
+	entry: ops.Area_Id
 	x: f32
 	for i in 0 ..< shown {
 		id := ui.id_mix(p.id, u64(i))
@@ -192,7 +201,12 @@ button_group :: proc(
 		// The hit area is at least 48dp tall, centred on the button (foundations touchTarget).
 		hit := ops.Rect{x, (H - 48) / 2, w, 48}
 		c := control(gtx, id, hit, cs)
-		if c.clicked {
+		// In a radio group an arrow that brings focus here selects.
+		arrived := false
+		for e in ui.events(gtx, id) {
+			arrived ||= radios && c.st != nil && e.kind == .Focus && e.key != .None && e.key != .Tab
+		}
+		if c.clicked || arrived && !selected[i] {
 			changed = i
 			if toggles {
 				if single {
@@ -205,6 +219,9 @@ button_group :: proc(
 			}
 		}
 		on := toggles && selected[i]
+		if on && entry == 0 {
+			entry = id
+		}
 		sel_t := animate(gtx, c, 1, on ? 1 : 0, .Fast_Spatial)
 		press_t := animate(gtx, c, 2, c.pressed ? 1 : 0, .Fast_Spatial)
 		col_t := animate(gtx, c, 3, on ? 1 : 0, .Fast_Effects)
@@ -236,8 +253,12 @@ button_group :: proc(
 			name, _ = reflect.enum_name_from_value(g)
 		}
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, name))
-		ui.part_semantics(gtx, &p, id, r, {role = .Button, label = name, states = states_of(c, on)})
+		said := radios ? ops.Semantics{role = .Radio, label = name, states = states_of(c) + (on ? {.Checked} : {})} : ops.Semantics{role = .Button, label = name, states = states_of(c, on)}
+		ui.part_semantics(gtx, &p, id, r, said)
 		x += w + gap
+	}
+	if radios {
+		ui.focus_scope_close(gtx, entry)
 	}
 
 	if has_ind {

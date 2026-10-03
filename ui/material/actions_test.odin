@@ -237,3 +237,24 @@ test_bottom_app_bar_clicks_and_hides :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, !hittable(&p, "Mic"))
 }
+
+@(test)
+test_a_single_select_button_group_is_one_roving_tab_stop :: proc(t: ^testing.T) {
+	m: Group_Model
+	p: ui.Probe
+	ui.probe_init(&p, groups_ui, &m, {600, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "B"))
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, ui.probe_focus_name(&p), "C")
+	testing.expect_value(t, m.sel, [3]bool{false, false, true}) // the selection moves with focus
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Bold") // one stop; a multi-select group's children are each a stop
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Italic")
+	ui.probe_key(&p, .Tab, {.Shift})
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, ui.probe_focus_name(&p), "C") // entered at the selected child
+}
