@@ -118,10 +118,11 @@ CLICK_KINDS :: ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Key, .F
 EDIT_KINDS :: CLICK_KINDS + {.Text, .Scroll}
 
 // listen registers id's input area when st is live (a Control's st, nil
-// for a forced state).
-listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS, cursor := ops.Cursor.Default) {
+// for a forced state); no_tab keeps it out of Tab's order (see
+// ops.Input_Area).
+listen :: proc(gtx: ^ui.Ctx, st: ^ui.Widget_State, id: ops.Area_Id, shape: ops.Shape, kinds := CLICK_KINDS, cursor := ops.Cursor.Default, no_tab := false) {
 	if st != nil {
-		ops.input_area(gtx.scene, id, shape, kinds, cursor)
+		ops.input_area(gtx.scene, id, shape, kinds, cursor, no_tab = no_tab)
 	}
 }
 

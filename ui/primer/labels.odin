@@ -822,7 +822,7 @@ token_widget :: proc(gtx: ^ui.Ctx, o: Token_Opts, state: Interaction, key: u64, 
 	}
 	if o.interactive {
 		paint_focus_outline(gtx, c, rr)
-		listen(gtx, c.st, p.id, box, button_kinds(!o.no_tab), .Pointer)
+		listen(gtx, c.st, p.id, box, CLICK_KINDS, .Pointer, no_tab = o.no_tab)
 		res.clicked = c.clicked
 		res.removed = o.removable && removal_key(gtx, p.id, c)
 	}

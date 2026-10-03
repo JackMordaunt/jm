@@ -255,10 +255,10 @@ content_width :: proc(bc: Button_Content, gap: f32) -> f32 {
 // the button controls a menu or panel and whether it is open
 // (aria-expanded): open, it keeps its pressed fill, border and shadow
 // until hovered (ButtonBase.module.css:308-311,360-363,417-422,516-518).
-// tab_stop false takes it out of Tab's order and keys: a toolbar's
-// items other than its one tab stop, which a focus request moves to
-// (the toolbar then makes it the tab stop). Returns true on the frame it
-// is clicked, or activated by Enter or Space while focused.
+// tab_stop false takes it out of Tab's order (tabindex -1): a press or a
+// focus request still focuses it, and it hears keys while focused, as a
+// tree row's trailing action does. Returns true on the frame it is
+// clicked, or activated by Enter or Space while focused.
 button :: proc(
 	gtx: ^ui.Ctx,
 	label: string,
@@ -328,7 +328,7 @@ button :: proc(
 		read_group_keys(gtx, group, p.id, bp.member)
 	}
 	paint_button(gtx, c, bp)
-	listen(gtx, c.st, p.id, area, button_kinds(tab_stop))
+	listen(gtx, c.st, p.id, area, CLICK_KINDS, no_tab = !tab_stop)
 	said := ui.frame_string(gtx, label)
 	ops.tag(gtx.scene, p.id, said)
 	heard := said if name == "" else ui.frame_string(gtx, name)
@@ -354,13 +354,6 @@ Button_Paint :: struct {
 	group:             ^Button_Group, // nil unless in a ButtonGroup
 	member:            int, // its index there
 	pad_end:           f32, // the end padding, less than pad beside a keybinding hint; 0 means pad
-}
-
-// button_kinds is a button's input kinds: a click's, less Key when it is
-// not a tab stop, so Tab passes it by and only a focus request reaches it.
-@(private)
-button_kinds :: proc(tab_stop: bool) -> ops.Event_Kinds {
-	return CLICK_KINDS if tab_stop else CLICK_KINDS - {.Key}
 }
 
 // expanded_states is aria-expanded as semantic states: none when the
@@ -689,7 +682,7 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 		paint_dot(gtx, {area.w / 2 + tok.BASE_SIZE_12 - d, area.h / 2 - tok.BASE_SIZE_12})
 	case .None:
 	}
-	listen(gtx, c.st, p.id, area, button_kinds(!st.no_tab))
+	listen(gtx, c.st, p.id, area, CLICK_KINDS, no_tab = st.no_tab)
 	said := ui.frame_string(gtx, name)
 	ops.tag(gtx.scene, p.id, said)
 	if c.st != nil {
