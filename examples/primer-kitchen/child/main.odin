@@ -114,7 +114,7 @@ PAGES := [?]Page {
 	{"Nav list", nil, false},
 	{"Underline nav", nil, false},
 	{"Underline panels", nil, false},
-	{"Tree view", nil, false},
+	{"Tree view", page_tree_view, false},
 	{"Pagination", nil, false},
 	{"Breadcrumbs", nil, false},
 	{"Sub nav", nil, false},
