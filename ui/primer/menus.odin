@@ -246,7 +246,8 @@ anchor_arrow :: proc(gtx: ^ui.Ctx, anchor: ops.Area_Id) -> List_Focus_To {
 }
 
 // action_menu_item declares a menu item: action_list_item's item, which
-// closes the menu (and the menus above it) when chosen unless keep_open.
+// closes the menu (and the menus above it) when chosen unless keep_open;
+// active gives it the list's active look (a link to the current page).
 // submenu makes it open a submenu instead, flagged by submenu^: it
 // shows a chevron-right, and choosing it or ArrowRight opens the
 // submenu, which action_menu_submenu_open then draws. Returns true on
@@ -262,6 +263,7 @@ action_menu_item :: proc(
 	hint := "",
 	variant := List_Item_Variant.Default,
 	selected := false,
+	active := false,
 	disabled := false,
 	inactive := "",
 	loading := false,
@@ -288,6 +290,7 @@ action_menu_item :: proc(
 		hint = hint,
 		variant = variant,
 		selected = selected,
+		active = active,
 		disabled = disabled,
 		inactive = inactive,
 		loading = loading,

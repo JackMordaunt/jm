@@ -673,7 +673,7 @@ item_pad :: proc(s: List_Item_Size) -> f32 {
 columns_width :: proc(it: List_Item, menu: bool) -> f32 {
 	gap := tok.CONTROL_MEDIUM_GAP
 	x := tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED
-	if it.expanded != nil && it.depth > 0 {
+	if it.depth > 0 {
 		x += LIST_DEPTH_STEP * f32(it.depth)
 	}
 	if it.selection != .None {
@@ -706,7 +706,7 @@ item_natural :: proc(gtx: ^ui.Ctx, it: List_Item, m: List_Metrics) -> f32 {
 	if it.action != .None {
 		w += tok.CONTROL_MEDIUM_SIZE
 	}
-	return w + 2 * (it.depth > 0 ? 0 : m.margin)
+	return w + 2 * m.margin
 }
 
 // layout_item lays it out at y across the list's width (ActionList
@@ -716,14 +716,18 @@ item_natural :: proc(gtx: ^ui.Ctx, it: List_Item, m: List_Metrics) -> f32 {
 // inactive warning on a row of its own in a menu or listbox.
 @(private)
 layout_item :: proc(gtx: ^ui.Ctx, it: List_Item, y: f32, m: List_Metrics) -> (g: Item_Geom) {
-	margin := it.depth > 0 ? 0 : m.margin
+	// A sub-item's own li has no inline margin, but it sits inside its
+	// top-level ancestor's, which does (ActionList.module.css:715-723).
+	margin := m.margin
 	gap := tok.CONTROL_MEDIUM_GAP
 	pad_x := tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED
 	g.pad_y = item_pad(it.size)
 	iw := max(m.w - 2 * margin, 0)
 	cw := iw - (it.action != .None ? tok.CONTROL_MEDIUM_SIZE : 0)
 	x := margin + pad_x
-	if it.expanded != nil && it.depth > 0 {
+	// Every spacer under an item with sub-items shows, a leaf's as much
+	// as a parent's (ActionList.module.css:319-339,612-616).
+	if it.depth > 0 {
 		x += LIST_DEPTH_STEP * f32(it.depth)
 	}
 	if it.selection != .None {
@@ -1433,5 +1437,10 @@ item_semantics :: proc(gtx: ^ui.Ctx, l: ^Action_List, it: ^List_Item, g: Item_Ge
 		s.states += {s.role == .Option ? .Selected : .Checked}
 	}
 	s.states += design.state_if(it.disabled, {.Disabled}) + expanded_states(it.expanded)
+	if it.active && it.link {
+		// An active link is the page shown (aria-current="page", as
+		// NavList sets it, NavList.tsx:183-196).
+		s.states += {.Current_Page}
+	}
 	return
 }

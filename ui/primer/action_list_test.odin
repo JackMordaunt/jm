@@ -320,3 +320,38 @@ test_a_danger_item_fills_red_on_hover_and_press_and_not_when_disabled :: proc(t:
 	ui.probe_frame(&p)
 	testing.expect_value(t, fills_of(&p, hover) + fills_of(&p, press), 0)
 }
+
+@(test)
+test_sub_items_sit_inside_their_parents_margin_and_indent :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		col := ui.column_open(gtx, align = .Start)
+		defer ui.close(&col)
+		sized := ui.sized_open(gtx, {min = {300, 0}, max = {300, ui.INF}})
+		defer ui.close(&sized)
+		l := action_list_open(gtx, key = 1)
+		action_list_item(&l, "Parent", expanded = true)
+		action_list_item(&l, "Leaf", link = true, active = true, depth = 1)
+		action_list_close(&l)
+	}
+	p: ui.Probe
+	ui.probe_init(&p, view, nil, {600, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	parent, leaf := ui.probe_bounds(&p, "Parent"), ui.probe_bounds(&p, "Leaf")
+	testing.expect_value(t, leaf.x, parent.x) // inside the parent's 8px margin
+	testing.expect_value(t, leaf.w, parent.w)
+	// The leaf's spacer shows: its text 8px further in than the parent's.
+	xs: [2]f32
+	n := 0
+	for d in ui.probe_current(&p).draws {
+		if g, ok := d.cmd.(ops.Glyphs); ok && n < 2 {
+			xs[n] = ops.apply(d.transform, g.origin).x
+			n += 1
+		}
+	}
+	testing.expect_value(t, n, 2)
+	testing.expect_value(t, xs[1] - xs[0], LIST_DEPTH_STEP)
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(sem, "link \"Leaf\" current page"), "an active link is the current page\n%s", sem)
+}
