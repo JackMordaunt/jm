@@ -155,8 +155,8 @@ focus_scope_open :: proc(gtx: ^Ctx, id: ops.Area_Id, trap := false, rove := ops.
 }
 
 // focus_scope_close closes the innermost focus scope. entry is the
-// member a roving scope is entered at before any has held focus: the
-// selected tab, the checked radio; 0 enters at the first.
+// member Tab enters a roving scope at: the selected tab, the checked
+// radio; 0 enters at the member that last held focus, else the first.
 focus_scope_close :: proc(gtx: ^Ctx, entry: ops.Area_Id = 0) {
 	ops.focus_scope_end(gtx.scene, entry)
 }

@@ -45,7 +45,7 @@ import "jm:ui/ops"
 //   focuses the first area inside a named scope.
 // - A roving scope (ops.Focus_Scope.rove) is one Tab stop: its outermost
 //   roving scope stands for every area inside, entered at the focused
-//   one, else the member that last held focus, else the scope's entry,
+//   one, else the scope's entry, else the member that last held focus,
 //   else the first. An unmodified arrow of its axis, Home or End moves
 //   focus among the members of the focused area's nearest roving scope,
 //   after the focused area has heard the key, unless that area takes Text
@@ -839,8 +839,9 @@ nearest_roving :: proc(f: ^Frame, s: Scope_Ref) -> Scope_Ref {
 }
 
 // roving_entry is the area Tab enters roving scope g at: the focused
-// area when it is inside, else the area that last held focus there, else
-// the scope's entry, else its first reachable area.
+// area when it is inside, else the scope's entry (the selected tab, the
+// checked radio), else the area that last held focus there, else its
+// first reachable area.
 @(private = "file")
 roving_entry :: proc(r: ^Router, f: ^Frame, g: Scope_Ref, trap: Scope_Ref, within: ops.Area_Id) -> Hit {
 	node := f.scopes[g - 1]
@@ -864,10 +865,10 @@ roving_entry :: proc(r: ^Router, f: ^Frame, g: Scope_Ref, trap: Scope_Ref, withi
 		}
 	}
 	switch {
-	case remembered.area != 0:
-		return remembered
 	case entry.area != 0:
 		return entry
+	case remembered.area != 0:
+		return remembered
 	}
 	return first
 }

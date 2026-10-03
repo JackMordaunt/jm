@@ -666,10 +666,12 @@ test_a_roving_scope_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 	probe_key(&p, .Home)
 	want(t, &p, 34) // and Home
 
-	// Tab leaves the group; coming back enters where focus last was.
+	// Tab leaves the group; coming back enters at its entry again.
 	probe_key(&p, .Tab)
 	want(t, &p, 41)
 	probe_key(&p, .Tab, {.Shift})
+	want(t, &p, 32)
+	probe_key(&p, .End)
 	want(t, &p, 34)
 
 	// The list wraps.
@@ -691,6 +693,7 @@ test_a_roving_scope_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 	want(t, &p, 41)
 }
 
+// With no entry, a roving scope is entered where focus last left it.
 @(test)
 test_a_roving_scope_entered_by_a_press_remembers_it :: proc(t: ^testing.T) {
 	m: Rove_Model

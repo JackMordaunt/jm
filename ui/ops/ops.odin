@@ -321,8 +321,8 @@ Rove :: enum u8 {
 }
 
 // Focus_Scope_End closes the innermost Focus_Scope. entry names the
-// member Tab enters a roving scope at when no member has held focus yet
-// (the selected tab, the checked radio); 0 for the first.
+// member Tab enters a roving scope at (the selected tab, the checked
+// radio); 0 enters at the member that last held focus, else the first.
 Focus_Scope_End :: struct {
 	entry: Area_Id,
 }
