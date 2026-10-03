@@ -47,7 +47,8 @@ Model :: struct {
 Viewer :: struct {
 	center:   [2]f64,
 	scale:    f64, // plane units per pixel; 0 until opened
-	dragging: bool,
+	drag:     ui.Drag,
+	sling:    ui.Sling, // the pan a fast release carries on
 	shown:    int, // the level fully drawn last
 	level:    int, // the level wanted now
 }
@@ -93,7 +94,8 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 }
 
 // lightbox is the tile clicked, filling the window, zoomed by the wheel
-// about the pointer and panned by dragging; Escape or the button closes
+// about the pointer and panned by dragging, a fast release gliding on as
+// a map does (ui.Sling); Escape or the button closes
 // it. The picture is drawn as a map is: the small tile scaled under
 // everything, then the patches of the level that matches the zoom, each
 // a need of its own made on a worker as it comes into view and given up
@@ -112,7 +114,7 @@ lightbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	if v.scale == 0 {
 		v.center = {0, 0}
 		v.scale = 3 / f64(min(vp.w, vp.h))
-		v.dragging = false
+		v.drag, v.sling = {}, {}
 		v.shown, v.level = 0, 0
 	}
 
@@ -139,15 +141,21 @@ lightbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			at := [2]f64{f64(e.pos.x), f64(e.pos.y)} - mid
 			v.center += at * v.scale * (1 - factor)
 			v.scale *= factor
-		case .Press:
-			v.dragging = true
-		case .Release:
-			v.dragging = false
-		case .Move:
-			if v.dragging {
-				v.center -= [2]f64{f64(e.travel.x), f64(e.travel.y)} * v.scale
-			}
 		}
+	}
+	// A drag pans; a fast release glides on, and a press catches it.
+	ui.drag_update(&v.drag, ui.events(gtx, id))
+	if v.drag.phase != .Idle {
+		ui.sling_stop(&v.sling)
+	}
+	if v.drag.released {
+		ui.sling_start(&v.sling, v.drag.velocity, gtx.time)
+	}
+	glide, gliding := ui.sling_step(&v.sling, gtx.time)
+	pan := v.drag.delta + glide
+	v.center -= [2]f64{f64(pan.x), f64(pan.y)} * v.scale
+	if gliding {
+		ui.request_frame(gtx)
 	}
 
 	// The level whose patches cover PATCH to 2 PATCH pixels on screen.

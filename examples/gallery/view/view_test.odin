@@ -115,6 +115,12 @@ a_click_opens_the_viewer_which_zooms_and_pans_by_patches :: proc(t: ^testing.T) 
 	testing.expect(t, ui.probe_drag(&p, "Viewer", 100, 0))
 	testing.expect(t, m.viewer.center.x < before.x)
 	testing.expect(t, abs(m.viewer.center.x - before.x + 100 * m.viewer.scale) < 1e-9)
+	// It let go at 25 px a frame, 1500 px/s, so the pan glides on 1500 / -k.
+	for _ in 0 ..< 600 {
+		ui.probe_frame(&p)
+	}
+	glide := f64(1500 / -ui.SLING_DECAY)
+	testing.expectf(t, abs(m.viewer.center.x - before.x + (100 + glide) * m.viewer.scale) < 2 * m.viewer.scale, "panned %v px", (before.x - m.viewer.center.x) / m.viewer.scale)
 
 	// Escape closes it and every patch need goes.
 	ui.probe_key(&p, .Escape)
