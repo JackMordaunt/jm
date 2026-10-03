@@ -884,6 +884,8 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 	d := w.density
 	e: sdl3.Event
 	for sdl3.PollEvent(&e) {
+		// Every SDL event starts with the common header: ns since SDL_Init.
+		at := f64(e.common.timestamp) / 1e9
 		#partial switch e.type {
 		case .QUIT, .WINDOW_CLOSE_REQUESTED:
 			return false
@@ -909,14 +911,14 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				return false
 			}
 		case .MOUSE_MOTION:
-			sink(user, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState()), time = at})
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
 			// The side buttons are navigation keys, as a browser takes
 			// them: pressed, not released, and routed to whatever asks
 			// for the key app-wide rather than to what is under the pointer.
 			if e.button.button == sdl3.BUTTON_X1 || e.button.button == sdl3.BUTTON_X2 {
 				if e.type == .MOUSE_BUTTON_DOWN {
-					sink(user, {kind = .Key, key = .Browser_Back if e.button.button == sdl3.BUTTON_X1 else .Browser_Forward, mods = mods(sdl3.GetModState())})
+					sink(user, {kind = .Key, key = .Browser_Back if e.button.button == sdl3.BUTTON_X1 else .Browser_Forward, mods = mods(sdl3.GetModState()), time = at})
 				}
 				continue
 			}
@@ -928,7 +930,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			// clicks is SDL's count of rapid presses ("1 for single-click, 2
 			// for double-click", sdl3_events.odin), which SDL takes from the
 			// system's double-click setting where it has one.
-			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState()), clicks = e.button.clicks})
+			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState()), clicks = e.button.clicks, time = at})
 		case .MOUSE_WHEEL:
 			// Positive y scrolls down (toward the user), like a scroll
 			// offset. A FLIPPED direction is left alone: on macOS SDL sets it
@@ -937,18 +939,18 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			// applied natural scrolling to that delta, which content should
 			// obey; un-flipping it gives the device's direction instead.
 			s := wheel_pixels(&w.wheel, {e.wheel.x, -e.wheel.y}, e.wheel.timestamp)
-			sink(user, {kind = .Scroll, pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d}, scroll = s, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Scroll, pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d}, scroll = s, mods = mods(sdl3.GetModState()), time = at})
 		case .KEY_DOWN:
 			k := key(e.key.key)
 			if k == .Escape {
 				return false
 			}
 			if k != .None {
-				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod)})
+				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod), time = at})
 			}
 		case .TEXT_INPUT:
 			text := strings.clone_from_cstring(e.text.text, allocator)
-			sink(user, {kind = .Text, text = text, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Text, text = text, mods = mods(sdl3.GetModState()), time = at})
 		}
 	}
 	return true

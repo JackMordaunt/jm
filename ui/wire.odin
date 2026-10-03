@@ -10,13 +10,13 @@ import "jm:ui/ops"
 // plain encode/decode round-trip tests with no process or pipe involved.
 // Both reuse encode.odin's put_*/get_* helpers and its little-endian rule.
 //
-//	Input: f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event,
+//	Input: u8 INPUT_VERSION, f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event,
 //	       [host stats], str restore (what the last child persisted,
 //	       sent once to a respawned child; "" otherwise), [shapes: u32 n,
 //	       n × (u64 key, u8 status, str data), written only when there
 //	       are any: what the host delivers for the child's needs]
 //	Raw_Event: u8 kind, f32 x, f32 y, u8 button, f32 sx, f32 sy, u8 key,
-//	           u8 mods, str text, str mime, u8 clicks, u64 area
+//	           u8 mods, str text, str mime, u8 clicks, u64 area, f64 time
 //	Reply: u8 flags, f32 frame_after, u64 focus (the focused area, 0 for
 //	       none: what the host tells assistive technology), [debug block],
 //	       [platform block], [persist], then
@@ -33,10 +33,25 @@ import "jm:ui/ops"
 //	       request is pending, so most replies are as before; the needs and
 //	       commands blocks likewise only when there is something to say.
 
+// INPUT_VERSION leads every Input and changes with its layout, so a child
+// and a host built apart name the mismatch instead of misreading events:
+// 1 is the first versioned Input, whose events carry their time.
+INPUT_VERSION :: u8(1)
+
+// input_version is the version byte an Input starts with, false when data
+// is empty.
+input_version :: proc(data: []byte) -> (u8, bool) {
+	if len(data) == 0 {
+		return 0, false
+	}
+	return data[0], true
+}
+
 // encode_input serializes size, density, dt and events into a new byte
 // slice, the host's half of one frame's round trip.
 encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}, restore: []byte = nil, shapes: []Delivery = nil) -> []byte {
 	w := make([dynamic]byte, 0, 64, allocator)
+	append(&w, INPUT_VERSION)
 	ops.put_f32(&w, size.x)
 	ops.put_f32(&w, size.y)
 	ops.put_f32(&w, density)
@@ -91,6 +106,9 @@ decode_input :: proc(
 	}
 	if shapes != nil {
 		shapes^ = nil
+	}
+	if (ops.get_u8(&r) or_return) != INPUT_VERSION {
+		return
 	}
 	size.x = ops.get_f32(&r) or_return
 	size.y = ops.get_f32(&r) or_return
@@ -158,6 +176,7 @@ encode_raw_event :: proc(w: ^[dynamic]byte, e: Raw_Event) {
 	ops.put_str(w, e.mime)
 	append(w, e.clicks)
 	ops.put_u64(w, u64(e.area))
+	ops.put_f64(w, e.time)
 }
 
 @(private = "file")
@@ -190,6 +209,7 @@ decode_raw_event :: proc(r: ^ops.Reader) -> (e: Raw_Event, ok: bool) {
 	e.mime = ops.get_str(r) or_return
 	e.clicks = ops.get_u8(r) or_return
 	e.area = ops.Area_Id(ops.get_u64(r) or_return)
+	e.time = ops.get_f64(r) or_return
 	return e, true
 }
 

@@ -13,8 +13,8 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 	context.allocator = virtual.arena_allocator(&arena)
 
 	events := []Raw_Event {
-		{kind = .Move, pos = {12, 34}},
-		{kind = .Press, pos = {5, 6}, button = .Right, mods = {.Shift, .Ctrl}, clicks = 2},
+		{kind = .Move, pos = {12, 34}, time = 1234.000_125},
+		{kind = .Press, pos = {5, 6}, button = .Right, mods = {.Shift, .Ctrl}, clicks = 2, time = 1234.016},
 		{kind = .Scroll, pos = {1, 2}, scroll = {0, -3.5}},
 		{kind = .Key, key = .Enter, mods = {.Alt}},
 		{kind = .Text, text = "héllo\nworld"},
@@ -38,6 +38,24 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 
 	// Re-encoding the decoded events gives the same bytes.
 	testing.expect(t, slice.equal(encode_input(size, density, dt, got, host = got_host), data))
+}
+
+@(test)
+test_decode_input_refuses_another_version :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+
+	data := encode_input({800, 600}, 1, 1.0 / 60, {{kind = .Move, pos = {1, 2}, time = 3}})
+	v, vok := input_version(data)
+	testing.expect(t, vok && v == INPUT_VERSION)
+	data[0] = INPUT_VERSION + 1
+	_, _, _, _, _, _, ok := decode_input(data)
+	testing.expect(t, !ok)
+	v, vok = input_version(data)
+	testing.expect_value(t, v, INPUT_VERSION + 1)
+	_, vok = input_version(nil)
+	testing.expect(t, !vok)
 }
 
 @(test)
