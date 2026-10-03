@@ -54,7 +54,7 @@ Open_Form :: struct {
 	required, disabled:      bool,
 	group:                   bool, // a CheckboxGroup or RadioGroup: names the group, not each control
 	input:                   ops.Area_Id,
-	radios:                  ^Radio_Ring, // a RadioGroup's arrow-key ring, else nil
+	radios:                  ^Radio_Ring, // a RadioGroup's, else nil
 }
 
 @(private = "file")
@@ -359,6 +359,7 @@ form_control_close :: proc(gtx: ^ui.Ctx, f: ^Form_Control) {
 // the validation message under the options and closes it.
 Choice_Group :: struct {
 	outer, options: ui.Flex,
+	box:            ui.Inset, // a RadioGroup's: holds its roving scope round the options
 	ring:           ^Radio_Ring,
 	validation:     string,
 	status:         Validation_Status,
@@ -375,7 +376,7 @@ choice_group_open :: proc(gtx: ^ui.Ctx, label, caption_text, validation: string,
 	id := ui.claim_id(gtx, key, loc)
 	if radios {
 		g.ring = ui.widget_data(gtx, id, Radio_Ring)
-		ring_begin(g.ring)
+		g.ring.checked = 0
 	}
 	g.validation, g.status = ui.frame_string(gtx, validation), status
 	said := ui.frame_string(gtx, label)
@@ -394,6 +395,10 @@ choice_group_open :: proc(gtx: ^ui.Ctx, label, caption_text, validation: string,
 		if !hide_label {
 			ui.spacer(gtx, CHOICE_GAP)
 		}
+	}
+	if radios {
+		g.box = ui.inset_open(gtx, {}, key = u64(ui.id_mix(id, 1)))
+		ui.focus_scope_open(gtx, id, rove = .Both, wrap = true)
 	}
 	g.options = ui.column_open(gtx, gap = CHOICE_GAP, align = .Start)
 	return
@@ -415,7 +420,8 @@ choice_group_close :: proc(gtx: ^ui.Ctx, g: ^Choice_Group) {
 	ui.close(&g.options)
 	form_pop()
 	if g.ring != nil {
-		ring_end(gtx, g.ring)
+		ui.focus_scope_close(gtx, g.ring.checked)
+		ui.close(&g.box)
 	}
 	if g.validation != "" && g.status != .None {
 		ui.spacer(gtx, CHOICE_GAP)
@@ -455,16 +461,17 @@ checkbox_group_close :: proc(gtx: ^ui.Ctx, g: ^Choice_Group) {
 }
 
 // radio_group_open opens a RadioGroup (radio-group.json): checkbox_group
-// _open's layout around radios, which it makes one keyboard group: while
-// one has focus, Down and Right check and focus the next enabled radio,
-// Up and Left the previous, wrapping and skipping disabled ones (the
-// browser's native radio group, which Primer relies on: radio.json
-// notes). Each radio reports the frame it is chosen; the caller keeps
-// the choice.
+// _open's layout around radios, which it makes one roving focus scope, so
+// one Tab stop, entered at the checked radio: while one has focus, Down
+// and Right check and focus the next enabled radio, Up and Left the
+// previous, wrapping and skipping disabled ones (the browser's native
+// radio group, which Primer relies on: radio.json notes). Each radio
+// reports the frame it is chosen; the caller keeps the choice.
 //
-// Departures: each radio is its own Tab stop, where the web's group is
-// one (arrow keys move within it); there is no name or value, as the
-// caller's own choice is the group's.
+// Departures: Home and End also check and focus the first and last
+// radio, the ends of jm:ui's roving scope, where radio.json names only
+// the arrows; there is no name or value, as the caller's own choice is
+// the group's.
 radio_group_open :: proc(
 	gtx: ^ui.Ctx,
 	label: string,
@@ -485,70 +492,11 @@ radio_group_close :: proc(gtx: ^ui.Ctx, g: ^Choice_Group) {
 	choice_group_close(gtx, g)
 }
 
-// RADIO_RING_MAX is how many radios one group's arrow keys move among.
-RADIO_RING_MAX :: 64
-
-// Radio_Ring is a RadioGroup's radios in order, as last frame drew them,
-// and the one an arrow key chose, for it to report: a radio after the
-// one that heard the key reports it this frame, one before it next.
+// Radio_Ring is what a RadioGroup learns from its radios this frame:
+// the checked one, where Tab enters the group's roving focus scope.
 @(private)
 Radio_Ring :: struct {
-	ids, next_ids:         [RADIO_RING_MAX]ops.Area_Id,
-	off, next_off:         [RADIO_RING_MAX]bool,
-	n, next_n:             int,
-	chosen, carry:         ops.Area_Id, // chosen this frame; carried to the next
-}
-
-@(private)
-ring_begin :: proc(r: ^Radio_Ring) {
-	r.next_n = 0
-	r.chosen, r.carry = r.carry, 0
-}
-
-@(private)
-ring_end :: proc(gtx: ^ui.Ctx, r: ^Radio_Ring) {
-	r.ids, r.off, r.n = r.next_ids, r.next_off, r.next_n
-	if r.carry != 0 {
-		ui.request_frame(gtx)
-	}
-}
-
-// ring_add registers a radio's area in its group, returning its place.
-@(private)
-ring_add :: proc(r: ^Radio_Ring, id: ops.Area_Id, disabled: bool) -> int {
-	i := r.next_n
-	if i < RADIO_RING_MAX {
-		r.next_ids[i], r.next_off[i] = id, disabled
-		r.next_n += 1
-	}
-	return i
-}
-
-// ring_step moves from the radio at place i by step (+1 or -1) to the
-// next enabled one, wrapping, chooses it and asks for focus there.
-@(private)
-ring_step :: proc(gtx: ^ui.Ctx, r: ^Radio_Ring, i, step: int) {
-	n := r.n
-	if n == 0 {
-		return
-	}
-	j := i
-	for _ in 0 ..< n {
-		j = (j + step + n) % n
-		if !r.off[j] {
-			break
-		}
-	}
-	if r.off[j] || j == i {
-		return
-	}
-	if j > i {
-		r.chosen = r.ids[j]
-	} else {
-		r.carry = r.ids[j]
-	}
-	ui.focus_request(gtx, r.ids[j])
-	ui.request_frame(gtx) // the radios drawn before it still show the old choice
+	checked: ops.Area_Id,
 }
 
 // paint_svg fills SVG path data d, drawn in a box-unit square, at size

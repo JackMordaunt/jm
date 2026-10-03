@@ -288,23 +288,15 @@ radio :: proc(
 	c := control(gtx, p.id, k.hit, fc.state)
 	chosen := c.clicked && !c.disabled && !checked
 	if f := open_form(); f != nil && f.radios != nil {
-		ring := f.radios
-		place := ring_add(ring, p.id, c.disabled)
-		if ring.chosen == p.id {
-			chosen = !checked
-			ring.chosen = 0
+		if checked {
+			f.radios.checked = p.id
 		}
-		if c.st != nil && c.focused {
-			for e in ui.events(gtx, p.id) {
-				if e.kind != .Key {
-					continue
-				}
-				#partial switch e.key {
-				case .Down, .Right:
-					ring_step(gtx, ring, place, 1)
-				case .Up, .Left:
-					ring_step(gtx, ring, place, -1)
-				}
+		// The group's scope moved focus here by a key other than Tab:
+		// the native group checks the radio its arrows reach (radio.json notes).
+		for e in ui.events(gtx, p.id) {
+			if e.kind == .Focus && e.key != .None && e.key != .Tab && !checked && !c.disabled {
+				chosen = true
+				ui.request_frame(gtx) // the radios drawn before it still show the old choice
 			}
 		}
 	}

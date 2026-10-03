@@ -142,6 +142,15 @@ test_radio_group_arrows_check_the_next_enabled_radio_and_wrap :: proc(t: ^testin
 	report := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, strings.contains(report, `radio "Secret" checked focused`), report)
 	testing.expect(t, strings.contains(report, `alert "Pick one"`), report)
+	// One Tab stop, entered at the checked radio, which Tab does not change.
+	changes := m.radio_changes
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focus_name(&p), "Terms") // out of the group, last on the page: round to the first
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focus_name(&p), "Secret")
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.radio, 3)
+	testing.expect_value(t, m.radio_changes, changes)
 }
 
 @(private = "file")
