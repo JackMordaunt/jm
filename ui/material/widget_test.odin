@@ -1,5 +1,6 @@
 package material
 
+import "core:strings"
 import "core:testing"
 import "jm:ui"
 
@@ -24,8 +25,10 @@ controls :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	col := ui.column_open(gtx, gap = 8)
 	defer ui.close(&col)
 	checkbox(gtx, &m.agree, "Agree")
-	radio_button(gtx, &m.radio, 0, "Small")
-	radio_button(gtx, &m.radio, 1, "Large")
+	if radio_group(gtx, "Size") {
+		radio_button(gtx, &m.radio, 0, "Small")
+		radio_button(gtx, &m.radio, 1, "Large")
+	}
 	switch_(gtx, &m.on, "Wi-Fi")
 	LABELS := [?]string{"Video", "Photos"}
 	tabs(gtx, LABELS[:], &m.tab, width = 300)
@@ -404,4 +407,28 @@ test_menu_focuses_its_first_item_roves_and_gives_focus_back :: proc(t: ^testing.
 	ui.probe_frame(&p)
 	testing.expect(t, !m.menu_open)
 	testing.expect_value(t, ui.probe_focus_name(&p), "Edit") // back to the trigger as it closes
+}
+
+@(test)
+test_a_radio_group_is_one_tab_stop_whose_arrows_select :: proc(t: ^testing.T) {
+	m: Model
+	defer ui.text_destroy(&m.name)
+	p: ui.Probe
+	ui.probe_init(&p, controls, &m, {400, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Small"))
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Large")
+	testing.expect_value(t, m.radio, 1) // selected as focus arrives
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Small") // wraps
+	testing.expect_value(t, m.radio, 0)
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Wi-Fi")
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, ui.probe_focus_name(&p), "Small") // entered at the selected button
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, `radio group "Size"`), "%s", said)
 }

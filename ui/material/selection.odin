@@ -1,5 +1,6 @@
 package material
 
+import "base:runtime"
 import "core:math"
 import "jm:ui/ops"
 import "jm:ui"
@@ -210,10 +211,8 @@ paint_checkmark :: proc(gtx: ^ui.Ctx, box: ops.Rect, draw, shift: f32, col: ops.
 // true when that changed the selection.
 //
 // Motion: the dot grows from 0 and shrinks back on the fast-spatial
-// spring; the colour moves on default-effects. radio-button.json
-// accessibility.keyboard asks for arrow keys to move the selection within
-// a group; they do not here, since a button does not know its group and
-// jm:ui cannot move focus to a sibling. Space or Enter selects.
+// spring; the colour moves on default-effects. Space or Enter selects;
+// inside radio_group an arrow that brings focus to a button selects it.
 radio_button :: proc(
 	gtx: ^ui.Ctx,
 	value: ^int,
@@ -227,11 +226,20 @@ radio_button :: proc(
 	lw := label_width(gtx, label)
 	size := ui.constrain_min(gtx.constraints, {MIN_TOUCH + lw, MIN_TOUCH})
 	c := control(gtx, p.id, {0, 0, size.x, size.y}, state)
-	changed := c.clicked && value^ != index
-	if c.clicked {
+	// The group's scope moved focus here by an arrow: select at once
+	// (radio-button.json accessibility).
+	arrived := false
+	for e in ui.events(gtx, p.id) {
+		arrived ||= c.st != nil && e.kind == .Focus && e.key != .None && e.key != .Tab
+	}
+	changed := (c.clicked || arrived) && value^ != index
+	if c.clicked || arrived {
 		value^ = index
 	}
 	on := value^ == index
+	if on && current_radio_entry != nil {
+		current_radio_entry^ = p.id
+	}
 
 	// Springs: 0 dot radius (dp), 1 colour toward selected (0-1).
 	dot := animate(gtx, c, 0, on ? RADIO_DOT : 0, .Fast_Spatial, 0.1)
@@ -259,6 +267,63 @@ radio_button :: proc(
 	ui.semantics(gtx, &p, {role = .Radio, label = label, states = states_of(c) + (on ? {.Checked} : {})})
 	ui.widget_close(gtx, &p, {size = size})
 	return changed
+}
+
+// Radio_Group is an open group between radio_group_open and
+// radio_group_close.
+Radio_Group :: struct {
+	gtx:    ^ui.Ctx,
+	box:    ui.Inset,
+	flex:   ui.Flex,
+	entry:  ops.Area_Id, // the selected button as drawn: where Tab enters
+	outer:  ^ops.Area_Id, // the enclosing group's entry, restored at close
+}
+
+// current_radio_entry is where the innermost open group keeps its
+// selected button's id, nil outside a group.
+@(private, thread_local)
+current_radio_entry: ^ops.Area_Id
+
+// radio_group_open opens a group of radio_button rows (a column, or a row
+// when horizontal) named label for readers: one roving focus scope, so
+// one tab stop entered at the selected button, whose arrow keys move the
+// selection with focus, wrapping (radio-button.json accessibility), as
+// Compose's selectableGroup marks a group. Close it with
+// radio_group_close.
+radio_group_open :: proc(gtx: ^ui.Ctx, label := "", horizontal := false, key: u64 = 0, loc := #caller_location) -> ^Radio_Group {
+	g := new(Radio_Group, gtx.allocator)
+	id := ui.claim_id(gtx, key, loc)
+	g.gtx = gtx
+	g.box = ui.inset_open(gtx, {}, key = u64(ui.id_mix(id, 1)))
+	ui.focus_scope_open(gtx, id, rove = .Both, wrap = true)
+	if horizontal {
+		g.flex = ui.row_open(gtx, align = .Center, key = u64(ui.id_mix(id, 2)))
+	} else {
+		g.flex = ui.column_open(gtx, align = .Start, key = u64(ui.id_mix(id, 2)))
+	}
+	ui.container_semantics(gtx, {role = .Radio_Group, label = ui.frame_string(gtx, label)})
+	g.outer = current_radio_entry
+	current_radio_entry = &g.entry
+	return g
+}
+
+radio_group_close :: proc(g: ^Radio_Group) {
+	ui.close(&g.flex)
+	ui.focus_scope_close(g.gtx, g.entry)
+	ui.close(&g.box)
+	current_radio_entry = g.outer
+}
+
+// radio_group is radio_group_open as a guard: `if material.radio_group(gtx) { … }`.
+@(deferred_in = radio_group_guard_close)
+radio_group :: proc(gtx: ^ui.Ctx, label := "", horizontal := false, key: u64 = 0, loc := #caller_location) -> bool {
+	ui.guard_hold(gtx, ^Radio_Group)^ = radio_group_open(gtx, label, horizontal, key, loc)
+	return true
+}
+
+@(private = "file")
+radio_group_guard_close :: proc(gtx: ^ui.Ctx, label: string, horizontal: bool, key: u64, loc: runtime.Source_Code_Location) {
+	radio_group_close(ui.guard_take(gtx, ^Radio_Group)^)
 }
 
 // switch_ is M3's switch (switch.json; switch is an Odin keyword): a

@@ -51,10 +51,12 @@ page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		kitchen.state_row(gtx, m, n, cell, u64(i + 1), CELL_W)
 	}
-	section(gtx, "Live", "the dot grows and shrinks on fast-spatial; the colour moves on default-effects")
+	section(gtx, "Live", "the dot grows and shrinks on fast-spatial; the colour moves on default-effects; one Tab stop whose arrows select")
 	OPTIONS := [?]string{"Small", "Medium", "Large"}
-	for o, i in OPTIONS {
-		m3.radio_button(gtx, &m.radio, i, o, key = u64(40 + i))
+	if m3.radio_group(gtx, "Size") {
+		for o, i in OPTIONS {
+			m3.radio_button(gtx, &m.radio, i, o, key = u64(40 + i))
+		}
 	}
 }
 
