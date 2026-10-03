@@ -64,6 +64,7 @@ List_Focus :: enum u8 {
 	Tab,
 	Roving,
 	Descendant,
+	Auto, // by role: Roving for a menu or listbox, Tab for a plain list
 }
 
 // List_Focus_To asks a roving list to move focus to its first or last
@@ -263,8 +264,9 @@ ITEM_INACTIVE :: 0x1a7
 // action_list_open opens a list (action-list.json). variant insets it;
 // selection adds the selection column to every item (a group may
 // override it); role is what it is to a reader; focus how the keyboard
-// moves among its items, wrapping past the ends when wrap (a menu, a
-// SelectPanel), stopping otherwise. dividers draws a rule above each
+// moves among its items, by default the role's (roving for a menu or
+// listbox, a tab stop per item for a plain list), wrapping past the ends
+// when wrap (a menu, a SelectPanel), stopping otherwise. dividers draws a rule above each
 // item's text but the first's (showDividers). heading labels the list
 // with a heading at heading_level, 8px above it and lined up with the
 // item text; name labels it when there is none. typeahead lets a letter
@@ -285,7 +287,7 @@ action_list_open :: proc(
 	variant := Action_List_Variant.Inset,
 	selection := Selection_Variant.None,
 	role := List_Role.List,
-	focus := List_Focus.Tab,
+	focus := List_Focus.Auto,
 	wrap := false,
 	dividers := false,
 	typeahead := false,
@@ -305,6 +307,10 @@ action_list_open :: proc(
 	l.p = ui.widget_open(gtx, key, loc)
 	l.cs = gtx.constraints
 	l.base = id_base if id_base != 0 else l.p.id
+	focus := focus
+	if focus == .Auto {
+		focus = role == .List ? .Tab : .Roving
+	}
 	l.o = {variant, selection, role, focus, wrap, dividers, typeahead, heading, heading_level, name, active, activate, follow, focus_to, scroll}
 	l.entries = make([dynamic]List_Entry, gtx.allocator)
 	l.sel = selection

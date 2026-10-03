@@ -111,7 +111,7 @@ page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		names := [4]string{"Bug", "Feature", "Question", "Documentation"}
 		{
 			b := list_box(gtx, 220, 5)
-			l := primer.action_list_open(gtx, selection = .Single, role = .Listbox, focus = .Roving, name = "Single", key = 6)
+			l := primer.action_list_open(gtx, selection = .Single, role = .Listbox, name = "Single", key = 6)
 			for n, i in names {
 				if primer.action_list_item(&l, n, selected = ls.single == i) {
 					ls.single = i
@@ -123,7 +123,7 @@ page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		{
 			b := list_box(gtx, 220, 7)
-			l := primer.action_list_open(gtx, selection = .Multiple, role = .Listbox, focus = .Roving, name = "Multiple", key = 8)
+			l := primer.action_list_open(gtx, selection = .Multiple, role = .Listbox, name = "Multiple", key = 8)
 			for n, i in names {
 				if primer.action_list_item(&l, n, selected = ls.multiple[i]) {
 					ls.multiple[i] = !ls.multiple[i]
@@ -134,7 +134,7 @@ page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		{
 			b := list_box(gtx, 220, 9)
-			l := primer.action_list_open(gtx, selection = .Radio, role = .Listbox, focus = .Roving, name = "Radio", key = 10)
+			l := primer.action_list_open(gtx, selection = .Radio, role = .Listbox, name = "Radio", key = 10)
 			for n, i in names {
 				if primer.action_list_item(&l, n, selected = ls.radio == i, disabled = i == 3) {
 					ls.radio = i
