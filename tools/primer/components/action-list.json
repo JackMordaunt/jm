@@ -827,8 +827,8 @@
       "source": "ActionList/Item.tsx:148-174,223,247-260"
     },
     {
-      "text": "In a plain list each item's content is a button and Tab moves between them. When the list role is menu, menubar or listbox (or a container asks for it), arrow-key focus management turns on: Up and Down move between items, Home and End jump to the ends, Page Up and Page Down move by page; a menu wraps past the ends, a bare listbox stops.",
-      "source": "ActionList/List.tsx:58-68; useFocusZone.ts:33-76"
+      "text": "In a plain list each item's content is a button and Tab moves between them. When the list role is menu, menubar or listbox (or a container asks for it), arrow-key focus management turns on: Up and Down move between items, Home and End jump to the ends, and Page Up and Page Down jump to the ends too (the focus zone maps them to start and end, not a page); Cmd (Ctrl elsewhere) with an arrow also jumps to an end. A menu wraps past the ends, a bare listbox stops.",
+      "source": "ActionList/List.tsx:58-68; useFocusZone.ts:33-76; npm/behaviors/esm/focus-zone.mjs:46-79,135-136,486-506"
     },
     {
       "text": "A trailing action renders only when the item is not inactive or loading and the list is not inside ActionMenu, SelectPanel or FilteredActionList; using one there is an error.",
@@ -887,7 +887,7 @@
     "minTargetPx": 32,
     "keyboard": [
       "Plain list: Tab and Shift+Tab move between items; Enter or Space activates.",
-      "Menu or listbox: Tab enters the list at one item; ArrowDown and ArrowUp move to the next and previous item (a menu wraps at the ends); Home and End move to the first and last; PageDown and PageUp move by page.",
+      "Menu or listbox: Tab enters the list at one item; ArrowDown and ArrowUp move to the next and previous item (a menu wraps at the ends); Home and End, and PageUp and PageDown, move to the first and last.",
       "Enter or Space activates the focused item; disabled, inactive and loading items do nothing.",
       "In a plain list, a trailing action is its own Tab stop after the item."
     ],
@@ -905,8 +905,8 @@
   "notes": [
     {
       "kind": "web-only",
-      "text": "Arrow-key navigation is @primer/behaviors' focusZone (not read for this spec): a roving tabindex in which one item holds tabindex 0 and the rest -1, arrow keys move DOM focus, and focusOutBehavior chooses wrap or stop. A native build implements the roving index itself: keep one focusable row per list, move it with Up, Down, Home, End, PageUp and PageDown, skip disabled rows, and remember the last index when focus re-enters.",
-      "source": "ActionList/List.tsx:58-68; useFocusZone.ts:33-76"
+      "text": "Arrow-key navigation is @primer/behaviors' focusZone: a roving tabindex in which one item holds tabindex 0 and the rest -1, arrow keys move DOM focus, and focusOutBehavior chooses wrap or stop (stop by default). Its candidates are every focusable element, and an aria-disabled item is one, so disabled rows are visited, not skipped. A native build implements the roving index itself: keep one focusable row per list, move it with Up, Down, Home, End, PageUp and PageDown, and remember the last index when focus re-enters.",
+      "source": "ActionList/List.tsx:58-68; useFocusZone.ts:33-76; npm/behaviors/esm/focus-zone.mjs:135-168,486-512; npm/behaviors/esm/utils/iterate-focusable-elements.mjs:34-61"
     },
     {
       "kind": "web-only",
@@ -956,8 +956,8 @@
     },
     {
       "kind": "gotcha",
-      "text": "The type comment says disabled items cannot be navigated through, but the item keeps tabIndex 0 and only sets aria-disabled; whether the focus zone skips it depends on @primer/behaviors. Pick one behaviour natively and keep disabled rows unactivatable either way.",
-      "source": "ActionList/shared.ts:37-40; ActionList/Item.tsx:247-260"
+      "text": "The type comment says disabled items cannot be navigated through, but the item keeps tabIndex 0 and only sets aria-disabled, and the focus zone takes every focusable element, so arrow keys do land on disabled items. Keep disabled rows reachable and unactivatable.",
+      "source": "ActionList/shared.ts:37-40; ActionList/Item.tsx:247-260; npm/behaviors/esm/utils/iterate-focusable-elements.mjs:34-61"
     },
     {
       "kind": "gotcha",

@@ -371,13 +371,13 @@
   "notes": [
     {
       "kind": "web-only",
-      "text": "The highlight is @primer/behaviors' focusZone in active-descendant mode on the menu, controlled from the input (not read for this spec). A native build keeps keyboard focus in the text field and a highlightedIndex over the filtered options that Up and Down move with wrap, hover sets, Enter activates, and a text change re-clamps.",
-      "source": "AutocompleteMenu.tsx:287-315; useFocusZone.ts:15-20,41-62"
+      "text": "The highlight is @primer/behaviors' focusZone in active-descendant mode on the menu, controlled from the input. A native build keeps keyboard focus in the text field and a highlightedIndex over the filtered options that Up and Down move with wrap, hover sets, Enter activates, and a text change re-clamps.",
+      "source": "AutocompleteMenu.tsx:287-315; useFocusZone.ts:15-20,41-62; npm/behaviors/esm/focus-zone.mjs:151-194"
     },
     {
-      "kind": "inferred",
-      "text": "The menu's focus zone passes no bindKeys, so it takes @primer/behaviors' default (assumed vertical arrows plus Home and End); if so, Home and End move the highlight, not the caret, while the menu is open. Verify before copying.",
-      "source": "AutocompleteMenu.tsx:287-295"
+      "kind": "gotcha",
+      "text": "The menu's focus zone passes no bindKeys, so it takes the default, vertical arrows plus Home and End; but the zone ignores Home and End (and any single character) while an editable element has focus, and the input always has it, so Home and End move the caret, not the highlight.",
+      "source": "AutocompleteMenu.tsx:287-295; npm/behaviors/esm/focus-zone.mjs:82-88,135,469"
     },
     {
       "kind": "web-only",

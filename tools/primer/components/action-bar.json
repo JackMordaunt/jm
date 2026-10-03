@@ -418,9 +418,9 @@
       "source": "ActionBar.tsx:393-395"
     },
     {
-      "kind": "inferred",
-      "text": "Arrow navigation comes from useFocusZone in @primer/behaviors, which is not vendored. It conventionally makes the toolbar one Tab stop with a roving tabindex; the Tab line in keyboard rests on that.",
-      "source": "ActionBar.tsx:9,218-225"
+      "kind": "web-only",
+      "text": "Arrow navigation is @primer/behaviors' focusZone with horizontal arrows, Home and End, and wrap: it gives the current item tabindex 0 and every other item -1, so the toolbar is one Tab stop, and the current item starts as the first and follows focus. A native build keeps one focusable item index and moves it itself.",
+      "source": "ActionBar.tsx:9,218-225; npm/behaviors/esm/focus-zone.mjs:151-168,196-215,272-274"
     },
     {
       "kind": "hard-coded",

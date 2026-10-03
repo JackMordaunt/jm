@@ -574,8 +574,8 @@
   "behaviour": [
     {
       "id": "focus-model",
-      "text": "Focus stays in the filter input for the panel's whole life. The input is a combobox (aria-expanded true, aria-autocomplete list, aria-controls the list) whose aria-activedescendant names the highlighted option. ArrowDown, ArrowUp, PageDown and PageUp move the highlight; it wraps at the ends (stops instead when virtualized). Home and End are not bound and move the text caret.",
-      "source": "FilteredActionList.tsx:338-378; FilteredActionListInput.tsx:38-62; useFocusZone.ts:15-20"
+      "text": "Focus stays in the filter input for the panel's whole life. The input is a combobox (aria-expanded true, aria-autocomplete list, aria-controls the list) whose aria-activedescendant names the highlighted option. ArrowDown and ArrowUp move the highlight; PageDown and PageUp jump it to the last and first option (the focus zone maps them to end and start); it wraps at the ends (stops instead when virtualized). Home and End are not bound and move the text caret.",
+      "source": "FilteredActionList.tsx:338-378; FilteredActionListInput.tsx:38-62; useFocusZone.ts:15-20; npm/behaviors/esm/focus-zone.mjs:46-64,486-506"
     },
     {
       "text": "Moving the pointer over an option makes it the highlighted option, unless disableSelectOnHover is set.",
@@ -679,7 +679,7 @@
     "minTargetPx": 32,
     "keyboard": [
       "On the anchor: Enter, Space, ArrowDown or ArrowUp opens the panel and focuses the filter input.",
-      "In the input: typing filters; ArrowDown and ArrowUp move the highlighted option, wrapping; PageDown and PageUp move by page.",
+      "In the input: typing filters; ArrowDown and ArrowUp move the highlighted option, wrapping; PageDown and PageUp move it to the last and first option.",
       "Enter activates the highlighted option: toggle (multiple), choose and close (anchored single), mark pending (modal single).",
       "Tab moves to the select-all checkbox, footer buttons and close button; focus is trapped in the panel.",
       "Escape closes the panel and returns focus to the anchor."
@@ -695,13 +695,13 @@
   "notes": [
     {
       "kind": "web-only",
-      "text": "aria-activedescendant focus is @primer/behaviors' focusZone in active-descendant mode (not read for this spec): DOM focus stays on the input, the zone stamps data-is-active-descendant on the highlighted option and points aria-activedescendant at it. A native immediate-mode build keeps keyboard focus on the text field and stores a separate highlightedIndex that Up/Down/PageUp/PageDown move (wrapping), hover sets, Enter activates, and a filter change re-clamps (first option when the old one vanished).",
-      "source": "FilteredActionList.tsx:338-378; useFocusZone.ts:15-20,41-62"
+      "text": "aria-activedescendant focus is @primer/behaviors' focusZone in active-descendant mode: DOM focus stays on the input, the zone stamps data-is-active-descendant on the highlighted option and points aria-activedescendant at it. A native immediate-mode build keeps keyboard focus on the text field and stores a separate highlightedIndex that Up/Down move (wrapping) and PageUp/PageDown send to the ends, hover sets, Enter activates, and a filter change re-clamps (first option when the old one vanished).",
+      "source": "FilteredActionList.tsx:338-378; useFocusZone.ts:15-20,41-62; npm/behaviors/esm/focus-zone.mjs:151-194,486-512"
     },
     {
-      "kind": "inferred",
-      "text": "The first option is assumed to become highlighted as soon as the input has focus (focusInStrategy previous falls back to the first item), which is what the on-focus announcement reads back; the zone's code was not read for this spec, so verify against @primer/behaviors' focus-zone source.",
-      "source": "FilteredActionList.tsx:372; useAnnouncements.tsx:96-123"
+      "kind": "web-only",
+      "text": "The first option becomes highlighted as soon as the input has focus: the zone sets its current element to the first focusable option when it starts and whenever options are added with none current, and stamps it as the active descendant while the input has focus. This is what the on-focus announcement reads back.",
+      "source": "FilteredActionList.tsx:372; useAnnouncements.tsx:96-123; npm/behaviors/esm/focus-zone.mjs:145-163,196-215,272-274"
     },
     {
       "kind": "web-only",

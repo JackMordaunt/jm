@@ -515,8 +515,8 @@
   "notes": [
     {
       "kind": "web-only",
-      "text": "Token navigation is @primer/behaviors' focusZone (horizontal arrows, Home and End, wrap) with a custom getNextFocusable that indexes the row's DOM children (the input wrapper is child 0). A native build keeps one focus index over [input, token 0..n-1] and moves it as described; the zone's handling of arrows while the caret is mid-text was not read for this spec, so let the text field consume Left and Right unless the caret is at position 0 (Left) with no selection.",
-      "source": "TextInputWithTokens.tsx:132-162; useFocusZone.ts:33-76"
+      "text": "Token navigation is @primer/behaviors' focusZone (horizontal arrows, Home and End, wrap) with a custom getNextFocusable that indexes the row's DOM children (the input wrapper is child 0). A native build keeps one focus index over [input, token 0..n-1] and moves it as described. While the input has focus the zone leaves ArrowLeft to the text unless the caret is at the start with no selection, ArrowRight unless it is at the end, and Home and End always, so those keys leave the input only from its edges.",
+      "source": "TextInputWithTokens.tsx:132-162; useFocusZone.ts:33-76; npm/behaviors/esm/focus-zone.mjs:82-110"
     },
     {
       "kind": "web-only",

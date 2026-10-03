@@ -267,11 +267,11 @@
       "source": "ActionMenu/ActionMenu.tsx:277-286,357; AnchoredOverlay.tsx:170-171,254-275"
     },
     {
-      "text": "The menu sits 4px off the anchor's edge. The CSS anchor-positioning path states this; the default JavaScript positioner (@primer/behaviors, not read for this spec) is assumed to use the same 4px default offset.",
+      "text": "The menu sits 4px off the anchor's edge: the CSS anchor-positioning path states this, and the default JavaScript positioner's anchorOffset defaults to 4px.",
       "tokens": [
         "--base-size-4"
       ],
-      "source": "AnchoredOverlay.module.css:37-41"
+      "source": "AnchoredOverlay.module.css:37-41; npm/behaviors/esm/anchored-position.mjs:91-111"
     },
     {
       "text": "The overlay is at least 192px wide and grows to its widest item, up to the viewport width less 32px; its height is its content up to the viewport height (or the maxHeight preset, capped by the viewport), then it scrolls.",
@@ -443,8 +443,8 @@
   "notes": [
     {
       "kind": "web-only",
-      "text": "Focus inside the menu is a roving tabindex from @primer/behaviors' focusZone (wrap) on the overlay, plus a focus trap. A native build keeps one focused row index, moves it with Up/Down/Home/End with wrap, skips disabled rows, scrolls the focused row into view, and holds keyboard input inside the menu until it closes.",
-      "source": "ActionMenu/ActionMenu.tsx:341,362; AnchoredOverlay.tsx:285-294; useFocusZone.ts:33-76"
+      "text": "Focus inside the menu is a roving tabindex from @primer/behaviors' focusZone (wrap) on the overlay, plus a focus trap; the menu's ActionList also binds PageUp and PageDown, which jump to the first and last item. Disabled items are focusable elements, so the zone visits them. A native build keeps one focused row index, moves it with Up/Down/Home/End/PageUp/PageDown with wrap, scrolls the focused row into view, and holds keyboard input inside the menu until it closes.",
+      "source": "ActionMenu/ActionMenu.tsx:341,362; AnchoredOverlay.tsx:285-294; useFocusZone.ts:33-76; ActionList/List.tsx:62-68; npm/behaviors/esm/focus-zone.mjs:46-64,135-136,486-506"
     },
     {
       "kind": "web-only",
