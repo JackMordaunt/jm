@@ -382,3 +382,26 @@ test_tabs_and_navigation_bar_are_one_tab_stop_each :: proc(t: ^testing.T) {
 	ui.probe_key(&p, .Tab)
 	testing.expect_value(t, ui.probe_focus_name(&p), "Sent") // entered at the selected destination
 }
+
+@(test)
+test_menu_focuses_its_first_item_roves_and_gives_focus_back :: proc(t: ^testing.T) {
+	m := Overlay_Model{picked = -1, chose = -1}
+	p: ui.Probe
+	ui.probe_init(&p, overlays, &m, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Edit"))
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Cut") // opening focuses the first item
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Copy")
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Cut") // wraps
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Cut") // the trap holds Tab
+	ui.probe_key(&p, .Escape)
+	ui.probe_frame(&p)
+	testing.expect(t, !m.menu_open)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Edit") // back to the trigger as it closes
+}

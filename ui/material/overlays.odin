@@ -247,9 +247,13 @@ Menu_Row :: struct {
 // Placement is ui.popup_open's: the menu opens offset below its origin,
 // flips above the origin when below would leave the window, and shifts
 // sideways to stay inside it; it grows from the corner nearest the
-// anchor. Not done, for want of jm:ui support: keyboard travel between items — jm:ui moves focus only by
-// pointer press, so arrow keys cannot. A focused item still takes
-// Enter/Space, and Escape on it closes the menu. comp.segmented-menu's
+// anchor.
+//
+// The items are one roving focus scope (menu.json accessibility): Up and
+// Down move focus between them, wrapping, Home and End to the ends, and
+// Enter or Space chooses. A popup menu also traps focus, takes it to its
+// first item as it opens, and gives it back to where it was as it closes,
+// by Escape, a choice or a press outside. comp.segmented-menu's
 // horizontal icon-only row has no Compose consumer and is not built.
 menu :: proc(
 	gtx: ^ui.Ctx,
@@ -387,13 +391,27 @@ menu :: proc(
 		side = ui.placed_side(gtx, menu_id, .Below)
 		node = ui.overlay_semantics(gtx, &o, {role = .Menu}, u64(ui.id_mix(menu_id, 1)), loc = loc)
 	}
+	seen := ui.widget_data(gtx, menu_id, Menu_Seen)
+	if live && !seen.open && !inline {
+		ui.focus_first(gtx, menu_id)
+	}
+	seen.open = live
+	ui.focus_scope_open(gtx, menu_id, trap = live && !inline, rove = .Vertical, wrap = true)
 	menu_paint(gtx, items, rows, ctrl, menu_id, scrim_id, w, h, group, shown, alpha, live, modal, style, groups, side, node)
+	ui.focus_scope_close(gtx)
 	if inline {
 		ui.widget_close(gtx, &p, {size = ui.constrain(gtx.constraints, {w, h})})
 	} else {
 		ui.popup_close(&o, {w, h})
 	}
 	return chosen
+}
+
+// Menu_Seen is whether a menu was open last frame, so its opening frame
+// can take focus to its first item.
+@(private = "file")
+Menu_Seen :: struct {
+	open: bool,
 }
 
 // menu_paint draws menu's popup at the origin: the scrim while live and
