@@ -5,6 +5,7 @@ import "jm:ui/ops"
 import "core:mem"
 import "core:mem/virtual"
 import "core:slice"
+import "core:strings"
 import "core:testing"
 
 @(test)
@@ -16,6 +17,8 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.init(&src)
 	golden_scene(&src)
 	ops.add_font(&src, "mono.ttf", 600)
+	odd := ops.add_path(&src, {verbs = src.paths[0].verbs, points = src.paths[0].points, rule = .Even_Odd})
+	ops.fill(&src, ops.Path_Ref{odd}, ops.Color{0, 0, 0, 255})
 	ops.tag(&src, 99, "quote \" and\nnewline")
 	ops.defer_call(&src, 0) // golden_scene's first macro, run again on top
 	// and once more as a popup, which carries its placement on the wire
@@ -61,10 +64,14 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	testing.expect_value(t, dst.images[0].path, "logo.png")
 	testing.expect(t, slice.equal(dst.paths[0].verbs, src.paths[0].verbs))
 	testing.expect(t, slice.equal(dst.paths[0].points, src.paths[0].points))
+	testing.expect_value(t, dst.paths[0].rule, ops.Fill_Rule.Non_Zero)
+	testing.expect_value(t, dst.paths[odd].rule, ops.Fill_Rule.Even_Odd)
 	testing.expect(t, slice.equal(dst.runs[0].glyphs, src.runs[0].glyphs))
 	testing.expect_value(t, dst.runs[0].advance, src.runs[0].advance)
 	testing.expect_value(t, dst.macros[0], src.macros[0])
 	testing.expect_value(t, ops.dump(&dst), ops.dump(&src))
+	testing.expect(t, strings.contains(ops.dump(&src), "fill path#"), "the even-odd fill is dumped")
+	testing.expect(t, strings.contains(ops.dump(&dst), " evenodd "), "the decoded fill keeps its rule")
 
 	// flatten(decode(encode(x))) == flatten(x), the popup placed the same
 	fs, fd: Frame

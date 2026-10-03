@@ -61,6 +61,16 @@ Path_Verb :: enum u8 {
 Path :: struct {
 	verbs:  []Path_Verb,
 	points: []Point,
+	rule:   Fill_Rule,
+}
+
+// Fill_Rule is what a fill of a path counts as inside: Non_Zero where its
+// subpaths' windings around a point do not cancel, Even_Odd where an odd
+// number of subpaths enclose it, so a hole cuts through whichever way it
+// winds (SVG's fill-rule). A stroke ignores it.
+Fill_Rule :: enum u8 {
+	Non_Zero,
+	Even_Odd,
 }
 
 Gradient_Stop :: struct {

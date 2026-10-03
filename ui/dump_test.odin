@@ -17,7 +17,7 @@ golden_scene :: proc(sc: ^ops.Scene) {
 	copy(verbs, []ops.Path_Verb{.Move, .Line, .Cubic, .Close})
 	points := make([]ops.Point, 5, sc.allocator)
 	copy(points, []ops.Point{{0, 0}, {10, 0}, {10, 5}, {5, 10}, {0, 10}})
-	path := ops.add_path(sc, {verbs, points})
+	path := ops.add_path(sc, {verbs = verbs, points = points})
 	stops := make([]ops.Gradient_Stop, 2, sc.allocator)
 	copy(stops, []ops.Gradient_Stop{{0, {0, 0, 0, 255}}, {1, {255, 255, 255, 255}}})
 

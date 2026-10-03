@@ -38,6 +38,7 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 		case Push_Clip:
 			strings.write_string(&sb, "clip ")
 			write_shape(&sb, v.shape)
+			write_fill_rule(&sb, ops, v.shape)
 			depth += 1
 		case Macro_Begin:
 			fmt.sbprintf(&sb, "macro %d", v.id)
@@ -199,6 +200,14 @@ write_color :: proc(sb: ^strings.Builder, c: Color) {
 	}
 }
 
+// write_fill_rule marks a path that fills even-odd, which s's path#id
+// alone does not show; non-zero, the default, is left unsaid.
+write_fill_rule :: proc(sb: ^strings.Builder, o: ^Scene, s: Shape) {
+	if p, is_path := s.(Path_Ref); is_path && int(p.id) < len(o.paths) && o.paths[p.id].rule == .Even_Odd {
+		strings.write_string(sb, " evenodd")
+	}
+}
+
 write_shape :: proc(sb: ^strings.Builder, s: Shape) {
 	switch v in s {
 	case Rect:
@@ -314,6 +323,7 @@ write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
 	case Fill:
 		strings.write_string(sb, "fill ")
 		write_shape(sb, v.shape)
+		write_fill_rule(sb, o, v.shape)
 		strings.write_byte(sb, ' ')
 		write_paint(sb, v.paint)
 	case Stroke:

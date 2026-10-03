@@ -307,5 +307,5 @@ bent_path :: proc(size: [2]f32, seed: u8) -> ops.Path {
 		append(&points, ops.Point{size.x, size.y})
 	}
 	append(&verbs, ops.Path_Verb.Close)
-	return {verbs[:], points[:]}
+	return {verbs = verbs[:], points = points[:]}
 }

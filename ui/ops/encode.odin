@@ -8,7 +8,7 @@ import "core:mem"
 //	"UIOP" u8(version)
 //	fonts   u32 n, n × (u32 id, str path, f32 weight)
 //	images  u32 n, n × (u32 id, str path)
-//	paths   u32 n, n × (u32 n, n × u8 verb; u32 n, n × (f32 x, f32 y))
+//	paths   u32 n, n × (u32 n, n × u8 verb; u32 n, n × (f32 x, f32 y); u8 rule)
 //	runs    u32 n, n × (u32 font, f32 size, u32 n, n × (u32 id, u32 cluster, f32 x, f32 y, u32 font), f32 advance)
 //	macros  u32 n, n × (i64 first, i64 last)
 //	ops     u32 n, n × (u8 tag, payload)
@@ -36,8 +36,8 @@ ENCODE_MAGIC :: "UIOP"
 // Role Tree, Tree_Item and Tab_Panel and State Current and Current_Page;
 // 32 turned Focus_Scope's trap into a flags byte (bit 0 trap, bit 1
 // wrap, bits 2-3 rove) and gave Focus_Scope_End an entry; 33 gave
-// Input_Area's flags no_tab, bit 2.
-ENCODE_VERSION :: u8(33)
+// Input_Area's flags no_tab, bit 2; 34 gave Path its fill rule.
+ENCODE_VERSION :: u8(34)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -77,6 +77,7 @@ encode :: proc(ops: ^Scene, allocator := context.allocator) -> []byte {
 		for q in p.points {
 			put_point(&w, q)
 		}
+		append(&w, u8(p.rule))
 	}
 	put_u32(&w, u32(len(ops.runs)))
 	for r in ops.runs {
@@ -175,7 +176,11 @@ decode :: proc(data: []byte, ops: ^Scene) -> bool {
 		for &q in points {
 			q = get_point(&r) or_return
 		}
-		append(&ops.paths, Path{verbs, points})
+		rule := get_u8(&r) or_return
+		if rule > u8(max(Fill_Rule)) {
+			return false
+		}
+		append(&ops.paths, Path{verbs = verbs, points = points, rule = Fill_Rule(rule)})
 	}
 	if n, ok = get_count(&r, 1); !ok {
 		return false

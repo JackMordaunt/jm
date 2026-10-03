@@ -686,7 +686,10 @@ fill_shape :: proc(r: ^Renderer, ctx: ^bl.ContextCore, sc: ^ops.Scene, s: ops.Sh
 	case ops.Path_Ref:
 		if build_path(r, sc, v.id) {
 			origin := bl.Point{0, 0}
+			rule := sc.paths[v.id].rule == .Even_Odd ? bl.FillRule.EVEN_ODD : bl.FillRule.NON_ZERO
+			bl.context_set_fill_rule(ctx, rule)
 			bl.context_fill_path_d(ctx, &origin, &r.path)
+			bl.context_set_fill_rule(ctx, .NON_ZERO)
 		}
 	}
 }

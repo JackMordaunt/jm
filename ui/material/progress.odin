@@ -1094,7 +1094,7 @@ paint_morph :: proc(gtx: ^ui.Ctx, m: Shape_Morph, t: f32, c: ops.Point, scale, r
 		verbs[1 + i] = .Cubic
 	}
 	verbs[n + 1] = .Close
-	ops.fill(gtx.scene, ops.Path_Ref{ops.add_path(gtx.scene, {verbs, pts})}, col)
+	ops.fill(gtx.scene, ops.Path_Ref{ops.add_path(gtx.scene, {verbs = verbs, points = pts})}, col)
 }
 
 // progress_clock is seconds into a loop of period for an animated

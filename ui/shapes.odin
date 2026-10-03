@@ -47,5 +47,5 @@ path_through :: proc(gtx: ^Ctx, points: []ops.Point, close: bool) -> ops.Path_Id
 	if close {
 		verbs[n - 1] = .Close
 	}
-	return ops.add_path(gtx.scene, {verbs, pts})
+	return ops.add_path(gtx.scene, {verbs = verbs, points = pts})
 }

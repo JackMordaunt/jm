@@ -1153,7 +1153,7 @@ hash_shape :: proc(h: u64, sc: ^ops.Scene, s: ops.Shape) -> u64 {
 			return hash_value(h, 4)
 		}
 		p := sc.paths[v.id]
-		out := hash.fnv64a(mem.slice_to_bytes(p.verbs), hash_value(h, 4))
+		out := hash.fnv64a(mem.slice_to_bytes(p.verbs), hash_value(hash_value(h, 4), p.rule))
 		return hash.fnv64a(mem.slice_to_bytes(p.points), out)
 	}
 	return h

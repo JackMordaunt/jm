@@ -2,6 +2,7 @@ package render
 
 import "core:math"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "jm:ui/ops"
 import "core:testing"
@@ -300,7 +301,7 @@ test_path_gradient_stroke :: proc(t: ^testing.T) {
 	defer teardown(&fx)
 	verbs := []ops.Path_Verb{.Move, .Line, .Line, .Close}
 	points := []ops.Point{{0, 0}, {30, 0}, {0, 30}}
-	tri := ops.add_path(&fx.scene, {verbs, points})
+	tri := ops.add_path(&fx.scene, {verbs = verbs, points = points})
 	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Path_Ref{tri}, RED)
 	stops := []ops.Gradient_Stop{{0, {0, 0, 255, 255}}, {1, {0, 255, 0, 255}}}
 	fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Rect{0, 40, SIZE, 10}, ops.Linear_Gradient{{0, 0}, {SIZE, 0}, stops})
@@ -312,6 +313,31 @@ test_path_gradient_stroke :: proc(t: ^testing.T) {
 	testing.expectf(t, left.b > 200 && right.g > 200, "gradient ends %v %v", left, right)
 	testing.expect_value(t, at(&fx, {40, 14}), RED)
 	testing.expect_value(t, at(&fx, {50, 14}), WHITE)
+}
+
+// A square with a same-way inner square is solid under non-zero and has a
+// hole under even-odd; the rule is the path's own, so a non-zero path
+// drawn after an even-odd one is solid again.
+@(test)
+test_path_fill_rule :: proc(t: ^testing.T) {
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	verbs := []ops.Path_Verb{.Move, .Line, .Line, .Line, .Close, .Move, .Line, .Line, .Line, .Close}
+	at_x :: proc(x: f32) -> []ops.Point {
+		return slice.clone([]ops.Point{{x, 0}, {x + 20, 0}, {x + 20, 20}, {x, 20}, {x + 6, 6}, {x + 14, 6}, {x + 14, 14}, {x + 6, 14}}, context.temp_allocator)
+	}
+	solid := ops.add_path(&fx.scene, {verbs = verbs, points = at_x(0)})
+	holed := ops.add_path(&fx.scene, {verbs = verbs, points = at_x(22), rule = .Even_Odd})
+	after := ops.add_path(&fx.scene, {verbs = verbs, points = at_x(44)})
+	for p in ([]ops.Path_Id{solid, holed, after}) {
+		fill(&fx, ops.IDENTITY, ui.NO_CLIP, ops.Path_Ref{p}, RED)
+	}
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	testing.expect_value(t, at(&fx, {10, 10}), RED)
+	testing.expect_value(t, at(&fx, {32, 10}), WHITE)
+	testing.expect_value(t, at(&fx, {25, 3}), RED)
+	testing.expect_value(t, at(&fx, {54, 10}), RED)
 }
 
 // Workers must draw what the synchronous path draws, masks included, while

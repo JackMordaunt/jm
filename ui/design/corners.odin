@@ -37,7 +37,7 @@ rounded :: proc(gtx: ^ui.Ctx, r: ops.Rect, c: Corners) -> ops.Path_Ref {
 	pts := make([]ops.Point, len(o.points), gtx.allocator)
 	copy(verbs, o.verbs[:])
 	copy(pts, o.points[:])
-	return {ops.add_path(gtx.scene, {verbs, pts})}
+	return {ops.add_path(gtx.scene, {verbs = verbs, points = pts})}
 }
 
 // Outline is a rounded rect's closed path by value: a move, four sides
@@ -89,7 +89,7 @@ ring_path :: proc(gtx: ^ui.Ctx, outer: ops.Rect, ko: Corners, hole: ops.Rect, kh
 	copy(verbs[len(o.verbs):], h.verbs[:])
 	copy(pts, o.points[:])
 	copy(pts[len(o.points):], h.points[:])
-	return {ops.add_path(gtx.scene, {verbs, pts})}
+	return {ops.add_path(gtx.scene, {verbs = verbs, points = pts})}
 }
 
 // reversed is o traced the other way round: the same corners and sides,
@@ -144,5 +144,5 @@ arc :: proc(gtx: ^ui.Ctx, c: ops.Point, r: f32, a0, a1: f32) -> ops.Path_Ref {
 		pts[3 + 3 * i] = p1
 		p0, a = p1, b
 	}
-	return {ops.add_path(gtx.scene, {verbs, pts})}
+	return {ops.add_path(gtx.scene, {verbs = verbs, points = pts})}
 }

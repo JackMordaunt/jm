@@ -32,10 +32,10 @@ parse_svg_path :: proc(d: string, allocator := context.allocator) -> (path: ops.
 			}
 		}
 		if !read_svg_command(&b, d, &i, &cmd) {
-			return {b.verbs[:], b.points[:]}, false
+			return {verbs = b.verbs[:], points = b.points[:]}, false
 		}
 	}
-	return {b.verbs[:], b.points[:]}, true
+	return {verbs = b.verbs[:], points = b.points[:]}, true
 }
 
 @(private = "file")

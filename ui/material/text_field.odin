@@ -827,6 +827,6 @@ stroke_outline_with_gap :: proc(gtx: ^ui.Ctx, r: ops.Rect, radius, gap0, gap1: f
 	} else {
 		append(&verbs, ops.Path_Verb.Close)
 	}
-	path := ops.Path_Ref{ops.add_path(gtx.scene, {verbs[:], pts[:]})}
+	path := ops.Path_Ref{ops.add_path(gtx.scene, {verbs = verbs[:], points = pts[:]})}
 	ops.stroke(gtx.scene, path, color, {width = w})
 }
