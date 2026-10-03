@@ -771,3 +771,545 @@ underline_step :: proc(key: ui.Key, at, n: int) -> int {
 	}
 	return -1
 }
+
+// --- Breadcrumbs ---------------------------------------------------------
+
+// Breadcrumb is one crumb; selected marks the current page.
+Breadcrumb :: struct {
+	label:    string,
+	selected: bool,
+}
+
+// Breadcrumbs_Overflow is what a trail too long for its row does: wrap
+// onto more lines, fold its leading crumbs into a menu, or fold the
+// crumbs after the root, which stays.
+Breadcrumbs_Overflow :: enum u8 {
+	Wrap,
+	Menu,
+	Menu_With_Root,
+}
+
+// Breadcrumbs_Variant is a crumb's look: link-coloured text, or
+// default-coloured padded boxes that fill on hover.
+Breadcrumbs_Variant :: enum u8 {
+	Normal,
+	Spacious,
+}
+
+// CRUMB_RULE is the wrap separator's em geometry at the medium body size:
+// a 0.1em rule 0.8em tall, rotated 15 degrees and nudged 0.0625em down,
+// with 0.5em either side (Breadcrumbs.module.css:31-57).
+@(private)
+CRUMB_RULE :: struct {
+	stroke, height, margin, nudge, angle: f32,
+} {
+	0.1 * tok.TEXT_BODY_SIZE_MEDIUM,
+	0.8 * tok.TEXT_BODY_SIZE_MEDIUM,
+	0.5 * tok.TEXT_BODY_SIZE_MEDIUM,
+	0.0625 * tok.TEXT_BODY_SIZE_MEDIUM,
+	15,
+}
+
+// CRUMB_GLYPH is the menu modes' 16px slash separator, and
+// CRUMB_ALLOWANCE the flat 16px the fold adds per crumb for it
+// (Breadcrumbs.tsx:191,364-372).
+CRUMB_GLYPH :: tok.BASE_SIZE_16
+CRUMB_ALLOWANCE :: tok.BASE_SIZE_16
+
+// CRUMB_NARROW is the width below which the menu mode keeps one crumb
+// (Breadcrumbs.tsx:180).
+CRUMB_NARROW :: tok.BREAKPOINT_SMALL
+
+// Crumb_Separator is what follows a crumb.
+@(private)
+Crumb_Separator :: enum u8 {
+	None,
+	Rule, // the wrap mode's rotated rule
+	Glyph, // the menu modes' slash
+}
+
+// crumb_style is a crumb's text: medium body, semibold for the current
+// spacious crumb (Breadcrumbs.module.css:59-106).
+@(private)
+crumb_style :: proc(variant: Breadcrumbs_Variant, selected: bool) -> tok.Type_Style {
+	st := style(.Body_Medium)
+	if variant == .Spacious && selected {
+		st.weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD
+	}
+	return st
+}
+
+// crumb_pad is a crumb's padding: none, or 6px inline and 4px block when
+// spacious.
+@(private)
+crumb_pad :: proc(variant: Breadcrumbs_Variant) -> ops.Size {
+	return variant == .Spacious ? {tok.BASE_SIZE_6, tok.BASE_SIZE_4} : {}
+}
+
+// breadcrumbs_fold is how many crumbs fold into the menu, given each
+// crumb's width as the unfolded pass measured it (its separator rule
+// included, the last's excluded), the width available and the menu
+// button's (Breadcrumbs.tsx:161-219): fold leading crumbs while they need
+// more than avail, each with a flat 16px for its separator and the button
+// once anything folded, or while more remain than the minimum (3 after
+// the root, else 4, or 1 when avail is under 544px and there are more
+// than two); when one remains and still does not fit, the root is hidden
+// too. With root the root stays first and is never folded.
+//
+// The web folds the root first in menu-with-root, counting it twice and,
+// with exactly one crumb folded, showing an empty menu
+// (Breadcrumbs.tsx:179,190-216,310-321); here the root is set aside before folding.
+breadcrumbs_fold :: proc(widths: []f32, avail, button: f32, with_root: bool) -> (folded: int, hide_root: bool) {
+	hide_root = !with_root
+	if len(widths) == 0 || avail <= 0 {
+		return
+	}
+	root := with_root ? widths[0] : 0
+	list := with_root ? widths[1:] : widths
+	least := with_root ? 3 : 4
+	if !with_root && avail < CRUMB_NARROW && len(widths) > 2 {
+		least = 1
+	}
+	need :: proc(list: []f32, root: f32, hide_root: bool) -> (w: f32) {
+		for x in list {
+			w += x + CRUMB_ALLOWANCE
+		}
+		return w + (hide_root ? 0 : root)
+	}
+	total := need(list, root, hide_root)
+	for total > avail || len(list) - folded > least {
+		if len(list) - folded <= 1 {
+			// Only the last crumb is left to show: the root goes into the
+			// menu when it still does not fit.
+			hide_root = hide_root || total > avail
+			break
+		}
+		folded += 1
+		total = need(list[folded:], root, hide_root) + button
+		if len(list) - folded == 1 && total > avail {
+			hide_root = true
+			break
+		}
+	}
+	return
+}
+
+// Breadcrumbs_Memo is whether the overflow menu is open.
+@(private)
+Breadcrumbs_Memo :: struct {
+	open: bool,
+}
+
+// breadcrumbs is Primer's Breadcrumbs (breadcrumbs.json, Breadcrumbs.tsx,
+// Breadcrumbs.module.css): a navigation landmark named "Breadcrumbs"
+// holding a trail of links from the root to the current page. Normal
+// crumbs are --fgColor-link text that underlines on hover, the current one
+// --fgColor-default; spacious crumbs are --fgColor-default boxes padded 6px
+// by 4px that fill --control-transparent-bgColor-hover on hover, the
+// current one semibold. Keyboard focus outlines a crumb 2px outside. Wrap
+// separates crumbs with a rotated --fgColor-muted rule and wraps the
+// trail; Menu and Menu_With_Root keep one row, separate crumbs with a
+// 16px slash and fold leading crumbs (after the root, for
+// Menu_With_Root) into a small invisible kebab IconButton named "<n> more
+// breadcrumb items" whose menu lists them (breadcrumbs_fold). It returns
+// the crumb activated, in the trail or the menu, or -1.
+//
+// Departures: the menu lists its crumbs as invisible buttons until
+// ActionList lands; it is at most the auto overlay width, not the small
+// 320px; crumbs have no hrefs, the activation being the caller's.
+breadcrumbs :: proc(
+	gtx: ^ui.Ctx,
+	items: []Breadcrumb,
+	overflow := Breadcrumbs_Overflow.Wrap,
+	variant := Breadcrumbs_Variant.Normal,
+	state := Interaction.Live,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> (clicked: int) {
+	clicked = -1
+	id := ui.claim_id(gtx, key, loc)
+	if overflow == .Wrap {
+		row := ui.wrap_open(gtx, align = .Center, key = u64(ui.id_mix(id, 1)))
+		ui.container_semantics(gtx, {role = .Navigation, label = "Breadcrumbs"})
+		for it, i in items {
+			if crumb(gtx, it, variant, i < len(items) - 1 ? .Rule : .None, crumb_state(state, it, i, items), u64(i + 1)) {
+				clicked = i
+			}
+		}
+		ui.close(&row)
+		return
+	}
+	avail := ui.offer(gtx).max.x
+	widths := make([]f32, len(items), gtx.allocator)
+	for it, i in items {
+		widths[i] = crumb_width(gtx, it, variant) + (i < len(items) - 1 ? 2 * CRUMB_RULE.margin + CRUMB_RULE.stroke : 0)
+	}
+	with_root := overflow == .Menu_With_Root
+	folded, hide_root := breadcrumbs_fold(widths, ui.is_finite(avail) ? avail : 0, button_metrics(.Small).height, with_root)
+	first := with_root ? 1 : 0 // the first crumb that can fold
+	row := ui.row_open(gtx, align = .Center, key = u64(ui.id_mix(id, 1)))
+	defer ui.close(&row)
+	ui.container_semantics(gtx, {role = .Navigation, label = "Breadcrumbs"})
+	if with_root && !hide_root {
+		if crumb(gtx, items[0], variant, .Glyph, crumb_state(state, items[0], 0, items), 1) {
+			clicked = 0
+		}
+	}
+	if folded > 0 || (with_root && hide_root) {
+		lo := with_root && hide_root ? 0 : first
+		if at := breadcrumbs_menu(gtx, id, items[lo:first + folded], variant); at >= 0 {
+			clicked = lo + at
+		}
+	}
+	for i in first + folded ..< len(items) {
+		sep := i < len(items) - 1 ? Crumb_Separator.Glyph : .None
+		if crumb(gtx, items[i], variant, sep, crumb_state(state, items[i], i, items), u64(i + 1)) {
+			clicked = i
+		}
+	}
+	return
+}
+
+// crumb_state is the state crumb i shows: a forced state shows on the
+// first crumb that is not the current page.
+@(private)
+crumb_state :: proc(state: Interaction, it: Breadcrumb, i: int, items: []Breadcrumb) -> Interaction {
+	if state == .Live {
+		return .Live
+	}
+	for c, k in items {
+		if !c.selected {
+			return k == i ? state : .Enabled
+		}
+	}
+	return .Enabled
+}
+
+// crumb_width is a crumb's box width without its separator.
+@(private)
+crumb_width :: proc(gtx: ^ui.Ctx, it: Breadcrumb, variant: Breadcrumbs_Variant) -> f32 {
+	st := crumb_style(variant, it.selected)
+	return design.shape_style(gtx, it.label, st, font_for(gtx, st.weight)).width + 2 * crumb_pad(variant).x
+}
+
+// crumb draws one crumb and the separator after it, and reports its
+// activation.
+@(private)
+crumb :: proc(gtx: ^ui.Ctx, it: Breadcrumb, variant: Breadcrumbs_Variant, sep: Crumb_Separator, state: Interaction, key: u64, loc := #caller_location) -> bool {
+	p := ui.widget_open(gtx, key, loc)
+	st := crumb_style(variant, it.selected)
+	t := design.shape_style(gtx, it.label, st, font_for(gtx, st.weight))
+	pad := crumb_pad(variant)
+	box := ops.Rect{0, 0, t.width + 2 * pad.x, st.line_height + 2 * pad.y}
+	sep_w: f32
+	switch sep {
+	case .None:
+	case .Rule:
+		sep_w = 2 * CRUMB_RULE.margin + CRUMB_RULE.stroke
+	case .Glyph:
+		sep_w = CRUMB_GLYPH
+	}
+	sz := ops.Size{box.w + sep_w, max(box.h, sep == .Glyph ? CRUMB_GLYPH : 0)}
+	box.y = (sz.y - box.h) / 2
+	c := control(gtx, p.id, box, state)
+	rr := ops.Round_Rect{box, tok.BORDER_RADIUS_MEDIUM}
+	fg := color(.Fg_Color_Default)
+	underline := false
+	switch variant {
+	case .Normal:
+		if !it.selected {
+			fg = color(.Fg_Color_Link)
+			underline = c.hovered && !c.focus_visible
+		}
+	case .Spacious:
+		if c.hovered || c.pressed {
+			ops.fill(gtx.scene, rr, color(.Control_Transparent_Bg_Color_Hover))
+		}
+	}
+	at := ops.Point{box.x + pad.x, box.y + pad.y + (st.line_height - t.height) / 2}
+	draw_text(gtx, t, at, fg)
+	if underline {
+		paint_underline(gtx, {at.x, at.y + baseline_of(t)}, t.width, fg)
+	}
+	paint_crumb_separator(gtx, sep, {box.x + box.w, 0, sep_w, sz.y})
+	paint_focus_outline(gtx, c, {box, tok.BORDER_RADIUS_SMALL}, LINK_FOCUS_OFFSET)
+	listen(gtx, c.st, p.id, box, cursor = .Pointer)
+	said := ui.frame_string(gtx, it.label)
+	ops.tag(gtx.scene, p.id, said, box)
+	ui.semantics(gtx, &p, {role = .Link, label = said, states = design.state_if(it.selected, {.Current_Page})})
+	ui.widget_close(gtx, &p, {sz, at.y + baseline_of(t)})
+	return c.clicked
+}
+
+// paint_crumb_separator draws sep in r, centred down it.
+@(private)
+paint_crumb_separator :: proc(gtx: ^ui.Ctx, sep: Crumb_Separator, r: ops.Rect) {
+	ink := color(.Fg_Color_Muted)
+	switch sep {
+	case .None:
+	case .Rule:
+		// A vertical rule, rotated about its centre.
+		a := CRUMB_RULE.angle * math.PI / 180
+		half := CRUMB_RULE.height / 2
+		cx := r.x + r.w / 2
+		cy := r.y + r.h / 2 + CRUMB_RULE.nudge
+		d := ops.Point{math.sin(a) * half, -math.cos(a) * half}
+		ops.stroke(gtx.scene, ui.line(gtx, {cx - d.x, cy - d.y}, {cx + d.x, cy + d.y}), ink, {width = CRUMB_RULE.stroke})
+	case .Glyph:
+		// The slash's own path (Breadcrumbs.tsx:364-372), in a 16px box.
+		o := ops.Point{r.x + (r.w - CRUMB_GLYPH) / 2, r.y + (r.h - CRUMB_GLYPH) / 2}
+		pts := make([]ops.Point, 4, gtx.allocator)
+		pts[0], pts[1], pts[2], pts[3] = o + {10.956, 1.28}, o + {6.064, 14.72}, o + {5, 14.72}, o + {9.892, 1.28}
+		ops.fill(gtx.scene, ui.polygon(gtx, pts), ink)
+	}
+}
+
+// breadcrumbs_menu is the overflow button, its separator and, while open,
+// its menu of folded; it returns the folded crumb chosen, or -1.
+@(private)
+breadcrumbs_menu :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, folded: []Breadcrumb, variant: Breadcrumbs_Variant) -> (chosen: int) {
+	chosen = -1
+	m := ui.widget_data(gtx, id, Breadcrumbs_Memo)
+	row := ui.row_open(gtx, align = .Center, key = u64(ui.id_mix(id, 2)))
+	defer ui.close(&row)
+	st := ui.stack_open(gtx, key = u64(ui.id_mix(id, 3)))
+	name := fmt.aprintf("%d more breadcrumb items", len(folded), allocator = gtx.allocator)
+	if icon_button(gtx, .Kebab_Horizontal, name, .Invisible, .Small, tooltip_direction = .E, key = u64(ui.id_mix(id, 4))) {
+		m.open = !m.open
+	}
+	anchor := ui.last_widget(gtx)
+	a := anchored_overlay_open(gtx, &m.open, anchor, focus = {prevent = true}, trap = false, role = .List, name = "Breadcrumbs", key = u64(ui.id_mix(id, 5)))
+	if a.visible {
+		pad := ui.inset_open(gtx, ui.pad_all(tok.BASE_SIZE_8))
+		col := ui.column_open(gtx, align = .Fill)
+		for it, i in folded {
+			if nav_menu_item(gtx, it.label, it.selected, "", u64(i + 1)) {
+				chosen = i
+				m.open = false
+			}
+		}
+		ui.close(&col)
+		ui.close(&pad)
+	}
+	anchored_overlay_close(&a)
+	ui.close(&st)
+	crumb_separator_widget(gtx)
+	return
+}
+
+// crumb_separator_widget is a 16px slash separator as a widget of its own.
+@(private)
+crumb_separator_widget :: proc(gtx: ^ui.Ctx, loc := #caller_location) {
+	p := ui.widget_open(gtx, 0, loc)
+	paint_crumb_separator(gtx, .Glyph, {0, 0, CRUMB_GLYPH, CRUMB_GLYPH})
+	ui.widget_close(gtx, &p, {size = {CRUMB_GLYPH, CRUMB_GLYPH}})
+}
+
+// nav_menu_item is one entry of a navigation component's overflow menu:
+// a link, semibold when current, with an optional trailing counter.
+// It stands in for ActionList.LinkItem until the lists family's ActionList
+// lands.
+@(private)
+nav_menu_item :: proc(gtx: ^ui.Ctx, label: string, current: bool, counter: string, key: u64) -> bool {
+	return button(gtx, label, .Invisible, count = counter, block = true, align = .Start, key = key)
+}
+
+// --- UnderlineNav --------------------------------------------------------
+
+// Underline_Nav_Variant is the row's sides: inset pads them 16px, flush
+// starts the first item at the edge.
+Underline_Nav_Variant :: enum u8 {
+	Inset,
+	Flush,
+}
+
+// Hide_Icons is the component width below which UnderlineNav hides its
+// row's icons (UnderlineNav.module.css:24-70); Never always shows them.
+Hide_Icons :: enum u8 {
+	Never,
+	XSmall,
+	Small,
+	Medium,
+	Large,
+	XLarge,
+	XXLarge,
+}
+
+// HIDE_ICONS_BELOW is each breakpoint in px: 20, 34, 48, 63.25, 80 and
+// 87.5rem.
+HIDE_ICONS_BELOW := [Hide_Icons]f32 {
+	.Never   = 0,
+	.XSmall  = 320,
+	.Small   = 544,
+	.Medium  = 768,
+	.Large   = 1012,
+	.XLarge  = 1280,
+	.XXLarge = 1400,
+}
+
+// UNDERLINE_MORE_RULE is the More container's divider: 1px wide, 24px
+// tall, 4px either side (UnderlineNav.module.css:78-81,100-106).
+UNDERLINE_MORE_RULE :: ops.Size{tok.BORDER_WIDTH_THIN, tok.BASE_SIZE_24}
+
+// Underline_Nav_Memo is whether the More menu is open.
+@(private)
+Underline_Nav_Memo :: struct {
+	open: bool,
+}
+
+// underline_nav is Primer's UnderlineNav (underline-nav.json,
+// UnderlineNav.tsx, UnderlineTabbedInterface.module.css): a navigation
+// landmark named label holding a row of links, items[current] marked
+// with a 2px --underlineNav-borderColor-active underline on the row's
+// bottom edge. The row is 48px: 8px above 32px items with 8px under them,
+// a 1px --borderColor-muted line along its bottom, padded 16px at the
+// sides unless flush. Items are UnderlinePanels' tabs (see
+// underline_panels_open), each its own tab stop; their icons hide while
+// the width offered is under hide_icons' breakpoint.
+//
+// Items that do not fit on the first line move, in order, into a More
+// menu at the end, after a 1px --borderColor-muted divider 24px tall:
+// the items are laid out without More and, if any breaks, again with it
+// reserved (ui.flex_fit), so the visible items are always a leading run,
+// possibly none. The More button is an invisible Button reading "More"
+// ("More items", or "More items, including current item" when the
+// current item moved), carrying the current item's underline when it
+// holds it. It returns the item activated, in the row
+// or the menu, or -1.
+//
+// Departures: the More button's label is Button's medium weight, not
+// normal, nor semibold when it holds the current item
+// (UnderlineNav.module.css:108-123); its menu lists the items as invisible buttons, the current one
+// semibold without its left bar, until ActionMenu lands; an item counts
+// as overflowed when it does not fit whole, where the web allows 5% of it
+// to be clipped (OverflowObserverProvider.tsx:43-53,114-121); items have no hrefs, the activation being the caller's.
+underline_nav :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	items: []Underline_Tab,
+	current := -1,
+	variant := Underline_Nav_Variant.Inset,
+	hide_icons := Hide_Icons.Medium,
+	loading_counters := false,
+	state := Interaction.Live,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> (clicked: int) {
+	clicked = -1
+	id := ui.claim_id(gtx, key, loc)
+	offer := ui.offer(gtx).max.x
+	w := ui.is_finite(offer) ? offer : 0
+	side := variant == .Inset ? tok.STACK_PADDING_NORMAL : 0
+	icons := w >= HIDE_ICONS_BELOW[hide_icons]
+	box := ui.sized_open(gtx, {min = {w, UNDERLINE_STRIP}, max = {w, UNDERLINE_STRIP}}, key = u64(ui.id_mix(id, 1)))
+	defer ui.close(&box)
+	paint_underline_strip(gtx, w)
+	ui.container_semantics(gtx, {role = .Navigation, label = ui.frame_string(gtx, label)})
+	pad := ui.inset_open(gtx, {side, tok.BASE_SIZE_8, side, 0}, key = u64(ui.id_mix(id, 2)))
+	defer ui.close(&pad)
+	outer := ui.row_open(gtx, align = .Start, key = u64(ui.id_mix(id, 3)))
+	defer ui.close(&outer)
+	list := ui.overflow_row_open(gtx, tok.STACK_GAP_CONDENSED, key = u64(ui.id_mix(id, 4)))
+	ui.container_semantics(gtx, {role = .List}, list.index)
+	forced := false
+	for t, i in items {
+		tab := t
+		if !icons {
+			tab.icon = .None
+		}
+		ts := Interaction.Live if state == .Live else .Enabled
+		if state != .Live && !forced && i != current {
+			ts, forced = state, true
+		}
+		if underline_nav_item(gtx, tab, i == current, loading_counters, ts, u64(i + 1)) {
+			clicked = i
+		}
+	}
+	more := more_button_width(gtx)
+	// The More container sits right after the list, no gap between: take
+	// the gap flex_fit leaves before what it reserves back out.
+	dropped := ui.flex_fit(&list, 2 * tok.BASE_SIZE_4 + UNDERLINE_MORE_RULE.x + more - tok.STACK_GAP_CONDENSED)
+	ui.close(&list)
+	m := ui.widget_data(gtx, id, Underline_Nav_Memo)
+	if dropped == 0 {
+		m.open = false
+		return
+	}
+	first := len(items) - dropped
+	if at := underline_more(gtx, id, m, items[first:], current - first, loading_counters); at >= 0 {
+		clicked = first + at
+	}
+	return
+}
+
+// more_button_width is the More button's width: an invisible medium
+// Button of "More" and its trailing triangle.
+@(private)
+more_button_width :: proc(gtx: ^ui.Ctx) -> f32 {
+	mt := button_metrics(.Medium)
+	t := design.shape_style(gtx, "More", mt.style, font_for(gtx, mt.style.weight))
+	return 2 * mt.pad + t.width + mt.gap + BUTTON_ICON - tok.BASE_SIZE_4
+}
+
+// underline_nav_item is one item: a 32px tab with 8px below it, its own
+// tab stop and link.
+@(private)
+underline_nav_item :: proc(gtx: ^ui.Ctx, t: Underline_Tab, current, loading: bool, state: Interaction, key: u64, loc := #caller_location) -> bool {
+	p := ui.widget_open(gtx, key, loc)
+	s := measure_underline_tab(gtx, t, loading)
+	r := ops.Rect{0, 0, s.w, UNDERLINE_TAB}
+	c := control(gtx, p.id, r, state)
+	paint_underline_tab(gtx, c, t, s, r, current, loading)
+	listen(gtx, c.st, p.id, r, cursor = .Pointer)
+	said := ui.frame_string(gtx, t.label)
+	ops.tag(gtx.scene, p.id, said, r)
+	ui.semantics(gtx, &p, {role = .Link, label = said, description = ui.frame_string(gtx, t.counter), states = design.state_if(current, {.Current_Page})})
+	ui.widget_close(gtx, &p, {{s.w, UNDERLINE_TAB + tok.BASE_SIZE_8}, 0})
+	return c.clicked
+}
+
+// underline_more is the More container and its menu of moved items; at is
+// the current item among them, if any. It returns the item chosen, or -1.
+@(private)
+underline_more :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, m: ^Underline_Nav_Memo, moved: []Underline_Tab, at: int, loading: bool) -> (chosen: int) {
+	chosen = -1
+	holds := at >= 0 && at < len(moved)
+	row := ui.row_open(gtx, align = .Center, key = u64(ui.id_mix(id, 5)))
+	defer ui.close(&row)
+	{
+		p := ui.widget_open(gtx, u64(ui.id_mix(id, 6)))
+		rule := ops.Rect{tok.BASE_SIZE_4, 0, UNDERLINE_MORE_RULE.x, UNDERLINE_MORE_RULE.y}
+		ops.fill(gtx.scene, rule, color(.Border_Color_Muted))
+		ui.widget_close(gtx, &p, {size = {2 * tok.BASE_SIZE_4 + UNDERLINE_MORE_RULE.x, UNDERLINE_MORE_RULE.y}})
+	}
+	st := ui.stack_open(gtx, key = u64(ui.id_mix(id, 7)))
+	defer ui.close(&st)
+	name := holds ? "More items, including current item" : "More items"
+	if button(gtx, "More", .Invisible, action = .Triangle_Down, name = name, key = u64(ui.id_mix(id, 8))) {
+		m.open = !m.open
+	}
+	anchor := ui.last_widget(gtx)
+	if holds {
+		// The underline the current item would carry, its bottom 9px
+		// below the button's (8px and its 1px border), clipped, as the
+		// row clips at 48px (UnderlineNav.module.css:117-139).
+		y := anchor.size.y + tok.BASE_SIZE_8 + tok.BORDER_WIDTH_THIN - tok.BORDER_WIDTH_THICK
+		bottom := UNDERLINE_STRIP - tok.BASE_SIZE_8
+		ops.fill(gtx.scene, ops.Rect{0, y, anchor.size.x, max(min(tok.BORDER_WIDTH_THICK, bottom - y), 0)}, color(.Underline_Nav_Border_Color_Active))
+	}
+	a := anchored_overlay_open(gtx, &m.open, anchor, align = .End, role = .Menu, name = "More items", key = u64(ui.id_mix(id, 9)))
+	if a.visible {
+		pad := ui.inset_open(gtx, ui.pad_all(tok.BASE_SIZE_8))
+		col := ui.column_open(gtx, align = .Fill)
+		for t, i in moved {
+			if nav_menu_item(gtx, t.label, i == at, loading ? "" : t.counter, u64(i + 1)) {
+				chosen = i
+				m.open = false
+			}
+		}
+		ui.close(&col)
+		ui.close(&pad)
+	}
+	anchored_overlay_close(&a)
+	return
+}

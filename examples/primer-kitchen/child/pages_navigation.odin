@@ -2,21 +2,24 @@ package main
 
 import "core:fmt"
 import "jm:ui"
-import "jm:ui/design"
 import "jm:ui/base"
+import "jm:ui/design"
 import "jm:ui/primer"
 
 import "../../kitchen"
 
 // Navs is the navigation pages' demo state.
 Navs :: struct {
-	tree:      Tree_Demo,
-	tree_said: string, // the last tree event
-	page:      int, // the live pagination's page
-	view:      int, // the live sub nav's link
-	tab:       int, // the live underline panels' tab
-	manual:    int,
-	loading:   bool,
+	tree:        Tree_Demo,
+	tree_said:   string, // the last tree event
+	page:        int, // the live pagination's page
+	view:        int, // the live sub nav's link
+	tab:         int, // the live underline panels' tab
+	manual:      int,
+	loading:     bool,
+	crumb_said:  string, // the last crumb chosen
+	unav:        int, // the live underline nav's current item
+	unav_narrow: int,
 }
 
 // Tree_Demo is the tree view page's items and its lazy folder's loading.
@@ -237,5 +240,80 @@ page_underline_panels :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		sel := 0
 		up := primer.underline_panels_open(gtx, "States", tabs[:], &sel, state = st, key = key)
 		primer.underline_panels_close(&up)
+	})
+}
+
+CRUMBS := [6]primer.Breadcrumb{{"github", false}, {"primer", false}, {"react", false}, {"packages", false}, {"Breadcrumbs", false}, {"Breadcrumbs.tsx", true}}
+
+page_breadcrumbs :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10, align = .Fill)
+	defer ui.close(&col)
+	n := &m.navs
+	kitchen.section(gtx, "Wrap", "--fgColor-link crumbs that underline on hover, a rotated --fgColor-muted rule between; the current page is --fgColor-default")
+	if at := primer.breadcrumbs(gtx, CRUMBS[:]); at >= 0 {
+		n.crumb_said = fmt.aprintf("chose %s", CRUMBS[at].label)
+	}
+	kitchen.section(gtx, "Spacious", "default-coloured crumbs padded 6px by 4px that fill on hover; the current one semibold")
+	primer.breadcrumbs(gtx, CRUMBS[:], variant = .Spacious)
+	kitchen.section(gtx, "Menu", "one row with 16px slashes; at most four crumbs stay, the rest fold into the kebab's menu")
+	if at := primer.breadcrumbs(gtx, CRUMBS[:], .Menu); at >= 0 {
+		n.crumb_said = fmt.aprintf("chose %s", CRUMBS[at].label)
+	}
+	kitchen.section(gtx, "Menu with root", "the root stays first; three crumbs after it at most")
+	primer.breadcrumbs(gtx, CRUMBS[:], .Menu_With_Root)
+	kitchen.section(gtx, "Narrow", "at 320px a menu trail folds by width as well as count")
+	{
+		r := ui.row_open(gtx)
+		box := ui.sized_open(gtx, {min = {320, 0}, max = {320, ui.INF}})
+		primer.breadcrumbs(gtx, CRUMBS[:], .Menu_With_Root, .Spacious)
+		ui.close(&box)
+		ui.close(&r)
+	}
+	if n.crumb_said != "" {
+		base.label(gtx, n.crumb_said, {size = 12, color = base.color(.Muted)})
+	}
+	kitchen.section(gtx, "States", "keyboard focus outlines a crumb 2px outside with small corners")
+	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
+		r := ui.row_open(gtx, key = key)
+		primer.breadcrumbs(gtx, CRUMBS[3:], state = st, key = key)
+		ui.spacer(gtx, 24)
+		primer.breadcrumbs(gtx, CRUMBS[3:], variant = .Spacious, state = st, key = key + 100)
+		ui.close(&r)
+	})
+}
+
+UNAV_ITEMS := [7]primer.Underline_Tab {
+	{"Code", .Code, ""},
+	{"Issues", .Issue_Opened, "30"},
+	{"Pull requests", .Git_Pull_Request, "3"},
+	{"Discussions", .Comment_Discussion, ""},
+	{"Actions", .Play, ""},
+	{"Projects", .Table, "7"},
+	{"Security", .Shield, ""},
+}
+
+page_underline_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10, align = .Fill)
+	defer ui.close(&col)
+	n := &m.navs
+	kitchen.section(gtx, "Live", "48px row; the current item's 2px underline sits on the 1px --borderColor-muted line")
+	if at := primer.underline_nav(gtx, "Repository", UNAV_ITEMS[:], n.unav, loading_counters = n.loading); at >= 0 {
+		n.unav = at
+	}
+	kitchen.section(gtx, "Flush", "no side padding: the first item starts at the edge")
+	primer.underline_nav(gtx, "Flush", UNAV_ITEMS[:3], 0, variant = .Flush)
+	kitchen.section(gtx, "Overflow", "at 520px icons hide (below 768px) and items that break onto a second line move into More; the current one takes More's underline")
+	{
+		r := ui.row_open(gtx)
+		box := ui.sized_open(gtx, {min = {520, 0}, max = {520, ui.INF}})
+		if at := primer.underline_nav(gtx, "Narrow", UNAV_ITEMS[:], n.unav_narrow); at >= 0 {
+			n.unav_narrow = at
+		}
+		ui.close(&box)
+		ui.close(&r)
+	}
+	kitchen.section(gtx, "States", "hover fades --bgColor-neutral-muted in over 120ms; keyboard focus rings the item inside with 2px of --fgColor-accent")
+	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
+		primer.underline_nav(gtx, "States", UNAV_ITEMS[:3], 0, variant = .Flush, state = st, key = key)
 	})
 }

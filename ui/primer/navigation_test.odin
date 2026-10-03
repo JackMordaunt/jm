@@ -266,3 +266,157 @@ test_underline_panels_manual_mode_moves_focus_only :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.tab, 1)
 	testing.expect_value(t, m.fired, 2) // the press, then Enter
 }
+
+@(test)
+test_breadcrumbs_fold_by_width_and_by_count :: proc(t: ^testing.T) {
+	w4 := []f32{200, 200, 200, 200}
+	w6 := []f32{100, 100, 100, 100, 100, 100}
+	folded, hide := breadcrumbs_fold(w6, 1000, 28, false)
+	testing.expect_value(t, folded, 2) // everything fits, but menu shows at most 4
+	testing.expect(t, hide)
+	folded, _ = breadcrumbs_fold(w4, 600, 28, false)
+	testing.expect_value(t, folded, 2) // 4 x 216 > 600; 3 x 216 + 28 > 600; 2 x 216 + 28 fits
+	folded, _ = breadcrumbs_fold([]f32{60, 60, 60}, 500, 28, false)
+	testing.expect_value(t, folded, 2) // under 544px with more than two: one crumb stays
+	folded, hide = breadcrumbs_fold([]f32{50, 100, 100, 100, 100}, 2000, 28, true)
+	testing.expect_value(t, folded, 1) // four after the root, three may stay: the first after the root folds, never the root
+	testing.expect(t, !hide)
+	folded, hide = breadcrumbs_fold([]f32{50, 100, 100}, 2000, 28, true)
+	testing.expect_value(t, folded, 0)
+	folded, hide = breadcrumbs_fold([]f32{50, 400}, 300, 28, true)
+	testing.expect_value(t, folded, 0)
+	testing.expect(t, hide) // the last crumb alone is too wide: the root goes into the menu
+	folded, _ = breadcrumbs_fold(nil, 300, 28, false)
+	testing.expect_value(t, folded, 0)
+}
+
+@(private = "file")
+Crumbs_Model :: struct {
+	overflow: Breadcrumbs_Overflow,
+	variant:  Breadcrumbs_Variant,
+	clicked:  int,
+	width:    f32,
+}
+
+@(private = "file")
+crumbs_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Crumbs_Model)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+	box := ui.sized_open(gtx, {min = {m.width, 0}, max = {m.width, ui.INF}})
+	defer ui.close(&box)
+	items := [6]Breadcrumb{{"github", false}, {"primer", false}, {"react", false}, {"src", false}, {"Breadcrumbs", false}, {"Breadcrumbs.tsx", true}}
+	if at := breadcrumbs(gtx, items[:], m.overflow, m.variant); at >= 0 {
+		m.clicked = at
+	}
+}
+
+@(test)
+test_breadcrumbs_wrap_mode_shows_every_crumb_and_marks_the_page :: proc(t: ^testing.T) {
+	m := Crumbs_Model{width = 900, clicked = -1}
+	p: ui.Probe
+	ui.probe_init(&p, crumbs_view, &m, {900, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	gh, pr := ui.probe_bounds(&p, "github"), ui.probe_bounds(&p, "primer")
+	testing.expect_value(t, gh.h, style(.Body_Medium).line_height)
+	testing.expect(t, abs(pr.x - (gh.x + gh.w + 2 * CRUMB_RULE.margin + CRUMB_RULE.stroke)) < 0.01, "a rule and 0.5em either side between crumbs")
+	testing.expect(t, ui.probe_click(&p, "primer"))
+	testing.expect_value(t, m.clicked, 1)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "navigation \"Breadcrumbs\""), "%s", said)
+	testing.expectf(t, strings.contains(said, "link \"Breadcrumbs.tsx\" current page"), "%s", said)
+	m.width = 200 // wraps onto more lines
+	ui.probe_frame(&p)
+	last := ui.probe_bounds(&p, "Breadcrumbs.tsx")
+	testing.expect(t, last.y > gh.y)
+	m.variant = .Spacious
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "github").h, style(.Body_Medium).line_height + 2 * tok.BASE_SIZE_4)
+}
+
+@(test)
+test_breadcrumbs_menu_folds_leading_crumbs :: proc(t: ^testing.T) {
+	m := Crumbs_Model{width = 900, clicked = -1, overflow = .Menu}
+	p: ui.Probe
+	ui.probe_init(&p, crumbs_view, &m, {900, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_tagged(&p, "2 more breadcrumb items")) // six crumbs, four stay
+	testing.expect(t, !ui.probe_tagged(&p, "github"))
+	testing.expect(t, ui.probe_tagged(&p, "react"))
+	testing.expect(t, ui.probe_click(&p, "2 more breadcrumb items"))
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_click(&p, "primer"))
+	testing.expect_value(t, m.clicked, 1)
+	m.overflow = .Menu_With_Root
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "github")) // the root stays
+	testing.expect(t, ui.probe_tagged(&p, "2 more breadcrumb items")) // primer and react
+	testing.expect(t, !ui.probe_tagged(&p, "react"))
+	gh, more := ui.probe_bounds(&p, "github"), ui.probe_bounds(&p, "2 more breadcrumb items")
+	testing.expect(t, abs(more.x - (gh.x + gh.w + CRUMB_GLYPH)) < 0.01, "the button follows the root's 16px slash")
+}
+
+@(private = "file")
+Unav_Model :: struct {
+	current, clicked: int,
+	width:            f32,
+}
+
+@(private = "file")
+unav_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Unav_Model)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+	box := ui.sized_open(gtx, {min = {m.width, 0}, max = {m.width, ui.INF}})
+	defer ui.close(&box)
+	items := [5]Underline_Tab{{"Code", .Code, ""}, {"Issues", .Issue_Opened, "30"}, {"Pull requests", .Git_Pull_Request, "3"}, {"Discussions", .Comment_Discussion, ""}, {"Security", .Shield, ""}}
+	if at := underline_nav(gtx, "Repository", items[:], m.current); at >= 0 {
+		m.clicked = at
+		m.current = at
+	}
+}
+
+@(test)
+test_underline_nav_moves_items_that_break_into_more :: proc(t: ^testing.T) {
+	m := Unav_Model{width = 1000, clicked = -1, current = 4}
+	p: ui.Probe
+	ui.probe_init(&p, unav_view, &m, {1000, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	code := ui.probe_bounds(&p, "Code")
+	testing.expect_value(t, code, ops.Rect{16, 8, code.w, UNDERLINE_TAB})
+	testing.expect(t, ui.probe_tagged(&p, "Security"))
+	testing.expect(t, !ui.probe_tagged(&p, "More"))
+	gtx := ui.Ctx{shaper = p.shaper, allocator = context.temp_allocator}
+	icon_w := measure_underline_tab(&gtx, {"Code", .Code, ""}, false).w
+	testing.expect(t, abs(code.w - icon_w) < 0.01, "1000px: icons show")
+	m.width = 500
+	ui.probe_frame(&p)
+	code = ui.probe_bounds(&p, "Code")
+	testing.expect(t, abs(code.w - measure_underline_tab(&gtx, {"Code", .None, ""}, false).w) < 0.01, "under 768px: no icons")
+	testing.expect(t, ui.probe_tagged(&p, "More"))
+	testing.expect(t, !ui.probe_tagged(&p, "Security")) // a leading run stays
+	more := ui.probe_bounds(&p, "More")
+	testing.expect(t, more.x + more.w <= 500 - 16 + 0.01)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "\"More items, including current item\""), "%s", said)
+	testing.expect(t, ui.probe_click(&p, "More"))
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_click(&p, "Security"))
+	testing.expect_value(t, m.clicked, 4)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_click(&p, "Issues"))
+	testing.expect_value(t, m.clicked, 1)
+	ui.probe_frame(&p)
+	said = ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "link \"Issues\" desc \"30\" current page"), "%s", said)
+	testing.expectf(t, strings.contains(said, "\"More items\""), "%s", said)
+	m.width = 60 // nothing fits beside More: every item moves
+	ui.probe_frame(&p)
+	testing.expect(t, !ui.probe_tagged(&p, "Code"))
+}
