@@ -90,8 +90,7 @@ page_overlay :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	said(gtx, o.said)
 }
 
-// said shows the last gesture an overlay reported.
-@(private = "file")
+// said shows the last gesture a live component reported.
 said :: proc(gtx: ^ui.Ctx, s: string) {
 	if s != "" {
 		base.label(gtx, s, {size = 12, color = base.color(.Muted)}, key = 0x5a1d)

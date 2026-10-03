@@ -105,7 +105,7 @@ PAGES := [?]Page {
 	{"Confirmation dialog", page_confirmation_dialog, false},
 	{"Details", page_details, false},
 	{"Lists and pickers", nil, true},
-	{"Action list", nil, false},
+	{"Action list", page_action_list, false},
 	{"Action menu", nil, false},
 	{"Select panel", nil, false},
 	{"Autocomplete", nil, false},
