@@ -805,25 +805,34 @@ tab_reachable :: proc(f: ^Frame, h: Hit, trap: Scope_Ref, within: ops.Area_Id) -
 	return (trap == 0 || in_scope(f, h.scope, trap)) && (within == 0 || in_scope(f, h.scope, 0, within))
 }
 
-// outer_roving is the outermost roving scope s lies in, s included; 0
-// for none. Tab treats everything inside it as one stop.
+// outer_roving is the outermost roving scope s lies in, s included, up
+// to the nearest trap; 0 for none. Tab treats everything inside it as one
+// stop. A trap is a world of its own: a menu raised from a toolbar's
+// button is no part of the toolbar's stop.
 @(private = "file")
 outer_roving :: proc(f: ^Frame, s: Scope_Ref) -> (g: Scope_Ref) {
 	for at := s; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
 		if f.scopes[at - 1].rove != .None {
 			g = at
 		}
+		if f.scopes[at - 1].trap {
+			break
+		}
 	}
 	return
 }
 
-// nearest_roving is the innermost roving scope s lies in, s included; 0
-// for none. Its arrows move among the areas it is nearest to.
+// nearest_roving is the innermost roving scope s lies in, s included, up
+// to the nearest trap; 0 for none. Its arrows move among the areas it is
+// nearest to.
 @(private = "file")
 nearest_roving :: proc(f: ^Frame, s: Scope_Ref) -> Scope_Ref {
 	for at := s; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
 		if f.scopes[at - 1].rove != .None {
 			return at
+		}
+		if f.scopes[at - 1].trap {
+			return 0
 		}
 	}
 	return 0

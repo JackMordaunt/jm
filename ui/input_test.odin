@@ -588,6 +588,7 @@ test_outside_presses_walk_the_popups_from_the_top_until_one_holds_the_press :: p
 Rove_Model :: struct {
 	entry: ops.Area_Id, // the toolbar's entry
 	hold:  bool, // l2 holds Down
+	menu:  bool, // a trapping menu raised from t3, inside the toolbar's scope
 }
 
 // rove_view is a page button a, a toolbar roving across t1, t2, t3 and a
@@ -605,6 +606,14 @@ rove_view :: proc(gtx: ^Ctx, user: rawptr) {
 	focusable(gtx, 31, "t1", 0, 30)
 	focusable(gtx, 32, "t2", 50, 30)
 	focusable(gtx, 33, "t3", 100, 30)
+	if m.menu {
+		menu := popup_open(gtx, {100, 30, 40, 20}, 35)
+		focus_scope_open(gtx, 36, trap = true)
+		focusable(gtx, 37, "m1", 0, 0)
+		focusable(gtx, 38, "m2", 0, 30)
+		focus_scope_close(gtx)
+		popup_close(&menu, {40, 50})
+	}
 	focusable(gtx, 34, "t4", 150, 30, {.Press, .Key, .Text, .Focus, .Blur})
 	focus_scope_close(gtx, m.entry)
 	focus_scope_open(gtx, 40, rove = .Vertical, wrap = true)
@@ -720,4 +729,18 @@ test_a_no_tab_area_takes_focus_from_a_press_but_tab_passes_it :: proc(t: ^testin
 	testing.expect(t, probe_click(&p, "text"))
 	probe_key(&p, .Tab, {.Shift})
 	testing.expect_value(t, p.router.focus, ops.Area_Id(1)) // and Shift+Tab back
+}
+
+@(test)
+test_a_trap_raised_inside_a_roving_scope_is_none_of_its_stop :: proc(t: ^testing.T) {
+	m := Rove_Model{menu = true}
+	p: Probe
+	probe_init(&p, rove_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_click(&p, "m1"))
+	testing.expect_value(t, p.router.focus, ops.Area_Id(37))
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(38)) // each menu item a stop of the trap
+	probe_key(&p, .Right)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(38)) // the toolbar's arrows stop at the trap
 }
