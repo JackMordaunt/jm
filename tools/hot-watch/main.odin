@@ -26,6 +26,10 @@ Windows, which will not rename over a running executable.
 
 -release builds the child, and the host, with -o:speed instead of -debug.
 
+Old builds are deleted, with their debug symbols: on start, every one but
+the build the pointer file names; after each build, every one but that
+build and the one before it, which the host may still be running.
+
 Run from the repo root, same as `just`: it passes that as -collection:jm
 to the odin build it shells out to.
 */
@@ -84,6 +88,12 @@ main :: proc() {
 	link := "" when ODIN_OS == .Windows else ` -extra-linker-flags:"-lstdc++"`
 	exe_suffix := ".exe" when ODIN_OS == .Windows else ""
 
+	// ignore: no pointer file yet means no build to keep
+	named, _ := os.read_entire_file(pointer, context.allocator)
+	current := strings.clone(filepath.base(string(named)))
+	delete(named)
+	prune(out_dir, base, {current})
+
 	fmt.printfln("hot-watch: watching %v for .odin changes", dirs[:])
 	last, last_shared: time.Time
 	for {
@@ -116,6 +126,9 @@ main :: proc() {
 				fmt.eprintln("hot-watch: pointer write:", werr)
 			} else {
 				fmt.printfln("hot-watch: ready: %s", out)
+				prune(out_dir, base, {current, filepath.base(out)})
+				delete(current)
+				current = strings.clone(filepath.base(out))
 			}
 		}
 		time.sleep(POLL)
@@ -139,6 +152,51 @@ build_host :: proc(src, out, root, opt, link: string) {
 			fmt.eprintln("hot-watch: host rename:", err)
 		}
 	}
+}
+
+// prune deletes dir's earlier builds of base, `<base>-<digits>` with any
+// suffix (.exe, .dSYM, .pdb), except those whose `<base>-<digits>` stem is
+// a stem of a name in keep. A build that will not go (Windows, still
+// running) is reported and left for the next prune.
+prune :: proc(dir, base: string, keep: []string) {
+	entries, err := os.read_all_directory_by_path(dir, context.temp_allocator)
+	if err != nil {
+		fmt.eprintln("hot-watch: prune: read", dir, err)
+		return
+	}
+	outer: for e in entries {
+		stem, ok := build_stem(e.name, base)
+		if !ok {
+			continue
+		}
+		for k in keep {
+			if kstem, kok := build_stem(k, base); kok && kstem == stem {
+				continue outer
+			}
+		}
+		// remove_all cannot take a file on unix: core/os/path_posix.odin's
+		// _remove_all fails at opendir (Odin dev-2026-09).
+		rerr := os.remove_all(e.fullpath) if e.type == .Directory else os.remove(e.fullpath)
+		if rerr != nil {
+			fmt.eprintln("hot-watch: prune:", e.fullpath, rerr)
+		}
+	}
+}
+
+// build_stem is `<base>-<digits>` when name is one of hot-watch's builds of
+// base, whatever follows the digits.
+build_stem :: proc(name, base: string) -> (stem: string, ok: bool) {
+	if !strings.has_prefix(name, base) || !strings.has_prefix(name[len(base):], "-") {
+		return "", false
+	}
+	end := len(base) + 1
+	for end < len(name) && name[end] >= '0' && name[end] <= '9' {
+		end += 1
+	}
+	if end == len(base) + 1 {
+		return "", false
+	}
+	return name[:end], true
 }
 
 // newest_odin_mtime is the latest modification time among dir's own
