@@ -764,6 +764,32 @@ hot-architecture: blend2d kb sdl3
     @echo "terminal 2: build/debug/hot-architecture-host{{exe}} build/debug/hot-architecture.watch"
     @echo "then edit examples/hot-architecture/child/main.odin and watch the window update."
 
+# Every page in every theme, as text: what the window or a clip cuts off
+# at a side, and groups with several Tab stops. Prints the lines that are
+# new against the kitchen's lint.txt, which its test enforces, and those
+# gone from it; `accept` rewrites lint.txt to what the kitchen draws now.
+# Read this before rendering a PNG to look at.
+#
+# Lint a kitchen's pages against its lint.txt
+[group('ui')]
+[arg("kit", pattern="primer|fluent|material")]
+[arg("action", pattern="|accept")]
+kitchen-lint kit action="": blend2d kb
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/debug
+    {{odin}} build examples/{{kit}}-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/{{kit}}-kitchen-child{{exe}}
+    export LC_ALL=C # comm wants the byte order lint sorts in
+    accepted=examples/{{kit}}-kitchen/lint.txt
+    now=build/{{kit}}-lint.txt
+    build/debug/{{kit}}-kitchen-child{{exe}} -lint > "$now"
+    if [ "{{action}}" = accept ]; then cp "$now" "$accepted"; echo "wrote $accepted"; exit 0; fi
+    new=$(comm -13 "$accepted" "$now")
+    gone=$(comm -23 "$accepted" "$now")
+    if [ -n "$gone" ]; then printf 'gone from lint.txt (fixed? run accept):\n%s\n' "$gone"; fi
+    if [ -n "$new" ]; then printf 'new:\n%s\n' "$new"; exit 1; fi
+    echo "kitchen-lint: nothing new against $accepted"
+
 # examples/text-lab: specimens of every text feature the shaper must
 # handle (Latin features, complex scripts, bidi, emoji) with the shaper's
 # clusters and caret stops drawn over them, plus live inputs. Hot-reloads

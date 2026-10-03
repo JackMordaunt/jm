@@ -12,7 +12,9 @@ system's colours.
 package kitchen
 
 import "core:fmt"
+import "core:mem/virtual"
 import "core:os"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "jm:ui"
@@ -166,7 +168,8 @@ App :: struct {
 Flag :: proc(user: rawptr, args: []string, i: ^int) -> bool
 
 // run is a kitchen's main: with no arguments it is the hot-reload host's
-// child; otherwise it renders headlessly, running its flags in order:
+// child; with -lint alone it prints lint's lines for every page and
+// theme; otherwise it renders headlessly, running its flags in order:
 // the size (-size WxH), whole-page capture (-full) and debug overlays
 // (-reveal, -bounds) before any step; the page (-page), theme (-theme)
 // and the kitchen's own flags (App.flag) anywhere, so one run can capture
@@ -178,6 +181,14 @@ Flag :: proc(user: rawptr, args: []string, i: ^int) -> bool
 run :: proc(app: App) {
 	if len(os.args) == 1 {
 		child.run({ui = app.ui, user = app.user, fonts = app.fonts})
+		return
+	}
+	if len(os.args) == 2 && os.args[1] == "-lint" {
+		lines, renders := lint(app)
+		for line in lines {
+			fmt.println(line)
+		}
+		fmt.eprintfln("lint: %d line(s) from %d page and theme renders", len(lines), renders)
 		return
 	}
 	args := os.args[1:]
@@ -299,4 +310,88 @@ group_stop_violations :: proc(app: App, allocator := context.allocator) -> (line
 		groups += seen
 	}
 	return out[:], groups
+}
+
+// lint renders every page of app in every theme headlessly and lists, a
+// line each prefixed with the page, what a reader would otherwise find by
+// looking at a PNG: draws the window or a clip cuts off at a side
+// (ui.frame_overflow), with the themes that cut them, and groups holding
+// more than one Tab stop (ui.group_stop_report). A line names no
+// coordinates, so an animation's moving draw stays one line; `-page P
+// -overflow` gives them. Some cuts are meant, a shimmer or a cover-fit
+// image, so each kitchen keeps the lines it accepts in its lint.txt and
+// its test fails on any other. renders counts the page and theme pairs
+// drawn, so an empty list can be told from a check that never ran. The
+// lines are on allocator, sorted.
+lint :: proc(app: App, allocator := context.allocator) -> (lines: []string, renders: int) {
+	h: render.Headless
+	render.headless_init(&h, app.ui, app.user, app.size, app.fonts)
+	defer render.headless_destroy(&h)
+	// Scratch is its own arena, freed per page, so lint never frees the
+	// temp allocator a caller's lines may be on.
+	arena: virtual.Arena
+	if err := virtual.arena_init_growing(&arena); err != nil {
+		fmt.panicf("lint: scratch arena: %v", err)
+	}
+	defer virtual.arena_destroy(&arena)
+	scratch := virtual.arena_allocator(&arena)
+	out := make([dynamic]string, allocator)
+	for page, i in app.pages {
+		app.page^ = i
+		// Each cut, in the order first met, and the themes it is in.
+		found := make([dynamic]string, scratch)
+		themes := make(map[string][dynamic]string, scratch)
+		for theme, j in app.themes {
+			app.theme^ = j
+			ui.probe_frame(&h.p) // draws the page
+			ui.probe_frame(&h.p) // routes against it
+			renders += 1
+			f := ui.probe_current(&h.p)
+			for o in ui.frame_overflow(f, h.p.size, scratch) {
+				left := o.bounds.x < o.visible.x - ui.OVERFLOW_SLOP
+				right := o.bounds.x + o.bounds.w > o.visible.x + o.visible.w + ui.OVERFLOW_SLOP
+				side := "both sides" if left && right else "the left" if left else "the right"
+				msg := fmt.aprintf("%s cut at %s near %q", o.kind, side, o.near, allocator = scratch)
+				if msg not_in themes {
+					append(&found, msg)
+					themes[msg] = make([dynamic]string, scratch)
+				}
+				// A cut repeats when identical draws do, as rows do.
+				if list := &themes[msg]; len(list) == 0 || list[len(list) - 1] != theme {
+					append(list, theme)
+				}
+			}
+			if j == 0 { // Tab stops do not change with the theme
+				stops, _ := ui.group_stop_report(f, &h.p.router, scratch)
+				for line in stops {
+					append(&out, fmt.aprintf("%s: %s", page, line, allocator = allocator))
+				}
+			}
+		}
+		for msg in found {
+			in_themes := themes[msg][:]
+			cut_in := "every theme" if len(in_themes) == len(app.themes) else strings.join(in_themes, ", ", scratch)
+			append(&out, fmt.aprintf("%s: %s (%s)", page, msg, cut_in, allocator = allocator))
+		}
+		virtual.arena_free_all(&arena)
+	}
+	slice.sort(out[:])
+	return out[:], renders
+}
+
+// lint_unaccepted is lines less those in accepted, lint.txt's text: what
+// a change newly cut off or ungrouped.
+lint_unaccepted :: proc(lines: []string, accepted: string, allocator := context.allocator) -> []string {
+	known := make(map[string]bool, context.temp_allocator)
+	rest := accepted
+	for line in strings.split_lines_iterator(&rest) {
+		known[line] = true
+	}
+	out := make([dynamic]string, allocator)
+	for line in lines {
+		if !known[line] {
+			append(&out, line)
+		}
+	}
+	return out[:]
 }

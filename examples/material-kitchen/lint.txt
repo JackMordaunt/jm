@@ -1,0 +1,2 @@
+Carousel: fill cut at both sides near "carousel" (every theme)
+Search: text cut at the right near "" (every theme)

@@ -1,0 +1,7 @@
+Link: text cut at both sides near "" (every theme)
+Sub nav: stroke cut at the left near "" (every theme)
+Sub nav: stroke cut at the left near "Milestones" (every theme)
+Sub nav: stroke cut at the left near "Projects" (every theme)
+Text: text cut at the right near "Spaces   and    tabs,\n  then a line break and enough words to wrap." (every theme)
+Text: text cut at the right near "Spaces and tabs, then a line break and enough words to wrap." (every theme)
+Underline panels: text cut at the right near "Pull requests" (every theme)
