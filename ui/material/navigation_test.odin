@@ -86,6 +86,11 @@ test_rail_expands_on_its_spring_and_selects :: proc(t: ^testing.T) {
 
 	testing.expect(t, ui.probe_click(&p, "Rooms"))
 	testing.expect_value(t, m.selected, 2)
+	// The destinations are one tab stop; Up and Down move focus among them.
+	ui.probe_key(&p, .Up)
+	testing.expect_value(t, focused_tag(&p), "Chat")
+	ui.probe_key(&p, .Enter)
+	testing.expect_value(t, m.selected, 1)
 	testing.expect(t, ui.probe_click(&p, "Collapse navigation"))
 	testing.expect(t, !m.open)
 }

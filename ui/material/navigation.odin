@@ -797,6 +797,10 @@ navigation_rail :: proc(
 	// expanded rows are as tall as their indicator, with no gap.
 	item_h := math.lerp(tok.NAVIGATION_RAIL_BASELINE_ITEM_CONTAINER_HEIGHT, tok.NAVIGATION_RAIL_HORIZONTAL_ITEM_ACTIVE_INDICATOR_HEIGHT, pos)
 	item_gap := math.lerp(tok.NAVIGATION_RAIL_COLLAPSED_ITEM_VERTICAL_SPACE, 0, pos)
+	// The destinations are one roving focus scope, so one tab stop entered
+	// at the selected one, Up and Down moving between them, wrapping
+	// (navigation-rail.json).
+	ui.focus_scope_open(gtx, p.id, rove = .Vertical, wrap = true)
 	for it, i in items {
 		if it.headline {
 			continue
@@ -812,6 +816,7 @@ navigation_rail :: proc(
 		}
 		y += item_h + item_gap
 	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(max(selected^, 0))))
 	ops.clip_pop(gtx.scene)
 	if modal {
 		ui.close(&o)
@@ -921,6 +926,10 @@ navigation_bar :: proc(
 	}
 	x := (size.x - total) / 2
 	k = 0
+	// The destinations are one roving focus scope, so one tab stop entered
+	// at the selected one, Left and Right moving between them, wrapping
+	// (navigation-bar.json).
+	ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
 	for it, i in items {
 		if it.headline || k >= WIDTHS {
 			continue
@@ -935,6 +944,7 @@ navigation_bar :: proc(
 		x += widths[k]
 		k += 1
 	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(max(selected^, 0))))
 	ui.widget_close(gtx, &p, {size = size})
 	return changed
 }

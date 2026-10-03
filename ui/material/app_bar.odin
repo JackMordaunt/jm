@@ -287,6 +287,11 @@ Tabs_Scroll :: struct {
 // default-effects and out on fast-effects. state forces the look of tab
 // state_tab only. Returns true when selected^ changed.
 //
+// The row is one roving focus scope, so one tab stop, entered at the
+// selected tab: Left and Right move focus between tabs, wrapping, Home
+// and End to the ends, and Enter or Space selects (tabs.json); a tab the
+// arrows reach in a scrollable row scrolls to the centre.
+//
 // scroll is a scrollable row's scroll position (see Tabs_Scroll). Pass one
 // to keep it yourself: to restore it, persist it, or keep it when the row
 // is rebuilt under another id; nil keeps it in the row's own widget_data.
@@ -378,6 +383,7 @@ tabs :: proc(
 	}
 
 	changed := false
+	ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
 	for i in 0 ..< n {
 		r := ops.Rect{xs[i] - off, 0, ws[i], h}
 		id := ui.id_mix(p.id, u64(i))
@@ -388,6 +394,11 @@ tabs :: proc(
 		if c.clicked && selected^ != i {
 			selected^ = i
 			changed = true
+		}
+		for e in ui.events(gtx, id) {
+			if scrollable && sc != nil && e.kind == .Focus && e.key != .None {
+				sc.target = clamp(xs[i] + ws[i] / 2 - size.x / 2, 0, max_scroll)
+			}
 		}
 		content := ops.mix(color(tab_role(secondary, false, c)), color(tab_role(secondary, true, c)), tone)
 		if c.disabled {
@@ -418,6 +429,7 @@ tabs :: proc(
 		// selected^ rather than active: a click this frame already moved it.
 		ui.part_semantics(gtx, &p, id, r, {role = .Tab, label = labels[i], states = states_of(c, selected^ == i)})
 	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(sel)))
 
 	ih := tok.PRIMARY_NAVIGATION_TAB_ACTIVE_INDICATOR_HEIGHT
 	bar := ops.Rect{ind_x - off, h - ih, ind_w, ih}
