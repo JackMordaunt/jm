@@ -577,7 +577,6 @@ Underline_Panels :: struct {
 @(private)
 Underline_Panels_Memo :: struct {
 	focus: int,
-	moved: bool, // arrows moved focus this frame: focus it once drawn
 }
 
 // underline_panels_open opens Primer's UnderlinePanels
@@ -596,10 +595,10 @@ Underline_Panels_Memo :: struct {
 // rings the tab inside with 2px of --fgColor-accent. The strip scrolls
 // sideways when the tabs are wider than it.
 //
-// The tab list is one tab stop, at the selected tab (in Manual mode the
-// tab arrows last reached, until something is selected). Right and Left
-// move between tabs, wrapping, Home and End to the ends; in Automatic mode
-// they select too. A primary press selects on the way down; Enter or
+// The tab list is one roving focus scope, so one tab stop, entered at the
+// selected tab (in Manual mode the tab arrows last reached, until
+// something is selected). Right and Left move between tabs, wrapping,
+// Home and End to the ends; in Automatic mode they select too. A primary press selects on the way down; Enter or
 // Space selects. selected^ is the selected tab's index; an index that
 // names no tab reads as the first. state forces the first unselected tab.
 //
@@ -681,6 +680,7 @@ draw_underline_tabs :: proc(
 		m.focus = selected^
 	}
 	ui.semantics(gtx, &p, {role = .Tab_List, label = ui.frame_string(gtx, label)})
+	ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
 	x := tok.STACK_PADDING_NORMAL
 	forced := false
 	for t, i in tabs {
@@ -692,88 +692,50 @@ draw_underline_tabs :: proc(
 			ts, forced = state, true
 		}
 		c := control(gtx, tid, r, ts)
-		if c.st != nil && underline_tab_events(gtx, tid, i, n, selected, mode, m) {
+		if c.st != nil && underline_tab_events(gtx, tid, i, r, selected, mode, m) {
 			fired = i
 		}
 		paint_underline_tab(gtx, c, t, shapes[i], r, i == selected^, loading)
-		kinds := CLICK_KINDS
-		if i != stop {
-			kinds -= {.Key}
-		}
-		listen(gtx, c.st, tid, r, kinds, .Pointer)
+		listen(gtx, c.st, tid, r, CLICK_KINDS, .Pointer)
 		said := ui.frame_string(gtx, t.label)
 		ops.tag(gtx.scene, tid, said, r)
 		ui.part_semantics(gtx, &p, tid, r, {role = .Tab, label = said, description = ui.frame_string(gtx, t.counter), states = design.state_if(i == selected^, {.Selected})})
 	}
-	if m.moved {
-		// Focus moves to the tab: bring it into view, as the web's
-		// focus() does (useTabList.ts:47-71).
-		m.moved = false
-		ui.focus_request(gtx, ui.id_mix(p.id, u64(m.focus) + 1))
-		at := tok.STACK_PADDING_NORMAL
-		for s in shapes[:m.focus] {
-			at += s.w + tok.STACK_GAP_CONDENSED
-		}
-		ui.scroll_into_view(gtx, {at, tok.BASE_SIZE_8, shapes[m.focus].w, UNDERLINE_TAB})
-	}
+	ui.focus_scope_close(gtx, ui.id_mix(p.id, u64(stop) + 1))
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label), {0, 0, strip_w, UNDERLINE_STRIP})
 	ui.widget_close(gtx, &p, {{strip_w, UNDERLINE_STRIP}, 0})
 	return
 }
 
-// underline_tab_events runs tab i of n's input: a primary press without
-// Ctrl selects on the way down (useTab.ts:25-31), Enter or Space selects,
-// arrows move focus (selecting in Automatic mode), and in Automatic mode
-// gaining focus selects. It reports whether the tab's onSelect fires.
+// underline_tab_events runs tab i's input, r its box: a primary press
+// without Ctrl selects on the way down (useTab.ts:25-31), Enter or Space
+// selects, and focus arriving (the scope's arrows, or Tab) marks the tab
+// the arrows reached, selects it in Automatic mode and brings it into
+// view, as the web's focus() does (useTabList.ts:47-71). It reports
+// whether the tab's onSelect fires.
 @(private)
-underline_tab_events :: proc(gtx: ^ui.Ctx, tid: ops.Area_Id, i, n: int, selected: ^int, mode: Activation_Mode, m: ^Underline_Panels_Memo) -> (fired: bool) {
+underline_tab_events :: proc(gtx: ^ui.Ctx, tid: ops.Area_Id, i: int, r: ops.Rect, selected: ^int, mode: Activation_Mode, m: ^Underline_Panels_Memo) -> (fired: bool) {
 	for e in ui.events(gtx, tid) {
 		#partial switch e.kind {
 		case .Press:
 			if e.button == .Left && .Ctrl not_in e.mods {
 				fired = true
 				selected^, m.focus = i, i
-				// Only the tab stop wants keys, so a press on another
-				// does not focus it by itself.
-				ui.focus_request(gtx, tid)
 			}
 		case .Key:
-			to := underline_step(e.key, i, n)
-			switch {
-			case to >= 0 && to != i:
-				m.focus, m.moved = to, true
-				if mode == .Automatic {
-					selected^ = to
-				}
-			case e.key == .Enter || e.key == .Space:
+			if e.key == .Enter || e.key == .Space {
 				fired = true
 				selected^, m.focus = i, i
 			}
 		case .Focus:
+			m.focus = i
 			if mode == .Automatic {
 				selected^ = i
 			}
+			ui.scroll_into_view(gtx, r)
 		}
 	}
 	return
-}
-
-// underline_step is the tab key moves focus to from at of n: Right and
-// Left wrap, Home and End go to the ends (useTabList.ts:19-72); -1 for
-// any other key.
-@(private)
-underline_step :: proc(key: ui.Key, at, n: int) -> int {
-	#partial switch key {
-	case .Right:
-		return (at + 1) % n
-	case .Left:
-		return (at + n - 1) % n
-	case .Home:
-		return 0
-	case .End:
-		return n - 1
-	}
-	return -1
 }
 
 // --- Breadcrumbs ---------------------------------------------------------
