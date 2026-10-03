@@ -659,6 +659,24 @@ bench-ui args="": blend2d kb
     {{odin}} build tools/ui-bench -o:speed {{flags}} {{cxx_link}} -out:build/release/ui-bench{{exe}}
     build/release/ui-bench{{exe}} {{args}}
 
+# _hot runs examples/NAME as a hot-reloaded app: hot-watch rebuilds the
+# child, and the host too when one of DIRS changes, while the host's window
+# is open. Ending the recipe, however it ends, stops both.
+[private]
+[arg("mode", pattern="debug|release")]
+_hot name mode dirs: blend2d kb sdl3
+    #!/usr/bin/env bash
+    set -eu
+    mkdir -p build/debug
+    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
+    {{odin}} build examples/{{name}}/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/{{name}}-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/{{name}}/child build/debug/{{name}}.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/{{name}}/host build/debug/{{name}}-host{{exe}} {{dirs}} &
+    watch=$!
+    build/debug/{{name}}-host{{exe}} build/debug/{{name}}.watch &
+    host=$!
+    trap 'kill $watch $host 2>/dev/null' EXIT
+    wait $host
+
 # The demo is the proof that the pieces of jm:ui fit: a window, or the same
 # frame as text or as a PNG without one.
 # Build the hot-reloaded architecture-diagram demo: a live-editable
@@ -686,18 +704,7 @@ hot-architecture: blend2d kb sdl3
 # Build and open the hot-reloaded text lab
 [group('ui')]
 [arg("mode", pattern="debug|release")]
-text-lab mode="debug": blend2d kb sdl3
-    #!/usr/bin/env bash
-    set -eu
-    mkdir -p build/debug
-    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/text-lab/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/text-lab-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/text-lab/child build/debug/text-lab.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/text-lab/host build/debug/text-lab-host{{exe}} ui ui/fluent &
-    watch=$!
-    build/debug/text-lab-host{{exe}} build/debug/text-lab.watch &
-    host=$!
-    trap 'kill $watch $host 2>/dev/null' EXIT
-    wait $host
+text-lab mode="debug": (_hot "text-lab" mode "ui ui/fluent")
 
 # Render one text-lab page, whole, to build/text-<page>.png, no window
 [group('ui')]
@@ -722,18 +729,7 @@ text-png page="Scripts": blend2d kb
 # Build and open the hot-reloaded Material 3 kitchen
 [group('ui/material')]
 [arg("mode", pattern="debug|release")]
-material-kitchen mode="debug": blend2d kb sdl3
-    #!/usr/bin/env bash
-    set -eu
-    mkdir -p build/debug
-    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/material-kitchen/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/material-kitchen/host build/debug/material-kitchen-host{{exe}} ui ui/material examples/kitchen &
-    watch=$!
-    build/debug/material-kitchen-host{{exe}} build/debug/material-kitchen.watch &
-    host=$!
-    trap 'kill $watch $host 2>/dev/null' EXIT
-    wait $host
+material-kitchen mode="debug": (_hot "material-kitchen" mode "ui ui/material examples/kitchen")
 
 # Render one material-kitchen page to build/material-<page>.png, no window
 [group('ui/material')]
@@ -821,18 +817,7 @@ material-kit-page:
 # Build and open the hot-reloaded Fluent 2 kitchen
 [group('ui/fluent')]
 [arg("mode", pattern="debug|release")]
-fluent-kitchen mode="debug": blend2d kb sdl3
-    #!/usr/bin/env bash
-    set -eu
-    mkdir -p build/debug
-    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/fluent-kitchen/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/fluent-kitchen/child build/debug/fluent-kitchen.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/fluent-kitchen/host build/debug/fluent-kitchen-host{{exe}} ui ui/fluent examples/kitchen &
-    watch=$!
-    build/debug/fluent-kitchen-host{{exe}} build/debug/fluent-kitchen.watch &
-    host=$!
-    trap 'kill $watch $host 2>/dev/null' EXIT
-    wait $host
+fluent-kitchen mode="debug": (_hot "fluent-kitchen" mode "ui ui/fluent examples/kitchen")
 
 # Render one fluent-kitchen page to build/fluent-<page>.png, no window
 [group('ui/fluent')]
@@ -852,18 +837,7 @@ fluent-png page="Button": blend2d kb
 # Build and open the hot-reloaded Primer kitchen
 [group('ui/primer')]
 [arg("mode", pattern="debug|release")]
-primer-kitchen mode="debug": blend2d kb sdl3
-    #!/usr/bin/env bash
-    set -eu
-    mkdir -p build/debug
-    {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/primer-kitchen/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/primer-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/primer-kitchen/child build/debug/primer-kitchen.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/primer-kitchen/host build/debug/primer-kitchen-host{{exe}} ui ui/primer examples/kitchen &
-    watch=$!
-    build/debug/primer-kitchen-host{{exe}} build/debug/primer-kitchen.watch &
-    host=$!
-    trap 'kill $watch $host 2>/dev/null' EXIT
-    wait $host
+primer-kitchen mode="debug": (_hot "primer-kitchen" mode "ui ui/primer examples/kitchen")
 
 # Render one primer-kitchen page to build/primer-<page>.png, no window
 [group('ui/primer')]
