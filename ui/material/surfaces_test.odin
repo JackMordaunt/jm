@@ -537,6 +537,145 @@ test_carousel_follows_a_drag_which_is_not_a_click :: proc(t: ^testing.T) {
 	testing.expect(t, m.hit >= 0)
 }
 
+@(test)
+test_carousel_fling_aims_one_item_on_at_most :: proc(t: ^testing.T) {
+	F :: CAROUSEL_FLING_VELOCITY
+	// Slow: the nearest item.
+	testing.expect_value(t, carousel_fling_aim(0.4, 0, F / 2, 4), 0)
+	testing.expect_value(t, carousel_fling_aim(0.6, 0, -F / 2, 4), 1)
+	// Fast: the next item the fling's way, however little it moved.
+	testing.expect_value(t, carousel_fling_aim(0.1, 0, F, 4), 1)
+	testing.expect_value(t, carousel_fling_aim(2.9, 3, -F, 4), 2)
+	// Never past one item from where the press landed, nor the ends.
+	testing.expect_value(t, carousel_fling_aim(2.6, 1, F, 4), 2)
+	testing.expect_value(t, carousel_fling_aim(0.2, 0, -F, 4), 0)
+	testing.expect_value(t, carousel_fling_aim(3.9, 4, F, 4), 4)
+}
+
+@(private = "file")
+Fling_Model :: struct {
+	state:    Carousel_State,
+	strategy: Carousel_Strategy,
+}
+
+@(private = "file")
+fling_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Fling_Model)(user)
+	items := [?]Carousel_Item{{"A", {}, {}}, {"B", {}, {}}, {"C", {}, {}}, {"D", {}, {}}, {"E", {}, {}}, {"F", {}, {}}, {"G", {}, {}}, {"H", {}, {}}}
+	carousel(gtx, items[:], 400, 200, strategy = m.strategy, item_spacing = 8, state = &m.state)
+}
+
+// flick drags the carousel left by dx in steps moves a frame apart and
+// lets go, then lets it come to rest.
+@(private = "file")
+flick :: proc(p: ^ui.Probe, dx: f32, steps: int) {
+	c, _ := ui.probe_center(p, "carousel")
+	press_at(p, c)
+	for i in 1 ..= steps {
+		move_to(p, c - {dx * f32(i) / f32(steps), 0})
+	}
+	release_at(p, c - {dx, 0})
+	ui.probe_advance(p, 180, 1.0 / 60)
+}
+
+@(test)
+test_carousel_flick_moves_on_and_a_slow_drag_settles_back :: proc(t: ^testing.T) {
+	m := Fling_Model{strategy = .Multi_Browse}
+	p: ui.Probe
+	ui.probe_init(&p, fling_view, &m, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	// 30 dp at 10 a frame is 600 dp/s: past the fling speed, on to item 1.
+	flick(&p, 30, 3)
+	testing.expect_value(t, m.state.position, 1)
+	// The same 30 dp over 30 frames is 60 dp/s: back to item 1, where it began.
+	flick(&p, 30, 30)
+	testing.expect_value(t, m.state.position, 1)
+	// A long fast fling still moves one item only.
+	flick(&p, 600, 6)
+	testing.expect_value(t, m.state.position, 2)
+}
+
+@(test)
+test_carousel_snap_starts_at_the_pointer_speed :: proc(t: ^testing.T) {
+	m := Fling_Model{strategy = .Multi_Browse}
+	p: ui.Probe
+	ui.probe_init(&p, fling_view, &m, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	// Let go moving on at 300 dp/s, too slow to move on an item: the snap
+	// heads back to item 0, but carries the pointer's speed on first, as a
+	// spring started at that velocity does, rather than reversing at once.
+	c, _ := ui.probe_center(&p, "carousel")
+	press_at(&p, c)
+	for i in 1 ..= 3 {
+		move_to(&p, c - {5 * f32(i), 0})
+	}
+	before := m.state.position
+	release_at(&p, c - {15, 0})
+	testing.expect(t, m.state.position > before)
+	ui.probe_advance(&p, 180, 1.0 / 60)
+	testing.expect_value(t, m.state.position, 0)
+}
+
+@(test)
+test_uncontained_carousel_glides_after_a_fling :: proc(t: ^testing.T) {
+	m := Fling_Model{strategy = .Uncontained}
+	p: ui.Probe
+	ui.probe_init(&p, fling_view, &m, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	k := carousel_keylines(.Uncontained, 400, 186, 8, CAROUSEL_MIN_SMALL, CAROUSEL_MAX_SMALL)
+	pitch := k.large + 8
+	// 60 dp at 20 a frame, 1200 dp/s, glides on 1200 / -k more and stays
+	// wherever that lands: no snap.
+	flick(&p, 60, 3)
+	want := (60 + 1200 / -ui.SLING_DECAY) / pitch
+	testing.expectf(t, abs(m.state.position - want) < 0.02, "at %v, want %v", m.state.position, want)
+	testing.expect(t, m.state.position != math.round(m.state.position))
+
+	// A press mid-glide catches it where it is.
+	c, _ := ui.probe_center(&p, "carousel")
+	press_at(&p, c)
+	for i in 1 ..= 3 {
+		move_to(&p, c - {20 * f32(i), 0})
+	}
+	release_at(&p, c - {60, 0})
+	ui.probe_advance(&p, 3, 1.0 / 60)
+	testing.expect(t, ui.sling_active(&m.state.glide))
+	press_at(&p, c)
+	caught := m.state.position
+	ui.probe_advance(&p, 30, 1.0 / 60)
+	testing.expect_value(t, m.state.position, caught)
+	release_at(&p, c)
+
+	// A fling far past the end stops there, still fast.
+	press_at(&p, c)
+	for i in 1 ..= 3 {
+		move_to(&p, c - {100 * f32(i), 0})
+	}
+	release_at(&p, c - {300, 0})
+	for _ in 0 ..< 60 {
+		ui.probe_frame(&p)
+		if !ui.sling_active(&m.state.glide) {
+			break
+		}
+	}
+	testing.expect(t, !ui.sling_active(&m.state.glide))
+	end := m.state.position
+	testing.expect(t, end > 0)
+	testing.expect_value(t, carousel_fling_end(&p, &m), end)
+}
+
+// carousel_fling_end is how far an uncontained carousel can scroll: where
+// a fling far past the end stops. It runs one more frame to read it back.
+@(private = "file")
+carousel_fling_end :: proc(p: ^ui.Probe, m: ^Fling_Model) -> f32 {
+	m.state.position = 1e6
+	ui.probe_frame(p)
+	return m.state.position
+}
+
 @(private = "file")
 Guard_Model :: struct {
 	open: bool,
