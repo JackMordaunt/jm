@@ -1,6 +1,52 @@
 # Building and testing
 
-Every task is a `just` recipe, grouped by the package it serves.
+**Every task is one `just` recipe, and the same recipes run on your machine and in CI.**
+
+- `just` alone lists the recipes, grouped by the package or tool each serves.
+- `check`, `test` and `link` find packages themselves, so a new package needs no list entry.
+- One machine type-checks all three platforms.
+- CI runs the same recipes on Linux, macOS and Windows.
+
+## The recipes you will use
+
+| Recipe | What it does |
+|--------|--------------|
+| `just check` | type-check every package and program for linux, darwin and windows |
+| `just test` | run every package's tests |
+| `just odin-run-install` | install `odin-run` into `~/.local/bin` (`BINDIR` overrides) |
+| `just material-kitchen` | build and open a hot-reloaded UI kitchen (also `fluent-kitchen`, `primer-kitchen`) |
+| `just readme` | render the README and docs to `build/readme` and open them |
+
+### Run one package or one test
+
+```sh
+just check ui/primer
+just test ui/primer
+just test ui/primer -define:ODIN_TEST_NAMES=primer.<test>
+```
+
+A run that matches no test fails, and each `ok` line counts the tests that ran.
+
+### Leave packages out
+
+`SKIP="pq tools/jm-fuzz"` leaves those directories and everything under them out, as on a
+machine without libpq.
+
+### Release builds of the apps
+
+`text-lab`, the three kitchens and `gallery` take `release` to build with `-o:speed` instead of
+`-debug`: `just material-kitchen release`.
+
+### Work in a git worktree
+
+In a linked git worktree, each native library's recipe first clone-copies that library from the
+main checkout when its vendored tree or pinned revisions match there. A fresh worktree links in
+seconds instead of rebuilding Blend2D and libgit2.
+
+## Every recipe
+
+The recipe that compiles a package's C library sits in that package's section; `general` holds
+what spans them all.
 
 ```
 general      check    3-target type-check of every package and program, or of those named
@@ -26,61 +72,69 @@ ui           blend2d  fetch and compile Blend2D into ui/blend2d/lib
              bench-ui  ms per frame for layout and the Blend2D executor
              hot-architecture  build the hot-reloaded architecture diagram
              text-lab  build and open the hot-reloaded text lab: scripts, bidi, emoji, carets
-             text-png page=Scripts  render one text-lab page, whole, to build/
+             text-png Scripts  render one text-lab page, whole, to build/
 ui/material  material-kitchen  build and open the hot-reloaded M3 kitchen
-             material-png page=Chips  render one M3 kitchen page to build/
+             material-png Chips  render one M3 kitchen page to build/
              material-tokens  regenerate ui/material/tokens from the m3e-kit
              material-shapes  regenerate ui/material/shape_data.odin from the m3e-kit's morphs
              material-kit-{tokens,shapes,fetch,index,check,page}  maintain the m3e-kit in tools/material
 ui/fluent    fluent-kitchen  build and open the hot-reloaded Fluent 2 kitchen
-             fluent-png page=Button  render one Fluent kitchen page to build/
+             fluent-png Button  render one Fluent kitchen page to build/
              fluent-fonts  fetch Selawik, the kitchen's stand-in for Segoe UI, into ~/.local/share/fonts
              fluent-tokens  regenerate ui/fluent/tokens from the fluent-kit
              fluent-icons  regenerate ui/fluent/icon_data.odin from the Fluent icons in tools/fluent/icons
              fluent-icons-fetch  fetch the icons icons.txt names at its pinned commit (or a ref given)
              fluent-kit-{tokens,fetch,index,check,page}  maintain the fluent-kit in tools/fluent
 ui/primer    primer-kitchen  build and open the hot-reloaded Primer kitchen
-             primer-png page=Button theme=Light  render one Primer kitchen page to build/
+             primer-png Button Light  render one Primer kitchen page to build/
              primer-tokens  regenerate ui/primer/tokens from the primer-kit
              primer-icons  regenerate ui/primer/icon_data.odin from the kit's octicons
              primer-kit-{tokens,fetch,index,check}  maintain the primer-kit in tools/primer
 ```
 
-`text-lab`, the three kitchens and `gallery` take `release` to build with `-o:speed`
-instead of `-debug`: `just material-kitchen release`.
+<details>
+<summary>Under the hood: how check, test and link find packages</summary>
 
-`just` alone lists the recipes in these sections: one per package or tool,
-the recipe that compiles a package's C library in its section, and general
-for what spans them all.
+They read no list. Every directory of `.odin` files git sees counts, tracked or not but never
+ignored. A `package main` directory is a program, and one with an `@(test)` proc is a test
+package.
 
-`just odin-run-install` bakes this checkout's path into the runner as the `jm`
-collection root; `ODIN_RUN_COLLECTION` overrides it.
-
-`check`, `test` and `link` find their packages rather than read a list:
-every directory of `.odin` files git sees, tracked or not but never
-ignored, a `package main` directory being a program and one with an
-`@(test)` proc a test package. `SKIP="pq tools/jm-fuzz"` leaves those
-directories and everything under them out, as on a machine without libpq.
 Packages run in parallel, except the `serial_tests` the justfile names.
-`just check ui/primer` and `just test ui/primer` take the same flags for
-one package, and `just test ui/primer -define:ODIN_TEST_NAMES=primer.<test>`
-runs one test; a run that matches no test fails, and each `ok` line counts
-the tests that ran.
-In a linked git worktree each native library's recipe first clone-copies
-that library from the main checkout when its vendored tree or pinned
-revisions match there, so a fresh worktree links in seconds instead of
-rebuilding Blend2D and libgit2.
 
-GitHub Actions runs `just check`, then `just link test` on Linux, macOS
-and Windows (`.github/workflows/test.yml`), building the vendored C libraries, libgit2
-and Blend2D there the way the recipes do and caching the CMake builds. It
-runs on a push to `main` or to any `ci/<name>` branch, so pushing a
-throwaway `ci/` branch checks all three platforms during development;
-`gh workflow run test.yml --ref <branch>` runs it on any other branch.
-`ui/sdl` runs too: Linux builds SDL3 console-only, which is enough because
-its tests drive a child process rather than open a window. `pq` runs on
-all three, each runner having libpq and a PostgreSQL server.
-`wasm-windows.yml` is the shorter loop for jm:wasm on Windows alone: wasm3
-with clang-cl at two optimisation levels, the trap tests one process each,
-and a faulting one rerun under cdb for its stack. The recipe's own cl
-build of wasm3 does not compile; clang-cl is what Windows uses.
+`just odin-run-install` bakes this checkout's path into the runner as the `jm` collection
+root; `ODIN_RUN_COLLECTION` overrides it.
+
+</details>
+
+## Continuous integration
+
+| Workflow | What it runs |
+|----------|--------------|
+| `.github/workflows/test.yml` | `just check`, then `just link test` on Linux, macOS and Windows |
+| `wasm-windows.yml` | the shorter loop for jm:wasm on Windows alone |
+
+> [!TIP]
+> CI runs on a push to `main` or to any `ci/<name>` branch, so pushing a throwaway `ci/`
+> branch checks all three platforms during development.
+> `gh workflow run test.yml --ref <branch>` runs it on any other branch.
+
+<details>
+<summary>Under the hood: what CI builds and why</summary>
+
+- `test.yml` builds the vendored C libraries, libgit2 and Blend2D the way the recipes do, and
+  caches the CMake builds.
+- `ui/sdl` runs too. Linux builds SDL3 console-only, which is enough because its tests drive a
+  child process rather than open a window.
+- `pq` runs on all three, each runner having libpq and a PostgreSQL server.
+- `wasm-windows.yml` builds wasm3 with clang-cl at two optimisation levels, runs the trap tests
+  one process each, and reruns a faulting one under cdb for its stack.
+- The recipe's own cl build of wasm3 does not compile; clang-cl is what Windows uses.
+
+</details>
+
+## See also
+
+- [Setup](setup.md): installing what the recipes need
+- [Fuzzing](fuzzing.md): the `fuzz` recipes in depth
+- [UI](ui.md): the kitchens and example apps
+- [README](../README.md)

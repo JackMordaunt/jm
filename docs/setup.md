@@ -1,11 +1,26 @@
 # Setup
 
-`./setup.sh` installs what the recipes need and then reports what is still
-missing; `./setup.sh --check` only reports, and exits 1 when something
-required is absent. It uses Homebrew on macOS, apt, dnf or pacman on Linux,
-and winget or else scoop on Windows under Git Bash. A package that fails to
-install is reported and the rest carry on. Odin is fetched from its GitHub
-release at the version CI pins, and only when no `odin` is on `PATH`.
+**One script installs everything jm's recipes need and tells you what is still missing.**
+
+- It uses the package manager you already have: Homebrew, apt, dnf, pacman, winget or scoop.
+- A package that fails to install is reported, and the rest carry on.
+- It fetches Odin only when no `odin` is on `PATH`, at the version CI pins.
+- `--check` installs nothing, so it doubles as a health check.
+
+## Quick start
+
+```sh
+./setup.sh            # install what is missing, then report
+./setup.sh --check    # report only; exits 1 when something required is absent
+```
+
+| Platform | Package manager |
+|----------|-----------------|
+| macOS | Homebrew |
+| Linux | apt, dnf or pacman |
+| Windows | winget, or else scoop, under Git Bash |
+
+## What jm needs
 
 | Need | macOS | Linux | Windows |
 |------|-------|-------|---------|
@@ -18,5 +33,12 @@ release at the version CI pins, and only when no `odin` is on `PATH`.
 | `initdb`, `pg_ctl` (optional) | pq tests; they skip without | same | same |
 | Selawik, Noto Sans (optional) | fluent kitchen | both kitchens | fluent kitchen |
 
-Ubuntu 24.04 packages neither SDL3 nor a new enough just: the script fetches
-just's own release, and SDL3 has to be built from source there.
+> [!WARNING]
+> Ubuntu 24.04 packages neither SDL3 nor a new enough just. The script fetches just's own
+> release there, but SDL3 has to be built from source.
+
+## See also
+
+- [Building and testing](building.md): the recipes this setup enables
+- [Writing scripts](scripts.md): your first script once `odin-run` is installed
+- [README](../README.md)
