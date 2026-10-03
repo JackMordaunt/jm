@@ -178,6 +178,38 @@ test_bottom_sheet_scrim_handle_and_drag_close_it :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_bottom_sheet_flick_dismisses_and_a_held_drag_does_not :: proc(t: ^testing.T) {
+	m := Sheet_Model{open = true}
+	p: ui.Probe
+	ui.probe_init(&p, sheet_ui, &m, {400, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	ui.probe_advance(&p, 60, 1.0 / 60)
+	c, ok := ui.probe_center(&p, "drag handle")
+	testing.expect(t, ok)
+
+	// 30 dp down at 10 a frame, short of the 56 dp threshold, held for
+	// half a second, then let go: the pointer stopped, so the sheet stays.
+	press_at(&p, c)
+	for i in 1 ..= 3 {
+		move_to(&p, c + {0, 10 * f32(i)})
+	}
+	ui.probe_advance(&p, 30, 1.0 / 60)
+	release_at(&p, c + {0, 30})
+	ui.probe_advance(&p, 60, 1.0 / 60)
+	testing.expect(t, m.open)
+	testing.expect_value(t, m.value, Sheet_Value.Partially_Expanded)
+
+	// The same 30 dp let go while moving (600 dp/s) is a flick: it hides.
+	press_at(&p, c)
+	for i in 1 ..= 3 {
+		move_to(&p, c + {0, 10 * f32(i)})
+	}
+	release_at(&p, c + {0, 30})
+	testing.expect(t, !m.open)
+}
+
+@(test)
 test_side_sheet_closes_on_escape_and_scrim :: proc(t: ^testing.T) {
 	m := Sheet_Model{side = true}
 	p: ui.Probe

@@ -651,7 +651,7 @@ bottom_sheet_open :: proc(
 	areas := [2]ops.Area_Id{drag_id, handle_id}
 	for area in areas {
 		for e in ui.events(gtx, area) {
-			s, c, esc := sheet_drag_event(d, e, area == handle_id, gtx.dt)
+			s, c, esc := sheet_drag_event(d, e, area == handle_id)
 			settle |= s
 			clicked |= c
 			escape |= esc
@@ -763,31 +763,35 @@ Sheet_Drag :: struct {
 	dragging: bool,
 	delta:    f32, // how far the pointer has moved since the press
 	start:    f32, // the sheet's offset when the press landed
-	velocity: f32, // dp/s, from the last move
+	velocity: f32, // dp/s down: the pointer's, estimated over its recent moves
+	tracker:  ui.Velocity_Tracker,
 }
 
 // sheet_drag_event applies e, from the sheet body or its handle, to d.
 // It adds up each Move's travel, which does not change as the sheet
 // itself moves, so the sheet following the pointer cannot feed back into
-// the drag. settle reports a release after a drag, click a
-// release on the handle that did not move; dt is the frame's, for velocity.
+// the drag; the velocity comes from those sums and the events' times.
+// settle reports a release after a drag, click a release on the handle
+// that did not move.
 @(private)
-sheet_drag_event :: proc(d: ^Sheet_Drag, e: ui.Event, on_handle: bool, dt: f32) -> (settle, click, escape: bool) {
+sheet_drag_event :: proc(d: ^Sheet_Drag, e: ui.Event, on_handle: bool) -> (settle, click, escape: bool) {
 	#partial switch e.kind {
 	case .Press:
 		d.dragging = true
 		d.delta = 0
 		d.velocity = 0
+		ui.velocity_reset(&d.tracker)
+		ui.velocity_add(&d.tracker, e.time, {})
 	case .Move:
 		if d.dragging {
-			if dt > 0 {
-				d.velocity = e.travel.y / dt
-			}
 			d.delta += e.travel.y
+			ui.velocity_add(&d.tracker, e.time, {0, d.delta})
+			d.velocity = ui.velocity_estimate(&d.tracker, e.time).y
 		}
 	case .Release:
 		if d.dragging {
 			d.dragging = false
+			d.velocity = ui.velocity_estimate(&d.tracker, e.time).y
 			if abs(d.delta) < 4 {
 				click = on_handle
 			} else {
