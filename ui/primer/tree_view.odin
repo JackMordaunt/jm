@@ -306,7 +306,8 @@ tree_row_name :: proc(gtx: ^ui.Ctx, r: Tree_Row) -> string {
 // The tree is one tab stop, entered at the current item, else the last
 // focused, else the first. Up and Down move through visible rows, Home and
 // End to the ends, Page Up and Down by page_height (the window's height
-// when 0) over 32px rows; Right opens a closed item or enters an open
+// when 0) over 32px rows, a row focused by the keyboard scrolling into
+// view; Right opens a closed item or enters an open
 // one, Left closes an open one or goes to the parent, Backspace to the
 // parent; Enter, Space or a click selects a selectable item, else toggles
 // it; printable characters search labels from the focused row, the
@@ -319,9 +320,10 @@ tree_row_name :: proc(gtx: ^ui.Ctx, r: Tree_Row) -> string {
 // Retry and Dismiss reported as events, Dismiss collapsing the item.
 //
 // Departures: the leading-action slot is not offered; the coarse-pointer
-// sizes are not drawn, as jm:ui has no pointer density; the focused row is
-// not scrolled into view and Page Up/Down use page_height, not the nearest
-// scroll container's, as jm:ui has no scroll-into-view; the item's name is
+// sizes are not drawn, as jm:ui has no pointer density; Page Up/Down page
+// by page_height (the window's when 0), as the caller knows the height of
+// the scroll box it put the tree in and jm:ui does not tell the tree; the
+// item's name is
 // its label alone, the shortcut going in its description, so type-ahead
 // finds items with secondary actions (the web's two-id aria-labelledby
 // leaves them nameless, tree-view.json upstream bugs); the toggle's own
@@ -624,7 +626,10 @@ tree_row_widget :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, r: Tree
 		}
 	}
 	if tm.ask == r.key {
+		// Focus moves here: bring the row into view, as the web's
+		// focus() does (TreeView.tsx:142-166,398-408).
 		ui.focus_request(gtx, p.id)
+		ui.scroll_into_view(gtx, area)
 		tm.ask = 0
 	}
 	if tm.focus == r.key {

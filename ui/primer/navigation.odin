@@ -603,8 +603,9 @@ Underline_Panels_Memo :: struct {
 // Space selects. selected^ is the selected tab's index; an index that
 // names no tab reads as the first. state forces the first unselected tab.
 //
-// Departures: the focused tab is not scrolled into view, as jm:ui has no
-// scroll-into-view; tabs and panels pair by index, not by value. Icons
+// A tab that arrows focus scrolls into view.
+//
+// Departures: tabs and panels pair by index, not by value. Icons
 // always show: Primer measures when they should hide and nothing reads
 // the result (underline-panels.json upstream bug).
 underline_panels_open :: proc(
@@ -705,8 +706,15 @@ draw_underline_tabs :: proc(
 		ui.part_semantics(gtx, &p, tid, r, {role = .Tab, label = said, description = ui.frame_string(gtx, t.counter), states = design.state_if(i == selected^, {.Selected})})
 	}
 	if m.moved {
+		// Focus moves to the tab: bring it into view, as the web's
+		// focus() does (useTabList.ts:47-71).
 		m.moved = false
 		ui.focus_request(gtx, ui.id_mix(p.id, u64(m.focus) + 1))
+		at := tok.STACK_PADDING_NORMAL
+		for s in shapes[:m.focus] {
+			at += s.w + tok.STACK_GAP_CONDENSED
+		}
+		ui.scroll_into_view(gtx, {at, tok.BASE_SIZE_8, shapes[m.focus].w, UNDERLINE_TAB})
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, label), {0, 0, strip_w, UNDERLINE_STRIP})
 	ui.widget_close(gtx, &p, {{strip_w, UNDERLINE_STRIP}, 0})

@@ -364,3 +364,35 @@ test_tree_flat_drops_indent_and_wrap_grows_rows :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_bounds(&p, long).h > TREE_ROW)
 }
+
+@(private = "file")
+tree_scrolled_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Tree_Model)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+	box := ui.sized_open(gtx, {min = {300, 3 * TREE_ROW}, max = {300, 3 * TREE_ROW}})
+	defer ui.close(&box)
+	sb := ui.scroll_box_open(gtx)
+	defer ui.close(&sb)
+	tree_view(gtx, tree_items(m), "Files")
+}
+
+@(test)
+test_tree_scrolls_the_focused_row_into_view :: proc(t: ^testing.T) {
+	m: Tree_Model
+	tree_model(&m)
+	p: ui.Probe
+	ui.probe_init(&p, tree_scrolled_view, &m, {600, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_bounds(&p, "tools").y >= 3 * TREE_ROW) // below the 96px box
+	ui.probe_key(&p, .Tab)
+	ui.probe_key(&p, .End)
+	ui.probe_frame(&p)
+	tools := ui.probe_bounds(&p, "tools")
+	testing.expect_value(t, tools.y, 2 * TREE_ROW) // its bottom at the box's
+	ui.probe_key(&p, .Home)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "src").y, 0)
+}

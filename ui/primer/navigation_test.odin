@@ -577,3 +577,33 @@ test_nav_list_show_more_reveals_pages_and_moves_focus :: proc(t: ^testing.T) {
 	said = ui.probe_semantics(&p, context.temp_allocator)
 	testing.expectf(t, strings.contains(said, "link \"M4\" focused"), "5 - floor(5 / 2): %s", said)
 }
+
+@(private = "file")
+narrow_tabs_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	sel := (^int)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+	box := ui.sized_open(gtx, {min = {200, 0}, max = {200, ui.INF}})
+	defer ui.close(&box)
+	tabs := [4]Underline_Tab{{"Code", .Code, ""}, {"Issues", .Issue_Opened, "12"}, {"Pull requests", .Git_Pull_Request, "3"}, {"Discussions", .Comment_Discussion, ""}}
+	up := underline_panels_open(gtx, "Narrow", tabs[:], sel)
+	underline_panels_close(&up)
+}
+
+@(test)
+test_underline_panels_scroll_the_focused_tab_into_view :: proc(t: ^testing.T) {
+	sel := 0
+	p: ui.Probe
+	ui.probe_init(&p, narrow_tabs_view, &sel, {600, 300}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	last := ui.probe_bounds(&p, "Discussions")
+	testing.expect(t, last.x + last.w > 200) // past the 200px strip
+	ui.probe_click(&p, "Code")
+	ui.probe_key(&p, .End)
+	ui.probe_frame(&p)
+	testing.expect_value(t, sel, 3)
+	last = ui.probe_bounds(&p, "Discussions")
+	testing.expect(t, abs(last.x + last.w - 200) < 0.01, "its end at the strip's")
+}
