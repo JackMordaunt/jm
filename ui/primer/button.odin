@@ -242,8 +242,14 @@ content_width :: proc(bc: Button_Content, gap: f32) -> f32 {
 // a visual (or the label) for a spinner and ignores clicks while keeping
 // focus; inactive looks disabled but stays live. name is what assistive
 // technology hears when it differs from the visible label (a "+3" that
-// means "Show +3 more"); the label when empty. Returns true on the frame
-// it is clicked, or activated by Enter or Space while focused.
+// means "Show +3 more"); the label when empty. expanded, when set, says
+// the button controls a menu or panel and whether it is open
+// (aria-expanded): open, it keeps its pressed fill, border and shadow
+// until hovered (ButtonBase.module.css:308-311,360-363,417-422,516-518).
+// tab_stop false takes it out of Tab's order and keys: a toolbar's
+// items other than its one tab stop, which a focus request moves to
+// (the toolbar then makes it the tab stop). Returns true on the frame it
+// is clicked, or activated by Enter or Space while focused.
 button :: proc(
 	gtx: ^ui.Ctx,
 	label: string,
@@ -259,6 +265,8 @@ button :: proc(
 	inactive := false,
 	dot := Unread_Dot.None,
 	name := "",
+	expanded: Maybe(bool) = nil,
+	tab_stop := true,
 	group: ^Button_Group = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
@@ -296,17 +304,18 @@ button :: proc(
 	if inactive {
 		r = inactive_roles(r)
 	}
-	bp := Button_Paint{variant, r, area, mt, bc, align, pad, loading, inactive, dot, nil, 0}
+	open := expanded.? or_else false
+	bp := Button_Paint{variant, r, area, mt, bc, align, pad, loading, inactive, dot, open, nil, 0}
 	if group != nil {
 		bp.group, bp.member = group, group_join(group, p.id)
 		read_group_keys(gtx, group, p.id, bp.member)
 	}
 	paint_button(gtx, c, bp)
-	listen(gtx, c.st, p.id, area)
+	listen(gtx, c.st, p.id, area, button_kinds(tab_stop))
 	said := ui.frame_string(gtx, label)
 	ops.tag(gtx.scene, p.id, said)
 	heard := said if name == "" else ui.frame_string(gtx, name)
-	ui.semantics(gtx, &p, {role = variant == .Link ? .Link : .Button, label = heard, states = design.state_if(c.disabled || loading, {.Disabled})})
+	ui.semantics(gtx, &p, {role = variant == .Link ? .Link : .Button, label = heard, states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(expanded)})
 	ui.widget_close(gtx, &p, {sz, (sz.y - bc.label.height) / 2 + baseline_of(bc.label)})
 	return c.clicked && !loading
 }
@@ -324,8 +333,27 @@ Button_Paint :: struct {
 	pad:               f32,
 	loading, inactive: bool,
 	dot:               Unread_Dot,
+	expanded:          bool, // it controls an open menu: pressed colours until hovered
 	group:             ^Button_Group, // nil unless in a ButtonGroup
 	member:            int, // its index there
+}
+
+// button_kinds is a button's input kinds: a click's, less Key when it is
+// not a tab stop, so Tab passes it by and only a focus request reaches it.
+@(private)
+button_kinds :: proc(tab_stop: bool) -> ops.Event_Kinds {
+	return CLICK_KINDS if tab_stop else CLICK_KINDS - {.Key}
+}
+
+// expanded_states is aria-expanded as semantic states: none when the
+// control opens nothing, else expandable and, while open, expanded.
+@(private)
+expanded_states :: proc(expanded: Maybe(bool)) -> ops.States {
+	open, ok := expanded.?
+	if !ok {
+		return {}
+	}
+	return open ? {.Expandable, .Expanded} : {.Expandable}
 }
 
 // paint_button draws a button's box, content and focus.
@@ -334,6 +362,8 @@ paint_button :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint) {
 	look := c
 	if bp.inactive {
 		look.state = .Enabled
+	} else if bp.expanded && look.state != .Hovered && look.state != .Disabled {
+		look.state = .Pressed
 	}
 	rr := ops.Round_Rect{bp.area, bp.variant == .Link ? 0 : tok.BORDER_RADIUS_MEDIUM}
 	// Slots 0-3: fill, border, label and visuals, the properties the CSS
@@ -497,9 +527,11 @@ paint_dot :: proc(gtx: ^ui.Ctx, pos: ops.Point) {
 // disabled button, an empty name or no_tooltip shows none
 // (IconButton.tsx:28-80).
 //
-// Departure: the tooltip is not suppressed while the button's menu is
-// open, as the button has no expanded state yet, and shows no keybinding
-// hint.
+// expanded and tab_stop are button's. While expanded is true the tooltip
+// stays down (IconButton.tsx: a button with aria-haspopup and
+// aria-expanded shows none; icon-button.json states).
+//
+// Departure: it shows no keybinding hint.
 icon_button :: proc(
 	gtx: ^ui.Ctx,
 	ic: Icon,
@@ -512,6 +544,8 @@ icon_button :: proc(
 	description := "",
 	tooltip_direction := Tooltip_Direction.S,
 	no_tooltip := false,
+	expanded: Maybe(bool) = nil,
+	tab_stop := true,
 	group: ^Button_Group = nil,
 	state := Interaction.Live,
 	key: u64 = 0,
@@ -527,7 +561,7 @@ icon_button :: proc(
 	case .Primary, .Danger:
 		r.visual = r.fg
 	}
-	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, group}
+	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, expanded, !tab_stop, group}
 	return icon_button_in(gtx, ic, name, variant, size, r, st, key, loc)
 }
 
@@ -540,6 +574,8 @@ Icon_Button_State :: struct {
 	description:       string, // its tooltip's text in place of the name, describing it
 	tooltip_direction: Tooltip_Direction,
 	no_tooltip:        bool,
+	expanded:          Maybe(bool),
+	no_tab:            bool, // out of Tab's order: tab_stop false
 	group:             ^Button_Group, // nil unless in a ButtonGroup
 }
 
@@ -560,7 +596,8 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	}
 	bc := Button_Content{leading = ic}
 	pad := (sz.x - BUTTON_ICON) / 2
-	bp := Button_Paint{variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None, nil, 0}
+	open := st.expanded.? or_else false
+	bp := Button_Paint{variant == .Link ? .Default : variant, r, area, button_metrics(size), bc, .Center, pad, loading, inactive, .None, open, nil, 0}
 	if st.group != nil {
 		bp.group, bp.member = st.group, group_join(st.group, p.id)
 		read_group_keys(gtx, st.group, p.id, bp.member)
@@ -576,14 +613,14 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 		paint_dot(gtx, {area.w / 2 + tok.BASE_SIZE_12 - d, area.h / 2 - tok.BASE_SIZE_12})
 	case .None:
 	}
-	listen(gtx, c.st, p.id, area)
+	listen(gtx, c.st, p.id, area, button_kinds(!st.no_tab))
 	said := ui.frame_string(gtx, name)
 	ops.tag(gtx.scene, p.id, said)
 	if c.st != nil {
 		tip := st.description if st.description != "" else name
-		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || st.no_tooltip || name == "", false)
+		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || st.no_tooltip || name == "" || open, false)
 	}
-	ui.semantics(gtx, &p, {role = .Button, label = said, description = ui.frame_string(gtx, st.description), states = design.state_if(c.disabled || loading, {.Disabled})})
+	ui.semantics(gtx, &p, {role = .Button, label = said, description = ui.frame_string(gtx, st.description), states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(st.expanded)})
 	ui.widget_close(gtx, &p, {sz, 0})
 	return c.clicked && !loading
 }

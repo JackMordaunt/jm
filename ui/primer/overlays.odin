@@ -565,9 +565,9 @@ Anchored_Overlay :: struct {
 // focus.initial or its first focusable area, and returns to the anchor
 // as it closes.
 //
-// Departures: the anchor's aria-haspopup and aria-expanded are the
-// anchor's to declare (primer.button has no expanded state yet); the
-// arrow-key focus zone between items is the list's that fills it;
+// Departures: the anchor's aria-expanded is the anchor's to declare
+// (button's and icon_button's expanded), and jm:ui has no aria-haspopup;
+// the arrow-key focus zone between items is the list's that fills it;
 // pinPosition is not offered; Inside_Center keeps its alignment where
 // Primer would walk the alignments on a horizontal overflow; an overlay
 // wider than the window ends flush left where Primer's ends flush right;

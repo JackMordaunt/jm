@@ -1,5 +1,6 @@
 package primer
 
+import "core:strings"
 import "core:testing"
 import "jm:ui"
 import "jm:ui/design"
@@ -177,4 +178,89 @@ test_a_counter_label_without_a_count_takes_no_space :: proc(t: ^testing.T) {
 		}
 	}
 	testing.expect_value(t, fills, 1) // "0" is a count, "" is not
+}
+
+@(private = "file")
+Expanded_Model :: struct {
+	open: bool,
+	hits: int,
+}
+
+@(private = "file")
+expanded_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Expanded_Model)(user)
+	col := ui.column_open(gtx, gap = 16, align = .Start)
+	defer ui.close(&col)
+	button(gtx, "Plain")
+	if button(gtx, "Menu", action = .Triangle_Down, expanded = m.open) {
+		m.open = !m.open
+	}
+	icon_button(gtx, .Kebab_Horizontal, "More", expanded = m.open)
+	if button(gtx, "Skipped", tab_stop = false) {
+		m.hits += 1
+	}
+	button(gtx, "Last")
+}
+
+@(test)
+test_an_expanded_button_reports_it_and_keeps_its_pressed_fill :: proc(t: ^testing.T) {
+	m: Expanded_Model
+	p: ui.Probe
+	ui.probe_init(&p, expanded_view, &m, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(sem, "button \"Menu\" expandable at"), "closed: expandable, not expanded\n%s", sem)
+	testing.expectf(t, strings.contains(sem, "button \"Plain\" at"), "a plain button says neither\n%s", sem)
+	pressed := color(.Button_Default_Bg_Color_Active)
+	testing.expect_value(t, fills_of(&p, pressed), 0)
+	m.open = true
+	ui.probe_move(&p, 390, 390) // the pointer off every button
+	sem = ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(sem, "button \"Menu\" expandable expanded at"), "open: expanded\n%s", sem)
+	testing.expect_value(t, fills_of(&p, pressed), 2) // the menu button and the icon button, both default
+	// Hovered, it shows its hover fill: the CSS's :hover follows [aria-expanded].
+	c, _ := ui.probe_center(&p, "Menu")
+	ui.probe_move(&p, c.x, c.y)
+	ui.probe_advance(&p, 10, 1.0 / 60) // past the 80ms fade
+	testing.expect_value(t, fills_of(&p, pressed), 1) // the icon button's, still expanded and not hovered
+	testing.expect_value(t, fills_of(&p, color(.Button_Default_Bg_Color_Hover)), 1)
+}
+
+@(private = "file")
+tooltips_shown :: proc(p: ^ui.Probe) -> (n: int) {
+	return fills_of(p, color(.Tooltip_Bg_Color))
+}
+
+@(test)
+test_an_expanded_icon_button_shows_no_tooltip :: proc(t: ^testing.T) {
+	m: Expanded_Model
+	p: ui.Probe
+	ui.probe_init(&p, expanded_view, &m, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	c, _ := ui.probe_center(&p, "More")
+	ui.probe_move(&p, c.x, c.y)
+	ui.probe_advance(&p, 6, 1.0 / 60) // past the 50ms delay
+	testing.expect_value(t, tooltips_shown(&p), 1) // closed: the tooltip names it
+	m.open = true
+	ui.probe_advance(&p, 2, 1.0 / 60)
+	testing.expect_value(t, tooltips_shown(&p), 0) // open: its menu shows instead
+}
+
+@(test)
+test_a_button_out_of_the_tab_order_is_skipped_by_tab_and_still_clicks :: proc(t: ^testing.T) {
+	m: Expanded_Model
+	p: ui.Probe
+	ui.probe_init(&p, expanded_view, &m, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	last, _ := ui.probe_find(&p, "Last")
+	ui.probe_click(&p, "More")
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, last.area) // past Skipped
+	testing.expect(t, ui.probe_click(&p, "Skipped"))
+	testing.expect_value(t, m.hits, 1)
 }
