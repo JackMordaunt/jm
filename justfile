@@ -154,6 +154,46 @@ _dirs kind:
       echo "$d"
     done
 
+# A linked worktree starts with none of the native libraries, which are
+# ignored, and building them again costs minutes (Blend2D and libgit2 are
+# CMake trees). Each library's recipe first runs this: in a linked
+# worktree, a <pkg>/lib missing here is clone-copied from the main checkout
+# when its inputs match there, the vendored tree or the pinned revisions,
+# and touched so the recipe's staleness check keeps it. A library whose
+# inputs differ builds here as usual. Compile flags are not compared:
+# delete the copied lib after changing one.
+native_libs := "sqlite3:sqlite3/vendor zstd:zstd/vendor wasm:wasm/vendor pg_query:pg_query/vendor ui/kb:ui/kb/vendor ui/blend2d:=blend2d_rev,asmjit_rev git:=libgit2_rev ui/accesskit:=accesskit_ver,accesskit_sha"
+
+[private]
+_worktree-libs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    common=$(git rev-parse --path-format=absolute --git-common-dir)
+    [ "$common" != "$(git rev-parse --path-format=absolute --git-dir)" ] || exit 0
+    main=$(dirname "$common")
+    same() { # input: a path, or =var,var compared as the two justfiles evaluate them
+      local in=$1 v
+      if [ "${in#=}" = "$in" ]; then diff -rq "$main/$in" "$in" >/dev/null; return; fi
+      for v in ${in#=}; do
+        [ "$({{just}} --evaluate "$v")" = "$({{just}} -f "$main/justfile" -d "$main" --evaluate "$v")" ] || return 1
+      done
+    }
+    for pair in {{native_libs}}; do
+      pkg=${pair%%:*} in=${pair#*:}
+      in=${in//,/ }
+      # A failed build leaves its lib dir behind empty.
+      [ -z "$(ls -A "$pkg/lib" 2>/dev/null)" ] && [ -d "$main/$pkg/lib" ] || continue
+      rmdir "$pkg/lib" 2>/dev/null || true
+      if ! same "$in"; then echo "worktree: $pkg differs from $main, so its lib builds here"; continue; fi
+      case "$(uname -s)" in
+        Darwin) cp -Rc "$main/$pkg/lib" "$pkg/lib" ;;
+        Linux) cp -R --reflink=auto "$main/$pkg/lib" "$pkg/lib" ;;
+        *) cp -R "$main/$pkg/lib" "$pkg/lib" ;;
+      esac
+      find "$pkg/lib" -exec touch {} +
+      echo "worktree: $pkg/lib copied from $main"
+    done
+
 # Check out a repository at one commit into dir, unless it is there already.
 # GitHub serves any reachable commit by hash, so a shallow fetch of the pin
 # needs no tag or branch.
@@ -267,7 +307,7 @@ sqlite_defines := "-DSQLITE_DQS=0 -DSQLITE_THREADSAFE=1 -DSQLITE_DEFAULT_MEMSTAT
 # Compile the vendored SQLite amalgamation into sqlite3/lib if it is stale
 [group('sqlite3')]
 [unix]
-sqlite:
+sqlite: _worktree-libs
     @mkdir -p sqlite3/lib
     @if [ ! -f {{sqlite_lib}} ] || [ sqlite3/vendor/sqlite3.c -nt {{sqlite_lib}} ]; then \
         echo "{{cc}} sqlite3 amalgamation -> {{sqlite_lib}}"; \
@@ -277,7 +317,7 @@ sqlite:
 
 [group('sqlite3')]
 [windows]
-sqlite:
+sqlite: _worktree-libs
     @if (!(Test-Path {{sqlite_lib}}) -or (Get-Item sqlite3/vendor/sqlite3.c).LastWriteTime -gt (Get-Item {{sqlite_lib}}).LastWriteTime) { \
         cl /nologo /O2 /c sqlite3/vendor/sqlite3.c /Fosqlite3/lib/sqlite3.obj {{sqlite_defines}}; \
         lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj \
@@ -297,7 +337,7 @@ zstd_lib := if os() == "windows" { "zstd/lib/zstd.lib" } else { "zstd/lib/zstd.a
 # Compile the vendored zstd amalgamation into zstd/lib if it is stale
 [group('zstd')]
 [unix]
-zstd:
+zstd: _worktree-libs
     @mkdir -p zstd/lib
     @if [ ! -f {{zstd_lib}} ] || [ zstd/vendor/zstd.c -nt {{zstd_lib}} ]; then \
         echo "{{cc}} zstd amalgamation -> {{zstd_lib}}"; \
@@ -307,7 +347,7 @@ zstd:
 
 [group('zstd')]
 [windows]
-zstd:
+zstd: _worktree-libs
     @if (!(Test-Path {{zstd_lib}}) -or (Get-Item zstd/vendor/zstd.c).LastWriteTime -gt (Get-Item {{zstd_lib}}).LastWriteTime) { \
         New-Item -ItemType Directory -Force zstd/lib | Out-Null; \
         cl /nologo /O2 /c zstd/vendor/zstd.c /Fozstd/lib/zstd.obj; \
@@ -332,7 +372,7 @@ wasm_defines := "-Dd_m3HasWASI"
 # Compile the vendored wasm3 into wasm/lib if it is stale
 [group('wasm')]
 [unix]
-wasm:
+wasm: _worktree-libs
     @mkdir -p wasm/lib/obj
     @if [ ! -f {{wasm_lib}} ] || [ -n "$(find wasm/vendor -name '*.[ch]' -newer {{wasm_lib}} -print -quit)" ]; then \
         echo "{{cc}} wasm3 -> {{wasm_lib}}"; \
@@ -344,7 +384,7 @@ wasm:
 
 [group('wasm')]
 [windows]
-wasm:
+wasm: _worktree-libs
     @if (!(Test-Path {{wasm_lib}})) { \
         New-Item -ItemType Directory -Force wasm/lib/obj | Out-Null; \
         Get-ChildItem wasm/vendor/*.c | ForEach-Object { cl /nologo /O2 /I wasm/vendor {{wasm_defines}} /c $_.FullName /Fowasm/lib/obj/ }; \
@@ -420,7 +460,7 @@ pg_query_flags := "-fno-strict-aliasing -fwrapv -fPIC -O2 " + \
 # Compile the vendored libpg_query into pg_query/lib if it is stale
 [group('pg_query')]
 [unix]
-pg_query:
+pg_query: _worktree-libs
     @mkdir -p pg_query/lib/obj
     @if [ ! -f {{pg_query_lib}} ] || [ -n "$(find pg_query/vendor -name '*.[ch]' -newer {{pg_query_lib}} -print -quit)" ]; then \
         echo "{{cc}} libpg_query -> {{pg_query_lib}}"; \
@@ -436,7 +476,7 @@ pg_query:
 # with these flags on windows-latest).
 [group('pg_query')]
 [windows]
-pg_query:
+pg_query: _worktree-libs
     @if (!(Test-Path {{pg_query_lib}})) { \
         New-Item -ItemType Directory -Force pg_query/lib/obj | Out-Null; \
         Get-ChildItem -Recurse pg_query/vendor/src/*.c, pg_query/vendor/protobuf/*.c, pg_query/vendor/vendor/*.c | ForEach-Object { cl /nologo /O2 {{pg_query_flags}} /I pg_query/vendor/src/postgres/include/port/win32 /I pg_query/vendor/src/postgres/include/port/win32_msvc /c $_.FullName /Fopg_query/lib/obj/ }; \
@@ -473,7 +513,7 @@ libgit2_https := if os() == "macos" { "SecureTransport" } else { "OpenSSL-Dynami
 # Compile libgit2 into git/lib if it is missing
 [group('git')]
 [unix]
-libgit2:
+libgit2: _worktree-libs
     @mkdir -p git/lib build
     @if [ ! -f {{libgit2_lib}} ]; then \
         {{just}} fetch build/src/libgit2 https://github.com/libgit2/libgit2 {{libgit2_rev}} || exit 1; \
@@ -489,7 +529,7 @@ libgit2:
 # Compile libgit2 into git/lib if it is missing
 [group('git')]
 [windows]
-libgit2:
+libgit2: _worktree-libs
     @mkdir -p git/lib build
     @if [ ! -f {{libgit2_lib}} ]; then \
         {{just}} fetch build/src/libgit2 https://github.com/libgit2/libgit2 {{libgit2_rev}} || exit 1; \
@@ -554,7 +594,7 @@ accesskit_sha := "35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc704
 
 # Fetch AccessKit's prebuilt library into ui/accesskit/lib if it is missing
 [group('ui')]
-accesskit:
+accesskit: _worktree-libs
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p ui/accesskit/lib build
@@ -592,7 +632,7 @@ asmjit_rev  := "5134d396bd00c1b63259387acdbb12dfdf009f9b"
 # Compile Blend2D into ui/blend2d/lib if it is missing
 [group('ui')]
 [unix]
-blend2d:
+blend2d: _worktree-libs
     @mkdir -p ui/blend2d/lib build
     @if [ ! -f {{blend2d_lib}} ]; then \
         {{just}} fetch build/src/blend2d https://github.com/blend2d/blend2d {{blend2d_rev}} || exit 1; \
@@ -612,7 +652,7 @@ blend2d:
 # Compile Blend2D into ui/blend2d/lib if it is missing
 [group('ui')]
 [windows]
-blend2d:
+blend2d: _worktree-libs
     @mkdir -p ui/blend2d/lib build
     @if [ ! -f {{blend2d_lib}} ]; then \
         {{just}} fetch build/src/blend2d https://github.com/blend2d/blend2d {{blend2d_rev}} || exit 1; \
@@ -635,7 +675,7 @@ blend2d:
 # Compile the vendored kb_text_shape into ui/kb/lib if it is stale
 [group('ui')]
 [unix]
-kb:
+kb: _worktree-libs
     @mkdir -p ui/kb/lib
     @if [ ! -f {{kb_lib}} ] || [ ui/kb/vendor/kb_text_shape.c -nt {{kb_lib}} ] || [ ui/kb/vendor/kb_text_shape.h -nt {{kb_lib}} ]; then \
         echo "{{cc}} kb_text_shape -> {{kb_lib}}"; \
@@ -645,7 +685,7 @@ kb:
 
 [group('ui')]
 [windows]
-kb:
+kb: _worktree-libs
     @New-Item -ItemType Directory -Force ui/kb/lib | Out-Null
     @if (!(Test-Path {{kb_lib}}) -or (Get-Item ui/kb/vendor/kb_text_shape.c).LastWriteTime -gt (Get-Item {{kb_lib}}).LastWriteTime -or (Get-Item ui/kb/vendor/kb_text_shape.h).LastWriteTime -gt (Get-Item {{kb_lib}}).LastWriteTime) { \
         cl /nologo /std:c11 /O2 /c ui/kb/vendor/kb_text_shape.c /Foui/kb/lib/kb_text_shape.obj; \

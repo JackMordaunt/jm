@@ -66,6 +66,10 @@ Packages run in parallel, except the `serial_tests` the justfile names.
 one package, and `just test ui/primer -define:ODIN_TEST_NAMES=primer.<test>`
 runs one test; a run that matches no test fails, and each `ok` line counts
 the tests that ran.
+In a linked git worktree each native library's recipe first clone-copies
+that library from the main checkout when its vendored tree or pinned
+revisions match there, so a fresh worktree links in seconds instead of
+rebuilding Blend2D and libgit2.
 
 GitHub Actions runs `just check`, then `just link test` on Linux, macOS
 and Windows (`.github/workflows/test.yml`), building the vendored C libraries, libgit2
