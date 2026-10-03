@@ -865,10 +865,14 @@ SEGMENT_PADDING :: f32(12)
 // others, which Compose leaves to the caller (SegmentedButton.kt:210-253).
 // state forces every segment at once.
 //
+// A single-select row is a radio group (segmented-button.json): one
+// roving focus scope, so one tab stop entered at the selected segment,
+// whose Left and Right move the selection with focus, wrapping. A
+// multi-select row's segments are each their own tab stop.
+//
 // Deprecated in Expressive: segmented-button.json's deprecated.replacedBy
 // is button-group (mdc:ToggleButtonGroup.md), here button_group's
-// connected variant. Not done: arrow keys moving a single-select row's selection, and custom
-// active/inactive icons; jm:ui has no radio-group focus model to hang them on.
+// connected variant. Not done: custom active/inactive icons.
 segmented_button :: proc(
 	gtx: ^ui.Ctx,
 	labels: []string,
@@ -880,7 +884,7 @@ segmented_button :: proc(
 ) -> int {
 	p := ui.widget_open(gtx, key, loc)
 	// Declared first: the segments are its parts.
-	ui.semantics(gtx, &p, {role = .Group})
+	ui.semantics(gtx, &p, {role = single ? .Radio_Group : .Group})
 	n := min(len(labels), len(selected))
 	changed := -1
 	if n == 0 {
@@ -905,6 +909,10 @@ segmented_button :: proc(
 	disabled := state == .Disabled
 
 	ops.clip_push(gtx.scene, rounded(gtx, whole, outer))
+	if single {
+		ui.focus_scope_open(gtx, p.id, rove = .Horizontal, wrap = true)
+	}
+	entry: ops.Area_Id
 	x: f32
 	for i in 0 ..< n {
 		w := widths[i] + extra
@@ -919,7 +927,12 @@ segmented_button :: proc(
 		}
 		id := ui.id_mix(p.id, u64(i))
 		c := control(gtx, id, touch_target(seg), state)
-		if c.clicked {
+		// In a single-select row an arrow that brings focus here selects.
+		arrived := false
+		for e in ui.events(gtx, id) {
+			arrived ||= single && c.st != nil && e.kind == .Focus && e.key != .None && e.key != .Tab
+		}
+		if c.clicked || arrived && !selected[i] {
 			if single {
 				for j in 0 ..< n {
 					selected[j] = j == i
@@ -930,6 +943,9 @@ segmented_button :: proc(
 			changed = i
 		}
 		on := selected[i]
+		if on && entry == 0 {
+			entry = id
+		}
 		// Slot 0 scales the check in, slot 1 fades it (segmented-button.json states.selected).
 		grow := animate(gtx, c, 0, on ? 1 : 0, .Fast_Spatial)
 		alpha := animate(gtx, c, 1, on ? 1 : 0, .Default_Effects)
@@ -957,8 +973,12 @@ segmented_button :: proc(
 		}
 		listen(gtx, c, id, touch_target(seg))
 		ops.tag(gtx.scene, id, ui.frame_string(gtx, labels[i]))
-		ui.part_semantics(gtx, &p, id, seg, {role = .Button, label = labels[i], states = states_of(c, on)})
+		said := single ? ops.Semantics{role = .Radio, label = labels[i], states = states_of(c) + (on ? {.Checked} : {})} : ops.Semantics{role = .Button, label = labels[i], states = states_of(c, on)}
+		ui.part_semantics(gtx, &p, id, seg, said)
 		x += w
+	}
+	if single {
+		ui.focus_scope_close(gtx, entry)
 	}
 	ops.clip_pop(gtx.scene)
 	edge := color(tok.OUTLINED_SEGMENTED_BUTTON_OUTLINE_COLOR)

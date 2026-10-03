@@ -1,5 +1,6 @@
 package material
 
+import "core:strings"
 import "core:testing"
 import "jm:ui/ops"
 import "jm:ui"
@@ -103,6 +104,17 @@ test_segmented_button_selects_one :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.days, [3]bool{false, true, false})
 	testing.expect(t, ui.probe_click(&p, "Month"))
 	testing.expect_value(t, m.days, [3]bool{false, false, true})
+	// One tab stop whose arrows move the selection with focus, wrapping.
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Day")
+	testing.expect_value(t, m.days, [3]bool{true, false, false})
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Compose")
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, ui.probe_focus_name(&p), "Day") // entered at the selected segment
+	testing.expect_value(t, m.days, [3]bool{true, false, false}) // which Tab does not change
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "radio \"Day\" checked focused"), "%s", said)
 }
 
 @(test)
