@@ -24,6 +24,8 @@ Windows, which will not rename over a running executable.
 
 	hot-watch examples/material-kitchen/child build/debug/material-kitchen.watch -host examples/material-kitchen/host build/debug/material-kitchen-host ui ui/material
 
+-release builds the child, and the host, with -o:speed instead of -debug.
+
 Run from the repo root, same as `just`: it passes that as -collection:jm
 to the odin build it shells out to.
 */
@@ -41,7 +43,7 @@ POLL :: 400 * time.Millisecond
 
 main :: proc() {
 	if len(os.args) < 3 {
-		fmt.eprintln("usage: hot-watch <source-dir> <pointer-file> [-host <host-dir> <host-out>] [extra-dir...]")
+		fmt.eprintln("usage: hot-watch <source-dir> <pointer-file> [-release] [-host <host-dir> <host-out>] [extra-dir...]")
 		os.exit(2)
 	}
 	src_dir := os.args[1]
@@ -49,11 +51,16 @@ main :: proc() {
 	dirs := make([dynamic]string)
 	append(&dirs, src_dir)
 	host_src, host_out: string
+	opt := "-debug"
 	rest := os.args[3:]
 	for i := 0; i < len(rest); i += 1 {
 		if rest[i] == "-host" && i + 2 < len(rest) {
 			host_src, host_out = rest[i + 1], rest[i + 2]
 			i += 2
+			continue
+		}
+		if rest[i] == "-release" {
+			opt = "-o:speed"
 			continue
 		}
 		append(&dirs, rest[i])
@@ -96,12 +103,12 @@ main :: proc() {
 		}
 		if ok && time.diff(last, mt) > 0 {
 			if host_src != "" && time.diff(last_shared, shared) > 0 && last_shared != {} {
-				build_host(host_src, host_out, root, link)
+				build_host(host_src, host_out, root, opt, link)
 			}
 			last, last_shared = mt, shared
 			out := fmt.tprintf("%s/%s-%d%s", out_dir, base, time.to_unix_nanoseconds(time.now()), exe_suffix)
 			fmt.printfln("hot-watch: building %s -> %s", src_dir, out)
-			cmd := fmt.tprintf("odin build %s -debug -collection:jm=%s%s -out:%s", src_dir, root, link, out)
+			cmd := fmt.tprintf("odin build %s %s -collection:jm=%s%s -out:%s", src_dir, opt, root, link, out)
 			code, sok := sh.run(cmd)
 			if !sok {
 				fmt.eprintfln("hot-watch: build failed (exit %d)", code)
@@ -117,13 +124,13 @@ main :: proc() {
 
 // build_host rebuilds the host in src to out, beside it then renamed over
 // it, so a host running from out keeps its image until it restarts.
-build_host :: proc(src, out, root, link: string) {
+build_host :: proc(src, out, root, opt, link: string) {
 	when ODIN_OS == .Windows {
 		fmt.eprintln("hot-watch: -host: Windows cannot replace a running host; rebuild it by hand")
 	} else {
 		tmp := fmt.tprintf("%s.new", out)
 		fmt.printfln("hot-watch: building host %s -> %s", src, out)
-		code, ok := sh.run(fmt.tprintf("odin build %s -debug -collection:jm=%s%s -out:%s", src, root, link, tmp))
+		code, ok := sh.run(fmt.tprintf("odin build %s %s -collection:jm=%s%s -out:%s", src, opt, root, link, tmp))
 		if !ok {
 			fmt.eprintfln("hot-watch: host build failed (exit %d)", code)
 			return
