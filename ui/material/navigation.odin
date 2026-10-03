@@ -212,7 +212,7 @@ navigation_drawer :: proc(
 	}
 	for e in ui.events(gtx, p.id) {
 		if e.kind == .Scroll {
-			sc.offset += e.scroll.y * ui.SCROLL_STEP
+			sc.offset += e.scroll.y
 		}
 	}
 	bar_id := ui.id_mix(p.id, 0xfffe)

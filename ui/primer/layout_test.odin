@@ -277,7 +277,7 @@ test_header_scrolls_sideways_when_its_items_overflow :: proc(t: ^testing.T) {
 	avatar := ui.probe_bounds(&p, "avatar")
 	testing.expect(t, avatar.x > 150) // past the edge, reachable by scrolling
 	c, _ := ui.probe_center(&p, "GitHub")
-	ui.router_push(&p.router, {kind = .Scroll, pos = c, scroll = {1, 0}})
+	ui.router_push(&p.router, {kind = .Scroll, pos = c, scroll = {ui.SCROLL_STEP, 0}})
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_bounds(&p, "avatar").x < avatar.x)

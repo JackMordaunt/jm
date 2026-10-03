@@ -190,7 +190,7 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 			fmt.eprintfln("-scroll: %q is not a number", args[i^ + 2])
 			return true, false
 		}
-		if !ui.probe_scroll(&h.p, args[i^ + 1], dy) {
+		if !ui.probe_scroll(&h.p, args[i^ + 1], dy * ui.SCROLL_STEP) {
 			fmt.eprintfln("no %q to scroll", args[i^ + 1])
 			return true, false
 		}

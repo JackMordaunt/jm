@@ -94,7 +94,7 @@ a_click_opens_the_viewer_which_zooms_and_pans_by_patches :: proc(t: ^testing.T) 
 	// Four notches in wants level 2: its patches in view, with the last
 	// complete level, still 0 since nothing has landed, kept needed until
 	// every one of them is drawn.
-	testing.expect(t, ui.probe_scroll(&p, "Viewer", -4))
+	testing.expect(t, ui.probe_scroll(&p, "Viewer", -4 * ui.SCROLL_STEP))
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.viewer.level, 2)
 	testing.expect(t, ui.probe_needs_q(&p, shapes.Patch{5, 2, 1, 1, PATCH}))
@@ -158,14 +158,14 @@ zooming_out_past_a_fine_level_asks_for_nothing_of_it :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	// Deep in, past level 8, and call that level shown as if its squares
 	// had all landed.
-	testing.expect(t, ui.probe_scroll(&p, "Viewer", -32))
+	testing.expect(t, ui.probe_scroll(&p, "Viewer", -32 * ui.SCROLL_STEP))
 	ui.probe_frame(&p)
 	testing.expect(t, m.viewer.level >= 8)
 	m.viewer.shown = m.viewer.level
 	// Far out again in one go: level 1 is wanted, and the shown level
 	// would have thousands of squares in view. A frame asks for level 1
 	// and the tile, nothing of the fine level.
-	testing.expect(t, ui.probe_scroll(&p, "Viewer", 32))
+	testing.expect(t, ui.probe_scroll(&p, "Viewer", 32 * ui.SCROLL_STEP))
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.viewer.level, 1)
 	testing.expect(t, len(ui.probe_needs(&p)) < 40)

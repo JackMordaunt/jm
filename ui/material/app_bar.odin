@@ -374,7 +374,7 @@ tabs :: proc(
 		if scrollable {
 			for e in ui.events(gtx, p.id) {
 				if e.kind == .Scroll {
-					sc.target += (e.scroll.x != 0 ? e.scroll.x : e.scroll.y) * ui.SCROLL_STEP
+					sc.target += e.scroll.x != 0 ? e.scroll.x : e.scroll.y
 				}
 			}
 			sc.target = clamp(sc.target, 0, max_scroll)

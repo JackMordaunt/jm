@@ -94,7 +94,7 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 
 	harness_frame(&h)
 	clear(&m.laid)
-	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 700 / SCROLL_STEP}}) // wheel units, SCROLL_STEP px each
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 700}})
 	item_list(&h, &s, &m)
 	testing.expect_value(t, s.offset, 700)
 	// Item 0 is always measured; then rows 50..53.

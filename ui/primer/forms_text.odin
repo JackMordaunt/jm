@@ -650,7 +650,7 @@ textarea :: proc(
 			case .Press, .Move, .Release:
 				ui.text_follow_pointer(s, para, e, {e.pos.x - text_at.x, e.pos.y - text_at.y + view.scroll}, field_stops(gtx, s, st))
 			case .Scroll:
-				view.scroll += e.scroll.y * ui.SCROLL_STEP
+				view.scroll += e.scroll.y
 			case .Text, .Paste, .Key:
 				if r.changed {
 					para = design.layout_style(gtx, string(s.buf[:]), st, font, wrap)

@@ -472,7 +472,7 @@ test_scroll_box_clips_to_viewport_and_scrolls :: proc(t: ^testing.T) {
 
 	// One unit of scroll moves SCROLL_STEP pixels.
 	harness_frame(&h)
-	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, SCROLL_STEP}})
 	scroll_frame(&h)
 	testing.expect_value(t, scroll_offset(&h), f64(-SCROLL_STEP))
 
@@ -607,7 +607,7 @@ test_scroll_box_scrolls_the_callers_offset_when_given_one :: proc(t: ^testing.T)
 	ia := owned_scroll_frame(&h, &mine)
 	// A scroll lands in the caller's offset, clamped to the overflow.
 	harness_frame(&h)
-	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, SCROLL_STEP}})
 	owned_scroll_frame(&h, &mine)
 	testing.expect_value(t, mine, Scroll_Offset{0, SCROLL_STEP})
 	testing.expect_value(t, scroll_offset(&h), f64(-SCROLL_STEP))
@@ -672,7 +672,7 @@ test_scroll_box_bar_hides_until_used_and_expands_on_hover :: proc(t: ^testing.T)
 	testing.expect(t, !shown) // nothing has happened yet
 
 	// Scrolling shows it, thin, against the box's edge.
-	scroll_frames(&h, 20, Event{kind = .Scroll, area = ia.id, scroll = {0, 1}})
+	scroll_frames(&h, 20, Event{kind = .Scroll, area = ia.id, scroll = {0, SCROLL_STEP}})
 	thumb, ok := thumb_of(&h, edge)
 	testing.expect(t, ok)
 	testing.expect(t, testutil.near(thumb.w, SCROLL_BAR_THIN) && testutil.near(thumb.x + thumb.w, edge + SCROLL_BAR_THICKNESS))
@@ -797,13 +797,13 @@ test_scroll_box_min_width_scrolls_sideways :: proc(t: ^testing.T) {
 
 	// A horizontal wheel moves it sideways; Shift turns a vertical one.
 	harness_frame(&h)
-	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {1, 0}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {SCROLL_STEP, 0}})
 	wide_scroll_frame(&h)
 	testing.expect_value(t, x_offset(&h), f64(-SCROLL_STEP))
 	testing.expect_value(t, scroll_offset(&h), 0)
 	clear(&h.router.events)
 	harness_frame(&h)
-	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1}, mods = {.Shift}})
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, SCROLL_STEP}, mods = {.Shift}})
 	wide_scroll_frame(&h)
 	testing.expect_value(t, x_offset(&h), f64(-2 * SCROLL_STEP))
 	testing.expect_value(t, scroll_offset(&h), 0)

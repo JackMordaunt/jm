@@ -135,7 +135,7 @@ lightbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		case .Scroll:
 			// Wheel up (negative) zooms in; the plane point under the
 			// pointer stays under it.
-			factor := math.pow(ZOOM_STEP, f64(e.scroll.y))
+			factor := math.pow(ZOOM_STEP, f64(e.scroll.y / ui.SCROLL_STEP))
 			at := [2]f64{f64(e.pos.x), f64(e.pos.y)} - mid
 			v.center += at * v.scale * (1 - factor)
 			v.scale *= factor

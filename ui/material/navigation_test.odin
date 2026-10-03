@@ -274,7 +274,7 @@ test_scrollable_tabs_scroll_and_centre_the_selection :: proc(t: ^testing.T) {
 	testing.expect(t, abs(r.x + r.w / 2 - 200) < 1)
 	// The wheel scrolls too.
 	before, _ := bounds(&p, "Overview")
-	testing.expect(t, ui.probe_scroll(&p, "Reviews", -1))
+	testing.expect(t, ui.probe_scroll(&p, "Reviews", -ui.SCROLL_STEP))
 	ui.probe_advance(&p, 120, 0.016)
 	after, _ := bounds(&p, "Overview")
 	testing.expect_value(t, after.x, before.x + ui.SCROLL_STEP)

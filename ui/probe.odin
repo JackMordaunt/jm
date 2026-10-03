@@ -399,8 +399,8 @@ probe_key :: proc(p: ^Probe, key: Key, mods: Mods = {}) {
 	probe_frame(p)
 }
 
-// probe_scroll scrolls by dy at the center of the area tagged name and runs
-// a frame. It returns false, and does nothing, when name is not found.
+// probe_scroll scrolls by dy logical pixels (SCROLL_STEP is one wheel
+// notch) at the center of the area tagged name and runs a frame. It returns false, and does nothing, when name is not found.
 probe_scroll :: proc(p: ^Probe, name: string, dy: f32) -> bool {
 	c, ok := probe_center(p, name)
 	if !ok {

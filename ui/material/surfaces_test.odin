@@ -446,14 +446,15 @@ test_carousel_steps_by_key_and_reports_clicks :: proc(t: ^testing.T) {
 	press_at(&p, left)
 	release_at(&p, left)
 	testing.expect_value(t, m.hit, 1)
-	// A scroll moves it on; resting, it snaps to a whole item.
-	ui.probe_scroll(&p, "carousel", 2)
+	// A scroll of most of an item moves it on; resting, it snaps to the
+	// next whole item, so the leftmost is the next one.
+	k := carousel_keylines(.Multi_Browse, 400, 186, 8, CAROUSEL_MIN_SMALL, CAROUSEL_MAX_SMALL)
+	ui.probe_scroll(&p, "carousel", 0.8 * (k.large + 8))
 	ui.probe_advance(&p, 120, 1.0 / 60)
+	m.hit = -1
 	press_at(&p, left)
 	release_at(&p, left)
-	testing.expect(t, m.hit >= 1)
-	st_pos := m.hit
-	testing.expect(t, st_pos == 1 || st_pos == 2)
+	testing.expect_value(t, m.hit, 2)
 }
 
 @(private = "file")

@@ -16,8 +16,8 @@ List_Item :: proc(gtx: ^Ctx, i: int, user: rawptr)
 // then it lays out only the rows that intersect the viewport, each under
 // translate(0, i*row - offset). Items get the list's width as a tight
 // minimum, so rows span it. Each item's widgets get ids scoped to (list, i),
-// so items need no keys. Scroll events move the offset SCROLL_STEP pixels
-// per unit, as scroll_box does (positive scrolls down), clamped to [0,
+// so items need no keys. Scroll events move the offset by their pixels, as
+// scroll_box does (positive scrolls down), clamped to [0,
 // content - viewport], and a scroll bar on the right drags and pages it.
 // The viewport is the content height clamped to the constraints. Needs
 // gtx.layout; without one it draws nothing.
@@ -56,7 +56,7 @@ list :: proc(
 	view := clamp(content, cs.min.y, cs.max.y)
 	for e in events(gtx, p.id) {
 		if e.kind == .Scroll {
-			s.offset += e.scroll.y * SCROLL_STEP
+			s.offset += e.scroll.y
 		}
 	}
 	s.offset = clamp(s.offset, 0, max(content - view, 0))

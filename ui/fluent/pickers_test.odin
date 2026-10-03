@@ -4,6 +4,7 @@ import "core:math"
 import "core:testing"
 import "jm:ui"
 import "jm:ui/ops"
+import tok "jm:ui/fluent/tokens"
 
 // Behaviour of the pickers, driven through ui.Probe by their tags.
 
@@ -113,6 +114,41 @@ test_combobox_picks_by_click_and_by_keys :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, !present(&p, "Apple"))
 	testing.expect_value(t, m.pick, 2)
+}
+
+@(private = "file")
+MANY := [?]string{"o0", "o1", "o2", "o3", "o4", "o5", "o6", "o7", "o8", "o9", "o10", "o11"}
+
+@(private = "file")
+Long_Model :: struct {
+	text: ui.Text_State,
+	pick: int,
+}
+
+@(private = "file")
+long_combobox :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Long_Model)(user)
+	combobox(gtx, &m.text, MANY[:], &m.pick, "Long", width = 260)
+}
+
+@(test)
+test_listbox_scrolls_whole_rows_from_small_scrolls :: proc(t: ^testing.T) {
+	m := Long_Model{pick = -1}
+	p: ui.Probe
+	ui.probe_init(&p, long_combobox, &m, {600, 1000}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	defer delete(m.text.buf)
+
+	testing.expect(t, ui.probe_click(&p, "Long"))
+	testing.expect(t, present(&p, "o0") && !present(&p, "o8"))
+	// Ten trackpad-sized scrolls add up to two and a half rows: two rows.
+	row_h := 2 * tok.SPACING_VERTICAL_SNUDGE + tok.LINE_HEIGHT_BASE300
+	for _ in 0 ..< 10 {
+		testing.expect(t, ui.probe_scroll(&p, "o4", row_h / 4))
+	}
+	testing.expect(t, !present(&p, "o1") && present(&p, "o2"))
+	testing.expect(t, present(&p, "o9") && !present(&p, "o10"))
 }
 
 @(test)

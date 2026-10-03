@@ -447,7 +447,7 @@ textarea :: proc(
 			case .Press, .Move, .Release:
 				ui.text_follow_pointer(s, para, e, {e.pos.x - text_x, e.pos.y - text_y + sc.y}, text_stops(gtx, s, m.style))
 			case .Scroll:
-				sc.y += e.scroll.y * ui.SCROLL_STEP
+				sc.y += e.scroll.y
 			case .Text, .Paste:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:

@@ -65,6 +65,7 @@ import "base:builtin"
 import "jm:ui/ops"
 import "base:runtime"
 import "core:fmt"
+import "core:math"
 import "core:mem/virtual"
 import "core:strings"
 import "core:time"
@@ -151,6 +152,7 @@ Window :: struct {
 	cursor_shown: ops.Cursor,
 	cursor_set:   bool, // cursor_shown has been applied
 	a11y:         ^Bridge, // the loop's bridge to assistive technology, for window events; nil without one
+	wheel:        Wheel,
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -264,11 +266,67 @@ Loop :: struct {
 	shown:         bool,
 }
 
+// init starts SDL's video and events, reporting failure on stderr. It turns
+// on macOS scroll momentum first: unless SDL_HINT_MAC_SCROLL_MOMENTUM is set,
+// SDL registers the AppleMomentumScrollSupported default as NO (SDL 3.4,
+// src/video/cocoa/SDL_cocoaevents.m:107-111, "The mouse wheel events will
+// have no momentum" in SDL_hints.h), and a trackpad swipe stops dead when
+// the fingers lift.
+@(private)
+init :: proc() -> bool {
+	sdl3.SetHint(sdl3.HINT_MAC_SCROLL_MOMENTUM, "1")
+	if !sdl3.Init({.VIDEO, .EVENTS}) {
+		fmt.eprintln("sdl: init:", sdl3.GetError())
+		return false
+	}
+	return true
+}
+
+// Wheel remembers whether the current stream of wheel events comes from a
+// trackpad, which SDL's event does not say. On macOS SDL 3.4 sends a
+// precise delta as scrollingDelta times 0.1 and rounds any other away from
+// zero to whole notches (src/video/cocoa/SDL_cocoamouse.m:629-645), so a
+// fraction marks the stream precise until it pauses for WHEEL_STREAM_GAP_NS.
+// A precise stream's first whole-number delta, before any fraction, still
+// counts as a notch.
+@(private)
+Wheel :: struct {
+	precise: bool,
+	last:    u64, // SDL timestamp, in ns, of the stream's last event
+}
+
+// WHEEL_STREAM_GAP_NS is how long a pause ends a wheel stream.
+@(private)
+WHEEL_STREAM_GAP_NS :: 250_000_000
+
+// PRECISE_POINTS undoes SDL's 0.1 scaling of a precise macOS delta, giving
+// points, which are the ui's logical pixels.
+@(private)
+PRECISE_POINTS :: f32(10)
+
+// wheel_pixels converts one SDL wheel delta v, at SDL timestamp at, to
+// logical pixels: a notch moves ui.SCROLL_STEP, a precise trackpad delta as
+// far as the fingers went. precise_deltas is false off macOS, where every
+// value is taken as notches; the 0.1 scaling above is Cocoa's alone.
+@(private)
+wheel_pixels :: proc(w: ^Wheel, v: [2]f32, at: u64, precise_deltas := ODIN_OS == .Darwin) -> [2]f32 {
+	if !precise_deltas {
+		return v * ui.SCROLL_STEP
+	}
+	if at - w.last > WHEEL_STREAM_GAP_NS {
+		w.precise = false
+	}
+	w.last = at
+	if v.x != math.trunc(v.x) || v.y != math.trunc(v.y) {
+		w.precise = true
+	}
+	return v * (PRECISE_POINTS if w.precise else ui.SCROLL_STEP)
+}
+
 // run opens the window and loops until it is closed or Escape is pressed.
 // It reports failure to open on stderr and returns.
 run :: proc(app: App) {
-	if !sdl3.Init({.VIDEO, .EVENTS}) {
-		fmt.eprintln("sdl: init:", sdl3.GetError())
+	if !init() {
 		return
 	}
 	defer sdl3.Quit()
@@ -872,11 +930,13 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			// system's double-click setting where it has one.
 			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState()), clicks = e.button.clicks})
 		case .MOUSE_WHEEL:
-			// Positive y scrolls down (toward the user), like a scroll offset.
-			s := [2]f32{e.wheel.x, -e.wheel.y}
-			if e.wheel.direction == .FLIPPED {
-				s = -s
-			}
+			// Positive y scrolls down (toward the user), like a scroll
+			// offset. A FLIPPED direction is left alone: on macOS SDL sets it
+			// from isDirectionInvertedFromDevice and passes scrollingDelta
+			// through (SDL_cocoamouse.m:625-631), and AppKit has already
+			// applied natural scrolling to that delta, which content should
+			// obey; un-flipping it gives the device's direction instead.
+			s := wheel_pixels(&w.wheel, {e.wheel.x, -e.wheel.y}, e.wheel.timestamp)
 			sink(user, {kind = .Scroll, pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d}, scroll = s, mods = mods(sdl3.GetModState())})
 		case .KEY_DOWN:
 			k := key(e.key.key)

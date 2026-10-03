@@ -1519,10 +1519,9 @@ last_placed :: proc(gtx: ^Ctx, key: ops.Area_Id) -> (Placed, bool) {
 // dark alike, faded by the bar's own alpha, so the chrome needs no theme.
 SCROLL_THUMB_COLOR :: ops.Color{128, 128, 128, 255}
 
-// SCROLL_STEP is the pixels scroll_box moves per unit of Event.scroll:
-// ui/sdl (sdl.odin's MOUSE_WHEEL case) forwards SDL's wheel.y, which is
-// typically 1.0 per notch on a discrete wheel and fractional on a
-// touchpad, not pixels — though list's doc treats it as pixels.
+// SCROLL_STEP is the logical pixels one notch of a wheel scrolls: ui/sdl
+// converts each notch to it before an Event carries the scroll, so a test
+// scrolling "one notch" scrolls SCROLL_STEP.
 SCROLL_STEP :: f32(48)
 
 // scroll_box is a vertical viewport over content of any height: children
@@ -1862,10 +1861,10 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 				continue
 			}
 			if .Shift in e.mods && e.scroll.x == 0 {
-				sc.x += e.scroll.y * SCROLL_STEP
+				sc.x += e.scroll.y
 			} else {
-				sc.y += e.scroll.y * SCROLL_STEP
-				sc.x += e.scroll.x * SCROLL_STEP
+				sc.y += e.scroll.y
+				sc.x += e.scroll.x
 			}
 		}
 		if r, ok := find_reveal(gtx, c.body); ok {

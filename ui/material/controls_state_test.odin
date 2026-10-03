@@ -56,7 +56,7 @@ test_tabs_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 
 	testing.expect_value(t, bounds(&p, "Overview").x, 52 - 100)
 	// The wheel and a selection move the caller's state.
-	testing.expect(t, ui.probe_scroll(&p, "Reviews", 1))
+	testing.expect(t, ui.probe_scroll(&p, "Reviews", ui.SCROLL_STEP))
 	testing.expect_value(t, m.tabs.target, 100 + ui.SCROLL_STEP)
 	ui.probe_advance(&p, 120, 0.016)
 	testing.expect_value(t, bounds(&p, "Overview").x, 52 - 100 - ui.SCROLL_STEP)
@@ -67,7 +67,7 @@ test_tabs_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 	saved := m.tabs.target
 	ui.probe_advance(&p, 2, 0.016)
 	testing.expect_value(t, bounds(&p, "Overview").x, 52)
-	testing.expect(t, ui.probe_scroll(&p, "Reviews", 1))
+	testing.expect(t, ui.probe_scroll(&p, "Reviews", ui.SCROLL_STEP))
 	ui.probe_advance(&p, 120, 0.016)
 	testing.expect_value(t, bounds(&p, "Overview").x, 52 - ui.SCROLL_STEP)
 	testing.expect_value(t, m.tabs.target, saved)
@@ -90,7 +90,7 @@ test_drawer_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 	scrolled := bounds(&p, "Inbox").y
 	testing.expect_value(t, m.drawer.offset, 40)
 	// The wheel moves the caller's offset.
-	testing.expect(t, ui.probe_scroll(&p, "Inbox", 1))
+	testing.expect(t, ui.probe_scroll(&p, "Inbox", ui.SCROLL_STEP))
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.drawer.offset, 40 + ui.SCROLL_STEP)
 
@@ -99,7 +99,7 @@ test_drawer_scroll_state_is_the_callers_when_passed :: proc(t: ^testing.T) {
 	m.own = false
 	ui.probe_advance(&p, 2, 0.016)
 	testing.expect_value(t, bounds(&p, "Inbox").y, scrolled + 40)
-	testing.expect(t, ui.probe_scroll(&p, "Inbox", 1))
+	testing.expect(t, ui.probe_scroll(&p, "Inbox", ui.SCROLL_STEP))
 	ui.probe_frame(&p)
 	testing.expect_value(t, bounds(&p, "Inbox").y, scrolled + 40 - ui.SCROLL_STEP)
 	testing.expect_value(t, m.drawer.offset, 40 + ui.SCROLL_STEP)

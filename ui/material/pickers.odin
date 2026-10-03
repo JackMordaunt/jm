@@ -461,7 +461,7 @@ year_grid :: proc(
 	if live {
 		for e in ui.events(gtx, sid) {
 			if e.kind == .Scroll {
-				sc += e.scroll.y * ui.SCROLL_STEP
+				sc += e.scroll.y
 			}
 		}
 	}
@@ -1190,7 +1190,7 @@ carousel :: proc(
 	for e in ui.events(gtx, p.id) {
 		#partial switch e.kind {
 		case .Scroll:
-			cs.position += (e.scroll.x + e.scroll.y) * ui.SCROLL_STEP / (kl.large + item_spacing)
+			cs.position += (e.scroll.x + e.scroll.y) / (kl.large + item_spacing)
 			scrolled = true
 		case .Press:
 			st.pressed = true
