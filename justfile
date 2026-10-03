@@ -685,13 +685,14 @@ hot-architecture: blend2d kb sdl3
 #
 # Build and open the hot-reloaded text lab
 [group('ui')]
-text-lab: blend2d kb sdl3
+[arg("mode", pattern="debug|release")]
+text-lab mode="debug": blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/text-lab/host -debug {{flags}} {{cxx_link}} -out:build/debug/text-lab-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/text-lab/child build/debug/text-lab.watch -host examples/text-lab/host build/debug/text-lab-host{{exe}} ui ui/fluent &
+    {{odin}} build examples/text-lab/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/text-lab-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/text-lab/child build/debug/text-lab.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/text-lab/host build/debug/text-lab-host{{exe}} ui ui/fluent &
     watch=$!
     build/debug/text-lab-host{{exe}} build/debug/text-lab.watch &
     host=$!
@@ -720,13 +721,14 @@ text-png page="Scripts": blend2d kb
 #
 # Build and open the hot-reloaded Material 3 kitchen
 [group('ui/material')]
-material-kitchen: blend2d kb sdl3
+[arg("mode", pattern="debug|release")]
+material-kitchen mode="debug": blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/material-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch -host examples/material-kitchen/host build/debug/material-kitchen-host{{exe}} ui ui/material examples/kitchen &
+    {{odin}} build examples/material-kitchen/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/material-kitchen/child build/debug/material-kitchen.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/material-kitchen/host build/debug/material-kitchen-host{{exe}} ui ui/material examples/kitchen &
     watch=$!
     build/debug/material-kitchen-host{{exe}} build/debug/material-kitchen.watch &
     host=$!
@@ -818,13 +820,14 @@ material-kit-page:
 #
 # Build and open the hot-reloaded Fluent 2 kitchen
 [group('ui/fluent')]
-fluent-kitchen: blend2d kb sdl3
+[arg("mode", pattern="debug|release")]
+fluent-kitchen mode="debug": blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/fluent-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/fluent-kitchen/child build/debug/fluent-kitchen.watch -host examples/fluent-kitchen/host build/debug/fluent-kitchen-host{{exe}} ui ui/fluent examples/kitchen &
+    {{odin}} build examples/fluent-kitchen/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/fluent-kitchen/child build/debug/fluent-kitchen.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/fluent-kitchen/host build/debug/fluent-kitchen-host{{exe}} ui ui/fluent examples/kitchen &
     watch=$!
     build/debug/fluent-kitchen-host{{exe}} build/debug/fluent-kitchen.watch &
     host=$!
@@ -848,13 +851,14 @@ fluent-png page="Button": blend2d kb
 #
 # Build and open the hot-reloaded Primer kitchen
 [group('ui/primer')]
-primer-kitchen: blend2d kb sdl3
+[arg("mode", pattern="debug|release")]
+primer-kitchen mode="debug": blend2d kb sdl3
     #!/usr/bin/env bash
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/primer-kitchen/host -debug {{flags}} {{cxx_link}} -out:build/debug/primer-kitchen-host{{exe}}
-    build/debug/hot-watch{{exe}} examples/primer-kitchen/child build/debug/primer-kitchen.watch -host examples/primer-kitchen/host build/debug/primer-kitchen-host{{exe}} ui ui/primer examples/kitchen &
+    {{odin}} build examples/primer-kitchen/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/primer-kitchen-host{{exe}}
+    build/debug/hot-watch{{exe}} examples/primer-kitchen/child build/debug/primer-kitchen.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/primer-kitchen/host build/debug/primer-kitchen-host{{exe}} ui ui/primer examples/kitchen &
     watch=$!
     build/debug/primer-kitchen-host{{exe}} build/debug/primer-kitchen.watch &
     host=$!
@@ -939,9 +943,10 @@ todo-test: sqlite blend2d kb
 #
 # Build and open the gallery application
 [group('ui/example')]
-gallery: blend2d kb sdl3
+[arg("mode", pattern="debug|release")]
+gallery mode="debug": blend2d kb sdl3
     mkdir -p build/debug
-    {{odin}} build examples/gallery -debug {{flags}} {{cxx_link}} -out:build/debug/gallery{{exe}}
+    {{odin}} build examples/gallery {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/gallery{{exe}}
     build/debug/gallery{{exe}}
 
 # Run the gallery's suites, the end-to-end one on real workers and files

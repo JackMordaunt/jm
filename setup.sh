@@ -14,10 +14,11 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")" && pwd)
 odin_release=$(sed -n 's/^  ODIN_RELEASE: *//p' "$root/.github/workflows/test.yml")
-# The oldest just that parses the justfile (home_directory arrived in
-# 1.23.0; measured against 1.21.0 through 1.43.0), and the release fetched
-# where the distribution's is older, as Ubuntu 24.04's 1.21.0 is.
-just_min=1.23.0
+# The oldest just that parses the justfile (recipe arguments checked
+# against a pattern arrived in 1.45.0; 1.44.0 fails on [arg(pattern)]), and
+# the release fetched where the distribution's is older, as Ubuntu 24.04's
+# 1.21.0 is.
+just_min=1.45.0
 just_fetch=1.58.0
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT

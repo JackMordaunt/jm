@@ -9,7 +9,7 @@ release at the version CI pins, and only when no `odin` is on `PATH`.
 
 | Need | macOS | Linux | Windows |
 |------|-------|-------|---------|
-| Odin `dev-2026-09`, just 1.23+, git, cmake | yes | yes | yes |
+| Odin `dev-2026-09`, just 1.45+, git, cmake | yes | yes | yes |
 | C toolchain | Xcode command line tools | cc, clang, make | MSVC Build Tools, clang-cl, ninja |
 | libpq | `libpq` (keg-only; the justfile finds it) | libpq dev package | `libpq.lib` from PostgreSQL, via `LINKFLAGS` |
 | SDL3 | `sdl3` | SDL3 dev package | ships with Odin |

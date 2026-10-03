@@ -46,6 +46,9 @@ ui/primer    primer-kitchen  build and open the hot-reloaded Primer kitchen
              primer-kit-{tokens,fetch,index,check}  maintain the primer-kit in tools/primer
 ```
 
+`text-lab`, the three kitchens and `gallery` take `release` to build with `-o:speed`
+instead of `-debug`: `just material-kitchen release`.
+
 `just` alone lists the recipes in these sections: one per package or tool,
 the recipe that compiles a package's C library in its section, and general
 for what spans them all.
