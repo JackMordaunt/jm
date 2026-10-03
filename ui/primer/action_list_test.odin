@@ -161,6 +161,7 @@ test_a_roving_list_is_one_tab_stop_and_arrows_move_focus :: proc(t: ^testing.T) 
 	ui.probe_frame(&p)
 	testing.expect_value(t, p.router.focus, area(&p, "Delta"))
 	m.wrap = true
+	ui.probe_frame(&p) // the router reads the scope's wrap from the frame drawn with it
 	ui.probe_key(&p, .Down)
 	ui.probe_frame(&p)
 	testing.expect_value(t, p.router.focus, area(&p, "Alpha"))

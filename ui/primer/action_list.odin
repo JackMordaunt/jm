@@ -142,7 +142,6 @@ Action_List :: struct {
 	base:       ops.Area_Id, // items are id_mix(base, index + 1)
 	cs:         ui.Constraints,
 	o:          List_Opts,
-	data:       ^List_Data,
 	entries:    [dynamic]List_Entry,
 	n:          int, // items so far
 	sel:        Selection_Variant, // the selection in force: the open group's, else the list's
@@ -155,6 +154,7 @@ Action_List :: struct {
 	mods:       ui.Mods,
 	keyed:      int, // the item that heard key
 	moved:      bool, // the keyboard moved focus or the highlight
+	came:       int, // Roving: the item focus came to this frame, to scroll into view, -1
 	rows:       []List_Row, // after close
 	closed:     bool,
 }
@@ -185,13 +185,6 @@ List_Opts :: struct {
 	follow:        bool,
 	focus_to:      List_Focus_To,
 	scroll:        List_Scroll,
-}
-
-// List_Data is what a list keeps between frames: the item holding a
-// roving list's tab stop.
-@(private)
-List_Data :: struct {
-	focus: int,
 }
 
 // List_Move is a keyboard move a focused item asked for, resolved at
@@ -313,10 +306,9 @@ action_list_open :: proc(
 	l.cs = gtx.constraints
 	l.base = id_base if id_base != 0 else l.p.id
 	l.o = {variant, selection, role, focus, wrap, dividers, typeahead, heading, heading_level, name, active, activate, follow, focus_to, scroll}
-	l.data = ui.widget_data(gtx, l.p.id, List_Data)
 	l.entries = make([dynamic]List_Entry, gtx.allocator)
 	l.sel = selection
-	l.hovered, l.activated, l.keyed = -1, -1, -1
+	l.hovered, l.activated, l.keyed, l.came = -1, -1, -1, -1
 	return
 }
 
@@ -426,26 +418,20 @@ action_list_item :: proc(
 }
 
 // list_item_events reads what reached a live item this frame beyond a
-// click: the pointer moving onto it (a Descendant list's highlight), a
-// press or focus that makes it a roving list's tab stop, and the keys a
-// focused item hears.
+// click: the pointer moving onto it (a Descendant list's highlight),
+// focus arriving in a roving list, and the keys a focused item hears.
 @(private)
 list_item_events :: proc(l: ^Action_List, it: ^List_Item) {
-	gtx := l.gtx
-	if l.o.focus == .Roving && ui.focused(gtx) == it.id {
-		l.data.focus = it.index
-	}
-	for e in ui.events(gtx, it.id) {
+	for e in ui.events(l.gtx, it.id) {
 		#partial switch e.kind {
 		case .Enter, .Move:
 			if l.o.focus == .Descendant {
 				l.hovered = it.index
 			}
-		case .Press:
-			if e.button == .Left && l.o.focus == .Roving && ui.focused(gtx) != it.id {
-				// A press focuses a tabindex -1 item too.
-				ui.focus_request(gtx, it.id)
-				l.data.focus = it.index
+		case .Focus:
+			if l.o.focus == .Roving {
+				l.came = it.index
+				l.moved = l.moved || ui.focus_visible(l.gtx) // the scope's arrows, or Tab
 			}
 		case .Key:
 			list_item_key(l, it.index, e.key, e.mods)
@@ -457,7 +443,8 @@ list_item_events :: proc(l: ^Action_List, it: ^List_Item) {
 // zone's moves in a roving list (focus-zone.mjs:46-79: Up and Down step,
 // Home, End, Page Up, Page Down and the platform's command key with an
 // arrow jump to an end), a letter or digit for type-ahead, and anything
-// else but activation reported for the owner.
+// else but activation reported for the owner. The list's roving scope
+// moves on a bare Up, Down, Home or End; the list moves on the rest.
 @(private)
 list_item_key :: proc(l: ^Action_List, index: int, k: ui.Key, mods: ui.Mods) {
 	if k == .Enter || k == .Space {
@@ -467,13 +454,20 @@ list_item_key :: proc(l: ^Action_List, index: int, k: ui.Key, mods: ui.Mods) {
 		jump := mods - {.Shift} == {ui.SHORTCUT}
 		to := List_Move_To.None
 		#partial switch k {
-		case .Down:
-			to = jump ? .Last : .Next
-		case .Up:
-			to = jump ? .First : .Previous
-		case .Home, .Page_Up:
+		case .Down, .Up, .Home, .End:
+			if mods == {} {
+				return
+			}
+			down := k == .Down || k == .End
+			switch {
+			case jump || k == .Home || k == .End:
+				to = down ? .Last : .First
+			case:
+				to = down ? .Next : .Previous
+			}
+		case .Page_Up:
 			to = .First
-		case .End, .Page_Down:
+		case .Page_Down:
 			to = .Last
 		}
 		if to != .None {
@@ -900,7 +894,13 @@ action_list_close :: proc(l: ^Action_List) {
 	h := y + m.pad_bottom
 	l.rows = rows[:]
 	list_resolve_focus(l)
+	if l.o.focus == .Roving {
+		ui.focus_scope_open(gtx, l.p.id, rove = .Vertical, wrap = l.o.wrap)
+	}
 	paint_list(l, m, laid, heading)
+	if l.o.focus == .Roving {
+		ui.focus_scope_close(gtx)
+	}
 	sz := ui.constrain(l.cs, {m.w, h})
 	role := LIST_ROLES[l.o.role]
 	labelled: ops.Area_Id
@@ -974,8 +974,8 @@ list_metrics :: proc(l: ^Action_List) -> (m: List_Metrics) {
 // a roving list, and the highlight to follow in a Descendant one: moves
 // focus (focus-zone.mjs:486-512, wrapping when the list wraps, stopping
 // at the ends otherwise; disabled items are visited, as the focus zone
-// takes every focusable element), and scrolls the item into view
-// (scroll-into-view.mjs).
+// takes every focusable element), and scrolls the item into view, or the
+// item the roving scope moved focus to (scroll-into-view.mjs).
 @(private)
 list_resolve_focus :: proc(l: ^Action_List) {
 	n := len(l.rows)
@@ -985,10 +985,6 @@ list_resolve_focus :: proc(l: ^Action_List) {
 	gtx := l.gtx
 	to := -1
 	if l.o.focus == .Roving {
-		if l.data.focus >= n {
-			l.data.focus = n - 1
-			ui.request_frame(gtx)
-		}
 		mv := l.move
 		switch mv.to {
 		case .None:
@@ -1017,9 +1013,10 @@ list_resolve_focus :: proc(l: ^Action_List) {
 			to = n - 1
 		}
 		if to >= 0 {
-			l.data.focus = to
 			ui.focus_request(gtx, l.rows[to].id)
 			l.moved = true
+		} else if l.came >= 0 && l.came < n {
+			to = l.came
 		}
 	} else if l.o.focus == .Descendant && l.o.follow && l.o.active >= 0 && l.o.active < n {
 		to = l.o.active
@@ -1251,13 +1248,7 @@ paint_list_item :: proc(l: ^Action_List, it: ^List_Item, g: Item_Geom, m: List_M
 	}
 	paint_focus_outline(gtx, it.c, rr, 0)
 	kinds := CLICK_KINDS
-	switch l.o.focus {
-	case .Tab:
-	case .Roving:
-		if it.index != l.data.focus {
-			kinds -= {.Key}
-		}
-	case .Descendant:
+	if l.o.focus == .Descendant {
 		kinds = {.Press, .Release, .Enter, .Leave, .Move}
 	}
 	dead := it.disabled || it.inactive != "" || it.loading
