@@ -17,9 +17,9 @@ import "jm:ui/ops"
 // Departures shared by the group: jm:ui has no group opacity, so the
 // fades that ride with the slide and collapse motions (a drawer's
 // surface, a nav category's sub-item group, a tree's subtree) are
-// skipped and only the geometry moves; and jm:ui moves focus only by
-// a press, so the roving arrow-key focus of nav, breadcrumb and tree is
-// not built (Up, Down, Left and Right act on the focused row instead).
+// skipped and only the geometry moves. The tree's roving arrow-key focus
+// is not built: its rows stand alone, with no tree container to hold a
+// focus scope, so each row is a Tab stop and Left and Right act on it.
 
 // --- Drawer -----------------------------------------------------------
 
@@ -572,9 +572,11 @@ Nav :: struct {
 	inline:    bool,
 	fixed:     Fixed_Surface,
 	box:       ui.Box,
+	scope:     ui.Inset, // holds the nav's roving focus scope round col
 	col:       ui.Flex,
 	density:   Nav_Density,
 	collapsed: bool,
+	entry:     ops.Area_Id, // the selected row as drawn this frame: where Tab enters
 }
 
 @(private, thread_local)
@@ -613,6 +615,10 @@ nav_rail_width :: proc() -> f32 {
 // which the React NavDrawer has no counterpart for (WinUI's NavigationView
 // LeftCompact). An overlay nav ignores it: a drawer over the page is shown
 // whole or not at all.
+//
+// The nav is one roving focus scope, so one tab stop (nav.json's default,
+// tabbable false), entered at the selected row: Up and Down move between
+// rows, wrapping, Home and End to the ends.
 nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density := Nav_Density.Medium, width: f32 = NAV_WIDTH, collapsed := false, key: u64 = 0, loc := #caller_location) -> (n: Nav) {
 	n.density = density
 	nav_density = density
@@ -636,6 +642,8 @@ nav_open :: proc(gtx: ^ui.Ctx, open: ^bool = nil, window: ops.Size = {}, density
 			return
 		}
 	}
+	n.scope = ui.inset_open(gtx, {}, key = u64(ui.id_mix(id, 5)))
+	ui.focus_scope_open(gtx, id, rove = .Vertical, wrap = true)
 	n.col = ui.column_open(gtx, gap = tok.SPACING_VERTICAL_XXS, align = .Fill, key = u64(ui.id_mix(id, 4)))
 	ui.container_semantics(gtx, {role = .Navigation})
 	current_nav = ui.widget_data(gtx, id, Nav)
@@ -648,6 +656,8 @@ nav_close :: proc(n: ^Nav) {
 		return
 	}
 	ui.close(&n.col)
+	ui.focus_scope_close(n.scope.gtx, current_nav != nil ? current_nav.entry : 0)
+	ui.close(&n.scope)
 	if n.inline {
 		ui.close(&n.box)
 		fixed_close(n.fixed.overlay.gtx, &n.fixed)
@@ -767,6 +777,9 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 	sz := ui.constrain(cs, {max(w, content), h})
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	c := control(gtx, p.id, area, state)
+	if selected && current_nav != nil {
+		current_nav.entry = p.id
+	}
 	bg_roles := State_Roles{.Neutral_Background4, .Neutral_Background4_Hover, .Neutral_Background4, .Neutral_Background4}
 	bg := blend(gtx, c, 0, color_for(bg_roles, c), tok.DURATION_FASTER, tok.CURVE_LINEAR)
 	fg := color(c.disabled ? .Neutral_Foreground_Disabled : .Neutral_Foreground2)

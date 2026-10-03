@@ -228,3 +228,30 @@ test_tree_item_expands_and_collapses :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Docs"))
 	testing.expect(t, !m.docs)
 }
+
+@(test)
+test_nav_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
+	m := Nav_Model{crumb = -1}
+	p: ui.Probe
+	ui.probe_init(&p, navigation, &m, WINDOW, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Dashboard"))
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Reports")
+	ui.probe_key(&p, .Enter) // a category opens on Enter (nav.json)
+	ui.probe_frame(&p)
+	testing.expect(t, m.reports)
+	ui.probe_key(&p, .Down)
+	testing.expect_value(t, focused_tag(&p), "Sales")
+	ui.probe_key(&p, .End)
+	testing.expect_value(t, focused_tag(&p), "Costs")
+	ui.probe_key(&p, .Down) // wraps to the nav's first row, the header's hamburger
+	testing.expect_value(t, focused_tag(&p), "Navigation")
+	// One tab stop, entered at the selected row.
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focused_tag(&p), "Home") // the breadcrumb's first crumb
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focused_tag(&p), "Dashboard")
+}
