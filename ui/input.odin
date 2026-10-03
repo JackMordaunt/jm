@@ -221,6 +221,12 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	refresh(f, r.hover, &r.hover_hit)
 	refresh(f, r.pressed, &r.pressed_hit)
 	r.press_seen, r.pressed_at = false, 0
+	// Before this route's requests: a trap that appears remembers where
+	// focus was before the request that takes focus into it, and a
+	// request made as one closes wins over the trap giving focus back.
+	if f != nil {
+		track_traps(r, f)
+	}
 	if r.focus_asked {
 		r.focus_asked = false
 		h: Hit
@@ -233,9 +239,6 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 		if f != nil && focus_stops(r, f, r.focus_into) > 0 {
 			set_focus(r, r.stops[0])
 		}
-	}
-	if f != nil {
-		track_traps(r, f)
 	}
 	for e in r.queue {
 		switch e.kind {

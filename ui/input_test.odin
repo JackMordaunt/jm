@@ -788,3 +788,20 @@ test_tab_reads_a_deferred_layer_where_it_was_recorded :: proc(t: ^testing.T) {
 	probe_key(&p, .Tab, {.Shift})
 	testing.expect_value(t, p.router.focus, ops.Area_Id(5))
 }
+
+@(test)
+test_a_trap_focused_as_it_opens_gives_back_the_focus_before :: proc(t: ^testing.T) {
+	m: Focus_Model
+	p: Probe
+	probe_init(&p, focus_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_click(&p, "c"))
+	m.dialog, m.first = true, true // the frame that draws the trap asks focus into it
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(10))
+	m.dialog = false
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(3)) // c, not d1
+}
