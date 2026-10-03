@@ -284,9 +284,7 @@ draw_page_entry :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, e: Page_Entry, t: Text, 
 	if e.selected && c.focus_visible {
 		design.paint_inset_shadow(gtx, rr, {spread = ON_EMPHASIS_RING, color = color(.Fg_Color_On_Emphasis)})
 	}
-	if c.focus_visible {
-		design.paint_focus_ring(gtx, c.base, rr, {tok.BASE_SIZE_2, -tok.BASE_SIZE_2, color(.Bg_Color_Accent_Emphasis)})
-	}
+	design.paint_focus_visible_ring(gtx, c.base, r, corners_all(tok.BORDER_RADIUS_MEDIUM), {tok.BASE_SIZE_2, -tok.BASE_SIZE_2, color(.Bg_Color_Accent_Emphasis)})
 	listen(gtx, c.st, id, r, cursor = .Pointer)
 	name := ui.frame_string(gtx, page_name(gtx, e))
 	ops.tag(gtx.scene, id, name, r)
@@ -390,9 +388,7 @@ draw_sub_nav_links :: proc(gtx: ^ui.Ctx, links: []Sub_Nav_Link, state: Interacti
 		}
 		paint_sub_nav_borders(gtx, r, corners, first, color(edge))
 		draw_text(gtx, t, {r.x + (first ? b : 0) + tok.BASE_SIZE_16, (SUB_NAV_LINK - t.height) / 2}, color(fg))
-		if c.focus_visible {
-			design.paint_focus_ring(gtx, c.base, {r, max(left, right)}, focus_outline())
-		}
+		design.paint_focus_visible_ring(gtx, c.base, r, corners, focus_outline())
 		listen(gtx, c.st, id, r, cursor = .Pointer)
 		said := ui.frame_string(gtx, l.label)
 		ops.tag(gtx.scene, id, said, r)

@@ -147,8 +147,21 @@ test_pagination_activates_pages_and_skips_disabled_ends :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.page, 1)
 	said := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expectf(t, !strings.contains(said, "Previous Page"), "a disabled end is hidden: %s", said)
+	accent_strokes :: proc(p: ^ui.Probe) -> (n: int) {
+		for op in p.scene.ops {
+			if st, ok := op.(ops.Stroke); ok {
+				if c, solid := st.paint.(ops.Color); solid && c == color(.Bg_Color_Accent_Emphasis) {
+					n += 1
+				}
+			}
+		}
+		return
+	}
+	before := accent_strokes(&p) // the selected sub nav link's border
 	ui.probe_key(&p, .Tab) // Previous is skipped: Tab lands on page 1
 	ui.probe_key(&p, .Tab)
+	ui.probe_frame(&p)
+	testing.expect_value(t, accent_strokes(&p), before + 1) // keyboard focus outlines page 2 in --bgColor-accent-emphasis
 	ui.probe_key(&p, .Enter)
 	testing.expect_value(t, m.page, 2)
 	testing.expect_value(t, m.changes, 3)
