@@ -144,17 +144,21 @@ focused :: proc(gtx: ^Ctx) -> ops.Area_Id {
 
 // focus_scope_open opens a focus scope named id over what is recorded
 // until focus_scope_close (see ops.Focus_Scope): with trap, keyboard
-// focus stays inside it while it is the newest trap. Open and close it
-// inside one widget or layer, round all of that widget's content: opened
-// between the children of a row or column it does not hold them, since
-// the container places its children later, outside the pair.
-focus_scope_open :: proc(gtx: ^Ctx, id: ops.Area_Id, trap := false) {
-	ops.focus_scope(gtx.scene, id, trap)
+// focus stays inside it while it is the newest trap; with rove, it is one
+// Tab stop whose members the arrow keys of that axis walk, off one end
+// onto the other with wrap. Open and close it inside one widget or
+// layer, round all of that widget's content: opened between the children
+// of a row or column it does not hold them, since the container places
+// its children later, outside the pair.
+focus_scope_open :: proc(gtx: ^Ctx, id: ops.Area_Id, trap := false, rove := ops.Rove.None, wrap := false) {
+	ops.focus_scope(gtx.scene, id, trap, rove, wrap)
 }
 
-// focus_scope_close closes the innermost focus scope.
-focus_scope_close :: proc(gtx: ^Ctx) {
-	ops.focus_scope_end(gtx.scene)
+// focus_scope_close closes the innermost focus scope. entry is the
+// member a roving scope is entered at before any has held focus: the
+// selected tab, the checked radio; 0 enters at the first.
+focus_scope_close :: proc(gtx: ^Ctx, entry: ops.Area_Id = 0) {
+	ops.focus_scope_end(gtx.scene, entry)
 }
 
 // focus_visible reports whether the focused area should show a focus

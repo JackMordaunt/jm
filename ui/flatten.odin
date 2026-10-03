@@ -172,11 +172,12 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 		case ops.Key_Interest:
 			append(&st.f.keys, op)
 		case ops.Focus_Scope:
-			append(&st.f.scopes, Focus_Scope_Node{op.id, st.scope, op.trap})
+			append(&st.f.scopes, Focus_Scope_Node{op.id, st.scope, op.trap, op.rove, op.wrap, 0})
 			append(&st.scopes, st.scope)
 			st.scope = Scope_Ref(len(st.f.scopes))
 		case ops.Focus_Scope_End:
 			assert(len(st.scopes) > base_s, "flatten: focus_scope_end with no scope open")
+			st.f.scopes[st.scope - 1].entry = op.entry
 			st.scope = pop(&st.scopes)
 		case ops.Push_Opacity:
 			append(&st.alphas, st.alpha)

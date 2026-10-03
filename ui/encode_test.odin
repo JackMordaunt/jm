@@ -32,6 +32,8 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.fill(&src, ops.Rect{0, 0, 5, 5}, ops.Color{9, 9, 9, 255})
 	ops.transform_pop(&src)
 	ops.focus_scope(&src, 8, trap = true)
+	ops.focus_scope(&src, 9, rove = .Both, wrap = true)
+	ops.focus_scope_end(&src, entry = 4)
 	ops.focus_scope_end(&src)
 	ops.opacity_push(&src, 0.5)
 	ops.fill(&src, ops.Rect{0, 0, 4, 4}, ops.Color{1, 2, 3, 255})

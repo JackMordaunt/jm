@@ -40,8 +40,16 @@ import "jm:ui/ops"
 // - Focus scopes (ops.Focus_Scope) group areas for focus. While the frame
 //   has a trapping scope, the last one met is the trap: Tab cycles only
 //   the areas inside it, and a press cannot move focus out of it (a press
-//   outside leaves focus where it is). focus_first focuses the first area
-//   inside a named scope.
+//   outside leaves focus where it is). When a trap is gone, focus it
+//   still held goes back to where it was when the trap came. focus_first
+//   focuses the first area inside a named scope.
+// - A roving scope (ops.Focus_Scope.rove) is one Tab stop: its outermost
+//   roving scope stands for every area inside, entered at the focused
+//   one, else the member that last held focus, else the scope's entry,
+//   else the first. An unmodified arrow of its axis, Home or End moves
+//   focus among the members of the focused area's nearest roving scope,
+//   after the focused area has heard the key, unless that area takes Text
+//   or holds a Key_Interest for the key.
 // - Key and Text go to the focused area, else they are dropped. A Key
 //   also goes to every area with a Key_Interest it matches (ui.key_interest),
 //   focused or not, once per area, after the focused area has had it: a
@@ -114,6 +122,8 @@ Router :: struct {
 	focus_into:  ops.Area_Id, // with into_asked: the scope whose first area to focus at the next route
 	into_asked:  bool,
 	stops:       [dynamic]Hit, // scratch for Tab: the focusable areas in order
+	roved:       [dynamic]Scope_Memory, // each roving scope's member that last held focus
+	traps:       [dynamic]Scope_Memory, // each trap the last route saw: focus to give back, and the area it held
 	cursor:      ops.Cursor,
 	pointed:     bool, // a pointer event has set pointer
 
@@ -123,6 +133,17 @@ Router :: struct {
 	press_seen:  bool, // the last route routed a Press
 	keyboard:    bool, // a Key came after the last Press: focus is visible
 	observed:    [dynamic]Hit, // the observers the pointer is over, each sent its Enter
+}
+
+// Scope_Memory is what the router keeps of a focus scope between routes:
+// for a roving scope, area is the member that last held focus; for a
+// trap, area is where focus was when it came and held the area inside it
+// that had focus at the end of the last route.
+@(private)
+Scope_Memory :: struct {
+	scope: ops.Area_Id,
+	area:  ops.Area_Id,
+	held:  ops.Area_Id,
 }
 
 // YIELD_DRAG is how far, in device pixels, a press on yielding text must
@@ -145,6 +166,8 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.readers = make([dynamic]ops.Area_Id, allocator)
 	r.observed = make([dynamic]Hit, allocator)
 	r.stops = make([dynamic]Hit, allocator)
+	r.roved = make([dynamic]Scope_Memory, allocator)
+	r.traps = make([dynamic]Scope_Memory, allocator)
 }
 
 // router_destroy frees everything r owns.
@@ -165,6 +188,8 @@ router_destroy :: proc(r: ^Router) {
 	delete(r.readers)
 	delete(r.observed)
 	delete(r.stops)
+	delete(r.roved)
+	delete(r.traps)
 	r^ = {}
 }
 
@@ -209,6 +234,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			set_focus(r, r.stops[0])
 		}
 	}
+	if f != nil {
+		track_traps(r, f)
+	}
 	for e in r.queue {
 		switch e.kind {
 		case .Press:
@@ -241,8 +269,10 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			focused := r.focus != 0 && deliver(r, r.focus_hit, e, {})
 			if e.kind == .Key && f != nil {
 				route_key_interest(r, f, e, r.focus if focused else 0)
-				if e.key == .Tab && e.mods - {.Shift} == {} && !keeps_tab(f, r.focus, e.mods) {
+				if e.key == .Tab && e.mods - {.Shift} == {} && !keeps_key(f, r.focus, .Tab, e.mods) {
 					route_tab(r, f, .Shift in e.mods)
+				} else if e.mods == {} && is_rove_key(e.key) && r.focus != 0 && !keeps_key(f, r.focus, e.key, e.mods) {
+					route_rove(r, f, e.key)
 				}
 			} else if !focused {
 				free_strings(r, e)
@@ -267,6 +297,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	}
 	clear(&r.queue)
 	r.cursor = resolve_cursor(r, f)
+	if f != nil {
+		remember_focus(r, f)
+	}
 }
 
 // route_key_interest sends Key e to every area whose Key_Interest in f
@@ -725,17 +758,24 @@ may_focus :: proc(f: ^Frame, h: Hit) -> bool {
 // focus_stops fills r.stops with the areas of f Tab visits, in frame
 // order, once each: those that want Key or Text, inside the active trap
 // when there is one and inside a scope named within when within is set.
-// It returns how many there are.
+// A roving scope's areas give one stop, its entry (roving_entry), where
+// its first area stands. It returns how many there are.
 @(private = "file")
 focus_stops :: proc(r: ^Router, f: ^Frame, within: ops.Area_Id = 0) -> int {
 	clear(&r.stops)
 	trap := active_trap(f)
 	outer: for h in f.hits {
-		if h.observes || h.kinds & {.Key, .Text} == {} {
+		if !tab_reachable(f, h, trap, within) {
 			continue
 		}
-		if (trap != 0 && !in_scope(f, h.scope, trap)) || (within != 0 && !in_scope(f, h.scope, 0, within)) {
-			continue
+		h := h
+		if g := outer_roving(f, h.scope); g != 0 {
+			for s in r.stops {
+				if outer_roving(f, s.scope) == g {
+					continue outer
+				}
+			}
+			h = roving_entry(r, f, g, trap, within)
 		}
 		for s in r.stops {
 			if s.area == h.area {
@@ -747,19 +787,242 @@ focus_stops :: proc(r: ^Router, f: ^Frame, within: ops.Area_Id = 0) -> int {
 	return len(r.stops)
 }
 
-// keeps_tab reports whether the focused area holds a Key_Interest for Tab
-// with mods: it uses Tab itself, so Tab does not move focus off it.
+// tab_reachable reports whether h is an area focus may move to by key:
+// it wants Key or Text, and lies inside trap and inside a scope named
+// within, each when set.
 @(private = "file")
-keeps_tab :: proc(f: ^Frame, focus: ops.Area_Id, mods: Mods) -> bool {
+tab_reachable :: proc(f: ^Frame, h: Hit, trap: Scope_Ref, within: ops.Area_Id) -> bool {
+	if h.observes || h.kinds & {.Key, .Text} == {} {
+		return false
+	}
+	return (trap == 0 || in_scope(f, h.scope, trap)) && (within == 0 || in_scope(f, h.scope, 0, within))
+}
+
+// outer_roving is the outermost roving scope s lies in, s included; 0
+// for none. Tab treats everything inside it as one stop.
+@(private = "file")
+outer_roving :: proc(f: ^Frame, s: Scope_Ref) -> (g: Scope_Ref) {
+	for at := s; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
+		if f.scopes[at - 1].rove != .None {
+			g = at
+		}
+	}
+	return
+}
+
+// nearest_roving is the innermost roving scope s lies in, s included; 0
+// for none. Its arrows move among the areas it is nearest to.
+@(private = "file")
+nearest_roving :: proc(f: ^Frame, s: Scope_Ref) -> Scope_Ref {
+	for at := s; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
+		if f.scopes[at - 1].rove != .None {
+			return at
+		}
+	}
+	return 0
+}
+
+// roving_entry is the area Tab enters roving scope g at: the focused
+// area when it is inside, else the area that last held focus there, else
+// the scope's entry, else its first reachable area.
+@(private = "file")
+roving_entry :: proc(r: ^Router, f: ^Frame, g: Scope_Ref, trap: Scope_Ref, within: ops.Area_Id) -> Hit {
+	node := f.scopes[g - 1]
+	last := memory_of(r.roved[:], node.id).area
+	first, remembered, entry: Hit
+	for h in f.hits {
+		if !tab_reachable(f, h, trap, within) || !in_scope(f, h.scope, g) {
+			continue
+		}
+		switch {
+		case h.area == r.focus:
+			return h
+		case first.area == 0:
+			first = h
+		}
+		if h.area == last && remembered.area == 0 {
+			remembered = h
+		}
+		if h.area == node.entry && entry.area == 0 {
+			entry = h
+		}
+	}
+	switch {
+	case remembered.area != 0:
+		return remembered
+	case entry.area != 0:
+		return entry
+	}
+	return first
+}
+
+// keeps_key reports whether the focused area holds a Key_Interest for
+// key with mods: it uses the key itself, so the key does not move focus
+// off it.
+@(private = "file")
+keeps_key :: proc(f: ^Frame, focus: ops.Area_Id, key: Key, mods: Mods) -> bool {
 	if focus == 0 {
 		return false
 	}
 	for k in f.keys {
-		if k.area == focus && k.key == .Tab && key_interest_matches(k, .Tab, mods) {
+		if k.area == focus && k.key == key && key_interest_matches(k, key, mods) {
 			return true
 		}
 	}
 	return false
+}
+
+// is_rove_key reports whether key can move focus inside a roving scope.
+@(private = "file")
+is_rove_key :: proc(key: Key) -> bool {
+	#partial switch key {
+	case .Left, .Right, .Up, .Down, .Home, .End:
+		return true
+	}
+	return false
+}
+
+// rove_axis_takes reports whether a roving scope of axis moves on key:
+// Home and End on every axis, each arrow on its own.
+@(private = "file")
+rove_axis_takes :: proc(axis: ops.Rove, key: Key) -> bool {
+	#partial switch key {
+	case .Home, .End:
+		return axis != .None
+	case .Left, .Right:
+		return axis == .Horizontal || axis == .Both
+	case .Up, .Down:
+		return axis == .Vertical || axis == .Both
+	}
+	return false
+}
+
+// route_rove moves focus by key among the members of the focused area's
+// nearest roving scope, when its axis takes the key and the focused area
+// does not take text.
+@(private = "file")
+route_rove :: proc(r: ^Router, f: ^Frame, key: Key) {
+	h: Hit
+	if !refresh(f, r.focus, &h) || .Text in h.kinds {
+		return
+	}
+	g := nearest_roving(f, h.scope)
+	if g == 0 || !rove_axis_takes(f.scopes[g - 1].rove, key) {
+		return
+	}
+	clear(&r.stops)
+	at := -1
+	outer: for m in f.hits {
+		if !tab_reachable(f, m, 0, 0) || nearest_roving(f, m.scope) != g {
+			continue
+		}
+		for s in r.stops {
+			if s.area == m.area {
+				continue outer
+			}
+		}
+		if m.area == r.focus {
+			at = len(r.stops)
+		}
+		append(&r.stops, m)
+	}
+	n := len(r.stops)
+	if at < 0 || n == 0 {
+		return
+	}
+	next := at
+	#partial switch key {
+	case .Home:
+		next = 0
+	case .End:
+		next = n - 1
+	case .Left, .Up:
+		next = at > 0 ? at - 1 : (f.scopes[g - 1].wrap ? n - 1 : 0)
+	case .Right, .Down:
+		next = at < n - 1 ? at + 1 : (f.scopes[g - 1].wrap ? 0 : n - 1)
+	}
+	set_focus(r, r.stops[next])
+}
+
+// memory_of is mem's entry for scope, zero when it has none.
+@(private = "file")
+memory_of :: proc(mem: []Scope_Memory, scope: ops.Area_Id) -> Scope_Memory {
+	for m in mem {
+		if m.scope == scope {
+			return m
+		}
+	}
+	return {}
+}
+
+// scope_named is f's scope named id, 0 when f has none.
+@(private = "file")
+scope_named :: proc(f: ^Frame, id: ops.Area_Id) -> Scope_Ref {
+	for s, i in f.scopes {
+		if s.id == id {
+			return Scope_Ref(i + 1)
+		}
+	}
+	return 0
+}
+
+// track_traps gives focus back from the traps the last route saw that f
+// no longer has, when the trap still held it, and starts remembering
+// where focus was for the traps f is the first frame to have.
+@(private = "file")
+track_traps :: proc(r: ^Router, f: ^Frame) {
+	for i := len(r.traps) - 1; i >= 0; i -= 1 {
+		m := r.traps[i]
+		if scope_named(f, m.scope) != 0 {
+			continue
+		}
+		ordered_remove(&r.traps, i)
+		back: Hit
+		if m.held != 0 && r.focus == m.held && refresh(f, m.area, &back) {
+			set_focus(r, back)
+		}
+	}
+	for s in f.scopes {
+		if s.trap && memory_of(r.traps[:], s.id).scope == 0 {
+			append(&r.traps, Scope_Memory{scope = s.id, area = r.focus})
+		}
+	}
+}
+
+// remember_focus keeps, once a route is done, which member of each
+// roving scope around the focused area holds focus, and which area each
+// trap holds, and forgets the scopes f no longer has.
+@(private = "file")
+remember_focus :: proc(r: ^Router, f: ^Frame) {
+	for i := len(r.roved) - 1; i >= 0; i -= 1 {
+		if scope_named(f, r.roved[i].scope) == 0 {
+			unordered_remove(&r.roved, i)
+		}
+	}
+	h: Hit
+	focused := refresh(f, r.focus, &h)
+	for &m in r.traps {
+		m.held = 0
+		if focused && in_scope(f, h.scope, 0, m.scope) {
+			m.held = r.focus
+		}
+	}
+	if !focused {
+		return
+	}
+	scopes: for at := h.scope; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
+		s := f.scopes[at - 1]
+		if s.rove == .None {
+			continue
+		}
+		for &m in r.roved {
+			if m.scope == s.id {
+				m.area = r.focus
+				continue scopes
+			}
+		}
+		append(&r.roved, Scope_Memory{scope = s.id, area = r.focus})
+	}
 }
 
 // route_tab moves focus to the next of f's focus stops after the focused

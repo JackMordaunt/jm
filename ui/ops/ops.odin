@@ -290,15 +290,38 @@ Pop_Opacity :: struct {}
 // keeps keyboard focus inside itself while it is the last trap in the
 // frame: Tab cycles its areas and a press cannot take focus out of it. A
 // dialog is a trap; a newer one, a menu opened inside it, suspends it
-// until it closes. A plain scope only names a region, for
-// ui.focus_first. See ui.focus_scope_open.
+// until it closes. A trap that still holds focus when it goes gives
+// focus back to where it was when it came; taking focus in as it opens
+// is the design system's choice (ui.focus_first). A roving scope (rove set) is one Tab stop however
+// many areas it holds: the arrow keys of its axis move focus among its
+// members, the areas whose nearest roving scope it is (see Rove). A
+// plain scope only names a region, for ui.focus_first. See
+// ui.focus_scope_open.
 Focus_Scope :: struct {
 	id:   Area_Id,
 	trap: bool,
+	rove: Rove,
+	wrap: bool, // a roving scope's arrows run off one end onto the other
 }
 
-// Focus_Scope_End closes the innermost Focus_Scope.
-Focus_Scope_End :: struct {}
+// Rove is the axis whose arrow keys move focus inside a roving focus
+// scope, in frame order: Left and Up to the previous member, Right and
+// Down to the next, Home and End to the first and last. Both takes all
+// four arrows, as the WAI-ARIA radio group pattern does. A member that
+// takes text, or holds a Key_Interest for the key, keeps the key instead.
+Rove :: enum u8 {
+	None,
+	Horizontal,
+	Vertical,
+	Both,
+}
+
+// Focus_Scope_End closes the innermost Focus_Scope. entry names the
+// member Tab enters a roving scope at when no member has held focus yet
+// (the selected tab, the checked radio); 0 for the first.
+Focus_Scope_End :: struct {
+	entry: Area_Id,
+}
 
 // Shadow is the soft shadow of a rounded rect, as a CSS box-shadow draws
 // one: rect is the shape casting it, already offset and spread by the
@@ -475,12 +498,12 @@ opacity_pop :: proc(o: ^Scene) {
 }
 
 // focus_scope opens a Focus_Scope; focus_scope_end closes it.
-focus_scope :: proc(o: ^Scene, id: Area_Id, trap := false) {
-	append(&o.ops, Focus_Scope{id, trap})
+focus_scope :: proc(o: ^Scene, id: Area_Id, trap := false, rove := Rove.None, wrap := false) {
+	append(&o.ops, Focus_Scope{id, trap, rove, wrap})
 }
 
-focus_scope_end :: proc(o: ^Scene) {
-	append(&o.ops, Focus_Scope_End{})
+focus_scope_end :: proc(o: ^Scene, entry: Area_Id = 0) {
+	append(&o.ops, Focus_Scope_End{entry})
 }
 
 // outside_area records shape as part of id's inside for Outside presses

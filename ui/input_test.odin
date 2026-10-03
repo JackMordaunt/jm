@@ -477,15 +477,37 @@ test_a_trap_keeps_focus_in_and_a_newer_trap_suspends_it :: proc(t: ^testing.T) {
 	testing.expect_value(t, p.router.focus, ops.Area_Id(20))
 	probe_key(&p, .Tab)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(20))
+	// Closed, it gives focus back to where it was when it opened.
 	m.menu = false
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(12))
+	// Gone, the dialog gives focus back to the page, and lets it go anywhere.
+	m.dialog = false
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(3))
+	testing.expect(t, probe_click(&p, "b"))
+	testing.expect_value(t, p.router.focus, ops.Area_Id(2))
+}
+
+@(test)
+test_a_trap_gives_back_only_the_focus_it_still_holds :: proc(t: ^testing.T) {
+	m: Focus_Model
+	p: Probe
+	probe_init(&p, focus_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_click(&p, "c"))
+	m.dialog = true
 	probe_frame(&p)
 	probe_key(&p, .Tab)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(10))
-	// Gone, the dialog lets focus go anywhere again.
+	// The app moves focus itself as the dialog closes: the trap leaves it.
 	m.dialog = false
+	focus_request(&Ctx{router = &p.router}, 1)
 	probe_frame(&p)
-	testing.expect(t, probe_click(&p, "b"))
-	testing.expect_value(t, p.router.focus, ops.Area_Id(2))
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(1))
 }
 
 @(test)
@@ -560,4 +582,117 @@ test_outside_presses_walk_the_popups_from_the_top_until_one_holds_the_press :: p
 	route(&r, &f, {kind = .Release, pos = {300, 300}, button = .Left}, {kind = .Move, pos = {5, 5}})
 	testing.expect_value(t, r.hover, ops.Area_Id(0)) // the button wants no hover kinds
 	testing.expect_value(t, router_cursor(&r), ops.Cursor.Pointer)
+}
+
+@(private = "file")
+Rove_Model :: struct {
+	entry: ops.Area_Id, // the toolbar's entry
+	hold:  bool, // l2 holds Down
+}
+
+// rove_view is a page button a, a toolbar roving across t1, t2, t3 and a
+// text field t4, a list roving down l1, l2, l3 with wrap, and a page
+// button z.
+@(private = "file")
+rove_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Rove_Model)(user)
+	focusable :: proc(gtx: ^Ctx, id: ops.Area_Id, name: string, x, y: f32, kinds := ops.Event_Kinds{.Press, .Release, .Key, .Focus, .Blur}) {
+		ops.input_area(gtx.scene, id, ops.Rect{x, y, 40, 20}, kinds)
+		ops.tag(gtx.scene, id, name)
+	}
+	focusable(gtx, 1, "a", 0, 0)
+	focus_scope_open(gtx, 30, rove = .Horizontal)
+	focusable(gtx, 31, "t1", 0, 30)
+	focusable(gtx, 32, "t2", 50, 30)
+	focusable(gtx, 33, "t3", 100, 30)
+	focusable(gtx, 34, "t4", 150, 30, {.Press, .Key, .Text, .Focus, .Blur})
+	focus_scope_close(gtx, m.entry)
+	focus_scope_open(gtx, 40, rove = .Vertical, wrap = true)
+	focusable(gtx, 41, "l1", 0, 60)
+	focusable(gtx, 42, "l2", 0, 90)
+	focusable(gtx, 43, "l3", 0, 120)
+	focus_scope_close(gtx)
+	if m.hold {
+		key_interest(gtx, 42, .Down)
+	}
+	focusable(gtx, 9, "z", 0, 150)
+}
+
+@(test)
+test_a_roving_scope_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
+	m := Rove_Model{entry = 32}
+	p: Probe
+	probe_init(&p, rove_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	want :: proc(t: ^testing.T, p: ^Probe, area: ops.Area_Id, loc := #caller_location) {
+		testing.expect_value(t, p.router.focus, area, loc = loc)
+	}
+	probe_key(&p, .Tab)
+	want(t, &p, 1)
+	probe_key(&p, .Tab)
+	want(t, &p, 32) // the toolbar is one stop, entered at its entry
+	probe_key(&p, .Tab)
+	want(t, &p, 41) // the list, entered at its first
+	probe_key(&p, .Tab)
+	want(t, &p, 9)
+	probe_key(&p, .Tab, {.Shift})
+	probe_key(&p, .Tab, {.Shift})
+	want(t, &p, 32)
+
+	// The toolbar's arrows run along it and stop at its ends.
+	probe_key(&p, .Right)
+	want(t, &p, 33)
+	probe_key(&p, .Down)
+	want(t, &p, 33) // not its axis
+	probe_key(&p, .Home)
+	want(t, &p, 31)
+	probe_key(&p, .Left)
+	want(t, &p, 31) // no wrap
+	probe_key(&p, .Right, {.Shift})
+	want(t, &p, 31) // a modified arrow is the area's own
+	probe_key(&p, .End)
+	want(t, &p, 34)
+	probe_key(&p, .Left)
+	want(t, &p, 34) // a text field keeps its arrows
+	probe_key(&p, .Home)
+	want(t, &p, 34) // and Home
+
+	// Tab leaves the group; coming back enters where focus last was.
+	probe_key(&p, .Tab)
+	want(t, &p, 41)
+	probe_key(&p, .Tab, {.Shift})
+	want(t, &p, 34)
+
+	// The list wraps.
+	probe_key(&p, .Tab)
+	probe_key(&p, .Up)
+	want(t, &p, 43)
+	probe_key(&p, .Down)
+	want(t, &p, 41)
+	probe_key(&p, .Right)
+	want(t, &p, 41)
+
+	// An area holding a key's interest keeps it.
+	m.hold = true
+	probe_key(&p, .Down)
+	want(t, &p, 42)
+	probe_key(&p, .Down)
+	want(t, &p, 42)
+	probe_key(&p, .Up)
+	want(t, &p, 41)
+}
+
+@(test)
+test_a_roving_scope_entered_by_a_press_remembers_it :: proc(t: ^testing.T) {
+	m: Rove_Model
+	p: Probe
+	probe_init(&p, rove_view, &m, {300, 300})
+	defer probe_destroy(&p)
+	probe_key(&p, .Tab)
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(31)) // no entry: the first
+	testing.expect(t, probe_click(&p, "t3"))
+	testing.expect(t, probe_click(&p, "a"))
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(33))
 }

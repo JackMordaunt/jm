@@ -55,12 +55,15 @@ Hit :: struct {
 // none when 0, so a zero Hit sits in no scope.
 Scope_Ref :: distinct i32
 
-// Focus_Scope_Node is a Focus_Scope placed on the frame: its id, whether
-// it traps, and the scope it sits in.
+// Focus_Scope_Node is a Focus_Scope placed on the frame: its id, the
+// scope it sits in, how it holds focus, and the entry its end named.
 Focus_Scope_Node :: struct {
 	id:     ops.Area_Id,
 	parent: Scope_Ref,
 	trap:   bool,
+	rove:   ops.Rove,
+	wrap:   bool,
+	entry:  ops.Area_Id,
 }
 
 // Placed is a popup flatten placed (see ops.Placement): its key, the

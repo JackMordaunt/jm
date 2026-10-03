@@ -33,8 +33,10 @@ ENCODE_MAGIC :: "UIOP"
 // Key_Interest topmost; 28 added Focus_Scope and Focus_Scope_End; 29
 // added Push_Opacity and Pop_Opacity; 30 gave Semantic an active
 // descendant and Role Menu_Item_Checkbox and Menu_Item_Radio; 31 added
-// Role Tree, Tree_Item and Tab_Panel and State Current and Current_Page.
-ENCODE_VERSION :: u8(31)
+// Role Tree, Tree_Item and Tab_Panel and State Current and Current_Page;
+// 32 turned Focus_Scope's trap into a flags byte (bit 0 trap, bit 1
+// wrap, bits 2-3 rove) and gave Focus_Scope_End an entry.
+ENCODE_VERSION :: u8(32)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -446,9 +448,10 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 	case Focus_Scope:
 		append(w, 21)
 		put_u64(w, u64(v.id))
-		append(w, u8(v.trap))
+		append(w, u8(v.trap) | u8(v.wrap) << 1 | u8(v.rove) << 2)
 	case Focus_Scope_End:
 		append(w, 22)
+		put_u64(w, u64(v.entry))
 	case Push_Opacity:
 		append(w, 23)
 		put_f32(w, v.alpha)
@@ -822,14 +825,14 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 	case 21:
 		v: Focus_Scope
 		v.id = Area_Id(get_u64(r) or_return)
-		trap := get_u8(r) or_return
-		if trap > 1 {
+		flags := get_u8(r) or_return
+		if flags >> 2 > u8(max(Rove)) {
 			return nil, false
 		}
-		v.trap = trap == 1
+		v.trap, v.wrap, v.rove = flags & 1 != 0, flags & 2 != 0, Rove(flags >> 2)
 		return v, true
 	case 22:
-		return Focus_Scope_End{}, true
+		return Focus_Scope_End{Area_Id(get_u64(r) or_return)}, true
 	case 23:
 		return Push_Opacity{get_f32(r) or_return}, true
 	case 24:
