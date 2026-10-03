@@ -241,8 +241,9 @@ readme:
         printf '<!doctype html><meta charset=utf-8><meta name=color-scheme content="light dark">'
         printf '<base href="%s/%s/"><title>jm: %s</title>' "$url" "$dir" "${f%.md}"
         printf '<body style="max-width:56em;margin:2em auto;padding:0 1em;font:16px/1.55 system-ui">'
-        printf '<style>pre{overflow:auto;tab-size:4;padding:1em;background:#8881;border-radius:6px}code{font:14px ui-monospace,monospace}table{border-collapse:collapse}td,th{border:1px solid #8884;padding:.3em .6em;text-align:left}img{max-width:100%%}blockquote{margin:0;padding:0 1em;border-left:3px solid #8886;color:#888}</style>'
-        comrak -e strikethrough,table,autolink,tasklist --github-pre-lang --gfm-quirks \
+        printf '<style>pre{overflow:auto;tab-size:4;padding:1em;background:#8881;border-radius:6px}code{font:14px ui-monospace,monospace}table{border-collapse:collapse}td,th{border:1px solid #8884;padding:.3em .6em;text-align:left}img{max-width:100%%}blockquote{margin:0;padding:0 1em;border-left:3px solid #8886;color:#888}'
+        printf '.markdown-alert{padding:.2em 1em;margin:1em 0;border-left:4px solid #4493f8;background:#4493f811}.markdown-alert-warning{border-color:#d29922;background:#d2992211}.markdown-alert-tip{border-color:#3fb950;background:#3fb95011}.markdown-alert-title{font-weight:600;margin:.4em 0}</style>'
+        comrak -e strikethrough,table,autolink,tasklist,alerts --github-pre-lang --gfm-quirks \
           --header-id-prefix "" --unsafe "$f" |
           sed -E "s|href=\"([^\":#]+)\\.md(#[^\"]*)?\"|href=\"$url/build/readme/$dir/\\1.html\\2\"|g"
       } > "$html"
