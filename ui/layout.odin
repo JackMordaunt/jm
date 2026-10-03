@@ -224,6 +224,7 @@ Layout :: struct {
 	persisted: [dynamic]u8, // what persist_struct last sent, to send only changes
 	persisted_once: bool,
 	last:      Last_Widget, // the widget closed most recently; see last_widget
+	reveals:   [dynamic]Reveal, // this frame's scroll_into_view requests
 }
 
 // Last_Widget is a widget just closed: its id and the size it took.
@@ -274,6 +275,7 @@ layout_init :: proc(l: ^Layout, allocator := context.allocator) {
 	l.data = make(map[Data_Key]Data_Entry, allocator)
 	l.retained = make(map[ops.Area_Id]u64, allocator)
 	l.persisted = make([dynamic]u8, allocator)
+	l.reveals = make([dynamic]Reveal, allocator)
 }
 
 // layout_destroy frees l's storage.
@@ -297,6 +299,7 @@ layout_destroy :: proc(l: ^Layout) {
 	delete(l.shapes)
 	delete(l.retained)
 	delete(l.persisted)
+	delete(l.reveals)
 	text_destroy(&l.selection.state)
 	l^ = {}
 }
@@ -312,6 +315,7 @@ layout_reset :: proc(l: ^Layout) {
 	clear(&l.children)
 	clear(&l.claims)
 	clear(&l.claimed)
+	clear(&l.reveals)
 	l.scope, l.scope_root, l.root_parent, l.root_semantic = 0, 0, 0, 0
 	l.frame += 1
 	stale := make([dynamic]ops.Area_Id, context.temp_allocator)
@@ -1559,6 +1563,99 @@ scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Sc
 	return {gtx, container_push(gtx, c, p)}
 }
 
+// Reveal is a scroll_into_view request: at is how many ops the scene held
+// when it was made, which places it in the recording, and rect is in the
+// space current there.
+@(private)
+Reveal :: struct {
+	at:   int,
+	rect: ops.Rect,
+}
+
+// scroll_into_view asks every scroll box the caller is drawn inside to
+// scroll by the least amount that shows rect, in the space current at the
+// call (a widget's own, inside its bracket): a focused row in a tree, a
+// tab in a scrolling strip. Each box closing after the call over content
+// that holds it moves that frame; a box closed before it, or the caller
+// inside an overlay, is not moved. rect larger than a box shows its
+// top-left. Ask on the frame the thing should come into view, not every
+// frame, or the box can no longer be scrolled away from it.
+scroll_into_view :: proc(gtx: ^Ctx, rect: ops.Rect) {
+	if l := gtx.layout; l != nil && gtx.scene != nil {
+		append(&l.reveals, Reveal{len(gtx.scene.ops), rect})
+	}
+}
+
+// find_reveal is the first of this frame's reveals recorded in macro
+// body, in body's space: its ops are walked as flatten runs them,
+// following calls, skipping macro bodies inline and overlays.
+@(private = "file")
+find_reveal :: proc(gtx: ^Ctx, body: ops.Macro_Id) -> (ops.Rect, bool) {
+	l := gtx.layout
+	if l == nil || len(l.reveals) == 0 {
+		return {}, false
+	}
+	m := gtx.scene.macros[body]
+	return find_reveal_in(gtx.scene, l.reveals[:], m.first, m.last, ops.IDENTITY, 0)
+}
+
+@(private = "file")
+find_reveal_in :: proc(sc: ^ops.Scene, reveals: []Reveal, lo, hi: int, t: ops.Affine, depth: int) -> (ops.Rect, bool) {
+	stack := make([dynamic]ops.Affine, context.temp_allocator)
+	t := t
+	i := lo
+	for i < hi {
+		for r in reveals {
+			if r.at == i {
+				return ops.transform_rect(t, r.rect), true
+			}
+		}
+		#partial switch op in sc.ops[i] {
+		case ops.Push_Transform:
+			append(&stack, t)
+			t = ops.mul(op.m, t)
+		case ops.Push_Sticky:
+			append(&stack, t)
+		case ops.Pop_Transform:
+			if len(stack) > 0 {
+				t = pop(&stack)
+			}
+		case ops.Macro_Begin:
+			last := sc.macros[op.id].last
+			i = hi if last < 0 else max(i, min(last, hi))
+		case ops.Call:
+			m := sc.macros[op.id]
+			if m.last >= 0 && depth < MAX_CALL_DEPTH {
+				if r, ok := find_reveal_in(sc, reveals, m.first, m.last, t, depth + 1); ok {
+					return r, true
+				}
+			}
+		}
+		i += 1
+	}
+	for r in reveals {
+		if r.at == hi {
+			return ops.transform_rect(t, r.rect), true
+		}
+	}
+	return {}, false
+}
+
+// nearest_offset is the scroll offset nearest at that shows [lo, lo+len)
+// in a view view long: unchanged when it shows already, else the start or
+// end brought to the view's edge, the start when it is longer than the
+// view.
+@(private = "file")
+nearest_offset :: proc(at, view, lo, length: f32) -> f32 {
+	switch {
+	case lo < at || length > view:
+		return lo
+	case lo + length > at + view:
+		return lo + length - view
+	}
+	return at
+}
+
 // scroll_box_close applies scroll events, then clips and offsets the body.
 scroll_box_close :: proc(s: ^Scroll_Box) {
 	container_close(s.gtx, &s.index)
@@ -1770,6 +1867,10 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 				sc.y += e.scroll.y * SCROLL_STEP
 				sc.x += e.scroll.x * SCROLL_STEP
 			}
+		}
+		if r, ok := find_reveal(gtx, c.body); ok {
+			sc.y = nearest_offset(sc.y, size.y, r.y, r.h)
+			sc.x = nearest_offset(sc.x, size.x, r.x, r.w)
 		}
 		sc.y = clamp(sc.y, 0, max(content.y - size.y, 0))
 		sc.x = clamp(sc.x, 0, max(content.x - size.x, 0))

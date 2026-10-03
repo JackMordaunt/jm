@@ -1936,3 +1936,93 @@ test_offer_is_what_the_next_widget_gets :: proc(t: ^testing.T) {
 		check(t, gtx)
 	}
 }
+
+@(private = "file")
+Reveal_Model :: struct {
+	reveal: int, // the row that asks to be shown this frame, -1 for none
+	align:  Align, // the rows' column: Center records each row in a macro
+	nested: bool, // the rows sit in a scroll box inside the outer one
+}
+
+@(private = "file")
+reveal_row :: proc(gtx: ^Ctx, m: ^Reveal_Model, i: int) {
+	p := widget_open(gtx, u64(i + 1))
+	if i == m.reveal {
+		scroll_into_view(gtx, {0, 0, 50, 30})
+	}
+	ops.tag(gtx.scene, p.id, fmt_row(gtx, i), {0, 0, 50, 30})
+	widget_close(gtx, &p, {size = {50, 30}})
+}
+
+@(private = "file")
+fmt_row :: proc(gtx: ^Ctx, i: int) -> string {
+	names := [10]string{"row 0", "row 1", "row 2", "row 3", "row 4", "row 5", "row 6", "row 7", "row 8", "row 9"}
+	return names[i]
+}
+
+@(private = "file")
+reveal_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Reveal_Model)(user)
+	root := column_open(gtx, align = .Start)
+	defer close(&root)
+	box := sized_open(gtx, {min = {200, 100}, max = {200, 100}})
+	defer close(&box)
+	sb := scroll_box_open(gtx)
+	defer close(&sb)
+	col := column_open(gtx, align = m.align)
+	defer close(&col)
+	if m.nested {
+		inner := sized_open(gtx, {min = {0, 60}, max = {0, 60}})
+		isb := scroll_box_open(gtx)
+		icol := column_open(gtx)
+		for i in 0 ..< 10 {
+			reveal_row(gtx, m, i)
+		}
+		close(&icol)
+		close(&isb)
+		close(&inner)
+		return
+	}
+	for i in 0 ..< 10 {
+		reveal_row(gtx, m, i)
+	}
+}
+
+@(test)
+scroll_into_view_scrolls_the_least_that_shows_the_rect :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m := Reveal_Model{reveal = -1}
+	p: Probe
+	probe_init(&p, reveal_view, &m, {300, 300})
+	defer probe_destroy(&p)
+
+	testing.expect_value(t, probe_bounds(&p, "row 7").y, 210)
+	m.reveal = 7
+	probe_frame(&p)
+	testing.expect_value(t, probe_bounds(&p, "row 7").y, 70) // its bottom at the view's: scrolled 140
+	m.reveal = -1
+	probe_frame(&p)
+	testing.expect_value(t, probe_bounds(&p, "row 7").y, 70) // asked once, it stays
+	m.reveal = 5 // already shown: nothing moves
+	probe_frame(&p)
+	testing.expect_value(t, probe_bounds(&p, "row 7").y, 70)
+	m.reveal = 1 // above the view: its top comes to the view's top
+	probe_frame(&p)
+	testing.expect_value(t, probe_bounds(&p, "row 1").y, 0)
+	m.reveal, m.align = 9, .Center // a deferred row, recorded in a macro
+	probe_frame(&p)
+	testing.expect_value(t, probe_bounds(&p, "row 9").y, 70)
+}
+
+@(test)
+scroll_into_view_moves_every_box_around_the_rect :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m := Reveal_Model{reveal = 8, nested = true}
+	p: Probe
+	probe_init(&p, reveal_view, &m, {300, 300})
+	defer probe_destroy(&p)
+
+	// The inner 60px box scrolls row 8 to its bottom; the outer one has
+	// nothing to move, as the inner box fits in it.
+	testing.expect_value(t, probe_bounds(&p, "row 8").y, 30)
+}
