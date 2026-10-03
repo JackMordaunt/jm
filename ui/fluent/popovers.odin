@@ -787,17 +787,28 @@ teaching_popover_page_count :: proc(gtx: ^ui.Ctx, page, count: int, key: u64 = 0
 	text_block(gtx, fmt_of(gtx, page + 1, count), .Caption1, popover_fg(), key = key, loc = loc)
 }
 
-// teaching_dots is the nav: one dot per page, spacingHorizontalXS apart.
+// teaching_dots is the nav: one dot per page, spacingHorizontalXS apart,
+// one roving focus scope, so one tab stop entered at the page's dot,
+// whose arrows move between dots (teaching-popover.json accessibility).
 @(private)
 teaching_dots :: proc(gtx: ^ui.Ctx, page: ^int, count: int, brand: bool, key: u64) {
-	r := ui.row_open(gtx, gap = tok.SPACING_HORIZONTAL_XS, align = .Center, key = key)
-	defer ui.close(&r)
+	id := ui.claim_id(gtx, key)
+	box := ui.inset_open(gtx, {}, key = u64(ui.id_mix(id, 1)))
+	ui.focus_scope_open(gtx, id, rove = .Horizontal)
+	r := ui.row_open(gtx, gap = tok.SPACING_HORIZONTAL_XS, align = .Center, key = u64(ui.id_mix(id, 2)))
 	ui.container_semantics(gtx, {role = .Tab_List})
+	entry: ops.Area_Id
 	for i in 0 ..< count {
-		if nav_dot(gtx, i == page^, brand ? .Neutral_Foreground_On_Brand : .Brand_Background, TEACHING_DOT_ALPHA, 1, TEACHING_DOT, TEACHING_DOT_SELECTED, 0, fmt_page(gtx, i, count), page, count, key = u64(i + 1)) {
+		if nav_dot(gtx, i == page^, brand ? .Neutral_Foreground_On_Brand : .Brand_Background, TEACHING_DOT_ALPHA, 1, TEACHING_DOT, TEACHING_DOT_SELECTED, 0, fmt_page(gtx, i, count), key = u64(i + 1)) {
 			page^ = i
 		}
+		if i == page^ {
+			entry = ui.last_widget(gtx).id
+		}
 	}
+	ui.close(&r)
+	ui.focus_scope_close(gtx, entry)
+	ui.close(&box)
 }
 
 // fmt_of is "a of b" in frame memory.
@@ -1003,8 +1014,9 @@ roles_button :: proc(
 // the glyph dot px round (selected_w wide with 4px corners when
 // selected) in role at rest_alpha unselected and full when selected,
 // the hover and press alphas following the carousel's table when
-// hover_alpha is non-zero. A focused dot takes Left and Right to move
-// page^ through count. Returns true when clicked.
+// hover_alpha is non-zero. Its group's roving focus scope moves focus
+// between dots; a click, or Enter or Space, selects. Returns true when
+// clicked or activated.
 @(private)
 nav_dot :: proc(
 	gtx: ^ui.Ctx,
@@ -1013,8 +1025,6 @@ nav_dot :: proc(
 	rest_alpha, hover_alpha: f32,
 	dot, selected_w, pad: f32,
 	name: string,
-	page: ^int,
-	count: int,
 	pressed_alpha: f32 = 1,
 	brand_selected := false,
 	selected_pad_x: f32 = -1,
@@ -1027,18 +1037,6 @@ nav_dot :: proc(
 	sz := ops.Size{gw + 2 * px, dot + 2 * pad}
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	c := control(gtx, p.id, area, .Live)
-	if c.st != nil && c.focused {
-		for e in ui.events(gtx, p.id) {
-			if e.kind == .Key {
-				#partial switch e.key {
-				case .Left:
-					page^ = max(page^ - 1, 0)
-				case .Right:
-					page^ = min(page^ + 1, count - 1)
-				}
-			}
-		}
-	}
 	a := selected ? f32(1) : rest_alpha
 	if hover_alpha > 0 {
 		switch {

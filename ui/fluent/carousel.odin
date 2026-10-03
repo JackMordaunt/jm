@@ -205,8 +205,12 @@ carousel_close :: proc(c: ^Carousel) {
 		interacted = true
 	}
 	pill := ui.box_open(gtx, {fill = color(.Neutral_Background_Alpha), radius = tok.BORDER_RADIUS_XLARGE}, key = part_key(c.id, 6))
+	// The dots are one roving focus scope, so one tab stop entered at the
+	// page's dot, whose arrows move between them (carousel.json).
+	ui.focus_scope_open(gtx, ui.id_mix(c.id, 10), rove = .Horizontal)
 	dots := ui.row_open(gtx, align = .Center, key = part_key(c.id, 7))
 	ui.container_semantics(gtx, {role = .Tab_List})
+	entry: ops.Area_Id
 	for i in 0 ..< c.count {
 		before := c.active^
 		if nav_dot(
@@ -219,8 +223,6 @@ carousel_close :: proc(c: ^Carousel) {
 			CAROUSEL_DOT_SELECTED,
 			CAROUSEL_DOT_PAD,
 			fmt_page(gtx, i, c.count),
-			c.active,
-			c.count,
 			brand_selected = c.brand,
 			selected_pad_x = CAROUSEL_DOT_SELECTED_PAD,
 			key = u64(i + 1),
@@ -231,8 +233,12 @@ carousel_close :: proc(c: ^Carousel) {
 		if c.active^ != before {
 			interacted = true
 		}
+		if i == c.active^ {
+			entry = ui.last_widget(gtx).id
+		}
 	}
 	ui.close(&dots)
+	ui.focus_scope_close(gtx, entry)
 	ui.close(&pill)
 	next_state: Interaction = last && !c.circular ? .Disabled : .Live
 	if roles_button(gtx, "", roles, .Chevron_Right, "Next", square = CAROUSEL_BUTTON, radius = CAROUSEL_BUTTON / 2, state = next_state, key = part_key(c.id, 8)) {
