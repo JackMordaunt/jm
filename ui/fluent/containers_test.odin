@@ -267,3 +267,22 @@ test_focus_outline_shows_for_keys_not_clicks :: proc(t: ^testing.T) {
 	ui.probe_key(&p, .Tab)
 	testing.expect(t, focus_strokes(&p) > 0)
 }
+
+@(test)
+test_a_toolbar_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
+	m: Containers_Model
+	p: ui.Probe
+	ui.probe_init(&p, containers, &m, {600, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Bold"))
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, focused_tag(&p), "Italic") // over the divider
+	ui.probe_key(&p, .Right)
+	testing.expect_value(t, focused_tag(&p), "Bold") // wraps
+	ui.probe_key(&p, .Tab)
+	testing.expect_value(t, focused_tag(&p), "Home") // past Italic: last on the page, round to the first
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, focused_tag(&p), "Bold")
+}

@@ -694,9 +694,11 @@ toolbar_padding :: proc(size: Size, vertical: bool) -> ui.Padding {
 
 // toolbar_open opens a toolbar: a row (a column when vertical) of items
 // edge to edge, centred on the cross axis, inside the size's padding,
-// with no background, border or shadow of its own. Items placed inside
-// read toolbar_item_size; toolbar_button and toolbar_divider do. Close
-// it with toolbar_close.
+// with no background, border or shadow of its own. It is one roving
+// focus scope, so one tab stop: Left and Right (Up and Down when
+// vertical) move between its items, wrapping, Home and End to the ends
+// (toolbar.json behaviour). Items placed inside read toolbar_item_size;
+// toolbar_button and toolbar_divider do. Close it with toolbar_close.
 toolbar_open :: proc(gtx: ^ui.Ctx, size := Size.Medium, vertical := false, key: u64 = 0, loc := #caller_location) -> Toolbar {
 	if toolbar_depth < len(toolbar_sizes) {
 		toolbar_sizes[toolbar_depth] = size
@@ -705,6 +707,7 @@ toolbar_open :: proc(gtx: ^ui.Ctx, size := Size.Medium, vertical := false, key: 
 	t: Toolbar
 	t.inset = ui.inset_open(gtx, toolbar_padding(size, vertical), key, loc)
 	ui.container_semantics(gtx, {role = .Toolbar})
+	ui.focus_scope_open(gtx, ui.claim_id(gtx, key, loc), rove = vertical ? .Vertical : .Horizontal, wrap = true)
 	if vertical {
 		t.flex = ui.column_open(gtx, align = .Center)
 	} else {
@@ -715,6 +718,7 @@ toolbar_open :: proc(gtx: ^ui.Ctx, size := Size.Medium, vertical := false, key: 
 
 toolbar_close :: proc(t: ^Toolbar) {
 	ui.close(&t.flex)
+	ui.focus_scope_close(t.inset.gtx)
 	ui.close(&t.inset)
 	toolbar_depth = max(toolbar_depth - 1, 0)
 }
@@ -729,6 +733,7 @@ toolbar :: proc(gtx: ^ui.Ctx, size := Size.Medium, vertical := false, key: u64 =
 @(private = "file")
 toolbar_guard_close :: proc(gtx: ^ui.Ctx, size: Size, vertical: bool, key: u64, loc: runtime.Source_Code_Location) {
 	ui.innermost_close(gtx, .Flex)
+	ui.focus_scope_close(gtx)
 	ui.innermost_close(gtx, .Inset)
 	toolbar_depth = max(toolbar_depth - 1, 0)
 }
