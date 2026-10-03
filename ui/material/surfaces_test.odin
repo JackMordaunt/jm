@@ -189,6 +189,15 @@ test_bottom_sheet_flick_dismisses_and_a_held_drag_does_not :: proc(t: ^testing.T
 	c, ok := ui.probe_center(&p, "drag handle")
 	testing.expect(t, ok)
 
+	// A tap on the body, unlike one on the handle, leaves it where it is.
+	b := ui.probe_bounds(&p, "sheet")
+	corner := ops.Point{b.x + 10, b.y + b.h - 10}
+	press_at(&p, corner)
+	release_at(&p, corner)
+	ui.probe_advance(&p, 30, 1.0 / 60)
+	testing.expect(t, m.open)
+	testing.expect_value(t, m.value, Sheet_Value.Partially_Expanded)
+
 	// 30 dp down at 10 a frame, short of the 56 dp threshold, held for
 	// half a second, then let go: the pointer stopped, so the sheet stays.
 	press_at(&p, c)

@@ -647,22 +647,14 @@ bottom_sheet_open :: proc(
 
 	// Drags: from the sheet body and from its handle, one gesture state.
 	d := &ss.drag
-	settle, clicked, escape := false, false, false
-	areas := [2]ops.Area_Id{drag_id, handle_id}
-	for area in areas {
-		for e in ui.events(gtx, area) {
-			s, c, esc := sheet_drag_event(d, e, area == handle_id)
-			settle |= s
-			clicked |= c
-			escape |= esc
-		}
-	}
+	settle, clicked, escape := sheet_drag(gtx, d, drag_id, handle_id)
+	dragging := d.gesture.phase != .Idle
 	if clicked && anchor != .Hidden {
 		// The handle's click cycles: Expanded hides, Partially_Expanded expands.
 		anchor = anchor == .Expanded ? .Hidden : .Expanded
 	}
 	if settle {
-		anchor = sheet_settle(anchor, d.delta, d.velocity, partial_at, hidden_at, skip_partial)
+		anchor = sheet_settle(anchor, d.gesture.total.y, d.gesture.velocity.y, partial_at, hidden_at, skip_partial)
 	}
 	if escape {
 		anchor = .Hidden
@@ -689,14 +681,14 @@ bottom_sheet_open :: proc(
 	case .Expanded:
 	}
 	offset: f32
-	if d.dragging {
-		offset = clamp(d.start + d.delta, 0, hidden_at)
+	if dragging {
+		offset = clamp(d.start + d.gesture.total.y, 0, hidden_at)
 		st.springs[0] = {value = offset, target = offset, started = true}
 	} else {
 		offset = animate(gtx, c, 0, target, anchor == .Hidden ? .Fast_Effects : .Default_Spatial, 0.1)
 	}
 	scrim := animate(gtx, c, 1, open^ ? 1 : 0, .Default_Effects)
-	if !d.dragging {
+	if !dragging {
 		d.start = offset
 	}
 
@@ -758,52 +750,49 @@ Sheet_State :: struct {
 	height: f32, // the sheet's height as last painted; 0 before it first shows
 }
 
-// Sheet_Drag is a bottom sheet's drag gesture, kept across frames.
+// Sheet_Drag is a bottom sheet's drag gesture, kept across frames: one
+// ui.Drag over the body's and the handle's events, since either starts it.
 Sheet_Drag :: struct {
-	dragging: bool,
-	delta:    f32, // how far the pointer has moved since the press
-	start:    f32, // the sheet's offset when the press landed
-	velocity: f32, // dp/s down: the pointer's, estimated over its recent moves
-	tracker:  ui.Velocity_Tracker,
+	gesture:   ui.Drag, // vertical, down positive
+	start:     f32, // the sheet's offset when the press landed
+	on_handle: bool, // that press landed on the handle
 }
 
-// sheet_drag_event applies e, from the sheet body or its handle, to d.
-// It adds up each Move's travel, which does not change as the sheet
-// itself moves, so the sheet following the pointer cannot feed back into
-// the drag; the velocity comes from those sums and the events' times.
-// settle reports a release after a drag, click a release on the handle
-// that did not move.
+// SHEET_CLICK_SLOP is how near its press, in dp, a release on the handle
+// must end to be a click rather than a drag that settles.
+SHEET_CLICK_SLOP :: f32(4)
+
+// sheet_drag reads the sheet body's and handle's events into d. The sheet
+// follows the pointer from its first pixel, by the travel that does not
+// change as the sheet itself moves; a release within SHEET_CLICK_SLOP of
+// the press clicks when on the handle, and any other settles. Escape on
+// either asks to close; Enter or Space on the handle clicks.
 @(private)
-sheet_drag_event :: proc(d: ^Sheet_Drag, e: ui.Event, on_handle: bool) -> (settle, click, escape: bool) {
-	#partial switch e.kind {
-	case .Press:
-		d.dragging = true
-		d.delta = 0
-		d.velocity = 0
-		ui.velocity_reset(&d.tracker)
-		ui.velocity_add(&d.tracker, e.time, {})
-	case .Move:
-		if d.dragging {
-			d.delta += e.travel.y
-			ui.velocity_add(&d.tracker, e.time, {0, d.delta})
-			d.velocity = ui.velocity_estimate(&d.tracker, e.time).y
-		}
-	case .Release:
-		if d.dragging {
-			d.dragging = false
-			d.velocity = ui.velocity_estimate(&d.tracker, e.time).y
-			if abs(d.delta) < 4 {
-				click = on_handle
-			} else {
-				settle = true
+sheet_drag :: proc(gtx: ^ui.Ctx, d: ^Sheet_Drag, body, handle: ops.Area_Id) -> (settle, click, escape: bool) {
+	evs := make([dynamic]ui.Event, 0, 8, gtx.allocator)
+	for area in ([2]ops.Area_Id{body, handle}) {
+		for e in ui.events(gtx, area) {
+			append(&evs, e)
+			#partial switch e.kind {
+			case .Press:
+				d.on_handle = area == handle
+			case .Key:
+				#partial switch e.key {
+				case .Escape:
+					escape = true
+				case .Enter, .Space:
+					click |= area == handle
+				}
 			}
 		}
-	case .Key:
-		#partial switch e.key {
-		case .Escape:
-			escape = true
-		case .Enter, .Space:
-			click = on_handle
+	}
+	g := &d.gesture
+	ui.drag_update(g, evs[:], .Vertical, slop = 0)
+	if g.released || g.tapped {
+		if abs(g.total.y) < SHEET_CLICK_SLOP {
+			click |= d.on_handle
+		} else {
+			settle = true
 		}
 	}
 	return
