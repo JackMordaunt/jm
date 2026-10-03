@@ -6,8 +6,8 @@
 # the two behaviour packages Primer React depends on (@primer/behaviors:
 # anchored positioning, focus traps and zones; @github/relative-time-element)
 # at the versions its lockfile resolves.
-# Writes source/COMMIT and source/VERSIONS. Everything is assembled in a
-# temp directory, which also receives the previous source/.
+# Writes upstream/COMMIT and upstream/VERSIONS. Everything is assembled in a
+# temp directory, which also receives the previous upstream/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 react=${1:-38.40.1}
@@ -15,7 +15,7 @@ primitives=${2:-11.10.0}
 octicons=${3:-19.38.0}
 sha=$(gh api "repos/primer/react/commits/%40primer%2Freact%40$react" --jq .sha)
 tmp=$(mktemp -d)
-out="$tmp/source"
+out="$tmp/upstream"
 mkdir -p "$out/react" "$out/mixins" "$out/npm/primitives/dist" "$out/npm/octicons"
 
 gh api "repos/primer/react/tarball/$sha" >"$tmp/react.tgz"
@@ -84,6 +84,6 @@ cp "$tmp/relative/dist/relative-time-element.js" "$tmp/relative/dist/duration.js
 echo "$sha" >"$out/COMMIT"
 printf '@primer/react %s\n@primer/primitives %s\n@primer/octicons %s\n@primer/behaviors %s\n@github/relative-time-element %s\n' \
     "$react" "$primitives" "$octicons" "$behaviors" "$relative" >"$out/VERSIONS"
-[ ! -e source ] || mv source "$tmp/previous-source"
-mv "$out" source
+[ ! -e upstream ] || mv upstream "$tmp/previous-upstream"
+mv "$out" upstream
 echo "fetched primer/react@$sha ($react), primitives $primitives, octicons $octicons"

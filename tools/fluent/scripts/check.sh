@@ -24,7 +24,7 @@ schema_check schema/foundations.schema.json foundations.json
 schema_check schema/resolved.schema.json tokens/fluent.resolved.json
 # kit.json is generated; a stale one misleads every agent that reads it.
 if [ -f kit.json ] && ! diff -q <(scripts/index.sh --stdout) kit.json >/dev/null; then err "kit.json is stale; run just fluent-kit-index"; fi
-# tokens/*.json are generated from source/; a stale one lies about the pinned package.
+# tokens/*.json are generated from upstream/; a stale one lies about the pinned package.
 if ! diff -q <(node scripts/tokens.mjs --stdout 2>/dev/null) tokens/fluent.resolved.json >/dev/null; then err "tokens/fluent.resolved.json is stale; run just fluent-kit-tokens"; fi
 
 # Token paths: every tokens.* / typographyStyles.* string a file mentions must exist.
@@ -46,9 +46,9 @@ for f in "${specs[@]}"; do
         while read -r p; do echo "error: $f: part $p is not an anatomy id"; done | grep . && fail=1
     dup=$(jq -r '[.anatomy[].id] | group_by(.) | map(select(length > 1)[0]) | .[]' "$f")
     [ -z "$dup" ] || err "$f: duplicate anatomy ids: $dup"
-    # every source file a spec cites must be vendored under source/
+    # every source file a spec cites must be vendored under upstream/
     jq -r '.. | objects | .source? // empty' "$f" | tr ';' '\n' | sed 's/^ *//; s/:.*//' | grep -E '\.tsx?$' | sort -u |
-        while read -r s; do find source -name "$s" | grep -q . || echo "error: $f: cites $s, not under source/"; done | grep . && fail=1
+        while read -r s; do find upstream -name "$s" | grep -q . || echo "error: $f: cites $s, not under upstream/"; done | grep . && fail=1
 done
 
 [ $fail = 0 ] && echo "check: ${#specs[@]} specs ok" || { echo "check: failed"; exit 1; }

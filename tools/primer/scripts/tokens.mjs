@@ -1,5 +1,5 @@
 // tokens.mjs writes tokens/primer.resolved.json from the pinned
-// @primer/primitives docs in source/npm/primitives/dist/docs: every token
+// @primer/primitives docs in upstream/npm/primitives/dist/docs: every token
 // keyed by its CSS custom property name (--fgColor-default), its value in
 // the light theme, and its value in each other theme where it differs.
 // Size tokens with a coarse-pointer twin carry it as the coarse mode.
@@ -7,9 +7,9 @@
 //   node scripts/tokens.mjs    (from the kit root; just primer-kit-tokens)
 import { readFileSync, writeFileSync, writeSync, readdirSync } from 'node:fs';
 
-const docs = 'source/npm/primitives/dist/docs';
-const commit = readFileSync('source/COMMIT', 'utf8').trim();
-const version = JSON.parse(readFileSync('source/npm/primitives/package.json', 'utf8')).version;
+const docs = 'upstream/npm/primitives/dist/docs';
+const commit = readFileSync('upstream/COMMIT', 'utf8').trim();
+const version = JSON.parse(readFileSync('upstream/npm/primitives/package.json', 'utf8')).version;
 const read = f => JSON.parse(readFileSync(`${docs}/${f}`, 'utf8'));
 
 // The light theme is the value; every other theme is a mode key.

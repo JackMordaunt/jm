@@ -1,6 +1,6 @@
 # Files under packages/react-components/<pkg>/library/src/ the specs cite beyond
 # the styles and types files scripts/fetch.sh vendors by pattern. One per line: the
-# path it lands at under source/components/, then, when the repo path under
+# path it lands at under upstream/components/, then, when the repo path under
 # library/src/ differs from the part after the package name, that path.
 react-breadcrumb/components/Breadcrumb/useBreadcrumb.ts
 react-breadcrumb/components/BreadcrumbButton/useBreadcrumbButton.ts

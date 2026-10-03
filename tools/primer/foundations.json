@@ -546,15 +546,15 @@
     ]
   },
   "provenance": {
-    "text": "Every fact derives from Primer React at the commit in source/COMMIT (the @primer/react release in source/VERSIONS), the @primer/primitives and @primer/octicons packages at the versions there, and primer.style for prose the code leaves unsaid. CSS modules give metrics; .docs.json files give the API and status; .tsx files give behaviour; DESIGN_TOKENS_GUIDE.md gives the token rules.",
+    "text": "Every fact derives from Primer React at the commit in upstream/COMMIT (the @primer/react release in upstream/VERSIONS), the @primer/primitives and @primer/octicons packages at the versions there, and primer.style for prose the code leaves unsaid. CSS modules give metrics; .docs.json files give the API and status; .tsx files give behaviour; DESIGN_TOKENS_GUIDE.md gives the token rules.",
     "sources": [
-      "source/react/<Component>/<Component>.module.css",
-      "source/react/<Component>/<Component>.docs.json",
-      "source/react/<Component>/<Component>.tsx",
-      "source/mixins/*.css",
-      "source/npm/primitives/DESIGN_TOKENS_GUIDE.md",
-      "source/npm/primitives/dist/docs",
-      "source/npm/octicons/data.json"
+      "upstream/react/<Component>/<Component>.module.css",
+      "upstream/react/<Component>/<Component>.docs.json",
+      "upstream/react/<Component>/<Component>.tsx",
+      "upstream/mixins/*.css",
+      "upstream/npm/primitives/DESIGN_TOKENS_GUIDE.md",
+      "upstream/npm/primitives/dist/docs",
+      "upstream/npm/octicons/data.json"
     ]
   }
 }

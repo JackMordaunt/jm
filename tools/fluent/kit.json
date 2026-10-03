@@ -15,7 +15,7 @@
   ],
   "conventions": {
     "tokenPaths": "Strings matching ^(tokens|typographyStyles)\\.[A-Za-z0-9]+$ are token paths in tokens/fluent.resolved.json; every one in this kit is checked to exist.",
-    "sources": "source fields cite Fluent UI React files as use<Name>Styles.styles.ts:lines or <Name>.types.ts:lines under source/components, the focus helpers under source/focus, or fluent2:<page> for the design site.",
+    "sources": "source fields cite Fluent UI React files as use<Name>Styles.styles.ts:lines or <Name>.types.ts:lines under upstream/components, the focus helpers under upstream/focus, or fluent2:<page> for the design site.",
     "units": "px for dimensions, ms for durations; shadows are layers of {x, y, blur, color}; there are no per-corner radii and no springs."
   },
   "files": [

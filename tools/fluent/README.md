@@ -3,7 +3,7 @@
 A Fluent 2 implementation kit, written for AI coding agents. Every file is
 JSON with a JSON Schema: the tokens per theme, the system rules, and one spec
 per component. All of it derives from Fluent UI React v9 at one commit of
-`microsoft/fluentui` (`source/COMMIT`) and the `@fluentui/tokens` package that
+`microsoft/fluentui` (`upstream/COMMIT`) and the `@fluentui/tokens` package that
 commit publishes. Fluent UI React is Microsoft's reference implementation of
 Fluent 2; the design site fills in what the code leaves unsaid.
 
@@ -32,7 +32,7 @@ A component spec (`components/<id>.json`) holds:
 
 A spec never restates a token value; it names the path. Every such path is
 checked to exist, and every source file a spec cites must be vendored under
-`source/`.
+`upstream/`.
 
 ## What is different from a Material kit
 
@@ -54,8 +54,8 @@ justfile's `ui/fluent` section, run from jm's root.
 ```
 just fluent-kit-check    # validate every file against its schema; every token path must exist; kit.json and tokens/ must be fresh
 just fluent-kit-index    # regenerate kit.json from components/
-just fluent-kit-tokens   # regenerate tokens/*.json from source/ (node, reads the vendored @fluentui/tokens package)
-just fluent-kit-fetch    # re-vendor source/ at a commit of microsoft/fluentui (an argument, default master)
+just fluent-kit-tokens   # regenerate tokens/*.json from upstream/ (node, reads the vendored @fluentui/tokens package)
+just fluent-kit-fetch    # re-vendor upstream/ at a commit of microsoft/fluentui (an argument, default master)
 just fluent-kit-page     # rebuild kit/index.html
 ```
 

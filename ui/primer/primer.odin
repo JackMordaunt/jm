@@ -11,7 +11,7 @@ Every value comes from the primer-kit (tools/primer): tokens from its
 primer.resolved.json, generated into package tokens (imported as tok),
 icons from @primer/octicons, and behaviour from its foundations.json and
 components/<id>.json specs, which cite Primer React's CSS modules and
-components at the release the kit's source/VERSIONS records. Where a
+components at the release the kit's upstream/VERSIONS records. Where a
 component departs from its spec the proc's own comment says so.
 
 What Primer does differently, and what this package is shaped by

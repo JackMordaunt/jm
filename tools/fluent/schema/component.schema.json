@@ -86,7 +86,7 @@
             "type": "string",
             "pattern": "^[A-Za-z]+(\\.[A-Za-z]+)*\\.tsx?$"
           },
-          "description": "The Fluent UI React v9 files this spec was read from: use<Name>Styles.styles.ts and <Name>.types.ts under source/components."
+          "description": "The Fluent UI React v9 files this spec was read from: use<Name>Styles.styles.ts and <Name>.types.ts under upstream/components."
         },
         "fluent2": {
           "type": "array",
@@ -371,7 +371,7 @@
     },
     "source": {
       "type": "string",
-      "description": "Where a fact comes from: one or more citations separated by \"; \". A citation is a file vendored under source/ with optional lines (useButtonStyles.styles.ts:120-140, Button.types.ts:32, constants.ts:5, DialogSurfaceMotion.ts:10-30, Collapse.ts), or a Fluent 2 design page (fluent2:button). tools/check.sh verifies the file exists.",
+      "description": "Where a fact comes from: one or more citations separated by \"; \". A citation is a file vendored under upstream/ with optional lines (useButtonStyles.styles.ts:120-140, Button.types.ts:32, constants.ts:5, DialogSurfaceMotion.ts:10-30, Collapse.ts), or a Fluent 2 design page (fluent2:button). tools/check.sh verifies the file exists.",
       "pattern": "^(fluent2:[a-z0-9-]+|[A-Za-z]+(\\.[A-Za-z]+)*\\.tsx?(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?)(; (fluent2:[a-z0-9-]+|[A-Za-z]+(\\.[A-Za-z]+)*\\.tsx?(:[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)?))*$"
     },
     "values": {

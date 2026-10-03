@@ -52,21 +52,21 @@ while IFS=$'\t' read -r f p; do
 done < <(for f in "${specs[@]}" foundations.json; do [ -f "$f" ] && refs "$f"; done)
 
 # Cited files: every file named in a source field or the references must
-# be vendored under source/.
+# be vendored under upstream/.
 cited() { # every file a JSON file cites
     jq -r '(.. | objects | .source? // empty), (.references?.react // [] | .[])' "$1" |
         tr ';' '\n' | sed 's/^ *//; s/:.*//' | grep -E '\.(css|tsx?|m?js|json|md)$' | sort -u
 }
-# A path is looked up under source/react, then source/; a base name must
-# name exactly one file, since 43 base names repeat under source/.
+# A path is looked up under upstream/react, then upstream/; a base name must
+# name exactly one file, since 43 base names repeat under upstream/.
 for f in "${specs[@]}" foundations.json; do
     while read -r s; do
         if [[ $s == */* ]]; then
-            [ -f "source/react/$s" ] || [ -f "source/$s" ] || err "$f: cites $s, not under source/react or source/"
+            [ -f "upstream/react/$s" ] || [ -f "upstream/$s" ] || err "$f: cites $s, not under upstream/react or upstream/"
             continue
         fi
-        n=$(find source -name "$s" | wc -l | tr -d " ")
-        [ "$n" -eq 1 ] || err "$f: cites $s, which names $n files under source/; cite its path"
+        n=$(find upstream -name "$s" | wc -l | tr -d " ")
+        [ "$n" -eq 1 ] || err "$f: cites $s, which names $n files under upstream/; cite its path"
     done < <(cited "$f")
 done
 

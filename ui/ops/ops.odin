@@ -127,7 +127,7 @@ Side_Align :: enum u8 {
 //     that way, as a web page does.
 //
 // This is @primer/behaviors' getAnchoredPosition when sides, aligns and
-// overhang are given (tools/primer/source/npm/behaviors/esm/
+// overhang are given (tools/primer/upstream/npm/behaviors/esm/
 // anchored-position.mjs:112-176), and jm:ui's own flip-and-shift without
 // them. key names the popup, so the side and alignment flatten chose can
 // be read back the next frame (ui.placed).

@@ -65,7 +65,7 @@ test_arc_numbers_and_flags_may_run_together :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	defer free_all(context.temp_allocator)
 	// The 16px triangle-down octicon, verbatim (the primer-kit's
-	// source/npm/octicons/data.json): radii run together (.25.25) and a
+	// upstream/npm/octicons/data.json): radii run together (.25.25) and a
 	// minus sign separates (0-.177).
 	tri, ok := parse_svg_path("m4.427 7.427 3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z")
 	testing.expect(t, ok)

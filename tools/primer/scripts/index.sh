@@ -21,7 +21,7 @@ index=$(jq -n \
     ],
     conventions: {
       tokenPaths: "Strings matching ^--[A-Za-z][A-Za-z0-9-]*$ are token paths in tokens/primer.resolved.json; every one in this kit is checked to exist.",
-      sources: "source fields cite Primer React files as <Name>.module.css:lines, <Name>.tsx:lines or <Name>.docs.json under source/react, mixins under source/mixins, DESIGN_TOKENS_GUIDE.md, or primer:<slug> for primer.style/product/components.",
+      sources: "source fields cite Primer React files as <Name>.module.css:lines, <Name>.tsx:lines or <Name>.docs.json under upstream/react, mixins under upstream/mixins, DESIGN_TOKENS_GUIDE.md, or primer:<slug> for primer.style/product/components.",
       units: "px for dimensions, ms for durations; shadows are layers of {x, y, blur, spread, color, inset}; there are no springs."
     },
     files: [

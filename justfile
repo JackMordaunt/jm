@@ -789,7 +789,7 @@ material-shapes:
 # Re-parse the kit's Compose sources into its tokens/*.json
 [group('ui/material')]
 material-kit-tokens:
-    {{odin}} run {{m3e_kit}}/m3e-tokens {{flags}} -- {{m3e_kit}}/source {{m3e_kit}}/tokens
+    {{odin}} run {{m3e_kit}}/m3e-tokens {{flags}} -- {{m3e_kit}}/upstream {{m3e_kit}}/tokens
 
 # Needs java 21 or later; the graphics-shapes jars are fetched and cached.
 #
@@ -798,7 +798,7 @@ material-kit-tokens:
 material-kit-shapes:
     {{m3e_kit}}/shapes/gen/run.sh
 
-# Replaces source/ wholesale, so a token file upstream deleted goes too.
+# Replaces upstream/ wholesale, so a token file androidx deleted goes too.
 # Needs gh.
 #
 # Pull the kit's Compose token sources at androidx-main
@@ -811,10 +811,10 @@ material-kit-fetch:
     gh api "repos/androidx/androidx/contents/{{m3e_tokens_path}}?ref=$sha" --jq '.[].name' |
         xargs -P 16 -I{} curl -sfL --max-time 60 -o "$tmp/{}" \
             "https://raw.githubusercontent.com/androidx/androidx/$sha/{{m3e_tokens_path}}/{}"
-    rm -rf {{m3e_kit}}/source/tokens
-    mv "$tmp" {{m3e_kit}}/source/tokens
-    echo "$sha" > {{m3e_kit}}/source/COMMIT
-    echo "fetched $(ls {{m3e_kit}}/source/tokens | wc -l) files at $sha"
+    rm -rf {{m3e_kit}}/upstream/tokens
+    mv "$tmp" {{m3e_kit}}/upstream/tokens
+    echo "$sha" > {{m3e_kit}}/upstream/COMMIT
+    echo "fetched $(ls {{m3e_kit}}/upstream/tokens | wc -l) files at $sha"
 
 # Regenerate the kit's kit.json, the index an agent reads first
 [group('ui/material')]
@@ -884,13 +884,13 @@ primer-tokens:
 # Regenerate ui/primer/icon_data.odin from the kit's vendored octicons
 [group('ui/primer')]
 primer-icons:
-    {{odin}} run {{primer_kit}}/icon-data {{flags}} -- {{primer_kit}}/source/npm/octicons/data.json ui/primer/icon_data.odin
+    {{odin}} run {{primer_kit}}/icon-data {{flags}} -- {{primer_kit}}/upstream/npm/octicons/data.json ui/primer/icon_data.odin
 
-# Replaces source/ wholesale: primer/react at the commit an @primer/react
+# Replaces upstream/ wholesale: primer/react at the commit an @primer/react
 # release tag names, then @primer/primitives and @primer/octicons at the
 # versions given. Needs gh, npm and jq.
 #
-# Re-vendor the kit's source/ at pinned Primer releases
+# Re-vendor the kit's upstream/ at pinned Primer releases
 [group('ui/primer')]
 primer-kit-fetch react="38.40.1" primitives="11.10.0" octicons="19.38.0":
     {{primer_kit}}/scripts/fetch.sh {{react}} {{primitives}} {{octicons}}
@@ -1052,12 +1052,12 @@ fluent-icons-fetch ref="":
 fluent-kit-tokens:
     cd {{fluent_kit}} && node scripts/tokens.mjs
 
-# Replaces source/ wholesale at one commit of microsoft/fluentui: the
+# Replaces upstream/ wholesale at one commit of microsoft/fluentui: the
 # token sources, the focus helpers, and each spec'd component's styles and
 # types files; then the @fluentui/tokens package that commit names. Needs
 # gh and npm.
 #
-# Re-vendor the kit's source/ at a microsoft/fluentui commit
+# Re-vendor the kit's upstream/ at a microsoft/fluentui commit
 [group('ui/fluent')]
 fluent-kit-fetch commit="master":
     {{fluent_kit}}/scripts/fetch.sh {{commit}}

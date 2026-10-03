@@ -11,7 +11,7 @@ import "jm:ui"
 import "jm:ui/ops"
 
 // RelativeTime's text is @github/relative-time-element 5.0.0's, vendored
-// at tools/primer/source/npm/relative-time-element: the relative phrase
+// at tools/primer/upstream/npm/relative-time-element: the relative phrase
 // within a threshold ("3 days ago", "in 2 hours", "yesterday"), a date
 // past it ("on Oct 2"), and the micro and elapsed durations ("3h",
 // "4d 3h 2m 1s"). This file ports duration.js and the element's

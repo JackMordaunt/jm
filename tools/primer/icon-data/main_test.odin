@@ -47,7 +47,7 @@ test_an_icon_of_more_paths_than_an_entry_holds_is_refused :: proc(t: ^testing.T)
 test_the_checked_in_icon_data_is_current :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	defer free_all(context.temp_allocator)
-	out, ok := generate(#load("../source/npm/octicons/data.json"))
+	out, ok := generate(#load("../upstream/npm/octicons/data.json"))
 	testing.expect(t, ok)
 	testing.expect(
 		t,

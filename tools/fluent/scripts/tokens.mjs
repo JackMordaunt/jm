@@ -1,29 +1,29 @@
 // tokens.mjs writes tokens/fluent.resolved.json and tokens/fluent.tokens.json
-// from the pinned @fluentui/tokens package in source/npm (the values apps
-// get) and the token sources in source/tokens (the alias each value came
+// from the pinned @fluentui/tokens package in upstream/npm (the values apps
+// get) and the token sources in upstream/tokens (the alias each value came
 // from, read off the generated alias files).
 //
 //   node scripts/tokens.mjs    (from the kit root; just fluent-kit-tokens)
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync, readdirSync, writeSync } from 'node:fs';
 const require = createRequire(import.meta.url);
-const pkg = require('../source/npm/package/lib-commonjs/index.cjs');
-const version = JSON.parse(readFileSync('source/npm/package/package.json', 'utf8')).version;
-const commit = readFileSync('source/COMMIT', 'utf8').trim();
+const pkg = require('../upstream/npm/package/lib-commonjs/index.cjs');
+const version = JSON.parse(readFileSync('upstream/npm/package/package.json', 'utf8')).version;
+const commit = readFileSync('upstream/COMMIT', 'utf8').trim();
 
 const themes = {
   value: pkg.webLightTheme, dark: pkg.webDarkTheme, highContrast: pkg.teamsHighContrastTheme,
   teamsLight: pkg.teamsLightTheme, teamsDark: pkg.teamsDarkTheme,
 };
-const globalFiles = readdirSync('source/tokens/global').filter(f => f.endsWith('.ts'));
+const globalFiles = readdirSync('upstream/tokens/global').filter(f => f.endsWith('.ts'));
 const globalNames = new Set();
-for (const f of globalFiles) for (const m of readFileSync(`source/tokens/global/${f}`, 'utf8').matchAll(/^\s{2}([a-zA-Z0-9]+):/gm)) globalNames.add(m[1]);
+for (const f of globalFiles) for (const m of readFileSync(`upstream/tokens/global/${f}`, 'utf8').matchAll(/^\s{2}([a-zA-Z0-9]+):/gm)) globalNames.add(m[1]);
 for (const s of ['shadow2','shadow4','shadow8','shadow16','shadow28','shadow64']) { globalNames.add(s); globalNames.add(s + 'Brand'); }
 
 // aliases: "colorNeutralForeground1: grey[14]," in the light alias files -> global.grey.14
 const alias = {};
 for (const f of ['alias/lightColor.ts', 'alias/lightColorPalette.ts']) {
-  for (const m of readFileSync(`source/tokens/${f}`, 'utf8').matchAll(/^\s{2}([a-zA-Z0-9]+):\s*([a-zA-Z]+)(?:\[(\d+)\]|\.([a-zA-Z0-9]+))?,/gm)) {
+  for (const m of readFileSync(`upstream/tokens/${f}`, 'utf8').matchAll(/^\s{2}([a-zA-Z0-9]+):\s*([a-zA-Z]+)(?:\[(\d+)\]|\.([a-zA-Z0-9]+))?,/gm)) {
     const [, name, ident, idx, key] = m;
     alias[name] = idx !== undefined ? `${ident}.${idx}` : key !== undefined ? `${ident}.${key}` : ident;
   }

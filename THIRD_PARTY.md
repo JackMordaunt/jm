@@ -51,12 +51,12 @@ files name their source in the header.
 
 | Data | Used by | Licence | Source |
 |------|---------|---------|--------|
-| Material 3 tokens and shapes | `ui/material` | Apache-2.0 | androidx Compose Material 3, at `tools/material/source/COMMIT` |
+| Material 3 tokens and shapes | `ui/material` | Apache-2.0 | androidx Compose Material 3, at `tools/material/upstream/COMMIT` |
 | Material Symbols | `ui/material` | Apache-2.0 | google/material-design-icons |
-| Fluent 2 tokens | `ui/fluent` | MIT | `tools/fluent/source/npm/package/LICENSE` |
+| Fluent 2 tokens | `ui/fluent` | MIT | `tools/fluent/upstream/npm/package/LICENSE` |
 | Fluent System Icons | `ui/fluent` | MIT | `tools/fluent/icons/LICENSE` |
-| Primer primitives and behaviours | `ui/primer` | MIT | `tools/primer/source/npm/*/LICENSE` |
-| Octicons | `ui/primer` | MIT | `tools/primer/source/npm/octicons/LICENSE` |
+| Primer primitives and behaviours | `ui/primer` | MIT | `tools/primer/upstream/npm/*/LICENSE` |
+| Octicons | `ui/primer` | MIT | `tools/primer/upstream/npm/octicons/LICENSE` |
 
 The Octicons licence covers the icons, not GitHub's logos and marks. Do not use the GitHub
 mark, the Octocat or Mona in a shipped program.

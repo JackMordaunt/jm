@@ -10,7 +10,7 @@ import "jm:ui/ops"
 // Data display: table, list, tag, persona, avatar group, skeleton, text
 // and image, on the fluent-kit's table, list, tag, persona,
 // avatar-group, skeleton, text and image specs and the styles files they
-// cite at the kit's commit (source/COMMIT), as use<Name>Styles.
+// cite at the kit's commit (upstream/COMMIT), as use<Name>Styles.
 // styles.ts:lines. Every colour is a role; every hard-coded number is
 // cited where it is used.
 

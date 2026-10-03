@@ -696,8 +696,8 @@
   },
   "provenance": {
     "text": "All facts derive from Fluent UI React v9 at one commit of microsoft/fluentui and the @fluentui/tokens package that commit publishes.",
-    "values": "tokens/fluent.resolved.json holds the values the published package gives each theme (tools/tokens.mjs reads source/npm/package), so they are what an app gets, not a re-derivation.",
-    "aliases": "The alias field comes from the generated alias files in source/tokens/alias, read for the global each light value names; 164 of 366 alias tokens name one, the rest are computed in code.",
-    "sources": "Component behaviour is read from each component's styles and types files in source/components; the Fluent 2 design site fills anatomy and usage where the code is silent, cited as fluent2:<page>."
+    "values": "tokens/fluent.resolved.json holds the values the published package gives each theme (tools/tokens.mjs reads upstream/npm/package), so they are what an app gets, not a re-derivation.",
+    "aliases": "The alias field comes from the generated alias files in upstream/tokens/alias, read for the global each light value names; 164 of 366 alias tokens name one, the rest are computed in code.",
+    "sources": "Component behaviour is read from each component's styles and types files in upstream/components; the Fluent 2 design site fills anatomy and usage where the code is silent, cited as fluent2:<page>."
   }
 }

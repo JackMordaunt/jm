@@ -3,7 +3,7 @@
 A Primer implementation kit, written for AI coding agents. Every file is
 JSON with a JSON Schema: the tokens per theme, the system rules, and one spec
 per component. All of it derives from Primer React at the commit an
-`@primer/react` release names (`source/COMMIT`, `source/VERSIONS`), the
+`@primer/react` release names (`upstream/COMMIT`, `upstream/VERSIONS`), the
 `@primer/primitives` tokens and `@primer/octicons` icons at pinned versions,
 the `@primer/behaviors` (anchored positioning, focus traps and zones) and
 `@github/relative-time-element` builds Primer React's lockfile resolves, and
@@ -22,7 +22,7 @@ and an index of every component.
 | `tokens/primer.resolved.json` | `schema/resolved.schema.json` | All tokens, flat, keyed by the CSS custom property Primer reads (`--fgColor-default`). `value` is the light theme; the other 13 themes appear where they differ, and `coarse` where a coarse pointer changes a size. |
 
 The token sources with their aliases intact are Primer's own, DTCG-shaped,
-under `source/npm/primitives/src/tokens`.
+under `upstream/npm/primitives/src/tokens`.
 
 A component spec (`components/<id>.json`) holds:
 - **Identity:** `status` (alpha, beta, draft, deprecated or experimental, verbatim from Primer's `.docs.json`) and `summary`.
@@ -36,7 +36,7 @@ A component spec (`components/<id>.json`) holds:
 
 A spec never restates a token value; it names the path. Every such path is
 checked to exist, and every source file a spec cites must be vendored under
-`source/`.
+`upstream/`.
 
 ## What is different from the Fluent and Material kits
 
@@ -62,6 +62,6 @@ justfile's `ui/primer` section, run from jm's root.
 ```
 just primer-kit-check    # validate every file against its schema; every token path must exist; kit.json and tokens/ must be fresh
 just primer-kit-index    # regenerate kit.json from components/
-just primer-kit-tokens   # regenerate tokens/primer.resolved.json from source/ (node)
-just primer-kit-fetch    # re-vendor source/ at pinned releases (gh, npm, jq)
+just primer-kit-tokens   # regenerate tokens/primer.resolved.json from upstream/ (node)
+just primer-kit-fetch    # re-vendor upstream/ at pinned releases (gh, npm, jq)
 ```

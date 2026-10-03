@@ -2,7 +2,7 @@ package main
 
 import "core:testing"
 
-SOURCE_DIR :: #directory + "/../source/tokens"
+SOURCE_DIR :: #directory + "/../upstream/tokens"
 
 @(test)
 test_kebab :: proc(t: ^testing.T) {

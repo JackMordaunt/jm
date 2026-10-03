@@ -11,7 +11,7 @@ Every value comes from the Fluent kit (tools/fluent):
 tokens from its fluent.resolved.json, generated into package tokens
 (imported as tok), and behaviour from its foundations.json and
 components/<id>.json specs, which cite Fluent UI React's styles files at
-the commit the kit's source/COMMIT records. Where a component departs
+the commit the kit's upstream/COMMIT records. Where a component departs
 from its spec the proc's own comment says so.
 
 What Fluent does differently from Material, and what this package is

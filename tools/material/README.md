@@ -3,7 +3,7 @@
 A Material 3 Expressive implementation kit, written for AI coding agents.
 Every file is JSON with a JSON Schema: the tokens, the system rules, one spec
 per component, and the shape library. All of it derives from the Jetpack
-Compose Material 3 sources at one androidx commit (`source/COMMIT`). Compose
+Compose Material 3 sources at one androidx commit (`upstream/COMMIT`). Compose
 is Google's reference implementation of Expressive; MDC-Android and Material
 Web are in maintenance mode.
 
@@ -43,13 +43,13 @@ justfile's `ui/material` section, run from jm's root.
 ```
 just material-kit-check    # validate every file against its schema; every token path must exist; kit.json must be fresh
 just material-kit-index    # regenerate kit.json from components/
-just material-kit-tokens   # re-parse source/tokens into tokens/*.json (Odin, m3e-tokens/)
+just material-kit-tokens   # re-parse upstream/tokens into tokens/*.json (Odin, m3e-tokens/)
 just material-kit-shapes   # regenerate shapes/ from graphics-shapes (Java 21, shapes/gen/)
-just material-kit-fetch    # pull token sources at androidx-main, updating source/COMMIT
+just material-kit-fetch    # pull token sources at androidx-main, updating upstream/COMMIT
 just material-kit-page     # rebuild kit/index.html
 ```
 
-`just test` runs the parser's tests, including a full parse of source/.
+`just test` runs the parser's tests, including a full parse of upstream/.
 `just material-tokens` and `just material-shapes` then turn the kit into
 jm:ui/material's generated code.
 
