@@ -895,3 +895,632 @@ Menu_Scroll :: struct {
 popup_scroll :: proc(gtx: ^ui.Ctx, base: ops.Area_Id) -> ^Menu_Scroll {
 	return ui.widget_data(gtx, ui.id_mix(base, 0x5c), Menu_Scroll)
 }
+
+// SelectPanel.
+
+// Select_Panel_Variant is where the panel shows: floating under its
+// anchor, committing each choice at once, or centred over a backdrop with
+// Cancel and Save.
+Select_Panel_Variant :: enum u8 {
+	Anchored,
+	Modal,
+}
+
+// Select_Panel_Item is one option, as the caller has filtered it: its
+// text and ActionList's description, visuals, variant and state, and the
+// group it shows under (an index into the groups, -1 for none).
+Select_Panel_Item :: struct {
+	text, description: string,
+	desc_variant:      Description_Variant,
+	leading, trailing: Icon,
+	variant:           List_Item_Variant,
+	disabled:          bool,
+	group:             int,
+}
+
+// Select_Panel_Group is a group's heading.
+Select_Panel_Group :: struct {
+	title:   string,
+	variant: Group_Heading_Variant,
+}
+
+// Panel_Message_Variant is what an empty panel's message says: nothing
+// matches, or something went wrong.
+Panel_Message_Variant :: enum u8 {
+	Empty,
+	Warning,
+	Error,
+}
+
+// Select_Panel_Message replaces the list: a title, a body and its look.
+Select_Panel_Message :: struct {
+	title, body: string,
+	variant:     Panel_Message_Variant,
+}
+
+// Panel_Gesture is what closed a panel on the frame it closed
+// (onOpenChange's gesture).
+Panel_Gesture :: enum u8 {
+	None,
+	Selection,
+	Escape,
+	Click_Outside,
+	Cancel,
+}
+
+// Select_Panel_Result is what one frame of a SelectPanel did.
+Select_Panel_Result :: struct {
+	changed:   bool, // the selection changed
+	filtered:  bool, // the filter text changed: filter the items again
+	closed:    Panel_Gesture,
+	secondary: bool, // the footer's secondary action was activated
+}
+
+// Select_Panel_Data is what a panel keeps between frames.
+@(private)
+Select_Panel_Data :: struct {
+	active:  int, // the highlighted option, in display order
+	pending: int, // modal single choice not yet saved, one more than its index; 0 for none
+	input:   ops.Area_Id, // the filter's area last frame
+	chrome:  f32, // the panel's height less its list region's, last frame
+	scroll:  ui.Scroll_Offset,
+	overlay: Overlay_Data, // the modal's surface state
+	was:     bool,
+}
+
+// SELECT_PANEL_EMPTY is the message an empty, quiet panel shows
+// (SelectPanel/SelectPanel.tsx:33-45).
+SELECT_PANEL_EMPTY :: "No items available"
+
+// select_panel_button is a SelectPanel's default anchor: a button with a
+// trailing triangle-down showing the selected items' texts joined by ", ",
+// or placeholder when none is, that toggles open^ and reports it.
+select_panel_button :: proc(
+	gtx: ^ui.Ctx,
+	open: ^bool,
+	items: []Select_Panel_Item,
+	selected: []bool,
+	placeholder := "Select items",
+	leading := Icon.None,
+	state := Interaction.Live,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	texts := make([dynamic]string, gtx.allocator)
+	for it, i in items {
+		if i < len(selected) && selected[i] {
+			append(&texts, it.text)
+		}
+	}
+	label := placeholder if len(texts) == 0 else strings.join(texts[:], ", ", gtx.allocator)
+	return action_menu_button(gtx, label, open, leading, state = state, key = key, loc = loc)
+}
+
+// Select_Panel_Opts are a panel's options, past its state.
+@(private)
+Select_Panel_Opts :: struct {
+	multiple:        bool,
+	variant:         Select_Panel_Variant,
+	title, subtitle: string,
+	placeholder:     string,
+	input_label:     string,
+	groups:          []Select_Panel_Group,
+	loading:         bool,
+	message:         Maybe(Select_Panel_Message),
+	select_all:      bool,
+	secondary:       string,
+}
+
+// select_panel is Primer's SelectPanel (select-panel.json): a panel
+// holding a filter input over a list to choose from, opened from anchor
+// (select_panel_button, or any button just drawn, in the same ui.stack).
+// The caller filters: each keystroke in filter reports filtered, and the
+// caller passes the matching items back, with selected as long as them.
+// multiple makes it multi-select: checkboxes, each toggle committed at
+// once, and with select_all a Select all / Deselect all row over the
+// list acting on the items shown. Anchored, it floats under the anchor
+// and a single choice selects (or clears) and closes; Modal centres it
+// over a backdrop with Cancel and Save, a single choice only pending
+// (radios) until Save. title heads it (Select an item, or Select items
+// when multiple), subtitle under it; groups head the items that name
+// them. Focus stays in the filter: ArrowDown and ArrowUp move the
+// highlight, wrapping, PageDown and PageUp jump to the last and first,
+// the pointer moving onto an option highlights it, Enter activates it,
+// Space types, and Home and End stay with the text (focus-zone.mjs
+// :46-64, FilteredActionList.tsx:338-378); the highlight is scrolled into
+// view 8px above the list's bottom. loading with no items shows a
+// spinner in the list's place, with items a spinner in the filter; with
+// no items a message (message, else "No items available") replaces the
+// list. Escape, a press outside, Cancel or the close button close it,
+// closed naming the gesture; focus goes to the filter as it opens and
+// back to the anchor as it closes. width and height are Overlay's steps,
+// else it hugs its content from 192px up to the window less 32px and the
+// window's height, the list scrolling.
+//
+// Departures: the panel does not order the selection first (Primer does
+// behind a feature flag, select-panel.json inputs); the skeleton loader,
+// the notice banner, virtualisation, the narrow fullscreen variant and
+// the 1000ms loading delay (select-panel.json inputs and behaviour;
+// SelectPanel/SelectPanel.tsx:281-328) are not offered; the polite
+// announcements are a status node carrying the latest text rather than
+// speech after 500ms (useAnnouncements.tsx:9-183).
+select_panel :: proc(
+	gtx: ^ui.Ctx,
+	open: ^bool,
+	anchor: ui.Last_Widget,
+	filter: ^ui.Text_State,
+	items: []Select_Panel_Item,
+	selected: []bool,
+	multiple := false,
+	variant := Select_Panel_Variant.Anchored,
+	title := "",
+	subtitle := "",
+	placeholder := "Filter items",
+	input_label := "",
+	groups: []Select_Panel_Group = nil,
+	loading := false,
+	message: Maybe(Select_Panel_Message) = nil,
+	select_all := false,
+	secondary := "",
+	width := Overlay_Width.Auto,
+	height := Overlay_Height.Auto,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> (r: Select_Panel_Result) {
+	id := ui.claim_id(gtx, key, loc)
+	d := ui.widget_data(gtx, id, Select_Panel_Data)
+	o := Select_Panel_Opts{multiple, variant, title, subtitle, placeholder, input_label, groups, loading, message, select_all, secondary}
+	if o.title == "" {
+		o.title = multiple ? "Select items" : "Select an item"
+	}
+	order := panel_order(gtx, items, groups)
+	n := len(order)
+	opening := open^ && !d.was
+	if opening {
+		d.active, d.pending, d.scroll = 0, 0, {}
+		if !multiple && variant == .Modal {
+			for i in 0 ..< min(len(items), len(selected)) {
+				if selected[i] {
+					d.pending = i + 1
+				}
+			}
+		}
+	}
+	enter, moved := false, false
+	if open^ {
+		enter, moved = panel_keys(gtx, d, n)
+	}
+	d.active = n > 0 ? clamp(d.active, 0, n - 1) : 0
+	p := Panel{id, ui.id_mix(id, 0x11), d, &o, open, filter, items, selected, order, enter, moved}
+	if variant == .Modal {
+		panel_modal(gtx, &p, &r)
+	} else {
+		a := anchored_overlay_open(gtx, open, anchor, width = width, height = height, focus = {prevent = true}, role = .Dialog, name = o.title, scrolls = false, key = u64(ui.id_mix(id, 1)), loc = loc)
+		#partial switch a.dismissed {
+		case .Escape:
+			r.closed = .Escape
+		case .Click_Outside:
+			r.closed = .Click_Outside
+		}
+		if a.visible {
+			panel_body(gtx, &p, overlay_limits(gtx.viewport, width, height).max.y, &r)
+		}
+		anchored_overlay_close(&a)
+	}
+	if opening && d.input != 0 {
+		ui.focus_request(gtx, d.input)
+	}
+	d.was = open^
+	return
+}
+
+// panel_order is the items in display order: those in no group, then
+// each group's in the groups' order (SelectPanel/SelectPanel.tsx groups).
+@(private)
+panel_order :: proc(gtx: ^ui.Ctx, items: []Select_Panel_Item, groups: []Select_Panel_Group) -> []int {
+	out := make([dynamic]int, gtx.allocator)
+	for it, i in items {
+		if it.group < 0 || it.group >= len(groups) {
+			append(&out, i)
+		}
+	}
+	for _, g in groups {
+		for it, i in items {
+			if it.group == g {
+				append(&out, i)
+			}
+		}
+	}
+	return out[:]
+}
+
+// panel_keys reads the keys the filter heard this frame: ArrowDown and
+// ArrowUp move the highlight, wrapping; PageDown and PageUp jump to the
+// ends (focus-zone.mjs:46-64, FilteredActionList.tsx:338-347); Enter
+// activates. It reports Enter and whether the highlight moved.
+@(private)
+panel_keys :: proc(gtx: ^ui.Ctx, d: ^Select_Panel_Data, n: int) -> (enter, moved: bool) {
+	if d.input == 0 {
+		return
+	}
+	for e in ui.events(gtx, d.input) {
+		if e.kind != .Key || n == 0 {
+			continue
+		}
+		#partial switch e.key {
+		case .Down:
+			d.active = (d.active + 1) %% n
+			moved = true
+		case .Up:
+			d.active = (d.active - 1 + n) %% n
+			moved = true
+		case .Page_Down:
+			d.active, moved = n - 1, true
+		case .Page_Up:
+			d.active, moved = 0, true
+		case .Enter:
+			enter = true
+		}
+	}
+	return
+}
+
+// panel_modal is the Modal variant: a backdrop over the window and the
+// panel centred on it, focus trapped inside; Escape or a press on the
+// backdrop cancels (SelectPanel/SelectPanel.tsx:861-885,928-941).
+@(private)
+panel_modal :: proc(gtx: ^ui.Ctx, p: ^Panel, r: ^Select_Panel_Result) {
+	id, d, o, open := p.id, p.d, p.o, p.open
+	backdrop := ui.id_mix(id, 6)
+	if open^ {
+		for e in ui.events(gtx, id) {
+			if e.kind == .Key && e.key == .Escape {
+				open^ = false
+				r.closed = .Escape
+			}
+		}
+		for e in ui.events(gtx, backdrop) {
+			if e.kind == .Press && e.button == .Left {
+				open^ = false
+				r.closed = .Cancel
+			}
+		}
+	}
+	if !overlay_focus(gtx, id, &d.overlay, open^, {prevent = true}) {
+		return
+	}
+	vw, vh := gtx.viewport.x, gtx.viewport.y
+	layer := ui.overlay_open(gtx, cs = ui.exact(gtx.viewport), root = true, cover = true)
+	shade := bezier_ease(OVERLAY_ENTER.easing, ui.tween_update(&d.overlay.fade, gtx))
+	ops.fill(gtx.scene, ops.Rect{0, 0, vw, vh}, fade(color(.Overlay_Backdrop_Bg_Color), shade))
+	ops.input_area(gtx.scene, backdrop, ops.Rect{0, 0, vw, vh}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
+	ui.focus_scope_open(gtx, id, trap = true)
+	ui.key_interest(gtx, id, .Escape, topmost = true)
+	center := ui.centered_open(gtx, key = u64(ui.id_mix(id, 7)))
+	limits := overlay_limits(gtx.viewport, .Medium, .Auto)
+	sized := ui.sized_open(gtx, limits, key = u64(ui.id_mix(id, 8)))
+	look := new(Surface_Look, gtx.allocator)
+	look^ = {id, &d.overlay, corners_all(tok.BORDER_RADIUS_LARGE), .Overlay_Bg_Color, true, ui.frame_string(gtx, o.title)}
+	box := ui.box_open(gtx, {paint = paint_surface, user = look}, key = u64(ui.id_mix(id, 9)))
+	ui.container_semantics(gtx, {role = .Dialog, label = ui.frame_string(gtx, o.title), description = ui.frame_string(gtx, o.subtitle), states = {.Modal}})
+	panel_body(gtx, p, limits.max.y, r)
+	ui.close(&box)
+	ui.close(&sized)
+	ui.close(&center)
+	ui.focus_scope_close(gtx)
+	layer.discard = !open^
+	ui.overlay_close(&layer)
+}
+
+// panel_body lays out the panel's column (SelectPanel.module.css:6-138):
+// the header, the filter band, the select-all row, the list region that
+// takes the height left under cap, and the footer. It keeps the height
+// the rest took, for the next frame's list region.
+@(private)
+panel_body :: proc(gtx: ^ui.Ctx, p: ^Panel, cap: f32, r: ^Select_Panel_Result) {
+	id, d, o := p.id, p.d, p.o
+	// The panel hugs its widest part, as the overlay's shrink-to-fit
+	// does, so the column that fills it is told that width.
+	w := panel_natural_width(gtx, p)
+	hug := ui.sized_open(gtx, {min = {w, 0}, max = {w, ui.INF}}, key = u64(ui.id_mix(id, 15)))
+	col := ui.column_open(gtx, align = .Fill, key = u64(ui.id_mix(id, 10)))
+	panel_header(gtx, p, r)
+	n := len(p.order)
+	active: ops.Area_Id
+	if n > 0 && !(o.loading && len(p.items) == 0) {
+		active = action_list_item_id(p.base, d.active)
+	}
+	band := ui.box_open(gtx, {padding = ui.pad_all(tok.BASE_SIZE_8), paint = paint_band_rule}, key = u64(ui.id_mix(id, 12)))
+	name := o.input_label != "" ? o.input_label : o.placeholder
+	edit := text_input(gtx, p.filter, o.placeholder, leading = .Search, loading = o.loading && len(p.items) > 0, loader = .Leading, block = true, contrast = true, name = name, combobox = Combobox{true, active}, key = u64(ui.id_mix(id, 13)))
+	ui.close(&band)
+	d.input = edit.id
+	if edit.changed {
+		r.filtered = true
+		d.active = 0
+	}
+	if o.multiple && o.select_all && n > 0 {
+		panel_select_all(gtx, p, r)
+	}
+	room := max(cap - d.chrome, 2 * LIST_LINE)
+	region := ui.sized_open(gtx, {max = {ui.INF, room}}, key = u64(ui.id_mix(id, 14)))
+	panel_list(gtx, p, room, r)
+	ui.close(&region)
+	list_h := ui.last_widget(gtx).size.y
+	if o.variant == .Modal || o.secondary != "" {
+		panel_footer(gtx, p, r)
+	}
+	panel_status(gtx, p)
+	ui.close(&col)
+	d.chrome = ui.last_widget(gtx).size.y - list_h
+	ui.close(&hug)
+}
+
+// panel_natural_width is the width the panel's content asks for: its
+// widest option as its list lays it out, its group headings, its title
+// and subtitle, and the filter's default width, each with its insets;
+// within what the panel is offered.
+@(private)
+panel_natural_width :: proc(gtx: ^ui.Ctx, p: ^Panel) -> f32 {
+	o := p.o
+	sel := o.multiple ? Selection_Variant.Multiple : (o.variant == .Modal ? .Radio : .Single)
+	m := List_Metrics{margin = tok.BASE_SIZE_8, menu = true}
+	described, plain := false, false
+	for it in p.items {
+		described |= it.description != ""
+		plain |= it.description == ""
+	}
+	m.mixed = described && plain
+	w: f32
+	for it in p.items {
+		li := List_Item{label = it.text, description = it.description, desc_variant = it.desc_variant, leading = it.leading, trailing = it.trailing, selection = sel}
+		w = max(w, item_natural(gtx, li, m))
+	}
+	gst := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD, size = tok.TEXT_BODY_SIZE_SMALL, line_height = LIST_GROUP_LINE}
+	for g in o.groups {
+		w = max(w, design.shape_style(gtx, g.title, gst, font_for(gtx, gst.weight)).width + 2 * tok.BASE_SIZE_16)
+	}
+	title := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD, size = tok.TEXT_BODY_SIZE_MEDIUM, line_height = LIST_LINE}
+	head := design.shape_style(gtx, o.title, title, font_for(gtx, title.weight)).width
+	sm := small_style()
+	head = max(head, design.shape_style(gtx, o.subtitle, sm, font_for(gtx, sm.weight)).width)
+	close: f32 = o.variant == .Modal ? button_metrics(.Medium).height : 0
+	w = max(w, head + 2 * tok.BASE_SIZE_16 + close)
+	st := field_style(.Medium)
+	field := 2 * tok.BASE_SIZE_8 + 2 * FIELD_BORDER + 2 * tok.BASE_SIZE_8 + BUTTON_ICON + tok.BASE_SIZE_8 + TEXT_INPUT_COLUMNS * field_ch(gtx, st)
+	w = max(w, field)
+	cs := ui.offer(gtx)
+	if ui.is_finite(cs.max.x) {
+		w = min(w, cs.max.x)
+	}
+	return max(w, cs.min.x)
+}
+
+// Panel is a SelectPanel's frame: its ids, state, options, items and
+// filter.
+@(private)
+Panel :: struct {
+	id, base: ops.Area_Id,
+	d:        ^Select_Panel_Data,
+	o:        ^Select_Panel_Opts,
+	open:     ^bool,
+	filter:   ^ui.Text_State,
+	items:    []Select_Panel_Item,
+	selected: []bool,
+	order:    []int,
+	enter:    bool,
+	moved:    bool,
+}
+
+// paint_band_rule draws the filter band's bottom line: 1px of
+// --borderColor-default as a shadow under the band, taking no space
+// (FilteredActionList.module.css:7-11).
+@(private)
+paint_band_rule :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
+	ops.fill(gtx.scene, ops.Rect{0, size.y - tok.BORDER_WIDTH_THIN, size.x, tok.BORDER_WIDTH_THIN}, color(.Border_Color_Default))
+}
+
+// panel_header is the title, semibold body medium, and the subtitle in
+// small muted type, 8px in from a header padded 8px at the top and
+// sides; a modal panel's adds an invisible Close button and drops the
+// title 8px to line up with it (SelectPanel.module.css:13-53).
+@(private)
+panel_header :: proc(gtx: ^ui.Ctx, p: ^Panel, r: ^Select_Panel_Result) {
+	id, o := p.id, p.o
+	pad := ui.inset_open(gtx, {tok.BASE_SIZE_8, tok.BASE_SIZE_8, tok.BASE_SIZE_8, 0}, key = u64(ui.id_mix(id, 20)))
+	defer ui.close(&pad)
+	row := ui.row_open(gtx, align = .Start, key = u64(ui.id_mix(id, 21)))
+	defer ui.close(&row)
+	ui.flexible(gtx, 1)
+	modal := o.variant == .Modal
+	block := ui.inset_open(gtx, {tok.BASE_SIZE_8, modal ? tok.BASE_SIZE_8 : 0, tok.BASE_SIZE_8, 0}, key = u64(ui.id_mix(id, 22)))
+	col := ui.column_open(gtx, key = u64(ui.id_mix(id, 23)))
+	title := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD, size = tok.TEXT_BODY_SIZE_MEDIUM, line_height = LIST_LINE}
+	dialog_text(gtx, o.title, title, color(.Fg_Color_Default), heading = true, tag = false, key = u64(ui.id_mix(id, 24)))
+	if o.subtitle != "" {
+		dialog_text(gtx, o.subtitle, small_style(), color(.Fg_Color_Muted), key = u64(ui.id_mix(id, 25)))
+	}
+	ui.close(&col)
+	ui.close(&block)
+	if modal && icon_button(gtx, .X, "Close", .Invisible, key = u64(ui.id_mix(id, 26))) {
+		p.open^ = false
+		r.closed = .Cancel
+	}
+}
+
+// panel_select_all is the Select all row: a checkbox, checked when every
+// shown item is selected and mixed when some are, and its muted label,
+// on a muted band padded 4px by 16px over a 1px rule; it selects every
+// shown item, or clears them (FilteredActionList.tsx:596-614,
+// SelectPanel/SelectPanel.tsx:330-368).
+@(private)
+panel_select_all :: proc(gtx: ^ui.Ctx, p: ^Panel, r: ^Select_Panel_Result) {
+	all, some := true, false
+	for i in p.order {
+		on := i < len(p.selected) && p.selected[i]
+		all &&= on
+		some ||= on
+	}
+	band := ui.box_open(gtx, {padding = {tok.BASE_SIZE_16, tok.BASE_SIZE_4, tok.BASE_SIZE_16, tok.BASE_SIZE_4}, fill = color(.Bg_Color_Muted), paint = paint_band_rule}, key = u64(ui.id_mix(p.id, 30)))
+	defer ui.close(&band)
+	on := all
+	label := all ? "Deselect all" : "Select all"
+	if checkbox(gtx, &on, label, indeterminate = some && !all, key = u64(ui.id_mix(p.id, 31))) {
+		for i in p.order {
+			if i < len(p.selected) && !p.items[i].disabled {
+				p.selected[i] = !all
+			}
+		}
+		r.changed = true
+	}
+}
+
+// panel_list is the list region: a spinner padded 16px while the first
+// items load, the message when there are none, else the listbox, which
+// scrolls, highlighting the active option and activating it on Enter.
+@(private)
+panel_list :: proc(gtx: ^ui.Ctx, p: ^Panel, room: f32, r: ^Select_Panel_Result) {
+	d, o := p.d, p.o
+	if len(p.items) == 0 {
+		pad := ui.inset_open(gtx, ui.pad_all(o.loading ? tok.BASE_SIZE_16 : tok.BASE_SIZE_24), key = u64(ui.id_mix(p.id, 40)))
+		defer ui.close(&pad)
+		if o.loading {
+			c := ui.centered_open(gtx)
+			spinner(gtx, .Medium)
+			ui.close(&c)
+			return
+		}
+		panel_message(gtx, p.id, o.message.? or_else Select_Panel_Message{title = SELECT_PANEL_EMPTY})
+		return
+	}
+	scroll := ui.scroll_box_open(gtx, key = u64(ui.id_mix(p.id, 41)), offset = &d.scroll, fit = true)
+	defer ui.close(&scroll)
+	sel := o.multiple ? Selection_Variant.Multiple : (o.variant == .Modal ? .Radio : .Single)
+	variant := len(o.groups) > 0 ? Action_List_Variant.Horizontal_Inset : .Inset
+	l := action_list_open(gtx, variant, sel, .Listbox, .Descendant, wrap = true, name = o.title, active = d.active, activate = p.enter, follow = p.moved, scroll = {&d.scroll, room, 0, tok.BASE_SIZE_8}, id_base = p.base)
+	group := -1
+	for i in p.order {
+		it := p.items[i]
+		if it.group != group && it.group >= 0 && it.group < len(o.groups) {
+			group = it.group
+			action_list_group_open(&l, o.groups[group].title, o.groups[group].variant)
+		}
+		on := i < len(p.selected) && p.selected[i]
+		if sel == .Radio {
+			on = d.pending == i + 1
+		}
+		action_list_item(&l, it.text, it.description, it.desc_variant, leading = it.leading, trailing = it.trailing, variant = it.variant, selected = on, disabled = it.disabled)
+	}
+	action_list_close(&l)
+	if l.hovered >= 0 {
+		d.active = l.hovered
+	}
+	if l.activated >= 0 {
+		panel_activate(p, p.order[l.activated], r)
+	}
+}
+
+// panel_activate acts on choosing item i (SelectPanel/SelectPanel.tsx
+// :241-252,657-688): multiple toggles it and stays open; anchored single
+// selects it, or clears it when it was the selection, and closes; modal
+// single marks it pending, or clears the pending one.
+@(private)
+panel_activate :: proc(p: ^Panel, i: int, r: ^Select_Panel_Result) {
+	if i >= len(p.selected) {
+		return
+	}
+	switch {
+	case p.o.multiple:
+		p.selected[i] = !p.selected[i]
+		r.changed = true
+	case p.o.variant == .Modal:
+		p.d.pending = p.d.pending == i + 1 ? 0 : i + 1
+	case:
+		on := !p.selected[i]
+		for &v in p.selected {
+			v = false
+		}
+		p.selected[i] = on
+		r.changed = true
+		p.open^ = false
+		r.closed = .Selection
+	}
+}
+
+// panel_message is the empty or error state in the list's place: an
+// alert octicon for a warning or error, 8px over a semibold title, the
+// body in small muted type, 4px apart, centred (SelectPanelMessage.tsx
+// :28-61, SelectPanel.module.css:98-138).
+@(private)
+panel_message :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, m: Select_Panel_Message) {
+	col := ui.column_open(gtx, gap = tok.BASE_SIZE_4, align = .Center, key = u64(ui.id_mix(id, 50)))
+	defer ui.close(&col)
+	ui.container_semantics(gtx, {role = .Status, label = ui.frame_string(gtx, join_words(gtx, m.title, m.body))})
+	if m.variant != .Empty {
+		box := ui.sized_open(gtx, {min = {BUTTON_ICON, BUTTON_ICON + tok.BASE_SIZE_8}, max = {BUTTON_ICON, BUTTON_ICON + tok.BASE_SIZE_8}}, key = u64(ui.id_mix(id, 51)))
+		icon(gtx, .Alert, {0, 0}, BUTTON_ICON, color(m.variant == .Error ? .Fg_Color_Danger : .Fg_Color_Attention))
+		ui.close(&box)
+	}
+	title := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD, size = tok.TEXT_BODY_SIZE_MEDIUM, line_height = LIST_LINE}
+	dialog_text(gtx, m.title, title, color(.Fg_Color_Default), key = u64(ui.id_mix(id, 52)))
+	if m.body != "" {
+		dialog_text(gtx, m.body, small_style(), color(.Fg_Color_Muted), key = u64(ui.id_mix(id, 53)))
+	}
+}
+
+// panel_footer is the footer row, padded 8px under a 1px rule: the
+// secondary action at its start, and in a modal Cancel and a primary
+// Save at its end, 8px apart (SelectPanel.module.css:84-89,144-226).
+@(private)
+panel_footer :: proc(gtx: ^ui.Ctx, p: ^Panel, r: ^Select_Panel_Result) {
+	box := ui.box_open(gtx, {padding = ui.pad_all(tok.BASE_SIZE_8), paint = paint_top_rule}, key = u64(ui.id_mix(p.id, 60)))
+	defer ui.close(&box)
+	row := ui.row_open(gtx, gap = tok.STACK_GAP_CONDENSED, align = .Center, key = u64(ui.id_mix(p.id, 61)))
+	defer ui.close(&row)
+	if p.o.secondary != "" {
+		if button(gtx, p.o.secondary, .Invisible, .Small, key = u64(ui.id_mix(p.id, 62))) {
+			r.secondary = true
+		}
+	}
+	ui.fill_space(gtx)
+	if p.o.variant != .Modal {
+		return
+	}
+	if button(gtx, "Cancel", size = .Small, key = u64(ui.id_mix(p.id, 63))) {
+		p.open^ = false
+		r.closed = .Cancel
+	}
+	if button(gtx, "Save", .Primary, .Small, key = u64(ui.id_mix(p.id, 64))) {
+		if !p.o.multiple {
+			for &v, i in p.selected {
+				v = p.d.pending == i + 1
+			}
+			r.changed = true
+		}
+		p.open^ = false
+		r.closed = .Selection
+	}
+}
+
+// paint_top_rule draws a footer's 1px --borderColor-default top border.
+@(private)
+paint_top_rule :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: rawptr) {
+	ops.fill(gtx.scene, ops.Rect{0, 0, size.x, tok.BORDER_WIDTH_THIN}, color(.Border_Color_Default))
+}
+
+// panel_status is the panel's live text, as a status node: the
+// highlighted option, whether it is selected, and where it is among the
+// shown ones (useAnnouncements.tsx:96-123).
+@(private)
+panel_status :: proc(gtx: ^ui.Ctx, p: ^Panel) {
+	n := len(p.order)
+	if n == 0 {
+		return
+	}
+	i := p.order[p.d.active]
+	on := i < len(p.selected) && p.selected[i]
+	say := fmt.aprintf("List updated, Focused item: %s, %s, %d of %d", p.items[i].text, on ? "selected" : "not selected", p.d.active + 1, n, allocator = gtx.allocator)
+	w := ui.widget_open(gtx, u64(ui.id_mix(p.id, 70)))
+	ui.semantics(gtx, &w, {role = .Status, label = say})
+	ui.widget_close(gtx, &w, {})
+}

@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:strings"
 import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/primer"
@@ -26,6 +27,9 @@ Lists :: struct {
 	disabled: Token_Demo,
 	fruit_text, tag_text: ui.Text_State,
 	fruit, tags: [8]bool,
+	panel, single_panel, modal_panel: bool,
+	panel_filter, single_filter, modal_filter: ui.Text_State,
+	panel_sel, single_sel, modal_sel: [8]bool,
 }
 
 // Token_Demo is a live token field's text and labels.
@@ -303,4 +307,82 @@ seed_lists :: proc(ls: ^Lists) {
 	ls.invalid.n = 1
 	ls.disabled.labels[0], ls.disabled.labels[1] = "frozen", "locked"
 	ls.disabled.n = 2
+}
+
+PANEL_LABELS := [8]primer.Select_Panel_Item {
+	{text = "bug", description = "Something isn't working", leading = .Tag, group = 0},
+	{text = "documentation", description = "Improvements or additions", leading = .Tag, group = 0},
+	{text = "enhancement", leading = .Tag, group = 0},
+	{text = "good first issue", leading = .Tag, group = 1},
+	{text = "help wanted", leading = .Tag, group = 1},
+	{text = "question", leading = .Tag, group = 1},
+	{text = "wontfix", leading = .Tag, group = 1, disabled = true},
+	{text = "duplicate", leading = .Tag, group = 1},
+}
+
+PANEL_GROUPS := [2]primer.Select_Panel_Group{{"Type", .Filled}, {"Triage", .Filled}}
+
+// filtered is the labels matching the filter text, case-blind anywhere,
+// and the selection flags that go with them: SelectPanel leaves
+// filtering to its caller.
+@(private = "file")
+filtered :: proc(gtx: ^ui.Ctx, text: string, sel: []bool) -> (items: []primer.Select_Panel_Item, flags: []bool, owners: []int) {
+	out := make([dynamic]primer.Select_Panel_Item, gtx.allocator)
+	fl := make([dynamic]bool, gtx.allocator)
+	ow := make([dynamic]int, gtx.allocator)
+	needle := strings.to_lower(text, gtx.allocator)
+	for it, i in PANEL_LABELS {
+		if strings.contains(strings.to_lower(it.text, gtx.allocator), needle) {
+			append(&out, it)
+			append(&fl, sel[i])
+			append(&ow, i)
+		}
+	}
+	return out[:], fl[:], ow[:]
+}
+
+page_select_panel :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10)
+	defer ui.close(&col)
+	ls := &m.lists
+	kitchen.section(gtx, "Multiple, anchored", "a filter over grouped checkbox options; focus stays in the filter, Up and Down move the highlight, Enter toggles")
+	{
+		st := ui.stack_open(gtx)
+		primer.select_panel_button(gtx, &ls.panel, PANEL_LABELS[:], ls.panel_sel[:], "Labels", leading = .Tag)
+		anchor := ui.last_widget(gtx)
+		items, flags, owners := filtered(gtx, ui.text_string(&ls.panel_filter), ls.panel_sel[:])
+		r := primer.select_panel(gtx, &ls.panel, anchor, &ls.panel_filter, items, flags, multiple = true, title = "Apply labels", subtitle = "Choose any that fit", groups = PANEL_GROUPS[:], select_all = true, secondary = "Edit labels")
+		for f, i in flags {
+			ls.panel_sel[owners[i]] = f
+		}
+		if r.closed != .None {
+			ls.said = fmt.aprintf("closed by %v", r.closed)
+		}
+		ui.close(&st)
+	}
+	kitchen.section(gtx, "Single, anchored", "a checkmark column; choosing selects and closes, choosing the selection clears it")
+	{
+		st := ui.stack_open(gtx)
+		primer.select_panel_button(gtx, &ls.single_panel, PANEL_LABELS[:], ls.single_sel[:], "Choose a label")
+		anchor := ui.last_widget(gtx)
+		items, flags, owners := filtered(gtx, ui.text_string(&ls.single_filter), ls.single_sel[:])
+		primer.select_panel(gtx, &ls.single_panel, anchor, &ls.single_filter, items, flags, title = "Choose a label")
+		for f, i in flags {
+			ls.single_sel[owners[i]] = f
+		}
+		ui.close(&st)
+	}
+	kitchen.section(gtx, "Single, modal", "centred over a backdrop; radios hold the choice until Save")
+	{
+		st := ui.stack_open(gtx)
+		primer.select_panel_button(gtx, &ls.modal_panel, PANEL_LABELS[:], ls.modal_sel[:], "Choose in a modal")
+		anchor := ui.last_widget(gtx)
+		items, flags, owners := filtered(gtx, ui.text_string(&ls.modal_filter), ls.modal_sel[:])
+		primer.select_panel(gtx, &ls.modal_panel, anchor, &ls.modal_filter, items, flags, variant = .Modal, title = "Choose a label")
+		for f, i in flags {
+			ls.modal_sel[owners[i]] = f
+		}
+		ui.close(&st)
+	}
+	said(gtx, ls.said)
 }

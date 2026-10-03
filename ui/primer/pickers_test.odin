@@ -282,3 +282,150 @@ test_autocomplete_with_tokens_toggles_choices_and_stays_open :: proc(t: ^testing
 	ui.probe_key(&p, .Backspace)
 	testing.expect(t, !m.selected[2] && m.selected[0])
 }
+
+// SelectPanel.
+
+@(private = "file")
+SP_ITEMS := [4]Select_Panel_Item{{text = "bug", group = -1}, {text = "docs", group = -1}, {text = "ui", group = -1}, {text = "wontfix", group = -1, disabled = true}}
+
+@(private = "file")
+Panel_Model :: struct {
+	open:     bool,
+	filter:   ui.Text_State,
+	selected: [4]bool,
+	multiple: bool,
+	modal:    bool,
+	result:   Select_Panel_Result,
+	filtered: int,
+}
+
+@(private = "file")
+panel_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Panel_Model)(user)
+	col := ui.column_open(gtx, gap = 8, align = .Start)
+	defer ui.close(&col)
+	button(gtx, "Before")
+	st := ui.stack_open(gtx)
+	defer ui.close(&st)
+	select_panel_button(gtx, &m.open, SP_ITEMS[:], m.selected[:], "Labels")
+	anchor := ui.last_widget(gtx)
+	// The caller filters: a case-blind prefix, here.
+	items := make([dynamic]Select_Panel_Item, context.temp_allocator)
+	flags := make([dynamic]bool, context.temp_allocator)
+	owners := make([dynamic]int, context.temp_allocator)
+	text := ui.text_string(&m.filter)
+	for it, i in SP_ITEMS {
+		if strings.has_prefix(it.text, text) {
+			append(&items, it)
+			append(&flags, m.selected[i])
+			append(&owners, i)
+		}
+	}
+	m.result = select_panel(gtx, &m.open, anchor, &m.filter, items[:], flags[:], multiple = m.multiple, variant = m.modal ? .Modal : .Anchored, title = "Apply labels")
+	for f, i in flags {
+		m.selected[owners[i]] = f
+	}
+	if m.result.filtered {
+		m.filtered += 1
+	}
+}
+
+@(private = "file")
+panel_probe :: proc(p: ^ui.Probe, m: ^Panel_Model) {
+	ui.probe_init(p, panel_view, m, {800, 600}, allocator = context.temp_allocator)
+}
+
+@(test)
+test_a_select_panel_keeps_focus_in_its_filter_and_highlights_with_arrows :: proc(t: ^testing.T) {
+	m := Panel_Model{multiple = true}
+	p: ui.Probe
+	panel_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer ui.text_destroy(&m.filter)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Labels"))
+	ui.probe_frame(&p)
+	testing.expect(t, m.open)
+	testing.expect_value(t, focus_name(&p), "Filter items") // focus went to the filter
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(sem, "active \"bug\""), "the first option is the active descendant\n%s", sem)
+	ui.probe_key(&p, .Down)
+	ui.probe_key(&p, .Enter)
+	testing.expect(t, m.selected[1] && m.open) // multiple: toggled, still open
+	testing.expect_value(t, focus_name(&p), "Filter items")
+	ui.probe_key(&p, .Up)
+	ui.probe_key(&p, .Up) // wraps to the last
+	ui.probe_frame(&p)
+	sem = ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(sem, "active \"wontfix\""), "%s", sem)
+	ui.probe_key(&p, .Enter) // a disabled option does nothing
+	testing.expect(t, !m.selected[3])
+	ui.probe_key(&p, .Page_Up)
+	ui.probe_frame(&p)
+	sem = ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(sem, "active \"bug\""), "%s", sem)
+	// Typing reports the filter; the caller's items come back.
+	ui.probe_type(&p, "u")
+	ui.probe_frame(&p)
+	testing.expect(t, m.filtered > 0)
+	testing.expect(t, ui.probe_tagged(&p, "ui") && !ui.probe_tagged(&p, "bug"))
+	// Escape closes it and focus goes back to the button.
+	ui.probe_key(&p, .Escape)
+	testing.expect_value(t, m.result.closed, Panel_Gesture.Escape)
+	ui.probe_frame(&p)
+	testing.expect_value(t, focus_name(&p), "docs") // the button now shows the selection
+}
+
+@(test)
+test_an_anchored_single_panel_chooses_and_closes :: proc(t: ^testing.T) {
+	m: Panel_Model
+	p: ui.Probe
+	panel_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer ui.text_destroy(&m.filter)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_click(&p, "Labels")
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_click(&p, "docs"))
+	testing.expect(t, m.selected[1] && !m.open)
+	testing.expect_value(t, m.result.closed, Panel_Gesture.Selection)
+	// Choosing the selection again clears it. (The button reads "docs"
+	// now: it is opened by the key, focus being back on it.)
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .Enter)
+	ui.probe_frame(&p)
+	testing.expect(t, m.open)
+	ui.probe_key(&p, .Down)
+	ui.probe_key(&p, .Enter)
+	testing.expect(t, !m.selected[1] && !m.open)
+}
+
+@(test)
+test_a_modal_single_panel_holds_its_choice_until_save :: proc(t: ^testing.T) {
+	m := Panel_Model{modal = true}
+	p: ui.Probe
+	panel_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer ui.text_destroy(&m.filter)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_click(&p, "Labels")
+	ui.probe_frame(&p)
+	testing.expect_value(t, focus_name(&p), "Filter items")
+	ui.probe_click(&p, "ui")
+	testing.expect(t, m.open && !m.selected[2]) // only pending
+	testing.expect(t, ui.probe_click(&p, "Save"))
+	testing.expect(t, m.selected[2] && !m.open)
+	// Cancel keeps the selection as it was.
+	ui.probe_frame(&p)
+	ui.probe_click(&p, "ui") // the button, which shows the selection now
+	ui.probe_frame(&p)
+	testing.expect(t, m.open)
+	ui.probe_click(&p, "bug")
+	ui.probe_click(&p, "Cancel")
+	testing.expect(t, m.selected[2] && !m.selected[0] && !m.open)
+	testing.expectf(t, m.result.closed == .Cancel, "closed by %v, open %v", m.result.closed, m.open)
+}
+
