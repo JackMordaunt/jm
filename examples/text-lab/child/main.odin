@@ -3,7 +3,8 @@
 // direction, emoji — drawn with what the shaper produced laid over them:
 // baseline and advance box, glyph origins, cluster starts and every caret
 // stop. The Editing and Paragraph pages put the same text in live inputs
-// to poke carets, hit-testing and wrapping by hand.
+// to poke carets, hit-testing and wrapping by hand. The Stress page finds
+// how much text a frame can lay out and still hold 60 fps.
 //
 // Each specimen names the font it asks for; every other script's font
 // stands behind it as a fallback, so a rune that font lacks comes from the
@@ -144,18 +145,25 @@ EDIT := [?]Sample {
 
 PARAGRAPH :: "Text shaping turns a string into positioned glyphs. A browser also breaks lines at legal opportunities, reorders right-to-left runs, and falls back to another font for a character this one lacks — so a paragraph that mixes scripts wraps, reads and edits as the reader expects. Long unbroken words like Donaudampfschifffahrtsgesellschaftskapitän test emergency breaks."
 
+// Page is one entry in the nav. A page that lays itself out (Stress)
+// fills the space under the app bar and scrolls what it chooses; any
+// other is padded and scrolled whole. overlays is whether its specimens
+// draw the shaper overlays, and so whether the app bar offers the switch.
 Page :: struct {
-	name: string,
-	draw: proc(gtx: ^ui.Ctx, m: ^Model),
+	name:     string,
+	draw:     proc(gtx: ^ui.Ctx, m: ^Model),
+	overlays: bool,
+	lays_out: bool,
 }
 
 PAGES := [?]Page {
-	{"Latin", page_latin},
-	{"Scripts", page_scripts},
-	{"Bidi", page_bidi},
-	{"Emoji", page_emoji},
-	{"Editing", page_editing},
-	{"Paragraph", page_paragraph},
+	{"Latin", page_latin, true, false},
+	{"Scripts", page_scripts, true, false},
+	{"Bidi", page_bidi, true, false},
+	{"Emoji", page_emoji, true, false},
+	{"Editing", page_editing, false, false},
+	{"Paragraph", page_paragraph, true, false},
+	{"Stress", page_stress, false, true},
 }
 
 Model :: struct {
@@ -169,6 +177,7 @@ Model :: struct {
 	seeded:    bool,
 	edits:     [len(EDIT)]ui.Text_State,
 	paragraph: ui.Text_State,
+	stress:    Stress,
 }
 
 lab_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
@@ -184,6 +193,7 @@ lab_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		ui.text_set(&m.paragraph, PARAGRAPH)
 		m.seeded = true
 	}
+	stress_abandon(m)
 	s := &m.scheme
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Neutral_Background2])
 
@@ -191,7 +201,7 @@ lab_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	defer ui.close(&r)
 	nav(gtx, m)
 	ui.flexible(gtx, 1)
-	body := ui.column_open(gtx)
+	body := ui.column_open(gtx, align = .Fill)
 	defer ui.close(&body)
 	app_bar(gtx, m)
 	ui.flexible(gtx, 1)
@@ -201,11 +211,16 @@ lab_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 		ps := ui.scope_open(gtx, m.page)
 		defer ui.close(&ps)
-		sb := ui.scroll_box_open(gtx)
-		defer ui.close(&sb)
-		page := ui.inset_open(gtx, {24, 8, 24, 48})
-		defer ui.close(&page)
-		PAGES[clamp(m.page, 0, len(PAGES) - 1)].draw(gtx, m)
+		page := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
+		if page.lays_out {
+			page.draw(gtx, m)
+		} else {
+			sb := ui.scroll_box_open(gtx)
+			defer ui.close(&sb)
+			pad := ui.inset_open(gtx, {24, 8, 24, 48})
+			defer ui.close(&pad)
+			page.draw(gtx, m)
+		}
 	}
 	persist(m)
 }
@@ -233,12 +248,14 @@ app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	defer ui.close(&bar)
 	r := ui.row_open(gtx, align = .Center, gap = 8)
 	defer ui.close(&r)
-	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 20, color = s[.Neutral_Foreground1]})
+	page := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
+	base.label(gtx, page.name, {size = 20, color = s[.Neutral_Foreground1]})
 	ui.fill_space(gtx)
-	if fluent.button(gtx, fmt.tprintf("%.0fpx", SIZES[m.size]), .Outline) {
+	// A size change mid-run would judge one count at two sizes.
+	if fluent.button(gtx, fmt.tprintf("%.0fpx", SIZES[m.size]), .Outline, state = .Disabled if stress_running(&m.stress) else .Live) {
 		m.size = (m.size + 1) % len(SIZES)
 	}
-	if fluent.button(gtx, m.plain ? "Overlays off" : "Overlays on", .Outline) {
+	if page.overlays && fluent.button(gtx, m.plain ? "Overlays off" : "Overlays on", .Outline) {
 		m.plain = !m.plain
 	}
 }
