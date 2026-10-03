@@ -79,3 +79,42 @@ test_the_tray_toggles_the_focus_map :: proc(t: ^testing.T) {
 	testing.expect(t, .Focus not_in p.tray.flags)
 	testing.expect_value(t, count_defers(&p), on - 1) // the map is a layer over the app
 }
+
+@(test)
+test_the_group_stop_report_names_a_group_with_several_stops :: proc(t: ^testing.T) {
+	Model :: struct {
+		rove: bool,
+	}
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		m := (^Model)(user)
+		p := widget_open(gtx, 1)
+		semantics(gtx, &p, {role = .Tab_List, label = "Views"})
+		if m.rove {
+			focus_scope_open(gtx, p.id, rove = .Horizontal)
+		}
+		for i in 0 ..< 2 {
+			id := id_mix(p.id, u64(i + 1))
+			r := ops.Rect{f32(i) * 50, 0, 40, 20}
+			ops.input_area(gtx.scene, id, r, {.Press, .Release, .Key, .Focus, .Blur})
+			ops.tag(gtx.scene, id, i == 0 ? "Grid" : "List")
+			part_semantics(gtx, &p, id, r, {role = .Tab, label = i == 0 ? "Grid" : "List"})
+		}
+		if m.rove {
+			focus_scope_close(gtx)
+		}
+		widget_close(gtx, &p, {size = {100, 20}})
+	}
+	m: Model
+	p: Probe
+	probe_init(&p, view, &m, {200, 100}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	got := group_stop_report(probe_current(&p), &p.router, context.temp_allocator)
+	testing.expect_value(t, len(got), 1)
+	if len(got) == 1 {
+		testing.expect_value(t, got[0], `Tab_List "Views": 2 stops ["Grid", "List"]`)
+	}
+	m.rove = true
+	probe_frame(&p)
+	testing.expect_value(t, len(group_stop_report(probe_current(&p), &p.router, context.temp_allocator)), 0)
+}

@@ -275,3 +275,24 @@ parse_int :: proc(s: string) -> int {
 	n, ok := strconv.parse_int(s, 10)
 	return n if ok && n >= 0 else 0
 }
+
+// group_stop_violations renders every page of app headlessly and lists,
+// a line each prefixed with the page, the groups holding more than one
+// Tab stop (ui.group_stop_report): a tab list, radio group, toolbar,
+// tree, menu or listbox whose widget forgot its roving focus scope. Each
+// kitchen's tests assert it is empty. The lines are on allocator.
+group_stop_violations :: proc(app: App, allocator := context.allocator) -> []string {
+	h: render.Headless
+	render.headless_init(&h, app.ui, app.user, app.size, app.fonts)
+	defer render.headless_destroy(&h)
+	out := make([dynamic]string, allocator)
+	for name, i in app.pages {
+		app.page^ = i
+		ui.probe_frame(&h.p) // draws the page
+		ui.probe_frame(&h.p) // routes against it
+		for line in ui.group_stop_report(ui.probe_current(&h.p), &h.p.router, context.temp_allocator) {
+			append(&out, fmt.aprintf("%s: %s", name, line, allocator = allocator))
+		}
+	}
+	return out[:]
+}

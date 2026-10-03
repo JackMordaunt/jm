@@ -174,3 +174,91 @@ paint_focus_label :: proc(gtx: ^Ctx, text: string, at: ops.Point, size: f32, bg:
 	ops.fill(gtx.scene, ops.Round_Rect{pill, pill.h / 2}, bg)
 	ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {at.x + pad, at.y + size * 1.05}, ops.Color{255, 255, 255, 255})
 }
+
+// is_group_role reports whether role names a group that is one Tab stop,
+// its items reached by arrow keys: a tab list, radio group, toolbar,
+// tree, menu or listbox (WAI-ARIA Authoring Practices, Developing a
+// Keyboard Interface, "Keyboard Navigation Inside Components").
+@(private = "file")
+is_group_role :: proc(role: ops.Role) -> bool {
+	#partial switch role {
+	case .Tab_List, .Radio_Group, .Toolbar, .Tree, .Menu, .List_Box:
+		return true
+	}
+	return false
+}
+
+// group_stop_report lists, a line each, the groups in f holding more than
+// one of the stops Tab visits as r routes it: a group being its items'
+// nearest ancestor of a group role (is_group_role) in f's semantics. A
+// kit's group widget that forgets its roving focus scope shows up here;
+// it is what the kitchens' tests assert is empty.
+group_stop_report :: proc(f: ^Frame, r: ^Router, allocator := context.allocator) -> []string {
+	n := router_tab_stops(r, f)
+	groups := make([dynamic]ops.Area_Id, context.temp_allocator)
+	names := make([dynamic][dynamic]string, context.temp_allocator)
+	for i in 0 ..< n {
+		g := group_of(f, r.stops[i].area)
+		if g == 0 {
+			continue
+		}
+		at := -1
+		for x, k in groups {
+			if x == g {
+				at = k
+			}
+		}
+		if at < 0 {
+			append(&groups, g)
+			append(&names, make([dynamic]string, context.temp_allocator))
+			at = len(groups) - 1
+		}
+		append(&names[at], tag_of(f, r.stops[i].area))
+	}
+	out := make([dynamic]string, allocator)
+	for g, k in groups {
+		if len(names[k]) < 2 {
+			continue
+		}
+		node := node_of(f, g)
+		append(&out, fmt.aprintf("%v %q: %d stops %v", node.semantics.role, node.semantics.label, len(names[k]), names[k][:], allocator = allocator))
+	}
+	return out[:]
+}
+
+// node_of is f's semantic node with id, zero when it has none.
+@(private = "file")
+node_of :: proc(f: ^Frame, id: ops.Area_Id) -> Semantic_Node {
+	for n in f.nodes {
+		if n.id == id {
+			return n
+		}
+	}
+	return {}
+}
+
+// group_of is the nearest semantic ancestor of area, area's own node
+// excluded, with a group role; 0 when there is none.
+@(private = "file")
+group_of :: proc(f: ^Frame, area: ops.Area_Id) -> ops.Area_Id {
+	at := node_of(f, area).parent
+	for depth := 0; at != 0 && depth < 64; depth += 1 {
+		n := node_of(f, at)
+		if is_group_role(n.semantics.role) {
+			return at
+		}
+		at = n.parent
+	}
+	return 0
+}
+
+// tag_of is the tag naming area in f, or its id when it has none.
+@(private = "file")
+tag_of :: proc(f: ^Frame, area: ops.Area_Id) -> string {
+	for t in f.tags {
+		if t.id == area {
+			return t.name
+		}
+	}
+	return fmt.tprintf("%x", u64(area))
+}
