@@ -4,10 +4,10 @@ import "core:strings"
 import "core:testing"
 
 // Paths are relative to the repository root, which is where `just test` runs
-// from, the same as the command line in the README.
+// from, the same as the command line in docs/wasm.md.
 //
 // The committed workloads are the benchmark: a corrupted one, or a rebuild
-// from a changed source, would move every number in the README without
+// from a changed source, would move every number in docs/wasm.md without
 // anything saying so. Each one is run here for its checksum, which is the
 // same value every engine in that table returned.
 @(test)

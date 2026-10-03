@@ -9,8 +9,8 @@ the PostgreSQL 17.7 parser.
 The parser is the source tree under vendor/, compiled into lib/ by the
 justfile's `pg_query` recipe, which is also where the compile flags and the
 reason for each are written down. The archive path below is relative to this
-directory, which is what puts lib/ here rather than in build/; the README's
-PostgreSQL section records that and what `just check` does without it.
+directory, which is what puts lib/ here rather than in build/;
+docs/postgres.md records that and what `just check` does without it.
 
 Every result is returned by value and every free takes its result by value,
 which is unusual enough to be worth saying twice: pg_query_free_parse_result

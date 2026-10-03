@@ -7,8 +7,8 @@ declarations track the vendored header, wasm3.h 0.9.1.
 The interpreter is the source tree under vendor/, compiled into lib/ by the
 justfile's `wasm` recipe, which is also where the compile-time options and the
 reason for each are written down. The archive path below is relative to this
-directory, which is what puts lib/ here rather than in build/; the README's
-WebAssembly section records that and what `just check` does without it.
+directory, which is what puts lib/ here rather than in build/;
+docs/wasm.md records that and what `just check` does without it.
 
 M3Result is the C API's error type: a `const char *` that is null on success
 and otherwise points at one of the m3Err_ constants below. Two failures are

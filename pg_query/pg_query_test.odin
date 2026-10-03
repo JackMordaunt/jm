@@ -459,7 +459,7 @@ destroy_zeroes_the_tree :: proc(t: ^testing.T) {
 }
 
 // Upstream says libpg_query keeps its memory context per thread. That is the
-// claim jm:wasm's README made about wasm3 and it was wrong, so it is checked
+// claim jm:wasm's docs made about wasm3 and it was wrong, so it is checked
 // here rather than taken: eight threads parse the same statements at the same
 // time, and every tree must match the one a single thread produces.
 //

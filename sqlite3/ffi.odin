@@ -7,8 +7,8 @@ declarations track the vendored header, sqlite3.h 3.53.4.
 The library is the amalgamation under vendor/, compiled into lib/ by the
 justfile's `sqlite` recipe, which is also where the compile-time options and
 the reason for each are written down. The archive path below is relative to
-this directory, which is what puts lib/ here rather than in build/; the
-README's SQLite section records that and what `just check` does without it.
+this directory, which is what puts lib/ here rather than in build/;
+docs/sqlite.md records that and what `just check` does without it.
 */
 package sqlite3
 

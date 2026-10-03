@@ -1,7 +1,7 @@
 /*
 Package sqlite3 is SQLite for scripts. The amalgamation is vendored and linked
 statically, so a built script needs no system library and no shared object at
-runtime. The README's SQLite section records the version, the compile-time
+runtime. docs/sqlite.md records the version, the compile-time
 options and how to check a build for a stray libsqlite3.
 
 	db := must(sqlite3.open("notes.db"))

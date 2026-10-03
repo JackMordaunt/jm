@@ -1,8 +1,7 @@
 /*
 Package wasm runs WebAssembly. The interpreter is wasm3, vendored and linked
 statically, so a built script needs no system library and no shared object at
-runtime. The README's WebAssembly section records the version and what the
-build turns on.
+runtime. docs/wasm.md records the version and what the build turns on.
 
 	vm := must(wasm.open())
 	defer wasm.close(&vm)

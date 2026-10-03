@@ -2,8 +2,8 @@
 Package pg_query parses PostgreSQL SQL with PostgreSQL's own parser. The C
 library is libpg_query — the server's `gram.y` and its dependencies lifted out
 of the PostgreSQL source tree — vendored and linked statically, so a built
-script needs no libpq, no server and no shared object at runtime. The README's
-PostgreSQL section records the version, the compile flags and what `just check`
+script needs no libpq, no server and no shared object at runtime.
+docs/postgres.md records the version, the compile flags and what `just check`
 does without the archive.
 
 	tree, err := pg_query.parse(`UPDATE rig SET serial_number = 'x' WHERE id = 1`)

@@ -11,7 +11,7 @@ import "jm:path"
 Isolation runs each case in a child process instead of in this one.
 
 It costs a spawn per case, an order of magnitude slower than running them
-here; the README records the measurement. What it buys is that nothing a
+here; docs/fuzzing.md records the measurement. What it buys is that nothing a
 property does can end the run: a panic, a failed bounds check, a corrupted
 heap and a loop that never finishes all come back as one more result, with
 the case that caused it, and the next case starts from a clean process.

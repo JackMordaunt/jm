@@ -87,7 +87,7 @@ Opts :: struct {
 	// is why it only happens when a corpus is asked for.
 	corpus_dir:    string,
 	// Run each case in a child process. It costs a spawn per case, which is
-	// an order of magnitude slower; the README records the measurement and
+	// an order of magnitude slower; docs/fuzzing.md records the measurement and
 	// the command that makes it. In return nothing a property does can end
 	// the run — a panic, a bounds check or a loop with no end come back as a
 	// result like any other — and the deadline works whether or not the
