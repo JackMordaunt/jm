@@ -28,6 +28,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.semantic(&src, 10, 0, {role = .Menu_Item_Radio, label = "Light", states = {.Checked}, active_descendant = 7}, {0, 0, 30, 20})
 	ops.key_interest(&src, 7, .Escape, {.Ctrl}, {.Shift}, topmost = true)
 	ops.outside_area(&src, 7, ops.Rect{1, 2, 3, 4})
+	ops.input_area(&src, 11, ops.Rect{0, 0, 8, 8}, {.Press, .Key}, .Text, yields = true, no_tab = true)
 	ops.sticky_push(&src, 12, 300)
 	ops.fill(&src, ops.Rect{0, 0, 5, 5}, ops.Color{9, 9, 9, 255})
 	ops.transform_pop(&src)

@@ -49,6 +49,7 @@ Hit :: struct {
 	cursor:    ops.Cursor, // the pointer's look over it
 	yields:    bool, // see ops.Input_Area
 	observes:  bool, // see ops.Input_Area
+	no_tab:    bool, // see ops.Input_Area
 }
 
 // Scope_Ref is a focus scope on the frame: Frame.scopes[ref - 1], or

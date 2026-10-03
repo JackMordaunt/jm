@@ -91,6 +91,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			if v.yields {
 				strings.write_string(&sb, " yields")
 			}
+			if v.no_tab {
+				strings.write_string(&sb, " no_tab")
+			}
 			if v.observes {
 				strings.write_string(&sb, " observes")
 			}

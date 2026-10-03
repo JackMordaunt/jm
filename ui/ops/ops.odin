@@ -193,6 +193,10 @@ Input_Area :: struct {
 	// takes no hover, press or cursor from the areas it overlaps. It is
 	// how a tooltip wrapping a control learns the pointer is over it.
 	observes: bool,
+	// no_tab: the area takes focus from a press or a request but is no
+	// stop for Tab or a roving scope's arrows, as tabindex -1 on the web:
+	// selectable text, which wants keys only to copy what it selected.
+	no_tab: bool,
 }
 
 // Semantic describes a widget to assistive technology: ui.semantics on a
@@ -480,8 +484,8 @@ image :: proc(o: ^Scene, id: Image_Id, dst: Rect, src: Rect = {}, alpha: u8 = 25
 	append(&o.ops, Image{id, dst, src, alpha})
 }
 
-input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cursor := Cursor.Default, yields := false) {
-	append(&o.ops, Input_Area{id, shape, kinds, cursor, yields, false})
+input_area :: proc(o: ^Scene, id: Area_Id, shape: Shape, kinds: Event_Kinds, cursor := Cursor.Default, yields := false, no_tab := false) {
+	append(&o.ops, Input_Area{id, shape, kinds, cursor, yields, false, no_tab})
 	if o.outline_areas {
 		// Every area a user can reach, widget or painted row alike.
 		stroke(o, shape, HIT_BOUNDS_COLOR, {width = 1})

@@ -33,8 +33,8 @@ import "jm:ui/ops"
 //   Focus to the new). A Press on no area clears focus. A Press on an area
 //   that wants neither leaves focus where it is, so clicking a toolbar
 //   button does not blur the text field it acts on.
-// - Tab moves focus to the next area that wants Key or Text, in frame
-//   order, Shift+Tab to the previous, wrapping at the ends; from no focus
+// - Tab moves focus to the next area that wants Key or Text and is not
+//   no_tab (ops.Input_Area), in frame order, Shift+Tab to the previous, wrapping at the ends; from no focus
 //   Tab goes to the first. The focused area hears the Tab first. An area
 //   that keeps Tab (a Key_Interest of its own for it) is not left by it.
 // - Focus scopes (ops.Focus_Scope) group areas for focus. While the frame
@@ -795,11 +795,11 @@ router_tab_stops :: proc(r: ^Router, f: ^Frame) -> int {
 }
 
 // tab_reachable reports whether h is an area focus may move to by key:
-// it wants Key or Text, and lies inside trap and inside a scope named
-// within, each when set.
+// it wants Key or Text and is no no_tab area, and lies inside trap and
+// inside a scope named within, each when set.
 @(private = "file")
 tab_reachable :: proc(f: ^Frame, h: Hit, trap: Scope_Ref, within: ops.Area_Id) -> bool {
-	if h.observes || h.kinds & {.Key, .Text} == {} {
+	if h.observes || h.no_tab || h.kinds & {.Key, .Text} == {} {
 		return false
 	}
 	return (trap == 0 || in_scope(f, h.scope, trap)) && (within == 0 || in_scope(f, h.scope, 0, within))
@@ -1046,6 +1046,10 @@ route_tab :: proc(r: ^Router, f: ^Frame, back: bool) {
 			at = i
 		}
 	}
+	h: Hit
+	if at < 0 && refresh(f, r.focus, &h) {
+		at = tab_step_origin(r.stops[:], h.order, back)
+	}
 	next: int
 	switch {
 	case at < 0:
@@ -1056,6 +1060,29 @@ route_tab :: proc(r: ^Router, f: ^Frame, back: bool) {
 		next = (at + 1) % n
 	}
 	set_focus(r, r.stops[next])
+}
+
+// tab_step_origin places focus that is no stop itself (a no_tab area) among
+// stops, by recording order: the index Tab steps on from, the last stop
+// before order, or for Shift+Tab the first after it; -1 when it lies
+// past the end Tab is heading for, so Tab wraps.
+@(private = "file")
+tab_step_origin :: proc(stops: []Hit, order: int, back: bool) -> int {
+	if back {
+		for s, i in stops {
+			if s.order > order {
+				return i
+			}
+		}
+		return -1
+	}
+	at := -1
+	for s, i in stops {
+		if s.order < order {
+			at = i
+		}
+	}
+	return at
 }
 
 // set_focus moves focus to h (a zero Hit clears it), sending Blur and Focus.

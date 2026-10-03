@@ -155,6 +155,7 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 					cursor = op.cursor,
 					yields = op.yields,
 					observes = op.observes,
+					no_tab = op.no_tab,
 				},
 			)
 		case ops.Tag:

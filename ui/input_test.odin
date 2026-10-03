@@ -696,3 +696,28 @@ test_a_roving_scope_entered_by_a_press_remembers_it :: proc(t: ^testing.T) {
 	probe_key(&p, .Tab)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(33))
 }
+
+@(test)
+test_a_no_tab_area_takes_focus_from_a_press_but_tab_passes_it :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		ops.input_area(gtx.scene, 1, ops.Rect{0, 0, 40, 20}, {.Press, .Release, .Key, .Focus, .Blur})
+		ops.tag(gtx.scene, 1, "a")
+		ops.input_area(gtx.scene, 2, ops.Rect{50, 0, 40, 20}, {.Press, .Release, .Key, .Focus, .Blur}, no_tab = true)
+		ops.tag(gtx.scene, 2, "text")
+		ops.input_area(gtx.scene, 3, ops.Rect{100, 0, 40, 20}, {.Press, .Release, .Key, .Focus, .Blur})
+		ops.tag(gtx.scene, 3, "b")
+	}
+	p: Probe
+	probe_init(&p, view, nil, {300, 100})
+	defer probe_destroy(&p)
+	probe_key(&p, .Tab)
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(3))
+	testing.expect(t, probe_click(&p, "text"))
+	testing.expect_value(t, p.router.focus, ops.Area_Id(2))
+	probe_key(&p, .Tab)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(3)) // from it, Tab goes on in frame order
+	testing.expect(t, probe_click(&p, "text"))
+	probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, p.router.focus, ops.Area_Id(1)) // and Shift+Tab back
+}

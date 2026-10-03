@@ -11,8 +11,9 @@ import "jm:ui/ops"
 // The label's area yields (ops.Input_Area.yields): inside a clickable card
 // or list row a click still clicks the card, and only a drag, or a double
 // or triple click, starting on the text selects it. The label takes focus
-// when it takes the press, so SHORTCUT+C and SHORTCUT+A reach it; a press
-// anywhere else, or a change to its text, drops the selection.
+// when it takes the press, so SHORTCUT+C and SHORTCUT+A reach it, but Tab
+// passes it by (no_tab); a press anywhere else, or a change to its text,
+// drops the selection.
 
 // Label_Selection is the one selection in read-only text: the label that
 // owns it, and a copy of its text with the caret and anchor in it.
@@ -60,7 +61,7 @@ selectable_text :: proc(gtx: ^Ctx, id: ops.Area_Id, p: Paragraph, at: ops.Point,
 			text_move(&sel.state, 0)
 		}
 	}
-	ops.input_area(gtx.scene, id, bounds, LABEL_KINDS, .Text, yields = true)
+	ops.input_area(gtx.scene, id, bounds, LABEL_KINDS, .Text, yields = true, no_tab = true)
 	if sel.owner != id {
 		return
 	}

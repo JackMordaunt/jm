@@ -35,8 +35,9 @@ ENCODE_MAGIC :: "UIOP"
 // descendant and Role Menu_Item_Checkbox and Menu_Item_Radio; 31 added
 // Role Tree, Tree_Item and Tab_Panel and State Current and Current_Page;
 // 32 turned Focus_Scope's trap into a flags byte (bit 0 trap, bit 1
-// wrap, bits 2-3 rove) and gave Focus_Scope_End an entry.
-ENCODE_VERSION :: u8(32)
+// wrap, bits 2-3 rove) and gave Focus_Scope_End an entry; 33 gave
+// Input_Area's flags no_tab, bit 2.
+ENCODE_VERSION :: u8(33)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -382,7 +383,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_shape(w, v.shape)
 		put_u32(w, u32(transmute(u16)v.kinds))
 		append(w, u8(v.cursor))
-		append(w, u8(v.yields) | u8(v.observes) << 1)
+		append(w, u8(v.yields) | u8(v.observes) << 1 | u8(v.no_tab) << 2)
 	case Tag:
 		append(w, 13)
 		put_u64(w, u64(v.id))
@@ -682,10 +683,10 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		}
 		v.cursor = Cursor(c)
 		flags := get_u8(r) or_return
-		if flags > 3 {
+		if flags > 7 {
 			return nil, false
 		}
-		v.yields, v.observes = flags & 1 != 0, flags & 2 != 0
+		v.yields, v.observes, v.no_tab = flags & 1 != 0, flags & 2 != 0, flags & 4 != 0
 		return v, true
 	case 13:
 		v: Tag
