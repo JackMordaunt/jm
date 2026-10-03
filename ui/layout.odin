@@ -1772,6 +1772,10 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size
 	}
 	off := offset
 	st := widget_state(gtx, id)
+	// The thumb follows the drag from its first pixel; a press on the
+	// track pages instead and drags nothing.
+	d := drag(gtx, id, .Vertical if axis == .Vertical else .Horizontal, slop = 0)
+	on_thumb := st.pressed
 	for e in events(gtx, id) {
 		along := main_of(axis, e.pos) - main_of(axis, ops.Point{b.track.x, b.track.y})
 		#partial switch e.kind {
@@ -1787,15 +1791,14 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size
 			case along > at + b.thumb_len:
 				off += b.view
 			case:
-				st.pressed = true
-			}
-		case .Move:
-			if st.pressed {
-				off += main_of(axis, e.travel) * b.range / b.travel
+				st.pressed, on_thumb = true, true
 			}
 		case .Release, .Cancel:
 			st.pressed = false
 		}
+	}
+	if on_thumb {
+		off += main_of(axis, d.delta) * b.range / b.travel
 	}
 	return clamp(off, 0, b.range)
 }

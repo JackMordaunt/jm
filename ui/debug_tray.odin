@@ -316,18 +316,9 @@ debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
 	// The title bar drags it: by the pointer's travel, which holds however
 	// the bar itself moves (see Event.travel). Kept inside the window.
 	grip := claim_id(gtx, 2)
-	for e in events(gtx, grip) {
-		#partial switch e.kind {
-		case .Press:
-			t.dragging = true
-		case .Release:
-			t.dragging = false
-		case .Move:
-			if t.dragging {
-				t.offset += e.travel
-			}
-		}
-	}
+	d := drag(gtx, grip, slop = 0)
+	t.offset += d.delta
+	t.dragging = d.phase != .Idle
 	window := gtx.constraints.max
 	corner := ops.Point{window.x - TRAY_WIDTH - 12, window.y - h - 12}
 	at := corner + t.offset

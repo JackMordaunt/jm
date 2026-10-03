@@ -722,7 +722,14 @@ test_scroll_box_bar_drags_and_pages :: proc(t: ^testing.T) {
 	harness_frame(&h)
 	event_push(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 1}})
 	scroll_frame(&h)
-	testing.expect(t, testutil.near(f32(-scroll_offset(&h)), (314 - 100) / 2.0 - 100))
+	paged := f32((314 - 100) / 2.0 - 100)
+	testing.expect(t, testutil.near(f32(-scroll_offset(&h)), paged))
+	// Moving while that track press is held drags nothing: only the thumb drags.
+	clear(&h.router.events)
+	harness_frame(&h)
+	event_push(&h, {kind = .Move, area = bar, travel = {0, 30}})
+	scroll_frame(&h)
+	testing.expect(t, testutil.near(f32(-scroll_offset(&h)), paged))
 }
 
 @(test)
