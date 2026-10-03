@@ -57,17 +57,6 @@ containers :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	}
 }
 
-// click_at presses and releases at pos over two frames, as probe_click
-// does at a tag's centre.
-@(private = "file")
-click_at :: proc(p: ^ui.Probe, pos: ops.Point) {
-	ui.router_push(&p.router, {kind = .Move, pos = pos})
-	ui.router_push(&p.router, {kind = .Press, pos = pos, button = .Left})
-	ui.probe_frame(p)
-	ui.router_push(&p.router, {kind = .Release, pos = pos, button = .Left})
-	ui.probe_frame(p)
-}
-
 @(test)
 test_tab_list_selects_by_click_and_enter_and_roves_by_arrows :: proc(t: ^testing.T) {
 	m: Containers_Model
@@ -171,10 +160,10 @@ test_card_guard_lays_out_its_body_and_selects_on_click :: proc(t: ^testing.T) {
 	// The card is its content plus padding, so its centre is the button:
 	// click in the padding instead, near the bottom-right corner.
 	corner := ops.Point{c.x + c.w - 4, c.y + c.h - 4}
-	click_at(&p, corner)
+	ui.probe_click_at(&p, corner)
 	testing.expect(t, m.sel)
 	testing.expect_value(t, m.hits, 1)
-	click_at(&p, corner)
+	ui.probe_click_at(&p, corner)
 	testing.expect(t, !m.sel)
 }
 

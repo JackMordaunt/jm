@@ -346,18 +346,26 @@ probe_center :: proc(p: ^Probe, name: string) -> (ops.Point, bool) {
 
 // probe_click moves to the center of the area tagged name, presses, runs a
 // frame, releases and runs another, so the ui has seen both Press and
-// Release. It returns false, and does nothing, when name is not found.
-probe_click :: proc(p: ^Probe, name: string, button: Button = .Left) -> bool {
+// Release. clicks is the press's count, 2 for a double click. It returns
+// false, and does nothing, when name is not found.
+probe_click :: proc(p: ^Probe, name: string, button: Button = .Left, clicks: u8 = 1) -> bool {
 	c, ok := probe_center(p, name)
 	if !ok {
 		return false
 	}
-	router_push(&p.router, {kind = .Move, pos = c})
-	router_push(&p.router, {kind = .Press, pos = c, button = button})
-	probe_frame(p)
-	router_push(&p.router, {kind = .Release, pos = c, button = button})
-	probe_frame(p)
+	probe_click_at(p, c, button, clicks)
 	return true
+}
+
+// probe_click_at clicks as probe_click does, at device point pos rather
+// than a tag's center: a point on a canvas, which has one area for all it
+// draws.
+probe_click_at :: proc(p: ^Probe, pos: ops.Point, button: Button = .Left, clicks: u8 = 1) {
+	router_push(&p.router, {kind = .Move, pos = pos})
+	router_push(&p.router, {kind = .Press, pos = pos, button = button, clicks = clicks})
+	probe_frame(p)
+	router_push(&p.router, {kind = .Release, pos = pos, button = button})
+	probe_frame(p)
 }
 
 // probe_drag presses at the center of the area tagged name, moves the

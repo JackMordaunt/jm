@@ -70,15 +70,6 @@ pop_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	}
 }
 
-@(private = "file")
-press_at :: proc(p: ^ui.Probe, pt: ops.Point) {
-	ui.router_push(&p.router, {kind = .Move, pos = pt})
-	ui.router_push(&p.router, {kind = .Press, pos = pt, button = .Left})
-	ui.probe_frame(p)
-	ui.router_push(&p.router, {kind = .Release, pos = pt, button = .Left})
-	ui.probe_frame(p)
-}
-
 @(test)
 test_popover_opens_above_its_trigger_and_closes :: proc(t: ^testing.T) {
 	m: Pop_Model
@@ -100,14 +91,14 @@ test_popover_opens_above_its_trigger_and_closes :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.insides, 1)
 	testing.expect(t, m.open)
 	// Escape once the surface has focus.
-	press_at(&p, {surface.x + 4, surface.y + 4})
+	ui.probe_click_at(&p, {surface.x + 4, surface.y + 4})
 	ui.probe_key(&p, .Escape)
 	testing.expect(t, !m.open)
 	// A press outside closes it.
 	testing.expect(t, ui.probe_click(&p, "Open"))
 	ui.probe_advance(&p, 30, 0.02)
 	testing.expect(t, m.open)
-	press_at(&p, {880, 690})
+	ui.probe_click_at(&p, {880, 690})
 	testing.expect(t, !m.open)
 }
 
@@ -169,7 +160,7 @@ test_info_label_button_opens_its_popover :: proc(t: ^testing.T) {
 	testing.expect(t, s.w <= 264)
 	testing.expect(t, s.y + s.h <= b.y) // above the button
 	testing.expect_value(t, s.x, b.x) // flush with its start
-	press_at(&p, {880, 690})
+	ui.probe_click_at(&p, {880, 690})
 	testing.expect(t, !ui.probe_tagged(&p, "Information"))
 }
 
