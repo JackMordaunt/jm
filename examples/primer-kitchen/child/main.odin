@@ -106,7 +106,7 @@ PAGES := [?]Page {
 	{"Details", page_details, false},
 	{"Lists and pickers", nil, true},
 	{"Action list", page_action_list, false},
-	{"Action menu", nil, false},
+	{"Action menu", page_action_menu, false},
 	{"Select panel", nil, false},
 	{"Autocomplete", nil, false},
 	{"Text input with tokens", nil, false},

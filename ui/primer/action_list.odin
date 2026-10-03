@@ -642,7 +642,7 @@ trail_of :: proc(gtx: ^ui.Ctx, it: List_Item, menu: bool) -> (t: Trail) {
 		t.kind, t.w = .Inactive, LIST_VISUAL
 	case it.leading == .None && it.loading:
 		t.kind, t.w = .Spinner, LIST_VISUAL
-	case it.expanded != nil:
+	case it.expanded != nil && it.trailing == .None:
 		t.kind, t.w = .Expand, LIST_VISUAL
 	case it.trailing != .None:
 		t.kind, t.w = .Icon, LIST_VISUAL

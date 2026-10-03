@@ -177,6 +177,7 @@ Surface_Spec :: struct {
 	slide:  ops.Point, // where it slides from, in px, at the start
 	trap:   bool,
 	scroll: bool, // its content scrolls inside it, hugging up to its height
+	offset: ^ui.Scroll_Offset, // where that scroll is kept, when its owner moves it; nil keeps it in the box
 	name:   string,
 }
 
@@ -263,7 +264,7 @@ surface_open :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, d: ^Overlay_Data, layer: ui.
 	s.sized = ui.sized_open(gtx, spec.limits, key = u64(ui.id_mix(id, 2)))
 	s.box = ui.box_open(gtx, {paint = paint_surface, user = look}, key = u64(ui.id_mix(id, 3)))
 	if spec.scroll {
-		s.scroll = ui.scroll_box_open(gtx, key = u64(ui.id_mix(id, 4)), fit = true)
+		s.scroll = ui.scroll_box_open(gtx, key = u64(ui.id_mix(id, 4)), offset = spec.offset, fit = true)
 	}
 	return
 }
@@ -573,6 +574,11 @@ Anchored_Overlay :: struct {
 // wider than the window ends flush left where Primer's ends flush right;
 // it is re-placed every frame against the window rather than the nearest
 // clipping ancestor; and Overlay's departures apply.
+//
+// max_height caps an auto height at a height step (a menu's maxHeight,
+// ActionMenu.module.css:26-65) where height fixes it; scroll keeps the
+// content's scroll offset where its owner can move it (to keep a focused
+// item in view).
 anchored_overlay_open :: proc(
 	gtx: ^ui.Ctx,
 	open: ^bool,
@@ -591,6 +597,8 @@ anchored_overlay_open :: proc(
 	trap := true,
 	role := ops.Role.Unknown,
 	name := "",
+	max_height := Overlay_Height.Auto,
+	scroll: ^ui.Scroll_Offset = nil,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> (a: Anchored_Overlay) {
@@ -622,7 +630,11 @@ anchored_overlay_open :: proc(
 		radius = corners_all(tok.BORDER_RADIUS_LARGE),
 		trap   = trap,
 		scroll = true,
+		offset = scroll,
 		name   = name,
+	}
+	if cap := OVERLAY_HEIGHTS[max_height]; cap > 0 && height == .Auto {
+		spec.limits.max.y = min(cap, gtx.viewport.y)
 	}
 	if narrow == .Fullscreen && gtx.viewport.x < NARROW_WIDTH {
 		layer := ui.overlay_open(gtx, cs = ui.exact(gtx.viewport), root = true)
@@ -812,7 +824,7 @@ anchored_overlay :: proc(
 	loc := #caller_location,
 ) -> bool {
 	h := ui.guard_hold(gtx, Anchored_Overlay)
-	h^ = anchored_overlay_open(gtx, open, anchor, side, align, anchor_offset, alignment_offset, display_in_viewport, width, height, narrow, close_button, close_label, focus, trap, role, name, key, loc)
+	h^ = anchored_overlay_open(gtx, open, anchor, side, align, anchor_offset, alignment_offset, display_in_viewport, width, height, narrow, close_button, close_label, focus, trap, role, name, key = key, loc = loc)
 	return h.visible
 }
 
