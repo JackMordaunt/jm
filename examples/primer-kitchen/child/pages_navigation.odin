@@ -20,6 +20,7 @@ Navs :: struct {
 	crumb_said:  string, // the last crumb chosen
 	unav:        int, // the live underline nav's current item
 	unav_narrow: int,
+	nav_list:    Nav_List_Demo,
 }
 
 // Tree_Demo is the tree view page's items and its lazy folder's loading.
@@ -316,4 +317,65 @@ page_underline_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
 		primer.underline_nav(gtx, "States", UNAV_ITEMS[:3], 0, variant = .Flush, state = st, key = key)
 	})
+}
+
+// Nav_List_Demo is the nav list page's items.
+Nav_List_Demo :: struct {
+	groups:   [3]primer.Nav_Group,
+	top:      [3]primer.Nav_Item,
+	code:     [3]primer.Nav_Item,
+	rules:    [2]primer.Nav_Item,
+	features: [3]primer.Nav_Item,
+	more:     [4]primer.Nav_Item,
+	security: [2]primer.Nav_Item,
+	current:  string,
+}
+
+// fill_nav_list_demo fills the page's items for this frame, current
+// following the last item chosen.
+@(private = "file")
+fill_nav_list_demo :: proc(d: ^Nav_List_Demo) -> []primer.Nav_Group {
+	if d.current == "" {
+		d.current = "Branches"
+	}
+	cur :: proc(d: ^Nav_List_Demo, label: string) -> primer.Nav_Item {
+		return {label = label, current = d.current == label}
+	}
+	d.rules = {cur(d, "Rulesets"), cur(d, "Tag protection")}
+	d.code = {cur(d, "Branches"), cur(d, "Actions"), {label = "Rules", children = d.rules[:]}}
+	d.top = {
+		{label = "General", leading = .Gear, current = d.current == "General"},
+		{label = "Collaborators", leading = .People, trailing_text = "4", current = d.current == "Collaborators"},
+		{label = "Code and automation", leading = .Code, children = d.code[:]},
+	}
+	d.features = {
+		{label = "Wikis", leading = .Book, description = "Documentation pages", current = d.current == "Wikis"},
+		{label = "Discussions", leading = .Comment_Discussion, description = "Questions and ideas", block_description = true, current = d.current == "Discussions"},
+		{label = "Sponsorships", leading = .Heart, inactive_text = "Only owners can change this"},
+	}
+	d.more = {cur(d, "Projects"), cur(d, "Packages"), cur(d, "Pages"), cur(d, "Environments")}
+	d.security = {cur(d, "Code security"), cur(d, "Deploy keys")}
+	d.groups = {
+		{items = d.top[:]},
+		{title = "Features", items = d.features[:], more = d.more[:], more_pages = 2},
+		{title = "Security", items = d.security[:], filled = true},
+	}
+	return d.groups[:]
+}
+
+page_nav_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	col := ui.column_open(gtx, gap = 10, align = .Fill)
+	defer ui.close(&col)
+	n := &m.navs
+	kitchen.section(gtx, "Live", "32px rows inset 8px; the current item's 4px accent line sits in that inset; a closed parent holding the current item takes its look")
+	r := ui.row_open(gtx, gap = 32, align = .Start)
+	defer ui.close(&r)
+	{
+		box := ui.sized_open(gtx, {min = {300, 0}, max = {300, ui.INF}})
+		if it := primer.nav_list(gtx, fill_nav_list_demo(&n.nav_list), "Settings"); it != nil {
+			n.nav_list.current = it.label
+		}
+		ui.close(&box)
+	}
+	base.label(gtx, fmt.aprintf("current: %s", n.nav_list.current), {size = 12, color = base.color(.Muted)})
 }

@@ -420,3 +420,147 @@ test_underline_nav_moves_items_that_break_into_more :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, !ui.probe_tagged(&p, "Code"))
 }
+
+@(private = "file")
+Nav_List_Model :: struct {
+	groups:   [2]Nav_Group,
+	top:      [3]Nav_Item,
+	kids:     [2]Nav_Item,
+	repo:     [2]Nav_Item,
+	more:     [5]Nav_Item,
+	chosen:   string,
+	current:  int, // which kid is current, -1 for none
+}
+
+@(private = "file")
+nav_list_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Nav_List_Model)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+	box := ui.sized_open(gtx, {min = {300, 0}, max = {300, ui.INF}})
+	defer ui.close(&box)
+	m.kids = {{label = "Branches", current = m.current == 0}, {label = "Rules", current = m.current == 1}}
+	m.top = {
+		{label = "General", leading = .Gear},
+		{label = "Code and automation", leading = .Code, children = m.kids[:]},
+		{label = "Billing", inactive_text = "Ask an owner", trailing_text = "3"},
+	}
+	m.repo = {{label = "Issues", description = "Open work", trailing_text = "12"}, {label = "Wiki", description = "Pages", block_description = true}}
+	m.more = {{label = "M1"}, {label = "M2"}, {label = "M3"}, {label = "M4"}, {label = "M5"}}
+	m.groups = {{items = m.top[:]}, {title = "Features", items = m.repo[:], more = m.more[:], more_pages = 2}}
+	if it := nav_list(gtx, m.groups[:], "Settings"); it != nil {
+		m.chosen = it.label
+	}
+}
+
+@(private = "file")
+nav_list_probe :: proc(p: ^ui.Probe, m: ^Nav_List_Model) {
+	ui.probe_init(p, nav_list_view, m, {600, 900}, allocator = context.temp_allocator)
+}
+
+@(test)
+test_nav_list_rows_and_the_current_item :: proc(t: ^testing.T) {
+	m := Nav_List_Model{current = 1}
+	p: ui.Probe
+	nav_list_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	general := ui.probe_bounds(&p, "General")
+	testing.expect_value(t, general.h, 2 * tok.CONTROL_MEDIUM_PADDING_BLOCK + NAV_ROW_LINE) // 32
+	testing.expect_value(t, general.x, tok.BASE_SIZE_8)
+	testing.expect_value(t, general.w, 300 - 2 * tok.BASE_SIZE_8)
+	rules := ui.probe_bounds(&p, "Rules") // opened: its parent holds the current item
+	testing.expect(t, rules.h > 0)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "navigation \"Settings\""), "%s", said)
+	testing.expectf(t, strings.contains(said, "heading \"Settings\" level 2"), "%s", said)
+	testing.expectf(t, strings.contains(said, "heading \"Features\" level 3"), "%s", said)
+	testing.expectf(t, strings.contains(said, "link \"Rules\" current page"), "%s", said)
+	testing.expectf(t, strings.contains(said, "button \"Code and automation\" expandable expanded"), "%s", said)
+	// The current item's line: 4px wide, 8px left of the row, inset 4px.
+	found := false
+	for d in ui.probe_current(&p).draws {
+		if f, ok := d.cmd.(ops.Fill); ok {
+			if c, solid := f.paint.(ops.Color); solid && c == color(.Border_Color_Accent_Emphasis) {
+				r := f.shape.(ops.Round_Rect).rect
+				at := ops.apply(d.transform, {r.x, r.y})
+				testing.expect_value(t, at, ops.Point{rules.x - 8, rules.y + 4})
+				testing.expect_value(t, r.h, rules.h - 8)
+				found = true
+			}
+		}
+	}
+	testing.expect(t, found)
+	// Closing the parent hides its items and hands it the current look.
+	testing.expect(t, ui.probe_click(&p, "Code and automation"))
+	ui.probe_frame(&p)
+	testing.expect(t, !ui.probe_tagged(&p, "Rules"))
+	ui.probe_move(&p, 590, 890) // hovered, it would show the hover fill
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	parent := ui.probe_bounds(&p, "Code and automation")
+	selected := 0
+	for d in ui.probe_current(&p).draws {
+		if f, ok := d.cmd.(ops.Fill); ok {
+			if c, solid := f.paint.(ops.Color); solid && c == color(.Control_Transparent_Bg_Color_Selected) {
+				r := f.shape.(ops.Round_Rect).rect
+				testing.expect_value(t, ops.apply(d.transform, {r.x, r.y}), ops.Point{parent.x, parent.y})
+				selected += 1
+			}
+		}
+	}
+	testing.expect_value(t, selected, 1)
+}
+
+@(test)
+test_nav_list_activation_skips_inactive_and_parents :: proc(t: ^testing.T) {
+	m := Nav_List_Model{current = -1}
+	p: ui.Probe
+	nav_list_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, !ui.probe_tagged(&p, "Branches")) // no current inside: closed
+	testing.expect(t, ui.probe_click(&p, "Code and automation"))
+	ui.probe_frame(&p)
+	branches := ui.probe_bounds(&p, "Branches")
+	parent := ui.probe_bounds(&p, "Code and automation")
+	testing.expect_value(t, branches.x, parent.x) // the same 8px in
+	testing.expect_value(t, m.chosen, "") // a parent toggles, it does not navigate
+	testing.expect(t, ui.probe_click(&p, "Branches"))
+	testing.expect_value(t, m.chosen, "Branches")
+	testing.expect(t, ui.probe_click(&p, "Billing")) // found by its tag, though it has no input area
+	testing.expect_value(t, m.chosen, "Branches") // inactive: ignored
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "link \"Billing\" value \"3\" desc \"Ask an owner\" disabled"), "%s", said)
+}
+
+@(test)
+test_nav_list_show_more_reveals_pages_and_moves_focus :: proc(t: ^testing.T) {
+	testing.expect_value(t, nav_more_shown(5, 2, 1), 3) // ceil(2.5)
+	testing.expect_value(t, nav_more_shown(5, 2, 2), 5)
+	testing.expect_value(t, nav_more_shown(5, 0, 1), 5)
+	testing.expect_value(t, nav_more_shown(5, 2, 0), 0)
+	m := Nav_List_Model{current = -1}
+	p: ui.Probe
+	nav_list_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, !ui.probe_tagged(&p, "M1"))
+	testing.expect(t, ui.probe_click(&p, "Show more"))
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "M3"))
+	testing.expect(t, !ui.probe_tagged(&p, "M4"))
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "link \"M1\" focused"), "the first revealed item takes focus: %s", said)
+	testing.expect(t, ui.probe_click(&p, "Show more"))
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "M5"))
+	testing.expect(t, !ui.probe_tagged(&p, "Show more")) // the last page: the row goes
+	said = ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, "link \"M4\" focused"), "5 - floor(5 / 2): %s", said)
+}

@@ -111,7 +111,7 @@ PAGES := [?]Page {
 	{"Autocomplete", page_autocomplete, false},
 	{"Text input with tokens", page_text_input_with_tokens, false},
 	{"Navigation", nil, true},
-	{"Nav list", nil, false},
+	{"Nav list", page_nav_list, false},
 	{"Underline nav", page_underline_nav, false},
 	{"Underline panels", page_underline_panels, false},
 	{"Tree view", page_tree_view, false},

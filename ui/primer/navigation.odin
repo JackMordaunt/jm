@@ -1313,3 +1313,419 @@ underline_more :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, m: ^Underline_Nav_Memo, mo
 	anchored_overlay_close(&a)
 	return
 }
+
+// --- NavList -------------------------------------------------------------
+
+// Nav_Item is one NavList item: a link, or with children a disclosure
+// button over a sub-navigation (at most four levels deep). current marks
+// the page shown; inactive_text makes the item muted and inert and says
+// why.
+Nav_Item :: struct {
+	label:             string,
+	current:           bool,
+	leading:           Icon,
+	trailing:          Icon,
+	trailing_text:     string, // a count, in place of a trailing icon
+	description:       string,
+	block_description: bool, // under the label, the label semibold; else inline after it
+	inactive_text:     string,
+	children:          []Nav_Item,
+	default_open:      bool,
+}
+
+// Nav_Group is a run of NavList items: under a heading when title is set,
+// after a divider unless hide_divider, with more revealed by a "Show more"
+// row in more_pages steps (0: all at once).
+Nav_Group :: struct {
+	title:        string,
+	items:        []Nav_Item,
+	hide_divider: bool,
+	filled:       bool, // the heading on a --bgColor-muted band
+	more:         []Nav_Item,
+	more_label:   string, // "Show more" when empty
+	more_pages:   int,
+}
+
+// NAV_ROW_LINE is a label's and visual's hard-coded 20px line, so a one-
+// line row is 32px; NAV_DESCRIPTION_LINE a description's 16px line; and
+// NAV_GROUP_LINE a group heading's 18px (ActionList.module.css:513,682,
+// 693,707; Group.module.css:20).
+NAV_ROW_LINE :: tok.BASE_SIZE_20
+NAV_DESCRIPTION_LINE :: tok.BASE_SIZE_16
+NAV_GROUP_LINE :: f32(18)
+
+// NAV_INDENT is a sub-item's indent per level, and NAV_MAX_DEPTH the
+// deepest sub-navigation drawn (ActionList.module.css:614; NavList.tsx
+// :309-314).
+NAV_INDENT :: tok.BASE_SIZE_8
+NAV_MAX_DEPTH :: 4
+
+// NAV_FADE is a row's 33.333ms linear background transition
+// (ActionList.module.css:513).
+NAV_FADE :: tok.Transition{33.333, {0, 0, 1, 1}}
+
+// Nav_Item_Memo is whether a parent is open, and whether its sub-tree held
+// the current item last frame.
+@(private)
+Nav_Item_Memo :: struct {
+	open, seeded, held: bool,
+}
+
+// Nav_Group_Memo is how many times a group's Show more was pressed.
+@(private)
+Nav_Group_Memo :: struct {
+	pressed: int,
+	focus:   int, // the revealed item to focus once drawn, -1 for none
+}
+
+// nav_holds_current reports whether items, at any depth, hold the current
+// item (NavList.tsx:221-265).
+@(private)
+nav_holds_current :: proc(items: []Nav_Item) -> bool {
+	for it in items {
+		if it.current || nav_holds_current(it.children) {
+			return true
+		}
+	}
+	return false
+}
+
+// Nav_List_Ctx is what every row of one NavList shares.
+@(private)
+Nav_List_Ctx :: struct {
+	root:    ops.Area_Id,
+	chosen:  ^Nav_Item,
+	w:       f32,
+	focus_next: bool, // focus the next row drawn: an item Show more revealed
+}
+
+// nav_list is Primer's NavList (nav-list.json, NavList.tsx, ActionList's
+// inset list): a navigation landmark named by label, else title (a small
+// heading at heading_level, 16px in, 8px above the list), holding
+// groups of 32px rows inset 8px from each side. A row is rounded, padded
+// 6px by 8px: a 16px --fgColor-muted leading visual and 8px, the label in
+// medium body text on a 20px line (sub-items small), wrapping, an inline
+// or block description in small muted text, and a trailing icon or count.
+// Hover fills --control-transparent-bgColor-hover with a 1px inset
+// --control-transparent-borderColor-active ring, a press
+// --control-transparent-bgColor-active; keyboard focus outlines the row
+// 2px. The current item fills --control-transparent-bgColor-selected, its
+// label semibold in --control-fgColor-rest, with a 4px
+// --borderColor-accent-emphasis line 8px to its left (activeIndicatorLine
+// .css). An item with children is a button toggling them, with a
+// chevron; it opens on default_open or when it holds the current item,
+// and while closed holding it, takes the current treatment itself.
+// Sub-items indent 8px a level. A group draws a 1px --borderColor-muted
+// divider before itself (7px above, 8px below) unless it is first or
+// hide_divider, then its title in small semibold muted text (a heading a
+// level below the NavList's, at most h4), its items, and a Show more row
+// for its more items. It returns the leaf item activated, or nil.
+//
+// Departures: rows are drawn here until the lists family's ActionList
+// lands, which NavList is built on; trailing actions and tooltips are not
+// offered; the 2px item gap behind a feature flag is not drawn; an
+// inactive item is not focusable, as jm:ui has no focusable disabled
+// state; Show more reports itself collapsed only until it is pressed
+// (the web says false always, nav-list.json upstream bug).
+nav_list :: proc(
+	gtx: ^ui.Ctx,
+	groups: []Nav_Group,
+	title := "",
+	heading_level := 2,
+	label := "",
+	key: u64 = 0,
+	loc := #caller_location,
+) -> ^Nav_Item {
+	id := ui.claim_id(gtx, key, loc)
+	nc := Nav_List_Ctx{root = id}
+	col := ui.column_open(gtx, align = .Fill, key = u64(ui.id_mix(id, 1)))
+	defer ui.close(&col)
+	name := label != "" ? label : title
+	ui.container_semantics(gtx, {role = .Navigation, label = ui.frame_string(gtx, name)})
+	nc.w = gtx.constraints.max.x
+	if !ui.is_finite(nc.w) {
+		nc.w = 240
+	}
+	if title != "" {
+		pad := ui.inset_open(gtx, {tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED + tok.BASE_SIZE_8, 0, 0, tok.BASE_SIZE_8}, key = u64(ui.id_mix(id, 2)))
+		heading(gtx, title, clamp(heading_level, 1, 6), .Small, key = u64(ui.id_mix(id, 3)))
+		ui.close(&pad)
+	}
+	list := ui.inset_open(gtx, {0, tok.BASE_SIZE_8, 0, tok.BASE_SIZE_8}, key = u64(ui.id_mix(id, 4)))
+	defer ui.close(&list)
+	rows := ui.column_open(gtx, align = .Fill, key = u64(ui.id_mix(id, 5)))
+	defer ui.close(&rows)
+	ui.container_semantics(gtx, {role = .List})
+	group_level := u8(clamp(title != "" ? heading_level + 1 : 3, 1, 4))
+	for &g, gi in groups {
+		sc := ui.scope_open(gtx, gi + 1)
+		nav_group(gtx, &nc, &g, gi, group_level)
+		ui.scope_close(&sc)
+	}
+	return nc.chosen
+}
+
+// nav_group draws group g, the gi-th.
+@(private)
+nav_group :: proc(gtx: ^ui.Ctx, nc: ^Nav_List_Ctx, g: ^Nav_Group, gi: int, level: u8) {
+	if gi > 0 && !g.hide_divider {
+		p := ui.widget_open(gtx, 1)
+		ops.fill(gtx.scene, ops.Rect{0, tok.BASE_SIZE_8 - tok.BORDER_WIDTH_THIN, nc.w, tok.BORDER_WIDTH_THIN}, color(.Border_Color_Muted))
+		ui.semantics(gtx, &p, {role = .Separator})
+		ui.widget_close(gtx, &p, {size = {nc.w, 2 * tok.BASE_SIZE_8}})
+	} else if gi > 0 {
+		ui.spacer(gtx, tok.BASE_SIZE_8)
+	}
+	if g.title != "" {
+		nav_group_title(gtx, g, gi, nc.w, level)
+	}
+	for &it, i in g.items {
+		nav_item(gtx, nc, &it, 0, u64(i + 1), tree_key(g.title))
+	}
+	if len(g.more) > 0 {
+		nav_more(gtx, nc, g, gi)
+	}
+}
+
+// nav_group_title is a group's heading: small semibold muted text on an
+// 18px line, padded 6px by 16px, on a muted band between rules when
+// filled (Group.module.css:13-51).
+@(private)
+nav_group_title :: proc(gtx: ^ui.Ctx, g: ^Nav_Group, gi: int, w: f32, level: u8) {
+	p := ui.widget_open(gtx, 2)
+	st := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD, size = tok.TEXT_BODY_SIZE_SMALL, line_height = NAV_GROUP_LINE}
+	para := design.layout_style(gtx, g.title, st, font_for(gtx, st.weight), max(w - 2 * tok.BASE_SIZE_16, 1))
+	h := para.height + 2 * tok.BASE_SIZE_6
+	y: f32
+	if g.filled {
+		// 7px above (none when first), the band and its rules, 8px below.
+		if gi > 0 {
+			y = tok.BASE_SIZE_8 - tok.BORDER_WIDTH_THIN
+		}
+		b := tok.BORDER_WIDTH_THIN
+		ops.fill(gtx.scene, ops.Rect{0, y, w, h + 2 * b}, color(.Bg_Color_Muted))
+		ops.fill(gtx.scene, ops.Rect{0, y, w, b}, color(.Border_Color_Muted))
+		ops.fill(gtx.scene, ops.Rect{0, y + h + b, w, b}, color(.Border_Color_Muted))
+		y += b
+	}
+	design.draw_paragraph(gtx, para, {tok.BASE_SIZE_16, y + tok.BASE_SIZE_6}, color(.Fg_Color_Muted))
+	total := y + h + (g.filled ? tok.BORDER_WIDTH_THIN + tok.BASE_SIZE_8 : 0)
+	said := ui.frame_string(gtx, g.title)
+	ops.tag(gtx.scene, p.id, said, {0, y, w, h})
+	ui.semantics(gtx, &p, {role = .Heading, label = said, level = level})
+	ui.widget_close(gtx, &p, {size = {w, total}})
+}
+
+// nav_item draws it at depth and, while open, its children; path names
+// its parents, so its open state follows its place in the list.
+@(private)
+nav_item :: proc(gtx: ^ui.Ctx, nc: ^Nav_List_Ctx, it: ^Nav_Item, depth: int, key, path: u64) {
+	if depth >= NAV_MAX_DEPTH {
+		return
+	}
+	sc := ui.scope_open(gtx, key)
+	defer ui.scope_close(&sc)
+	parent := len(it.children) > 0
+	here := u64(ui.id_mix(ops.Area_Id(path), tree_key(it.label)))
+	m := ui.widget_data(gtx, ui.id_mix(nc.root, here), Nav_Item_Memo)
+	holds := parent && nav_holds_current(it.children)
+	if parent && (!m.seeded || holds && !m.held) {
+		m.open = m.open || it.default_open || holds
+		m.seeded = true
+	}
+	m.held = holds
+	look := Nav_Row{it = it, depth = depth, parent = parent, open = parent && m.open}
+	look.current = it.current || (parent && !m.open && holds)
+	if nav_row(gtx, nc, look) {
+		switch {
+		case parent:
+			m.open = !m.open
+		case:
+			nc.chosen = it
+		}
+	}
+	if parent && m.open {
+		for &c, i in it.children {
+			nav_item(gtx, nc, &c, depth + 1, u64(i + 1), here)
+		}
+	}
+}
+
+// nav_more is a group's Show more row and the items it has revealed:
+// pages 0 reveals all at the first press; with N pages each press
+// reveals ceil(count / N x presses), the row going after the Nth; focus
+// moves to the first item revealed (NavList.tsx:448-528).
+@(private)
+nav_more :: proc(gtx: ^ui.Ctx, nc: ^Nav_List_Ctx, g: ^Nav_Group, gi: int) {
+	gm := ui.widget_data(gtx, ui.id_mix(nc.root, u64(7000 + gi)), Nav_Group_Memo)
+	n := len(g.more)
+	shown := nav_more_shown(n, g.more_pages, gm.pressed)
+	for &it, i in g.more[:shown] {
+		if gm.pressed > 0 && i == gm.focus {
+			nc.focus_next = true
+			gm.focus = -1
+		}
+		nav_item(gtx, nc, &it, 0, u64(1000 + i), tree_key(g.title))
+	}
+	if gm.pressed > 0 && (g.more_pages == 0 || gm.pressed >= g.more_pages) {
+		return
+	}
+	label := g.more_label != "" ? g.more_label : "Show more"
+	more := Nav_Item{label = label, trailing = .Plus}
+	if nav_row(gtx, nc, {it = &more, more = true}) {
+		gm.pressed += 1
+		gm.focus = 0
+		if gm.pressed > 1 {
+			gm.focus = nav_more_shown(n, g.more_pages, gm.pressed) - n / g.more_pages
+		}
+	}
+}
+
+// nav_more_shown is how many of n hidden items show after pressed presses
+// of Show more in pages steps: all once pressed with pages 0, else
+// ceil(n / pages x pressed) (NavList.tsx:453-455).
+@(private)
+nav_more_shown :: proc(n, pages, pressed: int) -> int {
+	if pressed <= 0 {
+		return 0
+	}
+	if pages <= 0 {
+		return n
+	}
+	return min(int(math.ceil(f32(n) / f32(pages) * f32(pressed))), n)
+}
+
+// Nav_Row is how one row draws.
+@(private)
+Nav_Row :: struct {
+	it:                    ^Nav_Item,
+	depth:                 int,
+	parent, open, current: bool,
+	more:                  bool, // the Show more row: a button
+}
+
+// nav_row draws a row and reports its activation.
+@(private)
+nav_row :: proc(gtx: ^ui.Ctx, nc: ^Nav_List_Ctx, r: Nav_Row, loc := #caller_location) -> bool {
+	it := r.it
+	p := ui.widget_open(gtx, 0, loc)
+	inactive := it.inactive_text != ""
+	// Every row sits 8px in: a sub-item has no margin of its own, but its
+	// list lies inside its top-level ancestor's.
+	margin := tok.BASE_SIZE_8
+	w := nc.w - 2 * tok.BASE_SIZE_8
+	box := ops.Rect{0, 0, w, 0}
+	x := tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED + f32(r.depth) * NAV_INDENT
+	if r.depth > 0 {
+		x += tok.CONTROL_MEDIUM_GAP
+	}
+	label_x := x + (it.leading != .None ? BUTTON_ICON + tok.CONTROL_MEDIUM_GAP : 0)
+	trail := it.trailing
+	if r.parent {
+		trail = r.open ? .Chevron_Up : .Chevron_Down
+	}
+	trail_text := design.shape_style(gtx, it.trailing_text, style(.Body_Small), font_for(gtx, tok.BASE_TEXT_WEIGHT_NORMAL))
+	trail_w: f32
+	switch {
+	case trail != .None:
+		trail_w = BUTTON_ICON
+	case it.trailing_text != "":
+		trail_w = trail_text.width
+	}
+	right := w - tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED - (trail_w > 0 ? trail_w + tok.CONTROL_MEDIUM_GAP : 0)
+	semibold := r.current || it.description != "" && it.block_description
+	size := r.depth > 0 ? tok.TEXT_BODY_SIZE_SMALL : tok.TEXT_BODY_SIZE_MEDIUM
+	st := tok.Type_Style{weight = semibold ? tok.BASE_TEXT_WEIGHT_SEMIBOLD : tok.BASE_TEXT_WEIGHT_NORMAL, size = size, line_height = NAV_ROW_LINE}
+	label := design.layout_style(gtx, it.label, st, font_for(gtx, st.weight), max(right - label_x, 1))
+	dst := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_NORMAL, size = tok.TEXT_BODY_SIZE_SMALL, line_height = NAV_DESCRIPTION_LINE}
+	under := it.inactive_text if inactive else (it.block_description ? it.description : "")
+	sub := design.layout_style(gtx, under, dst, font_for(gtx, dst.weight), max(right - label_x, 1))
+	content := label.height
+	if under != "" {
+		content += tok.BASE_SIZE_4 + sub.height
+	}
+	box.h = 2 * tok.CONTROL_MEDIUM_PADDING_BLOCK + max(content, NAV_ROW_LINE)
+	box.x = margin
+	c := control(gtx, p.id, box, inactive ? .Disabled : .Live)
+	if nc.focus_next && !r.more {
+		ui.focus_request(gtx, p.id)
+		nc.focus_next = false
+	}
+	paint_nav_row(gtx, c, r, box)
+	ink := color(inactive ? .Fg_Color_Muted : (r.current ? .Control_Fg_Color_Rest : .Fg_Color_Default))
+	muted := color(.Fg_Color_Muted)
+	top := box.y + tok.CONTROL_MEDIUM_PADDING_BLOCK
+	if it.leading != .None {
+		icon(gtx, it.leading, {box.x + x, top + (NAV_ROW_LINE - BUTTON_ICON) / 2}, BUTTON_ICON, muted)
+	}
+	design.draw_paragraph(gtx, label, {box.x + label_x, top}, ink)
+	if it.description != "" && !it.block_description && !inactive && len(label.lines) > 0 {
+		// Inline: 8px after the label, on its last line's baseline.
+		last := label.lines[len(label.lines) - 1]
+		d := design.shape_style(gtx, it.description, dst, font_for(gtx, dst.weight))
+		dx := box.x + label_x + last.width + tok.BASE_SIZE_8
+		draw_text(gtx, d, {dx, top + last.baseline - baseline_of(d)}, muted)
+	}
+	if under != "" {
+		design.draw_paragraph(gtx, sub, {box.x + label_x, top + label.height + tok.BASE_SIZE_4}, muted)
+	}
+	switch {
+	case trail != .None:
+		icon(gtx, trail, {box.x + w - tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED - BUTTON_ICON, top + (NAV_ROW_LINE - BUTTON_ICON) / 2}, BUTTON_ICON, muted)
+	case it.trailing_text != "":
+		draw_text(gtx, trail_text, {box.x + w - tok.CONTROL_MEDIUM_PADDING_INLINE_CONDENSED - trail_text.width, top + (NAV_ROW_LINE - trail_text.height) / 2}, muted)
+	}
+	listen(gtx, c.st, p.id, box, cursor = .Pointer)
+	said := ui.frame_string(gtx, it.label)
+	ops.tag(gtx.scene, p.id, said, box)
+	states: ops.States
+	role := ops.Role.Link
+	if r.parent || r.more {
+		role = .Button
+		states += {.Expandable}
+		if r.open {
+			states += {.Expanded}
+		}
+	}
+	if it.current {
+		states += {.Current_Page}
+	}
+	if inactive {
+		states += {.Disabled}
+	}
+	desc := it.description if !inactive else it.inactive_text
+	ui.semantics(gtx, &p, {role = role, label = said, value = ui.frame_string(gtx, it.trailing_text), description = ui.frame_string(gtx, desc), states = states})
+	ui.widget_close(gtx, &p, {{nc.w, box.h}, 0})
+	return c.clicked && !inactive
+}
+
+// paint_nav_row draws a row's fill, ring, current line and focus outline
+// (ActionList.module.css:111-245; activeIndicatorLine.css).
+@(private)
+paint_nav_row :: proc(gtx: ^ui.Ctx, c: Control, r: Nav_Row, box: ops.Rect) {
+	rr := ops.Round_Rect{box, tok.BORDER_RADIUS_MEDIUM}
+	inert := c.disabled
+	fill := tok.Role.Control_Transparent_Bg_Color_Rest
+	ring := false
+	switch {
+	case inert:
+	case c.pressed:
+		fill, ring = .Control_Transparent_Bg_Color_Active, !r.current
+	case c.hovered:
+		fill, ring = .Control_Transparent_Bg_Color_Hover, !r.current && !c.focus_visible
+	case r.current:
+		fill = .Control_Transparent_Bg_Color_Selected
+	}
+	bg := design.blend(gtx, c.fades, 0, color(fill), NAV_FADE.duration, NAV_FADE.easing)
+	if ui.painted(bg) {
+		ops.fill(gtx.scene, rr, bg)
+	}
+	if ring {
+		design.paint_inset_shadow(gtx, rr, {spread = tok.BORDER_WIDTH_THIN, color = color(.Control_Transparent_Border_Color_Active)})
+	}
+	if r.current {
+		line := ops.Rect{box.x - tok.BASE_SIZE_8, box.y + tok.BASE_SIZE_4, tok.BASE_SIZE_4, box.h - tok.BASE_SIZE_8}
+		ops.fill(gtx.scene, ops.Round_Rect{line, radius(tok.BORDER_RADIUS_MEDIUM, line)}, color(.Border_Color_Accent_Emphasis))
+	}
+	paint_focus_outline(gtx, c, rr, 0)
+}
