@@ -131,6 +131,7 @@ Tree_Memo :: struct {
 	actions_open: bool,
 	actions_of:   u64,
 	hovered:      int, // rows under the pointer; the tree is hovered while any is
+	current_id:   ops.Area_Id, // the current item's row as last drawn: where Tab enters
 }
 
 // Tree_Item_Memo is what a tree keeps per item id, drawn or not.
@@ -303,9 +304,9 @@ tree_row_name :: proc(gtx: ^ui.Ctx, r: Tree_Row) -> string {
 // lines show in --borderColor-muted while the pointer is over the tree or
 // focus is in it. flat drops the indentation and toggle columns.
 //
-// The tree is one tab stop, entered at the current item, else the last
-// focused, else the first. Up and Down move through visible rows, Home and
-// End to the ends, Page Up and Down by page_height (the window's height
+// The tree is one roving focus scope, so one tab stop, entered at the
+// current item, else the last focused, else the first. Up and Down move
+// through visible rows, Home and End to the ends (the scope's arrows), Page Up and Down by page_height (the window's height
 // when 0) over 32px rows, a row focused by the keyboard scrolling into
 // view; Right opens a closed item or enters an open
 // one, Left closes an open one or goes to the parent, Backspace to the
@@ -356,18 +357,22 @@ tree_view :: proc(
 		tm.focus = 0
 	}
 	inside := tm.focus_id != 0 && ui.focused(gtx) == tm.focus_id
-	stop := tree_tab_stop(rows[:], tm, inside)
+	box := ui.inset_open(gtx, {}, key = u64(ui.id_mix(root, 2)))
+	ui.focus_scope_open(gtx, root, rove = .Vertical)
+	tm.current_id = 0
 	col := ui.column_open(gtx, align = .Fill, key = u64(ui.id_mix(root, 1)))
 	ui.container_semantics(gtx, {role = .Tree, label = ui.frame_string(gtx, label)})
 	shown := Tree_Look{tm.hovered > 0 || inside, flat, truncate}
 	tm.hovered = 0
 	for r, i in rows {
 		sc := ui.scope_open(gtx, r.key)
-		tree_row(gtx, root, tm, rows[:], i, i == stop, shown, &ev)
+		tree_row(gtx, root, tm, rows[:], i, shown, &ev)
 		ui.scope_close(&sc)
 	}
 	tree_status(gtx, tm, root)
 	ui.close(&col)
+	ui.focus_scope_close(gtx, tm.current_id)
+	ui.close(&box)
 	tree_dialogs(gtx, root, tm, rows[:], &ev)
 	return
 }
@@ -376,30 +381,6 @@ tree_view :: proc(
 @(private)
 Tree_Look :: struct {
 	lines, flat, truncate: bool,
-}
-
-// tree_tab_stop is the row that takes keys: the focused one while focus
-// is in the tree, else the current item, else the last focused, else the
-// first (useRovingTabIndex.ts:17-71).
-@(private)
-tree_tab_stop :: proc(rows: []Tree_Row, tm: ^Tree_Memo, inside: bool) -> int {
-	if len(rows) == 0 {
-		return -1
-	}
-	if inside {
-		if i := tree_find(rows, tm.focus); i >= 0 {
-			return i
-		}
-	}
-	for r, i in rows {
-		if r.kind == .Item && r.item.current {
-			return i
-		}
-	}
-	if i := tree_find(rows, tm.focus); i >= 0 {
-		return i
-	}
-	return 0
 }
 
 // tree_handle_keys runs the keys the focused row received: movement, opening
@@ -422,14 +403,6 @@ tree_handle_keys :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, rows: 
 			to := at
 			plain := e.mods & {.Alt, .Super} == {}
 			#partial switch e.key {
-			case .Down:
-				to = min(at + 1, len(rows) - 1)
-			case .Up:
-				to = max(at - 1, 0)
-			case .Home:
-				to = 0
-			case .End:
-				to = len(rows) - 1
 			case .Page_Down, .Page_Up:
 				view := page_height > 0 ? page_height : gtx.viewport.y
 				page := max(int(view / TREE_ROW), 1)
@@ -522,11 +495,11 @@ tree_typeahead :: proc(gtx: ^ui.Ctx, tm: ^Tree_Memo, rows: []Tree_Row, at: int, 
 
 // tree_row draws row i, reporting its activation and its actions in ev.
 @(private)
-tree_row :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, rows: []Tree_Row, i: int, stop: bool, shown: Tree_Look, ev: ^Tree_Event) {
+tree_row :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, rows: []Tree_Row, i: int, shown: Tree_Look, ev: ^Tree_Event) {
 	r := rows[i]
 	actions := r.kind == .Item ? r.item.actions : nil
 	if len(actions) == 0 {
-		tree_row_widget(gtx, root, tm, r, i, stop, shown, 0, ev)
+		tree_row_widget(gtx, root, tm, r, i, shown, 0, ev)
 		return
 	}
 	aw: f32
@@ -535,7 +508,7 @@ tree_row :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, rows: []Tree_R
 	}
 	s := ui.stack_open(gtx)
 	defer ui.close(&s)
-	tree_row_widget(gtx, root, tm, r, i, stop, shown, aw, ev)
+	tree_row_widget(gtx, root, tm, r, i, shown, aw, ev)
 	row := ui.row_open(gtx, align = .Center)
 	defer ui.close(&row)
 	ui.fill_space(gtx)
@@ -579,7 +552,7 @@ tree_action_width :: proc(gtx: ^ui.Ctx, a: Tree_Action) -> f32 {
 // and label, its input and its semantics; aw is the width its actions
 // take at its end.
 @(private)
-tree_row_widget :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, r: Tree_Row, i: int, stop: bool, shown: Tree_Look, aw: f32, ev: ^Tree_Event) {
+tree_row_widget :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, r: Tree_Row, i: int, shown: Tree_Look, aw: f32, ev: ^Tree_Event) {
 	p := ui.widget_open(gtx, r.key)
 	w := ui.is_finite(gtx.constraints.max.x) ? gtx.constraints.max.x : 240
 	indent := shown.flat ? 0 : f32(r.level - 1) * TREE_TOGGLE / 2
@@ -620,7 +593,10 @@ tree_row_widget :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, r: Tree
 	for e in ui.events(gtx, p.id) {
 		switch {
 		case e.kind == .Focus && tm.ask == 0:
-			tm.focus = r.key // Tab brought focus here
+			// Tab or the scope's arrows brought focus here: bring the
+			// row into view, as the web's focus() does (TreeView.tsx:398-408).
+			tm.focus = r.key
+			ui.scroll_into_view(gtx, area)
 		case e.kind == .Release && e.button == .Middle && m != nil && r.item.selectable:
 			ev^ = {.Select, r.item.id, 0}
 		}
@@ -634,6 +610,9 @@ tree_row_widget :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, r: Tree
 	}
 	if tm.focus == r.key {
 		tm.focus_id = p.id
+	}
+	if r.kind == .Item && r.item.current {
+		tm.current_id = p.id
 	}
 	if r.kind == .Loading && m == nil {
 		pm := tree_item_memo(gtx, root, r.item)
@@ -656,12 +635,7 @@ tree_row_widget :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, r: Tree
 	}
 	paint := Tree_Row_Paint{r, area, indent, content_x, text_x, text_r, top, para, lead, trail, c.st.hovered, shown}
 	paint_tree_row(gtx, paint, c, ct)
-	// Every row hears focus; only the tab stop wants keys, so Tab
-	// visits the tree once (a roving tabindex).
-	kinds := ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Focus, .Blur}
-	if stop {
-		kinds += {.Key, .Text}
-	}
+	kinds := ops.Event_Kinds{.Press, .Release, .Enter, .Leave, .Move, .Focus, .Blur, .Key, .Text}
 	ops.input_area(gtx.scene, p.id, area, kinds, r.kind == .Loading ? .Default : .Pointer)
 	ops.observer_area(gtx.scene, hover, area)
 	if m != nil && r.item.selectable && r.has_sub && !shown.flat {
