@@ -918,9 +918,13 @@ Breadcrumbs_Memo :: struct {
 // breadcrumb items" whose menu lists them (breadcrumbs_fold). It returns
 // the crumb activated, in the trail or the menu, or -1.
 //
-// Departures: the menu lists its crumbs as invisible buttons until
-// ActionList lands; it is at most the auto overlay width, not the small
-// 320px; crumbs have no hrefs, the activation being the caller's.
+// The menu is a floating ActionList of the folded crumbs as links, the
+// current page in its active look; Escape or a press outside closes it.
+//
+// Departures: the menu is at least 192px wide and hugs its crumbs past
+// that, where the web caps it at --overlay-width-small, 320px
+// (Breadcrumbs.module.css:136-166); crumbs have no hrefs, the
+// activation being the caller's.
 breadcrumbs :: proc(
 	gtx: ^ui.Ctx,
 	items: []Breadcrumb,
@@ -1078,22 +1082,23 @@ breadcrumbs_menu :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, folded: []Breadcrumb, va
 	defer ui.close(&row)
 	st := ui.stack_open(gtx, key = u64(ui.id_mix(id, 3)))
 	name := fmt.aprintf("%d more breadcrumb items", len(folded), allocator = gtx.allocator)
-	if icon_button(gtx, .Kebab_Horizontal, name, .Invisible, .Small, tooltip_direction = .E, key = u64(ui.id_mix(id, 4))) {
+	if icon_button(gtx, .Kebab_Horizontal, name, .Invisible, .Small, tooltip_direction = .E, expanded = m.open, key = u64(ui.id_mix(id, 4))) {
 		m.open = !m.open
 	}
 	anchor := ui.last_widget(gtx)
-	a := anchored_overlay_open(gtx, &m.open, anchor, focus = {prevent = true}, trap = false, role = .List, name = "Breadcrumbs", key = u64(ui.id_mix(id, 5)))
+	// A details disclosure over an ActionList of links, not an
+	// ActionMenu: no focus trap, Tab walks the links
+	// (Breadcrumbs.tsx:65-135).
+	a := anchored_overlay_open(gtx, &m.open, anchor, focus = {prevent = true}, trap = false, key = u64(ui.id_mix(id, 5)))
 	if a.visible {
-		pad := ui.inset_open(gtx, ui.pad_all(tok.BASE_SIZE_8))
-		col := ui.column_open(gtx, align = .Fill)
+		l := action_list_open(gtx, name = "Breadcrumbs", key = u64(ui.id_mix(id, 6)))
 		for it, i in folded {
-			if nav_menu_item(gtx, it.label, it.selected, "", u64(i + 1)) {
+			if action_list_item(&l, it.label, active = it.selected, link = true) {
 				chosen = i
 				m.open = false
 			}
 		}
-		ui.close(&col)
-		ui.close(&pad)
+		action_list_close(&l)
 	}
 	anchored_overlay_close(&a)
 	ui.close(&st)
@@ -1109,14 +1114,6 @@ crumb_separator_widget :: proc(gtx: ^ui.Ctx, loc := #caller_location) {
 	ui.widget_close(gtx, &p, {size = {CRUMB_GLYPH, CRUMB_GLYPH}})
 }
 
-// nav_menu_item is one entry of a navigation component's overflow menu:
-// a link, semibold when current, with an optional trailing counter.
-// It stands in for ActionList.LinkItem until the lists family's ActionList
-// lands.
-@(private)
-nav_menu_item :: proc(gtx: ^ui.Ctx, label: string, current: bool, counter: string, key: u64) -> bool {
-	return button(gtx, label, .Invisible, count = counter, block = true, align = .Start, key = key)
-}
 
 // --- UnderlineNav --------------------------------------------------------
 
@@ -1184,10 +1181,13 @@ Underline_Nav_Memo :: struct {
 //
 // Departures: the More button's label is Button's medium weight, not
 // normal, nor semibold when it holds the current item
-// (UnderlineNav.module.css:108-123); its menu lists the items as invisible buttons, the current one
-// semibold without its left bar, until ActionMenu lands; an item counts
-// as overflowed when it does not fit whole, where the web allows 5% of it
-// to be clipped (OverflowObserverProvider.tsx:43-53,114-121); items have no hrefs, the activation being the caller's.
+// (UnderlineNav.module.css:108-123); the More menu is an ActionMenu whose
+// current item takes ActionList's active look, not UnderlineNav's 2px
+// left bar (UnderlineNav.module.css:83-98), and whose counters are plain
+// trailing text, with none while counters load; an item counts as
+// overflowed when it does not fit whole, where the web allows 5% of it to
+// be clipped (OverflowObserverProvider.tsx:43-53,114-121); items have no
+// hrefs, the activation being the caller's.
 underline_nav :: proc(
 	gtx: ^ui.Ctx,
 	label: string,
@@ -1299,7 +1299,9 @@ underline_more :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, m: ^Underline_Nav_Memo, mo
 	st := ui.stack_open(gtx, key = u64(ui.id_mix(id, 7)))
 	defer ui.close(&st)
 	name := holds ? "More items, including current item" : "More items"
-	if button(gtx, "More", .Invisible, action = .Triangle_Down, name = name, key = u64(ui.id_mix(id, 8))) {
+	// ActionMenu.Button, named for what it holds (UnderlineNav.tsx
+	// :119-130).
+	if button(gtx, "More", .Invisible, action = .Triangle_Down, expanded = m.open, name = name, key = u64(ui.id_mix(id, 8))) {
 		m.open = !m.open
 	}
 	anchor := ui.last_widget(gtx)
@@ -1311,20 +1313,13 @@ underline_more :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, m: ^Underline_Nav_Memo, mo
 		bottom := UNDERLINE_STRIP - tok.BASE_SIZE_8
 		ops.fill(gtx.scene, ops.Rect{0, y, anchor.size.x, max(min(tok.BORDER_WIDTH_THICK, bottom - y), 0)}, color(.Underline_Nav_Border_Color_Active))
 	}
-	a := anchored_overlay_open(gtx, &m.open, anchor, align = .End, role = .Menu, name = "More items", key = u64(ui.id_mix(id, 9)))
-	if a.visible {
-		pad := ui.inset_open(gtx, ui.pad_all(tok.BASE_SIZE_8))
-		col := ui.column_open(gtx, align = .Fill)
-		for t, i in moved {
-			if nav_menu_item(gtx, t.label, i == at, loading ? "" : t.counter, u64(i + 1)) {
-				chosen = i
-				m.open = false
-			}
+	menu := action_menu_open(gtx, &m.open, anchor, name = "More items", key = u64(ui.id_mix(id, 9)))
+	for t, i in moved {
+		if action_menu_item(&menu, t.label, trailing_text = loading ? "" : t.counter, active = i == at) {
+			chosen = i
 		}
-		ui.close(&col)
-		ui.close(&pad)
 	}
-	anchored_overlay_close(&a)
+	action_menu_close(&menu)
 	return
 }
 

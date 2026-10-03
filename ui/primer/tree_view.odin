@@ -329,8 +329,8 @@ tree_row_name :: proc(gtx: ^ui.Ctx, r: Tree_Row) -> string {
 // leaves them nameless, tree-view.json upstream bugs); the toggle's own
 // hover fill is drawn only where the toggle is its own target (a
 // selectable item), with rounded left corners only at level 1, as the
-// CSS's guard intended (the second upstream bug); the actions dialog lists
-// its actions as invisible buttons, not an ActionList; the path to the
+// CSS's guard intended (TreeView.tsx:444-452, TreeView.module.css
+// :142-149); the path to the
 // current item is not opened, only the item itself, as the code (not the
 // docs) does (tree-view.json contradiction); the action buttons are
 // announced although the web hides them.
@@ -850,14 +850,16 @@ tree_dialogs :: proc(gtx: ^ui.Ctx, root: ops.Area_Id, tm: ^Tree_Memo, rows: []Tr
 		}
 		dl := dialog_open(gtx, &tm.actions_open, "Supplemental actions", key = u64(ui.id_mix(root, 5)))
 		if dl.visible && at >= 0 {
-			col := ui.column_open(gtx, align = .Fill)
+			// An ActionList of the actions, each count a trailing visual
+			// (TreeView.tsx:894-945).
+			l := action_list_open(gtx, key = u64(ui.id_mix(root, 6)))
 			for a, k in rows[at].item.actions {
-				if button(gtx, a.label, .Invisible, leading = a.icon, count = a.count, block = true, align = .Start, key = u64(k + 1)) {
+				if action_list_item(&l, a.label, leading = a.icon, trailing_text = a.count) {
 					ev^ = {.Action, rows[at].item.id, k}
 					dialog_dismiss(&dl, .Close_Button)
 				}
 			}
-			ui.close(&col)
+			action_list_close(&l)
 		}
 		dialog_close(&dl)
 	}
