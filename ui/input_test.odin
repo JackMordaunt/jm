@@ -597,13 +597,13 @@ Rove_Model :: struct {
 @(private = "file")
 rove_view :: proc(gtx: ^Ctx, user: rawptr) {
 	m := (^Rove_Model)(user)
-	focusable :: proc(gtx: ^Ctx, id: ops.Area_Id, name: string, x, y: f32, kinds := ops.Event_Kinds{.Press, .Release, .Key, .Focus, .Blur}) {
-		ops.input_area(gtx.scene, id, ops.Rect{x, y, 40, 20}, kinds)
+	focusable :: proc(gtx: ^Ctx, id: ops.Area_Id, name: string, x, y: f32, kinds := ops.Event_Kinds{.Press, .Release, .Key, .Focus, .Blur}, cursor := ops.Cursor.Default) {
+		ops.input_area(gtx.scene, id, ops.Rect{x, y, 40, 20}, kinds, cursor)
 		ops.tag(gtx.scene, id, name)
 	}
 	focusable(gtx, 1, "a", 0, 0)
 	focus_scope_open(gtx, 30, rove = .Horizontal)
-	focusable(gtx, 31, "t1", 0, 30)
+	focusable(gtx, 31, "t1", 0, 30, {.Press, .Release, .Key, .Text, .Focus, .Blur}) // takes Text for type-ahead
 	focusable(gtx, 32, "t2", 50, 30)
 	focusable(gtx, 33, "t3", 100, 30)
 	if m.menu {
@@ -614,7 +614,7 @@ rove_view :: proc(gtx: ^Ctx, user: rawptr) {
 		focus_scope_close(gtx)
 		popup_close(&menu, {40, 50})
 	}
-	focusable(gtx, 34, "t4", 150, 30, {.Press, .Key, .Text, .Focus, .Blur})
+	focusable(gtx, 34, "t4", 150, 30, {.Press, .Key, .Text, .Focus, .Blur}, .Text) // a field
 	focus_scope_close(gtx, m.entry)
 	focus_scope_open(gtx, 40, rove = .Vertical, wrap = true)
 	focusable(gtx, 41, "l1", 0, 60)
@@ -660,7 +660,7 @@ test_a_roving_scope_is_one_tab_stop_its_arrows_walk :: proc(t: ^testing.T) {
 	probe_key(&p, .Right, {.Shift})
 	want(t, &p, 31) // a modified arrow is the area's own
 	probe_key(&p, .End)
-	want(t, &p, 34)
+	want(t, &p, 34) // type-ahead text does not keep the arrows
 	probe_key(&p, .Left)
 	want(t, &p, 34) // a text field keeps its arrows
 	probe_key(&p, .Home)

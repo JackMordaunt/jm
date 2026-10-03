@@ -311,8 +311,9 @@ Focus_Scope :: struct {
 // Rove is the axis whose arrow keys move focus inside a roving focus
 // scope, in frame order: Left and Up to the previous member, Right and
 // Down to the next, Home and End to the first and last. Both takes all
-// four arrows, as the WAI-ARIA radio group pattern does. A member that
-// takes text, or holds a Key_Interest for the key, keeps the key instead.
+// four arrows, as the WAI-ARIA radio group pattern does. A member whose
+// area shows the text cursor (a field to edit), or that holds a
+// Key_Interest for the key, keeps the key instead.
 Rove :: enum u8 {
 	None,
 	Horizontal,

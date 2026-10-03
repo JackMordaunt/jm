@@ -48,8 +48,8 @@ import "jm:ui/ops"
 //   one, else the scope's entry, else the member that last held focus,
 //   else the first. An unmodified arrow of its axis, Home or End moves
 //   focus among the members of the focused area's nearest roving scope,
-//   after the focused area has heard the key, unless that area takes Text
-//   or holds a Key_Interest for the key.
+//   after the focused area has heard the key, unless that area shows the
+//   text cursor (a field to edit) or holds a Key_Interest for the key.
 // - Key and Text go to the focused area, else they are dropped. A Key
 //   also goes to every area with a Key_Interest it matches (ui.key_interest),
 //   focused or not, once per area, after the focused area has had it: a
@@ -916,11 +916,12 @@ rove_axis_takes :: proc(axis: ops.Rove, key: Key) -> bool {
 
 // route_rove moves focus by key among the members of the focused area's
 // nearest roving scope, when its axis takes the key and the focused area
-// does not take text.
+// is no text to edit: one showing the text cursor keeps its arrows, where
+// a list row that takes Text only for type-ahead does not.
 @(private = "file")
 route_rove :: proc(r: ^Router, f: ^Frame, key: Key) {
 	h: Hit
-	if !refresh(f, r.focus, &h) || .Text in h.kinds {
+	if !refresh(f, r.focus, &h) || h.cursor == .Text {
 		return
 	}
 	g := nearest_roving(f, h.scope)
