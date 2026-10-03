@@ -1,6 +1,6 @@
 #!/usr/bin/env odin-run
 // A script that touches every package. Run it as ./hello.odin once odin-run
-// is installed, or with `just example`.
+// is installed, or with `just odin-run-example`.
 package main
 
 import "core:fmt"

@@ -194,25 +194,25 @@ bindir := env("BINDIR", home_directory() / ".local" / "bin")
 
 # Debug odin-run -> build/debug/odin-run
 [group('odin-run')]
-build:
+odin-run-build:
     mkdir -p build/debug
     {{odin}} build tools/odin-run -debug {{flags}} -define:JM_COLLECTION={{root}} -out:build/debug/odin-run{{exe}}
 
 # Optimised odin-run -> build/release/odin-run
 [group('odin-run')]
-release:
+odin-run-release:
     mkdir -p build/release
     {{odin}} build tools/odin-run -o:speed {{flags}} -define:JM_COLLECTION={{root}} -out:build/release/odin-run{{exe}}
 
 # Install odin-run into ~/.local/bin (override with BINDIR)
 [group('odin-run')]
-install: release
+odin-run-install: odin-run-release
     mkdir -p {{bindir}}
     cp build/release/odin-run{{exe}} {{bindir}}/odin-run{{exe}}
 
 # Compile and run the example script
 [group('odin-run')]
-example: build sqlite
+odin-run-example: odin-run-build sqlite
     ODIN_RUN_VERBOSE=1 build/debug/odin-run{{exe}} examples/hello.odin
 
 # ============================================================================

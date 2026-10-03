@@ -30,7 +30,7 @@ import "core:strings"
 
 import "jm:sh"
 
-// The collection root baked in by `just install`; ODIN_RUN_COLLECTION wins.
+// The collection root baked in by `just odin-run-install`; ODIN_RUN_COLLECTION wins.
 JM_COLLECTION :: #config(JM_COLLECTION, "")
 
 EXE :: ".exe" when ODIN_OS == .Windows else ""

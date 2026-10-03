@@ -93,8 +93,8 @@ tests every package on each of them. [Building and testing →](docs/building.md
 ```sh
 git clone https://mordaunt.dev/code/jm && cd jm
 ./setup.sh             # install what the recipes need, report what is missing
-just install           # odin-run into ~/.local/bin, pointed at this checkout
-just example           # run examples/hello.odin
+just odin-run-install  # odin-run into ~/.local/bin, pointed at this checkout
+just odin-run-example  # run examples/hello.odin
 ```
 
 Then open a kitchen to see the UI: `just material-kitchen`, `just fluent-kitchen` or

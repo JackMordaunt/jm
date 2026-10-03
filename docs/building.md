@@ -8,9 +8,9 @@ general      check    3-target type-check of every package and program
              link     build every program into build/debug
              clean    drop build/ and every package's compiled C library
              readme   render the README and docs to build/readme and open them
-odin-run     build    debug odin-run         release  optimised odin-run
-             install  odin-run -> ~/.local/bin (BINDIR overrides)
-             example  run examples/hello.odin
+odin-run     odin-run-build    debug odin-run   odin-run-release  optimised odin-run
+             odin-run-install  odin-run -> ~/.local/bin (BINDIR overrides)
+             odin-run-example  run examples/hello.odin
 sqlite3      sqlite   compile the vendored SQLite
 wasm         wasm     compile wasm3          bench    time jm:wasm's workloads
              bench-build  rebuild the workloads from their C sources
@@ -50,7 +50,7 @@ ui/primer    primer-kitchen  build and open the hot-reloaded Primer kitchen
 the recipe that compiles a package's C library in its section, and general
 for what spans them all.
 
-`just install` bakes this checkout's path into the runner as the `jm`
+`just odin-run-install` bakes this checkout's path into the runner as the `jm`
 collection root; `ODIN_RUN_COLLECTION` overrides it.
 
 `check`, `test` and `link` find their packages rather than read a list:
