@@ -141,7 +141,7 @@ install_macos() {
   # missing ones are named.
   local f
   local want=()
-  for f in just cmake sdl3 libpq postgresql@18; do
+  for f in just cmake sdl3 libpq postgresql@18 comrak; do
     brew list --versions "$f" >/dev/null || want+=("$f")
   done
   if [ ${#want[@]} -gt 0 ]; then install_all brew "${want[@]}"; fi
@@ -302,6 +302,7 @@ check_common() {
   report need cmake "Blend2D and libgit2 build with it" have cmake
   report need curl "the font and Odin downloads use it" have curl
   report want unzip "just fluent-fonts unpacks Selawik with it" have unzip
+  report want comrak "just readme renders the markdown with it; cargo install comrak" have comrak
   report want "initdb, pg_ctl" "pq tests skip without a server" have pg_ctl
   report want Selawik "the fluent kitchen; run just fluent-fonts" \
     font "$HOME/.local/share/fonts/selawik/selawk.ttf"

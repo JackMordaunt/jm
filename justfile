@@ -147,6 +147,45 @@ fetch dir url rev:
 clean:
     rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib ui/accesskit/lib git/lib ui/kb/lib tools/*/kit/index.html
 
+# A Windows root starts with its drive letter, which a file URL puts after a slash.
+root_url := if root =~ '^/' { "file://" + root } else { "file:///" + root }
+
+# Each page renders to build/readme at its own path. Its <base> is its
+# directory in the checkout, so images and LICENSE load from the source, and
+# links between pages are rewritten to the rendered copies. Follows the
+# browser's light or dark scheme.
+#
+# Render the README, its docs and THIRD_PARTY.md to HTML and open the README
+[group('general')]
+readme:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v comrak >/dev/null; then
+      echo "readme: comrak is missing; brew install comrak, or cargo install comrak" >&2
+      exit 1
+    fi
+    url="{{root_url}}"
+    for f in README.md THIRD_PARTY.md branding/README.md docs/*.md; do
+      dir=$(dirname "$f")
+      html="build/readme/${f%.md}.html"
+      mkdir -p "$(dirname "$html")"
+      {
+        printf '<!doctype html><meta charset=utf-8><meta name=color-scheme content="light dark">'
+        printf '<base href="%s/%s/"><title>jm: %s</title>' "$url" "$dir" "${f%.md}"
+        printf '<body style="max-width:56em;margin:2em auto;padding:0 1em;font:16px/1.55 system-ui">'
+        printf '<style>pre{overflow:auto;tab-size:4;padding:1em;background:#8881;border-radius:6px}code{font:14px ui-monospace,monospace}table{border-collapse:collapse}td,th{border:1px solid #8884;padding:.3em .6em;text-align:left}img{max-width:100%%}blockquote{margin:0;padding:0 1em;border-left:3px solid #8886;color:#888}</style>'
+        comrak -e strikethrough,table,autolink,tasklist --github-pre-lang --gfm-quirks \
+          --header-id-prefix "" --unsafe "$f" |
+          sed -E "s|href=\"([^\":#]+)\\.md(#[^\"]*)?\"|href=\"$url/build/readme/$dir/\\1.html\\2\"|g"
+      } > "$html"
+    done
+    case "$(uname -s)" in
+    Darwin) open build/readme/README.html ;;
+    Linux) setsid -f xdg-open build/readme/README.html >/dev/null 2>&1 ;;
+    MINGW* | MSYS* | CYGWIN*) start "" build/readme/README.html ;;
+    *) echo "open build/readme/README.html" ;;
+    esac
+
 # ============================================================================
 # odin-run: tools/odin-run, the `#!/usr/bin/env odin-run` script runner.
 # ============================================================================
