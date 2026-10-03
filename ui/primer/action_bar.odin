@@ -15,10 +15,6 @@ Action_Bar_Gap :: enum u8 {
 	None,
 }
 
-// ACTION_BAR_MAX is the most entries an ActionBar remembers between
-// frames: their ids, for its roving tab stop.
-ACTION_BAR_MAX :: 64
-
 // ACTION_BAR_DIVIDER is a divider's line: 1px by 20px
 // (ActionBar.module.css:83-94).
 ACTION_BAR_DIVIDER :: tok.BASE_SIZE_20
@@ -37,7 +33,6 @@ Action_Bar :: struct {
 	group:   ui.Flex,
 	grouped: bool,
 	entries: [dynamic]Bar_Entry,
-	target:  int, // where this frame's arrow sent focus, -1 for nowhere
 	children: int, // children of the row so far, the spacer included
 }
 
@@ -49,7 +44,6 @@ Bar_Entry :: struct {
 	label:    string,
 	disabled: bool,
 	child:    int, // the row child it is in: a group's items share one
-	id:       ops.Area_Id,
 }
 
 @(private)
@@ -62,9 +56,6 @@ Bar_Entry_Kind :: enum u8 {
 // Action_Bar_Data is what a bar keeps between frames.
 @(private)
 Action_Bar_Data :: struct {
-	focus:   int, // the focusable item that is the tab stop
-	ids:     [ACTION_BAR_MAX]ops.Area_Id, // each focusable item's id last frame, the More button last
-	n:       int, // how many of them
 	more:    bool, // the More button showed
 	menu:    bool, // its menu is open
 	chosen:  int, // one more than the entry chosen in the More menu, which reports it next frame; 0 for none
@@ -80,10 +71,10 @@ Action_Bar_Data :: struct {
 // fit, from the end, move into a "More items" menu behind a kebab button
 // after the row (the More button's width coming out of the row, which can
 // push one more item out; it hides again only once everything fits with
-// it shown). A group overflows as a unit. The toolbar is one tab stop:
-// ArrowLeft and ArrowRight move between its items and the More button,
-// wrapping, Home and End go to the ends (focus-zone.mjs:46-79,
-// ActionBar.tsx:218-225).
+// it shown). A group overflows as a unit. The toolbar is one roving
+// focus scope, so one tab stop: ArrowLeft and ArrowRight move between
+// its items and the More button, wrapping, Home and End go to the ends
+// (focus-zone.mjs:46-79, ActionBar.tsx:218-225).
 //
 // Departures: an item fits when all of it does, not 95% (action-bar.json
 // notes allow a strict fit); an item chosen from the More menu reports
@@ -107,9 +98,9 @@ action_bar_open :: proc(
 	b.size, b.gap = size, gap
 	b.data = ui.widget_data(gtx, b.id, Action_Bar_Data)
 	b.entries = make([dynamic]Bar_Entry, gtx.allocator)
-	b.target = action_bar_steer(gtx, b.data)
 	side: f32 = flush ? 0 : tok.BASE_SIZE_16
 	b.outer = ui.inset_open(gtx, {left = side, right = side}, key = u64(ui.id_mix(b.id, 1)))
+	ui.focus_scope_open(gtx, b.id, rove = .Horizontal, wrap = true)
 	b.justify = ui.row_open(gtx, align = .Center, justify = .End, key = u64(ui.id_mix(b.id, 2)))
 	b.row = ui.overflow_row_open(gtx, bar_gap(gap), .Start, key = u64(ui.id_mix(b.id, 3)))
 	ui.container_semantics(gtx, {role = .Toolbar, label = ui.frame_string(gtx, name)}, b.row.index)
@@ -126,48 +117,10 @@ bar_gap :: proc(g: Action_Bar_Gap) -> f32 {
 	return g == .Condensed ? tok.STACK_GAP_CONDENSED : 0
 }
 
-// action_bar_steer reads the arrows, Home and End the bar's items heard
-// last frame and moves the tab stop, before any item is drawn, so the
-// item reached is already the one that hears the next key. It returns
-// the item focus goes to, or -1.
-@(private)
-action_bar_steer :: proc(gtx: ^ui.Ctx, d: ^Action_Bar_Data) -> int {
-	n := d.n
-	if n == 0 {
-		return -1
-	}
-	d.focus = clamp(d.focus, 0, n - 1)
-	to := -1
-	for i in 0 ..< n {
-		for e in ui.events(gtx, d.ids[i]) {
-			#partial switch e.kind {
-			case .Press:
-				d.focus = i
-			case .Key:
-				#partial switch e.key {
-				case .Right:
-					to = (i + 1) % n
-				case .Left:
-					to = (i - 1 + n) % n
-				case .Home:
-					to = 0
-				case .End:
-					to = n - 1
-				}
-			}
-		}
-	}
-	if to >= 0 {
-		d.focus = to
-		ui.focus_request(gtx, d.ids[to])
-	}
-	return to
-}
-
 // bar_item records the next item: at the top level each is a child
 // of the row; in a group, of the group's row.
 @(private)
-bar_item :: proc(b: ^Action_Bar, e: Bar_Entry) -> (index: int, tab_stop: bool) {
+bar_item :: proc(b: ^Action_Bar, e: Bar_Entry) -> (index: int) {
 	index = len(b.entries)
 	entry := e
 	entry.child = b.children
@@ -175,13 +128,6 @@ bar_item :: proc(b: ^Action_Bar, e: Bar_Entry) -> (index: int, tab_stop: bool) {
 		b.children += 1
 	}
 	append(&b.entries, entry)
-	stops := 0
-	for x in b.entries[:index] {
-		if x.kind != .Divider && !x.disabled {
-			stops += 1
-		}
-	}
-	tab_stop = e.kind != .Divider && !e.disabled && stops == b.data.focus
 	return
 }
 
@@ -200,18 +146,16 @@ bar_chosen :: proc(b: ^Action_Bar, index: int) -> bool {
 // variant's disabled colours and ignores it. Returns true on the frame
 // it is activated, or the frame after it is chosen from the More menu.
 action_bar_icon_button :: proc(b: ^Action_Bar, ic: Icon, name: string, disabled := false) -> bool {
-	index, stop := bar_item(b, {kind = .Icon_Button, ic = ic, label = ui.frame_string(b.gtx, name), disabled = disabled})
-	clicked := icon_button(b.gtx, ic, name, .Invisible, b.size, tab_stop = stop, state = disabled ? .Disabled : .Live, key = u64(ui.id_mix(b.id, 0x100 + u64(index))))
-	b.entries[index].id = ui.last_widget(b.gtx).id
+	index := bar_item(b, {kind = .Icon_Button, ic = ic, label = ui.frame_string(b.gtx, name), disabled = disabled})
+	clicked := icon_button(b.gtx, ic, name, .Invisible, b.size, state = disabled ? .Disabled : .Live, key = u64(ui.id_mix(b.id, 0x100 + u64(index))))
 	return clicked || bar_chosen(b, index)
 }
 
 // action_bar_button declares an invisible button with label and an
 // optional leading visual at the bar's size (ActionBar.tsx:403-420).
 action_bar_button :: proc(b: ^Action_Bar, label: string, leading := Icon.None, disabled := false) -> bool {
-	index, stop := bar_item(b, {kind = .Button, ic = leading, label = ui.frame_string(b.gtx, label), disabled = disabled})
-	clicked := button(b.gtx, label, .Invisible, b.size, leading, tab_stop = stop, state = disabled ? .Disabled : .Live, key = u64(ui.id_mix(b.id, 0x100 + u64(index))))
-	b.entries[index].id = ui.last_widget(b.gtx).id
+	index := bar_item(b, {kind = .Button, ic = leading, label = ui.frame_string(b.gtx, label), disabled = disabled})
+	clicked := button(b.gtx, label, .Invisible, b.size, leading, state = disabled ? .Disabled : .Live, key = u64(ui.id_mix(b.id, 0x100 + u64(index))))
 	return clicked || bar_chosen(b, index)
 }
 
@@ -219,7 +163,7 @@ action_bar_button :: proc(b: ^Action_Bar, label: string, leading := Icon.None, d
 // line centred in the row, padded 8px each side when the gap is none
 // (ActionBar.module.css:44-51,83-94). It hides from a reader.
 action_bar_divider :: proc(b: ^Action_Bar) {
-	index, _ := bar_item(b, {kind = .Divider})
+	index := bar_item(b, {kind = .Divider})
 	gtx := b.gtx
 	pad: f32 = b.gap == .None ? tok.BASE_SIZE_8 : 0
 	row := button_metrics(b.size).height
@@ -272,24 +216,13 @@ action_bar_close :: proc(b: ^Action_Bar) {
 	if !d.more {
 		d.menu = false
 	}
-	// The ring: the shown focusable items, then the More button.
-	d.n = 0
-	for e in b.entries {
-		if e.kind != .Divider && !e.disabled && e.child < kept && d.n < ACTION_BAR_MAX {
-			d.ids[d.n] = e.id
-			d.n += 1
-		}
-	}
 	if d.more {
 		bar_more(b, kept)
 	}
 	ui.close(&b.row)
 	ui.close(&b.justify)
+	ui.focus_scope_close(gtx)
 	ui.close(&b.outer)
-	if d.n > 0 && d.focus >= d.n {
-		d.focus = d.n - 1
-		ui.request_frame(gtx)
-	}
 }
 
 // bar_more is the More button, an invisible kebab icon button labelled
@@ -299,16 +232,11 @@ action_bar_close :: proc(b: ^Action_Bar) {
 bar_more :: proc(b: ^Action_Bar, kept: int) {
 	gtx := b.gtx
 	d := b.data
-	stop := d.focus == d.n
 	st := ui.stack_open(gtx, key = u64(ui.id_mix(b.id, 4)))
-	if icon_button(gtx, .Kebab_Horizontal, "More items", .Invisible, b.size, expanded = d.menu, tab_stop = stop, key = u64(ui.id_mix(b.id, 5))) {
+	if icon_button(gtx, .Kebab_Horizontal, "More items", .Invisible, b.size, expanded = d.menu, key = u64(ui.id_mix(b.id, 5))) {
 		d.menu = !d.menu
 	}
 	more := ui.last_widget(gtx)
-	if d.n < ACTION_BAR_MAX {
-		d.ids[d.n] = more.id
-		d.n += 1
-	}
 	m := action_menu_open(gtx, &d.menu, more, name = "More items", key = u64(ui.id_mix(b.id, 6)))
 	for e, i in b.entries {
 		if e.child < kept {
