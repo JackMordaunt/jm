@@ -795,22 +795,20 @@ arm_in :: proc(n: ^Node, d: time.Duration) {
 
 disarm :: proc(n: ^Node) {
 	p := n.p
-	sync.mutex_lock(&p.timer_mutex)
+	sync.mutex_guard(&p.timer_mutex)
 	n.timer_seq += 1
 	n.fired = false
 	if n.armed {
 		n.armed = false
 		sync.atomic_sub(&p.armed, 1)
 	}
-	sync.mutex_unlock(&p.timer_mutex)
 }
 
 // True once after the deadline passed.
 fired :: proc(n: ^Node) -> bool {
-	sync.mutex_lock(&n.p.timer_mutex)
+	sync.mutex_guard(&n.p.timer_mutex)
 	f := n.fired
 	n.fired = false
-	sync.mutex_unlock(&n.p.timer_mutex)
 	return f
 }
 
