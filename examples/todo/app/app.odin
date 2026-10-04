@@ -111,26 +111,57 @@ init :: proc(h: ^Host, path: string, wake: proc() = nil) -> bool {
 
 	p := stream.make_pipeline(allocator, cap = 64)
 	h.p = p
-	changes := common.db_thread_open(&h.db, p)
+
+	db_changes := common.db_thread_open(&h.db, p)
+
 	commands: stream.Stream(logic.Request)
-	needs: stream.Stream(Need_Event)
 	commands, h.cmd_port = stream.port(p, logic.Request, name = "commands")
+
+	needs: stream.Stream(Need_Event)
 	needs, h.need_port = stream.port(p, Need_Event, name = "needs")
 
 	// The rules, on their own thread, one request at a time.
-	outcomes := stream.async_map(commands, h.workers, &h.logic, logic.process, concurrency = 1, name = "logic")
-	problems := stream.transform(stream.filter(outcomes, has_problem, name = "problems"), to_problem)
-	stream.for_each_with(stream.transform_with(problems, &h.problems, fold_problem, name = "fold"), h, deliver_problems, name = "deliver problems")
-	writes := stream.transform(stream.filter(outcomes, has_write, name = "writes"), to_write)
+	logic_outcomes := stream.async_map(
+		commands,
+		h.workers,
+		&h.logic,
+		logic.process,
+		concurrency = 1,
+		name = "logic",
+	)
+
+	problems := stream.transform(
+		stream.filter(logic_outcomes, has_problem, name = "problems"),
+		to_problem,
+	)
+
+	stream.for_each_with(
+		stream.transform_with(problems, &h.problems, fold_problem, name = "fold"),
+		h,
+		deliver_problems,
+		name = "deliver problems",
+	)
+
+	writes := stream.transform(stream.filter(logic_outcomes, has_write, name = "writes"), to_write)
 
 	// Needs and changes become queries for the store, through what is live.
-	settled := stream.debounce(changes, 10 * time.Millisecond)
-	routed := stream.merge([]stream.Stream(Route_In){stream.transform(needs, need_in), stream.transform(settled, change_in)}, name = "route in")
+	db_changes_settled := stream.debounce(db_changes, 10 * time.Millisecond)
+
+	routed := stream.merge(
+		[]stream.Stream(Route_In) {
+			stream.transform(needs, need_in),
+			stream.transform(db_changes_settled, change_in),
+		},
+		name = "route in",
+	)
+
 	queries := stream.flat_map_with(routed, &h.route, route, name = "route")
 
 	// The store, pinned to the db thread; its results go to the inbox.
 	inputs := stream.merge([]stream.Stream(store.Input){writes, queries}, name = "store in")
+
 	results := stream.flat_map_with(inputs, &h.store, store.apply, name = "store")
+
 	stream.pin(p, results.node)
 	stream.for_each_with(results, &h.sink, common.deliver, name = "deliver")
 
@@ -260,7 +291,11 @@ deliver_problems :: proc(h: ^Host, l: Problem_List) {
 	for ii in 0 ..< l.count {
 		items[ii] = {l.items[ii].id, logic.text_of(&l.items[ii].message)}
 	}
-	ui.inbox_put_value(&h.inbox, shapes.Problems{}, shapes.Problems_Result{items = items[:l.count]})
+	ui.inbox_put_value(
+		&h.inbox,
+		shapes.Problems{},
+		shapes.Problems_Result{items = items[:l.count]},
+	)
 	if h.wake != nil {
 		h.wake()
 	}
@@ -269,4 +304,3 @@ deliver_problems :: proc(h: ^Host, l: Problem_List) {
 pool_main :: proc(h: ^Host) {
 	stream.run(h.p, 2)
 }
-

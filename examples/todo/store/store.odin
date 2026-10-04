@@ -65,10 +65,13 @@ open :: proc(
 		fmt.eprintln("todo: open:", err)
 		return false
 	}
-	if err = sqlite3.exec(db, `CREATE TABLE IF NOT EXISTS todo(
+	if err = sqlite3.exec(
+		db,
+		`CREATE TABLE IF NOT EXISTS todo(
 		id INTEGER PRIMARY KEY,
 		title TEXT NOT NULL,
-		done INTEGER NOT NULL DEFAULT 0)`); err != nil {
+		done INTEGER NOT NULL DEFAULT 0)`,
+	); err != nil {
 		fmt.eprintln("todo: schema:", err)
 		sqlite3.close(&db)
 		return false
@@ -126,7 +129,12 @@ write :: proc(st: ^Store, w: logic.Write) -> sqlite3.Error {
 	case .Set_All:
 		return sqlite3.exec_args(db, "UPDATE todo SET done = ? WHERE done != ?", w.done, w.done)
 	case .Set_Title:
-		return sqlite3.exec_args(db, "UPDATE todo SET title = ? WHERE id = ?", logic.text_of(&w.title), w.id)
+		return sqlite3.exec_args(
+			db,
+			"UPDATE todo SET title = ? WHERE id = ?",
+			logic.text_of(&w.title),
+			w.id,
+		)
 	case .Remove:
 		return sqlite3.exec_args(db, "DELETE FROM todo WHERE id = ?", w.id)
 	case .Remove_Done:
@@ -140,7 +148,11 @@ write :: proc(st: ^Store, w: logic.Write) -> sqlite3.Error {
 @(private)
 query :: proc(st: ^Store, filter: shapes.Filter) -> (data: []byte, ok: bool) {
 	db := st.db
-	counts, err := sqlite3.query(db, "SELECT COUNT(*) FILTER (WHERE done = 0), COUNT(*) FILTER (WHERE done = 1) FROM todo", allocator = context.temp_allocator)
+	counts, err := sqlite3.query(
+		db,
+		"SELECT COUNT(*) FILTER (WHERE done = 0), COUNT(*) FILTER (WHERE done = 1) FROM todo",
+		allocator = context.temp_allocator,
+	)
 	if err != nil {
 		fmt.eprintln("todo: count:", err)
 		return nil, false
@@ -163,14 +175,21 @@ query :: proc(st: ^Store, filter: shapes.Filter) -> (data: []byte, ok: bool) {
 	}
 	items := make([dynamic]shapes.Todo, context.temp_allocator)
 	for sqlite3.next(&rows) {
-		append(&items, shapes.Todo{sqlite3.integer(rows, 0), sqlite3.text(rows, 1), sqlite3.boolean(rows, 2)})
+		append(
+			&items,
+			shapes.Todo{sqlite3.integer(rows, 0), sqlite3.text(rows, 1), sqlite3.boolean(rows, 2)},
+		)
 	}
 	if ferr := sqlite3.finish(&rows); ferr != nil {
 		fmt.eprintln("todo: select:", ferr)
 		return nil, false
 	}
 	res.items = items[:]
-	bytes, merr := cbor.marshal_into_bytes(res, allocator = st.allocator, temp_allocator = context.temp_allocator)
+	bytes, merr := cbor.marshal_into_bytes(
+		res,
+		allocator = st.allocator,
+		temp_allocator = context.temp_allocator,
+	)
 	if merr != nil {
 		return nil, false
 	}
