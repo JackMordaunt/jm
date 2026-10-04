@@ -310,8 +310,8 @@ executes the draw list on Blend2D while the router hit-tests the hit list.
 or rotated clip renders through an A8 mask.
 
 **Blend2D.** The binding is copied from `odin-blend2d`. `just blend2d` fetches the upstream Blend2D
-and asmjit commits it was generated from and builds the archive, and anything linking it needs
-`-lstdc++`.
+and asmjit commits it was generated from and builds the archive. Its foreign import names the C++
+runtime, so `-collection:jm=` alone builds a program that links it.
 
 **Text** is shaped by kb_text_shape, vendored upstream at a pinned commit in `ui/kb/vendor` (zlib
 licence). `just kb` builds it, and `JM_UI_SHAPER=blend2d` shapes with Blend2D's own shaper

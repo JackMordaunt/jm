@@ -9,9 +9,11 @@ import "core:c"
 when ODIN_OS == .Windows {
 	foreign import lib "lib/blend2d.lib"
 } else when ODIN_OS == .Darwin {
-	foreign import lib "lib/libblend2d.a"
+	@(ignore_duplicates)
+	foreign import lib {"lib/libblend2d.a", "system:c++"}
 } else when ODIN_OS == .Linux {
-	foreign import lib "lib/libblend2d.a"
+	@(ignore_duplicates)
+	foreign import lib {"lib/libblend2d.a", "system:stdc++"}
 }
 
 ObjectImpl :: struct {}

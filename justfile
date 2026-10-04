@@ -11,12 +11,10 @@ just  := quote(just_executable())
 
 # Homebrew keeps libpq keg-only, so on macOS its lib directory is not on the
 # linker's search path and jm:pq cannot link without it. LINKFLAGS replaces
-# the guess, as CI sets it. Odin takes -extra-linker-flags once, so these and
-# the C++ runtime travel together in cxx_link.
+# the guess, as CI sets it.
 libpq_link := if os() == "macos" { `d="$(brew --prefix libpq 2>/dev/null)/lib"; [ -d "$d" ] && echo "-L$d" || true` } else { "" }
 linkflags := env("LINKFLAGS", libpq_link)
 link := if linkflags == "" { "" } else { "-extra-linker-flags:\"" + linkflags + "\"" }
-cxx_link := if os() == "windows" { link } else { "-extra-linker-flags:\"" + trim(linkflags + " -lstdc++") + "\"" }
 
 # `just` alone lists the recipes.
 default:
@@ -66,8 +64,8 @@ check *pkgs:
       exit 1'
 
 # Packages run in parallel, then serial_tests one at a time on one thread.
-# Every package links with cxx_link, a superset of what any one needs. A
-# job's output is held until it ends, and every failure prints before the
+# Every package links with the same flags, a superset of what any one needs.
+# A job's output is held until it ends, and every failure prints before the
 # recipe fails. Name packages to test only those; arguments starting with
 # a dash go to every odin test, so one test runs as
 # `just test ui/primer -define:ODIN_TEST_NAMES=primer.test_button_activates`.
@@ -97,7 +95,7 @@ test *args: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-c
       # EXTRA is split on purpose: it holds one or more odin flags.
       # shellcheck disable=SC2086
       # A name filter that matches nothing still exits 0, so it fails here.
-      if out=$({{odin}} test "$p" {{flags}} {{cxx_link}} "$@" $EXTRA -out:build/test/$(echo "$p" | tr / -){{exe}} 2>&1) \
+      if out=$({{odin}} test "$p" {{flags}} {{link}} "$@" $EXTRA -out:build/test/$(echo "$p" | tr / -){{exe}} 2>&1) \
         && ! grep -q '^No tests to run' <<<"$out"; then
         echo "ok   $p ($(grep -o 'Finished [0-9]* tests*' <<<"$out" | tail -1 | cut -d' ' -f2) tests)"
         return 0
@@ -127,7 +125,7 @@ link: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit
     set -euo pipefail
     mkdir -p build/debug
     {{just}} _dirs program | xargs -P {{num_cpus()}} -n 1 sh -c '
-      if out=$({{odin}} build "$0" {{flags}} {{cxx_link}} -out:build/debug/$(echo "$0" | tr / -){{exe}} 2>&1); then
+      if out=$({{odin}} build "$0" {{flags}} {{link}} -out:build/debug/$(echo "$0" | tr / -){{exe}} 2>&1); then
         echo "ok   $0"
         exit 0
       fi
@@ -555,14 +553,14 @@ libgit2: _worktree-libs
 [group('fuzz')]
 fuzz args="-for=30s": sqlite zstd wasm pg_query blend2d kb libgit2
     mkdir -p build/debug
-    {{odin}} build tools/jm-fuzz -debug {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz{{exe}}
+    {{odin}} build tools/jm-fuzz -debug {{flags}} {{link}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} {{args}}
 
 # A child process per case: a crash or a hang is reported, not fatal
 [group('fuzz')]
 fuzz-isolate args="-for=5m": sqlite zstd wasm pg_query blend2d kb libgit2
     mkdir -p build/debug
-    {{odin}} build tools/jm-fuzz -debug {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz{{exe}}
+    {{odin}} build tools/jm-fuzz -debug {{flags}} {{link}} -out:build/debug/jm-fuzz{{exe}}
     build/debug/jm-fuzz{{exe}} -isolate {{args}}
 
 # The same, under AddressSanitizer
@@ -570,7 +568,7 @@ fuzz-isolate args="-for=5m": sqlite zstd wasm pg_query blend2d kb libgit2
 [unix]
 fuzz-asan args="-for=30s": sqlite wasm pg_query blend2d kb libgit2
     mkdir -p build/debug
-    {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} {{cxx_link}} -out:build/debug/jm-fuzz-asan
+    {{odin}} build tools/jm-fuzz -debug -sanitize:address {{flags}} {{link}} -out:build/debug/jm-fuzz-asan
     build/debug/jm-fuzz-asan {{args}}
 
 # ============================================================================
@@ -625,8 +623,8 @@ accesskit: _worktree-libs
 # Blend2D is C++ with asmjit inside, built by its own CMake tree rather than
 # vendored here: 29 MB of source is fetched into build/src instead, at the
 # upstream commits the binding in ui/blend2d was generated from (Blend2D
-# 0.21.1). Anything that links it needs libstdc++, except on Windows where
-# the MSVC linker finds the C++ runtime itself.
+# 0.21.1). The binding's foreign import names the C++ runtime, so nothing that
+# links it passes a linker flag.
 blend2d_rev := "3525b5fc1506cf1845901f0c2469d7d13758f573"
 asmjit_rev  := "5134d396bd00c1b63259387acdbb12dfdf009f9b"
 
@@ -717,7 +715,7 @@ sdl3:
 [group('ui')]
 hot-counter-child: blend2d kb
     mkdir -p build/debug
-    {{odin}} build examples/hot-counter/child -debug {{flags}} {{cxx_link}} -out:build/debug/hot-counter-child{{exe}}
+    {{odin}} build examples/hot-counter/child -debug {{flags}} {{link}} -out:build/debug/hot-counter-child{{exe}}
 
 # `just bench-ui "-w 1800 -h 1200"` measures at another size.
 #
@@ -725,7 +723,7 @@ hot-counter-child: blend2d kb
 [group('ui')]
 bench-ui args="": blend2d kb
     mkdir -p build/release
-    {{odin}} build tools/ui-bench -o:speed {{flags}} {{cxx_link}} -out:build/release/ui-bench{{exe}}
+    {{odin}} build tools/ui-bench -o:speed {{flags}} {{link}} -out:build/release/ui-bench{{exe}}
     build/release/ui-bench{{exe}} {{args}}
 
 # _hot runs examples/NAME as a hot-reloaded app: hot-watch rebuilds the
@@ -738,7 +736,7 @@ _hot name mode dirs: blend2d kb sdl3
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/{{name}}/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/{{name}}-host{{exe}}
+    {{odin}} build examples/{{name}}/host {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{link}} -out:build/debug/{{name}}-host{{exe}}
     build/debug/hot-watch{{exe}} examples/{{name}}/child build/debug/{{name}}.watch {{ if mode == "release" { "-release" } else { "" } }} -host examples/{{name}}/host build/debug/{{name}}-host{{exe}} {{dirs}} &
     watch=$!
     build/debug/{{name}}-host{{exe}} build/debug/{{name}}.watch &
@@ -760,7 +758,7 @@ _hot name mode dirs: blend2d kb sdl3
 hot-architecture: blend2d kb sdl3
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
-    {{odin}} build examples/hot-architecture/host -debug {{flags}} {{cxx_link}} -out:build/debug/hot-architecture-host{{exe}}
+    {{odin}} build examples/hot-architecture/host -debug {{flags}} {{link}} -out:build/debug/hot-architecture-host{{exe}}
     @echo "terminal 1: build/debug/hot-watch{{exe}} examples/hot-architecture/child build/debug/hot-architecture.watch"
     @echo "terminal 2: build/debug/hot-architecture-host{{exe}} build/debug/hot-architecture.watch"
     @echo "then edit examples/hot-architecture/child/main.odin and watch the window update."
@@ -779,7 +777,7 @@ kitchen-lint kit action="": blend2d kb
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/debug
-    {{odin}} build examples/{{kit}}-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/{{kit}}-kitchen-child{{exe}}
+    {{odin}} build examples/{{kit}}-kitchen/child -debug {{flags}} {{link}} -out:build/debug/{{kit}}-kitchen-child{{exe}}
     export LC_ALL=C # comm wants the byte order lint sorts in
     accepted=examples/{{kit}}-kitchen/lint.txt
     now=build/{{kit}}-lint.txt
@@ -805,7 +803,7 @@ text-lab mode="debug": (_hot "text-lab" mode "ui ui/fluent")
 [group('ui')]
 text-png page="Scripts": blend2d kb
     mkdir -p build/debug
-    {{odin}} build examples/text-lab/child -debug {{flags}} {{cxx_link}} -out:build/debug/text-lab-child{{exe}}
+    {{odin}} build examples/text-lab/child -debug {{flags}} {{link}} -out:build/debug/text-lab-child{{exe}}
     build/debug/text-lab-child{{exe}} -full -page "{{page}}" -png "build/text-{{page}}.png"
 
 # ============================================================================
@@ -830,7 +828,7 @@ material-kitchen mode="debug": (_hot "material-kitchen" mode "ui ui/material exa
 [group('ui/material')]
 material-png page="Buttons": blend2d kb
     mkdir -p build/debug
-    {{odin}} build examples/material-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/material-kitchen-child{{exe}}
+    {{odin}} build examples/material-kitchen/child -debug {{flags}} {{link}} -out:build/debug/material-kitchen-child{{exe}}
     build/debug/material-kitchen-child{{exe}} -page "{{page}}" -png "build/material-{{page}}.png"
 
 # The m3e-kit's Compose token sources and where androidx keeps them.
@@ -918,7 +916,7 @@ fluent-kitchen mode="debug": (_hot "fluent-kitchen" mode "ui ui/fluent examples/
 [group('ui/fluent')]
 fluent-png page="Button": blend2d kb
     mkdir -p build/debug
-    {{odin}} build examples/fluent-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/fluent-kitchen-child{{exe}}
+    {{odin}} build examples/fluent-kitchen/child -debug {{flags}} {{link}} -out:build/debug/fluent-kitchen-child{{exe}}
     build/debug/fluent-kitchen-child{{exe}} -page "{{page}}" -png "build/fluent-{{page}}.png"
 
 # ============================================================================
@@ -938,7 +936,7 @@ primer-kitchen mode="debug": (_hot "primer-kitchen" mode "ui ui/primer examples/
 [group('ui/primer')]
 primer-png page="Button" theme="Light": blend2d kb
     mkdir -p build/debug
-    {{odin}} build examples/primer-kitchen/child -debug {{flags}} {{cxx_link}} -out:build/debug/primer-kitchen-child{{exe}}
+    {{odin}} build examples/primer-kitchen/child -debug {{flags}} {{link}} -out:build/debug/primer-kitchen-child{{exe}}
     build/debug/primer-kitchen-child{{exe}} -theme "{{theme}}" -page "{{page}}" -png "build/primer-{{page}}.png"
 
 primer_kit := "tools/primer"
@@ -993,7 +991,7 @@ primer-kit-check:
 [group('ui/example')]
 todo args="": sqlite blend2d kb sdl3
     mkdir -p build/debug
-    {{odin}} build examples/todo -debug {{flags}} {{cxx_link}} -out:build/debug/todo{{exe}}
+    {{odin}} build examples/todo -debug {{flags}} {{link}} -out:build/debug/todo{{exe}}
     build/debug/todo{{exe}} {{args}}
 
 # Run the todo application's suites, the end-to-end one on real threads and a database
@@ -1003,7 +1001,7 @@ todo-test: sqlite blend2d kb
     set -euo pipefail
     mkdir -p build/test
     for p in examples/todo/shapes examples/todo/logic examples/todo/store examples/todo/view examples/todo/app; do
-      {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+      {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 
 # examples/gallery: a grid of ten thousand pictures made on demand, each a
@@ -1015,7 +1013,7 @@ todo-test: sqlite blend2d kb
 [arg("mode", pattern="debug|release")]
 gallery mode="debug": blend2d kb sdl3
     mkdir -p build/debug
-    {{odin}} build examples/gallery {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{cxx_link}} -out:build/debug/gallery{{exe}}
+    {{odin}} build examples/gallery {{ if mode == "release" { "-o:speed" } else { "-debug" } }} {{flags}} {{link}} -out:build/debug/gallery{{exe}}
     build/debug/gallery{{exe}}
 
 # Run the gallery's suites, the end-to-end one on real workers and files
@@ -1025,7 +1023,7 @@ gallery-test: blend2d kb
     set -euo pipefail
     mkdir -p build/test
     for p in examples/gallery/shapes examples/gallery/gen examples/gallery/cache examples/gallery/view examples/gallery/app; do
-      {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+      {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 
 # examples/files: a file browser over the real filesystem, folders read
@@ -1036,7 +1034,7 @@ gallery-test: blend2d kb
 [group('ui/example')]
 files path="": sqlite blend2d kb sdl3
     mkdir -p build/debug
-    {{odin}} build examples/files -debug {{flags}} {{cxx_link}} -out:build/debug/files{{exe}}
+    {{odin}} build examples/files -debug {{flags}} {{link}} -out:build/debug/files{{exe}}
     build/debug/files{{exe}} {{path}}
 
 # Run the file browser's suites, the end-to-end one on a real folder
@@ -1046,7 +1044,7 @@ files-test: sqlite blend2d kb
     set -euo pipefail
     mkdir -p build/test
     for p in examples/files/shapes examples/files/fs examples/files/store examples/files/view examples/files/app; do
-      {{odin}} test "$p" {{flags}} {{cxx_link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+      {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 
 # examples/7guis: the seven tasks of the 7GUIs benchmark, a program each

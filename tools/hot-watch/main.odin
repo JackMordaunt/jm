@@ -83,9 +83,6 @@ main :: proc() {
 	if parent := filepath.base(filepath.dir(trimmed)); parent != "." && parent != "" {
 		base = fmt.aprintf("%s-%s", parent, base)
 	}
-	// Blend2D is C++: on unix a child that renders needs libstdc++, as the
-	// justfile's cxx_link passes, and as that variable, only off Windows.
-	link := "" when ODIN_OS == .Windows else ` -extra-linker-flags:"-lstdc++"`
 	exe_suffix := ".exe" when ODIN_OS == .Windows else ""
 
 	// ignore: no pointer file yet means no build to keep
@@ -113,12 +110,12 @@ main :: proc() {
 		}
 		if ok && time.diff(last, mt) > 0 {
 			if host_src != "" && time.diff(last_shared, shared) > 0 && last_shared != {} {
-				build_host(host_src, host_out, root, opt, link)
+				build_host(host_src, host_out, root, opt)
 			}
 			last, last_shared = mt, shared
 			out := fmt.tprintf("%s/%s-%d%s", out_dir, base, time.to_unix_nanoseconds(time.now()), exe_suffix)
 			fmt.printfln("hot-watch: building %s -> %s", src_dir, out)
-			cmd := fmt.tprintf("odin build %s %s -collection:jm=%s%s -out:%s", src_dir, opt, root, link, out)
+			cmd := fmt.tprintf("odin build %s %s -collection:jm=%s -out:%s", src_dir, opt, root, out)
 			code, sok := sh.run(cmd)
 			if !sok {
 				fmt.eprintfln("hot-watch: build failed (exit %d)", code)
@@ -137,13 +134,13 @@ main :: proc() {
 
 // build_host rebuilds the host in src to out, beside it then renamed over
 // it, so a host running from out keeps its image until it restarts.
-build_host :: proc(src, out, root, opt, link: string) {
+build_host :: proc(src, out, root, opt: string) {
 	when ODIN_OS == .Windows {
 		fmt.eprintln("hot-watch: -host: Windows cannot replace a running host; rebuild it by hand")
 	} else {
 		tmp := fmt.tprintf("%s.new", out)
 		fmt.printfln("hot-watch: building host %s -> %s", src, out)
-		code, ok := sh.run(fmt.tprintf("odin build %s %s -collection:jm=%s%s -out:%s", src, opt, root, link, tmp))
+		code, ok := sh.run(fmt.tprintf("odin build %s %s -collection:jm=%s -out:%s", src, opt, root, tmp))
 		if !ok {
 			fmt.eprintfln("hot-watch: host build failed (exit %d)", code)
 			return
