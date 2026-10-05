@@ -91,16 +91,17 @@ Color :: ops.Color
 
 // App describes a window and the ui proc that fills it.
 App :: struct {
-	title:         string,
-	width, height: int, // initial size in logical units
-	ui:            Ui_Proc,
-	user:          rawptr,
-	fonts:         []Font_Ref, // registered into the Scene under their own ids before the first frame
-	fallbacks:     []ops.Font_Id, // font ids tried in order for a rune the font asked for lacks
-	clear:         Color,
-	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
-	no_accessibility: bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
-	data:          Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
+	title:                 string,
+	width, height:         int, // initial size in logical units
+	min_width, min_height: int, // the smallest the window may be made, in logical units; 0 for no limit
+	ui:                    Ui_Proc,
+	user:                  rawptr,
+	fonts:                 []Font_Ref, // registered into the Scene under their own ids before the first frame
+	fallbacks:             []ops.Font_Id, // font ids tried in order for a rune the font asked for lacks
+	clear:                 Color,
+	threads:               u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
+	no_accessibility:      bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
+	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
 }
 
 // default_font is ui.default_font: kept here too since every existing
@@ -549,6 +550,9 @@ open :: proc(w: ^Window, app: App) -> bool {
 	if w.window == nil {
 		fmt.eprintln("shell: window:", sdl3.GetError())
 		return false
+	}
+	if app.min_width > 0 || app.min_height > 0 {
+		_ = sdl3.SetWindowMinimumSize(w.window, i32(app.min_width), i32(app.min_height))
 	}
 	w.renderer = sdl3.CreateRenderer(w.window, nil)
 	if w.renderer == nil {

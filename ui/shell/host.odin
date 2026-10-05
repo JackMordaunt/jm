@@ -49,6 +49,7 @@ RESPAWN_POLL_S :: f32(0.5)
 Host_App :: struct {
 	title:         string,
 	width, height: int, // initial size in logical units
+	min_width, min_height: int, // the smallest the window may be made, in logical units; 0 for no limit
 	child:         []string, // argv to spawn the subprocess; child[0] is the executable (or the fixed extra args, when watch names the executable instead — see watch)
 	watch:         string, // "" uses child[0] as a fixed path. Otherwise, the path to a text file whose trimmed content replaces child[0], re-read every poll: what tools/hot-watch republishes on every successful build.
 	dir:           string, // the child's working directory; "" is this process's own
@@ -171,7 +172,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 		fmt.eprintln("shell: no child to spawn (check Host_App.child / watch)")
 		return false
 	}
-	if !open(&l.w, App{title = app.title, width = app.width, height = app.height}) {
+	if !open(&l.w, App{title = app.title, width = app.width, height = app.height, min_width = app.min_width, min_height = app.min_height}) {
 		return false
 	}
 	argv := child_argv(&l.app, path, context.temp_allocator)
