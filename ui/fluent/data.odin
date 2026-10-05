@@ -59,6 +59,8 @@ Table_Row_Paint :: struct {
 	selected:       ^bool,
 	clicked:        ^bool,
 	double_clicked: ^bool,
+	context_clicked: ^bool,
+	context_at:     ^ops.Point,
 	state:          Interaction,
 	header:         bool,
 	name:           string,
@@ -149,7 +151,10 @@ current_table :: proc() -> ^Table {
 // the cells. selected non-nil makes the row selectable, a click
 // flipping it; clicked reports the click, double_clicked a press the
 // platform counts as the second of a double click, on the frame of the
-// press; name is what the row's input area is tagged, for a probe. The
+// press; context_clicked a press that asks for the row's context menu
+// (the right button, or Control with the left on macOS), with context_at
+// where, in the row's own coordinates, so a menu opened there lands under
+// the pointer; name is what the row's input area is tagged, for a probe. The
 // row's text colour does not reach its cells (no inherited colour): a
 // cell picks its own. Close it with table_row_close.
 table_row_open :: proc(
@@ -164,9 +169,11 @@ table_row_open :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 	double_clicked: ^bool = nil,
+	context_clicked: ^bool = nil,
+	context_at: ^ops.Point = nil,
 ) -> Table_Row {
 	rp := new(Table_Row_Paint, gtx.allocator)
-	rp^ = {t.size, appearance, selected, clicked, double_clicked, state, !interactive, name}
+	rp^ = {t.size, appearance, selected, clicked, double_clicked, context_clicked, context_at, state, !interactive, name}
 	box := ui.box_open(gtx, {paint = paint_table_row, user = rp}, key, loc)
 	ui.container_semantics(gtx, {role = .Row, label = name, states = design.state_if(selected != nil && selected^, {.Selected}) + design.state_if(interactive && state == .Disabled, {.Disabled})})
 	row := ui.row_open(gtx, align = .Center)
@@ -193,8 +200,10 @@ table_row :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 	double_clicked: ^bool = nil,
+	context_clicked: ^bool = nil,
+	context_at: ^ops.Point = nil,
 ) -> bool {
-	push_row(table_row_open(gtx, t, selected, clicked, appearance, interactive, name, state, key, loc, double_clicked))
+	push_row(table_row_open(gtx, t, selected, clicked, appearance, interactive, name, state, key, loc, double_clicked, context_clicked, context_at))
 	return true
 }
 
@@ -211,6 +220,8 @@ table_row_guard_close :: proc(
 	key: u64,
 	loc: runtime.Source_Code_Location,
 	double_clicked: ^bool,
+	context_clicked: ^bool,
+	context_at: ^ops.Point,
 ) {
 	pop_row()
 }
@@ -258,6 +269,19 @@ table_header_guard_close :: proc(gtx: ^ui.Ctx, t: ^Table, key: u64, loc: runtime
 	pop_row()
 }
 
+// context_press says whether a press asks for a context menu: the right
+// button, or on macOS Control with the left, as a one-button mouse asks.
+context_press :: proc(e: ui.Event) -> bool {
+	if e.button == .Right {
+		return true
+	}
+	when ODIN_OS == .Darwin {
+		return e.button == .Left && .Ctrl in e.mods
+	} else {
+		return false
+	}
+}
+
 // paint_table_row paints a body row under its cells: Subtle Hover and
 // Pressed with the row's bottom border (useTableRowStyles.styles.ts:
 // 32-35,62-81,91-97), the appearance's selection: Brand Background 2
@@ -282,6 +306,19 @@ paint_table_row :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, size: ops.Size, user: raw
 		}
 		if rp.double_clicked != nil {
 			rp.double_clicked^ = c.press && c.clicks == 2
+		}
+		if rp.context_clicked != nil {
+			rp.context_clicked^ = false
+			if !c.disabled {
+				for e in ui.events(gtx, id) {
+					if e.kind == .Press && context_press(e) {
+						rp.context_clicked^ = true
+						if rp.context_at != nil {
+							rp.context_at^ = e.pos
+						}
+					}
+				}
+			}
 		}
 	}
 	on := rp.selected != nil && rp.selected^

@@ -3,6 +3,7 @@ package fluent
 import "core:slice"
 import "core:testing"
 import "jm:ui"
+import "jm:ui/ops"
 
 // Behaviour of the data display components, driven through ui.Probe.
 
@@ -256,4 +257,41 @@ test_truncated_text_fits_its_box_and_copies_whole :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	ctx := ui.Ctx{layout = &p.layout}
 	testing.expect_value(t, ui.label_selection(&ctx), "a sentence far too long for its box")
+}
+
+// A right press on a row asks for its context menu, at a point in the
+// row's own coordinates; a left press does not.
+@(test)
+test_table_row_reports_a_context_press :: proc(t: ^testing.T) {
+	Rows :: struct {
+		asked: bool,
+		at:    ops.Point,
+	}
+	r: Rows
+	p: ui.Probe
+	ui.probe_init(&p, proc(gtx: ^ui.Ctx, user: rawptr) {
+			r := (^Rows)(user)
+			tbl := table_open(gtx, {0, 100})
+			defer table_close(&tbl)
+			ui.spacer(gtx, 40) // the row is not at the table's origin
+			row := table_row_open(gtx, &tbl, name = "row", context_clicked = &r.asked, context_at = &r.at)
+			table_cell(gtx, &row, "notes.txt")
+			table_cell(gtx, &row, "1 KB")
+			table_row_close(&row)
+		}, &r, {600, 300}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_click(&p, "row"))
+	testing.expect(t, !r.asked, "a left click is no context press")
+	// It holds on the frame of the press, as double_clicked does.
+	b := ui.probe_bounds(&p, "row")
+	c, _ := ui.probe_center(&p, "row")
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Right})
+	ui.probe_frame(&p)
+	testing.expect(t, r.asked, "a right press is")
+	ui.router_push(&p.router, {kind = .Release, pos = c, button = .Right})
+	ui.probe_frame(&p)
+	testing.expect(t, !r.asked, "and only on its frame")
+	testing.expect(t, abs(r.at.x - b.w / 2) < 1 && abs(r.at.y - b.h / 2) < 1, "at the press, in the row's own coordinates")
 }
