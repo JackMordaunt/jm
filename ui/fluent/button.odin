@@ -156,6 +156,36 @@ appearance_roles :: proc(a: Appearance) -> (r: Button_Roles) {
 // accessible name, what its tag carries in place of a label. Returns
 // true on the frame it is clicked, or activated by Enter or Space while
 // focused.
+// button_size is the size a button with this label, icon and size takes
+// when nothing constrains it: what a layout that decides what fits, a
+// toolbar folding into an overflow menu, reads before it draws.
+button_size :: proc(gtx: ^ui.Ctx, label: string, ic := Icon.None, size := Size.Medium) -> ops.Size {
+	mt := button_metrics(size)
+	sz, _ := button_natural(mt, shape_style(gtx, label, mt.style), ic, label)
+	return sz
+}
+
+// button_natural is a button's unconstrained size, and the size of its
+// content, the icon and label, inside the padding.
+@(private)
+button_natural :: proc(mt: Button_Metrics, t: Text, ic: Icon, label: string) -> (size: ops.Size, content: ops.Size) {
+	has_icon := ic != .None
+	icon_only := has_icon && label == ""
+	pad_v := has_icon ? mt.pad_v_icon : mt.pad_v
+	border := tok.STROKE_WIDTH_THIN
+	content = {t.width, t.height}
+	if has_icon {
+		content.y = max(content.y, mt.icon)
+		content.x += mt.icon + (icon_only ? 0 : mt.gap)
+	}
+	if icon_only {
+		content.x = mt.icon
+	}
+	h := pad_v * 2 + content.y + 2 * border
+	w := icon_only ? h : max(mt.pad_h * 2 + content.x + 2 * border, mt.min_width)
+	return {w, h}, content
+}
+
 button :: proc(
 	gtx: ^ui.Ctx,
 	label: string,
@@ -174,19 +204,9 @@ button :: proc(
 	t := shape_style(gtx, label, mt.style)
 	has_icon := ic != .None
 	icon_only := has_icon && label == ""
-	pad_v := has_icon ? mt.pad_v_icon : mt.pad_v
 	border := tok.STROKE_WIDTH_THIN
-	content := ops.Size{t.width, t.height}
-	if has_icon {
-		content.y = max(content.y, mt.icon)
-		content.x += mt.icon + (icon_only ? 0 : mt.gap)
-	}
-	if icon_only {
-		content.x = mt.icon
-	}
-	h := pad_v * 2 + content.y + 2 * border
-	w := icon_only ? h : max(mt.pad_h * 2 + content.x + 2 * border, mt.min_width)
-	sz := ui.constrain_min(gtx.constraints, {w, h})
+	natural, content := button_natural(mt, t, ic, label)
+	sz := ui.constrain_min(gtx.constraints, natural)
 	area := ops.Rect{0, 0, sz.x, sz.y}
 
 	c := control(gtx, p.id, area, state)

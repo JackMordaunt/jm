@@ -282,3 +282,56 @@ test_tree_is_one_tab_stop_its_arrows_walk_visible_rows :: proc(t: ^testing.T) {
 	ui.probe_key(&p, .Tab, {.Shift})
 	testing.expect_value(t, ui.probe_focus_name(&p), "Notes") // back where focus left the tree
 }
+
+// A trail laid out by its caller measures its parts before drawing them:
+// the sizes the size procs give are the sizes drawn.
+@(test)
+test_breadcrumb_and_button_sizes_are_what_is_drawn :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, proc(gtx: ^ui.Ctx, user: rawptr) {
+			ui.row(gtx, align = .Center)
+			breadcrumb_button(gtx, "Documents", .Folder, .Small, name = "named")
+			breadcrumb_button(gtx, "", .Folder, .Small, name = "folded")
+			breadcrumb_button(gtx, "Reports", .Folder, .Small, current = true)
+			button(gtx, "Save", .Primary, .Save, .Small)
+			button(gtx, "", .Subtle, .Delete, .Small, name = "icon")
+		}, nil, {800, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	ui.probe_frame(&p)
+	// The widget's semantic box, which every part has: the current crumb
+	// takes no input, so it has no hit area to read, and a tag carries no
+	// bounds of its own.
+	size_of_tag :: proc(p: ^ui.Probe, name: string) -> ops.Size {
+		for n in ui.probe_current(p).nodes {
+			if n.semantics.label == name {
+				return {n.rect.w, n.rect.h}
+			}
+		}
+		return {}
+	}
+	same :: proc(a, b: ops.Size) -> bool {
+		return abs(a.x - b.x) < 0.01 && abs(a.y - b.y) < 0.01
+	}
+	// Measured inside a frame, where text shapes.
+	Want :: struct {
+		named, folded, current, save, icon: ops.Size,
+	}
+	want: Want
+	q: ui.Probe
+	ui.probe_init(&q, proc(gtx: ^ui.Ctx, user: rawptr) {
+			w := (^Want)(user)
+			w.named = breadcrumb_button_size(gtx, "Documents", .Folder, .Small)
+			w.folded = breadcrumb_button_size(gtx, "", .Folder, .Small)
+			w.current = breadcrumb_button_size(gtx, "Reports", .Folder, .Small, current = true)
+			w.save = button_size(gtx, "Save", .Save, .Small)
+			w.icon = button_size(gtx, "", .Delete, .Small)
+		}, &want, {800, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&q)
+	testing.expectf(t, same(size_of_tag(&p, "named"), want.named), "named: drawn %v, measured %v", size_of_tag(&p, "named"), want.named)
+	testing.expectf(t, same(size_of_tag(&p, "folded"), want.folded), "folded: drawn %v, measured %v", size_of_tag(&p, "folded"), want.folded)
+	testing.expectf(t, same(size_of_tag(&p, "Reports"), want.current), "Reports: drawn %v, measured %v", size_of_tag(&p, "Reports"), want.current)
+	testing.expectf(t, same(size_of_tag(&p, "Save"), want.save), "Save: drawn %v, measured %v", size_of_tag(&p, "Save"), want.save)
+	testing.expectf(t, same(size_of_tag(&p, "icon"), want.icon), "icon: drawn %v, measured %v", size_of_tag(&p, "icon"), want.icon)
+	testing.expect(t, want.folded.x > 0 && want.folded.x < want.named.x)
+}

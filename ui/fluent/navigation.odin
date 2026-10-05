@@ -1139,7 +1139,7 @@ breadcrumb :: proc(
 		if i >= head && i < hidden_end {
 			if i == head {
 				if i > 0 {
-					breadcrumb_divider(gtx, m, u64(1000 + i))
+					crumb_divider(gtx, m, u64(1000 + i))
 				}
 				// The overflow button and its menu of the hidden run.
 				if crumb_button(gtx, "", .More_Horizontal, m, false, state, u64(2000 + i), loc, "More items") {
@@ -1156,7 +1156,7 @@ breadcrumb :: proc(
 			continue
 		}
 		if i > 0 {
-			breadcrumb_divider(gtx, m, u64(1000 + i))
+			crumb_divider(gtx, m, u64(1000 + i))
 		}
 		ic := Icon.None
 		if i < len(icons) {
@@ -1192,11 +1192,62 @@ crumb_name :: proc(gtx: ^ui.Ctx, s: string) -> string {
 // size in the item colour, Neutral_Foreground2 (useBreadcrumbDividerStyles.
 // styles.ts:14-28).
 @(private)
-breadcrumb_divider :: proc(gtx: ^ui.Ctx, m: Breadcrumb_Metrics, key: u64) {
+crumb_divider :: proc(gtx: ^ui.Ctx, m: Breadcrumb_Metrics, key: u64) {
 	p := ui.widget_open(gtx, key)
 	sz := ui.constrain(gtx.constraints, {m.glyph, m.height})
 	icon(gtx, .Chevron_Right, {0, (sz.y - m.glyph) / 2}, m.glyph, color(.Neutral_Foreground2))
 	ui.widget_close(gtx, &p, {size = sz})
+}
+
+// crumb_natural is a crumb's unconstrained size: its padding round the
+// icon, the label, or both.
+@(private)
+crumb_natural :: proc(m: Breadcrumb_Metrics, t: Text, ic: Icon, label: string) -> ops.Size {
+	has_icon := ic != .None
+	icon_only := has_icon && label == ""
+	w := m.pad * 2 + (icon_only ? m.glyph : t.width)
+	if has_icon && !icon_only {
+		w += m.glyph + tok.SPACING_HORIZONTAL_XS
+	}
+	return {w, m.height}
+}
+
+// breadcrumb_button is one item of a trail the caller lays out itself,
+// Fluent's BreadcrumbButton: the subtle colours with no minimum width,
+// an icon, a label, or both; current is the trail's last item, in the
+// strong style and taking no input. name tags it, and names it to a
+// reader, when it shows only its icon. Returns true on a click.
+breadcrumb_button :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	ic := Icon.None,
+	size := Size.Medium,
+	current := false,
+	name := "",
+	state := Interaction.Live,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	return crumb_button(gtx, label, ic, breadcrumb_metrics(size), current, state, key, loc, name if name != "" else label)
+}
+
+// breadcrumb_button_size is the size breadcrumb_button takes with this
+// label and icon, for a trail that decides what fits before it draws.
+breadcrumb_button_size :: proc(gtx: ^ui.Ctx, label: string, ic := Icon.None, size := Size.Medium, current := false) -> ops.Size {
+	m := breadcrumb_metrics(size)
+	return crumb_natural(m, shape_style(gtx, label, current ? m.current : m.style), ic, label)
+}
+
+// breadcrumb_divider is the chevron between two items, Fluent's
+// BreadcrumbDivider.
+breadcrumb_divider :: proc(gtx: ^ui.Ctx, size := Size.Medium, key: u64 = 0) {
+	crumb_divider(gtx, breadcrumb_metrics(size), key)
+}
+
+// breadcrumb_divider_size is breadcrumb_divider's size.
+breadcrumb_divider_size :: proc(size := Size.Medium) -> ops.Size {
+	m := breadcrumb_metrics(size)
+	return {m.glyph, m.height}
 }
 
 // crumb_button is one item: the subtle button's colours per state over a
@@ -1210,11 +1261,7 @@ crumb_button :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, m: Breadcrumb_Metric
 	t := shape_style(gtx, label, current ? m.current : m.style)
 	has_icon := ic != .None
 	icon_only := has_icon && label == ""
-	w := m.pad * 2 + (icon_only ? m.glyph : t.width)
-	if has_icon && !icon_only {
-		w += m.glyph + tok.SPACING_HORIZONTAL_XS
-	}
-	sz := ui.constrain(gtx.constraints, {w, m.height})
+	sz := ui.constrain(gtx.constraints, crumb_natural(m, t, ic, label))
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	c := control(gtx, p.id, area, current ? .Enabled : state)
 	r := appearance_roles(.Subtle)
