@@ -71,7 +71,7 @@ Host :: struct {
 	inbox:     ui.Inbox,
 	route:     Route,
 	stage:     Db_Stage,
-	db:        common.Db_Thread, // the store's thread, and the changes port
+	db:        common.DB_Thread, // the store's thread, and the changes port
 	sink:      common.Sink, // results to the inbox
 	pool:      ^thread.Thread,
 }

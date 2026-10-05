@@ -92,10 +92,10 @@ Result :: struct {
 	data: []byte,
 }
 
-// Db_Thread is the thread a pinned store stage runs on: it waits to be
+// DB_Thread is the thread a pinned store stage runs on: it waits to be
 // woken by the pipeline (p.wake), drains the pinned nodes, and sends on
 // any change batch the port had no room for while the stage ran.
-Db_Thread :: struct {
+DB_Thread :: struct {
 	p:        ^stream.Pipeline,
 	changes:  stream.Port(Change_Batch),
 	wake:     sync.Sema,
@@ -106,7 +106,7 @@ Db_Thread :: struct {
 
 // db_thread_open makes the changes port on p and points p's wake at d;
 // the stream it returns is what the hooks' batches arrive on.
-db_thread_open :: proc(d: ^Db_Thread, p: ^stream.Pipeline) -> stream.Stream(Change_Batch) {
+db_thread_open :: proc(d: ^DB_Thread, p: ^stream.Pipeline) -> stream.Stream(Change_Batch) {
 	d.p = p
 	p.wake = db_wake
 	p.wake_data = d
@@ -115,23 +115,23 @@ db_thread_open :: proc(d: ^Db_Thread, p: ^stream.Pipeline) -> stream.Stream(Chan
 	return changes
 }
 
-db_thread_start :: proc(d: ^Db_Thread) {
+db_thread_start :: proc(d: ^DB_Thread) {
 	d.thread = thread.create_and_start_with_poly_data(d, db_main)
 }
 
-db_thread_stop :: proc(d: ^Db_Thread) {
+db_thread_stop :: proc(d: ^DB_Thread) {
 	sync.atomic_store(&d.stopping, true)
 	sync.sema_post(&d.wake)
 	thread.join(d.thread)
 	thread.destroy(d.thread)
 }
 
-// db_on_changes is the Watcher's on_changes for a store on a Db_Thread:
+// db_on_changes is the Watcher's on_changes for a store on a DB_Thread:
 // it runs inside the commit and must not wait, since the port's consumer
 // may be parked behind the very stage that is committing, so a full
 // port is noted and a catch-up batch goes out once the stage has yielded.
 db_on_changes :: proc(user: rawptr, batch: Change_Batch) {
-	d := (^Db_Thread)(user)
+	d := (^DB_Thread)(user)
 	if !stream.port_push(d.changes, batch) {
 		d.missed = true
 	}
@@ -139,11 +139,11 @@ db_on_changes :: proc(user: rawptr, batch: Change_Batch) {
 
 @(private)
 db_wake :: proc(data: rawptr) {
-	sync.sema_post(&(^Db_Thread)(data).wake)
+	sync.sema_post(&(^DB_Thread)(data).wake)
 }
 
 @(private)
-db_main :: proc(d: ^Db_Thread) {
+db_main :: proc(d: ^DB_Thread) {
 	for {
 		sync.sema_wait(&d.wake)
 		if sync.atomic_load(&d.stopping) {

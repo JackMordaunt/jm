@@ -114,7 +114,7 @@ Host :: struct {
 	// The store and its thread: the pinned stage, woken by the pipeline.
 	store:     store.Store,
 	route:     Route,
-	db:        common.Db_Thread,
+	db:        common.DB_Thread,
 	sink:      common.Sink,
 }
 
