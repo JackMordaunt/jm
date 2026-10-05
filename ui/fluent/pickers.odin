@@ -1163,6 +1163,7 @@ search_box :: proc(
 		}
 	}
 	r.focused = c.focused && !c.disabled
+	r.id = p.id
 	showing_dismiss = (c.focused || c.pressed || own) && !c.disabled && len(s.buf) > 0
 	k := field_colors(appearance, c, false, .Outline_Only)
 	rad := paint_field(gtx, area, appearance, k)

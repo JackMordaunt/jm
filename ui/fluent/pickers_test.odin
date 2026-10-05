@@ -316,3 +316,34 @@ test_combobox_near_the_bottom_lists_above_itself :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.pick, 2)
 }
+
+// A search box reports its area, as an input does, so a caller can move
+// focus into it: the Finder's search, opened from a button.
+@(test)
+test_search_box_takes_focus_when_asked :: proc(t: ^testing.T) {
+	Box :: struct {
+		s:     ui.Text_State,
+		ask:   bool,
+		id:    ops.Area_Id,
+		focus: bool,
+	}
+	b: Box
+	defer ui.text_destroy(&b.s)
+	p: ui.Probe
+	ui.probe_init(&p, proc(gtx: ^ui.Ctx, user: rawptr) {
+			b := (^Box)(user)
+			e := search_box(gtx, &b.s, width = 200)
+			b.id, b.focus = e.id, e.focused
+			if b.ask {
+				ui.focus_request(gtx, e.id)
+			}
+		}, &b, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, b.id != 0, "the box reports its area")
+	b.ask = true
+	ui.probe_frame(&p)
+	ui.probe_move(&p, 300, 150) // focus moves at the next route
+	ui.probe_frame(&p)
+	testing.expect(t, b.focus, "asked, it takes focus")
+}
