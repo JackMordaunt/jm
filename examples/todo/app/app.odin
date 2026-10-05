@@ -117,7 +117,10 @@ init :: proc(h: ^Host, path: string, wake: proc() = nil) -> bool {
 
 	// The db stage, pinned to the db thread; its results go to the inbox.
 	db_in := stream.merge(
-		[]stream.Stream(Db_In){stream.transform(commands, command_in), stream.transform(reads, read_in)},
+		[]stream.Stream(Db_In) {
+			stream.transform(commands, command_in),
+			stream.transform(reads, read_in),
+		},
 		name = "db in",
 	)
 

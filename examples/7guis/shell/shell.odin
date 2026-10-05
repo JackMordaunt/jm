@@ -28,7 +28,11 @@ page_open :: proc(gtx: ^ui.Ctx) -> ui.Inset {
 	scheme = fluent.theme_scheme(.Web_Light)
 	fluent.use(&scheme, fluent.mode_of(.Web_Light))
 	fluent.use_fonts({0, 1, 2})
-	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, scheme[.Neutral_Background1])
+	ops.fill(
+		gtx.scene,
+		ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y},
+		scheme[.Neutral_Background1],
+	)
 	return ui.inset_open(gtx, ui.pad_all(PAD))
 }
 

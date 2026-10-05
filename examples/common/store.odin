@@ -44,7 +44,12 @@ Watcher :: struct {
 }
 
 // watch installs w's hooks on db; unwatch removes them.
-watch :: proc(db: sqlite3.Db, w: ^Watcher, on_changes: proc(user: rawptr, batch: Change_Batch), user: rawptr) {
+watch :: proc(
+	db: sqlite3.Db,
+	w: ^Watcher,
+	on_changes: proc(user: rawptr, batch: Change_Batch),
+	user: rawptr,
+) {
 	w.on_changes = on_changes
 	w.user = user
 	w.ctx = context

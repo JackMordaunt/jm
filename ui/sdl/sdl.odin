@@ -62,7 +62,6 @@ parallel.
 package sdl
 
 import "base:builtin"
-import "jm:ui/ops"
 import "base:runtime"
 import "core:fmt"
 import "core:mem/virtual"
@@ -70,8 +69,9 @@ import "core:strings"
 import "core:time"
 
 import "jm:ui"
-import "jm:ui/render"
 import bl "jm:ui/blend2d"
+import "jm:ui/ops"
+import "jm:ui/render"
 import sdl3 "vendor:sdl3"
 
 // Ui_Proc is ui.UI_Proc.
@@ -130,24 +130,24 @@ LIVE_MS :: 100
 // Window is the SDL state of one running App.
 @(private)
 Window :: struct {
-	window:   ^sdl3.Window,
-	renderer: ^sdl3.Renderer,
-	textures: [2]^sdl3.Texture, // render targets; front shows, the other takes scrolls
-	front:    int,
-	stale:    bool, // the textures lost their pixels: upload the whole image
-	exposed:  bool, // the window must be shown again though nothing changed
-	fresh:    bool, // the image was just allocated and holds nothing drawn
-	pixels:   bl.ImageCore, // allocated at cap
-	view:     bl.ImageCore, // the part of pixels the window shows, what render draws into
-	size:     [2]i32, // device pixels
-	cap:      [2]i32, // what pixels and textures are allocated at
-	resized:  u64, // ticks, in ms, of the last change of size
-	live:     bool, // a resize is in progress, and vsync is off for it
-	live_at:  u64, // ticks, in ms, of the last frame that kept it live
-	sized:    bool, // the frame being drawn is for a new size
-	density:  f32,
-	flashes:  [dynamic]Flash, // repaint flashes still fading, for the debug tray
-	cursors:  [ops.Cursor]^sdl3.Cursor, // made on first use, see show_cursor
+	window:       ^sdl3.Window,
+	renderer:     ^sdl3.Renderer,
+	textures:     [2]^sdl3.Texture, // render targets; front shows, the other takes scrolls
+	front:        int,
+	stale:        bool, // the textures lost their pixels: upload the whole image
+	exposed:      bool, // the window must be shown again though nothing changed
+	fresh:        bool, // the image was just allocated and holds nothing drawn
+	pixels:       bl.ImageCore, // allocated at cap
+	view:         bl.ImageCore, // the part of pixels the window shows, what render draws into
+	size:         [2]i32, // device pixels
+	cap:          [2]i32, // what pixels and textures are allocated at
+	resized:      u64, // ticks, in ms, of the last change of size
+	live:         bool, // a resize is in progress, and vsync is off for it
+	live_at:      u64, // ticks, in ms, of the last frame that kept it live
+	sized:        bool, // the frame being drawn is for a new size
+	density:      f32,
+	flashes:      [dynamic]Flash, // repaint flashes still fading, for the debug tray
+	cursors:      [ops.Cursor]^sdl3.Cursor, // made on first use, see show_cursor
 	cursor_shown: ops.Cursor,
 	cursor_set:   bool, // cursor_shown has been applied
 	a11y:         ^Bridge, // the loop's bridge to assistive technology, for window events; nil without one
@@ -237,31 +237,31 @@ flashing :: proc(w: ^Window) -> bool {
 // frames coming while the window is being resized.
 @(private)
 Loop :: struct {
-	app:           App,
-	w:             Window,
-	rec:           ui.Recorder, // every frame's input, when ui.RECORD_ENV names a file
-	a11y:          Bridge, // what assistive technology reads, unless App.no_accessibility
-	scene:           ops.Scene,
-	frames:        [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
-	router:        ui.Router,
-	layout:        ui.Layout,
-	subs:          ui.Subscriptions, // the needs of the last frame, to diff the next against
-	r:             render.Renderer, // only shapes text; the compositor's workers draw
-	shaper:        ui.Shaper,
-	comp:          render.Compositor,
-	font:          ops.Font_Id, // the toolkit's face: the first font
-	arenas:        [2]ops.Frame_Arena, // frame allocators, alternating
-	events:        virtual.Arena, // text of the events the next frame routes
-	n:             u64,
-	last:          u64, // ticks, in ns, of the last frame
-	time:          f64, // ui.Ctx.time: the frames' dt so far
-	tray:          ui.Debug_Tray, // ui.DEBUG_TOGGLE_KEY opens it
-	in_frame:      bool,
-	ctx:           runtime.Context, // for the event watch, which SDL calls without one
+	app:         App,
+	w:           Window,
+	rec:         ui.Recorder, // every frame's input, when ui.RECORD_ENV names a file
+	a11y:        Bridge, // what assistive technology reads, unless App.no_accessibility
+	scene:       ops.Scene,
+	frames:      [2]ui.Frame, // frames[n % 2] is laid out next, the other is the previous one
+	router:      ui.Router,
+	layout:      ui.Layout,
+	subs:        ui.Subscriptions, // the needs of the last frame, to diff the next against
+	r:           render.Renderer, // only shapes text; the compositor's workers draw
+	shaper:      ui.Shaper,
+	comp:        render.Compositor,
+	font:        ops.Font_Id, // the toolkit's face: the first font
+	arenas:      [2]ops.Frame_Arena, // frame allocators, alternating
+	events:      virtual.Arena, // text of the events the next frame routes
+	n:           u64,
+	last:        u64, // ticks, in ns, of the last frame
+	time:        f64, // ui.Ctx.time: the frames' dt so far
+	tray:        ui.Debug_Tray, // ui.DEBUG_TOGGLE_KEY opens it
+	in_frame:    bool,
+	ctx:         runtime.Context, // for the event watch, which SDL calls without one
 	// What the last frame asked of the wait after it.
-	wants_frame:   bool,
-	frame_after:   f32,
-	shown:         bool,
+	wants_frame: bool,
+	frame_after: f32,
+	shown:       bool,
 }
 
 // run opens the window and loops until it is closed or Escape is pressed.
@@ -378,7 +378,10 @@ step :: proc(l: ^Loop) {
 	if l.rec.f != nil {
 		// The frame's input as the hot-reload host would have sent it.
 		logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
-		ui.recorder_write(&l.rec, ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator))
+		ui.recorder_write(
+			&l.rec,
+			ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator),
+		)
 	}
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
 	ui.debug_tray_log(&l.tray, &l.router, prev if l.n > 0 else nil, l.n)
@@ -394,17 +397,17 @@ step :: proc(l: ^Loop) {
 	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 	gtx := ui.Ctx {
 		scene         = &l.scene,
-		constraints = ui.exact(logical),
-		viewport    = logical,
-		font        = l.font,
-		shaper      = l.shaper,
-		router      = &l.router,
-		layout      = &l.layout,
-		frame       = l.n,
-		dt          = dt,
-		time        = l.time,
-		allocator   = allocator,
-		debug       = debug,
+		constraints   = ui.exact(logical),
+		viewport      = logical,
+		font          = l.font,
+		shaper        = l.shaper,
+		router        = &l.router,
+		layout        = &l.layout,
+		frame         = l.n,
+		dt            = dt,
+		time          = l.time,
+		allocator     = allocator,
+		debug         = debug,
 		reduce_motion = ui.reduce_motion_preferred(),
 	}
 	scaled := w.density != 1
@@ -429,7 +432,12 @@ step :: proc(l: ^Loop) {
 		ops.transform_pop(&l.scene)
 	}
 	build_start := time.tick_now()
-	ui.flatten(&l.scene, frame, {0, 0, f32(w.size.x), f32(w.size.y)}, ops.scale(w.density, w.density))
+	ui.flatten(
+		&l.scene,
+		frame,
+		{0, 0, f32(w.size.x), f32(w.size.y)},
+		ops.scale(w.density, w.density),
+	)
 	build_ms := ui.ms(build_start)
 	present_start := time.tick_now()
 	host: ui.Host_Stats
@@ -445,7 +453,10 @@ step :: proc(l: ^Loop) {
 	)
 	host.present_ms = ui.ms(present_start)
 	bridge_frame(&l.a11y, frame, l.router.focus, w.density)
-	ui.debug_tray_record(&l.tray, ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host))
+	ui.debug_tray_record(
+		&l.tray,
+		ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host),
+	)
 	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
 	// The cursor and clipboard, once the frame is done; a clipboard read
 	// queues its Paste, so a frame must follow to deliver it.
@@ -513,7 +524,10 @@ go_live :: proc(w: ^Window) {
 
 @(private)
 open :: proc(w: ^Window, app: App) -> bool {
-	title := strings.clone_to_cstring(app.title if app.title != "" else "ui", context.temp_allocator)
+	title := strings.clone_to_cstring(
+		app.title if app.title != "" else "ui",
+		context.temp_allocator,
+	)
 	width, height := app.width, app.height
 	if width <= 0 {
 		width = 800
@@ -523,7 +537,12 @@ open :: proc(w: ^Window, app: App) -> bool {
 	}
 	// Hidden until the loop has its bridge to assistive technology: the
 	// Windows adapter must attach before the window is first shown.
-	w.window = sdl3.CreateWindow(title, i32(width), i32(height), {.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN})
+	w.window = sdl3.CreateWindow(
+		title,
+		i32(width),
+		i32(height),
+		{.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN},
+	)
 	if w.window == nil {
 		fmt.eprintln("sdl: window:", sdl3.GetError())
 		return false
@@ -628,7 +647,20 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 	if bl.image_get_data(&w.pixels, &data) != 0 {
 		return false
 	}
-	return bl.image_create_from_data(&w.view, size.x, size.y, .PRGB32, data.pixel_data, data.stride, .RW, nil, nil) == 0
+	return(
+		bl.image_create_from_data(
+			&w.view,
+			size.x,
+			size.y,
+			.PRGB32,
+			data.pixel_data,
+			data.stride,
+			.RW,
+			nil,
+			nil,
+		) ==
+		0 \
+	)
 }
 
 // display_pixels is the size, in pixels, of the display showing w.
@@ -694,7 +726,8 @@ wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
 // refresh_ms is one refresh of the display showing w, 60 Hz when unknown.
 @(private)
 refresh_ms :: proc(w: ^Window) -> i32 {
-	if mode := sdl3.GetCurrentDisplayMode(sdl3.GetDisplayForWindow(w.window)); mode != nil && mode.refresh_rate > 0 {
+	if mode := sdl3.GetCurrentDisplayMode(sdl3.GetDisplayForWindow(w.window));
+	   mode != nil && mode.refresh_rate > 0 {
 		return max(i32(1000 / mode.refresh_rate), 1)
 	}
 	return 16
@@ -851,14 +884,28 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				return false
 			}
 		case .MOUSE_MOTION:
-			sink(user, {kind = .Move, pos = {e.motion.x * d, e.motion.y * d}, mods = mods(sdl3.GetModState())})
+			sink(
+				user,
+				{
+					kind = .Move,
+					pos = {e.motion.x * d, e.motion.y * d},
+					mods = mods(sdl3.GetModState()),
+				},
+			)
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
 			// The side buttons are navigation keys, as a browser takes
 			// them: pressed, not released, and routed to whatever asks
 			// for the key app-wide rather than to what is under the pointer.
 			if e.button.button == sdl3.BUTTON_X1 || e.button.button == sdl3.BUTTON_X2 {
 				if e.type == .MOUSE_BUTTON_DOWN {
-					sink(user, {kind = .Key, key = .Browser_Back if e.button.button == sdl3.BUTTON_X1 else .Browser_Forward, mods = mods(sdl3.GetModState())})
+					sink(
+						user,
+						{
+							kind = .Key,
+							key = .Browser_Back if e.button.button == sdl3.BUTTON_X1 else .Browser_Forward,
+							mods = mods(sdl3.GetModState()),
+						},
+					)
 				}
 				continue
 			}
@@ -870,7 +917,16 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			// clicks is SDL's count of rapid presses ("1 for single-click, 2
 			// for double-click", sdl3_events.odin), which SDL takes from the
 			// system's double-click setting where it has one.
-			sink(user, {kind = kind, pos = {e.button.x * d, e.button.y * d}, button = btn, mods = mods(sdl3.GetModState()), clicks = e.button.clicks})
+			sink(
+				user,
+				{
+					kind = kind,
+					pos = {e.button.x * d, e.button.y * d},
+					button = btn,
+					mods = mods(sdl3.GetModState()),
+					clicks = e.button.clicks,
+				},
+			)
 		case .MOUSE_WHEEL:
 			// Positive y scrolls down (toward the user), like a scroll offset.
 			s := [2]f32{e.wheel.x, -e.wheel.y}

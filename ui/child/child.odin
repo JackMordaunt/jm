@@ -15,8 +15,8 @@ pipe, ui/ipc the framing underneath that.
 package child
 
 import "core:os"
-import "jm:ui/ops"
 import t "core:time"
+import "jm:ui/ops"
 
 import "jm:ui"
 import "jm:ui/ipc"
@@ -36,9 +36,9 @@ Data_Host :: ui.Data_Host
 // come from the host with every Input, not from App: the subprocess never
 // owns a window and does not decide its own size.
 App :: struct {
-	ui:    Ui_Proc,
-	user:  rawptr,
-	fonts: []Font_Ref, // registered into the Scene under their own ids before the first frame
+	ui:        Ui_Proc,
+	user:      rawptr,
+	fonts:     []Font_Ref, // registered into the Scene under their own ids before the first frame
 	// fallbacks are font ids, of fonts, tried in order for a rune the font
 	// asked for lacks.
 	fallbacks: []ops.Font_Id,
@@ -47,7 +47,7 @@ App :: struct {
 	// back with each input. Given, the application is in this process:
 	// the needs and commands are dispatched here and the inbox is drained
 	// here, and the wire carries none of it. See ui/need.odin.
-	data:  Data_Host,
+	data:      Data_Host,
 }
 
 // run drives app until the host closes stdin, then returns. It is meant
@@ -116,7 +116,11 @@ run :: proc(app: App) {
 		}
 		ui.recorder_write(&rec, payload)
 		shapes: []ui.Delivery
-		size, density, raw_dt, events, host, restore, dok := ui.decode_input(payload, allocator, &shapes)
+		size, density, raw_dt, events, host, restore, dok := ui.decode_input(
+			payload,
+			allocator,
+			&shapes,
+		)
 		if !dok {
 			return // a corrupt request; nothing salvageable
 		}
@@ -145,18 +149,18 @@ run :: proc(app: App) {
 
 		gtx := ui.Ctx {
 			scene         = &sc,
-			constraints = ui.exact(size),
-			viewport    = size,
-			font        = font,
-			shaper      = shaper,
-			router      = &router,
-			layout      = &layout,
-			frame       = n,
-			dt          = dt,
-			time        = time,
-			allocator   = allocator,
-			debug       = debug,
-			restored    = restore,
+			constraints   = ui.exact(size),
+			viewport      = size,
+			font          = font,
+			shaper        = shaper,
+			router        = &router,
+			layout        = &layout,
+			frame         = n,
+			dt            = dt,
+			time          = time,
+			allocator     = allocator,
+			debug         = debug,
+			restored      = restore,
 			reduce_motion = ui.reduce_motion_preferred(),
 		}
 		scaled := density != 1
@@ -181,11 +185,26 @@ run :: proc(app: App) {
 			ops.transform_pop(&sc)
 		}
 		build_start := t.tick_now()
-		ui.flatten(&sc, frame, {0, 0, size.x * density, size.y * density}, ops.scale(density, density))
+		ui.flatten(
+			&sc,
+			frame,
+			{0, 0, size.x * density, size.y * density},
+			ops.scale(density, density),
+		)
 
 		ops_bytes := ops.encode(&sc, allocator)
 		// host is what the host said presenting the frame before cost.
-		ui.debug_tray_record(&tray, ui.frame_stats(&gtx, frame, ui_ms, ui.ms(build_start), ops.frame_arena_used(arena), host))
+		ui.debug_tray_record(
+			&tray,
+			ui.frame_stats(
+				&gtx,
+				frame,
+				ui_ms,
+				ui.ms(build_start),
+				ops.frame_arena_used(arena),
+				host,
+			),
+		)
 		keep_out: [2]ops.Rect
 		// The platform block: the cursor when it changed, and what the
 		// frame asked of the clipboard, which the host carries out.

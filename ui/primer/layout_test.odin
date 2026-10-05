@@ -65,7 +65,12 @@ test_stack_spaces_pads_and_justifies_its_children :: proc(t: ^testing.T) {
 			block(gtx, "b", {40, 10})
 		}
 		{
-			s := stack_open(gtx, direction = .Horizontal, justify = .Space_Between, align = .Center)
+			s := stack_open(
+				gtx,
+				direction = .Horizontal,
+				justify = .Space_Between,
+				align = .Center,
+			)
 			defer stack_close(&s)
 			block(gtx, "left", {30, 20})
 			block(gtx, "right", {30, 10})
@@ -142,14 +147,27 @@ test_card_lays_its_parts_out_by_the_css :: proc(t: ^testing.T) {
 	desc := ui.probe_bounds(&p, "A design system")
 	title_y := pad + CARD_ICON_TILE + tok.STACK_GAP_NORMAL
 	testing.expect_value(t, desc.x, pad)
-	testing.expect_value(t, desc.y, title_y + style(.Title_Small).line_height + tok.STACK_GAP_CONDENSED)
+	testing.expect_value(
+		t,
+		desc.y,
+		title_y + style(.Title_Small).line_height + tok.STACK_GAP_CONDENSED,
+	)
 	meta := ui.probe_bounds(&p, "Updated today")
 	testing.expect_value(t, meta.x, pad)
 	testing.expect(t, meta.y >= desc.y + desc.h + tok.STACK_GAP_NORMAL)
 	testing.expect_value(t, card.h, meta.y + meta.h + pad)
 	// The action sits 16px in from the top-right corner, over the content.
 	star := ui.probe_bounds(&p, "Star Primer")
-	testing.expect_value(t, star, ops.Rect{400 - 16 - tok.CONTROL_SMALL_SIZE, 16, tok.CONTROL_SMALL_SIZE, tok.CONTROL_SMALL_SIZE})
+	testing.expect_value(
+		t,
+		star,
+		ops.Rect {
+			400 - 16 - tok.CONTROL_SMALL_SIZE,
+			16,
+			tok.CONTROL_SMALL_SIZE,
+			tok.CONTROL_SMALL_SIZE,
+		},
+	)
 	testing.expect(t, ui.probe_click(&p, "Star Primer"))
 	testing.expect_value(t, m.stars, 1)
 
@@ -157,8 +175,16 @@ test_card_lays_its_parts_out_by_the_css :: proc(t: ^testing.T) {
 	// the heading at body size drawn 4px high.
 	compact := ui.probe_bounds(&p, "Compact")
 	beside := ui.probe_bounds(&p, "Beside its icon")
-	testing.expect_value(t, beside.x - compact.x, tok.STACK_PADDING_NORMAL + BUTTON_ICON + tok.STACK_GAP_CONDENSED)
-	testing.expect_value(t, beside.y - compact.y, tok.STACK_PADDING_NORMAL + style(.Title_Small).line_height + tok.STACK_GAP_CONDENSED)
+	testing.expect_value(
+		t,
+		beside.x - compact.x,
+		tok.STACK_PADDING_NORMAL + BUTTON_ICON + tok.STACK_GAP_CONDENSED,
+	)
+	testing.expect_value(
+		t,
+		beside.y - compact.y,
+		tok.STACK_PADDING_NORMAL + style(.Title_Small).line_height + tok.STACK_GAP_CONDENSED,
+	)
 
 	// The image runs edge to edge over the 8px padding at the card's width
 	// and natural aspect ratio.
@@ -167,11 +193,19 @@ test_card_lays_its_parts_out_by_the_css :: proc(t: ^testing.T) {
 	for op in p.scene.ops {
 		if im, ok := op.(ops.Image); ok && im.id == 7 {
 			found = true
-			testing.expect_value(t, im.dst, ops.Rect{-tok.STACK_PADDING_CONDENSED, -tok.STACK_PADDING_CONDENSED, 400, 100})
+			testing.expect_value(
+				t,
+				im.dst,
+				ops.Rect{-tok.STACK_PADDING_CONDENSED, -tok.STACK_PADDING_CONDENSED, 400, 100},
+			)
 		}
 	}
 	testing.expect(t, found)
-	testing.expect_value(t, pictured.h, 100 + tok.STACK_GAP_NORMAL + style(.Title_Small).line_height + tok.STACK_PADDING_CONDENSED)
+	testing.expect_value(
+		t,
+		pictured.h,
+		100 + tok.STACK_GAP_NORMAL + style(.Title_Small).line_height + tok.STACK_PADDING_CONDENSED,
+	)
 }
 
 @(private = "file")

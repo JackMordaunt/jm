@@ -67,21 +67,21 @@ UI_Proc :: proc(gtx: ^Ctx, user: rawptr)
 // frame with request_frame.
 Ctx :: struct {
 	scene:         ^ops.Scene,
-	constraints: Constraints,
-	font:        ops.Font_Id, // the toolkit's own face: text hit-testing, the debug chrome, and what a base label falls back to
-	shaper:      Shaper,
-	router:      ^Router,
-	layout:      ^Layout,
-	viewport:    ops.Size, // the window's size, in the units constraints use: what a layout keyed on the window rather than its own box (a CSS media query) reads from inside any container
-	frame:       u64,
-	dt:          f32, // seconds since the previous frame
-	time:        f64, // seconds of frame time since the app began: the sum of every frame's dt, so a looping animation read from it is deterministic in a probe
-	allocator:   mem.Allocator,
-	wants_frame: bool, // request_frame was called this frame
-	frame_after: f32, // then: the fewest seconds any caller asked to wait
-	debug:       Debug_Flags, // inspection switches; see Debug_Flag
-	restored:    []byte, // what the last child persisted, on the first frame after a hot-reload respawn; see restored
-	persist:     []byte, // what persist asked the host to keep this frame
+	constraints:   Constraints,
+	font:          ops.Font_Id, // the toolkit's own face: text hit-testing, the debug chrome, and what a base label falls back to
+	shaper:        Shaper,
+	router:        ^Router,
+	layout:        ^Layout,
+	viewport:      ops.Size, // the window's size, in the units constraints use: what a layout keyed on the window rather than its own box (a CSS media query) reads from inside any container
+	frame:         u64,
+	dt:            f32, // seconds since the previous frame
+	time:          f64, // seconds of frame time since the app began: the sum of every frame's dt, so a looping animation read from it is deterministic in a probe
+	allocator:     mem.Allocator,
+	wants_frame:   bool, // request_frame was called this frame
+	frame_after:   f32, // then: the fewest seconds any caller asked to wait
+	debug:         Debug_Flags, // inspection switches; see Debug_Flag
+	restored:      []byte, // what the last child persisted, on the first frame after a hot-reload respawn; see restored
+	persist:       []byte, // what persist asked the host to keep this frame
 	// reduce_motion is the platform's reduce-motion setting
 	// (reduce_motion_preferred), which the host sets each frame: a
 	// decorative loop (a shimmer, a pulse) stands still while it is
@@ -125,10 +125,7 @@ loose :: proc(s: ops.Size) -> Constraints {
 
 // constrain clamps s into c.
 constrain :: proc(c: Constraints, s: ops.Size) -> ops.Size {
-	return {
-		clamp(s.x, c.min.x, c.max.x),
-		clamp(s.y, c.min.y, c.max.y),
-	}
+	return {clamp(s.x, c.min.x, c.max.x), clamp(s.y, c.min.y, c.max.y)}
 }
 
 // constrain_min is constrain, except the result never goes below natural in
