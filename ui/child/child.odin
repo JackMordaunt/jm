@@ -22,8 +22,8 @@ import "jm:ui"
 import "jm:ui/ipc"
 import "jm:ui/render"
 
-// Ui_Proc is ui.Ui_Proc, run once per Input.
-Ui_Proc :: ui.Ui_Proc
+// Ui_Proc is ui.UI_Proc, run once per Input.
+Ui_Proc :: ui.UI_Proc
 
 // Inside App the field named ui shadows the package, so its other field
 // types are spelled through these aliases (as ui/sdl's App does).

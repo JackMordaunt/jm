@@ -18,7 +18,7 @@ block :: proc(gtx: ^ui.Ctx, name: string, size: ops.Size, key: u64 = 0, loc := #
 }
 
 @(private = "file")
-probe_view :: proc(p: ^ui.Probe, view: ui.Ui_Proc, user: rawptr, size: ops.Size) {
+probe_view :: proc(p: ^ui.Probe, view: ui.UI_Proc, user: rawptr, size: ops.Size) {
 	ui.probe_init(p, view, user, size, allocator = context.temp_allocator)
 }
 

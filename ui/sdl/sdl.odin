@@ -74,8 +74,8 @@ import "jm:ui/render"
 import bl "jm:ui/blend2d"
 import sdl3 "vendor:sdl3"
 
-// Ui_Proc is ui.Ui_Proc.
-Ui_Proc :: ui.Ui_Proc
+// Ui_Proc is ui.UI_Proc.
+Ui_Proc :: ui.UI_Proc
 
 // Inside App the field named ui shadows the package, so its other field
 // types are spelled through these aliases.

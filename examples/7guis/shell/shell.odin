@@ -35,7 +35,7 @@ page_open :: proc(gtx: ^ui.Ctx) -> ui.Inset {
 // run opens a window of width by height titled title and runs view over
 // user in it until the window closes. Given `-png path` it instead renders
 // the first frame to path, with no window and no GPU.
-run :: proc(title: string, width, height: int, view: ui.Ui_Proc, user: rawptr) {
+run :: proc(title: string, width, height: int, view: ui.UI_Proc, user: rawptr) {
 	if len(os.args) == 3 && os.args[1] == "-png" {
 		size := ops.Size{f32(width), f32(height)}
 		if !render.snapshot(view, user, size, common.fonts(), os.args[2]) {
