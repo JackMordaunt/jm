@@ -4,7 +4,7 @@ under a filter and the current problems, draws them in Fluent, and turns
 clicks and keys into todo.Commands. It imports the two leaf packages, todo
 and query, and jm:ui, and nothing that reads or writes, so a probe drives
 it with results it delivers by hand (view_test.odin), and the same proc
-runs under ui/sdl or ui/child.
+runs under ui/shell or ui/child.
 */
 package todo_view
 

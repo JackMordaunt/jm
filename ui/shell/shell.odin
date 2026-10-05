@@ -1,10 +1,13 @@
 /*
-Package sdl runs a ui proc in an SDL3 window. It owns the window, the event
-loop and presentation; ui/render turns each Frame into pixels, and nothing
-here knows how.
+Package shell joins the operating system, the ui stack and the app. SDL3
+supplies the window, events and renderer; native APIs fill in what SDL
+lacks (assistive technology through AccessKit). It
+owns the window, the event loop and presentation; ui/render turns each
+Frame into pixels, and nothing here knows how. run calls the app's ui proc
+in this process; run_host drives one in a subprocess instead.
 
 	main :: proc() {
-		sdl.run({
+		shell.run({
 			title  = "hello",
 			width  = 640,
 			height = 480,
@@ -59,7 +62,7 @@ Threads: run blocks the calling thread, which must be the main thread.
 App.threads workers, the main thread among them, repaint changed regions in
 parallel.
 */
-package sdl
+package shell
 
 import "base:builtin"
 import "base:runtime"
@@ -101,7 +104,7 @@ App :: struct {
 }
 
 // default_font is ui.default_font: kept here too since every existing
-// caller in this codebase spells it sdl.default_font.
+// caller in this codebase spells it shell.default_font.
 default_font :: ui.default_font
 
 // wake runs a frame soon, as input would. Any thread may call it, for
@@ -198,7 +201,7 @@ draw_flashes :: proc(w: ^Window) {
 		w.flashes[kept] = fl
 		kept += 1
 	}
-	builtin.resize(&w.flashes, kept) // sdl's own resize shadows the builtin
+	builtin.resize(&w.flashes, kept) // this package's own resize shadows the builtin
 }
 
 // flash_outside adds a flash for each part of r outside every rect in
@@ -268,7 +271,7 @@ Loop :: struct {
 // It reports failure to open on stderr and returns.
 run :: proc(app: App) {
 	if !sdl3.Init({.VIDEO, .EVENTS}) {
-		fmt.eprintln("sdl: init:", sdl3.GetError())
+		fmt.eprintln("shell: init:", sdl3.GetError())
 		return
 	}
 	defer sdl3.Quit()
@@ -317,12 +320,12 @@ loop_init :: proc(l: ^Loop, app: App) -> bool {
 	l.font = app.fonts[0].id if len(app.fonts) > 0 else 0
 	for &a in l.arenas {
 		if err := ops.frame_arena_init(&a); err != nil {
-			fmt.eprintln("sdl: arena:", err)
+			fmt.eprintln("shell: arena:", err)
 			return false
 		}
 	}
 	if err := virtual.arena_init_growing(&l.events); err != nil {
-		fmt.eprintln("sdl: arena:", err)
+		fmt.eprintln("shell: arena:", err)
 		return false
 	}
 	l.last = sdl3.GetTicksNS()
@@ -544,12 +547,12 @@ open :: proc(w: ^Window, app: App) -> bool {
 		{.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN},
 	)
 	if w.window == nil {
-		fmt.eprintln("sdl: window:", sdl3.GetError())
+		fmt.eprintln("shell: window:", sdl3.GetError())
 		return false
 	}
 	w.renderer = sdl3.CreateRenderer(w.window, nil)
 	if w.renderer == nil {
-		fmt.eprintln("sdl: renderer:", sdl3.GetError())
+		fmt.eprintln("shell: renderer:", sdl3.GetError())
 		sdl3.DestroyWindow(w.window)
 		return false
 	}
@@ -628,14 +631,14 @@ resize :: proc(w: ^Window, exact := false) -> bool {
 		for &t in w.textures {
 			t = sdl3.CreateTexture(w.renderer, .ARGB8888, .TARGET, cap.x, cap.y)
 			if t == nil {
-				fmt.eprintln("sdl: texture:", sdl3.GetError())
+				fmt.eprintln("shell: texture:", sdl3.GetError())
 				return false
 			}
 			sdl3.SetTextureBlendMode(t, sdl3.BLENDMODE_NONE)
 			sdl3.SetTextureScaleMode(t, .NEAREST)
 		}
 		if bl.image_create(&w.pixels, cap.x, cap.y, .PRGB32) != 0 {
-			fmt.eprintln("sdl: image: out of memory")
+			fmt.eprintln("shell: image: out of memory")
 			return false
 		}
 		w.cap = cap

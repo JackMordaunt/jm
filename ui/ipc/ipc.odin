@@ -121,8 +121,8 @@ Child :: struct {
 // spawn starts argv with stdin and stdout piped, stderr inherited. dir, if
 // not "", is the child's working directory. argv[0] is resolved to an
 // absolute path first if it names a path (contains a separator) rather
-// than a bare command: ui/sdl/host_test.odin's own spawn call, run as
-// build/test/ui-sdl.exe by odin test, saw a relative argv[0] that
+// than a bare command: ui/shell/host_test.odin's own spawn call, run as
+// build/test/ui-shell.exe by odin test, saw a relative argv[0] that
 // os.exists found fine still fail process_start on Windows with
 // Not_Exist — resolving to an absolute path first sidesteps whatever
 // that relative lookup was keying on.

@@ -18,7 +18,7 @@ import "jm:ui"
 import "jm:ui/base"
 import "jm:ui/diagram"
 import "jm:ui/render"
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 WIDTH :: 1180
 HEIGHT :: 820
@@ -102,14 +102,14 @@ main :: proc() {
 	if len(os.args) == 1 {
 		th := base.light(0)
 		base.use(&th)
-		sdl.run(
+		shell.run(
 			{
 				title = "jm:ui hot-reload architecture",
 				width = WIDTH,
 				height = HEIGHT,
 				ui = diagram_ui,
 				user = &m,
-				fonts = {{id = 0, path = sdl.default_font()}},
+				fonts = {{id = 0, path = shell.default_font()}},
 				clear = base.color(.Bg),
 			},
 		)
@@ -133,7 +133,7 @@ main :: proc() {
 			path := args[i]
 			// frames = 15: catch the pulse partway through its loop, not at
 			// its resting start value.
-			if !render.snapshot(diagram_ui, &m, {WIDTH, HEIGHT}, {{id = 0, path = sdl.default_font()}}, path, frames = 15) {
+			if !render.snapshot(diagram_ui, &m, {WIDTH, HEIGHT}, {{id = 0, path = shell.default_font()}}, path, frames = 15) {
 				fmt.eprintfln("could not write %s", path)
 				os.exit(1)
 			}

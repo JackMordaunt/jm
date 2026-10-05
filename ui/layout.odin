@@ -1520,7 +1520,7 @@ last_placed :: proc(gtx: ^Ctx, key: ops.Area_Id) -> (Placed, bool) {
 SCROLL_THUMB_COLOR :: ops.Color{128, 128, 128, 255}
 
 // SCROLL_STEP is the pixels scroll_box moves per unit of Event.scroll:
-// ui/sdl (sdl.odin's MOUSE_WHEEL case) forwards SDL's wheel.y, which is
+// ui/shell (shell.odin's MOUSE_WHEEL case) forwards SDL's wheel.y, which is
 // typically 1.0 per notch on a discrete wheel and fractional on a
 // touchpad, not pixels — though list's doc treats it as pixels.
 SCROLL_STEP :: f32(48)

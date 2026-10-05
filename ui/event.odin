@@ -26,7 +26,7 @@ Event :: struct {
 	clicks: u8, // Press: 1 for a single click, 2 for a double, 3 a triple, as the OS counts them
 }
 
-// Raw_Event is what a platform (ui/sdl, the probe) feeds the router: the
+// Raw_Event is what a platform (ui/shell, the probe) feeds the router: the
 // same fields as Event but with pos in device pixels and, for a pointer
 // or key event, no area: the router resolves it and converts pos to local
 // space. A Focus carries the area to focus, as an assistive technology

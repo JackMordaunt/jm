@@ -7,9 +7,9 @@ proc, flattens, and writes back one Reply — the encoded Ops plus whether
 and when it wants another frame — to its own stdout. run blocks until the
 host closes the pipe (EOF), which is this process's cue to exit 0.
 
-	child.run(diagram_ui, &model, {{0, sdl.default_font()}})
+	child.run(diagram_ui, &model, {{0, shell.default_font()}})
 
-The host side is ui/sdl's run_host; ui/wire is the byte layout on the
+The host side is ui/shell's run_host; ui/wire is the byte layout on the
 pipe, ui/ipc the framing underneath that.
 */
 package child
@@ -26,7 +26,7 @@ import "jm:ui/render"
 Ui_Proc :: ui.UI_Proc
 
 // Inside App the field named ui shadows the package, so its other field
-// types are spelled through these aliases (as ui/sdl's App does).
+// types are spelled through these aliases (as ui/shell's App does).
 @(private)
 Font_Ref :: ops.Font_Ref
 @(private)

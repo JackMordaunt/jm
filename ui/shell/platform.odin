@@ -1,4 +1,4 @@
-package sdl
+package shell
 
 import "core:log"
 import "core:strings"
@@ -42,7 +42,7 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 			sink(user, {kind = .Paste, text = text, mime = strings.clone(v.mime, allocator)})
 		case ui.Open_Url:
 			if !sdl3.OpenURL(strings.clone_to_cstring(v.url, context.temp_allocator)) {
-				log.warnf("ui/sdl: cannot open %q: %s", v.url, sdl3.GetError())
+				log.warnf("ui/shell: cannot open %q: %s", v.url, sdl3.GetError())
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 /*
 Package render executes a ui.Frame on Blend2D and hands out a Shaper that
 shapes text with jm:ui/shape (kb_text_shape). It is the only place that knows how a draw becomes pixels:
-ui records and flattens, render rasterizes, a platform (ui/sdl) presents.
+ui records and flattens, render rasterizes, a platform (ui/shell) presents.
 
 	r: render.Renderer
 	render.init(&r)

@@ -41,7 +41,7 @@ uses them ships the DLLs beside itself and their notices with them.
 | [libcurl](https://curl.se) | `http`, `selfupdate` | curl licence (MIT-style) |
 | mbedTLS and zlib, under libcurl on Windows | `http` | Apache-2.0; zlib |
 | [libpq](https://www.postgresql.org) | `pq` | PostgreSQL Licence |
-| [SDL3](https://libsdl.org) | `ui/sdl` | zlib |
+| [SDL3](https://libsdl.org) | `ui/shell` | zlib |
 | [Odin](https://odin-lang.org) `core:` and `vendor:` | everything | zlib |
 
 ## Design-system data

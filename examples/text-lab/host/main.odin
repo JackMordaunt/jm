@@ -6,10 +6,10 @@
 //	text-lab-host build/debug/text-lab-child   (no watch: a fixed child)
 package main
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 main :: proc() {
-	sdl.run_host_from_args(
+	shell.run_host_from_args(
 		{
 			title  = "jm:ui text lab",
 			width  = 1400,

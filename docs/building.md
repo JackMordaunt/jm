@@ -123,7 +123,7 @@ root; `ODIN_RUN_COLLECTION` overrides it.
 
 - `test.yml` builds the vendored C libraries, libgit2 and Blend2D the way the recipes do, and
   caches the CMake builds.
-- `ui/sdl` runs too. Linux builds SDL3 console-only, which is enough because its tests drive a
+- `ui/shell` runs too. Linux builds SDL3 console-only, which is enough because its tests drive a
   child process rather than open a window.
 - `pq` runs on all three, each runner having libpq and a PostgreSQL server.
 - `wasm-windows.yml` builds wasm3 with clang-cl at two optimisation levels, runs the trap tests

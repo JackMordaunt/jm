@@ -2,7 +2,7 @@
 // +/- buttons, so a click has to survive the host -> child -> host round
 // trip (hit-tested in this process, drawn in the host's window) to move
 // the count at all. Rebuild this binary alone and the host (examples/
-// hot-counter/host) respawns it, per ui/sdl's run_host; the count comes
+// hot-counter/host) respawns it, per ui/shell's run_host; the count comes
 // back through ui.persist_struct and restore_struct, the host holding it.
 //
 //	hot-counter-child                          run as the subprocess

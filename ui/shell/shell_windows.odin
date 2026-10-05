@@ -1,5 +1,5 @@
 #+build windows
-package sdl
+package shell
 
 import win "core:sys/windows"
 

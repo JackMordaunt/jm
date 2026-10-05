@@ -6,7 +6,7 @@
 // of nodes, each with a role, a label, bounds, states and the actions it
 // takes; the adapter keeps the tree and hands actions back from the
 // assistive technology's thread. tree.odin builds that tree from a
-// ui.Frame's semantic nodes; ui/sdl owns the adapter and the loop.
+// ui.Frame's semantic nodes; ui/shell owns the adapter and the loop.
 //
 // The three desktop adapters are bound, each in its api_<os>.odin: Linux
 // links the static archive, macOS the static archive with AppKit, Windows

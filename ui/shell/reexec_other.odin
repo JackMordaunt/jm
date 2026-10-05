@@ -1,5 +1,5 @@
 #+build !windows
-package sdl
+package shell
 
 import "core:fmt"
 import "core:os"
@@ -19,7 +19,7 @@ host_reexec :: proc(l: ^Host_Loop) {
 	for a, i in os.args {
 		argv[i] = strings.clone_to_cstring(a, context.temp_allocator)
 	}
-	fmt.eprintfln("sdl: this host was rebuilt; restarting it")
+	fmt.eprintfln("shell: this host was rebuilt; restarting it")
 	posix.execv(argv[0], raw_data(argv))
-	fmt.eprintfln("sdl: restart failed: %v", posix.errno())
+	fmt.eprintfln("shell: restart failed: %v", posix.errno())
 }

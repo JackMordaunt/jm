@@ -12,7 +12,7 @@ import "jm:ui"
 import "jm:ui/fluent"
 import "jm:ui/ops"
 import "jm:ui/render"
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 import "../../common"
 
@@ -48,5 +48,14 @@ run :: proc(title: string, width, height: int, view: ui.UI_Proc, user: rawptr) {
 		}
 		return
 	}
-	sdl.run({title = title, width = width, height = height, ui = view, user = user, fonts = common.fonts()})
+	shell.run(
+		{
+			title = title,
+			width = width,
+			height = height,
+			ui = view,
+			user = user,
+			fonts = common.fonts(),
+		},
+	)
 }

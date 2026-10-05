@@ -252,7 +252,7 @@ answers needs through an `Inbox` from any thread and sees commands through a `Da
 loop's thread.
 
 The need set is rebuilt every frame and `Subscriptions` diffs it, so a host starts what appeared
-and cancels what went. `ui/sdl`'s `App` and `Host_App` and `ui/child`'s `App` each carry a
+and cancels what went. `ui/shell`'s `App` and `Host_App` and `ui/child`'s `App` each carry a
 `Data_Host`. Over the hot-reload wire the child sends its need diff and commands with each reply,
 and the host's answers ride the next input, so the application can live in either process.
 
@@ -273,7 +273,7 @@ it down.
 <details>
 <summary>Under the hood: the host, the child and the watcher</summary>
 
-The host is `ui/sdl.run_host`. The subprocess (`ui/child`) owns the Model, the ui proc, `Router`
+The host is `ui/shell.run_host`. The subprocess (`ui/child`) owns the Model, the ui proc, `Router`
 and `Layout`, and the two talk `ui/wire`'s Input/Reply over `ui/ipc`'s pipes.
 
 `Host_App.watch` names a pointer file a builder republishes on every successful build;

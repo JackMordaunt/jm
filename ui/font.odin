@@ -8,8 +8,8 @@ package ui
 // checked against any of them. Check the path (or fall back) before
 // relying on it.
 //
-// It lives in core ui, not ui/sdl, so ui/child (which never links SDL) can
-// use it too; ui/sdl.default_font is this, kept as an alias for callers
+// It lives in core ui, not ui/shell, so ui/child (which never links SDL) can
+// use it too; ui/shell.default_font is this, kept as an alias for callers
 // already spelling it that way.
 default_font :: proc() -> string {
 	when ODIN_OS == .Windows {

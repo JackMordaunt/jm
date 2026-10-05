@@ -515,8 +515,8 @@ inbox_pending :: proc(ib: ^Inbox) -> bool {
 // ---------------------------------------------------------------------------
 
 // Data_Host is how a frame loop hands the application what a frame needs
-// and asks, and where the application's answers come back: sdl.App,
-// sdl.Host_App and child.App carry one. on_need is called once when a need
+// and asks, and where the application's answers come back: shell.App,
+// shell.Host_App and child.App carry one. on_need is called once when a need
 // appears and once when it goes; on_command for each command, in order;
 // both on the loop's thread, after the frame. An answer is put in inbox
 // from any thread (inbox_put_value) and reaches the next frame; a loop

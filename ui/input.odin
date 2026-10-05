@@ -3,7 +3,7 @@ package ui
 import "core:mem"
 import "jm:ui/ops"
 
-// Input routing. A platform (ui/sdl, the probe) pushes device events with
+// Input routing. A platform (ui/shell, the probe) pushes device events with
 // router_push; once per frame, before the ui proc runs, router_route
 // hit-tests them against the previous frame and turns them into per-area
 // events that widgets read with events(gtx, area). Input is therefore one

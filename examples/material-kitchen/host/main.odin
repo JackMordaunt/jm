@@ -6,10 +6,10 @@
 //	material-kitchen-host build/debug/material-kitchen-child   (no watch: a fixed child)
 package main
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 main :: proc() {
-	sdl.run_host_from_args(
+	shell.run_host_from_args(
 		{
 			title  = "jm:ui material kitchen",
 			width  = 1400,

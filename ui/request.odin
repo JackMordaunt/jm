@@ -4,7 +4,7 @@ import "jm:ui/ops"
 
 // Requests are what a frame asks of the platform, beyond pixels: the
 // clipboard written or read, a URL opened. A widget makes one during layout; the Router
-// queues it, and whatever runs the frame (ui/sdl's loop, a host over the
+// queues it, and whatever runs the frame (ui/shell's loop, a host over the
 // wire, the probe) drains the queue once the frame is done, with
 // router_requests then router_requests_clear. Gio calls these commands.
 //
@@ -99,7 +99,7 @@ clipboard_read :: proc(gtx: ^Ctx, area: ops.Area_Id, mime := TEXT_MIME) {
 // next child's first frame reads it back with restored. The host keeps
 // the latest, so call it when the state changes (or every frame, for a
 // few bytes). data must live until the frame ends; gtx.allocator does.
-// A loop with no host (ui/sdl's own, a probe) keeps nothing.
+// A loop with no host (ui/shell's own, a probe) keeps nothing.
 persist :: proc(gtx: ^Ctx, data: []byte) {
 	gtx.persist = data
 }

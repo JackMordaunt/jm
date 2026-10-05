@@ -12,7 +12,7 @@ package main
 
 import "core:os"
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 import "../common"
 import "app"
@@ -24,11 +24,11 @@ HEIGHT :: 760
 main :: proc() {
 	h := new(app.Host)
 	defer free(h)
-	if !app.init(h, sdl.wake) {
+	if !app.init(h, shell.wake) {
 		os.exit(1)
 	}
 	m: view.Model
-	sdl.run({title = "gallery", width = WIDTH, height = HEIGHT, ui = view.view, user = &m, fonts = common.fonts(), data = app.data_host(h)})
+	shell.run({title = "gallery", width = WIDTH, height = HEIGHT, ui = view.view, user = &m, fonts = common.fonts(), data = app.data_host(h)})
 	app.stop(h)
 }
 

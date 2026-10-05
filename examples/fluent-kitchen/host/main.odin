@@ -6,10 +6,10 @@
 //	fluent-kitchen-host build/debug/fluent-kitchen-child   (no watch: a fixed child)
 package main
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 main :: proc() {
-	sdl.run_host_from_args(
+	shell.run_host_from_args(
 		{
 			title  = "jm:ui fluent kitchen",
 			width  = 1400,

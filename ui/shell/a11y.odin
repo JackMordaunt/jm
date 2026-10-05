@@ -1,5 +1,5 @@
 #+build linux, darwin, windows
-package sdl
+package shell
 
 import "base:runtime"
 import "core:strings"

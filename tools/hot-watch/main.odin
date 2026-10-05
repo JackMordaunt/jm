@@ -1,10 +1,10 @@
 /*
 hot-watch rebuilds a jm:ui subprocess child whenever its .odin source
 changes, and republishes wherever the new build landed through a pointer
-file: ui/sdl.run_host's Host_App.watch re-reads exactly that file every
+file: ui/shell.run_host's Host_App.watch re-reads exactly that file every
 poll. Every build goes to its own timestamped path under the pointer
 file's directory, never overwriting one that might still be running (see
-ui/sdl/host.odin for the one running exe this was tested against, on
+ui/shell/host.odin for the one running exe this was tested against, on
 Windows) — sidestepping whatever that turns out to mean for a build
 writing to the same path instead.
 
@@ -18,7 +18,7 @@ only when its own main.odin does.
 -host SRC OUT also rebuilds the host, SRC, to OUT whenever one of those
 further directories changes, before the child: a host built before a
 change to jm:ui's sc encoding cannot read the new child, and on seeing
-that, ui/sdl's host restarts itself from OUT. It builds beside OUT and
+that, ui/shell's host restarts itself from OUT. It builds beside OUT and
 renames over it, so the running host's image is untouched. Not on
 Windows, which will not rename over a running executable.
 

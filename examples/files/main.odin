@@ -12,7 +12,7 @@ package main
 
 import "core:os"
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 import "../common"
 import "app"
@@ -34,13 +34,13 @@ main :: proc() {
 	}
 	h := new(app.Host)
 	defer free(h)
-	if !app.init(h, sdl.wake) {
+	if !app.init(h, shell.wake) {
 		os.exit(1)
 	}
 	m: view.Model
 	view.model_init(&m, path)
 	defer view.model_destroy(&m)
-	sdl.run({title = "files", width = WIDTH, height = HEIGHT, ui = view.view, user = &m, fonts = common.fonts(), data = app.data_host(h)})
+	shell.run({title = "files", width = WIDTH, height = HEIGHT, ui = view.view, user = &m, fonts = common.fonts(), data = app.data_host(h)})
 	app.stop(h)
 }
 

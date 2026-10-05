@@ -1,4 +1,4 @@
-package sdl
+package shell
 
 import "core:fmt"
 import "jm:ui/ops"
@@ -15,14 +15,14 @@ import "jm:ui/ipc"
 // CHILD_EXE is where examples/hot-counter/child gets built to, relative
 // to the repo root — the working directory odin test ran from in every
 // invocation observed in this session, `just test` and a plain `odin
-// test ui/sdl` from the root alike.
+// test ui/shell` from the root alike.
 @(private = "file")
 CHILD_EXE :: "build/debug/hot-counter-child.exe" when ODIN_OS == .Windows else "build/debug/hot-counter-child"
 
 // require_child_exe makes every test in this file that drives the real
 // hot-counter-child binary self-sufficient: `just test`'s
 // hot-counter-child recipe builds it ahead of time so this is normally
-// an already-true check, but a bare `odin test ui/sdl` (run often enough
+// an already-true check, but a bare `odin test ui/shell` (run often enough
 // while working on this package that it should not depend on going
 // through just first) builds it here instead of finding it missing.
 // Only an actual build failure fails t.
@@ -55,7 +55,7 @@ test_host_child_round_trip_moves_a_click_across_the_pipe :: proc(t: ^testing.T) 
 	defer ipc.kill(&c)
 
 	// sc holds a Reply's decoded strings and slices for as long as this
-	// test reads them, same as ui/sdl and ui/child hold theirs for a
+	// test reads them, same as ui/shell and ui/child hold theirs for a
 	// frame: a wholesale-freed arena, not one leak-tracked allocation per
 	// decode that nothing here would otherwise individually free.
 	arena: virtual.Arena

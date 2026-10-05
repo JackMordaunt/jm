@@ -56,8 +56,8 @@ An immediate-mode UI whose frame is data, and three design systems on it.
 | `ui/shape` | text to glyph runs with kb_text_shape: OpenType shaping for complex scripts, normalisation, per-run direction, clusters as byte offsets |
 | `ui/kb` | the binding to kb_text_shape, vendored in `ui/kb/vendor` and statically linked |
 | `ui/accesskit` | the binding to AccessKit's C library (prebuilt, `just accesskit`), and the tree it is fed from a frame's semantic nodes: what a screen reader hears |
-| `ui/sdl` | the SDL3 window and event loop for a `ui` app; `run_host` runs the same window against a subprocess instead of a local ui proc |
-| `ui/ipc` | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/sdl`'s host/subprocess split |
+| `ui/shell` | the shell: joins the OS (SDL3 window, events and renderer, AccessKit, native APIs), the `ui` stack and the app; `run_host` runs the same window against a subprocess instead of a local ui proc |
+| `ui/ipc` | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/shell`'s host/subprocess split |
 | `ui/child` | the subprocess half of that split: owns the Model, the ui proc, `Router` and `Layout`, and speaks `ui`'s wire format over its own stdin/stdout |
 | `ui/diagram` | titled, accent-bordered groups of chips and arrows (solid or dashed) for an architecture diagram, over plain `ui` calls |
 | `ui/design` | what every design system on `ui` shares: the interaction states and per-frame `Control`, per-corner geometry, text shaping in a line box, box-shadow layers drawn as exact Gaussian shadows, CSS easing, and a generic `Theme(Role, Context)` with axioms that `check` measures in every context (OKLab, APCA and WCAG metrics) |

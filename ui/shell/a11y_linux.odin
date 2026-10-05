@@ -1,5 +1,5 @@
 #+build linux
-package sdl
+package shell
 
 import ak "jm:ui/accesskit"
 import sdl3 "vendor:sdl3"

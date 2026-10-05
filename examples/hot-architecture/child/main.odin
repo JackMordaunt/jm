@@ -81,7 +81,7 @@ architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	base.text(gtx, "Raw_Event", {input.x + input.w + 10, 145}, {size = 11})
 
 	// The seam: the same Scene, two routes. Solid is the direct call this
-	// package's own sdl.run takes; dashed is sdl.run_host's, through the
+	// package's own shell.run takes; dashed is shell.run_host's, through the
 	// ipc box, tunneling to wherever the render side actually lives.
 	seam_y :: 170
 	diagram.arrow(gtx, {layout.x + layout.w + 5, seam_y}, {render_box.x - 5, seam_y}, LAYOUT_COLOR, 2.5)
@@ -93,9 +93,9 @@ architecture_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	pulse_width := ui.tween_update(&m.flow, gtx)
 	diagram.dashed_arrow(gtx, {layout.x + layout.w + 5, ipc.y + ipc.h / 2 - 3}, {ipc.x, ipc.y + ipc.h / 2 - 3}, IPC_COLOR, pulse_width, 8, 6)
 	diagram.dashed_arrow(gtx, {ipc.x + ipc.w, ipc.y + ipc.h / 2 + 3}, {render_box.x - 5, ipc.y + ipc.h / 2 + 3}, IPC_COLOR, pulse_width, 8, 6)
-	base.text(gtx, "tunneled: sdl.run_host <-> ui/child", {layout.x + layout.w + 10, ipc.y - 20}, {size = 10, color = base.color(.Muted)})
+	base.text(gtx, "tunneled: shell.run_host <-> ui/child", {layout.x + layout.w + 10, ipc.y - 20}, {size = 10, color = base.color(.Muted)})
 
-	base.text(gtx, "The same Ops that flatten straight into a render call (ui/sdl.run) can instead cross a process boundary first (ui/sdl.run_host):", {input.x, render_box.y + render_box.h + 20}, {size = 11, color = base.color(.Muted)})
+	base.text(gtx, "The same Ops that flatten straight into a render call (ui/shell.run) can instead cross a process boundary first (ui/shell.run_host):", {input.x, render_box.y + render_box.h + 20}, {size = 11, color = base.color(.Muted)})
 	base.text(gtx, "ui/child owns Layout and everything left of the seam; the host owns everything right of it and never links the ui proc at all.", {input.x, render_box.y + render_box.h + 36}, {size = 11, color = base.color(.Muted)})
 }
 

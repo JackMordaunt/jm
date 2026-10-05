@@ -6,10 +6,10 @@
 //	hot-architecture-host build/debug/hot-architecture-child.exe   (no watch: a fixed child)
 package main
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 main :: proc() {
-	sdl.run_host_from_args(
+	shell.run_host_from_args(
 		{
 			title  = "jm:ui's own pipeline (hot)",
 			width  = 1360,

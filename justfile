@@ -30,11 +30,11 @@ targets := "linux_amd64 darwin_arm64 windows_amd64"
 # them: SKIP="pq tools/jm-fuzz" where there is no libpq to link.
 skip := env("SKIP", "")
 # Packages whose tests run alone, on one thread, after the rest: the three
-# over wasm3, which is not thread-safe; ui/sdl, whose tests spawn
+# over wasm3, which is not thread-safe; ui/shell, whose tests spawn
 # hot-counter-child copies sharing one exe path; tar, whose git children
 # inherit each other's pipes on Windows; and flow and wasm-bench, whose tests
 # measure a split of work or its cost and fail under load.
-serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/sdl tar flow"
+serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/shell tar flow"
 
 # Packages run in parallel; a program keeps its entry point. A job's output
 # is held until it ends, and every failure prints before the recipe fails.
@@ -77,7 +77,7 @@ test *args: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-c
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/test
-    # vendor:sdl3 loads SDL3.dll at start-up on Windows, so ui/sdl's test
+    # vendor:sdl3 loads SDL3.dll at start-up on Windows, so ui/shell's test
     # binary needs it beside it.
     if [ "{{os()}}" = windows ]; then cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/test/; cp ui/accesskit/lib/accesskit.dll build/test/ 2>/dev/null || true; fi
     pkgs=() extra=()
@@ -707,11 +707,11 @@ sdl3:
 [unix]
 sdl3:
 
-# examples/hot-counter/child, the real subprocess ui/sdl's own test
+# examples/hot-counter/child, the real subprocess ui/shell's own test
 # spawns to prove the host/child protocol against a real process, not a
 # stub. blend2d only: the child never links SDL.
 #
-# Build the child process ui/sdl's tests spawn
+# Build the child process ui/shell's tests spawn
 [group('ui')]
 hot-counter-child: blend2d kb
     mkdir -p build/debug

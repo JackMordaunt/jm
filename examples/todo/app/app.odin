@@ -8,9 +8,9 @@ command, becomes a todo.Command.
 
 The threads, and what crosses between them:
 
-	main      ui/sdl's loop: input in, scene out. After each frame the
+	main      ui/shell's loop: input in, scene out. After each frame the
 	          frame's needs and commands go to the pipeline through ports;
-	          results come back through an Inbox, and sdl.wake runs a frame.
+	          results come back through an Inbox, and shell.wake runs a frame.
 	db        the store's thread: the pipeline's db stage is pinned to it
 	          (stream.pin), so the connection is touched by one thread.
 	          Each command is enriched, decided by logic, and executed

@@ -12,7 +12,7 @@
 # <branch>` runs it on any other branch.
 #
 # SDL3 comes from Homebrew on macOS and with Odin on Windows; Ubuntu has no
-# package, so it is built here, console-only, which links and runs ui/sdl's
+# package, so it is built here, console-only, which links and runs ui/shell's
 # tests because they drive a child process rather than open a window. The
 # pq tests skip themselves on a runner where the PostgreSQL server binaries
 # are not on PATH; the package still has to link libpq, so SKIP leaves pq
@@ -120,7 +120,7 @@ jobs:
           fi
           echo "LINKFLAGS=$link" >> "$GITHUB_ENV"
 
-      # SDL3 for ui/sdl and the demo hosts on Linux, shared so the tests
+      # SDL3 for ui/shell and the demo hosts on Linux, shared so the tests
       # load it through LD_LIBRARY_PATH. Console-only: no X11 or Wayland
       # headers are installed, and nothing here opens a window.
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0

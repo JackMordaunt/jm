@@ -6,10 +6,10 @@
 //	hot-counter-host build/debug/hot-counter.watch   (a child tools/hot-watch republishes)
 package main
 
-import "jm:ui/sdl"
+import "jm:ui/shell"
 
 main :: proc() {
-	sdl.run_host_from_args(
+	shell.run_host_from_args(
 		{
 			title  = "hot-counter (host)",
 			width  = 360,

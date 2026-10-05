@@ -1,4 +1,4 @@
-package sdl
+package shell
 
 import "core:testing"
 import "jm:ui/ops"

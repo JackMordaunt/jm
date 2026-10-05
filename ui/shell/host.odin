@@ -1,4 +1,4 @@
-// Host mode: run_host is sdl.run's counterpart for the subprocess split.
+// Host mode: run_host is run's counterpart for the subprocess split.
 // It owns the window exactly as run does — the same Window, resize, vsync,
 // live-resize-redraw and present machinery — but instead of calling a ui
 // proc directly, it round-trips one ui/wire Input to a spawned child's
@@ -23,7 +23,7 @@
 // child,
 // so a rebuild is never left waiting on the next real input event to be
 // seen.
-package sdl
+package shell
 
 import "base:runtime"
 import "jm:ui/ops"
@@ -124,7 +124,7 @@ host_app_for :: proc(app: Host_App, args: []string) -> Host_App {
 // stderr and returns; the child, if it started, is killed first.
 run_host :: proc(app: Host_App) {
 	if !sdl3.Init({.VIDEO, .EVENTS}) {
-		fmt.eprintln("sdl: init:", sdl3.GetError())
+		fmt.eprintln("shell: init:", sdl3.GetError())
 		return
 	}
 	defer sdl3.Quit()
@@ -168,7 +168,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	// is waited for without a window sitting unresponsive meanwhile.
 	path, pok := wait_for_child(&l.app, WATCH_WAIT, context.temp_allocator)
 	if !pok {
-		fmt.eprintln("sdl: no child to spawn (check Host_App.child / watch)")
+		fmt.eprintln("shell: no child to spawn (check Host_App.child / watch)")
 		return false
 	}
 	if !open(&l.w, App{title = app.title, width = app.width, height = app.height}) {
@@ -177,7 +177,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 	argv := child_argv(&l.app, path, context.temp_allocator)
 	child, ok := ipc.spawn(argv, app.dir)
 	if !ok {
-		fmt.eprintln("sdl: spawn:", argv)
+		fmt.eprintln("shell: spawn:", argv)
 		close(&l.w)
 		return false
 	}
@@ -256,7 +256,7 @@ wait_for_child :: proc(app: ^Host_App, timeout: time.Duration, allocator := cont
 	if ok || app.watch == "" {
 		return path, ok
 	}
-	fmt.eprintfln("sdl: waiting for %s", app.watch)
+	fmt.eprintfln("shell: waiting for %s", app.watch)
 	deadline := time.time_add(time.now(), timeout)
 	for !ok && time.diff(time.now(), deadline) > 0 {
 		time.sleep(time.Duration(RESPAWN_POLL_S * f32(time.Second)))
@@ -336,14 +336,14 @@ host_step :: proc(l: ^Host_Loop) {
 
 	trip_start := time.tick_now()
 	if !ipc.write_frame(l.child.stdin, input) {
-		fmt.eprintfln("sdl: %s stopped reading input (exited?); showing its last frame", l.child_path)
+		fmt.eprintfln("shell: %s stopped reading input (exited?); showing its last frame", l.child_path)
 		l.child_dead = true
 		l.wants_frame = false
 		return
 	}
 	reply, rok := ipc.read_frame(l.child.stdout, context.temp_allocator)
 	if !rok {
-		fmt.eprintfln("sdl: %s sent no reply (exited or crashed?); showing its last frame", l.child_path)
+		fmt.eprintfln("shell: %s sent no reply (exited or crashed?); showing its last frame", l.child_path)
 		l.child_dead = true
 		l.wants_frame = false
 		return
@@ -364,12 +364,12 @@ host_step :: proc(l: ^Host_Loop) {
 		// reads as a crash. A version mismatch is a host built before the
 		// child's jm:ui changed its ops.
 		if v, vok := ops.encoded_version(ops_bytes); dok && vok && v != ops.ENCODE_VERSION {
-			fmt.eprintfln("sdl: %s speaks sc version %d, this host %d: rebuild the host", l.child_path, v, ops.ENCODE_VERSION)
+			fmt.eprintfln("shell: %s speaks sc version %d, this host %d: rebuild the host", l.child_path, v, ops.ENCODE_VERSION)
 			if host_rebuilt(l) {
 				host_reexec(l)
 			}
 		} else {
-			fmt.eprintfln("sdl: %s sent a reply this host cannot decode; showing its last frame", l.child_path)
+			fmt.eprintfln("shell: %s sent a reply this host cannot decode; showing its last frame", l.child_path)
 		}
 		l.child_dead = true
 		l.wants_frame = false

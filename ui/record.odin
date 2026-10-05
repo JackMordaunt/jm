@@ -7,7 +7,7 @@ import "jm:ui/ops"
 // A recording is every frame's input, as the loop received it, so a
 // session can be run again without the window: a bug seen live is
 // replayed headless, then dumped, rendered or inspected at the frame it
-// showed on. The hot-reload child and ui/sdl's own loop both record when
+// showed on. The hot-reload child and ui/shell's own loop both record when
 // RECORD_ENV names a file; render.Headless's -replay step and
 // probe_replay run one. The file is ipc frames, each an encode_input.
 //
