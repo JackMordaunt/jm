@@ -79,7 +79,7 @@ enter_in_the_entry_is_an_add_and_clears_the_text :: proc(t: ^testing.T) {
 }
 
 @(test)
-a_filter_change_keeps_the_old_page_until_the_new_one_lands :: proc(t: ^testing.T) {
+a_filter_change_keeps_the_old_list_until_the_new_one_lands :: proc(t: ^testing.T) {
 	m: Model
 	defer model_destroy(&m)
 	p := open(&m)
@@ -89,7 +89,7 @@ a_filter_change_keeps_the_old_page_until_the_new_one_lands :: proc(t: ^testing.T
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.filter, query.Filter.Completed)
-	// Both pages are needed: the new one to come, the old one to keep
+	// Both lists are needed: the new one to come, the old one to keep
 	// drawing from meanwhile, so the rows never flicker.
 	testing.expect(t, ui.probe_needs_q(&p, query.Todos{filter = .Completed}))
 	testing.expect(t, ui.probe_needs_q(&p, query.Todos{filter = .All}))
@@ -99,7 +99,7 @@ a_filter_change_keeps_the_old_page_until_the_new_one_lands :: proc(t: ^testing.T
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "Delete eggs"))
 	testing.expect(t, !ui.probe_tagged(&p, "Delete milk"))
-	// The frame that draws the new page is the one that lets the old go.
+	// The frame that draws the new list is the one that lets the old go.
 	testing.expect(t, !ui.probe_needs_q(&p, query.Todos{filter = .All}))
 	testing.expect_value(t, len(ui.probe_dropped(&p)), 1)
 }
@@ -110,7 +110,7 @@ loading_shows_only_after_a_perceptible_wait :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	// The first frames have no page and say nothing about it; they ask
+	// The first frames have no list and say nothing about it; they ask
 	// for a frame at the deadline instead.
 	testing.expect(t, !ui.probe_tagged(&p, "Loading…"))
 	testing.expect(t, p.wants_frame)
@@ -118,7 +118,7 @@ loading_shows_only_after_a_perceptible_wait :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_tagged(&p, "Loading…"))
 	ui.probe_advance(&p, 2, 0.05)
 	testing.expect(t, ui.probe_tagged(&p, "Loading…"))
-	// A page ends the wait; the next wait starts afresh.
+	// A list ends the wait; the next wait starts afresh.
 	two(&p)
 	testing.expect(t, !ui.probe_tagged(&p, "Loading…"))
 	testing.expect_value(t, m.waiting, 0)

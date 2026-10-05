@@ -162,28 +162,23 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 	}
 
-	outer := ui.column_open(gtx, align = .Fill)
-	defer ui.close(&outer)
+	ui.column(gtx, align = .Fill)
 	toolbar(gtx, m)
 	listing, have, loading := listing_of(gtx, m)
 	m.listing = listing
-	body := ui.row_open(gtx, align = .Fill)
-	defer ui.close(&body)
+	ui.row(gtx, align = .Fill)
 	sidebar(gtx, m)
 	{
 		// The table's width is what the sidebar and the details card
 		// leave, given so the first frame lays all three out exactly.
 		table_w := max(m.window.x - SIDEBAR - DETAILS - 1, 200)
-		pane := ui.sized_open(gtx, {min = {table_w, 0}, max = {table_w, ui.INF}})
-		defer ui.close(&pane)
-		col := ui.column_open(gtx, align = .Fill)
-		defer ui.close(&col)
+		ui.sized(gtx, {min = {table_w, 0}, max = {table_w, ui.INF}})
+		ui.column(gtx, align = .Fill)
 		status(gtx, m, listing, have)
 		switch {
 		case have && listing.error != "":
-			pad := ui.inset_open(gtx, ui.pad_all(16))
+			ui.inset(gtx, ui.pad_all(16))
 			fluent.message_bar(gtx, .Error, "", listing.error)
-			ui.close(&pad)
 		case have:
 			entries(gtx, m, listing)
 		case loading:
@@ -203,12 +198,9 @@ toolbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	// the height it is offered, which here is the window's.
 	ops.fill(gtx.scene, ops.Rect{0, 0, m.window.x, TOOLBAR_H}, s[.Neutral_Background1])
 	ops.fill(gtx.scene, ops.Rect{0, TOOLBAR_H - 1, m.window.x, 1}, s[.Neutral_Stroke2])
-	strip := ui.sized_open(gtx, {min = {m.window.x, TOOLBAR_H}, max = {m.window.x, TOOLBAR_H}})
-	defer ui.close(&strip)
-	pad := ui.inset_open(gtx, {left = 8, right = 8, top = 6, bottom = 6})
-	defer ui.close(&pad)
-	tb := fluent.toolbar_open(gtx, .Small)
-	defer fluent.toolbar_close(&tb)
+	ui.sized(gtx, {min = {m.window.x, TOOLBAR_H}, max = {m.window.x, TOOLBAR_H}})
+	ui.inset(gtx, {left = 8, right = 8, top = 6, bottom = 6})
+	fluent.toolbar(gtx, .Small)
 	if fluent.toolbar_button(gtx, "", .Arrow_Left, name = "Back", state = .Live if can_go_back(m) else .Disabled) {
 		go_back(m)
 	}
@@ -220,15 +212,15 @@ toolbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	fluent.toolbar_divider(gtx)
 	search_w: f32 = 240
-	common.cell_open(gtx, max(m.window.x - 16 - 3 * 36 - 20 - search_w - 16, 100), .Start)
-	crumbs := crumbs_of(path_of(m), gtx.allocator)
-	if picked := fluent.breadcrumb(gtx, crumbs, .Small); picked >= 0 {
-		navigate(m, crumb_path(crumbs, picked, gtx.allocator))
+	if common.cell(gtx, max(m.window.x - 16 - 3 * 36 - 20 - search_w - 16, 100), .Start) {
+		crumbs := crumbs_of(path_of(m), gtx.allocator)
+		if picked := fluent.breadcrumb(gtx, crumbs, .Small); picked >= 0 {
+			navigate(m, crumb_path(crumbs, picked, gtx.allocator))
+		}
 	}
-	common.cell_close(gtx)
-	common.cell_open(gtx, search_w + 16, .End)
-	fluent.search_box(gtx, &m.search, "Search this folder", size = .Small, width = search_w, name = "Search")
-	common.cell_close(gtx)
+	if common.cell(gtx, search_w + 16, .End) {
+		fluent.search_box(gtx, &m.search, "Search this folder", size = .Small, width = search_w, name = "Search")
+	}
 }
 
 // status is the line over the table: how many entries, how many match,
@@ -236,8 +228,7 @@ toolbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 @(private)
 status :: proc(gtx: ^ui.Ctx, m: ^Model, listing: ^shapes.Listing_Result, have: bool) {
 	s := &m.scheme
-	pad := ui.inset_open(gtx, {left = 16, right = 16, top = 10, bottom = 6})
-	defer ui.close(&pad)
+	ui.inset(gtx, {left = 16, right = 16, top = 10, bottom = 6})
 	line: string
 	if have && listing.error == "" {
 		n := len(listing.entries)
@@ -313,8 +304,7 @@ entries :: proc(gtx: ^ui.Ctx, m: ^Model, listing: ^shapes.Listing_Result) {
 	}
 	fluent.table_header_close(&h)
 	if len(m.order) == 0 {
-		pad := ui.inset_open(gtx, ui.pad_all(24))
-		defer ui.close(&pad)
+		ui.inset(gtx, ui.pad_all(24))
 		fluent.text(gtx, "Nothing here" if ui.text_string(&m.search) == "" else "Nothing matches", s[.Neutral_Foreground3], selectable = false)
 		return
 	}
@@ -375,8 +365,7 @@ ordered :: proc(m: ^Model, listing: ^shapes.Listing_Result, allocator := context
 row :: proc(gtx: ^ui.Ctx, index: int, user: rawptr) {
 	m := (^Model)(user)
 	e := m.listing.entries[m.order[index]]
-	sc := ui.scope_open(gtx, e.path)
-	defer ui.scope_close(&sc)
+	ui.scope(gtx, e.path)
 	selected := e.path == selected_path(m)
 	clicked, double := false, false
 	r := fluent.table_row_open(gtx, &m.table, &selected, &clicked, .Neutral, name = e.name, double_clicked = &double)
@@ -435,13 +424,12 @@ well_known :: proc(gtx: ^ui.Ctx, path: string) -> bool {
 // fresh from its store.
 @(private)
 sidebar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	nav := fluent.nav_open(gtx, width = SIDEBAR)
-	defer fluent.nav_close(&nav)
+	fluent.nav(gtx, width = SIDEBAR)
 	current := path_of(m)
 	fluent.nav_section_header(gtx, "Places")
 	if places, status := ui.need(gtx, shapes.Places{}, shapes.Places_Result); status == .Ready || status == .Stale {
 		for pl in places.items {
-			sc := ui.scope_open(gtx, pl.path)
+			ui.scope(gtx, pl.path)
 			ic: fluent.Icon = .Folder
 			switch pl.name {
 			case "Home":
@@ -452,21 +440,19 @@ sidebar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			if fluent.nav_item(gtx, pl.name, pl.path, &current, ic) {
 				visit(gtx, m, pl.path, pl.name, true)
 			}
-			ui.scope_close(&sc)
 		}
 	}
 	fluent.nav_section_header(gtx, "Quick access")
 	pinned := false
 	if pins, status := ui.need(gtx, shapes.Pins{}, shapes.Pins_Result); status == .Ready || status == .Stale {
 		for pl in pins.items {
-			sc := ui.scope_open(gtx, pl.path)
+			ui.scope(gtx, pl.path)
 			if pl.path == current {
 				pinned = true
 			}
 			if fluent.nav_item(gtx, pl.name, pl.path, &current, .Star) {
 				visit(gtx, m, pl.path, pl.name, true)
 			}
-			ui.scope_close(&sc)
 		}
 	}
 	none: string
@@ -485,11 +471,10 @@ sidebar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			if well_known(gtx, pl.path) {
 				continue
 			}
-			sc := ui.scope_open(gtx, pl.path)
+			ui.scope(gtx, pl.path)
 			if fluent.nav_item(gtx, pl.name, pl.path, &current, .Folder if pl.dir else .Document) {
 				visit(gtx, m, pl.path, pl.name, pl.dir)
 			}
-			ui.scope_close(&sc)
 		}
 	}
 }
@@ -517,10 +502,8 @@ media_of :: proc(gtx: ^ui.Ctx, e: shapes.Entry, px: f32) -> fluent.Cell_Media {
 // skeleton_rows stand in for a listing still on its way.
 @(private)
 skeleton_rows :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	pad := ui.inset_open(gtx, {left = 16, right = 16, top = 8, bottom = 8})
-	defer ui.close(&pad)
-	col := ui.column_open(gtx, gap = 12, align = .Fill)
-	defer ui.close(&col)
+	ui.inset(gtx, {left = 16, right = 16, top = 8, bottom = 8})
+	ui.column(gtx, gap = 12, align = .Fill)
 	for ii in 0 ..< 6 {
 		fluent.skeleton_item(gtx, 32, .Rectangle, key = u64(ii))
 	}
@@ -531,26 +514,20 @@ skeleton_rows :: proc(gtx: ^ui.Ctx, m: ^Model) {
 @(private)
 details :: proc(gtx: ^ui.Ctx, m: ^Model, listing: ^shapes.Listing_Result) {
 	s := &m.scheme
-	pane := ui.sized_open(gtx, {min = {DETAILS, 0}, max = {DETAILS, ui.INF}})
-	defer ui.close(&pane)
-	pad := ui.inset_open(gtx, ui.pad_all(16))
-	defer ui.close(&pad)
+	ui.sized(gtx, {min = {DETAILS, 0}, max = {DETAILS, ui.INF}})
+	ui.inset(gtx, ui.pad_all(16))
 	e, have := selected_entry(m, listing)
 	if !have {
-		centred := ui.column_open(gtx, align = .Center)
-		defer ui.close(&centred)
+		ui.column(gtx, align = .Center)
 		ui.spacer(gtx, 48)
 		fluent.text(gtx, "Select an item to see its details", s[.Neutral_Foreground3], .S200, selectable = false)
 		return
 	}
 	// The card sits at the top of the pane at its content's height: a
 	// painted box takes what it is offered, so it is offered no height.
-	top := ui.column_open(gtx, align = .Fill)
-	defer ui.close(&top)
-	card := fluent.card_open(gtx, .Filled, .Medium)
-	defer ui.close(&card)
-	col := ui.column_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&col)
+	ui.column(gtx, align = .Fill)
+	fluent.card(gtx, .Filled, .Medium)
+	ui.column(gtx, gap = 12, align = .Center)
 	preview(gtx, m, e)
 	fluent.text(gtx, e.name, s[.Neutral_Foreground1], .S400, .Semibold, width = DETAILS - 64, truncate = true, selectable = false)
 	facts := ui.column_open(gtx, gap = 4, align = .Fill)
@@ -568,14 +545,13 @@ details :: proc(gtx: ^ui.Ctx, m: ^Model, listing: ^shapes.Listing_Result) {
 @(private)
 fact :: proc(gtx: ^ui.Ctx, m: ^Model, label, value: string) {
 	s := &m.scheme
-	r := ui.row_open(gtx, align = .Baseline)
-	defer ui.close(&r)
-	common.cell_open(gtx, 80, .Start)
-	fluent.text(gtx, label, s[.Neutral_Foreground3], .S200, selectable = false)
-	common.cell_close(gtx)
-	common.cell_open(gtx, DETAILS - 64 - 80, .Start)
-	fluent.text(gtx, value, s[.Neutral_Foreground1], .S200, selectable = false, truncate = true)
-	common.cell_close(gtx)
+	ui.row(gtx, align = .Baseline)
+	if common.cell(gtx, 80, .Start) {
+		fluent.text(gtx, label, s[.Neutral_Foreground3], .S200, selectable = false)
+	}
+	if common.cell(gtx, DETAILS - 64 - 80, .Start) {
+		fluent.text(gtx, value, s[.Neutral_Foreground1], .S200, selectable = false, truncate = true)
+	}
 }
 
 // preview is the selected picture at PREVIEW, a need of its own, or
@@ -583,8 +559,7 @@ fact :: proc(gtx: ^ui.Ctx, m: ^Model, label, value: string) {
 @(private)
 preview :: proc(gtx: ^ui.Ctx, m: ^Model, e: shapes.Entry) {
 	s := &m.scheme
-	box := ui.sized_open(gtx, {min = {PREVIEW, PREVIEW}, max = {PREVIEW, PREVIEW}})
-	defer ui.close(&box)
+	ui.sized(gtx, {min = {PREVIEW, PREVIEW}, max = {PREVIEW, PREVIEW}})
 	if e.image {
 		if thumb, status := ui.need(gtx, shapes.Thumb{path = e.path, px = PREVIEW}, shapes.Thumb_Result); status == .Ready || status == .Stale {
 			id := ops.add_image(gtx.scene, thumb.image)

@@ -80,14 +80,11 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	// The list spans the window, so its scroll bar sits at the window's
 	// edge; each row centres its tiles in that width, and the header is
 	// centred above it to match.
-	outer := ui.column_open(gtx, gap = 12, align = .Fill)
-	defer ui.close(&outer)
+	ui.column(gtx, gap = 12, align = .Fill)
 	{
-		centred := ui.column_open(gtx, align = .Center)
-		page := ui.sized_open(gtx, {min = {m.width, 0}, max = {m.width, ui.INF}})
+		ui.column(gtx, align = .Center)
+		ui.sized(gtx, {min = {m.width, 0}, max = {m.width, ui.INF}})
 		header(gtx, m, m.width)
-		ui.close(&page)
-		ui.close(&centred)
 	}
 	ui.list(gtx, &m.list, (TILES + m.columns - 1) / m.columns, row, m)
 }
@@ -116,10 +113,8 @@ lightbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		v.shown, v.level = 0, 0
 	}
 
-	ov := ui.overlay_open(gtx, {0, 0}, cs = ui.loose(m.window), root = true, cover = true)
-	defer ui.close(&ov)
-	sc := ui.scope_open(gtx, m.shown)
-	defer ui.scope_close(&sc)
+	ui.overlay(gtx, {0, 0}, cs = ui.loose(m.window), root = true, cover = true)
+	ui.scope(gtx, m.shown)
 	id := ui.claim_id(gtx)
 	ops.fill(gtx.scene, ops.Rect{0, 0, w, h}, s[.Neutral_Background1])
 	ops.input_area(gtx.scene, id, vp, {.Press, .Release, .Move, .Scroll})
@@ -219,47 +214,44 @@ plane_rect :: proc(vp: ops.Rect, v: ^Viewer, x, y, size: f64) -> ops.Rect {
 viewer_header :: proc(gtx: ^ui.Ctx, m: ^Model, w: f32) {
 	s := &m.scheme
 	v := &m.viewer
-	pad := ui.inset_open(gtx, ui.pad_all(MARGIN))
-	defer ui.close(&pad)
-	r := ui.row_open(gtx, align = .Center)
-	defer ui.close(&r)
-	common.cell_open(gtx, w - 2 * MARGIN - 120, .Start)
-	fluent.text(gtx, fmt.tprintf("tile %d · level %d · scroll to zoom, drag to pan", m.shown, v.level), s[.Neutral_Foreground2], .S300, selectable = false)
-	common.cell_close(gtx)
-	common.cell_open(gtx, 120, .End)
-	if fluent.button(gtx, "Close", .Subtle, .Dismiss, .Small) {
-		m.open = false
+	ui.inset(gtx, ui.pad_all(MARGIN))
+	ui.row(gtx, align = .Center)
+	if common.cell(gtx, w - 2 * MARGIN - 120, .Start) {
+		fluent.text(gtx, fmt.tprintf("tile %d · level %d · scroll to zoom, drag to pan", m.shown, v.level), s[.Neutral_Foreground2], .S300, selectable = false)
 	}
-	common.cell_close(gtx)
+	if common.cell(gtx, 120, .End) {
+		if fluent.button(gtx, "Close", .Subtle, .Dismiss, .Small) {
+			m.open = false
+		}
+	}
 }
 
 @(private)
 header :: proc(gtx: ^ui.Ctx, m: ^Model, width: f32) {
 	s := &m.scheme
-	r := ui.row_open(gtx, align = .Baseline)
-	defer ui.close(&r)
-	common.cell_open(gtx, 120, .Start)
-	fluent.text(gtx, "gallery", s[.Brand_Foreground1], .S900, .Semibold, selectable = false)
-	common.cell_close(gtx)
-	common.cell_open(gtx, width - 120, .End)
-	stats, status := ui.need(gtx, shapes.Stats{}, shapes.Stats_Result)
-	line := "every tile is made as it comes into view"
-	if status == .Ready || status == .Stale {
-		line = fmt.tprintf(
-			"%d open · %d made · %d abandoned · %d pending · cache %d images %d KB · %d hits · %d misses · %d evicted",
-			stats.open,
-			stats.generated,
-			stats.cancelled,
-			stats.pending,
-			stats.cached,
-			stats.cache_bytes / 1024,
-			stats.hits,
-			stats.misses,
-			stats.evictions,
-		)
+	ui.row(gtx, align = .Baseline)
+	if common.cell(gtx, 120, .Start) {
+		fluent.text(gtx, "gallery", s[.Brand_Foreground1], .S900, .Semibold, selectable = false)
 	}
-	fluent.text(gtx, line, s[.Neutral_Foreground3], .S200, selectable = false, truncate = true, key = 1)
-	common.cell_close(gtx)
+	if common.cell(gtx, width - 120, .End) {
+		stats, status := ui.need(gtx, shapes.Stats{}, shapes.Stats_Result)
+		line := "every tile is made as it comes into view"
+		if status == .Ready || status == .Stale {
+			line = fmt.tprintf(
+				"%d open · %d made · %d abandoned · %d pending · cache %d images %d KB · %d hits · %d misses · %d evicted",
+				stats.open,
+				stats.generated,
+				stats.cancelled,
+				stats.pending,
+				stats.cached,
+				stats.cache_bytes / 1024,
+				stats.hits,
+				stats.misses,
+				stats.evictions,
+			)
+		}
+		fluent.text(gtx, line, s[.Neutral_Foreground3], .S200, selectable = false, truncate = true, key = 1)
+	}
 }
 
 
@@ -269,8 +261,7 @@ header :: proc(gtx: ^ui.Ctx, m: ^Model, width: f32) {
 @(private)
 row :: proc(gtx: ^ui.Ctx, index: int, user: rawptr) {
 	m := (^Model)(user)
-	col := ui.column_open(gtx, align = .Center)
-	defer ui.close(&col)
+	ui.column(gtx, align = .Center)
 	r := ui.row_open(gtx, gap = GAP)
 	for c in 0 ..< m.columns {
 		if t := index * m.columns + c; t < TILES {
@@ -285,8 +276,7 @@ row :: proc(gtx: ^ui.Ctx, index: int, user: rawptr) {
 // for the first common.LOADING_DELAY, then a skeleton.
 @(private)
 tile :: proc(gtx: ^ui.Ctx, m: ^Model, index: int) {
-	sc := ui.scope_open(gtx, index)
-	defer ui.scope_close(&sc)
+	ui.scope(gtx, index)
 	res, status := ui.need(gtx, shapes.Tile{index = index, px = TILE}, shapes.Tile_Result)
 	if status == .Ready || status == .Stale {
 		// The picture is a button: an input area its own size under it,

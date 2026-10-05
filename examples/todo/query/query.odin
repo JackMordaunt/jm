@@ -9,7 +9,7 @@ its "query.Name" kind, and ui.need keys a query by its bytes.
 */
 package todo_query
 
-// Filter is which todos a page shows.
+// Filter is which todos the list shows.
 Filter :: enum u8 {
 	All,
 	Active,

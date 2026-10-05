@@ -7,6 +7,8 @@ unweighted one (see ui.flexible).
 */
 package example_common
 
+import "base:runtime"
+
 import "core:os"
 import "core:strings"
 
@@ -35,16 +37,18 @@ fonts :: proc(allocator := context.allocator) -> []ops.Font_Ref {
 	return out
 }
 
-// cell_open opens a column of exactly width that places its one child by
-// align across it; cell_close ends it.
-cell_open :: proc(gtx: ^ui.Ctx, width: f32, align: ui.Align) {
-	sized := ui.guard_hold(gtx, ui.Inset)
-	sized^ = ui.sized_open(gtx, {min = {width, 0}, max = {width, ui.INF}})
-	col := ui.guard_hold(gtx, ui.Flex)
-	col^ = ui.column_open(gtx, align = align)
+// cell is a column of exactly width that places its one child by align
+// across it, as a guard: `if common.cell(gtx, 120, .End) { … }` closes it
+// at the end of the if.
+@(deferred_in = cell_close)
+cell :: proc(gtx: ^ui.Ctx, width: f32, align: ui.Align, loc := #caller_location) -> bool {
+	ui.sized_open(gtx, {min = {width, 0}, max = {width, ui.INF}}, loc = loc)
+	ui.column_open(gtx, align = align, loc = loc)
+	return true
 }
 
-cell_close :: proc(gtx: ^ui.Ctx) {
-	ui.close(ui.guard_take(gtx, ui.Flex))
-	ui.close(ui.guard_take(gtx, ui.Inset))
+@(private = "file")
+cell_close :: proc(gtx: ^ui.Ctx, width: f32, align: ui.Align, loc: runtime.Source_Code_Location) {
+	ui.innermost_close(gtx, .Flex)
+	ui.innermost_close(gtx, .Inset)
 }
