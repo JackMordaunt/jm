@@ -1632,7 +1632,7 @@ paint_pie :: proc(gtx: ^ui.Ctx, r: ops.Rect, names: []string, divider: f32) {
 // the window).
 @(private)
 paint_overflow_list :: proc(gtx: ^ui.Ctx, open: ^bool, names: []string, anchor: ops.Rect, key: u64) {
-	m := menu_open(gtx, open, anchor, key)
+	m := menu_open(gtx, open, anchor, key = key)
 	defer menu_close(&m)
 	col := ui.column_open(gtx)
 	defer ui.close(&col)

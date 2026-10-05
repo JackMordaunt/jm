@@ -65,6 +65,7 @@ Menu :: struct {
 	alpha:   f32,
 	paint:   ^Menu_Paint, // the popover's paint record, which learns its size at close
 	slid:    bool, // a slide transform is pushed inside the overlay
+	has_icons: bool, // every item keeps the icon column, so labels align
 }
 
 // Menu_Data is what a menu keeps between frames: the widest item seen
@@ -112,7 +113,7 @@ MENU_TRIGGER_GAP :: f32(4)
 //
 // Not done: typeahead, hover- and context-opened menus, and submenus (an
 // item can show the chevron; the caller composes the second menu).
-menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, key: u64 = 0, loc := #caller_location) -> (m: Menu) {
+menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, has_icons := false, key: u64 = 0, loc := #caller_location) -> (m: Menu) {
 	id := ui.claim_id(gtx, key, loc)
 	d := ui.widget_data(gtx, id, Menu_Data)
 	if !open^ {
@@ -146,6 +147,7 @@ menu_open :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, ke
 	m.visible = true
 	m.id = id
 	m.open = open
+	m.has_icons = has_icons
 	m.alpha = t
 	m.width = clamp(d.seen, MENU_MIN_WIDTH - 2 * (MENU_PAD + tok.STROKE_WIDTH_THIN), MENU_MAX_WIDTH - 2 * (MENU_PAD + tok.STROKE_WIDTH_THIN))
 	d.width = d.seen
@@ -198,13 +200,13 @@ menu_close :: proc(m: ^Menu) {
 // the items out only while the menu shows and closes it at the end of
 // the if (see ui/guards.odin).
 @(deferred_in = menu_guard_close)
-menu :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, key: u64 = 0, loc := #caller_location) -> bool {
-	m := menu_open(gtx, open, anchor, key, loc)
+menu :: proc(gtx: ^ui.Ctx, open: ^bool, anchor := ops.Rect{0, 0, 0, 32}, has_icons := false, key: u64 = 0, loc := #caller_location) -> bool {
+	m := menu_open(gtx, open, anchor, has_icons, key, loc)
 	return m.visible
 }
 
 @(private = "file")
-menu_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, anchor: ops.Rect, key: u64, loc: runtime.Source_Code_Location) {
+menu_guard_close :: proc(gtx: ^ui.Ctx, open: ^bool, anchor: ops.Rect, has_icons: bool, key: u64, loc: runtime.Source_Code_Location) {
 	if current_menu != nil {
 		menu_close(current_menu)
 	}
@@ -277,7 +279,10 @@ menu_item :: proc(
 	if check != .None {
 		w += MENU_ICON + MENU_ITEM_GAP
 	}
-	if ic != .None {
+	// The icon column: this item's icon, or room for one where the menu
+	// has icons, so every label starts in one place (MenuList hasIcons).
+	icon_slot := ic != .None || (current_menu != nil && current_menu.has_icons)
+	if icon_slot {
 		w += MENU_ICON + MENU_ITEM_GAP
 	}
 	if secondary != "" {
@@ -329,6 +334,8 @@ menu_item :: proc(
 	}
 	if ic != .None {
 		icon(gtx, shown, {x, top}, MENU_ICON, fade(icon_color, alpha))
+	}
+	if icon_slot {
 		x += MENU_ICON + MENU_ITEM_GAP
 	}
 	x += MENU_CONTENT_PAD

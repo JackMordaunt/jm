@@ -359,3 +359,43 @@ test_menu_focuses_its_first_item_roves_and_gives_focus_back :: proc(t: ^testing.
 	testing.expect(t, !m.menu)
 	testing.expect_value(t, ui.probe_focus_name(&p), "Edit") // back to the trigger
 }
+
+// With has_icons, an item with no icon keeps the icon column, so its
+// label starts where an iconned item's does (MenuList hasIcons).
+@(test)
+test_menu_has_icons_aligns_labels :: proc(t: ^testing.T) {
+	Open :: struct {
+		open:  bool,
+		icons: bool,
+	}
+	label_x :: proc(icons: bool) -> (with, without: f32) {
+		o := Open{true, icons}
+		p: ui.Probe
+		ui.probe_init(&p, proc(gtx: ^ui.Ctx, user: rawptr) {
+				o := (^Open)(user)
+				if menu(gtx, &o.open, has_icons = o.icons) {
+					menu_item(gtx, "Copy", .Copy)
+					menu_item(gtx, "Cut")
+				}
+			}, &o, {400, 300}, allocator = context.temp_allocator)
+		defer ui.probe_destroy(&p)
+		ui.probe_advance(&p, 10, 0.05)
+		// Each label's first glyph run, by where its item's row starts.
+		runs: [dynamic]f32
+		defer delete(runs)
+		for d in ui.probe_current(&p).draws {
+			if g, ok := d.cmd.(ops.Glyphs); ok {
+				append(&runs, ops.apply(d.transform, g.origin).x)
+			}
+		}
+		if len(runs) >= 2 {
+			return runs[0], runs[1]
+		}
+		return 0, -1
+	}
+	defer free_all(context.temp_allocator)
+	with, without := label_x(true)
+	testing.expectf(t, abs(with - without) < 0.5, "with has_icons the labels align: %v and %v", with, without)
+	plain_with, plain_without := label_x(false)
+	testing.expectf(t, plain_without < plain_with - 10, "without it, an item with no icon starts further left: %v and %v", plain_with, plain_without)
+}
