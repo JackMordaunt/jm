@@ -53,6 +53,10 @@ routes :: proc(conn: ^loopback.Conn, req: loopback.Request) {
 			)
 		}
 		loopback.send(conn, "0\r\n\r\n")
+	case req.path == "/declared":
+		// Declares more than it sends, so only the declaration can refuse it.
+		loopback.send(conn, "HTTP/1.1 200 OK\r\nContent-Length: 5000\r\n\r\n")
+		loopback.hold(conn)
 	case strings.has_prefix(req.path, "/delay/"):
 		ms, _ := strconv.parse_int(req.path[len("/delay/"):])
 		if loopback.pause(conn, time.Duration(ms) * time.Millisecond) {
