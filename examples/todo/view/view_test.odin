@@ -4,7 +4,8 @@ import "core:testing"
 
 import "jm:ui"
 
-import "../shapes"
+import "../query"
+import "../todo"
 
 @(private = "file")
 open :: proc(m: ^Model) -> ui.Probe {
@@ -13,9 +14,17 @@ open :: proc(m: ^Model) -> ui.Probe {
 	return p
 }
 
+// command_of decodes a frame's command as the host does; nil if it is not
+// a todo.Command.
+@(private = "file")
+command_of :: proc(c: ui.Command) -> todo.Command {
+	cmd, _ := ui.command_as(c, todo.Command)
+	return cmd
+}
+
 @(private = "file")
 two :: proc(p: ^ui.Probe) {
-	ui.probe_deliver(p, shapes.Todos{filter = .All}, shapes.Todos_Result{items = {{1, "milk", false}, {2, "eggs", true}}, active = 1, completed = 1})
+	ui.probe_deliver(p, query.Todos{filter = .All}, query.Todos_Result{items = {{1, "milk", false}, {2, "eggs", true}}, active = 1, completed = 1})
 	ui.probe_frame(p)
 }
 
@@ -25,8 +34,8 @@ first_frame_needs_the_list_and_the_problems :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	testing.expect(t, ui.probe_needs_q(&p, shapes.Todos{filter = .All}))
-	testing.expect(t, ui.probe_needs_q(&p, shapes.Problems{}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Todos{filter = .All}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Problems{}))
 	testing.expect_value(t, len(ui.probe_needs(&p)), 2)
 	testing.expect(t, !ui.probe_tagged(&p, "Delete milk"))
 }
@@ -43,12 +52,14 @@ rows_draw_from_the_delivered_shape_and_emit_commands :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Delete milk"))
 	cmds := ui.probe_commands(&p)
 	testing.expect_value(t, len(cmds), 1)
-	d, ok := ui.command_as(cmds[0], shapes.Delete)
-	testing.expect(t, ok)
-	testing.expect_value(t, d.id, i64(1))
+	testing.expect(t, command_of(cmds[0]) == todo.Delete{id = 1})
 
 	testing.expect(t, ui.probe_click(&p, "Clear completed"))
-	testing.expect(t, ui.command_is(ui.probe_commands(&p)[0], shapes.Clear_Completed))
+	testing.expect(t, command_of(ui.probe_commands(&p)[0]) == todo.Clear_Completed{})
+
+	// Mark all says nothing of what to mark: the application counts.
+	testing.expect(t, ui.probe_click(&p, "Mark all"))
+	testing.expect(t, command_of(ui.probe_commands(&p)[0]) == todo.Toggle_All{})
 }
 
 @(test)
@@ -63,9 +74,7 @@ enter_in_the_entry_is_an_add_and_clears_the_text :: proc(t: ^testing.T) {
 	ui.probe_key(&p, .Enter)
 	cmds := ui.probe_commands(&p)
 	testing.expect_value(t, len(cmds), 1)
-	a, ok := ui.command_as(cmds[0], shapes.Add)
-	testing.expect(t, ok)
-	testing.expect_value(t, a.title, "bread")
+	testing.expect(t, command_of(cmds[0]) == todo.Add{title = todo.text_make("bread")})
 	testing.expect_value(t, ui.text_string(&m.entry), "")
 }
 
@@ -79,19 +88,19 @@ a_filter_change_keeps_the_old_page_until_the_new_one_lands :: proc(t: ^testing.T
 	testing.expect(t, ui.probe_click(&p, "Completed"))
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
-	testing.expect_value(t, m.filter, shapes.Filter.Completed)
+	testing.expect_value(t, m.filter, query.Filter.Completed)
 	// Both pages are needed: the new one to come, the old one to keep
 	// drawing from meanwhile, so the rows never flicker.
-	testing.expect(t, ui.probe_needs_q(&p, shapes.Todos{filter = .Completed}))
-	testing.expect(t, ui.probe_needs_q(&p, shapes.Todos{filter = .All}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Todos{filter = .Completed}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Todos{filter = .All}))
 	testing.expect(t, ui.probe_tagged(&p, "Delete milk"))
 	testing.expect(t, !ui.probe_tagged(&p, "Loading…"))
-	ui.probe_deliver(&p, shapes.Todos{filter = .Completed}, shapes.Todos_Result{items = {{2, "eggs", true}}, active = 1, completed = 1})
+	ui.probe_deliver(&p, query.Todos{filter = .Completed}, query.Todos_Result{items = {{2, "eggs", true}}, active = 1, completed = 1})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "Delete eggs"))
 	testing.expect(t, !ui.probe_tagged(&p, "Delete milk"))
 	// The frame that draws the new page is the one that lets the old go.
-	testing.expect(t, !ui.probe_needs_q(&p, shapes.Todos{filter = .All}))
+	testing.expect(t, !ui.probe_needs_q(&p, query.Todos{filter = .All}))
 	testing.expect_value(t, len(ui.probe_dropped(&p)), 1)
 }
 
@@ -122,7 +131,7 @@ a_problem_shows_until_dismissed :: proc(t: ^testing.T) {
 	p := open(&m)
 	defer ui.probe_destroy(&p)
 	two(&p)
-	ui.probe_deliver(&p, shapes.Problems{}, shapes.Problems_Result{items = {{7, "A todo needs a title."}}})
+	ui.probe_deliver(&p, query.Problems{}, query.Problems_Result{items = {{7, "A todo needs a title."}}})
 	ui.probe_frame(&p)
 	names := ui.probe_names(&p)
 	found := false
@@ -135,9 +144,7 @@ a_problem_shows_until_dismissed :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Dismiss"))
 	cmds := ui.probe_commands(&p)
 	testing.expect_value(t, len(cmds), 1)
-	d, ok := ui.command_as(cmds[0], shapes.Dismiss)
-	testing.expect(t, ok)
-	testing.expect_value(t, d.id, u64(7))
+	testing.expect(t, command_of(cmds[0]) == todo.Dismiss{id = 7})
 }
 
 @(test)
@@ -155,9 +162,6 @@ editing_a_row_submits_an_edit :: proc(t: ^testing.T) {
 	ui.probe_key(&p, .Enter)
 	cmds := ui.probe_commands(&p)
 	testing.expect_value(t, len(cmds), 1)
-	e, ok := ui.command_as(cmds[0], shapes.Edit)
-	testing.expect(t, ok)
-	testing.expect_value(t, e.id, i64(1))
-	testing.expect_value(t, e.title, "milk!")
+	testing.expect(t, command_of(cmds[0]) == todo.Edit{id = 1, title = todo.text_make("milk!")})
 	testing.expect_value(t, m.editing, i64(0))
 }

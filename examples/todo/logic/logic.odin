@@ -1,184 +1,125 @@
 /*
-Package logic is the todo application's rules: what each command means,
-what makes one invalid, and what the store should do about a valid one. It
-is pure. A request comes in, an outcome goes out, and the outcome is either
-a write for the store, a problem for the problem list, or nothing. It holds
-no database and no ui, so it is tested by calling process.
+Package logic is the todo application's business processes: for each
+command, given the facts the host gathered for it, the domains' decisions
+and the one Effect they come to. It is pure. It reads nothing, writes
+nothing and keeps nothing, so it is tested by calling effect.
 
-Messages are values with fixed buffers, not strings, because they cross
-stream edges by copy between threads: a Text is as long as the longest
-title the rules allow.
+The layers, and who runs them, per command, on the store's thread:
+
+	enrich   the host reads the Facts the command needs      (app, store)
+	decide   the domains judge                              (title, completion)
+	effect   this package maps command, facts and verdicts to an Effect
+	execute  the host carries the Effect out, one exhaustive switch (app)
+
+What the same verdict means is decided here, never in the executor: an
+empty title refuses an Add, and deletes on Edit, as TodoMVC does.
 */
 package todo_logic
 
-import "core:strings"
+import "../completion"
+import "../title"
+import "../todo"
 
-import "jm:ui"
-
-import "../shapes"
-
-// MAX_TITLE is the longest title the rules allow, in bytes.
-MAX_TITLE :: 120
-
-// Text is a string that fits in a message.
-Text :: struct {
-	buf: [MAX_TITLE]u8,
-	len: int,
+// Facts is what the host gathers about the world before a command is
+// decided; each command reads only its own.
+Facts :: struct {
+	exists: bool, // Toggle, Edit: the todo is still there
+	done:   bool, // Toggle: whether it is done
+	active: int, // Toggle_All: how many todos are not done
 }
 
-text_make :: proc(s: string) -> (t: Text) {
-	t.len = copy(t.buf[:], s)
-	return
-}
-
-text_of :: proc(t: ^Text) -> string {
-	return string(t.buf[:t.len])
-}
-
-// Request is one command as the pipeline carries it: decoded from the
-// ui's bytes by whoever runs the frame loop, with the title copied in.
-Request :: struct {
-	kind:    Kind,
-	id:      i64, // Toggle, Edit, Delete: the todo
-	done:    bool, // Toggle_All
-	problem: u64, // Dismiss
-	title:   Text, // Add, Edit
-}
-
-Kind :: enum u8 {
-	Add,
-	Toggle,
-	Toggle_All,
-	Edit,
-	Delete,
-	Clear_Completed,
-	Dismiss,
-}
-
-// Write is what the store does for a valid request.
-Write :: struct {
-	op:    Op,
-	id:    i64,
-	done:  bool,
-	title: Text,
-}
-
-Op :: enum u8 {
-	Insert, // title
-	Set_Done, // id, done
-	Set_All, // done
-	Set_Title, // id, title
-	Remove, // id
+// Effect is every change the application makes. A nil Effect is a
+// command that changes nothing.
+Effect :: union {
+	Insert,
+	Set_Done,
+	Set_All,
+	Set_Title,
+	Remove,
 	Remove_Done,
+	Report,
+	Withdraw,
 }
 
-// Problem_Event adds a problem to the list, or removes one.
-Problem_Event :: struct {
-	add:     bool,
-	id:      u64,
-	message: Text,
+Insert :: struct {
+	title: todo.Text,
 }
 
-// Outcome is what a request came to: at most one write and one problem.
-Outcome :: struct {
-	write:       Write,
-	has_write:   bool,
-	problem:     Problem_Event,
-	has_problem: bool,
+Set_Done :: struct {
+	id:   i64,
+	done: bool,
 }
 
-// Logic is the rules' only state: where problem ids come from.
-Logic :: struct {
-	next_problem: u64,
+Set_All :: struct {
+	done: bool,
 }
 
-// request turns a ui command into a Request, if c is one of the contract's
-// commands. The title is copied, so c may go.
-request :: proc(c: ui.Command) -> (r: Request, ok: bool) {
-	if v, is := ui.command_as(c, shapes.Add); is {
-		return {kind = .Add, title = text_make(v.title)}, true
-	}
-	if v, is := ui.command_as(c, shapes.Toggle); is {
-		return {kind = .Toggle, id = v.id}, true
-	}
-	if v, is := ui.command_as(c, shapes.Toggle_All); is {
-		return {kind = .Toggle_All, done = v.done}, true
-	}
-	if v, is := ui.command_as(c, shapes.Edit); is {
-		return {kind = .Edit, id = v.id, title = text_make(v.title)}, true
-	}
-	if v, is := ui.command_as(c, shapes.Delete); is {
-		return {kind = .Delete, id = v.id}, true
-	}
-	if ui.command_is(c, shapes.Clear_Completed) {
-		return {kind = .Clear_Completed}, true
-	}
-	if v, is := ui.command_as(c, shapes.Dismiss); is {
-		return {kind = .Dismiss, problem = v.id}, true
-	}
-	return {}, false
+Set_Title :: struct {
+	id:    i64,
+	title: todo.Text,
 }
 
-// process applies the rules to one request. It runs on the application's
-// thread, one request at a time, in the order they were made.
-process :: proc(l: ^Logic, r: Request) -> (out: Outcome) {
-	r := r
-	switch r.kind {
-	case .Add:
-		title, problem := valid_title(&r.title)
-		if problem != "" {
-			return refuse(l, problem)
+Remove :: struct {
+	id: i64,
+}
+
+Remove_Done :: struct {}
+
+// Report adds a problem to query.Problems.
+Report :: struct {
+	message: string,
+}
+
+// Withdraw removes a problem from query.Problems.
+Withdraw :: struct {
+	id: u64,
+}
+
+NO_TITLE :: "A todo needs a title."
+TOO_LONG :: "That title is too long to keep."
+GONE :: "That todo is no longer there."
+
+// effect is what command c comes to, given the facts f.
+effect :: proc(c: todo.Command, f: Facts) -> Effect {
+	c := c
+	switch &v in c {
+	case todo.Add:
+		validity, kept := title.validity(&v.title)
+		switch validity {
+		case .Empty:
+			return Report{NO_TITLE}
+		case .Too_Long:
+			return Report{TOO_LONG}
+		case .Valid:
+			return Insert{todo.text_make(kept)}
 		}
-		return write({op = .Insert, title = text_make(title)})
-	case .Edit:
-		title, problem := valid_title(&r.title)
-		if title == "" {
-			// TodoMVC: an edit that leaves nothing removes the todo.
-			return write({op = .Remove, id = r.id})
+	case todo.Edit:
+		if !f.exists {
+			return Report{GONE}
 		}
-		if problem != "" {
-			return refuse(l, problem)
+		validity, kept := title.validity(&v.title)
+		switch validity {
+		case .Empty:
+			return Remove{v.id}
+		case .Too_Long:
+			return Report{TOO_LONG}
+		case .Valid:
+			return Set_Title{v.id, todo.text_make(kept)}
 		}
-		return write({op = .Set_Title, id = r.id, title = text_make(title)})
-	case .Toggle:
-		// The store flips it: the rules do not know the row's state, and
-		// a stale copy in the ui must not decide it.
-		return write({op = .Set_Done, id = r.id})
-	case .Toggle_All:
-		return write({op = .Set_All, done = r.done})
-	case .Delete:
-		return write({op = .Remove, id = r.id})
-	case .Clear_Completed:
-		return write({op = .Remove_Done})
-	case .Dismiss:
-		out.has_problem = true
-		out.problem = {add = false, id = r.problem}
-		return out
+	case todo.Toggle:
+		if !f.exists {
+			return Report{GONE}
+		}
+		return Set_Done{v.id, completion.toggled(f.done)}
+	case todo.Toggle_All:
+		return Set_All{completion.all_done(f.active)}
+	case todo.Delete:
+		// A todo already gone is as deleted as the user wanted.
+		return Remove{v.id}
+	case todo.Clear_Completed:
+		return Remove_Done{}
+	case todo.Dismiss:
+		return Withdraw{v.id}
 	}
-	return out
-}
-
-// valid_title trims t and says what is wrong with it, if anything. An
-// empty title is not a problem here: Add refuses it, Edit deletes.
-@(private)
-valid_title :: proc(t: ^Text) -> (title, problem: string) {
-	title = strings.trim_space(text_of(t))
-	if title == "" {
-		return "", "A todo needs a title."
-	}
-	if t.len == MAX_TITLE {
-		return title, "That title is too long to keep."
-	}
-	return title, ""
-}
-
-@(private)
-write :: proc(w: Write) -> Outcome {
-	return {write = w, has_write = true}
-}
-
-@(private)
-refuse :: proc(l: ^Logic, message: string) -> Outcome {
-	l.next_problem += 1
-	return {has_problem = true, problem = {add = true, id = l.next_problem, message = text_make(message)}}
+	return nil
 }

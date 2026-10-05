@@ -1,9 +1,18 @@
 /*
 todo is TodoMVC as a jm application: the ui is a frame of plain data, the
-rules are pure, SQLite is the data engine, and a stream pipeline joins them
-across four threads. The pieces are examples/todo's packages: shapes is
-the contract, view the ui, logic the rules, store the data engine, and app
-the host that wires them; this is the window around app.
+decisions are pure, SQLite is the data engine, and a stream pipeline joins
+them across three threads. The pieces are examples/todo's packages:
+
+	todo        the commands the ui may send             (leaf)
+	query       the reads the ui may need, and results   (leaf)
+	title       domain: what makes a title one we keep   (pure)
+	completion  domain: whether todos are done           (pure)
+	logic       a command and its facts to one effect    (pure)
+	store       the SQLite client: reads, writes         (io)
+	app         the host: enriches, executes, wires      (io)
+	view        the ui: input to commands                (ui)
+
+This is the window around app.
 
 	todo                open todo.db in the working directory
 	todo path.db        another database

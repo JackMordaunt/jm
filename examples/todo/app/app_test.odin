@@ -1,11 +1,16 @@
 package todo_app
 
+import "core:encoding/cbor"
 import "core:testing"
 import "core:time"
 
 import "jm:sqlite3"
 import "jm:ui"
 
+import "../../common"
+import "../query"
+import "../store"
+import "../todo"
 import "../view"
 
 // The whole application, less the window: the view runs in a probe, the
@@ -110,13 +115,13 @@ a_refused_command_becomes_a_problem_that_dismisses :: proc(t: ^testing.T) {
 	testing.expect(t, settle(&r, "0 items left"))
 
 	// A blank title never reaches the store: the rules refuse it and the
-	// problem list, in memory, is delivered as a shape.
+	// problem list, in memory, is delivered as a result.
 	testing.expect(t, ui.probe_click(&r.p, "New todo"))
 	ui.probe_type(&r.p, "   ")
 	ui.probe_key(&r.p, .Enter)
 	hand_on(&r)
 	testing.expect(t, settle(&r, "Dismiss"), "the problem bar appeared")
-	rows, err := sqlite3.query(r.h.store.db, "SELECT COUNT(*) FROM todo", allocator = context.temp_allocator)
+	rows, err := sqlite3.query(r.h.stage.store.db, "SELECT COUNT(*) FROM todo", allocator = context.temp_allocator)
 	testing.expect(t, err == nil)
 	testing.expect(t, sqlite3.next(&rows))
 	testing.expect_value(t, sqlite3.integer(rows, 0), i64(0))
@@ -152,4 +157,63 @@ dropping_a_need_stops_its_refreshes :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, len(r.h.route.live), 1)
 	testing.expect(t, r.m.filter == .Active)
+}
+
+@(test)
+a_toggle_on_a_todo_gone_since_the_frame_is_a_problem :: proc(t: ^testing.T) {
+	r: Rig
+	testing.expect(t, rig_open(&r))
+	defer rig_close(&r)
+	hand_on(&r)
+	testing.expect(t, settle(&r, "0 items left"))
+	testing.expect(t, ui.probe_click(&r.p, "New todo"))
+	ui.probe_type(&r.p, "brief")
+	ui.probe_key(&r.p, .Enter)
+	hand_on(&r)
+	testing.expect(t, settle(&r, "Delete brief"))
+
+	// The frame still draws the row after its delete has been sent, so a
+	// toggle follows; the facts gathered for it say the row is gone.
+	testing.expect(t, ui.probe_click(&r.p, "Delete brief"))
+	hand_on(&r)
+	testing.expect(t, ui.probe_click(&r.p, ""))
+	hand_on(&r)
+	testing.expect(t, settle(&r, "Dismiss"), "the toggle became a problem")
+	testing.expect(t, settle(&r, "Delete brief", present = false), "the delete landed")
+}
+
+@(test)
+a_problems_need_mounted_late_gets_the_current_list :: proc(t: ^testing.T) {
+	// The db stage alone, on this thread: no pipeline is needed to ask it.
+	s: Db_Stage
+	s.allocator = context.allocator
+	s.out = make([dynamic]common.Result)
+	defer delete(s.out)
+	testing.expect(t, store.open(&s.store, sqlite3.MEMORY, nil, nil))
+	defer store.close(&s.store)
+
+	problems_of :: proc(t: ^testing.T, s: ^Db_Stage, out: []common.Result) -> (res: query.Problems_Result) {
+		testing.expect_value(t, len(out), 1)
+		if len(out) == 1 {
+			err := cbor.unmarshal_from_bytes(out[0].data, &res, allocator = context.temp_allocator)
+			testing.expect(t, err == nil)
+			delete(out[0].data, s.allocator)
+		}
+		return
+	}
+
+	// Before anything has gone wrong, the answer is an empty list, not none.
+	none := problems_of(t, &s, db_apply(&s, Read{key = 5, q = query.Problems{}}))
+	testing.expect_value(t, len(none.items), 0)
+
+	// A refused Add reports the list as it changes...
+	pushed := problems_of(t, &s, db_apply(&s, todo.Command(todo.Add{})))
+	testing.expect_value(t, len(pushed.items), 1)
+
+	// ...and a need that appears afterwards is answered with it, under its key.
+	out := db_apply(&s, Read{key = 9, q = query.Problems{}})
+	testing.expect(t, len(out) == 1 && out[0].key == 9)
+	late := problems_of(t, &s, out)
+	testing.expect_value(t, len(late.items), 1)
+	testing.expect_value(t, late.items[0].message, "A todo needs a title.")
 }

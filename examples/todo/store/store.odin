@@ -1,9 +1,9 @@
 /*
-Package store is the todo application's data engine: one SQLite connection
-and the thread it belongs to. It is a stage of the stream pipeline, pinned
-to that thread (stream.pin), so writes and queries reach it as messages on
-one edge and results leave on another, and the connection is touched by
-one thread only.
+Package store is the todo application's data engine: one SQLite connection,
+touched by one thread. It is a client, not a decider: it reads what it is
+asked (the facts a command needs, the rows a query wants), writes what it
+is told, and brackets both in a transaction. Which write a command comes to
+is examples/todo/logic's to say, and the host's to carry out.
 
 Changes leave another way. SQLite's update hook reports every row a
 statement touches, into a buffer; the commit hook hands the buffer on as
@@ -13,42 +13,19 @@ batch goes into a port of the pipeline, which re-runs the live queries.
 */
 package todo_store
 
-import "core:encoding/cbor"
 import "core:fmt"
-import "core:mem"
 
 import "jm:sqlite3"
-import "jm:ui"
 
 import "../../common"
-import "../logic"
-import "../shapes"
+import "../query"
 
 // Change_Batch is what one transaction changed, as the hooks report it.
 Change_Batch :: common.Change_Batch
 
-// Query asks for the todos under a filter, to be answered under key.
-Query :: struct {
-	key:    ui.Need_Key,
-	filter: shapes.Filter,
-}
-
-// Input is what reaches the store's stage.
-Input :: union {
-	logic.Write,
-	Query,
-}
-
-// Result is a shape for the ui: the answer to a Query, as cbor. The
-// consumer owns data and frees it with result_free.
-Result :: common.Result
-
 Store :: struct {
-	db:        sqlite3.Db,
-	allocator: mem.Allocator, // results and the pending slice
-	watcher:   common.Watcher, // the hooks' buffer and where a batch goes
-	results:   [dynamic]Result, // apply's answer, until the stage has emitted it
-	problems:  int, // writes that failed, for the log
+	db:      sqlite3.Db,
+	watcher: common.Watcher, // the hooks' buffer and where a batch goes
 }
 
 // open opens the database at path, creates the table, and installs the
@@ -77,121 +54,116 @@ open :: proc(
 		return false
 	}
 	st.db = db
-	st.allocator = allocator
-	st.results = make([dynamic]Result, allocator)
 	common.watch(db, &st.watcher, on_changes, user)
 	return true
 }
 
-// close closes the connection. Results apply handed out are the caller's,
-// freed or not, so nothing pending here is touched.
 close :: proc(st: ^Store) {
 	common.unwatch(st.db)
-	delete(st.results)
 	sqlite3.close(&st.db)
 	st^ = {}
 }
 
-// apply is the stage: a write goes to the database, a query comes back as
-// a result. It is the f of a stream.flat_map_with over the store, so the
-// slice it returns lives until the next call; the results in it are the
-// caller's to free with result_free, which the pipeline's sink does once
-// each has been delivered.
-apply :: proc(st: ^Store, input: Input) -> []Result {
-	clear(&st.results)
-	switch v in input {
-	case logic.Write:
-		if err := write(st, v); err != nil {
-			st.problems += 1
-			fmt.eprintln("todo: write:", err)
-		}
-	case Query:
-		if data, ok := query(st, v.filter); ok {
-			append(&st.results, Result{v.key, data})
-		}
+// --- transactions: a command's reads and writes commit together ----------
+
+begin :: proc(st: ^Store) -> sqlite3.Error {
+	return sqlite3.exec(st.db, "BEGIN IMMEDIATE")
+}
+
+commit :: proc(st: ^Store) -> sqlite3.Error {
+	return sqlite3.exec(st.db, "COMMIT")
+}
+
+// rollback undoes the transaction. Its own failure is not returned: the
+// caller is already reporting the failure that made it roll back.
+rollback :: proc(st: ^Store) {
+	if err := sqlite3.exec(st.db, "ROLLBACK"); err != nil {
+		fmt.eprintln("todo: rollback:", err)
 	}
-	return st.results[:]
 }
 
-result_free :: proc(st: ^Store, r: Result) {
-	delete(r.data, st.allocator)
-}
+// --- reads ----------------------------------------------------------------
 
-@(private)
-write :: proc(st: ^Store, w: logic.Write) -> sqlite3.Error {
-	w := w
-	db := st.db
-	switch w.op {
-	case .Insert:
-		return sqlite3.exec_args(db, "INSERT INTO todo(title) VALUES (?)", logic.text_of(&w.title))
-	case .Set_Done:
-		return sqlite3.exec_args(db, "UPDATE todo SET done = NOT done WHERE id = ?", w.id)
-	case .Set_All:
-		return sqlite3.exec_args(db, "UPDATE todo SET done = ? WHERE done != ?", w.done, w.done)
-	case .Set_Title:
-		return sqlite3.exec_args(
-			db,
-			"UPDATE todo SET title = ? WHERE id = ?",
-			logic.text_of(&w.title),
-			w.id,
-		)
-	case .Remove:
-		return sqlite3.exec_args(db, "DELETE FROM todo WHERE id = ?", w.id)
-	case .Remove_Done:
-		return sqlite3.exec(db, "DELETE FROM todo WHERE done = 1")
+// todo_state says whether todo id exists and whether it is done.
+todo_state :: proc(st: ^Store, id: i64) -> (exists, done: bool, err: sqlite3.Error) {
+	rows := sqlite3.query(
+		st.db,
+		"SELECT done FROM todo WHERE id = ?",
+		id,
+		allocator = context.temp_allocator,
+	) or_return
+	if sqlite3.next(&rows) {
+		exists, done = true, sqlite3.boolean(rows, 0)
 	}
-	return nil
+	err = sqlite3.finish(&rows)
+	return
 }
 
-// query runs the filter and marshals the shape into a slice from the
-// store's allocator.
-@(private)
-query :: proc(st: ^Store, filter: shapes.Filter) -> (data: []byte, ok: bool) {
-	db := st.db
-	counts, err := sqlite3.query(
-		db,
+// counts is how many todos are active and how many done.
+counts :: proc(st: ^Store) -> (active, completed: int, err: sqlite3.Error) {
+	rows := sqlite3.query(
+		st.db,
 		"SELECT COUNT(*) FILTER (WHERE done = 0), COUNT(*) FILTER (WHERE done = 1) FROM todo",
 		allocator = context.temp_allocator,
-	)
-	if err != nil {
-		fmt.eprintln("todo: count:", err)
-		return nil, false
+	) or_return
+	if sqlite3.next(&rows) {
+		active = int(sqlite3.integer(rows, 0))
+		completed = int(sqlite3.integer(rows, 1))
 	}
-	res: shapes.Todos_Result
-	if sqlite3.next(&counts) {
-		res.active = int(sqlite3.integer(counts, 0))
-		res.completed = int(sqlite3.integer(counts, 1))
-	}
-	sqlite3.finish(&counts)
-	rows, qerr := sqlite3.query(
-		db,
+	err = sqlite3.finish(&rows)
+	return
+}
+
+// todos answers query.Todos, in allocator.
+todos :: proc(
+	st: ^Store,
+	filter: query.Filter,
+	allocator := context.temp_allocator,
+) -> (
+	res: query.Todos_Result,
+	err: sqlite3.Error,
+) {
+	res.active, res.completed = counts(st) or_return
+	rows := sqlite3.query(
+		st.db,
 		"SELECT id, title, done FROM todo WHERE ?1 = 0 OR (?1 = 1 AND done = 0) OR (?1 = 2 AND done = 1) ORDER BY id",
 		i64(filter),
-		allocator = context.temp_allocator,
-	)
-	if qerr != nil {
-		fmt.eprintln("todo: select:", qerr)
-		return nil, false
-	}
-	items := make([dynamic]shapes.Todo, context.temp_allocator)
+		allocator = allocator,
+	) or_return
+	items := make([dynamic]query.Todo, allocator)
 	for sqlite3.next(&rows) {
-		append(
-			&items,
-			shapes.Todo{sqlite3.integer(rows, 0), sqlite3.text(rows, 1), sqlite3.boolean(rows, 2)},
-		)
-	}
-	if ferr := sqlite3.finish(&rows); ferr != nil {
-		fmt.eprintln("todo: select:", ferr)
-		return nil, false
+		todo := query.Todo{sqlite3.integer(rows, 0), sqlite3.text(rows, 1), sqlite3.boolean(rows, 2)}
+		append(&items, todo)
 	}
 	res.items = items[:]
-	bytes, merr := cbor.marshal_into_bytes(
-		res,
-		allocator = st.allocator,
-		temp_allocator = context.temp_allocator,
-	)
-	if merr != nil {
-		return nil, false
-	}
-	return bytes, true
+	err = sqlite3.finish(&rows)
+	return
+}
+
+// --- writes ---------------------------------------------------------------
+
+insert :: proc(st: ^Store, title: string) -> sqlite3.Error {
+	return sqlite3.exec_args(st.db, "INSERT INTO todo(title) VALUES (?)", title)
+}
+
+set_done :: proc(st: ^Store, id: i64, done: bool) -> sqlite3.Error {
+	return sqlite3.exec_args(st.db, "UPDATE todo SET done = ? WHERE id = ?", done, id)
+}
+
+// set_all touches only the rows that differ, so the change batch names
+// only those.
+set_all :: proc(st: ^Store, done: bool) -> sqlite3.Error {
+	return sqlite3.exec_args(st.db, "UPDATE todo SET done = ? WHERE done != ?", done, done)
+}
+
+set_title :: proc(st: ^Store, id: i64, title: string) -> sqlite3.Error {
+	return sqlite3.exec_args(st.db, "UPDATE todo SET title = ? WHERE id = ?", title, id)
+}
+
+remove :: proc(st: ^Store, id: i64) -> sqlite3.Error {
+	return sqlite3.exec_args(st.db, "DELETE FROM todo WHERE id = ?", id)
+}
+
+remove_done :: proc(st: ^Store) -> sqlite3.Error {
+	return sqlite3.exec(st.db, "DELETE FROM todo WHERE done = 1")
 }

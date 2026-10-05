@@ -1,21 +1,22 @@
 /*
 Package view is the todo application's ui: a frame that needs the todos
-under a filter and the current problems, draws them in Fluent, and emits
-the contract's commands. It imports the contract and jm:ui and nothing of
-the application, so a probe drives it with shapes it delivers by hand
-(view_test.odin), and the same proc runs under ui/sdl or ui/child.
+under a filter and the current problems, draws them in Fluent, and turns
+clicks and keys into todo.Commands. It imports the two leaf packages, todo
+and query, and jm:ui, and nothing that reads or writes, so a probe drives
+it with results it delivers by hand (view_test.odin), and the same proc
+runs under ui/sdl or ui/child.
 */
 package todo_view
 
 import "core:fmt"
-import "core:strings"
 
 import "jm:ui"
 import "jm:ui/fluent"
 import "jm:ui/ops"
 
 import "../../common"
-import "../shapes"
+import "../query"
+import "../todo"
 
 WIDTH :: 560
 // A row is the checkbox (32 with its gap), the title, and two 24px icon
@@ -31,12 +32,12 @@ TITLE_WIDTH :: WIDTH - 40 - 2 * (24 + 8)
 Model :: struct {
 	theme:   fluent.Theme,
 	scheme:  fluent.Scheme,
-	filter:  shapes.Filter,
+	filter:  query.Filter,
 	entry:   ui.Text_State, // the new todo being typed
 	editing: i64, // the todo being retitled, 0 for none
 	edit:    ui.Text_State, // its title being typed
 	scroll:  ui.Scroll_Offset,
-	shown:   shapes.Filter, // the filter whose page was drawn last; see page_of
+	shown:   query.Filter, // the filter whose page was drawn last; see page_of
 	waiting: f64, // gtx.time when the current wait for a page began, or 0
 }
 
@@ -47,8 +48,8 @@ Model :: struct {
 // common.LOADING_DELAY, and a frame is asked for to report it. The second result
 // says whether there is a page at all.
 @(private)
-page_of :: proc(gtx: ^ui.Ctx, m: ^Model) -> (page: ^shapes.Todos_Result, ok: bool, loading: bool) {
-	now, status := ui.need(gtx, shapes.Todos{filter = m.filter}, shapes.Todos_Result)
+page_of :: proc(gtx: ^ui.Ctx, m: ^Model) -> (page: ^query.Todos_Result, ok: bool, loading: bool) {
+	now, status := ui.need(gtx, query.Todos{filter = m.filter}, query.Todos_Result)
 	if status == .Ready || status == .Stale {
 		m.shown = m.filter
 		m.waiting = 0
@@ -64,12 +65,18 @@ page_of :: proc(gtx: ^ui.Ctx, m: ^Model) -> (page: ^shapes.Todos_Result, ok: boo
 		loading = true
 	}
 	if m.shown != m.filter {
-		last, lstatus := ui.need(gtx, shapes.Todos{filter = m.shown}, shapes.Todos_Result)
+		last, lstatus := ui.need(gtx, query.Todos{filter = m.shown}, query.Todos_Result)
 		if lstatus == .Ready || lstatus == .Stale {
 			return last, true, loading
 		}
 	}
 	return nil, false, loading
+}
+
+// send asks the application to carry out c once the frame is done.
+@(private)
+send :: proc(gtx: ^ui.Ctx, c: todo.Command) {
+	ui.command(gtx, c)
 }
 
 model_destroy :: proc(m: ^Model) {
@@ -130,7 +137,7 @@ header :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // dismissed. Missing means none have been reported yet.
 @(private)
 problems :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	list, status := ui.need(gtx, shapes.Problems{}, shapes.Problems_Result)
+	list, status := ui.need(gtx, query.Problems{}, query.Problems_Result)
 	if status != .Ready && status != .Stale {
 		return
 	}
@@ -139,7 +146,7 @@ problems :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		defer ui.scope_close(&sc)
 		_, dismissed := fluent.message_bar(gtx, .Error, "", p.message, dismissable = true)
 		if dismissed {
-			ui.command(gtx, shapes.Dismiss{id = p.id})
+			send(gtx, todo.Dismiss{id = p.id})
 		}
 	}
 }
@@ -157,7 +164,7 @@ entry :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		all = page.active == 0 && page.completed > 0
 	}
 	if fluent.checkbox(gtx, &all, "Mark all", state = .Live if have else .Disabled) {
-		ui.command(gtx, shapes.Toggle_All{done = all})
+		send(gtx, todo.Toggle_All{})
 	}
 	ui.flexible(gtx, 1)
 	e := fluent.input(gtx, &m.entry, "What needs to be done?", name = "New todo")
@@ -165,7 +172,7 @@ entry :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		ui.focus_request(gtx, e.id) // the page opens ready to type into
 	}
 	if e.submitted {
-		ui.command(gtx, shapes.Add{title = strings.clone(ui.text_string(&m.entry), gtx.allocator)})
+		send(gtx, todo.Add{title = todo.text_make(ui.text_string(&m.entry))})
 		ui.text_set(&m.entry, "")
 	}
 }
@@ -185,7 +192,7 @@ todos :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 @(private)
-rows :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^shapes.Todos_Result) {
+rows :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^query.Todos_Result) {
 	list := ui.column_open(gtx, gap = 2, align = .Fill)
 	defer ui.close(&list)
 	for row in page.items {
@@ -194,7 +201,7 @@ rows :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^shapes.Todos_Result) {
 }
 
 @(private)
-todo_row :: proc(gtx: ^ui.Ctx, m: ^Model, row: shapes.Todo) {
+todo_row :: proc(gtx: ^ui.Ctx, m: ^Model, row: query.Todo) {
 	s := &m.scheme
 	sc := ui.scope_open(gtx, row.id)
 	defer ui.scope_close(&sc)
@@ -202,12 +209,12 @@ todo_row :: proc(gtx: ^ui.Ctx, m: ^Model, row: shapes.Todo) {
 	defer ui.close(&r)
 	done := row.done
 	if fluent.checkbox(gtx, &done, "") {
-		ui.command(gtx, shapes.Toggle{id = row.id})
+		send(gtx, todo.Toggle{id = row.id})
 	}
 	if m.editing == row.id {
 		e := fluent.input(gtx, &m.edit, name = "Edit todo", width = TITLE_WIDTH - 60)
 		if e.submitted {
-			ui.command(gtx, shapes.Edit{id = row.id, title = strings.clone(ui.text_string(&m.edit), gtx.allocator)})
+			send(gtx, todo.Edit{id = row.id, title = todo.text_make(ui.text_string(&m.edit))})
 			m.editing = 0
 		}
 		if fluent.button(gtx, "Cancel", .Subtle, size = .Small) {
@@ -221,7 +228,7 @@ todo_row :: proc(gtx: ^ui.Ctx, m: ^Model, row: shapes.Todo) {
 		ui.text_set(&m.edit, row.title)
 	}
 	if fluent.button(gtx, "", .Subtle, .Delete, .Small, name = fmt.tprintf("Delete %s", row.title)) {
-		ui.command(gtx, shapes.Delete{id = row.id})
+		send(gtx, todo.Delete{id = row.id})
 	}
 }
 
@@ -229,7 +236,7 @@ todo_row :: proc(gtx: ^ui.Ctx, m: ^Model, row: shapes.Todo) {
 FILTERS :: []string{"All", "Active", "Completed"}
 
 @(private)
-footer :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^shapes.Todos_Result) {
+footer :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^query.Todos_Result) {
 	s := &m.scheme
 	r := ui.row_open(gtx, align = .Center)
 	defer ui.close(&r)
@@ -240,13 +247,13 @@ footer :: proc(gtx: ^ui.Ctx, m: ^Model, page: ^shapes.Todos_Result) {
 	common.cell_open(gtx, WIDTH - 300, .Center)
 	selected := int(m.filter)
 	if fluent.tab_list(gtx, FILTERS, &selected, size = .Small) {
-		m.filter = shapes.Filter(selected)
+		m.filter = query.Filter(selected)
 	}
 	common.cell_close(gtx)
 	common.cell_open(gtx, 150, .End)
 	if page.completed > 0 {
 		if fluent.button(gtx, "Clear completed", .Subtle, size = .Small) {
-			ui.command(gtx, shapes.Clear_Completed{})
+			send(gtx, todo.Clear_Completed{})
 		}
 	}
 	common.cell_close(gtx)

@@ -983,7 +983,7 @@ primer-kit-check:
 # ============================================================================
 
 # examples/todo: TodoMVC in Fluent, SQLite as the data engine, a stream
-# pipeline across four threads; see the README's UI section. `just todo`
+# pipeline across three threads; see the README's UI section. `just todo`
 # keeps todo.db in the working directory; `just todo -memory` keeps
 # nothing, and `just todo path.db` opens that database.
 #
@@ -1000,7 +1000,7 @@ todo-test: sqlite blend2d kb
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/test
-    for p in examples/todo/shapes examples/todo/logic examples/todo/store examples/todo/view examples/todo/app; do
+    for p in examples/todo/title examples/todo/completion examples/todo/logic examples/todo/store examples/todo/view examples/todo/app; do
       {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 
