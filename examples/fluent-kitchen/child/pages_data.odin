@@ -19,8 +19,7 @@ TAG_APPEARANCES := [?]fluent.Tag_Appearance{.Filled, .Outline, .Brand}
 TAG_APPEARANCE_NAMES := [?]string{"Filled", "Outline", "Brand"}
 
 page_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sortable, selectable", "44px rows on the surface below; hover and press read Subtle, a selected row Brand Background 2; the Name header sorts")
 	COLS := [?]f32{0, 200, 120}
 	sizes := [?]fluent.Table_Size{.Medium, .Small, .Extra_Small}
@@ -30,7 +29,7 @@ page_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		// Each table is its own scope: its rows' ids, and the flex
 		// memory they keep, must not collide with the other tables'.
-		sc := ui.scope_open(gtx, si)
+		ui.scope(gtx, si)
 		t := fluent.table_open(gtx, COLS[:], size, key = u64(si))
 		{
 			h := fluent.table_header_open(gtx, &t)
@@ -56,7 +55,6 @@ page_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			fluent.table_row_close(&r)
 		}
 		fluent.table_close(&t)
-		ui.close(&sc)
 	}
 	kitchen.section(gtx, "Row states", "forced: hovered, pressed, focused and a selected brand row")
 	t := fluent.table_open(gtx, COLS[:], key = 10)
@@ -72,12 +70,10 @@ page_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Single selection", "each item carries a checkbox with a 4px indicator margin; the row look is the design site's 32px Subtle row")
 	{
-		c := ui.column_open(gtx, align = .Fill, key = 1)
-		defer ui.close(&c)
+		ui.column(gtx, align = .Fill, key = 1)
 		ui.spacer(gtx, 0)
 		l := fluent.list_open(gtx, .Single, &m.list_single)
 		for f, i in DATA_FILES {
@@ -102,8 +98,7 @@ page_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_tag :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "the root never reacts to hover; only a dismissible tag's icon does")
 	for n, i in TAG_APPEARANCE_NAMES {
 		r, w := variant_row_open(gtx, n, u64(i))
@@ -135,8 +130,7 @@ page_tag :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(30 + i), 150)
 	}
 	kitchen.section(gtx, "Live group", "dismiss removes a tag; the gap follows the size")
-	tg := fluent.tag_group_open(gtx)
-	defer ui.close(&tg)
+	fluent.tag_group(gtx)
 	for p, i in DATA_PEOPLE[:5] {
 		if m.tags_removed[i] {
 			continue
@@ -151,8 +145,7 @@ page_tag :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_persona :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	SIZES := [?]fluent.Persona_Size{.Extra_Small, .Small, .Medium, .Large, .Extra_Large, .Huge}
 	SIZE_NAMES := [?]string{"Extra small", "Small", "Medium", "Large", "Extra large", "Huge"}
 	kitchen.section(gtx, "Sizes", "avatar 20 / 28 / 32 / 36 / 40 / 56px; the name is subtitle2 at extra-large and huge")
@@ -171,8 +164,7 @@ page_persona :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_avatar_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	LAYOUTS := [?]fluent.Group_Layout{.Spread, .Stack, .Pie}
 	LAYOUT_NAMES := [?]string{"Spread", "Stack", "Pie"}
 	kitchen.section(gtx, "Layouts", "spread sets items apart, stack overlaps them in Background 2 rings, pie cuts up to three into one circle; the rest go behind the overflow button")
@@ -186,20 +178,16 @@ page_avatar_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_skeleton :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Wave", "Stencil 1 with a Stencil 2 band sliding across over 3s on ease-in-out")
 	card :: proc(gtx: ^ui.Ctx, anim: fluent.Skeleton_Animation, translucent: bool, key: u64) {
 		// A scope per card: the items share call sites, and a row's key
 		// does not tell them apart, so without it the three cards' items
 		// share one motion and the pulse's period resets the wave's.
-		sc := ui.scope_open(gtx, key)
-		defer ui.close(&sc)
-		r := ui.row_open(gtx, gap = 12, key = key)
-		defer ui.close(&r)
+		ui.scope(gtx, key)
+		ui.row(gtx, gap = 12, key = key)
 		fluent.skeleton_item(gtx, 48, .Circle, animation = anim, translucent = translucent)
-		c := ui.column_open(gtx, gap = 8)
-		defer ui.close(&c)
+		ui.column(gtx, gap = 8)
 		fluent.skeleton_item(gtx, 16, width = 280, animation = anim, translucent = translucent, key = 1)
 		fluent.skeleton_item(gtx, 12, width = 200, animation = anim, translucent = translucent, key = 2)
 		fluent.skeleton_item(gtx, 12, width = 240, animation = anim, translucent = translucent, key = 3)
@@ -210,8 +198,7 @@ page_skeleton :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	kitchen.section(gtx, "Translucent", "Stencil 1 Alpha, for coloured surfaces")
 	card(gtx, .Wave, true, 3)
 	kitchen.section(gtx, "Shapes and sizes", "rectangle, square and circle at 16 / 32 / 48 / 64px")
-	r := ui.row_open(gtx, gap = 12, align = .Center, key = 4)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 12, align = .Center, key = 4)
 	for size, i in ([4]f32{16, 32, 48, 64}) {
 		fluent.skeleton_item(gtx, size, .Square, key = u64(10 + i))
 		fluent.skeleton_item(gtx, size, .Circle, key = u64(20 + i))
@@ -221,8 +208,7 @@ page_skeleton :: proc(gtx: ^ui.Ctx, m: ^Model) {
 page_text :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
 	fg := s[.Neutral_Foreground1]
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Presets", "the ramp's named styles; Text sets no colour, so the page passes Foreground 1")
 	ROLES := [?]fluent.Type_Role{.Caption2, .Caption1, .Caption1_Strong, .Body1, .Body1_Strong, .Body2, .Subtitle2, .Subtitle1, .Title3, .Title2, .Title1, .Large_Title}
 	ROLE_NAMES := [?]string{"Caption2", "Caption1", "Caption1Strong", "Body1", "Body1Strong", "Body2", "Subtitle2", "Subtitle1", "Title3", "Title2", "Title1", "LargeTitle"}
@@ -231,8 +217,7 @@ page_text :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Decoration", "italic shears the run; underline and strikethrough draw their lines")
 	{
-		r := ui.row_open(gtx, gap = 16, key = 20)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 16, key = 20)
 		fluent.text(gtx, "Italic", fg, .S400, italic = true, key = 1)
 		fluent.text(gtx, "Underline", fg, .S400, underline = true, key = 2)
 		fluent.text(gtx, "Strikethrough", fg, .S400, strikethrough = true, key = 3)
@@ -246,8 +231,7 @@ page_text :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_image :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Shapes and frame", "square, rounded and circular; bordered draws Stroke 1, shadow draws shadow4; jm:ui draws no bitmaps, so a painter or a placeholder fills the box")
 	r := ui.row_open(gtx, gap = 24, align = .Center, key = 1)
 	for shape, i in ([3]fluent.Image_Shape{.Square, .Rounded, .Circular}) {
@@ -255,8 +239,7 @@ page_image :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	ui.close(&r)
 	kitchen.section(gtx, "Fit", "a 160x100 source in a 120px box: none, center, contain, cover")
-	f := ui.row_open(gtx, gap = 24, align = .Center, key = 2)
-	defer ui.close(&f)
+	ui.row(gtx, gap = 24, align = .Center, key = 2)
 	paint :: proc(gtx: ^ui.Ctx, rect: ops.Rect, user: rawptr) {
 		s := fluent.scheme()
 		ops.fill(gtx.scene, rect, s[.Brand_Background2])

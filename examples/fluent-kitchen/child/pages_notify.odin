@@ -18,8 +18,7 @@ INTENTS := [?]fluent.Intent{.Info, .Success, .Warning, .Error}
 INTENT_NAMES := [?]string{"Info", "Success", "Warning", "Error"}
 
 page_toast :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	if !m.toast_seeded {
 		// Two that stay, so a render shows the column at rest.
 		m.toast_seeded = true
@@ -28,8 +27,7 @@ page_toast :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Intents", "a 292px column 20px from the end and 16px from the bottom; each toast a 12px-padded surface under shadow8, 16px apart")
 	{
-		r := ui.wrap_open(gtx, gap = 12, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 12, align = .Center)
 		for name, i in INTENT_NAMES {
 			if fluent.button(gtx, fmt.tprintf("Show %s", name), key = u64(i + 1)) {
 				fluent.toast_push(&m.toasts, INTENT_NAMES[i], "Dismisses itself after 3 seconds.", INTENTS[i])
@@ -47,18 +45,15 @@ page_toast :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_message_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 12)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 12)
 	kitchen.section(gtx, "Intents", "one line while it fits: intent icon, a body1Strong title running into body1 text, actions, and the dismiss")
 	for name, i in INTENT_NAMES {
 		fluent.message_bar(gtx, INTENTS[i], name, "A short message about what happened.", {"Action"}, dismissable = true, key = u64(i + 1))
 	}
 	kitchen.section(gtx, "Two lines", "auto reflows once the single line overflows: the body wraps and the actions take a row of their own")
 	{
-		narrow := ui.box_open(gtx, {padding = {right = 0}}, key = 20)
-		defer ui.close(&narrow)
-		c := ui.column_open(gtx, gap = 12)
-		defer ui.close(&c)
+		ui.box(gtx, {padding = {right = 0}}, key = 20)
+		ui.column(gtx, gap = 12)
 		fluent.message_bar(gtx, .Warning, "Storage almost full", "You have used 95% of your storage. Delete files or upgrade to keep syncing.", {"Upgrade", "Manage"}, dismissable = true, layout = .Multiline, key = 21)
 		fluent.message_bar(gtx, .Info, "", "Square corners, for a bar spanning the page.", shape = .Square, key = 22)
 	}
@@ -86,8 +81,7 @@ POPOVER_POSITION_NAMES := [?]string{"Above", "Below", "Before", "After"}
 // popover anchored to the button's 96x32 box.
 popover_demo :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, position := fluent.Popover_Position.Above, appearance := fluent.Popover_Appearance.Normal, size := fluent.Size.Medium, arrow := true, key: u64) {
 	// Keys from the demo's own, as every demo shares these call sites.
-	st := ui.stack_open(gtx, key = key)
-	defer ui.close(&st)
+	ui.stack(gtx, key = key)
 	if fluent.button(gtx, label, key = key * 16 + 1) {
 		open^ = !open^
 	}
@@ -98,8 +92,7 @@ popover_demo :: proc(gtx: ^ui.Ctx, label: string, open: ^bool, position := fluen
 }
 
 page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	if !m.pop_seeded {
 		m.pop_seeded = true
 		m.pop_open = {true, true, true, true, true, false, false, false}
@@ -107,8 +100,7 @@ page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	kitchen.section(gtx, "Appearances", "a 1px Transparent_Stroke border, borderRadiusMedium, shadow16; it fades and slides 10px in over durationSlower")
 	ui.spacer(gtx, 90)
 	{
-		r := ui.row_open(gtx, gap = 180)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 180)
 		for name, i in POPOVER_APPEARANCE_NAMES {
 			popover_demo(gtx, name, &m.pop_open[i], appearance = POPOVER_APPEARANCES[i], key = u64(i + 1))
 		}
@@ -116,8 +108,7 @@ page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	kitchen.section(gtx, "Positions and sizes", "above, below, before or after the trigger; padding 12 / 16 / 20px and a 6 / 8 / 8px arrow by size")
 	ui.spacer(gtx, 40)
 	{
-		r := ui.row_open(gtx, gap = 200)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 200)
 		ui.spacer(gtx, 60)
 		popover_demo(gtx, "Before", &m.pop_open[3], .Before, size = .Small, key = 11)
 		popover_demo(gtx, "After", &m.pop_open[4], .After, size = .Large, key = 12)
@@ -129,20 +120,17 @@ page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_teaching_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	if !m.teach_seeded {
 		m.teach_seeded = true
 		m.teach_open = true
 	}
 	kitchen.section(gtx, "Paged", "a popover padded spacingVerticalL with borderRadiusXLarge, 322px (the 288px media plus padding); dots, the count, previous and next")
-	r := ui.row_open(gtx, gap = 380)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 380)
 	TITLES := [3]string{"Find anything", "Share in a click", "Stay in sync"}
 	BODIES := [3]string{"Search across your files, mail and chats from one box.", "Send a link that opens right where you are.", "Changes appear on every device as you make them."}
 	{
-		st := ui.stack_open(gtx, key = 1)
-		defer ui.close(&st)
+		ui.stack(gtx, key = 1)
 		if fluent.button(gtx, "Take the tour", .Primary, key = 1) {
 			m.teach_open = true
 			m.teach_page = 0
@@ -157,8 +145,7 @@ page_teaching_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		st := ui.stack_open(gtx, key = 2)
-		defer ui.close(&st)
+		ui.stack(gtx, key = 2)
 		if fluent.button(gtx, "Brand", key = 1) {
 			m.teach_brand = !m.teach_brand
 		}
@@ -171,8 +158,7 @@ page_teaching_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_info_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 16)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 16)
 	if !m.info_seeded {
 		m.info_seeded = true
 		m.info_open = true
@@ -203,22 +189,18 @@ slide_card :: proc(gtx: ^ui.Ctx, i: int, elevated: bool) {
 	ROLES := [4]tok.Role{.Palette_Blue_Background2, .Palette_Green_Background2, .Palette_Marigold_Background2, .Palette_Berry_Background2}
 	// An elevated card's surface is the carousel's; a flat one is tinted.
 	fill := elevated ? ops.Color{} : fluent.color(ROLES[i % 4])
-	b := ui.box_open(gtx, {fill = fill, radius = elevated ? 0 : 4, padding = ui.pad_all(24)}, key = u64(i))
-	defer ui.close(&b)
-	c := ui.column_open(gtx, gap = 8)
-	defer ui.close(&c)
+	ui.box(gtx, {fill = fill, radius = elevated ? 0 : 4, padding = ui.pad_all(24)}, key = u64(i))
+	ui.column(gtx, gap = 8)
 	base.label(gtx, fmt.tprintf("Card %d", i + 1), {size = 20, color = fluent.color(.Neutral_Foreground1)})
 	base.label(gtx, "Cards move a page at a time.", {color = fluent.color(.Neutral_Foreground2)})
 	ui.spacer(gtx, 60)
 }
 
 page_carousel :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Flat", "previous and next, the nav of 24px dots on a translucent pill; the strip slides a page over durationSlow")
 	{
-		w := ui.box_open(gtx, {}, key = 1)
-		defer ui.close(&w)
+		ui.box(gtx, {}, key = 1)
 		if fluent.carousel(gtx, &m.slide_flat, 4, key = 2) {
 			for i in 0 ..< 4 {
 				if fluent.carousel_card(gtx, i, key = u64(i)) {

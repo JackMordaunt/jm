@@ -248,12 +248,10 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Neutral_Background2])
 	m.window = gtx.constraints.max // for the dialog page's backdrop and centring
 
-	r := ui.row_open(gtx, align = .Fill)
-	defer ui.close(&r)
+	ui.row(gtx, align = .Fill)
 	nav(gtx, m)
 	ui.flexible(gtx, 1)
-	body := ui.column_open(gtx)
-	defer ui.close(&body)
+	ui.column(gtx)
 	app_bar(gtx, m)
 	ui.flexible(gtx, 1)
 	{
@@ -263,12 +261,9 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			ui.retain(gtx, i)
 		}
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
-		ps := ui.scope_open(gtx, m.page)
-		defer ui.close(&ps)
-		sb := ui.scroll_box_open(gtx, offset = &m.scroll[clamp(m.page, 0, len(PAGES) - 1)])
-		defer ui.close(&sb)
-		page := ui.inset_open(gtx, {24, 8, 24, 48})
-		defer ui.close(&page)
+		ui.scope(gtx, m.page)
+		ui.scroll_box(gtx, offset = &m.scroll[clamp(m.page, 0, len(PAGES) - 1)])
+		ui.inset(gtx, {24, 8, 24, 48})
 		if p.draw != nil {
 			p.draw(gtx, m)
 		} else {
@@ -282,8 +277,7 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // kitchen's name in the header, a section header per group and a nav
 // item per page, the current one selected. Its body scrolls.
 nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	n := fluent.nav_open(gtx, width = NAV_WIDTH)
-	defer fluent.nav_close(&n)
+	fluent.nav(gtx, width = NAV_WIDTH)
 	if fluent.nav_header(gtx) {
 		fluent.app_item(gtx, "jm:ui fluent", .Grid, static = true)
 	}
@@ -304,10 +298,8 @@ nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // app_bar is the page title and the theme button.
 app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	bar := ui.inset_open(gtx, {24, 12, 16, 8})
-	defer ui.close(&bar)
-	r := ui.row_open(gtx, align = .Center)
-	defer ui.close(&r)
+	ui.inset(gtx, {24, 12, 16, 8})
+	ui.row(gtx, align = .Center)
 	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 20, color = s[.Neutral_Foreground1]}, heading = true)
 	ui.fill_space(gtx)
 	names := fluent.THEME_NAMES

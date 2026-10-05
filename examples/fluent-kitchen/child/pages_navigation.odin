@@ -29,8 +29,7 @@ lay_nav_rows :: proc(gtx: ^ui.Ctx, m: ^Model) {
 NAV_CELL_W :: f32(190)
 
 page_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Rows", "Background 4 rows padded MNudge (XS at small), each cell a 180px nav; selected: body1Strong, filled brand icon, a 4×20px Compound_Brand pill in the gutter")
 	kitchen.state_header(gtx, NAV_CELL_W)
 	{
@@ -89,12 +88,10 @@ page_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 DRAWER_SIZE_NAMES := [?]string{"Small", "Medium", "Large", "Full"}
 
 page_drawer :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Overlay", "320 / 592 / 940px or the whole window, sliding in over durationGentle / Slow / Slower / UltraSlow under shadow64 and the backdrop")
 	{
-		r := ui.wrap_open(gtx, gap = 12)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 12)
 		for name, i in DRAWER_SIZE_NAMES {
 			if fluent.button(gtx, fmt.tprintf("%s start", name), key = u64(i)) {
 				m.drawer_size, m.drawer_position, m.drawer_open = fluent.Drawer_Size(i), .Start, true
@@ -135,15 +132,13 @@ CRUMB_ITEMS := [?]string{"Home", "Projects", "Contoso redesign", "Assets", "Icon
 CRUMB_SHORT := [?]string{"Home", "Projects", "Contoso redesign"}
 
 page_breadcrumb :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "subtle buttons with no minimum width, 24 / 32 / 40px; the current item reads as strong text and takes no input")
 	SIZE_NAMES :: [?]string{"Small", "Medium", "Large"}
 	for name, i in SIZE_NAMES {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		ui.row(gtx, gap = 16, align = .Center, key = u64(i))
 		base.label(gtx, name, {size = 12, color = fluent.color(.Neutral_Foreground2)})
 		fluent.breadcrumb(gtx, CRUMB_SHORT[:], fluent.Size(i), key = u64(10 + i))
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "With icons", "the icon turns brand and filled on hover")
 	icons := [?]fluent.Icon{.Home, .Folder, .Document}
@@ -156,8 +151,7 @@ page_breadcrumb :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_tree :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Rows", "32px rows (24 at small) in the Subtle family; the chevron is Foreground 3; nothing transitions")
 	kitchen.state_header(gtx, 180)
 	{
@@ -187,20 +181,18 @@ page_tree :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	kitchen.section(gtx, "Selection and small", "multiselect puts a checkbox before each row")
-	sc := ui.column_open(gtx, align = .Start, key = 5)
+	ui.column(gtx, align = .Start, key = 5)
 	if fluent.tree(gtx, key = 6) {
 		if fluent.tree_item(gtx, "All tasks", &m.tree_open[3], size = .Small, checked = &m.tree_checks[0], mixed = m.tree_checks[1] != m.tree_checks[2], key = 10) {
 			fluent.tree_item(gtx, "Write spec", level = 2, size = .Small, checked = &m.tree_checks[1], key = 11)
 			fluent.tree_item(gtx, "Review", level = 2, size = .Small, checked = &m.tree_checks[2], key = 12)
 		}
 	}
-	ui.close(&sc)
 }
 
 // inline_drawer_demo is the inline drawer beside a line of page content.
 inline_drawer_demo :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	r := ui.row_open(gtx, align = .Start)
-	defer ui.close(&r)
+	ui.row(gtx, align = .Start)
 	if fluent.drawer(gtx, &m.drawer_inline, m.window, .Inline, separator = true, key = 21) {
 		if fluent.drawer_header(gtx, key = 22) {
 			fluent.drawer_header_title(gtx, "Filters", &m.drawer_inline)
@@ -211,7 +203,6 @@ inline_drawer_demo :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			fluent.checkbox(gtx, &m.drawer_checks[2], "Flagged", key = 2)
 		}
 	}
-	c := ui.inset_open(gtx, {24, 0, 0, 0})
+	ui.inset(gtx, {24, 0, 0, 0})
 	base.label(gtx, "The page content sits beside the inline drawer.", {color = fluent.color(.Neutral_Foreground2)})
-	ui.close(&c)
 }

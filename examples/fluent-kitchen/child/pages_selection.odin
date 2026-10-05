@@ -10,8 +10,7 @@ import "jm:ui/fluent"
 // and slider specs.
 
 page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Medium", "16px box in a 32px row; the label reads Foreground 3 unchecked, 1 checked; colours snap")
 	kitchen.state_header(gtx)
 	{
@@ -52,8 +51,7 @@ page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Circular", cell, 5)
 	}
 	kitchen.section(gtx, "Live", "click, Tab and Space; the label may sit before the box")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	LABELS := [?]string{"Email me", "Text me", "Call me", "Write to me"}
 	for l, i in LABELS {
 		fluent.checkbox(gtx, &m.checks[i], l, side = i == 3 ? .Before : .After, key = u64(100 + i))
@@ -71,8 +69,7 @@ page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Radio", "16px ring in a 32px row, a 10px brand dot when checked; the ring stays hollow")
 	kitchen.state_header(gtx)
 	{
@@ -101,8 +98,7 @@ page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Medium", "40 by 20px track in a 36px row; on fills brand and slides the thumb over durationNormal")
 	kitchen.state_header(gtx)
 	{
@@ -129,8 +125,7 @@ page_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Small", cell, 3)
 	}
 	kitchen.section(gtx, "Live", "click, or Tab and Space; the thumb eases across")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	LABELS := [?]string{"Wi-Fi", "Bluetooth", "Aeroplane mode"}
 	for l, i in LABELS {
 		fluent.toggle_switch(gtx, &m.switches[i], l, side = i == 2 ? .Before : .After, key = u64(100 + i))
@@ -138,8 +133,7 @@ page_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_slider :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Medium", "20px thumb with a Background 1 ring, a 4px rail; a step draws ticks; the fill and thumb step to hover and pressed")
 	kitchen.state_header(gtx, 150)
 	{
@@ -166,8 +160,7 @@ page_slider :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Small", cell, 3, 150)
 	}
 	kitchen.section(gtx, "Live", "press to jump, drag, or use the arrow, Page, Home and End keys")
-	r := ui.row_open(gtx, gap = 24, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 24, align = .Center)
 	fluent.slider(gtx, &m.volume, 0, 100, 0, 240, name = "Volume", key = 100)
 	base.label(gtx, fmt.tprintf("%.0f", m.volume), {color = fluent.color(.Neutral_Foreground2)})
 	fluent.slider(gtx, &m.steps, 0, 50, 10, 200, name = "Steps", key = 101)

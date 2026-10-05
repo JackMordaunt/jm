@@ -25,8 +25,7 @@ card_cell :: proc(gtx: ^ui.Ctx, appearance: fluent.Card_Appearance, size := flue
 }
 
 page_card :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "interactive cards: shadow4 at rest, shadow8 hovered, Stroke 1 Selected border when selected; disabled reads the Disabled tokens and shadow2")
 	kitchen.state_header(gtx, CARD_CELL_W)
 	for n, i in CARD_APPEARANCE_NAMES {
@@ -60,8 +59,7 @@ DIVIDER_APPEARANCE_NAMES := [?]string{"Default", "Subtle", "Strong", "Brand"}
 
 page_divider :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "strokeWidthThin lines: Stroke 2 / 3 / 1 / Brand Stroke 1, labels in the matching foreground")
 	for n, i in DIVIDER_APPEARANCE_NAMES {
 		base.label(gtx, n, {size = 12, color = s[.Neutral_Foreground2]})
@@ -93,8 +91,7 @@ TAB_ICONS := [?]fluent.Icon{.Home, .Document, .Settings}
 TAB_CELL_W :: f32(240)
 
 page_tab_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "medium: 44px tall; the selected tab is body1Strong with a Compound Brand Stroke bar, a hovered one shows the Stroke 1 Hover bar under it")
 	kitchen.state_header(gtx, TAB_CELL_W)
 	for n, i in TAB_APPEARANCE_NAMES {
@@ -126,8 +123,7 @@ page_tab_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_toolbar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "items edge to edge, subtle by default, 24 / 32 / 40px tall; padding 0 by 4, 4 by 8, 4 by 20px; a divider is 1px with 12px each side")
 	for sz, i in ([?]fluent.Size{.Small, .Medium, .Large}) {
 		base.label(gtx, SIZE_NAMES[i], {size = 12, color = s[.Neutral_Foreground2]})
@@ -159,8 +155,7 @@ ACCORDION_SIZE_NAMES := [?]string{"Small", "Medium", "Large", "Extra large"}
 
 page_accordion :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "32px minimum at small, 44px otherwise; the header has no hover colour, only the pointer and the focus outline")
 	for n, i in ACCORDION_SIZE_NAMES {
 		base.label(gtx, n, {size = 12, color = s[.Neutral_Foreground2]})

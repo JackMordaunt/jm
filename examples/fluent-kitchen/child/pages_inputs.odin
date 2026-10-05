@@ -13,8 +13,7 @@ INPUT_APPEARANCE_NAMES := [?]string{"Outline", "Underline", "Filled darker", "Fi
 INPUT_CELL_W :: f32(170)
 
 page_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "medium: 32px, body1; the bottom edge is its own token, focus grows a 2px brand line from the centre")
 	kitchen.state_header(gtx, INPUT_CELL_W)
 	for n, i in INPUT_APPEARANCE_NAMES {
@@ -45,8 +44,7 @@ page_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Outline", cell, 21, INPUT_CELL_W)
 	}
 	kitchen.section(gtx, "Live", "click, type, Tab between them")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	fluent.input(gtx, &m.first, "First name", width = 180, key = 100)
 	fluent.input(gtx, &m.last, "Last name", .Underline, width = 180, key = 101)
 	fluent.input(gtx, &m.query, "Search", .Filled_Darker, before = .Search, width = 220, key = 102)
@@ -54,8 +52,7 @@ page_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_textarea :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "medium: 52 to 260px tall, growing with its lines, then scrolling; Enter adds a line")
 	kitchen.state_header(gtx, INPUT_CELL_W)
 	for n, i in INPUT_APPEARANCE_NAMES {
@@ -82,12 +79,10 @@ page_textarea :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_field :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 16)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 16)
 	kitchen.section(gtx, "Vertical", "label above, then the control, the validation message with its state icon, and the hint")
 	{
-		r := ui.wrap_open(gtx, gap = 24, line_gap = 16)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 24, line_gap = 16)
 		if fluent.field(gtx, "Name", required = true, hint = "As on your passport", key = 1) {
 			fluent.input(gtx, &m.field_a, "First and last", width = 220)
 		}
@@ -109,8 +104,7 @@ page_field :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Horizontal", "the label takes a 33% column, padded to centre on a control of its size")
 	{
-		c := ui.column_open(gtx, gap = 12)
-		defer ui.close(&c)
+		ui.column(gtx, gap = 12)
 		if fluent.field(gtx, "Small", orientation = .Horizontal, size = .Small, key = 11) {
 			fluent.input(gtx, &m.field_g, "Small", size = .Small)
 		}
@@ -125,20 +119,17 @@ page_field :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 12)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 12)
 	kitchen.section(gtx, "Sizes", "caption1 / body1 / body2 line heights; large is always semibold")
 	{
-		r := ui.wrap_open(gtx, gap = 24, align = .End)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 24, align = .End)
 		for n, i in SIZE_NAMES {
 			fluent.label(gtx, n, size = fluent.Size(i), key = u64(i))
 		}
 	}
 	kitchen.section(gtx, "Weight and required", "semibold at any size; the asterisk is Palette_Red_Foreground3, XS after the text")
 	{
-		r := ui.wrap_open(gtx, gap = 24, align = .End)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 24, align = .End)
 		fluent.label(gtx, "Regular", key = 10)
 		fluent.label(gtx, "Semibold", weight = .Semibold, key = 11)
 		fluent.label(gtx, "Required", required = true, key = 12)
@@ -146,8 +137,7 @@ page_label :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Disabled", "text and indicator both in the Disabled foreground")
 	{
-		r := ui.wrap_open(gtx, gap = 24, align = .End)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 24, align = .End)
 		fluent.label(gtx, "Disabled", disabled = true, key = 20)
 		fluent.label(gtx, "Disabled required", required = true, disabled = true, key = 21)
 	}
@@ -158,8 +148,7 @@ LINK_APPEARANCE_NAMES := [?]string{"Default", "Subtle"}
 
 page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "underline on hover and press; keyboard focus double-underlines in Stroke_Focus2")
 	kitchen.state_header(gtx)
 	for n, i in LINK_APPEARANCE_NAMES {
@@ -176,23 +165,19 @@ page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "On other surfaces", "an inverted surface keeps one colour in every state; a brand surface steps the inverted link family")
 	{
-		r := ui.wrap_open(gtx, gap = 16)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 16)
 		{
-			b := ui.box_open(gtx, {fill = s[.Neutral_Background_Inverted], padding = ui.pad_all(12), radius = 4})
+			ui.box(gtx, {fill = s[.Neutral_Background_Inverted], padding = ui.pad_all(12), radius = 4})
 			fluent.link(gtx, "Inverted link", on = .Inverted, key = 10)
-			ui.close(&b)
 		}
 		{
-			b := ui.box_open(gtx, {fill = s[.Brand_Background], padding = ui.pad_all(12), radius = 4})
+			ui.box(gtx, {fill = s[.Brand_Background], padding = ui.pad_all(12), radius = 4})
 			fluent.link(gtx, "Brand link", on = .Brand, key = 11)
-			ui.close(&b)
 		}
 	}
 	kitchen.section(gtx, "Live", "click, or Tab to it and press Enter")
 	{
-		r := ui.row_open(gtx, gap = 4, align = .Center)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 4, align = .Center)
 		base.label(gtx, "Read the", {size = 14, color = s[.Neutral_Foreground1]})
 		if fluent.link(gtx, "documentation", inline = true, key = 20) {
 			m.link_clicks += 1

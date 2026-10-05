@@ -13,8 +13,7 @@ SIZE_NAMES := [?]string{"Small", "Medium", "Large"}
 SHAPE_NAMES := [?]string{"Rounded", "Circular", "Square"}
 
 page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "medium: 32px, 96px minimum, body1 at semibold; focus draws inside the box, primary adds an on-brand ring")
 	kitchen.state_header(gtx)
 	for n, i in APPEARANCE_NAMES {
@@ -54,8 +53,7 @@ page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Icon only", cell, 40)
 	}
 	kitchen.section(gtx, "Live", "hover, press, Tab and Enter these")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	for a, i in APPEARANCES {
 		if fluent.button(gtx, fmt.tprintf("Clicked %d", m.clicks), a, .Add, key = u64(100 + i)) {
 			m.clicks += 1

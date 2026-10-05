@@ -24,9 +24,8 @@ variant_row_open :: proc(gtx: ^ui.Ctx, label: string, key: u64 = 0) -> (ui.Flex,
 	s := fluent.scheme()
 	r := ui.row_open(gtx, align = .Center, key = key)
 	{
-		c := ui.stack_open(gtx)
+		ui.stack(gtx)
 		base.label(gtx, label, {size = 12, color = s[.Neutral_Foreground2]})
-		ui.close(&c)
 	}
 	ui.spacer(gtx, max(kitchen.LABEL_W - label_width(gtx, label), 0))
 	w := ui.wrap_open(gtx, gap = 12, line_gap = 8, align = .Center)
@@ -39,8 +38,7 @@ variant_row_close :: proc(r, w: ^ui.Flex) {
 }
 
 page_badge :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearance by colour", "medium: 20px, caption1Strong; ghost and outline subtle are white, for dark surfaces")
 	for a, i in BADGE_APPEARANCES {
 		r, w := variant_row_open(gtx, BADGE_APPEARANCE_NAMES[i], u64(i + 1))
@@ -119,8 +117,7 @@ AVATAR_SIZES := [?]fluent.Avatar_Size{.S16, .S20, .S24, .S28, .S32, .S36, .S40, 
 AVATAR_NAMES := [?]string{"Katri Ahokas", "Ada Lovelace", "Grace Hopper", "Alan Turing", "Edsger Dijkstra", "Barbara Liskov", "Donald Knuth", "Margaret Hamilton", "Linus Torvalds", "Ken Thompson"}
 
 page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "16 to 128px; initials semibold at the size's font step; only the first initial at 16")
 	{
 		r, w := variant_row_open(gtx, "Circular", 1)
@@ -191,8 +188,7 @@ page_avatar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_progress_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Determinate", "2px medium or 4px large; the bar's colour by validation state, reading palette tokens")
 	bars :: proc(gtx: ^ui.Ctx, label: string, thickness: fluent.Progress_Thickness, shape: fluent.Progress_Shape, key: u64) {
 		r, w := variant_row_open(gtx, label, key)
@@ -232,8 +228,7 @@ SPINNER_SIZES := [?]fluent.Spinner_Size{.Extra_Tiny, .Tiny, .Extra_Small, .Small
 
 page_spinner :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "16 to 44px in 4px steps; the arc spins every 1.5s and breathes from 30° to 255°")
 	{
 		r, w := variant_row_open(gtx, "Primary", 1)

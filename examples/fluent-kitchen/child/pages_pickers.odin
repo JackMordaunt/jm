@@ -50,8 +50,7 @@ init_pickers :: proc(m: ^Model) {
 
 page_combobox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "medium: 32px, 250px minimum, body1; only outline steps its border; focus grows a 2px brand line")
 	kitchen.state_header(gtx, PICKER_CELL_W)
 	for n, i in PICKER_APPEARANCE_NAMES {
@@ -71,8 +70,7 @@ page_combobox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(i + 11), PICKER_CELL_W)
 	}
 	kitchen.section(gtx, "Live", "type to filter; Down, Up, Enter and Escape; the clearable one swaps its chevron for a dismiss")
-	r := ui.wrap_open(gtx, gap = 16, align = .Start)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 16, align = .Start)
 	fluent.combobox(gtx, &m.pk_fruit, PICKER_FRUIT[:], &m.pk_pick, "Type a fruit", width = 260, key = 100)
 	fluent.dropdown(gtx, PICKER_FRUIT[:], &m.pk_drop, "Dropdown", width = 260, key = 101)
 	fluent.combobox(gtx, &m.pk_clear, PICKER_FRUIT[:], &m.pk_clear_pick, "Clearable", clearable = true, width = 260, key = 102)
@@ -80,8 +78,7 @@ page_combobox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_select :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "Input's looks; hover and press step the sides but never the bottom edge; the focus line sits inside")
 	kitchen.state_header(gtx, PICKER_CELL_W)
 	for n, i in PICKER_APPEARANCE_NAMES {
@@ -97,8 +94,7 @@ page_select :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_spin_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "a 24px column of stacked buttons; outline and underline tint Subtle, the filled ones their own fill")
 	kitchen.state_header(gtx, 190)
 	for n, i in PICKER_APPEARANCE_NAMES {
@@ -118,8 +114,7 @@ page_spin_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(i + 11), 190)
 	}
 	kitchen.section(gtx, "Live", "buttons, Up and Down, Page keys by ten; hold a button to spin; type and Enter to commit")
-	r := ui.wrap_open(gtx, gap = 16, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 16, align = .Center)
 	fluent.spin_button(gtx, &m.pk_count, lo = 0, hi = 20, name = "Guests", width = 160, key = 100)
 	fluent.spin_button(gtx, &m.pk_price, step = 0.5, lo = 0, name = "Price", appearance = .Filled_Darker, width = 160, key = 101)
 	base.label(gtx, fmt.tprintf("%v guests at %.2f", m.pk_count, m.pk_price))
@@ -127,8 +122,7 @@ page_spin_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_search_box :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "Input with the Search icon leading; at most 468px wide")
 	kitchen.state_header(gtx, PICKER_CELL_W)
 	for n, i in PICKER_APPEARANCE_NAMES {
@@ -153,8 +147,7 @@ page_search_box :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_tag_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Appearances", "picks show as filled tags one size down; the control is 250px at least")
 	kitchen.state_header(gtx, 330)
 	for n, i in PICKER_APPEARANCE_NAMES {
@@ -180,19 +173,17 @@ page_tag_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_swatch_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "20 / 24 / 28 / 32px; the selected swatch wears a brand ring inside a light one")
 	for n, i in PICKER_SWATCH_SIZES {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		ui.row(gtx, gap = 16, align = .Center, key = u64(i))
 		base.label(gtx, n, {size = 12})
 		sel := 4
 		fluent.swatch_picker(gtx, PICKER_SWATCHES[:], &sel, size = fluent.Swatch_Size(i), state = .Enabled, key = u64(10 + i))
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Shapes and states", "square, rounded, circular; the second row forces hovered, pressed and focused")
 	for n, i in PICKER_SWATCH_SHAPES {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(20 + i))
+		ui.row(gtx, gap = 16, align = .Center, key = u64(20 + i))
 		base.label(gtx, n, {size = 12})
 		sel := 0
 		fluent.swatch_picker(gtx, PICKER_SWATCHES[:4], &sel, shape = fluent.Swatch_Shape(i), state = .Enabled, key = u64(30 + i))
@@ -200,38 +191,32 @@ page_swatch_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			none := -1
 			fluent.swatch_picker(gtx, PICKER_SWATCHES[:1], &none, shape = fluent.Swatch_Shape(i), state = st, key = u64(40 + i * 3 + j))
 		}
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Live", "click, or arrows on a focused swatch; the grid wraps at four columns")
-	r := ui.row_open(gtx, gap = 32, align = .Start)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 32, align = .Start)
 	fluent.swatch_picker(gtx, PICKER_SWATCHES[:], &m.pk_swatch, key = 100)
 	fluent.swatch_picker(gtx, PICKER_SWATCHES[:], &m.pk_swatch_grid, columns = 4, shape = .Circular, size = .Large, key = 101)
 }
 
 page_color_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Picker", "a 300px saturation-and-value area, the hue rail and the alpha rail over a checkerboard, sharing one colour")
 	r := ui.row_open(gtx, gap = 32, align = .Start)
 	fluent.color_picker(gtx, &m.pk_hsv, key = 1)
 	{
-		c := ui.column_open(gtx, gap = 12, key = 2)
+		ui.column(gtx, gap = 12, key = 2)
 		c3 := fluent.hsv_to_rgb(m.pk_hsv)
 		base.label(gtx, fmt.tprintf("#%02x%02x%02x  alpha %.0f%%", c3[0], c3[1], c3[2], m.pk_hsv.a * 100))
 		fluent.color_slider(gtx, &m.pk_hsv, .Saturation, 300, key = 3)
 		fluent.color_slider(gtx, &m.pk_hsv, .Value, 300, shape = .Square, key = 4)
-		v := ui.row_open(gtx, gap = 12, key = 5)
+		ui.row(gtx, gap = 12, key = 5)
 		fluent.color_slider(gtx, &m.pk_hsv, .Hue, vertical = true, key = 6)
 		fluent.alpha_slider(gtx, &m.pk_hsv, vertical = true, transparency = true, key = 7)
-		ui.close(&v)
-		ui.close(&c)
 	}
 	ui.close(&r)
 	kitchen.section(gtx, "Focused", "the area's thumb takes the default outline; a slider's thumb border turns Stroke_Focus2")
-	f := ui.row_open(gtx, gap = 24, align = .Center, key = 8)
-	defer ui.close(&f)
+	ui.row(gtx, gap = 24, align = .Center, key = 8)
 	hsv := m.pk_hsv
 	fluent.color_slider(gtx, &hsv, .Hue, 240, state = .Focused, key = 9)
 	fluent.alpha_slider(gtx, &hsv, 240, state = .Focused, key = 10)
@@ -239,30 +224,26 @@ page_color_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_rating :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	init_pickers(m)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sizes", "12 / 16 / 20 / 28px stars; a rating's unfilled stars are outlines, a display's the muted fill")
 	for n, i in RATING_SIZE_NAMES {
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
+		ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		base.label(gtx, n, {size = 12})
 		v := f32(3.5)
 		fluent.rating(gtx, &v, half_steps = true, size = fluent.Rating_Size(i), state = .Enabled, key = u64(10 + i))
 		fluent.rating_display(gtx, 3.5, 1160, size = fluent.Rating_Size(i), key = u64(20 + i))
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Colours", "neutral, brand and marigold")
 	for n, i in RATING_COLOR_NAMES {
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(30 + i))
+		ui.row(gtx, gap = 24, align = .Center, key = u64(30 + i))
 		base.label(gtx, n, {size = 12})
 		v := f32(4)
 		fluent.rating(gtx, &v, tint = fluent.Rating_Color(i), state = .Enabled, key = u64(40 + i))
 		fluent.rating_display(gtx, 4, size = .Large, tint = fluent.Rating_Color(i), key = u64(50 + i))
 		fluent.rating_display(gtx, 4.5, 23, compact = true, size = .Large, tint = fluent.Rating_Color(i), key = u64(60 + i))
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Live", "hover to preview, click to rate; the second takes half stars from a star's left half")
-	r := ui.row_open(gtx, gap = 24, align = .Center, key = 70)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 24, align = .Center, key = 70)
 	fluent.rating(gtx, &m.pk_stars, key = 71)
 	fluent.rating(gtx, &m.pk_halves, half_steps = true, tint = .Marigold, name = "half", key = 72)
 	base.label(gtx, fmt.tprintf("%v and %v", m.pk_stars, m.pk_halves))
