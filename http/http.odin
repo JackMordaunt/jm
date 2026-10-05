@@ -236,7 +236,9 @@ prepare :: proc(spec: Spec, wire: ^Wire) -> ^curl.CURL {
 	}
 	if spec.max_body > 0 {
 		// CURLOPT_MAXFILESIZE_LARGE refuses a response whose Content-Length
-		// is over the limit; a body with no length is held to it by the sink.
+		// is over the limit. Its manual page's History says that before curl
+		// 8.4.0 it did not stop a transfer in progress, so the sink's own
+		// limit holds a body of unknown length to it on an older curl.
 		curl.easy_setopt(h, .MAXFILESIZE_LARGE, curl.off_t(spec.max_body))
 	}
 	if spec.insecure {

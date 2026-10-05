@@ -69,6 +69,7 @@ Result :: struct {
 
 // Done is called once per request, on the client's thread. It may submit
 // and cancel, but must not call shutdown, which would wait for itself.
+// context.temp_allocator is the client thread's, freed soon after it returns.
 Done :: #type proc(result: Result, user: rawptr)
 
 // The body limit a Request with max_body = 0 gets.
@@ -269,6 +270,8 @@ pump :: proc(s: ^State) {
 		running: c.int
 		curl.multi_perform(s.multi, &running)
 		harvest(s)
+		// What on_done put on the temp allocator lives until it returns.
+		free_all(context.temp_allocator)
 		curl.multi_poll(s.multi, nil, 0, poll_timeout(s), nil)
 	}
 	for len(s.active) > 0 {

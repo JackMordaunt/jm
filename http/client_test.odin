@@ -294,7 +294,7 @@ deadline_ends_a_slow_request :: proc(t: ^testing.T) {
 oversized_body_is_refused :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
-	// Chunked, so curl cannot refuse it by its length up front: the sink must.
+	// Chunked, so max_body must be enforced while the body grows.
 	h := get_one(env, "/big", {max_body = 1000})
 	fits := get_one(env, "/big", {max_body = 4096})
 	testing.expect(t, await(env.seen, 2))
