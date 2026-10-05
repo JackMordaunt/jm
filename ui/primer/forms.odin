@@ -355,6 +355,43 @@ form_control_close :: proc(gtx: ^ui.Ctx, f: ^Form_Control) {
 	ui.close(&f.col)
 }
 
+// form_control is form_control_open as a guard: `if primer.form_control(gtx,
+// "Name") { … }` closes it at the end of the if, or of the block when called
+// as a statement.
+@(deferred_in = form_control_guard_close)
+form_control :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	caption := "",
+	validation := "",
+	status := Validation_Status.Error,
+	required := false,
+	disabled := false,
+	hide_label := false,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Form_Control)^ = form_control_open(gtx, label, caption, validation, status, required, disabled, hide_label, key, loc)
+	return true
+}
+
+@(private = "file")
+form_control_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	caption: string,
+	validation: string,
+	status: Validation_Status,
+	required: bool,
+	disabled: bool,
+	hide_label: bool,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Form_Control)
+	form_control_close(gtx, h)
+}
+
 // Choice_Group is an open CheckboxGroup or RadioGroup: its close draws
 // the validation message under the options and closes it.
 Choice_Group :: struct {
@@ -460,6 +497,43 @@ checkbox_group_close :: proc(gtx: ^ui.Ctx, g: ^Choice_Group) {
 	choice_group_close(gtx, g)
 }
 
+// checkbox_group is checkbox_group_open as a guard: `if
+// primer.checkbox_group(gtx, "Notify") { … }` closes it at the end of the
+// if, or of the block when called as a statement.
+@(deferred_in = checkbox_group_guard_close)
+checkbox_group :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	caption := "",
+	validation := "",
+	status := Validation_Status.Error,
+	required := false,
+	disabled := false,
+	hide_label := false,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Choice_Group)^ = checkbox_group_open(gtx, label, caption, validation, status, required, disabled, hide_label, key, loc)
+	return true
+}
+
+@(private = "file")
+checkbox_group_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	caption: string,
+	validation: string,
+	status: Validation_Status,
+	required: bool,
+	disabled: bool,
+	hide_label: bool,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Choice_Group)
+	checkbox_group_close(gtx, h)
+}
+
 // radio_group_open opens a RadioGroup (radio-group.json): checkbox_group
 // _open's layout around radios, which it makes one roving focus scope, so
 // one Tab stop, entered at the checked radio: while one has focus, Down
@@ -490,6 +564,43 @@ radio_group_open :: proc(
 // radio_group_close closes g, drawing its validation message.
 radio_group_close :: proc(gtx: ^ui.Ctx, g: ^Choice_Group) {
 	choice_group_close(gtx, g)
+}
+
+// radio_group is radio_group_open as a guard: `if primer.radio_group(gtx,
+// "Size") { … }` closes it at the end of the if, or of the block when called
+// as a statement.
+@(deferred_in = radio_group_guard_close)
+radio_group :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	caption := "",
+	validation := "",
+	status := Validation_Status.Error,
+	required := false,
+	disabled := false,
+	hide_label := false,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Choice_Group)^ = radio_group_open(gtx, label, caption, validation, status, required, disabled, hide_label, key, loc)
+	return true
+}
+
+@(private = "file")
+radio_group_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	caption: string,
+	validation: string,
+	status: Validation_Status,
+	required: bool,
+	disabled: bool,
+	hide_label: bool,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Choice_Group)
+	radio_group_close(gtx, h)
 }
 
 // Radio_Ring is what a RadioGroup learns from its radios this frame:

@@ -823,11 +823,14 @@ anchored_overlay :: proc(
 	trap := true,
 	role := ops.Role.Unknown,
 	name := "",
+	max_height := Overlay_Height.Auto,
+	scroll: ^ui.Scroll_Offset = nil,
+	scrolls := true,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
 	h := ui.guard_hold(gtx, Anchored_Overlay)
-	h^ = anchored_overlay_open(gtx, open, anchor, side, align, anchor_offset, alignment_offset, display_in_viewport, width, height, narrow, close_button, close_label, focus, trap, role, name, key = key, loc = loc)
+	h^ = anchored_overlay_open(gtx, open, anchor, side, align, anchor_offset, alignment_offset, display_in_viewport, width, height, narrow, close_button, close_label, focus, trap, role, name, max_height, scroll, scrolls, key, loc)
 	return h.visible
 }
 
@@ -850,6 +853,9 @@ anchored_overlay_guard_close :: proc(
 	trap: bool,
 	role: ops.Role,
 	name: string,
+	max_height: Overlay_Height,
+	scroll: ^ui.Scroll_Offset,
+	scrolls: bool,
 	key: u64,
 	loc: runtime.Source_Code_Location,
 ) {

@@ -192,13 +192,26 @@ table_row :: proc(
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
+	double_clicked: ^bool = nil,
 ) -> bool {
-	push_row(table_row_open(gtx, t, selected, clicked, appearance, interactive, name, state, key, loc))
+	push_row(table_row_open(gtx, t, selected, clicked, appearance, interactive, name, state, key, loc, double_clicked))
 	return true
 }
 
 @(private = "file")
-table_row_guard_close :: proc(gtx: ^ui.Ctx, t: ^Table, selected: ^bool, clicked: ^bool, appearance: Table_Selection, interactive: bool, name: string, state: Interaction, key: u64, loc: runtime.Source_Code_Location) {
+table_row_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	t: ^Table,
+	selected: ^bool,
+	clicked: ^bool,
+	appearance: Table_Selection,
+	interactive: bool,
+	name: string,
+	state: Interaction,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+	double_clicked: ^bool,
+) {
 	pop_row()
 }
 

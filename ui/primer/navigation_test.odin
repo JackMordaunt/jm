@@ -631,3 +631,29 @@ test_underline_panels_scroll_the_focused_tab_into_view :: proc(t: ^testing.T) {
 	last = ui.probe_bounds(&p, "Discussions")
 	testing.expect(t, abs(last.x + last.w - 200) < 0.01, "its end at the strip's")
 }
+
+@(test)
+test_navigation_guards_draw_what_their_pairs_draw :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	expect_guard_matches_pair(t, "sub_nav", proc(gtx: ^ui.Ctx, guarded: bool) {
+		links := [2]Sub_Nav_Link{{"Labels", true}, {"Milestones", false}}
+		if guarded {
+			sub_nav(gtx, "Labels and milestones", links[:])
+		} else {
+			s := sub_nav_open(gtx, "Labels and milestones", links[:])
+			defer sub_nav_close(&s)
+		}
+		button(gtx, "New label", .Primary)
+	})
+	expect_guard_matches_pair(t, "underline_panels", proc(gtx: ^ui.Ctx, guarded: bool) {
+		tabs := [2]Underline_Tab{{"Code", .Code, ""}, {"Issues", .Issue_Opened, "12"}}
+		selected := 1
+		if guarded {
+			underline_panels(gtx, "Repository", tabs[:], &selected)
+		} else {
+			up := underline_panels_open(gtx, "Repository", tabs[:], &selected)
+			defer underline_panels_close(&up)
+		}
+		text(gtx, "Issues panel")
+	})
+}

@@ -549,6 +549,35 @@ data_table_heading_close :: proc(h: ^Data_Table_Heading) {
 	ui.close(&h.col)
 }
 
+// data_table_heading is data_table_heading_open as a guard: `if
+// primer.data_table_heading(gtx, "Repositories") { … }` closes it at the end
+// of the if, or of the block when called as a statement.
+@(deferred_in = data_table_heading_guard_close)
+data_table_heading :: proc(
+	gtx: ^ui.Ctx,
+	title: string,
+	subtitle := "",
+	divider := false,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Data_Table_Heading)^ = data_table_heading_open(gtx, title, subtitle, divider, key, loc)
+	return true
+}
+
+@(private = "file")
+data_table_heading_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	title: string,
+	subtitle: string,
+	divider: bool,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Data_Table_Heading)
+	data_table_heading_close(h)
+}
+
 // rule is a 1px --borderColor-default line across the width offered.
 @(private)
 rule :: proc(gtx: ^ui.Ctx, loc := #caller_location) {

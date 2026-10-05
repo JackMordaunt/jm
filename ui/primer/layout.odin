@@ -1,5 +1,7 @@
 package primer
 
+import "base:runtime"
+
 import "jm:ui"
 import "jm:ui/design"
 import "jm:ui/ops"
@@ -166,6 +168,45 @@ stack_open :: proc(
 stack_close :: proc(s: ^Stack) {
 	ui.close(&s.flex)
 	ui.close(&s.inset)
+}
+
+// stack is stack_open as a guard: `if primer.stack(gtx, gap = .Condensed) {
+// … }` closes it at the end of the if, or of the block when called as a
+// statement.
+@(deferred_in = stack_guard_close)
+stack :: proc(
+	gtx: ^ui.Ctx,
+	gap := Stack_Space.Normal,
+	direction := Stack_Direction.Vertical,
+	align := Stack_Align.Stretch,
+	justify := Stack_Justify.Start,
+	wrap := false,
+	padding := Stack_Space.None,
+	padding_block: Maybe(Stack_Space) = nil,
+	padding_inline: Maybe(Stack_Space) = nil,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Stack)^ = stack_open(gtx, gap, direction, align, justify, wrap, padding, padding_block, padding_inline, key, loc)
+	return true
+}
+
+@(private = "file")
+stack_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	gap: Stack_Space,
+	direction: Stack_Direction,
+	align: Stack_Align,
+	justify: Stack_Justify,
+	wrap: bool,
+	padding: Stack_Space,
+	padding_block: Maybe(Stack_Space),
+	padding_inline: Maybe(Stack_Space),
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Stack)
+	stack_close(h)
 }
 
 // stack_flex_align maps a stack's align onto jm:ui's: stretch is Fill.
@@ -363,6 +404,45 @@ card_close :: proc(c: ^Card) {
 	ui.widget_close(gtx, &c.place, {size, d.baseline})
 }
 
+// card is card_open as a guard: `if primer.card(gtx, "Heading") { … }`
+// closes it at the end of the if, or of the block when called as a
+// statement.
+@(deferred_in = card_guard_close)
+card :: proc(
+	gtx: ^ui.Ctx,
+	heading: string,
+	description := "",
+	icon := Icon.None,
+	image := Card_Image{},
+	padding := Card_Padding.Normal,
+	radius := Card_Radius.Large,
+	layout := Card_Layout.Default,
+	standalone := false,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Card)^ = card_open(gtx, heading, description, icon, image, padding, radius, layout, standalone, key, loc)
+	return true
+}
+
+@(private = "file")
+card_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	heading: string,
+	description: string,
+	icon: Icon,
+	image: Card_Image,
+	padding: Card_Padding,
+	radius: Card_Radius,
+	layout: Card_Layout,
+	standalone: bool,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Card)
+	card_close(h)
+}
+
 // card_action_open starts the card's one action, a control the caller
 // lays out (an icon button labelled with the card's name) up to
 // card_action_close. It sits 16px from the card's top and right edges,
@@ -378,6 +458,24 @@ card_action_close :: proc(c: ^Card) {
 	c.action, c.action_size, c.has_action = m, d.size, true
 }
 
+// card_action is card_action_open as a guard: `if primer.card_action(&c) { …
+// }` closes it at the end of the if, or of the block when called as a
+// statement.
+@(deferred_in = card_action_guard_close)
+card_action :: proc(
+	c: ^Card,
+) -> bool {
+	card_action_open(c)
+	return true
+}
+
+@(private = "file")
+card_action_guard_close :: proc(
+	c: ^Card,
+) {
+	card_action_close(c)
+}
+
 // card_metadata_open opens the card's metadata row: items centred,
 // --stack-gap-normal apart (Card.module.css:118-131). Fill it with
 // card_metadata_item or any small control; close it with
@@ -389,6 +487,24 @@ card_metadata_open :: proc(c: ^Card) {
 // card_metadata_close closes the metadata row.
 card_metadata_close :: proc(c: ^Card) {
 	ui.close(&c.metadata)
+}
+
+// card_metadata is card_metadata_open as a guard: `if
+// primer.card_metadata(&c) { … }` closes it at the end of the if, or of the
+// block when called as a statement.
+@(deferred_in = card_metadata_guard_close)
+card_metadata :: proc(
+	c: ^Card,
+) -> bool {
+	card_metadata_open(c)
+	return true
+}
+
+@(private = "file")
+card_metadata_guard_close :: proc(
+	c: ^Card,
+) {
+	card_metadata_close(c)
 }
 
 // card_metadata_item is one metadata item: an optional 16px octicon then
@@ -512,6 +628,28 @@ header_close :: proc(h: ^Header, loc := #caller_location) {
 	place_recording(gtx, row, d.size + {2 * pad, 2 * pad}, {pad, pad})
 }
 
+// header is header_open as a guard: `if primer.header(gtx) { … }` closes it
+// at the end of the if, or of the block when called as a statement.
+@(deferred_in = header_guard_close)
+header :: proc(
+	gtx: ^ui.Ctx,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Header)^ = header_open(gtx, key, loc)
+	return true
+}
+
+@(private = "file")
+header_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Header)
+	header_close(h, loc)
+}
+
 // place_recording is a widget size big that calls a recorded run at at.
 @(private)
 place_recording :: proc(gtx: ^ui.Ctx, m: ops.Macro_Id, size: ops.Size, at: ops.Point, key: u64 = 0, loc := #caller_location) {
@@ -548,6 +686,31 @@ header_item_close :: proc(it: ^Header_Item) {
 	if it.full {
 		ui.fill_space(it.gtx)
 	}
+}
+
+// header_item is header_item_open as a guard: `if primer.header_item(gtx) {
+// … }` closes it at the end of the if, or of the block when called as a
+// statement.
+@(deferred_in = header_item_guard_close)
+header_item :: proc(
+	gtx: ^ui.Ctx,
+	full := false,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Header_Item)^ = header_item_open(gtx, full, key, loc)
+	return true
+}
+
+@(private = "file")
+header_item_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	full: bool,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Header_Item)
+	header_item_close(h)
 }
 
 // header_link is a Header.Link: a 16px-tall-text link of an optional

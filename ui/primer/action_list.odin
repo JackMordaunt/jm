@@ -539,6 +539,32 @@ action_list_group_close :: proc(l: ^Action_List) {
 	append(&l.entries, List_Entry{kind = .Group_Close})
 }
 
+// action_list_group is action_list_group_open as a guard: `if
+// primer.action_list_group(&l, "Group") { … }` closes it at the end of the
+// if, or of the block when called as a statement.
+@(deferred_in = action_list_group_guard_close)
+action_list_group :: proc(
+	l: ^Action_List,
+	heading: string,
+	variant := Group_Heading_Variant.Subtle,
+	auxiliary := "",
+	selection: Maybe(Selection_Variant) = nil,
+) -> bool {
+	action_list_group_open(l, heading, variant, auxiliary, selection)
+	return true
+}
+
+@(private = "file")
+action_list_group_guard_close :: proc(
+	l: ^Action_List,
+	heading: string,
+	variant: Group_Heading_Variant,
+	auxiliary: string,
+	selection: Maybe(Selection_Variant),
+) {
+	action_list_group_close(l)
+}
+
 // List_Metrics are the measures one list lays out with.
 @(private)
 List_Metrics :: struct {

@@ -340,6 +340,30 @@ action_menu_group_close :: proc(m: ^Action_Menu) {
 	}
 }
 
+// action_menu_group is action_menu_group_open as a guard: `if
+// primer.action_menu_group(&m, "Group") { … }` closes it at the end of the
+// if, or of the block when called as a statement.
+@(deferred_in = action_menu_group_guard_close)
+action_menu_group :: proc(
+	m: ^Action_Menu,
+	heading: string,
+	variant := Group_Heading_Variant.Subtle,
+	selection: Maybe(Selection_Variant) = nil,
+) -> bool {
+	action_menu_group_open(m, heading, variant, selection)
+	return true
+}
+
+@(private = "file")
+action_menu_group_guard_close :: proc(
+	m: ^Action_Menu,
+	heading: string,
+	variant: Group_Heading_Variant,
+	selection: Maybe(Selection_Variant),
+) {
+	action_menu_group_close(m)
+}
+
 // action_menu_submenu_open draws the submenu that the item declared with
 // submenu = open opens, to the right of that item (outside-right,
 // ActionMenu/ActionMenu.tsx:204-251,357), while open^; call it after

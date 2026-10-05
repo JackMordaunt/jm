@@ -1,5 +1,7 @@
 package primer
 
+import "base:runtime"
+
 import "core:fmt"
 import "core:math"
 import "jm:ui"
@@ -349,6 +351,35 @@ sub_nav_close :: proc(s: ^Sub_Nav) {
 	ui.close(&s.row)
 }
 
+// sub_nav is sub_nav_open as a guard: `if primer.sub_nav(gtx, "Repository",
+// links) { … }` closes it at the end of the if, or of the block when called
+// as a statement.
+@(deferred_in = sub_nav_guard_close)
+sub_nav :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	links: []Sub_Nav_Link,
+	state := Interaction.Live,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Sub_Nav)^ = sub_nav_open(gtx, label, links, state, key, loc)
+	return true
+}
+
+@(private = "file")
+sub_nav_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	links: []Sub_Nav_Link,
+	state: Interaction,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Sub_Nav)
+	sub_nav_close(h)
+}
+
 // draw_sub_nav_links draws the link group and reports the link activated.
 @(private)
 draw_sub_nav_links :: proc(gtx: ^ui.Ctx, links: []Sub_Nav_Link, state: Interaction, loc := #caller_location) -> (clicked: int) {
@@ -654,6 +685,41 @@ underline_panels_open :: proc(
 underline_panels_close :: proc(up: ^Underline_Panels) {
 	ui.close(&up.panel)
 	ui.close(&up.col)
+}
+
+// underline_panels is underline_panels_open as a guard: `if
+// primer.underline_panels(gtx, "Tabs", tabs, &selected) { … }` closes it at
+// the end of the if, or of the block when called as a statement.
+@(deferred_in = underline_panels_guard_close)
+underline_panels :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	tabs: []Underline_Tab,
+	selected: ^int,
+	mode := Activation_Mode.Automatic,
+	loading_counters := false,
+	state := Interaction.Live,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Underline_Panels)^ = underline_panels_open(gtx, label, tabs, selected, mode, loading_counters, state, key, loc)
+	return true
+}
+
+@(private = "file")
+underline_panels_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	label: string,
+	tabs: []Underline_Tab,
+	selected: ^int,
+	mode: Activation_Mode,
+	loading_counters: bool,
+	state: Interaction,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Underline_Panels)
+	underline_panels_close(h)
 }
 
 // draw_underline_tabs draws the tab row strip_w wide and runs its keys and

@@ -1,5 +1,7 @@
 package primer
 
+import "base:runtime"
+
 import "jm:ui"
 import "jm:ui/design"
 import "jm:ui/ops"
@@ -929,6 +931,39 @@ timeline_item_close :: proc(it: ^Timeline_Item) {
 	ui.close(&it.row)
 	ui.close(&it.box)
 	ui.close(&it.inset)
+}
+
+// timeline_item is timeline_item_open as a guard: `if
+// primer.timeline_item(gtx, &tl, .Git_Commit) { … }` closes it at the end of
+// the if, or of the block when called as a statement.
+@(deferred_in = timeline_item_guard_close)
+timeline_item :: proc(
+	gtx: ^ui.Ctx,
+	tl: ^Timeline,
+	badge: Icon,
+	variant := Badge_Variant.None,
+	condensed := false,
+	body := "",
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	ui.guard_hold(gtx, Timeline_Item)^ = timeline_item_open(gtx, tl, badge, variant, condensed, body, key, loc)
+	return true
+}
+
+@(private = "file")
+timeline_item_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	tl: ^Timeline,
+	badge: Icon,
+	variant: Badge_Variant,
+	condensed: bool,
+	body: string,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	h := ui.guard_take(gtx, Timeline_Item)
+	timeline_item_close(h)
 }
 
 // timeline_avatar_open opens a layer for the item's actor avatar, size

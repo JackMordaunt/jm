@@ -148,6 +148,30 @@ page_header_slot_close :: proc(h: ^Page_Header) {
 	r.macro, r.size, r.base, r.set = m, d.size, d.baseline, true
 }
 
+// page_header_slot is page_header_slot_open as a guard: `if
+// primer.page_header_slot(&h, .Actions) { … }` closes it at the end of the
+// if, or of the block when called as a statement.
+@(deferred_in = page_header_slot_guard_close)
+page_header_slot :: proc(
+	h: ^Page_Header,
+	s: Header_Slot,
+	hidden: Maybe(bool) = nil,
+	loc := #caller_location,
+) -> bool {
+	page_header_slot_open(h, s, hidden, loc)
+	return true
+}
+
+@(private = "file")
+page_header_slot_guard_close :: proc(
+	h: ^Page_Header,
+	s: Header_Slot,
+	hidden: Maybe(bool),
+	loc: runtime.Source_Code_Location,
+) {
+	page_header_slot_close(h)
+}
+
 // page_header_parent_link fills the parent link: an arrow-left octicon
 // and label, 8px apart, in --fgColor-muted turning --fgColor-accent on
 // hover (page-header.json, Link.module.css:34-41). Returns true on the
@@ -798,6 +822,60 @@ page_layout_region_close :: proc(l: ^Page_Layout) {
 	m, d := ui.record_close(&l.rec)
 	g := &l.regions[l.open]
 	g.macro, g.size, g.set = m, d.size, true
+}
+
+// split_page_layout_region is split_page_layout_region_open as a guard: `if
+// primer.split_page_layout_region(&l, .Content) { … }` closes it at the end
+// of the if, or of the block when called as a statement.
+@(deferred_in = split_page_layout_region_guard_close)
+split_page_layout_region :: proc(
+	l: ^Page_Layout,
+	r: Page_Region,
+	hidden := false,
+	loc := #caller_location,
+) -> bool {
+	split_page_layout_region_open(l, r, hidden, loc)
+	return true
+}
+
+@(private = "file")
+split_page_layout_region_guard_close :: proc(
+	l: ^Page_Layout,
+	r: Page_Region,
+	hidden: bool,
+	loc: runtime.Source_Code_Location,
+) {
+	page_layout_region_close(l)
+}
+
+// page_layout_region is page_layout_region_open as a guard: `if
+// primer.page_layout_region(&l, .Content) { … }` closes it at the end of the
+// if, or of the block when called as a statement.
+@(deferred_in = page_layout_region_guard_close)
+page_layout_region :: proc(
+	l: ^Page_Layout,
+	r: Page_Region,
+	padding := Layout_Spacing.None,
+	divider := Pane_Divider.None,
+	width := Container_Width.Full,
+	hidden := false,
+	loc := #caller_location,
+) -> bool {
+	page_layout_region_open(l, r, padding, divider, width, hidden, loc)
+	return true
+}
+
+@(private = "file")
+page_layout_region_guard_close :: proc(
+	l: ^Page_Layout,
+	r: Page_Region,
+	padding: Layout_Spacing,
+	divider: Pane_Divider,
+	width: Container_Width,
+	hidden: bool,
+	loc: runtime.Source_Code_Location,
+) {
+	page_layout_region_close(l)
 }
 
 // region_shown is whether region r was laid out and shows.

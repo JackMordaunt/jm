@@ -192,6 +192,24 @@ action_bar_group_close :: proc(b: ^Action_Bar) {
 	b.children += 1
 }
 
+// action_bar_group is action_bar_group_open as a guard: `if
+// primer.action_bar_group(&b) { … }` closes it at the end of the if, or of
+// the block when called as a statement.
+@(deferred_in = action_bar_group_guard_close)
+action_bar_group :: proc(
+	b: ^Action_Bar,
+) -> bool {
+	action_bar_group_open(b)
+	return true
+}
+
+@(private = "file")
+action_bar_group_guard_close :: proc(
+	b: ^Action_Bar,
+) {
+	action_bar_group_close(b)
+}
+
 // action_bar_close fits the row and, when some entries overflow, adds
 // the More button and its menu of them (ActionBar.tsx:240-310): an icon
 // button becomes an item with its icon and name, a button its label and

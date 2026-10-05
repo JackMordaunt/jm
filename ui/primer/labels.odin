@@ -432,6 +432,28 @@ topic_tag_group_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location
 	return ui.wrap_open(gtx, gap = tok.BASE_SIZE_2, line_gap = tok.BASE_SIZE_8, align = .Center, key = key, loc = loc)
 }
 
+// topic_tag_group is topic_tag_group_open as a guard: `if
+// primer.topic_tag_group(gtx) { … }` closes it at the end of the if, or of
+// the block when called as a statement.
+@(deferred_in = topic_tag_group_guard_close)
+topic_tag_group :: proc(
+	gtx: ^ui.Ctx,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	topic_tag_group_open(gtx, key, loc)
+	return true
+}
+
+@(private = "file")
+topic_tag_group_guard_close :: proc(
+	gtx: ^ui.Ctx,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	ui.innermost_close(gtx, .Flex)
+}
+
 // BRANCH_LINE is a BranchName's line: it inherits the text around it,
 // BaseStyles' unitless 1.5 at the chip's own 12px, 18px (branch-name.json
 // notes).
