@@ -17,6 +17,12 @@ curl build is linked rather than from here.
 Every call returns (Response, Error). Error is set only when the transfer
 could not complete; an HTTP 4xx or 5xx is a Response with ok == false, so
 the caller decides whether a status is fatal.
+
+The calls above block. A program that must not wait, such as one with a frame
+to draw, starts a Client instead: submit returns a Handle at once, cancel
+stops a request from any thread, and an on_done callback reports each one
+exactly once. client.odin describes it. Both share one transfer setup, so a
+request behaves the same whichever way it is made.
 */
 package http
 
@@ -47,6 +53,14 @@ Error :: enum {
 	Write_Failed,
 	Encode_Failed,
 	Decode_Failed,
+	// The body or the headers outgrew their limit.
+	Too_Large,
+	// A timeout or deadline passed before the response was complete.
+	Timed_Out,
+	// cancel or shutdown ended the request first.
+	Cancelled,
+	// submit was refused because the client is shutting down.
+	Closed,
 }
 
 Opts :: struct {
@@ -140,95 +154,216 @@ stream :: proc(method, url: string, dst: io.Writer, opts := Opts{}, headers: io.
 
 // ---- internals ----------------------------------------------------------
 
-// Sink is what curl's write callback hands bytes to: a writer, or nothing.
-Sink :: struct {
-	ctx:    runtime.Context,
-	w:      io.Writer,
-	failed: bool,
+// Spec is one transfer as both APIs describe it to curl, so a blocking call
+// and a submitted request are configured by the same code.
+@(private)
+Spec :: struct {
+	method:     string,
+	url:        string,
+	headers:    []string,
+	body:       string,
+	user_agent: string,
+	// curl's own whole-transfer limit; 0 is none.
+	timeout:    time.Duration,
+	no_follow:  bool,
+	insecure:   bool,
+	// Bytes the body and the headers may reach; 0 is no limit.
+	max_body:   int,
+	max_head:   int,
 }
 
+// Sink is what curl's write callback hands bytes to: a writer, or nothing,
+// with a limit on how many it will take.
+@(private)
+Sink :: struct {
+	ctx:       runtime.Context,
+	w:         io.Writer,
+	limit:     int,
+	written:   int,
+	failed:    bool,
+	too_large: bool,
+}
+
+// Wire is a transfer's state that curl holds pointers into, so it must not
+// move while the transfer runs.
+@(private)
+Wire :: struct {
+	body:   Sink,
+	head:   Sink,
+	list:   ^curl.slist,
+	errbuf: [curl.ERROR_SIZE]byte,
+}
+
+@(private)
 global_once: sync.Once
 
-// perform is the one transfer routine. Its own temporaries (C strings for
-// curl) live on the temp allocator and are released before it returns.
-perform :: proc(method, url: string, opts: Opts, body: io.Writer, headers_w: io.Writer) -> (res: Response, err: Error) {
-	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+// global_init runs curl_global_init once per process, before the first
+// handle is made; sync.Once makes the first caller pay for it while the rest
+// wait.
+@(private)
+global_init :: proc() {
 	sync.once_do(&global_once, proc() {
 		curl.global_init(curl.GLOBAL_DEFAULT)
 	})
+}
+
+// prepare makes an easy handle configured for spec, its bytes going to the
+// sinks in wire. The caller frees the handle and then wire.list.
+@(private)
+prepare :: proc(spec: Spec, wire: ^Wire) -> ^curl.CURL {
+	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
+	global_init()
 	h := curl.easy_init()
 	if h == nil {
-		return {}, .Init_Failed
+		return nil
 	}
-	defer curl.easy_cleanup(h)
-
-	body_sink := Sink{ctx = context, w = body}
-	header_sink := Sink{ctx = context, w = headers_w}
-
-	curl.easy_setopt(h, .URL, cstr(url))
+	wire.body.limit = spec.max_body
+	wire.head.limit = spec.max_head
+	curl.easy_setopt(h, .URL, cstr(spec.url))
 	curl.easy_setopt(h, .NOSIGNAL, c.long(1))
+	curl.easy_setopt(h, .ERRORBUFFER, &wire.errbuf[0])
 	curl.easy_setopt(h, .WRITEFUNCTION, curl.write_callback(write_cb))
-	curl.easy_setopt(h, .WRITEDATA, &body_sink)
+	curl.easy_setopt(h, .WRITEDATA, &wire.body)
 	curl.easy_setopt(h, .HEADERFUNCTION, curl.write_callback(write_cb))
-	curl.easy_setopt(h, .HEADERDATA, &header_sink)
-	curl.easy_setopt(h, .USERAGENT, cstr(opts.user_agent if opts.user_agent != "" else DEFAULT_USER_AGENT))
-	if !opts.no_follow {
+	curl.easy_setopt(h, .HEADERDATA, &wire.head)
+	ua := spec.user_agent if spec.user_agent != "" else DEFAULT_USER_AGENT
+	curl.easy_setopt(h, .USERAGENT, cstr(ua))
+	if !spec.no_follow {
 		curl.easy_setopt(h, .FOLLOWLOCATION, c.long(1))
 	}
-	if opts.timeout > 0 {
-		curl.easy_setopt(h, .TIMEOUT_MS, c.long(opts.timeout / time.Millisecond))
+	if spec.timeout > 0 {
+		curl.easy_setopt(h, .TIMEOUT_MS, c.long(max(spec.timeout / time.Millisecond, 1)))
 	}
-	if opts.insecure {
+	if spec.max_body > 0 {
+		// CURLOPT_MAXFILESIZE_LARGE refuses a response whose Content-Length
+		// is over the limit; a body with no length is held to it by the sink.
+		curl.easy_setopt(h, .MAXFILESIZE_LARGE, curl.off_t(spec.max_body))
+	}
+	if spec.insecure {
 		curl.easy_setopt(h, .SSL_VERIFYPEER, c.long(0))
 		curl.easy_setopt(h, .SSL_VERIFYHOST, c.long(0))
 	}
-	switch method {
-	case "GET":
+	set_request(h, spec)
+	for hdr in spec.headers {
+		wire.list = curl.slist_append(wire.list, cstr(hdr))
+	}
+	if wire.list != nil {
+		curl.easy_setopt(h, .HTTPHEADER, wire.list)
+	}
+	return h
+}
+
+// set_request sets the verb and the body. CURLOPT_POSTFIELDS is not copied
+// (COPYPOSTFIELDS is the option that copies), so spec.body must outlive the
+// transfer.
+@(private)
+set_request :: proc(h: ^curl.CURL, spec: Spec) {
+	switch spec.method {
+	case "", "GET":
 	case "POST":
 		curl.easy_setopt(h, .POST, c.long(1))
 	case "HEAD":
 		curl.easy_setopt(h, .NOBODY, c.long(1))
 	case:
-		curl.easy_setopt(h, .CUSTOMREQUEST, cstr(method))
+		curl.easy_setopt(h, .CUSTOMREQUEST, cstr(spec.method))
 	}
-	if opts.body != "" || method == "POST" {
-		curl.easy_setopt(h, .POSTFIELDS, raw_data(opts.body))
-		curl.easy_setopt(h, .POSTFIELDSIZE_LARGE, curl.off_t(len(opts.body)))
+	if spec.body != "" || spec.method == "POST" {
+		curl.easy_setopt(h, .POSTFIELDSIZE_LARGE, curl.off_t(len(spec.body)))
+		curl.easy_setopt(h, .POSTFIELDS, raw_data(spec.body))
 	}
+}
 
-	headers: ^curl.slist
-	defer if headers != nil {
-		curl.slist_free_all(headers)
+// classify turns how a transfer ended into an Error. A sink that refused
+// bytes made curl stop with CURLE_WRITE_ERROR, which says only that a write
+// callback failed, so the sink's own reason outranks curl's code.
+@(private)
+classify :: proc(code: curl.code, wire: ^Wire) -> Error {
+	switch {
+	case wire.body.too_large || wire.head.too_large || code == .E_FILESIZE_EXCEEDED:
+		return .Too_Large
+	case wire.body.failed || wire.head.failed:
+		return .Write_Failed
+	case code == .E_OPERATION_TIMEDOUT:
+		return .Timed_Out
+	case code == .E_OK:
+		return .None
 	}
-	for hdr in opts.headers {
-		headers = curl.slist_append(headers, cstr(hdr))
-	}
-	if headers != nil {
-		curl.easy_setopt(h, .HTTPHEADER, headers)
-	}
+	return .Transfer_Failed
+}
 
-	code := curl.easy_perform(h)
-	if code != .E_OK {
-		if opts.on_error != nil {
-			opts.on_error(string(curl.easy_strerror(code)))
-		}
-		return {}, .Transfer_Failed
+// failure is curl's account of why a transfer failed: the detail it wrote
+// to the error buffer, or the generic text for its code.
+@(private)
+failure :: proc(code: curl.code, wire: ^Wire) -> string {
+	if wire.errbuf[0] != 0 {
+		return string(cstring(&wire.errbuf[0]))
 	}
-	if body_sink.failed || header_sink.failed {
-		return {}, .Write_Failed
-	}
+	return string(curl.easy_strerror(code))
+}
 
+// status reads the final response's status code.
+@(private)
+status_of :: proc(h: ^curl.CURL) -> int {
 	status: c.long
 	curl.easy_getinfo(h, .RESPONSE_CODE, &status)
-	res.status = int(status)
-	res.ok = status >= 200 && status < 300
+	return int(status)
+}
+
+// perform is the blocking transfer. Its own temporaries live on the temp
+// allocator and are released before it returns.
+@(private)
+perform :: proc(
+	method, url: string,
+	opts: Opts,
+	body: io.Writer,
+	headers_w: io.Writer,
+) -> (
+	res: Response,
+	err: Error,
+) {
+	spec := Spec {
+		method     = method,
+		url        = url,
+		headers    = opts.headers,
+		body       = opts.body,
+		user_agent = opts.user_agent,
+		timeout    = opts.timeout,
+		no_follow  = opts.no_follow,
+		insecure   = opts.insecure,
+	}
+	wire := Wire {
+		body = {ctx = context, w = body},
+		head = {ctx = context, w = headers_w},
+	}
+	h := prepare(spec, &wire)
+	if h == nil {
+		return {}, .Init_Failed
+	}
+	defer curl.slist_free_all(wire.list)
+	defer curl.easy_cleanup(h)
+
+	code := curl.easy_perform(h)
+	if err = classify(code, &wire); err != .None {
+		if opts.on_error != nil {
+			opts.on_error(failure(code, &wire))
+		}
+		return {}, err
+	}
+	res.status = status_of(h)
+	res.ok = res.status >= 200 && res.status < 300
 	return res, .None
 }
 
+@(private)
 write_cb :: proc "c" (buffer: [^]byte, size, nitems: c.size_t, userdata: rawptr) -> c.size_t {
 	sink := (^Sink)(userdata)
 	context = sink.ctx
 	n := int(size * nitems)
+	if sink.limit > 0 && n > sink.limit - sink.written {
+		sink.too_large = true
+		return curl.WRITEFUNC_ERROR
+	}
+	sink.written += n
 	if sink.w.procedure == nil {
 		return c.size_t(n)
 	}
@@ -239,10 +374,12 @@ write_cb :: proc "c" (buffer: [^]byte, size, nitems: c.size_t, userdata: rawptr)
 	return c.size_t(n)
 }
 
+@(private)
 cstr :: proc(s: string) -> cstring {
 	return strings.clone_to_cstring(s, context.temp_allocator)
 }
 
+@(private)
 with_header :: proc(headers: []string, name, value: string) -> []string {
 	out := make([]string, len(headers) + 1, context.temp_allocator)
 	copy(out, headers)
