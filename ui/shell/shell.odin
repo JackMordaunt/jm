@@ -1,7 +1,7 @@
 /*
 Package shell joins the operating system, the ui stack and the app. SDL3
 supplies the window, events and renderer; native APIs fill in what SDL
-lacks (assistive technology through AccessKit). It
+lacks (assistive technology through AccessKit, macOS scroll momentum). It
 owns the window, the event loop and presentation; ui/render turns each
 Frame into pixels, and nothing here knows how. run calls the app's ui proc
 in this process; run_host drives one in a subprocess instead.
@@ -268,14 +268,27 @@ Loop :: struct {
 	shown:       bool,
 }
 
+// set_hints sets what SDL must know before SDL_Init. On macOS a trackpad
+// flick goes on scrolling after the fingers lift, as momentum-phase
+// scroll events the system sends; SDL drops those unless asked, so a
+// scroll stopped dead where the fingers left (SDL_HINT_MAC_SCROLL_MOMENTUM,
+// "0" by default). Elsewhere the hint does nothing.
+@(private)
+set_hints :: proc() {
+	sdl3.SetHint(sdl3.HINT_MAC_SCROLL_MOMENTUM, "1")
+}
+
 // run opens the window and loops until it is closed or Escape is pressed.
 // It reports failure to open on stderr and returns.
 run :: proc(app: App) {
+	set_hints()
 	if !sdl3.Init({.VIDEO, .EVENTS}) {
 		fmt.eprintln("shell: init:", sdl3.GetError())
 		return
 	}
 	defer sdl3.Quit()
+	scroll_watch_start()
+	defer scroll_watch_stop()
 
 	// The Compositor inside must not move, and the event watch holds l.
 	l := new(Loop)
@@ -936,11 +949,26 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			)
 		case .MOUSE_WHEEL:
 			// Positive y scrolls down (toward the user), like a scroll offset.
+			precise := wheel_precise(e.wheel.x, e.wheel.y)
 			s := [2]f32{e.wheel.x, -e.wheel.y}
 			if e.wheel.direction == .FLIPPED {
 				s = -s
 			}
-			sink(user, {kind = .Scroll, pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d}, scroll = s, mods = mods(sdl3.GetModState())})
+			// A trackpad's delta is points: as steps of ui.SCROLL_STEP,
+			// the content moves exactly as far as the fingers, and the
+			// momentum after them (see scroll_darwin.odin).
+			if precise {
+				s *= PRECISE_POINTS / ui.SCROLL_STEP
+			}
+			sink(
+				user,
+				{
+					kind = .Scroll,
+					pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d},
+					scroll = s,
+					mods = mods(sdl3.GetModState()),
+				},
+			)
 		case .KEY_DOWN:
 			k := key(e.key.key)
 			if k == .Escape {

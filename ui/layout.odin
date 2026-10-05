@@ -1519,10 +1519,11 @@ last_placed :: proc(gtx: ^Ctx, key: ops.Area_Id) -> (Placed, bool) {
 // dark alike, faded by the bar's own alpha, so the chrome needs no theme.
 SCROLL_THUMB_COLOR :: ops.Color{128, 128, 128, 255}
 
-// SCROLL_STEP is the pixels scroll_box moves per unit of Event.scroll:
-// ui/shell (shell.odin's MOUSE_WHEEL case) forwards SDL's wheel.y, which is
-// typically 1.0 per notch on a discrete wheel and fractional on a
-// touchpad, not pixels — though list's doc treats it as pixels.
+// SCROLL_STEP is the points scroll_box and list move per unit of
+// Event.scroll: a wheel's notch is 1.0. A precise device's delta, a
+// trackpad's on macOS, arrives as the fraction of a step its points come
+// to (ui/shell, scroll_darwin.odin), so the content moves exactly as far
+// as the fingers.
 SCROLL_STEP :: f32(48)
 
 // scroll_box is a vertical viewport over content of any height: children

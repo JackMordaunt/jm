@@ -124,11 +124,14 @@ host_app_for :: proc(app: Host_App, args: []string) -> Host_App {
 // is closed or Escape is pressed. It reports failure to open or spawn on
 // stderr and returns; the child, if it started, is killed first.
 run_host :: proc(app: Host_App) {
+	set_hints()
 	if !sdl3.Init({.VIDEO, .EVENTS}) {
 		fmt.eprintln("shell: init:", sdl3.GetError())
 		return
 	}
 	defer sdl3.Quit()
+	scroll_watch_start()
+	defer scroll_watch_stop()
 
 	l := new(Host_Loop)
 	defer free(l)
