@@ -676,7 +676,6 @@ toolbar_item_size :: proc() -> Size {
 // toolbar_padding is the toolbar's padding by size: 0 by 4, 4 by 8 and
 // 4 by 20px, or the base 4 by 8 at any size when vertical
 // (useToolbarStyles.styles.ts:14-27,36-44).
-@(private)
 toolbar_padding :: proc(size: Size, vertical: bool) -> ui.Padding {
 	if vertical {
 		return ui.pad_xy(8, 4)
