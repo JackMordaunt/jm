@@ -131,7 +131,7 @@ with `just fuzz "tar -for=5s -no-corpus"` against the same run with
 
 ## The suites
 
-Nine packages carry a suite. Each one lives in `<package>/fuzz`.
+Ten packages carry a suite. Each one lives in `<package>/fuzz`.
 
 | Package | Properties |
 |---------|------------|
@@ -144,6 +144,7 @@ Nine packages carry a suite. Each one lives in `<package>/fuzz`.
 | `git` | `sequence`, `strings`, `damaged` |
 | `stream` | fourteen properties over random graphs; see [Streams](streams.md) |
 | `ui/render` | `matches_render`, `workers_agree`, `still_is_free` |
+| `http` | `wire` (suite `http_wire`), `exactly_once` (suite `http_model`) |
 
 > [!TIP]
 > The sqlite3 properties read every row before comparing any of them.
