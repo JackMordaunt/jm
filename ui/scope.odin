@@ -1,6 +1,8 @@
 package ui
 
 import "base:intrinsics"
+import "base:runtime"
+import "core:reflect"
 import "jm:ui/ops"
 import "core:mem"
 
@@ -26,12 +28,18 @@ Scope :: struct {
 // kept for widgets under it can outlive frames the page is not drawn in,
 // with retain.
 scope_open :: proc(gtx: ^Ctx, v: $T) -> Scope {
+	return scope_open_hash(gtx, scope_hash(v))
+}
+
+// scope_open_hash is scope_open with v already hashed.
+@(private)
+scope_open_hash :: proc(gtx: ^Ctx, hash: u64) -> Scope {
 	l := gtx.layout
 	if l == nil {
 		return {}
 	}
 	s := Scope{gtx, l.scope, l.scope_root, true}
-	l.scope = id_mix(l.scope, scope_hash(v))
+	l.scope = id_mix(l.scope, hash)
 	if l.scope_root == 0 {
 		l.scope_root = l.scope
 	}
@@ -138,4 +146,23 @@ scope_hash :: proc(v: $T) -> u64 {
 	} else {
 		#panic("ui.scope takes a pointer, an integer, an enum or a string")
 	}
+}
+
+// scope_hash_any is scope_hash for a value known only at run time, as the
+// scope guard takes it; anything else fails as scope_hash fails to build.
+@(private)
+scope_hash_any :: proc(v: any) -> u64 {
+	#partial switch info in runtime.type_info_core(type_info_of(v.id)).variant {
+	case runtime.Type_Info_String:
+		if !info.is_cstring && info.encoding == .UTF_8 {
+			s := (^string)(v.data)^
+			return fnv_bytes(FNV_OFFSET, transmute([]u8)s)
+		}
+	case runtime.Type_Info_Pointer:
+		return u64(uintptr((^rawptr)(v.data)^))
+	case runtime.Type_Info_Integer:
+		h, _ := reflect.as_u64(v)
+		return h
+	}
+	panic("ui.scope takes a pointer, an integer, an enum or a string")
 }

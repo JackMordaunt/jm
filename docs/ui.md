@@ -24,11 +24,15 @@ at the speed it ran.</sub></p>
 Widgets nest through containers, with no per-child boilerplate:
 
 ```odin
-col := ui.column_open(gtx, gap = 8); defer ui.close(&col)
+ui.column(gtx, gap = 8)
 base.label(gtx, "Name")
 m3.text_field(gtx, &m.name, "Name")
 if m3.button(gtx, "Save") { save(m) }
 ```
+
+A container is a guard: it closes itself at the end of the block it is called in, or of the
+`if` when written `if ui.row(gtx) { … }`. The explicit `ui.row_open` and `ui.close` pair is for
+a body that spans procs or needs the container's handle.
 
 Open a demo:
 

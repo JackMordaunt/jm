@@ -2,6 +2,8 @@ package ui
 
 import "base:runtime"
 
+import "jm:ui/ops"
+
 // Guards: every container opener as a self-closing form.
 //
 //	if ui.column(gtx, gap = 8) {
@@ -19,8 +21,15 @@ import "base:runtime"
 // asserts the kind, so a guard that finds another kind on top fails
 // loudly rather than closing the wrong container.
 //
+// Called as a statement rather than an if, a guard closes at the end of
+// the enclosing block: `ui.row(gtx, gap = 8)` at the top of a proc lays
+// out the rest of the proc in the row.
+//
 // The explicit pair, column_open and close, is for a body that spans
-// procs or needs the handle.
+// procs or needs the handle. Openers whose closer needs something only
+// the body learns have no guard: popup_open (the size the content came
+// to), overflow_row_open (flex_fit on the handle before it closes) and
+// focus_scope_open (the member Tab enters at).
 
 @(deferred_in = column_guard_close)
 column :: proc(
@@ -101,6 +110,48 @@ centered :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> bool {
 @(deferred_in = scroll_box_guard_close)
 scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false, fit := false) -> bool {
 	scroll_box_open(gtx, key, min_width, offset, loc, wide, fit)
+	return true
+}
+
+@(deferred_in = grid_guard_close)
+grid :: proc(
+	gtx: ^Ctx,
+	columns: []Track,
+	column_gap: f32 = 0,
+	row_gap: f32 = 0,
+	align := Align.Start,
+	paint: Grid_Paint = nil,
+	user: rawptr = nil,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> bool {
+	grid_open(gtx, columns, column_gap, row_gap, align, paint, user, key, loc)
+	return true
+}
+
+// overlay is overlay_open as a guard; the layer is scheduled at the end
+// of the block.
+@(deferred_in = overlay_guard_close)
+overlay :: proc(
+	gtx: ^Ctx,
+	at: ops.Point = {},
+	cs := Constraints{max = {INF, INF}},
+	root := false,
+	cover := false,
+	top := false,
+) -> bool {
+	guard_hold(gtx, Overlay)^ = overlay_open(gtx, at, cs, root, cover, top)
+	return true
+}
+
+// scope is scope_open as a guard: `ui.scope(gtx, row.id)` at the top of a
+// row's proc keys the whole row. Odin refuses deferred_in on a polymorphic
+// proc ("'deferred_in' cannot be used with a polymorphic procedure", odin
+// dev-2026-09), so v arrives as an any. It takes what scope_open takes and
+// mixes in the same value, so retain finds a guarded page.
+@(deferred_in = scope_guard_close)
+scope :: proc(gtx: ^Ctx, v: any) -> bool {
+	guard_hold(gtx, Scope)^ = scope_open_hash(gtx, scope_hash_any(v))
 	return true
 }
 
@@ -192,6 +243,31 @@ scroll_box_guard_close :: proc(
 	innermost_close(gtx, .Scroll)
 }
 
+@(private = "file")
+grid_guard_close :: proc(
+	gtx: ^Ctx,
+	columns: []Track,
+	column_gap: f32,
+	row_gap: f32,
+	align: Align,
+	paint: Grid_Paint,
+	user: rawptr,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) {
+	innermost_close(gtx, .Grid)
+}
+
+@(private = "file")
+overlay_guard_close :: proc(gtx: ^Ctx, at: ops.Point, cs: Constraints, root, cover, top: bool) {
+	overlay_close(guard_take(gtx, Overlay))
+}
+
+@(private = "file")
+scope_guard_close :: proc(gtx: ^Ctx, v: any) {
+	scope_close(guard_take(gtx, Scope))
+}
+
 // innermost_close closes the innermost container, which must be of kind:
 // what a guard opened is what is on top when its scope ends. Without a
 // layout the open pushed nothing, so there is nothing to close. A design
@@ -204,10 +280,14 @@ innermost_close :: proc(gtx: ^Ctx, kind: Container_Kind) {
 	c := innermost(l)
 	assert(c != nil && c.kind == kind, "ui: a guard's scope ended with another container on top")
 	i := depth(l) - 1
-	if kind == .Flex {
+	#partial switch kind {
+	case .Flex:
 		f := Flex{gtx, i}
 		flex_close(&f)
-	} else {
+	case .Grid:
+		g := Grid{gtx, i}
+		grid_close(&g)
+	case:
 		container_close(gtx, &i)
 	}
 }
