@@ -32,9 +32,10 @@ skip := env("SKIP", "")
 # Packages whose tests run alone, on one thread, after the rest: the three
 # over wasm3, which is not thread-safe; ui/shell, whose tests spawn
 # hot-counter-child copies sharing one exe path; tar, whose git children
-# inherit each other's pipes on Windows; and flow and wasm-bench, whose tests
-# measure a split of work or its cost and fail under load.
-serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/shell tar flow"
+# inherit each other's pipes on Windows; and flow, wasm-bench and http/fuzz,
+# whose tests measure a split of work, its cost or a deadline and fail under
+# load.
+serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/shell tar flow http/fuzz"
 
 # Packages run in parallel; a program keeps its entry point. A job's output
 # is held until it ends, and every failure prints before the recipe fails.
