@@ -82,6 +82,11 @@ Notices: a NOTICE or WARNING from the server — `DROP TABLE IF EXISTS` on a
 missing table, say — is appended to Conn.notices instead of being printed to
 stderr, which is libpq's default and would mix it into a script's own output.
 
+Describing: `describe` reports a statement's parameter types and result
+columns without running it, for a code generator, and `not_null` reads
+whether each column's source is declared NOT NULL. describe.odin says what
+the server does and does not check at that point.
+
 COPY is not supported: a COPY to or from STDOUT or STDIN comes back as a Fault
 with SQLSTATE 0A000, feature_not_supported. libpq ends the COPY on the
 connection's next exec, so the connection stays usable.
@@ -337,9 +342,16 @@ exec :: proc(
 	return result, nil
 }
 
-// destroy frees everything in r and zeroes it. A script on an arena need not
-// call it.
-destroy :: proc(r: ^Result) {
+// destroy frees a Result or a Description and zeroes it. A script on an
+// arena need not call it.
+destroy :: proc {
+	destroy_result,
+	destroy_description,
+}
+
+// destroy_result frees everything in r and zeroes it. destroy is the name to
+// call it by.
+destroy_result :: proc(r: ^Result) {
 	if r == nil {
 		return
 	}

@@ -111,10 +111,27 @@ foreign lib {
 	PQresultErrorMessage :: proc(res: ^PGresult) -> cstring ---
 	PQresultErrorField   :: proc(res: ^PGresult, fieldcode: c.int) -> cstring ---
 
+	// An empty stmtName is the unnamed statement, which the next Parse or
+	// simple query replaces, so describing through it leaves nothing behind.
+	PQprepare          :: proc(
+		conn: ^PGconn,
+		stmtName: cstring,
+		query: cstring,
+		nParams: c.int,
+		paramTypes: [^]Oid,
+	) -> ^PGresult ---
+	PQdescribePrepared :: proc(conn: ^PGconn, stmtName: cstring) -> ^PGresult ---
+	PQnparams          :: proc(res: ^PGresult) -> c.int ---
+	PQparamtype        :: proc(res: ^PGresult, param_num: c.int) -> Oid ---
+
 	PQntuples   :: proc(res: ^PGresult) -> c.int ---
 	PQnfields   :: proc(res: ^PGresult) -> c.int ---
 	PQfname     :: proc(res: ^PGresult, field_num: c.int) -> cstring ---
 	PQfnumber   :: proc(res: ^PGresult, field_name: cstring) -> c.int ---
+	PQftype     :: proc(res: ^PGresult, field_num: c.int) -> Oid ---
+	PQfmod      :: proc(res: ^PGresult, field_num: c.int) -> c.int ---
+	PQftable    :: proc(res: ^PGresult, field_num: c.int) -> Oid ---
+	PQftablecol :: proc(res: ^PGresult, field_num: c.int) -> c.int ---
 	PQgetvalue  :: proc(res: ^PGresult, tup_num: c.int, field_num: c.int) -> [^]u8 ---
 	PQgetisnull :: proc(res: ^PGresult, tup_num: c.int, field_num: c.int) -> c.int ---
 	PQgetlength :: proc(res: ^PGresult, tup_num: c.int, field_num: c.int) -> c.int ---
