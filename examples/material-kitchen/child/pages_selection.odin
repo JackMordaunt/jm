@@ -7,8 +7,7 @@ import "jm:ui/base"
 import m3 "jm:ui/material"
 
 page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Checkbox", "18dp box, corner 2, 2dp outline; a 40dp state layer in a 48dp target; hover and press recolour nothing")
 	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Unselected", "Selected", "Indeterminate", "Error", "Error, selected", "Error, indeterminate"}
@@ -31,16 +30,14 @@ page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	NAMES2 := [?]string{"", "Cheese", "Olives", "Basil"}
 	for i in 1 ..< 4 {
-		r := ui.inset_open(gtx, {32, 0, 0, 0}, key = u64(50 + i))
+		ui.inset(gtx, {32, 0, 0, 0}, key = u64(50 + i))
 		m3.checkbox(gtx, &m.checks[i], NAMES2[i], key = u64(60 + i))
-		ui.close(&r)
 	}
 	m3.checkbox(gtx, &m.agree, "I accept the terms", error = !m.agree, key = 70)
 }
 
 page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Radio button", "20dp ring, 2dp; a 6dp dot; ring and dot share one colour; a 40dp state layer in a 48dp target")
 	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Unselected", "Selected"}
@@ -61,8 +58,7 @@ page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Switch", "52x32 track; handle 16dp off, 24dp on or with icons, 28dp pressed and hugging the near edge")
 	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Off", "On", "Off, icons", "On, icons"}
@@ -102,24 +98,20 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 		s := m3.scheme()
 		for st, i in m3.STATES {
 			k := key * 100 + u64(10 * (i + 1))
-			col := ui.column_open(gtx, gap = 8, key = k)
-			defer ui.close(&col)
+			ui.column(gtx, gap = 8, key = k)
 			base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = s[.On_Surface]})
-			wr := ui.wrap_open(gtx, gap = 24, line_gap = 12)
-			defer ui.close(&wr)
+			ui.wrap(gtx, gap = 24, line_gap = 12)
 			for h, c in heads {
-				cc := ui.column_open(gtx, gap = 4, key = u64(c))
+				ui.column(gtx, gap = 4, key = u64(c))
 				base.label(gtx, h, {size = 12, color = s[.On_Surface_Variant]})
 				cell(gtx, c, st, k + u64(c + 1))
-				ui.close(&cc)
 			}
 		}
 		return
 	}
 	// The heads, across the top.
 	{
-		r := ui.row_open(gtx, gap = 24, key = key)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, key = key)
 		ui.spacer(gtx, kitchen.LABEL_W - 24)
 		for h, i in heads {
 			c := ui.stack_open(gtx, key = u64(i))
@@ -132,12 +124,10 @@ field_grid :: proc(gtx: ^ui.Ctx, heads: []string, cell: Field_Cell, key: u64) {
 		// Top-aligned, so a field's supporting row hangs below its row
 		// rather than pushing the container off the others' line.
 		k := key * 100 + u64(10 * (i + 1))
-		r := ui.row_open(gtx, gap = 24, key = k)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, key = k)
 		{
-			c := ui.inset_open(gtx, {0, 20, 0, 0})
+			ui.inset(gtx, {0, 20, 0, 0})
 			base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
-			ui.close(&c)
 		}
 		ui.spacer(gtx, max(kitchen.LABEL_W - 48 - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
 		for _, c in heads {
@@ -191,8 +181,7 @@ page_text_fields :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Autocomplete", "a field composed with a menu of options as wide as it; type to filter, arrows and Enter to pick, Escape to close")
 	FRUIT := [?]string{"Apple", "Apricot", "Banana", "Blueberry", "Cherry", "Grape"}
 	{
-		r := ui.wrap_open(gtx, gap = 24, line_gap = 12, key = 400)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 24, line_gap = 12, key = 400)
 		if i := m3.autocomplete(gtx, &m.fruit, "Fruit", FRUIT[:], &m.fruit_open, .Filled, key = 401); i >= 0 {
 			m.fruit_pick = FRUIT[i]
 		}
@@ -204,8 +193,7 @@ page_text_fields :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	ui.spacer(gtx, 8)
 
 	section(gtx, "Live", "click to focus, then type")
-	r := ui.wrap_open(gtx, gap = 24, line_gap = 12)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 24, line_gap = 12)
 	m3.text_field(gtx, &m.name, "Name", .Filled, supporting = "As it appears on your card", key = 500)
 	m3.text_field(gtx, &m.email, "Email", .Outlined, .Mail, placeholder = "you@example.com", key = 501)
 	if m3.text_field(gtx, &m.amount, "Amount", .Outlined, trailing = .Cancel, prefix = "$", max_length = 8, trailing_action = &m.amount_clear, key = 502) || m.amount_clear {
@@ -217,8 +205,7 @@ page_text_fields :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 4)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 4)
 	section(gtx, "Chips", "32dp, corner 8, label-large, in a 48dp target; outline-variant edge unless elevated or selected")
 	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string {
@@ -272,8 +259,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Dragged", "every kind lifts to 8dp while dragged")
 	{
-		r := ui.wrap_open(gtx, gap = 16, key = 200)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 16, key = 200)
 		off := false
 		m3.chip(gtx, "Assist", .Assist, leading = .Event, state = .Dragged, key = 201)
 		m3.chip(gtx, "Filter", .Filter, &off, state = .Dragged, key = 202)
@@ -282,24 +268,21 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "filter chips toggle (the check slides in); the second row morphs its corners; input chips remove themselves")
 	{
-		r := ui.wrap_open(gtx, gap = 8, key = 300)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 8, key = 300)
 		FOOD := [?]string{"Breakfast", "Brunch", "Lunch", "Dinner", "Late night"}
 		for f, i in FOOD {
 			m3.chip(gtx, f, .Filter, &m.filters[i], key = u64(300 + i))
 		}
 	}
 	{
-		r := ui.wrap_open(gtx, gap = 8, key = 310)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 8, key = 310)
 		SIZES := [?]string{"Small", "Medium", "Large", "Extra large"}
 		for f, i in SIZES {
 			m3.chip(gtx, f, .Filter, &m.morph_filters[i], shape_morph = true, key = u64(310 + i))
 		}
 	}
 	{
-		r := ui.wrap_open(gtx, gap = 8, key = 320)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 8, key = 320)
 		PEOPLE := [?]string{"Ali", "Sandra", "Trevor", "Britta"}
 		for name, i in PEOPLE {
 			if m.inputs[i] {
@@ -312,8 +295,7 @@ page_chips :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		r := ui.wrap_open(gtx, gap = 8, key = 340)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 8, key = 340)
 		HINTS := [?]string{"Sounds good", "On my way", "Call me"}
 		for h, i in HINTS {
 			if m3.chip(gtx, h, .Suggestion, key = u64(340 + i)) {

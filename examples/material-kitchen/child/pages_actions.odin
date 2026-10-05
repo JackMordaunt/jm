@@ -13,19 +13,16 @@ state_label :: proc(gtx: ^ui.Ctx, name: string) {
 }
 
 page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	LABELS := [?]string{"Day", "Week", "Month"}
 	ICONS := [?]m3.Icon{.Format_Bold, .Format_Italic, .Format_Underlined, .Palette}
 	NO_LABELS := [?]string{"", "", "", ""}
 	section(gtx, "Standard and connected", "standard: 12dp apart, round, 12 once selected, 8 pressed. Connected: 2dp apart, inner 8 (middle: small), pressed inner 4, selected a full pill")
 	base.label(gtx, "Hover, focus and press land on the second child: a press widens it by 15% into its neighbours", {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 	for st, i in m3.STATES {
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		state_label(gtx, kitchen.STATE_NAMES[i])
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		sel := [3]bool{true, false, false}
 		m3.button_group(gtx, LABELS[:], sel[:], state = st, key = u64(10 + i))
 		sel2 := [3]bool{true, false, false}
@@ -35,11 +32,9 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Tonal and action children", "each child keeps its own colour group: tonal toggles, then plain filled and tonal actions (selected nil)")
 	{
-		r := ui.row_open(gtx, gap = 24, align = .Center)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center)
 		state_label(gtx, "Enabled")
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		sel := [3]bool{false, true, false}
 		m3.button_group(gtx, LABELS[:], sel[:], style = .Tonal, key = 40)
 		sel2 := [3]bool{false, true, false}
@@ -50,11 +45,9 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Weighted, per-child disabled, overflow", "a 480dp row whose weighted children share what the fixed one leaves; the third child disabled; a 250dp row whose tail moves into a More options menu")
 	{
-		r := ui.row_open(gtx, gap = 24, align = .Center)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center)
 		state_label(gtx, "Enabled")
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		W := [?]f32{0, 1, 2}
 		DIS := [?]bool{false, false, true}
 		sel := [3]bool{true, false, false}
@@ -70,8 +63,7 @@ page_button_groups :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	ACTIONS := [?]m3.Icon{.Undo, .Redo, .Format_Bold, .Format_Italic, .Format_Underlined, .Palette}
 	section(gtx, "Docked", "64dp, square, across the width; actions centred 4-32dp apart. Standard, then vibrant")
 	if i := m3.toolbar(gtx, ACTIONS[:], .Docked, m.tool_sel, 640, key = 1); i >= 0 {
@@ -82,18 +74,15 @@ page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Floating", "a 64dp pill, 8dp padding, 4dp between; the selected action squares from a circle. Standard and vibrant across the states (on the selected action)")
 	for st, i in m3.STATES {
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		state_label(gtx, kitchen.STATE_NAMES[i])
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating, 2, key = u64(10 + i), state = st)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating_Vibrant, 2, key = u64(20 + i), state = st)
 	}
 	section(gtx, "Paired FAB and vertical", "expanded, then collapsed: the toolbar folds away and its FAB grows from 56 to 80dp. Vertical, with a leading-side FAB")
 	{
-		r := ui.wrap_open(gtx, gap = 32, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 32, align = .Center)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating, -1, key = 30, fab = .Edit, state = .Enabled)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating_Vibrant, -1, key = 31, fab = .Edit, state = .Enabled)
 		m3.toolbar(gtx, ACTIONS[:4], .Floating_Vibrant, -1, key = 32, expanded = false, fab = .Edit, state = .Enabled)
@@ -102,8 +91,7 @@ page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "the toggle expands and collapses both: the first and last actions are side groups, shown only while expanded")
 	{
-		r := ui.wrap_open(gtx, gap = 32, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 32, align = .Center)
 		if m3.button(gtx, m.tool_folded ? "Expand" : "Collapse", key = 40) {
 			m.tool_folded = !m.tool_folded
 		}
@@ -117,16 +105,13 @@ page_toolbars :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	ITEMS := [?]m3.Fab_Menu_Item{{"First", .Mail}, {"Second", .Chat_Bubble}, {"Third", .Event}, {"Fourth", .Photo}, {"Fifth", .Flag}}
 	section(gtx, "Closed", "the trigger at baseline (56, corner 16), medium (80, 20) and large (96, 28), across the states")
 	for st, i in m3.STATES {
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		state_label(gtx, kitchen.STATE_NAMES[i])
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		shut := false
 		for size, j in m3.Fab_Menu_Size {
 			m3.fab_menu(gtx, .Add, ITEMS[:], &shut, key = u64(10 * i + j), size = size, state = st)
@@ -135,8 +120,7 @@ page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Open", "the trigger becomes a 56dp primary close button; the items stack above it in list order, 4dp apart, 8dp above it. End-aligned, then start-aligned")
 	ui.spacer(gtx, 320)
 	{
-		r := ui.wrap_open(gtx, gap = 200, align = .End)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 200, align = .End)
 		ui.spacer(gtx, 100)
 		open := true
 		m3.fab_menu(gtx, .Add, ITEMS[:], &open, key = 100, size = .Medium, state = .Enabled)
@@ -145,8 +129,7 @@ page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", m.fab_pick == "" ? "open the menu and pick an item" : fmt.tprintf("picked: %s", m.fab_pick))
 	ui.spacer(gtx, 330)
-	r := ui.row_open(gtx)
-	defer ui.close(&r)
+	ui.row(gtx)
 	ui.spacer(gtx, 300)
 	if i := m3.fab_menu(gtx, .Add, ITEMS[:], &m.fab_open, key = 200); i >= 0 {
 		m.fab_pick = ITEMS[i].label
@@ -154,17 +137,14 @@ page_fab_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_bottom_app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	ACTIONS := [?]m3.Icon{.Check, .Edit, .Mic, .Image}
 	W :: 640
 	section(gtx, "Fixed", "deprecated for the docked toolbar. 80dp, no shadow, actions from the start, a secondary-container FAB at the top end, no cradle")
 	for st, i in m3.STATES {
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(i))
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center, key = u64(i))
 		state_label(gtx, kitchen.STATE_NAMES[i])
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		m3.bottom_app_bar(gtx, ACTIONS[:], .Add, width = W, state = st, key = u64(10 + i))
 	}
 	section(gtx, "Flexible", "the docked toolbar's 64dp and 16dp end padding; space-between, then fixed-centered (at most 32dp apart), the FAB just the last item")

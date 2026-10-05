@@ -14,8 +14,7 @@ BUTTON_KIND_NAMES := [?]string{"Elevated", "Filled", "Filled tonal", "Outlined",
 SIZE_NAMES := [?]string{"X-small", "Small", "Medium", "Large", "X-large"}
 
 page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Common buttons", "small: 40dp, corner full, label-large; the pressed column shows the 8dp press morph")
 	kitchen.state_header(gtx, CELL_W)
 	for n, i in BUTTON_KIND_NAMES {
@@ -39,8 +38,7 @@ page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Trailing", cell, 20, CELL_W)
 	}
 	section(gtx, "Live", "hover, press, Tab and Enter these")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	for k, i in BUTTON_KINDS {
 		if m3.button(gtx, fmt.tprintf("Clicked %d", m.clicks), k, key = u64(100 + i)) {
 			m.clicks += 1
@@ -52,8 +50,7 @@ page_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 SIZE_CELL_W :: f32(190)
 
 page_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Round", "x-small 32 / small 40 / medium 56 / large 96 / x-large 136dp; label type grows with size")
 	kitchen.state_header(gtx, SIZE_CELL_W)
 	for n, i in SIZE_NAMES {
@@ -71,8 +68,7 @@ page_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(i + 11), SIZE_CELL_W)
 	}
 	section(gtx, "Live", "press and hold to see each size's squish")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	for _, i in SIZE_NAMES {
 		if m3.button(gtx, "Go", .Outlined, size = m3.Button_Size(i), key = u64(100 + i)) {
 			m.clicks += 1
@@ -81,8 +77,7 @@ page_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_toggle_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	TOGGLE_NAMES := [?]string{"Elevated", "Filled", "Tonal", "Outlined"}
 	section(gtx, "Unchecked", "checkable buttons: text has no toggle")
 	kitchen.state_header(gtx, CELL_W)
@@ -104,15 +99,13 @@ page_toggle_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "click to toggle; a square button morphs round when checked")
 	{
-		r := ui.wrap_open(gtx, gap = 12, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 12, align = .Center)
 		for n, i in TOGGLE_NAMES {
 			g := m.btn_checked[i] ? m3.Icon.Favorite_Fill1 : m3.Icon.Favorite
 			m3.button(gtx, n, BUTTON_KINDS[i], g, checked = &m.btn_checked[i], key = u64(100 + i))
 		}
 	}
-	r := ui.row_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 12, align = .Center)
 	for i in 0 ..< 4 {
 		shape := i % 2 == 0 ? m3.Button_Shape.Round : m3.Button_Shape.Square
 		m3.button(gtx, "Star", .Filled, m.size_checked[i] ? .Star_Fill1 : .Star, size = m3.Button_Size(i), shape = shape, checked = &m.size_checked[i], key = u64(110 + i))
@@ -122,8 +115,7 @@ page_toggle_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 ICON_BUTTON_NAMES := [?]string{"Standard", "Filled", "Tonal", "Outlined"}
 
 page_icon_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Default", "small, uniform: 40dp, 24dp icon; the pressed column shows the 8dp press morph")
 	kitchen.state_header(gtx, CELL_W)
 	for n, i in ICON_BUTTON_NAMES {
@@ -151,8 +143,7 @@ page_icon_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(i + 21), CELL_W)
 	}
 	section(gtx, "Live toggles", "round, then square resting shapes")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	for i in 0 ..< 8 {
 		shape := i < 4 ? m3.Button_Shape.Round : m3.Button_Shape.Square
 		m3.icon_button(gtx, .Favorite, m3.Icon_Button_Kind(i % 4), &m.toggles[i], .Favorite_Fill1, tooltip = "Favourite", shape = shape, key = u64(200 + i))
@@ -160,12 +151,10 @@ page_icon_buttons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_icon_button_sizes :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Live", "every size, outlined; press to squish")
 	{
-		r := ui.wrap_open(gtx, gap = 12, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 12, align = .Center)
 		for _, i in SIZE_NAMES {
 			m3.icon_button(gtx, .Edit, .Outlined, size = m3.Button_Size(i), key = u64(300 + i))
 		}
@@ -208,53 +197,44 @@ size_grid :: proc(gtx: ^ui.Ctx, title, note: string, columns: []string, cell: Si
 	section(gtx, title, note)
 	if gtx.constraints.max.x < kitchen.LABEL_W + f32(len(columns)) * SIZE_GRID_CELL_W {
 		for n, i in SIZE_NAMES {
-			col := ui.column_open(gtx, gap = 8, key = key + u64(i + 1))
-			defer ui.close(&col)
+			ui.column(gtx, gap = 8, key = key + u64(i + 1))
 			base.label(gtx, n, {size = 12, color = s[.On_Surface]})
-			wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .End)
-			defer ui.close(&wr)
+			ui.wrap(gtx, gap = 24, line_gap = 12, align = .End)
 			for name, j in columns {
-				cc := ui.column_open(gtx, gap = 4, key = u64(j))
+				ui.column(gtx, gap = 4, key = u64(j))
 				base.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
 				cell(gtx, m3.Button_Size(i), j, key * 16 + u64(i * len(columns) + j))
-				ui.close(&cc)
 			}
 		}
 		return
 	}
 	// The heads, across the top.
 	{
-		r := ui.row_open(gtx, key = key)
-		defer ui.close(&r)
+		ui.row(gtx, key = key)
 		cell_fixed(gtx, kitchen.LABEL_W)
 		for name in columns {
 			ui.flexible(gtx, 1)
-			c := ui.stack_open(gtx)
+			ui.stack(gtx)
 			base.label(gtx, name, {size = 12, color = s[.On_Surface_Variant]})
-			ui.close(&c)
 		}
 	}
 	for n, i in SIZE_NAMES {
-		r := ui.row_open(gtx, align = .Center, key = key + u64(i + 1))
-		defer ui.close(&r)
+		ui.row(gtx, align = .Center, key = key + u64(i + 1))
 		{
-			c := ui.stack_open(gtx)
+			ui.stack(gtx)
 			base.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
-			ui.close(&c)
 		}
 		ui.spacer(gtx, max(kitchen.LABEL_W - label_width(gtx, n), 0))
 		for j in 0 ..< len(columns) {
 			ui.flexible(gtx, 1)
-			c := ui.stack_open(gtx, key = u64(j))
+			ui.stack(gtx, key = u64(j))
 			cell(gtx, m3.Button_Size(i), j, key * 16 + u64(i * len(columns) + j))
-			ui.close(&c)
 		}
 	}
 }
 
 page_fab :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Sizes", "small 40 / baseline 56 / medium 80 / large 96dp; elevation 3, 4 on hover; no disabled state in M3")
 	kitchen.state_header(gtx, CELL_W)
 	SIZES := [?]string{"Small", "Baseline", "Medium", "Large"}
@@ -282,8 +262,7 @@ page_fab :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_extended_fab :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Generic", "56dp, corner 16, label-large; 16 / 12 / 20dp padding")
 	kitchen.state_header(gtx, CELL_W)
 	COLORS := [?]string{"Primary", "Secondary", "Tertiary"}
@@ -310,12 +289,10 @@ page_extended_fab :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	section(gtx, "Live", "the switch collapses each FAB to its icon square: width on fast-spatial, label on fast-effects")
 	{
-		r := ui.wrap_open(gtx, gap = 12, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 12, align = .Center)
 		m3.switch_(gtx, &m.fab_collapsed, "Collapsed")
 	}
-	r := ui.wrap_open(gtx, gap = 16, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 16, align = .Center)
 	for i in 0 ..< 4 {
 		if m3.extended_fab(gtx, .Edit, "Compose", size = m3.Extended_Fab_Size(i), expanded = !m.fab_collapsed, key = u64(100 + i)) {
 			m.clicks += 1
@@ -324,17 +301,14 @@ page_extended_fab :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_segmented :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	LABELS := [?]string{"Day", "Week", "Month"}
 	section(gtx, "Single select", "deprecated in Expressive for the connected button group; 40dp, selected: secondary-container and a check")
 	for st, i in m3.STATES {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
-		defer ui.close(&r)
+		ui.row(gtx, gap = 16, align = .Center, key = u64(i))
 		base.label(gtx, kitchen.STATE_NAMES[i], {size = 12, color = m3.scheme()[.On_Surface_Variant]})
 		ui.spacer(gtx, max(kitchen.LABEL_W - label_width(gtx, kitchen.STATE_NAMES[i]), 0))
-		wr := ui.wrap_open(gtx, gap = 16, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 16, line_gap = 12, align = .Center)
 		sel := [3]bool{false, true, false}
 		m3.segmented_button(gtx, LABELS[:], sel[:], state = st, key = u64(10 + i))
 	}
@@ -345,8 +319,7 @@ page_segmented :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_split :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	section(gtx, "Split button", "small: two buttons 2dp apart, inner corners 4dp, 12dp on the pressed half")
 	kitchen.state_header(gtx, CELL_W)
 	NAMES := [?]string{"Elevated", "Filled", "Filled tonal", "Outlined"}
@@ -374,12 +347,10 @@ page_split :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	section(gtx, "Sizes", "at rest, pressed (but x-large), and expanded: the trailing half turns circular, the chevron flips")
 	for n, i in SIZE_NAMES {
 		s := m3.scheme()
-		r := ui.row_open(gtx, gap = 24, align = .Center, key = u64(20 + i))
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Center, key = u64(20 + i))
 		base.label(gtx, n, {size = 12, color = s[.On_Surface_Variant]})
 		ui.spacer(gtx, max(kitchen.LABEL_W - 24 - label_width(gtx, n), 0))
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .Center)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .Center)
 		size := m3.Button_Size(i)
 		shut, open := false, true
 		m3.split_button(gtx, "Save", &shut, .Filled, size = size, state = .Enabled, key = u64(200 + i * 4))
@@ -387,8 +358,7 @@ page_split :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		m3.split_button(gtx, "Save", &open, .Filled, size = size, state = .Enabled, key = u64(202 + i * 4))
 	}
 	section(gtx, "Live")
-	r := ui.wrap_open(gtx, gap = 16, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 16, align = .Center)
 	m3.split_button(gtx, "Save", &m.expanded, .Filled, .Edit, key = 40)
 	m3.split_button(gtx, "Share", &m.split_open, .Outlined, .Share, size = .Medium, key = 41)
 }

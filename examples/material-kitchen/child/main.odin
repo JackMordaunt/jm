@@ -251,16 +251,14 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	// page the whole width: the drawer becomes a modal one, opened from
 	// the app bar and closed once a page is picked.
 	docked := m.window.x >= DOCKED_NAV_MIN
-	r := ui.row_open(gtx, align = .Fill)
-	defer ui.close(&r)
+	ui.row(gtx, align = .Fill)
 	if docked {
 		m3.navigation_drawer(gtx, items, &m.page, width = 300)
 	} else if m3.navigation_drawer(gtx, items, &m.page, width = 300, variant = .Modal, open = &m.nav_open) {
 		m.nav_open = false
 	}
 	ui.flexible(gtx, 1)
-	body := ui.column_open(gtx)
-	defer ui.close(&body)
+	ui.column(gtx)
 	app_bar(gtx, m, docked)
 	ui.flexible(gtx, 1)
 	{
@@ -272,12 +270,9 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			ui.retain(gtx, i)
 		}
 		p := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
-		ps := ui.scope_open(gtx, m.page)
-		defer ui.close(&ps)
-		sb := ui.scroll_box_open(gtx, offset = &m.scroll[clamp(m.page, 0, len(PAGES) - 1)])
-		defer ui.close(&sb)
-		page := ui.inset_open(gtx, {24, 8, 24, 48})
-		defer ui.close(&page)
+		ui.scope(gtx, m.page)
+		ui.scroll_box(gtx, offset = &m.scroll[clamp(m.page, 0, len(PAGES) - 1)])
+		ui.inset(gtx, {24, 8, 24, 48})
 		if p.draw != nil {
 			p.draw(gtx, m)
 		} else {
@@ -292,10 +287,8 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // Undocked, it leads with a menu button that opens the modal drawer.
 app_bar :: proc(gtx: ^ui.Ctx, m: ^Model, docked: bool) {
 	s := m3.scheme()
-	bar := ui.inset_open(gtx, {docked ? 24 : 8, 8, 16, 8})
-	defer ui.close(&bar)
-	r := ui.row_open(gtx, align = .Center)
-	defer ui.close(&r)
+	ui.inset(gtx, {docked ? 24 : 8, 8, 16, 8})
+	ui.row(gtx, align = .Center)
 	if !docked {
 		if m3.icon_button(gtx, .Menu, tooltip = "Pages") {
 			m.nav_open = true
