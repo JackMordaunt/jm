@@ -60,14 +60,12 @@ state_header :: proc(gtx: ^ui.Ctx, cell_w := CELL_W) {
 	if grid_stacked(gtx, cell_w) {
 		return
 	}
-	r := ui.row_open(gtx)
-	defer ui.close(&r)
+	ui.row(gtx)
 	ui.spacer(gtx, LABEL_W)
 	for name in STATE_NAMES {
 		ui.flexible(gtx, 1)
-		c := ui.stack_open(gtx)
+		ui.stack(gtx)
 		base.label(gtx, name, {size = 12, color = base.color(.Muted)})
-		ui.close(&c)
 	}
 }
 
@@ -81,39 +79,32 @@ State_Cell :: proc(gtx: ^ui.Ctx, user: rawptr, state: design.Interaction, key: u
 // grid reflows rather than overflow the window.
 state_row :: proc(gtx: ^ui.Ctx, user: rawptr, label: string, cell: State_Cell, key: u64, cell_w := CELL_W) {
 	if grid_stacked(gtx, cell_w) {
-		col := ui.column_open(gtx, gap = 8, key = key)
-		defer ui.close(&col)
+		ui.column(gtx, gap = 8, key = key)
 		base.label(gtx, label, {size = 12})
-		wr := ui.wrap_open(gtx, gap = 24, line_gap = 12, align = .End)
-		defer ui.close(&wr)
+		ui.wrap(gtx, gap = 24, line_gap = 12, align = .End)
 		for st, i in design.STATES {
-			c := ui.column_open(gtx, gap = 4, key = u64(i))
+			ui.column(gtx, gap = 4, key = u64(i))
 			base.label(gtx, STATE_NAMES[i], {size = 12, color = base.color(.Muted)})
 			cell(gtx, user, st, key * 16 + u64(i))
-			ui.close(&c)
 		}
 		return
 	}
-	r := ui.row_open(gtx, align = .Center, key = key)
-	defer ui.close(&r)
+	ui.row(gtx, align = .Center, key = key)
 	{
-		c := ui.sized_open(gtx, {min = {LABEL_W, 0}, max = {LABEL_W, ui.INF}})
+		ui.sized(gtx, {min = {LABEL_W, 0}, max = {LABEL_W, ui.INF}})
 		base.label(gtx, label, {size = 12, color = base.color(.Muted)})
-		ui.close(&c)
 	}
 	for st, i in design.STATES {
 		ui.flexible(gtx, 1)
-		c := ui.stack_open(gtx, key = u64(i))
+		ui.stack(gtx, key = u64(i))
 		cell(gtx, user, st, key * 16 + u64(i))
-		ui.close(&c)
 	}
 }
 
 // page_todo stands in for a page whose component is not built yet, or
 // for a group heading picked from the list.
 page_todo :: proc(gtx: ^ui.Ctx, name: string, heading: bool) {
-	col := ui.column_open(gtx, gap = 8)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 8)
 	if heading {
 		base.label(gtx, fmt.tprintf("%s: pick a component below this heading.", name), {color = base.color(.Muted)})
 		return

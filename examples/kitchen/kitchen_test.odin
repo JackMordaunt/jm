@@ -16,8 +16,7 @@ grid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		ops.input_area(gtx.scene, p.id, ops.Rect{0, 0, sz.x, sz.y}, {.Press})
 		ui.widget_close(gtx, &p, {sz, 0})
 	}
-	col := ui.column_open(gtx)
-	defer ui.close(&col)
+	ui.column(gtx)
 	state_header(gtx)
 	state_row(gtx, user, "Variant", cell, 1)
 }

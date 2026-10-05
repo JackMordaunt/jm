@@ -70,12 +70,10 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	col := ui.column_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 12, align = .Center)
 
 	{
-		row := ui.row_open(gtx, gap = 8)
-		defer ui.close(&row)
+		ui.row(gtx, gap = 8)
 		if fluent.button(gtx, "Undo", state = m.done > 0 ? .Live : .Disabled) {
 			undo(m)
 		}
@@ -176,8 +174,7 @@ adjust :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		at := ui.overlay_open(gtx, {c.center.x - r, c.center.y - r})
 		defer ui.close(&at)
 		if fluent.popover(gtx, &m.slider_open, {m.original, m.original}, .After, arrow = true) {
-			col := ui.column_open(gtx, gap = 8)
-			defer ui.close(&col)
+			ui.column(gtx, gap = 8)
 			fluent.text(gtx, fmt.tprintf("Adjust diameter of circle at (%.0f, %.0f).", c.center.x, c.center.y), fluent.popover_fg())
 			fluent.slider(gtx, &c.diameter, MIN_DIAMETER, MAX_DIAMETER, length = 200, name = "Diameter")
 		}

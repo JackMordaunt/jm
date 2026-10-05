@@ -77,36 +77,27 @@ page_stress :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		stress_measure(b, gtx.dt)
 		ui.request_frame(gtx)
 	}
-	col := ui.column_open(gtx, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, align = .Fill)
 	{
-		head := ui.inset_open(gtx, {24, 0, 24, 16})
-		defer ui.close(&head)
-		hc := ui.column_open(gtx, gap = 16)
-		defer ui.close(&hc)
+		ui.inset(gtx, {24, 0, 24, 16})
+		ui.column(gtx, gap = 16)
 		note(gtx, "Paragraphs laid out and drawn every frame, rewrapping as their width sways. Run finds the most that hold 60 fps.")
 		stress_controls(gtx, m)
 		stress_metrics(gtx, b)
 	}
 	fluent.divider(gtx)
 	ui.flexible(gtx, 1)
-	panes := ui.row_open(gtx, align = .Fill)
-	defer ui.close(&panes)
+	ui.row(gtx, align = .Fill)
 	{
-		side := ui.sized_open(gtx, {min = {STRESS_PANEL, 0}, max = {STRESS_PANEL, 0}})
-		defer ui.close(&side)
-		sb := ui.scroll_box_open(gtx)
-		defer ui.close(&sb)
-		pad := ui.inset_open(gtx, {24, 16, 16, 24})
-		defer ui.close(&pad)
+		ui.sized(gtx, {min = {STRESS_PANEL, 0}, max = {STRESS_PANEL, 0}})
+		ui.scroll_box(gtx)
+		ui.inset(gtx, {24, 16, 16, 24})
 		stress_results(gtx, b)
 	}
 	fluent.divider(gtx, vertical = true)
 	ui.flexible(gtx, 1)
-	sb := ui.scroll_box_open(gtx)
-	defer ui.close(&sb)
-	pad := ui.inset_open(gtx, {24, 16, 24, 48})
-	defer ui.close(&pad)
+	ui.scroll_box(gtx)
+	ui.inset(gtx, {24, 16, 24, 48})
 	stress_tiles(gtx, m)
 }
 
@@ -118,8 +109,7 @@ stress_running :: proc(b: ^Stress) -> bool {
 stress_controls :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	b := &m.stress
 	s := fluent.scheme()
-	r := ui.row_open(gtx, gap = 8, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 8, align = .Center)
 	running := stress_running(b)
 	if fluent.button(gtx, "Stop" if running else "Run", .Primary) {
 		if running {
@@ -164,8 +154,7 @@ stress_verdict :: proc(b: ^Stress, size: int) -> string {
 
 // stress_metrics are the live figures for the frame just drawn.
 stress_metrics :: proc(gtx: ^ui.Ctx, b: ^Stress) {
-	r := ui.row_open(gtx, gap = 40)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 40)
 	stress_metric(gtx, "Paragraphs", fmt.tprint(b.count))
 	stress_metric(gtx, "Glyphs a frame", fmt.tprint(b.glyphs))
 	stress_metric(gtx, "Layout and draw", fmt.tprintf("%.2f ms", b.text_ms))
@@ -178,8 +167,7 @@ stress_metrics :: proc(gtx: ^ui.Ctx, b: ^Stress) {
 
 stress_metric :: proc(gtx: ^ui.Ctx, label, value: string, loc := #caller_location) {
 	s := fluent.scheme()
-	c := ui.column_open(gtx, gap = 2, loc = loc)
-	defer ui.close(&c)
+	ui.column(gtx, gap = 2, loc = loc)
 	base.label(gtx, label, {size = 12, color = s[.Neutral_Foreground3]})
 	base.label(gtx, value, {size = 20, color = s[.Neutral_Foreground1]})
 }
@@ -187,8 +175,7 @@ stress_metric :: proc(gtx: ^ui.Ctx, label, value: string, loc := #caller_locatio
 // stress_results is every count measured, in the order measured.
 stress_results :: proc(gtx: ^ui.Ctx, b: ^Stress) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 8, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 8, align = .Fill)
 	base.label(gtx, "Measured", {size = 14, color = s[.Neutral_Foreground1]})
 	if b.n_steps == 0 {
 		base.label(gtx, "Each count a run tries shows here.", {size = 12, color = s[.Neutral_Foreground3]})
@@ -222,8 +209,7 @@ stress_tiles :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	size := SIZES[m.size]
 	tile := max(360, size * 20)
 	sway := f32(0) if b.phase == .Idle || b.phase == .Done else f32(gtx.time)
-	w := ui.wrap_open(gtx, gap = 16)
-	defer ui.close(&w)
+	ui.wrap(gtx, gap = 16)
 	glyphs := 0
 	text_time: time.Duration
 	for i in 0 ..< b.count {

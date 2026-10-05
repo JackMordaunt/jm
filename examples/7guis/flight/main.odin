@@ -44,8 +44,7 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	col := ui.column_open(gtx, gap = 8)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 8)
 
 	fluent.dropdown(gtx, KINDS, &m.kind, width = WIDTH, name = "Flight type")
 	fluent.input(gtx, &m.start, invalid = !is_date(&m.start), width = WIDTH, name = "Start date")

@@ -57,28 +57,23 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	col := ui.column_open(gtx, gap = 12)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 12)
 
 	{
-		row := ui.row_open(gtx, gap = 8, align = .Center)
-		defer ui.close(&row)
+		ui.row(gtx, gap = 8, align = .Center)
 		fluent.label(gtx, "Filter prefix:")
 		fluent.input(gtx, &m.filter, width = FIELD_WIDTH, name = "Filter prefix")
 	}
 	{
-		row := ui.row_open(gtx, gap = 16)
-		defer ui.close(&row)
+		ui.row(gtx, gap = 16)
 		people(gtx, m)
-		form := ui.grid_open(gtx, {{}, {}}, column_gap = 8, row_gap = 8, align = .Center)
-		defer ui.close(&form)
+		ui.grid(gtx, {{}, {}}, column_gap = 8, row_gap = 8, align = .Center)
 		fluent.label(gtx, "Name:")
 		fluent.input(gtx, &m.name, width = FIELD_WIDTH, name = "Name")
 		fluent.label(gtx, "Surname:")
 		fluent.input(gtx, &m.surname, width = FIELD_WIDTH, name = "Surname")
 	}
-	row := ui.row_open(gtx, gap = 8)
-	defer ui.close(&row)
+	ui.row(gtx, gap = 8)
 	chosen := m.selected >= 0 ? fluent.Interaction.Live : .Disabled
 	if fluent.button(gtx, "Create") {
 		append(&m.people, from_fields(m))
@@ -98,14 +93,11 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // people lists the people whose surname starts with the filter, as
 // "Surname, Name"; choosing one selects it and copies it into the fields.
 people :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	box := ui.sized_open(gtx, {min = {LIST_WIDTH, LIST_HEIGHT}, max = {LIST_WIDTH, LIST_HEIGHT}})
-	defer ui.close(&box)
+	ui.sized(gtx, {min = {LIST_WIDTH, LIST_HEIGHT}, max = {LIST_WIDTH, LIST_HEIGHT}})
 	frame := ops.Round_Rect{{0.5, 0.5, LIST_WIDTH - 1, LIST_HEIGHT - 1}, 4}
 	ops.stroke(gtx.scene, frame, fluent.color(.Neutral_Stroke1), {width = 1})
-	pad := ui.inset_open(gtx, ui.pad_all(4))
-	defer ui.close(&pad)
-	scroll := ui.scroll_box_open(gtx, offset = &m.scroll)
-	defer ui.close(&scroll)
+	ui.inset(gtx, ui.pad_all(4))
+	ui.scroll_box(gtx, offset = &m.scroll)
 
 	prefix := ui.text_string(&m.filter)
 	shown := -1 // the selection's index among the items shown

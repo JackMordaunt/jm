@@ -20,8 +20,7 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	row := ui.row_open(gtx, gap = 8, align = .Center)
-	defer ui.close(&row)
+	ui.row(gtx, gap = 8, align = .Center)
 
 	fluent.text(gtx, fmt.tprint(m.count), fluent.color(.Neutral_Foreground1), .S400, width = 80)
 	if fluent.button(gtx, "Count") {

@@ -28,8 +28,7 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	grid := ui.grid_open(gtx, {{}, {}}, column_gap = 12, row_gap = 12, align = .Center)
-	defer ui.close(&grid)
+	ui.grid(gtx, {{}, {}}, column_gap = 12, row_gap = 12, align = .Center)
 
 	if m.elapsed < m.duration {
 		m.elapsed = min(m.elapsed + gtx.dt, m.duration)
@@ -37,8 +36,7 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	}
 	fluent.label(gtx, "Elapsed Time:")
 	{
-		gauge := ui.row_open(gtx, gap = 8, align = .Center)
-		defer ui.close(&gauge)
+		ui.row(gtx, gap = 8, align = .Center)
 		fluent.progress_bar(gtx, m.elapsed, max(m.duration, 1e-3), width = WIDTH - 48, name = "Elapsed")
 		fluent.text(gtx, fmt.tprintf("%.1fs", m.elapsed), fluent.color(.Neutral_Foreground1))
 	}

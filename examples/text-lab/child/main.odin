@@ -197,28 +197,23 @@ lab_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	s := &m.scheme
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, s[.Neutral_Background2])
 
-	r := ui.row_open(gtx, align = .Fill)
-	defer ui.close(&r)
+	ui.row(gtx, align = .Fill)
 	nav(gtx, m)
 	ui.flexible(gtx, 1)
-	body := ui.column_open(gtx, align = .Fill)
-	defer ui.close(&body)
+	ui.column(gtx, align = .Fill)
 	app_bar(gtx, m)
 	ui.flexible(gtx, 1)
 	{
 		for i in 0 ..< len(PAGES) {
 			ui.retain(gtx, i)
 		}
-		ps := ui.scope_open(gtx, m.page)
-		defer ui.close(&ps)
+		ui.scope(gtx, m.page)
 		page := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
 		if page.lays_out {
 			page.draw(gtx, m)
 		} else {
-			sb := ui.scroll_box_open(gtx)
-			defer ui.close(&sb)
-			pad := ui.inset_open(gtx, {24, 8, 24, 48})
-			defer ui.close(&pad)
+			ui.scroll_box(gtx)
+			ui.inset(gtx, {24, 8, 24, 48})
 			page.draw(gtx, m)
 		}
 	}
@@ -226,8 +221,7 @@ lab_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 }
 
 nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	n := fluent.nav_open(gtx, width = NAV_WIDTH)
-	defer fluent.nav_close(&n)
+	fluent.nav(gtx, width = NAV_WIDTH)
 	if fluent.nav_header(gtx) {
 		fluent.app_item(gtx, "jm:ui text lab", .Grid, static = true)
 	}
@@ -244,10 +238,8 @@ nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // app_bar is the page title, the sample size and the overlay switch.
 app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	bar := ui.inset_open(gtx, {24, 12, 16, 8})
-	defer ui.close(&bar)
-	r := ui.row_open(gtx, align = .Center, gap = 8)
-	defer ui.close(&r)
+	ui.inset(gtx, {24, 12, 16, 8})
+	ui.row(gtx, align = .Center, gap = 8)
 	page := PAGES[clamp(m.page, 0, len(PAGES) - 1)]
 	base.label(gtx, page.name, {size = 20, color = s[.Neutral_Foreground1]})
 	ui.fill_space(gtx)
@@ -280,22 +272,19 @@ page_emoji :: proc(gtx: ^ui.Ctx, m: ^Model) {
 // try the caret and hit-testing against real clusters.
 page_editing :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := fluent.scheme()
-	col := ui.column_open(gtx, gap = 12)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 12)
 	note(gtx, "Click inside a cluster, arrow across marks and ligatures, type. Each input uses its sample's font.")
 	for e, i in EDIT {
-		c := ui.column_open(gtx, gap = 4, key = u64(i))
+		ui.column(gtx, gap = 4, key = u64(i))
 		base.label(gtx, e.label, {size = 12, color = s[.Neutral_Foreground2]})
 		prev := swap_font(gtx, m.font[e.script])
 		fluent.input(gtx, &m.edits[i], width = 480, name = e.label, key = u64(i))
 		swap_font(gtx, prev)
-		ui.close(&c)
 	}
 }
 
 page_paragraph :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 20)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 20)
 	note(gtx, "ui.paragraph_layout at 520px: soft breaks, hanging spaces, emergency breaks, right-to-left alignment.")
 	for sm, i in WRAPPED {
 		specimen(gtx, m, sm, key = u64(i), width = 520)
@@ -327,8 +316,7 @@ note :: proc(gtx: ^ui.Ctx, text: string) {
 }
 
 specimens :: proc(gtx: ^ui.Ctx, m: ^Model, samples: []Sample, about: string) {
-	col := ui.column_open(gtx, gap = 20)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 20)
 	note(gtx, about)
 	if !m.plain {
 		legend(gtx)
@@ -347,8 +335,7 @@ CARET :: ops.Color{209, 52, 56, 230}
 
 legend :: proc(gtx: ^ui.Ctx) {
 	s := fluent.scheme()
-	r := ui.row_open(gtx, gap = 16, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 16, align = .Center)
 	items := [?]struct {
 		c: ops.Color,
 		t: string,
@@ -373,8 +360,7 @@ specimen :: proc(gtx: ^ui.Ctx, m: ^Model, sm: Sample, key: u64, width: f32 = 0) 
 	s := fluent.scheme()
 	p := ui.paragraph_layout(gtx.shaper, m.font[sm.script], SIZES[m.size], sm.text, width, gtx.allocator)
 
-	col := ui.column_open(gtx, gap = 4, key = key)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 4, key = key)
 	base.label(gtx, sm.label, {size = 13, color = s[.Neutral_Foreground1]})
 	font_note := m.found[sm.script] ? fmt.tprint(sm.script) : fmt.tprintf("%v missing, default font", sm.script)
 	glyphs, clusters, runs := 0, 0, 0

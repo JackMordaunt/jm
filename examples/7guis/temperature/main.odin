@@ -24,8 +24,7 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	row := ui.row_open(gtx, gap = 8, align = .Center)
-	defer ui.close(&row)
+	ui.row(gtx, gap = 8, align = .Center)
 
 	if fluent.input(gtx, &m.celsius, invalid = !is_number_or_empty(&m.celsius), width = 100, name = "Celsius").changed {
 		if c, ok := strconv.parse_f64(ui.text_string(&m.celsius)); ok {

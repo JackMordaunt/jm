@@ -43,16 +43,14 @@ view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Model)(user)
 	page := shell.page_open(gtx)
 	defer ui.close(&page)
-	scroll := ui.scroll_box_open(gtx, offset = &m.scroll, wide = true)
-	defer ui.close(&scroll)
+	ui.scroll_box(gtx, offset = &m.scroll, wide = true)
 
 	tracks: [COLS + 1]ui.Track
 	tracks[0] = {width = HEADER_WIDTH, align = .Center}
 	for &t in tracks[1:] {
 		t = {width = CELL.x}
 	}
-	grid := ui.grid_open(gtx, tracks[:])
-	defer ui.close(&grid)
+	ui.grid(gtx, tracks[:])
 
 	header(gtx, "", HEADER_WIDTH)
 	for c in 0 ..< COLS {
