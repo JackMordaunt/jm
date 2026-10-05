@@ -134,7 +134,7 @@ drain :: proc(q: ^Queue($I, $S), index: int) {
 
 		ok := q.work(item, state)
 
-		sync.mutex_lock(&q.mutex)
+		sync.mutex_guard(&q.mutex)
 		q.active -= 1
 		// The manager runs for a failed item too: deciding what a failure means is
 		// the whole of its job.
@@ -142,6 +142,5 @@ drain :: proc(q: ^Queue($I, $S), index: int) {
 			q.over = true
 		}
 		sync.cond_broadcast(&q.wake)
-		sync.mutex_unlock(&q.mutex)
 	}
 }

@@ -453,8 +453,7 @@ inbox_destroy :: proc(ib: ^Inbox) {
 
 // inbox_put queues a shape for key, copying data. Any thread may call it.
 inbox_put :: proc(ib: ^Inbox, key: Need_Key, data: []byte, status: Status = .Ready) {
-	sync.mutex_lock(&ib.mutex)
-	defer sync.mutex_unlock(&ib.mutex)
+	sync.mutex_guard(&ib.mutex)
 	for &d in ib.items {
 		if d.key == key {
 			if !(status == .Stale && data == nil) {
@@ -480,8 +479,7 @@ inbox_put_value :: proc(ib: ^Inbox, q: $Q, v: $R, status: Status = .Ready) {
 // inbox_drain delivers everything waiting into l and empties the inbox,
 // reporting whether anything was. The frame loop's thread calls it.
 inbox_drain :: proc(ib: ^Inbox, l: ^Layout) -> bool {
-	sync.mutex_lock(&ib.mutex)
-	defer sync.mutex_unlock(&ib.mutex)
+	sync.mutex_guard(&ib.mutex)
 	for d in ib.items {
 		deliver(l, d.key, d.data, d.status)
 		delete(d.data, ib.allocator)
@@ -495,8 +493,7 @@ inbox_drain :: proc(ib: ^Inbox, l: ^Layout) -> bool {
 // allocator, for a host that sends it on rather than delivering it here.
 // The data in it is copied; the inbox is empty afterwards.
 inbox_take :: proc(ib: ^Inbox, allocator := context.temp_allocator) -> []Delivery {
-	sync.mutex_lock(&ib.mutex)
-	defer sync.mutex_unlock(&ib.mutex)
+	sync.mutex_guard(&ib.mutex)
 	out := make([]Delivery, len(ib.items), allocator)
 	for d, ii in ib.items {
 		out[ii] = Delivery{d.key, d.status, clone_bytes(d.data, allocator)}
@@ -509,8 +506,7 @@ inbox_take :: proc(ib: ^Inbox, allocator := context.temp_allocator) -> []Deliver
 // inbox_pending reports whether anything waits, without taking it: a frame
 // loop asks before deciding whether a frame is due.
 inbox_pending :: proc(ib: ^Inbox) -> bool {
-	sync.mutex_lock(&ib.mutex)
-	defer sync.mutex_unlock(&ib.mutex)
+	sync.mutex_guard(&ib.mutex)
 	return len(ib.items) > 0
 }
 

@@ -639,11 +639,10 @@ inlet_close :: proc(inlet: ^Inlet) {
 		return
 	}
 	sync.cond_broadcast(&inlet.space)
-	sync.mutex_lock(&inlet.p.mutex)
+	sync.mutex_guard(&inlet.p.mutex)
 	inlet.p.open_inlets -= 1
 	schedule(inlet.n, locked = true)
 	sync.cond_broadcast(&inlet.p.more)
-	sync.mutex_unlock(&inlet.p.mutex)
 }
 
 @(private)
@@ -658,15 +657,13 @@ inlet_pop :: proc(inlet: ^Inlet, out: rawptr) -> bool {
 }
 
 inlet_len :: proc(inlet: ^Inlet) -> int {
-	sync.mutex_lock(&inlet.mutex)
-	defer sync.mutex_unlock(&inlet.mutex)
+	sync.mutex_guard(&inlet.mutex)
 	return ring.len(&inlet.buffer)
 }
 
 // Closed and drained.
 inlet_ended :: proc(inlet: ^Inlet) -> bool {
-	sync.mutex_lock(&inlet.mutex)
-	defer sync.mutex_unlock(&inlet.mutex)
+	sync.mutex_guard(&inlet.mutex)
 	return inlet.closed && ring.len(&inlet.buffer) == 0
 }
 
@@ -782,11 +779,10 @@ arm :: proc(n: ^Node, at: time.Duration) {
 	priority_queue.push(&p.timers, Timer{at, n.timer_seq, n})
 	sync.mutex_unlock(&p.timer_mutex)
 	// A worker asleep with no deadline must learn there is one.
-	sync.mutex_lock(&p.mutex)
+	sync.mutex_guard(&p.mutex)
 	if p.sleeping > 0 {
 		sync.cond_broadcast(&p.more)
 	}
-	sync.mutex_unlock(&p.mutex)
 }
 
 arm_in :: proc(n: ^Node, d: time.Duration) {
@@ -925,8 +921,7 @@ fire_timers :: proc(p: ^Pipeline) {
 	if sync.atomic_load(&p.armed) == 0 {
 		return
 	}
-	sync.mutex_lock(&p.mutex)
-	defer sync.mutex_unlock(&p.mutex)
+	sync.mutex_guard(&p.mutex)
 	fire_timers_locked(p)
 }
 
@@ -976,8 +971,7 @@ next_deadline :: proc(p: ^Pipeline) -> (wait: time.Duration, holds: bool) {
 	if sync.atomic_load(&p.armed) == 0 || p.clock.manual {
 		return -1, false
 	}
-	sync.mutex_lock(&p.timer_mutex)
-	defer sync.mutex_unlock(&p.timer_mutex)
+	sync.mutex_guard(&p.timer_mutex)
 	top, ok := priority_queue.peek_safe(p.timers)
 	if !ok {
 		return -1, false
@@ -1244,10 +1238,9 @@ pool_size :: proc(p: ^Pipeline, threads: int) -> int {
 // Make `run` return as soon as every node now running has yielded. Nodes keep
 // their state; a later `run` carries on.
 stop :: proc(p: ^Pipeline) {
-	sync.mutex_lock(&p.mutex)
+	sync.mutex_guard(&p.mutex)
 	sync.atomic_store(&p.quit, true)
 	sync.cond_broadcast(&p.more)
-	sync.mutex_unlock(&p.mutex)
 }
 
 @(private)
@@ -1307,8 +1300,7 @@ work :: proc(p: ^Pipeline) {
 // False means the pipeline is quiescent or stopped and the worker should go.
 @(private)
 take_shared :: proc(p: ^Pipeline) -> (n: ^Node, ok: bool) {
-	sync.mutex_lock(&p.mutex)
-	defer sync.mutex_unlock(&p.mutex)
+	sync.mutex_guard(&p.mutex)
 	for {
 		fire_timers_locked(p)
 		if n, ok = dequeue(p); ok {

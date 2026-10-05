@@ -67,8 +67,7 @@ destroy :: proc(c: ^Cache) {
 
 // get is the path cached for key, made the most recent; a miss counts.
 get :: proc(c: ^Cache, key: ui.Need_Key) -> (path: string, ok: bool) {
-	sync.mutex_lock(&c.mutex)
-	defer sync.mutex_unlock(&c.mutex)
+	sync.mutex_guard(&c.mutex)
 	e, found := c.entries[key]
 	if !found {
 		c.stats.misses += 1
@@ -84,8 +83,7 @@ get :: proc(c: ^Cache, key: ui.Need_Key) -> (path: string, ok: bool) {
 // the most recent entry, and evicts the least recent until the budget
 // holds, deleting their files. Entries keep says to keep are skipped.
 put :: proc(c: ^Cache, key: ui.Need_Key, path: string, size: int, keep: Keep = nil, user: rawptr = nil) {
-	sync.mutex_lock(&c.mutex)
-	defer sync.mutex_unlock(&c.mutex)
+	sync.mutex_guard(&c.mutex)
 	if e, found := c.entries[key]; found {
 		c.stats.bytes -= e.size
 		unlink(c, e)
@@ -115,8 +113,7 @@ put :: proc(c: ^Cache, key: ui.Need_Key, path: string, size: int, keep: Keep = n
 
 // stats is a copy of the counts now.
 stats :: proc(c: ^Cache) -> Stats {
-	sync.mutex_lock(&c.mutex)
-	defer sync.mutex_unlock(&c.mutex)
+	sync.mutex_guard(&c.mutex)
 	return c.stats
 }
 

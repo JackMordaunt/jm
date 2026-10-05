@@ -91,8 +91,7 @@ run :: proc(opts := harness.Opts{}, allocator := context.allocator) -> harness.R
 // process however many threads ask: two sessions creating the same role at
 // once collide in the catalog. A child process finds both already done.
 prepare :: proc() -> (why: string, ready: bool) {
-	sync.mutex_lock(&preparation.mutex)
-	defer sync.mutex_unlock(&preparation.mutex)
+	sync.mutex_guard(&preparation.mutex)
 	if !preparation.done {
 		preparation.done = true
 		preparation.why, preparation.ready = make_role()

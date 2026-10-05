@@ -218,8 +218,7 @@ make_tile :: proc(h: ^Host, r: Request) -> Done {
 // keep_live is the cache's keep: a picture a frame needs now stays.
 keep_live :: proc(user: rawptr, key: ui.Need_Key) -> bool {
 	h := (^Host)(user)
-	sync.mutex_lock(&h.mutex)
-	defer sync.mutex_unlock(&h.mutex)
+	sync.mutex_guard(&h.mutex)
 	return key in h.live
 }
 
@@ -284,8 +283,7 @@ pool_main :: proc(h: ^Host) {
 
 // stats is a copy of the statistics now, for a test.
 stats :: proc(h: ^Host) -> shapes.Stats_Result {
-	sync.mutex_lock(&h.mutex)
-	defer sync.mutex_unlock(&h.mutex)
+	sync.mutex_guard(&h.mutex)
 	return h.stats
 }
 

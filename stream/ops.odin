@@ -656,6 +656,13 @@ mailbox_unlock :: proc(m: ^Mailbox) {
 	sync.mutex_unlock(&m.mutex)
 }
 
+// mailbox_guard holds m's lock to the end of the scope it is called in.
+@(private, deferred_in = mailbox_unlock)
+mailbox_guard :: proc(m: ^Mailbox) -> bool {
+	mailbox_lock(m)
+	return true
+}
+
 // Keep the newest message of `s` for latest_take. Never blocks the producer.
 latest :: proc(s: Stream($T), name := "latest") -> ^Latest(T) {
 	run :: proc(n: ^Node) -> Yield {
@@ -669,10 +676,9 @@ latest :: proc(s: Stream($T), name := "latest") -> ^Latest(T) {
 			got = true
 		}
 		if got {
-			mailbox_lock(&l.box)
+			mailbox_guard(&l.box)
 			l.value = v
 			l.fresh = true
-			mailbox_unlock(&l.box)
 		}
 		if in_has(n, 0) {
 			return .Budget
@@ -692,8 +698,7 @@ latest :: proc(s: Stream($T), name := "latest") -> ^Latest(T) {
 
 // Take the newest message, if one arrived since the last take. Any thread.
 latest_take :: proc(l: ^Latest($T), out: ^T) -> bool {
-	mailbox_lock(&l.box)
-	defer mailbox_unlock(&l.box)
+	mailbox_guard(&l.box)
 	if !l.fresh {
 		return false
 	}
@@ -704,8 +709,7 @@ latest_take :: proc(l: ^Latest($T), out: ^T) -> bool {
 
 // The input ended: no later take will succeed. Any thread.
 latest_ended :: proc(l: ^Latest($T)) -> bool {
-	mailbox_lock(&l.box)
-	defer mailbox_unlock(&l.box)
+	mailbox_guard(&l.box)
 	return l.ended
 }
 

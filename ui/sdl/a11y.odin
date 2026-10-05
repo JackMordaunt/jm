@@ -147,16 +147,14 @@ bridge_window_bounds :: proc(b: ^Bridge) {
 build_tree :: proc "c" (userdata: rawptr) -> ^ak.Tree_Update {
 	context = runtime.default_context()
 	b := (^Bridge)(userdata)
-	sync.mutex_lock(&b.mu)
-	defer sync.mutex_unlock(&b.mu)
+	sync.mutex_guard(&b.mu)
 	return ak.tree_update(&b.tree)
 }
 
 @(private)
 build_focus :: proc "c" (userdata: rawptr) -> ^ak.Tree_Update {
 	b := (^Bridge)(userdata)
-	sync.mutex_lock(&b.mu)
-	defer sync.mutex_unlock(&b.mu)
+	sync.mutex_guard(&b.mu)
 	return ak.tree_update_with_focus(b.tree.focus)
 }
 

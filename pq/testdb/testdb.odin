@@ -73,8 +73,7 @@ state: struct {
 // name it, and reports why not when it cannot. It is safe to call from every
 // test; only the first call does any work.
 start :: proc() -> (ok: bool, why: string) {
-	sync.mutex_lock(&state.mutex)
-	defer sync.mutex_unlock(&state.mutex)
+	sync.mutex_guard(&state.mutex)
 	if !state.tried {
 		state.tried = true
 		// What start keeps outlives whichever test called it first, so it
@@ -88,8 +87,7 @@ start :: proc() -> (ok: bool, why: string) {
 // dir is the directory the server's socket is in, which is also PGHOST, or ""
 // when no server is up.
 dir :: proc() -> string {
-	sync.mutex_lock(&state.mutex)
-	defer sync.mutex_unlock(&state.mutex)
+	sync.mutex_guard(&state.mutex)
 	return state.ok ? state.dir : ""
 }
 
