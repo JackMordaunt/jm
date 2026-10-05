@@ -205,6 +205,36 @@ for row in res.rows {
 }
 ```
 
+### Describe a statement without running it
+
+`pq.describe` asks the server what a statement takes and returns. It is what a
+code generator needs to turn `queries/*.sql` into typed calls and row structs.
+
+```odin
+desc, err := pq.describe(conn, `SELECT serial, note FROM rig WHERE id = $1`)
+if err != nil {
+	return // a pq.Fault: syntax, unknown column, schema not usable
+}
+defer pq.destroy(&desc)
+fmt.println(desc.params) // [2950]: $1 is a uuid, inferred from id
+for col in desc.columns {
+	fmt.println(col.name, col.type_oid, col.typmod, col.table_oid, col.table_column)
+}
+```
+
+- **Types are OIDs.** Built-in OIDs are fixed; an enum's is the database's own.
+- **Source columns.** `table_oid` and `table_column` name the table and
+  attnum a column was read from. Both are 0 for an expression or aggregate.
+- **Nothing left behind.** It prepares into the unnamed statement, which the
+  session's next statement replaces.
+- **Privileges are not checked.** PostgreSQL checks table privileges when a
+  statement runs. A schema the role cannot use fails; a table it cannot read
+  does not.
+
+`pq.not_null(conn, desc)` reads `pg_attribute.attnotnull` for each source
+column. It reports the column's constraint, not the result's: the nullable
+side of an outer join can still produce NULL.
+
 ### Why libpq is not vendored
 
 `jm:pq` is the one C library in the collection that is not vendored. It links

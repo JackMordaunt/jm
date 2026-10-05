@@ -11,7 +11,7 @@ import "jm:pq/testdb"
 // connect_to_server brings up the throwaway server and connects to it through the
 // environment, or logs why not. Every test here needs one; without initdb
 // they skip rather than fail.
-@(private = "file")
+@(private)
 connect_to_server :: proc(t: ^testing.T) -> (conn: ^Conn, up: bool) {
 	if ok, why := testdb.start(); !ok {
 		log.warnf("skipped, no PostgreSQL server to test against: %s", why)
@@ -32,13 +32,13 @@ must_exec :: proc(t: ^testing.T, conn: ^Conn, sql: string, args: []string = {}, 
 	return res
 }
 
-@(private = "file")
+@(private)
 fault_of :: proc(err: Error) -> Fault {
 	f, _ := err.(Fault)
 	return f
 }
 
-@(private = "file")
+@(private)
 free_fault :: proc(err: Error) {
 	if f, is_fault := err.(Fault); is_fault {
 		delete(f.message)
