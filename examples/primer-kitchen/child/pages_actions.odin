@@ -21,8 +21,7 @@ VARIANT_NAMES := [?]string{"Default", "Primary", "Danger", "Invisible", "Link"}
 SIZE_NAMES := [?]string{"Small", "Medium", "Large"}
 
 page_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Variants", "32px, 12px sides, medium-weight label; the focus outline sits 2px inside, primary adds an onEmphasis ring")
 	kitchen.state_header(gtx)
 	for n, i in VARIANT_NAMES {
@@ -70,8 +69,7 @@ page_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, "Inactive", cell, 32)
 	}
 	kitchen.section(gtx, "Live", "hover, press, Tab and Enter these")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	for v, i in VARIANTS {
 		if primer.button(gtx, fmt.tprintf("Clicked %d", m.clicks), v, leading = .Plus, key = u64(100 + i)) {
 			m.clicks += 1
@@ -88,8 +86,7 @@ page_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 ICON_SIZES := [?]primer.Button_Size{.Small, .Medium, .Large}
 
 page_icon_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Variants", "a square of the size's height, the icon centred; default draws it muted, invisible in its rest colour throughout")
 	kitchen.state_header(gtx)
 	for n, i in VARIANT_NAMES[:4] {
@@ -107,8 +104,7 @@ page_icon_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(i + 11))
 	}
 	kitchen.section(gtx, "Unread dot", "an 8px accent dot, ringed in the inset background")
-	r := ui.wrap_open(gtx, gap = 12, align = .Center)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 12, align = .Center)
 	if primer.icon_button(gtx, .Bell, "Notifications", dot = .Button, key = 300) {
 		m.clicks += 1
 	}
@@ -118,18 +114,15 @@ page_icon_button :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Start)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Start)
 	kitchen.section(gtx, "Standalone", "accent, underlined on hover; muted turns accent on hover with no underline")
 	if primer.link(gtx, "View all issues", key = 1) {
 		m.clicks += 1
 	}
 	primer.link(gtx, "Muted link", muted = true, key = 2)
 	kitchen.section(gtx, "In prose", "a link's hit area follows the lines it wraps across; with underlines on, links are underlined at rest")
-	box := ui.sized_open(gtx, {max = {420, ui.INF}})
-	defer ui.close(&box)
-	inner := ui.column_open(gtx, gap = 12)
-	defer ui.close(&inner)
+	ui.sized(gtx, {max = {420, ui.INF}})
+	ui.column(gtx, gap = 12)
 	text := "Read the contributing guide before you open a pull request, and check the code of conduct."
 	links := []primer.Link_Span{span(text, "contributing guide"), span(text, "code of conduct")}
 	primer.prose(gtx, text, links, key = 3)
@@ -137,19 +130,16 @@ page_link :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_keybinding_hint :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Start)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Start)
 	kitchen.section(gtx, "Condensed and full", "one cap per chord, modifiers first, named for this platform; chords a space apart")
 	for keys, i in ([]string{"Mod+K", "Mod+Shift+P", "g i", "ArrowUp", "Escape"}) {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i))
+		ui.row(gtx, gap = 16, align = .Center, key = u64(i))
 		primer.keybinding_hint(gtx, keys, key = 1)
 		primer.keybinding_hint(gtx, keys, .Full, key = 2)
 		primer.keybinding_hint(gtx, keys, size = .Small, key = 3)
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "On emphasis and on primary", "a filled cap with onEmphasis text, for tooltips and primary buttons")
-	r := ui.row_open(gtx, gap = 16, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 16, align = .Center)
 	primer.keybinding_hint(gtx, "Mod+Enter", variant = .On_Emphasis, key = 10)
 	primer.keybinding_hint(gtx, "Mod+Enter", variant = .On_Primary, key = 11)
 }
@@ -164,8 +154,7 @@ span :: proc(text, sub: string) -> primer.Link_Span {
 // band w wide; what it reports goes to a.said.
 @(private = "file")
 toolbar :: proc(gtx: ^ui.Ctx, a: ^Actions, w: f32, size: primer.Button_Size, gap: primer.Action_Bar_Gap, key: u64) {
-	band := ui.sized_open(gtx, {min = {w, 0}, max = {w, ui.INF}}, key = key)
-	defer ui.close(&band)
+	ui.sized(gtx, {min = {w, 0}, max = {w, ui.INF}}, key = key)
 	b := primer.action_bar_open(gtx, "Formatting tools", size, gap, key = key + 1)
 	names := [3]string{"Bold", "Italic", "Code"}
 	icons := [3]primer.Icon{.Bold, .Italic, .Code}
@@ -192,8 +181,7 @@ toolbar :: proc(gtx: ^ui.Ctx, a: ^Actions, w: f32, size: primer.Button_Size, gap
 }
 
 page_action_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	a := &m.actions
 	kitchen.section(gtx, "Sizes", "28, 32 or 40px rows of invisible buttons, 8px apart, 16px side padding, at the container's end")
 	for s, i in ([3]primer.Button_Size{.Small, .Medium, .Large}) {
@@ -211,8 +199,7 @@ page_action_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_button_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Start)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Start)
 	kitchen.section(gtx, "Joined", "no gap; each over the next by 1px; the ends round, the joints square; a hovered item's border wins the joint")
 	kitchen.state_header(gtx, 220)
 	cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
@@ -224,8 +211,7 @@ page_button_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.state_row(gtx, m, "First item", cell, 1, 220)
 	kitchen.section(gtx, "Icon buttons and a split button", "a toolbar: Left and Right move focus and wrap")
-	r := ui.row_open(gtx, gap = 24, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 24, align = .Center)
 	{
 		g := primer.button_group_open(gtx, 3, "Formatting", toolbar = true, key = 10)
 		primer.icon_button(gtx, .Bold, "Bold", group = &g, key = 11)

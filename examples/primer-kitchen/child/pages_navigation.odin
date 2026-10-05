@@ -67,8 +67,7 @@ fill_tree_demo :: proc(d: ^Tree_Demo) -> []primer.Tree_Item {
 }
 
 page_tree_view :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	n := &m.navs
 	d := &n.tree
 	if d.state == .None {
@@ -83,10 +82,8 @@ page_tree_view :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Files", "32px rows, 8px a level; the current item's bar sits 8px left; hover shows the level lines; Tab enters at the current item")
 	{
-		pad := ui.inset_open(gtx, {12, 0, 0, 0})
-		defer ui.close(&pad)
-		box := ui.sized_open(gtx, {max = {360, 0}})
-		defer ui.close(&box)
+		ui.inset(gtx, {12, 0, 0, 0})
+		ui.sized(gtx, {max = {360, 0}})
 		ev := primer.tree_view(gtx, fill_tree_demo(d), "Files")
 		#partial switch ev.kind {
 		case .None:
@@ -100,8 +97,7 @@ page_tree_view :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 	}
 	{
-		r := ui.row_open(gtx, gap = 8, align = .Center)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 8, align = .Center)
 		if primer.button(gtx, d.skeleton ? "Loading shows 3 skeleton rows" : "Loading shows a spinner", size = .Small) {
 			d.skeleton = !d.skeleton
 		}
@@ -114,10 +110,8 @@ page_tree_view :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Flat", "no indentation or toggle columns")
 	{
-		pad := ui.inset_open(gtx, {12, 0, 0, 0})
-		defer ui.close(&pad)
-		box := ui.sized_open(gtx, {max = {360, 0}})
-		defer ui.close(&box)
+		ui.inset(gtx, {12, 0, 0, 0})
+		ui.sized(gtx, {max = {360, 0}})
 		d.flat = {
 			{id = "f1", label = "Issues", leading = .Issue_Opened},
 			{id = "f2", label = "Pull requests", leading = .Git_Pull_Request, current = true},
@@ -128,10 +122,8 @@ page_tree_view :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Wrapped", "truncate off: long labels wrap by word, the visuals stay on the first line")
 	{
-		pad := ui.inset_open(gtx, {12, 0, 0, 0})
-		defer ui.close(&pad)
-		box := ui.sized_open(gtx, {max = {260, 0}})
-		defer ui.close(&box)
+		ui.inset(gtx, {12, 0, 0, 0})
+		ui.sized(gtx, {max = {260, 0}})
 		primer.tree_view(gtx, d.src[2:3], "Wrapped", truncate = false)
 	}
 }
@@ -145,19 +137,17 @@ state_list :: proc(gtx: ^ui.Ctx, m: ^Model, draw: proc(gtx: ^ui.Ctx, m: ^Model, 
 		if st == .Dragged {
 			continue
 		}
-		r := ui.row_open(gtx, gap = 12, align = .Center, key = u64(900 + i))
+		ui.row(gtx, gap = 12, align = .Center, key = u64(900 + i))
 		c := ui.sized_open(gtx, {min = {80, 0}, max = {80, ui.INF}})
 		base.label(gtx, names[i], {size = 12, color = base.color(.Muted)})
 		ui.close(&c)
 		ui.flexible(gtx, 1)
 		draw(gtx, m, st, u64(i + 1))
-		ui.close(&r)
 	}
 }
 
 page_pagination :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 4)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 4)
 	n := &m.navs
 	if n.page == 0 {
 		n.page = 6
@@ -177,8 +167,7 @@ page_pagination :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_sub_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	n := &m.navs
 	kitchen.section(gtx, "Live", "links joined into one 34px segmented box sharing 1px borders; the selected one fills --bgColor-accent-emphasis; actions sit at the far end")
 	links := [3]primer.Sub_Nav_Link{{"Labels", n.view == 0}, {"Milestones", n.view == 1}, {"Projects", n.view == 2}}
@@ -191,64 +180,52 @@ page_sub_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	kitchen.section(gtx, "States", "hover and any focus fade --bgColor-muted in over 200ms; keyboard focus also draws the focus outline")
 	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
 		links := [3]primer.Sub_Nav_Link{{"Labels", true}, {"Milestones", false}, {"Projects", false}}
-		sn := primer.sub_nav_open(gtx, "States", links[:], state = st, key = key)
-		primer.sub_nav_close(&sn)
+		primer.sub_nav(gtx, "States", links[:], state = st, key = key)
 	})
 }
 
 page_underline_panels :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	n := &m.navs
 	tabs := [4]primer.Underline_Tab{{"Code", .Code, ""}, {"Issues", .Issue_Opened, "12"}, {"Pull requests", .Git_Pull_Request, "3"}, {"Actions", .Play, ""}}
 	bodies := [4]string{"The repository's files.", "Twelve open issues.", "Three open pull requests.", "Workflow runs."}
 	kitchen.section(gtx, "Automatic", "48px strip, 32px tabs 8px apart, a 2px underline on the strip's edge; arrows select as they move")
 	{
-		up := primer.underline_panels_open(gtx, "Repository", tabs[:], &n.tab, loading_counters = n.loading)
-		pad := ui.inset_open(gtx, {16, 12, 16, 12})
+		primer.underline_panels(gtx, "Repository", tabs[:], &n.tab, loading_counters = n.loading)
+		ui.inset(gtx, {16, 12, 16, 12})
 		base.label(gtx, bodies[n.tab])
-		ui.close(&pad)
-		primer.underline_panels_close(&up)
 	}
 	{
-		r := ui.row_open(gtx)
-		defer ui.close(&r)
+		ui.row(gtx)
 		if primer.button(gtx, n.loading ? "Show counters" : "Load counters", size = .Small) {
 			n.loading = !n.loading
 		}
 	}
 	kitchen.section(gtx, "Manual", "arrows move focus only; Enter, Space or a press selects")
 	{
-		up := primer.underline_panels_open(gtx, "Manual", tabs[:], &n.manual, mode = .Manual)
-		pad := ui.inset_open(gtx, {16, 12, 16, 12})
+		primer.underline_panels(gtx, "Manual", tabs[:], &n.manual, mode = .Manual)
+		ui.inset(gtx, {16, 12, 16, 12})
 		base.label(gtx, bodies[n.manual])
-		ui.close(&pad)
-		primer.underline_panels_close(&up)
 	}
 	kitchen.section(gtx, "Narrow", "a strip narrower than its tabs scrolls sideways")
 	{
-		r := ui.row_open(gtx)
-		box := ui.sized_open(gtx, {max = {280, 0}})
+		ui.row(gtx)
+		ui.sized(gtx, {max = {280, 0}})
 		sel := 0
-		up := primer.underline_panels_open(gtx, "Narrow", tabs[:], &sel)
-		primer.underline_panels_close(&up)
-		ui.close(&box)
-		ui.close(&r)
+		primer.underline_panels(gtx, "Narrow", tabs[:], &sel)
 	}
 	kitchen.section(gtx, "States", "hover fades --bgColor-neutral-muted in over 120ms; keyboard focus rings the tab inside with 2px of --fgColor-accent")
 	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
 		tabs := [3]primer.Underline_Tab{{"Code", .Code, ""}, {"Issues", .Issue_Opened, "12"}, {"Pull requests", .Git_Pull_Request, "3"}}
 		sel := 0
-		up := primer.underline_panels_open(gtx, "States", tabs[:], &sel, state = st, key = key)
-		primer.underline_panels_close(&up)
+		primer.underline_panels(gtx, "States", tabs[:], &sel, state = st, key = key)
 	})
 }
 
 CRUMBS := [6]primer.Breadcrumb{{"github", false}, {"primer", false}, {"react", false}, {"packages", false}, {"Breadcrumbs", false}, {"Breadcrumbs.tsx", true}}
 
 page_breadcrumbs :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	n := &m.navs
 	kitchen.section(gtx, "Wrap", "--fgColor-link crumbs that underline on hover, a rotated --fgColor-muted rule between; the current page is --fgColor-default")
 	if at := primer.breadcrumbs(gtx, CRUMBS[:]); at >= 0 {
@@ -264,22 +241,19 @@ page_breadcrumbs :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	primer.breadcrumbs(gtx, CRUMBS[:], .Menu_With_Root)
 	kitchen.section(gtx, "Narrow", "at 320px a menu trail folds by width as well as count")
 	{
-		r := ui.row_open(gtx)
-		box := ui.sized_open(gtx, {min = {320, 0}, max = {320, ui.INF}})
+		ui.row(gtx)
+		ui.sized(gtx, {min = {320, 0}, max = {320, ui.INF}})
 		primer.breadcrumbs(gtx, CRUMBS[:], .Menu_With_Root, .Spacious)
-		ui.close(&box)
-		ui.close(&r)
 	}
 	if n.crumb_said != "" {
 		base.label(gtx, n.crumb_said, {size = 12, color = base.color(.Muted)})
 	}
 	kitchen.section(gtx, "States", "keyboard focus outlines a crumb 2px outside with small corners")
 	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
-		r := ui.row_open(gtx, key = key)
+		ui.row(gtx, key = key)
 		primer.breadcrumbs(gtx, CRUMBS[3:], state = st, key = key)
 		ui.spacer(gtx, 24)
 		primer.breadcrumbs(gtx, CRUMBS[3:], variant = .Spacious, state = st, key = key + 100)
-		ui.close(&r)
 	})
 }
 
@@ -294,8 +268,7 @@ UNAV_ITEMS := [7]primer.Underline_Tab {
 }
 
 page_underline_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	n := &m.navs
 	kitchen.section(gtx, "Live", "48px row; the current item's 2px underline sits on the 1px --borderColor-muted line")
 	if at := primer.underline_nav(gtx, "Repository", UNAV_ITEMS[:], n.unav, loading_counters = n.loading); at >= 0 {
@@ -305,13 +278,11 @@ page_underline_nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	primer.underline_nav(gtx, "Flush", UNAV_ITEMS[:3], 0, variant = .Flush)
 	kitchen.section(gtx, "Overflow", "at 520px icons hide (below 768px) and items that break onto a second line move into More; the current one takes More's underline")
 	{
-		r := ui.row_open(gtx)
-		box := ui.sized_open(gtx, {min = {520, 0}, max = {520, ui.INF}})
+		ui.row(gtx)
+		ui.sized(gtx, {min = {520, 0}, max = {520, ui.INF}})
 		if at := primer.underline_nav(gtx, "Narrow", UNAV_ITEMS[:], n.unav_narrow); at >= 0 {
 			n.unav_narrow = at
 		}
-		ui.close(&box)
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "States", "hover fades --bgColor-neutral-muted in over 120ms; keyboard focus rings the item inside with 2px of --fgColor-accent")
 	state_list(gtx, m, proc(gtx: ^ui.Ctx, m: ^Model, st: primer.Interaction, key: u64) {
@@ -364,18 +335,15 @@ fill_nav_list_demo :: proc(d: ^Nav_List_Demo) -> []primer.Nav_Group {
 }
 
 page_nav_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	n := &m.navs
 	kitchen.section(gtx, "Live", "32px rows inset 8px; the current item's 4px accent line sits in that inset; a closed parent holding the current item takes its look")
-	r := ui.row_open(gtx, gap = 32, align = .Start)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 32, align = .Start)
 	{
-		box := ui.sized_open(gtx, {min = {300, 0}, max = {300, ui.INF}})
+		ui.sized(gtx, {min = {300, 0}, max = {300, ui.INF}})
 		if it := primer.nav_list(gtx, fill_nav_list_demo(&n.nav_list), "Settings"); it != nil {
 			n.nav_list.current = it.label
 		}
-		ui.close(&box)
 	}
 	base.label(gtx, fmt.aprintf("current: %s", n.nav_list.current), {size = 12, color = base.color(.Muted)})
 }

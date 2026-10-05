@@ -49,8 +49,7 @@ JUSTIFY_NAMES := [primer.Stack_Justify]string {
 // chip is a small labelled tile a layout page arranges, so its gaps and
 // padding show.
 chip :: proc(gtx: ^ui.Ctx, text: string, key: u64 = 0, loc := #caller_location) {
-	b := ui.box_open(gtx, {fill = primer.color(.Bg_Color_Accent_Muted), radius = 6, padding = {10, 6, 10, 6}}, key, loc)
-	defer ui.close(&b)
+	ui.box(gtx, {fill = primer.color(.Bg_Color_Accent_Muted), radius = 6, padding = {10, 6, 10, 6}}, key, loc)
 	base.label(gtx, text, {size = 12, color = primer.color(.Fg_Color_Accent)})
 }
 
@@ -62,28 +61,25 @@ outline_open :: proc(gtx: ^ui.Ctx, key: u64 = 0, loc := #caller_location) -> ui.
 
 page_stack :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	l := &m.layouts
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Gap", "none 0, tight 4, condensed 8, cozy 12, normal 16, spacious 24px between children")
 	for name, g in STACK_SPACE_NAMES {
-		r := ui.row_open(gtx, gap = 12, align = .Center, key = u64(g))
+		ui.row(gtx, gap = 12, align = .Center, key = u64(g))
 		sz := ui.sized_open(gtx, {min = {90, 0}, max = {90, ui.INF}})
 		base.label(gtx, name, {size = 12, color = primer.color(.Fg_Color_Muted)})
 		ui.close(&sz)
-		s := primer.stack_open(gtx, gap = g, direction = .Horizontal)
+		primer.stack(gtx, gap = g, direction = .Horizontal)
 		chip(gtx, "One")
 		chip(gtx, "Two")
 		chip(gtx, "Three")
-		primer.stack_close(&s)
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Justify", "start, center, end, space-between and space-evenly along a 480px row")
 	for name, j in JUSTIFY_NAMES {
-		r := ui.row_open(gtx, gap = 12, align = .Center, key = u64(10 + int(j)))
+		ui.row(gtx, gap = 12, align = .Center, key = u64(10 + int(j)))
 		sz := ui.sized_open(gtx, {min = {90, 0}, max = {90, ui.INF}})
 		base.label(gtx, name, {size = 12, color = primer.color(.Fg_Color_Muted)})
 		ui.close(&sz)
-		w := ui.sized_open(gtx, {min = {480, 0}, max = {480, ui.INF}})
+		ui.sized(gtx, {min = {480, 0}, max = {480, ui.INF}})
 		o := outline_open(gtx)
 		s := primer.stack_open(gtx, gap = .Condensed, direction = .Horizontal, justify = j, padding = .Condensed)
 		chip(gtx, "A")
@@ -91,30 +87,25 @@ page_stack :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		chip(gtx, "C")
 		primer.stack_close(&s)
 		ui.close(&o)
-		ui.close(&w)
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Align and padding", "align stretch, start, center and end across a column; padding normal (16px)")
 	{
-		r := ui.row_open(gtx, gap = 16)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 16)
 		ALIGNS := [?]primer.Stack_Align{.Stretch, .Start, .Center, .End}
 		for a, i in ALIGNS {
-			w := ui.sized_open(gtx, {min = {160, 0}, max = {160, ui.INF}}, key = u64(i))
+			ui.sized(gtx, {min = {160, 0}, max = {160, ui.INF}}, key = u64(i))
 			o := outline_open(gtx)
 			s := primer.stack_open(gtx, gap = .Condensed, align = a, padding = .Normal)
 			chip(gtx, fmt.tprintf("%v", a))
 			chip(gtx, "Wider child")
 			primer.stack_close(&s)
 			ui.close(&o)
-			ui.close(&w)
 		}
 	}
 	kitchen.section(gtx, "Wrap and grow", "a wrapping row reflows at its width with the gap between lines too; a Stack.Item that grows takes the rest")
 	{
-		r := ui.row_open(gtx)
-		defer ui.close(&r)
-		w := ui.sized_open(gtx, {min = {320, 0}, max = {320, ui.INF}})
+		ui.row(gtx)
+		ui.sized(gtx, {min = {320, 0}, max = {320, ui.INF}})
 		o := outline_open(gtx)
 		s := primer.stack_open(gtx, gap = .Condensed, direction = .Horizontal, wrap = true, padding = .Condensed)
 		for word in ([?]string{"layout", "data", "stack", "card", "header", "table", "pane", "grid"}) {
@@ -122,7 +113,6 @@ page_stack :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		}
 		primer.stack_close(&s)
 		ui.close(&o)
-		ui.close(&w)
 	}
 	{
 		o := outline_open(gtx)
@@ -140,14 +130,13 @@ page_stack :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Live", "the gap and justify follow the buttons; a responsive gap is condensed below 768px and spacious from 1400px")
 	{
-		r := ui.wrap_open(gtx, gap = 8, align = .Center)
+		ui.wrap(gtx, gap = 8, align = .Center)
 		if primer.button(gtx, fmt.tprintf("Gap: %s", STACK_SPACE_NAMES[l.gap]), key = 1) {
 			l.gap = primer.Stack_Space((int(l.gap) + 1) % len(primer.Stack_Space))
 		}
 		if primer.button(gtx, fmt.tprintf("Justify: %s", JUSTIFY_NAMES[l.justify]), key = 2) {
 			l.justify = primer.Stack_Justify((int(l.justify) + 1) % len(primer.Stack_Justify))
 		}
-		ui.close(&r)
 	}
 	{
 		o := outline_open(gtx)
@@ -171,14 +160,12 @@ page_stack :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_card :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	l := &m.layouts
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Default", "1px border, resting-small shadow, 24px padding, 12px corners; the icon in a 32px muted tile; the action 16px from the corner")
 	{
-		r := ui.row_open(gtx, gap = 16, align = .Start)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 16, align = .Start)
 		{
-			w := ui.sized_open(gtx, {min = {320, 0}, max = {320, ui.INF}})
+			ui.sized(gtx, {min = {320, 0}, max = {320, ui.INF}})
 			c := primer.card_open(gtx, "primer/react", "React components for the Primer design system", icon = .Repo, standalone = true)
 			primer.card_metadata_open(&c)
 			primer.card_metadata_item(gtx, fmt.tprintf("%d stars", 3200 + l.stars), .Star)
@@ -190,97 +177,78 @@ page_card :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			}
 			primer.card_action_close(&c)
 			primer.card_close(&c)
-			ui.close(&w)
 		}
 		{
-			w := ui.sized_open(gtx, {min = {320, 0}, max = {320, ui.INF}})
-			c := primer.card_open(gtx, "Medium corners", "Condensed padding, 8px, and medium (6px) corners", radius = .Medium, padding = .Condensed)
-			primer.card_close(&c)
-			ui.close(&w)
+			ui.sized(gtx, {min = {320, 0}, max = {320, ui.INF}})
+			primer.card(gtx, "Medium corners", "Condensed padding, 8px, and medium (6px) corners", radius = .Medium, padding = .Condensed)
 		}
 	}
 	kitchen.section(gtx, "Compact", "the bare icon beside the body, 8px apart; 16px padding; the heading at body size raised 4px")
 	{
-		r := ui.row_open(gtx)
-		defer ui.close(&r)
-		w := ui.sized_open(gtx, {min = {360, 0}, max = {360, ui.INF}})
+		ui.row(gtx)
+		ui.sized(gtx, {min = {360, 0}, max = {360, ui.INF}})
 		c := primer.card_open(gtx, "Compact card", "Its icon sits beside the heading rather than above it", icon = .Repo, layout = .Compact)
 		primer.card_metadata_open(&c)
 		primer.card_metadata_item(gtx, "Primer", .Mark_Github)
 		primer.card_metadata_close(&c)
 		primer.card_close(&c)
-		ui.close(&w)
 	}
 }
 
 page_header :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	l := &m.layouts
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Link states", "the logo colour dims to the bar's default on hover and focus; a keyboard focus adds the outline")
 	kitchen.state_header(gtx)
 	{
 		cell :: proc(gtx: ^ui.Ctx, user: rawptr, st: primer.Interaction, key: u64) {
-			b := ui.box_open(gtx, {fill = primer.color(.Header_Bg_Color), padding = {8, 4, 8, 4}}, key)
-			defer ui.close(&b)
+			ui.box(gtx, {fill = primer.color(.Header_Bg_Color), padding = {8, 4, 8, 4}}, key)
 			primer.header_link(gtx, "GitHub", .Mark_Github, 24, state = st, key = key)
 		}
 		kitchen.state_row(gtx, m, "Link", cell, 1)
 	}
 	kitchen.section(gtx, "Bar", "dark in every theme; 16px padding; each item 16px apart; the full item takes the free width")
 	{
-		h := primer.header_open(gtx)
+		primer.header(gtx)
 		{
-			it := primer.header_item_open(gtx)
+			primer.header_item(gtx)
 			if primer.header_link(gtx, "GitHub", .Mark_Github) {
 				l.home += 1
 			}
-			primer.header_item_close(&it)
 		}
 		{
-			it := primer.header_item_open(gtx, full = true)
+			primer.header_item(gtx, full = true)
 			primer.header_link(gtx, "Pull requests", key = 1)
 			primer.header_link(gtx, "Issues", key = 2)
 			primer.header_link(gtx, "Codespaces", key = 3)
-			primer.header_item_close(&it)
 		}
 		{
-			it := primer.header_item_open(gtx)
+			primer.header_item(gtx)
 			primer.header_link(gtx, "", .Bell, 16, key = 4)
-			primer.header_item_close(&it)
 		}
 		{
-			it := primer.header_item_open(gtx)
+			primer.header_item(gtx)
 			primer.header_link(gtx, fmt.tprintf("Home %d", l.home), .Person, 16, key = 5)
-			primer.header_item_close(&it)
 		}
-		primer.header_close(&h)
 	}
 	kitchen.section(gtx, "Overflow", "a 360px bar scrolls its items sideways rather than wrapping them")
 	{
-		r := ui.row_open(gtx)
-		defer ui.close(&r)
-		w := ui.sized_open(gtx, {min = {360, 0}, max = {360, ui.INF}})
-		defer ui.close(&w)
-		h := primer.header_open(gtx)
+		ui.row(gtx)
+		ui.sized(gtx, {min = {360, 0}, max = {360, ui.INF}})
+		primer.header(gtx)
 		for name, i in ([?]string{"Overview", "Repositories", "Projects", "Packages", "Stars"}) {
-			it := primer.header_item_open(gtx, key = u64(i))
+			primer.header_item(gtx, key = u64(i))
 			primer.header_link(gtx, name, key = u64(10 + i))
-			primer.header_item_close(&it)
 		}
-		primer.header_close(&h)
 	}
 }
 
 // region_box stands in for a page region's content: a muted panel h tall
 // with its name, filling the region's width.
 region_box :: proc(gtx: ^ui.Ctx, name: string, h: f32, key: u64 = 0, loc := #caller_location) {
-	col := ui.column_open(gtx, align = .Fill, key = key, loc = loc)
-	defer ui.close(&col)
-	sz := ui.sized_open(gtx, {min = {0, h}, max = {0, h}})
-	defer ui.close(&sz)
-	b := ui.box_open(gtx, {fill = primer.color(.Bg_Color_Muted), outline = primer.color(.Border_Color_Muted), stroke = 1, radius = 6, padding = {12, 8, 12, 8}})
-	defer ui.close(&b)
+	ui.column(gtx, align = .Fill, key = key, loc = loc)
+	ui.sized(gtx, {min = {0, h}, max = {0, h}})
+	ui.box(gtx, {fill = primer.color(.Bg_Color_Muted), outline = primer.color(.Border_Color_Muted), stroke = 1, radius = 6, padding = {12, 8, 12, 8}})
 	base.label(gtx, name, {size = 12, color = primer.color(.Fg_Color_Muted)})
 }
 
@@ -332,8 +300,7 @@ demo_page_header :: proc(gtx: ^ui.Ctx, m: ^Model, title: string, variant: primer
 }
 
 page_page_header :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Regular", "leading action, 16px visual, title, trailing action, then the actions end-aligned; each one title line tall; a 1px rule 8px under it")
 	demo_page_header(gtx, m, "primer/react", .Medium, 1)
 	kitchen.section(gtx, "Large and subtitle", "32px normal on a 48px line; 20px normal")
@@ -377,8 +344,7 @@ demo_page_layout :: proc(gtx: ^ui.Ctx, m: ^Model, position: primer.Pane_Position
 }
 
 page_page_layout :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Regular", "24px padding and gaps from 1012px; the pane at the end behind a line divider centred in two gaps; drag the 5px handle, arrow it, double-click to reset; the pane is sticky as the page scrolls")
 	demo_page_layout(gtx, m, .End, .Line, 900, 1)
 	kitchen.section(gtx, "Narrow (a 600px window)", "below 768px the pane stacks full width, here above the content, behind a filled divider that reaches the page's edges")
@@ -390,8 +356,7 @@ page_page_layout :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	l := &m.layouts
 	kitchen.section(gtx, "Sidebar", "a full-height column outside the container, beside header, content and footer alike; resizable from 256px to the window less 256px behind its line divider")
 	{
-		b := ui.box_open(gtx, {outline = primer.color(.Border_Color_Default), stroke = 1}, key = 3)
-		defer ui.close(&b)
+		ui.box(gtx, {outline = primer.color(.Border_Color_Default), stroke = 1}, key = 3)
 		side := primer.Sidebar{resizable = true, width = &l.sidebar_width, label = "Sidebar splitter"}
 		demo_sidebar_layout(gtx, m, side, fmt.tprintf("Sidebar, %dpx", int(l.sidebar_width)), 3)
 	}
@@ -421,8 +386,7 @@ demo_sidebar_layout :: proc(gtx: ^ui.Ctx, m: ^Model, sidebar: primer.Sidebar, la
 	pl := primer.page_layout_open(gtx, sidebar = sidebar, key = key)
 	primer.page_layout_region_open(&pl, .Sidebar)
 	{
-		col := ui.column_open(gtx, gap = 8, align = .Fill)
-		defer ui.close(&col)
+		ui.column(gtx, gap = 8, align = .Fill)
 		region_box(gtx, label, 120)
 		if sidebar.variant == .Fullscreen && primer.button(gtx, "Close the sidebar", key = key + 100) {
 			l.sidebar_open = false
@@ -445,11 +409,9 @@ demo_sidebar_layout :: proc(gtx: ^ui.Ctx, m: ^Model, sidebar: primer.Sidebar, la
 
 page_split_page_layout :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	l := &m.layouts
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Split", "no padding or gaps: a sticky start pane flush with the edge, line dividers touching the padded header, content and footer")
-	b := ui.box_open(gtx, {outline = primer.color(.Border_Color_Default), stroke = 1})
-	defer ui.close(&b)
+	ui.box(gtx, {outline = primer.color(.Border_Color_Default), stroke = 1})
 	pane := primer.SPLIT_PANE
 	pane.resizable = true
 	pane.width = &l.split_width
@@ -535,23 +497,20 @@ TABLE_COLUMNS := [?]primer.Column {
 
 page_data_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	l := &m.layouts
-	col := ui.column_open(gtx, gap = 10, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Live", "columns sized from their widest cell; activate a header to sort it ascending, again to flip it; the caller orders and pages the rows")
 	{
-		r := ui.wrap_open(gtx, gap = 8, align = .Center)
+		ui.wrap(gtx, gap = 8, align = .Center)
 		if primer.button(gtx, fmt.tprintf("Density: %s", DENSITY_NAMES[l.density]), key = 1) {
 			l.density = primer.Cell_Padding((int(l.density) + 1) % len(primer.Cell_Padding))
 		}
 		if primer.button(gtx, l.loading ? "Show rows" : "Show loading", key = 2) {
 			l.loading = !l.loading
 		}
-		ui.close(&r)
 	}
 	{
-		h := primer.data_table_heading_open(gtx, "Repositories", "Primer's public repositories", divider = true)
+		primer.data_table_heading(gtx, "Repositories", "Primer's public repositories", divider = true)
 		primer.button(gtx, "New repository", .Primary, size = .Small, key = 3)
-		primer.data_table_heading_close(&h)
 	}
 	columns := TABLE_COLUMNS[:]
 	PAGE :: 5

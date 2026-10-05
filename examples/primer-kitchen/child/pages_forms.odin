@@ -49,8 +49,7 @@ INPUT_ROWS := [?]string{"Placeholder", "Text", "Leading icon", "Trailing action"
 
 page_text_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "the well: a 1px border, inset top shadow, 2px ring at -1px on any focus; no hover state")
 	kitchen.state_header(gtx, FIELD_CELL_W)
 	for n, i in INPUT_ROWS {
@@ -80,8 +79,7 @@ page_text_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Sizes", "28px with 3px block padding, 32px, and 40px fixed with 12px visual insets")
 	{
-		r := ui.wrap_open(gtx, gap = 12, align = .Center)
-		defer ui.close(&r)
+		ui.wrap(gtx, gap = 12, align = .Center)
 		sizes := [?]primer.Field_Size{.Small, .Medium, .Large}
 		for s, i in sizes {
 			primer.text_input(gtx, &m.forms.sample, leading = .Mail, size = s, width = 200, key = u64(40 + i))
@@ -89,21 +87,19 @@ page_text_input :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Live", "type, select, Enter submits; the counter turns to error past 20 characters but never blocks")
 	{
-		f := primer.form_control_open(gtx, "Repository name", caption = "Great repository names are short and memorable.", required = true)
+		primer.form_control(gtx, "Repository name", caption = "Great repository names are short and memorable.", required = true)
 		e := primer.text_input(gtx, &m.forms.repo, leading = .Repo, character_limit = 20)
 		if e.submitted {
 			m.forms.submits += 1
 		}
-		primer.form_control_close(gtx, &f)
 	}
 	{
-		f := primer.form_control_open(gtx, "Search")
+		primer.form_control(gtx, "Search")
 		e := primer.text_input(gtx, &m.forms.search, "Find a file…", leading = .Search, action = .X_Circle_Fill, action_name = "Clear", loading = len(m.forms.search.buf) > 3, block = true)
 		if e.action {
 			ui.text_set(&m.forms.search, "")
 			m.forms.clears += 1
 		}
-		primer.form_control_close(gtx, &f)
 	}
 	base_note(gtx, fmt.tprintf("submitted %d times, cleared %d times", m.forms.submits, m.forms.clears))
 }
@@ -115,8 +111,7 @@ base_note :: proc(gtx: ^ui.Ctx, s: string) {
 
 page_textarea :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "TextInput's well, the text padded 12px on 20px lines; the grip drags both axes")
 	kitchen.state_header(gtx, FIELD_CELL_W)
 	rows := [?]string{"Placeholder", "Error", "Contrast"}
@@ -137,14 +132,12 @@ page_textarea :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Live", "Enter adds a line; auto size grows from 3 lines to at most 164px; the counter allows 140")
 	{
-		f := primer.form_control_open(gtx, "Bio", caption = "Grows with its text.")
+		primer.form_control(gtx, "Bio", caption = "Grows with its text.")
 		primer.textarea(gtx, &m.forms.bio, "Tell us about yourself", auto_size = true, min_height = 84, max_height = 164, character_limit = 140, cols = 40)
-		primer.form_control_close(gtx, &f)
 	}
 	{
-		f := primer.form_control_open(gtx, "Notes")
+		primer.form_control(gtx, "Notes")
 		primer.textarea(gtx, &m.forms.notes, "Seven rows, resizable", resize = .Vertical)
-		primer.form_control_close(gtx, &f)
 	}
 }
 
@@ -153,8 +146,7 @@ SIZES := [?]primer.Select_Option{{label = "Small"}, {label = "Medium"}, {label =
 
 page_select :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "TextInput's well, as wide as the widest option, the up-down arrow 4px from the end")
 	kitchen.state_header(gtx, FIELD_CELL_W)
 	rows := [?]string{"Chosen", "Placeholder", "Error", "Small"}
@@ -175,17 +167,14 @@ page_select :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		kitchen.state_row(gtx, m, n, cell, u64(i + 1), FIELD_CELL_W)
 	}
 	kitchen.section(gtx, "Live", "press, Space or Alt+Down opens; Up and Down change it closed; a letter jumps")
-	r := ui.wrap_open(gtx, gap = 24, align = .Start)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 24, align = .Start)
 	{
-		f := primer.form_control_open(gtx, "Base branch", caption = "Grouped, one disabled")
+		primer.form_control(gtx, "Base branch", caption = "Grouped, one disabled")
 		primer.select(gtx, BRANCHES[:], &m.forms.branch)
-		primer.form_control_close(gtx, &f)
 	}
 	{
-		f := primer.form_control_open(gtx, "Size", validation = m.forms.size < 0 ? "Choose a size" : "", required = true)
+		primer.form_control(gtx, "Size", validation = m.forms.size < 0 ? "Choose a size" : "", required = true)
 		primer.select(gtx, SIZES[:], &m.forms.size, "Choose a size", required = true)
-		primer.form_control_close(gtx, &f)
 	}
 }
 
@@ -193,8 +182,7 @@ CHECK_ROWS := [?]string{"Unchecked", "Checked", "Indeterminate", "Labelled"}
 
 page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "16px, no hover or pressed colour; keyboard focus is a 2px outline 2px outside")
 	kitchen.state_header(gtx)
 	for n, i in CHECK_ROWS {
@@ -226,39 +214,33 @@ page_checkbox :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	names := [3]string{"jm", "brain", "review"}
 	for n, i in names {
-		in_ := ui.inset_open(gtx, {24, 0, 0, 0}, key = u64(70 + i))
+		ui.inset(gtx, {24, 0, 0, 0}, key = u64(70 + i))
 		primer.checkbox(gtx, &f.parent_kids[i], n, key = u64(80 + i))
-		ui.close(&in_)
 	}
 }
 
 page_checkbox_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	f := &m.forms
 	kitchen.section(gtx, "Live", "a semibold legend, a 14px caption, options 8px apart, one validation message")
 	{
-		g := primer.checkbox_group_open(gtx, "Notifications", caption = "Choose what to hear about", validation = f.news || f.mentions || f.digest ? "" : "Choose at least one", required = true)
+		primer.checkbox_group(gtx, "Notifications", caption = "Choose what to hear about", validation = f.news || f.mentions || f.digest ? "" : "Choose at least one", required = true)
 		primer.checkbox(gtx, &f.news, "Releases")
 		primer.checkbox(gtx, &f.mentions, "Mentions", caption = "When someone @-mentions you")
 		primer.checkbox(gtx, &f.digest, "Weekly digest")
-		primer.checkbox_group_close(gtx, &g)
 	}
 	kitchen.section(gtx, "Disabled and success", "a disabled group mutes its legend and disables every checkbox")
-	r := ui.wrap_open(gtx, gap = 48, align = .Start)
-	defer ui.close(&r)
+	ui.wrap(gtx, gap = 48, align = .Start)
 	{
-		g := primer.checkbox_group_open(gtx, "Archived", disabled = true)
+		primer.checkbox_group(gtx, "Archived", disabled = true)
 		primer.checkbox(gtx, &f.news, "Releases", key = 1)
 		primer.checkbox(gtx, &f.mentions, "Mentions", key = 2)
-		primer.checkbox_group_close(gtx, &g)
 	}
 	{
-		g := primer.checkbox_group_open(gtx, "Labels", validation = "Saved", status = .Success)
+		primer.checkbox_group(gtx, "Labels", validation = "Saved", status = .Success)
 		primer.checkbox(gtx, &f.parent_kids[0], "bug", key = 3)
 		primer.checkbox(gtx, &f.parent_kids[1], "enhancement", key = 4)
-		primer.checkbox_group_close(gtx, &g)
 	}
 }
 
@@ -266,8 +248,7 @@ RADIO_ROWS := [?]string{"Unchecked", "Checked", "Labelled"}
 
 page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "16px; checked thickens the ring to 4px around an 8px dot")
 	kitchen.state_header(gtx)
 	for n, i in RADIO_ROWS {
@@ -294,12 +275,11 @@ page_radio :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_radio_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	f := &m.forms
 	kitchen.section(gtx, "Live", "click one, then Up/Down/Left/Right move and check, wrapping past the disabled one")
 	{
-		g := primer.radio_group_open(gtx, "Visibility", caption = "Who can see this repository", validation = f.visibility == 2 ? "Internal needs an enterprise" : "", required = true)
+		primer.radio_group(gtx, "Visibility", caption = "Who can see this repository", validation = f.visibility == 2 ? "Internal needs an enterprise" : "", required = true)
 		names := [?]string{"Public", "Private", "Internal", "Secret"}
 		captions := [?]string{"Anyone on the internet", "You choose who can see it", "", ""}
 		for n, i in names {
@@ -307,16 +287,14 @@ page_radio_group :: proc(gtx: ^ui.Ctx, m: ^Model) {
 				f.visibility = i
 			}
 		}
-		primer.radio_group_close(gtx, &g)
 	}
 	kitchen.section(gtx, "Disabled", "the legend mutes to --fgColor-muted; the options' labels are --control-fgColor-disabled")
 	{
-		g := primer.radio_group_open(gtx, "Merge method", disabled = true)
+		primer.radio_group(gtx, "Merge method", disabled = true)
 		names := [?]string{"Merge", "Squash"}
 		for n, i in names {
 			primer.radio(gtx, i == 0, n, key = u64(10 + i))
 		}
-		primer.radio_group_close(gtx, &g)
 	}
 }
 
@@ -324,8 +302,7 @@ SWITCH_ROWS := [?]string{"Off", "On", "Small", "Loading", "Label at end"}
 
 page_toggle_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "64 by 32px at the 6px radius; hover, keyboard focus and press change only the track; outline 3px outside")
 	kitchen.state_header(gtx, FIELD_CELL_W)
 	for n, i in SWITCH_ROWS {
@@ -348,8 +325,7 @@ page_toggle_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Live", "the status label toggles too and never changes width")
 	f := &m.forms
-	r := ui.row_open(gtx, gap = 16, align = .Center)
-	defer ui.close(&r)
+	ui.row(gtx, gap = 16, align = .Center)
 	primer.toggle_switch(gtx, &f.notify, "Notifications")
 	primer.toggle_switch(gtx, &f.autosave, "Autosave", label_on = "Enabled", label_off = "Disabled")
 	if primer.toggle_switch(gtx, &f.saving, "Saving", loading = f.saving) {
@@ -362,29 +338,24 @@ page_toggle_switch :: proc(gtx: ^ui.Ctx, m: ^Model) {
 
 page_form_control :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 16)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 16)
 	f := &m.forms
 	kitchen.section(gtx, "Vertical", "label, input, validation, caption, 4px apart; a press on the label focuses the input")
 	{
-		fc := primer.form_control_open(gtx, "Email", caption = "We never share it", validation = len(f.email.buf) > 0 && !valid_email(ui.text_string(&f.email)) ? "Enter a whole address" : "", required = true)
+		primer.form_control(gtx, "Email", caption = "We never share it", validation = len(f.email.buf) > 0 && !valid_email(ui.text_string(&f.email)) ? "Enter a whole address" : "", required = true)
 		primer.text_input(gtx, &f.email, "you@example.com")
-		primer.form_control_close(gtx, &fc)
 	}
 	{
-		fc := primer.form_control_open(gtx, "Theme", validation = "Saved", status = .Success)
+		primer.form_control(gtx, "Theme", validation = "Saved", status = .Success)
 		primer.select(gtx, SIZES[:], &f.theme)
-		primer.form_control_close(gtx, &fc)
 	}
 	{
-		fc := primer.form_control_open(gtx, "Disabled", caption = "Greys the label and caption", disabled = true)
+		primer.form_control(gtx, "Disabled", caption = "Greys the label and caption", disabled = true)
 		primer.text_input(gtx, &f.sample)
-		primer.form_control_close(gtx, &fc)
 	}
 	{
-		fc := primer.form_control_open(gtx, "Hidden label", caption = "The label names the field but draws nothing", hide_label = true)
+		primer.form_control(gtx, "Hidden label", caption = "The label names the field but draws nothing", hide_label = true)
 		primer.text_input(gtx, &f.empty, "Search…", leading = .Search)
-		primer.form_control_close(gtx, &fc)
 	}
 	kitchen.section(gtx, "Horizontal", "a checkbox or radio: box, then label (normal weight) and caption 8px after it")
 	primer.checkbox(gtx, &f.terms, "Accept the terms", caption = "You can change this later", required = true)
@@ -413,8 +384,7 @@ FILTERS := [?]primer.Segment{{label = "Open"}, {label = "Closed"}, {label = "All
 
 page_segmented_control :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	forms_seed(&m.forms)
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "the state shows on the first unselected segment; each segment reserves its semibold width")
 	kitchen.state_header(gtx, 260)
 	for n, i in SEGMENT_ROWS {

@@ -53,8 +53,7 @@ list_box :: proc(gtx: ^ui.Ctx, w: f32, key: u64) -> ui.Inset {
 ITEM_VARIANT_NAMES := [?]string{"Default", "Danger", "Active", "Selected (single)", "Loading"}
 
 page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "States", "32px rows, 6px by 8px padding; hover fills --control-transparent-bgColor-hover, active adds the 4px accent bar")
 	kitchen.state_header(gtx)
 	for n, i in ITEM_VARIANT_NAMES {
@@ -69,8 +68,7 @@ page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	kitchen.section(gtx, "Anatomy", "selection, leading visual, label, inline or block description, trailing visual; 8px between present columns")
 	ls := &m.lists
 	{
-		r := ui.row_open(gtx, gap = 24, align = .Start)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Start)
 		{
 			b := list_box(gtx, 320, 1)
 			l := primer.action_list_open(gtx, heading = "Repository", key = 2)
@@ -106,8 +104,7 @@ page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Selection", "a checkmark (single), radio, or checkbox (multiple) column, reserved on every item")
 	{
-		r := ui.row_open(gtx, gap = 24, align = .Start)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24, align = .Start)
 		names := [4]string{"Bug", "Feature", "Question", "Documentation"}
 		{
 			b := list_box(gtx, 220, 5)
@@ -150,8 +147,7 @@ page_action_list :: proc(gtx: ^ui.Ctx, m: ^Model) {
 MENU_VIEWS := [3]string{"Comfortable", "Compact", "Spacious"}
 
 page_action_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Anchor", "ActionMenu.Button: a button with a trailing triangle-down; expanded, it keeps its pressed fill until hovered")
 	kitchen.state_header(gtx)
 	for n, i in ([2]string{"Closed", "Open"}) {
@@ -163,8 +159,7 @@ page_action_menu :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Menu", "the overlay surface around an inset menu list: 192px wide at least, 8px above and below, 32px items")
 	{
-		band := ui.sized_open(gtx, {min = {0, 250}, max = {ui.INF, 250}}, key = 3)
-		defer ui.close(&band)
+		ui.sized(gtx, {min = {0, 250}, max = {ui.INF, 250}}, key = 3)
 		open := true
 		if primer.overlay(gtx, &open, {0, 4}, focus = {prevent = true}, key = 4) {
 			l := primer.action_list_open(gtx, role = .Menu, selection = .Single, name = "View", key = 5)
@@ -225,24 +220,21 @@ remove_label :: proc(f: ^Token_Demo, i: int) {
 }
 
 page_text_input_with_tokens :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	ls := &m.lists
 	if !ls.seeded {
 		seed_lists(ls)
 	}
 	kitchen.section(gtx, "Sizes", "tokens 16, 20, 24 or 32px, 4px apart; small and medium put the field in its 28px size; the field pads 6px by 12px")
 	for name, i in TOKEN_SIZE_NAMES {
-		r := ui.row_open(gtx, gap = 16, align = .Center, key = u64(i + 1))
+		ui.row(gtx, gap = 16, align = .Center, key = u64(i + 1))
 		{
-			b := ui.sized_open(gtx, {min = {110, 0}, max = {110, ui.INF}})
+			ui.sized(gtx, {min = {110, 0}, max = {110, ui.INF}})
 			base.label(gtx, name, {size = 12, color = base.color(.Muted)})
-			ui.close(&b)
 		}
 		f := &ls.sizes[i]
 		res := primer.text_input_with_tokens(gtx, &f.text, f.labels[:f.n], primer.Token_Size(i), placeholder = "Add a label", width = 360, key = u64(i + 1))
 		remove_label(f, res.removed)
-		ui.close(&r)
 	}
 	kitchen.section(gtx, "Visuals, validation and collapse", "leading and trailing octicons; error borders the field; visible_count shows +N until the field has focus")
 	{
@@ -258,26 +250,23 @@ page_text_input_with_tokens :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_autocomplete :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	ls := &m.lists
 	kitchen.section(gtx, "Single", "typing opens matches; Up and Down move the highlight, which completes inline; Enter chooses and writes its text")
 	{
-		b := ui.sized_open(gtx, {min = {300, 0}, max = {300, ui.INF}})
+		ui.sized(gtx, {min = {300, 0}, max = {300, ui.INF}})
 		r := primer.autocomplete(gtx, &ls.fruit_text, FRUITS[:], ls.fruit[:], placeholder = "Choose a fruit", block = true)
 		if r.changed {
 			ls.said = "chose a fruit"
 		}
-		ui.close(&b)
 	}
 	kitchen.section(gtx, "Multiple, with tokens", "choices become tokens; choosing clears the input and keeps the menu open; Backspace in the empty input takes the last back")
 	{
-		b := ui.sized_open(gtx, {min = {360, 0}, max = {360, ui.INF}})
+		ui.sized(gtx, {min = {360, 0}, max = {360, ui.INF}})
 		r := primer.autocomplete(gtx, &ls.tag_text, FRUITS[:], ls.tags[:], tokens = true, placeholder = "Add fruits", add_new = "Add a new fruit", block = true)
 		if r.added {
 			ls.said = "add new"
 		}
-		ui.close(&b)
 	}
 	said(gtx, ls.said)
 }
@@ -342,12 +331,11 @@ filtered :: proc(gtx: ^ui.Ctx, text: string, sel: []bool) -> (items: []primer.Se
 }
 
 page_select_panel :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	ls := &m.lists
 	kitchen.section(gtx, "Multiple, anchored", "a filter over grouped checkbox options; focus stays in the filter, Up and Down move the highlight, Enter toggles")
 	{
-		st := ui.stack_open(gtx)
+		ui.stack(gtx)
 		primer.select_panel_button(gtx, &ls.panel, PANEL_LABELS[:], ls.panel_sel[:], "Labels", leading = .Tag)
 		anchor := ui.last_widget(gtx)
 		items, flags, owners := filtered(gtx, ui.text_string(&ls.panel_filter), ls.panel_sel[:])
@@ -358,11 +346,10 @@ page_select_panel :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		if r.closed != .None {
 			ls.said = fmt.aprintf("closed by %v", r.closed)
 		}
-		ui.close(&st)
 	}
 	kitchen.section(gtx, "Single, anchored", "a checkmark column; choosing selects and closes, choosing the selection clears it")
 	{
-		st := ui.stack_open(gtx)
+		ui.stack(gtx)
 		primer.select_panel_button(gtx, &ls.single_panel, PANEL_LABELS[:], ls.single_sel[:], "Choose a label")
 		anchor := ui.last_widget(gtx)
 		items, flags, owners := filtered(gtx, ui.text_string(&ls.single_filter), ls.single_sel[:])
@@ -370,11 +357,10 @@ page_select_panel :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		for f, i in flags {
 			ls.single_sel[owners[i]] = f
 		}
-		ui.close(&st)
 	}
 	kitchen.section(gtx, "Single, modal", "centred over a backdrop; radios hold the choice until Save")
 	{
-		st := ui.stack_open(gtx)
+		ui.stack(gtx)
 		primer.select_panel_button(gtx, &ls.modal_panel, PANEL_LABELS[:], ls.modal_sel[:], "Choose in a modal")
 		anchor := ui.last_widget(gtx)
 		items, flags, owners := filtered(gtx, ui.text_string(&ls.modal_filter), ls.modal_sel[:])
@@ -382,7 +368,6 @@ page_select_panel :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		for f, i in flags {
 			ls.modal_sel[owners[i]] = f
 		}
-		ui.close(&st)
 	}
 	said(gtx, ls.said)
 }

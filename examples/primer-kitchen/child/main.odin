@@ -140,12 +140,10 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	primer.use_fonts({0, 1, 2, 3})
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.constraints.max.x, gtx.constraints.max.y}, m.scheme[.Bg_Color_Default])
 
-	r := ui.row_open(gtx, align = .Fill)
-	defer ui.close(&r)
+	ui.row(gtx, align = .Fill)
 	nav(gtx, m)
 	ui.flexible(gtx, 1)
-	body := ui.column_open(gtx)
-	defer ui.close(&body)
+	ui.column(gtx)
 	app_bar(gtx, m)
 	ui.flexible(gtx, 1)
 	{
@@ -156,19 +154,15 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		}
 		at := clamp(m.page, 0, len(PAGES) - 1)
 		p := PAGES[at]
-		ps := ui.scope_open(gtx, at)
-		defer ui.close(&ps)
+		ui.scope(gtx, at)
 		// The octicon page is given the window's height, not a scroll
 		// box, and scrolls itself, in m.scroll[m.page].
 		if p.draw == page_octicons {
-			page := ui.inset_open(gtx, {24, 8, 24, 0})
+			ui.inset(gtx, {24, 8, 24, 0})
 			p.draw(gtx, m)
-			ui.close(&page)
 		} else {
-			sb := ui.scroll_box_open(gtx, offset = &m.scroll[at])
-			defer ui.close(&sb)
-			page := ui.inset_open(gtx, {24, 8, 24, 48})
-			defer ui.close(&page)
+			ui.scroll_box(gtx, offset = &m.scroll[at])
+			ui.inset(gtx, {24, 8, 24, 48})
 			if p.draw != nil {
 				p.draw(gtx, m)
 			} else {
@@ -184,14 +178,11 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 // for primer.nav_list until that component is built.
 nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	s := &m.scheme
-	panel := ui.sized_open(gtx, {min = {NAV_WIDTH, 0}, max = {NAV_WIDTH, ui.INF}})
-	defer ui.close(&panel)
+	ui.sized(gtx, {min = {NAV_WIDTH, 0}, max = {NAV_WIDTH, ui.INF}})
 	ops.fill(gtx.scene, ops.Rect{0, 0, NAV_WIDTH, gtx.constraints.max.y}, s[.Bg_Color_Muted])
 	ops.fill(gtx.scene, ops.Rect{NAV_WIDTH - 1, 0, 1, gtx.constraints.max.y}, s[.Border_Color_Default])
-	sb := ui.scroll_box_open(gtx)
-	defer ui.close(&sb)
-	col := ui.column_open(gtx, gap = 2, align = .Fill)
-	defer ui.close(&col)
+	ui.scroll_box(gtx)
+	ui.column(gtx, gap = 2, align = .Fill)
 	ui.spacer(gtx, 12)
 	for p, i in PAGES {
 		if p.head {
@@ -201,21 +192,18 @@ nav :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			ui.close(&row)
 			continue
 		}
-		row := ui.inset_open(gtx, {8, 0, 8, 0}, key = u64(i))
+		ui.inset(gtx, {8, 0, 8, 0}, key = u64(i))
 		variant := i == m.page ? primer.Button_Variant.Default : .Invisible
 		if primer.button(gtx, p.name, variant, .Small, block = true, align = .Start, key = u64(i)) {
 			m.page = i
 		}
-		ui.close(&row)
 	}
 }
 
 // app_bar is the page title and the theme button.
 app_bar :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	bar := ui.inset_open(gtx, {24, 12, 16, 8})
-	defer ui.close(&bar)
-	r := ui.row_open(gtx, align = .Center)
-	defer ui.close(&r)
+	ui.inset(gtx, {24, 12, 16, 8})
+	ui.row(gtx, align = .Center)
 	base.label(gtx, PAGES[clamp(m.page, 0, len(PAGES) - 1)].name, {size = 20}, heading = true)
 	ui.fill_space(gtx)
 	names := primer.THEME_NAMES

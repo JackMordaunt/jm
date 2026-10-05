@@ -91,8 +91,7 @@ Icon_Grid :: struct {
 page_octicons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	ic := &m.icons
 	icons_seed(ic)
-	col := ui.column_open(gtx, gap = 16, align = .Fill)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 16, align = .Fill)
 	edit := primer.text_input(
 		gtx,
 		&ic.search,
@@ -133,10 +132,8 @@ page_octicons :: proc(gtx: ^ui.Ctx, m: ^Model) {
 @(private = "file")
 icon_row :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 	g := (^Icon_Grid)(user)
-	pad := ui.inset_open(gtx, {0, 0, 0, 16})
-	defer ui.close(&pad)
-	r := ui.row_open(gtx, gap = ICON_GAP)
-	defer ui.close(&r)
+	ui.inset(gtx, {0, 0, 0, 16})
+	ui.row(gtx, gap = ICON_GAP)
 	for n in g.shown[i * g.columns:min((i + 1) * g.columns, len(g.shown))] {
 		icon_tile(gtx, g.m, n)
 	}
@@ -145,14 +142,12 @@ icon_row :: proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
 // icon_tile is one icon centred over its name and number.
 @(private = "file")
 icon_tile :: proc(gtx: ^ui.Ctx, m: ^Model, n: Named_Icon) {
-	tile := ui.sized_open(
+	ui.sized(
 		gtx,
 		{min = {ICON_TILE_W, 0}, max = {ICON_TILE_W, ui.INF}},
 		key = u64(n.icon),
 	)
-	defer ui.close(&tile)
-	col := ui.column_open(gtx, gap = 6, align = .Center)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 6, align = .Center)
 	icon_glyph(gtx, n.icon, m.scheme[.Fg_Color_Default])
 	base.label(gtx, n.name, {size = 12})
 	base.label(gtx, fmt.tprint(int(n.icon)), {size = 12, color = m.scheme[.Fg_Color_Muted]})

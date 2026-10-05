@@ -38,18 +38,15 @@ region :: proc(gtx: ^ui.Ctx, h: f32, key: u64) -> ui.Inset {
 // lines is a column of muted text lines, an overlay's stand-in content.
 @(private = "file")
 lines :: proc(gtx: ^ui.Ctx, pad: f32, texts: ..string) {
-	pad_box := ui.inset_open(gtx, ui.pad_all(pad))
-	defer ui.close(&pad_box)
-	col := ui.column_open(gtx, gap = 4)
-	defer ui.close(&col)
+	ui.inset(gtx, ui.pad_all(pad))
+	ui.column(gtx, gap = 4)
 	for t, i in texts {
 		base.label(gtx, t, {size = 14, color = i == 0 ? base.color(.Fg) : base.color(.Muted)}, key = u64(i + 1))
 	}
 }
 
 page_overlay :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Widths", "--overlay-bgColor, 12px corners, --shadow-floating-small; small 256, medium 320, auto hugs from 192")
 	{
 		band := region(gtx, 150, 1)
@@ -74,13 +71,11 @@ page_overlay :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	trigger := ui.last_widget(gtx)
 	ov := primer.overlay_open(gtx, &o.overlay, {0, trigger.size.y + 4}, width = .Medium, slide = primer.Anchor_Side.Outside_Bottom, ignore = {0, 0, trigger.size.x, trigger.size.y}, role = .Dialog, name = "Live overlay")
 	if ov.visible {
-		pad_box := ui.inset_open(gtx, ui.pad_all(12))
-		c := ui.column_open(gtx, gap = 8, align = .Fill)
+		ui.inset(gtx, ui.pad_all(12))
+		ui.column(gtx, gap = 8, align = .Fill)
 		base.label(gtx, "Focus moved to the first button.")
 		primer.button(gtx, "First", block = true)
 		primer.button(gtx, "Second", block = true)
-		ui.close(&c)
-		ui.close(&pad_box)
 	}
 	if ov.dismissed != .None {
 		o.said = fmt.aprintf("closed by %v", ov.dismissed)
@@ -101,22 +96,19 @@ ANCHOR_SIDES := [?]primer.Anchor_Side{.Inside_Center, .Outside_Bottom, .Outside_
 ANCHOR_SIDE_NAMES := [?]string{"Inside center", "Outside bottom", "Outside top", "Outside right"}
 
 page_anchored_overlay :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Sides", "4px from the anchor, start-aligned; it flips side, then alignment, then clamps when clipped")
 	{
 		ui.spacer(gtx, 110)
-		r := ui.row_open(gtx, gap = 220, align = .Center)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 220, align = .Center)
 		for side, i in ANCHOR_SIDES {
-			st := ui.stack_open(gtx, key = u64(20 + i))
+			ui.stack(gtx, key = u64(20 + i))
 			primer.button(gtx, ANCHOR_SIDE_NAMES[i], key = u64(30 + i))
 			anchor := ui.last_widget(gtx)
 			open := true
 			if primer.anchored_overlay(gtx, &open, anchor, side, focus = {prevent = true}, trap = false, key = u64(40 + i)) {
 				lines(gtx, 12, ANCHOR_SIDE_NAMES[i], "hangs from its button")
 			}
-			ui.close(&st)
 		}
 	}
 	ui.spacer(gtx, 110)
@@ -129,16 +121,14 @@ page_anchored_overlay :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	anchor := ui.last_widget(gtx)
 	a := primer.anchored_overlay_open(gtx, &o.menu, anchor, width = .Small, role = .Menu, name = "Menu")
 	if a.visible {
-		pad_box := ui.inset_open(gtx, ui.pad_all(8))
-		c := ui.column_open(gtx, gap = 2, align = .Fill)
+		ui.inset(gtx, ui.pad_all(8))
+		ui.column(gtx, gap = 2, align = .Fill)
 		for item, i in ([3]string{"Copy link", "Quote reply", "Report"}) {
 			if primer.button(gtx, item, .Invisible, block = true, align = .Start, key = u64(60 + i)) {
 				o.menu = false
 				o.said = fmt.aprintf("chose %s", item)
 			}
 		}
-		ui.close(&c)
-		ui.close(&pad_box)
 	}
 	if a.dismissed != .None {
 		o.said = fmt.aprintf("closed by %v", a.dismissed)
@@ -152,8 +142,7 @@ CARETS := [?]primer.Popover_Caret{.Top, .Bottom, .Left, .Right, .Top_Left, .Bott
 CARET_NAMES := [?]string{"Top", "Bottom", "Left", "Right", "Top left", "Bottom right", "Left bottom", "Right top"}
 
 page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Carets", "24px padding, 6px corners; the caret's 16 by 8px outer triangle is --borderColor-default, its inner one the card's fill")
 	{
 		band := region(gtx, 300, 2)
@@ -169,7 +158,7 @@ page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	}
 	kitchen.section(gtx, "Live", "the caller places it; Escape or a press outside it closes it")
 	o := &m.overlays
-	st := ui.stack_open(gtx)
+	ui.stack(gtx)
 	if primer.button(gtx, "Show tip") {
 		o.popover = !o.popover
 	}
@@ -178,32 +167,27 @@ page_popover :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		base.label(gtx, "New: popovers", {size = 16})
 		base.label(gtx, "They point at what they explain.", {size = 14, color = base.color(.Muted)})
 	}
-	ui.close(&st)
 }
 
 DIRECTIONS := [?]primer.Tooltip_Direction{.N, .NE, .E, .SE, .S, .SW, .W, .NW}
 DIRECTION_NAMES := [?]string{"North", "North east", "East", "South east", "South", "South west", "West", "North west"}
 
 page_tooltip :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	kitchen.section(gtx, "Directions", "hover or Tab to one: a 50ms delay, 4px away, --tooltip-bgColor, 12px text centred in lines up to 250px")
 	{
 		ui.spacer(gtx, 24)
-		w := ui.wrap_open(gtx, gap = 48, line_gap = 56)
-		defer ui.close(&w)
+		ui.wrap(gtx, gap = 48, line_gap = 56)
 		for d, i in DIRECTIONS {
-			st := ui.stack_open(gtx, key = u64(90 + i))
+			ui.stack(gtx, key = u64(90 + i))
 			primer.button(gtx, DIRECTION_NAMES[i], key = u64(100 + i))
 			primer.tooltip(gtx, DIRECTION_NAMES[i], ui.last_widget(gtx), direction = d)
-			ui.close(&st)
 		}
 	}
 	kitchen.section(gtx, "Wrapping and delays", "long text wraps into balanced lines; medium waits 400ms, long 1200ms")
 	{
 		ui.spacer(gtx, 8)
-		r := ui.row_open(gtx, gap = 24)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 24)
 		st := ui.stack_open(gtx, key = 110)
 		primer.button(gtx, "Long text", key = 111)
 		primer.tooltip(gtx, "Tooltips wrap by word once they reach 250px, and balance their lines so the last is not left alone.", ui.last_widget(gtx))
@@ -212,16 +196,14 @@ page_tooltip :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		primer.button(gtx, "Medium delay", key = 113)
 		primer.tooltip(gtx, "Shown after 400ms", ui.last_widget(gtx), delay = .Medium)
 		ui.close(&st2)
-		st3 := ui.stack_open(gtx, key = 114)
+		ui.stack(gtx, key = 114)
 		primer.button(gtx, "Long delay", key = 115)
 		primer.tooltip(gtx, "Shown after 1200ms", ui.last_widget(gtx), delay = .Long)
-		ui.close(&st3)
 	}
 	kitchen.section(gtx, "Icon buttons", "an IconButton shows its name, or its description, as its tooltip")
 	{
 		ui.spacer(gtx, 8)
-		r := ui.row_open(gtx, gap = 12)
-		defer ui.close(&r)
+		ui.row(gtx, gap = 12)
 		primer.icon_button(gtx, .Pencil, "Edit", key = 120)
 		primer.icon_button(gtx, .Trash, "Delete", .Danger, description = "Deletes the file for everyone", key = 121)
 		primer.icon_button(gtx, .Kebab_Horizontal, "More options", .Invisible, tooltip_direction = .E, key = 122)
@@ -232,13 +214,11 @@ page_tooltip :: proc(gtx: ^ui.Ctx, m: ^Model) {
 DIALOG_KINDS := [?]string{"Default", "Small, subtitle", "Large, top", "Left sheet", "Right sheet", "Fixed height"}
 
 page_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	o := &m.overlays
 	kitchen.section(gtx, "Kinds", "a modal over a translucent backdrop; centred ones scale in from 0.5, sheets slide in over 250ms")
 	{
-		w := ui.wrap_open(gtx, gap = 12)
-		defer ui.close(&w)
+		ui.wrap(gtx, gap = 12)
 		for k, i in DIALOG_KINDS {
 			if primer.button(gtx, k, key = u64(130 + i)) {
 				o.dialog, o.dialog_kind = true, i
@@ -259,13 +239,12 @@ page_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	subtitle := k == 1 ? "A smaller muted line under the title" : ""
 	dl := primer.dialog_open(gtx, &o.dialog, "Edit profile", subtitle, buttons[:], width[k], height = height[k], position = position[k], align = align[k])
 	if dl.visible {
-		c := ui.column_open(gtx, gap = 8)
+		ui.column(gtx, gap = 8)
 		base.label(gtx, "The body pads 16px and scrolls.")
 		n := k == 5 ? 30 : 3
 		for i in 0 ..< n {
 			base.label(gtx, fmt.tprintf("Line %d of the body.", i + 1), {color = base.color(.Muted)}, key = u64(i + 1))
 		}
-		ui.close(&c)
 	}
 	if dl.dismissed != .None {
 		o.said = fmt.aprintf("closed by %v", dl.dismissed)
@@ -285,13 +264,11 @@ page_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
 CONFIRM_KINDS := [?]string{"Confirm", "Delete (danger)", "Loading"}
 
 page_confirmation_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	o := &m.overlays
 	kitchen.section(gtx, "Kinds", "320px wide; confirm takes focus, cancel does when confirm is danger")
 	{
-		w := ui.wrap_open(gtx, gap = 12)
-		defer ui.close(&w)
+		ui.wrap(gtx, gap = 12)
 		for k, i in CONFIRM_KINDS {
 			if primer.button(gtx, k, key = u64(150 + i)) {
 				o.confirm, o.confirm_kind = true, i
@@ -311,8 +288,7 @@ page_confirmation_dialog :: proc(gtx: ^ui.Ctx, m: ^Model) {
 }
 
 page_details :: proc(gtx: ^ui.Ctx, m: ^Model) {
-	col := ui.column_open(gtx, gap = 10)
-	defer ui.close(&col)
+	ui.column(gtx, gap = 10)
 	o := &m.overlays
 	kitchen.section(gtx, "Disclosure", "Details draws nothing itself: the summary is the caller's button, the content shows only while open")
 	labels := [3]string{"Show more", "Advanced settings", "Closes on a press outside"}
