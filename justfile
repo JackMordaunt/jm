@@ -1028,7 +1028,9 @@ gallery-test: blend2d kb
 
 # examples/files: a file browser over the real filesystem, folders read
 # and thumbnails made on workers as they come into view, a double click
-# entering a folder or opening a file with the system.
+# entering a folder or opening a file with the system; it renames, makes
+# folders, copies, moves, trashes and undoes, and sees changes made by
+# other applications.
 #
 # Build and open the file browser on a folder, the home folder by default
 [group('ui/example')]
@@ -1043,7 +1045,7 @@ files-test: sqlite blend2d kb
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p build/test
-    for p in examples/files/shapes examples/files/fs examples/files/store examples/files/view examples/files/app; do
+    for p in examples/files/naming examples/files/placement examples/files/protection examples/files/logic examples/files/fs examples/files/store examples/files/view examples/files/app; do
       {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 

@@ -50,29 +50,48 @@ Every screenshot here is a real app rendered headlessly by jm itself.
 
 <img src="images/files.png" alt="The files app: a sidebar of places, a sortable table with thumbnails, and a details card" width="100%">
 
-A file browser built from Fluent's own parts: a breadcrumb toolbar with search, a sortable table
-with thumbnails, a details card, and a sidebar of places, pins and recent folders. Listings and
-thumbnails load on worker threads as they come into view. `just files [path]` ·
-`examples/files`
+A file browser built from Fluent's own parts: a breadcrumb toolbar with the actions and search, a
+sortable table with thumbnails, a details card, and a sidebar of places, pins and recent folders. It
+renames, makes folders, copies, moves and moves to the Trash, asks when a paste would collide, and
+undoes. Listings and thumbnails load on worker threads as they come into view, and a folder shown
+updates when another application changes it. `just files [path]` · `examples/files`
 
 <details>
 <summary>How it works</summary>
 
 A folder's listing and each thumbnail are needs, read and made on worker threads as they come into
 view, with Blend2D decoding the pictures. A double click on a folder goes into it, keeping the old
-listing drawn until the new one lands. A double click on a file is a command the application
-carries out by asking the system to open it.
+listing drawn until the new one lands. The mouse's back and forward buttons, Alt with an arrow, and
+the toolbar's buttons walk the folders visited.
 
-The mouse's back and forward buttons, Alt with an arrow, and the toolbar's buttons walk the
-folders visited. The side buttons reach the ui as keys the frame asks for app-wide, as a browser
-takes them.
+Every change is a command the ui sends without knowing whether it can be done, because the listing
+it read may already be stale. The application finds out. It gathers the facts the command needs from
+the filesystem and from SQLite. Three pure domains judge them: `naming` (is this a name the system
+accepts, and is it taken?), `placement` (is this paste a rename, a copy, or a copy then a trash?) and
+`protection` (is this a folder a slip of the mouse must not break?). `logic` turns the verdicts into
+a plan of effects, and the host carries the plan out in a fixed order. Filesystem effects go first,
+one at a time, each through a primitive that fails rather than replaces (`renamex_np`, `renameat2`,
+`MoveFileExW`). Then the store's effects commit in one transaction: pins follow a renamed folder,
+and the journal records what Undo needs. Undo is a command like any other: it checks that the world
+still matches what the change left, and refuses with a reason if it does not.
 
-Pins and visits are commands the application keeps in SQLite on its own thread, a pinned pipeline
-stage as in the todo app. Its commit hook re-runs the pins query, so a pin shows the moment it is
-committed. Recent is a snapshot from when the sidebar first asked, so it holds still as you click.
+A paste whose name is taken asks Replace, Keep both or Skip. The answer is a new command, enriched
+and decided again against the files as they are then. Copies run on a thread of their own with
+progress and a Stop button. A folder shown is polled for change every half second, and the
+application relists the folders its own changes touch at once.
+
+The window can't be made smaller than 480 by 360 points, and every size from there up lays out
+whole, as the Finder's does. The view plans the frame from the window's width before drawing. The
+sidebar moves into a drawer below 760 points, the details pane goes when the table would be left too
+little, and the table drops its Modified and then its Size column. Toolbar actions fold into a
+"More" menu in a fixed order, measured with `fluent.button_size`. Search is a box when there is room
+and a button that opens one when there isn't, displacing actions as it opens. The path bar, pinned
+under the content, folds crumbs from the root to their icons. A hovered crumb shows its name, and the
+crumbs after it make room, so it stays under the pointer. A test lays the view out at every width
+from 480 to 1600 and checks that every action stays reachable and none is squeezed.
 
 `just files` opens the home folder, `just files <path>` another, and `just files-test` runs its
-suites, the last on a real folder.
+suites, the last on real folders.
 
 </details>
 

@@ -1,9 +1,11 @@
 /*
-Package shapes is the file browser's contract: a folder's listing and a
-file's thumbnail as the ui needs them, the statistics for its header, and
-the one command the application processes, opening a file.
+Package query is what the file browser's ui may read: each query is a
+pair, the params a need asks with and the result it is answered with,
+named Name and Name_Result. The view needs these; the host answers them
+from the filesystem, the store, or the application's memory. It imports
+nothing.
 */
-package files_shapes
+package files_query
 
 // Listing is the entries of a folder.
 Listing :: struct {
@@ -58,12 +60,12 @@ Pins_Result :: struct {
 	items: []Place,
 }
 
-// Recent is the folders entered and files opened lately, newest first,
+// Recent_Places is the folders entered and files opened lately, newest first,
 // as of when it was first asked for: a snapshot the sidebar keeps still
 // while the application runs, not a list that jumps with every click.
-Recent :: struct {}
+Recent_Places :: struct {}
 
-Recent_Result :: struct {
+Recent_Places_Result :: struct {
 	items: []Place,
 }
 
@@ -77,24 +79,27 @@ Stats_Result :: struct {
 	pending:   int,
 }
 
-// Open asks the system to open a file with its default application.
-Open :: struct {
-	path: string,
+// Activity is what the application is doing and what went wrong: the
+// operations running or waiting on an answer, the problems not yet
+// dismissed, and what Undo would undo.
+Activity :: struct {}
+
+// Operation is a long copy or move, or a question a paste asked.
+Operation :: struct {
+	id:       u64,
+	label:    string,
+	done:     i64, // bytes copied so far
+	total:    i64, // bytes to copy, 0 until counted
+	question: string, // set while the operation waits on a files.Resolve
 }
 
-// Visited says a folder was entered or a file opened, for Recent.
-Visited :: struct {
-	path: string,
-	name: string,
-	dir:  bool,
+Problem :: struct {
+	id:      u64,
+	message: string,
 }
 
-// Pin adds a folder to the sidebar; Unpin takes it off.
-Pin :: struct {
-	path: string,
-	name: string,
-}
-
-Unpin :: struct {
-	path: string,
+Activity_Result :: struct {
+	operations: []Operation,
+	problems:   []Problem,
+	undo:       string, // what Undo would undo, "" for nothing
 }

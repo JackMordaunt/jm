@@ -1,24 +1,29 @@
 /*
-Package app is the file browser's host: the pipeline that reads folders,
-makes thumbnails and opens files for the ui on four worker threads, and
-keeps the sidebar's pins and recent places in SQLite on a thread of its
-own, as examples/todo keeps its todos.
+Package app is the file browser's host. It decodes the ui's commands into
+files.Commands, gathers the facts each needs, has examples/files/logic
+plan it, and carries the plan out (desk.odin). It reads folders and makes
+thumbnails for the ui's needs on four worker threads, copies on a thread
+of its own, and keeps pins, recent places and the undo journal in SQLite
+on another, as examples/todo keeps its todos.
 
 	needs (listing, places) ─┐
 	needs (thumb) ─ debounce_by(key, 60 ms) ─┤─ async_map(fs, 4 workers) ─ deliver
-	commands (open) ─┘
+	relists (watcher, desk) ─┘
 
-	commands (visited, pin, unpin) ─ writes ─────────────┐
-	needs (recent, pins) ─────┐                           ├─ store (pinned) ─ deliver
-	changes ─ debounce ─ route(live) ─ queries ───────────┘
+	commands ───────────────────────────────┐
+	copy events (copier thread) ────────────┤
+	needs (recent, pins, activity) ─┐       ├─ desk (pinned) ─ deliver
+	changes ─ debounce ─ route(live) ─ reads ┘
 
-A folder is read as soon as it is needed. A thumbnail waits a short
+	interval(500 ms) ─ poll: folders shown whose time changed are read again
+
+A folder is read as soon as it is needed, and again whenever it changes:
+the desk relists the folders its own changes touched at once, and the
+watcher polls the time of each folder shown, so a change another
+application makes shows within half a second. A thumbnail waits a short
 quiet first, so a row that scrolls past never starts one, and one whose
 need goes while its job runs is cancelled where the work next checks.
-Thumbnails go under the temp directory, a folder per run. The store's
-commit hook pushes each change into a port, and the route stage re-runs
-the queries for the shapes that are live, so a pin or a visit shows in
-the sidebar the moment it is committed.
+Thumbnails go under the temp directory, a folder per run.
 */
 package files_app
 
@@ -27,6 +32,7 @@ import "core:fmt"
 import "core:mem"
 import "core:os"
 import "core:path/filepath"
+import "core:strings"
 import "core:sync"
 import "core:thread"
 import "core:time"
@@ -35,12 +41,14 @@ import "jm:stream"
 import "jm:ui"
 
 import "../../common"
+import "../files"
 import "../fs"
-import "../shapes"
+import "../query"
 import "../store"
 
-QUIET :: 60 * time.Millisecond
-SETTLE :: 10 * time.Millisecond // commits coalesced before the sidebar re-queries
+QUIET   :: 60 * time.Millisecond
+SETTLE  :: 10 * time.Millisecond // commits coalesced before the sidebar re-queries
+POLL    :: 500 * time.Millisecond // how often the folders shown are checked for change
 WORKERS :: 4
 
 Kind :: enum u8 {
@@ -50,11 +58,11 @@ Kind :: enum u8 {
 	Places,
 }
 
-// Need_Event is a sidebar need appearing or going.
+// Need_Event is a need the desk answers appearing or going.
 Need_Event :: struct {
 	added: bool,
 	key:   ui.Need_Key,
-	kind:  store.Kind,
+	kind:  Read_Kind,
 }
 
 Route_In :: union {
@@ -62,10 +70,17 @@ Route_In :: union {
 	store.Change_Batch,
 }
 
-// Route keeps the sidebar needs that are live, so a change re-runs each.
+// Route keeps the desk's needs that are live, so a change re-reads each.
 Route :: struct {
-	live: map[ui.Need_Key]store.Kind,
-	out:  [dynamic]store.Input,
+	live: map[ui.Need_Key]Read_Kind,
+	out:  [dynamic]Desk_In,
+}
+
+// Shown_Folder is a folder shown, and the time it had when it was last read.
+Shown_Folder :: struct {
+	path:     [common.MAX_PATH]u8,
+	path_len: int,
+	modified: i64, // 0 until a read has finished
 }
 
 // Job is one piece of work: what, on which path, and a cancel flag the
@@ -87,35 +102,41 @@ Request :: struct {
 }
 
 // Done is a job's end: its result bytes for a listing, in the host's
-// allocator; a thumbnail written or not; an open attempted.
+// allocator, with the folder's time when it was read; a thumbnail written
+// or not; an open attempted.
 Done :: struct {
 	job:       ^Job,
 	cancelled: bool,
 	ok:        bool,
 	data:      []byte,
+	modified:  i64,
 }
 
 Host :: struct {
-	p:         ^stream.Pipeline,
-	direct:    stream.Port(Request), // listings, places and opens, at once
-	thumbs:    stream.Port(Request), // thumbnails, after a quiet
-	need_db:   stream.Port(Need_Event), // sidebar needs
-	db_in:     stream.Port(store.Input), // writes
-	inbox:     ui.Inbox,
-	workers:   ^stream.Workers,
-	jobs:      map[ui.Need_Key]^Job, // under mutex
-	mutex:     sync.Mutex,
-	dir:       string,
-	home:      string,
-	stats:     shapes.Stats_Result,
-	pool:      ^thread.Thread,
-	wake:      proc(),
-	allocator: mem.Allocator,
-	// The store and its thread: the pinned stage, woken by the pipeline.
-	store:     store.Store,
-	route:     Route,
-	db:        common.DB_Thread,
-	sink:      common.Sink,
+	p:           ^stream.Pipeline,
+	direct:      stream.Port(Request), // listings, places and opens, at once
+	thumbs:      stream.Port(Request), // thumbnails, after a quiet
+	need_db:     stream.Port(Need_Event), // needs the desk answers
+	commands:    stream.Port(files.Command),
+	copy_events: stream.Port(Copy_Event),
+	inbox:       ui.Inbox,
+	workers:     ^stream.Workers,
+	copiers:     ^stream.Workers, // one thread: copies run one at a time
+	jobs:        map[ui.Need_Key]^Job, // under mutex
+	listings:    map[ui.Need_Key]Shown_Folder, // the folders shown, under mutex
+	mutex:       sync.Mutex,
+	dir:         string,
+	home:        string,
+	place_paths: []string, // the standard folders, which protection guards
+	stats:       query.Stats_Result,
+	pool:        ^thread.Thread,
+	wake:        proc(),
+	allocator:   mem.Allocator,
+	// The desk and its thread: the pinned stage, woken by the pipeline.
+	desk:        Desk,
+	route:       Route,
+	db:          common.DB_Thread,
+	sink:        common.Sink,
 }
 
 // init opens the store at db_path (the default under the state folder,
@@ -136,12 +157,20 @@ init :: proc(h: ^Host, wake: proc() = nil, db_path := "") -> bool {
 		_ = os.make_directory_all(state)
 		db, _ = filepath.join({state, "files.db"}, context.temp_allocator)
 	}
-	if !store.open(&h.store, db, common.db_on_changes, &h.db, h.allocator) {
+	if !store.open(&h.desk.store, db, common.db_on_changes, &h.db, h.allocator) {
 		return false
 	}
+	h.desk.h = h
+	h.desk.allocator = h.allocator
+	h.desk.out = make([dynamic]common.Result, h.allocator)
+	standard := places(home, context.temp_allocator)
+	h.place_paths = make([]string, len(standard) - 1, h.allocator)
+	for pl, ii in standard[1:] {
+		h.place_paths[ii] = strings.clone(pl.path, h.allocator)
+	}
 	h.sink = {&h.inbox, wake, h.allocator}
-	h.route.live = make(map[ui.Need_Key]store.Kind, h.allocator)
-	h.route.out = make([dynamic]store.Input, h.allocator)
+	h.route.live = make(map[ui.Need_Key]Read_Kind, h.allocator)
+	h.route.out = make([dynamic]Desk_In, h.allocator)
 	tmp, err := os.temp_directory(context.temp_allocator)
 	if err != nil {
 		fmt.eprintln("files: no temp directory:", err)
@@ -156,7 +185,9 @@ init :: proc(h: ^Host, wake: proc() = nil, db_path := "") -> bool {
 	h.dir = dir
 	ui.inbox_init(&h.inbox, h.allocator)
 	h.jobs = make(map[ui.Need_Key]^Job, h.allocator)
+	h.listings = make(map[ui.Need_Key]Shown_Folder, h.allocator)
 	h.workers = stream.workers_start(WORKERS, h.allocator)
+	h.copiers = stream.workers_start(1, h.allocator)
 
 	p := stream.make_pipeline(h.allocator, cap = 64)
 	h.p = p
@@ -165,22 +196,47 @@ init :: proc(h: ^Host, wake: proc() = nil, db_path := "") -> bool {
 	thumbs, h.thumbs = stream.port(p, Request, cap = 256, name = "thumbs")
 	settled := stream.debounce_by(thumbs, QUIET, request_key, name = "quiet")
 	work := stream.merge([]stream.Stream(Request){direct, settled}, name = "work")
-	done := stream.async_map(work, h.workers, h, run_job, concurrency = WORKERS, ordered = false, name = "fs")
+	done := stream.async_map(
+		work,
+		h.workers,
+		h,
+		run_job,
+		concurrency = WORKERS,
+		ordered = false,
+		name = "fs",
+	)
 	stream.for_each_with(done, h, deliver, name = "deliver")
+	stream.for_each_with(stream.interval(p, POLL, name = "watch"), h, poll, name = "poll")
 
-	// The store's half: writes and routed queries into the pinned stage.
+	// The desk's half: commands, copies' events and routed reads into the
+	// pinned stage.
 	changes := common.db_thread_open(&h.db, p)
 	need_db: stream.Stream(Need_Event)
-	db_in: stream.Stream(store.Input)
-	need_db, h.need_db = stream.port(p, Need_Event, name = "sidebar needs")
-	db_in, h.db_in = stream.port(p, store.Input, name = "writes")
+	commands: stream.Stream(files.Command)
+	copy_events: stream.Stream(Copy_Event)
+	need_db, h.need_db = stream.port(p, Need_Event, name = "desk needs")
+	commands, h.commands = stream.port(p, files.Command, name = "commands")
+	copy_events, h.copy_events = stream.port(p, Copy_Event, cap = 256, name = "copy events")
 	committed := stream.debounce(changes, SETTLE)
-	routed := stream.merge([]stream.Stream(Route_In){stream.transform(need_db, need_in), stream.transform(committed, change_in)}, name = "route in")
-	queries := stream.flat_map_with(routed, &h.route, route, name = "route")
-	inputs := stream.merge([]stream.Stream(store.Input){db_in, queries}, name = "store in")
-	results := stream.flat_map_with(inputs, &h.store, store.apply, name = "store")
+	routed := stream.merge(
+		[]stream.Stream(Route_In) {
+			stream.transform(need_db, need_in),
+			stream.transform(committed, change_in),
+		},
+		name = "route in",
+	)
+	reads := stream.flat_map_with(routed, &h.route, route, name = "route")
+	inputs := stream.merge(
+		[]stream.Stream(Desk_In) {
+			stream.transform(commands, command_in),
+			stream.transform(copy_events, copy_event_in),
+			reads,
+		},
+		name = "desk in",
+	)
+	results := stream.flat_map_with(inputs, &h.desk, desk_apply, name = "desk")
 	stream.pin(p, results.node)
-	stream.for_each_with(results, &h.sink, common.deliver, name = "deliver db")
+	stream.for_each_with(results, &h.sink, common.deliver, name = "deliver desk")
 
 	common.db_thread_start(&h.db)
 	h.pool = thread.create_and_start_with_poly_data(h, pool_main)
@@ -201,13 +257,32 @@ stop :: proc(h: ^Host) {
 	thread.join(h.pool)
 	thread.destroy(h.pool)
 	common.db_thread_stop(&h.db)
+	// The desk's thread is gone, so its copies are the main thread's to
+	// stop: each sees its cancel where it next checks.
+	for &op in h.desk.ops[:h.desk.op_n] {
+		if op.copy != nil {
+			sync.atomic_store(&op.copy.cancel, true)
+		}
+	}
+	stream.workers_stop(h.copiers)
 	stream.workers_stop(h.workers)
 	stream.destroy(h.p)
-	store.close(&h.store)
+	store.close(&h.desk.store)
+	for &op in h.desk.ops[:h.desk.op_n] {
+		if op.copy != nil {
+			free(op.copy, h.allocator)
+		}
+	}
+	delete(h.desk.out)
 	for _, job in h.jobs {
 		free(job, h.allocator)
 	}
 	delete(h.jobs)
+	delete(h.listings)
+	for p in h.place_paths {
+		delete(p, h.allocator)
+	}
+	delete(h.place_paths, h.allocator)
 	delete(h.route.live)
 	delete(h.route.out)
 	ui.inbox_destroy(&h.inbox)
@@ -219,26 +294,44 @@ stop :: proc(h: ^Host) {
 
 on_need :: proc(user: rawptr, need: ui.Need, added: bool) {
 	h := (^Host)(user)
-	// The sidebar's needs go to the store's route, not to a worker.
-	if ui.need_is(need, shapes.Recent) || ui.need_is(need, shapes.Pins) {
+	// The sidebar's lists and the activity are the desk's to answer.
+	kind: Maybe(Read_Kind)
+	switch {
+	case ui.need_is(need, query.Recent_Places):
+		kind = .Recent
+	case ui.need_is(need, query.Pins):
+		kind = .Pins
+	case ui.need_is(need, query.Activity):
+		kind = .Activity
+	}
+	if k, desk := kind.?; desk {
 		sync.mutex_lock(&h.mutex)
 		h.stats.open += 1 if added else -1
 		sync.mutex_unlock(&h.mutex)
-		stream.port_send(h.need_db, Need_Event{added, need.key, .Recent if ui.need_is(need, shapes.Recent) else .Pins})
+		stream.port_send(h.need_db, Need_Event{added, need.key, k})
 		return
 	}
 	job := new(Job, h.allocator)
 	job.key = need.key
-	if q, ok := ui.need_as(need, shapes.Listing); ok {
+	if q, ok := ui.need_as(need, query.Listing); ok {
 		job.kind = .Listing
 		job.path_len = copy(job.path[:], q.path)
-	} else if ui.need_is(need, shapes.Places) {
+	} else if ui.need_is(need, query.Places) {
 		job.kind = .Places
-	} else if tq, is := ui.need_as(need, shapes.Thumb); is {
+	} else if tq, is := ui.need_as(need, query.Thumb); is {
 		job.kind = .Thumb
 		job.px = tq.px
 		job.path_len = copy(job.path[:], tq.path)
-		job.dst_len = len(fmt.bprintf(job.dst[:], "%s%cthumb-%x-%d.bmp", h.dir, filepath.SEPARATOR, u64(need.key), tq.px))
+		job.dst_len = len(
+			fmt.bprintf(
+				job.dst[:],
+				"%s%cthumb-%x-%d.bmp",
+				h.dir,
+				filepath.SEPARATOR,
+				u64(need.key),
+				tq.px,
+			),
+		)
 	} else {
 		free(job, h.allocator)
 		return
@@ -247,6 +340,7 @@ on_need :: proc(user: rawptr, need: ui.Need, added: bool) {
 	if !added {
 		free(job, h.allocator)
 		h.stats.open -= 1
+		delete_key(&h.listings, need.key)
 		if running, is_running := h.jobs[need.key]; is_running {
 			sync.atomic_store(&running.cancel, true)
 		}
@@ -254,6 +348,13 @@ on_need :: proc(user: rawptr, need: ui.Need, added: bool) {
 		return
 	}
 	h.stats.open += 1
+	if job.kind == .Listing {
+		w := Shown_Folder {
+			path_len = job.path_len,
+		}
+		w.path = job.path
+		h.listings[need.key] = w
+	}
 	if running, is_running := h.jobs[need.key]; is_running && !sync.atomic_load(&running.cancel) {
 		free(job, h.allocator)
 		sync.mutex_unlock(&h.mutex)
@@ -270,23 +371,17 @@ on_need :: proc(user: rawptr, need: ui.Need, added: bool) {
 	}
 }
 
+// on_command decodes the ui's command; every one goes to the desk. A
+// files.Command holds no pointers, so the decoded value is whole and
+// crosses the port by copy.
 on_command :: proc(user: rawptr, c: ui.Command) {
 	h := (^Host)(user)
-	if o, opens := ui.command_as(c, shapes.Open); opens {
-		job := new(Job, h.allocator)
-		job.kind = .Open
-		job.path_len = copy(job.path[:], o.path)
-		stream.port_send(h.direct, Request{0, job})
-	} else if v, visited := ui.command_as(c, shapes.Visited); visited {
-		stream.port_send(h.db_in, store.Write{op = .Visited, path = store.text_make(v.path), name = store.text_make(v.name), dir = v.dir})
-	} else if pin, pins := ui.command_as(c, shapes.Pin); pins {
-		stream.port_send(h.db_in, store.Write{op = .Pin, path = store.text_make(pin.path), name = store.text_make(pin.name)})
-	} else if un, unpins := ui.command_as(c, shapes.Unpin); unpins {
-		stream.port_send(h.db_in, store.Write{op = .Unpin, path = store.text_make(un.path)})
+	if cmd, ok := ui.command_as(c, files.Command); ok {
+		stream.port_send(h.commands, cmd)
 	}
 }
 
-// --- the store's route ------------------------------------------------------
+// --- the desk's route ---------------------------------------------------------
 
 need_in :: proc(e: Need_Event) -> Route_In {
 	return e
@@ -296,28 +391,124 @@ change_in :: proc(b: store.Change_Batch) -> Route_In {
 	return b
 }
 
-// route turns a sidebar need into its query and a change into a fresh
-// query for each live Pins need. Recent is answered once, when its need
-// appears: a snapshot, so the sidebar holds still while the folders
-// visited are still being written down for the next time.
-route :: proc(r: ^Route, v: Route_In) -> []store.Input {
+command_in :: proc(c: files.Command) -> Desk_In {
+	return c
+}
+
+copy_event_in :: proc(e: Copy_Event) -> Desk_In {
+	return e
+}
+
+// route turns a need into its read and a change into a fresh read for
+// each live Pins need. Recent is answered once, when its need appears: a
+// snapshot, so the sidebar holds still while the folders visited are
+// still being written down for the next time. The activity is answered
+// when its need appears and sent again by the desk whenever it changes.
+route :: proc(r: ^Route, v: Route_In) -> []Desk_In {
 	clear(&r.out)
 	switch e in v {
 	case Need_Event:
 		if e.added {
 			r.live[e.key] = e.kind
-			append(&r.out, store.Query{e.key, e.kind})
+			append(&r.out, Read{e.key, e.kind})
 		} else {
 			delete_key(&r.live, e.key)
 		}
 	case store.Change_Batch:
 		for key, kind in r.live {
 			if kind == .Pins {
-				append(&r.out, store.Query{key, kind})
+				append(&r.out, Read{key, kind})
 			}
 		}
 	}
 	return r.out[:]
+}
+
+// --- folders that change ---------------------------------------------------------
+
+// relist reads again every folder shown at path. Any thread may call
+// it; it never waits, so a full queue drops the read and the next poll
+// makes it.
+relist :: proc(h: ^Host, path: string) {
+	sync.mutex_guard(&h.mutex)
+	for key, &w in h.listings {
+		if string(w.path[:w.path_len]) == path {
+			relist_locked(h, key, &w)
+		}
+	}
+}
+
+@(private)
+relist_locked :: proc(h: ^Host, key: ui.Need_Key, w: ^Shown_Folder) {
+	if running, is_running := h.jobs[key]; is_running && !sync.atomic_load(&running.cancel) {
+		return // a read is on its way; the poll catches a change it missed
+	}
+	job := new(Job, h.allocator)
+	job^ = {
+		kind     = .Listing,
+		key      = key,
+		path     = w.path,
+		path_len = w.path_len,
+	}
+	if !stream.port_push(h.direct, Request{key, job}) {
+		free(job, h.allocator)
+		return
+	}
+	h.jobs[key] = job
+	h.stats.pending += 1
+}
+
+// poll checks the time of every folder shown against the time it had when
+// last read, and reads again the ones that changed: a change another
+// application made. It runs on a pool thread every POLL.
+poll :: proc(h: ^Host, _: time.Duration) {
+	Seen :: struct {
+		key:      ui.Need_Key,
+		path:     string,
+		modified: i64,
+	}
+	// An arena of its own: the pool thread's temp allocator is shared by
+	// whatever else runs there.
+	arena: mem.Dynamic_Arena
+	mem.dynamic_arena_init(&arena, h.allocator, h.allocator)
+	defer mem.dynamic_arena_destroy(&arena)
+	context.temp_allocator = mem.dynamic_arena_allocator(&arena)
+	seen := make([dynamic]Seen, context.temp_allocator)
+	sync.mutex_lock(&h.mutex)
+	for key, &w in h.listings {
+		if w.modified != 0 {
+			append(
+				&seen,
+				Seen {
+					key,
+					strings.clone(string(w.path[:w.path_len]), context.temp_allocator),
+					w.modified,
+				},
+			)
+		}
+	}
+	sync.mutex_unlock(&h.mutex)
+	for s in seen {
+		now := fs.modified(s.path)
+		if now == s.modified {
+			continue
+		}
+		sync.mutex_guard(&h.mutex)
+		if w, live := &h.listings[s.key]; live && w.modified == s.modified {
+			relist_locked(h, s.key, w)
+		}
+	}
+}
+
+// open_file asks the system to open path, on a worker: the opener takes
+// a moment, which the desk's thread must not wait for.
+open_file :: proc(h: ^Host, path: string) {
+	job := new(Job, h.allocator)
+	job.kind = .Open
+	job.path_len = copy(job.path[:], path)
+	if !stream.port_push(h.direct, Request{0, job}) {
+		free(job, h.allocator)
+	}
 }
 
 // --- the pipeline -----------------------------------------------------------
@@ -340,9 +531,16 @@ run_job :: proc(h: ^Host, r: Request) -> Done {
 	path := string(job.path[:job.path_len])
 	switch job.kind {
 	case .Listing:
+		// The time first: a change made while the folder is read shows
+		// as a later time at the next poll.
+		modified := fs.modified(path)
 		entries, error := fs.list(path, context.temp_allocator)
-		data, err := cbor.marshal_into_bytes(shapes.Listing_Result{entries = entries, error = error}, allocator = h.allocator, temp_allocator = context.temp_allocator)
-		return {job = job, ok = err == nil, data = data}
+		data, err := cbor.marshal_into_bytes(
+			query.Listing_Result{entries = entries, error = error},
+			allocator = h.allocator,
+			temp_allocator = context.temp_allocator,
+		)
+		return {job = job, ok = err == nil, data = data, modified = modified}
 	case .Thumb:
 		dst := string(job.dst[:job.dst_len])
 		ok := fs.thumbnail(path, dst, job.px, &job.cancel)
@@ -350,20 +548,24 @@ run_job :: proc(h: ^Host, r: Request) -> Done {
 	case .Open:
 		return {job = job, ok = fs.open_default(path)}
 	case .Places:
-		data, err := cbor.marshal_into_bytes(shapes.Places_Result{items = places(h.home, context.temp_allocator)}, allocator = h.allocator, temp_allocator = context.temp_allocator)
+		data, err := cbor.marshal_into_bytes(
+			query.Places_Result{items = places(h.home, context.temp_allocator)},
+			allocator = h.allocator,
+			temp_allocator = context.temp_allocator,
+		)
 		return {job = job, ok = err == nil, data = data}
 	}
 	return {job = job}
 }
 
 // places is the standard folders under home that exist, the home folder first.
-places :: proc(home: string, allocator := context.allocator) -> []shapes.Place {
-	out := make([dynamic]shapes.Place, allocator)
-	append(&out, shapes.Place{name = "Home", path = home, dir = true})
+places :: proc(home: string, allocator := context.allocator) -> []query.Place {
+	out := make([dynamic]query.Place, allocator)
+	append(&out, query.Place{name = "Home", path = home, dir = true})
 	for name in ([]string{"Desktop", "Documents", "Downloads", "Music", "Pictures", "Videos"}) {
 		path, _ := filepath.join({home, name}, allocator)
 		if os.exists(path) {
-			append(&out, shapes.Place{name = name, path = path, dir = true})
+			append(&out, query.Place{name = name, path = path, dir = true})
 		}
 	}
 	return out[:]
@@ -383,6 +585,9 @@ deliver :: proc(h: ^Host, d: Done) {
 	case .Listing:
 		if current && d.ok {
 			h.stats.listings += 1
+			if w, live := &h.listings[job.key]; live {
+				w.modified = d.modified
+			}
 		}
 	case .Thumb:
 		if d.cancelled || !current {
@@ -404,14 +609,18 @@ deliver :: proc(h: ^Host, d: Done) {
 		case .Listing, .Places:
 			ui.inbox_put(&h.inbox, job.key, d.data)
 		case .Thumb:
-			ui.inbox_put_value(&h.inbox, shapes.Thumb{path = string(job.path[:job.path_len]), px = job.px}, shapes.Thumb_Result{image = string(job.dst[:job.dst_len])})
+			ui.inbox_put_value(
+				&h.inbox,
+				query.Thumb{path = string(job.path[:job.path_len]), px = job.px},
+				query.Thumb_Result{image = string(job.dst[:job.dst_len])},
+			)
 		case .Open:
 		}
 	}
 	if d.data != nil {
 		delete(d.data, h.allocator)
 	}
-	ui.inbox_put_value(&h.inbox, shapes.Stats{}, stats)
+	ui.inbox_put_value(&h.inbox, query.Stats{}, stats)
 	free(job, h.allocator)
 	if h.wake != nil {
 		h.wake()
@@ -422,8 +631,7 @@ pool_main :: proc(h: ^Host) {
 	stream.run(h.p, 2)
 }
 
-stats :: proc(h: ^Host) -> shapes.Stats_Result {
-	sync.mutex_lock(&h.mutex)
-	defer sync.mutex_unlock(&h.mutex)
+stats :: proc(h: ^Host) -> query.Stats_Result {
+	sync.mutex_guard(&h.mutex)
 	return h.stats
 }
