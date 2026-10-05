@@ -262,7 +262,7 @@ Pipeline :: struct {
 	nodes:       [dynamic]^Node,
 	edges:       [dynamic]^Edge,
 	inlets:      [dynamic]^Inlet,
-	started:     bool,
+	started:     bool, // atomic: start has queued the sources
 	// The shared ready queue and what a worker needs to decide it can stop,
 	// all under `mutex`. A worker touches it only when its own slot is empty.
 	// `more` wakes an idle worker, and is signalled only when one exists.
@@ -901,12 +901,15 @@ enqueue_global :: proc(n: ^Node, locked := false) {
 	}
 }
 
-// Queue every source, so `step` has something to run.
+// Queue every source, so `step` has something to run. Any thread may call
+// it, and run, step and drain_pinned each do, so a pool and a pinned
+// thread can arrive together: the exchange lets exactly one of them queue
+// the sources. A caller that loses returns before they are queued, which
+// is safe: a node runs only once it is scheduled.
 start :: proc(p: ^Pipeline) {
-	if p.started {
+	if sync.atomic_exchange(&p.started, true) {
 		return
 	}
-	p.started = true
 	for n in p.nodes {
 		if len(n.ins) == 0 {
 			schedule(n)
