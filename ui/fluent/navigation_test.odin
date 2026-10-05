@@ -1,5 +1,7 @@
 package fluent
 
+import "core:strings"
+import "core:strconv"
 import "core:testing"
 import "jm:ui"
 import "jm:ui/ops"
@@ -334,4 +336,47 @@ test_breadcrumb_and_button_sizes_are_what_is_drawn :: proc(t: ^testing.T) {
 	testing.expectf(t, same(size_of_tag(&p, "Save"), want.save), "Save: drawn %v, measured %v", size_of_tag(&p, "Save"), want.save)
 	testing.expectf(t, same(size_of_tag(&p, "icon"), want.icon), "icon: drawn %v, measured %v", size_of_tag(&p, "icon"), want.icon)
 	testing.expect(t, want.folded.x > 0 && want.folded.x < want.named.x)
+}
+
+// A row's label too long for the nav is cut with an ellipsis inside the
+// row's padding: the row stays the nav's width, and a reader still gets
+// the whole label.
+@(test)
+test_nav_rows_truncate_long_labels :: proc(t: ^testing.T) {
+	LONG :: "Projects from the long-running client engagement"
+	p: ui.Probe
+	ui.probe_init(&p, proc(gtx: ^ui.Ctx, user: rawptr) {
+			ui.row(gtx, align = .Start)
+			if nav(gtx, width = 160) {
+				if nav_body(gtx) {
+					selected := ""
+					nav_item(gtx, LONG, "long", &selected, .Folder)
+					nav_item(gtx, "Home", "home", &selected, .Home)
+				}
+			}
+		}, nil, {600, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	ui.probe_frame(&p)
+	row := ui.probe_bounds(&p, LONG)
+	home := ui.probe_bounds(&p, "Home")
+	testing.expect(t, row.w > 0 && row.x + row.w <= 160 + 0.5, "the row stays inside the nav")
+	testing.expect_value(t, row.w, home.w)
+	read := false
+	for n in ui.probe_current(&p).nodes {
+		read |= n.semantics.label == LONG
+	}
+	testing.expect(t, read, "a reader gets the whole label")
+	// The longest run drawn is shorter than the label: it was cut. The
+	// frame's dump gives each glyph run's count as "n=".
+	glyphs := 0
+	for line in strings.split_lines(ui.probe_dump_frame(&p), context.temp_allocator) {
+		if at := strings.index(line, " n="); at >= 0 && strings.contains(line, "glyphs") {
+			rest := line[at + 3:]
+			end := strings.index_byte(rest, ' ')
+			n, _ := strconv.parse_int(rest[:end] if end >= 0 else rest)
+			glyphs = max(glyphs, n)
+		}
+	}
+	testing.expect(t, glyphs > 0 && glyphs < len(LONG), "the label was cut")
 }

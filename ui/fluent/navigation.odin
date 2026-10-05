@@ -769,10 +769,13 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 			content += NAV_GAP + NAV_ICON
 		}
 	}
+	// A row is the width it is offered, never more: a label too long for
+	// it is cut with an ellipsis inside the end padding, not run past the
+	// nav's edge. Offered no bound, it is its content's width.
 	cs := gtx.constraints
 	w := ui.is_finite(cs.max.x) ? cs.max.x : content
 	h := pad_v * 2 + max(t.height, NAV_ICON)
-	sz := ui.constrain(cs, {max(w, content), h})
+	sz := ui.constrain(cs, {w, h})
 	area := ops.Rect{0, 0, sz.x, sz.y}
 	c := control(gtx, p.id, area, state)
 	if selected && current_nav != nil {
@@ -799,7 +802,13 @@ nav_row :: proc(gtx: ^ui.Ctx, label: string, ic: Icon, kind: Nav_Row_Kind, selec
 	if iconic {
 		tooltip(gtx, p.id, c, label, sz, position = .Below)
 	} else {
-		draw_text(gtx, t, {x, (sz.y - t.height) / 2}, fg)
+		room := sz.x - x - pad_end - (NAV_GAP + NAV_ICON if kind == .Category else 0)
+		if t.width <= room {
+			draw_text(gtx, t, {x, (sz.y - t.height) / 2}, fg)
+		} else if room > 0 {
+			cut := layout_style(gtx, label, selected ? tok.TYPOGRAPHY_STYLES_BODY1_STRONG : tok.TYPOGRAPHY_STYLES_BODY1, room, max_lines = 1)
+			draw_paragraph(gtx, cut, {x, (sz.y - t.height) / 2}, fg, {})
+		}
 		if kind == .Category {
 			chevron_at(gtx, {sz.x - pad_end - NAV_ICON, (sz.y - NAV_ICON) / 2}, NAV_ICON, open, fg)
 		}
