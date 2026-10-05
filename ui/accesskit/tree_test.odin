@@ -309,3 +309,37 @@ test_a_tree_item_carries_its_level_and_current_items_say_so :: proc(t: ^testing.
 	testing.expect(t, strings.contains(got, `aria_current: True`), got)
 	testing.expect(t, strings.contains(got, `aria_current: Page`), got)
 }
+
+// calendar_view is a grid with a weekday's column header and a day cell
+// that is today.
+@(private = "file")
+calendar_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1)
+	defer ui.close(&col)
+	ui.container_semantics(gtx, {role = .Grid, label = "October 2026"})
+	{
+		a := ui.widget_open(gtx, 2)
+		ui.semantics(gtx, &a, {role = .Column_Header, label = "Monday"})
+		ui.widget_close(gtx, &a, {size = {32, 20}})
+	}
+	{
+		b := ui.widget_open(gtx, 3)
+		ui.semantics(gtx, &b, {role = .Grid_Cell, label = "October 5", states = {.Current_Date}})
+		ui.widget_close(gtx, &b, {size = {32, 32}})
+	}
+}
+
+@(test)
+test_a_column_header_and_the_current_date_reach_accesskit :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, calendar_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Calendar")
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `role: ColumnHeader`), got)
+	testing.expect(t, strings.contains(got, `aria_current: Date`), got)
+}

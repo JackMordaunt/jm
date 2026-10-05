@@ -31,52 +31,20 @@ import "jm:ui/ops"
 // it has, the picker could compose it. High contrast is what the theme
 // binds, not the styles' forced-colours rules.
 //
-// Date, Time and the calendar arithmetic here are this package's own,
-// as material's are its own: a shared calendar package is the obvious
-// lift once a third system needs them.
+// Time and the formats here are this package's own; Date and the
+// calendar arithmetic are design's, which primer's pickers share.
 
 // Date and its arithmetic are jm:ui/design's (design/calendar.odin).
 Date :: design.Date
 days_in_month :: design.days_in_month
 weekday :: design.weekday
 date_less :: design.date_less
+date_add_days :: design.date_add_days
+date_add_months :: design.date_add_months
 
 // Time is a time of day.
 Time :: struct {
 	hour, minute, second: int,
-}
-
-// date_add_days is d moved n days, either way.
-date_add_days :: proc(d: Date, n: int) -> Date {
-	r := d
-	r.day += n
-	for r.day > days_in_month(r.year, r.month) {
-		r.day -= days_in_month(r.year, r.month)
-		r.month += 1
-		if r.month > 12 {
-			r.month, r.year = 1, r.year + 1
-		}
-	}
-	for r.day < 1 {
-		r.month -= 1
-		if r.month < 1 {
-			r.month, r.year = 12, r.year - 1
-		}
-		r.day += days_in_month(r.year, r.month)
-	}
-	return r
-}
-
-// date_add_months is d moved n months, its day clamped to the month.
-date_add_months :: proc(d: Date, n: int) -> Date {
-	m := d.month - 1 + n
-	y := d.year + m / 12
-	m %= 12
-	if m < 0 {
-		m += 12
-		y -= 1
-	}
-	return {y, m + 1, min(d.day, days_in_month(y, m + 1))}
 }
 
 MONTH_NAMES := [12]string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}

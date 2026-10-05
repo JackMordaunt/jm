@@ -48,6 +48,7 @@ Model :: struct {
 	layouts:  Layouts,
 	actions:  Actions,
 	icons:    Icons,
+	dates:    Dates,
 }
 
 // PAGES follows the primer-kit's families, in the plan's build order; a
@@ -71,6 +72,8 @@ PAGES := [?]Page {
 	{"Toggle switch", page_toggle_switch, false},
 	{"Form control", page_form_control, false},
 	{"Segmented control", page_segmented_control, false},
+	{"Date picker", page_date_picker, false},
+	{"Date range picker", page_date_range_picker, false},
 	{"Labels and status", nil, true},
 	{"Label", page_label, false},
 	{"Label group", page_label_group, false},

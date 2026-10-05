@@ -109,6 +109,8 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 		switch {
 		case .Current_Page in n.semantics.states:
 			r.current = .Page
+		case .Current_Date in n.semantics.states:
+			r.current = .Date
 		case .Current in n.semantics.states:
 			r.current = .True
 		}
@@ -302,6 +304,8 @@ role_of :: proc(r: ops.Role) -> Role {
 		return .Tree_Item
 	case .Tab_Panel:
 		return .Tab_Panel
+	case .Column_Header:
+		return .Column_Header
 	}
 	return .Unknown
 }
