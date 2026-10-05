@@ -36,8 +36,9 @@ ENCODE_MAGIC :: "UIOP"
 // Role Tree, Tree_Item and Tab_Panel and State Current and Current_Page;
 // 32 turned Focus_Scope's trap into a flags byte (bit 0 trap, bit 1
 // wrap, bits 2-3 rove) and gave Focus_Scope_End an entry; 33 gave
-// Input_Area's flags no_tab, bit 2; 34 gave Path its fill rule.
-ENCODE_VERSION :: u8(34)
+// Input_Area's flags no_tab, bit 2; 34 gave Path its fill rule; 35 added
+// Role Column_Header and State Current_Date.
+ENCODE_VERSION :: u8(35)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.

@@ -287,6 +287,8 @@ role_name :: proc(r: ops.Role) -> string {
 		return "tree item"
 	case .Tab_Panel:
 		return "tab panel"
+	case .Column_Header:
+		return "column header"
 	}
 	return "unknown"
 }
@@ -320,6 +322,8 @@ state_name :: proc(s: ops.State) -> string {
 		return "current"
 	case .Current_Page:
 		return "current page"
+	case .Current_Date:
+		return "current date"
 	}
 	return ""
 }

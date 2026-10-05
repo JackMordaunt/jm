@@ -341,3 +341,27 @@ semantics_report_names_a_tree_its_items_levels_and_the_current_one :: proc(t: ^t
 		"tree \"Files\" at 0,0 300x300\n  tree item \"src\" level 1 expanded at 0,0 60x20\n  tree item \"main.odin\" level 2 current at 0,20 60x20\n  link \"Home\" current page at 0,40 60x20\n  tab panel \"Code\" at 0,60 60x20\n",
 	)
 }
+
+@(test)
+semantics_report_names_a_column_header_and_the_current_date :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		col := column_open(gtx, key = 1)
+		defer close(&col)
+		container_semantics(gtx, {role = .Grid, label = "October 2026"})
+		a := widget_open(gtx, 2)
+		semantics(gtx, &a, {role = .Column_Header, label = "Monday"})
+		widget_close(gtx, &a, {size = {32, 20}})
+		b := widget_open(gtx, 3)
+		semantics(gtx, &b, {role = .Grid_Cell, label = "Monday, October 5, 2026", states = {.Current_Date}})
+		widget_close(gtx, &b, {size = {32, 32}})
+	}
+	defer free_all(context.temp_allocator)
+	p: Probe
+	probe_init(&p, view, nil, {300, 300})
+	defer probe_destroy(&p)
+	testing.expect_value(
+		t,
+		probe_semantics(&p, context.temp_allocator),
+		"grid \"October 2026\" at 0,0 300x300\n  column header \"Monday\" at 0,0 32x20\n  grid cell \"Monday, October 5, 2026\" current date at 0,20 32x32\n",
+	)
+}

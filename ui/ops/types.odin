@@ -305,6 +305,7 @@ Role :: enum u8 {
 	Tree, // a hierarchy of items that expand and collapse: a file tree
 	Tree_Item, // one item of a tree; its level is its depth, 1 at the top
 	Tab_Panel, // the content a tab shows
+	Column_Header, // a grid's or table's column heading: a calendar's weekday over its days
 }
 
 // State is one of the states a Semantic op may carry.
@@ -322,6 +323,7 @@ State :: enum u8 {
 	Modal,
 	Current, // the current item of a set (aria-current="true"): a tree's open file
 	Current_Page, // the link to the page being shown (aria-current="page")
+	Current_Date, // the date that is today in a calendar (aria-current="date")
 }
 
 States :: bit_set[State;u16]
