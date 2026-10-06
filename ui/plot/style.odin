@@ -1,5 +1,6 @@
 package plot
 
+import "jm:ui/design"
 import "jm:ui/ops"
 
 // Marker is the shape a series' points take where they are drawn: the
@@ -149,4 +150,29 @@ set_sizes :: proc(s: ^Plot_Style) {
 	s.line_width, s.area_alpha = 2, 0.1
 	s.bar_radius, s.bar_max, s.box_max = 4, 24, 36
 	s.gap, s.marker_size, s.focus_width = 2, 4, 2
+}
+
+// GRID_MAX is the most WCAG contrast a gridline keeps against the plot:
+// gridlines are ink that carries no data, so they stay visible but below
+// every series, which keeps CONTRAST_MIN.
+GRID_MAX :: 2.0
+
+// recede is c blended toward bg just far enough that it contrasts with bg
+// at no more than most, or c itself where it already does: a theme's
+// border colour made a gridline, as a high-contrast theme draws its
+// borders at full strength.
+recede :: proc(c, bg: ops.Color, most: f32 = GRID_MAX) -> ops.Color {
+	if design.wcag_ratio(c, bg) <= most {
+		return c
+	}
+	lo, hi := f32(0), f32(1) // how far toward bg: too little, enough
+	for _ in 0 ..< 24 {
+		mid := (lo + hi) / 2
+		if design.wcag_ratio(ops.mix(c, bg, mid), bg) <= most {
+			hi = mid
+		} else {
+			lo = mid
+		}
+	}
+	return ops.mix(c, bg, hi)
 }

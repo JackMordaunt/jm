@@ -144,3 +144,21 @@ test_the_overlay_would_fail_muted_text_in_dark_dimmed :: proc(t: ^testing.T) {
 	r := design.wcag_ratio(s[.Fg_Color_Muted], s[.Overlay_Bg_Color])
 	testing.expectf(t, r < 4.5, "muted text on the overlay is %.2f:1; the tooltip could use it", r)
 }
+
+// Gridlines carry no data, so in every theme, high contrast included,
+// they stay visible yet below GRID_MAX against the plot, and every series
+// stands out from them as it does from the background.
+@(test)
+test_gridlines_recede_behind_the_series :: proc(t: ^testing.T) {
+	gtx: ui.Ctx
+	for theme in primer.Theme {
+		s := primer.theme_scheme(theme)
+		st := style_for(&gtx, theme, &s)
+		g := design.wcag_ratio(st.grid, st.background)
+		testing.expectf(t, g >= 1.2 && g <= plot.GRID_MAX, "%s: grid at %.2f:1", NAMES[theme], g)
+		for l, i in st.series {
+			r := design.wcag_ratio(l.color, st.grid)
+			testing.expectf(t, r >= 1.5, "%s: slot %d at %.2f:1 on a gridline", NAMES[theme], i, r)
+		}
+	}
+}

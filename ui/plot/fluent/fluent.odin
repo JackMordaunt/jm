@@ -79,6 +79,7 @@ style_for :: proc(gtx: ^ui.Ctx, theme: fluent.Theme, s: ^fluent.Scheme) -> (st: 
 	st.background, st.text, st.muted =
 		s[.Neutral_Background1], s[.Neutral_Foreground1], s[.Neutral_Foreground3]
 	st.grid, st.axis = s[.Neutral_Stroke2], s[.Neutral_Stroke_Accessible]
+	st.grid = plot.recede(st.grid, st.background)
 	st.crosshair, st.focus, st.error =
 		s[.Neutral_Foreground3], s[.Stroke_Focus2], s[.Palette_Red_Foreground1]
 	st.hover, st.other = ops.with_alpha(s[.Neutral_Foreground1], 0.06), s[.Neutral_Foreground3]

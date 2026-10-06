@@ -77,6 +77,7 @@ style_for :: proc(gtx: ^ui.Ctx, theme: primer.Theme, s: ^primer.Scheme) -> (st: 
 	st.background, st.text, st.muted =
 		s[.Bg_Color_Default], s[.Fg_Color_Default], s[.Fg_Color_Muted]
 	st.grid, st.axis = s[.Border_Color_Muted], s[.Border_Color_Default]
+	st.grid = plot.recede(st.grid, st.background)
 	st.crosshair, st.focus, st.error =
 		s[.Fg_Color_Muted], s[.Focus_Outline_Color], s[.Fg_Color_Danger]
 	st.hover, st.other = s[.Bg_Color_Neutral_Muted], s[.Fg_Color_Muted]
