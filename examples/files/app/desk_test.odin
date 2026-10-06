@@ -75,7 +75,8 @@ a_failed_filesystem_effect_drops_the_rest_of_the_plan :: proc(t: ^testing.T) {
 }
 
 // A trash's journal entry is written with the path the Trash gave back,
-// which only the trash's execution knows.
+// which only the trash's execution knows. The file is named for its folder,
+// as the Trash is the machine's: see trash_and_restore_round_trip in fs.
 @(test)
 a_trashs_journal_entry_takes_the_trashs_path :: proc(t: ^testing.T) {
 	when ODIN_OS == .Windows {
@@ -86,7 +87,7 @@ a_trashs_journal_entry_takes_the_trashs_path :: proc(t: ^testing.T) {
 	defer bench_close(&b)
 	dir := scratch("trash")
 	defer os.remove_all(dir)
-	f, _ := filepath.join({dir, "jm-files-desk-trash.txt"}, context.temp_allocator)
+	f, _ := filepath.join({dir, fmt.tprintf("%s.txt", filepath.base(dir))}, context.temp_allocator)
 	_ = os.write_entire_file(f, "x")
 	p: logic.Plan
 	logic.add(&p, logic.Trash_Entry{files.path_make(f)})

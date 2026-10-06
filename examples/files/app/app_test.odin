@@ -333,16 +333,24 @@ new_folders_take_free_names_and_trash_undoes :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&r.p, "New folder"))
 	hand_on(&r)
 	testing.expect(t, until(&r, "New folder 2"), "the second takes the next free name")
+	// The Trash is the machine's (see trash_and_restore_round_trip in fs):
+	// with six runs at once, one run's Undo found its "New folder 2" gone
+	// from the Trash. The folder goes there under a name of this run's own,
+	// the run folder's, which the path bar shows too, so with a prefix.
+	own := fmt.tprintf("trash-%s", filepath.base(dir))
 	testing.expect(t, select(&r, "New folder 2"))
+	testing.expect(t, rename_selected(&r, own))
+	testing.expect(t, until(&r, own))
+	testing.expect(t, select(&r, own))
 	testing.expect(t, ui.probe_click(&r.p, "Move to Trash"))
 	hand_on(&r)
-	testing.expect(t, until(&r, "New folder 2", present = false))
-	testing.expect(t, !os.exists(path_in(dir, "New folder 2")))
+	testing.expect(t, until(&r, own, present = false))
+	testing.expect(t, !os.exists(path_in(dir, own)))
 	when ODIN_OS != .Windows {
 		testing.expect(t, ui.probe_click(&r.p, "Undo"))
 		hand_on(&r)
-		testing.expect(t, until(&r, "New folder 2"), "the folder came back from the Trash")
-		testing.expect(t, os.exists(path_in(dir, "New folder 2")))
+		testing.expect(t, until(&r, own), "the folder came back from the Trash")
+		testing.expect(t, os.exists(path_in(dir, own)))
 	}
 }
 

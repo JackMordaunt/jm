@@ -168,12 +168,15 @@ copy_tree_copies_everything_and_replaces_nothing :: proc(t: ^testing.T) {
 	testing.expect_value(t, copy_tree(src, stopped, &cancel), Error.Cancelled)
 }
 
-// The real Trash: what this puts there it takes back out again.
+// The real Trash: what this puts there it takes back out again. The file
+// is named for its folder, as the Trash is the machine's: on macOS 15.7,
+// three processes trashing an empty folder of one name at once were all
+// given the same path in 9 of 30 tries, and only one folder was kept.
 @(test)
 trash_and_restore_round_trip :: proc(t: ^testing.T) {
 	dir := fresh("trash")
 	defer os.remove_all(dir)
-	f := put(dir, "jm-files-trash-test.txt", "bye")
+	f := put(dir, fmt.tprintf("%s.txt", filepath.base(dir)), "bye")
 	trashed, err := trash(f, context.temp_allocator)
 	testing.expect_value(t, err, Error.None)
 	testing.expect(t, !os.exists(f))
