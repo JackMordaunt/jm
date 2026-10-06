@@ -1,6 +1,8 @@
 package flow
 
+import "core:sync"
 import "core:testing"
+import "core:time"
 
 // Counting alone cannot tell "every item once" from "one item twice and another
 // never", so each worker also sums the items it saw. The two together pin the run
@@ -59,28 +61,64 @@ test_each_handles_every_item_exactly_once :: proc(t: ^testing.T) {
 	testing.expect_value(t, sum, ITEMS * (ITEMS - 1) / 2)
 }
 
+/*
+A meeting point that shows work was split without timing it: a worker that meets
+waits there until a second worker has met too. Work kept on one worker never gets
+past it, so the meeting is called off at a deadline and the test fails rather than
+hanging; work that is split does, however loaded the machine and however late the
+other workers start.
+*/
+@(private)
+Meeting :: struct {
+	arrived:    int, // atomic: workers that have met
+	called_off: bool, // atomic: the deadline passed, and no one waits any more
+}
+
+// How long a worker waits at a meeting before the test gives up on the split.
+@(private)
+MEETING_LIMIT :: 30 * time.Second
+
+// meet counts this worker in, the first time it calls, then waits for a second.
+@(private)
+meet :: proc(m: ^Meeting, met: ^bool) {
+	if !met^ {
+		met^ = true
+		sync.atomic_add(&m.arrived, 1)
+	}
+	start := time.tick_now()
+	for sync.atomic_load(&m.arrived) < 2 && !sync.atomic_load(&m.called_off) {
+		if time.tick_since(start) > MEETING_LIMIT {
+			sync.atomic_store(&m.called_off, true)
+		}
+		time.sleep(time.Millisecond)
+	}
+}
+
+@(private = "file")
+Share :: struct {
+	meeting: ^Meeting,
+	met:     bool,
+	handled: int,
+}
+
 @(test)
 test_each_shares_the_work_out :: proc(t: ^testing.T) {
-	// Each item has to cost appreciably more than starting a thread, or the calling
-	// thread finishes the whole run before the others are scheduled and the split
-	// says nothing. That is a property of the work, not of the claiming.
-	tallies := make([]Tally, 4, context.temp_allocator)
-	items := make([]int, 32, context.temp_allocator)
-	each(
-		items,
-		tallies,
-		proc(item: int, tally: ^Tally) -> bool {
-			acc := 0
-			for i in 0 ..< 1_000_000 {
-				acc += i ~ item
-			}
-			tally.handled += 1
-			tally.sum += acc & 1 // consume acc so the loop cannot be optimised away
-			return true
-		},
-	)
+	m: Meeting
+	shares := make([]Share, 4, context.temp_allocator)
+	for &s in shares {
+		s.meeting = &m
+	}
+	each(make([]int, 32, context.temp_allocator), shares, proc(_: int, s: ^Share) -> bool {
+		meet(s.meeting, &s.met)
+		s.handled += 1
+		return true
+	})
 
-	testing.expect(t, busy(tallies) > 1, "work stayed on a single worker")
+	busy := 0
+	for s in shares {
+		busy += 1 if s.handled > 0 else 0
+	}
+	testing.expect(t, busy > 1, "work stayed on a single worker")
 }
 
 @(test)
