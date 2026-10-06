@@ -270,7 +270,14 @@ view_query :: proc(v: ^View, cols: []Column, visible: ^[dynamic]int) -> Query {
 			append(visible, c)
 		}
 	}
-	return {cols = cols, sort = v.sort[:], filters = v.filters[:], search = v.search, visible = visible[:], group = v.group}
+	return {
+		cols = cols,
+		sort = v.sort[:],
+		filters = v.filters[:],
+		search = v.search,
+		visible = visible[:],
+		group = v.group,
+	}
 }
 
 // VIEW_MAGIC heads a view's text, with its version.
@@ -420,7 +427,15 @@ write_quoted :: proc(b: ^strings.Builder, s: string) {
 // name keeps its declared state and goes after the named ones, in
 // declared order; a line it cannot read is skipped. ok is false only for
 // text that is not a view at all.
-view_decode :: proc(v: ^View, cols: []Column, text: string, allocator := context.allocator) -> (name: string, ok: bool) {
+view_decode :: proc(
+	v: ^View,
+	cols: []Column,
+	text: string,
+	allocator := context.allocator,
+) -> (
+	name: string,
+	ok: bool,
+) {
 	rest := text
 	first, _ := strings.split_lines_iterator(&rest)
 	if strings.trim_right(first, "\r") != VIEW_MAGIC {

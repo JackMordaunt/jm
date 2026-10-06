@@ -169,7 +169,8 @@ selection_settle :: proc(s: ^Selection, match: u64, loaded: []Row_Key, names: []
 	out := make(map[Row_Key]string, s.allocator)
 	for k, i in loaded {
 		if _, gone := s.keys[k]; !gone {
-			out[k] = strings.clone(names[i], s.allocator) if i < len(names) && names[i] != "" else ""
+			out[k] =
+				strings.clone(names[i], s.allocator) if i < len(names) && names[i] != "" else ""
 		}
 	}
 	drop_keys(&s.keys, s.allocator)

@@ -257,13 +257,13 @@ Place :: struct {
 // width. A middle column's x is from the middle's start; the middle is
 // drawn from left_w, moved by the sideways scroll.
 Placement :: struct {
-	places:            [dynamic]Place,
-	mid_first:         int, // places[mid_first:right_first] scroll
-	right_first:       int,
-	left_w, mid_w:     f32,
-	right_w:           f32,
-	tracks:            [dynamic]Track, // scratch, reused
-	widths:            [dynamic]f32,
+	places:        [dynamic]Place,
+	mid_first:     int, // places[mid_first:right_first] scroll
+	right_first:   int,
+	left_w, mid_w: f32,
+	right_w:       f32,
+	tracks:        [dynamic]Track, // scratch, reused
+	widths:        [dynamic]f32,
 }
 
 placement_destroy :: proc(p: ^Placement) {
@@ -276,7 +276,14 @@ placement_destroy :: proc(p: ^Placement) {
 // place_columns lays out the visible columns of cols in order, their
 // state in states, for a grid avail pixels wide, reusing p's arrays. The
 // middle shares what the pinned groups leave.
-place_columns :: proc(p: ^Placement, cols: []Column, states: []Column_State, order: []int, avail: f32, fit: Fit) {
+place_columns :: proc(
+	p: ^Placement,
+	cols: []Column,
+	states: []Column_State,
+	order: []int,
+	avail: f32,
+	fit: Fit,
+) {
 	clear(&p.places)
 	clear(&p.tracks)
 	gather_pin(p, cols, states, order, .Left)

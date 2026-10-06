@@ -10,7 +10,11 @@ import "core:testing"
 
 @(test)
 test_widths_grow_to_fill_and_shrink_to_fit :: proc(t: ^testing.T) {
-	tracks := []Track{{base = 100, min = 40, grow = 1}, {base = 50, min = 40, rigid = true}, {base = 100, min = 40, max = 120, grow = 1}}
+	tracks := []Track {
+		{base = 100, min = 40, grow = 1},
+		{base = 50, min = 40, rigid = true},
+		{base = 100, min = 40, max = 120, grow = 1},
+	}
 	out: [3]f32
 	solve_widths(tracks, 400, .Scroll, out[:])
 	// 150 left over: 75 each, but the third caps at 120, so the first takes
@@ -26,7 +30,12 @@ test_widths_grow_to_fill_and_shrink_to_fit :: proc(t: ^testing.T) {
 
 @(test)
 test_place_columns_pins_left_and_right_and_virtualises_the_middle :: proc(t: ^testing.T) {
-	cols := []Column{{id = "a", sizing = .Fixed, width = 100}, {id = "b", sizing = .Fixed, width = 100}, {id = "c", sizing = .Fixed, width = 100}, {id = "d", sizing = .Fixed, width = 100}}
+	cols := []Column {
+		{id = "a", sizing = .Fixed, width = 100},
+		{id = "b", sizing = .Fixed, width = 100},
+		{id = "c", sizing = .Fixed, width = 100},
+		{id = "d", sizing = .Fixed, width = 100},
+	}
 	states := []Column_State{{pin = .Right}, {}, {pin = .Left}, {}}
 	order := []int{0, 1, 2, 3}
 	p: Placement
@@ -132,4 +141,3 @@ test_csv_and_tsv_read_back_through_core_csv :: proc(t: ^testing.T) {
 	testing.expect(t, slice.equal(got[:6], fields[:6]))
 	free_all(context.temp_allocator)
 }
-

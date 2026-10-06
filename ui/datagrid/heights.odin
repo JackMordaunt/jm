@@ -31,7 +31,12 @@ heights_set_uniform :: proc(h: ^Heights, n: int, height: f64) {
 
 // heights_build makes h n rows, row i height_of(user, i) tall (at least
 // 1), in O(n).
-heights_build :: proc(h: ^Heights, n: int, height_of: proc(user: rawptr, i: int) -> f64, user: rawptr) {
+heights_build :: proc(
+	h: ^Heights,
+	n: int,
+	height_of: proc(user: rawptr, i: int) -> f64,
+	user: rawptr,
+) {
 	h.uniform = 0
 	h.n = max(n, 0)
 	resize(&h.tree, h.n + 1)

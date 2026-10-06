@@ -14,13 +14,10 @@ Table :: struct {
 
 @(private = "file")
 table_source :: proc(t: ^Table) -> Source {
-	return {
-		user = t,
-		rows = len(t.rows),
-		text = proc(user: rawptr, row, col: int) -> string {
-			return (^Table)(user).rows[row][col]
-		},
+	text :: proc(user: rawptr, row, col: int) -> string {
+		return (^Table)(user).rows[row][col]
 	}
+	return {user = t, rows = len(t.rows), text = text}
 }
 
 @(private = "file")
@@ -49,7 +46,10 @@ test_compare_natural_reads_digit_runs_by_value_and_letters_without_case :: proc(
 	testing.expect_value(t, compare_natural("same", "same"), 0)
 	testing.expect(t, compare_natural("ABC", "abc") != 0)
 	testing.expect_value(t, compare_natural("ABC", "abc"), -compare_natural("abc", "ABC"))
-	testing.expect(t, compare_natural("x99999999999999999999999", "x100000000000000000000000") < 0) // past u64
+	testing.expect(
+		t,
+		compare_natural("x99999999999999999999999", "x100000000000000000000000") < 0,
+	) // past u64
 }
 
 @(test)
@@ -79,14 +79,19 @@ test_order_filters_searches_sorts_and_groups :: proc(t: ^testing.T) {
 
 	view_sort_cycle(&v, 0, false)
 	order_build(&o, src, view_query(&v, COLS, &visible))
-	testing.expect(t, slice.equal(o.rows[:], []int{2, 1, 4, 3, 0})) // Rig1 rig2 rig2 rig3 rig10, ties stable
+	// Rig1 rig2 rig2 rig3 rig10, the ties stable.
+	testing.expect(t, slice.equal(o.rows[:], []int{2, 1, 4, 3, 0}))
 
 	view_sort_cycle(&v, 2, false) // by hashrate: the blank one last
 	order_build(&o, src, view_query(&v, COLS, &visible))
 	testing.expect(t, slice.equal(o.rows[:], []int{1, 4, 0, 3, 2}))
 	view_sort_cycle(&v, 2, false)
 	order_build(&o, src, view_query(&v, COLS, &visible))
-	testing.expect(t, slice.equal(o.rows[:], []int{3, 0, 1, 4, 2}), "descending, blanks still last")
+	testing.expect(
+		t,
+		slice.equal(o.rows[:], []int{3, 0, 1, 4, 2}),
+		"descending, blanks still last",
+	)
 
 	view_set_values(&v, 1, {"Norway", "Paraguay", "Norway"})
 	testing.expect_value(t, len(find_filter(&v, 1).values), 2)
@@ -220,7 +225,8 @@ test_pages_grow_an_unknown_count_until_a_short_page :: proc(t: ^testing.T) {
 	defer pages_destroy(&p)
 	pages_query(&p, 1)
 	lo, hi := pages_window(&p, 0, 5)
-	testing.expect_value(t, [2]int{lo, hi}, [2]int{0, 1}) // one page of skeleton is all there can be yet
+	// One page of skeleton is all there can be yet.
+	testing.expect_value(t, [2]int{lo, hi}, [2]int{0, 1})
 	pages_want(&p, lo, hi, nil)
 	_, st, _ := pages_row(&p, 3)
 	testing.expect_value(t, st, Row_State.Loading)

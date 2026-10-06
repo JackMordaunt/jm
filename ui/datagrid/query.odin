@@ -112,7 +112,7 @@ trim_number :: proc(s: string) -> string {
 		lo += 1
 	}
 	hi := lo
-	for hi < len(s) && (is_digit(s[hi]) || s[hi] == '.' || s[hi] == '-' || s[hi] == '+' || s[hi] == ',' || s[hi] == 'e' || s[hi] == 'E') {
+	for hi < len(s) && (is_digit(s[hi]) || strings.index_byte(".-+,eE", s[hi]) >= 0) {
 		hi += 1
 	}
 	t := s[lo:hi]
@@ -411,16 +411,16 @@ group_name :: proc(o: ^Order, g: Group) -> string {
 // the query, data version and row count it was built for, so the grid
 // rebuilds it only when one changes.
 Order :: struct {
-	rows:      [dynamic]int,
-	items:     [dynamic]int,
-	groups:    [dynamic]Group,
+	rows:       [dynamic]int,
+	items:      [dynamic]int,
+	groups:     [dynamic]Group,
 	group_text: [dynamic]u8, // every group's text, end to end: a source's text may be the frame's
-	built:     u64,
-	nums:      [dynamic]f64, // sort scratch: one column's values
-	texts:     [dynamic]string, // sort scratch: one column's text
-	key_nums:  [dynamic][dynamic]f64,
-	key_texts: [dynamic][dynamic]string,
-	key_ok:    [dynamic][dynamic]bool,
+	built:      u64,
+	nums:       [dynamic]f64, // sort scratch: one column's values
+	texts:      [dynamic]string, // sort scratch: one column's text
+	key_nums:   [dynamic][dynamic]f64,
+	key_texts:  [dynamic][dynamic]string,
+	key_ok:     [dynamic][dynamic]bool,
 }
 
 order_destroy :: proc(o: ^Order) {
@@ -642,7 +642,12 @@ Value_Count :: struct {
 // that pass every filter of q but col's own, with their counts, sorted
 // naturally: what the column's Set filter offers to choose from, so the
 // counts say what choosing one would show.
-distinct_values :: proc(src: Source, q: Query, col: int, allocator := context.allocator) -> []Value_Count {
+distinct_values :: proc(
+	src: Source,
+	q: Query,
+	col: int,
+	allocator := context.allocator,
+) -> []Value_Count {
 	others := make([dynamic]Filter, 0, len(q.filters), context.temp_allocator)
 	for f in q.filters {
 		if f.col != col {

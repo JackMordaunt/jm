@@ -148,19 +148,19 @@ Page_State :: enum u8 {
 // with, its attempt, its error, the delivery it was copied from and the
 // tick it was last wanted. stale says it is being refreshed.
 Cached_Page :: struct {
-	query:   u64,
-	index:   int,
-	state:   Page_State,
-	stale:   bool,
-	rows:    []Page_Row,
-	cells:   []string,
-	text:    []u8,
-	after:   Cursor,
+	query:      u64,
+	index:      int,
+	state:      Page_State,
+	stale:      bool,
+	rows:       []Page_Row,
+	cells:      []string,
+	text:       []u8,
+	after:      Cursor,
 	after_text: []u8,
-	attempt: int,
-	error:   string,
-	version: u64,
-	wanted:  u64,
+	attempt:    int,
+	error:      string,
+	version:    u64,
+	wanted:     u64,
 }
 
 // Pages is a paged grid's cache: the current query's hash, the row
@@ -325,7 +325,14 @@ cursor_before :: proc(p: ^Pages, index: int, sort_cols: []int) -> (c: Cursor, te
 // was taken: a page for another query never is. refreshing marks it
 // stale: the host has it but is getting it again. It copies the rows, so
 // the delivery may go, and moves the count.
-pages_arrive :: proc(p: ^Pages, query: u64, index: int, pg: ^Page, version: u64, refreshing := false) -> bool {
+pages_arrive :: proc(
+	p: ^Pages,
+	query: u64,
+	index: int,
+	pg: ^Page,
+	version: u64,
+	refreshing := false,
+) -> bool {
 	if query != p.query || index < 0 {
 		return false
 	}
@@ -506,7 +513,10 @@ pages_row :: proc(p: ^Pages, i: int) -> (row: ^Page_Row, state: Row_State, page:
 	}
 	if p.keep_stale {
 		for &old in p.entries {
-			if old.query != p.query && old.index == index && old.state == .Ready && k < len(old.rows) {
+			if old.query != p.query &&
+			   old.index == index &&
+			   old.state == .Ready &&
+			   k < len(old.rows) {
 				return &old.rows[k], .Stale, &old
 			}
 		}
