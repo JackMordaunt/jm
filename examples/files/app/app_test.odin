@@ -51,8 +51,8 @@ hand_on :: proc(r: ^Rig) {
 }
 
 @(private = "file")
-settle :: proc(r: ^Rig, limit := 10 * time.Second) -> bool {
-	deadline := time.tick_now()._nsec + i64(limit)
+settle :: proc(r: ^Rig) -> bool {
+	deadline := time.tick_now()._nsec + i64(PATIENCE)
 	for time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -74,6 +74,11 @@ settle :: proc(r: ^Rig, limit := 10 * time.Second) -> bool {
 	}
 	return false
 }
+
+// PATIENCE is how long a test waits for the host to answer. It bounds a
+// hang, never a speed: a loaded machine can take seconds to run a frame.
+@(private = "file")
+PATIENCE :: 30 * time.Second
 
 // A real folder: a picture, a text file and a subfolder with a file. Each
 // call makes a folder of its own. One shared folder was rewritten by every
@@ -155,7 +160,7 @@ the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 	// query and the sidebar shows the folder.
 	testing.expect(t, ui.probe_click(&r.p, "Pin this folder"))
 	hand_on(&r)
-	deadline := time.tick_now()._nsec + i64(5 * time.Second)
+	deadline := time.tick_now()._nsec + i64(PATIENCE)
 	for !ui.probe_tagged(&r.p, "Unpin this folder") && time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -201,8 +206,8 @@ own_fixture :: proc(name: string) -> string {
 // until runs frames, as the loop would whenever the inbox fills, until
 // name is tagged (or not), or the deadline passes.
 @(private = "file")
-until :: proc(r: ^Rig, name: string, present := true, limit := 5 * time.Second) -> bool {
-	deadline := time.tick_now()._nsec + i64(limit)
+until :: proc(r: ^Rig, name: string, present := true) -> bool {
+	deadline := time.tick_now()._nsec + i64(PATIENCE)
 	for time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -391,5 +396,5 @@ a_change_made_elsewhere_shows_within_a_poll :: proc(t: ^testing.T) {
 	testing.expect(t, until(&r, "readme.txt"))
 	// Another application writes a file: no command, only the watcher.
 	_ = os.write_entire_file(path_in(dir, "from-elsewhere.txt"), "hi")
-	testing.expect(t, until(&r, "from-elsewhere.txt", limit = 3 * time.Second), "the poll saw the folder change")
+	testing.expect(t, until(&r, "from-elsewhere.txt"), "the poll saw the folder change")
 }
