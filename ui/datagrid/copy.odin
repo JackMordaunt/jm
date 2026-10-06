@@ -170,6 +170,16 @@ export_step :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, ev: ^Ev
 		export_page(gtx, g, cols, src, ev)
 		return
 	}
+	if export_rows(g, cols, src) {
+		ev.exported = true
+	}
+}
+
+// export_rows writes a client export's next EXPORT_CHUNK rows and reports
+// whether that was the last of them.
+@(private)
+export_rows :: proc(g: ^Grid, cols: []Column, src: Source) -> bool {
+	x := &g.export
 	fields := make([dynamic]string, 0, len(x.cols), context.temp_allocator)
 	end := min(x.next + EXPORT_CHUNK, len(g.order.rows))
 	for r in g.order.rows[x.next:end] {
@@ -185,8 +195,20 @@ export_step :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, ev: ^Ev
 		x.written += 1
 	}
 	x.next = end
-	if x.next >= len(g.order.rows) {
-		x.done = true
-		ev.exported = true
+	x.done = x.next >= len(g.order.rows)
+	return x.done
+}
+
+// export_all writes a client grid's whole view as CSV now, into
+// g.export.text, as export_start's frames would a chunk at a time: what
+// a Copy CSV puts on the clipboard. A paged grid's rows are not in hand,
+// so it does nothing and reports false; export_start streams them.
+export_all :: proc(g: ^Grid, cols: []Column, src: Source) -> bool {
+	if src.paged != nil {
+		return false
 	}
+	export_start(g, cols, src)
+	for !export_rows(g, cols, src) {
+	}
+	return true
 }

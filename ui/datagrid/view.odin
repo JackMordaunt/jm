@@ -56,6 +56,21 @@ view_reset :: proc(v: ^View, cols: []Column) {
 	}
 }
 
+// view_reset_columns puts the columns back as declared (their order,
+// widths, visibility and pins), keeping the sort, filters, search and
+// grouping: the Reset columns of a column menu.
+view_reset_columns :: proc(v: ^View, cols: []Column) {
+	clear(&v.order)
+	for c, i in cols {
+		append(&v.order, i)
+		v.cols[i] = Column_State {
+			hidden = c.hidden,
+			pin    = c.pin,
+			auto   = v.cols[i].auto,
+		}
+	}
+}
+
 @(private)
 view_free_filters :: proc(v: ^View) {
 	for &f in v.filters {

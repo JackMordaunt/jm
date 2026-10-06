@@ -56,6 +56,10 @@ filter_active :: proc(f: Filter) -> bool {
 // differ (nil: the density's). Bump version when the rows change, so the
 // order is built again.
 //
+// loading says more rows are on their way to a client source, as when
+// its host fetches every row before showing any: the grid draws a view
+// of skeleton rows after the rows it has.
+//
 // A paged source sets paged: then rows, text, key and value are unused,
 // and the grid asks for pages of rows by need (see paged.odin).
 Source :: struct {
@@ -66,6 +70,7 @@ Source :: struct {
 	value:   proc(user: rawptr, row, col: int) -> (f64, bool),
 	height:  proc(user: rawptr, row: int) -> f32,
 	version: u64,
+	loading: bool,
 	paged:   ^Paging,
 }
 

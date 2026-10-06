@@ -305,7 +305,7 @@ update_query :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, ev: ^Ev
 		g.geo.items = max(g.pages.count, 0)
 	} else {
 		built := ui.fnv_u64(ui.fnv_u64(query, src.version), u64(src.rows))
-		built = ui.fnv_u64(built, collapsed_hash(g))
+		built = ui.fnv_u64(ui.fnv_u64(built, collapsed_hash(g)), u64(src.loading))
 		if built != g.built {
 			g.built = built
 			order_build(&g.order, src, q, g.collapsed)
@@ -430,8 +430,13 @@ geometry :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, size: ops.S
 	geo.header_h = skin.style.header_height
 	geo.body = {0, geo.header_h, size.x, max(size.y - geo.header_h - foot_height(skin), 0)}
 	geo.row_h = row_height(&skin.style, g.density)
-	if src.paged != nil {
+	switch {
+	case src.paged != nil:
 		geo.items = max(g.pages.count, 0)
+		heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
+	case src.loading:
+		// A view of skeletons after the rows there are.
+		geo.items = len(g.order.items) + int(geo.body.h / max(geo.row_h, 1)) + 1
 		heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
 	}
 	place_columns(&g.place, cols, g.view.cols[:], g.view.order[:], size.x, g.fit)
@@ -491,6 +496,10 @@ item_at :: proc(g: ^Grid, src: Source, i: int) -> (it: Item) {
 		return
 	}
 	if src.paged == nil {
+		if i >= len(g.order.items) {
+			it.state = .Loading // a skeleton while src is loading
+			return
+		}
 		r := g.order.items[i]
 		if r < 0 {
 			it.group, it.state = -r - 1, .Ready

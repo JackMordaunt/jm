@@ -14,13 +14,14 @@ import "jm:ui/ops"
 
 @(private = "file")
 Rigs :: struct {
-	g:      Grid,
-	skin:   Skin,
-	rows:   [][4]string,
-	ev:     Events,
-	events: [dynamic]Events,
-	paged:  ^Paging,
-	label:  string,
+	g:       Grid,
+	skin:    Skin,
+	rows:    [][4]string,
+	ev:      Events,
+	events:  [dynamic]Events,
+	paged:   ^Paging,
+	label:   string,
+	loading: bool,
 }
 
 @(private = "file")
@@ -68,9 +69,10 @@ rigs_free :: proc(m: ^Rigs) {
 
 @(private = "file")
 rigs_source :: proc(m: ^Rigs) -> Source {
-	return {user = m, rows = len(m.rows), text = proc(user: rawptr, row, col: int) -> string {
-			return (^Rigs)(user).rows[row][col]
-		}, paged = m.paged}
+	text :: proc(user: rawptr, row, col: int) -> string {
+		return (^Rigs)(user).rows[row][col]
+	}
+	return {user = m, rows = len(m.rows), text = text, paged = m.paged, loading = m.loading}
 }
 
 @(private = "file")
@@ -470,4 +472,42 @@ spy_proc :: proc(
 		s.n += 1
 	}
 	return s.inner.procedure(s.inner.data, mode, size, alignment, old, old_size, loc)
+}
+
+@(test)
+test_a_loading_source_shows_skeletons_after_its_rows :: proc(t: ^testing.T) {
+	m := rigs_make(3)
+	defer rigs_free(m)
+	m.loading = true
+	p: ui.Probe
+	open(&p, m)
+	defer ui.probe_destroy(&p)
+	testing.expect(t, ui.probe_tagged(&p, "SN-00002"))
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(said, `row "" row 5 busy`), said) // item 3, after the rows
+	testing.expect_value(t, cells(&p), 3 * 4)
+	m.loading = false
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.g.geo.items, 3)
+	testing.expect_value(t, heights_total(&m.g.heights), 3 * 33)
+}
+
+@(test)
+test_export_all_writes_the_view_at_once_and_reset_puts_columns_back :: proc(t: ^testing.T) {
+	m := rigs_make(50_000)
+	defer rigs_free(m)
+	view_set_values(&m.g.view, 2, {"Paraguay"})
+	m.g.view.cols[1].hidden = true
+	move_column(m.g.view.order[:], 3, 0)
+	p: ui.Probe
+	open(&p, m)
+	defer ui.probe_destroy(&p)
+	testing.expect(t, export_all(&m.g, RIG_COLS, rigs_source(m)))
+	text := strings.to_string(m.g.export.text)
+	testing.expect(t, strings.has_prefix(text, "Hash,Serial,Site\r\n37,SN-00001,Paraguay\r\n"), text[:50])
+	testing.expect_value(t, strings.count(text, "\r\n"), 16_668) // the titles and a third of the rows
+	view_reset_columns(&m.g.view, RIG_COLS)
+	testing.expect(t, !m.g.view.cols[1].hidden)
+	testing.expect_value(t, m.g.view.order[0], 0)
+	testing.expect(t, view_filtered(&m.g.view, 2), "the filter stays")
 }
