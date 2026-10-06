@@ -908,7 +908,7 @@ enqueue_global :: proc(n: ^Node, locked := false) {
 	}
 }
 
-// Queue every source, so `step` has something to run. Any thread may call
+// Queue every source, so the nodes have something to run. Any thread may call
 // it, and run and drain_pinned each do, so a pool and a pinned thread can
 // arrive together: exactly one of them queues the sources. Both the claim and
 // the queueing happen under `p.mutex`, so a caller that loses waits until the
@@ -1093,8 +1093,11 @@ run_node :: proc(p: ^Pipeline, n: ^Node, exact: bool) {
 }
 
 // Run one ready node on this thread, in queue order. False when nothing is
-// ready now. Only for a pipeline no other thread is running.
+// ready now. Only for a pipeline no other thread is running. The first step
+// starts the sources, as run and drain do, so a test that only steps still
+// has its intervals armed and its generators running.
 step :: proc(p: ^Pipeline) -> bool {
+	start(p)
 	fire_timers(p)
 	sync.mutex_lock(&p.mutex)
 	n, ok := dequeue(p, pinned = true)
