@@ -579,3 +579,23 @@ test_rows_of_their_own_heights_stand_where_they_add_up :: proc(t: ^testing.T) {
 	last := ui.probe_bounds(&p, "SN-29999") // 40px, ending where the body does
 	testing.expect_value(t, [2]f32{last.y + last.h, last.h}, [2]f32{36 + 363, 40})
 }
+
+// A grid given a flex's share takes that share, not the column's whole
+// height, so what follows it is not drawn over.
+@(test)
+test_a_grid_takes_the_share_a_column_offers :: proc(t: ^testing.T) {
+	m := rigs_make(50)
+	defer rigs_free(m)
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		m := (^Rigs)(user)
+		col := ui.column_open(gtx, align = .Fill)
+		defer ui.close(&col)
+		ui.spacer(gtx, 60)
+		ui.flexible(gtx, 1)
+		grid(gtx, &m.g, RIG_COLS, rigs_source(m), &m.skin, "Rigs")
+	}
+	p: ui.Probe
+	ui.probe_init(&p, view, m, {600, 400})
+	defer ui.probe_destroy(&p)
+	testing.expect_value(t, m.g.geo.size, ops.Size{600, 340})
+}

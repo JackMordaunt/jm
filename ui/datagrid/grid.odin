@@ -249,7 +249,9 @@ grid_sync :: proc(g: ^Grid, columns: []Column, src: Source, skin: ^Skin) {
 // where the height is unbounded and 640 where the width is.
 @(private)
 grid_size :: proc(gtx: ^ui.Ctx, g: ^Grid, skin: ^Skin) -> ops.Size {
-	cs := gtx.constraints
+	// What the container offers the grid's box, which a flex's weighted
+	// child gets only once the box is opened: not the container's own.
+	cs := ui.offer(gtx)
 	w := cs.max.x if ui.is_finite(cs.max.x) else max(cs.min.x, 640)
 	h := cs.max.y
 	if !ui.is_finite(h) {
