@@ -12,7 +12,8 @@ import "core:unicode/utf8"
 // exactly as it would plain text and maps what the pointer did back.
 
 // SECRET_BULLET is what a secret field shows for each character: U+25CF,
-// BLACK CIRCLE: U+2022 BULLET drew too small to count at 14px.
+// BLACK CIRCLE: U+2022 BULLET, in SF Pro at Primer's 14px, drew as dots
+// too small and close to count (an Ergon sign-in render, 2026-10-06).
 SECRET_BULLET :: "●"
 
 // secret_view is s as it shows: a bullet per rune of s, with its caret,

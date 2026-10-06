@@ -42,6 +42,8 @@ test_a_secret_input_shows_bullets_and_keeps_its_text :: proc(t: ^testing.T) {
 
 	// Select all, then copy and cut: neither reaches the clipboard.
 	ui.probe_key(&p, .A, {ui.SHORTCUT})
+	lo, hi := ui.text_selection(&m.password)
+	testing.expect(t, lo == 0 && hi == len(m.password.buf), "select all selected the text")
 	ui.probe_key(&p, .C, {ui.SHORTCUT})
 	ui.probe_key(&p, .X, {ui.SHORTCUT})
 	testing.expect_value(t, ui.probe_clipboard(&p), "")
