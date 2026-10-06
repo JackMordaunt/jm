@@ -14,7 +14,8 @@ import tok "jm:ui/primer/tokens"
 // components: a search field, saved views in an ActionMenu, a Clear
 // filters button, and a Columns menu that exports, copies and arranges
 // the columns; each filterable column's header holds a filter button
-// opening a SelectPanel of the column's values with their counts.
+// opening a SelectPanel of the column's values with their counts, or for
+// a Text or Range filter a panel of fields (data_grid_filters.odin).
 //
 //	g: primer.Data_Grid
 //	primer.data_grid_init(&g, COLUMNS)
@@ -42,6 +43,7 @@ Data_Grid :: struct {
 	notice:       string, // what the toolbar says last happened: "Copied 3 rows"
 	cols:         []datagrid.Column, // this frame's, for the slots
 	src:          datagrid.Source,
+	today:        Date, // what a date filter's presets count from; zero for date_today
 }
 
 // Saved_View is a named arrangement of the grid, as datagrid.view_encode
@@ -52,13 +54,18 @@ Saved_View :: struct {
 }
 
 // Filter_Panel is the column filter panel: which column's is open, its
-// filter field, and the values it lists, as the panel draws them.
+// filter field, and the values it lists, as the panel draws them; or a
+// Text or Range panel's fields.
 @(private)
 Filter_Panel :: struct {
 	open:     bool,
 	col:      int,
 	seen:     bool, // the panel was drawn this frame
-	text:     ui.Text_State,
+	text:     ui.Text_State, // a Set panel's filter field, a Text panel's Contains
+	lo, hi:   ui.Text_State, // a number Range panel's Min and Max
+	lo_err:   string, // what is wrong with Min, empty when nothing
+	hi_err:   string,
+	dates:    Date_Range, // a date Range panel's range
 	values:   [dynamic]datagrid.Value_Count, // the column's values, every one
 	built:    u64, // the query values was counted under, 0 for none
 	shown:    [dynamic]int, // the values the filter text keeps, at most FILTER_SHOWN
@@ -86,6 +93,8 @@ data_grid_destroy :: proc(g: ^Data_Grid) {
 	delete(g.name.buf)
 	f := &g.filter
 	delete(f.text.buf)
+	delete(f.lo.buf)
+	delete(f.hi.buf)
 	values_free(&f.values)
 	delete(f.values)
 	delete(f.shown)
@@ -262,7 +271,7 @@ grid_header :: proc(gtx: ^ui.Ctx, h: ^datagrid.Header, user: rawptr) {
 	g := (^Data_Grid)(user)
 	_, inline := cell_padding(g.grid.density)
 	right := h.size.x - tok.BASE_SIZE_4
-	if h.column.filter == .Set {
+	if h.column.filter != .None {
 		rec := ui.record_open(gtx, ui.loose(h.size), key = 1)
 		filter_button(gtx, g, h)
 		m, d := ui.record_close(&rec)
@@ -317,13 +326,18 @@ header_sort_mark :: proc(
 }
 
 // filter_button is a header's filter button and, while open, its panel
-// hanging from it.
+// hanging from it. A Set filter's button counts the values chosen; a Text
+// or Range filter's shows a dot on its icon while it filters.
 @(private)
 filter_button :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, h: ^datagrid.Header) {
 	f := datagrid.find_filter(&g.grid.view, h.col)
 	chosen := 0
 	if f != nil && f.kind == .Set {
 		chosen = len(f.values)
+	}
+	dot := Unread_Dot.None
+	if f != nil && f.kind != .Set && datagrid.filter_active(f^) {
+		dot = .Leading
 	}
 	s := ui.stack_open(gtx, key = h.key)
 	defer ui.close(&s)
@@ -352,6 +366,7 @@ filter_button :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, h: ^datagrid.Header) {
 		name,
 		variant,
 		.Small,
+		dot = dot,
 		no_tooltip = true,
 		tab_stop = false,
 		key = 1,
@@ -361,7 +376,11 @@ filter_button :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, h: ^datagrid.Header) {
 	anchor := ui.last_widget(gtx)
 	if g.filter.open && g.filter.col == h.col {
 		g.filter.seen = true
-		filter_panel(gtx, g, h.col, anchor)
+		if h.column.filter == .Set {
+			filter_panel(gtx, g, h.col, anchor)
+		} else {
+			range_panel(gtx, g, h.col, anchor)
+		}
 	}
 }
 
@@ -374,15 +393,15 @@ filter_toggle :: proc(g: ^Data_Grid, col: int) {
 	filter_open(g, col)
 }
 
-// filter_open opens column col's filter panel, its field empty.
+// filter_open opens column col's filter panel: a Set panel's field
+// empty, a Text or Range panel's fields holding the filter as it stands.
 @(private)
 filter_open :: proc(g: ^Data_Grid, col: int) {
-	if col < 0 || col >= len(g.cols) || g.cols[col].filter != .Set {
+	if col < 0 || col >= len(g.cols) || g.cols[col].filter == .None {
 		return
 	}
 	g.filter.open, g.filter.col, g.filter.built = true, col, 0
-	clear(&g.filter.text.buf)
-	g.filter.text.cursor, g.filter.text.anchor = 0, 0
+	panel_seed(g, col)
 }
 
 // filter_panel is column col's SelectPanel: its values with their counts
@@ -665,6 +684,7 @@ grid_toolbar :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 			datagrid.view_clear_filters(&g.grid.view)
 			ui.text_set(&g.search, "")
 			g.applied = -1
+			g.filter.open = false
 		}
 	}
 	views_menu(gtx, g)

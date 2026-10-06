@@ -33,15 +33,15 @@ REMOTE_ROWS      :: 50_000
 RIG_COLUMN_COUNT :: 12
 
 RIG_COLUMNS := [RIG_COLUMN_COUNT]datagrid.Column {
-	{id = "serial", title = "Serial", row_header = true, pin = .Left},
+	{id = "serial", title = "Serial", row_header = true, pin = .Left, filter = .Text},
 	{id = "model", title = "Model", filter = .Set},
 	{id = "owner", title = "Owner", filter = .Set},
 	{id = "facility", title = "Facility", filter = .Set},
 	{id = "status", title = "Status", filter = .Set},
 	{id = "payout", title = "Payout", filter = .Set},
-	{id = "hashrate", title = "Hashrate", kind = .Number, align = .End},
+	{id = "hashrate", title = "Hashrate", kind = .Number, align = .End, filter = .Range},
 	{id = "standing", title = "Standing", filter = .Set},
-	{id = "created", title = "Created", kind = .Date},
+	{id = "created", title = "Created", kind = .Date, filter = .Range},
 	{id = "expected", title = "Expected worker", sizing = .Grow},
 	{id = "worker", title = "F. Worker"},
 	{id = "tags", title = "Tags", hidden = true},
