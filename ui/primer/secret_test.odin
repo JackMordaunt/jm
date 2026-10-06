@@ -29,7 +29,14 @@ test_a_secret_input_shows_bullets_and_keeps_its_text :: proc(t: ^testing.T) {
 	ui.probe_type(&p, "pässwörd")
 	testing.expect_value(t, ui.text_string(&m.password), "pässwörd")
 	report := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expect(t, strings.contains(report, `password field "Password" value "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"`), report)
+	testing.expect(
+		t,
+		strings.contains(
+			report,
+			`password field "Password" value "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"`,
+		),
+		report,
+	)
 	testing.expect(t, !strings.contains(report, "pässw"), "the text reached the reader")
 	testing.expect(t, !strings.contains(ui.probe_dump(&p), "pässwörd"), "the text was drawn")
 
@@ -72,6 +79,19 @@ test_a_click_in_a_secret_input_places_the_caret_in_the_text :: proc(t: ^testing.
 	ui.probe_click_at(&p, {box.x + 2, box.y + box.h / 2})
 	ui.probe_type(&p, "^")
 	testing.expect_value(t, ui.text_string(&m.password), "^é€x$")
+	// Clicks across the bullets land only on the text's rune boundaries,
+	// each of them.
+	seen: [16]bool
+	for x := box.x; x < box.x + box.w; x += 1 {
+		ui.probe_click_at(&p, {x, box.y + box.h / 2})
+		seen[clamp(m.password.cursor, 0, 15)] = true
+	}
+	// "^é€x$" has its rune boundaries at bytes 0, 1, 3, 6, 7 and 8.
+	want: [16]bool
+	for i in ([]int{0, 1, 3, 6, 7, 8}) {
+		want[i] = true
+	}
+	testing.expect_value(t, seen, want)
 	// A double click selects every bullet, and so the whole text.
 	ui.probe_click_at(&p, {box.x + 20, box.y + box.h / 2}, clicks = 2)
 	ui.probe_type(&p, "new")
