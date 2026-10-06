@@ -10,17 +10,10 @@ import bl "jm:ui/blend2d"
 
 import "../../common"
 
-@(private = "file")
-scratch :: proc(name: string) -> string {
-	tmp, _ := os.temp_directory(context.temp_allocator)
-	dir, _ := filepath.join({tmp, name}, context.temp_allocator)
-	_ = os.make_directory(dir)
-	return dir
-}
-
 @(test)
 list_puts_folders_first_then_names_and_marks_pictures :: proc(t: ^testing.T) {
-	dir := scratch("jm-files-list")
+	dir := fresh("list")
+	defer os.remove_all(dir)
 	sub, _ := filepath.join({dir, "zeta"}, context.temp_allocator)
 	_ = os.make_directory(sub)
 	for n in ([]string{"Beta.txt", "alpha.png", ".hidden"}) {
@@ -43,7 +36,8 @@ list_puts_folders_first_then_names_and_marks_pictures :: proc(t: ^testing.T) {
 
 @(test)
 thumbnail_fits_a_picture_in_the_square :: proc(t: ^testing.T) {
-	dir := scratch("jm-files-thumb")
+	dir := fresh("thumb")
+	defer os.remove_all(dir)
 	src, _ := filepath.join({dir, "wide.bmp"}, context.temp_allocator)
 	dst, _ := filepath.join({dir, "wide-thumb.bmp"}, context.temp_allocator)
 	// A 4x2 red picture: the thumbnail is 4x4, red across the middle rows
@@ -74,6 +68,8 @@ thumbnail_fits_a_picture_in_the_square :: proc(t: ^testing.T) {
 }
 
 // fresh is an empty folder of its own for one test, under the temp folder.
+// One shared by name was rewritten by every run on the machine at once, so
+// a listing could see a file another run had just truncated.
 @(private = "file")
 fresh :: proc(name: string) -> string {
 	tmp, _ := os.temp_directory(context.temp_allocator)

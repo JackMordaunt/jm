@@ -75,12 +75,13 @@ settle :: proc(r: ^Rig, limit := 10 * time.Second) -> bool {
 	return false
 }
 
-// A real folder: a picture, a text file and a subfolder with a file.
+// A real folder: a picture, a text file and a subfolder with a file. Each
+// call makes a folder of its own. One shared folder was rewritten by every
+// test that asked for it, in parallel and by other test runs on the machine,
+// so a thumbnail could read the picture half written and fail.
 @(private = "file")
 fixture :: proc() -> string {
-	tmp, _ := os.temp_directory(context.temp_allocator)
-	dir, _ := filepath.join({tmp, "jm-files-app"}, context.temp_allocator)
-	_ = os.make_directory(dir)
+	dir, _ := os.make_directory_temp("", "jm-files-app-*", context.temp_allocator)
 	sub, _ := filepath.join({dir, "inner"}, context.temp_allocator)
 	_ = os.make_directory(sub)
 	pixels := make([]u32, 16, context.temp_allocator)
@@ -99,6 +100,7 @@ fixture :: proc() -> string {
 @(test)
 a_folder_is_read_and_its_picture_thumbnailed :: proc(t: ^testing.T) {
 	dir := fixture()
+	defer os.remove_all(dir)
 	r: Rig
 	testing.expect(t, rig_open(&r, dir))
 	defer rig_close(&r)
@@ -120,6 +122,7 @@ a_folder_is_read_and_its_picture_thumbnailed :: proc(t: ^testing.T) {
 @(test)
 entering_a_folder_reads_it_and_releases_the_old :: proc(t: ^testing.T) {
 	dir := fixture()
+	defer os.remove_all(dir)
 	r: Rig
 	testing.expect(t, rig_open(&r, dir))
 	defer rig_close(&r)
@@ -140,6 +143,7 @@ entering_a_folder_reads_it_and_releases_the_old :: proc(t: ^testing.T) {
 @(test)
 the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 	dir := fixture()
+	defer os.remove_all(dir)
 	r: Rig
 	testing.expect(t, rig_open(&r, dir))
 	defer rig_close(&r)
@@ -161,7 +165,7 @@ the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 		time.sleep(5 * time.Millisecond)
 	}
 	testing.expect(t, ui.probe_tagged(&r.p, "Unpin this folder"), "the pin came back from the store")
-	testing.expect(t, ui.probe_tagged(&r.p, "jm-files-app"), "the pinned folder is listed")
+	testing.expect(t, ui.probe_tagged(&r.p, filepath.base(dir)), "the pinned folder is listed")
 }
 
 @(test)
