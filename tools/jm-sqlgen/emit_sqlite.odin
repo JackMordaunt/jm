@@ -3,33 +3,30 @@ package main
 import "core:fmt"
 import "core:strings"
 
-// Readers records which typed column readers the queries use, so the file
-// holds only those.
-@(private = "file")
-Readers :: struct {
-	plain: bit_set[Kind],
-	maybe: bit_set[Kind],
-	value: bool, // a Maybe parameter needs converting to sqlite3.Value
-}
-
 // emit_sqlite_code writes queries_gen.odin: a row struct and a proc per
-// query over jm:sqlite3, a check proc, and the readers they share.
+// query over jm:sqlite3, and a check proc. The column readers and the shape
+// check they call live in jm:sqlite3, so each generated file holds only what
+// its own queries need.
 emit_sqlite_code :: proc(
 	pkg: string,
 	queries: []Query,
 	schema_text, queries_text: string,
 ) -> string {
 	body: strings.Builder
-	used: Readers
+	uses_fmt := false
 	for q in queries {
-		emit_query(&body, q, &used)
+		emit_query(&body, q)
+		uses_fmt = uses_fmt || q.kind == .One
 	}
 	emit_check(&body, queries)
-	emit_readers(&body, used)
 
 	sb: strings.Builder
 	strings.write_string(&sb, GENERATED_HEADER)
-	fmt.sbprintf(&sb, "\npackage %s\n\nimport \"core:fmt\"\n\nimport \"jm:sqlite3\"\n\n", pkg)
+	fmt.sbprintf(&sb, "\npackage %s\n\n", pkg)
+	if uses_fmt {
+		strings.write_string(&sb, "import \"core:fmt\"\n\n")
+	}
+	strings.write_string(&sb, "import \"jm:sqlite3\"\n\n")
 	strings.write_string(
 		&sb,
 		"// Editing either file without regenerating fails the build here.\n",
@@ -41,7 +38,7 @@ emit_sqlite_code :: proc(
 }
 
 @(private = "file")
-emit_query :: proc(sb: ^strings.Builder, q: Query, used: ^Readers) {
+emit_query :: proc(sb: ^strings.Builder, q: Query) {
 	fmt.sbprintf(sb, "\n@(private = \"file\")\n%s :: ", sql_const(q))
 	write_string_literal(sb, q.sql)
 	strings.write_string(sb, "\n")
@@ -57,7 +54,6 @@ emit_query :: proc(sb: ^strings.Builder, q: Query, used: ^Readers) {
 	fmt.sbprintf(sb, "%s :: proc(\n\tdb: sqlite3.Db,\n", q.name)
 	for param in q.annotations {
 		fmt.sbprintf(sb, "\t%s: %s,\n", param.name, type_name(param.type))
-		used.value = used.value || param.type.nullable
 	}
 	strings.write_string(sb, "\tallocator := context.allocator,\n) -> ")
 	row := fmt.aprintf("%s_Row", ada_case(q.name))
@@ -66,7 +62,7 @@ emit_query :: proc(sb: ^strings.Builder, q: Query, used: ^Readers) {
 		fmt.sbprintf(sb, "(\n\trow: %s,\n\tfound: bool,\n\terr: sqlite3.Error,\n) {{\n", row)
 		emit_query_call(sb, "stmt :=", q)
 		strings.write_string(sb, "\tif sqlite3.next(&stmt) {\n\t\tfound = true\n")
-		emit_reads(sb, q, "row", "&stmt", "\t\t", used)
+		emit_reads(sb, q, "row", "&stmt", "\t\t")
 		fmt.sbprintf(sb, "\t\tif stmt.err == nil && sqlite3.next(&stmt) {{\n")
 		fmt.sbprintf(sb, "\t\t\tstmt.err = sqlite3.Fault {{\n\t\t\t\tcode = .Misuse,\n")
 		fmt.sbprintf(
@@ -106,7 +102,7 @@ emit_query :: proc(sb: ^strings.Builder, q: Query, used: ^Readers) {
 			row,
 		)
 		strings.write_string(sb, "\tif !sqlite3.next(&rows.stmt) {\n\t\treturn\n\t}\n")
-		emit_reads(sb, q, "row", "&rows.stmt", "\t", used)
+		emit_reads(sb, q, "row", "&rows.stmt", "\t")
 		strings.write_string(sb, "\treturn row, rows.stmt.err == nil\n}\n\n")
 		fmt.sbprintf(
 			sb,
@@ -169,7 +165,7 @@ emit_query_call :: proc(sb: ^strings.Builder, lhs: string, q: Query) {
 	fmt.sbprintf(sb, "\t%s sqlite3.query(\n\t\tdb,\n\t\t%s,\n", lhs, sql_const(q))
 	for param in q.params {
 		if param.type.nullable {
-			fmt.sbprintf(sb, "\t\tsqlgen_value(%s),\n", param.name)
+			fmt.sbprintf(sb, "\t\tsqlite3.nullable(%s),\n", param.name)
 		} else {
 			fmt.sbprintf(sb, "\t\t%s,\n", param.name)
 		}
@@ -178,25 +174,20 @@ emit_query_call :: proc(sb: ^strings.Builder, lhs: string, q: Query) {
 }
 
 @(private = "file")
-emit_reads :: proc(sb: ^strings.Builder, q: Query, row, stmt, indent: string, used: ^Readers) {
+emit_reads :: proc(sb: ^strings.Builder, q: Query, row, stmt, indent: string) {
 	for f, i in q.fields {
-		reader := f.type.kind == .Bytes ? "bytes" : KIND_NAMES[f.type.kind]
-		if f.type.nullable {
-			used.maybe += {f.type.kind}
-			fmt.sbprintf(
-				sb,
-				"%s%s.%s = sqlgen_maybe_%s(%s, %d)\n",
-				indent,
-				row,
-				f.name,
-				reader,
-				stmt,
-				i,
-			)
-		} else {
-			used.plain += {f.type.kind}
-			fmt.sbprintf(sb, "%s%s.%s = sqlgen_%s(%s, %d)\n", indent, row, f.name, reader, stmt, i)
-		}
+		reader := f.type.nullable ? "read_exact_maybe" : "read_exact"
+		fmt.sbprintf(
+			sb,
+			"%s%s.%s = sqlite3.%s(%s, %d, %s)\n",
+			indent,
+			row,
+			f.name,
+			reader,
+			stmt,
+			i,
+			KIND_NAMES[f.type.kind],
+		)
 	}
 }
 
@@ -213,7 +204,13 @@ check :: proc(db: sqlite3.Db, allocator := context.allocator) -> sqlite3.Error {
 `,
 	)
 	for q in queries {
-		fmt.sbprintf(sb, "\tsqlgen_check(db, %q, %s, %d, {{", q.name, sql_const(q), len(q.params))
+		fmt.sbprintf(
+			sb,
+			"\tsqlite3.check_statement(\n\t\tdb,\n\t\t%q,\n\t\t%s,\n",
+			q.name,
+			sql_const(q),
+		)
+		fmt.sbprintf(sb, "\t\t%d,\n\t\t{{", len(q.params))
 		for f, i in q.fields {
 			if i > 0 {
 				strings.write_string(sb, ", ")
@@ -224,172 +221,9 @@ check :: proc(db: sqlite3.Db, allocator := context.allocator) -> sqlite3.Error {
 			}
 			fmt.sbprintf(sb, "%q", name)
 		}
-		strings.write_string(sb, "}, allocator) or_return\n")
+		strings.write_string(sb, "},\n\t\tallocator,\n\t) or_return\n")
 	}
 	strings.write_string(sb, "\treturn nil\n}\n")
-	strings.write_string(
-		sb,
-		`
-@(private = "file")
-sqlgen_check :: proc(
-	db: sqlite3.Db,
-	name, sql: string,
-	params: int,
-	columns: []string,
-	allocator := context.allocator,
-) -> sqlite3.Error {
-	stmt, err := sqlite3.prepare(db, sql, allocator)
-	if f, failed := err.(sqlite3.Fault); failed {
-		f.text = fmt.aprintf("%s: %s", name, f.text, allocator = allocator)
-		return f
-	}
-	defer sqlite3.finish(&stmt)
-	wrong := ""
-	switch {
-	case sqlite3.parameter_count(stmt) != params:
-		wrong = fmt.aprintf("takes %d parameters", sqlite3.parameter_count(stmt), allocator = allocator)
-	case sqlite3.column_count(stmt) != len(columns):
-		wrong = fmt.aprintf("returns %d columns", sqlite3.column_count(stmt), allocator = allocator)
-	case:
-		for want, i in columns {
-			if got := sqlite3.name(stmt, i); got != want {
-				wrong = fmt.aprintf("names column %d %q", i + 1, got, allocator = allocator)
-				break
-			}
-		}
-	}
-	if wrong == "" {
-		return nil
-	}
-	return sqlite3.Fault {
-		code = .Schema,
-		text = fmt.aprintf(
-			"%s %s, which is not what it was generated for",
-			name,
-			wrong,
-			allocator = allocator,
-		),
-	}
-}
-`,
-	)
-}
-
-@(private = "file")
-emit_readers :: proc(sb: ^strings.Builder, used: Readers) {
-	if used.value {
-		strings.write_string(
-			sb,
-			`
-@(private = "file")
-sqlgen_value :: proc(v: Maybe($T)) -> sqlite3.Value {
-	if x, ok := v.?; ok {
-		return x
-	}
-	return nil
-}
-`,
-		)
-	}
-	if used.plain == {} && used.maybe == {} {
-		return
-	}
-	strings.write_string(
-		sb,
-		`
-// sqlgen_expect fails the statement unless column col holds want, so a value
-// of a type the generated code did not expect stops the read instead of
-// converting silently.
-@(private = "file")
-sqlgen_expect :: proc(stmt: ^sqlite3.Stmt, col: int, want: sqlite3.Type) -> bool {
-	got := sqlite3.type_of(stmt^, col)
-	if got == want {
-		return true
-	}
-	if stmt.err == nil {
-		stmt.err = sqlite3.Fault {
-			code = .Mismatch,
-			text = fmt.aprintf(
-				"column %s holds %v where jm-sqlgen generated %v",
-				sqlite3.name(stmt^, col),
-				got,
-				want,
-				allocator = stmt.allocator,
-			),
-		}
-	}
-	return false
-}
-`,
-	)
-	READERS := [Kind][2]string {
-		.I64    = {
-			"i64",
-			"if sqlgen_expect(stmt, col, .Integer) {\n\t\tv = sqlite3.integer(stmt^, col)\n\t}",
-		},
-		.F64    = {
-			"f64",
-			"if sqlgen_expect(stmt, col, .Real) {\n\t\tv = sqlite3.real(stmt^, col)\n\t}",
-		},
-		.String = {
-			"string",
-			"if sqlgen_expect(stmt, col, .Text) {\n\t\tv = sqlite3.text(stmt^, col)\n\t}",
-		},
-		.Bytes  = {
-			"[]byte",
-			"if sqlgen_expect(stmt, col, .Blob) {\n\t\tv = sqlite3.blob(stmt^, col)\n\t}",
-		},
-		.Bool   = {
-			"bool",
-			`if !sqlgen_expect(stmt, col, .Integer) {
-		return
-	}
-	switch n := sqlite3.integer(stmt^, col); n {
-	case 0, 1:
-		v = n == 1
-	case:
-		if stmt.err == nil {
-			stmt.err = sqlite3.Fault {
-				code = .Mismatch,
-				text = fmt.aprintf(
-					"column %s holds %d, which is not a bool",
-					sqlite3.name(stmt^, col),
-					n,
-					allocator = stmt.allocator,
-				),
-			}
-		}
-	}`,
-		},
-	}
-	for k in Kind {
-		if k not_in used.plain && k not_in used.maybe {
-			continue
-		}
-		name := k == .Bytes ? "bytes" : READERS[k][0]
-		fmt.sbprintf(
-			sb,
-			"\n@(private = \"file\")\n" +
-			"sqlgen_%s :: proc(stmt: ^sqlite3.Stmt, col: int) -> (v: %s) {{\n\t%s\n\treturn\n}}\n",
-			name,
-			READERS[k][0],
-			READERS[k][1],
-		)
-		if k in used.maybe {
-			fmt.sbprintf(
-				sb,
-				"\n@(private = \"file\")\n" +
-				"sqlgen_maybe_%s :: proc(stmt: ^sqlite3.Stmt, col: int) -> (v: Maybe(%s)) {{\n",
-				name,
-				READERS[k][0],
-			)
-			fmt.sbprintf(
-				sb,
-				"\tif !sqlite3.is_null(stmt^, col) {{\n\t\tv = sqlgen_%s(stmt, col)\n\t}}\n\treturn\n}}\n",
-				name,
-			)
-		}
-	}
 }
 
 // emit_sqlite_test writes queries_gen_test.odin: every query run against

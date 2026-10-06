@@ -78,7 +78,7 @@ convert fails too. One that it can convert, such as an `i64` written to a
 TEXT column, does not, so parameter annotations are only partly verified.
 
 The tool's doc comment (`tools/jm-sqlgen/main.odin`) has the full format, and
-`tools/jm-sqlgen/testdata/todo` is a worked example. Postgres is the other
+`tools/jm-sqlgen/testdata/notes` is a worked example. Postgres is the other
 engine the header can name; generation for it is not built yet.
 
 ## Watch what changed

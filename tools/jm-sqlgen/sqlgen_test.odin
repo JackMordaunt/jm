@@ -294,7 +294,13 @@ UPDATE todo SET done = @done WHERE id = @id AND done != @done`,
 	code := files[0].text
 	signature := strings.index(code, "\tid: i64,\n\tdone: bool,\n")
 	binding := strings.index(code, "\t\tdone,\n\t\tid,\n")
-	testing.expectf(t, signature > 0 && binding > signature, "signature at %d, binding at %d", signature, binding)
+	testing.expectf(
+		t,
+		signature > 0 && binding > signature,
+		"signature at %d, binding at %d",
+		signature,
+		binding,
+	)
 }
 
 @(test)
@@ -402,25 +408,40 @@ literals_escape_what_odin_source_cannot_hold :: proc(t: ^testing.T) {
 
 // The checked-in example is what the generator writes now, so a change to
 // the generator that changes its output shows up as a failing test until
-// the example is regenerated with `just sqlgen tools/jm-sqlgen/testdata/todo`.
+// the example is regenerated with `just sqlgen tools/jm-sqlgen/testdata/notes`.
 @(test)
 testdata_is_up_to_date :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	files, problems := generate(
-		"todo_queries",
-		#load("testdata/todo/schema.sql", string),
-		#load("testdata/todo/queries.sql", string),
+		"notes_queries",
+		#load("testdata/notes/schema.sql", string),
+		#load("testdata/notes/queries.sql", string),
 	)
 	testing.expect_value(t, len(problems), 0)
 	testing.expect_value(t, len(files), 2)
 	testing.expect(
 		t,
-		files[0].text == #load("testdata/todo/queries_gen.odin", string),
+		files[0].text == #load("testdata/notes/queries_gen.odin", string),
 		"queries_gen.odin is stale",
 	)
 	testing.expect(
 		t,
-		files[1].text == #load("testdata/todo/queries_gen_test.odin", string),
+		files[1].text == #load("testdata/notes/queries_gen_test.odin", string),
 		"queries_gen_test.odin is stale",
 	)
+}
+
+// Only :one's second-row error needs core:fmt, and Odin refuses an unused
+// import, so a package without a :one must not import it.
+@(test)
+fmt_is_imported_only_for_one :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	exec_only := "-- engine: sqlite\n-- name: wipe :exec\nDELETE FROM tag\n"
+	files, problems := generate("p", TEST_SCHEMA, exec_only)
+	testing.expect_value(t, len(problems), 0)
+	testing.expect(t, !strings.contains(files[0].text, `import "core:fmt"`))
+	one := "-- engine: sqlite\n-- name: first :one\nSELECT name FROM tag LIMIT 1\n"
+	files, problems = generate("p", TEST_SCHEMA, one)
+	testing.expect_value(t, len(problems), 0)
+	testing.expect(t, strings.contains(files[0].text, `import "core:fmt"`))
 }
