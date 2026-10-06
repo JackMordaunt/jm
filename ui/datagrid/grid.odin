@@ -264,14 +264,7 @@ grid_size :: proc(gtx: ^ui.Ctx, g: ^Grid, skin: ^Skin) -> ops.Size {
 // view from another build is.
 @(private)
 sync_columns :: proc(g: ^Grid, columns: []Column) {
-	same := len(g.ids) == len(columns)
-	for c, i in columns {
-		if !same || g.ids[i] != c.id {
-			same = false
-			break
-		}
-	}
-	if same {
+	if same_ids(g.ids[:], columns) {
 		return
 	}
 	if len(g.ids) > 0 {
@@ -293,6 +286,20 @@ sync_columns :: proc(g: ^Grid, columns: []Column) {
 		append(&g.ids, clone_to(c.id, g.allocator))
 	}
 	g.built, g.measured = 0, 0
+}
+
+// same_ids reports whether columns are the columns ids names, in order.
+@(private)
+same_ids :: proc(ids: []string, columns: []Column) -> bool {
+	if len(ids) != len(columns) {
+		return false
+	}
+	for c, i in columns {
+		if ids[i] != c.id {
+			return false
+		}
+	}
+	return true
 }
 
 // update_query hashes the view's query and, when it or the data changed,
@@ -502,22 +509,24 @@ Item :: struct {
 // item_at is what stands at place i in the current order.
 item_at :: proc(g: ^Grid, src: Source, i: int) -> (it: Item) {
 	it.row, it.group = -1, -1
-	if i < 0 || i >= g.geo.items {
-		return
-	}
-	if src.paged == nil {
-		if i >= len(g.order.items) {
-			it.state = .Loading // a skeleton while src is loading
-			return
-		}
+	switch {
+	case i < 0 || i >= g.geo.items:
+	case src.paged != nil:
+		paged_item(g, i, &it)
+	case i >= len(g.order.items):
+		it.state = .Loading // a skeleton while src is loading
+	case g.order.items[i] < 0:
+		it.group, it.state = -g.order.items[i] - 1, .Ready
+	case:
 		r := g.order.items[i]
-		if r < 0 {
-			it.group, it.state = -r - 1, .Ready
-			return
-		}
 		it.row, it.state, it.key = r, .Ready, source_key(src, r)
-		return
 	}
+	return
+}
+
+// paged_item fills it with what stands at place i of a paged grid.
+@(private)
+paged_item :: proc(g: ^Grid, i: int, it: ^Item) {
 	pr, st, page := pages_row(&g.pages, i)
 	it.state = st
 	if pr != nil {
@@ -526,7 +535,12 @@ item_at :: proc(g: ^Grid, src: Source, i: int) -> (it: Item) {
 	if st == .Failed && page != nil {
 		it.error = page.error
 	}
-	return
+}
+
+// has_row reports whether it shows a row's cells: one Ready, or Stale
+// while refreshed or standing in.
+has_row :: proc(it: Item) -> bool {
+	return it.state == .Ready || it.state == .Stale
 }
 
 // cell_text is column col of it as shown; a row number column shows its

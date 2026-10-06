@@ -183,9 +183,7 @@ grow_tracks :: proc(tracks: []Track, room: f32, out: []f32) {
 	for _ in 0 ..< len(tracks) + 1 {
 		weight: f32
 		for t, i in tracks {
-			if t.grow > 0 && !t.rigid && !at_max(t, out[i]) {
-				weight += t.grow
-			}
+			weight += t.grow if can_grow(t, out[i]) else 0
 		}
 		if weight <= 0 || room <= 0.001 {
 			return
@@ -193,17 +191,30 @@ grow_tracks :: proc(tracks: []Track, room: f32, out: []f32) {
 		share := room / weight
 		room = 0
 		for t, i in tracks {
-			if t.grow <= 0 || t.rigid || at_max(t, out[i]) {
-				continue
+			if can_grow(t, out[i]) {
+				room += grow_track(t, &out[i], share * t.grow)
 			}
-			want := out[i] + share * t.grow
-			if t.max > 0 && want > t.max {
-				room += want - max(t.max, out[i])
-				want = max(t.max, out[i])
-			}
-			out[i] = want
 		}
 	}
+}
+
+// can_grow reports whether t, now w wide, takes a share of the room.
+@(private)
+can_grow :: proc(t: Track, w: f32) -> bool {
+	return t.grow > 0 && !t.rigid && !at_max(t, w)
+}
+
+// grow_track widens w by add, no further than t's max, and returns what
+// it could not take.
+@(private)
+grow_track :: proc(t: Track, w: ^f32, add: f32) -> (left: f32) {
+	want := w^ + add
+	if t.max > 0 && want > t.max {
+		capped := max(t.max, w^)
+		left, want = want - capped, capped
+	}
+	w^ = want
+	return
 }
 
 @(private)
@@ -220,9 +231,7 @@ shrink_tracks :: proc(tracks: []Track, excess: f32, out: []f32) {
 	for _ in 0 ..< len(tracks) + 1 {
 		give: f32
 		for t, i in tracks {
-			if !t.rigid && out[i] > t.min {
-				give += out[i]
-			}
+			give += out[i] if can_shrink(t, out[i]) else 0
 		}
 		if give <= 0 || excess <= 0.001 {
 			return
@@ -230,17 +239,20 @@ shrink_tracks :: proc(tracks: []Track, excess: f32, out: []f32) {
 		ratio := excess / give
 		excess = 0
 		for t, i in tracks {
-			if t.rigid || out[i] <= t.min {
+			if !can_shrink(t, out[i]) {
 				continue
 			}
 			want := out[i] - out[i] * ratio
-			if want < t.min {
-				excess += t.min - want
-				want = t.min
-			}
-			out[i] = want
+			excess += max(t.min - want, 0)
+			out[i] = max(want, t.min)
 		}
 	}
+}
+
+// can_shrink reports whether t, now w wide, gives up width.
+@(private)
+can_shrink :: proc(t: Track, w: f32) -> bool {
+	return !t.rigid && w > t.min
 }
 
 // Place is one visible column where it sits: its column index, its pin

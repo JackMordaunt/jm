@@ -135,12 +135,20 @@ data_grid :: proc(
 	g.filter.seen = false
 	ui.flexible(gtx, 1)
 	ev = datagrid.grid(gtx, &g.grid, columns, src, &g.skin, label)
-	if ev.filter_asked >= 0 {
+	switch {
+	case ev.filter_asked >= 0:
 		filter_open(g, ev.filter_asked)
-	}
-	if g.filter.open && !g.filter.seen && ev.filter_asked < 0 {
+	case g.filter.open && !g.filter.seen:
 		g.filter.open = false // its column scrolled away
 	}
+	grid_notices(g, ev)
+	return
+}
+
+// grid_notices keeps the CSV of a finished export and says in the
+// toolbar what an export or a copy did.
+@(private)
+grid_notices :: proc(g: ^Data_Grid, ev: datagrid.Events) {
 	if ev.exported && g.grid.export.error == "" {
 		strings.builder_reset(&g.csv)
 		strings.write_string(&g.csv, strings.to_string(g.grid.export.text))
@@ -150,7 +158,6 @@ data_grid :: proc(
 	if ev.copied > 0 {
 		set_notice(g, fmt.tprintf("Copied %d cells", ev.copied))
 	}
-	return
 }
 
 @(private)
@@ -424,19 +431,7 @@ filter_panel :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int, anchor: ui.Last_Widg
 filter_values :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) -> (loading: bool) {
 	f := &g.filter
 	if g.src.paged != nil {
-		q := datagrid.values_query(gtx, &g.grid, g.cols, g.src, col, "")
-		v, st, version := ui.need_versioned(gtx, q, datagrid.Values)
-		if v == nil || (st != .Ready && st != .Stale) {
-			return true
-		}
-		if version != f.built {
-			values_free(&f.values)
-			for x in v.values {
-				append(&f.values, datagrid.Value_Count{strings.clone(x.value), x.count})
-			}
-			f.built = version
-		}
-		return st == .Stale
+		return paged_values(gtx, g, col)
 	}
 	built := g.grid.match ~ u64(g.src.rows) ~ g.src.version << 32 | 1
 	if built == f.built {
@@ -444,13 +439,35 @@ filter_values :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) -> (loading: bool) 
 	}
 	visible := make([dynamic]int, gtx.allocator)
 	q := datagrid.view_query(&g.grid.view, g.cols, &visible)
-	values := datagrid.distinct_values(g.src, q, col, gtx.allocator)
+	keep_values(f, datagrid.distinct_values(g.src, q, col, gtx.allocator))
+	f.built = built
+	return false
+}
+
+// paged_values needs column col's values from a paged grid's source and
+// keeps each delivery once; it reports whether they are on their way.
+@(private)
+paged_values :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) -> (loading: bool) {
+	f := &g.filter
+	q := datagrid.values_query(gtx, &g.grid, g.cols, g.src, col, "")
+	v, st, version := ui.need_versioned(gtx, q, datagrid.Values)
+	if v == nil || (st != .Ready && st != .Stale) {
+		return true
+	}
+	if version != f.built {
+		keep_values(f, v.values)
+		f.built = version
+	}
+	return st == .Stale
+}
+
+// keep_values makes the panel's values copies of values.
+@(private)
+keep_values :: proc(f: ^Filter_Panel, values: []datagrid.Value_Count) {
 	values_free(&f.values)
 	for x in values {
 		append(&f.values, datagrid.Value_Count{strings.clone(x.value), x.count})
 	}
-	f.built = built
-	return false
 }
 
 // filter_matches is how many of the panel's values its field keeps.
@@ -758,16 +775,23 @@ views_menu :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 		ui.text_set(&g.name, g.views[g.applied].name if g.applied >= 0 else "")
 	}
 	if len(g.views) > 0 {
-		action_menu_item(&m, "Delete view", leading = .Trash, submenu = &g.delete_open)
-		sub := action_menu_submenu_open(&m, &g.delete_open, key = 11)
-		for v, i in g.views {
-			if action_menu_item(&sub, v.name, variant = .Danger) {
-				data_grid_delete_view(g, i)
-			}
-		}
-		action_menu_close(&sub)
+		views_menu_delete(g, &m)
 	}
 	action_menu_close(&m)
+}
+
+// views_menu_delete is the Views menu's Delete view and its submenu of the
+// saved views.
+@(private)
+views_menu_delete :: proc(g: ^Data_Grid, m: ^Action_Menu) {
+	action_menu_item(m, "Delete view", leading = .Trash, submenu = &g.delete_open)
+	sub := action_menu_submenu_open(m, &g.delete_open, key = 11)
+	defer action_menu_close(&sub)
+	for v, i in g.views {
+		if action_menu_item(&sub, v.name, variant = .Danger) {
+			data_grid_delete_view(g, i)
+		}
+	}
 }
 
 // columns_menu is the Columns menu, its button counting the columns shown
@@ -824,14 +848,7 @@ columns_menu_arrange :: proc(g: ^Data_Grid, m: ^Action_Menu) {
 		}
 	}
 	action_menu_group_close(m)
-	action_menu_group_open(m, "Pin to the left", selection = .Multiple)
-	for c, i in g.cols {
-		if !v.cols[i].hidden &&
-		   action_menu_item(m, c.title, selected = v.cols[i].pin == .Left, keep_open = true) {
-			v.cols[i].pin = .None if v.cols[i].pin == .Left else .Left
-		}
-	}
-	action_menu_group_close(m)
+	columns_menu_pins(g, m)
 	action_menu_group_open(m, "Density", selection = .Single)
 	for name, d in DENSITY_NAMES {
 		if action_menu_item(m, name, selected = g.grid.density == d) {
@@ -842,6 +859,21 @@ columns_menu_arrange :: proc(g: ^Data_Grid, m: ^Action_Menu) {
 	action_menu_divider(m)
 	if action_menu_item(m, "Reset columns", leading = .Sync) {
 		datagrid.view_reset_columns(v, g.cols)
+	}
+}
+
+// columns_menu_pins is the Columns menu's group that pins shown columns to
+// the left or unpins them.
+@(private)
+columns_menu_pins :: proc(g: ^Data_Grid, m: ^Action_Menu) {
+	v := &g.grid.view
+	action_menu_group_open(m, "Pin to the left", selection = .Multiple)
+	defer action_menu_group_close(m)
+	for c, i in g.cols {
+		left := v.cols[i].pin == .Left
+		if !v.cols[i].hidden && action_menu_item(m, c.title, selected = left, keep_open = true) {
+			v.cols[i].pin = .None if left else .Left
+		}
 	}
 }
 

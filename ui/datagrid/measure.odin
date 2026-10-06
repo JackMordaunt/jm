@@ -58,21 +58,32 @@ fit_width :: proc(
 	font := st.font if st.font != 0 else gtx.font
 	head := st.header_font if st.header_font != 0 else font
 	size := st.text_size
-	w :=
-		measure_text(gtx, head, st.header_size if st.header_size > 0 else size, cols[col].title) +
-		st.header_extra
-	if cols[col].row_number {
-		digits := 1
-		for n := max(g.geo.items, 1); n >= 10; n /= 10 {
-			digits += 1
-		}
-		w = max(w, measure_text(gtx, font, size, "0") * f32(digits))
-	} else if src.paged == nil {
+	title := measure_text(
+		gtx,
+		head,
+		st.header_size if st.header_size > 0 else size,
+		cols[col].title,
+	)
+	w := title + st.header_extra
+	switch {
+	case cols[col].row_number:
+		w = max(w, measure_text(gtx, font, size, "0") * f32(digit_count(g.geo.items)))
+	case src.paged == nil:
 		w = max(w, sample_client(gtx, src, font, size, col))
-	} else {
+	case:
 		w = max(w, sample_pages(gtx, g, font, size, col))
 	}
 	return w + 2 * st.pad + cols[col].extra
+}
+
+// digit_count is how many digits the row numbers up to n take.
+@(private)
+digit_count :: proc(n: int) -> int {
+	digits := 1
+	for k := max(n, 1); k >= 10; k /= 10 {
+		digits += 1
+	}
+	return digits
 }
 
 // sample_client measures the first rows, which show first, and then rows

@@ -301,15 +301,26 @@ cursor_before :: proc(p: ^Pages, index: int, sort_cols: []int) -> (c: Cursor, te
 	if prev == nil || prev.state != .Ready || len(prev.rows) == 0 {
 		return
 	}
-	r := prev.rows[len(prev.rows) - 1]
+	return cursor_of(prev.rows[len(prev.rows) - 1], sort_cols, p.allocator)
+}
+
+// cursor_of is row r as a cursor: its key and its text in each sort
+// column, copied into one block, text, in allocator.
+@(private)
+cursor_of :: proc(
+	r: Page_Row,
+	sort_cols: []int,
+	allocator: mem.Allocator,
+) -> (
+	c: Cursor,
+	text: []u8,
+) {
 	n := len(r.key)
 	for col in sort_cols {
-		if col < len(r.cells) {
-			n += len(r.cells[col])
-		}
+		n += len(r.cells[col]) if col < len(r.cells) else 0
 	}
-	text = make([]u8, n, p.allocator)
-	c.values = make([]string, len(sort_cols), p.allocator)
+	text = make([]u8, n, allocator)
+	c.values = make([]string, len(sort_cols), allocator)
 	at := copy(text, r.key)
 	c.key = string(text[:at])
 	for col, i in sort_cols {
@@ -438,12 +449,7 @@ update_count :: proc(p: ^Pages, index, n, total: int, kind: Count_Kind) {
 @(private)
 settle_end :: proc(p: ^Pages) {
 	size := p.page_size
-	last_full := -1
-	for e in p.entries {
-		if page_held(p, e) && len(e.rows) == size {
-			last_full = max(last_full, e.index)
-		}
-	}
+	last_full := last_full_page(p)
 	if p.end && (last_full + 1) * size > p.count {
 		p.end = false
 	}
@@ -452,12 +458,33 @@ settle_end :: proc(p: ^Pages) {
 			continue
 		}
 		extent := e.index * size + len(e.rows)
-		if len(e.rows) > 0 || e.index == last_full + 1 {
+		if ends_rows(e, last_full) {
 			p.count, p.kind, p.end = extent, .Exact, true
 			return
 		}
 		p.count = min(p.count, extent)
 	}
+}
+
+// ends_rows reports whether e, a short page past the last full one, ends
+// the rows where it does: it holds rows, or it is empty right after the
+// last full page or first of all.
+@(private)
+ends_rows :: proc(e: Cached_Page, last_full: int) -> bool {
+	return len(e.rows) > 0 || e.index == last_full + 1
+}
+
+// last_full_page is the index of the last full page of the current query
+// held, -1 for none.
+@(private)
+last_full_page :: proc(p: ^Pages) -> int {
+	last := -1
+	for e in p.entries {
+		if page_held(p, e) && len(e.rows) == p.page_size {
+			last = max(last, e.index)
+		}
+	}
+	return last
 }
 
 // page_held reports whether e is a page of the current query that has
@@ -472,20 +499,12 @@ page_held :: proc(p: ^Pages, e: Cached_Page) -> bool {
 // has arrived, then the cached page farthest from the window, a stand-in
 // before any current page.
 pages_evict :: proc(p: ^Pages, lo, hi: int) {
-	for i := len(p.entries) - 1; i >= 0; i -= 1 {
-		e := &p.entries[i]
-		if e.query != p.query {
-			if own := pages_find(p, p.query, e.index); own != nil && own.state != .Loading {
-				page_drop(p, i)
-			}
-		}
-	}
+	drop_replaced(p)
 	keep := max(p.capacity, hi - lo)
 	for len(p.entries) > keep {
 		worst, far := -1, -1
 		for e, i in p.entries {
-			d := distance(p, e, lo, hi)
-			if d > far {
+			if d := distance(p, e, lo, hi); d > far {
 				worst, far = i, d
 			}
 		}
@@ -493,6 +512,21 @@ pages_evict :: proc(p: ^Pages, lo, hi: int) {
 			return
 		}
 		page_drop(p, worst)
+	}
+}
+
+// drop_replaced drops every stand-in whose own page has arrived or
+// failed.
+@(private)
+drop_replaced :: proc(p: ^Pages) {
+	for i := len(p.entries) - 1; i >= 0; i -= 1 {
+		e := &p.entries[i]
+		if e.query == p.query {
+			continue
+		}
+		if own := pages_find(p, p.query, e.index); own != nil && own.state != .Loading {
+			page_drop(p, i)
+		}
 	}
 }
 
@@ -530,29 +564,39 @@ pages_row :: proc(p: ^Pages, i: int) -> (row: ^Page_Row, state: Row_State, page:
 	index := i / p.page_size
 	k := i - index * p.page_size
 	e := pages_find(p, p.query, index)
-	if e != nil {
-		switch e.state {
-		case .Ready:
-			if k < len(e.rows) {
-				return &e.rows[k], .Stale if e.stale else .Ready, e
-			}
-			return nil, .Missing, e
-		case .Failed:
-			return nil, .Failed, e
-		case .Loading:
-		}
+	if e != nil && e.state != .Loading {
+		return held_row(e, k)
 	}
 	if p.keep_stale {
-		for &old in p.entries {
-			if old.query != p.query &&
-			   old.index == index &&
-			   old.state == .Ready &&
-			   k < len(old.rows) {
-				return &old.rows[k], .Stale, &old
-			}
+		if old := stand_in(p, index, k); old != nil {
+			return &old.rows[k], .Stale, old
 		}
 	}
 	return nil, .Loading if e != nil else .Missing, e
+}
+
+// held_row is row k of page e, which has arrived or failed.
+@(private)
+held_row :: proc(e: ^Cached_Page, k: int) -> (^Page_Row, Row_State, ^Cached_Page) {
+	switch {
+	case e.state == .Failed:
+		return nil, .Failed, e
+	case k >= len(e.rows):
+		return nil, .Missing, e
+	}
+	return &e.rows[k], .Stale if e.stale else .Ready, e
+}
+
+// stand_in is a page of another query that holds row k of page index, to
+// stand in until the current query's arrives; nil when none does.
+@(private)
+stand_in :: proc(p: ^Pages, index, k: int) -> ^Cached_Page {
+	for &old in p.entries {
+		if old.query != p.query && old.index == index && old.state == .Ready && k < len(old.rows) {
+			return &old
+		}
+	}
+	return nil
 }
 
 // pages_retry asks again for every failed page in [lo, hi): a new

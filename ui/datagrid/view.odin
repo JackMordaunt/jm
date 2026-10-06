@@ -407,32 +407,37 @@ write_number :: proc(b: ^strings.Builder, v: f64) {
 
 // write_quoted writes s in double quotes, escaped as view_encode says.
 write_quoted :: proc(b: ^strings.Builder, s: string) {
-	hex := "0123456789abcdef"
 	strings.write_byte(b, '"')
 	for i in 0 ..< len(s) {
-		c := s[i]
-		switch c {
-		case '"':
-			strings.write_string(b, `\"`)
-		case '\\':
-			strings.write_string(b, `\\`)
-		case '\n':
-			strings.write_string(b, `\n`)
-		case '\r':
-			strings.write_string(b, `\r`)
-		case '\t':
-			strings.write_string(b, `\t`)
-		case:
-			if c < 0x20 || c == 0x7f {
-				strings.write_string(b, `\x`)
-				strings.write_byte(b, hex[c >> 4])
-				strings.write_byte(b, hex[c & 15])
-			} else {
-				strings.write_byte(b, c)
-			}
-		}
+		write_escaped(b, s[i])
 	}
 	strings.write_byte(b, '"')
+}
+
+// write_escaped writes one byte of a quoted string: a quote, a backslash,
+// a newline, a carriage return or a tab by its escape, another control
+// byte as \xHH, the rest as it is.
+@(private)
+write_escaped :: proc(b: ^strings.Builder, c: u8) {
+	hex := "0123456789abcdef"
+	switch c {
+	case '"':
+		strings.write_string(b, `\"`)
+	case '\\':
+		strings.write_string(b, `\\`)
+	case '\n':
+		strings.write_string(b, `\n`)
+	case '\r':
+		strings.write_string(b, `\r`)
+	case '\t':
+		strings.write_string(b, `\t`)
+	case 0x00 ..< 0x20, 0x7f:
+		strings.write_string(b, `\x`)
+		strings.write_byte(b, hex[c >> 4])
+		strings.write_byte(b, hex[c & 15])
+	case:
+		strings.write_byte(b, c)
+	}
 }
 
 // view_decode reads text that view_encode wrote into v, against cols as
@@ -495,20 +500,35 @@ decode_line :: proc(v: ^View, cols: []Column, toks: []string, named: []bool) {
 	}
 	switch toks[0] {
 	case "column":
-		if !named[c] {
-			named[c] = true
-			append(&v.order, c)
-			v.cols[c] = decode_column(cols[c], toks[2:])
-		}
+		decode_column_line(v, cols, c, toks[2:], named)
 	case "sort":
-		if sort_rank(v, c) < 0 && len(toks) > 2 {
-			append(&v.sort, Sort_Key{c, toks[2] == "desc"})
-		}
+		decode_sort(v, c, toks[2:])
 	case "filter":
 		decode_filter(v, c, toks[2:])
 	case "group":
 		v.group = c
 	}
+}
+
+// decode_sort adds column c to the sort in the direction toks give, the
+// first time a line names it.
+@(private)
+decode_sort :: proc(v: ^View, c: int, toks: []string) {
+	if sort_rank(v, c) < 0 && len(toks) > 0 {
+		append(&v.sort, Sort_Key{c, toks[0] == "desc"})
+	}
+}
+
+// decode_column_line places column c next in the order with the state
+// toks give it, the first time a line names it.
+@(private)
+decode_column_line :: proc(v: ^View, cols: []Column, c: int, toks: []string, named: []bool) {
+	if named[c] {
+		return
+	}
+	named[c] = true
+	append(&v.order, c)
+	v.cols[c] = decode_column(cols[c], toks)
 }
 
 // column_index is the column named id, -1 for none.
@@ -524,25 +544,30 @@ column_index :: proc(cols: []Column, id: string) -> int {
 @(private)
 decode_column :: proc(c: Column, toks: []string) -> (s: Column_State) {
 	for i := 0; i < len(toks); i += 1 {
+		value := toks[i + 1] if i + 1 < len(toks) else ""
 		switch toks[i] {
 		case "hidden":
 			s.hidden = true
 		case "width":
-			if i + 1 < len(toks) {
-				w, ok := strconv.parse_f64(toks[i + 1])
-				if ok && w > 0 && w < f64(INF) {
-					s.width = clamp_width(c, f32(w))
-				}
-				i += 1
-			}
+			s.width = decode_width(c, value)
+			i += 1
 		case "pin":
-			if i + 1 < len(toks) {
-				s.pin = toks[i + 1] == "left" ? .Left : toks[i + 1] == "right" ? .Right : .None
-				i += 1
-			}
+			s.pin = .Left if value == "left" else .Right if value == "right" else .None
+			i += 1
 		}
 	}
 	return
+}
+
+// decode_width is a width a view wrote, within c's bounds; 0 for one it
+// cannot read.
+@(private)
+decode_width :: proc(c: Column, value: string) -> f32 {
+	w, ok := strconv.parse_f64(value)
+	if !ok || !(w > 0) || w >= f64(INF) {
+		return 0
+	}
+	return clamp_width(c, f32(w))
 }
 
 @(private)
@@ -600,34 +625,41 @@ unquote :: proc(line: string, i: int, allocator: mem.Allocator) -> (string, int)
 	i := i
 	for i < len(line) {
 		c := line[i]
-		if c == '"' {
+		switch {
+		case c == '"':
 			return strings.to_string(b), i + 1
-		}
-		if c != '\\' || i + 1 >= len(line) {
+		case c != '\\' || i + 1 >= len(line):
 			strings.write_byte(&b, c)
 			i += 1
-			continue
-		}
-		e := line[i + 1]
-		i += 2
-		switch e {
-		case 'n':
-			strings.write_byte(&b, '\n')
-		case 'r':
-			strings.write_byte(&b, '\r')
-		case 't':
-			strings.write_byte(&b, '\t')
-		case 'x':
-			if i + 2 <= len(line) {
-				h, ok := strconv.parse_u64_of_base(line[i:i + 2], 16)
-				if ok {
-					strings.write_byte(&b, u8(h))
-				}
-				i += 2
-			}
 		case:
-			strings.write_byte(&b, e)
+			i = unescape(&b, line, i + 1)
 		}
 	}
 	return strings.to_string(b), i
+}
+
+// unescape writes the byte the escape at line[i], after its backslash,
+// stands for, and returns where reading goes on.
+@(private)
+unescape :: proc(b: ^strings.Builder, line: string, i: int) -> int {
+	e := line[i]
+	switch e {
+	case 'n':
+		strings.write_byte(b, '\n')
+	case 'r':
+		strings.write_byte(b, '\r')
+	case 't':
+		strings.write_byte(b, '\t')
+	case 'x':
+		if i + 3 > len(line) {
+			return i + 1
+		}
+		if h, ok := strconv.parse_u64_of_base(line[i + 1:i + 3], 16); ok {
+			strings.write_byte(b, u8(h))
+		}
+		return i + 3
+	case:
+		strings.write_byte(b, e)
+	}
+	return i + 1
 }

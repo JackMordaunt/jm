@@ -121,9 +121,12 @@ trim_number :: proc(s: string) -> string {
 		hi += 1
 	}
 	t := s[lo:hi]
-	if !has_byte(t, ',') {
-		return t
-	}
+	return drop_commas(t) if has_byte(t, ',') else t
+}
+
+// drop_commas is t without its commas, in the frame's temp allocator.
+@(private)
+drop_commas :: proc(t: string) -> string {
 	buf := make([]u8, len(t), context.temp_allocator)
 	n := 0
 	for i in 0 ..< len(t) {
@@ -154,29 +157,58 @@ is_digit :: proc(c: u8) -> bool {
 // after a T or a space (HH:MM or HH:MM:SS, fractions and a zone ignored),
 // as Unix seconds in UTC.
 parse_date :: proc(s: string) -> (f64, bool) {
+	y, m, d, ok := date_parts(s)
+	if !ok {
+		return 0, false
+	}
+	return f64(days_from_civil(y, m, d)) * 86400 + f64(time_of_day(s)), true
+}
+
+// date_parts is the year, month and day of the YYYY-MM-DD s starts with;
+// ok is false when it does not start with one.
+@(private)
+date_parts :: proc(s: string) -> (y, m, d: int, ok: bool) {
 	if len(s) < 10 || s[4] != '-' || s[7] != '-' {
-		return 0, false
+		return
 	}
-	y, ok_y := digits(s[0:4])
-	m, ok_m := digits(s[5:7])
-	d, ok_d := digits(s[8:10])
-	if !ok_y || !ok_m || !ok_d || m < 1 || m > 12 || d < 1 || d > 31 {
-		return 0, false
+	ok_y, ok_m, ok_d: bool
+	y, ok_y = digits(s[0:4])
+	m, ok_m = digits(s[5:7])
+	d, ok_d = digits(s[8:10])
+	ok = ok_y && ok_m && ok_d && valid_month_day(m, d)
+	return
+}
+
+// valid_month_day reports whether m is a month and d a day of one.
+@(private)
+valid_month_day :: proc(m, d: int) -> bool {
+	return 1 <= m && m <= 12 && 1 <= d && d <= 31
+}
+
+// time_of_day is the seconds into its day of the time after a date's ten
+// characters, 0 when there is none.
+@(private)
+time_of_day :: proc(s: string) -> int {
+	if !has_time(s) {
+		return 0
 	}
-	secs := f64(days_from_civil(y, m, d)) * 86400
-	if len(s) >= 16 && (s[10] == 'T' || s[10] == ' ') && s[13] == ':' {
-		hh, ok_h := digits(s[11:13])
-		mm, ok_mm := digits(s[14:16])
-		if ok_h && ok_mm {
-			secs += f64(hh * 3600 + mm * 60)
-		}
-		if len(s) >= 19 && s[16] == ':' {
-			if ss, ok_s := digits(s[17:19]); ok_s {
-				secs += f64(ss)
-			}
-		}
+	hh, ok_h := digits(s[11:13])
+	mm, ok_m := digits(s[14:16])
+	if !ok_h || !ok_m {
+		return 0
 	}
-	return secs, true
+	ss := 0
+	if len(s) >= 19 && s[16] == ':' {
+		ss, _ = digits(s[17:19])
+	}
+	return hh * 3600 + mm * 60 + ss
+}
+
+// has_time reports whether a time, HH:MM, follows a date's ten
+// characters after a T or a space.
+@(private)
+has_time :: proc(s: string) -> bool {
+	return len(s) >= 16 && (s[10] == 'T' || s[10] == ' ') && s[13] == ':'
 }
 
 @(private)
@@ -245,58 +277,73 @@ compare_natural :: proc(a, b: string) -> int {
 	case b == "":
 		return -1
 	}
-	i, j := 0, 0
+	c, i, j := compare_runs(a, b)
+	switch {
+	case c != 0:
+		return c
+	case len(a) - i != len(b) - j:
+		return -1 if len(a) - i < len(b) - j else 1
+	}
+	// Equal but for case: bytes decide, so the order is total.
+	return -1 if a < b else 1
+}
+
+// compare_runs walks a and b together, digit runs by value and letters
+// without case, to the first difference: its sign and where each stood.
+@(private)
+compare_runs :: proc(a, b: string) -> (c, i, j: int) {
 	for i < len(a) && j < len(b) {
 		if is_digit(a[i]) && is_digit(b[j]) {
-			c, ei, ej := compare_digit_runs(a, b, i, j)
+			c, i, j = compare_digit_runs(a, b, i, j)
 			if c != 0 {
-				return c
+				return
 			}
-			i, j = ei, ej
 			continue
 		}
 		ca, cb := fold(a[i]), fold(b[j])
 		if ca != cb {
-			return ca < cb ? -1 : 1
+			return -1 if ca < cb else 1, i, j
 		}
 		i += 1
 		j += 1
 	}
-	switch {
-	case len(a) - i < len(b) - j:
-		return -1
-	case len(a) - i > len(b) - j:
-		return 1
-	}
-	// Equal but for case: bytes decide, so the order is total.
-	return a < b ? -1 : 1
+	return
 }
 
 // compare_digit_runs compares the digit runs starting at a[i] and b[j]
 // by value, however long, and returns where each ends.
 @(private)
 compare_digit_runs :: proc(a, b: string, i, j: int) -> (c, ei, ej: int) {
-	si, sj := i, j
-	for si < len(a) - 1 && a[si] == '0' && is_digit(a[si + 1]) {
-		si += 1
-	}
-	for sj < len(b) - 1 && b[sj] == '0' && is_digit(b[sj + 1]) {
-		sj += 1
-	}
-	ei, ej = si, sj
-	for ei < len(a) && is_digit(a[ei]) {
-		ei += 1
-	}
-	for ej < len(b) && is_digit(b[ej]) {
-		ej += 1
-	}
+	si, sj := skip_zeros(a, i), skip_zeros(b, j)
+	ei, ej = run_end(a, si), run_end(b, sj)
 	switch {
 	case ei - si != ej - sj:
-		c = ei - si < ej - sj ? -1 : 1
+		c = -1 if ei - si < ej - sj else 1
 	case a[si:ei] != b[sj:ej]:
-		c = a[si:ei] < b[sj:ej] ? -1 : 1
+		c = -1 if a[si:ei] < b[sj:ej] else 1
 	}
 	return
+}
+
+// skip_zeros is where the digit run at s[i] starts once its leading zeros
+// are passed, keeping its last digit.
+@(private)
+skip_zeros :: proc(s: string, i: int) -> int {
+	i := i
+	for i < len(s) - 1 && s[i] == '0' && is_digit(s[i + 1]) {
+		i += 1
+	}
+	return i
+}
+
+// run_end is where the digit run at s[i] ends.
+@(private)
+run_end :: proc(s: string, i: int) -> int {
+	i := i
+	for i < len(s) && is_digit(s[i]) {
+		i += 1
+	}
+	return i
 }
 
 // Query is a grid's query as order_build reads it: the columns, the
@@ -328,20 +375,25 @@ row_key :: proc(s: string) -> Row_Key {
 match_hash :: proc(q: Query) -> u64 {
 	h := fnv_str(ui.FNV_OFFSET, q.search)
 	for f in q.filters {
-		if !filter_active(f) {
-			continue
+		if filter_active(f) {
+			h = filter_hash(h, q.cols[f.col].id, f)
 		}
-		h = fnv_str(h, q.cols[f.col].id)
-		h = ui.fnv_u64(h, u64(f.kind))
-		for v in f.values {
-			h = fnv_str(h, v)
-		}
-		h = fnv_str(h, f.text)
-		h = ui.fnv_u64(h, transmute(u64)(f.has_lo ? f.lo : 0))
-		h = ui.fnv_u64(h, transmute(u64)(f.has_hi ? f.hi : 0))
-		h = ui.fnv_u64(h, u64(f.has_lo) | u64(f.has_hi) << 1)
 	}
 	return h
+}
+
+// filter_hash folds filter f, on the column named id, into seed.
+@(private)
+filter_hash :: proc(seed: u64, id: string, f: Filter) -> u64 {
+	h := fnv_str(seed, id)
+	h = ui.fnv_u64(h, u64(f.kind))
+	for v in f.values {
+		h = fnv_str(h, v)
+	}
+	h = fnv_str(h, f.text)
+	h = ui.fnv_u64(h, transmute(u64)(f.lo if f.has_lo else 0))
+	h = ui.fnv_u64(h, transmute(u64)(f.hi if f.has_hi else 0))
+	return ui.fnv_u64(h, u64(f.has_lo) | u64(f.has_hi) << 1)
 }
 
 // order_hash names the rows q matches in the order it puts them.
@@ -386,13 +438,17 @@ filter_keeps :: proc(src: Source, col: Column, f: Filter, set: map[string]bool, 
 		return contains_fold(source_text(src, row, f.col), f.text)
 	case .Range:
 		v, ok := source_value(src, col.kind, row, f.col)
-		if !ok {
-			return false
-		}
-		return (!f.has_lo || v >= f.lo) && (!f.has_hi || v <= f.hi)
+		return ok && in_range(f, v)
 	case .None:
 	}
 	return true
+}
+
+// in_range reports whether v lies within f's bounds, an open one keeping
+// every value on its side.
+@(private)
+in_range :: proc(f: Filter, v: f64) -> bool {
+	return (!f.has_lo || v >= f.lo) && (!f.has_hi || v <= f.hi)
 }
 
 // Group is a run of rows sharing the group column's text: where its text
@@ -456,39 +512,54 @@ order_destroy :: proc(o: ^Order) {
 // cell once.
 order_build :: proc(o: ^Order, src: Source, q: Query, collapsed: map[string]bool = nil) {
 	clear(&o.rows)
-	sets := make([]map[string]bool, len(q.filters), context.temp_allocator)
-	for f, i in q.filters {
-		if f.kind == .Set && len(f.values) > 0 {
-			sets[i] = make(map[string]bool, len(f.values), context.temp_allocator)
-			for v in f.values {
-				sets[i][v] = true
-			}
-		}
-	}
+	sets := filter_sets(q.filters)
 	for r in 0 ..< max(src.rows, 0) {
 		if row_matches(src, q, sets, r) {
 			append(&o.rows, r)
 		}
 	}
+	keys := sort_keys(q)
+	if len(keys) > 0 {
+		sort_rows(o, src, q.cols, keys)
+	}
+	build_items(o, src, q.group, collapsed)
+}
+
+// filter_sets is each Set filter's values as a lookup, by filter, in the
+// frame's temp allocator; nil for the other filters.
+@(private)
+filter_sets :: proc(filters: []Filter) -> []map[string]bool {
+	sets := make([]map[string]bool, len(filters), context.temp_allocator)
+	for f, i in filters {
+		if f.kind != .Set || len(f.values) == 0 {
+			continue
+		}
+		sets[i] = make(map[string]bool, len(f.values), context.temp_allocator)
+		for v in f.values {
+			sets[i][v] = true
+		}
+	}
+	return sets
+}
+
+// sort_keys is the keys q's rows sort by: the group column first, in the
+// direction the sort gives it, then the sort's other keys.
+@(private)
+sort_keys :: proc(q: Query) -> []Sort_Key {
 	keys := make([dynamic]Sort_Key, 0, len(q.sort) + 1, context.temp_allocator)
 	if q.group >= 0 {
-		desc := false
+		group := Sort_Key{q.group, false}
 		for s in q.sort {
-			if s.col == q.group {
-				desc = s.desc
-			}
+			group.desc = s.desc if s.col == q.group else group.desc
 		}
-		append(&keys, Sort_Key{q.group, desc})
+		append(&keys, group)
 	}
 	for s in q.sort {
 		if s.col != q.group {
 			append(&keys, s)
 		}
 	}
-	if len(keys) > 0 {
-		sort_rows(o, src, q.cols, keys[:])
-	}
-	build_items(o, src, q.group, collapsed)
+	return keys[:]
 }
 
 // Sorting is what sort_rows's comparison reads.
@@ -561,21 +632,14 @@ fill_key :: proc(s: ^Sorting, src: Source, kind: Value_Kind, col, ki: int, rows:
 compare_positions :: proc(a, b: i32, user: rawptr) -> slice.Ordering {
 	s := (^Sorting)(user)
 	for k, ki in s.keys {
-		c, blank := 0, false
-		if s.text[ki] {
-			ta, tb := s.texts[ki][a], s.texts[ki][b]
-			c, blank = compare_natural(ta, tb), (ta == "") != (tb == "")
-		} else {
-			na, nb := s.nums[ki][a], s.nums[ki][b]
-			c = compare_numbers(na, s.ok[ki][a], nb, s.ok[ki][b])
-			blank = (s.ok[ki][a] && na == na) != (s.ok[ki][b] && nb == nb)
+		c, blank := compare_key(s, ki, a, b)
+		if c == 0 {
+			continue
 		}
-		if c != 0 {
-			if k.desc && !blank {
-				c = -c
-			}
-			return c < 0 ? .Less : .Greater
+		if k.desc && !blank {
+			c = -c
 		}
+		return .Less if c < 0 else .Greater
 	}
 	switch {
 	case a < b:
@@ -586,25 +650,32 @@ compare_positions :: proc(a, b: i32, user: rawptr) -> slice.Ordering {
 	return .Equal
 }
 
+// compare_key orders positions a and b by key ki, and reports whether
+// just one of them is blank, which a descending key does not flip.
+@(private)
+compare_key :: proc(s: ^Sorting, ki: int, a, b: i32) -> (c: int, blank: bool) {
+	if s.text[ki] {
+		ta, tb := s.texts[ki][a], s.texts[ki][b]
+		return compare_natural(ta, tb), (ta == "") != (tb == "")
+	}
+	na, nb := s.nums[ki][a], s.nums[ki][b]
+	c = compare_numbers(na, s.ok[ki][a], nb, s.ok[ki][b])
+	return c, (s.ok[ki][a] && na == na) != (s.ok[ki][b] && nb == nb)
+}
+
 // compare_numbers orders two values, one that is not a value (ok false,
 // or NaN) last.
 @(private)
 compare_numbers :: proc(a: f64, ok_a: bool, b: f64, ok_b: bool) -> int {
 	has_a := ok_a && a == a
 	has_b := ok_b && b == b
-	switch {
-	case !has_a && !has_b:
-		return 0
-	case !has_a:
-		return 1
-	case !has_b:
-		return -1
-	case a < b:
-		return -1
-	case a > b:
-		return 1
+	if has_a != has_b {
+		return -1 if has_a else 1
 	}
-	return 0
+	if !has_a || a == b {
+		return 0
+	}
+	return -1 if a < b else 1
 }
 
 // build_items lays out what the grid draws from o.rows: the rows, or
@@ -662,15 +733,7 @@ distinct_values :: proc(
 	rest := q
 	rest.filters = others[:]
 	rest.search = ""
-	sets := make([]map[string]bool, len(others), context.temp_allocator)
-	for f, i in others {
-		if f.kind == .Set {
-			sets[i] = make(map[string]bool, len(f.values), context.temp_allocator)
-			for v in f.values {
-				sets[i][v] = true
-			}
-		}
-	}
+	sets := filter_sets(others[:])
 	counts := make(map[string]int, 64, context.temp_allocator)
 	for r in 0 ..< max(src.rows, 0) {
 		if row_matches(src, rest, sets, r) {

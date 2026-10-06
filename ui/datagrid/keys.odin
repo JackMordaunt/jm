@@ -18,40 +18,60 @@ import "jm:ui"
 //	Cmd/Ctrl+Shift+C       the same with the column titles first
 //	Escape                 select nothing
 
-// handle_key applies one key.
+// handle_key applies one key: one that moves the cursor, else one that
+// acts.
 @(private)
 handle_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
+	if !move_key(g, src, e, ev) {
+		act_on_key(gtx, g, cols, src, e, ev)
+	}
+}
+
+// move_key applies a key that moves the cursor and reports whether e was
+// one. Cmd or Ctrl jumps to an end, Shift extends the range.
+@(private)
+move_key :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) -> bool {
 	jump := ui.SHORTCUT in e.mods || .Ctrl in e.mods
 	extend := .Shift in e.mods
 	#partial switch e.key {
-	case .Up:
-		if jump {
-			move_to(g, src, 0, extend, ev)
-		} else {
-			move_to(g, src, g.cursor.item - 1, extend, ev)
-		}
-	case .Down:
-		switch {
-		case .Alt in e.mods && g.cursor.item < 0:
-			ev.filter_asked = g.cursor.col
-		case jump:
-			move_to(g, src, g.geo.items - 1, extend, ev)
-		case:
-			move_to(g, src, g.cursor.item + 1, extend, ev)
-		}
+	case .Up, .Down:
+		vertical_key(g, src, e, jump, extend, ev)
 	case .Left, .Right:
-		step_col(g, e.key == .Left ? -1 : 1, jump, extend)
+		step_col(g, -1 if e.key == .Left else 1, jump, extend)
 	case .Home, .End:
-		if jump {
-			move_to(g, src, 0 if e.key == .Home else g.geo.items - 1, extend, ev)
-		} else {
-			step_col(g, e.key == .Home ? -1 : 1, true, extend)
-		}
+		ends_key(g, src, e.key == .Home, jump, extend, ev)
 	case .Page_Up, .Page_Down:
 		rows := max(int(g.geo.body.h / max(g.geo.row_h, 1)) - 1, 1)
 		move_to(g, src, g.cursor.item + (rows if e.key == .Page_Down else -rows), extend, ev)
 	case:
-		act_on_key(gtx, g, cols, src, e, ev)
+		return false
+	}
+	return true
+}
+
+// vertical_key is Up or Down: a row, or with jump the first or last;
+// Alt+Down on a header asks for its filter.
+@(private)
+vertical_key :: proc(g: ^Grid, src: Source, e: ui.Event, jump, extend: bool, ev: ^Events) {
+	if e.key == .Up {
+		move_to(g, src, 0 if jump else g.cursor.item - 1, extend, ev)
+		return
+	}
+	if .Alt in e.mods && g.cursor.item < 0 {
+		ev.filter_asked = g.cursor.col
+		return
+	}
+	move_to(g, src, g.geo.items - 1 if jump else g.cursor.item + 1, extend, ev)
+}
+
+// ends_key is Home (home) or End: the row's first or last cell, or with
+// jump the first or last row.
+@(private)
+ends_key :: proc(g: ^Grid, src: Source, home, jump, extend: bool, ev: ^Events) {
+	if jump {
+		move_to(g, src, 0 if home else g.geo.items - 1, extend, ev)
+	} else {
+		step_col(g, -1 if home else 1, true, extend)
 	}
 }
 
@@ -72,10 +92,8 @@ act_on_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Ev
 			ev.copied = copy_cells(gtx, g, cols, src, .Shift in e.mods)
 		}
 	case .Escape:
-		if !selection_empty(&g.sel) {
-			selection_clear(&g.sel)
-			ev.selection = true
-		}
+		ev.selection = !selection_empty(&g.sel)
+		selection_clear(&g.sel)
 		g.anchor = g.cursor
 	}
 }
@@ -100,14 +118,23 @@ enter :: proc(g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
 	case it.state == .Failed:
 		page := c.item / g.pages.page_size
 		pages_retry(&g.pages, page, page + 1)
-	case it.state != .Ready && it.state != .Stale:
-	case e.key == .Space:
-		selection_toggle(&g.sel, it.key, it.name)
-		g.anchor = c
-		ev.selection = true
+	case !has_row(it):
 	case:
-		ev.activated, ev.row = true, Row_Ref{c.item, it.row, it.key, it.name}
+		enter_row(g, c, it, e.key == .Space, ev)
 	}
+}
+
+// enter_row is Enter on a row, which activates it, or Space (space),
+// which toggles its selection.
+@(private)
+enter_row :: proc(g: ^Grid, c: Cell_At, it: Item, space: bool, ev: ^Events) {
+	if !space {
+		ev.activated, ev.row = true, Row_Ref{c.item, it.row, it.key, it.name}
+		return
+	}
+	selection_toggle(&g.sel, it.key, it.name)
+	g.anchor = c
+	ev.selection = true
 }
 
 // move_to moves the cursor to item (clamped: -1 is the header), keeping
@@ -118,18 +145,19 @@ move_to :: proc(g: ^Grid, src: Source, item: int, extend: bool, ev: ^Events) {
 	to := clamp(item, -1, g.geo.items - 1)
 	it := item_at(g, src, to)
 	g.cursor.item, g.cursor.key = to, it.key
-	if extend && to >= 0 {
+	switch {
+	case !extend:
+		g.anchor = g.cursor
+		if to >= 0 && has_row(it) {
+			selection_anchor(&g.sel, it.key)
+		}
+	case to >= 0:
 		if g.anchor.item < 0 {
 			g.anchor = g.cursor
 			selection_anchor(&g.sel, it.key)
 		}
 		select_range(g, src, g.anchor.item, to)
 		ev.selection = true
-	} else if !extend {
-		g.anchor = g.cursor
-		if to >= 0 && (it.state == .Ready || it.state == .Stale) {
-			selection_anchor(&g.sel, it.key)
-		}
 	}
 	reveal(g)
 }

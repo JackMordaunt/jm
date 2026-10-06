@@ -139,35 +139,48 @@ draw_line :: proc(
 	y := box.y + (box.h - ts.height) / 2 + ts.ascent
 	if run.advance <= box.w + 0.5 {
 		x := box.x
-		switch align {
+		#partial switch align {
 		case .End:
 			x += box.w - run.advance
 		case .Center:
 			x += (box.w - run.advance) / 2
-		case .Start:
 		}
 		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {x, y}, color)
 		return false
 	}
+	draw_cut(gtx, ts, run, box, y, color)
+	return true
+}
+
+// draw_cut draws run, wider than box, cut at a cluster with the ellipsis
+// after it; a right-to-left run, which has no clean cut from the end, is
+// clipped instead.
+@(private)
+draw_cut :: proc(
+	gtx: ^ui.Ctx,
+	ts: Text_Style,
+	run: ops.Glyph_Run,
+	box: ops.Rect,
+	y: f32,
+	color: ops.Color,
+) {
+	o := gtx.scene
 	cut := cut_at(run, box.w - ts.ellipsis.advance)
 	if cut <= 0 && len(run.glyphs) > 0 && run.glyphs[len(run.glyphs) - 1].x < run.glyphs[0].x {
-		// Right to left: no clean cut from the end; clip instead.
-		ops.clip_push(gtx.scene, box)
-		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, run), {box.x, y}, color)
-		ops.clip_pop(gtx.scene)
-		return true
+		ops.clip_push(o, box)
+		ops.glyphs(o, ops.add_run(o, run), {box.x, y}, color)
+		ops.clip_pop(o)
+		return
 	}
-	head := ops.Glyph_Run{run.font, run.size, run.glyphs[:cut], 0}
 	pen := box.x
 	if cut > 0 {
-		head.advance = run.glyphs[cut].x
-		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, head), {pen, y}, color)
+		head := ops.Glyph_Run{run.font, run.size, run.glyphs[:cut], run.glyphs[cut].x}
+		ops.glyphs(o, ops.add_run(o, head), {pen, y}, color)
 		pen += head.advance
 	}
 	if ts.ellipsis.advance <= box.w {
-		ops.glyphs(gtx.scene, ops.add_run(gtx.scene, ts.ellipsis), {pen, y}, color)
+		ops.glyphs(o, ops.add_run(o, ts.ellipsis), {pen, y}, color)
 	}
-	return true
 }
 
 // draw_text_line draws text on one line in box, in font at size, placed by

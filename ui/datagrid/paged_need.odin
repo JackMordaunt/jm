@@ -96,17 +96,28 @@ export_page :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, ev: ^Ev
 	q := page_query(gtx, g, cols, src)
 	q.offset, q.limit, q.after, q.attempt = x.next, x.limit, x.after, x.attempt
 	pg, st := ui.need(gtx, q, Page)
-	if pg == nil || st != .Ready {
+	switch {
+	case pg == nil || st != .Ready:
 		return
-	}
-	if pg.error != "" {
+	case pg.error != "":
 		x.error = clone_to(pg.error, x.text.buf.allocator)
 		x.done = true
-		ev.exported = true
-		return
+	case:
+		export_rows_of(gtx, x, cols, pg.rows)
+		x.next += len(pg.rows)
+		x.done = len(pg.rows) < x.limit
+		if !x.done {
+			export_keep_cursor(x, pg.rows[len(pg.rows) - 1], sort_columns(gtx, g))
+		}
 	}
+	ev.exported = x.done
+}
+
+// export_rows_of writes a page's rows to x, the export's columns of each.
+@(private)
+export_rows_of :: proc(gtx: ^ui.Ctx, x: ^Export, cols: []Column, rows: []Page_Row) {
 	fields := make([dynamic]string, 0, len(x.cols), gtx.allocator)
-	for r in pg.rows {
+	for r in rows {
 		clear(&fields)
 		for c in x.cols {
 			switch {
@@ -121,13 +132,6 @@ export_page :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, ev: ^Ev
 		write_record(&x.text, CSV, fields[:])
 		x.written += 1
 	}
-	x.next += len(pg.rows)
-	if len(pg.rows) < x.limit {
-		x.done = true
-		ev.exported = true
-		return
-	}
-	export_keep_cursor(x, pg.rows[len(pg.rows) - 1], sort_columns(gtx, g))
 }
 
 // export_keep_cursor keeps the last row written as the next page's cursor.

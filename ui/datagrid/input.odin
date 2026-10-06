@@ -88,35 +88,50 @@ header_events :: proc(
 	ev: ^Events,
 ) {
 	for e in ui.events(gtx, ui.id_mix(id, AREA_HEADER + u64(col))) {
-		#partial switch e.kind {
-		case .Enter:
-			g.hover_head = col
-		case .Leave:
-			if g.hover_head == col {
-				g.hover_head = -1
-			}
-		case .Press:
-			if e.button == .Left {
-				g.drag = {
-					kind  = .Header,
-					col   = col,
-					x     = e.pos.x,
-					shift = .Shift in e.mods,
-				}
-			}
-		case .Move:
-			if g.drag.col == col && (g.drag.kind == .Header || g.drag.kind == .Move) {
-				g.drag.moved += e.travel.x
-				g.drag.x = e.pos.x
-				if abs(g.drag.moved) > DRAG_SLOP {
-					g.drag.kind = .Move
-				}
-			}
-		case .Release:
-			header_release(g, cols, col, ev)
-		case .Cancel:
-			g.drag = {}
-		}
+		header_event(g, cols, col, e, ev)
+	}
+}
+
+// header_event applies one event on header col.
+@(private)
+header_event :: proc(g: ^Grid, cols: []Column, col: int, e: ui.Event, ev: ^Events) {
+	#partial switch e.kind {
+	case .Enter:
+		g.hover_head = col
+	case .Leave:
+		unhover(&g.hover_head, col)
+	case .Press:
+		g.drag = header_press(g.drag, col, e)
+	case .Move:
+		header_move(g, col, e)
+	case .Release:
+		header_release(g, cols, col, ev)
+	case .Cancel:
+		g.drag = {}
+	}
+}
+
+// header_press is the drag a press on header col starts: a left press
+// is a click or a move, any other leaves the drag as it was.
+@(private)
+header_press :: proc(was: Drag, col: int, e: ui.Event) -> Drag {
+	if e.button != .Left {
+		return was
+	}
+	return {kind = .Header, col = col, x = e.pos.x, shift = .Shift in e.mods}
+}
+
+// header_move follows a press on header col as it travels: past
+// DRAG_SLOP it moves the column rather than sorting by it.
+@(private)
+header_move :: proc(g: ^Grid, col: int, e: ui.Event) {
+	if g.drag.col != col || (g.drag.kind != .Header && g.drag.kind != .Move) {
+		return
+	}
+	g.drag.moved += e.travel.x
+	g.drag.x = e.pos.x
+	if abs(g.drag.moved) > DRAG_SLOP {
+		g.drag.kind = .Move
 	}
 }
 
@@ -212,64 +227,97 @@ resize_events :: proc(
 		case .Enter:
 			g.hover_grip = col
 		case .Leave:
-			if g.hover_grip == col {
-				g.hover_grip = -1
-			}
+			unhover(&g.hover_grip, col)
 		case .Press:
-			if e.clicks >= 2 {
-				g.view.cols[col].width = clamp_width(
-					cols[col],
-					fit_width(gtx, g, cols, src, skin, col),
-				)
-				g.drag = {}
-				ev.view = true
-				continue
-			}
-			at := place_of(&g.place, col)
-			w := g.place.places[at].w if at >= 0 else DEFAULT_WIDTH
-			g.drag = {
-				kind  = .Resize,
-				col   = col,
-				start = w,
-			}
+			resize_press(gtx, g, cols, src, skin, col, e, ev)
 		case .Move:
-			if g.drag.kind == .Resize && g.drag.col == col {
-				g.drag.moved += e.travel.x
-				g.view.cols[col].width = clamp_width(cols[col], g.drag.start + g.drag.moved)
-			}
+			resize_move(g, cols, col, e)
 		case .Release, .Cancel:
-			if g.drag.kind == .Resize && g.drag.col == col {
-				g.drag = {}
-				ev.view = true
-			}
+			ev.view ||= resize_end(g, col)
 		}
+	}
+}
+
+// resize_move follows column col's edge as it is dragged.
+@(private)
+resize_move :: proc(g: ^Grid, cols: []Column, col: int, e: ui.Event) {
+	if g.drag.kind == .Resize && g.drag.col == col {
+		g.drag.moved += e.travel.x
+		g.view.cols[col].width = clamp_width(cols[col], g.drag.start + g.drag.moved)
+	}
+}
+
+// resize_end ends a drag of column col's edge and reports whether there
+// was one, which changed the view.
+@(private)
+resize_end :: proc(g: ^Grid, col: int) -> bool {
+	if g.drag.kind != .Resize || g.drag.col != col {
+		return false
+	}
+	g.drag = {}
+	return true
+}
+
+// resize_press starts dragging column col's edge, or with a double click
+// fits the column to its widest cell.
+@(private)
+resize_press :: proc(
+	gtx: ^ui.Ctx,
+	g: ^Grid,
+	cols: []Column,
+	src: Source,
+	skin: ^Skin,
+	col: int,
+	e: ui.Event,
+	ev: ^Events,
+) {
+	if e.clicks >= 2 {
+		fit := fit_width(gtx, g, cols, src, skin, col)
+		g.view.cols[col].width = clamp_width(cols[col], fit)
+		g.drag = {}
+		ev.view = true
+		return
+	}
+	at := place_of(&g.place, col)
+	w := g.place.places[at].w if at >= 0 else DEFAULT_WIDTH
+	g.drag = {
+		kind  = .Resize,
+		col   = col,
+		start = w,
 	}
 }
 
 // hit is the item and column under p, in the grid's space: item -1 over
 // the header, -2 below the last row; col -1 past the last column.
 hit :: proc(g: ^Grid, p: ops.Point) -> (item, col: int) {
+	return hit_item(g, p), hit_col(g, p)
+}
+
+@(private)
+hit_item :: proc(g: ^Grid, p: ops.Point) -> int {
 	geo := &g.geo
-	item, col = -2, -1
 	if p.y < geo.body.y {
-		item = -1
-	} else {
-		y := f64(p.y - geo.body.y + g.scroll.y)
-		if y < geo.content {
-			item = heights_at(&g.heights, y)
-		}
+		return -1
 	}
+	y := f64(p.y - geo.body.y + g.scroll.y)
+	return heights_at(&g.heights, y) if y < geo.content else -2
+}
+
+@(private)
+hit_col :: proc(g: ^Grid, p: ops.Point) -> int {
+	geo := &g.geo
+	col := -1
+	in_mid := p.x >= geo.mid_x && p.x < geo.mid_x + geo.mid_w
 	for pl in g.place.places {
 		x := place_screen_x(g, pl)
-		in_mid := pl.pin != .None || (p.x >= geo.mid_x && p.x < geo.mid_x + geo.mid_w)
-		if in_mid && p.x >= x && p.x < x + pl.w {
+		if (pl.pin != .None || in_mid) && p.x >= x && p.x < x + pl.w {
 			col = pl.col
 			if pl.pin != .None {
 				break // a pinned column lies over the middle
 			}
 		}
 	}
-	return
+	return col
 }
 
 // body_events is the body's input: focus, presses that select and
@@ -286,46 +334,82 @@ body_events :: proc(
 	for e in ui.events(gtx, id) {
 		#partial switch e.kind {
 		case .Focus:
-			g.focused = true
-			if g.cursor.col < 0 && len(g.place.places) > 0 {
-				g.cursor.col = g.place.places[0].col
-			}
+			focus_body(g)
 		case .Blur:
 			g.focused = false
-		case .Press:
-			press(gtx, g, cols, src, e, ev)
-		case .Move:
-			item, _ := hit(g, e.pos)
-			g.hover = item if item >= 0 else -1
-			if g.drag.kind == .Select {
-				sweep(g, src, e.pos, ev)
-			}
-		case .Release, .Cancel:
-			if g.drag.kind == .Select {
-				g.drag = {}
-			}
-		case .Leave:
-			g.hover = -1
 		case .Key:
 			handle_key(gtx, g, cols, src, e, ev)
+		case:
+			body_pointer_events(gtx, g, cols, src, e, ev)
 		}
 	}
 }
 
-// press is a press in the body: the right button asks for a menu; on a
-// group header it shuts or opens the group, on a failed row it retries;
-// on a row it moves the cursor there and selects: alone, toggled with
-// Cmd or Ctrl, as a range from the anchor with Shift. A double click
-// activates the row.
+// body_pointer_events is the pointer over the body: a press, its travel and
+// release, and its leaving.
+@(private)
+body_pointer_events :: proc(
+	gtx: ^ui.Ctx,
+	g: ^Grid,
+	cols: []Column,
+	src: Source,
+	e: ui.Event,
+	ev: ^Events,
+) {
+	#partial switch e.kind {
+	case .Press:
+		press(gtx, g, cols, src, e, ev)
+	case .Move:
+		body_move(g, src, e, ev)
+	case .Release, .Cancel:
+		g.drag = {} if g.drag.kind == .Select else g.drag
+	case .Leave:
+		g.hover = -1
+	}
+}
+
+// unhover forgets that the pointer is over col, held in at, as it
+// leaves.
+@(private)
+unhover :: proc(at: ^int, col: int) {
+	if at^ == col {
+		at^ = -1
+	}
+}
+
+// focus_body is the grid taking focus: the keyboard's cell starts in the
+// first column.
+@(private)
+focus_body :: proc(g: ^Grid) {
+	g.focused = true
+	if g.cursor.col < 0 && len(g.place.places) > 0 {
+		g.cursor.col = g.place.places[0].col
+	}
+}
+
+// body_move follows the pointer over the body: the row it is over, and a
+// selection being swept.
+@(private)
+body_move :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) {
+	item := hit_item(g, e.pos)
+	g.hover = item if item >= 0 else -1
+	if g.drag.kind == .Select {
+		sweep(g, src, e.pos, ev)
+	}
+}
+
+// press is a press in the body: on a group header it shuts or opens the
+// group, on a failed row it retries; on a row the right button asks for a
+// menu and the left one moves the cursor there and selects: alone,
+// toggled with Cmd or Ctrl, as a range from the anchor with Shift. A
+// double click activates the row.
 @(private)
 press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
 	item, col := hit(g, e.pos)
 	if item < 0 {
 		return
 	}
-	if col < 0 && len(g.place.places) > 0 {
-		col = g.place.places[len(g.place.places) - 1].col
-	}
+	col = col if col >= 0 else last_col(g)
 	it := item_at(g, src, item)
 	switch {
 	case it.group >= 0:
@@ -334,33 +418,48 @@ press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, 
 			col  = col,
 		}
 		toggle_group(g, item)
-		return
 	case it.state == .Failed:
 		pages_retry(&g.pages, item / g.pages.page_size, item / g.pages.page_size + 1)
-		return
-	case it.state != .Ready && it.state != .Stale:
-		return
+	case !has_row(it):
+	case e.button == .Right:
+		press_menu(g, it, Cell_At{item, col, it.key}, e, ev)
+	case e.button == .Left:
+		press_row(g, src, it, Cell_At{item, col, it.key}, e, ev)
 	}
-	ref := Row_Ref{item, it.row, it.key, it.name}
-	if e.button == .Right {
-		if !selected(&g.sel, it.key) {
-			selection_only(&g.sel, it.key, it.name)
-			ev.selection = true
-		}
-		g.cursor = {item, col, it.key}
-		ev.context_menu, ev.row, ev.at, ev.col = true, ref, e.pos, col
-		return
+}
+
+// last_col is the last visible column, -1 when none is: the column a
+// press past the columns lands in.
+@(private)
+last_col :: proc(g: ^Grid) -> int {
+	n := len(g.place.places)
+	return g.place.places[n - 1].col if n > 0 else -1
+}
+
+// press_menu is a right press on a row: it selects the row unless it is
+// already, and asks for a menu where it was pressed.
+@(private)
+press_menu :: proc(g: ^Grid, it: Item, at: Cell_At, e: ui.Event, ev: ^Events) {
+	if !selected(&g.sel, it.key) {
+		selection_only(&g.sel, it.key, it.name)
+		ev.selection = true
 	}
-	if e.button != .Left {
-		return
-	}
-	select_at(g, src, Cell_At{item, col, it.key}, it.name, e.mods)
+	g.cursor = at
+	ev.context_menu, ev.at, ev.col = true, e.pos, at.col
+	ev.row = Row_Ref{at.item, it.row, it.key, it.name}
+}
+
+// press_row is a left press on a row: it selects by the modifiers, starts
+// a sweep, and on a double click activates the row.
+@(private)
+press_row :: proc(g: ^Grid, src: Source, it: Item, at: Cell_At, e: ui.Event, ev: ^Events) {
+	select_at(g, src, at, it.name, e.mods)
 	ev.selection = true
 	g.drag = {
 		kind = .Select,
 	}
 	if e.clicks >= 2 && e.mods == {} {
-		ev.activated, ev.row = true, ref
+		ev.activated, ev.row = true, Row_Ref{at.item, it.row, it.key, it.name}
 	}
 }
 
@@ -391,7 +490,7 @@ select_range :: proc(g: ^Grid, src: Source, a, b: int) {
 	start := a if a >= 0 else b
 	for i in min(start, b) ..= max(start, b) {
 		it := item_at(g, src, i)
-		if it.group < 0 && (it.state == .Ready || it.state == .Stale) {
+		if it.group < 0 && has_row(it) {
 			append(&g.keys, it.key)
 			append(&g.names, it.name)
 		}
@@ -408,7 +507,7 @@ sweep :: proc(g: ^Grid, src: Source, p: ops.Point, ev: ^Events) {
 		return
 	}
 	it := item_at(g, src, item)
-	if it.group >= 0 || (it.state != .Ready && it.state != .Stale) {
+	if it.group >= 0 || !has_row(it) {
 		return
 	}
 	g.cursor = {item, col if col >= 0 else g.cursor.col, it.key}

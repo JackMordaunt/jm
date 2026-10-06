@@ -21,24 +21,9 @@ paint_header :: proc(pc: ^Painter) {
 	}
 	hid := ui.id_mix(pc.id, 5)
 	for r in regions(g) {
-		if r.w <= 0 || r.lo >= r.hi {
-			continue
+		if region_shows(r) {
+			paint_header_region(pc, r, hid)
 		}
-		ops.clip_push(o, ops.Rect{r.x, 0, r.w, geo.header_h})
-		if r.pin != .None && ui.painted(st.header_bg) {
-			ops.fill(o, ops.Rect{r.x, 0, r.w, geo.header_h}, st.header_bg)
-		}
-		for at in r.lo ..< r.hi {
-			pl := g.place.places[at]
-			paint_header_cell(pc, at, {r.shift + pl.x, 0, pl.w, geo.header_h}, hid)
-		}
-		// The grips after every header, so the one at a column's right
-		// edge lies over the header to its right too.
-		for at in r.lo ..< r.hi {
-			pl := g.place.places[at]
-			paint_grip(pc, pl.col, {r.shift + pl.x, 0, pl.w, geo.header_h})
-		}
-		ops.clip_pop(o)
 	}
 	paint_pin_edges(pc, band)
 	if ui.painted(st.rule) {
@@ -48,30 +33,39 @@ paint_header :: proc(pc: ^Painter) {
 	ops.semantic(o, hid, pc.id, {role = .Row, row_index = 1}, band)
 }
 
+// paint_header_region draws region r's headers, under the header row hid,
+// and their resize grips.
+@(private)
+paint_header_region :: proc(pc: ^Painter, r: Region, hid: ops.Area_Id) {
+	g, o, st := pc.g, pc.gtx.scene, pc.st
+	h := g.geo.header_h
+	ops.clip_push(o, ops.Rect{r.x, 0, r.w, h})
+	defer ops.clip_pop(o)
+	if r.pin != .None && ui.painted(st.header_bg) {
+		ops.fill(o, ops.Rect{r.x, 0, r.w, h}, st.header_bg)
+	}
+	for at in r.lo ..< r.hi {
+		pl := g.place.places[at]
+		paint_header_cell(pc, at, {r.shift + pl.x, 0, pl.w, h}, hid)
+	}
+	// The grips after every header, so the one at a column's right edge
+	// lies over the header to its right too.
+	for at in r.lo ..< r.hi {
+		pl := g.place.places[at]
+		paint_grip(pc, pl.col, {r.shift + pl.x, 0, pl.w, h})
+	}
+}
+
 // paint_header_cell draws column places[at]'s header in cell: its area,
-// the skin's content or the title and marks, the rule at its right, and
-// its resize grip; and declares it to readers.
+// the skin's content or the title and marks, the rule at its right; and
+// declares it to readers.
 @(private)
 paint_header_cell :: proc(pc: ^Painter, at: int, cell: ops.Rect, row: ops.Area_Id) {
 	g, o, st, gtx := pc.g, pc.gtx.scene, pc.st, pc.gtx
 	col := g.place.places[at].col
-	c := &pc.cols[col]
 	aid := ui.id_mix(pc.id, AREA_HEADER + u64(col))
-	ops.input_area(o, aid, cell, HEADER_KINDS, .Default if c.no_sort else .Pointer)
-	rank := sort_rank(&g.view, col)
-	desc := rank >= 0 && g.view.sort[rank].desc
-	h := Header {
-		grid     = g,
-		col      = col,
-		column   = c,
-		size     = {cell.w, cell.h},
-		rank     = rank,
-		desc     = desc,
-		filtered = view_filtered(&g.view, col),
-		hovered  = g.hover_head == col,
-		cursor   = g.cursor.item < 0 && g.cursor.col == col,
-		key      = u64(aid),
-	}
+	ops.input_area(o, aid, cell, HEADER_KINDS, .Default if pc.cols[col].no_sort else .Pointer)
+	h := header_of(pc, col, aid, cell)
 	if g.drag.kind == .Move && g.drag.col == col {
 		ops.fill(o, cell, st.hover) // the column being moved, where it was
 	}
@@ -82,30 +76,59 @@ paint_header_cell :: proc(pc: ^Painter, at: int, cell: ops.Rect, row: ops.Area_I
 	} else {
 		paint_header_content(pc, &h, cell)
 	}
-	if h.cursor && g.focused && ui.painted(st.cursor) {
-		ops.stroke(
-			o,
-			ops.Rect{cell.x + 1, cell.y + 1, cell.w - 2, cell.h - 2},
-			st.cursor,
-			{width = 2},
-		)
+	if h.cursor {
+		paint_cursor_ring(pc, cell)
 	}
 	if ui.painted(st.column_rule) {
 		ops.fill(o, ops.Rect{cell.x + cell.w - 1, cell.y + 6, 1, cell.h - 12}, st.column_rule)
 	}
-	said := ui.frame_string(gtx, c.title)
+	header_semantics(pc, &h, aid, row, at, cell)
+}
+
+// header_of is column col's header as a skin's slot sees it.
+@(private)
+header_of :: proc(pc: ^Painter, col: int, aid: ops.Area_Id, cell: ops.Rect) -> Header {
+	g := pc.g
+	rank := sort_rank(&g.view, col)
+	return {
+		grid = g,
+		col = col,
+		column = &pc.cols[col],
+		size = {cell.w, cell.h},
+		rank = rank,
+		desc = rank >= 0 && g.view.sort[rank].desc,
+		filtered = view_filtered(&g.view, col),
+		hovered = g.hover_head == col,
+		cursor = g.cursor.item < 0 && g.cursor.col == col,
+		key = u64(aid),
+	}
+}
+
+// header_semantics declares header h, at place at in the header row row,
+// to readers: its title, where it stands and how it is sorted.
+@(private)
+header_semantics :: proc(
+	pc: ^Painter,
+	h: ^Header,
+	aid, row: ops.Area_Id,
+	at: int,
+	cell: ops.Rect,
+) {
+	o := pc.gtx.scene
+	said := ui.frame_string(pc.gtx, h.column.title)
 	ops.tag(o, aid, said, cell)
 	sort := ops.Sort_Order.None
-	if rank >= 0 {
-		sort = .Descending if desc else .Ascending
+	if h.rank >= 0 {
+		sort = .Descending if h.desc else .Ascending
 	}
-	ops.semantic(
-		o,
-		aid,
-		row,
-		{role = .Column_Header, label = said, row_index = 1, col_index = i32(at) + 1, sort = sort},
-		cell,
-	)
+	sem := ops.Semantics {
+		role      = .Column_Header,
+		label     = said,
+		row_index = 1,
+		col_index = i32(at) + 1,
+		sort      = sort,
+	}
+	ops.semantic(o, aid, row, sem, cell)
 }
 
 // paint_header_content is a header without a skin's slot: the title, a
@@ -117,23 +140,30 @@ paint_header_content :: proc(pc: ^Painter, h: ^Header, cell: ops.Rect) {
 	mark: f32 = 14
 	box := ops.Rect{cell.x + st.pad, cell.y, cell.w - 2 * st.pad - mark, cell.h}
 	draw_line(gtx, &g.text, pc.head, h.column.title, box, h.column.align, st.header_fg)
-	mx := cell.x + cell.w - st.pad - mark / 2
-	my := cell.y + cell.h / 2
+	at := ops.Point{cell.x + cell.w - st.pad - mark / 2, cell.y + cell.h / 2}
+	ink := st.active if ui.painted(st.active) else st.header_fg
 	if h.rank >= 0 {
-		ink := st.active if ui.painted(st.active) else st.header_fg
-		tri := []ops.Point{{mx - 4, my + 2}, {mx + 4, my + 2}, {mx, my - 3}}
-		if h.desc {
-			tri = []ops.Point{{mx - 4, my - 2}, {mx + 4, my - 2}, {mx, my + 3}}
-		}
-		ops.fill(gtx.scene, ui.polygon(gtx, tri), ink)
-		if len(g.view.sort) > 1 {
-			n := fmt.aprintf("%d", h.rank + 1, allocator = gtx.allocator)
-			draw_line(gtx, &g.text, pc.body, n, {mx + 5, cell.y, mark, cell.h}, .Start, ink)
-		}
+		paint_sort_mark(pc, h, at, ink, cell)
 	}
 	if h.filtered {
-		ink := st.active if ui.painted(st.active) else st.header_fg
-		ops.fill(gtx.scene, ui.circle({mx - mark, my}, 2.5), ink)
+		ops.fill(gtx.scene, ui.circle({at.x - mark, at.y}, 2.5), ink)
+	}
+}
+
+// paint_sort_mark draws a sorted header's triangle at at, pointing up for
+// ascending, and its rank after it when the sort has several keys.
+@(private)
+paint_sort_mark :: proc(pc: ^Painter, h: ^Header, at: ops.Point, ink: ops.Color, cell: ops.Rect) {
+	g, gtx := pc.g, pc.gtx
+	mx, my := at.x, at.y
+	tri := []ops.Point{{mx - 4, my + 2}, {mx + 4, my + 2}, {mx, my - 3}}
+	if h.desc {
+		tri = []ops.Point{{mx - 4, my - 2}, {mx + 4, my - 2}, {mx, my + 3}}
+	}
+	ops.fill(gtx.scene, ui.polygon(gtx, tri), ink)
+	if len(g.view.sort) > 1 {
+		n := fmt.aprintf("%d", h.rank + 1, allocator = gtx.allocator)
+		draw_line(gtx, &g.text, pc.body, n, {mx + 5, cell.y, 14, cell.h}, .Start, ink)
 	}
 }
 

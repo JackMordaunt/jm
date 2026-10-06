@@ -283,7 +283,7 @@ row_box :: proc(g: ^Grid, item: int) -> ops.Rect {
 @(private)
 row_id :: proc(pc: ^Painter, it: Item, item: int) -> ops.Area_Id {
 	base := ui.id_mix(pc.id, 6)
-	if it.state == .Ready || it.state == .Stale {
+	if has_row(it) {
 		return ui.id_mix(base, u64(it.key))
 	}
 	return ui.id_mix(base, 1 << 63 | u64(item))
@@ -319,16 +319,7 @@ paint_region_row :: proc(pc: ^Painter, r: Region, ri, item: int) {
 		paint_span(pc, r, ri, it, item, band)
 		return
 	}
-	if ui.painted(st.zebra) && item % 2 == 1 {
-		ops.fill(o, band, st.zebra)
-	}
-	lit := it.state == .Ready || it.state == .Stale
-	if g.hover == item && lit {
-		ops.fill(o, band, st.hover)
-	}
-	if lit && selected(&g.sel, it.key) && ui.painted(st.selected) {
-		ops.fill(o, band, st.selected)
-	}
+	paint_row_fills(pc, it, item, band)
 	rid := row_id(pc, it, item)
 	for at in r.lo ..< r.hi {
 		pl := g.place.places[at]
@@ -336,6 +327,25 @@ paint_region_row :: proc(pc: ^Painter, r: Region, ri, item: int) {
 	}
 	if ui.painted(st.rule) {
 		ops.fill(o, ops.Rect{band.x, band.h - 1, band.w, 1}, st.rule)
+	}
+}
+
+// paint_row_fills fills a row's band: every other row's zebra, the
+// pointer's row, a selected row.
+@(private)
+paint_row_fills :: proc(pc: ^Painter, it: Item, item: int, band: ops.Rect) {
+	g, o, st := pc.g, pc.gtx.scene, pc.st
+	if ui.painted(st.zebra) && item % 2 == 1 {
+		ops.fill(o, band, st.zebra)
+	}
+	if !has_row(it) {
+		return
+	}
+	if g.hover == item {
+		ops.fill(o, band, st.hover)
+	}
+	if selected(&g.sel, it.key) && ui.painted(st.selected) {
+		ops.fill(o, band, st.selected)
 	}
 }
 
@@ -367,51 +377,75 @@ paint_cell :: proc(pc: ^Painter, it: Item, item, at: int, cell: ops.Rect, rid: o
 	if ui.painted(st.column_rule) {
 		ops.fill(o, ops.Rect{cell.x + cell.w - 1, cell.y, 1, cell.h}, st.column_rule)
 	}
-	switch it.state {
-	case .Loading, .Missing:
-		paint_skeleton(pc, cell, item, at)
+	if !has_row(it) {
+		if it.state != .Failed {
+			paint_skeleton(pc, cell, item, at)
+		}
 		return
-	case .Failed:
-		return
-	case .Ready, .Stale:
 	}
 	paint_range(pc, item, at, cell)
 	text := cell_text(pc.gtx, pc.src, pc.cols, it, item, col)
 	is_cursor := g.cursor.item == item && g.cursor.col == col
 	sel := selected(&g.sel, it.key)
-	fg := st.selected_fg if sel && ui.painted(st.selected_fg) else st.fg
-	if it.state == .Stale {
-		fg = scale_alpha(fg, st.stale_alpha if st.stale_alpha > 0 else 0.5)
-	}
+	fg := cell_ink(st, it.state, sel)
 	if !skin_cell(pc, it, item, col, text, cell, sel, is_cursor, fg) {
 		ts := pc.bold if pc.cols[col].row_header else pc.body
 		box := ops.Rect{cell.x + st.pad, cell.y, cell.w - 2 * st.pad, cell.h}
 		draw_line(pc.gtx, &g.text, ts, text, box, pc.cols[col].align, fg)
 	}
-	if is_cursor && g.focused && ui.painted(st.cursor) {
-		ops.stroke(
-			o,
-			ops.Rect{cell.x + 1, cell.y + 1, cell.w - 2, cell.h - 2},
-			st.cursor,
-			{width = 2},
-		)
+	if is_cursor {
+		paint_cursor_ring(pc, cell)
 	}
+	cell_semantics(pc, rid, item, at, col, text, sel, cell)
+}
+
+// cell_ink is a cell's text colour: the selected text colour on a
+// selected row where the style has one, dimmed on a stale row.
+@(private)
+cell_ink :: proc(st: ^Style, state: Row_State, sel: bool) -> ops.Color {
+	fg := st.fg
+	if sel && ui.painted(st.selected_fg) {
+		fg = st.selected_fg
+	}
+	if state == .Stale {
+		fg = scale_alpha(fg, st.stale_alpha if st.stale_alpha > 0 else 0.5)
+	}
+	return fg
+}
+
+// paint_cursor_ring outlines the keyboard's cell while the grid has
+// focus.
+@(private)
+paint_cursor_ring :: proc(pc: ^Painter, cell: ops.Rect) {
+	if !pc.g.focused || !ui.painted(pc.st.cursor) {
+		return
+	}
+	ring := ops.Rect{cell.x + 1, cell.y + 1, cell.w - 2, cell.h - 2}
+	ops.stroke(pc.gtx.scene, ring, pc.st.cursor, {width = 2})
+}
+
+// cell_semantics declares a cell to readers, placed among all the rows
+// and the visible columns, and tags it with its text.
+@(private)
+cell_semantics :: proc(
+	pc: ^Painter,
+	rid: ops.Area_Id,
+	item, at, col: int,
+	text: string,
+	sel: bool,
+	cell: ops.Rect,
+) {
+	o := pc.gtx.scene
 	cid := ui.id_mix(rid, u64(col) + 1)
 	said := ui.frame_string(pc.gtx, text)
-	states := ops.States{.Selected} if sel else {}
-	ops.semantic(
-		o,
-		cid,
-		rid,
-		{
-			role = .Grid_Cell,
-			label = said,
-			row_index = i32(item) + 2,
-			col_index = i32(at) + 1,
-			states = states,
-		},
-		cell,
-	)
+	sem := ops.Semantics {
+		role      = .Grid_Cell,
+		label     = said,
+		row_index = i32(item) + 2,
+		col_index = i32(at) + 1,
+		states    = ops.States{.Selected} if sel else {},
+	}
+	ops.semantic(o, cid, rid, sem, cell)
 	if said != "" {
 		ops.tag(o, cid, said, cell)
 	}
@@ -459,27 +493,34 @@ skin_cell :: proc(
 // shows over the rows it selects, which share its tint.
 @(private)
 paint_range :: proc(pc: ^Painter, item, at: int, cell: ops.Rect) {
-	rg, o, st := pc.range, pc.gtx.scene, pc.st
+	rg := pc.range
 	if !rg.on || item < rg.item_lo || item > rg.item_hi || at < rg.at_lo || at > rg.at_hi {
 		return
 	}
 	// Above the row's rule, which the row draws after its cells.
 	inner := ops.Rect{cell.x, cell.y, cell.w, cell.h - 1}
-	ops.fill(o, inner, st.selected)
-	if !ui.painted(st.cursor) {
-		return
+	ops.fill(pc.gtx.scene, inner, pc.st.selected)
+	if ui.painted(pc.st.cursor) {
+		paint_range_edges(pc, item, at, inner)
 	}
+}
+
+// paint_range_edges draws the sides of the range's block that cell, inside
+// it at item and place at, lies on.
+@(private)
+paint_range_edges :: proc(pc: ^Painter, item, at: int, cell: ops.Rect) {
+	rg, o, ink := pc.range, pc.gtx.scene, pc.st.cursor
 	if item == rg.item_lo {
-		ops.fill(o, ops.Rect{cell.x, cell.y, cell.w, 1}, st.cursor)
+		ops.fill(o, ops.Rect{cell.x, cell.y, cell.w, 1}, ink)
 	}
 	if item == rg.item_hi {
-		ops.fill(o, ops.Rect{cell.x, inner.y + inner.h - 1, cell.w, 1}, st.cursor)
+		ops.fill(o, ops.Rect{cell.x, cell.y + cell.h - 1, cell.w, 1}, ink)
 	}
 	if at == rg.at_lo {
-		ops.fill(o, ops.Rect{cell.x, cell.y, 1, cell.h}, st.cursor)
+		ops.fill(o, ops.Rect{cell.x, cell.y, 1, cell.h + 1}, ink)
 	}
 	if at == rg.at_hi {
-		ops.fill(o, ops.Rect{cell.x + cell.w - 1, cell.y, 1, cell.h}, st.cursor)
+		ops.fill(o, ops.Rect{cell.x + cell.w - 1, cell.y, 1, cell.h + 1}, ink)
 	}
 }
 
@@ -529,26 +570,12 @@ row_semantics :: proc(pc: ^Painter, item: int) {
 	states: ops.States
 	switch {
 	case it.group >= 0:
-		grp := g.order.groups[it.group]
-		name := group_name(&g.order, grp)
-		label = fmt.aprintf(
-			"%s, %d %s",
-			name,
-			grp.count,
-			"row" if grp.count == 1 else "rows",
-			allocator = pc.gtx.allocator,
-		)
-		states = {.Expandable}
-		if !g.collapsed[name] {
-			states += {.Expanded}
-		}
+		label, states = group_semantics(pc, it.group)
 		ops.tag(pc.gtx.scene, rid, label, box)
 	case it.state == .Failed:
 		label = it.error
-	case it.state == .Ready || it.state == .Stale:
-		if selected(&g.sel, it.key) {
-			states = {.Selected}
-		}
+	case has_row(it):
+		states = ops.States{.Selected} if selected(&g.sel, it.key) else {}
 	case:
 		states = {.Busy}
 	}
@@ -559,6 +586,22 @@ row_semantics :: proc(pc: ^Painter, item: int) {
 		states    = states,
 	}
 	ops.semantic(pc.gtx.scene, rid, pc.id, sem, box)
+}
+
+// group_semantics is what a reader hears for group gi's header, its name
+// and how many rows, and whether it is open.
+@(private)
+group_semantics :: proc(pc: ^Painter, gi: int) -> (label: string, states: ops.States) {
+	g := pc.g
+	grp := g.order.groups[gi]
+	name := group_name(&g.order, grp)
+	rows := "row" if grp.count == 1 else "rows"
+	label = fmt.aprintf("%s, %d %s", name, grp.count, rows, allocator = pc.gtx.allocator)
+	states = {.Expandable}
+	if !g.collapsed[name] {
+		states += {.Expanded}
+	}
+	return
 }
 
 // paint_group draws group gi's header, at item, across box, the skin's
