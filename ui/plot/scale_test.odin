@@ -154,6 +154,7 @@ test_log_ticks_write_each_on_its_own_magnitude :: proc(t: ^testing.T) {
 		{hash, 1e-12, "1e−3 nH/s"}, // below the smallest prefix
 		{{}, 0.05, "0.05"},
 		{{}, 0.002, "2e−3"},
+		{{}, 2e3, "2000"}, // no short scale: whole numbers below a million
 		{{}, 1e6, "1e6"},
 		{{prefix = "$", short = .Finance}, 2e3, "$2k"},
 	}

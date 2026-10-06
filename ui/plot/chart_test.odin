@@ -31,12 +31,23 @@ Page :: struct {
 @(private = "file")
 page :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	pg := (^Page)(user)
-	track: mem.Tracking_Allocator
-	if pg.counted {
-		mem.tracking_allocator_init(&track, context.allocator)
-		context.allocator = mem.tracking_allocator(&track)
-		context.temp_allocator = context.allocator
+	if !pg.counted {
+		draw_page(gtx, pg)
+		return
 	}
+	// Set at the proc's own scope: Odin's context is block-scoped, and set
+	// inside an if it reverted at the brace, so this counted nothing.
+	track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	defer mem.tracking_allocator_destroy(&track)
+	context.allocator = mem.tracking_allocator(&track)
+	context.temp_allocator = context.allocator
+	draw_page(gtx, pg)
+	pg.allocations += int(track.total_allocation_count)
+}
+
+@(private = "file")
+draw_page :: proc(gtx: ^ui.Ctx, pg: ^Page) {
 	switch pg.kind {
 	case .Line:
 		line_chart(gtx, &pg.line, &pg.style)
@@ -44,10 +55,6 @@ page :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		bar_chart(gtx, &pg.bar, &pg.style)
 	case .Box:
 		box_chart(gtx, &pg.box, &pg.style)
-	}
-	if pg.counted {
-		pg.allocations += int(track.total_allocation_count)
-		mem.tracking_allocator_destroy(&track)
 	}
 }
 
@@ -412,6 +419,62 @@ test_a_steady_frame_asks_no_allocator :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_steady_bar_and_box_frames_ask_no_allocator :: proc(t: ^testing.T) {
+	pg: Page
+	series := []Bar_Series {
+		{name = "Invoices", values = {10, -4, 7}},
+		{name = "Refunds", values = {5, 6, 2}},
+	}
+	bars(&pg, {"Jan", "Feb", "Mar"}, series)
+	pg.bar.stacked = true
+	boxes := []Box_Stats{box_stats({1, 2, 3, 4, 5, 6, 7, 8, 9, 100}, context.temp_allocator)}
+	pg.box = {
+		label      = "Boxes",
+		categories = {"Norway"},
+		series     = {{name = "Rigs", boxes = boxes}},
+		mean       = true,
+	}
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	for kind in ([]type_of(pg.kind){.Bar, .Box}) {
+		pg.kind, pg.counted = kind, false
+		ui.probe_frame(&p)
+		plot := ui.probe_bounds(&p, "Bars" if kind == .Bar else "Boxes")
+		ui.probe_move(&p, plot.x + plot.w / 2, plot.y + plot.h / 2)
+		ui.probe_frame(&p)
+		pg.counted = true
+		for _ in 0 ..< 3 {
+			ui.probe_frame(&p)
+		}
+		if kind == .Box {
+			// And over the outlier, 100, at the top, which its tooltip names.
+			ui.probe_move(&p, plot.x + plot.w / 2, plot.y + 1)
+			ui.probe_frame(&p)
+			ui.probe_frame(&p)
+			testing.expect(
+				t,
+				strings.contains(semantics(&p), "Rigs, outlier"),
+				"the outlier's tooltip",
+			)
+		}
+		testing.expectf(
+			t,
+			pg.allocations == 0,
+			"%v asked context's allocators %d times",
+			kind,
+			pg.allocations,
+		)
+		testing.expectf(
+			t,
+			strings.contains(semantics(&p), "tooltip"),
+			"%v shows its readout",
+			kind,
+		)
+	}
+}
+
+@(test)
 test_ten_thousand_points_draw_as_columns :: proc(t: ^testing.T) {
 	pg: Page
 	pg.style = default_style()
@@ -730,15 +793,7 @@ test_a_crowded_category_axis_turns_and_thins_its_labels :: proc(t: ^testing.T) {
 	p: ui.Probe
 	open(&p, &pg)
 	defer ui.probe_destroy(&p)
-	turned, labels := 0, 0
-	for op in p.scene.ops {
-		#partial switch v in op {
-		case ops.Push_Transform:
-			turned += 1
-		case ops.Glyphs:
-			labels += 1
-		}
-	}
+	turned, labels := turns_and_labels(&p)
 	testing.expect(t, turned > 0, "the labels turn")
 	testing.expectf(t, labels < n, "%d labels drawn for %d categories: they thin", labels, n)
 	// Twelve short ones fit level.
@@ -747,7 +802,15 @@ test_a_crowded_category_axis_turns_and_thins_its_labels :: proc(t: ^testing.T) {
 		name = fmt.aprintf("%d", i, allocator = context.temp_allocator)
 	}
 	ui.probe_frame(&p)
-	turned, labels = 0, 0
+	turned, labels = turns_and_labels(&p)
+	testing.expect_value(t, turned, 0)
+	testing.expectf(t, labels >= 12, "%d labels drawn: every category's is there", labels)
+}
+
+// turns_and_labels counts the frame's transforms, which only a turned
+// label pushes in a bar chart, and its runs of text.
+@(private = "file")
+turns_and_labels :: proc(p: ^ui.Probe) -> (turned, labels: int) {
 	for op in p.scene.ops {
 		#partial switch v in op {
 		case ops.Push_Transform:
@@ -756,6 +819,5 @@ test_a_crowded_category_axis_turns_and_thins_its_labels :: proc(t: ^testing.T) {
 			labels += 1
 		}
 	}
-	testing.expect_value(t, turned, 0)
-	testing.expectf(t, labels >= 12, "%d labels drawn: every category's is there", labels)
+	return
 }
