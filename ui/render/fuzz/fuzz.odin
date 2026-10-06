@@ -32,6 +32,9 @@ import bl "jm:ui/blend2d"
 
 when ODIN_OS == .Windows {
 	FONT :: "C:/Windows/Fonts/arial.ttf"
+} else when ODIN_OS == .Darwin {
+	// The system face, SFNS.ttf, is not one Blend2D reads.
+	FONT :: "/System/Library/Fonts/Supplemental/Arial.ttf"
 } else {
 	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
 }
