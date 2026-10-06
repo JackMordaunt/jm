@@ -174,6 +174,7 @@ Pages :: struct {
 	end:          bool,
 	entries:      [dynamic]Cached_Page,
 	tick:         u64,
+	wanted:       [2]int, // the pages last wanted, [lo, hi)
 	allocator:    mem.Allocator,
 }
 
@@ -277,6 +278,7 @@ pages_window :: proc(p: ^Pages, first, last: int) -> (lo, hi: int) {
 // the row before it when that row is held.
 pages_want :: proc(p: ^Pages, lo, hi: int, sort_cols: []int) {
 	p.tick += 1
+	p.wanted = {lo, hi}
 	for i in lo ..< hi {
 		e := pages_find(p, p.query, i)
 		if e == nil {
@@ -403,37 +405,66 @@ copy_rows :: proc(p: ^Pages, e: ^Cached_Page, rows: []Page_Row) {
 }
 
 // update_count moves the count for page index arriving with n rows and
-// the host's total of kind. A short page is the end: the count is exact
-// from it. Otherwise an exact total is believed, an estimate kept
-// unless the rows outrun it, and with no total the count runs one page
-// past the last full page.
+// the host's total of kind. A full page believes an exact total, keeps
+// an estimate unless the rows outrun it, and with no total runs the
+// count one page past it; then the pages held say where the rows end
+// (settle_end).
 @(private)
 update_count :: proc(p: ^Pages, index, n, total: int, kind: Count_Kind) {
 	size := p.page_size
 	extent := index * size + n
-	if n < size {
-		p.count, p.kind, p.end = extent, .Exact, true
-		return
-	}
-	if p.end && extent >= p.count {
-		// The table grew past the end a short page showed.
-		p.end = false
-	}
-	if p.end {
-		return
-	}
-	switch kind {
-	case .Exact:
-		p.count, p.kind = max(total, extent), .Exact
-	case .Estimated:
-		p.count, p.kind = max(total, extent), .Estimated
-	case .Unknown:
-		if p.kind == .Unknown {
-			p.count = max(p.count, extent + size)
-		} else {
-			p.count = max(p.count, extent)
+	if n == size && !p.end {
+		switch kind {
+		case .Exact:
+			p.count, p.kind = max(total, extent), .Exact
+		case .Estimated:
+			p.count, p.kind = max(total, extent), .Estimated
+		case .Unknown:
+			if p.kind == .Unknown {
+				p.count = max(p.count, extent + size)
+			} else {
+				p.count = max(p.count, extent)
+			}
 		}
 	}
+	settle_end(p)
+}
+
+// settle_end finds where the rows end from the current query's pages
+// held. A short page past the last full one ends them exactly, as does
+// an empty one right after it or first of all; an empty one further on
+// says only that they end at or before it. A full page past a found end
+// says the rows grew, and the end is looked for again.
+@(private)
+settle_end :: proc(p: ^Pages) {
+	size := p.page_size
+	last_full := -1
+	for e in p.entries {
+		if page_held(p, e) && len(e.rows) == size {
+			last_full = max(last_full, e.index)
+		}
+	}
+	if p.end && (last_full + 1) * size > p.count {
+		p.end = false
+	}
+	for e in p.entries {
+		if !page_held(p, e) || len(e.rows) >= size || e.index < last_full {
+			continue
+		}
+		extent := e.index * size + len(e.rows)
+		if len(e.rows) > 0 || e.index == last_full + 1 {
+			p.count, p.kind, p.end = extent, .Exact, true
+			return
+		}
+		p.count = min(p.count, extent)
+	}
+}
+
+// page_held reports whether e is a page of the current query that has
+// arrived.
+@(private)
+page_held :: proc(p: ^Pages, e: Cached_Page) -> bool {
+	return e.query == p.query && e.state == .Ready
 }
 
 // pages_evict keeps at most capacity pages, never fewer than the window

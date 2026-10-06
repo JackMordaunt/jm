@@ -284,3 +284,31 @@ test_pages_keep_stale_stand_ins_until_the_new_query_arrives :: proc(t: ^testing.
 	testing.expect(t, pages_find(&p, 2, 5) != nil && pages_find(&p, 2, 4) != nil)
 	free_all(context.temp_allocator)
 }
+
+@(test)
+test_an_empty_page_bounds_the_count_and_ends_it_after_a_full_one :: proc(t: ^testing.T) {
+	p: Pages
+	pages_init(&p, {page_size = 10, estimate = 100})
+	defer pages_destroy(&p)
+	pages_query(&p, 1)
+	// 25 rows: page 6 is past them, empty, and says only that.
+	empty := page_of(6, 10, 25, 1)
+	testing.expect_value(t, len(empty.rows), 0)
+	pages_arrive(&p, 1, 6, &empty, 1)
+	testing.expect_value(t, p.count, 60)
+	testing.expect(t, !p.end, "the rows end at 60 or before, not at 60")
+	full := page_of(1, 10, 25, 1)
+	pages_arrive(&p, 1, 1, &full, 1)
+	testing.expect_value(t, p.count, 60) // an estimate, held to the bound
+	short := page_of(2, 10, 25, 1)
+	pages_arrive(&p, 1, 2, &short, 2)
+	testing.expect_value(t, [2]int{p.count, int(p.end)}, [2]int{25, 1})
+	// An empty page right after a full one ends the rows exactly there.
+	pages_query(&p, 2)
+	f0 := page_of(0, 10, 10, 2)
+	e1 := page_of(1, 10, 10, 2)
+	pages_arrive(&p, 2, 1, &e1, 3)
+	pages_arrive(&p, 2, 0, &f0, 4)
+	testing.expect_value(t, [2]int{p.count, int(p.end)}, [2]int{10, 1})
+	free_all(context.temp_allocator)
+}

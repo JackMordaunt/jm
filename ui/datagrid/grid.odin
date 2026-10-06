@@ -225,8 +225,10 @@ grid :: proc(
 	// not a frame late.
 	update_query(g, columns, src, skin, &ev)
 	geometry(g, columns, src, skin, size)
-	if src.paged != nil {
-		want_pages(gtx, g, columns, src)
+	if src.paged != nil && want_pages(gtx, g, columns, src) {
+		// The pages that came moved the count: the rows are laid out
+		// again, so this frame draws them where the next one will.
+		geometry(g, columns, src, skin, size)
 	}
 	export_step(gtx, g, columns, src, &ev)
 	paint(gtx, g, columns, src, skin, id, label)

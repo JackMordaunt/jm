@@ -65,9 +65,10 @@ sort_columns :: proc(gtx: ^ui.Ctx, g: ^Grid) -> []int {
 }
 
 // want_pages needs the pages near the view, takes in those that arrived,
-// and evicts what the cache cannot keep.
+// and evicts what the cache cannot keep. It reports whether the count
+// moved.
 @(private)
-want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source) {
+want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source) -> bool {
 	p := &g.pages
 	lo, hi := pages_window(p, g.geo.first, g.geo.last)
 	pages_want(p, lo, hi, sort_columns(gtx, g))
@@ -82,9 +83,7 @@ want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source) {
 		}
 	}
 	pages_evict(p, lo, hi)
-	g.geo.items = max(p.count, 0)
-	heights_set_uniform(&g.heights, g.geo.items, f64(g.geo.row_h))
-	g.geo.content = heights_total(&g.heights)
+	return max(p.count, 0) != g.geo.items
 }
 
 // export_page asks for the export's next page and writes it when it
