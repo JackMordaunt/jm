@@ -878,6 +878,17 @@ enqueue_global :: proc(n: ^Node, locked := false) {
 	if !locked {
 		sync.mutex_lock(&p.mutex)
 	}
+	// schedule can see a node unfinished, lose the processor while the node
+	// runs its last time, then claim it once it is Idle and done. Queued, a
+	// finished pinned node would hold the pool back from quiescence for ever,
+	// since its owner stops draining once every node is done.
+	if sync.atomic_load(&n.done) {
+		sync.atomic_store(&n.sched, Sched.Idle)
+		if !locked {
+			sync.mutex_unlock(&p.mutex)
+		}
+		return
+	}
 	first_pinned := false
 	if n.pinned {
 		first_pinned = queue.len(p.pinned) == 0

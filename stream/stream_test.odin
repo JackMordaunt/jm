@@ -1,5 +1,6 @@
 package stream
 
+import "core:container/queue"
 import "core:strings"
 import "core:sync"
 import "core:testing"
@@ -562,6 +563,43 @@ pinned_node_runs_only_in_drain_pinned :: proc(t: ^testing.T) {
 	testing.expect(t, ran > 0)
 	testing.expect(t, sync.atomic_load(&c.wakes) > 0)
 	testing.expect(t, drain_pinned(c.p) == 0)
+}
+
+// A wake can race a pinned node's last run: schedule sees it unfinished,
+// then claims it once it is Idle and done, and queues it. A finished node in
+// the pinned queue held the pool back from quiescence for ever, since its
+// owner stops draining once every node is done, so it must not be queued.
+// Found by stream/fuzz pinned_pool under load.
+@(test)
+a_late_wake_does_not_queue_a_finished_node :: proc(t: ^testing.T) {
+	c: Pinned_Case
+	c.p = make_pipeline(context.allocator)
+	defer destroy(c.p)
+	st: Pinned_Sink
+	sink := for_each(from_slice(c.p, []int{1}), &st, pinned_sink)
+	pin(c.p, sink)
+	drain(c.p)
+	testing.expect(t, finished(c.p))
+
+	// What schedule does when its CAS wins after the node finished.
+	n := node_at(c.p, sink)
+	sync.atomic_store(&n.sched, Sched.Scheduled)
+	enqueue(n)
+	testing.expect_value(t, queue.len(c.p.pinned), 0)
+	testing.expect_value(t, sync.atomic_load(&n.sched), Sched.Idle)
+
+	pool := thread.create_and_start_with_poly_data(&c, pinned_pool)
+	deadline := time.time_add(time.now(), 2 * time.Second)
+	for !thread.is_done(pool) && time.diff(time.now(), deadline) > 0 {
+		time.sleep(time.Millisecond)
+	}
+	returned := thread.is_done(pool)
+	if !returned {
+		stop(c.p)
+	}
+	thread.join(pool)
+	thread.destroy(pool)
+	testing.expect(t, returned, "run never saw the pipeline go quiet")
 }
 
 @(test)
