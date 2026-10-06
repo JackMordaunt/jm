@@ -148,7 +148,8 @@ text_stops :: proc(gtx: ^Ctx, s: ^Text_State, font: ops.Font_Id, size: f32) -> T
 //	                        Paste event a later frame passes back here
 //
 // A read-only s takes the moves, select all and copy, and nothing that
-// would change it. Keys it does not know (Enter, Up, Down, Escape) are
+// would change it. A secret s (a password's, text_secret.odin) takes
+// everything but copy and cut, so its text never reaches the clipboard. Keys it does not know (Enter, Up, Down, Escape) are
 // left to the widget, which handles them before or instead of calling
 // this. Stops come from text_stops; without them every rune is a stop and
 // words are not known, so word moves go by grapheme.
@@ -157,7 +158,7 @@ text_stops :: proc(gtx: ^Ctx, s: ^Text_State, font: ops.Font_Id, size: f32) -> T
 // end of the next word; Command-Left/Right: start or end of the line);
 // elsewhere Ctrl+Right goes to the start of the next word, as Windows and
 // GTK text fields do.
-text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: Text_Stops, read_only := false) -> bool {
+text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: Text_Stops, read_only := false, secret := false) -> bool {
 	text_clamp(s)
 	#partial switch e.kind {
 	case .Text:
@@ -173,13 +174,13 @@ text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: T
 		text_replace(s, e.text)
 		return true
 	case .Key:
-		return edit_key(gtx, s, id, e.key, e.mods, stops, read_only)
+		return edit_key(gtx, s, id, e.key, e.mods, stops, read_only, secret)
 	}
 	return false
 }
 
 @(private = "file")
-edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods, stops: Text_Stops, read_only: bool) -> bool {
+edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods, stops: Text_Stops, read_only: bool, secret := false) -> bool {
 	extend := .Shift in mods
 	chord := mods - {.Shift}
 	lo, hi := text_selection(s)
@@ -189,12 +190,12 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 			text_select(s, 0, len(s.buf))
 			return false
 		case .C:
-			if lo < hi {
+			if lo < hi && !secret {
 				clipboard_write(gtx, string(s.buf[lo:hi]))
 			}
 			return false
 		case .X:
-			if lo < hi && !read_only {
+			if lo < hi && !read_only && !secret {
 				clipboard_write(gtx, string(s.buf[lo:hi]))
 				text_replace(s, "")
 				return true

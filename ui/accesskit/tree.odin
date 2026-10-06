@@ -221,7 +221,7 @@ checkable :: proc(r: ops.Role) -> bool {
 // click, rather than content it reads past.
 interactive :: proc(r: ops.Role) -> bool {
 	#partial switch r {
-	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Menu_Item_Checkbox, .Menu_Item_Radio, .Link, .Option, .Grid_Cell, .Row, .Cell, .Tree_Item:
+	case .Button, .Checkbox, .Radio, .Switch, .Slider, .Text_Field, .Password_Field, .Combo_Box, .Tab, .List_Item, .Menu_Item, .Menu_Item_Checkbox, .Menu_Item_Radio, .Link, .Option, .Grid_Cell, .Row, .Cell, .Tree_Item:
 		return true
 	}
 	return false
@@ -256,6 +256,8 @@ role_of :: proc(r: ops.Role) -> Role {
 		return .Slider
 	case .Text_Field:
 		return .Text_Input
+	case .Password_Field:
+		return .Password_Input
 	case .Combo_Box:
 		return .Combo_Box
 	case .Tab_List:
