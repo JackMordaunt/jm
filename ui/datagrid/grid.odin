@@ -235,6 +235,16 @@ grid :: proc(
 	return
 }
 
+// grid_sync brings g up to date with columns and src before a frame's
+// grid call, which does it again at no cost when nothing changed since:
+// for a skin's toolbar, laid out above the grid, to count the rows the
+// grid will show this frame.
+grid_sync :: proc(g: ^Grid, columns: []Column, src: Source, skin: ^Skin) {
+	ev: Events
+	sync_columns(g, columns)
+	update_query(g, columns, src, skin, &ev)
+}
+
 // grid_size is what the grid takes: the room offered, or twenty rows
 // where the height is unbounded and 640 where the width is.
 @(private)

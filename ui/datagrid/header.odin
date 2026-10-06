@@ -76,11 +76,9 @@ paint_header_cell :: proc(pc: ^Painter, at: int, cell: ops.Rect, row: ops.Area_I
 		ops.fill(o, cell, st.hover) // the column being moved, where it was
 	}
 	if pc.skin.header != nil {
-		ops.transform_push(o, ops.translate(cell.x, cell.y))
-		s := ui.sized_open(gtx, {min = h.size, max = h.size}, key = u64(ui.id_mix(aid, 1)))
+		s := slot_open(gtx, h.size, ui.id_mix(aid, 1))
 		pc.skin.header(gtx, &h, pc.skin.user)
-		ui.close(&s)
-		ops.transform_pop(o)
+		slot_close(gtx, &s, {cell.x, cell.y})
 	} else {
 		paint_header_content(pc, &h, cell)
 	}

@@ -504,10 +504,33 @@ test_export_all_writes_the_view_at_once_and_reset_puts_columns_back :: proc(t: ^
 	defer ui.probe_destroy(&p)
 	testing.expect(t, export_all(&m.g, RIG_COLS, rigs_source(m)))
 	text := strings.to_string(m.g.export.text)
-	testing.expect(t, strings.has_prefix(text, "Hash,Serial,Site\r\n37,SN-00001,Paraguay\r\n"), text[:50])
+	testing.expect(
+		t,
+		strings.has_prefix(text, "Hash,Serial,Site\r\n37,SN-00001,Paraguay\r\n"),
+		text[:50],
+	)
 	testing.expect_value(t, strings.count(text, "\r\n"), 16_668) // the titles and a third of the rows
 	view_reset_columns(&m.g.view, RIG_COLS)
 	testing.expect(t, !m.g.view.cols[1].hidden)
 	testing.expect_value(t, m.g.view.order[0], 0)
 	testing.expect(t, view_filtered(&m.g.view, 2), "the filter stays")
+}
+
+// A skin's slot lays out in the cell the grid gives it: a widget its
+// header slot draws sits over the header, wherever the column stands.
+@(test)
+test_a_skin_slot_lays_out_in_its_cell :: proc(t: ^testing.T) {
+	m := rigs_make(5)
+	defer rigs_free(m)
+	m.skin.header = proc(gtx: ^ui.Ctx, h: ^Header, user: rawptr) {
+		p := ui.widget_open(gtx)
+		name := ui.frame_string(gtx, strings.concatenate({"slot ", h.column.title}, gtx.allocator))
+		ops.tag(gtx.scene, p.id, name, ops.Rect{0, 0, h.size.x, h.size.y})
+		ui.widget_close(gtx, &p, {size = h.size})
+	}
+	p: ui.Probe
+	open(&p, m)
+	defer ui.probe_destroy(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "slot Site"), ui.probe_bounds(&p, "Site"))
+	testing.expect(t, ui.probe_bounds(&p, "slot Site").x > 0)
 }

@@ -375,10 +375,7 @@ paint_cell :: proc(pc: ^Painter, it: Item, item, at: int, cell: ops.Rect, rid: o
 		return
 	case .Ready, .Stale:
 	}
-	rg := pc.range
-	if rg.on && item >= rg.item_lo && item <= rg.item_hi && at >= rg.at_lo && at <= rg.at_hi {
-		ops.fill(o, cell, st.selected)
-	}
+	paint_range(pc, item, at, cell)
 	text := cell_text(pc.gtx, pc.src, pc.cols, it, item, col)
 	is_cursor := g.cursor.item == item && g.cursor.col == col
 	sel := selected(&g.sel, it.key)
@@ -451,15 +448,56 @@ skin_cell :: proc(
 		cursor   = is_cursor,
 		fg       = fg,
 	}
-	ops.transform_push(gtx.scene, ops.translate(cell.x, cell.y))
-	defer ops.transform_pop(gtx.scene)
-	box := ui.sized_open(
-		gtx,
-		{min = c.size, max = c.size},
-		key = u64(ui.id_mix(ui.id_mix(pc.id, 7), u64(item) << 16 | u64(col))),
-	)
-	defer ui.close(&box)
-	return pc.skin.cell(gtx, &c, pc.skin.user)
+	s := slot_open(gtx, c.size, ui.id_mix(ui.id_mix(pc.id, 7), u64(item) << 16 | u64(col)))
+	drew := pc.skin.cell(gtx, &c, pc.skin.user)
+	slot_close(gtx, &s, {cell.x, cell.y})
+	return drew
+}
+
+// paint_range tints a cell in the block of cells from the anchor to the
+// cursor and draws the block's edge where the cell has one, so the block
+// shows over the rows it selects, which share its tint.
+@(private)
+paint_range :: proc(pc: ^Painter, item, at: int, cell: ops.Rect) {
+	rg, o, st := pc.range, pc.gtx.scene, pc.st
+	if !rg.on || item < rg.item_lo || item > rg.item_hi || at < rg.at_lo || at > rg.at_hi {
+		return
+	}
+	// Above the row's rule, which the row draws after its cells.
+	inner := ops.Rect{cell.x, cell.y, cell.w, cell.h - 1}
+	ops.fill(o, inner, st.selected)
+	if !ui.painted(st.cursor) {
+		return
+	}
+	if item == rg.item_lo {
+		ops.fill(o, ops.Rect{cell.x, cell.y, cell.w, 1}, st.cursor)
+	}
+	if item == rg.item_hi {
+		ops.fill(o, ops.Rect{cell.x, inner.y + inner.h - 1, cell.w, 1}, st.cursor)
+	}
+	if at == rg.at_lo {
+		ops.fill(o, ops.Rect{cell.x, cell.y, 1, cell.h}, st.cursor)
+	}
+	if at == rg.at_hi {
+		ops.fill(o, ops.Rect{cell.x + cell.w - 1, cell.y, 1, cell.h}, st.cursor)
+	}
+}
+
+// slot_open starts a skin's slot: what it lays out, in exactly size, is
+// recorded rather than placed in the grid's box, for slot_close to draw
+// where the grid puts it, under the grid's own transforms and clips.
+@(private)
+slot_open :: proc(gtx: ^ui.Ctx, size: ops.Size, key: ops.Area_Id) -> ui.Recording {
+	return ui.record_open(gtx, ui.exact(size), u64(key))
+}
+
+// slot_close draws the slot s recorded at at, in the current space.
+@(private)
+slot_close :: proc(gtx: ^ui.Ctx, s: ^ui.Recording, at: ops.Point) {
+	m, _ := ui.record_close(s)
+	ops.transform_push(gtx.scene, ops.translate(at.x, at.y))
+	ops.call(gtx.scene, m)
+	ops.transform_pop(gtx.scene)
 }
 
 // SKELETON_WIDTHS are a loading cell's bar, as a share of its width,
@@ -539,11 +577,9 @@ paint_group :: proc(pc: ^Painter, gi, item: int, box: ops.Rect, ri: int) {
 	if pc.skin.group != nil {
 		gr := Group_Row{g, name, grp.count, shut, {box.w, box.h}, is_cursor}
 		key := ui.id_mix(ui.id_mix(pc.id, 8), u64(gi) << 2 | u64(ri))
-		ops.transform_push(gtx.scene, ops.translate(box.x, box.y))
-		s := ui.sized_open(gtx, {min = gr.size, max = gr.size}, key = u64(key))
+		s := slot_open(gtx, gr.size, key)
 		drew = pc.skin.group(gtx, &gr, pc.skin.user)
-		ui.close(&s)
-		ops.transform_pop(gtx.scene)
+		slot_close(gtx, &s, {box.x, box.y})
 	}
 	if !drew {
 		paint_group_title(pc, name, grp.count, shut, box)
@@ -582,11 +618,9 @@ paint_failed :: proc(pc: ^Painter, err: string, box: ops.Rect, ri: int) {
 	if pc.skin.failed != nil {
 		size := ops.Size{box.w, box.h}
 		key := ui.id_mix(ui.id_mix(pc.id, 10), u64(ri))
-		ops.transform_push(gtx.scene, ops.translate(box.x, box.y))
-		s := ui.sized_open(gtx, {min = size, max = size}, key = u64(key))
+		s := slot_open(gtx, size, key)
 		drew := pc.skin.failed(gtx, size, err, pc.skin.user)
-		ui.close(&s)
-		ops.transform_pop(gtx.scene)
+		slot_close(gtx, &s, {box.x, box.y})
 		if drew {
 			return
 		}
@@ -613,15 +647,9 @@ paint_empty :: proc(pc: ^Painter) {
 		return // not known to be empty yet
 	}
 	if pc.skin.empty != nil {
-		ops.transform_push(gtx.scene, ops.translate(body.x, body.y))
-		s := ui.sized_open(
-			gtx,
-			{min = {body.w, body.h}, max = {body.w, body.h}},
-			key = u64(ui.id_mix(pc.id, 9)),
-		)
+		s := slot_open(gtx, {body.w, body.h}, ui.id_mix(pc.id, 9))
 		pc.skin.empty(gtx, {body.w, body.h}, pc.skin.user)
-		ui.close(&s)
-		ops.transform_pop(gtx.scene)
+		slot_close(gtx, &s, {body.x, body.y})
 		return
 	}
 	msg := "No rows match" if view_filters_active(&g.view) else "No rows"

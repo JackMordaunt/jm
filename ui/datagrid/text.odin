@@ -170,6 +170,24 @@ draw_line :: proc(
 	return true
 }
 
+// draw_text_line draws text on one line in box, in font at size, placed by
+// align and cut with an ellipsis to fit, shaped through g's cache: for a
+// skin's slot that draws a cell's or a header's text as the grid would.
+// It returns whether the text was cut.
+draw_text_line :: proc(
+	gtx: ^ui.Ctx,
+	g: ^Grid,
+	font: ops.Font_Id,
+	size: f32,
+	text: string,
+	box: ops.Rect,
+	align: Align,
+	color: ops.Color,
+) -> bool {
+	ts := text_style(gtx, &g.text, font, size)
+	return draw_line(gtx, &g.text, ts, text, box, align, color)
+}
+
 // cut_at is how many of run's glyphs fit in width, in whole clusters, for
 // a run wider than width: glyphs before k end where glyph k starts, so k
 // is the last glyph starting within width, moved back to its cluster's
