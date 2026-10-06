@@ -36,15 +36,26 @@ test_decimation_keeps_every_column_extreme :: proc(t: ^testing.T) {
 		len(line.points),
 	)
 	for c in 0 ..< 100 {
-		found_lo, found_hi := false, false
-		for p in line.points {
-			if int(p.x) == c {
-				found_lo ||= p.y == lo[c]
-				found_hi ||= p.y == hi[c]
-			}
-		}
-		testing.expectf(t, found_lo && found_hi, "column %d lost an extreme", c)
+		testing.expectf(
+			t,
+			column_keeps(line.points[:], c, lo[c], hi[c]),
+			"column %d lost an extreme",
+			c,
+		)
 	}
+}
+
+// column_keeps reports whether points keep both lo and hi in column c.
+@(private = "file")
+column_keeps :: proc(points: []ops.Point, c: int, lo, hi: f32) -> bool {
+	found_lo, found_hi := false, false
+	for p in points {
+		if int(p.x) == c {
+			found_lo ||= p.y == lo
+			found_hi ||= p.y == hi
+		}
+	}
+	return found_lo && found_hi
 }
 
 @(test)

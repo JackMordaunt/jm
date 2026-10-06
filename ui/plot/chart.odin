@@ -106,15 +106,8 @@ FADED :: 0.45
 @(private)
 show_status :: proc(f: ^Frame, has_data: bool) -> bool {
 	c := f.chart
-	msg, color := "", f.style.muted
-	switch {
-	case c.status == .Error:
-		msg, color = c.message if c.message != "" else "Couldn’t load the data", f.style.error
-	case c.status == .Loading && !has_data:
-		msg = "Loading…"
-	case !has_data:
-		msg = c.message if c.message != "" else "No data"
-	}
+	msg := status_message(c, has_data)
+	color := f.style.error if c.status == .Error else f.style.muted
 	if msg == "" {
 		if c.status == .Loading {
 			ops.opacity_push(f.gtx.scene, FADED)
@@ -139,6 +132,24 @@ show_status :: proc(f: ^Frame, has_data: bool) -> bool {
 		{role = role, label = ui.frame_string(f.gtx, msg)},
 	)
 	return false
+}
+
+// status_message is what a chart says in place of its plot, or "" when
+// it draws the plot.
+@(private)
+status_message :: proc(c: ^Chart, has_data: bool) -> string {
+	or_default :: proc(msg, default: string) -> string {
+		return msg if msg != "" else default
+	}
+	switch {
+	case c.status == .Error:
+		return or_default(c.message, "Couldn’t load the data")
+	case c.status == .Loading && !has_data:
+		return "Loading…"
+	case !has_data:
+		return or_default(c.message, "No data")
+	}
+	return ""
 }
 
 // shown is whether series i is drawn.

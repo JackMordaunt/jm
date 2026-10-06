@@ -90,28 +90,41 @@ Line_Layout :: struct {
 line_extents :: proc(f: ^Frame, l: ^Line_Layout) -> bool {
 	c := l.chart
 	l.left, l.right = EMPTY_EXTENT, EMPTY_EXTENT
-	l.first, l.last = -1, -1
-	for x, i in c.xs {
-		if is_finite(x) {
-			l.first = i if l.first < 0 else l.first
-			l.last = i
-		}
-	}
+	l.first, l.last = finite_span(c.xs)
 	if l.first < 0 {
 		return false
 	}
 	l.x_lo, l.x_hi = c.xs[l.first], c.xs[l.last]
 	for s, si in c.series {
-		if !shown(f, si) {
-			continue
-		}
-		e := &l.right if s.right && c.fill != .Stacked else &l.left
-		l.dual ||= s.right && c.fill != .Stacked
-		for i in l.first ..= l.last {
-			extent_add(e, value_at(f, c, si, i))
+		if shown(f, si) {
+			right := s.right && c.fill != .Stacked
+			l.dual ||= right
+			series_extent(f, l, si, &l.right if right else &l.left)
 		}
 	}
 	return l.left.lo <= l.left.hi || l.right.lo <= l.right.hi
+}
+
+// series_extent widens e to series s's values as drawn.
+@(private)
+series_extent :: proc(f: ^Frame, l: ^Line_Layout, s: int, e: ^Extent) {
+	for i in l.first ..= l.last {
+		extent_add(e, value_at(f, l.chart, s, i))
+	}
+}
+
+// finite_span is the first and last index of xs holding a number, or -1
+// and -1 when none does.
+@(private)
+finite_span :: proc(xs: []f64) -> (first, last: int) {
+	first, last = -1, -1
+	for x, i in xs {
+		if is_finite(x) {
+			first = i if first < 0 else first
+			last = i
+		}
+	}
+	return
 }
 
 // value_at is series s's value at i as drawn: its own, or the top of its
@@ -184,18 +197,9 @@ axis_title_height :: proc(f: ^Frame, title: string) -> f32 {
 // or keyboard is.
 @(private)
 line_draw :: proc(f: ^Frame, l: ^Line_Layout) {
-	c, p := l.chart, f.plot
-	draw_value_axis(f, &l.y, .Left, true)
-	if l.dual {
-		draw_value_axis(f, &l.y2, .Right, false)
-	}
-	titles_y := f.top
-	draw_axis_title(f, c.y.title, 0, titles_y, false, first_on(f, c, false) if l.dual else -1)
-	if l.dual {
-		draw_axis_title(f, c.y2.title, f.size.x, titles_y, true, first_on(f, c, true))
-	}
-	draw_x_axis(f, &l.x)
-	ops.clip_push(f.gtx.scene, grow(p, f.style.line_width))
+	c := l.chart
+	line_axes(f, l)
+	ops.clip_push(f.gtx.scene, grow(f.plot, f.style.line_width))
 	if c.fill != .None {
 		for s in 0 ..< len(c.series) {
 			if shown(f, s) {
@@ -210,6 +214,20 @@ line_draw :: proc(f: ^Frame, l: ^Line_Layout) {
 	}
 	ops.clip_pop(f.gtx.scene)
 	line_readout(f, l)
+}
+
+// line_axes draws the value axes, their titles, and the x axis. With two
+// value axes each title is keyed to the first series reading against it.
+@(private)
+line_axes :: proc(f: ^Frame, l: ^Line_Layout) {
+	c := l.chart
+	draw_value_axis(f, &l.y, .Left, true)
+	draw_axis_title(f, c.y.title, 0, f.top, false, first_on(f, c, false) if l.dual else -1)
+	if l.dual {
+		draw_value_axis(f, &l.y2, .Right, false)
+		draw_axis_title(f, c.y2.title, f.size.x, f.top, true, first_on(f, c, true))
+	}
+	draw_x_axis(f, &l.x)
 }
 
 // first_on is the first shown series on the right axis (or the left),

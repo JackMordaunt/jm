@@ -53,10 +53,7 @@ box_stats :: proc(samples: []f64, allocator := context.allocator) -> (b: Box_Sta
 	}
 	b.count = len(sorted)
 	if b.count == 0 {
-		nan := math.nan_f64()
-		b.min, b.max, b.q1, b.median, b.q3, b.whisker_lo, b.whisker_hi, b.mean =
-			nan, nan, nan, nan, nan, nan, nan, nan
-		return
+		return empty_box()
 	}
 	slice.sort(sorted[:])
 	s := sorted[:]
@@ -64,23 +61,40 @@ box_stats :: proc(samples: []f64, allocator := context.allocator) -> (b: Box_Sta
 	b.mean = mean
 	b.q1, b.median, b.q3 = quantile(s, 0.25), quantile(s, 0.5), quantile(s, 0.75)
 	iqr := b.q3 - b.q1
-	lo_fence, hi_fence := b.q1 - WHISKER_IQR * iqr, b.q3 + WHISKER_IQR * iqr
-	first, last := 0, len(s) - 1
-	// The bounds hold where the fences are not numbers: samples whose
-	// spread overflows f64 make the IQR infinite.
-	// Compared as the plugin compares, a distance from the fence: a fence
-	// plus FENCE_EPS rounds back to the fence at the top of f64.
-	for first < last && s[first] < lo_fence && lo_fence - s[first] >= FENCE_EPS {
-		first += 1
-	}
-	for last > first && s[last] > hi_fence && s[last] - hi_fence >= FENCE_EPS {
-		last -= 1
-	}
+	first, last := fenced(s, b.q1 - WHISKER_IQR * iqr, b.q3 + WHISKER_IQR * iqr)
 	b.whisker_lo, b.whisker_hi = s[first], s[last]
 	outliers := make([]f64, first + len(s) - 1 - last, allocator)
 	copy(outliers, s[:first])
 	copy(outliers[first:], s[last + 1:])
 	b.outliers = outliers
+	return
+}
+
+// empty_box is the summary of no samples: a count of 0 and NaN for every
+// statistic.
+@(private)
+empty_box :: proc() -> (b: Box_Stats) {
+	nan := math.nan_f64()
+	b.min, b.max, b.q1, b.median, b.q3 = nan, nan, nan, nan, nan
+	b.whisker_lo, b.whisker_hi, b.mean = nan, nan, nan
+	return
+}
+
+// fenced is the index of the first and last of sorted samples s inside
+// the fences lo and hi: the whiskers' ends.
+@(private)
+fenced :: proc(s: []f64, lo, hi: f64) -> (first, last: int) {
+	last = len(s) - 1
+	// The bounds hold where the fences are not numbers: samples whose
+	// spread overflows f64 make the IQR infinite.
+	// Compared as the plugin compares, a distance from the fence: a fence
+	// plus FENCE_EPS rounds back to the fence at the top of f64.
+	for first < last && s[first] < lo && lo - s[first] >= FENCE_EPS {
+		first += 1
+	}
+	for last > first && s[last] > hi && s[last] - hi >= FENCE_EPS {
+		last -= 1
+	}
 	return
 }
 

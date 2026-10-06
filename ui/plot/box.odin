@@ -57,13 +57,7 @@ box_chart :: proc(
 	}
 	cat_draw_axes(&f, &l, c.value)
 	for i in 0 ..< len(c.categories) {
-		k := 0
-		for s in 0 ..< len(c.series) {
-			if shown(&f, s) {
-				box_draw(&f, c, &l, i, s, k)
-				k += 1
-			}
-		}
+		box_draw_category(&f, c, &l, i)
 	}
 	if at >= 0 {
 		box_readout(&f, c, &l, at)
@@ -114,6 +108,18 @@ box_extent :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout) -> Extent {
 @(private)
 box_geometry :: proc(f: ^Frame, l: ^Cat_Layout, i, k: int) -> (centre, w: f32) {
 	return slot_span(f, l, i, k, l.shown, f.style.box_max)
+}
+
+// box_draw_category draws category i's boxes, one a shown series.
+@(private)
+box_draw_category :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i: int) {
+	k := 0
+	for s in 0 ..< len(c.series) {
+		if shown(f, s) {
+			box_draw(f, c, l, i, s, k)
+			k += 1
+		}
+	}
 }
 
 // box_draw draws series s's box in category i, the k-th shown.

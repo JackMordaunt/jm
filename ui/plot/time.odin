@@ -200,9 +200,7 @@ time_ticks :: proc(lo, hi: f64, max_count: int, z: Zone) -> (t: Time_Ticks) {
 	if lo > hi {
 		lo, hi = hi, lo
 	}
-	// Past ±1e15 seconds, some 30 million years, there are no ticks: the
-	// wall-clock sums below then stay far inside i64.
-	if !is_finite(lo) || !is_finite(hi) || abs(lo) > 1e15 || abs(hi) > 1e15 {
+	if !tickable(lo) || !tickable(hi) {
 		return
 	}
 	want := clamp(max_count, 1, MAX_TICKS)
@@ -220,6 +218,14 @@ time_ticks :: proc(lo, hi: f64, max_count: int, z: Zone) -> (t: Time_Ticks) {
 	t.unit = TIME_STEPS[len(TIME_STEPS) - 1]
 	time_ticks_at(&t, i64(lo), i64(hi), want, z)
 	return
+}
+
+// tickable reports whether a time axis may end at v. Past ±1e15 seconds,
+// some 30 million years, there are no ticks: the wall-clock sums then
+// stay far inside i64.
+@(private)
+tickable :: proc(v: f64) -> bool {
+	return is_finite(v) && abs(v) <= 1e15
 }
 
 // time_ticks_at fills t with s's boundaries inside [lo, hi], reporting
@@ -285,20 +291,9 @@ step_wall :: proc(wall: i64, s: Time_Step) -> i64 {
 	case .Minute:
 		return wall + 60 * s.n
 	case .Hour:
-		c := civil_from_wall(wall)
-		next := wall + 3600 * s.n
-		if civil_from_wall(next).day != c.day {
-			return floor_to(next, {.Day, 1}) // each day restarts at midnight
-		}
-		return next
+		return next_hours(wall, s.n)
 	case .Day:
-		c := civil_from_wall(wall)
-		next := wall + 86400 * s.n
-		n := civil_from_wall(next)
-		if n.month != c.month && n.day != 1 {
-			return days_from_civil(n.year, n.month, 1) * 86400 // each month restarts on the 1st
-		}
-		return next
+		return next_days(wall, s.n)
 	case .Week:
 		return wall + 7 * 86400 * s.n
 	case .Month:
@@ -312,8 +307,31 @@ step_wall :: proc(wall: i64, s: Time_Step) -> i64 {
 	return wall + 1
 }
 
-// Time_Label is a time tick's text: what it reads (main), and the line under it (sub)
-// that names its day or year where that changes from the tick before (the
+// next_hours is n hours after wall, or the next midnight if that comes
+// first: each day's hours restart at midnight.
+@(private)
+next_hours :: proc(wall, n: i64) -> i64 {
+	next := wall + 3600 * n
+	if civil_from_wall(next).day != civil_from_wall(wall).day {
+		return floor_to(next, {.Day, 1})
+	}
+	return next
+}
+
+// next_days is n days after wall, or the next month's 1st if that comes
+// first: each month's days restart on the 1st.
+@(private)
+next_days :: proc(wall, n: i64) -> i64 {
+	next := wall + 86400 * n
+	c, d := civil_from_wall(wall), civil_from_wall(next)
+	if d.month != c.month && d.day != 1 {
+		return days_from_civil(d.year, d.month, 1) * 86400
+	}
+	return next
+}
+
+// Time_Label is a time tick's text: what it reads (main), and the line
+// under it (sub) that names its day or year where that changes from the tick before (the
 // first tick always has one, for any unit finer than a year).
 Time_Label :: struct {
 	main, sub: Label,
@@ -324,34 +342,44 @@ Time_Label :: struct {
 // Mar over the year; years 2026 alone. A tick's main text and the context
 // in force at it, its own or the last one written, name it uniquely.
 time_label :: proc(t: ^Time_Ticks, i: int, z: Zone) -> (l: Time_Label) {
-	at := i64(t.v[i])
-	c := civil_from_wall(wall_of(z, at))
-	main, ctx: string
-	switch t.unit.unit {
-	case .Second:
-		main, ctx = "%H:%M:%S", "%b %e"
-	case .Minute, .Hour:
-		main, ctx = "%H:%M", "%b %e"
-	case .Day, .Week:
-		main, ctx = "%b %e", "%Y"
-	case .Month:
-		main, ctx = "%b", "%Y"
-	case .Year:
-		main = "%Y"
-	}
-	write_civil(&l.main, c, main)
-	if ctx == "" {
+	c := civil_from_wall(wall_of(z, i64(t.v[i])))
+	layout := TIME_LAYOUTS[t.unit.unit]
+	write_civil(&l.main, c, layout.main)
+	if layout.ctx == "" {
 		return
 	}
-	changed := i == 0
-	if i > 0 {
-		p := civil_from_wall(wall_of(z, i64(t.v[i - 1])))
-		changed = p.year != c.year || (ctx != "%Y" && (p.month != c.month || p.day != c.day))
-	}
-	if changed {
-		write_civil(&l.sub, c, ctx)
+	if i == 0 || ctx_changed(civil_from_wall(wall_of(z, i64(t.v[i - 1]))), c, layout.ctx) {
+		write_civil(&l.sub, c, layout.ctx)
 	}
 	return
+}
+
+// Time_Layout is how a tick of a unit is written: its main line and the
+// context line under it, in timefmt's directives.
+@(private)
+Time_Layout :: struct {
+	main, ctx: string,
+}
+
+@(private, rodata)
+TIME_LAYOUTS := [Time_Unit]Time_Layout {
+	.Second = {"%H:%M:%S", "%b %e"},
+	.Minute = {"%H:%M", "%b %e"},
+	.Hour   = {"%H:%M", "%b %e"},
+	.Day    = {"%b %e", "%Y"},
+	.Week   = {"%b %e", "%Y"},
+	.Month  = {"%b", "%Y"},
+	.Year   = {"%Y", ""},
+}
+
+// ctx_changed reports whether a context line of layout ctx reads
+// differently at c than at the tick before it, p.
+@(private)
+ctx_changed :: proc(p, c: Civil, ctx: string) -> bool {
+	if p.year != c.year {
+		return true
+	}
+	return ctx != "%Y" && (p.month != c.month || p.day != c.day)
 }
 
 // time_value writes the instant v on z's calendar for a tooltip: the date,

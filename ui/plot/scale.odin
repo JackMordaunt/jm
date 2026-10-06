@@ -42,19 +42,26 @@ linear_ticks :: proc(lo, hi: f64, max_count: int, loose := false) -> (l: Tick_Li
 		lo, hi = hi, lo
 	}
 	want := clamp(max_count, 1, MAX_TICKS)
-	if degenerate(lo, hi) {
-		l.v[0], l.n = lo, 1
-		return
+	step := 0 if degenerate(lo, hi) else nice_step(lo, hi, want, loose)
+	if step != 0 {
+		l.step = step
+		add_multiples(&l, lo, hi, loose)
 	}
-	step := nice_step(lo, hi, want, loose)
-	if step == 0 {
+	if l.n == 0 {
+		// A domain with no width, or narrower than the step that fits one
+		// tick, holds no multiple of it: its start stands in.
 		l.v[0], l.n = lo, 1
-		return
 	}
-	first, last := run_ends(lo, hi, step, loose)
-	l.step = step
+	return
+}
+
+// add_multiples adds l.step's multiples of a tight (or loose) run over
+// [lo, hi] to l.
+@(private)
+add_multiples :: proc(l: ^Tick_List, lo, hi: f64, loose: bool) {
+	first, last := run_ends(lo, hi, l.step, loose)
 	for k := first; k <= last && l.n < MAX_TICKS; k += 1 {
-		v := k * step + 0 // + 0 turns -0 into 0, which formats as "0"
+		v := k * l.step + 0 // + 0 turns -0 into 0, which formats as "0"
 		// A tight run's ends can round a hair outside it, and a multiple
 		// near the top of f64 can overflow.
 		if !is_finite(v) || (!loose && (v < lo || v > hi)) {
@@ -63,12 +70,6 @@ linear_ticks :: proc(lo, hi: f64, max_count: int, loose := false) -> (l: Tick_Li
 		l.v[l.n] = v
 		l.n += 1
 	}
-	if l.n == 0 {
-		// A domain narrower than the step that fits one tick holds no
-		// multiple of it: its start stands in.
-		l.v[0], l.n = lo, 1
-	}
-	return
 }
 
 // nice_step is the finest nice step that puts at most want ticks on
@@ -159,40 +160,53 @@ nice_domain :: proc(lo, hi: f64, max_count: int) -> (f64, f64) {
 
 // log_ticks is at most max_count ticks over [lo, hi] on a log axis: every
 // power of ten when they fit, every second, third (an SI prefix apart),
-// fifth or tenth one when they do not, and 2 and 5 times each power as well when there is room for
-// three a decade. A domain that does not lie above zero gives none.
+// fifth or tenth one when they do not, and 2 and 5 times each power as
+// well when there is room for three a decade. A domain that does not lie
+// above zero gives none.
 log_ticks :: proc(lo, hi: f64, max_count: int) -> (l: Tick_List) {
 	lo, hi := lo, hi
 	if lo > hi {
 		lo, hi = hi, lo
 	}
-	if !is_finite(lo) || !is_finite(hi) || lo <= 0 {
-		return
+	if !(is_finite(hi) && lo > 0) {
+		return // NaN fails lo > 0, and lo > 0 below a finite hi is finite
 	}
 	want := clamp(max_count, 1, MAX_TICKS)
 	e0, e1 := math.floor(math.log10(lo)), math.ceil(math.log10(hi))
 	decades := e1 - e0
 	if decades * 3 + 1 <= f64(want) && decades <= 3 {
-		for e := e0; e <= e1; e += 1 {
-			for m in ([3]f64{1, 2, 5}) {
-				log_tick_add(&l, m * math.pow(10, e), lo, hi)
-			}
-		}
+		log_tick_add_125(&l, e0, e1, lo, hi)
 		return
 	}
-	// The decades a tick apart: the first nice count that fits, else as
-	// many as it takes.
-	every := want > 1 ? math.ceil(decades / f64(want - 1)) : decades + 1
-	for e in ([?]f64{1, 2, 3, 5, 10, 20, 50}) {
-		if math.floor(decades / e) + 1 <= f64(want) {
-			every = e
-			break
-		}
-	}
+	every := log_every(decades, want)
 	for e := math.ceil(e0 / every) * every; e <= e1 && l.n < want; e += every {
 		log_tick_add(&l, math.pow(10, e), lo, hi)
 	}
 	return
+}
+
+// log_tick_add_125 adds 1, 2 and 5 times each power of ten from 10^e0 to
+// 10^e1 that lies in [lo, hi].
+@(private)
+log_tick_add_125 :: proc(l: ^Tick_List, e0, e1, lo, hi: f64) {
+	for e := e0; e <= e1; e += 1 {
+		for m in ([3]f64{1, 2, 5}) {
+			log_tick_add(l, m * math.pow(10, e), lo, hi)
+		}
+	}
+}
+
+// log_every is how many decades apart log ticks over decades stand to
+// number at most want: the first nice count that fits, else as many as
+// it takes.
+@(private)
+log_every :: proc(decades: f64, want: int) -> f64 {
+	for e in ([?]f64{1, 2, 3, 5, 10, 20, 50}) {
+		if math.floor(decades / e) + 1 <= f64(want) {
+			return e
+		}
+	}
+	return math.ceil(decades / f64(want - 1)) if want > 1 else decades + 1
 }
 
 @(private)
