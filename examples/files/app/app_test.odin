@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 import "core:time"
 
@@ -171,6 +172,30 @@ the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, ui.probe_tagged(&r.p, "Unpin this folder"), "the pin came back from the store")
 	testing.expect(t, ui.probe_tagged(&r.p, filepath.base(dir)), "the pinned folder is listed")
+}
+
+// A job's answer reaches the inbox before the job stops counting as
+// pending, so a reader that finds nothing pending and the inbox empty, as
+// settle does, cannot stop between the two and miss the answer.
+@(test)
+a_job_is_pending_until_its_answer_is_in_the_inbox :: proc(t: ^testing.T) {
+	h: Host
+	testing.expect(t, init(&h, db_path = sqlite3.MEMORY))
+	defer stop(&h)
+	job := new(Job, h.allocator)
+	job.kind = .Thumb
+	job.key = 7
+	sync.lock(&h.mutex)
+	h.jobs[job.key] = job
+	h.stats.pending += 1
+	sync.unlock(&h.mutex)
+
+	sync.atomic_store(&gap_host, &h)
+	defer sync.atomic_store(&gap_host, nil)
+	deliver(&h, Done{job = job, ok = true})
+	testing.expect(t, !gap_looked_settled, "retired before its answer was in the inbox")
+	testing.expect_value(t, stats(&h).pending, 0)
+	testing.expect(t, ui.inbox_pending(&h.inbox), "the answer was delivered")
 }
 
 @(test)
