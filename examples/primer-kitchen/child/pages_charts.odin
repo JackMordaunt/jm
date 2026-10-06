@@ -139,13 +139,9 @@ page_charts_rest :: proc(gtx: ^ui.Ctx, c: ^Charts, style: ^plot.Plot_Style) {
 		horizontal = true,
 	}
 	plot.bar_chart(gtx, &rigs, style)
-	kitchen.section(
-		gtx,
-		"A year of hours",
-		"10,080 points a series, drawn as at most four a pixel column",
-	)
+	kitchen.section(gtx, "Fourteen months of hours", DENSE_NOTE)
 	dense := plot.Line_Chart {
-		label = "A year of hours",
+		label = "Fourteen months of hours",
 		height = 240,
 		xs = c.hours,
 		series = c.dense[:],
@@ -169,6 +165,10 @@ page_charts_rest :: proc(gtx: ^ui.Ctx, c: ^Charts, style: ^plot.Plot_Style) {
 		plot.line_chart(gtx, &empty, style, key = u64(i))
 	}
 }
+
+DENSE_NOTE ::
+	"10,080 hourly points a series, drawn as at most four a pixel column; " +
+	"Norway's one bad hour, at a fifth of its rate on Apr 18, survives the thinning"
 
 HASH_NOTE ::
 	"90 days, a point a day: Paraguay curtailed for five days, " +

@@ -27,7 +27,7 @@ test_the_charts_page_draws_the_admin_charts :: proc(t: ^testing.T) {
 		`"Line chart, 5 of 5 series shown, Tue Jul 7, 2026 to Sun Oct 4, 2026`,
 		`"Bar chart, 12 categories, 3 of 3 series shown`,
 		`"Box plot, 5 categories, 2 of 2 series shown`,
-		`group "A year of hours, plot"`,
+		`group "Fourteen months of hours, plot"`,
 		`status "Loading\u2026"`,
 		`alert "Couldn\u2019t reach the pool API"`,
 	}
