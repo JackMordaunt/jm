@@ -97,6 +97,7 @@ Toast :: struct {
 	enter:   ui.Tween,
 	exit:    ui.Tween,
 	leaving: bool,
+	copied:  f32, // seconds the Copy button shows its check for
 }
 
 // Toast_Options are a toast's optional parts. timeout 0 takes the
@@ -118,16 +119,24 @@ Toasts :: struct {
 }
 
 // Toaster_Event is what happened to a toaster's toasts this frame: the
-// id of the toast whose action was pressed, and of the one whose dismiss
-// was pressed or that Escape dismissed; 0 for none.
+// id of the toast whose action was pressed, of the one whose dismiss was
+// pressed or that Escape dismissed, and of the error whose text was
+// copied; 0 for none.
 Toaster_Event :: struct {
 	action:    int,
 	dismissed: int,
+	copied:    int,
 }
 
+// TOAST_COPIED is how long, in seconds, an error's Copy button shows a
+// check after it put the text on the clipboard.
+@(private)
+TOAST_COPIED :: f32(1.5)
+
 // toast_push queues a toast and returns its id. It copies the strings.
-// When the toasts showing already fill the limit, the oldest of them
-// leaves to make room.
+// When the toasts showing already fill the limit, the oldest that would
+// time out leaves to make room; the oldest sticky one leaves only when
+// every toast showing is sticky, so an error is not lost to a success.
 toast_push :: proc(
 	ts: ^Toasts,
 	message: string,
@@ -191,8 +200,8 @@ toasts_destroy :: proc(ts: ^Toasts) {
 	ts.items = nil
 }
 
-// toast_evict dismisses the oldest showing toasts until one more fits
-// under the limit.
+// toast_evict dismisses showing toasts until one more fits under the
+// limit: the oldest that times out, else the oldest sticky one.
 @(private)
 toast_evict :: proc(ts: ^Toasts) {
 	limit := ts.limit > 0 ? ts.limit : TOAST_LIMIT
@@ -200,15 +209,25 @@ toast_evict :: proc(ts: ^Toasts) {
 	for t in ts.items {
 		showing += t.leaving ? 0 : 1
 	}
-	for &t in ts.items {
-		if showing < limit {
-			return
+	for ; showing >= limit; showing -= 1 {
+		victim := toast_oldest(ts, sticky = false)
+		if victim == 0 {
+			victim = toast_oldest(ts, sticky = true)
 		}
-		if !t.leaving {
-			toast_dismiss(ts, t.id)
-			showing -= 1
+		toast_dismiss(ts, victim)
+	}
+}
+
+// toast_oldest is the id of the oldest showing toast, sticky or not as
+// asked; 0 when there is none.
+@(private)
+toast_oldest :: proc(ts: ^Toasts, sticky: bool) -> int {
+	for t in ts.items {
+		if !t.leaving && (t.timeout < 0) == sticky {
+			return t.id
 		}
 	}
+	return 0
 }
 
 // toast_set copies message and opts into t and restarts its clock.
@@ -227,6 +246,7 @@ toast_set :: proc(
 	t.action = clone_or_empty(opts.action)
 	t.variant = variant
 	t.elapsed = 0
+	t.copied = 0
 	t.timeout = opts.timeout
 	if t.timeout == 0 {
 		t.timeout = variant == .Error || variant == .Loading ? TOAST_STICKY : TOAST_TIMEOUT
@@ -274,26 +294,27 @@ Toast_Layout :: struct {
 	action:  Text,
 	text_x:  f32,
 	act:     ops.Rect,
+	copy:    ops.Rect, // empty unless an error
 	dismiss: ops.Rect,
 	at:      ops.Point, // where the toaster places it, in the window
 	alpha:   f32, // its motion's share: its opacity
 }
 
 // toast_layout measures t no wider than max_w: as wide as its text needs
-// (width: max-content) or, when narrow, max_w whatever the text.
+// (width: max-content) or, when narrow, max_w whatever the text. Its
+// parts pack after the text in the CSS's flex row: the action, an
+// error's Copy button, then the X, each button 48px wide.
 @(private)
 toast_layout :: proc(gtx: ^ui.Ctx, t: ^Toast, max_w: f32, narrow: bool) -> (l: Toast_Layout) {
 	st := text_style(.Medium)
 	font := font_for(gtx, st.weight)
 	l.action = design.shape_style(gtx, t.action, st, font)
 	act_w := t.action != "" ? l.action.width + TOAST_PAD : 0
-	fixed := TOAST_BAND + 2 * TOAST_PAD + act_w + TOAST_BAND
+	copy_w := t.variant == .Error ? TOAST_BAND : 0
+	fixed := TOAST_BAND + 2 * TOAST_PAD + act_w + copy_w + TOAST_BAND
 	message_w := design.shape_style(gtx, t.message, st, font).width
 	natural := max(message_w, design.shape_style(gtx, t.detail, st, font).width)
 	text_w := max(min(natural, max_w - fixed), 1)
-	if narrow {
-		text_w = max(max_w - fixed, 1)
-	}
 	l.message = design.layout_style(gtx, t.message, st, font, text_w)
 	h := 2 * TOAST_PAD + l.message.height
 	if t.detail != "" {
@@ -301,10 +322,14 @@ toast_layout :: proc(gtx: ^ui.Ctx, t: ^Toast, max_w: f32, narrow: bool) -> (l: T
 		h += TOAST_DETAIL_GAP + l.detail.height
 	}
 	w := fixed + text_w
-	l.size = {w, h}
+	l.size = {narrow ? max(max_w, w) : w, h}
 	l.text_x = TOAST_BAND + TOAST_PAD
-	l.act = {l.text_x + text_w + TOAST_PAD, TOAST_PAD, l.action.width, st.line_height}
-	l.dismiss = {w - TOAST_BAND, 0, TOAST_BAND, min(h, TOAST_DISMISS_MAX_HEIGHT)}
+	x := l.text_x + text_w + TOAST_PAD
+	l.act = {x, TOAST_PAD, l.action.width, st.line_height}
+	x += act_w
+	part_h := min(h, TOAST_DISMISS_MAX_HEIGHT)
+	l.copy = {x, 0, copy_w, part_h}
+	l.dismiss = {x + copy_w, 0, TOAST_BAND, part_h}
 	return
 }
 
@@ -408,26 +433,29 @@ toast_place :: proc(s: ^Toast_Stack, size: ops.Size, k: f32) -> (at: ops.Point) 
 // clock runs TOAST_TIMEOUT (or its own timeout) after its enter, paused
 // while the pointer is over it or focus is in it; Error and Loading wait
 // to be dismissed. Its dismiss button, or Escape while focus is in it,
-// dismisses it; pressing its action dismisses it too and reports it.
+// dismisses it; pressing its action dismisses it too and reports it. Its
+// message and detail select like page text and copy with the platform's
+// shortcut; an Error toast also has a Copy button that puts both on the
+// clipboard, a line each, and shows a check for 1.5s.
 //
 // Each toast is Primer CSS's: --bgColor-default with a 1px inset ring of
 // --borderColor-default and --shadow-floating-small, 6px corners, at
 // most 450px wide (the window less 16px when narrower than 544px); a
 // 48px band of the variant's emphasis fill carrying its 16px octicon in
 // --fgColor-onEmphasis; the message in 14px body text padded 16px, the
-// detail under it in --fgColor-muted, the action as a link, and a 48px
-// dismiss button whose X dims to 0.7 hovered and 0.5 pressed. A toast
+// detail under it in --fgColor-muted, then packed after the text the
+// action as a link, an error's 48px Copy button and a 48px dismiss
+// button, whose glyphs dim to 0.7 hovered and 0.5 pressed. A toast
 // is a status live region, an Error toast an alert, its action and
 // dismiss buttons under it. Tags: the message for the toast, the action
-// label, and "Dismiss <message>".
+// label, "Copy <message>" and "Dismiss <message>".
 //
 // Departures: Primer CSS has no queue, timeout, stacking, detail line or
 // top positions, so these follow Fluent's Toaster; a top toast enters
-// from above, mirroring the CSS's rise. A toast filling a narrow window
-// keeps its action and X at its end, where the CSS's flex row would pack
-// them after the text. The CSS's --shadow-floating-legacy is removed in
+// from above, mirroring the CSS's rise. The Copy button is this
+// package's: Primer CSS has none. The CSS's --shadow-floating-legacy is removed in
 // @primer/primitives 11, which names --shadow-floating-small in its
-// place (removed.json). The text is not selectable.
+// place (removed.json).
 toaster :: proc(
 	gtx: ^ui.Ctx,
 	ts: ^Toasts,
@@ -472,8 +500,9 @@ toaster :: proc(
 // surface, which only hovers and hears Escape, the action and the X.
 @(private)
 Toast_Parts :: struct {
-	tid, aid, did:          ops.Area_Id,
-	surface, action, close: Control,
+	tid, aid, did, cid:           ops.Area_Id,
+	mid, xid:                     ops.Area_Id, // the message's and detail's selectable text
+	surface, action, close, copy: Control,
 }
 
 // toast_input reads what reached t's parts since the last frame, runs
@@ -490,14 +519,26 @@ toast_input :: proc(
 	p: Toast_Parts,
 	ev: Toaster_Event,
 ) {
-	p.tid, p.aid, p.did = tid, ui.id_mix(tid, 1), ui.id_mix(tid, 2)
+	p.tid, p.aid, p.did, p.cid = tid, ui.id_mix(tid, 1), ui.id_mix(tid, 2), ui.id_mix(tid, 5)
+	p.mid, p.xid = ui.id_mix(tid, 3), ui.id_mix(tid, 4)
 	p.surface = control(gtx, tid, {0, 0, l.size.x, l.size.y}, .Live)
 	if t.action != "" {
 		p.action = control(gtx, p.aid, l.act, .Live)
 	}
+	if t.variant == .Error {
+		p.copy = control(gtx, p.cid, l.copy, .Live)
+	}
 	p.close = control(gtx, p.did, l.dismiss, .Live)
-	toast_tick(gtx, ts, t, toast_held(p))
-	if p.close.clicked || toast_escaped(gtx, p.tid, p.aid, p.did) {
+	toast_tick(gtx, ts, t, toast_held(p, ui.focused(gtx)))
+	if p.copy.clicked {
+		toast_copy(gtx, t)
+		ev.copied = t.id
+	}
+	if t.copied > 0 {
+		t.copied -= gtx.dt
+		ui.request_frame(gtx, max(t.copied, 0))
+	}
+	if p.close.clicked || toast_escaped(gtx, p.tid, p.aid, p.did, p.cid, p.mid, p.xid) {
 		toast_dismiss(ts, t.id)
 		ev.dismissed = t.id
 	}
@@ -508,15 +549,29 @@ toast_input :: proc(
 	return
 }
 
-// toast_held is whether the pointer is over a toast or focus is in it.
+// toast_held is whether the pointer is over a toast or focus is in it,
+// its selectable text included: focus there means a selection is being
+// read or copied.
 @(private)
-toast_held :: proc(p: Toast_Parts) -> bool {
-	for c in ([3]Control{p.surface, p.action, p.close}) {
+toast_held :: proc(p: Toast_Parts, focus: ops.Area_Id) -> bool {
+	for c in ([4]Control{p.surface, p.action, p.close, p.copy}) {
 		if c.hovered || c.focused {
 			return true
 		}
 	}
-	return false
+	return focus != 0 && (focus == p.mid || focus == p.xid)
+}
+
+// toast_copy puts an error's message and detail on the clipboard, a line
+// each, and starts its Copy button's check.
+@(private)
+toast_copy :: proc(gtx: ^ui.Ctx, t: ^Toast) {
+	text := t.message
+	if t.detail != "" {
+		text = fmt.tprintf("%s\n%s", t.message, t.detail)
+	}
+	ui.clipboard_write(gtx, text)
+	t.copied = TOAST_COPIED
 }
 
 // toast_escaped reports an Escape that reached the toast or one of its
@@ -546,10 +601,12 @@ toast_draw :: proc(gtx: ^ui.Ctx, column: ops.Area_Id, t: ^Toast, l: Toast_Layout
 	defer if faded {
 		ops.opacity_pop(gtx.scene)
 	}
-	toast_paint(gtx, t, l)
 	box := ops.Rect{0, 0, l.size.x, l.size.y}
 	message := ui.frame_string(gtx, t.message)
+	// The surface's area goes first, so the text and buttons drawn over
+	// it take their own presses.
 	listen(gtx, p.surface.st, p.tid, ops.Round_Rect{box, tok.BORDER_RADIUS_MEDIUM}, no_tab = true)
+	toast_paint(gtx, t, l, p)
 	ops.tag(gtx.scene, p.tid, message)
 	said := ops.Semantics {
 		role        = t.variant == .Error ? .Alert : .Status,
@@ -561,12 +618,17 @@ toast_draw :: proc(gtx: ^ui.Ctx, column: ops.Area_Id, t: ^Toast, l: Toast_Layout
 	if t.action != "" {
 		toast_action(gtx, p, t.action, l)
 	}
-	toast_dismiss_button(gtx, p, message, l.dismiss)
+	if t.variant == .Error {
+		glyph := t.copied > 0 ? Icon.Check : Icon.Copy
+		toast_icon_button(gtx, p.tid, {p.copy, p.cid, glyph, "Copy", l.copy}, message)
+	}
+	toast_icon_button(gtx, p.tid, {p.close, p.did, .X, "Dismiss", l.dismiss}, message)
 }
 
-// toast_paint draws t's surface, band, icon and text.
+// toast_paint draws t's surface, band, icon and text; the text is
+// selectable, so a selection copies with the platform's shortcut.
 @(private)
-toast_paint :: proc(gtx: ^ui.Ctx, t: ^Toast, l: Toast_Layout) {
+toast_paint :: proc(gtx: ^ui.Ctx, t: ^Toast, l: Toast_Layout, p: Toast_Parts) {
 	box := ops.Rect{0, 0, l.size.x, l.size.y}
 	rr := ops.Round_Rect{box, tok.BORDER_RADIUS_MEDIUM}
 	paint_shadow(gtx, rr, tok.SHADOW_FLOATING_SMALL)
@@ -583,10 +645,13 @@ toast_paint :: proc(gtx: ^ui.Ctx, t: ^Toast, l: Toast_Layout) {
 		w := icon_width(ic, TOAST_GLYPH)
 		icon(gtx, ic, {(TOAST_BAND - w) / 2, (l.size.y - TOAST_GLYPH) / 2}, TOAST_GLYPH, on)
 	}
-	draw_paragraph(gtx, l.message, {l.text_x, TOAST_PAD}, color(.Fg_Color_Default))
+	at := ops.Point{l.text_x, TOAST_PAD}
+	text := ops.Rect{at.x, at.y, l.message.width, l.message.height}
+	selectable_paragraph(gtx, p.mid, l.message, at, color(.Fg_Color_Default), text)
 	if t.detail != "" {
-		y := TOAST_PAD + l.message.height + TOAST_DETAIL_GAP
-		draw_paragraph(gtx, l.detail, {l.text_x, y}, color(.Fg_Color_Muted))
+		at.y += l.message.height + TOAST_DETAIL_GAP
+		text = {at.x, at.y, l.detail.width, l.detail.height}
+		selectable_paragraph(gtx, p.xid, l.detail, at, color(.Fg_Color_Muted), text)
 	}
 }
 
@@ -608,21 +673,33 @@ toast_action :: proc(gtx: ^ui.Ctx, p: Toast_Parts, label: string, l: Toast_Layou
 	ui.child_semantics(gtx, p.tid, p.aid, l.act, {role = .Button, label = said})
 }
 
-// toast_dismiss_button is the X in r, in the text's colour, dimmed while
-// hovered or pressed.
+// Toast_Button is one of a toast's icon buttons: an error's Copy or the
+// X, each a 16px glyph padded 16px.
 @(private)
-toast_dismiss_button :: proc(gtx: ^ui.Ctx, p: Toast_Parts, message: string, r: ops.Rect) {
-	c := p.close
+Toast_Button :: struct {
+	c:     Control,
+	id:    ops.Area_Id,
+	glyph: Icon,
+	name:  string, // what a reader hears; the tag adds the message
+	rect:  ops.Rect,
+}
+
+// toast_icon_button draws b in the text's colour, dimmed while hovered
+// or pressed (toasts.scss:39-53), tagged "<name> <message>" and declared
+// under the toast tid.
+@(private)
+toast_icon_button :: proc(gtx: ^ui.Ctx, tid: ops.Area_Id, b: Toast_Button, message: string) {
 	fg := color(.Fg_Color_Default)
-	if c.pressed {
+	if b.c.pressed {
 		fg = fade(fg, TOAST_DISMISS_ACTIVE)
-	} else if c.hovered {
+	} else if b.c.hovered {
 		fg = fade(fg, TOAST_DISMISS_HOVER)
 	}
-	w := icon_width(.X, TOAST_GLYPH)
-	icon(gtx, .X, {r.x + (r.w - w) / 2, r.y + (r.h - TOAST_GLYPH) / 2}, TOAST_GLYPH, fg)
-	paint_focus_outline(gtx, c, {r, tok.BORDER_RADIUS_MEDIUM})
-	listen(gtx, c.st, p.did, r, cursor = .Pointer)
-	ops.tag(gtx.scene, p.did, ui.frame_string(gtx, fmt.tprintf("Dismiss %s", message)))
-	ui.child_semantics(gtx, p.tid, p.did, r, {role = .Button, label = "Dismiss"})
+	r := b.rect
+	w := icon_width(b.glyph, TOAST_GLYPH)
+	icon(gtx, b.glyph, {r.x + (r.w - w) / 2, r.y + (r.h - TOAST_GLYPH) / 2}, TOAST_GLYPH, fg)
+	paint_focus_outline(gtx, b.c, {r, tok.BORDER_RADIUS_MEDIUM})
+	listen(gtx, b.c.st, b.id, r, cursor = .Pointer)
+	ops.tag(gtx.scene, b.id, ui.frame_string(gtx, fmt.tprintf("%s %s", b.name, message)))
+	ui.child_semantics(gtx, tid, b.id, r, {role = .Button, label = b.name})
 }

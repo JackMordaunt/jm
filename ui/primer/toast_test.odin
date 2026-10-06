@@ -226,12 +226,12 @@ test_a_push_past_the_limit_evicts_the_oldest :: proc(t: ^testing.T) {
 	toast_probe(&p, &m)
 	defer ui.probe_destroy(&p)
 
-	toast_push(&m.toasts, "One", .Error)
+	toast_push(&m.toasts, "One")
 	toast_push(&m.toasts, "Two")
 	toast_push(&m.toasts, "Three")
 	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
 	toast_push(&m.toasts, "Four")
-	testing.expect(t, m.toasts.items[0].leaving, "the oldest, sticky or not, leaves")
+	testing.expect(t, m.toasts.items[0].leaving, "the oldest leaves")
 	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
 	testing.expect_value(t, len(m.toasts.items), 3)
 	testing.expect(t, !ui.probe_tagged(&p, "One"))
@@ -310,4 +310,123 @@ test_the_queue_keeps_its_own_copy_of_a_message :: proc(t: ^testing.T) {
 	buf[4] = '9'
 	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
 	testing.expect(t, ui.probe_tagged(&p, "rig 7"))
+}
+
+@(test)
+test_a_push_past_the_limit_spares_sticky_toasts_while_any_would_time_out :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m := Toast_Model{toasts = {limit = 3}}
+	defer toast_model_destroy(&m)
+	p: ui.Probe
+	toast_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+
+	toast_push(&m.toasts, "Sync failed", .Error)
+	toast_push(&m.toasts, "Saved")
+	toast_push(&m.toasts, "Syncing", .Loading)
+	toast_push(&m.toasts, "Sent")
+	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
+	testing.expect(t, ui.probe_tagged(&p, "Sync failed"), "the oldest, an error, stays")
+	testing.expect(t, !ui.probe_tagged(&p, "Saved"), "the oldest that times out leaves")
+	testing.expect(t, ui.probe_tagged(&p, "Syncing"))
+	testing.expect(t, ui.probe_tagged(&p, "Sent"))
+}
+
+@(test)
+test_a_push_past_the_limit_evicts_the_oldest_sticky_when_all_are :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m := Toast_Model{toasts = {limit = 2}}
+	defer toast_model_destroy(&m)
+	p: ui.Probe
+	toast_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+
+	toast_push(&m.toasts, "First error", .Error)
+	toast_push(&m.toasts, "Syncing", .Loading)
+	toast_push(&m.toasts, "Second error", .Error)
+	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
+	testing.expect(t, !ui.probe_tagged(&p, "First error"))
+	testing.expect(t, ui.probe_tagged(&p, "Syncing"))
+	testing.expect(t, ui.probe_tagged(&p, "Second error"))
+}
+
+@(test)
+test_a_toasts_text_selects_copies_and_holds_its_clock :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m: Toast_Model
+	defer toast_model_destroy(&m)
+	p: ui.Probe
+	toast_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+
+	toast_push(&m.toasts, "Rig 12 restarted", opts = {detail = "Uptime reset"})
+	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
+	b := ui.probe_bounds(&p, "Rig 12 restarted")
+	// A double click on the detail's first word: past the 48px band and
+	// 16px padding, on the second line.
+	at := ops.Point{b.x + 48 + 16 + 10, b.y + 16 + 21 + 4 + 10}
+	ui.router_push(&p.router, {kind = .Press, pos = at, clicks = 2})
+	ui.router_push(&p.router, {kind = .Release, pos = at, clicks = 2})
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .C, {ui.SHORTCUT})
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_clipboard(&p), "Uptime")
+	testing.expect(t, ui.probe_tagged(&p, "Rig 12 restarted"), "a press on text keeps it")
+
+	// Focus in the text holds the clock with the pointer gone.
+	ui.probe_move(&p, 10, 590)
+	ui.probe_advance(&p, 600, 0.02)
+	testing.expect_value(t, len(m.toasts.items), 1)
+	testing.expect(t, ui.probe_click(&p, "Elsewhere"))
+	ui.probe_advance(&p, 300, 0.02)
+	testing.expect_value(t, len(m.toasts.items), 0)
+}
+
+@(test)
+test_an_error_toasts_copy_button_copies_its_message_and_detail :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m: Toast_Model
+	defer toast_model_destroy(&m)
+	p: ui.Probe
+	toast_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+
+	opts := Toast_Options {
+		detail = "QuickBooks returned 503.",
+		action = "Retry",
+	}
+	id := toast_push(&m.toasts, "Invoice failed", .Error, opts)
+	toast_push(&m.toasts, "Saved", .Success)
+	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
+	testing.expect(t, !ui.probe_tagged(&p, "Copy Saved"), "only an error has Copy")
+	retry, copy := ui.probe_bounds(&p, "Retry"), ui.probe_bounds(&p, "Copy Invoice failed")
+	close := ui.probe_bounds(&p, "Dismiss Invoice failed")
+	testing.expect_value(t, copy.x, retry.x + retry.w + 16) // packed: action, Copy, X
+	testing.expect_value(t, close.x, copy.x + 48)
+	testing.expect(t, ui.probe_click(&p, "Copy Invoice failed"))
+	testing.expect_value(t, ui.probe_clipboard(&p), "Invoice failed\nQuickBooks returned 503.")
+	testing.expect_value(t, m.events[0], Toaster_Event{copied = id})
+	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
+	testing.expect(t, ui.probe_tagged(&p, "Invoice failed"), "copying keeps the toast")
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(sem, "  button \"Copy\""), sem)
+}
+
+@(test)
+test_a_narrow_toast_packs_its_buttons_after_the_text :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	m: Toast_Model
+	defer toast_model_destroy(&m)
+	p: ui.Probe
+	toast_probe(&p, &m, {400, 600})
+	defer ui.probe_destroy(&p)
+	toast_push(&m.toasts, "Saved", opts = {action = "View"})
+	ui.probe_advance(&p, SETTLE_FRAMES, 0.02)
+	r := ui.probe_bounds(&p, "Saved")
+	view, close := ui.probe_bounds(&p, "View"), ui.probe_bounds(&p, "Dismiss Saved")
+	testing.expect_value(t, r.w, 400 - 16) // the surface still fills the window
+	testing.expect(t, view.x < r.x + 48 + 16 + 60, "the action follows the short text")
+	testing.expect_value(t, close.x, view.x + view.w + 16)
+	testing.expect(t, close.x + close.w < r.x + r.w - 100, "the X is not pinned to the end")
 }
