@@ -40,6 +40,7 @@ import pq_fuzz "jm:pq/fuzz"
 import sqlite3_fuzz "jm:sqlite3/fuzz"
 import stream_fuzz "jm:stream/fuzz"
 import tar_fuzz "jm:tar/fuzz"
+import datagrid_fuzz "jm:ui/datagrid/fuzz"
 import render_fuzz "jm:ui/render/fuzz"
 import wasm_fuzz "jm:wasm/fuzz"
 import zstd_fuzz "jm:zstd/fuzz"
@@ -60,6 +61,8 @@ runners := []Runner {
 	{"pg_query", pg_query_fuzz.CORPUS, pg_query_fuzz.run},
 	{"pq", pq_fuzz.CORPUS, pq_fuzz.run},
 	{"ui_render", render_fuzz.CORPUS, render_fuzz.run},
+	{"ui_datagrid", datagrid_fuzz.MODEL_CORPUS, datagrid_fuzz.run_model},
+	{"ui_datagrid_paged", datagrid_fuzz.PAGED_CORPUS, datagrid_fuzz.run_paged},
 	{"git", git_fuzz.CORPUS, git_fuzz.run},
 	{"zstd", zstd_fuzz.CORPUS, zstd_fuzz.run},
 	{"stream", stream_fuzz.CORPUS, stream_fuzz.run},

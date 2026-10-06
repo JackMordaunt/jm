@@ -131,7 +131,7 @@ with `just fuzz "tar -for=5s -no-corpus"` against the same run with
 
 ## The suites
 
-Ten packages carry a suite. Each one lives in `<package>/fuzz`.
+Eleven packages carry a suite. Each one lives in `<package>/fuzz`.
 
 | Package | Properties |
 |---------|------------|
@@ -144,6 +144,7 @@ Ten packages carry a suite. Each one lives in `<package>/fuzz`.
 | `git` | `sequence`, `strings`, `damaged` |
 | `stream` | fourteen properties over random graphs; see [Streams](streams.md) |
 | `ui/render` | `matches_render`, `workers_agree`, `still_is_free` |
+| `ui/datagrid` | `widths`, `heights`, `selection`, `query`, `pages`, `delimited`, `views` (suite `ui_datagrid`), `paged` (suite `ui_datagrid_paged`) |
 | `http` | `wire` (suite `http_wire`), `exactly_once` (suite `http_model`) |
 
 > [!TIP]
@@ -166,6 +167,9 @@ Every bug below is fixed or written down.
 | `jm:pg_query` | `SELECT '<0xff><0xfe>' FROM t` | Invalid UTF-8 reached the parse tree's JSON and crashed the decoder. | Statements that are not UTF-8 are refused. |
 | `jm:pg_query` | `SELECT-1` through `normalize` | Upstream rewrites it as `SELECT$1`, one identifier. | Upstream's bug; documented, not fixed. |
 | `jm:pq` | Any `COPY … TO STDOUT` | The refusal carried no SQLSTATE, though the server had started the COPY. | It carries `0A000`. |
+| `jm:ui/datagrid` | An empty page past the rows | It set the row count to its own offset as an exact end, so a grid asked past an estimate showed blank rows. | An empty page only bounds the count; `query_test.odin` keeps it. |
+| `jm:ui/datagrid` | A page that shrank the count under a scrolled view | The frame drew at the old scroll and the next jumped, so a click landed on another row. | The grid lays out again when the count moves. |
+| `core:encoding/csv` | `"a,"` read with `multiline_fields` | The line scan takes a delimiter inside quotes for a field's end, and the record runs to EOF. | Odin's bug; the suite reads with an RFC 4180 reader of its own. |
 
 Two packages, written days apart, got the same arithmetic wrong in the same
 place. A property that draws pointers at the edges finds it in seconds; no
