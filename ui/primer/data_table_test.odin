@@ -220,6 +220,9 @@ test_the_columns_menu_hides_a_column_and_downloads_csv :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Columns"))
 	testing.expect(t, click_nth(&p, "Role", 1), "the menu's first Role, after the header's")
 	testing.expect(t, m.g.grid.view.cols[1].hidden)
+	// Count: its header, then Show, Pin to the left, Pin to the right.
+	testing.expect(t, click_nth(&p, "Count", 3))
+	testing.expect_value(t, m.g.grid.view.cols[2].pin, datagrid.Pin.Right)
 	ui.probe_key(&p, .Escape)
 	ui.probe_click(&p, "Columns")
 	testing.expect(t, ui.probe_click(&p, "Download CSV"))

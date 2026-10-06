@@ -848,7 +848,8 @@ columns_menu_arrange :: proc(g: ^Data_Grid, m: ^Action_Menu) {
 		}
 	}
 	action_menu_group_close(m)
-	columns_menu_pins(g, m)
+	columns_menu_pins(g, m, .Left, "Pin to the left")
+	columns_menu_pins(g, m, .Right, "Pin to the right")
 	action_menu_group_open(m, "Density", selection = .Single)
 	for name, d in DENSITY_NAMES {
 		if action_menu_item(m, name, selected = g.grid.density == d) {
@@ -862,17 +863,17 @@ columns_menu_arrange :: proc(g: ^Data_Grid, m: ^Action_Menu) {
 	}
 }
 
-// columns_menu_pins is the Columns menu's group that pins shown columns to
-// the left or unpins them.
+// columns_menu_pins is the Columns menu's group that pins shown columns
+// to side or unpins them: one for the left, one for the right.
 @(private)
-columns_menu_pins :: proc(g: ^Data_Grid, m: ^Action_Menu) {
+columns_menu_pins :: proc(g: ^Data_Grid, m: ^Action_Menu, side: datagrid.Pin, heading: string) {
 	v := &g.grid.view
-	action_menu_group_open(m, "Pin to the left", selection = .Multiple)
+	action_menu_group_open(m, heading, selection = .Multiple)
 	defer action_menu_group_close(m)
 	for c, i in g.cols {
-		left := v.cols[i].pin == .Left
-		if !v.cols[i].hidden && action_menu_item(m, c.title, selected = left, keep_open = true) {
-			v.cols[i].pin = .None if left else .Left
+		on := v.cols[i].pin == side
+		if !v.cols[i].hidden && action_menu_item(m, c.title, selected = on, keep_open = true) {
+			v.cols[i].pin = .None if on else side
 		}
 	}
 }
