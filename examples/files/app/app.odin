@@ -571,34 +571,13 @@ places :: proc(home: string, allocator := context.allocator) -> []query.Place {
 	return out[:]
 }
 
-// deliver, on a pool thread, retires the job and hands its answer to the
-// ui, with the statistics.
+// deliver, on a pool thread, hands the job's answer to the ui, then retires
+// it with the statistics. A job stays pending until its answer is in the
+// inbox: one retired first let a reader find nothing pending and the inbox
+// empty while an answer was still on its way, and stop waiting for it.
 deliver :: proc(h: ^Host, d: Done) {
 	job := d.job
-	sync.mutex_lock(&h.mutex)
-	current := job.kind == .Open || h.jobs[job.key] == job
-	if current && job.kind != .Open {
-		delete_key(&h.jobs, job.key)
-		h.stats.pending -= 1
-	}
-	switch job.kind {
-	case .Listing:
-		if current && d.ok {
-			h.stats.listings += 1
-			if w, live := &h.listings[job.key]; live {
-				w.modified = d.modified
-			}
-		}
-	case .Thumb:
-		if d.cancelled || !current {
-			h.stats.cancelled += 1
-		} else if d.ok {
-			h.stats.thumbs += 1
-		}
-	case .Open, .Places:
-	}
-	stats := h.stats
-	sync.mutex_unlock(&h.mutex)
+	current := count_done(h, d)
 
 	buf: [2048]byte
 	stack: mem.Arena
@@ -620,11 +599,45 @@ deliver :: proc(h: ^Host, d: Done) {
 	if d.data != nil {
 		delete(d.data, h.allocator)
 	}
+	sync.mutex_lock(&h.mutex)
+	if current && job.kind != .Open {
+		h.stats.pending -= 1
+	}
+	stats := h.stats
+	sync.mutex_unlock(&h.mutex)
 	ui.inbox_put_value(&h.inbox, query.Stats{}, stats)
 	free(job, h.allocator)
 	if h.wake != nil {
 		h.wake()
 	}
+}
+
+// count_done forgets d's job and counts how it ended, and says whether it was
+// still the job for its need.
+count_done :: proc(h: ^Host, d: Done) -> (current: bool) {
+	job := d.job
+	sync.mutex_guard(&h.mutex)
+	current = job.kind == .Open || h.jobs[job.key] == job
+	if current && job.kind != .Open {
+		delete_key(&h.jobs, job.key)
+	}
+	switch job.kind {
+	case .Listing:
+		if current && d.ok {
+			h.stats.listings += 1
+			if w, live := &h.listings[job.key]; live {
+				w.modified = d.modified
+			}
+		}
+	case .Thumb:
+		if d.cancelled || !current {
+			h.stats.cancelled += 1
+		} else if d.ok {
+			h.stats.thumbs += 1
+		}
+	case .Open, .Places:
+	}
+	return
 }
 
 pool_main :: proc(h: ^Host) {
