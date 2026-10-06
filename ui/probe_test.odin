@@ -311,3 +311,60 @@ test_a_widget_inside_containers_reads_the_window_size :: proc(t: ^testing.T) {
 	testing.expect_value(t, seen.offered, ops.Size{640 - 100 - 40, 480 - 20}) // the constraints are the box's own
 }
 
+
+// twins_view draws two buttons tagged "Twin", the second over the first's
+// right half, and a scroll box with rows: what probe_click_top and
+// probe_scroll_at are for.
+@(private = "file")
+Twins :: struct {
+	first, second: int,
+	scroll:        Scroll_Offset,
+}
+
+@(private = "file")
+twins_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Twins)(user)
+	ops.input_area(gtx.scene, 1, ops.Rect{0, 0, 100, 20}, {.Press, .Release})
+	ops.tag(gtx.scene, 1, "Twin")
+	ops.input_area(gtx.scene, 2, ops.Rect{50, 0, 100, 20}, {.Press, .Release})
+	ops.tag(gtx.scene, 2, "Twin")
+	for e in events(gtx, 1) {
+		m.first += 1 if e.kind == .Release else 0
+	}
+	for e in events(gtx, 2) {
+		m.second += 1 if e.kind == .Release else 0
+	}
+	ops.transform_push(gtx.scene, ops.translate(0, 100))
+	defer ops.transform_pop(gtx.scene)
+	sized(gtx, {max = {200, 100}})
+	scroll_box(gtx, offset = &m.scroll)
+	column(gtx)
+	for _ in 0 ..< 50 {
+		sized(gtx, {min = {200, 20}, max = {200, 20}})
+	}
+}
+
+@(test)
+probe_click_top_takes_the_last_drawn_of_a_name :: proc(t: ^testing.T) {
+	m: Twins
+	p: Probe
+	probe_init(&p, twins_view, &m, {400, 300})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_click_top(&p, "Twin"))
+	testing.expect_value(t, m.second, 1)
+	testing.expect_value(t, m.first, 0)
+	testing.expect(t, !probe_click_top(&p, "Nobody"))
+}
+
+@(test)
+probe_scroll_at_scrolls_what_is_under_the_point :: proc(t: ^testing.T) {
+	m: Twins
+	p: Probe
+	probe_init(&p, twins_view, &m, {400, 300})
+	defer probe_destroy(&p)
+	probe_scroll_at(&p, {100, 150}, 60)
+	testing.expect(t, m.scroll.y > 0, "the box under the point scrolled")
+	before := m.scroll
+	probe_scroll_at(&p, {300, 280}, 60)
+	testing.expect_value(t, m.scroll, before)
+}

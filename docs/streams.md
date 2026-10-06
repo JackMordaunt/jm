@@ -49,7 +49,7 @@ A node never blocks. Blocking lives at the edges of the pipeline:
 | `run(p)` | Drives the pipeline on the calling thread plus a pool sized from the graph, at most three threads. The measurements below say a pool of that size is never a loss. |
 | `run(p, n)` | Asks for `n` threads. |
 | `run(p, 0)` | Uses no extra threads. |
-| `step` | Runs one node, for a deterministic test. |
+| `step` | Runs one node, for a deterministic test; the first call starts the sources. |
 
 A `Clock` can be manual, so the test drives the timers.
 

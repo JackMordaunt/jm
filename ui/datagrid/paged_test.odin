@@ -243,6 +243,38 @@ test_a_failed_page_shows_its_error_and_retries_on_a_click :: proc(t: ^testing.T)
 	testing.expect(t, ui.probe_tagged(&p, "SN-00000"))
 }
 
+// failed_slots counts the skin's calls for failed rows in a frame.
+@(private = "file")
+failed_slots: int
+
+// A skin that draws a failed page's rows itself gets a slot for each row:
+// a page of many failed rows once claimed one id for all of them.
+@(test)
+test_a_skin_draws_every_row_of_a_failed_page :: proc(t: ^testing.T) {
+	m := pager_make(30, {source = "rigs", page_size = 50})
+	defer pager_free(m)
+	m.skin.failed = proc(gtx: ^ui.Ctx, size: ops.Size, err: string, user: rawptr) -> bool {
+		failed_slots += 1
+		p := ui.widget_open(gtx)
+		ops.tag(gtx.scene, p.id, "failed slot")
+		ui.widget_close(gtx, &p, {size = size})
+		return true
+	}
+	p: ui.Probe
+	ui.probe_init(&p, pager_view, m, {600, 400})
+	defer ui.probe_destroy(&p)
+	m.fail = true
+	serve(&p, m)
+	serve(&p, m)
+	_, st, _ := pages_row(&m.g.pages, 3)
+	testing.expect_value(t, st, Row_State.Failed)
+	failed_slots = 0
+	ui.probe_frame(&p)
+	// Every row in view is failed, each drawn once by the skin.
+	testing.expect_value(t, failed_slots, m.g.geo.last - m.g.geo.first)
+	testing.expect(t, failed_slots > 1)
+}
+
 @(test)
 test_select_all_loaded_names_rows_and_all_matching_names_the_query :: proc(t: ^testing.T) {
 	m := pager_make(500, {source = "rigs", page_size = 20, margin = 1})
@@ -370,4 +402,33 @@ test_a_steady_paged_frame_allocates_nothing :: proc(t: ^testing.T) {
 	spy.armed, spy_t.armed = false, false
 	expect_no_allocations(t, &spy, &spy_t)
 	testing.expect(t, ui.probe_tagged(&p, "SN-00000"), "the rows are in")
+}
+
+// The count says nothing of a query until a page of it lands: before the
+// first answer it is only room for a page of skeletons, and after a new
+// sort it is the last query's.
+@(test)
+test_the_count_is_known_only_once_a_page_of_the_query_lands :: proc(t: ^testing.T) {
+	m := pager_make(30, {source = "rigs", page_size = 10, keep_stale = true})
+	defer pager_free(m)
+	p: ui.Probe
+	ui.probe_init(&p, pager_view, m, {600, 400})
+	defer ui.probe_destroy(&p)
+	testing.expect(t, !pages_known(&m.g.pages), "known before any page")
+	testing.expect(t, pages_loading(&m.g.pages))
+	for _ in 0 ..< 6 {
+		serve(&p, m) // a full page reaches for the next until the end shows
+	}
+	testing.expect(t, pages_known(&m.g.pages))
+	testing.expect(t, !pages_loading(&m.g.pages))
+	append(&m.g.view.sort, Sort_Key{col = 0, desc = true})
+	ui.probe_frame(&p)
+	testing.expect(t, !pages_known(&m.g.pages), "the last query's count stood for the new one")
+	serve(&p, m)
+	serve(&p, m)
+	testing.expect(t, pages_known(&m.g.pages))
+	est: Pages
+	pages_init(&est, {page_size = 10, estimate = 500})
+	defer pages_destroy(&est)
+	testing.expect(t, pages_known(&est), "a caller's estimate is known")
 }

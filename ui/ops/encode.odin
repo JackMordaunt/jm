@@ -38,8 +38,8 @@ ENCODE_MAGIC :: "UIOP"
 // wrap, bits 2-3 rove) and gave Focus_Scope_End an entry; 33 gave
 // Input_Area's flags no_tab, bit 2; 34 gave Path its fill rule; 35 added
 // Role Column_Header and State Current_Date; 36 gave Semantic row and
-// column counts and indices and a sort.
-ENCODE_VERSION :: u8(36)
+// column counts and indices and a sort; 37 added Role Password_Field.
+ENCODE_VERSION :: u8(37)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.

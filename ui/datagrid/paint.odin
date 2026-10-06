@@ -363,7 +363,7 @@ paint_span :: proc(pc: ^Painter, r: Region, ri: int, it: Item, item: int, band: 
 	if it.group >= 0 {
 		paint_group(pc, it.group, item, box, ri)
 	} else {
-		paint_failed(pc, it.error, box, ri)
+		paint_failed(pc, it.error, box, ri, item)
 	}
 }
 
@@ -653,14 +653,15 @@ paint_group_title :: proc(pc: ^Painter, name: string, count: int, shut: bool, bo
 	draw_line(gtx, &g.text, pc.body, n, rest, .Start, st.muted)
 }
 
-// paint_failed draws a failed page's message across a row of it, the
-// skin's slot keyed apart for each region ri that draws its slice.
+// paint_failed draws a failed page's message across row item of it, the
+// skin's slot keyed apart for each row and each region ri that draws its
+// slice: every row of a failed page draws one.
 @(private)
-paint_failed :: proc(pc: ^Painter, err: string, box: ops.Rect, ri: int) {
+paint_failed :: proc(pc: ^Painter, err: string, box: ops.Rect, ri, item: int) {
 	gtx, st := pc.gtx, pc.st
 	if pc.skin.failed != nil {
 		size := ops.Size{box.w, box.h}
-		key := ui.id_mix(ui.id_mix(pc.id, 10), u64(ri))
+		key := ui.id_mix(ui.id_mix(pc.id, 10), u64(item) << 2 | u64(ri))
 		s := slot_open(gtx, size, key)
 		drew := pc.skin.failed(gtx, size, err, pc.skin.user)
 		slot_close(gtx, &s, {box.x, box.y})

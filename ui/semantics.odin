@@ -255,6 +255,8 @@ role_name :: proc(r: ops.Role) -> string {
 		return "slider"
 	case .Text_Field:
 		return "text field"
+	case .Password_Field:
+		return "password field"
 	case .Combo_Box:
 		return "combo box"
 	case .Tab_List:

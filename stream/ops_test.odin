@@ -887,3 +887,25 @@ op_debounce_by_emits_due_keys_in_due_order :: proc(t: ^testing.T) {
 	drain(p)
 	testing.expect(t, finished(p))
 }
+
+// A pipeline driven only by step starts its sources itself: an interval
+// arms on the first step and fires as a manual clock passes it. Once,
+// step ran only what something else had queued, and an interval never
+// armed in a test that never called run or drain.
+@(test)
+op_an_interval_fires_under_step_alone :: proc(t: ^testing.T) {
+	clock := manual_clock()
+	p := make_pipeline(context.allocator, clock = &clock)
+	defer destroy(p)
+	got: [dynamic]time.Duration
+	defer delete(got)
+	collect(interval(p, 10 * time.Millisecond), &got)
+	for step(p) {}
+	testing.expect_value(t, armed_count(p), 1)
+	for i in 1 ..= 3 {
+		advance(&clock, 10 * time.Millisecond)
+		for step(p) {}
+		testing.expect_value(t, len(got), i)
+	}
+	testing.expect_value(t, got[2], 30 * time.Millisecond)
+}

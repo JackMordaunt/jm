@@ -372,9 +372,12 @@ TEXT_INPUT_COLUMNS :: 20
 // box to a reader: one whose list of options SelectPanel or Autocomplete
 // draws.
 //
-// Departures: the native input types (password, email, number, date) and
-// monospace are not offered (no masking editor, and the kit's fonts have
-// no monospace face); the action's tooltip and the debounced live
+// secret makes it a password field (TextInput type="password"): it shows a
+// bullet per character, its text cannot be copied or cut, and a reader is
+// told it is a password field and how long, never what it holds.
+//
+// Departures: the other native input types (email, number, date) and
+// monospace are not offered (the kit's fonts have no monospace face); the action's tooltip and the debounced live
 // announcement of the remaining count are not drawn, as jm:ui has neither
 // tooltips nor live regions yet; the coarse-pointer 44px action target
 // is not enlarged.
@@ -399,6 +402,7 @@ text_input :: proc(
 	width: f32 = 0,
 	name := "",
 	combobox: Maybe(Combobox) = nil,
+	secret := false,
 	state := Interaction.Live,
 	key: u64 = 0,
 	loc := #caller_location,
@@ -436,21 +440,26 @@ text_input :: proc(
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Press, .Move, .Release:
-				str := string(s.buf[:])
-				ui.text_follow_pointer(s, design.layout_style(gtx, str, st, font_for(gtx, st.weight)), e, {e.pos.x - row.text_x + sc.x, 0}, field_stops(gtx, s, st))
+				input_pointer(gtx, s, e, {e.pos.x - row.text_x + sc.x, 0}, st, secret)
 			case .Text, .Paste:
-				r.changed |= ui.text_edit(gtx, s, p.id, e, field_stops(gtx, s, st))
+				r.changed |= ui.text_edit(gtx, s, p.id, e, input_stops(gtx, s, st, secret), secret = secret)
 			case .Key:
 				if e.key == .Enter {
 					r.submitted = true
 				} else {
-					r.changed |= ui.text_edit(gtx, s, p.id, e, field_stops(gtx, s, st))
+					r.changed |= ui.text_edit(gtx, s, p.id, e, input_stops(gtx, s, st, secret), secret = secret)
 				}
 			}
 		}
 	}
-	str := string(s.buf[:])
-	length := utf16_len(str)
+	// What shows: the text, or for a secret its bullets, caret and all.
+	shown := s
+	if secret {
+		view := ui.secret_view(s, gtx.allocator)
+		shown = &view
+	}
+	str := string(shown.buf[:])
+	length := utf16_len(string(s.buf[:]))
 	msg, over := "", false
 	if character_limit > 0 {
 		msg, over = counter_message(gtx, length, character_limit)
@@ -459,7 +468,7 @@ text_input :: proc(
 	r.focused = field_focused(c)
 	r.id = p.id
 	t := design.layout_style(gtx, str, st, font_for(gtx, st.weight))
-	_, caret := ui.paragraph_caret(t, s.cursor)
+	_, caret := ui.paragraph_caret(t, shown.cursor)
 	scroll: f32
 	if sc != nil {
 		sc.x = ui.text_scroll(sc.x, t.width + FIELD_CARET_W, caret, FIELD_CARET_W, inner)
@@ -480,7 +489,7 @@ text_input :: proc(
 	fg := color(c.disabled ? .Fg_Color_Disabled : .Fg_Color_Default)
 	ops.clip_push(gtx.scene, ops.Rect{row.text_x, 0, inner, box.h})
 	if len(str) > 0 {
-		design.draw_paragraph(gtx, t, {row.text_x - scroll, text_y}, fg, selection_paint(s, r.focused))
+		design.draw_paragraph(gtx, t, {row.text_x - scroll, text_y}, fg, selection_paint(shown, r.focused))
 	} else if placeholder != "" {
 		draw_text(gtx, design.shape_style(gtx, placeholder, st, font_for(gtx, st.weight)), {row.text_x, text_y}, color(.Fg_Color_Muted))
 	}
@@ -510,11 +519,32 @@ text_input :: proc(
 		desc = join_words(gtx, desc, "Loading")
 	}
 	states := design.state_if(c.disabled, {.Disabled}) + design.state_if(fc.required, {.Required}) + design.state_if(status == .Error, {.Invalid}) + design.state_if(loading, {.Busy})
-	sem := ops.Semantics{role = .Text_Field, label = ui.frame_string(gtx, tag), value = ui.frame_string(gtx, str), description = desc, states = states}
+	sem := ops.Semantics{role = .Password_Field if secret else .Text_Field, label = ui.frame_string(gtx, tag), value = ui.frame_string(gtx, str), description = desc, states = states}
 	combobox_semantics(&sem, combobox)
 	ui.semantics(gtx, &p, sem)
 	ui.widget_close(gtx, &p, {sz, text_y + (len(t.lines) > 0 ? t.lines[0].baseline : 0)})
 	return
+}
+
+// input_stops are a text input's caret stops: the text's own, or for a
+// secret every character and no words.
+@(private)
+input_stops :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, st: tok.Type_Style, secret: bool) -> ui.Text_Stops {
+	return ui.secret_stops(gtx, s) if secret else field_stops(gtx, s, st)
+}
+
+// input_pointer follows a press, drag or release on a text input at pt,
+// on its bullets for a secret, which move the text's caret to match.
+@(private)
+input_pointer :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, e: ui.Event, pt: ops.Point, st: tok.Type_Style, secret: bool) {
+	font := font_for(gtx, st.weight)
+	if !secret {
+		ui.text_follow_pointer(s, design.layout_style(gtx, string(s.buf[:]), st, font), e, pt, field_stops(gtx, s, st))
+		return
+	}
+	view := ui.secret_view(s, gtx.allocator)
+	ui.text_follow_pointer(&view, design.layout_style(gtx, string(view.buf[:]), st, font), e, pt, ui.secret_stops(gtx, &view))
+	ui.secret_apply(s, &view)
 }
 
 // field_stops is s's caret stops in st.

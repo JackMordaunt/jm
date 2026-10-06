@@ -134,6 +134,27 @@ invalid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	}
 }
 
+@(private = "file")
+password_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	p := ui.widget_open(gtx, 1)
+	ui.semantics(gtx, &p, {role = .Password_Field, label = "Password", value = "●●●"})
+	ui.widget_close(gtx, &p, {size = {120, 24}})
+}
+
+@(test)
+test_a_password_field_reaches_accesskit_as_a_password_input :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, password_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Sign in")
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `role: PasswordInput, label: "Password"`), got)
+}
+
 @(test)
 test_an_invalid_field_reaches_accesskit_invalid :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)

@@ -311,6 +311,7 @@ Role :: enum u8 {
 	Tree_Item, // one item of a tree; its level is its depth, 1 at the top
 	Tab_Panel, // the content a tab shows
 	Column_Header, // a grid's or table's column heading: a calendar's weekday over its days
+	Password_Field, // a text field whose text is secret: its value is a bullet per character
 }
 
 // State is one of the states a Semantic op may carry.
