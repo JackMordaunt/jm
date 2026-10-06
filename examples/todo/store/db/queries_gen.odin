@@ -54,9 +54,14 @@ todo_state :: proc(
 		}
 	}
 	if err = sqlite3.finish(&stmt); err != nil {
+		todo_state_free_row(row, allocator)
 		return {}, false, err
 	}
 	return
+}
+
+// todo_state_free_row frees the text and blobs of row, which are in allocator.
+todo_state_free_row :: proc(row: Todo_State_Row, allocator := context.allocator) {
 }
 
 @(private = "file")
@@ -100,9 +105,14 @@ counts :: proc(
 		}
 	}
 	if err = sqlite3.finish(&stmt); err != nil {
+		counts_free_row(row, allocator)
 		return {}, false, err
 	}
 	return
+}
+
+// counts_free_row frees the text and blobs of row, which are in allocator.
+counts_free_row :: proc(row: Counts_Row, allocator := context.allocator) {
 }
 
 @(private = "file")

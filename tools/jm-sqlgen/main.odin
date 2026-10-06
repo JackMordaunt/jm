@@ -193,13 +193,16 @@ generate_sqlite :: proc(pkg, schema, queries_text: string, qs: []Query, p: ^Prob
 	if !ok {
 		return nil
 	}
-	sets := build_data_sets(schema, cat, p)
+	seeding := Sqlite_Seeding {
+		schema = schema,
+	}
+	sets := build_data_sets(sqlite_seed_tables(cat), sqlite_seeder(&seeding), p)
 	if len(p.list) > 0 {
 		return nil
 	}
 	files := make([]File, 2)
-	files[0] = File{CODE_FILE, emit_sqlite_code(pkg, qs, schema, queries_text)}
-	files[1] = File{TEST_FILE, emit_sqlite_test(pkg, qs, sets)}
+	files[0] = File{CODE_FILE, emit_code(SQLITE, pkg, qs, schema, queries_text)}
+	files[1] = File{TEST_FILE, emit_test(SQLITE_TEST, pkg, qs, sets)}
 	return files
 }
 

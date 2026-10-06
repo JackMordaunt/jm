@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:slice"
 import "core:strings"
 
 import "jm:sqlite3"
@@ -509,6 +510,9 @@ describe_params :: proc(stmt: sqlite3.Stmt, q: ^Query, p: ^Problems) {
 		found := false
 		for a, k in q.annotations {
 			if a.name == name {
+				if a.type.kind in NARROW {
+					problem(p, QUERIES_FILE, q.line, "%s: @%s: %s", q.name, a.name, NARROW_REFUSAL)
+				}
 				append(&params, a)
 				used[k] = true
 				found = true
@@ -560,6 +564,7 @@ describe_field :: proc(
 	sql_name := sqlite3.name(stmt, i)
 	name, sep, annotation := strings.partition(sql_name, ":")
 	f.name = strings.trim_space(name)
+	f.column = sql_name
 	if !is_identifier(f.name) {
 		problem(
 			p,
@@ -581,11 +586,15 @@ describe_field :: proc(
 				p,
 				QUERIES_FILE,
 				q.line,
-				"%s: %s: %q is not a type: use i64, f64, bool, string, []byte or Maybe(T)",
+				"%s: %s: %q is not a type: use i16, i32, i64, f32, f64, bool, string, []byte or Maybe(T)",
 				q.name,
 				f.name,
 				strings.trim_space(annotation),
 			)
+			return {}, false
+		}
+		if t.kind in NARROW {
+			problem(p, QUERIES_FILE, q.line, "%s: %s: %s", q.name, f.name, NARROW_REFUSAL)
 			return {}, false
 		}
 		if typed && !fits(t.kind, col.decl) {
@@ -750,4 +759,108 @@ fault_text :: proc(err: sqlite3.Error) -> string {
 		return f.text
 	}
 	return "unknown failure"
+}
+
+// NARROW are the kinds SQLite has no storage for: it keeps every integer in
+// 64 bits and every float in a double.
+@(private = "file")
+NARROW :: bit_set[Kind]{.I16, .I32, .F32}
+
+@(private = "file")
+NARROW_REFUSAL :: "SQLite stores 64-bit integers and floats: use i64 or f64"
+
+// sqlite_seed_tables is every table in cat as the data sets fill it, in name
+// order, with each column's value in each set as a literal of its declared
+// type.
+sqlite_seed_tables :: proc(cat: Catalog) -> []Seed_Table {
+	names, _ := slice.map_keys(cat.tables)
+	slice.sort(names)
+	values := [Seed_Value]Values {
+		.Base = BASE,
+		.Low  = LOW,
+		.High = HIGH,
+	}
+	tables := make([]Seed_Table, len(names))
+	for key, i in names {
+		t := cat.tables[key]
+		cols: [dynamic]Seed_Column
+		for c in t.columns {
+			if !c.insertable {
+				continue
+			}
+			sc := Seed_Column {
+				name     = c.name,
+				not_null = c.not_null,
+			}
+			for v in Seed_Value {
+				sc.literal[v] = sqlite_literal(c.decl, values[v])
+			}
+			append(&cols, sc)
+		}
+		tables[i] = Seed_Table {
+			name    = quoted_name(t.name),
+			label   = t.name,
+			columns = cols[:],
+		}
+	}
+	return tables
+}
+
+@(private = "file")
+sqlite_literal :: proc(decl: string, v: Values) -> string {
+	sb: strings.Builder
+	switch decl {
+	case "INTEGER", "INT":
+		fmt.sbprintf(&sb, "%d", v.int_v)
+	case "REAL":
+		fmt.sbprintf(&sb, "%v", v.real_v)
+	case "BLOB":
+		strings.write_string(&sb, "x'")
+		for b in transmute([]byte)v.blob_v {
+			fmt.sbprintf(&sb, "%02x", b)
+		}
+		strings.write_byte(&sb, '\'')
+	case:
+		write_text_literal(&sb, v.text_v)
+	}
+	return strings.to_string(sb)
+}
+
+// Sqlite_Seeding is the database a data set is being built in.
+Sqlite_Seeding :: struct {
+	schema: string,
+	db:     sqlite3.Db,
+}
+
+// sqlite_seeder builds each data set in a fresh in-memory database with the
+// schema in it, and tries a row inside a savepoint.
+sqlite_seeder :: proc(s: ^Sqlite_Seeding) -> Seeder {
+	start  :: proc(user: rawptr) -> string {
+		s := (^Sqlite_Seeding)(user)
+		db, err := sqlite3.open(sqlite3.MEMORY)
+		if err == nil {
+			err = sqlite3.exec(db, s.schema)
+		}
+		s.db = db
+		return err == nil ? "" : fault_text(err)
+	}
+	try    :: proc(user: rawptr, sql: string) -> string {
+		db := (^Sqlite_Seeding)(user).db
+		if err := sqlite3.exec(db, "SAVEPOINT seed"); err != nil {
+			return fault_text(err)
+		}
+		err := sqlite3.exec(db, sql)
+		if rerr := sqlite3.exec(db, "ROLLBACK TO seed; RELEASE seed"); rerr != nil {
+			return fault_text(rerr)
+		}
+		return err == nil ? "" : fault_text(err)
+	}
+	keep   :: proc(user: rawptr, sql: string) -> string {
+		err := sqlite3.exec((^Sqlite_Seeding)(user).db, sql)
+		return err == nil ? "" : fault_text(err)
+	}
+	finish :: proc(user: rawptr) {
+		sqlite3.close(&(^Sqlite_Seeding)(user).db)
+	}
+	return Seeder{user = s, start = start, try = try, keep = keep, finish = finish}
 }

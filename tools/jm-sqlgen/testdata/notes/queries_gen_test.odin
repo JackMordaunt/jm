@@ -129,7 +129,7 @@ sqlgen_queries_hold_their_types :: proc(t: ^testing.T) {
 sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	{
 		sqlgen_begin(t, db)
-		_, _, err := note(db, set.int_v)
+		_, _, err := note(db, sqlgen_int(set, i64))
 		sqlgen_end(t, db, set, "note", err)
 	}
 	{
@@ -168,12 +168,12 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		_, err := rescore(db, set.int_v, set.real_v)
+		_, err := rescore(db, sqlgen_int(set, i64), sqlgen_real(set, f64))
 		sqlgen_end(t, db, set, "rescore", err)
 	}
 	{
 		sqlgen_begin(t, db)
-		err := label(db, set.int_v, set.text_v)
+		err := label(db, sqlgen_int(set, i64), set.text_v)
 		sqlgen_end(t, db, set, "label", err)
 	}
 	{
@@ -189,6 +189,19 @@ sqlgen_maybe :: proc(v: $T, null: bool) -> Maybe(T) {
 		return nil
 	}
 	return v
+}
+
+// sqlgen_int is the set's integer as T, held to T's range, so the extremes
+// of the set are the extremes of each width.
+@(private = "file")
+sqlgen_int :: proc(set: Sqlgen_Set, $T: typeid) -> T {
+	return T(clamp(set.int_v, i64(min(T)), i64(max(T))))
+}
+
+// sqlgen_real is the set's float as T, held to T's finite range.
+@(private = "file")
+sqlgen_real :: proc(set: Sqlgen_Set, $T: typeid) -> T {
+	return T(clamp(set.real_v, -f64(max(T)), f64(max(T))))
 }
 
 @(private = "file")

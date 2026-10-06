@@ -99,7 +99,7 @@ sqlgen_queries_hold_their_types :: proc(t: ^testing.T) {
 sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	{
 		sqlgen_begin(t, db)
-		_, _, err := todo_state(db, set.int_v)
+		_, _, err := todo_state(db, sqlgen_int(set, i64))
 		sqlgen_end(t, db, set, "todo_state", err)
 	}
 	{
@@ -109,7 +109,7 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		rows, err := todos_open(db, set.int_v)
+		rows, err := todos_open(db, sqlgen_int(set, i64))
 		if err == nil {
 			for _ in todos_next(&rows) {
 			}
@@ -120,7 +120,7 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	{
 		sqlgen_begin(t, db)
 		rows: Todos_Rows
-		if todos(&rows, db, set.int_v) {
+		if todos(&rows, db, sqlgen_int(set, i64)) {
 			for _ in todos_next(&rows) {
 			}
 		}
@@ -128,7 +128,7 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		_, err := todos_all(db, set.int_v)
+		_, err := todos_all(db, sqlgen_int(set, i64))
 		sqlgen_end(t, db, set, "todos_all", err)
 	}
 	{
@@ -138,7 +138,7 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		err := set_done(db, set.int_v, set.bool_v)
+		err := set_done(db, sqlgen_int(set, i64), set.bool_v)
 		sqlgen_end(t, db, set, "set_done", err)
 	}
 	{
@@ -148,12 +148,12 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		err := set_title(db, set.int_v, set.text_v)
+		err := set_title(db, sqlgen_int(set, i64), set.text_v)
 		sqlgen_end(t, db, set, "set_title", err)
 	}
 	{
 		sqlgen_begin(t, db)
-		err := remove(db, set.int_v)
+		err := remove(db, sqlgen_int(set, i64))
 		sqlgen_end(t, db, set, "remove", err)
 	}
 	{
@@ -169,6 +169,19 @@ sqlgen_maybe :: proc(v: $T, null: bool) -> Maybe(T) {
 		return nil
 	}
 	return v
+}
+
+// sqlgen_int is the set's integer as T, held to T's range, so the extremes
+// of the set are the extremes of each width.
+@(private = "file")
+sqlgen_int :: proc(set: Sqlgen_Set, $T: typeid) -> T {
+	return T(clamp(set.int_v, i64(min(T)), i64(max(T))))
+}
+
+// sqlgen_real is the set's float as T, held to T's finite range.
+@(private = "file")
+sqlgen_real :: proc(set: Sqlgen_Set, $T: typeid) -> T {
+	return T(clamp(set.real_v, -f64(max(T)), f64(max(T))))
 }
 
 @(private = "file")

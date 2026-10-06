@@ -231,7 +231,7 @@ read_params :: proc(value: string, line: int, p: ^Problems) -> []Param {
 				p,
 				QUERIES_FILE,
 				line,
-				"@%s: %q is not a type: use i64, f64, bool, string, []byte or Maybe(T)",
+				"@%s: %q is not a type: use i16, i32, i64, f32, f64, bool, string, []byte or Maybe(T)",
 				name,
 				strings.trim_space(type_text),
 			)

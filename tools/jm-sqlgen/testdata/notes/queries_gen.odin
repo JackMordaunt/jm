@@ -60,9 +60,18 @@ note :: proc(
 		}
 	}
 	if err = sqlite3.finish(&stmt); err != nil {
+		note_free_row(row, allocator)
 		return {}, false, err
 	}
 	return
+}
+
+// note_free_row frees the text and blobs of row, which are in allocator.
+note_free_row :: proc(row: Note_Row, allocator := context.allocator) {
+	delete(row.body, allocator)
+	if v, ok := row.attachment.?; ok {
+		delete(v, allocator)
+	}
 }
 
 @(private = "file")
@@ -104,9 +113,14 @@ totals :: proc(
 		}
 	}
 	if err = sqlite3.finish(&stmt); err != nil {
+		totals_free_row(row, allocator)
 		return {}, false, err
 	}
 	return
+}
+
+// totals_free_row frees the text and blobs of row, which are in allocator.
+totals_free_row :: proc(row: Totals_Row, allocator := context.allocator) {
 }
 
 @(private = "file")

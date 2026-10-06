@@ -1,10 +1,7 @@
 package main
 
 import "core:fmt"
-import "core:slice"
 import "core:strings"
-
-import "jm:sqlite3"
 
 // Data_Set is one database state the generated test runs every query
 // against, and the parameter values it passes. The sets are chosen for
@@ -37,30 +34,55 @@ BASE :: Values{1, 1.5, "a", "a", true}
 LOW  :: Values{min(i64), -1.5, "", "", false}
 HIGH :: Values{max(i64), 1e300, "zß€😀", "\x00\xff", true}
 
+// Seed_Value is which of the set values a column's literal holds.
+Seed_Value :: enum {
+	Base,
+	Low,
+	High,
+}
+
+// Seed_Table is a table as the data sets fill it: its name as SQL writes
+// it, quoted, and the columns an INSERT gives values to.
+Seed_Table :: struct {
+	name:    string,
+	// The name a set made of this table alone is called by.
+	label:   string,
+	columns: []Seed_Column,
+}
+
+// Seed_Column is one column and its value in each set, as an SQL literal of
+// the column's own type.
+Seed_Column :: struct {
+	name:     string,
+	not_null: bool,
+	literal:  [Seed_Value]string,
+}
+
+// Seeder is how the data sets reach an engine: a fresh database with the
+// schema in it for each set, an INSERT tried and undone, and an INSERT kept.
+// Each returns why the engine refused, or "".
+Seeder :: struct {
+	user:   rawptr,
+	start:  proc(user: rawptr) -> string,
+	try:    proc(user: rawptr, sql: string) -> string,
+	keep:   proc(user: rawptr, sql: string) -> string,
+	finish: proc(user: rawptr),
+}
+
 // build_data_sets builds the sets and runs each against a fresh database
 // with the schema, so the test that replays them cannot fail on its seed.
-// A row its set's values break falls back to the base values, and then to
-// the base values with every nullable column NULL.
-build_data_sets :: proc(schema: string, cat: Catalog, p: ^Problems) -> []Data_Set {
-	names, _ := slice.map_keys(cat.tables)
-	slice.sort(names)
+// A row its set's values break falls back, a column at a time, to the base
+// values, and then to the base values with every nullable column NULL.
+build_data_sets :: proc(tables: []Seed_Table, s: Seeder, p: ^Problems) -> []Data_Set {
 	sets: [dynamic]Data_Set
 	append(&sets, Data_Set{name = "empty", value = BASE})
-	append(&sets, fill(schema, cat, names, "nulls", BASE, true, p))
-	append(&sets, fill(schema, cat, names, "low", LOW, false, p))
-	append(&sets, fill(schema, cat, names, "high", HIGH, false, p))
-	if len(names) > 1 {
-		for n in names {
-			set := fill(
-				schema,
-				cat,
-				{n},
-				fmt.aprintf("only_%s", cat.tables[n].name),
-				BASE,
-				true,
-				p,
-			)
-			append(&sets, set)
+	append(&sets, fill(tables, s, "nulls", .Base, true, p))
+	append(&sets, fill(tables, s, "low", .Low, false, p))
+	append(&sets, fill(tables, s, "high", .High, false, p))
+	if len(tables) > 1 {
+		for t in tables {
+			name := fmt.aprintf("only_%s", t.label)
+			append(&sets, fill({t}, s, name, .Base, true, p))
 		}
 	}
 	return sets[:]
@@ -68,33 +90,32 @@ build_data_sets :: proc(schema: string, cat: Catalog, p: ^Problems) -> []Data_Se
 
 @(private = "file")
 fill :: proc(
-	schema: string,
-	cat: Catalog,
-	tables: []string,
+	tables: []Seed_Table,
+	s: Seeder,
 	name: string,
-	v: Values,
+	v: Seed_Value,
 	nulls: bool,
 	p: ^Problems,
 ) -> Data_Set {
+	values := [Seed_Value]Values {
+		.Base = BASE,
+		.Low  = LOW,
+		.High = HIGH,
+	}
 	set := Data_Set {
 		name  = name,
-		value = v,
+		value = values[v],
 		nulls = nulls,
 	}
-	db, err := sqlite3.open(sqlite3.MEMORY)
-	if err == nil {
-		err = sqlite3.exec(db, schema)
-	}
-	if err != nil {
-		problem(p, SCHEMA_FILE, 0, "building data set %s: %s", name, fault_text(err))
+	if why := s.start(s.user); why != "" {
+		problem(p, SCHEMA_FILE, 0, "building data set %s: %s", name, why)
 		return set
 	}
-	defer sqlite3.close(&db)
+	defer s.finish(s.user)
 	seed: strings.Builder
 	notes: [dynamic]string
-	for key in tables {
-		t := cat.tables[key]
-		row, refused, ok := choose_row(db, t, v, nulls)
+	for t in tables {
+		row, refused, ok := choose_row(s, t, v, nulls)
 		if !ok {
 			problem(
 				p,
@@ -102,7 +123,7 @@ fill :: proc(
 				0,
 				"data set %s: table %s refuses every row jm-sqlgen tries, such as %s",
 				name,
-				t.name,
+				t.label,
 				insert_sql(t, literals(t, v, nulls)),
 			)
 			continue
@@ -112,16 +133,16 @@ fill :: proc(
 				&notes,
 				fmt.aprintf(
 					"%s.%s holds the base value, since %s refused the set's own: %s",
-					t.name,
+					t.label,
 					r.column,
-					t.name,
+					t.label,
 					r.why,
 				),
 			)
 		}
 		sql := insert_sql(t, row)
-		if ierr := sqlite3.exec(db, sql); ierr != nil {
-			problem(p, SCHEMA_FILE, 0, "data set %s: %s: %s", name, sql, fault_text(ierr))
+		if why := s.keep(s.user, sql); why != "" {
+			problem(p, SCHEMA_FILE, 0, "data set %s: %s: %s", name, sql, why)
 			continue
 		}
 		strings.write_string(&seed, sql)
@@ -145,9 +166,9 @@ Refusal :: struct {
 // on one column costs the set that column's extreme alone.
 @(private = "file")
 choose_row :: proc(
-	db: sqlite3.Db,
-	t: Table,
-	v: Values,
+	s: Seeder,
+	t: Seed_Table,
+	v: Seed_Value,
 	nulls: bool,
 ) -> (
 	row: []string,
@@ -155,121 +176,59 @@ choose_row :: proc(
 	ok: bool,
 ) {
 	want := literals(t, v, nulls)
-	if refusal(db, t, want) == "" {
+	if s.try(s.user, insert_sql(t, want)) == "" {
 		return want, nil, true
 	}
-	row = literals(t, BASE, false)
-	if refusal(db, t, row) != "" {
-		row = literals(t, BASE, true)
-		if refusal(db, t, row) != "" {
+	row = literals(t, .Base, false)
+	if s.try(s.user, insert_sql(t, row)) != "" {
+		row = literals(t, .Base, true)
+		if s.try(s.user, insert_sql(t, row)) != "" {
 			return nil, nil, false
 		}
 	}
 	out: [dynamic]Refusal
-	cols := insertable_columns(t)
 	for i in 0 ..< len(row) {
 		if row[i] == want[i] {
 			continue
 		}
 		kept := row[i]
 		row[i] = want[i]
-		if why := refusal(db, t, row); why != "" {
+		if why := s.try(s.user, insert_sql(t, row)); why != "" {
 			row[i] = kept
-			append(&out, Refusal{column = cols[i].name, why = why})
+			append(&out, Refusal{column = t.columns[i].name, why = why})
 		}
 	}
 	return row, out[:], true
 }
 
-// refusal is why t refuses row, or "" when it takes it. The row is tried
-// inside a savepoint and rolled back either way.
-@(private = "file")
-refusal :: proc(db: sqlite3.Db, t: Table, row: []string) -> string {
-	if err := sqlite3.exec(db, "SAVEPOINT seed"); err != nil {
-		return fault_text(err)
-	}
-	err := sqlite3.exec(db, insert_sql(t, row))
-	if rerr := sqlite3.exec(db, "ROLLBACK TO seed; RELEASE seed"); rerr != nil {
-		return fault_text(rerr)
-	}
-	if err != nil {
-		return fault_text(err)
-	}
-	return ""
-}
-
-@(private = "file")
-insertable_columns :: proc(t: Table) -> []Table_Column {
-	cols: [dynamic]Table_Column
-	for c in t.columns {
-		if c.insertable {
-			append(&cols, c)
-		}
-	}
-	return cols[:]
-}
-
 // literals are the SQL values of a row of t: v's for each column, or NULL
 // for a nullable one when nulls is set.
 @(private = "file")
-literals :: proc(t: Table, v: Values, nulls: bool) -> []string {
-	cols := insertable_columns(t)
-	out := make([]string, len(cols))
-	for c, i in cols {
-		if nulls && !c.not_null {
-			out[i] = "NULL"
-			continue
-		}
-		sb: strings.Builder
-		write_literal(&sb, c.decl, v)
-		out[i] = strings.to_string(sb)
+literals :: proc(t: Seed_Table, v: Seed_Value, nulls: bool) -> []string {
+	out := make([]string, len(t.columns))
+	for c, i in t.columns {
+		out[i] = nulls && !c.not_null ? "NULL" : c.literal[v]
 	}
 	return out
 }
 
 @(private = "file")
-insert_sql :: proc(t: Table, row: []string) -> string {
+insert_sql :: proc(t: Seed_Table, row: []string) -> string {
 	sb: strings.Builder
-	strings.write_string(&sb, "INSERT INTO ")
-	write_name(&sb, t.name)
-	strings.write_byte(&sb, '(')
-	for c, i in insertable_columns(t) {
+	fmt.sbprintf(&sb, "INSERT INTO %s(", t.name)
+	for c, i in t.columns {
 		if i > 0 {
 			strings.write_string(&sb, ", ")
 		}
-		write_name(&sb, c.name)
+		write_quoted_name(&sb, c.name)
 	}
 	fmt.sbprintf(&sb, ")\nVALUES (%s);", strings.join(row, ", "))
 	return strings.to_string(sb)
 }
 
-@(private = "file")
-write_literal :: proc(sb: ^strings.Builder, decl: string, v: Values) {
-	switch decl {
-	case "INTEGER", "INT":
-		fmt.sbprintf(sb, "%d", v.int_v)
-	case "REAL":
-		fmt.sbprintf(sb, "%v", v.real_v)
-	case "BLOB":
-		strings.write_string(sb, "x'")
-		for b in transmute([]byte)v.blob_v {
-			fmt.sbprintf(sb, "%02x", b)
-		}
-		strings.write_byte(sb, '\'')
-	case:
-		strings.write_byte(sb, '\'')
-		for r in v.text_v {
-			if r == '\'' {
-				strings.write_byte(sb, '\'')
-			}
-			strings.write_rune(sb, r)
-		}
-		strings.write_byte(sb, '\'')
-	}
-}
-
-@(private = "file")
-write_name :: proc(sb: ^strings.Builder, name: string) {
+// write_quoted_name writes name as a double-quoted SQL identifier, which
+// both engines read.
+write_quoted_name :: proc(sb: ^strings.Builder, name: string) {
 	strings.write_byte(sb, '"')
 	for r in name {
 		if r == '"' {
@@ -278,4 +237,24 @@ write_name :: proc(sb: ^strings.Builder, name: string) {
 		strings.write_rune(sb, r)
 	}
 	strings.write_byte(sb, '"')
+}
+
+// quoted_name is name as a double-quoted SQL identifier.
+quoted_name :: proc(name: string) -> string {
+	sb: strings.Builder
+	write_quoted_name(&sb, name)
+	return strings.to_string(sb)
+}
+
+// write_text_literal writes s as a single-quoted SQL string literal, which
+// both engines read.
+write_text_literal :: proc(sb: ^strings.Builder, s: string) {
+	strings.write_byte(sb, '\'')
+	for r in s {
+		if r == '\'' {
+			strings.write_byte(sb, '\'')
+		}
+		strings.write_rune(sb, r)
+	}
+	strings.write_byte(sb, '\'')
 }

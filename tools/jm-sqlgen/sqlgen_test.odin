@@ -378,7 +378,7 @@ a_refused_seed_row_falls_back :: proc(t: ^testing.T) {
 	p: Problems
 	cat, ok := describe_all_sqlite(schema, nil, &p)
 	testing.expect(t, ok)
-	sets := build_data_sets(schema, cat, &p)
+	sets := sqlite_data_sets(schema, cat, &p)
 	testing.expect_value(t, len(p.list), 0)
 	low: Data_Set
 	for s in sets {
@@ -392,7 +392,7 @@ a_refused_seed_row_falls_back :: proc(t: ^testing.T) {
 	schema = "-- engine: sqlite\nCREATE TABLE a(s TEXT NOT NULL CHECK (s = 'never')) STRICT;"
 	clear(&p.list)
 	cat, _ = describe_all_sqlite(schema, nil, &p)
-	_ = build_data_sets(schema, cat, &p)
+	_ = sqlite_data_sets(schema, cat, &p)
 	expect_problem(t, p.list[:], "refuses every row")
 }
 
@@ -450,4 +450,11 @@ fmt_is_imported_only_for_one :: proc(t: ^testing.T) {
 	files, problems = generate("p", TEST_SCHEMA, one)
 	testing.expect_value(t, len(problems), 0)
 	testing.expect(t, strings.contains(files[0].text, `import "core:fmt"`))
+}
+
+sqlite_data_sets :: proc(schema: string, cat: Catalog, p: ^Problems) -> []Data_Set {
+	seeding := Sqlite_Seeding {
+		schema = schema,
+	}
+	return build_data_sets(sqlite_seed_tables(cat), sqlite_seeder(&seeding), p)
 }

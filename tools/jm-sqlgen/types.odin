@@ -16,9 +16,14 @@ ENGINE_NAMES := [Engine]string {
 	.Postgres = "postgres",
 }
 
-// Kind is the Odin type a value takes in generated code.
+// Kind is the Odin type a value takes in generated code. SQLite stores only
+// 64-bit integers and floats; PostgreSQL's int2, int4 and float4 take the
+// narrower kinds, so a value too wide for its column cannot be passed.
 Kind :: enum {
+	I16,
+	I32,
 	I64,
+	F32,
 	F64,
 	Bool,
 	String,
@@ -26,7 +31,10 @@ Kind :: enum {
 }
 
 KIND_NAMES := [Kind]string {
+	.I16    = "i16",
+	.I32    = "i32",
 	.I64    = "i64",
+	.F32    = "f32",
 	.F64    = "f64",
 	.Bool   = "bool",
 	.String = "string",
@@ -65,6 +73,9 @@ Param :: struct {
 // Field is one result column as the row struct holds it.
 Field :: struct {
 	name:      string,
+	// The column's name as the engine reports it, annotation and all, which is
+	// what check compares.
+	column:    string,
 	type:      Type,
 	// The author's annotation set the type, rather than the schema.
 	annotated: bool,
