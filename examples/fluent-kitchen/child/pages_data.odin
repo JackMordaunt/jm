@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "jm:examples/kitchen"
 import "jm:ui"
+import "jm:ui/datagrid"
 import "jm:ui/fluent"
 import "jm:ui/ops"
 
@@ -249,4 +250,44 @@ page_image :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	for fit, i in ([4]fluent.Image_Fit{.None, .Center, .Contain, .Cover}) {
 		fluent.image(gtx, {160, 100}, 120, 120, .Rounded, fit, bordered = true, paint = paint, key = u64(10 + i))
 	}
+}
+
+// Files_Grid is the Data grid page's state: ten thousand files in a
+// grid, made the first time the page shows.
+Files_Grid :: struct {
+	ready: bool,
+	g:     datagrid.Grid,
+	cells: [][4]string,
+}
+
+FILE_COLUMNS := [?]datagrid.Column {
+	{id = "name", title = "Name", sizing = .Grow, row_header = true},
+	{id = "owner", title = "Owner"},
+	{id = "modified", title = "Modified", kind = .Date},
+	{id = "size", title = "Size", kind = .Number, align = .End},
+}
+
+page_data_grid :: proc(gtx: ^ui.Ctx, m: ^Model) {
+	f := &m.files
+	if !f.ready {
+		f.ready = true
+		f.cells = make([][4]string, 10_000)
+		for &c, i in f.cells {
+			c = {
+				fmt.aprintf("%s %d", DATA_FILES[i % len(DATA_FILES)], i),
+				DATA_PEOPLE[(i * 7) % len(DATA_PEOPLE)],
+				fmt.aprintf("2026-%02d-%02d", 1 + i % 12, 1 + i % 28),
+				fmt.aprintf("%d KB", (i * 37) % 9000),
+			}
+		}
+		datagrid.grid_init(&f.g, FILE_COLUMNS[:])
+	}
+	ui.column(gtx, gap = 10, align = .Fill)
+	kitchen.section(gtx, "Ten thousand files", "the datagrid core in the Table's look: 44px rows, Subtle hover, a header that sorts with an arrow; Shift adds a key, arrows walk the cells")
+	ui.sized(gtx, {min = {0, 480}, max = {ui.INF, 480}})
+	text :: proc(user: rawptr, row, col: int) -> string {
+		return (^Files_Grid)(user).cells[row][col]
+	}
+	skin := fluent.data_grid_skin(gtx, &f.g)
+	datagrid.grid(gtx, &f.g, FILE_COLUMNS[:], {user = f, rows = len(f.cells), text = text}, &skin, "Files")
 }
