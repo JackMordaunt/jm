@@ -1,3 +1,6 @@
+Data table: fill cut at the right near "" (every theme)
+Data table: text cut at the right near "" (every theme)
+Data table: text cut at the right near "Expected worker" (every theme)
 Link: text cut at both sides near "" (every theme)
 Sub nav: stroke cut at the left near "" (every theme)
 Sub nav: stroke cut at the left near "Milestones" (every theme)

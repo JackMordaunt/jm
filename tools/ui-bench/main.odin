@@ -8,6 +8,7 @@
 //	ui-bench -sweep         grow each kind of content until a frame is over budget
 //	ui-bench -sweep -budget 8.3   the same against a 120 Hz frame
 //	ui-bench -compose       partial repaint by render.Compositor; -t lists worker counts
+//	ui-bench -grid          jm:ui/datagrid over 100,000 rows: still, wheeled, flung, sideways
 //
 // Layout is timed once per scene. Render is timed per thread count, and a
 // checksum of the pixels is compared with the synchronous render so a
@@ -28,6 +29,9 @@ import "jm:ui/render"
 
 when ODIN_OS == .Windows {
 	FONT :: "C:/Windows/Fonts/arial.ttf"
+} else when ODIN_OS == .Darwin {
+	// The system face, SFNS.ttf, is not one Blend2D reads.
+	FONT :: "/System/Library/Fonts/Supplemental/Arial.ttf"
 } else {
 	FONT :: "/usr/share/fonts/liberation/LiberationSans-Regular.ttf"
 }
@@ -149,12 +153,15 @@ main :: proc() {
 	budget := 1000.0 / 60
 	do_sweep := false
 	do_compose := false
+	do_grid := false
 	args := make([dynamic]string)
 	for a in os.args[1:] {
 		if a == "-sweep" {
 			do_sweep = true
 		} else if a == "-compose" {
 			do_compose = true
+		} else if a == "-grid" {
+			do_grid = true
 		} else {
 			append(&args, a)
 		}
@@ -193,6 +200,10 @@ main :: proc() {
 	}
 	if do_sweep {
 		sweep(w, h, threads, budget)
+		return
+	}
+	if do_grid {
+		grid_bench(w, h, n)
 		return
 	}
 

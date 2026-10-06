@@ -165,6 +165,8 @@ Model :: struct {
 	time_open, time24_open:   bool,
 	free_open:                bool,
 	free_err:                 fluent.Time_Error,
+	// data grid
+	files:                    Files_Grid,
 }
 
 // PAGES follows the fluent-kit's component index, grouped by the plan's
@@ -224,6 +226,7 @@ PAGES := [?]Page {
 	{"Rating", page_rating, false},
 	{"Data display", nil, true},
 	{"Table", page_table, false},
+	{"Data grid", page_data_grid, false},
 	{"List", page_list, false},
 	{"Tag", page_tag, false},
 	{"Persona", page_persona, false},

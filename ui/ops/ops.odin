@@ -211,7 +211,10 @@ Input_Area :: struct {
 // depth in the tree, by semantics.level,
 // and a control that keeps focus while it highlights a node (a combo
 // box's option) names that node by semantics.active_descendant (AccessKit's
-// active_descendant, aria-activedescendant on the web).
+// active_descendant, aria-activedescendant on the web). A table or grid
+// that draws only the rows in view counts all of them, and places each
+// row and cell it draws, by row_count, col_count, row_index and
+// col_index, and a column header says its sort by sort.
 Semantic :: struct {
 	id:        Area_Id,
 	parent:    Area_Id,

@@ -79,6 +79,7 @@ tree_update :: proc(s: ^Snapshot) -> ^Tree_Update {
 		if r.level != 0 {
 			node_set_level(n, uint(r.level))
 		}
+		set_table_place(n, r.table)
 		if r.active != 0 && known[r.active] {
 			node_set_active_descendant(n, r.active)
 		}
@@ -114,4 +115,28 @@ debug :: proc(s: ^Snapshot, allocator := context.allocator) -> string {
 	c := tree_update_debug(u)
 	defer string_free(c)
 	return strings.clone(string(c), allocator)
+}
+
+// set_table_place sets n's table counts, its place and its sort, those
+// that are set. AccessKit's indices are 0-based where ARIA's, and ours,
+// are 1-based (accesskit/src/lib.rs, row_index: "aria-rowindex is
+// one-based, while this property is zero-based"), and its counts are
+// usize, with no unknown, so -1 sets none.
+@(private)
+set_table_place :: proc(n: ^Node, t: Table_Place) {
+	if t.row_count > 0 {
+		node_set_row_count(n, uint(t.row_count))
+	}
+	if t.col_count > 0 {
+		node_set_column_count(n, uint(t.col_count))
+	}
+	if t.row_index > 0 {
+		node_set_row_index(n, uint(t.row_index - 1))
+	}
+	if t.col_index > 0 {
+		node_set_column_index(n, uint(t.col_index - 1))
+	}
+	if t.has_sort {
+		node_set_sort_direction(n, t.sort)
+	}
 }

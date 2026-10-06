@@ -2026,3 +2026,40 @@ scroll_into_view_moves_every_box_around_the_rect :: proc(t: ^testing.T) {
 	// nothing to move, as the inner box fits in it.
 	testing.expect_value(t, probe_bounds(&p, "row 8").y, 30)
 }
+
+// container_id names the innermost open container: the id its semantic
+// node takes, so a component built as one can hang parts under it.
+@(test)
+test_container_id_names_the_innermost_container :: proc(t: ^testing.T) {
+	Ids :: struct {
+		root, outer, inner, after: ops.Area_Id,
+	}
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		ids := (^Ids)(user)
+		ids.root = container_id(gtx)
+		a := sized_open(gtx, {min = {50, 50}, max = {50, 50}})
+		container_semantics(gtx, {role = .Group, label = "outer"})
+		ids.outer = container_id(gtx)
+		b := sized_open(gtx, {min = {20, 20}, max = {20, 20}})
+		container_semantics(gtx, {role = .Group, label = "inner"})
+		ids.inner = container_id(gtx)
+		close(&b)
+		ids.after = container_id(gtx)
+		close(&a)
+	}
+	ids: Ids
+	p: Probe
+	probe_init(&p, view, &ids, {200, 200}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, ids.root, 0)
+	testing.expect(t, ids.inner != ids.outer)
+	testing.expect_value(t, ids.after, ids.outer) // closing the inner one uncovers the outer
+	nodes := map[string]ops.Area_Id{}
+	defer delete(nodes)
+	for n in probe_current(&p).nodes {
+		nodes[n.semantics.label] = n.id
+	}
+	testing.expect_value(t, nodes["outer"], ids.outer)
+	testing.expect_value(t, nodes["inner"], ids.inner)
+}

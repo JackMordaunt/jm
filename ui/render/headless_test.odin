@@ -45,3 +45,21 @@ test_headless_full_trims_and_steps_share_one_session :: proc(t: ^testing.T) {
 	bl.image_get_data(&img, &data)
 	testing.expect_value(t, data.size.h, i32(50 + 24))
 }
+
+@(test)
+test_headless_type_runs_a_frame_and_refuses_text_that_is_not_utf8 :: proc(t: ^testing.T) {
+	frames := 0
+	h: Headless
+	headless_init(&h, headless_view, &frames, {120, 300}, nil)
+	defer headless_destroy(&h)
+	args := []string{"-type", "100", "-type", "\xff"}
+	i := 0
+	handled, ok := headless_step(&h, args, &i)
+	testing.expect(t, handled && ok)
+	testing.expect_value(t, i, 1)
+	testing.expect_value(t, frames, 2 + 1)
+	i += 1
+	handled, ok = headless_step(&h, args, &i)
+	testing.expect(t, handled && !ok)
+	testing.expect_value(t, frames, 2 + 1)
+}

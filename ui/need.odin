@@ -111,20 +111,30 @@ Shape_Entry :: struct {
 // value behind it. q must be a named struct, enum or distinct type: its
 // type name is the need's kind.
 need :: proc(gtx: ^Ctx, q: $Q, $R: typeid) -> (r: ^R, status: Status) {
+	r, status, _ = need_versioned(gtx, q, R)
+	return
+}
+
+// need_versioned is need with the delivery's version: a count that moves
+// with every delivery carrying new bytes, 0 while there is none. A widget
+// that copies what it needs out of the shape, into a cache that outlives
+// the need (a grid's pages), copies each delivery once by it.
+need_versioned :: proc(gtx: ^Ctx, q: $Q, $R: typeid) -> (r: ^R, status: Status, version: u64) {
 	kind := type_name(Q, gtx.allocator)
 	bytes, ok := marshal_bytes(q, gtx.allocator)
 	if !ok {
-		return nil, .Missing
+		return nil, .Missing, 0
 	}
 	key: Need_Key
 	key, status = need_raw(gtx, kind, bytes)
 	l := gtx.layout
 	if l == nil || (status != .Ready && status != .Stale) {
-		return nil, status
+		return nil, status, 0
 	}
 	e := &l.shapes[key]
+	version = e.version
 	if e.decoded != nil && e.decoded_type == R && e.decoded_version == e.version {
-		return (^R)(e.decoded), status
+		return (^R)(e.decoded), status, version
 	}
 	if !e.arena_live {
 		mem.dynamic_arena_init(&e.arena, l.allocator, l.allocator)
@@ -136,10 +146,10 @@ need :: proc(gtx: ^Ctx, q: $Q, $R: typeid) -> (r: ^R, status: Status) {
 	v := new(R, arena)
 	if cbor.unmarshal_from_bytes(e.data, v, allocator = arena, temp_allocator = gtx.allocator) != nil {
 		e.decoded = nil
-		return nil, .Missing
+		return nil, .Missing, 0
 	}
 	e.decoded, e.decoded_type, e.decoded_version = v, R, e.version
-	return v, status
+	return v, status, version
 }
 
 // need_raw is need with the query already marshalled: it records the need
@@ -156,7 +166,8 @@ need_raw :: proc(gtx: ^Ctx, kind: string, query: []byte) -> (key: Need_Key, stat
 			}
 		}
 		if !known {
-			append(&r.needs, Need{key, clone_string(kind, r.allocator), clone_bytes(query, r.allocator)})
+			text := need_text(r)
+			append(&r.needs, Need{key, clone_string(kind, text), clone_bytes(query, text)})
 		}
 	}
 	l := gtx.layout
@@ -241,6 +252,18 @@ command_as :: proc(c: Command, $C: typeid, allocator := context.temp_allocator) 
 	return v, true
 }
 
+// need_text is where a router keeps its needs' kinds and queries: an
+// arena emptied whole by router_needs_clear, its blocks kept for reuse,
+// so a frame asking what the last asked allocates nothing.
+@(private)
+need_text :: proc(r: ^Router) -> mem.Allocator {
+	if !r.need_text_ready {
+		mem.dynamic_arena_init(&r.need_text, r.allocator, r.allocator)
+		r.need_text_ready = true
+	}
+	return mem.dynamic_arena_allocator(&r.need_text)
+}
+
 // needs_count and needs_rewind bracket a layout pass whose needs do not
 // count, such as ui.list measuring a row it does not show: the needs
 // recorded since the mark are forgotten.
@@ -255,10 +278,7 @@ needs_rewind :: proc(gtx: ^Ctx, mark: int) {
 	if r == nil {
 		return
 	}
-	for n in r.needs[mark:] {
-		delete(n.kind, r.allocator)
-		delete(n.query, r.allocator)
-	}
+	// Their text stays in the arena until router_needs_clear.
 	resize(&r.needs, mark)
 }
 
@@ -271,9 +291,8 @@ router_needs :: proc(r: ^Router) -> []Need {
 
 // router_needs_clear forgets the needs router_needs returned.
 router_needs_clear :: proc(r: ^Router) {
-	for n in r.needs {
-		delete(n.kind, r.allocator)
-		delete(n.query, r.allocator)
+	if r.need_text_ready {
+		mem.dynamic_arena_reset(&r.need_text)
 	}
 	clear(&r.needs)
 }

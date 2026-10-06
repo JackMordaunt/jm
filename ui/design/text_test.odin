@@ -19,3 +19,12 @@ test_layout_style_balances_when_asked :: proc(t: ^testing.T) {
 	testing.expect_value(t, even.width, 84)
 	testing.expect_value(t, even.height, 30)
 }
+
+@(test)
+test_thousands_groups_digits_by_three :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	testing.expect_value(t, thousands(1234567), "1,234,567")
+	testing.expect_value(t, thousands(999), "999")
+	testing.expect_value(t, thousands(-1000), "-1,000")
+	testing.expect_value(t, thousands(0), "0")
+}

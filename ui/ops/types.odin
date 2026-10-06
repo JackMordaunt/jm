@@ -333,6 +333,15 @@ State :: enum u8 {
 
 States :: bit_set[State;u16]
 
+// Sort_Order is how a column header says its column is sorted
+// (aria-sort).
+Sort_Order :: enum u8 {
+	None,
+	Ascending,
+	Descending,
+	Other,
+}
+
 // Semantics is what a widget says about itself: its role, the label a
 // reader speaks for it, or the widget whose label names it (a slider
 // after its caption) when it has none of its own, its value when it has
@@ -349,4 +358,12 @@ Semantics :: struct {
 	states:            States,
 	level:             u8, // a heading's outline level, 1 as h1 through 6 as h6, or a tree item's depth, 1 at the top; 0 is none, which a heading reads as 1
 	active_descendant: Area_Id, // the node a focused control points a reader at while it keeps focus (aria-activedescendant): a combo box's highlighted option; 0 is none
+	// A table's or grid's rows and columns, counted, and a row's or cell's
+	// place in them, 1-based (aria-rowcount, aria-rowindex, aria-colcount,
+	// aria-colindex): what lets a reader say "row 4,812 of 20,000" when
+	// only the rows in view are drawn. 0 is unset; a row_count of -1 is a
+	// count not known yet.
+	row_count, row_index: i32,
+	col_count, col_index: i32,
+	sort:                 Sort_Order, // a column header's
 }

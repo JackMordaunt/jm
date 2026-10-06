@@ -150,7 +150,11 @@ App :: struct {
 	page:   ^int,
 	theme:  ^int,
 	flag:   Flag,
+	data:   ^Data_Host, // the application answering the pages' needs, if any
 }
+
+// Data_Host is ui's, named here because App's field ui hides the package.
+Data_Host :: ui.Data_Host
 
 // Flag applies a kitchen's own setting flag at args[i^] to user, moving
 // i^ past any value it takes, and reports whether it was one. run tries
@@ -171,7 +175,8 @@ Flag :: proc(user: rawptr, args: []string, i: ^int) -> bool
 // one frame so the next step sees it.
 run :: proc(app: App) {
 	if len(os.args) == 1 {
-		child.run({ui = app.ui, user = app.user, fonts = app.fonts})
+		host := app.data^ if app.data != nil else {}
+		child.run({ui = app.ui, user = app.user, fonts = app.fonts, data = host})
 		return
 	}
 	if len(os.args) == 2 && os.args[1] == "-lint" {
@@ -199,7 +204,7 @@ run :: proc(app: App) {
 			continue
 		}
 		if !open {
-			render.headless_init(&h, app.ui, app.user, size, app.fonts, debug, full = full)
+			render.headless_init(&h, app.ui, app.user, size, app.fonts, debug, full = full, data = app.data)
 			open = true
 		}
 		handled, ok := render.headless_step(&h, args, &i)

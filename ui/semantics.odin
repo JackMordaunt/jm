@@ -163,6 +163,7 @@ write_semantic_children :: proc(b: ^strings.Builder, f: ^Frame, parent: []int, o
 		if n.semantics.level != 0 {
 			fmt.sbprintf(b, " level %d", n.semantics.level)
 		}
+		write_table_place(b, n.semantics)
 		for st in ops.State {
 			if st in n.semantics.states {
 				fmt.sbprintf(b, " %s", state_name(st))
@@ -177,6 +178,33 @@ write_semantic_children :: proc(b: ^strings.Builder, f: ^Frame, parent: []int, o
 		}
 		fmt.sbprintf(b, " at %.0f,%.0f %.0fx%.0f\n", n.rect.x, n.rect.y, n.rect.w, n.rect.h)
 		write_semantic_children(b, f, parent, i, indent + 1, focus)
+	}
+}
+
+// write_table_place writes a table's counts and a row's or cell's place,
+// and a header's sort, those that are set.
+@(private = "file")
+write_table_place :: proc(b: ^strings.Builder, s: ops.Semantics) {
+	if s.row_count != 0 {
+		fmt.sbprintf(b, " rows %d", s.row_count)
+	}
+	if s.col_count != 0 {
+		fmt.sbprintf(b, " cols %d", s.col_count)
+	}
+	if s.row_index != 0 {
+		fmt.sbprintf(b, " row %d", s.row_index)
+	}
+	if s.col_index != 0 {
+		fmt.sbprintf(b, " col %d", s.col_index)
+	}
+	switch s.sort {
+	case .Ascending:
+		strings.write_string(b, " sorted ascending")
+	case .Descending:
+		strings.write_string(b, " sorted descending")
+	case .Other:
+		strings.write_string(b, " sorted")
+	case .None:
 	}
 }
 

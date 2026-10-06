@@ -2245,7 +2245,8 @@ rating_display :: proc(
 	}
 	shown := math.round(value * 2) / 2
 	value_text := value > 0 ? fmt.tprintf("%g", shown) : ""
-	count_text := count >= 0 ? thousands(count, gtx.allocator) : ""
+	// rating.json behaviour count-format.
+	count_text := count >= 0 ? design.thousands(count, gtx.allocator) : ""
 	if value_text != "" && count_text != "" {
 		count_text = fmt.tprintf("· %s", count_text)
 	}
@@ -2284,19 +2285,3 @@ rating_display :: proc(
 	return ui.widget_close(gtx, &p, {sz, (h - tst.line_height) / 2 + baseline_of(vt)})
 }
 
-// thousands writes n with a comma every three digits (rating.json
-// behaviour count-format, in the one locale jm:ui has).
-thousands :: proc(n: int, allocator := context.temp_allocator) -> string {
-	digits := fmt.tprintf("%d", abs(n))
-	b := strings.builder_make(allocator)
-	if n < 0 {
-		strings.write_byte(&b, '-')
-	}
-	for ch, i in digits {
-		if i > 0 && (len(digits) - i) % 3 == 0 {
-			strings.write_byte(&b, ',')
-		}
-		strings.write_rune(&b, ch)
-	}
-	return strings.to_string(b)
-}

@@ -38,7 +38,8 @@ id_mix :: proc(parent: ops.Area_Id, key: u64) -> ops.Area_Id {
 	return ops.Area_Id(fnv_u64(fnv_u64(FNV_OFFSET, u64(parent)), key))
 }
 
-@(private)
+// fnv_bytes folds b into h, FNV-1a 64: how ids and need keys hash, and
+// what a component keying a cache of its own hashes with.
 fnv_bytes :: proc(h: u64, b: []u8) -> u64 {
 	h := h
 	for c in b {
@@ -48,7 +49,7 @@ fnv_bytes :: proc(h: u64, b: []u8) -> u64 {
 	return h
 }
 
-@(private)
+// fnv_u64 folds v's eight bytes into h, as fnv_bytes does.
 fnv_u64 :: proc(h: u64, v: u64) -> u64 {
 	v := v
 	return fnv_bytes(h, mem.ptr_to_bytes(&v))

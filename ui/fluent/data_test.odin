@@ -1,8 +1,10 @@
 package fluent
 
 import "core:slice"
+import "core:strings"
 import "core:testing"
 import "jm:ui"
+import "jm:ui/datagrid"
 import "jm:ui/ops"
 
 // Behaviour of the data display components, driven through ui.Probe.
@@ -294,4 +296,55 @@ test_table_row_reports_a_context_press :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, !r.asked, "and only on its frame")
 	testing.expect(t, abs(r.at.x - b.w / 2) < 1 && abs(r.at.y - b.h / 2) < 1, "at the press, in the row's own coordinates")
+}
+
+@(private = "file")
+Grid_Model :: struct {
+	g: datagrid.Grid,
+}
+
+@(private = "file")
+GRID_COLUMNS := []datagrid.Column{{id = "name", title = "Name"}, {id = "size", title = "Size", kind = .Number}}
+
+@(private = "file")
+GRID_ROWS := [][2]string{{"notes.txt", "3"}, {"plan.md", "12"}, {"budget.xlsx", "7"}}
+
+@(private = "file")
+grid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Grid_Model)(user)
+	text :: proc(user: rawptr, row, col: int) -> string {
+		return GRID_ROWS[row][col]
+	}
+	skin := data_grid_skin(gtx, &m.g)
+	datagrid.grid(gtx, &m.g, GRID_COLUMNS, {rows = len(GRID_ROWS), text = text}, &skin, "Files")
+}
+
+// The data grid's skin: Table's 44px rows ruled in Stroke 2, and a sorted
+// header's arrow in Foreground 1.
+@(test)
+test_a_data_grid_wears_the_table_s_look :: proc(t: ^testing.T) {
+	m: Grid_Model
+	datagrid.grid_init(&m.g, GRID_COLUMNS)
+	defer datagrid.grid_destroy(&m.g)
+	p: ui.Probe
+	ui.probe_init(&p, grid_view, &m, {400, 300})
+	defer ui.probe_destroy(&p)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(said, `row 3 at 0,88 400x44`), said)
+	testing.expect_value(t, datagrid.item_at(&m.g, {rows = 3}, 1).row, 1)
+	testing.expect(t, ui.probe_click(&p, "Size"))
+	// 3, 7, 12: budget.xlsx's 7 moves up to second.
+	testing.expect_value(t, datagrid.item_at(&m.g, {rows = 3}, 1).row, 2)
+	arrows := 0
+	for op in p.scene.ops {
+		if f, ok := op.(ops.Fill); ok {
+			if c, solid := f.paint.(ops.Color); solid && c == color(.Neutral_Foreground1) {
+				if _, is_path := f.shape.(ops.Path_Ref); is_path {
+					arrows += 1
+				}
+			}
+		}
+	}
+	testing.expect(t, arrows > 0, "the sort's arrow")
+	free_all(context.temp_allocator)
 }
