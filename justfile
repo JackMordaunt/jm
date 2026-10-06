@@ -557,6 +557,20 @@ libgit2: _worktree-libs
     fi
 
 # ============================================================================
+# sqlgen: tools/jm-sqlgen, typed Odin from a package's schema.sql and
+# queries.sql. Arguments pass straight through: `just sqlgen examples/x/store`
+# writes the generated files, `just sqlgen -check examples/x/store` fails
+# when they are out of date.
+# ============================================================================
+
+# Generate the typed queries of each package directory named
+[group('sqlgen')]
+sqlgen +args: sqlite
+    mkdir -p build/debug
+    {{odin}} build tools/jm-sqlgen -debug {{flags}} -out:build/debug/jm-sqlgen{{exe}}
+    build/debug/jm-sqlgen{{exe}} {{args}}
+
+# ============================================================================
 # fuzz: tools/jm-fuzz, every jm:fuzz suite in one program.
 # ============================================================================
 

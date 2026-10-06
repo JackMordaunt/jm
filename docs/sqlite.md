@@ -36,6 +36,51 @@ for sqlite3.next(&rows) {
 }
 ```
 
+## Typed queries
+
+`tools/jm-sqlgen` turns a package's SQL into Odin that the compiler checks. A
+package keeps a `schema.sql` and a `queries.sql`, each opening with
+`-- engine: sqlite`:
+
+```sql
+-- name: todo_state :one
+-- Whether todo id exists, and whether it is done.
+-- params: id: i64
+SELECT done AS "done: bool" FROM todo WHERE id = @id;
+```
+
+`just sqlgen <dir>` writes `queries_gen.odin` beside them, which holds a
+`Todo_State_Row` struct and this proc:
+
+```odin
+todo_state :: proc(db: sqlite3.Db, id: i64, allocator := context.allocator) -> (
+	row: Todo_State_Row, found: bool, err: sqlite3.Error)
+```
+
+A swapped or missing argument is a compile error. A misspelt column fails the
+generator. Editing either SQL file without regenerating fails the build,
+through a compile-time hash of each. `check(db)` re-prepares every query
+against a live database, so a schema that drifted from `schema.sql` fails when
+the database is opened.
+
+SQLite supplies the types. A column that reads a table column directly takes
+its declared type. It is `Maybe` unless the column is NOT NULL and the
+statement's bytecode shows nothing that can produce a NULL, such as an outer
+join, an aggregate or a subquery. Tables must be STRICT, because only a STRICT
+table holds to its declared types. An expression, or a column of a
+compound SELECT, is annotated in its alias, as `done` is above.
+
+An annotation is a claim, so `queries_gen_test.odin` tests it. Every query
+runs against several data sets: empty tables, every nullable column NULL, the
+extremes of each type, and each table alone. Each value read is checked
+against its generated type. A parameter type that a STRICT column cannot
+convert fails too. One that it can convert, such as an `i64` written to a
+TEXT column, does not, so parameter annotations are only partly verified.
+
+The tool's doc comment (`tools/jm-sqlgen/main.odin`) has the full format, and
+`tools/jm-sqlgen/testdata/todo` is a worked example. Postgres is the other
+engine the header can name; generation for it is not built yet.
+
 ## Watch what changed
 
 `sqlite3.hooks` installs the connection's update, commit and rollback hooks.
