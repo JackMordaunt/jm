@@ -181,7 +181,9 @@ Calendar :: struct {
 	hover:   Date, // the day under the pointer last frame
 	page:    Calendar_Page,
 	year:    int, // the year the months page shows
-	refocus: bool, // put focus on the cursor's day once it is drawn
+	refocus: bool, // put focus on the cursor's day, or month, once it is drawn
+	month:   int, // the months page's cursor, 1-12, in year: its one Tab stop
+	months:  [12]ops.Area_Id, // the months page's buttons, by month, as last drawn
 }
 
 // shown_months is how many months o lays side by side.
@@ -197,6 +199,7 @@ calendar_reset :: proc(cal: ^Calendar, at: Date, o: Calendar_Options) {
 	cal.cursor, _ = nearest_selectable(at, 1, o)
 	cal.view = month_of(cal.cursor)
 	cal.anchor, cal.hover, cal.page = {}, {}, .Days
+	cal.year, cal.month = cal.cursor.year, cal.cursor.month
 }
 
 // calendar_follow pages cal's view so the cursor's month shows: the
@@ -365,7 +368,7 @@ calendar_panel :: proc(
 		cal.hover = hovered
 		ui.request_frame(gtx)
 	}
-	if cal.refocus {
+	if cal.refocus && cal.page == .Days {
 		ui.focus_request(gtx, calendar_cell_id(id, cal.cursor))
 		cal.refocus = false
 	}
@@ -431,7 +434,8 @@ calendar_header :: proc(
 				state = state,
 				key = u64(ui.id_mix(id, u64(40 + i))),
 			) {
-				cal.page, cal.year = .Months, month.year
+				cal.page, cal.year, cal.month = .Months, month.year, month.month
+				cal.refocus = true
 			}
 			ui.close(&c)
 		}
@@ -729,6 +733,9 @@ calendar_months_page :: proc(
 	o: Calendar_Options,
 	state: Interaction,
 ) {
+	if state == .Live {
+		months_keys(gtx, cal, o)
+	}
 	w := calendar_width(o)
 	nav := button_metrics(.Small).height
 	sz := ui.sized_open(
@@ -759,6 +766,7 @@ calendar_months_page :: proc(
 			key = u64(ui.id_mix(id, 53)),
 		) {
 			cal.year -= 1
+			cal.month = nearest_month_in(cal.year, cal.month, o)
 		}
 		ui.flexible(gtx, 1)
 		{
@@ -783,6 +791,7 @@ calendar_months_page :: proc(
 			key = u64(ui.id_mix(id, 55)),
 		) {
 			cal.year += 1
+			cal.month = nearest_month_in(cal.year, cal.month, o)
 		}
 	}
 	for r in 0 ..< 4 {
@@ -795,14 +804,100 @@ calendar_months_page :: proc(
 				cursor_into_view(cal, o)
 				cal.page, cal.refocus = .Days, true
 			}
+			cal.months[m - 1] = ui.last_widget(gtx).id
 		}
 		ui.close(&line)
 	}
+	if cal.refocus && cal.page == .Months {
+		ui.focus_request(gtx, cal.months[cal.month - 1])
+		cal.refocus = false
+	}
+}
+
+// months_keys moves the months page's cursor by the keys its month
+// heard: Left and Right a month, Up and Down a row of three, Home and
+// End to its row's ends, PageUp and PageDown a year, each across years;
+// a move onto a month with no day inside the bounds stays put. Focus
+// follows the cursor, and the page's year follows it.
+@(private)
+months_keys :: proc(gtx: ^ui.Ctx, cal: ^Calendar, o: Calendar_Options) {
+	at := Date{cal.year, cal.month, 1}
+	for e in ui.events(gtx, cal.months[cal.month - 1]) {
+		if e.kind != .Key {
+			continue
+		}
+		if t, ok := month_step(at, e.key, o); ok {
+			at = t
+		}
+	}
+	if at != {cal.year, cal.month, 1} {
+		cal.year, cal.month, cal.refocus = at.year, at.month, true
+	}
+}
+
+// month_step is the month m (its first day) moved by key on the months
+// page's three-column grid; false when key moves nothing or the month it
+// lands on has no day inside o's bounds.
+month_step :: proc(m: Date, key: ui.Key, o: Calendar_Options) -> (Date, bool) {
+	col := (m.month - 1) %% 3
+	n: int
+	#partial switch key {
+	case .Left:
+		n = -1
+	case .Right:
+		n = 1
+	case .Up:
+		n = -3
+	case .Down:
+		n = 3
+	case .Home:
+		n = -col
+	case .End:
+		n = 2 - col
+	case .Page_Up:
+		n = -12
+	case .Page_Down:
+		n = 12
+	case:
+		return m, false
+	}
+	t := date_add_months(m, n)
+	if !month_in(t, o) {
+		return m, false
+	}
+	return t, true
+}
+
+// month_in reports whether some day of the month m starts lies inside
+// o's bounds.
+month_in :: proc(m: Date, o: Calendar_Options) -> bool {
+	last := Date{m.year, m.month, days_in_month(m.year, m.month)}
+	return(
+		!(o.min_date != {} && date_less(last, o.min_date)) &&
+		!(o.max_date != {} && date_less(o.max_date, Date{m.year, m.month, 1})) \
+	)
+}
+
+// nearest_month_in is month m of year, or the nearest month of year with
+// a day inside o's bounds, for the months page's cursor as its year
+// changes.
+@(private)
+nearest_month_in :: proc(year, m: int, o: Calendar_Options) -> int {
+	for step in 0 ..< 12 {
+		for dir in ([2]int{1, -1}) {
+			c := m + dir * step
+			if c >= 1 && c <= 12 && month_in({year, c, 1}, o) {
+				return c
+			}
+		}
+	}
+	return m
 }
 
 // month_button is month m of cal's year on the months page, as a block
 // button: default for the month shown, invisible for the rest, disabled
-// when no day of it can be picked within the bounds.
+// when no day of it can be picked within the bounds; only the cursor's
+// month is a Tab stop.
 @(private)
 month_button :: proc(
 	gtx: ^ui.Ctx,
@@ -812,11 +907,8 @@ month_button :: proc(
 	o: Calendar_Options,
 	state: Interaction,
 ) -> bool {
-	first := Date{cal.year, m, 1}
-	last := Date{cal.year, m, days_in_month(cal.year, m)}
 	st := state
-	if (o.min_date != {} && date_less(last, o.min_date)) ||
-	   (o.max_date != {} && date_less(o.max_date, first)) {
+	if !month_in({cal.year, m, 1}, o) {
 		st = .Disabled
 	}
 	shown := cal.view.year == cal.year && cal.view.month == m
@@ -828,6 +920,7 @@ month_button :: proc(
 		.Medium,
 		block = true,
 		name = timefmt.MONTHS[m - 1],
+		tab_stop = m == cal.month,
 		state = st,
 		key = u64(ui.id_mix(id, u64(0x700 + m))),
 	)
