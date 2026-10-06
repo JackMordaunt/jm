@@ -878,6 +878,17 @@ enqueue_global :: proc(n: ^Node, locked := false) {
 	if !locked {
 		sync.mutex_lock(&p.mutex)
 	}
+	// schedule can see a node unfinished, lose the processor while the node
+	// runs its last time, then claim it once it is Idle and done. Queued, a
+	// finished pinned node would hold the pool back from quiescence for ever,
+	// since its owner stops draining once every node is done.
+	if sync.atomic_load(&n.done) {
+		sync.atomic_store(&n.sched, Sched.Idle)
+		if !locked {
+			sync.mutex_unlock(&p.mutex)
+		}
+		return
+	}
 	first_pinned := false
 	if n.pinned {
 		first_pinned = queue.len(p.pinned) == 0
@@ -898,17 +909,20 @@ enqueue_global :: proc(n: ^Node, locked := false) {
 }
 
 // Queue every source, so `step` has something to run. Any thread may call
-// it, and run, step and drain_pinned each do, so a pool and a pinned
-// thread can arrive together: the exchange lets exactly one of them queue
-// the sources. A caller that loses returns before they are queued, which
-// is safe: a node runs only once it is scheduled.
+// it, and run and drain_pinned each do, so a pool and a pinned thread can
+// arrive together: exactly one of them queues the sources. Both the claim and
+// the queueing happen under `p.mutex`, so a caller that loses waits until the
+// sources are queued. Were it to return earlier, run's pool could find
+// nothing ready and nothing running, and stop before a source had run.
 start :: proc(p: ^Pipeline) {
-	if sync.atomic_exchange(&p.started, true) {
+	sync.mutex_guard(&p.mutex)
+	if sync.atomic_load(&p.started) {
 		return
 	}
+	sync.atomic_store(&p.started, true)
 	for n in p.nodes {
 		if len(n.ins) == 0 {
-			schedule(n)
+			schedule(n, locked = true)
 		}
 	}
 }
