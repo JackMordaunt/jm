@@ -6,8 +6,7 @@ import "core:strings"
 import "core:testing"
 
 // Column widths and placement, row heights, the selection and delimited
-// text on worked examples: the property suites in fuzz/ cover them at
-// random.
+// text on worked examples.
 
 @(test)
 test_widths_grow_to_fill_and_shrink_to_fit :: proc(t: ^testing.T) {

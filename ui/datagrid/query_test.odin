@@ -1,0 +1,280 @@
+package datagrid
+
+import "core:slice"
+import "core:strings"
+import "core:testing"
+
+// The query (natural order, dates, filters, sorts, groups), saved views
+// and the page cache on worked examples.
+
+@(private = "file")
+Table :: struct {
+	rows: [][]string,
+}
+
+@(private = "file")
+table_source :: proc(t: ^Table) -> Source {
+	return {
+		user = t,
+		rows = len(t.rows),
+		text = proc(user: rawptr, row, col: int) -> string {
+			return (^Table)(user).rows[row][col]
+		},
+	}
+}
+
+@(private = "file")
+COLS := []Column {
+	{id = "name", title = "Name"},
+	{id = "site", title = "Site", filter = .Set},
+	{id = "hash", title = "Hashrate", kind = .Number, filter = .Range},
+	{id = "made", title = "Created", kind = .Date},
+}
+
+@(private = "file")
+ROWS := [][]string {
+	{"rig10", "Norway", "200", "2026-01-05"},
+	{"rig2", "Paraguay", "95.5", "2025-12-31"},
+	{"Rig1", "Norway", "", "2026-03-01T10:00:00Z"},
+	{"rig3", "Ethiopia", "1,250", "bad"},
+	{"rig2", "Norway", "95.5", "2026-01-05"},
+}
+
+@(test)
+test_compare_natural_reads_digit_runs_by_value_and_letters_without_case :: proc(t: ^testing.T) {
+	testing.expect(t, compare_natural("rig2", "rig10") < 0)
+	testing.expect(t, compare_natural("Rig1", "rig2") < 0)
+	testing.expect(t, compare_natural("a", "") < 0) // blanks last
+	testing.expect(t, compare_natural("item007", "item7") != 0) // total: leading zeros differ by bytes
+	testing.expect_value(t, compare_natural("same", "same"), 0)
+	testing.expect(t, compare_natural("ABC", "abc") != 0)
+	testing.expect_value(t, compare_natural("ABC", "abc"), -compare_natural("abc", "ABC"))
+	testing.expect(t, compare_natural("x99999999999999999999999", "x100000000000000000000000") < 0) // past u64
+}
+
+@(test)
+test_parse_date_reads_iso_dates_with_and_without_a_time :: proc(t: ^testing.T) {
+	d, ok := parse_date("1970-01-02")
+	testing.expect(t, ok)
+	testing.expect_value(t, d, 86400)
+	d, ok = parse_date("2026-03-01T10:00:30Z")
+	testing.expect(t, ok)
+	testing.expect_value(t, d, 1772359230)
+	_, ok = parse_date("2026-13-01")
+	testing.expect(t, !ok)
+	n, nok := parse_value(.Number, "1,250.5 TH/s")
+	testing.expect(t, nok)
+	testing.expect_value(t, n, 1250.5)
+}
+
+@(test)
+test_order_filters_searches_sorts_and_groups :: proc(t: ^testing.T) {
+	tb := Table{ROWS}
+	src := table_source(&tb)
+	v: View
+	view_init(&v, COLS, context.temp_allocator)
+	visible := make([dynamic]int, context.temp_allocator)
+	o: Order
+	defer order_destroy(&o)
+
+	view_sort_cycle(&v, 0, false)
+	order_build(&o, src, view_query(&v, COLS, &visible))
+	testing.expect(t, slice.equal(o.rows[:], []int{2, 1, 4, 3, 0})) // Rig1 rig2 rig2 rig3 rig10, ties stable
+
+	view_sort_cycle(&v, 2, false) // by hashrate: the blank one last
+	order_build(&o, src, view_query(&v, COLS, &visible))
+	testing.expect(t, slice.equal(o.rows[:], []int{1, 4, 0, 3, 2}))
+	view_sort_cycle(&v, 2, false)
+	order_build(&o, src, view_query(&v, COLS, &visible))
+	testing.expect(t, slice.equal(o.rows[:], []int{3, 0, 1, 4, 2}), "descending, blanks still last")
+
+	view_set_values(&v, 1, {"Norway", "Paraguay", "Norway"})
+	testing.expect_value(t, len(find_filter(&v, 1).values), 2)
+	view_set_range(&v, 2, 90, true, 150, true)
+	order_build(&o, src, view_query(&v, COLS, &visible))
+	testing.expect(t, slice.equal(o.rows[:], []int{1, 4}))
+	view_set_search(&v, "PARA")
+	order_build(&o, src, view_query(&v, COLS, &visible))
+	testing.expect(t, slice.equal(o.rows[:], []int{1}))
+
+	view_clear_filters(&v)
+	clear(&v.sort)
+	v.group = 1
+	order_build(&o, src, view_query(&v, COLS, &visible))
+	testing.expect_value(t, len(o.groups), 3)
+	testing.expect_value(t, group_name(&o, o.groups[1]), "Norway")
+	testing.expect_value(t, o.groups[1].count, 3)
+	testing.expect(t, slice.equal(o.items[:], []int{-1, 3, -2, 0, 2, 4, -3, 1}))
+	shut := make(map[string]bool, context.temp_allocator)
+	shut["Norway"] = true
+	order_build(&o, src, view_query(&v, COLS, &visible), shut)
+	testing.expect(t, slice.equal(o.items[:], []int{-1, 3, -2, -3, 1}))
+	free_all(context.temp_allocator)
+}
+
+@(test)
+test_distinct_values_count_under_the_other_filters :: proc(t: ^testing.T) {
+	tb := Table{ROWS}
+	src := table_source(&tb)
+	v: View
+	view_init(&v, COLS, context.temp_allocator)
+	visible := make([dynamic]int, context.temp_allocator)
+	view_set_values(&v, 1, {"Norway"}) // its own filter does not narrow its values
+	view_set_range(&v, 2, 100, true, 0, false)
+	vals := distinct_values(src, view_query(&v, COLS, &visible), 1, context.temp_allocator)
+	testing.expect_value(t, len(vals), 2)
+	testing.expect_value(t, vals[0], Value_Count{"Ethiopia", 1})
+	testing.expect_value(t, vals[1], Value_Count{"Norway", 1})
+	free_all(context.temp_allocator)
+}
+
+@(test)
+test_sort_cycles_and_shift_builds_a_multi_sort :: proc(t: ^testing.T) {
+	v: View
+	view_init(&v, COLS, context.temp_allocator)
+	view_sort_cycle(&v, 0, false)
+	testing.expect(t, slice.equal(v.sort[:], []Sort_Key{{0, false}}))
+	view_sort_cycle(&v, 1, true)
+	view_sort_cycle(&v, 1, true)
+	testing.expect(t, slice.equal(v.sort[:], []Sort_Key{{0, false}, {1, true}}))
+	view_sort_cycle(&v, 1, true)
+	testing.expect(t, slice.equal(v.sort[:], []Sort_Key{{0, false}}))
+	view_sort_cycle(&v, 2, false) // a plain click replaces
+	testing.expect(t, slice.equal(v.sort[:], []Sort_Key{{2, false}}))
+	view_sort_cycle(&v, 2, false)
+	view_sort_cycle(&v, 2, false)
+	testing.expect_value(t, len(v.sort), 0)
+	free_all(context.temp_allocator)
+}
+
+@(test)
+test_a_view_round_trips_and_survives_a_dropped_column :: proc(t: ^testing.T) {
+	v: View
+	view_init(&v, COLS, context.temp_allocator)
+	move_column(v.order[:], 3, 0)
+	v.cols[0].width = 180
+	v.cols[1].hidden = true
+	v.cols[2].pin = .Left
+	view_sort_cycle(&v, 2, false)
+	view_sort_cycle(&v, 0, true)
+	view_set_values(&v, 1, {"Norway", "say \"hi\"\n"})
+	view_set_range(&v, 2, 10.5, true, 0, false)
+	view_set_search(&v, "rig\t2")
+	v.group = 1
+	b := strings.builder_make(context.temp_allocator)
+	view_encode(&b, &v, COLS, "Ops \"view\"")
+
+	w: View
+	view_init(&w, COLS, context.temp_allocator)
+	name, ok := view_decode(&w, COLS, strings.to_string(b), context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect_value(t, name, "Ops \"view\"")
+	testing.expect(t, slice.equal(w.order[:], v.order[:]))
+	testing.expect(t, slice.equal(w.cols[:], v.cols[:]))
+	testing.expect(t, slice.equal(w.sort[:], v.sort[:]))
+	testing.expect(t, slice.equal(find_filter(&w, 1).values[:], find_filter(&v, 1).values[:]))
+	testing.expect_value(t, find_filter(&w, 2).lo, 10.5)
+	testing.expect(t, !find_filter(&w, 2).has_hi)
+	testing.expect_value(t, w.search, "rig\t2")
+	testing.expect_value(t, w.group, 1)
+
+	// The next build dropped "site" and added "owner".
+	drift := []Column{COLS[0], {id = "owner", title = "Owner", hidden = true}, COLS[2], COLS[3]}
+	d: View
+	view_init(&d, drift, context.temp_allocator)
+	_, ok = view_decode(&d, drift, strings.to_string(b), context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect(t, slice.equal(d.order[:], []int{3, 0, 2, 1}), "the new column goes last")
+	testing.expect(t, d.cols[1].hidden, "and keeps its declared state")
+	testing.expect_value(t, len(d.filters), 1) // site's filter went with it
+	testing.expect_value(t, d.group, -1)
+	testing.expect_value(t, d.cols[0].width, 180)
+
+	_, ok = view_decode(&d, drift, "not a view")
+	testing.expect(t, !ok)
+	free_all(context.temp_allocator)
+}
+
+@(private = "file")
+page_of :: proc(index, size, total: int, query: u64) -> Page {
+	rows := make([dynamic]Page_Row, context.temp_allocator)
+	for i in index * size ..< min((index + 1) * size, total) {
+		cells := make([]string, 1, context.temp_allocator)
+		cells[0] = strings.clone(itoa(i), context.temp_allocator)
+		append(&rows, Page_Row{key = cells[0], cells = cells})
+	}
+	return {rows = rows[:]}
+}
+
+@(private = "file")
+itoa :: proc(i: int) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_int(&b, i)
+	return strings.to_string(b)
+}
+
+@(test)
+test_pages_grow_an_unknown_count_until_a_short_page :: proc(t: ^testing.T) {
+	p: Pages
+	pages_init(&p, {page_size = 10, margin = 1, capacity = 4})
+	defer pages_destroy(&p)
+	pages_query(&p, 1)
+	lo, hi := pages_window(&p, 0, 5)
+	testing.expect_value(t, [2]int{lo, hi}, [2]int{0, 1}) // one page of skeleton is all there can be yet
+	pages_want(&p, lo, hi, nil)
+	_, st, _ := pages_row(&p, 3)
+	testing.expect_value(t, st, Row_State.Loading)
+	pg := page_of(0, 10, 25, 1)
+	testing.expect(t, pages_arrive(&p, 1, 0, &pg, 1))
+	testing.expect_value(t, p.count, 20) // a page past the full one
+	testing.expect_value(t, p.kind, Count_Kind.Unknown)
+	row, st2, _ := pages_row(&p, 3)
+	testing.expect_value(t, st2, Row_State.Ready)
+	testing.expect_value(t, row.key, "3")
+	other := page_of(0, 10, 25, 2)
+	testing.expect(t, !pages_arrive(&p, 2, 0, &other, 1), "another query's page is refused")
+
+	lo, hi = pages_window(&p, 10, 15)
+	testing.expect_value(t, [2]int{lo, hi}, [2]int{0, 2})
+	pages_want(&p, lo, hi, {0})
+	testing.expect_value(t, pages_find(&p, 1, 1).after.key, "9") // keyset: the row before
+	pg1 := page_of(1, 10, 25, 1)
+	pages_arrive(&p, 1, 1, &pg1, 1)
+	pg2 := page_of(2, 10, 25, 1)
+	pages_arrive(&p, 1, 2, &pg2, 1)
+	testing.expect_value(t, p.count, 25)
+	testing.expect_value(t, p.kind, Count_Kind.Exact)
+	_, st3, _ := pages_row(&p, 25)
+	testing.expect_value(t, st3, Row_State.Missing)
+	free_all(context.temp_allocator)
+}
+
+@(test)
+test_pages_keep_stale_stand_ins_until_the_new_query_arrives :: proc(t: ^testing.T) {
+	p: Pages
+	pages_init(&p, {page_size = 10, keep_stale = true, capacity = 2})
+	defer pages_destroy(&p)
+	pages_query(&p, 1)
+	pages_want(&p, 0, 1, nil)
+	pg := page_of(0, 10, 100, 1)
+	pages_arrive(&p, 1, 0, &pg, 1)
+	pages_query(&p, 2)
+	row, st, _ := pages_row(&p, 4)
+	testing.expect_value(t, st, Row_State.Stale)
+	testing.expect_value(t, row.key, "4")
+	pages_want(&p, 0, 1, nil)
+	pg2 := page_of(0, 10, 100, 2)
+	pages_arrive(&p, 2, 0, &pg2, 1)
+	pages_evict(&p, 0, 1)
+	testing.expect_value(t, len(p.entries), 1) // the stand-in goes once its page has come
+	_, st2, _ := pages_row(&p, 4)
+	testing.expect_value(t, st2, Row_State.Ready)
+	// Eviction keeps the window and drops the farthest.
+	for i in 1 ..< 6 {
+		pages_want(&p, i, i + 1, nil)
+	}
+	pages_evict(&p, 5, 6)
+	testing.expect_value(t, len(p.entries), 2)
+	testing.expect(t, pages_find(&p, 2, 5) != nil && pages_find(&p, 2, 4) != nil)
+	free_all(context.temp_allocator)
+}
