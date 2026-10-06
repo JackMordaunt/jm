@@ -717,9 +717,24 @@ toolbar_search :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 }
 
 // toolbar_counts says how many rows match, about how many while a paged
-// count is an estimate, and how many are selected; then the notice.
+// count is an estimate, Loading… before a paged query has any answer, and how many are selected; then the notice.
 @(private)
 toolbar_counts :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
+	if g.src.paged != nil && !datagrid.pages_known(&g.grid.pages) {
+		// No page of this query yet: no number to give. Say it is coming,
+		// or nothing when the first page failed (its rows say why).
+		if datagrid.pages_loading(&g.grid.pages) {
+			layout_text(
+				gtx,
+				"Loading…",
+				style(.Body_Small),
+				color(.Fg_Color_Muted),
+				.Status,
+				key = 4,
+			)
+		}
+		return
+	}
 	n, about := grid_rows(g)
 	text := fmt.aprintf(
 		"%s%s %s",

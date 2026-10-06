@@ -403,3 +403,32 @@ test_a_steady_paged_frame_allocates_nothing :: proc(t: ^testing.T) {
 	expect_no_allocations(t, &spy, &spy_t)
 	testing.expect(t, ui.probe_tagged(&p, "SN-00000"), "the rows are in")
 }
+
+// The count says nothing of a query until a page of it lands: before the
+// first answer it is only room for a page of skeletons, and after a new
+// sort it is the last query's.
+@(test)
+test_the_count_is_known_only_once_a_page_of_the_query_lands :: proc(t: ^testing.T) {
+	m := pager_make(30, {source = "rigs", page_size = 10, keep_stale = true})
+	defer pager_free(m)
+	p: ui.Probe
+	ui.probe_init(&p, pager_view, m, {600, 400})
+	defer ui.probe_destroy(&p)
+	testing.expect(t, !pages_known(&m.g.pages), "known before any page")
+	testing.expect(t, pages_loading(&m.g.pages))
+	for _ in 0 ..< 6 {
+		serve(&p, m) // a full page reaches for the next until the end shows
+	}
+	testing.expect(t, pages_known(&m.g.pages))
+	testing.expect(t, !pages_loading(&m.g.pages))
+	append(&m.g.view.sort, Sort_Key{col = 0, desc = true})
+	ui.probe_frame(&p)
+	testing.expect(t, !pages_known(&m.g.pages), "the last query's count stood for the new one")
+	serve(&p, m)
+	serve(&p, m)
+	testing.expect(t, pages_known(&m.g.pages))
+	est: Pages
+	pages_init(&est, {page_size = 10, estimate = 500})
+	defer pages_destroy(&est)
+	testing.expect(t, pages_known(&est), "a caller's estimate is known")
+}

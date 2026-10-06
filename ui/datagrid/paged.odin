@@ -244,6 +244,30 @@ pages_query :: proc(p: ^Pages, query: u64) -> bool {
 	return true
 }
 
+// pages_known reports whether the count says anything of the current
+// query: a page of it has arrived, or the caller's estimate stands. Until
+// then the count is only room for a page of skeletons (or the last
+// query's), and a caller must not show it as the rows' number.
+pages_known :: proc(p: ^Pages) -> bool {
+	for e in p.entries {
+		if page_held(p, e) {
+			return true
+		}
+	}
+	return p.estimate > 0 && p.kind == .Estimated && p.count == p.estimate
+}
+
+// pages_loading reports whether a page of the current query in the
+// window is still on its way.
+pages_loading :: proc(p: ^Pages) -> bool {
+	for i in p.wanted[0] ..< p.wanted[1] {
+		if e := pages_find(p, p.query, i); e == nil || e.state == .Loading {
+			return true
+		}
+	}
+	return false
+}
+
 // pages_find is page index of query, nil when it is not cached.
 pages_find :: proc(p: ^Pages, query: u64, index: int) -> ^Cached_Page {
 	for &e in p.entries {
