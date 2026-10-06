@@ -560,14 +560,15 @@ libgit2: _worktree-libs
 # sqlgen: tools/jm-sqlgen, typed Odin from a package's schema.sql and
 # queries.sql. Arguments pass straight through: `just sqlgen examples/x/store`
 # writes the generated files, `just sqlgen -check examples/x/store` fails
-# when they are out of date.
+# when they are out of date. It links libpq for PostgreSQL, so SKIP leaves it out
+# where jm:pq cannot link, as it does jm-fuzz.
 # ============================================================================
 
 # Generate the typed queries of each package directory named
 [group('sqlgen')]
-sqlgen +args: sqlite
+sqlgen +args: sqlite pg_query
     mkdir -p build/debug
-    {{odin}} build tools/jm-sqlgen -debug {{flags}} -out:build/debug/jm-sqlgen{{exe}}
+    {{odin}} build tools/jm-sqlgen -debug {{flags}} {{link}} -out:build/debug/jm-sqlgen{{exe}}
     build/debug/jm-sqlgen{{exe}} {{args}}
 
 # ============================================================================

@@ -329,7 +329,6 @@ the_files_must_agree_on_a_known_engine :: proc(t: ^testing.T) {
 		{"CREATE TABLE a(x INTEGER) STRICT;", "-- engine: sqlite\n", "first line must say"},
 		{"-- engine: sqlite\n", "-- engine: mysql\n", "unknown engine"},
 		{"-- engine: sqlite\n", "-- engine: postgres\n", "schema.sql is for sqlite"},
-		{"-- engine: postgres\n", "-- engine: postgres\n", "does not generate for postgres yet"},
 		{
 			"-- engine: sqlite\nCREATE TABLE a(x INTEGER);",
 			"-- engine: sqlite\n",

@@ -101,7 +101,7 @@ The property fuzzer, its per-package suites, and the debug allocator.
 |------|-----|
 | `tools/odin-run` | the runner: see [Writing scripts](scripts.md#runner) |
 | `tools/mkpatch` | makes the compressed asset and the patches `jm:selfupdate` looks for, in a release's CI |
-| `tools/jm-sqlgen` | typed Odin procs and row structs from a package's `schema.sql` and `queries.sql`, typed by SQLite itself: see [SQLite](sqlite.md#typed-queries) |
+| `tools/jm-sqlgen` | typed Odin procs and row structs from a package's `schema.sql` and `queries.sql`, typed by the engine itself, SQLite or PostgreSQL: see [SQLite](sqlite.md#typed-queries) and [PostgreSQL](postgres.md#typed-queries) |
 
 ## See also
 

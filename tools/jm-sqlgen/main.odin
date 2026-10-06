@@ -1,7 +1,8 @@
 /*
 jm-sqlgen turns a package's SQL into typed Odin: a row struct and a proc for
 each query, which take the query's parameters by name and type and read each
-column as the type it holds.
+column as the type it holds. It generates for SQLite, over jm:sqlite3, and
+for PostgreSQL, over jm:pq.
 
 	jm-sqlgen examples/todo/store          write the package's generated files
 	jm-sqlgen -check examples/todo/store   exit 1 if they are out of date
@@ -16,13 +17,13 @@ queries.sql names each query and says what it returns:
 	-- params: id: i64
 	SELECT done AS "done: bool" FROM todo WHERE id = @id;
 
-Both open with an `-- engine:` line. A query is tagged :one (the first row,
-and an error on a second), :many (a cursor over the rows), :exec, :rows (how
-many rows it changed) or :last_id (the rowid an INSERT assigned). Comment
-lines under the name line become the proc's doc comment. Parameters are
-@name, and the `-- params:` line types each one: i64, f64, bool, string,
-[]byte, or Maybe(T) for one that may be NULL. The proc takes them in that
-order.
+Both open with an `-- engine:` line, sqlite or postgres. A query is tagged
+:one (the first row, and an error on a second), :many (a cursor over the
+rows), :exec, :rows (how many rows it changed) or :last_id (the rowid an
+INSERT assigned, SQLite only). Comment lines under the name line become the
+proc's doc comment. Parameters are @name. The `-- params:` line types each
+one: i16, i32, i64, f32, f64, bool, string, []byte, or Maybe(T) for one that
+may be NULL. The proc takes them in that order.
 
 A :many query `todos` is read three ways. todos_open, todos_next and
 todos_close are the cursor. todos is the cursor as a guard, closed at the
@@ -35,19 +36,37 @@ caller's allocator, which todos_free frees.
 	}
 	if rows.err != nil { ... }
 
-The engine types the columns. jm-sqlgen runs the schema in a scratch SQLite
-database and prepares each query against it, so a misspelt column or table is
-an error here rather than at run time. A column that reads a table column
-directly takes that column's declared type, and is Maybe unless the column is
-NOT NULL and nothing in the statement can produce a NULL: an outer join, an
-aggregate or a subquery makes it Maybe. Every table must be STRICT, since
-only a STRICT table holds to its declared types.
+The engine types the columns: jm-sqlgen runs the schema and prepares each
+query against it, so a misspelt column or table is an error here rather than
+at run time. A column that reads a table column directly takes that column's
+type, and is Maybe unless the column is NOT NULL and nothing in the statement
+can produce a NULL. A column alias annotates a column, `count(*) AS "n: i64"`,
+which can type what the engine does not and claim NOT NULL where it cannot
+tell. An annotation is a claim, not a fact; the generated test checks it.
 
-An expression has no declared type, nor does a column of a compound SELECT,
-which SQLite types from its first arm alone. Such a column is annotated in its
-alias, `count(*) AS "n: i64"`, and the annotation can also narrow a column the
-schema types, such as INTEGER to bool. An annotation is a claim, not a fact;
-the generated test checks it.
+SQLite. The schema runs in a scratch in-memory database. Every table must be
+STRICT, since only a STRICT table holds to its declared types. SQLite types
+no parameter, so each needs the -- params: line, and it stores only 64-bit
+integers and floats, so i16, i32 and f32 are refused. NOT NULL is trusted
+only when every opcode of the statement's bytecode is an ordinary one; an
+outer join makes its far side Maybe, and an aggregate or a subquery makes
+every column Maybe. An expression, and a column of a compound SELECT, which
+SQLite types from its first arm alone, must be annotated.
+
+PostgreSQL. The schema runs on a throwaway server from jm:pq/testdb, which
+needs initdb and pg_ctl on PATH, inside a transaction that is rolled back.
+@name is rewritten to $n where PostgreSQL's grammar reads the prefix
+operator @ hard against a name, so a @ in a string, a comment or a
+dollar-quoted body is left alone; write @ x, with a space, for the absolute
+value. The server types every parameter, so the -- params: line is optional:
+it fixes the order and can let a parameter be NULL. The server types every
+column too, expressions included, with int2, int4, float4 as i16, i32 and
+f32, and numeric, uuid, json, the date and time types and enums as their
+text. An array or a composite must be cast, as ::text. The server's NOT NULL
+is narrowed by the parse tree: the far side of an outer join, a CTE on that
+side, and GROUPING SETS, ROLLUP and CUBE make a column Maybe. PostgreSQL has
+no last insert id: write RETURNING id and tag the query :one. The generated
+test skips, with a warning, where there is no server.
 
 Two files come out, beside the SQL:
 
@@ -62,15 +81,14 @@ Two files come out, beside the SQL:
 check(db) prepares every query against a live database and fails if one has
 changed shape, so a database that drifted from schema.sql fails when it is
 opened.
-
-Postgres is the other engine the files can name; jm-sqlgen does not
-generate for it yet.
 */
 package main
 
 import "core:fmt"
 import "core:os"
 import "core:strings"
+
+import "jm:pq"
 
 USAGE :: `usage: jm-sqlgen [-check] <package dir>...
 
@@ -179,7 +197,7 @@ generate :: proc(pkg, schema, queries: string) -> (files: []File, problems: []st
 	case .Sqlite:
 		files = generate_sqlite(pkg, schema, queries, qs, &p)
 	case .Postgres:
-		problem(&p, QUERIES_FILE, 0, "jm-sqlgen does not generate for postgres yet")
+		files = generate_postgres(pkg, schema, queries, qs, &p)
 	}
 	if len(p.list) > 0 {
 		return nil, p.list[:]
@@ -246,4 +264,31 @@ package_clause :: proc(text: string) -> (string, bool) {
 		}
 	}
 	return "", false
+}
+
+@(private = "file")
+generate_postgres :: proc(pkg, schema, queries_text: string, qs: []Query, p: ^Problems) -> []File {
+	pg, ok := describe_all_postgres(schema, qs, p)
+	if !ok {
+		return nil
+	}
+	defer pg_close(&pg)
+	tables := pg_seed_tables(&pg, p)
+	// The data sets each run in a transaction of their own.
+	if _, err := pq.exec(pg.conn, "ROLLBACK"); err != nil {
+		problem(p, SCHEMA_FILE, 0, "ending the describe: %s", pg_text(err))
+		return nil
+	}
+	seeding := Pg_Seeding {
+		pg     = &pg,
+		schema = schema,
+	}
+	sets := build_data_sets(tables, pg_seeder(&seeding), p)
+	if len(p.list) > 0 {
+		return nil
+	}
+	files := make([]File, 2)
+	files[0] = File{CODE_FILE, emit_code(POSTGRES, pkg, qs, schema, queries_text)}
+	files[1] = File{TEST_FILE, emit_test(POSTGRES_TEST, pkg, qs, sets)}
+	return files
 }
