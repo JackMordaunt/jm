@@ -473,7 +473,12 @@ paint_button_content :: proc(gtx: ^ui.Ctx, c: Control, bp: Button_Paint, x0: f32
 		x += csz.x + bp.mt.gap
 	}
 	if bp.bc.action != .None {
-		ax := x0 + content_width(bp.bc, bp.mt.gap) + bp.mt.gap
+		// ButtonContent grows to fill the button (flex: 1 0 auto,
+		// ButtonBase.module.css:144-145), so the action sits at the end,
+		// pulled 4px into the padding (181-183), whatever the content's
+		// alignment or the button's width.
+		pad_end := bp.pad_end if bp.pad_end > 0 else bp.pad
+		ax := bp.area.x + bp.area.w - pad_end - BUTTON_ICON + tok.BASE_SIZE_4
 		paint_visual(gtx, bp.bc.action, {ax, icon_y}, visual, spin_on == .Action)
 	}
 }

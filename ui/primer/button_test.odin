@@ -1,5 +1,6 @@
 package primer
 
+import "core:fmt"
 import "core:strings"
 import "core:testing"
 import "jm:ui"
@@ -320,4 +321,22 @@ test_an_icon_buttons_shortcut_is_said_with_its_name_and_shown_in_its_tooltip :: 
 	caps := layout_hint(&gtx, "Mod+B", .Condensed, .On_Emphasis, .Small)
 	wide := 2 * tok.OVERLAY_PADDING_CONDENSED + name.width + tok.BASE_SIZE_6 + caps.size.x
 	testing.expectf(t, abs(bubble - wide) < 0.5, "tooltip %v wide, want %v", bubble, wide)
+}
+
+// A block button's trailing action sits at its end, not after its label:
+// the probe's 400px window holds the button.
+@(test)
+test_a_block_buttons_action_sits_at_its_end :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		button(gtx, "Menu", block = true, align = .Start, action = .Triangle_Down)
+	}
+	p: ui.Probe
+	ui.probe_init(&p, view, nil, {400, 100}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	context.allocator = context.temp_allocator
+	x := 400 - button_metrics(.Medium).pad - BUTTON_ICON + tok.BASE_SIZE_4
+	dump := ui.probe_dump(&p)
+	want := fmt.tprintf("transform 1 0 0 1 %v ", x)
+	testing.expectf(t, strings.contains(dump, want), "want x %v in\n%s", x, dump)
 }
