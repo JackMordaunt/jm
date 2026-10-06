@@ -243,6 +243,38 @@ test_a_failed_page_shows_its_error_and_retries_on_a_click :: proc(t: ^testing.T)
 	testing.expect(t, ui.probe_tagged(&p, "SN-00000"))
 }
 
+// failed_slots counts the skin's calls for failed rows in a frame.
+@(private = "file")
+failed_slots: int
+
+// A skin that draws a failed page's rows itself gets a slot for each row:
+// a page of many failed rows once claimed one id for all of them.
+@(test)
+test_a_skin_draws_every_row_of_a_failed_page :: proc(t: ^testing.T) {
+	m := pager_make(30, {source = "rigs", page_size = 50})
+	defer pager_free(m)
+	m.skin.failed = proc(gtx: ^ui.Ctx, size: ops.Size, err: string, user: rawptr) -> bool {
+		failed_slots += 1
+		p := ui.widget_open(gtx)
+		ops.tag(gtx.scene, p.id, "failed slot")
+		ui.widget_close(gtx, &p, {size = size})
+		return true
+	}
+	p: ui.Probe
+	ui.probe_init(&p, pager_view, m, {600, 400})
+	defer ui.probe_destroy(&p)
+	m.fail = true
+	serve(&p, m)
+	serve(&p, m)
+	_, st, _ := pages_row(&m.g.pages, 3)
+	testing.expect_value(t, st, Row_State.Failed)
+	failed_slots = 0
+	ui.probe_frame(&p)
+	// Every row in view is failed, each drawn once by the skin.
+	testing.expect_value(t, failed_slots, m.g.geo.last - m.g.geo.first)
+	testing.expect(t, failed_slots > 1)
+}
+
 @(test)
 test_select_all_loaded_names_rows_and_all_matching_names_the_query :: proc(t: ^testing.T) {
 	m := pager_make(500, {source = "rigs", page_size = 20, margin = 1})
