@@ -17,7 +17,10 @@ new_york :: proc() -> Zone {
 		{time = 4102444800, utc_offset = -18000, shortname = "EST"},
 	}
 	@(static) region: datetime.TZ_Region
-	region = {name = "America/New_York", records = records[:]}
+	region = {
+		name    = "America/New_York",
+		records = records[:],
+	}
 	return {region = &region}
 }
 
@@ -67,7 +70,14 @@ test_days_start_at_local_midnight_across_spring_forward :: proc(t: ^testing.T) {
 	testing.expect_value(t, tk.n, 8)
 	for v, i in ticks_of(&tk) {
 		c := civil_from_wall(wall_of(z, i64(v)))
-		testing.expectf(t, c.hour == 0 && c.minute == 0, "tick %d is at %02d:%02d, not midnight", i, c.hour, c.minute)
+		testing.expectf(
+			t,
+			c.hour == 0 && c.minute == 0,
+			"tick %d is at %02d:%02d, not midnight",
+			i,
+			c.hour,
+			c.minute,
+		)
 		if i > 0 {
 			gap := i64(v - tk.v[i - 1])
 			// The day clocks go forward is an hour short.
@@ -145,13 +155,21 @@ test_weeks_start_on_monday :: proc(t: ^testing.T) {
 
 @(test)
 test_a_zone_off_the_hour_ticks_its_own_half_hours :: proc(t: ^testing.T) {
-	nepal := Zone{offset = 5 * HOUR + 45 * 60}
+	nepal := Zone {
+		offset = 5 * HOUR + 45 * 60,
+	}
 	lo := f64(days_from_civil(2026, 6, 1) * DAY)
 	tk := time_ticks(lo, lo + 4 * HOUR, 9, nepal)
 	testing.expect_value(t, tk.unit, Time_Step{.Minute, 30})
 	for v in ticks_of(&tk) {
 		c := civil_from_wall(wall_of(nepal, i64(v)))
-		testing.expectf(t, c.minute % 30 == 0 && c.second == 0, "tick at local %02d:%02d", c.hour, c.minute)
+		testing.expectf(
+			t,
+			c.minute % 30 == 0 && c.second == 0,
+			"tick at local %02d:%02d",
+			c.hour,
+			c.minute,
+		)
 	}
 }
 

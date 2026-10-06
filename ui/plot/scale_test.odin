@@ -74,9 +74,19 @@ test_scales_map_and_invert :: proc(t: ^testing.T) {
 
 @(test)
 test_bands_tile_their_range :: proc(t: ^testing.T) {
-	b := Band{n = 4, r0 = 0, r1 = 400, inner = 0.2, outer = 0.1}
+	b := Band {
+		n     = 4,
+		r0    = 0,
+		r1    = 400,
+		inner = 0.2,
+		outer = 0.1,
+	}
 	step := band_step(b)
-	testing.expect(t, abs(band_start(b, 0) - step * 0.1) < 1e-4, "outer room before the first band")
+	testing.expect(
+		t,
+		abs(band_start(b, 0) - step * 0.1) < 1e-4,
+		"outer room before the first band",
+	)
 	last_end := band_start(b, 3) + band_width(b)
 	testing.expect(t, abs(400 - last_end - step * 0.1) < 1e-3, "and after the last")
 	for i in 0 ..< 4 {
@@ -88,22 +98,35 @@ test_bands_tile_their_range :: proc(t: ^testing.T) {
 
 @(test)
 test_formats_write_si_and_units :: proc(t: ^testing.T) {
-	hash := Number_Format{unit = "H/s", short = .Metric, space = true}
+	hash := Number_Format {
+		unit  = "H/s",
+		short = .Metric,
+		space = true,
+	}
 	a := axis_format(hash, 0.5e15, 1.5e15)
 	want := [?]string{"0 PH/s", "0.5 PH/s", "1.0 PH/s", "1.5 PH/s"} // zero bare, the rest alike
 	for w, i in want {
 		l := format_tick(hash, a, f64(i) * 0.5e15)
 		testing.expect_value(t, label_text(&l), w)
 	}
-	money := Number_Format{prefix = "$", short = .Finance}
+	money := Number_Format {
+		prefix = "$",
+		short  = .Finance,
+	}
 	l := format_value(money, 1234)
 	testing.expect_value(t, label_text(&l), "$1.23k")
 	l = format_value(money, -2.5e9)
 	testing.expect_value(t, label_text(&l), "−$2.50B")
-	exact := Number_Format{prefix = "$", grouped = true, decimals = 2}
+	exact := Number_Format {
+		prefix   = "$",
+		grouped  = true,
+		decimals = 2,
+	}
 	l = format_value(exact, 1234567.891)
 	testing.expect_value(t, label_text(&l), "$1,234,567.89")
-	pct := Number_Format{unit = "%"}
+	pct := Number_Format {
+		unit = "%",
+	}
 	a = axis_format(pct, 2.5, 100)
 	l = format_tick(pct, a, 97.5)
 	testing.expect_value(t, label_text(&l), "97.5%")

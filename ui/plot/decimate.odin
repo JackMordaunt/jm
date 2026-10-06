@@ -19,9 +19,9 @@ Step :: enum u8 {
 // n is. Points arrive with reduce_push in increasing x; reduce_break ends
 // a run at a gap.
 Reducer :: struct {
-	out:   ^Polyline,
-	col:   f32,
-	have:  bool,
+	out:                 ^Polyline,
+	col:                 f32,
+	have:                bool,
 	first, last, lo, hi: Sample,
 }
 

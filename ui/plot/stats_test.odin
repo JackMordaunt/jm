@@ -10,15 +10,23 @@ import "core:testing"
 @(test)
 test_box_stats_match_the_chartjs_plugin :: proc(t: ^testing.T) {
 	Case :: struct {
-		samples:                                      []f64,
+		samples:                                []f64,
 		min, max, q1, median, q3, lo, hi, mean: f64,
-		outliers:                                     []f64,
+		outliers:                               []f64,
 	}
 	cases := []Case {
 		{{1, 2, 3, 4, 5, 6, 7, 8, 9, 100}, 1, 100, 3.25, 5.5, 7.75, 1, 9, 14.5, {100}},
 		{
 			{97.2, 98.1, 99.5, 95.0, 101.3, 88.4, 99.9, 100.2, 97.7, 62.0, 99.1, 98.8, 103.5},
-			62, 103.5, 97.2, 98.8, 99.9, 95, 103.5, 95.43846153846152, {62, 88.4},
+			62,
+			103.5,
+			97.2,
+			98.8,
+			99.9,
+			95,
+			103.5,
+			95.43846153846152,
+			{62, 88.4},
 		},
 		{{5}, 5, 5, 5, 5, 5, 5, 5, 5, {}},
 	}
@@ -27,9 +35,24 @@ test_box_stats_match_the_chartjs_plugin :: proc(t: ^testing.T) {
 		got := [?]f64{b.min, b.max, b.q1, b.median, b.q3, b.whisker_lo, b.whisker_hi, b.mean}
 		want := [?]f64{c.min, c.max, c.q1, c.median, c.q3, c.lo, c.hi, c.mean}
 		for g, i in got {
-			testing.expectf(t, abs(g - want[i]) < 1e-9, "%v: field %d is %v, the plugin says %v", c.samples, i, g, want[i])
+			testing.expectf(
+				t,
+				abs(g - want[i]) < 1e-9,
+				"%v: field %d is %v, the plugin says %v",
+				c.samples,
+				i,
+				g,
+				want[i],
+			)
 		}
-		testing.expectf(t, len(b.outliers) == len(c.outliers), "%v: outliers %v, want %v", c.samples, b.outliers, c.outliers)
+		testing.expectf(
+			t,
+			len(b.outliers) == len(c.outliers),
+			"%v: outliers %v, want %v",
+			c.samples,
+			b.outliers,
+			c.outliers,
+		)
 		for o, i in c.outliers {
 			if i < len(b.outliers) {
 				testing.expect_value(t, b.outliers[i], o)

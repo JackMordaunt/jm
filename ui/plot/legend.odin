@@ -83,7 +83,11 @@ legend_entry :: proc(f: ^Frame, e: Entry, i: int, r: Run, box: ops.Rect) {
 		ops.input_area(gtx.scene, id, box, design.CLICK_KINDS, .Pointer)
 	}
 	ops.tag(gtx.scene, id, e.name, box)
-	ring := design.Focus_Ring{width = s.focus_width, offset = 0, color = s.focus}
+	ring := design.Focus_Ring {
+		width  = s.focus_width,
+		offset = 0,
+		color  = s.focus,
+	}
 	design.paint_focus_visible_ring(gtx, c, box, design.corners_all(4), ring)
 	states := ops.States{.Checked} if on else {}
 	ui.part_semantics(gtx, &f.place, id, box, {role = .Checkbox, label = e.name, states = states})
@@ -92,7 +96,14 @@ legend_entry :: proc(f: ^Frame, e: Entry, i: int, r: Run, box: ops.Rect) {
 // draw_swatch draws the key of series slot as kind in r: filled when on,
 // outlined when its series is hidden.
 @(private)
-draw_swatch :: proc(gtx: ^ui.Ctx, s: ^Plot_Style, slot: int, kind: Swatch, r: ops.Rect, on := true) {
+draw_swatch :: proc(
+	gtx: ^ui.Ctx,
+	s: ^Plot_Style,
+	slot: int,
+	kind: Swatch,
+	r: ops.Rect,
+	on := true,
+) {
 	lk := look(s, slot)
 	if !on {
 		ops.stroke(gtx.scene, ops.Round_Rect{grow(r, -1), 3}, lk.color, {width = 1.5})
@@ -101,7 +112,12 @@ draw_swatch :: proc(gtx: ^ui.Ctx, s: ^Plot_Style, slot: int, kind: Swatch, r: op
 	switch kind {
 	case .Line:
 		y := r.y + r.h / 2
-		ops.stroke(gtx.scene, ui.line(gtx, {r.x, y}, {r.x + r.w, y}), lk.color, {width = s.line_width, cap = .Round})
+		ops.stroke(
+			gtx.scene,
+			ui.line(gtx, {r.x, y}, {r.x + r.w, y}),
+			lk.color,
+			{width = s.line_width, cap = .Round},
+		)
 		draw_marker(gtx, lk.marker, {r.x + r.w / 2, y}, 3, lk.color, s.background)
 	case .Rect:
 		ops.fill(gtx.scene, ops.Round_Rect{r, 3}, lk.color)
@@ -130,10 +146,20 @@ marker_shape :: proc(gtx: ^ui.Ctx, m: Marker, c: ops.Point, r: f32) -> ops.Shape
 		return ops.Rect{c.x - k, c.y - k, 2 * k, 2 * k}
 	case .Diamond:
 		k := r * 1.25
-		return ui.polygon(gtx, []ops.Point{{c.x, c.y - k}, {c.x + k, c.y}, {c.x, c.y + k}, {c.x - k, c.y}})
+		return ui.polygon(
+			gtx,
+			[]ops.Point{{c.x, c.y - k}, {c.x + k, c.y}, {c.x, c.y + k}, {c.x - k, c.y}},
+		)
 	case .Triangle:
 		k := r * 1.3
-		return ui.polygon(gtx, []ops.Point{{c.x, c.y - k}, {c.x + k * 0.87, c.y + k / 2}, {c.x - k * 0.87, c.y + k / 2}})
+		return ui.polygon(
+			gtx,
+			[]ops.Point {
+				{c.x, c.y - k},
+				{c.x + k * 0.87, c.y + k / 2},
+				{c.x - k * 0.87, c.y + k / 2},
+			},
+		)
 	}
 	return ui.circle(c, r)
 }

@@ -74,9 +74,9 @@ wall_of :: proc(z: Zone, unix: i64) -> i64 {
 
 // Civil is a wall-clock reading broken into calendar fields.
 Civil :: struct {
-	year:                         i64,
-	month, day:                   int, // 1-based
-	hour, minute, second, wday:   int, // wday 0 is Sunday
+	year:                       i64,
+	month, day:                 int, // 1-based
+	hour, minute, second, wday: int, // wday 0 is Sunday
 }
 
 // days_from_civil is the days since 1970-01-01 of a proleptic Gregorian
@@ -128,13 +128,35 @@ Time_Step :: struct {
 
 // TIME_STEPS are the steps a time axis may take, finest first.
 TIME_STEPS := [?]Time_Step {
-	{.Second, 1}, {.Second, 5}, {.Second, 15}, {.Second, 30},
-	{.Minute, 1}, {.Minute, 5}, {.Minute, 15}, {.Minute, 30},
-	{.Hour, 1}, {.Hour, 3}, {.Hour, 6}, {.Hour, 12},
-	{.Day, 1}, {.Day, 2}, {.Week, 1}, {.Week, 2},
-	{.Month, 1}, {.Month, 3}, {.Month, 6},
-	{.Year, 1}, {.Year, 2}, {.Year, 5}, {.Year, 10}, {.Year, 25},
-	{.Year, 50}, {.Year, 100}, {.Year, 250}, {.Year, 500}, {.Year, 1000},
+	{.Second, 1},
+	{.Second, 5},
+	{.Second, 15},
+	{.Second, 30},
+	{.Minute, 1},
+	{.Minute, 5},
+	{.Minute, 15},
+	{.Minute, 30},
+	{.Hour, 1},
+	{.Hour, 3},
+	{.Hour, 6},
+	{.Hour, 12},
+	{.Day, 1},
+	{.Day, 2},
+	{.Week, 1},
+	{.Week, 2},
+	{.Month, 1},
+	{.Month, 3},
+	{.Month, 6},
+	{.Year, 1},
+	{.Year, 2},
+	{.Year, 5},
+	{.Year, 10},
+	{.Year, 25},
+	{.Year, 50},
+	{.Year, 100},
+	{.Year, 250},
+	{.Year, 500},
+	{.Year, 1000},
 }
 
 // step_seconds is roughly how long s is, for choosing one.

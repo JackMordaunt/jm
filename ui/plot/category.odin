@@ -109,12 +109,25 @@ cat_anchor :: proc(f: ^Frame, rect: ops.Rect) -> ops.Rect {
 
 // cat_summary is what a screen reader hears of a category chart.
 @(private)
-cat_summary :: proc(f: ^Frame, kind: string, l: ^Cat_Layout, series: int, a: Axis, e: Extent) -> string {
+cat_summary :: proc(
+	f: ^Frame,
+	kind: string,
+	l: ^Cat_Layout,
+	series: int,
+	a: Axis,
+	e: Extent,
+) -> string {
 	lo, hi := format_value(a.format, e.lo), format_value(a.format, e.hi)
 	n := l.bands.band.n
 	return fmt.aprintf(
 		"%s, %d %s, %d of %d series shown, values %s to %s",
-		kind, n, "category" if n == 1 else "categories", l.shown, series, label_text(&lo), label_text(&hi),
+		kind,
+		n,
+		"category" if n == 1 else "categories",
+		l.shown,
+		series,
+		label_text(&lo),
+		label_text(&hi),
 		allocator = f.gtx.allocator,
 	)
 }

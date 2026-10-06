@@ -31,7 +31,13 @@ Box_Chart :: struct {
 // mean as a hollow diamond. The tooltip reads the category's summaries,
 // or the one outlier under the pointer. The plot takes focus: Left and
 // Right walk the categories, Up and Down the series.
-box_chart :: proc(gtx: ^ui.Ctx, c: ^Box_Chart, style: ^Plot_Style, key: u64 = 0, loc := #caller_location) -> ui.Dims {
+box_chart :: proc(
+	gtx: ^ui.Ctx,
+	c: ^Box_Chart,
+	style: ^Plot_Style,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> ui.Dims {
 	f := frame_open(gtx, &c.chart, style, key, loc)
 	entries := make([]Entry, len(c.series), gtx.allocator)
 	for s, i in c.series {
@@ -148,7 +154,12 @@ box_draw :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i, s, k: int) {
 @(private)
 draw_whisker :: proc(gtx: ^ui.Ctx, x, cap, end, box: f32, color: ops.Color) {
 	ops.stroke(gtx.scene, ui.line(gtx, {x, end}, {x, box}), color, {width = 1.5})
-	ops.stroke(gtx.scene, ui.line(gtx, {x - cap / 2, end}, {x + cap / 2, end}), color, {width = 1.5, cap = .Round})
+	ops.stroke(
+		gtx.scene,
+		ui.line(gtx, {x - cap / 2, end}, {x + cap / 2, end}),
+		color,
+		{width = 1.5, cap = .Round},
+	)
 }
 
 // box_readout draws category i's tooltip: the outlier under the pointer
@@ -187,15 +198,33 @@ box_readout :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i: int) {
 box_rows :: proc(t: ^Tip, c: ^Box_Chart, s: int, b: Box_Stats, focus: bool) {
 	fm := c.value.format
 	name := c.series[s].name
-	tip_add(t, {slot = box_slot(c.series[s], s), value = format_value(fm, b.median), name = name, focus = focus})
+	tip_add(
+		t,
+		{
+			slot = box_slot(c.series[s], s),
+			value = format_value(fm, b.median),
+			name = name,
+			focus = focus,
+		},
+	)
 	tip_add(t, {value = range_label(fm, b.q1, b.q3), name = "middle half", plain = true})
-	tip_add(t, {value = range_label(fm, b.whisker_lo, b.whisker_hi), name = "whiskers", plain = true})
+	tip_add(
+		t,
+		{value = range_label(fm, b.whisker_lo, b.whisker_hi), name = "whiskers", plain = true},
+	)
 	if c.mean {
 		tip_add(t, {value = format_value(fm, b.mean), name = "mean", plain = true})
 	}
 	n: Label
 	write_count(&n, "", b.count, "")
-	tip_add(t, {value = n, name = "samples" if len(b.outliers) == 0 else outliers_name(len(b.outliers)), plain = true})
+	tip_add(
+		t,
+		{
+			value = n,
+			name = "samples" if len(b.outliers) == 0 else outliers_name(len(b.outliers)),
+			plain = true,
+		},
+	)
 }
 
 @(private)
@@ -231,7 +260,10 @@ Near :: struct {
 // category i, if one is within OUTLIER_REACH, and reports whether it did.
 @(private)
 box_outlier_tip :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i: int) -> bool {
-	near := Near{series = -1, dist = OUTLIER_REACH * OUTLIER_REACH}
+	near := Near {
+		series = -1,
+		dist   = OUTLIER_REACH * OUTLIER_REACH,
+	}
 	k := 0
 	for s in 0 ..< len(c.series) {
 		if shown(f, s) {
@@ -250,7 +282,14 @@ box_outlier_tip :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i: int) -> boo
 	if i < len(ser.outlier_names) && near.outlier < len(ser.outlier_names[i]) {
 		name = ser.outlier_names[i][near.outlier]
 	}
-	tip_add(&tip, {slot = box_slot(ser, near.series), value = format_value(c.value.format, b.outliers[near.outlier]), name = name})
+	tip_add(
+		&tip,
+		{
+			slot = box_slot(ser, near.series),
+			value = format_value(c.value.format, b.outliers[near.outlier]),
+			name = name,
+		},
+	)
 	tooltip(f, &tip, {near.at.x - 4, near.at.y - 4, 8, 8})
 	return true
 }
@@ -276,19 +315,36 @@ nearest_outlier :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i, s, k: int, 
 // draw_box_focus rings the box the keyboard is on and names it for a screen
 // reader, returning where it is.
 @(private)
-draw_box_focus :: proc(f: ^Frame, c: ^Box_Chart, l: ^Cat_Layout, i, s, k: int, b: Box_Stats) -> ops.Rect {
+draw_box_focus :: proc(
+	f: ^Frame,
+	c: ^Box_Chart,
+	l: ^Cat_Layout,
+	i, s, k: int,
+	b: Box_Stats,
+) -> ops.Rect {
 	x, w := box_geometry(f, l, i, k)
 	r := ops.Rect{x - w / 2, f.plot.y, w, f.plot.h}
 	if b.count > 0 {
 		lo, hi := scale_to(l.value.scale, b.max), scale_to(l.value.scale, b.min)
 		r = {x - w / 2, lo, w, hi - lo}
 	}
-	ops.stroke(f.gtx.scene, ops.Round_Rect{grow(r, 4), 4}, f.style.focus, {width = f.style.focus_width})
+	ops.stroke(
+		f.gtx.scene,
+		ops.Round_Rect{grow(r, 4), 4},
+		f.style.focus,
+		{width = f.style.focus_width},
+	)
 	fm := c.value.format
 	med, q1, q3 := format_value(fm, b.median), format_value(fm, b.q1), format_value(fm, b.q3)
 	label := fmt.aprintf(
 		"%s, %s: median %s, middle half %s to %s, %d samples, %d outliers",
-		c.series[s].name, c.categories[i], label_text(&med), label_text(&q1), label_text(&q3), b.count, len(b.outliers),
+		c.series[s].name,
+		c.categories[i],
+		label_text(&med),
+		label_text(&q1),
+		label_text(&q3),
+		b.count,
+		len(b.outliers),
 		allocator = f.gtx.allocator,
 	)
 	point_semantics(f, label, r)

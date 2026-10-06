@@ -19,13 +19,14 @@ Chart :: struct {
 	height:  f32, // 0 takes the height offered, or DEFAULT_HEIGHT when that is unbounded
 	status:  Status,
 	message: string, // an error's text, or what to say in place of "No data"
-	hidden:  ^Series_Set, // the series the legend hid, kept by the caller; nil keeps them in the chart
+	// The series the legend hid, kept by the caller; nil keeps them in the chart.
+	hidden:  ^Series_Set,
 }
 
 // DEFAULT_HEIGHT and DEFAULT_WIDTH are a chart's size where the space
 // offered is unbounded, as in a scroll box.
 DEFAULT_HEIGHT :: 280
-DEFAULT_WIDTH :: 560
+DEFAULT_WIDTH  :: 560
 
 // Plot_State is what a chart keeps between frames: the pointer, focus,
 // the point the keyboard is on, and which series are hidden when the
@@ -60,7 +61,15 @@ Frame :: struct {
 
 // frame_open opens the chart's widget and sizes it from what it is offered.
 @(private)
-frame_open :: proc(gtx: ^ui.Ctx, c: ^Chart, style: ^Plot_Style, key: u64, loc: runtime.Source_Code_Location) -> (f: Frame) {
+frame_open :: proc(
+	gtx: ^ui.Ctx,
+	c: ^Chart,
+	style: ^Plot_Style,
+	key: u64,
+	loc: runtime.Source_Code_Location,
+) -> (
+	f: Frame,
+) {
 	f.gtx, f.style, f.chart = gtx, style, c
 	f.place = ui.widget_open(gtx, key, loc)
 	f.plot_id = ui.id_mix(f.place.id, 1)
@@ -115,9 +124,20 @@ show_status :: proc(f: ^Frame, has_data: bool) -> bool {
 	}
 	area := ops.Rect{0, f.top, f.size.x, f.size.y - f.top}
 	r := shape_fit(f.gtx, msg, f.style.label_size, f.style.font, area.w - 16)
-	draw_run(f.gtx, r, {area.x + (area.w - r.width) / 2, area.y + (area.h - run_height(r)) / 2}, color)
+	draw_run(
+		f.gtx,
+		r,
+		{area.x + (area.w - r.width) / 2, area.y + (area.h - run_height(r)) / 2},
+		color,
+	)
 	role := ops.Role.Alert if c.status == .Error else .Status
-	ui.part_semantics(f.gtx, &f.place, ui.id_mix(f.place.id, 2), area, {role = role, label = ui.frame_string(f.gtx, msg)})
+	ui.part_semantics(
+		f.gtx,
+		&f.place,
+		ui.id_mix(f.place.id, 2),
+		area,
+		{role = role, label = ui.frame_string(f.gtx, msg)},
+	)
 	return false
 }
 
@@ -218,8 +238,14 @@ plot_listen :: proc(f: ^Frame) {
 	ops.input_area(f.gtx.scene, f.plot_id, f.plot, PLOT_KINDS)
 	ops.tag(f.gtx.scene, f.plot_id, f.chart.label, f.plot)
 	if f.st.focused && ui.focus_visible(f.gtx) {
-		ring := design.Focus_Ring{width = f.style.focus_width, offset = 2, color = f.style.focus}
-		c := design.Control{focused = true}
+		ring := design.Focus_Ring {
+			width  = f.style.focus_width,
+			offset = 2,
+			color  = f.style.focus,
+		}
+		c := design.Control {
+			focused = true,
+		}
 		design.paint_focus_ring(f.gtx, c, {f.plot, 4}, ring)
 	}
 }
@@ -253,7 +279,14 @@ active :: proc(f: ^Frame) -> Active {
 @(private)
 point_semantics :: proc(f: ^Frame, label: string, rect: ops.Rect) {
 	f.point = ui.id_mix(f.place.id, 3)
-	ui.part_semantics(f.gtx, &f.place, f.point, rect, {role = .Text, label = label}, under = f.plot_id)
+	ui.part_semantics(
+		f.gtx,
+		&f.place,
+		f.point,
+		rect,
+		{role = .Text, label = label},
+		under = f.plot_id,
+	)
 }
 
 // plot_semantics describes the plotting area: the chart's name, its

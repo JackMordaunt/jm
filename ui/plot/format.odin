@@ -62,7 +62,18 @@ Prefix :: struct {
 }
 
 @(private, rodata)
-METRIC := [?]Prefix{{-9, "n"}, {-6, "µ"}, {-3, "m"}, {0, ""}, {3, "k"}, {6, "M"}, {9, "G"}, {12, "T"}, {15, "P"}, {18, "E"}}
+METRIC := [?]Prefix {
+	{-9, "n"},
+	{-6, "µ"},
+	{-3, "m"},
+	{0, ""},
+	{3, "k"},
+	{6, "M"},
+	{9, "G"},
+	{12, "T"},
+	{15, "P"},
+	{18, "E"},
+}
 
 @(private, rodata)
 FINANCE := [?]Prefix{{0, ""}, {3, "k"}, {6, "M"}, {9, "B"}, {12, "T"}}
@@ -106,7 +117,7 @@ Axis_Format :: struct {
 // MAX_DECIMALS is the most decimals a tick label writes before it switches
 // to scientific notation; MAX_PLAIN the largest magnitude it writes out.
 MAX_DECIMALS :: 6
-MAX_PLAIN :: 1e15
+MAX_PLAIN    :: 1e15
 
 // axis_format chooses, for ticks at step whose largest magnitude is mag,
 // one short-scale step for every label, so an axis reads 0.5, 1.0, 1.5
@@ -177,7 +188,15 @@ format_value :: proc(f: Number_Format, v: f64) -> (l: Label) {
 // separators when grouped) and times ten to exp10 if that is not 0, then
 // the SI symbol and unit.
 @(private)
-put_number :: proc(l: ^Label, f: Number_Format, p: Prefix, x: f64, decimals: int, grouped: bool, exp10 := 0) {
+put_number :: proc(
+	l: ^Label,
+	f: Number_Format,
+	p: Prefix,
+	x: f64,
+	decimals: int,
+	grouped: bool,
+	exp10 := 0,
+) {
 	x := x
 	rounded := math.round(x * math.pow(10, f64(decimals))) / math.pow(10, f64(decimals))
 	if rounded == 0 {

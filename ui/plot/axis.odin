@@ -73,7 +73,11 @@ value_axis :: proc(f: ^Frame, a: Axis, e: Extent, length: f32, pitch: f32 = 0) -
 		lo, hi = nice_domain(lo, hi, want)
 		v.ticks = linear_ticks(lo, hi, want, loose = true)
 	}
-	v.scale = {kind = a.scale, d0 = lo, d1 = hi}
+	v.scale = {
+		kind = a.scale,
+		d0   = lo,
+		d1   = hi,
+	}
 	value_labels(f, &v)
 	return
 }
@@ -133,7 +137,12 @@ draw_value_axis :: proc(f: ^Frame, v: ^Value_Axis, side: Axis_Side, grid: bool) 
 		case .Right:
 			draw_run(gtx, r, {p.x + p.w + 8, at - run_height(r) / 2}, s.muted)
 		case .Bottom:
-			draw_run(gtx, r, {clamp(at - r.width / 2, 0, f.size.x - r.width), p.y + p.h + 6}, s.muted)
+			draw_run(
+				gtx,
+				r,
+				{clamp(at - r.width / 2, 0, f.size.x - r.width), p.y + p.h + 6},
+				s.muted,
+			)
 		}
 		if !grid {
 			continue
@@ -160,7 +169,13 @@ draw_axis_title :: proc(f: ^Frame, title: string, x, y: f32, right: bool, slot: 
 	key: f32 = SWATCH + 4 if slot >= 0 else 0
 	at := x - r.width - key if right else x
 	if slot >= 0 {
-		draw_swatch(f.gtx, s, slot, .Line, {at, y + run_height(r) / 2 - SWATCH / 2, SWATCH, SWATCH})
+		draw_swatch(
+			f.gtx,
+			s,
+			slot,
+			.Line,
+			{at, y + run_height(r) / 2 - SWATCH / 2, SWATCH, SWATCH},
+		)
 	}
 	draw_run(f.gtx, r, {at + key, y}, s.muted)
 	return run_height(r) + 6
@@ -202,7 +217,12 @@ LABEL_GAP :: 12
 @(private)
 x_layout :: proc(f: ^Frame, a: X_Axis, lo, hi: f64, width, left, right: f32) -> (x: X_Layout) {
 	x.axis = a
-	x.scale = {kind = .Linear, d0 = lo, d1 = hi, r1 = width}
+	x.scale = {
+		kind = .Linear,
+		d0   = lo,
+		d1   = hi,
+		r1   = width,
+	}
 	want := clamp(int(width / 64), 2, 12)
 	for _ in 0 ..< 8 {
 		x_ticks(f, &x, lo, hi, want)
@@ -229,7 +249,9 @@ x_ticks :: proc(f: ^Frame, x: ^X_Layout, lo, hi: f64, want: int) {
 		}
 		return
 	}
-	x.ticks = {list = linear_ticks(lo, hi, want)}
+	x.ticks = {
+		list = linear_ticks(lo, hi, want),
+	}
 	mag: f64
 	for t in ticks_of(&x.ticks) {
 		mag = max(mag, abs(t))
@@ -278,7 +300,12 @@ draw_x_axis :: proc(f: ^Frame, x: ^X_Layout) {
 		m, sub := x.main[i], x.sub[i]
 		draw_run(gtx, m, {clamp(at - m.width / 2, 0, f.size.x - m.width), p.y + p.h + 6}, s.muted)
 		if sub.width > 0 {
-			draw_run(gtx, sub, {clamp(at - sub.width / 2, 0, f.size.x - sub.width), p.y + p.h + 6 + line}, s.muted)
+			draw_run(
+				gtx,
+				sub,
+				{clamp(at - sub.width / 2, 0, f.size.x - sub.width), p.y + p.h + 6 + line},
+				s.muted,
+			)
 		}
 	}
 	hairline(gtx, p.x, p.x + p.w, p.y + p.h, s.axis)
@@ -307,7 +334,12 @@ ROTATED_MAX :: 120
 @(private)
 band_layout :: proc(f: ^Frame, categories: []string, length, across: f32) -> (b: Band_Layout) {
 	s := f.style
-	b.band = {n = len(categories), r1 = length, inner = 0.2, outer = 0.1}
+	b.band = {
+		n     = len(categories),
+		r1    = length,
+		inner = 0.2,
+		outer = 0.1,
+	}
 	b.runs = make([]Run, len(categories), f.gtx.allocator)
 	step := band_step(b.band)
 	line := s.tick_size * 1.3
@@ -348,7 +380,10 @@ draw_bands_below :: proc(f: ^Frame, b: ^Band_Layout) {
 			continue
 		}
 		// Turned about the label's end, which sits under the band.
-		ops.transform_push(gtx.scene, ops.mul(ops.translate(at, p.y + p.h + 6), ops.rotate(-math.PI / 4)))
+		ops.transform_push(
+			gtx.scene,
+			ops.mul(ops.translate(at, p.y + p.h + 6), ops.rotate(-math.PI / 4)),
+		)
 		draw_run(gtx, r, {-r.width, -run_height(r) / 2}, s.muted)
 		ops.transform_pop(gtx.scene)
 	}

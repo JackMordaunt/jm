@@ -54,7 +54,8 @@ box_stats :: proc(samples: []f64, allocator := context.allocator) -> (b: Box_Sta
 	b.count = len(sorted)
 	if b.count == 0 {
 		nan := math.nan_f64()
-		b.min, b.max, b.q1, b.median, b.q3, b.whisker_lo, b.whisker_hi, b.mean = nan, nan, nan, nan, nan, nan, nan, nan
+		b.min, b.max, b.q1, b.median, b.q3, b.whisker_lo, b.whisker_hi, b.mean =
+			nan, nan, nan, nan, nan, nan, nan, nan
 		return
 	}
 	slice.sort(sorted[:])

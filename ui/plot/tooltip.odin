@@ -61,7 +61,16 @@ tooltip :: proc(f: ^Frame, t: ^Tip, anchor: ops.Rect) {
 	k := tip_shape(f, t)
 	key := ui.id_mix(f.place.id, 5)
 	o := ui.popup_open(gtx, anchor, key, side = .After, align = .Center, gap = 14)
-	ui.overlay_semantics(gtx, &o, {role = .Tooltip, label = ui.frame_string(gtx, label_text(&t.heading)), description = tip_text(gtx, t)}, id = key)
+	ui.overlay_semantics(
+		gtx,
+		&o,
+		{
+			role = .Tooltip,
+			label = ui.frame_string(gtx, label_text(&t.heading)),
+			description = tip_text(gtx, t),
+		},
+		id = key,
+	)
 	box := ops.Rect{0, 0, k.size.x, k.size.y}
 	ts := s.tooltip
 	if ts.shadow[3] > 0 {
@@ -78,11 +87,21 @@ tooltip :: proc(f: ^Frame, t: ^Tip, anchor: ops.Rect) {
 			r := t.rows[i]
 			lk := look(s, r.slot)
 			cy := y + k.row / 2
-			ops.stroke(gtx.scene, ui.line(gtx, {x, cy}, {x + 12, cy}), lk.color, {width = 3 if r.focus else 2, cap = .Round})
+			ops.stroke(
+				gtx.scene,
+				ui.line(gtx, {x, cy}, {x + 12, cy}),
+				lk.color,
+				{width = 3 if r.focus else 2, cap = .Round},
+			)
 		}
 		x += 18
 		draw_run(gtx, k.values[i], {x, y + (k.row - run_height(k.values[i])) / 2}, ts.text)
-		draw_run(gtx, k.names[i], {x + k.value_w + 8, y + (k.row - run_height(k.names[i])) / 2}, ts.muted)
+		draw_run(
+			gtx,
+			k.names[i],
+			{x + k.value_w + 8, y + (k.row - run_height(k.names[i])) / 2},
+			ts.muted,
+		)
 		y += k.row
 	}
 	ui.popup_close(&o, k.size)

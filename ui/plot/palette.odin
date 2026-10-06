@@ -20,10 +20,22 @@ CVD :: enum u8 {
 
 @(private, rodata)
 MACHADO := [CVD][3][3]f64 {
-	.None = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
-	.Protan = {{0.152286, 1.052583, -0.204868}, {0.114503, 0.786281, 0.099216}, {-0.003882, -0.048116, 1.051998}},
-	.Deutan = {{0.367322, 0.860646, -0.227968}, {0.280085, 0.672501, 0.047413}, {-0.011820, 0.042940, 0.968881}},
-	.Tritan = {{1.255528, -0.076749, -0.178779}, {-0.078411, 0.930809, 0.147602}, {0.004733, 0.691367, 0.303900}},
+	.None   = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
+	.Protan = {
+		{0.152286, 1.052583, -0.204868},
+		{0.114503, 0.786281, 0.099216},
+		{-0.003882, -0.048116, 1.051998},
+	},
+	.Deutan = {
+		{0.367322, 0.860646, -0.227968},
+		{0.280085, 0.672501, 0.047413},
+		{-0.011820, 0.042940, 0.968881},
+	},
+	.Tritan = {
+		{1.255528, -0.076749, -0.178779},
+		{-0.078411, 0.930809, 0.147602},
+		{0.004733, 0.691367, 0.303900},
+	},
 }
 
 // CVD_TARGET is the ΔE a pair of neighbouring series should keep apart
@@ -33,8 +45,8 @@ MACHADO := [CVD][3][3]f64 {
 // reader with full colour vision. CONTRAST_MIN is a mark's WCAG contrast
 // against the plot's background. CHROMA_FLOOR is the OKLCH chroma below
 // which a hue reads as grey.
-CVD_TARGET :: 8.0
-CVD_FLOOR :: 6.0
+CVD_TARGET   :: 8.0
+CVD_FLOOR    :: 6.0
 NORMAL_FLOOR :: 15.0
 CONTRAST_MIN :: 3.0
 CHROMA_FLOOR :: 0.10
@@ -61,7 +73,8 @@ oklab :: proc(c: ops.Color, d := CVD.None) -> [3]f64 {
 // times 100.
 delta_e :: proc(a, b: ops.Color, d := CVD.None) -> f64 {
 	x, y := oklab(a, d), oklab(b, d)
-	return 100 * math.sqrt((x[0] - y[0]) * (x[0] - y[0]) + (x[1] - y[1]) * (x[1] - y[1]) + (x[2] - y[2]) * (x[2] - y[2]))
+	v := x - y
+	return 100 * math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
 }
 
 // cvd_distance is the lesser of a and b's distance under protanopia and

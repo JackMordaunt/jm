@@ -30,14 +30,22 @@ Bar_Chart :: struct {
 // tooltip over the category the pointer or keyboard is on listing every
 // series in it. The plot takes focus: Left and Right walk the categories,
 // Up and Down the series.
-bar_chart :: proc(gtx: ^ui.Ctx, c: ^Bar_Chart, style: ^Plot_Style, key: u64 = 0, loc := #caller_location) -> ui.Dims {
+bar_chart :: proc(
+	gtx: ^ui.Ctx,
+	c: ^Bar_Chart,
+	style: ^Plot_Style,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> ui.Dims {
 	f := frame_open(gtx, &c.chart, style, key, loc)
 	entries := make([]Entry, len(c.series), gtx.allocator)
 	for s, i in c.series {
 		entries[i] = {s.name, bar_slot(s, i), .Rect}
 	}
 	f.top = legend(&f, entries)
-	l := Cat_Layout{horizontal = c.horizontal}
+	l := Cat_Layout {
+		horizontal = c.horizontal,
+	}
 	e := bar_extent(&f, c, &l)
 	if !show_status(&f, l.shown > 0 && e.lo <= e.hi && len(c.categories) > 0) {
 		return frame_close(&f)
@@ -221,7 +229,15 @@ bar_readout :: proc(f: ^Frame, c: ^Bar_Chart, l: ^Cat_Layout, i: int) {
 		}
 		v := bar_value(c, s, i)
 		focus := f.st.keyed && f.st.series == s
-		tip_add(&tip, {slot = bar_slot(c.series[s], s), value = format_value(c.value.format, v), name = c.series[s].name, focus = focus})
+		tip_add(
+			&tip,
+			{
+				slot = bar_slot(c.series[s], s),
+				value = format_value(c.value.format, v),
+				name = c.series[s].name,
+				focus = focus,
+			},
+		)
 		total += v if is_finite(v) else 0
 		if focus {
 			anchor = draw_bar_focus(f, c, l, i, s, k)
@@ -246,9 +262,20 @@ draw_bar_focus :: proc(f: ^Frame, c: ^Bar_Chart, l: ^Cat_Layout, i, s, k: int) -
 	} else {
 		r = bar_rect(f, l, i, k, l.shown, 0, v if is_finite(v) else 0)
 	}
-	ops.stroke(f.gtx.scene, ops.Round_Rect{grow(r, 2), 3}, f.style.focus, {width = f.style.focus_width})
+	ops.stroke(
+		f.gtx.scene,
+		ops.Round_Rect{grow(r, 2), 3},
+		f.style.focus,
+		{width = f.style.focus_width},
+	)
 	val := format_value(c.value.format, v)
-	label := fmt.aprintf("%s, %s: %s", c.series[s].name, c.categories[i], label_text(&val), allocator = f.gtx.allocator)
+	label := fmt.aprintf(
+		"%s, %s: %s",
+		c.series[s].name,
+		c.categories[i],
+		label_text(&val),
+		allocator = f.gtx.allocator,
+	)
 	point_semantics(f, label, r)
 	return r
 }

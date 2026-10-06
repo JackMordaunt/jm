@@ -142,7 +142,14 @@ rising :: proc(ts: []f64, where_: string) -> (string, bool) {
 	return "", true
 }
 
-check_unique_labels :: proc(f: plot.Number_Format, l: ^plot.Tick_List, where_: string) -> (string, bool) {
+check_unique_labels :: proc(
+	f: plot.Number_Format,
+	l: ^plot.Tick_List,
+	where_: string,
+) -> (
+	string,
+	bool,
+) {
 	ts := plot.ticks_of(l)
 	mag: f64
 	for v in ts {
@@ -197,7 +204,10 @@ new_york :: proc() -> plot.Zone {
 		{time = 4102444800, utc_offset = -18000},
 	}
 	@(static) region: datetime.TZ_Region
-	region = {name = "America/New_York", records = records[:]}
+	region = {
+		name    = "America/New_York",
+		records = records[:],
+	}
 	return {region = &region}
 }
 
@@ -217,7 +227,15 @@ time_ticks :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
 	want := harness.integer_in(src, 1, 40)
 	tk := plot.time_ticks(lo, lo + span, want, z)
 	ts := plot.ticks_of(&tk)
-	where_ := fmt.tprintf("time_ticks(%v, +%v s, %d, offset %v ny %v) at %v", lo, span, want, z.offset, z.region != nil, tk.unit)
+	where_ := fmt.tprintf(
+		"time_ticks(%v, +%v s, %d, offset %v ny %v) at %v",
+		lo,
+		span,
+		want,
+		z.offset,
+		z.region != nil,
+		tk.unit,
+	)
 	if len(ts) > clamp(want, 1, plot.MAX_TICKS) {
 		return fmt.tprint(where_, ": more ticks than asked"), false
 	}
@@ -249,7 +267,9 @@ decimate :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
 	line: plot.Polyline
 	line.points = make([dynamic]ops.Point, context.temp_allocator)
 	line.starts = make([dynamic]int, context.temp_allocator)
-	r := plot.Reducer{out = &line}
+	r := plot.Reducer {
+		out = &line,
+	}
 	lo := make([]f32, cols, context.temp_allocator)
 	hi := make([]f32, cols, context.temp_allocator)
 	for c in 0 ..< cols {
@@ -260,7 +280,7 @@ decimate :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
 		x := f32(i) / f32(max(n, 1)) * f32(cols)
 		walk += f32(harness.integer_in(src, -100, 101))
 		reduce := harness.integer_in(src, 0, 50) != 0
-		if !reduce { // a gap
+		if !reduce { 	// a gap
 			plot.reduce_break(&r)
 			continue
 		}
@@ -284,7 +304,15 @@ decimate :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
 			}
 		}
 		if !got_lo || !got_hi {
-			return fmt.tprintf("column %d of %d lost its extreme (%v..%v), n %d", c, cols, lo[c], hi[c], n), false
+			return fmt.tprintf(
+					"column %d of %d lost its extreme (%v..%v), n %d",
+					c,
+					cols,
+					lo[c],
+					hi[c],
+					n,
+				),
+				false
 		}
 	}
 	return "", true

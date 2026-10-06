@@ -11,7 +11,15 @@ properties_hold :: proc(t: ^testing.T) {
 		report := run({seed = seed, iterations = 400, corpus_dir = CORPUS})
 		testing.expect(t, report.iterations >= 400, "every case must run")
 		for f in report.failures {
-			testing.expectf(t, false, "%s failed at case %d (replay: jm-fuzz ui_plot -seed=%d): %s", f.property, f.iteration, f.seed, f.detail)
+			testing.expectf(
+				t,
+				false,
+				"%s failed at case %d (replay: jm-fuzz ui_plot -seed=%d): %s",
+				f.property,
+				f.iteration,
+				f.seed,
+				f.detail,
+			)
 		}
 	}
 }

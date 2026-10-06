@@ -40,7 +40,13 @@ Line_Chart :: struct {
 // listing every series there. The plot takes focus: Left and Right walk
 // the points, Up and Down the series, and a screen reader hears each
 // point as the keyboard reaches it.
-line_chart :: proc(gtx: ^ui.Ctx, c: ^Line_Chart, style: ^Plot_Style, key: u64 = 0, loc := #caller_location) -> ui.Dims {
+line_chart :: proc(
+	gtx: ^ui.Ctx,
+	c: ^Line_Chart,
+	style: ^Plot_Style,
+	key: u64 = 0,
+	loc := #caller_location,
+) -> ui.Dims {
 	f := frame_open(gtx, &c.chart, style, key, loc)
 	entries := make([]Entry, len(c.series), gtx.allocator)
 	for s, i in c.series {
@@ -141,7 +147,10 @@ line_layout :: proc(f: ^Frame, l: ^Line_Layout) {
 	if c.fill != .None {
 		y_axis.zero = true
 	}
-	titles := max(axis_title_height(f, c.y.title), axis_title_height(f, c.y2.title) if l.dual else 0)
+	titles := max(
+		axis_title_height(f, c.y.title),
+		axis_title_height(f, c.y2.title) if l.dual else 0,
+	)
 	top := f.top + titles + f.style.tick_size / 2
 	guess := f.style.tick_size * 1.3 * (2 if c.x.kind == .Time else 1) + 6
 	height := f.size.y - top - guess
@@ -233,7 +242,9 @@ trace :: proc(f: ^Frame, l: ^Line_Layout, s: int, lo, hi: int, below := false) -
 	poly.points = make([dynamic]ops.Point, 0, room, f.gtx.allocator)
 	poly.starts = make([dynamic]int, 0, 8, f.gtx.allocator)
 	poly.step = c.step
-	r := Reducer{out = poly}
+	r := Reducer {
+		out = poly,
+	}
 	ys := y_scale(l, s)
 	for i in lo ..= hi {
 		v := stack_below(f, c, s, i) if below else value_at(f, c, s, i)
@@ -254,7 +265,11 @@ series_line :: proc(f: ^Frame, l: ^Line_Layout, s: int) {
 	poly := trace(f, l, s, l.first, l.last)
 	lk := look(f.style, line_slot(l.chart.series[s], s))
 	path := polyline_path(f.gtx, poly, lk.dash)
-	style := ops.Stroke_Style{width = f.style.line_width, cap = .Round, join = .Round}
+	style := ops.Stroke_Style {
+		width = f.style.line_width,
+		cap   = .Round,
+		join  = .Round,
+	}
 	if lk.dash != {} {
 		style.cap = .Butt
 	}
@@ -264,7 +279,14 @@ series_line :: proc(f: ^Frame, l: ^Line_Layout, s: int) {
 		for k in 0 ..< len(poly.starts) {
 			run := polyline_run(poly, k)
 			if len(run) == 1 {
-				draw_marker(f.gtx, lk.marker, run[0], f.style.line_width + 1, lk.color, f.style.background)
+				draw_marker(
+					f.gtx,
+					lk.marker,
+					run[0],
+					f.style.line_width + 1,
+					lk.color,
+					f.style.background,
+				)
 			}
 		}
 	}
@@ -334,7 +356,11 @@ band_fill :: proc(f: ^Frame, l: ^Line_Layout, s, lo, hi: int, base: f32, color: 
 			append(&pts, p)
 		}
 	} else if len(top.points) > 0 {
-		append(&pts, ops.Point{top.points[len(top.points) - 1].x, base}, ops.Point{top.points[0].x, base})
+		append(
+			&pts,
+			ops.Point{top.points[len(top.points) - 1].x, base},
+			ops.Point{top.points[0].x, base},
+		)
 	}
 	ops.fill(f.gtx.scene, ui.polygon(f.gtx, pts[:]), color)
 }
@@ -375,7 +401,13 @@ dashed_path :: proc(gtx: ^ui.Ctx, poly: ^Polyline, dash: [2]f32) -> ops.Path_Ref
 
 // dash_segment adds the dashes of the segment a to b, the pattern at at.
 @(private)
-dash_segment :: proc(verbs: ^[dynamic]ops.Path_Verb, pts: ^[dynamic]ops.Point, a, b: ops.Point, on, period: f32, at: ^f32) {
+dash_segment :: proc(
+	verbs: ^[dynamic]ops.Path_Verb,
+	pts: ^[dynamic]ops.Point,
+	a, b: ops.Point,
+	on, period: f32,
+	at: ^f32,
+) {
 	d := b - a
 	length := math.sqrt(d.x * d.x + d.y * d.y)
 	if length == 0 {
@@ -453,14 +485,29 @@ line_point :: proc(f: ^Frame, l: ^Line_Layout, s, i: int, tip: ^Tip) {
 	raw := ser.ys[i] if i < len(ser.ys) else math.nan_f64()
 	axis := c.y2 if ser.right && l.dual else c.y
 	focus := f.st.keyed && f.st.series == s
-	tip_add(tip, {slot = line_slot(ser, s), value = format_value(axis.format, raw), name = ser.name, focus = focus})
+	tip_add(
+		tip,
+		{
+			slot = line_slot(ser, s),
+			value = format_value(axis.format, raw),
+			name = ser.name,
+			focus = focus,
+		},
+	)
 	y := scale_to(y_scale(l, s), value_at(f, c, s, i))
 	if math.is_nan(y) {
 		return
 	}
 	lk := look(f.style, line_slot(ser, s))
 	r := f.style.marker_size + (1.5 if focus else 0)
-	draw_marker(f.gtx, lk.marker, {scale_to(l.x.scale, c.xs[i]), y}, r, lk.color, f.style.background)
+	draw_marker(
+		f.gtx,
+		lk.marker,
+		{scale_to(l.x.scale, c.xs[i]), y},
+		r,
+		lk.color,
+		f.style.background,
+	)
 }
 
 // x_value writes x as the tooltip's heading.
@@ -484,7 +531,13 @@ line_point_semantics :: proc(f: ^Frame, l: ^Line_Layout, i: int, x: f32) {
 	h := x_value(l, c.xs[i])
 	axis := c.y2 if ser.right && l.dual else c.y
 	v := format_value(axis.format, ser.ys[i] if i < len(ser.ys) else math.nan_f64())
-	label := fmt.aprintf("%s, %s: %s", ser.name, label_text(&h), label_text(&v), allocator = f.gtx.allocator)
+	label := fmt.aprintf(
+		"%s, %s: %s",
+		ser.name,
+		label_text(&h),
+		label_text(&v),
+		allocator = f.gtx.allocator,
+	)
 	point_semantics(f, label, {x - 4, f.plot.y, 8, f.plot.h})
 }
 
@@ -501,7 +554,12 @@ line_summary :: proc(f: ^Frame, l: ^Line_Layout) -> string {
 	lo, hi := format_value(c.y.format, l.left.lo), format_value(c.y.format, l.left.hi)
 	return fmt.aprintf(
 		"Line chart, %d of %d series shown, %s to %s, values %s to %s",
-		n, len(c.series), label_text(&a), label_text(&b), label_text(&lo), label_text(&hi),
+		n,
+		len(c.series),
+		label_text(&a),
+		label_text(&b),
+		label_text(&lo),
+		label_text(&hi),
 		allocator = f.gtx.allocator,
 	)
 }
