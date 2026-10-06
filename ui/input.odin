@@ -115,6 +115,8 @@ Router :: struct {
 
 	requests:    [dynamic]Request, // asked of the platform, until router_requests_clear
 	needs:       [dynamic]Need, // the shapes asked for, until router_needs_clear; see need.odin
+	need_text:   mem.Dynamic_Arena, // their kinds and queries (need_text)
+	need_text_ready: bool,
 	commands:    [dynamic]Command, // asked of the application, until router_commands_clear
 	readers:     [dynamic]ops.Area_Id, // areas awaiting a Paste
 	focus_next:  ops.Area_Id, // with focus_asked: focus to grant at the next route
@@ -178,6 +180,9 @@ router_destroy :: proc(r: ^Router) {
 	}
 	router_requests_clear(r)
 	router_needs_clear(r)
+	if r.need_text_ready {
+		mem.dynamic_arena_destroy(&r.need_text)
+	}
 	router_commands_clear(r)
 	delete(r.queue)
 	delete(r.events)

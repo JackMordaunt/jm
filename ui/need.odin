@@ -166,7 +166,8 @@ need_raw :: proc(gtx: ^Ctx, kind: string, query: []byte) -> (key: Need_Key, stat
 			}
 		}
 		if !known {
-			append(&r.needs, Need{key, clone_string(kind, r.allocator), clone_bytes(query, r.allocator)})
+			text := need_text(r)
+			append(&r.needs, Need{key, clone_string(kind, text), clone_bytes(query, text)})
 		}
 	}
 	l := gtx.layout
@@ -251,6 +252,18 @@ command_as :: proc(c: Command, $C: typeid, allocator := context.temp_allocator) 
 	return v, true
 }
 
+// need_text is where a router keeps its needs' kinds and queries: an
+// arena emptied whole by router_needs_clear, its blocks kept for reuse,
+// so a frame asking what the last asked allocates nothing.
+@(private)
+need_text :: proc(r: ^Router) -> mem.Allocator {
+	if !r.need_text_ready {
+		mem.dynamic_arena_init(&r.need_text, r.allocator, r.allocator)
+		r.need_text_ready = true
+	}
+	return mem.dynamic_arena_allocator(&r.need_text)
+}
+
 // needs_count and needs_rewind bracket a layout pass whose needs do not
 // count, such as ui.list measuring a row it does not show: the needs
 // recorded since the mark are forgotten.
@@ -265,10 +278,7 @@ needs_rewind :: proc(gtx: ^Ctx, mark: int) {
 	if r == nil {
 		return
 	}
-	for n in r.needs[mark:] {
-		delete(n.kind, r.allocator)
-		delete(n.query, r.allocator)
-	}
+	// Their text stays in the arena until router_needs_clear.
 	resize(&r.needs, mark)
 }
 
@@ -281,9 +291,8 @@ router_needs :: proc(r: ^Router) -> []Need {
 
 // router_needs_clear forgets the needs router_needs returned.
 router_needs_clear :: proc(r: ^Router) {
-	for n in r.needs {
-		delete(n.kind, r.allocator)
-		delete(n.query, r.allocator)
+	if r.need_text_ready {
+		mem.dynamic_arena_reset(&r.need_text)
 	}
 	clear(&r.needs)
 }
