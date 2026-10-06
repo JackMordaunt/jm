@@ -111,20 +111,30 @@ Shape_Entry :: struct {
 // value behind it. q must be a named struct, enum or distinct type: its
 // type name is the need's kind.
 need :: proc(gtx: ^Ctx, q: $Q, $R: typeid) -> (r: ^R, status: Status) {
+	r, status, _ = need_versioned(gtx, q, R)
+	return
+}
+
+// need_versioned is need with the delivery's version: a count that moves
+// with every delivery carrying new bytes, 0 while there is none. A widget
+// that copies what it needs out of the shape, into a cache that outlives
+// the need (a grid's pages), copies each delivery once by it.
+need_versioned :: proc(gtx: ^Ctx, q: $Q, $R: typeid) -> (r: ^R, status: Status, version: u64) {
 	kind := type_name(Q, gtx.allocator)
 	bytes, ok := marshal_bytes(q, gtx.allocator)
 	if !ok {
-		return nil, .Missing
+		return nil, .Missing, 0
 	}
 	key: Need_Key
 	key, status = need_raw(gtx, kind, bytes)
 	l := gtx.layout
 	if l == nil || (status != .Ready && status != .Stale) {
-		return nil, status
+		return nil, status, 0
 	}
 	e := &l.shapes[key]
+	version = e.version
 	if e.decoded != nil && e.decoded_type == R && e.decoded_version == e.version {
-		return (^R)(e.decoded), status
+		return (^R)(e.decoded), status, version
 	}
 	if !e.arena_live {
 		mem.dynamic_arena_init(&e.arena, l.allocator, l.allocator)
@@ -136,10 +146,10 @@ need :: proc(gtx: ^Ctx, q: $Q, $R: typeid) -> (r: ^R, status: Status) {
 	v := new(R, arena)
 	if cbor.unmarshal_from_bytes(e.data, v, allocator = arena, temp_allocator = gtx.allocator) != nil {
 		e.decoded = nil
-		return nil, .Missing
+		return nil, .Missing, 0
 	}
 	e.decoded, e.decoded_type, e.decoded_version = v, R, e.version
-	return v, status
+	return v, status, version
 }
 
 // need_raw is need with the query already marshalled: it records the need
