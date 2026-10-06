@@ -1,8 +1,12 @@
 package http_fuzz
 
 import "core:testing"
+import "core:time"
 
 import harness "jm:fuzz"
+
+// A case's deadline past every wait inside it, so only a hang reaches it.
+CASE_LIMIT :: 60 * time.Second
 
 // A short run of each suite on fixed seeds, replaying its corpus, so `just
 // test` catches a regression without a long fuzz run.
@@ -10,7 +14,9 @@ import harness "jm:fuzz"
 wire_holds :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	for seed in ([]u64{1, 2, 3}) {
-		report := run_wire({seed = seed, iterations = 60, corpus_dir = WIRE_CORPUS})
+		report := run_wire(
+			{seed = seed, iterations = 60, corpus_dir = WIRE_CORPUS, case_timeout = CASE_LIMIT},
+		)
 		testing.expect(t, report.iterations >= 60, "every case must run")
 		expect_clean(t, report)
 	}
@@ -20,7 +26,9 @@ wire_holds :: proc(t: ^testing.T) {
 model_holds :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	for seed in ([]u64{1, 2, 3}) {
-		report := run_model({seed = seed, iterations = 30, corpus_dir = MODEL_CORPUS})
+		report := run_model(
+			{seed = seed, iterations = 30, corpus_dir = MODEL_CORPUS, case_timeout = CASE_LIMIT},
+		)
 		testing.expect(t, report.iterations >= 30, "every case must run")
 		expect_clean(t, report)
 	}
