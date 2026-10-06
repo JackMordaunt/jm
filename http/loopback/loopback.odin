@@ -111,10 +111,7 @@ stop :: proc(s: ^Server) {
 		}
 	}
 	sync.unlock(&s.mutex)
-	// The acceptor is blocked in accept; a connection of our own wakes it.
-	if wake, err := net.dial_tcp(net.Endpoint{net.IP4_Loopback, s.port}); err == nil {
-		net.close(wake)
-	}
+	wake_acceptor(s)
 	thread.join(s.acceptor)
 	thread.destroy(s.acceptor)
 	net.close(s.listener)
@@ -125,6 +122,21 @@ stop :: proc(s: ^Server) {
 	}
 	delete(s.conns)
 	free(s, s.allocator)
+}
+
+// wake_acceptor connects to s until its acceptor, blocked in accept, sees the
+// connection and returns. One dial was not enough: with eight copies of
+// http/fuzz's tests running at once, stop waited on accept for ever.
+@(private)
+wake_acceptor :: proc(s: ^Server) {
+	for !thread.is_done(s.acceptor) {
+		if wake, err := net.dial_tcp(net.Endpoint{net.IP4_Loopback, s.port}); err == nil {
+			net.close(wake)
+		}
+		for i := 0; i < 100 && !thread.is_done(s.acceptor); i += 1 {
+			time.sleep(time.Millisecond)
+		}
+	}
 }
 
 // stopping says whether stop has begun.
