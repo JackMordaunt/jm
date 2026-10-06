@@ -39,6 +39,7 @@ Probe :: struct {
 	frame_after: f32, // then: the soonest it asked for, in seconds
 	debug:       Debug_Flags, // gtx.debug for every frame; probe_init takes it
 	reduce_motion: bool, // gtx.reduce_motion for every frame: a test sets it, never the platform
+	density:     f32, // gtx.density for every frame: device pixels per unit; 0 reads as 1
 	tray:        Debug_Tray, // DEBUG_TOGGLE_KEY opens it, as in a live loop; its stats are the last frame's
 	arena:       ops.Frame_Arena,
 	allocator:   mem.Allocator,
@@ -131,6 +132,7 @@ probe_frame :: proc(p: ^Probe) {
 		scene         = &p.scene,
 		constraints = exact(p.size),
 		viewport    = p.size,
+		density     = p.density,
 		font        = p.font,
 		shaper      = p.shaper,
 		router      = &p.router,

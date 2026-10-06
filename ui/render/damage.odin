@@ -1116,10 +1116,7 @@ shifted :: proc(t: ops.Affine, delta: [2]i32) -> ops.Affine {
 	return out
 }
 
-@(private)
-outset :: proc(r: ops.Rect, d: f32) -> ops.Rect {
-	return {r.x - d, r.y - d, r.w + 2 * d, r.h + 2 * d}
-}
+outset :: ops.rect_outset
 
 // quantize rounds a translation to 1/256 px, Blend2D's subpixel precision,
 // so content moved by a whole offset hashes like the original moved.

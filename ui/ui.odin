@@ -73,6 +73,7 @@ Ctx :: struct {
 	router:        ^Router,
 	layout:        ^Layout,
 	viewport:      ops.Size, // the window's size, in the units constraints use: what a layout keyed on the window rather than its own box (a CSS media query) reads from inside any container
+	density:       f32, // device pixels per unit, the scale the host draws the frame at; 0 reads as 1 (see pixel)
 	frame:         u64,
 	dt:            f32, // seconds since the previous frame
 	time:          f64, // seconds of frame time since the app began: the sum of every frame's dt, so a looping animation read from it is deterministic in a probe
@@ -87,6 +88,13 @@ Ctx :: struct {
 	// decorative loop (a shimmer, a pulse) stands still while it is
 	// true, and motion that shows progress, such as a spinner, keeps going.
 	reduce_motion: bool,
+}
+
+// pixel is the size of one device pixel in the units constraints use,
+// 1 / density: how wide a stroke must be to cover one device pixel at
+// the density the host draws at.
+pixel :: proc(gtx: ^Ctx) -> f32 {
+	return 1 / gtx.density if gtx.density > 0 else 1
 }
 
 // request_frame asks the host for another frame within after seconds; 0,

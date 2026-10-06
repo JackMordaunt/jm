@@ -166,6 +166,9 @@ Every bug below is fixed or written down.
 | `jm:pg_query` | `SELECT '<0xff><0xfe>' FROM t` | Invalid UTF-8 reached the parse tree's JSON and crashed the decoder. | Statements that are not UTF-8 are refused. |
 | `jm:pg_query` | `SELECT-1` through `normalize` | Upstream rewrites it as `SELECT$1`, one identifier. | Upstream's bug; documented, not fixed. |
 | `jm:pq` | Any `COPY … TO STDOUT` | The refusal carried no SQLSTATE, though the server had started the COPY. | It carries `0A000`. |
+| `jm:ui/plot` | Ticks over a domain narrower than a step, or near the ends of f64 | No tick at all, labels that read alike below six decimals, a log axis past its count, and a lone value padded out to infinity. | Fixed; `ui/plot/fuzz/corpus` keeps them. |
+| `jm:ui/plot` | A log axis over many decades | Every tick took the first's format, so 1e-9 and 1e-8 both read `0.000000000000000e14%`. | Each log tick is written on its own magnitude. |
+| `jm:ui/plot` | Box statistics of samples spanning f64 | The IQR overflowed to infinity and the whisker loop overran; a quartile's difference overflowed. | Fixed; `ui/plot/fuzz/corpus` keeps them. |
 
 Two packages, written days apart, got the same arithmetic wrong in the same
 place. A property that draws pointers at the edges finds it in seconds; no
