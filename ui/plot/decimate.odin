@@ -16,8 +16,8 @@ Step :: enum u8 {
 // the last, in their order along the line (min/max decimation). Every
 // extreme survives, so a spike one point wide still reaches its height,
 // and a line of n points costs at most four points a column however large
-// n is. Points arrive with
-// reduce_push in increasing x; reduce_break ends a run at a gap.
+// n is. Points arrive with reduce_push in increasing x; reduce_break ends
+// a run at a gap.
 Reducer :: struct {
 	out:   ^Polyline,
 	col:   f32,
