@@ -145,6 +145,7 @@ test_weeks_start_on_monday :: proc(t: ^testing.T) {
 	hi := f64(days_from_civil(2026, 4, 1) * DAY)
 	tk := time_ticks(lo, hi, 16, {})
 	testing.expect(t, tk.unit.unit == .Week, "13 weeks at 16 ticks steps by the week")
+	testing.expect_value(t, tk.n, 13) // Jan 5 to Mar 30
 	for v in ticks_of(&tk) {
 		c := civil_from_wall(i64(v))
 		testing.expect_value(t, c.wday, 1)
@@ -161,6 +162,10 @@ test_a_zone_off_the_hour_ticks_its_own_half_hours :: proc(t: ^testing.T) {
 	lo := f64(days_from_civil(2026, 6, 1) * DAY)
 	tk := time_ticks(lo, lo + 4 * HOUR, 9, nepal)
 	testing.expect_value(t, tk.unit, Time_Step{.Minute, 30})
+	// 05:45 to 09:45 local holds the half hours 06:00 to 09:30.
+	testing.expect_value(t, tk.n, 8)
+	first := civil_from_wall(wall_of(nepal, i64(tk.v[0])))
+	testing.expect_value(t, [2]int{first.hour, first.minute}, [2]int{6, 0})
 	for v in ticks_of(&tk) {
 		c := civil_from_wall(wall_of(nepal, i64(v)))
 		testing.expectf(
