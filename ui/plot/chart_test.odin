@@ -821,3 +821,77 @@ turns_and_labels :: proc(p: ^ui.Probe) -> (turned, labels: int) {
 	}
 	return
 }
+
+// At twice the density a gridline is one device pixel, half a unit, on
+// the device pixel grid: crisp, not smeared over two rows.
+@(test)
+test_gridlines_are_one_device_pixel :: proc(t: ^testing.T) {
+	pg: Page
+	three_lines(&pg)
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	for density in ([]f32{1, 2, 1.5}) {
+		p.density = density
+		ui.probe_frame(&p)
+		plot := ui.probe_bounds(&p, "Hashrate")
+		lines := 0
+		for op in p.scene.ops {
+			f, ok := op.(ops.Fill)
+			r, is_rect := f.shape.(ops.Rect)
+			// A gridline spans the plot's width.
+			if !ok || !is_rect || abs(r.w - plot.w) > 0.5 {
+				continue
+			}
+			lines += 1
+			testing.expectf(
+				t,
+				abs(r.h * density - 1) < 1e-4,
+				"at %v a gridline is %v tall",
+				density,
+				r.h,
+			)
+			rows := r.y * density
+			testing.expectf(
+				t,
+				abs(rows - math.round(rows)) < 1e-3,
+				"at %v a gridline starts at %v",
+				density,
+				r.y,
+			)
+		}
+		testing.expectf(t, lines >= 3, "at %v, %d gridlines to check", density, lines)
+	}
+}
+
+// A chart fits what it is offered: at a phone's width the time axis keeps
+// its labels apart rather than overlapping them.
+@(test)
+test_a_narrow_chart_keeps_its_labels_apart :: proc(t: ^testing.T) {
+	pg: Page
+	three_lines(&pg)
+	p: ui.Probe
+	ui.probe_init(&p, page, &pg, {320, 240}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	plot := ui.probe_bounds(&p, "Hashrate")
+	testing.expect(t, plot.w > 150 && plot.x + plot.w <= 320, "the plot fits the width")
+	Span :: struct {
+		x0, x1, y: f32,
+	}
+	spans: [dynamic]Span
+	spans.allocator = context.temp_allocator
+	for op in p.scene.ops {
+		if g, ok := op.(ops.Glyphs); ok && g.origin.y > plot.y + plot.h {
+			w := p.scene.runs[g.run].advance
+			append(&spans, Span{g.origin.x, g.origin.x + w, g.origin.y})
+		}
+	}
+	testing.expect(t, len(spans) >= 2, "the x axis has labels")
+	for a, i in spans {
+		for b in spans[i + 1:] {
+			if a.y == b.y {
+				testing.expectf(t, a.x1 <= b.x0 || b.x1 <= a.x0, "labels overlap: %v %v", a, b)
+			}
+		}
+	}
+}
