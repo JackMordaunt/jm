@@ -50,11 +50,15 @@ Probe :: struct {
 	restoring:   bool,
 	subs:        Subscriptions, // the host's view of the frame's needs; see probe_added
 	inbox:       Inbox, // shapes on their way to the next frame; see probe_deliver
+	data:        ^Data_Host, // an application answering the needs itself, as a live loop's
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
 // runs the first frame so names are findable at once. shaper is
-// stub_shaper(); font is the toolkit's face.
+// stub_shaper(); font is the toolkit's face. data, when given, is an
+// application in the probe's process, as a live loop's Data_Host: each
+// frame's need diff and commands go to it, and its inbox is drained
+// before each frame, beside the probe's own.
 probe_init :: proc(
 	p: ^Probe,
 	ui: proc(gtx: ^Ctx, user: rawptr),
@@ -63,9 +67,11 @@ probe_init :: proc(
 	font: ops.Font_Id = 0,
 	allocator := context.allocator,
 	debug: Debug_Flags = {},
+	data: ^Data_Host = nil,
 ) {
 	p^ = {}
 	p.debug = debug
+	p.data = data
 	debug_tray_init(&p.tray)
 	p.ui = ui
 	p.user = user
@@ -125,6 +131,9 @@ probe_frame :: proc(p: ^Probe) {
 	router_needs_clear(&p.router)
 	router_commands_clear(&p.router)
 	inbox_drain(&p.inbox, &p.layout)
+	if p.data != nil && p.data.inbox != nil {
+		inbox_drain(p.data.inbox, &p.layout)
+	}
 	dt := debug_dt(debug, p.dt)
 	p.time += f64(dt)
 	gtx := Ctx {
@@ -161,7 +170,10 @@ probe_frame :: proc(p: ^Probe) {
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
 	probe_platform(p)
-	subscriptions_update(&p.subs, router_needs(&p.router))
+	added, dropped := subscriptions_update(&p.subs, router_needs(&p.router))
+	if p.data != nil {
+		data_dispatch(p.data, added, dropped, router_commands(&p.router))
+	}
 }
 
 // probe_platform carries out the frame's requests as a host would, on

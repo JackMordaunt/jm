@@ -30,7 +30,9 @@ FULL_HEIGHT :: f32(16000)
 // headless_init opens a session of ui_proc(gtx, user) at size, in fonts
 // (fonts must outlive it). debug joins what JM_UI_DEBUG asks for. full
 // lays it out FULL_HEIGHT tall so nothing scrolls, and headless_png trims
-// the empty rows off the bottom. It runs one frame in real text.
+// the empty rows off the bottom. data is an application answering the
+// session's needs in this process (ui.probe_init). It runs one frame in
+// real text.
 headless_init :: proc(
 	h: ^Headless,
 	ui_proc: proc(gtx: ^ui.Ctx, user: rawptr),
@@ -41,13 +43,14 @@ headless_init :: proc(
 	full := false,
 	clear: ops.Color = {255, 255, 255, 255},
 	fallbacks: []ops.Font_Id = nil,
+	data: ^ui.Data_Host = nil,
 ) {
 	h.fonts, h.full, h.clear = fonts, full, clear
 	at := size
 	if full {
 		at.y = FULL_HEIGHT
 	}
-	ui.probe_init(&h.p, ui_proc, user, at, debug = debug | ui.debug_from_env())
+	ui.probe_init(&h.p, ui_proc, user, at, debug = debug | ui.debug_from_env(), data = data)
 	ops.add_fonts(&h.p.scene, fonts)
 	init(&h.r)
 	h.p.shaper = shaper(&h.r, h.p.scene.fonts[:], fallbacks)

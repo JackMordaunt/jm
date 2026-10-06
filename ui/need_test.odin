@@ -288,3 +288,64 @@ need_versioned_counts_deliveries_that_bring_bytes :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	testing.expect(t, s.version > first)
 }
+
+// A probe given a Data_Host is a loop with the application in process:
+// each frame's new and gone needs go to it, and what it puts in its
+// inbox reaches the next frame.
+@(test)
+test_a_probe_dispatches_needs_to_its_data_host :: proc(t: ^testing.T) {
+	Host :: struct {
+		inbox:   Inbox,
+		added:   int,
+		dropped: int,
+	}
+	h: Host
+	inbox_init(&h.inbox)
+	defer inbox_destroy(&h.inbox)
+	data := Data_Host {
+		user = &h,
+		inbox = &h.inbox,
+		on_need = proc(user: rawptr, n: Need, added: bool) {
+			h := (^Host)(user)
+			if !added {
+				h.dropped += 1
+				return
+			}
+			h.added += 1
+			q, _ := need_as(n, Probe_Need)
+			inbox_put_value(&h.inbox, q, Probe_Answer{q.n * 2})
+		},
+	}
+	View :: struct {
+		n:   int,
+		got: int,
+	}
+	v := View{n = 21}
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		v := (^View)(user)
+		if a, st := need(gtx, Probe_Need{v.n}, Probe_Answer); st == .Ready {
+			v.got = a.doubled
+		}
+	}
+	p: Probe
+	probe_init(&p, view, &v, {100, 100}, data = &data)
+	defer probe_destroy(&p)
+	testing.expect_value(t, h.added, 1)
+	probe_frame(&p)
+	testing.expect_value(t, v.got, 42)
+	v.n = 5
+	probe_frame(&p)
+	testing.expect_value(t, h.dropped, 1)
+	probe_frame(&p)
+	testing.expect_value(t, v.got, 10)
+}
+
+@(private = "file")
+Probe_Need :: struct {
+	n: int,
+}
+
+@(private = "file")
+Probe_Answer :: struct {
+	doubled: int,
+}
