@@ -846,3 +846,49 @@ test_compose_background_follows_resize :: proc(t: ^testing.T) {
 		testing.expectf(t, d <= SEAM, "size %v: composed differs from a whole render by %d", size, d)
 	}
 }
+
+// Columns builds a table's frame: a header band clip over two scrolling
+// column clips that meet at x = 120, each a stack of rows moved up by
+// offset, the header's fill reaching the band's edge where the rows
+// start.
+@(private = "file")
+columns_build :: proc(s: ^Scene, offset: f32) {
+	ops.reset(&s.scene)
+	ui.frame_reset(&s.frame)
+	s.frame.scene = &s.scene
+	draw :: proc(s: ^Scene, t: ops.Affine, clip: ui.Clip_Id, cmd: ui.Draw_Cmd) {
+		append(&s.frame.draws, ui.Draw{t, clip, cmd, 0})
+	}
+	draw(s, ops.IDENTITY, ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, CW, CH}, BG})
+	append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Rect{0, 0, CW, 36}, ops.IDENTITY})
+	draw(s, ops.IDENTITY, 0, ops.Fill{ops.Rect{0, 0, CW, 36}, ops.Color{200, 210, 220, 255}})
+	cols := [2]ops.Rect{{0, 36, 120, CH - 36}, {120, 36, CW - 120, CH - 36}}
+	for c, ci in cols {
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, c, ops.IDENTITY})
+		clip := ui.Clip_Id(ci + 1)
+		for row in 0 ..< 40 {
+			y := 36 + f32(row) * 20 - offset
+			ink := ops.Color{u8(row * 6), u8(ci * 120), 90, 255}
+			draw(s, ops.translate(c.x, y), clip, ops.Fill{ops.Rect{4, 4, c.w - 8, 12}, ink})
+		}
+	}
+}
+
+// Two scrolling regions that meet each move their own pixels, and a clip
+// that ends where they start keeps neither from moving.
+@(test)
+test_compose_meeting_regions_both_scroll :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 2)
+	defer rig_destroy(&g)
+	columns_build(&g.scene, 0)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	for offset in ([]f32{7, 30, 31, 60}) {
+		columns_build(&g.scene, offset)
+		compose(&g.c, &g.scene.frame, &g.img, BG)
+		testing.expect_value(t, len(g.c.damage.scrolls), 2)
+		render(&g.r, &g.scene.frame, &g.ref, BG)
+		d := max_delta(&g.img, &g.ref)
+		testing.expectf(t, d <= 1, "at %v the composed target differs from a whole render by %d", offset, d)
+	}
+}

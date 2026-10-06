@@ -253,7 +253,7 @@ damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ops.Color, fonts: ^
 		}
 		rec.key = hash_affine(hash_value(parent_key, rec.shape), rec.t)
 		rec.bounds = ops.rect_intersect(ops.transform_rect(rec.t, rec.local), parent_box)
-		rec.reach = ops.rect_intersect(pixel_bounds(ops.transform_rect(rec.t, rec.local)), parent_reach)
+		rec.reach = ops.rect_intersect(clip_pixels(rec.rect, ops.transform_rect(rec.t, rec.local)), parent_reach)
 		rec.all_rects = rec.rect && parent_rects
 		d.clips[i] = rec
 	}
@@ -577,6 +577,23 @@ pixel_bounds :: proc(r: ops.Rect) -> ops.Rect {
 	x0 := math.floor(r.x - 1)
 	y0 := math.floor(r.y - 1)
 	return {x0, y0, math.ceil(r.x + r.w + 1) - x0, math.ceil(r.y + r.h + 1) - y0}
+}
+
+// clip_pixels is the whole pixels a clip of device box dev can let a draw
+// reach. A rect clip under an axis-aligned transform is applied as a
+// device rect (rect_chain), which covers no pixel past the ones its edges
+// cross, so a clip ending where a scrolling region starts reaches none of
+// its pixels; any other clip's coverage is antialiased a pixel further.
+@(private)
+clip_pixels :: proc(rect: bool, dev: ops.Rect) -> ops.Rect {
+	if !rect {
+		return pixel_bounds(dev)
+	}
+	if dev.w <= 0 || dev.h <= 0 {
+		return {}
+	}
+	x0, y0 := math.floor(dev.x), math.floor(dev.y)
+	return {x0, y0, math.ceil(dev.x + dev.w) - x0, math.ceil(dev.y + dev.h) - y0}
 }
 
 // bin folds each draw's key into the tiles its bounds touch, in draw order.
@@ -944,9 +961,11 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 		if !safe_to_move(d.draws[:], s.anchors[:], a, inner) || !safe_to_move(d.old_draws[:], s.old_anchor[:], old, inner) {
 			continue
 		}
+		// Regions may meet: each move stays inside its own pixels, and the
+		// strips along a fractional edge are repainted after every move.
 		overlaps := false
 		for q in s.found {
-			if ops.rect_intersect(q.inner, outset(inner, 1)).w > 0 {
+			if ops.rect_intersect(q.inner, inner).w > 0 {
 				overlaps = true
 			}
 		}
