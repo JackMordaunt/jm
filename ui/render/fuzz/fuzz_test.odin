@@ -16,6 +16,18 @@ properties_hold :: proc(t: ^testing.T) {
 	}
 }
 
+// The committed corpus is replayed by `just test`, so a case found once by
+// fuzzing stays checked without running the fuzzer again.
+@(test)
+regressions_still_pass :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	report := run({seed = 1, iterations = 1, corpus_dir = CORPUS})
+	testing.expect(t, report.replayed >= 2, "the corpus holds the two band-edge cases")
+	for f in report.failures {
+		testing.expectf(t, false, "%s regressed: %s", f.property, f.detail)
+	}
+}
+
 @(test)
 suite_is_complete :: proc(t: ^testing.T) {
 	s := suite()
