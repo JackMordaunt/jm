@@ -472,6 +472,39 @@ pool_runs_ports_timers_and_workers_together :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(ticks), 3)
 }
 
+// A host stops its pipeline from one thread while another may not have
+// reached run yet; that stop must end the run, not be cleared by it.
+@(test)
+a_stop_before_run_ends_that_run :: proc(t: ^testing.T) {
+	p := make_pipeline(context.allocator)
+	defer destroy(p)
+	got := make([dynamic]int)
+	defer delete(got)
+	s, port := port(p, int)
+	collect(s, &got)
+	stop(p)
+	runner := thread.create_and_start_with_poly_data(p, proc(p: ^Pipeline) {
+		run(p, 2) // the port is open, so only the stop can end this
+	})
+	start := time.tick_now()
+	for !thread.is_done(runner) && time.tick_since(start) < 30 * time.Second {
+		time.sleep(time.Millisecond)
+	}
+	returned := thread.is_done(runner)
+	if !returned {
+		stop(p)
+	}
+	thread.join(runner)
+	thread.destroy(runner)
+	testing.expect(t, returned, "run cleared the stop made before it")
+
+	port_push(port, 1)
+	port_close(port)
+	run(p)
+	testing.expect(t, finished(p), "the next run carried on")
+	testing.expect_value(t, len(got), 1)
+}
+
 @(test)
 stop_returns_early_and_run_resumes :: proc(t: ^testing.T) {
 	p := make_pipeline(context.allocator)

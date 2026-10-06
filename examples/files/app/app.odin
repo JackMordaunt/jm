@@ -578,6 +578,9 @@ places :: proc(home: string, allocator := context.allocator) -> []query.Place {
 deliver :: proc(h: ^Host, d: Done) {
 	job := d.job
 	current := count_done(h, d)
+	when ODIN_TEST {
+		look_into_the_gap(h)
+	}
 
 	buf: [2048]byte
 	stack: mem.Arena
@@ -609,6 +612,22 @@ deliver :: proc(h: ^Host, d: Done) {
 	free(job, h.allocator)
 	if h.wake != nil {
 		h.wake()
+	}
+}
+
+// Test-only, and called only under ODIN_TEST: the host whose deliver is
+// looked at between retiring a job and handing on its answer, and whether a
+// reader there would think the host had settled, with nothing pending and
+// the inbox empty.
+@(private)
+gap_host: ^Host
+@(private)
+gap_looked_settled: bool
+
+@(private)
+look_into_the_gap :: proc(h: ^Host) {
+	if sync.atomic_load(&gap_host) == h {
+		gap_looked_settled = stats(h).pending == 0 && !ui.inbox_pending(&h.inbox)
 	}
 }
 

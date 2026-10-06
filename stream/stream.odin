@@ -1208,7 +1208,6 @@ run :: proc(p: ^Pipeline, threads := AUTO) {
 	threads = pool_size(p, threads)
 	start(p)
 	sync.mutex_lock(&p.mutex)
-	sync.atomic_store(&p.quit, false)
 	p.quiescent = false
 	p.workers = threads
 	sync.mutex_unlock(&p.mutex)
@@ -1224,6 +1223,9 @@ run :: proc(p: ^Pipeline, threads := AUTO) {
 	delete(pool, p.allocator)
 	sync.mutex_lock(&p.mutex)
 	p.workers = 0
+	// Cleared on the way out, not the way in, so a stop made before this run
+	// began still ends it.
+	sync.atomic_store(&p.quit, false)
 	sync.mutex_unlock(&p.mutex)
 	when CHECK_YIELDS {
 		if sync.atomic_load(&p.quiescent) && !finished(p) {
@@ -1249,8 +1251,9 @@ pool_size :: proc(p: ^Pipeline, threads: int) -> int {
 	return threads
 }
 
-// Make `run` return as soon as every node now running has yielded. Nodes keep
-// their state; a later `run` carries on.
+// Make `run` return as soon as every node now running has yielded, or the
+// next `run` at once when none is running: a thread can be stopped before it
+// reaches `run`. Nodes keep their state; a later `run` carries on.
 stop :: proc(p: ^Pipeline) {
 	sync.mutex_guard(&p.mutex)
 	sync.atomic_store(&p.quit, true)
