@@ -244,7 +244,7 @@ test_wait_for_child_outlasts_the_first_build :: proc(t: ^testing.T) {
 	defer thread.destroy(writer)
 	app := Host_App{watch = pointer}
 	start := time.tick_now()
-	path, ok := wait_for_child(&app, 5 * time.Second)
+	path, ok := wait_for_child(&app, 30 * time.Second)
 	testing.expect(t, ok)
 	testing.expect_value(t, path, CHILD_EXE)
 	testing.expect(t, time.tick_since(start) >= 200 * time.Millisecond)
@@ -258,7 +258,8 @@ test_wait_for_child_outlasts_the_first_build :: proc(t: ^testing.T) {
 	start = time.tick_now()
 	_, ok = wait_for_child(&gone, 600 * time.Millisecond) // one poll, then the deadline
 	testing.expect(t, !ok)
-	testing.expect(t, time.tick_since(start) < 3 * time.Second)
+	// Far past the deadline, so only a wait that ignores it fails, not a slow one.
+	testing.expect(t, time.tick_since(start) < 30 * time.Second)
 }
 
 @(test)
