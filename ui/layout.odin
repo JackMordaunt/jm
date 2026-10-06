@@ -662,6 +662,15 @@ innermost :: proc(l: ^Layout) -> ^Container {
 	return &l.stack[len(l.stack) - 1]
 }
 
+// container_id is the id of the innermost open container, 0 at the root:
+// what a component built as a container (sized_open, say) names its
+// parts' semantic nodes under, or takes keyboard focus with, so the node
+// a reader sees and the area that holds focus are one.
+container_id :: proc(gtx: ^Ctx) -> ops.Area_Id {
+	c := innermost(gtx.layout)
+	return c.place.id if c != nil else 0
+}
+
 // children_of is every child placed in c so far, in order.
 @(private)
 children_of :: proc(l: ^Layout, c: ^Container) -> []Child {
