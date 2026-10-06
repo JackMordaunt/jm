@@ -2,6 +2,7 @@ package datagrid_fuzz
 
 import "core:encoding/cbor"
 import "core:fmt"
+import "core:slice"
 
 import harness "jm:fuzz"
 import "jm:ui"
@@ -121,13 +122,7 @@ apply_op :: proc(c: ^Paged_Case, p: ^ui.Probe, op: int, src: ^harness.Source) {
 	case 1:
 		datagrid.view_sort_cycle(v, harness.integer_in(src, 0, 4), harness.boolean(src))
 	case 2:
-		values := make([dynamic]string)
-		for s in ([]string{"Norway", "Paraguay", "Wisconsin"}) {
-			if harness.boolean(src) {
-				append(&values, s)
-			}
-		}
-		datagrid.view_set_values(v, harness.choice(src, []int{1, 2}), values[:])
+		filter_sites(v, src)
 	case 3:
 		datagrid.view_set_search(v, harness.choice(src, []string{"", "1", "k00", "Nor", "M2"}))
 	case 4:
@@ -137,6 +132,19 @@ apply_op :: proc(c: ^Paged_Case, p: ^ui.Probe, op: int, src: ^harness.Source) {
 	case 5:
 		click_row(c, p, src)
 	}
+}
+
+// filter_sites sets a drawn Set filter on the model or the site column to
+// a drawn few of the sites, none clearing it.
+@(private)
+filter_sites :: proc(v: ^datagrid.View, src: ^harness.Source) {
+	values := make([dynamic]string)
+	for s in ([]string{"Norway", "Paraguay", "Wisconsin"}) {
+		if harness.boolean(src) {
+			append(&values, s)
+		}
+	}
+	datagrid.view_set_values(v, harness.choice(src, []int{1, 2}), values[:])
 }
 
 // host_sync starts what the grid needs that the host was not asked for,
@@ -270,17 +278,25 @@ paged_holds :: proc(c: ^Paged_Case, p: ^ui.Probe) -> (string, bool) {
 	if detail, ok := needs_hold(c, p, want, lo, hi); !ok {
 		return detail, false
 	}
-	if c.click {
-		name, held := g.sel.keys[c.clicked]
-		if !held || len(g.sel.keys) != 1 || g.sel.all || datagrid.row_key(name) != c.clicked {
-			return fmt.tprintf("clicked %v, selection %v", c.clicked, g.sel.keys), false
-		}
+	if detail, ok := selection_holds(c); !ok {
+		return detail, false
 	}
 	total := datagrid.answer_page(&c.table, want).total
-	if g.pages.end && g.pages.count != total {
-		return fmt.tprintf("an end at %d, %d rows match", g.pages.count, total), false
+	ok := !g.pages.end || g.pages.count == total
+	return fmt.tprintf("an end at %d, %d rows match", g.pages.count, total), ok
+}
+
+// selection_holds checks that a clicked row is the selection, alone and
+// keyed by its own key string.
+@(private)
+selection_holds :: proc(c: ^Paged_Case) -> (string, bool) {
+	sel := &c.g.sel
+	if !c.click {
+		return "", true
 	}
-	return "", true
+	name, held := sel.keys[c.clicked]
+	ok := held && len(sel.keys) == 1 && !sel.all && datagrid.row_key(name) == c.clicked
+	return fmt.tprintf("clicked %v, selection %v", c.clicked, sel.keys), ok
 }
 
 // rows_hold holds every row in view to the reference's row at its place
@@ -289,25 +305,44 @@ paged_holds :: proc(c: ^Paged_Case, p: ^ui.Probe) -> (string, bool) {
 @(private)
 rows_hold :: proc(c: ^Paged_Case, want: datagrid.Page_Query) -> (string, bool) {
 	g := &c.g
-	q := want
 	for i in g.geo.first ..< g.geo.last {
 		row, st, page := datagrid.pages_row(&g.pages, i)
 		if st != .Ready && st != .Stale {
 			continue
 		}
-		if page.query != g.pages.query {
-			if st == .Ready || !c.paging.keep_stale {
-				return fmt.tprintf("row %d shows %q from another query", i, row.key), false
-			}
-			continue
-		}
-		q.offset = i
-		ref := datagrid.answer_page(&c.table, q)
-		if len(ref.rows) != 1 || ref.rows[0].key != row.key {
-			return fmt.tprintf("row %d shows %q, the query has %v", i, row.key, ref.rows), false
+		if !shown_row_holds(c, want, i, row.key, st, page.query) {
+			return fmt.tprintf("row %d shows %q as %v of query %d", i, row.key, st, page.query),
+				false
 		}
 	}
 	return "", true
+}
+
+// shown_row_holds reports whether row i may show key, from query: the
+// current query's row there, or another's only as a stand-in kept on
+// purpose.
+@(private)
+shown_row_holds :: proc(
+	c: ^Paged_Case,
+	want: datagrid.Page_Query,
+	i: int,
+	key: string,
+	st: datagrid.Row_State,
+	query: u64,
+) -> bool {
+	if query != c.g.pages.query {
+		return st == .Stale && c.paging.keep_stale
+	}
+	return row_is(c, want, i, key)
+}
+
+// row_is reports whether row i of the query want asks for is keyed key.
+@(private)
+row_is :: proc(c: ^Paged_Case, want: datagrid.Page_Query, i: int, key: string) -> bool {
+	q := want
+	q.offset = i
+	ref := datagrid.answer_page(&c.table, q)
+	return len(ref.rows) == 1 && ref.rows[0].key == key
 }
 
 // needs_hold checks the pages the frame needed: each under the current
@@ -347,23 +382,13 @@ needs_hold :: proc(
 // order, whatever page.
 @(private)
 same_query :: proc(a, b: datagrid.Page_Query) -> bool {
-	if a.search != b.search || len(a.sort) != len(b.sort) || len(a.filters) != len(b.filters) {
+	if a.search != b.search || !slice.equal(a.sort, b.sort) || len(a.filters) != len(b.filters) {
 		return false
-	}
-	for s, i in a.sort {
-		if b.sort[i] != s {
-			return false
-		}
 	}
 	for f, i in a.filters {
 		g := b.filters[i]
-		if f.column != g.column || f.kind != g.kind || len(f.values) != len(g.values) {
+		if f.column != g.column || f.kind != g.kind || !slice.equal(f.values, g.values) {
 			return false
-		}
-		for v, k in f.values {
-			if g.values[k] != v {
-				return false
-			}
 		}
 	}
 	return true

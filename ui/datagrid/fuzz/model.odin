@@ -1,6 +1,7 @@
 package datagrid_fuzz
 
 import "core:fmt"
+import "core:slice"
 import "core:strconv"
 import "core:strings"
 
@@ -18,8 +19,36 @@ EPSILON :: 1e-3
 // widths draws tracks, a width and a Fit, solves, and checks every track
 // keeps its bounds and that the whole fills or fits as the Fit says.
 widths :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
-	n := harness.integer_in(src, 0, 9)
-	tracks := make([]datagrid.Track, n)
+	tracks := draw_tracks(src)
+	avail := f32(harness.integer_in(src, -10, 3000))
+	fit := datagrid.Fit.Shrink if harness.boolean(src) else .Scroll
+	out := make([]f32, len(tracks))
+	datagrid.solve_widths(tracks, avail, fit, out)
+	total: f32
+	for t, i in tracks {
+		if detail, ok := track_holds(t, out[i], fit); !ok {
+			return fmt.tprintf("track %d %v: %s", i, t, detail), false
+		}
+		total += out[i]
+	}
+	want := widths_want(tracks, avail, fit)
+	ok := abs(total - want) <= EPSILON * max(want, 1) + 0.01
+	return fmt.tprintf(
+			"%d tracks in %v (%v): %v, want %v in all",
+			len(tracks),
+			avail,
+			fit,
+			out,
+			want,
+		),
+		ok
+}
+
+// draw_tracks draws up to eight tracks, each at least its min and at
+// most its max.
+@(private)
+draw_tracks :: proc(src: ^harness.Source) -> []datagrid.Track {
+	tracks := make([]datagrid.Track, harness.integer_in(src, 0, 9))
 	for &t in tracks {
 		t.min = f32(harness.integer_in(src, 0, 120))
 		t.base = t.min + f32(harness.integer_in(src, 0, 400))
@@ -29,53 +58,67 @@ widths :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 		t.grow = f32(harness.integer_in(src, 0, 4))
 		t.rigid = harness.integer_in(src, 0, 4) == 0
 	}
-	avail := f32(harness.integer_in(src, -10, 3000))
-	fit := datagrid.Fit.Shrink if harness.boolean(src) else .Scroll
-	out := make([]f32, n)
-	datagrid.solve_widths(tracks, avail, fit, out)
-	base, total, room, give: f32
-	for t, i in tracks {
-		if detail, ok := track_holds(t, out[i], avail, fit); !ok {
-			return fmt.tprintf("track %d %v: %s", i, t, detail), false
-		}
+	return tracks
+}
+
+// widths_want is what tracks should come to in avail under fit: their
+// bases, grown to avail as far as the growing ones can go, or with Shrink
+// shrunk to it as far as the ones not rigid can give.
+@(private)
+widths_want :: proc(tracks: []datagrid.Track, avail: f32, fit: datagrid.Fit) -> f32 {
+	base, room, give: f32
+	for t in tracks {
 		base += t.base
-		total += out[i]
-		if t.grow > 0 && !t.rigid {
-			room += (t.max - t.base) if t.max > 0 else 1e9
-		}
-		if !t.rigid {
-			give += t.base - t.min
-		}
+		room += track_room(t)
+		give += 0 if t.rigid else t.base - t.min
 	}
-	want := base
 	switch {
 	case avail <= 0:
 	case base < avail:
-		want = min(avail, base + room)
+		return min(avail, base + room)
 	case base > avail && fit == .Shrink:
-		want = max(avail, base - give)
+		return max(avail, base - give)
 	}
-	ok := abs(total - want) <= EPSILON * max(want, 1) + 0.01
-	return fmt.tprintf("%d tracks in %v (%v): %v, want %v in all", n, avail, fit, out, want), ok
+	return base
 }
 
-// track_holds checks one track's width w: never below its min, a rigid one
-// its base, grown only if it grows and only to its max, shrunk only to fit.
+// track_room is how far t can grow: none unless it grows, else to its
+// max, without one as far as anything asks.
 @(private)
-track_holds :: proc(t: datagrid.Track, w, avail: f32, fit: datagrid.Fit) -> (string, bool) {
+track_room :: proc(t: datagrid.Track) -> f32 {
+	if t.grow <= 0 || t.rigid {
+		return 0
+	}
+	return (t.max - t.base) if t.max > 0 else 1e9
+}
+
+// track_holds checks one track's width w: within its bounds, then grown
+// or shrunk only as its kind allows.
+@(private)
+track_holds :: proc(t: datagrid.Track, w: f32, fit: datagrid.Fit) -> (string, bool) {
 	slack := EPSILON * max(t.base, 1)
 	switch {
 	case !(w >= 0) || w >= datagrid.INF:
 		return fmt.tprintf("width %v", w), false
-	case t.rigid && w != t.base:
-		return fmt.tprintf("rigid, but %v", w), false
 	case w < t.min - slack:
 		return fmt.tprintf("%v under its min", w), false
-	case w > t.base + slack && (t.grow <= 0 || t.rigid):
+	case t.rigid && w != t.base:
+		return fmt.tprintf("rigid, but %v", w), false
+	}
+	return track_moved(t, w, fit, slack)
+}
+
+// track_moved checks a track that moved from its base: grown only if it
+// grows and only to its max, shrunk only to fit.
+@(private)
+track_moved :: proc(t: datagrid.Track, w: f32, fit: datagrid.Fit, slack: f32) -> (string, bool) {
+	grew, shrank := w > t.base + slack, w < t.base - slack
+	switch {
+	case grew && t.grow <= 0:
 		return fmt.tprintf("grew to %v", w), false
-	case w > t.base + slack && t.max > 0 && w > t.max + slack:
+	case grew && t.max > 0 && w > t.max + slack:
 		return fmt.tprintf("%v past its max", w), false
-	case w < t.base - slack && fit != .Shrink:
+	case shrank && fit != .Shrink:
 		return fmt.tprintf("shrank to %v without Shrink", w), false
 	}
 	return "", true
@@ -117,7 +160,9 @@ heights :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 	return "", true
 }
 
-// tops_hold checks h against the heights hs, each at least 1.
+// tops_hold checks h against the heights hs, each at least 1: every top
+// against a prefix sum, every height, the total, and the row found at
+// drawn ys.
 @(private)
 tops_hold :: proc(h: ^datagrid.Heights, hs: []f64, src: ^harness.Source) -> (string, bool) {
 	sum: f64
@@ -125,19 +170,30 @@ tops_hold :: proc(h: ^datagrid.Heights, hs: []f64, src: ^harness.Source) -> (str
 		if top := datagrid.heights_top(h, i); abs(top - sum) > 1e-6 * max(sum, 1) {
 			return fmt.tprintf("top of %d is %v, want %v", i, top, sum), false
 		}
-		if datagrid.heights_of(h, i) != max(v, 1) {
-			return fmt.tprintf("height of %d is %v, want %v", i, datagrid.heights_of(h, i), v),
-				false
+		if got := datagrid.heights_of(h, i); got != max(v, 1) {
+			return fmt.tprintf("height of %d is %v, want %v", i, got, v), false
 		}
 		sum += max(v, 1)
 	}
 	if datagrid.heights_total(h) != sum {
 		return fmt.tprintf("total %v, want %v", datagrid.heights_total(h), sum), false
 	}
-	for _ in 0 ..< 8 {
-		if len(hs) == 0 {
-			break
-		}
+	return rows_found(h, len(hs), sum, src)
+}
+
+// rows_found checks the row heights_at finds at drawn ys within sum,
+// the height of h's n rows: the one whose span holds y.
+@(private)
+rows_found :: proc(
+	h: ^datagrid.Heights,
+	n: int,
+	sum: f64,
+	src: ^harness.Source,
+) -> (
+	string,
+	bool,
+) {
+	for _ in 0 ..< (8 if n > 0 else 0) {
 		y := f64(harness.integer_in(src, 0, max(int(sum), 1)))
 		i := datagrid.heights_at(h, y)
 		top, next := datagrid.heights_top(h, i), datagrid.heights_top(h, i + 1)
@@ -456,26 +512,25 @@ reference_keeps :: proc(rows: ^Rows, q: datagrid.Query, r: int) -> bool {
 reference_filter :: proc(cell: string, kind: datagrid.Value_Kind, f: datagrid.Filter) -> bool {
 	switch f.kind {
 	case .Set:
-		if len(f.values) == 0 {
-			return true
-		}
-		for v in f.values {
-			if v == cell {
-				return true
-			}
-		}
-		return false
+		return len(f.values) == 0 || slice.contains(f.values[:], cell)
 	case .Text:
 		return strings.contains(strings.to_lower(cell), strings.to_lower(f.text))
 	case .Range:
-		if !f.has_lo && !f.has_hi {
-			return true
-		}
-		v, ok := reference_value(cell, kind)
-		return ok && (!f.has_lo || v >= f.lo) && (!f.has_hi || v <= f.hi)
+		return reference_range(cell, kind, f)
 	case .None:
 	}
 	return true
+}
+
+// reference_range reports whether f, a Range filter, keeps cell: any
+// cell when neither bound is set, else one whose value lies within them.
+@(private)
+reference_range :: proc(cell: string, kind: datagrid.Value_Kind, f: datagrid.Filter) -> bool {
+	if !f.has_lo && !f.has_hi {
+		return true
+	}
+	v, ok := reference_value(cell, kind)
+	return ok && (!f.has_lo || v >= f.lo) && (!f.has_hi || v <= f.hi)
 }
 
 @(private)
@@ -492,25 +547,43 @@ reference_value :: proc(cell: string, kind: datagrid.Value_Kind) -> (f64, bool) 
 reference_less :: proc(rows: ^Rows, sort: []datagrid.Sort_Key, a, b: int) -> bool {
 	for k in sort {
 		ca, cb := rows.cells[a][k.col], rows.cells[b][k.col]
-		c := 0
-		if QUERY_COLS[k.col].kind == .Text {
-			c = datagrid.compare_natural(ca, cb)
-			if (ca == "") != (cb == "") {
-				return cb == ""
-			}
-		} else {
-			va, oa := reference_value(ca, QUERY_COLS[k.col].kind)
-			vb, ob := reference_value(cb, QUERY_COLS[k.col].kind)
-			if oa != ob {
-				return oa
-			}
-			c = 0 if !oa || va == vb else (-1 if va < vb else 1)
+		c, blank_first := reference_compare(ca, cb, QUERY_COLS[k.col].kind)
+		if blank_first != 0 {
+			return blank_first < 0
 		}
 		if c != 0 {
 			return (c < 0) != k.desc
 		}
 	}
 	return false
+}
+
+// reference_compare orders two cells of a column of kind; blank_first is
+// -1 when only b is blank or not a value, which puts a first whichever
+// way the sort runs, 1 when only a is, else 0.
+@(private)
+reference_compare :: proc(ca, cb: string, kind: datagrid.Value_Kind) -> (c, blank_first: int) {
+	if kind == .Text {
+		if (ca == "") != (cb == "") {
+			return 0, 1 if ca == "" else -1
+		}
+		return datagrid.compare_natural(ca, cb), 0
+	}
+	va, oa := reference_value(ca, kind)
+	vb, ob := reference_value(cb, kind)
+	if oa != ob {
+		return 0, -1 if oa else 1
+	}
+	return reference_order_values(va, vb, oa), 0
+}
+
+// reference_order_values orders two values, or none when they are not.
+@(private)
+reference_order_values :: proc(va, vb: f64, ok: bool) -> int {
+	if !ok || va == vb {
+		return 0
+	}
+	return -1 if va < vb else 1
 }
 
 @(private)
@@ -632,13 +705,7 @@ delimited :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 			return fmt.tprintf("%q read back as %q", text, got), false
 		}
 		for f, i in fields {
-			want := f
-			if format.defuse &&
-			   len(f) > 0 &&
-			   strings.index_byte(datagrid.FORMULA_LEADERS, f[0]) >= 0 {
-				want = strings.concatenate({"'", f})
-			}
-			if got[i] != want {
+			if want := written(format, f); got[i] != want {
 				return fmt.tprintf("field %d %q read back as %q from %q", i, f, got[i], text),
 					false
 			}
@@ -647,36 +714,30 @@ delimited :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 	return "", true
 }
 
+// written is field f as format should write it: a formula defused with an
+// apostrophe, every other field as it is.
+@(private)
+written :: proc(format: datagrid.Delimited, f: string) -> string {
+	if format.defuse && len(f) > 0 && strings.index_byte(datagrid.FORMULA_LEADERS, f[0]) >= 0 {
+		return strings.concatenate({"'", f})
+	}
+	return f
+}
+
 // read_quoted reads one record of fields split by delim and ended by eol,
 // as RFC 4180 has it: a field in double quotes holds anything, a doubled
 // quote one quote; any other holds no quote, carriage return or newline.
 @(private)
 read_quoted :: proc(text: string, delim: u8, eol: string) -> ([]string, bool) {
 	out := make([dynamic]string)
-	b := strings.builder_make()
 	i := 0
 	for {
-		strings.builder_reset(&b)
-		if i < len(text) && text[i] == '"' {
-			i += 1
-			for i < len(text) && !(text[i] == '"' && (i + 1 >= len(text) || text[i + 1] != '"')) {
-				strings.write_byte(&b, text[i])
-				i += 2 if text[i] == '"' else 1
-			}
-			if i >= len(text) {
-				return out[:], false // the quotes never closed
-			}
-			i += 1
-		} else {
-			for i < len(text) && text[i] != delim && !strings.has_prefix(text[i:], eol) {
-				if strings.index_byte("\"\r\n", text[i]) >= 0 {
-					return out[:], false // RFC 4180 quotes a field holding one
-				}
-				strings.write_byte(&b, text[i])
-				i += 1
-			}
+		field, next, ok := read_field(text, i, delim, eol)
+		if !ok {
+			return out[:], false
 		}
-		append(&out, strings.clone(strings.to_string(b)))
+		append(&out, field)
+		i = next
 		switch {
 		case i < len(text) && text[i] == delim:
 			i += 1
@@ -686,6 +747,53 @@ read_quoted :: proc(text: string, delim: u8, eol: string) -> ([]string, bool) {
 			return out[:], false
 		}
 	}
+}
+
+// read_field reads the field at text[i], quoted or not, and returns it
+// and where it ends; ok is false for a field RFC 4180 does not allow.
+@(private)
+read_field :: proc(
+	text: string,
+	i: int,
+	delim: u8,
+	eol: string,
+) -> (
+	field: string,
+	next: int,
+	ok: bool,
+) {
+	if i < len(text) && text[i] == '"' {
+		return read_quoted_field(text, i + 1)
+	}
+	j := i
+	for j < len(text) && text[j] != delim && !strings.has_prefix(text[j:], eol) {
+		if strings.index_byte("\"\r\n", text[j]) >= 0 {
+			return "", j, false // RFC 4180 quotes a field holding one
+		}
+		j += 1
+	}
+	return text[i:j], j, true
+}
+
+// read_quoted_field reads a quoted field's body from text[i], a doubled
+// quote one quote, to its closing quote; ok is false if it never closes.
+@(private)
+read_quoted_field :: proc(text: string, i: int) -> (field: string, next: int, ok: bool) {
+	b := strings.builder_make()
+	j := i
+	for j < len(text) {
+		if text[j] != '"' {
+			strings.write_byte(&b, text[j])
+			j += 1
+			continue
+		}
+		if j + 1 >= len(text) || text[j + 1] != '"' {
+			return strings.to_string(b), j + 1, true
+		}
+		strings.write_byte(&b, '"')
+		j += 2
+	}
+	return "", j, false
 }
 
 // VIEW_TEXT is what a view's strings are made of: every byte its quoting
@@ -801,19 +909,38 @@ views_equal :: proc(a, b: ^datagrid.View) -> (string, bool) {
 		return fmt.tprintf("order %v read back as %v", a.order[:], b.order[:]), false
 	}
 	for s, i in a.cols {
-		t := b.cols[i]
-		if s.width != t.width || s.hidden != t.hidden || s.pin != t.pin {
-			return fmt.tprintf("column %d %v read back as %v", i, s, t), false
+		if !same_state(s, b.cols[i]) {
+			return fmt.tprintf("column %d %v read back as %v", i, s, b.cols[i]), false
 		}
 	}
-	if len(a.sort) != len(b.sort) {
+	if !slice.equal(a.sort[:], b.sort[:]) {
 		return fmt.tprintf("sort %v read back as %v", a.sort[:], b.sort[:]), false
 	}
-	for k, i in a.sort {
-		if b.sort[i] != k {
-			return fmt.tprintf("sort %v read back as %v", a.sort[:], b.sort[:]), false
-		}
+	if detail, same := active_filters_equal(a, b); !same {
+		return detail, false
 	}
+	same := a.search == b.search && a.group == b.group
+	return fmt.tprintf(
+			"search %q group %d read back as %q %d",
+			a.search,
+			a.group,
+			b.search,
+			b.group,
+		),
+		same
+}
+
+// same_state reports whether two columns' states agree in what a view
+// keeps: width, visibility and pin.
+@(private)
+same_state :: proc(a, b: datagrid.Column_State) -> bool {
+	return a.width == b.width && a.hidden == b.hidden && a.pin == b.pin
+}
+
+// active_filters_equal compares a's active filters with b's, which keeps
+// only those.
+@(private)
+active_filters_equal :: proc(a, b: ^datagrid.View) -> (string, bool) {
 	active := make([dynamic]datagrid.Filter)
 	for f in a.filters {
 		if datagrid.filter_active(f) {
@@ -828,16 +955,6 @@ views_equal :: proc(a, b: ^datagrid.View) -> (string, bool) {
 			return fmt.tprintf("filter %v read back as %v", f, b.filters[i]), false
 		}
 	}
-	if a.search != b.search || a.group != b.group {
-		return fmt.tprintf(
-				"search %q group %d read back as %q %d",
-				a.search,
-				a.group,
-				b.search,
-				b.group,
-			),
-			false
-	}
 	return "", true
 }
 
@@ -850,24 +967,24 @@ filters_equal :: proc(a, b: datagrid.Filter) -> bool {
 	}
 	switch a.kind {
 	case .Set:
-		if len(a.values) != len(b.values) {
-			return false
-		}
-		for s, i in a.values {
-			if b.values[i] != s {
-				return false
-			}
-		}
+		return slice.equal(a.values[:], b.values[:])
 	case .Text:
 		return a.text == b.text
 	case .Range:
-		if a.has_lo != b.has_lo || a.has_hi != b.has_hi {
-			return false
-		}
-		return (!a.has_lo || a.lo == b.lo) && (!a.has_hi || a.hi == b.hi)
+		return(
+			bound_equal(a.lo, a.has_lo, b.lo, b.has_lo) &&
+			bound_equal(a.hi, a.has_hi, b.hi, b.has_hi) \
+		)
 	case .None:
 	}
 	return true
+}
+
+// bound_equal reports whether two bounds are both open, or both set to
+// one value.
+@(private)
+bound_equal :: proc(a: f64, has_a: bool, b: f64, has_b: bool) -> bool {
+	return has_a == has_b && (!has_a || a == b)
 }
 
 // view_holds checks v stands on cols: the order holds every column once,
@@ -875,26 +992,46 @@ filters_equal :: proc(a, b: datagrid.Filter) -> bool {
 @(private)
 view_holds :: proc(v: ^datagrid.View, cols: []datagrid.Column) -> (string, bool) {
 	n := len(cols)
-	seen := make([]bool, n)
-	if len(v.order) != n || len(v.cols) != n {
+	if len(v.order) != n || len(v.cols) != n || !is_permutation(v.order[:]) {
 		return fmt.tprintf("order %v and %d states for %d columns", v.order[:], len(v.cols), n),
 			false
 	}
-	for c in v.order {
-		if c < 0 || c >= n || seen[c] {
-			return fmt.tprintf("order %v", v.order[:]), false
-		}
-		seen[c] = true
-	}
 	for k in v.sort {
-		if k.col < 0 || k.col >= n {
+		if !column_in(k.col, n) {
 			return fmt.tprintf("sort %v", v.sort[:]), false
 		}
 	}
+	return filters_and_group_hold(v, n)
+}
+
+// filters_and_group_hold checks v's filters and grouping name one of its
+// n columns.
+@(private)
+filters_and_group_hold :: proc(v: ^datagrid.View, n: int) -> (string, bool) {
 	for f in v.filters {
-		if f.col < 0 || f.col >= n {
+		if !column_in(f.col, n) {
 			return fmt.tprintf("filter on column %d", f.col), false
 		}
 	}
-	return fmt.tprintf("group %d", v.group), v.group >= -1 && v.group < n
+	return fmt.tprintf("group %d", v.group), v.group == -1 || column_in(v.group, n)
+}
+
+// column_in reports whether c is one of n columns.
+@(private)
+column_in :: proc(c, n: int) -> bool {
+	return c >= 0 && c < n
+}
+
+// is_permutation reports whether order holds 0 to len(order) - 1, each
+// once.
+@(private)
+is_permutation :: proc(order: []int) -> bool {
+	seen := make([]bool, len(order))
+	for c in order {
+		if c < 0 || c >= len(order) || seen[c] {
+			return false
+		}
+		seen[c] = true
+	}
+	return true
 }
