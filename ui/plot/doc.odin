@@ -16,8 +16,10 @@ Every chart has the same parts:
 
   - A legend of its series, each entry a toggle; a single series has none.
   - Axes: linear, log or time values, with ticks at nice steps
-    (linear_ticks, log_ticks, time_ticks on a Zone's calendar), labels in
-    a Number_Format ("1.2 PH/s", "$1.2k"), and categories in bands whose
+    (linear_ticks, log_ticks, time_ticks on a Zone's calendar) over a
+    domain that ends on a tick unless that would leave most of a step
+    empty (fit_linear), labels in a Number_Format ("1.2 PH/s", "$1.2k"),
+    each log tick on its own magnitude, and categories in bands whose
     labels turn or thin when crowded.
   - A readout: a crosshair over the nearest x for a line chart, or the
     category under the pointer for bars and boxes, with a tooltip listing
