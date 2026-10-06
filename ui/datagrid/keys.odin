@@ -187,14 +187,36 @@ reveal :: proc(g: ^Grid) {
 // and search keep; in a paged one, every row that matches, loaded or not
 // (Selection.all), which a caller acting on it asks its source for.
 select_all :: proc(g: ^Grid, src: Source) {
-	selection_all(&g.sel, g.match)
 	if src.paged == nil {
 		// Explicit, so the keys are there to act on and survive a filter.
-		clear(&g.keys)
+		select_loaded(g, src)
+		return
+	}
+	selection_all(&g.sel, g.match)
+}
+
+// select_loaded selects every row the grid holds, explicitly: in a client
+// grid every row the filters and search keep, in a paged one the rows of
+// the current query that have arrived. Unlike select_all it names its
+// rows, so an action on them needs nothing more from the source.
+select_loaded :: proc(g: ^Grid, src: Source) {
+	selection_clear(&g.sel)
+	clear(&g.keys)
+	clear(&g.names)
+	if src.paged == nil {
 		for r in g.order.rows {
 			append(&g.keys, source_key(src, r))
 		}
-		g.sel.all = false
-		selection_range(&g.sel, g.keys[:], nil)
+	} else {
+		for e in g.pages.entries {
+			if e.query != g.pages.query || e.state != .Ready {
+				continue
+			}
+			for r in e.rows {
+				append(&g.keys, row_key(r.key))
+				append(&g.names, r.key)
+			}
+		}
 	}
+	selection_range(&g.sel, g.keys[:], g.names[:])
 }
