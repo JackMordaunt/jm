@@ -28,7 +28,15 @@ properties_hold :: proc(t: ^testing.T) {
 suite_is_complete :: proc(t: ^testing.T) {
 	s := suite()
 	testing.expect_value(t, s.name, "ui_plot")
-	want := []string{"linear_ticks", "log_ticks", "time_ticks", "decimate", "box_stats", "stack"}
+	want := []string {
+		"linear_ticks",
+		"fit_linear",
+		"log_ticks",
+		"time_ticks",
+		"decimate",
+		"box_stats",
+		"stack",
+	}
 	testing.expect_value(t, len(s.properties), len(want))
 	for p, i in s.properties {
 		if i < len(want) {

@@ -162,3 +162,22 @@ test_log_ticks_write_each_on_its_own_magnitude :: proc(t: ^testing.T) {
 		testing.expect_value(t, label_text(&l), c.want)
 	}
 }
+
+@(test)
+test_an_axis_ends_short_of_a_mostly_empty_step :: proc(t: ^testing.T) {
+	// Sales stacked to $345k over refunds of $15k: a step of $100k would
+	// spend a fifth of the axis on -$100k to -$15k.
+	d0, d1, tk := fit_linear(-15e3, 345e3, 6)
+	testing.expectf(t, d0 < -15e3 && d0 > -50e3, "the bottom stops near the data, at %v", d0)
+	testing.expect_value(t, d1, 400e3) // 55k of 100k empty: within SLACK
+	testing.expect_value(t, ticks_of(&tk)[0], 0)
+	for v in ticks_of(&tk) {
+		testing.expectf(t, v >= d0 && v <= d1, "tick %v outside %v..%v", v, d0, d1)
+	}
+	// Data that nearly fills its ticks ends on them.
+	d0, d1, _ = fit_linear(0, 191, 5)
+	testing.expect_value(t, [2]f64{d0, d1}, [2]f64{0, 200})
+	// A short end never crosses zero.
+	d0, _, _ = fit_linear(1, 1046, 6)
+	testing.expect(t, d0 >= 0, "positive data keeps its axis above zero")
+}

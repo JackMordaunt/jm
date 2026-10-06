@@ -137,25 +137,80 @@ degenerate :: proc(lo, hi: f64) -> bool {
 // plot's edges. A domain with no width is widened around its value first:
 // by a tenth of it either way, or to [0, 1] at zero.
 nice_domain :: proc(lo, hi: f64, max_count: int) -> (f64, f64) {
+	d0, d1, _ := nice_ticks(lo, hi, max_count)
+	return d0, d1
+}
+
+// nice_ticks is nice_domain with the loose ticks it ends on.
+@(private)
+nice_ticks :: proc(lo, hi: f64, max_count: int) -> (d0, d1: f64, l: Tick_List) {
 	lo, hi := lo, hi
 	if !is_finite(lo) || !is_finite(hi) {
-		return 0, 1
+		return 0, 1, linear_ticks(0, 1, max_count)
 	}
 	if lo > hi {
 		lo, hi = hi, lo
 	}
 	if degenerate(lo, hi) {
+		// By a tenth either way, or to [0, 1] at zero.
+		// Clamped, so a value at the end of f64 does not pad to infinity.
 		pad := abs(lo) * 0.1
+		lo, hi = max(lo - pad, -max(f64)), min(hi + pad, max(f64))
 		if pad == 0 {
-			return 0, 1
+			lo, hi = 0, 1
 		}
-		lo, hi = lo - pad, hi + pad
 	}
-	l := linear_ticks(lo, hi, max_count, loose = true)
+	l = linear_ticks(lo, hi, max_count, loose = true)
 	if l.n < 2 {
-		return lo, hi
+		return lo, hi, l
 	}
-	return l.v[0], l.v[l.n - 1]
+	return l.v[0], l.v[l.n - 1], l
+}
+
+// SLACK is the most of a step a linear axis leaves empty past its data at
+// either end to end on a tick there; FIT_PAD is the room, as a share of
+// the data's span, left past the data where it ends short of a tick.
+SLACK   :: 0.6
+FIT_PAD :: 0.05
+
+// fit_linear is a linear axis's domain and ticks over data from lo to hi,
+// at most max_count ticks: nice_domain's, so the gridlines frame the plot,
+// except at an end where that would leave more than SLACK of a step empty,
+// as a stack of large positives with a small negative would below zero.
+// That end stops FIT_PAD past the data instead, never past zero, and the
+// ticks beyond it go. At least two ticks always stay.
+fit_linear :: proc(lo, hi: f64, max_count: int) -> (d0, d1: f64, ticks: Tick_List) {
+	d0, d1, ticks = nice_ticks(lo, hi, max_count)
+	step := ticks.step
+	if !(step > 0 && hi > lo) {
+		return
+	}
+	a, b := d0, d1
+	pad := (hi - lo) * FIT_PAD
+	if lo - d0 > SLACK * step {
+		a = lo - pad if lo < 0 else max(lo - pad, 0)
+	}
+	if d1 - hi > SLACK * step {
+		b = hi + pad if hi > 0 else min(hi + pad, 0)
+	}
+	inside := ticks_within(&ticks, a, b)
+	if inside.n >= 2 {
+		return a, b, inside
+	}
+	return
+}
+
+// ticks_within is the ticks of l that lie in [a, b].
+@(private)
+ticks_within :: proc(l: ^Tick_List, a, b: f64) -> (out: Tick_List) {
+	out.step = l.step
+	for v in ticks_of(l) {
+		if v >= a && v <= b {
+			out.v[out.n] = v
+			out.n += 1
+		}
+	}
+	return
 }
 
 // log_ticks is at most max_count ticks over [lo, hi] on a log axis: every

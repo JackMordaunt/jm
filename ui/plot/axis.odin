@@ -70,8 +70,7 @@ value_axis :: proc(f: ^Frame, a: Axis, e: Extent, length: f32, pitch: f32 = 0) -
 		lo, hi = decades(lo, hi)
 		v.ticks = log_ticks(lo, hi, want)
 	} else {
-		lo, hi = nice_domain(lo, hi, want)
-		v.ticks = linear_ticks(lo, hi, want, loose = true)
+		lo, hi, v.ticks = fit_linear(lo, hi, want)
 	}
 	v.scale = {
 		kind = a.scale,

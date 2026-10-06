@@ -7,6 +7,8 @@ stacks make about the data they draw.
 
 	linear_ticks  ticks rise, stay in the domain (or cover it, loose), number
 	              at most what was asked, and their labels differ
+	fit_linear    an axis's domain covers its data and its ticks rise inside
+	              it, at most what was asked
 	log_ticks     ticks rise, stay in the domain and number at most asked
 	time_ticks    ticks rise, stay in the domain, number at most asked, and
 	              each reads uniquely with the context line in force
@@ -35,6 +37,7 @@ Subject :: struct {}
 
 properties := []harness.Property(Subject) {
 	{"linear_ticks", linear_ticks},
+	{"fit_linear", fit_linear},
 	{"log_ticks", log_ticks},
 	{"time_ticks", time_ticks},
 	{"decimate", decimate},
@@ -112,6 +115,28 @@ linear_ticks :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
 	}
 	f := harness.choice(src, FORMATS)
 	return check_unique(ts, f, l.step, where_)
+}
+
+fit_linear :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	lo, hi := domain(src)
+	lo, hi = min(lo, hi), max(lo, hi)
+	want := harness.integer_in(src, 2, 12)
+	d0, d1, tk := plot.fit_linear(lo, hi, want)
+	ts := plot.ticks_of(&tk)
+	where_ := fmt.tprintf("fit_linear(%v, %v, %d) = %v..%v %v", lo, hi, want, d0, d1, ts)
+	if !plot.is_finite(lo) || !plot.is_finite(hi) {
+		return "", true
+	}
+	if !(d0 <= lo && d1 >= hi) && max(abs(lo), abs(hi)) < 1e300 {
+		return fmt.tprint(where_, ": the domain leaves data out"), false
+	}
+	if msg, ok := check_count(ts, want, true, where_); !ok {
+		return msg, false
+	}
+	if msg, ok := rising(ts, where_); !ok {
+		return msg, false
+	}
+	return in_domain(ts, d0, d1, false, where_)
 }
 
 // check_count checks there are no more ticks than want asked for (one when it
