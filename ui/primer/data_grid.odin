@@ -322,6 +322,8 @@ filter_button :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, h: ^datagrid.Header) {
 	defer ui.close(&s)
 	name := fmt.aprintf("Filter %s", h.column.title, allocator = gtx.allocator)
 	variant := Button_Variant.Invisible
+	// Not a Tab stop: the grid is one, and Alt+Down on a header opens
+	// its panel from the keyboard.
 	if chosen > 0 {
 		count := fmt.aprintf("%d", chosen, allocator = gtx.allocator)
 		if button(
@@ -332,11 +334,21 @@ filter_button :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, h: ^datagrid.Header) {
 			leading = .Filter,
 			count = count,
 			name = name,
+			tab_stop = false,
 			key = 1,
 		) {
 			filter_toggle(g, h.col)
 		}
-	} else if icon_button(gtx, .Filter, name, variant, .Small, no_tooltip = true, key = 1) {
+	} else if icon_button(
+		gtx,
+		.Filter,
+		name,
+		variant,
+		.Small,
+		no_tooltip = true,
+		tab_stop = false,
+		key = 1,
+	) {
 		filter_toggle(g, h.col)
 	}
 	anchor := ui.last_widget(gtx)
@@ -616,7 +628,12 @@ grid_toolbar :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 	if g.grid.export.active && !g.grid.export.done {
 		w, total := datagrid.export_progress(&g.grid)
 		of := fmt.tprintf(" of %s", design.thousands(total)) if total >= 0 else ""
-		progress := fmt.aprintf("Exporting %s%s rows", design.thousands(w), of, allocator = gtx.allocator)
+		progress := fmt.aprintf(
+			"Exporting %s%s rows",
+			design.thousands(w),
+			of,
+			allocator = gtx.allocator,
+		)
 		layout_text(gtx, progress, style(.Body_Small), color(.Fg_Color_Muted), .Status)
 		if button(gtx, "Cancel", .Invisible, .Small, key = 1) {
 			datagrid.export_cancel(&g.grid)
@@ -676,7 +693,12 @@ toolbar_counts :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 	)
 	if !datagrid.selection_empty(&g.grid.sel) {
 		picked := datagrid.selection_count(&g.grid.sel, n)
-		text = fmt.aprintf("%s · %s selected", text, design.thousands(picked), allocator = gtx.allocator)
+		text = fmt.aprintf(
+			"%s · %s selected",
+			text,
+			design.thousands(picked),
+			allocator = gtx.allocator,
+		)
 	}
 	layout_text(gtx, text, style(.Body_Small), color(.Fg_Color_Muted), .Status, key = 4)
 	if g.notice != "" {

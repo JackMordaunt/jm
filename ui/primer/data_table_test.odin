@@ -360,3 +360,23 @@ click_nth :: proc(p: ^ui.Probe, name: string, n: int) -> bool {
 	}
 	return false
 }
+
+// The grid is one Tab stop: Tab from its rows leaves it, past the
+// headers' filter buttons, and Shift+Tab goes back to the toolbar.
+@(test)
+test_the_grid_is_one_tab_stop :: proc(t: ^testing.T) {
+	m := people_make()
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	ui.probe_click(&p, "Ada")
+	testing.expect(t, m.g.grid.focused)
+	ui.probe_key(&p, .Tab)
+	ui.probe_frame(&p)
+	testing.expect(t, !m.g.grid.focused)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Search People") // round again
+	ui.probe_click(&p, "Ada")
+	ui.probe_key(&p, .Tab, {.Shift})
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Columns")
+}
