@@ -11,6 +11,7 @@ Dates :: struct {
 	due, start, review: primer.Date,
 	start_text:         ui.Text_State,
 	window, sales:      primer.Date_Range,
+	window_inputs:      primer.Range_Inputs,
 	seeded:             bool,
 }
 
@@ -27,14 +28,14 @@ dates_seed :: proc(d: ^Dates) {
 	d.window = {{2026, 10, 6}, {2026, 10, 16}}
 }
 
-// weekend reports whether a date falls on a Saturday or Sunday.
+// is_weekend reports whether a date falls on a Saturday or Sunday.
 @(private = "file")
-weekend :: proc(d: primer.Date, user: rawptr) -> bool {
+is_weekend :: proc(d: primer.Date, user: rawptr) -> bool {
 	wd := primer.weekday(d)
 	return wd == 0 || wd == 6
 }
 
-DATE_CELL_W :: f32(190)
+DATE_CELL_W :: f32(215)
 
 page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	d := &m.dates
@@ -96,7 +97,7 @@ page_date_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 		o := primer.Calendar_Options {
 			min_date   = {2026, 10, 1},
 			max_date   = {2026, 10, 31},
-			disabled   = weekend,
+			disabled   = is_weekend,
 			week_start = 1,
 		}
 		primer.date_picker(gtx, &d.review, TODAY, o, confirm = true, name = "Review day")
@@ -135,6 +136,7 @@ page_date_range_picker :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			{months = 2},
 			bounds = .Half_Open,
 			confirm = true,
+			inputs = &d.window_inputs,
 			name = "Window",
 		)
 	}

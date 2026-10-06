@@ -216,6 +216,42 @@ Button_Content :: struct {
 	has_hint:                  bool,
 }
 
+// button_box is a button's side padding and width at rest for its
+// content bc at size: the content box, the padding each side
+// (ButtonBase.module.css:144-165), and the action's slot.
+@(private)
+button_box :: proc(bc: Button_Content, size: Button_Size) -> (pad, pad_end, w: f32) {
+	mt := button_metrics(size)
+	pad = mt.pad
+	if bc.has_count && !bc.has_label && bc.leading != .None {
+		pad = mt.pad_count
+	}
+	pad_end = pad
+	if bc.has_hint {
+		pad_end = size == .Large ? tok.BASE_SIZE_8 : tok.BASE_SIZE_6
+	}
+	w = pad + pad_end + content_width(bc, mt.gap)
+	if bc.action != .None {
+		w += mt.gap + BUTTON_ICON - tok.BASE_SIZE_4
+	}
+	return
+}
+
+// button_width is the width a button of size takes at rest around a
+// label label_w wide, with leading and action as button draws them: what
+// a caller reserves so the button holds its width as its label changes.
+button_width :: proc(
+	label_w: f32,
+	size := Button_Size.Medium,
+	leading := Icon.None,
+	action := Icon.None,
+) -> f32 {
+	bc := Button_Content{leading = leading, action = action, has_label = true}
+	bc.label.width = label_w
+	_, _, w := button_box(bc, size)
+	return w
+}
+
 // content_width is the content box's width: the parts that show, the
 // gap after each but the last (ButtonBase.module.css:144-165).
 @(private)
@@ -297,19 +333,8 @@ button :: proc(
 	if keybinding != "" {
 		bc.hint, bc.has_hint = layout_hint(gtx, keybinding, .Condensed, hint_variant(variant), .Normal), true
 	}
-	pad := mt.pad
-	if bc.has_count && !bc.has_label && leading != .None {
-		pad = mt.pad_count
-	}
-	pad_end := pad
-	if bc.has_hint {
-		pad_end = size == .Large ? tok.BASE_SIZE_8 : tok.BASE_SIZE_6
-	}
+	pad, pad_end, w := button_box(bc, size)
 	cw := content_width(bc, mt.gap)
-	w := pad + pad_end + cw
-	if action != .None {
-		w += mt.gap + BUTTON_ICON - tok.BASE_SIZE_4
-	}
 	h := mt.height
 	if variant == .Link {
 		w, h = cw, mt.style.line_height

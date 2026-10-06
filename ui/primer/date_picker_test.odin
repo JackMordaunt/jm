@@ -57,6 +57,11 @@ test_bounds_and_the_predicate_decide_what_can_be_picked :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_today_is_a_real_date :: proc(t: ^testing.T) {
+	testing.expect(t, date_valid(date_today()))
+}
+
+@(test)
 test_the_keys_move_by_day_week_month_and_year :: proc(t: ^testing.T) {
 	o := Calendar_Options{}
 	step :: proc(d: Date, k: ui.Key, mods: ui.Mods = {}) -> Date {
@@ -138,7 +143,7 @@ test_typed_dates_parse_in_the_accepted_formats :: proc(t: ^testing.T) {
 		{"tomorrow", {}, false},
 	}
 	for c in cases {
-		d, ok := parse_date(c.text)
+		d, ok := parse_typed_date(c.text)
 		testing.expectf(t, ok == c.ok && d == c.want, "%q: got %v %v", c.text, d, ok)
 	}
 	o := Calendar_Options {
@@ -161,7 +166,7 @@ test_typed_dates_parse_in_the_accepted_formats :: proc(t: ^testing.T) {
 		date_error_message(.Before_Min, o, context.temp_allocator),
 		"Choose a date on or after Oct 1, 2026",
 	)
-	testing.expect_value(t, format_date({2026, 1, 2}, context.temp_allocator), "01/02/2026")
+	testing.expect_value(t, format_typed_date({2026, 1, 2}, context.temp_allocator), "01/02/2026")
 	testing.expect_value(
 		t,
 		format_range({{2026, 10, 1}, {2026, 10, 5}}, context.temp_allocator),
@@ -184,6 +189,9 @@ Picker_Model :: struct {
 	bounds:  Range_Bounds,
 	presets: [6]Date_Preset,
 	changed: int,
+	inputs:  Range_Inputs,
+	typing:  bool, // the range picker shows its inputs
+	reserve: bool, // the single picker reserves its anchor's width
 }
 
 @(private = "file")
@@ -194,7 +202,18 @@ picker_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	button(gtx, "Before")
 	switch {
 	case m.ranged:
-		if date_range_picker(gtx, &m.range, TODAY, m.presets[:], m.o, m.bounds, m.confirm) {
+		inputs := &m.inputs if m.typing else nil
+		r := date_range_picker(
+			gtx,
+			&m.range,
+			TODAY,
+			m.presets[:],
+			m.o,
+			m.bounds,
+			m.confirm,
+			inputs = inputs,
+		)
+		if r {
 			m.changed += 1
 		}
 	case m.anchor == .Input:
@@ -212,6 +231,7 @@ picker_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 			m.anchor,
 			confirm = m.confirm,
 			clear_button = true,
+			reserve = m.reserve,
 		) {
 			m.changed += 1
 		}
@@ -508,4 +528,221 @@ test_typed_text_sets_the_date_and_a_bad_date_shows_why :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect_value(t, ui.text_string(&m.text), "10/12/2026")
 	testing.expect_value(t, m.value, Date{2026, 10, 12})
+}
+
+@(test)
+test_a_reserved_anchor_keeps_its_width_as_the_label_changes :: proc(t: ^testing.T) {
+	m := Picker_Model {
+		ranged = true,
+	}
+	p: ui.Probe
+	picker_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	empty := ui.probe_bounds(&p, "Choose dates...")
+	m.range = {{2026, 10, 5}, {2026, 10, 5}}
+	ui.probe_frame(&p)
+	one := ui.probe_bounds(&p, "Oct 5, 2026")
+	m.range = {{2026, 9, 28}, {2026, 12, 30}}
+	ui.probe_frame(&p)
+	long := ui.probe_bounds(&p, "Sep 28, 2026 – Dec 30, 2026")
+	testing.expect(t, empty.w > 0)
+	testing.expect_value(t, one.w, empty.w)
+	testing.expect_value(t, long.w, empty.w)
+	// Unreserved, a single picker's button follows its label.
+	n := Picker_Model {
+		value = {2026, 10, 5},
+	}
+	q: ui.Probe
+	picker_probe(&q, &n)
+	defer ui.probe_destroy(&q)
+	short := ui.probe_bounds(&q, "Oct 5, 2026")
+	n.value = {2026, 12, 30}
+	ui.probe_frame(&q)
+	testing.expect(t, ui.probe_bounds(&q, "Dec 30, 2026").w > short.w)
+	n.reserve = true
+	ui.probe_frame(&q)
+	reserved := ui.probe_bounds(&q, "Dec 30, 2026").w
+	n.value = {2026, 10, 5}
+	ui.probe_frame(&q)
+	testing.expect_value(t, ui.probe_bounds(&q, "Oct 5, 2026").w, reserved)
+}
+
+@(test)
+test_the_months_page_takes_arrows_home_end_and_enter :: proc(t: ^testing.T) {
+	m := Picker_Model {
+		value = {2026, 10, 20},
+	}
+	p: ui.Probe
+	picker_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Oct 20, 2026"))
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .Tab, {.Shift}) // back from the grid to Next month, then the title
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, ui.probe_focus_name(&p), "October 2026")
+	ui.probe_key(&p, .Enter)
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Oct") // the months page, on the month shown
+	ui.probe_key(&p, .Tab) // the months are one Tab stop
+	testing.expect_value(t, ui.probe_focus_name(&p), "Today")
+	ui.probe_key(&p, .Tab, {.Shift})
+	testing.expect_value(t, ui.probe_focus_name(&p), "Oct")
+	ui.probe_key(&p, .Right)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Nov")
+	ui.probe_key(&p, .Down) // a row down, into next year
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Feb")
+	testing.expect(t, ui.probe_tagged(&p, "2027"))
+	ui.probe_key(&p, .End)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Mar")
+	ui.probe_key(&p, .Home)
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Jan")
+	ui.probe_key(&p, .Page_Up)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "2026"))
+	ui.probe_key(&p, .Up) // from January, back a row into last year
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Oct")
+	testing.expect(t, ui.probe_tagged(&p, "2025"))
+	ui.probe_key(&p, .Enter)
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	// Back on the days, the cursor's day kept.
+	testing.expect_value(t, ui.probe_focus_name(&p), day({2025, 10, 20}))
+	testing.expect_value(t, m.changed, 0)
+}
+
+@(test)
+test_months_outside_the_bounds_stop_the_months_keys :: proc(t: ^testing.T) {
+	o := Calendar_Options {
+		min_date = {2026, 3, 15},
+		max_date = {2026, 11, 2},
+	}
+	m, ok := month_step({2026, 3, 1}, .Left, o)
+	testing.expect(t, !ok)
+	testing.expect_value(t, m, Date{2026, 3, 1})
+	m, ok = month_step({2026, 11, 1}, .Right, o)
+	testing.expect(t, !ok)
+	m, ok = month_step({2026, 8, 1}, .Down, o)
+	testing.expect_value(t, m, Date{2026, 11, 1})
+	_, ok = month_step({2026, 8, 1}, .Page_Down, o)
+	testing.expect(t, !ok)
+	m, ok = month_step({2026, 5, 1}, .End, o)
+	testing.expect_value(t, m, Date{2026, 6, 1})
+	m, ok = month_step({2026, 5, 1}, .Home, o)
+	testing.expect_value(t, m, Date{2026, 4, 1})
+	testing.expect_value(t, nearest_month_in(2027, 6, o), 6) // no month of 2027 is in: stays
+	testing.expect_value(t, nearest_month_in(2026, 1, o), 3)
+	testing.expect_value(t, nearest_month_in(2026, 12, o), 11)
+}
+
+@(test)
+test_start_and_end_inputs_and_the_grid_follow_each_other :: proc(t: ^testing.T) {
+	m := Picker_Model {
+		ranged = true,
+		confirm = true,
+		typing = true,
+		o = {max_date = {2026, 12, 31}},
+	}
+	p: ui.Probe
+	picker_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer range_inputs_destroy(&m.inputs)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Choose dates..."))
+	testing.expect(t, ui.probe_click(&p, "Start date"))
+	ui.probe_type(&p, "10/20/2026")
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "Choose an end date")) // a first pick
+	testing.expect(t, ui.probe_click(&p, "End date"))
+	ui.probe_type(&p, "10/12/2026") // before the start: the two in order
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(
+		t,
+		strings.contains(sem, "grid cell \"Thursday, October 15, 2026\" selected"),
+		sem,
+	)
+	testing.expect(t, ui.probe_tagged(&p, "Oct 12, 2026 – Oct 20, 2026"))
+	// Leaving the inputs writes the range back in order.
+	testing.expect(t, ui.probe_click(&p, day({2026, 10, 3})))
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.text_string(&m.inputs.start), "10/03/2026")
+	testing.expect_value(t, ui.text_string(&m.inputs.end), "")
+	testing.expect(t, ui.probe_click(&p, day({2026, 10, 9})))
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.text_string(&m.inputs.end), "10/09/2026")
+	// A bad date shows why once left, and changes nothing.
+	testing.expect(t, ui.probe_click(&p, "End date"))
+	ui.text_set(&m.inputs.end, "")
+	ui.probe_type(&p, "01/04/2027")
+	ui.probe_key(&p, .Enter)
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "Choose a date on or before Dec 31, 2026"))
+	// A start typed after the end swaps them.
+	testing.expect(t, ui.probe_click(&p, "Start date"))
+	ui.text_set(&m.inputs.start, "")
+	ui.probe_type(&p, "10/30/2026")
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "Oct 9, 2026 – Oct 30, 2026"))
+	testing.expect(t, ui.probe_click(&p, "Apply"))
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.range, Date_Range{{2026, 10, 9}, {2026, 10, 30}})
+}
+
+@(test)
+test_a_half_picked_range_is_never_committed :: proc(t: ^testing.T) {
+	before := Date_Range{{2026, 9, 1}, {2026, 9, 10}}
+	m := Picker_Model {
+		ranged  = true,
+		confirm = true,
+		range   = before,
+	}
+	p: ui.Probe
+	picker_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	label := "Sep 1, 2026 – Sep 10, 2026"
+	testing.expect(t, ui.probe_click(&p, label))
+	testing.expect(t, ui.probe_click(&p, day({2026, 9, 20})))
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(sem, "button \"Apply\" disabled"), sem)
+	testing.expect(t, !ui.probe_click(&p, "Apply")) // disabled: nothing to press
+	testing.expect(t, ui.probe_click(&p, "Cancel"))
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.range, before)
+	testing.expect_value(t, m.changed, 0)
+	// Reopened, it starts from the value; a preset replaces a first pick.
+	testing.expect(t, ui.probe_click(&p, label))
+	testing.expect(t, ui.probe_tagged(&p, label))
+	testing.expect(t, ui.probe_click(&p, day({2026, 9, 20})))
+	testing.expect(t, ui.probe_click(&p, "Last month"))
+	ui.probe_frame(&p)
+	testing.expect(t, !ui.probe_tagged(&p, "Choose an end date"))
+	testing.expect(t, ui.probe_click(&p, "Apply"))
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.range, Date_Range{{2026, 9, 1}, {2026, 9, 30}})
+	// Without confirm, Escape drops a first pick.
+	m.confirm = false
+	m.range = before
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_click(&p, label))
+	testing.expect(t, ui.probe_click(&p, day({2026, 9, 25})))
+	ui.probe_key(&p, .Escape)
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.range, before)
+	testing.expect(t, ui.probe_click(&p, label))
+	testing.expect(t, !ui.probe_tagged(&p, "Choose an end date"))
 }
