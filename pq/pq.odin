@@ -279,19 +279,30 @@ exec :: proc(
 	}
 
 	text := strings.clone_to_cstring(sql, context.temp_allocator)
-	res: ^PGresult
 	if len(args) == 0 {
-		res = PQexec(conn.raw, text)
-	} else {
-		values := make([]cstring, len(args), context.temp_allocator)
-		for arg, i in args {
-			values[i] = strings.clone_to_cstring(arg, context.temp_allocator)
-		}
-		// No types, so the server infers each from the statement; no lengths
-		// or formats, because text parameters are NUL-terminated; and a
-		// result format of 0, text.
-		res = PQexecParams(conn.raw, text, c.int(len(args)), nil, raw_data(values), nil, nil, 0)
+		return read_result(conn, PQexec(conn.raw, text), allocator)
 	}
+	values := make([]cstring, len(args), context.temp_allocator)
+	for arg, i in args {
+		values[i] = strings.clone_to_cstring(arg, context.temp_allocator)
+	}
+	return read_result(conn, exec_params(conn, text, values), allocator)
+}
+
+// exec_params runs one statement with values for $1, $2 and so on, a nil
+// value being NULL.
+@(private)
+exec_params :: proc(conn: ^Conn, text: cstring, values: []cstring) -> ^PGresult {
+	// No types, so the server infers each from the statement; no lengths
+	// or formats, because text parameters are NUL-terminated; and a
+	// result format of 0, text.
+	return PQexecParams(conn.raw, text, c.int(len(values)), nil, raw_data(values), nil, nil, 0)
+}
+
+// read_result reads what a PQexec or PQexecParams call returned into a Result,
+// and clears it.
+@(private)
+read_result :: proc(conn: ^Conn, res: ^PGresult, allocator: mem.Allocator) -> (result: Result, err: Error) {
 	if res == nil {
 		// PQexec only returns NULL when it could not allocate a result or
 		// could not send the command at all; the reason is on the connection.
