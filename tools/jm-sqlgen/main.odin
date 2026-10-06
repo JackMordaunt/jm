@@ -21,7 +21,19 @@ and an error on a second), :many (a cursor over the rows), :exec, :rows (how
 many rows it changed) or :last_id (the rowid an INSERT assigned). Comment
 lines under the name line become the proc's doc comment. Parameters are
 @name, and the `-- params:` line types each one: i64, f64, bool, string,
-[]byte, or Maybe(T) for one that may be NULL.
+[]byte, or Maybe(T) for one that may be NULL. The proc takes them in that
+order.
+
+A :many query `todos` is read three ways. todos_open, todos_next and
+todos_close are the cursor. todos is the cursor as a guard, closed at the
+end of its block: since a deferred close cannot return, what stopped the
+rows is left in rows.err. todos_all reads every row into a slice in the
+caller's allocator, which todos_free frees.
+
+	if todos(&rows, db, filter) {
+		for row in todos_next(&rows) { ... }
+	}
+	if rows.err != nil { ... }
 
 The engine types the columns. jm-sqlgen runs the schema in a scratch SQLite
 database and prepares each query against it, so a misspelt column or table is

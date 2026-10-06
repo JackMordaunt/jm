@@ -122,10 +122,43 @@ Labelled_Row :: struct {
 	label: Maybe(string), // Maybe: label is on the outer side of a join
 }
 
+// Labelled_Rows is a cursor over the rows of labelled. err is what stopped it, once it
+// is closed: a failed start, a failed step, or a value of the wrong type.
+Labelled_Rows :: struct {
+	stmt: sqlite3.Stmt,
+	err:  sqlite3.Error,
+}
+
 // Each note with its labels, an unlabelled one once with no label.
 //
-// labelled is :many in queries.sql.
+// labelled is :many in queries.sql: labelled_open as a guard. Written
+// `if labelled(&rows, db, ...) { for row in labelled_next(&rows) { ... } }`, it closes
+// the cursor at the end of the if and leaves what stopped it in rows.err,
+// which a deferred close cannot return. It is false if the query cannot start.
+@(deferred_in = labelled_guard_close)
 labelled :: proc(
+	rows: ^Labelled_Rows,
+	db: sqlite3.Db,
+	allocator := context.allocator,
+) -> bool {
+	opened, err := labelled_open(db, allocator)
+	rows^ = opened
+	rows.err = err
+	return err == nil
+}
+
+@(private = "file")
+labelled_guard_close :: proc(
+	rows: ^Labelled_Rows,
+	db: sqlite3.Db,
+	allocator := context.allocator,
+) {
+	labelled_close(rows)
+}
+
+// labelled_open starts labelled: step the cursor with labelled_next and end it with
+// labelled_close. Text and blobs are allocated in allocator.
+labelled_open :: proc(
 	db: sqlite3.Db,
 	allocator := context.allocator,
 ) -> (
@@ -140,12 +173,6 @@ labelled :: proc(
 	return
 }
 
-// Labelled_Rows is the cursor labelled returns: step it with labelled_next and end it
-// with labelled_finish, which returns what stopped it.
-Labelled_Rows :: struct {
-	stmt: sqlite3.Stmt,
-}
-
 // labelled_next reads the next row; ok is false at the end or on a failure.
 labelled_next :: proc(rows: ^Labelled_Rows) -> (row: Labelled_Row, ok: bool) {
 	if !sqlite3.next(&rows.stmt) {
@@ -154,11 +181,58 @@ labelled_next :: proc(rows: ^Labelled_Rows) -> (row: Labelled_Row, ok: bool) {
 	row.id = sqlite3.read_exact(&rows.stmt, 0, i64)
 	row.body = sqlite3.read_exact(&rows.stmt, 1, string)
 	row.label = sqlite3.read_exact_maybe(&rows.stmt, 2, string)
-	return row, rows.stmt.err == nil
+	if rows.stmt.err != nil {
+		labelled_free_row(row, rows.stmt.allocator)
+		return {}, false
+	}
+	return row, true
 }
 
-labelled_finish :: proc(rows: ^Labelled_Rows) -> sqlite3.Error {
-	return sqlite3.finish(&rows.stmt)
+// labelled_close ends the cursor and returns what stopped it, which it also
+// keeps in rows.err. Closing twice is safe.
+labelled_close :: proc(rows: ^Labelled_Rows) -> sqlite3.Error {
+	if err := sqlite3.finish(&rows.stmt); rows.err == nil {
+		rows.err = err
+	}
+	return rows.err
+}
+
+// labelled_all reads every row of labelled into a slice in allocator, with their
+// text and blobs; free it with labelled_free. On a failure it frees what it read.
+labelled_all :: proc(
+	db: sqlite3.Db,
+	allocator := context.allocator,
+) -> (
+	all: []Labelled_Row,
+	err: sqlite3.Error,
+) {
+	rows := labelled_open(db, allocator) or_return
+	out := make([dynamic]Labelled_Row, allocator)
+	for row in labelled_next(&rows) {
+		append(&out, row)
+	}
+	if err = labelled_close(&rows); err != nil {
+		labelled_free(out[:], allocator)
+		return nil, err
+	}
+	return out[:], nil
+}
+
+// labelled_free_row frees the text and blobs of row, which are in allocator.
+labelled_free_row :: proc(row: Labelled_Row, allocator := context.allocator) {
+	delete(row.body, allocator)
+	if v, ok := row.label.?; ok {
+		delete(v, allocator)
+	}
+}
+
+// labelled_free frees all, as labelled_all returns it, with every row's text and
+// blobs.
+labelled_free :: proc(all: []Labelled_Row, allocator := context.allocator) {
+	for row in all {
+		labelled_free_row(row, allocator)
+	}
+	delete(all, allocator)
 }
 
 @(private = "file")

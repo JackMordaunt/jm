@@ -239,7 +239,7 @@ insert_sql :: proc(t: Table, row: []string) -> string {
 		}
 		write_name(&sb, c.name)
 	}
-	fmt.sbprintf(&sb, ") VALUES (%s);", strings.join(row, ", "))
+	fmt.sbprintf(&sb, ")\nVALUES (%s);", strings.join(row, ", "))
 	return strings.to_string(sb)
 }
 

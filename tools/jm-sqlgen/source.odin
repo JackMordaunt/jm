@@ -94,7 +94,37 @@ read_queries :: proc(text: string, p: ^Problems) -> []Query {
 		}
 		seen[query.name] = query.line
 	}
+	for query in queries {
+		if query.kind != .Many {
+			continue
+		}
+		for suffix in MANY_SUFFIXES {
+			name := strings.concatenate({query.name, suffix})
+			if line, taken := seen[name]; taken {
+				problem(
+					p,
+					QUERIES_FILE,
+					line,
+					"%s is a name the :many query %s generates: rename one",
+					name,
+					query.name,
+				)
+			}
+		}
+	}
 	return queries[:]
+}
+
+// MANY_SUFFIXES are the names a :many query generates beyond its own.
+@(private = "file")
+MANY_SUFFIXES := [?]string {
+	"_open",
+	"_next",
+	"_close",
+	"_all",
+	"_free",
+	"_free_row",
+	"_guard_close",
 }
 
 QUERIES_FILE :: "queries.sql"

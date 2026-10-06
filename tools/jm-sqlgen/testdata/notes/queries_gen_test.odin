@@ -40,8 +40,10 @@ SQLGEN_SETS := [?]Sqlgen_Set {
 	},
 	{
 		name = "nulls",
-		seed = `INSERT INTO "label"("note_id", "name") VALUES (1, 'a');
-INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (1, 'a', 1, 1.5, NULL);
+		seed = `INSERT INTO "label"("note_id", "name")
+VALUES (1, 'a');
+INSERT INTO "note"("id", "body", "pinned", "score", "attachment")
+VALUES (1, 'a', 1, 1.5, NULL);
 `,
 		int_v = 1,
 		real_v = 1.5,
@@ -52,8 +54,10 @@ INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (1, 'a'
 	},
 	{
 		name = "low",
-		seed = `INSERT INTO "label"("note_id", "name") VALUES (-9223372036854775808, '');
-INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (-9223372036854775808, '', 1, -1.5, x'');
+		seed = `INSERT INTO "label"("note_id", "name")
+VALUES (-9223372036854775808, '');
+INSERT INTO "note"("id", "body", "pinned", "score", "attachment")
+VALUES (-9223372036854775808, '', 1, -1.5, x'');
 `,
 		int_v = -9223372036854775808,
 		real_v = -1.5,
@@ -64,8 +68,10 @@ INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (-92233
 	},
 	{
 		name = "high",
-		seed = `INSERT INTO "label"("note_id", "name") VALUES (9223372036854775807, 'zß€😀');
-INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (9223372036854775807, 'zß€😀', 1, 1e+300, x'00ff');
+		seed = `INSERT INTO "label"("note_id", "name")
+VALUES (9223372036854775807, 'zß€😀');
+INSERT INTO "note"("id", "body", "pinned", "score", "attachment")
+VALUES (9223372036854775807, 'zß€😀', 1, 1e+300, x'00ff');
 `,
 		int_v = 9223372036854775807,
 		real_v = 1e+300,
@@ -76,7 +82,8 @@ INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (922337
 	},
 	{
 		name = "only_label",
-		seed = `INSERT INTO "label"("note_id", "name") VALUES (1, 'a');
+		seed = `INSERT INTO "label"("note_id", "name")
+VALUES (1, 'a');
 `,
 		int_v = 1,
 		real_v = 1.5,
@@ -87,7 +94,8 @@ INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (922337
 	},
 	{
 		name = "only_note",
-		seed = `INSERT INTO "note"("id", "body", "pinned", "score", "attachment") VALUES (1, 'a', 1, 1.5, NULL);
+		seed = `INSERT INTO "note"("id", "body", "pinned", "score", "attachment")
+VALUES (1, 'a', 1, 1.5, NULL);
 `,
 		int_v = 1,
 		real_v = 1.5,
@@ -131,13 +139,27 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		rows, err := labelled(db)
+		rows, err := labelled_open(db)
 		if err == nil {
 			for _ in labelled_next(&rows) {
 			}
-			err = labelled_finish(&rows)
+			err = labelled_close(&rows)
 		}
-		sqlgen_end(t, db, set, "labelled", err)
+		sqlgen_end(t, db, set, "labelled_open", err)
+	}
+	{
+		sqlgen_begin(t, db)
+		rows: Labelled_Rows
+		if labelled(&rows, db) {
+			for _ in labelled_next(&rows) {
+			}
+		}
+		sqlgen_end(t, db, set, "labelled", rows.err)
+	}
+	{
+		sqlgen_begin(t, db)
+		_, err := labelled_all(db)
+		sqlgen_end(t, db, set, "labelled_all", err)
 	}
 	{
 		sqlgen_begin(t, db)

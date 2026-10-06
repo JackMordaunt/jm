@@ -57,6 +57,11 @@ todo_state :: proc(db: sqlite3.Db, id: i64, allocator := context.allocator) -> (
 	row: Todo_State_Row, found: bool, err: sqlite3.Error)
 ```
 
+A `:many` query `todos` comes three ways: the cursor (`todos_open`,
+`todos_next`, `todos_close`); `todos`, the cursor as a guard that closes at
+the end of its block and leaves what stopped it in `rows.err`; and
+`todos_all`, every row in a slice in the caller's allocator.
+
 A swapped or missing argument is a compile error. A misspelt column fails the
 generator. Editing either SQL file without regenerating fails the build,
 through a compile-time hash of each. `check(db)` re-prepares every query

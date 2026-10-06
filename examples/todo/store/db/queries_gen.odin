@@ -119,11 +119,46 @@ Todos_Row :: struct {
 	done:  bool, // annotated, not inferred
 }
 
+// Todos_Rows is a cursor over the rows of todos. err is what stopped it, once it
+// is closed: a failed start, a failed step, or a value of the wrong type.
+Todos_Rows :: struct {
+	stmt: sqlite3.Stmt,
+	err:  sqlite3.Error,
+}
+
 // The todos a filter keeps, by query.Filter's value: 0 all, 1 active,
 // 2 completed.
 //
-// todos is :many in queries.sql.
+// todos is :many in queries.sql: todos_open as a guard. Written
+// `if todos(&rows, db, ...) { for row in todos_next(&rows) { ... } }`, it closes
+// the cursor at the end of the if and leaves what stopped it in rows.err,
+// which a deferred close cannot return. It is false if the query cannot start.
+@(deferred_in = todos_guard_close)
 todos :: proc(
+	rows: ^Todos_Rows,
+	db: sqlite3.Db,
+	filter: i64,
+	allocator := context.allocator,
+) -> bool {
+	opened, err := todos_open(db, filter, allocator)
+	rows^ = opened
+	rows.err = err
+	return err == nil
+}
+
+@(private = "file")
+todos_guard_close :: proc(
+	rows: ^Todos_Rows,
+	db: sqlite3.Db,
+	filter: i64,
+	allocator := context.allocator,
+) {
+	todos_close(rows)
+}
+
+// todos_open starts todos: step the cursor with todos_next and end it with
+// todos_close. Text and blobs are allocated in allocator.
+todos_open :: proc(
 	db: sqlite3.Db,
 	filter: i64,
 	allocator := context.allocator,
@@ -140,12 +175,6 @@ todos :: proc(
 	return
 }
 
-// Todos_Rows is the cursor todos returns: step it with todos_next and end it
-// with todos_finish, which returns what stopped it.
-Todos_Rows :: struct {
-	stmt: sqlite3.Stmt,
-}
-
 // todos_next reads the next row; ok is false at the end or on a failure.
 todos_next :: proc(rows: ^Todos_Rows) -> (row: Todos_Row, ok: bool) {
 	if !sqlite3.next(&rows.stmt) {
@@ -154,11 +183,56 @@ todos_next :: proc(rows: ^Todos_Rows) -> (row: Todos_Row, ok: bool) {
 	row.id = sqlite3.read_exact(&rows.stmt, 0, i64)
 	row.title = sqlite3.read_exact(&rows.stmt, 1, string)
 	row.done = sqlite3.read_exact(&rows.stmt, 2, bool)
-	return row, rows.stmt.err == nil
+	if rows.stmt.err != nil {
+		todos_free_row(row, rows.stmt.allocator)
+		return {}, false
+	}
+	return row, true
 }
 
-todos_finish :: proc(rows: ^Todos_Rows) -> sqlite3.Error {
-	return sqlite3.finish(&rows.stmt)
+// todos_close ends the cursor and returns what stopped it, which it also
+// keeps in rows.err. Closing twice is safe.
+todos_close :: proc(rows: ^Todos_Rows) -> sqlite3.Error {
+	if err := sqlite3.finish(&rows.stmt); rows.err == nil {
+		rows.err = err
+	}
+	return rows.err
+}
+
+// todos_all reads every row of todos into a slice in allocator, with their
+// text and blobs; free it with todos_free. On a failure it frees what it read.
+todos_all :: proc(
+	db: sqlite3.Db,
+	filter: i64,
+	allocator := context.allocator,
+) -> (
+	all: []Todos_Row,
+	err: sqlite3.Error,
+) {
+	rows := todos_open(db, filter, allocator) or_return
+	out := make([dynamic]Todos_Row, allocator)
+	for row in todos_next(&rows) {
+		append(&out, row)
+	}
+	if err = todos_close(&rows); err != nil {
+		todos_free(out[:], allocator)
+		return nil, err
+	}
+	return out[:], nil
+}
+
+// todos_free_row frees the text and blobs of row, which are in allocator.
+todos_free_row :: proc(row: Todos_Row, allocator := context.allocator) {
+	delete(row.title, allocator)
+}
+
+// todos_free frees all, as todos_all returns it, with every row's text and
+// blobs.
+todos_free :: proc(all: []Todos_Row, allocator := context.allocator) {
+	for row in all {
+		todos_free_row(row, allocator)
+	}
+	delete(all, allocator)
 }
 
 @(private = "file")

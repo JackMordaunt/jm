@@ -40,7 +40,8 @@ SQLGEN_SETS := [?]Sqlgen_Set {
 	},
 	{
 		name = "nulls",
-		seed = `INSERT INTO "todo"("id", "title", "done") VALUES (1, 'a', 1);
+		seed = `INSERT INTO "todo"("id", "title", "done")
+VALUES (1, 'a', 1);
 `,
 		int_v = 1,
 		real_v = 1.5,
@@ -51,7 +52,8 @@ SQLGEN_SETS := [?]Sqlgen_Set {
 	},
 	{
 		name = "low",
-		seed = `INSERT INTO "todo"("id", "title", "done") VALUES (-9223372036854775808, '', 1);
+		seed = `INSERT INTO "todo"("id", "title", "done")
+VALUES (-9223372036854775808, '', 1);
 `,
 		int_v = -9223372036854775808,
 		real_v = -1.5,
@@ -62,7 +64,8 @@ SQLGEN_SETS := [?]Sqlgen_Set {
 	},
 	{
 		name = "high",
-		seed = `INSERT INTO "todo"("id", "title", "done") VALUES (9223372036854775807, 'zß€😀', 1);
+		seed = `INSERT INTO "todo"("id", "title", "done")
+VALUES (9223372036854775807, 'zß€😀', 1);
 `,
 		int_v = 9223372036854775807,
 		real_v = 1e+300,
@@ -106,13 +109,27 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		rows, err := todos(db, set.int_v)
+		rows, err := todos_open(db, set.int_v)
 		if err == nil {
 			for _ in todos_next(&rows) {
 			}
-			err = todos_finish(&rows)
+			err = todos_close(&rows)
 		}
-		sqlgen_end(t, db, set, "todos", err)
+		sqlgen_end(t, db, set, "todos_open", err)
+	}
+	{
+		sqlgen_begin(t, db)
+		rows: Todos_Rows
+		if todos(&rows, db, set.int_v) {
+			for _ in todos_next(&rows) {
+			}
+		}
+		sqlgen_end(t, db, set, "todos", rows.err)
+	}
+	{
+		sqlgen_begin(t, db)
+		_, err := todos_all(db, set.int_v)
+		sqlgen_end(t, db, set, "todos_all", err)
 	}
 	{
 		sqlgen_begin(t, db)

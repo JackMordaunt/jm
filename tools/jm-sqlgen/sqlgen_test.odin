@@ -341,6 +341,12 @@ the_files_must_agree_on_a_known_engine :: proc(t: ^testing.T) {
 			"-- engine: sqlite\n-- name: a :exec\nSELECT 1 WHERE 0\n-- name: a :exec\nSELECT 1 WHERE 0\n",
 			"already the name",
 		},
+		{
+			"-- engine: sqlite\n",
+			"-- engine: sqlite\n-- name: a :many\nSELECT 1 AS \"x: i64\"\n" +
+			"-- name: a_all :exec\nSELECT 1 WHERE 0\n",
+			"a_all is a name the :many query a generates",
+		},
 	}
 	for c in cases {
 		files, problems := generate("p", c[0], c[1])
@@ -380,7 +386,7 @@ a_refused_seed_row_falls_back :: proc(t: ^testing.T) {
 			low = s
 		}
 	}
-	testing.expect_value(t, low.seed, "INSERT INTO \"a\"(\"s\") VALUES ('a');\n")
+	testing.expect_value(t, low.seed, "INSERT INTO \"a\"(\"s\")\nVALUES ('a');\n")
 	testing.expect_value(t, len(low.notes), 1)
 
 	schema = "-- engine: sqlite\nCREATE TABLE a(s TEXT NOT NULL CHECK (s = 'never')) STRICT;"

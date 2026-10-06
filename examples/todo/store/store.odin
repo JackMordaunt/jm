@@ -112,14 +112,15 @@ todos :: proc(
 	err: sqlite3.Error,
 ) {
 	res.active, res.completed = counts(st) or_return
-	rows := todo_db.todos(st.db, i64(filter), allocator) or_return
 	items := make([dynamic]query.Todo, allocator)
-	for row in todo_db.todos_next(&rows) {
-		append(&items, query.Todo{row.id, row.title, row.done})
+	rows: todo_db.Todos_Rows
+	if todo_db.todos(&rows, st.db, i64(filter), allocator) {
+		for row in todo_db.todos_next(&rows) {
+			append(&items, query.Todo{row.id, row.title, row.done})
+		}
 	}
 	res.items = items[:]
-	err = todo_db.todos_finish(&rows)
-	return
+	return res, rows.err
 }
 
 // --- writes ---------------------------------------------------------------

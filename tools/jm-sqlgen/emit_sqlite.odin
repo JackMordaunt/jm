@@ -46,6 +46,10 @@ emit_query :: proc(sb: ^strings.Builder, q: Query) {
 		emit_row(sb, q)
 	}
 	strings.write_byte(sb, '\n')
+	if q.kind == .Many {
+		emit_many(sb, q)
+		return
+	}
 	write_doc(sb, q.doc)
 	if len(q.doc) > 0 {
 		strings.write_string(sb, "//\n")
@@ -76,40 +80,7 @@ emit_query :: proc(sb: ^strings.Builder, q: Query) {
 			"\tif err = sqlite3.finish(&stmt); err != nil {\n\t\treturn {}, false, err\n\t}\n\treturn\n}\n",
 		)
 	case .Many:
-		rows := fmt.aprintf("%s_Rows", ada_case(q.name))
-		fmt.sbprintf(sb, "(\n\trows: %s,\n\terr: sqlite3.Error,\n) {{\n", rows)
-		emit_query_call(sb, "rows.stmt =", q)
-		strings.write_string(sb, "\treturn\n}\n\n")
-		fmt.sbprintf(
-			sb,
-			"// %s is the cursor %s returns: step it with %s_next and end it\n",
-			rows,
-			q.name,
-			q.name,
-		)
-		fmt.sbprintf(sb, "// with %s_finish, which returns what stopped it.\n", q.name)
-		fmt.sbprintf(sb, "%s :: struct {{\n\tstmt: sqlite3.Stmt,\n}}\n\n", rows)
-		fmt.sbprintf(
-			sb,
-			"// %s_next reads the next row; ok is false at the end or on a failure.\n",
-			q.name,
-		)
-		fmt.sbprintf(
-			sb,
-			"%s_next :: proc(rows: ^%s) -> (row: %s, ok: bool) {{\n",
-			q.name,
-			rows,
-			row,
-		)
-		strings.write_string(sb, "\tif !sqlite3.next(&rows.stmt) {\n\t\treturn\n\t}\n")
-		emit_reads(sb, q, "row", "&rows.stmt", "\t")
-		strings.write_string(sb, "\treturn row, rows.stmt.err == nil\n}\n\n")
-		fmt.sbprintf(
-			sb,
-			"%s_finish :: proc(rows: ^%s) -> sqlite3.Error {{\n\treturn sqlite3.finish(&rows.stmt)\n}}\n",
-			q.name,
-			rows,
-		)
+	// emit_many wrote it, above.
 	case .Exec:
 		strings.write_string(sb, "sqlite3.Error {\n")
 		emit_query_call(sb, "stmt :=", q)
@@ -130,6 +101,220 @@ emit_query :: proc(sb: ^strings.Builder, q: Query) {
 			q.kind == .Rows ? "changes" : "last_id",
 		)
 	}
+}
+
+
+// emit_many writes a :many query's three ways in: name_open, name_next and
+// name_close, the raw cursor; name, the cursor as a guard that closes at the
+// end of its block; and name_all, every row in a slice.
+@(private = "file")
+emit_many :: proc(sb: ^strings.Builder, q: Query) {
+	n := q.name
+	row := fmt.aprintf("%s_Row", ada_case(n))
+	rows := fmt.aprintf("%s_Rows", ada_case(n))
+	owns := owns_memory(q)
+	params := param_list(q)
+	args := arg_list(q)
+
+	fmt.sbprintf(
+		sb,
+		"// %s is a cursor over the rows of %s. err is what stopped it, once it\n",
+		rows,
+		n,
+	)
+	strings.write_string(
+		sb,
+		"// is closed: a failed start, a failed step, or a value of the wrong type.\n",
+	)
+	fmt.sbprintf(
+		sb,
+		"%s :: struct {{\n\tstmt: sqlite3.Stmt,\n\terr:  sqlite3.Error,\n}}\n\n",
+		rows,
+	)
+
+	write_doc(sb, q.doc)
+	if len(q.doc) > 0 {
+		strings.write_string(sb, "//\n")
+	}
+	fmt.sbprintf(sb, "// %s is :many in queries.sql: %s_open as a guard. Written\n", n, n)
+	fmt.sbprintf(
+		sb,
+		"// `if %s(&rows, db, ...) {{ for row in %s_next(&rows) {{ ... }} }}`, it closes\n",
+		n,
+		n,
+	)
+	strings.write_string(
+		sb,
+		"// the cursor at the end of the if and leaves what stopped it in rows.err,\n",
+	)
+	strings.write_string(
+		sb,
+		"// which a deferred close cannot return. It is false if the query cannot start.\n",
+	)
+	fmt.sbprintf(sb, "@(deferred_in = %s_guard_close)\n", n)
+	fmt.sbprintf(
+		sb,
+		"%s :: proc(\n\trows: ^%s,\n\tdb: sqlite3.Db,\n" +
+		"%s\tallocator := context.allocator,\n) -> bool {{\n",
+		n,
+		rows,
+		params,
+	)
+	fmt.sbprintf(sb, "\topened, err := %s_open(db, %sallocator)\n", n, args)
+	strings.write_string(sb, "\trows^ = opened\n\trows.err = err\n\treturn err == nil\n}\n\n")
+	fmt.sbprintf(
+		sb,
+		"@(private = \"file\")\n%s_guard_close :: proc(\n\trows: ^%s,\n" +
+		"\tdb: sqlite3.Db,\n%s\tallocator := context.allocator,\n) {{\n",
+		n,
+		rows,
+		params,
+	)
+	fmt.sbprintf(sb, "\t%s_close(rows)\n}}\n\n", n)
+
+	fmt.sbprintf(
+		sb,
+		"// %s_open starts %s: step the cursor with %s_next and end it with\n",
+		n,
+		n,
+		n,
+	)
+	fmt.sbprintf(sb, "// %s_close. Text and blobs are allocated in allocator.\n", n)
+	fmt.sbprintf(
+		sb,
+		"%s_open :: proc(\n\tdb: sqlite3.Db,\n%s\tallocator := context.allocator,\n) -> (\n",
+		n,
+		params,
+	)
+	fmt.sbprintf(sb, "\trows: %s,\n\terr: sqlite3.Error,\n) {{\n", rows)
+	emit_query_call(sb, "rows.stmt =", q)
+	strings.write_string(sb, "\treturn\n}\n\n")
+
+	fmt.sbprintf(sb, "// %s_next reads the next row; ok is false at the end or on a failure.\n", n)
+	fmt.sbprintf(sb, "%s_next :: proc(rows: ^%s) -> (row: %s, ok: bool) {{\n", n, rows, row)
+	strings.write_string(sb, "\tif !sqlite3.next(&rows.stmt) {\n\t\treturn\n\t}\n")
+	emit_reads(sb, q, "row", "&rows.stmt", "\t")
+	if owns {
+		strings.write_string(sb, "\tif rows.stmt.err != nil {\n")
+		fmt.sbprintf(
+			sb,
+			"\t\t%s_free_row(row, rows.stmt.allocator)\n\t\treturn {{}}, false\n\t}}\n",
+			n,
+		)
+		strings.write_string(sb, "\treturn row, true\n}\n\n")
+	} else {
+		strings.write_string(sb, "\treturn row, rows.stmt.err == nil\n}\n\n")
+	}
+
+	fmt.sbprintf(sb, "// %s_close ends the cursor and returns what stopped it, which it also\n", n)
+	strings.write_string(sb, "// keeps in rows.err. Closing twice is safe.\n")
+	fmt.sbprintf(sb, "%s_close :: proc(rows: ^%s) -> sqlite3.Error {{\n", n, rows)
+	strings.write_string(
+		sb,
+		"\tif err := sqlite3.finish(&rows.stmt); rows.err == nil {\n\t\trows.err = err\n\t}\n",
+	)
+	strings.write_string(sb, "\treturn rows.err\n}\n\n")
+
+	fmt.sbprintf(
+		sb,
+		"// %s_all reads every row of %s into a slice in allocator, with their\n",
+		n,
+		n,
+	)
+	fmt.sbprintf(
+		sb,
+		"// text and blobs; free it with %s_free. On a failure it frees what it read.\n",
+		n,
+	)
+	fmt.sbprintf(
+		sb,
+		"%s_all :: proc(\n\tdb: sqlite3.Db,\n%s\tallocator := context.allocator,\n) -> (\n",
+		n,
+		params,
+	)
+	fmt.sbprintf(sb, "\tall: []%s,\n\terr: sqlite3.Error,\n) {{\n", row)
+	fmt.sbprintf(sb, "\trows := %s_open(db, %sallocator) or_return\n", n, args)
+	fmt.sbprintf(sb, "\tout := make([dynamic]%s, allocator)\n", row)
+	fmt.sbprintf(sb, "\tfor row in %s_next(&rows) {{\n\t\tappend(&out, row)\n\t}}\n", n)
+	fmt.sbprintf(sb, "\tif err = %s_close(&rows); err != nil {{\n", n)
+	fmt.sbprintf(sb, "\t\t%s_free(out[:], allocator)\n", n)
+	strings.write_string(sb, "\t\treturn nil, err\n\t}\n\treturn out[:], nil\n}\n")
+	emit_free(sb, q, row)
+}
+
+// owns_memory reports whether a row of q holds text or a blob, which the
+// readers allocate.
+@(private = "file")
+owns_memory :: proc(q: Query) -> bool {
+	for f in q.fields {
+		if f.type.kind == .String || f.type.kind == .Bytes {
+			return true
+		}
+	}
+	return false
+}
+
+// emit_free writes name_free_row, which frees a row's text and blobs, and
+// name_free, which frees a slice of rows as name_all returns it. Both exist
+// for every :many, whether or not its rows hold anything to free, so a
+// caller need not know which.
+@(private = "file")
+emit_free :: proc(sb: ^strings.Builder, q: Query, row: string) {
+	n := q.name
+	fmt.sbprintf(
+		sb,
+		"\n// %s_free_row frees the text and blobs of row, which are in allocator.\n",
+		n,
+	)
+	fmt.sbprintf(sb, "%s_free_row :: proc(row: %s, allocator := context.allocator) {{\n", n, row)
+	for f in q.fields {
+		if f.type.kind != .String && f.type.kind != .Bytes {
+			continue
+		}
+		if f.type.nullable {
+			fmt.sbprintf(
+				sb,
+				"\tif v, ok := row.%s.?; ok {{\n\t\tdelete(v, allocator)\n\t}}\n",
+				f.name,
+			)
+		} else {
+			fmt.sbprintf(sb, "\tdelete(row.%s, allocator)\n", f.name)
+		}
+	}
+	strings.write_string(sb, "}\n")
+	fmt.sbprintf(
+		sb,
+		"\n// %s_free frees all, as %s_all returns it, with every row's text and\n",
+		n,
+		n,
+	)
+	strings.write_string(sb, "// blobs.\n")
+	fmt.sbprintf(sb, "%s_free :: proc(all: []%s, allocator := context.allocator) {{\n", n, row)
+	if owns_memory(q) {
+		fmt.sbprintf(sb, "\tfor row in all {{\n\t\t%s_free_row(row, allocator)\n\t}}\n", n)
+	}
+	strings.write_string(sb, "\tdelete(all, allocator)\n}\n")
+}
+
+// param_list is q's parameters as a proc's parameter lines, in the order the
+// -- params: line declares them.
+@(private = "file")
+param_list :: proc(q: Query) -> string {
+	sb: strings.Builder
+	for param in q.annotations {
+		fmt.sbprintf(&sb, "\t%s: %s,\n", param.name, type_name(param.type))
+	}
+	return strings.to_string(sb)
+}
+
+// arg_list is q's parameters as call arguments, each followed by ", ".
+@(private = "file")
+arg_list :: proc(q: Query) -> string {
+	sb: strings.Builder
+	for param in q.annotations {
+		fmt.sbprintf(&sb, "%s, ", param.name)
+	}
+	return strings.to_string(sb)
 }
 
 @(private = "file")
@@ -365,22 +550,43 @@ emit_test_call :: proc(sb: ^strings.Builder, q: Query) {
 		fmt.sbprintf(&args, ", %s", value)
 	}
 	call := strings.to_string(args)
+	if q.kind == .Many {
+		emit_test_many(sb, q, call)
+		return
+	}
 	strings.write_string(sb, "\t{\n\t\tsqlgen_begin(t, db)\n")
 	switch q.kind {
 	case .One:
 		fmt.sbprintf(sb, "\t\t_, _, err := %s(%s)\n", q.name, call)
 	case .Many:
-		fmt.sbprintf(sb, "\t\trows, err := %s(%s)\n\t\tif err == nil {{\n", q.name, call)
-		fmt.sbprintf(
-			sb,
-			"\t\t\tfor _ in %s_next(&rows) {{\n\t\t\t}}\n\t\t\terr = %s_finish(&rows)\n\t\t}}\n",
-			q.name,
-			q.name,
-		)
+	// emit_test_many wrote it, above.
 	case .Exec:
 		fmt.sbprintf(sb, "\t\terr := %s(%s)\n", q.name, call)
 	case .Rows, .Last_Id:
 		fmt.sbprintf(sb, "\t\t_, err := %s(%s)\n", q.name, call)
 	}
 	fmt.sbprintf(sb, "\t\tsqlgen_end(t, db, set, %q, err)\n\t}}\n", q.name)
+}
+
+// emit_test_many runs a :many query each way it can be read: the raw cursor,
+// the guard, and the slice, so each generated path meets every data set.
+@(private = "file")
+emit_test_many :: proc(sb: ^strings.Builder, q: Query, call: string) {
+	n := q.name
+	rest := call[len("db"):]
+	fmt.sbprintf(sb, "\t{{\n\t\tsqlgen_begin(t, db)\n\t\trows, err := %s_open(%s)\n", n, call)
+	fmt.sbprintf(sb, "\t\tif err == nil {{\n\t\t\tfor _ in %s_next(&rows) {{\n\t\t\t}}\n", n)
+	fmt.sbprintf(sb, "\t\t\terr = %s_close(&rows)\n\t\t}}\n", n)
+	fmt.sbprintf(sb, "\t\tsqlgen_end(t, db, set, \"%s_open\", err)\n\t}}\n", n)
+	fmt.sbprintf(sb, "\t{{\n\t\tsqlgen_begin(t, db)\n\t\trows: %s_Rows\n", ada_case(n))
+	fmt.sbprintf(
+		sb,
+		"\t\tif %s(&rows, db%s) {{\n\t\t\tfor _ in %s_next(&rows) {{\n\t\t\t}}\n\t\t}}\n",
+		n,
+		rest,
+		n,
+	)
+	fmt.sbprintf(sb, "\t\tsqlgen_end(t, db, set, %q, rows.err)\n\t}}\n", n)
+	fmt.sbprintf(sb, "\t{{\n\t\tsqlgen_begin(t, db)\n\t\t_, err := %s_all(%s)\n", n, call)
+	fmt.sbprintf(sb, "\t\tsqlgen_end(t, db, set, \"%s_all\", err)\n\t}}\n", n)
 }
