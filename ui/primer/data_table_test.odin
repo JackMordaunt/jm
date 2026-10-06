@@ -4,124 +4,114 @@ import "core:slice"
 import "core:strings"
 import "core:testing"
 import "jm:ui"
-import "jm:ui/design"
+import "jm:ui/datagrid"
 import "jm:ui/ops"
-import tok "jm:ui/primer/tokens"
 
-// Behaviour of DataTable and its pagination through ui.Probe by tags.
+// The Primer data grid through ui.Probe by tags: its density's rows, a
+// header's sort and filter panel, the toolbar's search, views and
+// Columns menu, groups, hover, a loading source; and the pagination
+// bar on its own.
 
 @(private = "file")
-Table_Model :: struct {
-	sort:      Table_Sort,
-	sorts:     int,
-	padding:   Cell_Padding,
-	loading:   bool,
-	empty:     bool,
-	page:      int,
-	pages:     int,
+People :: struct {
+	g:       Data_Grid,
+	rows:    [][3]string,
+	loading: bool,
+	toolbar: bool,
+	ev:      datagrid.Events,
 }
 
 @(private = "file")
-NAMES := [?]string{"Ada", "Grace Hopper", "Linus"}
-@(private = "file")
-ROLES := [?]string{"Engineer", "Admiral", "Kernel"}
-
-@(private = "file")
-table_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
-	m := (^Table_Model)(user)
-	col := ui.column_open(gtx, align = .Fill)
-	defer ui.close(&col)
-	columns := []Column{{header = "Name", width = .Auto, row_header = true, sortable = true}, {header = "Role", sortable = true}, {header = "Count", align = .End, width = .Auto}}
-	t, sorted := data_table_open(gtx, columns, &m.sort, m.padding, loading = m.loading, skeleton_rows = 3, footer = true, label = "People")
-	if sorted {
-		m.sorts += 1
-	}
-	if !m.loading && !m.empty {
-		for n, i in NAMES {
-			data_table_cell(gtx, t, n)
-			data_table_cell(gtx, t, ROLES[i])
-			data_table_cell(gtx, t, i == 0 ? "1" : "100")
-		}
-	}
-	data_table_close(t)
-	if data_table_pagination(gtx, "People pages", &m.page, 200, 10) {
-		m.pages += 1
-	}
+PEOPLE_COLS := []datagrid.Column {
+	{id = "name", title = "Name", row_header = true},
+	{id = "role", title = "Role", filter = .Set},
+	{id = "count", title = "Count", kind = .Number, align = .End},
 }
 
 @(private = "file")
-text_width :: proc(p: ^ui.Probe, s: string, st: tok.Type_Style) -> f32 {
-	gtx := ui.Ctx{shaper = p.shaper, allocator = context.temp_allocator}
-	return design.shape_style(&gtx, s, st, font_for(&gtx, st.weight)).width
+PEOPLE := [][3]string {
+	{"Ada", "Engineer", "1"},
+	{"Grace Hopper", "Admiral", "100"},
+	{"Linus", "Engineer", "7"},
 }
 
-@(test)
-test_data_table_sizes_columns_from_their_widest_cell :: proc(t: ^testing.T) {
-	m := Table_Model{sort = {-1, .Ascending}}
-	p: ui.Probe
-	ui.probe_init(&p, table_view, &m, {700, 600}, allocator = context.temp_allocator)
-	defer ui.probe_destroy(&p)
-	defer free_all(context.temp_allocator)
-
-	semi := TABLE_TEXT
-	semi.weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD
-	// Column 0 is auto: its widest cell, the row-header "Grace Hopper",
-	// plus 16px at the edge and 12px inside.
-	name_w := max(text_width(&p, "Grace Hopper", semi), text_width(&p, "Name", semi) + SORT_ICON_GAP + BUTTON_ICON)
-	role := ui.probe_bounds(&p, "Role")
-	engineer := ui.probe_bounds(&p, "Engineer")
-	testing.expect(t, abs(role.x - (16 + name_w + 12 + 12)) < 0.01)
-	testing.expect_value(t, engineer.x, role.x) // every cell in a column shares its x
-	// The end-aligned auto column ends 16px from the table's edge.
-	hundred := ui.probe_bounds(&p, "100")
-	one := ui.probe_bounds(&p, "1")
-	testing.expect(t, abs(hundred.x + hundred.w - (700 - 16)) < 0.01)
-	testing.expect(t, abs(one.x + one.w - (700 - 16)) < 0.01)
-	// Normal density: the header row is its 1px top rule, 8px, a 20px
-	// line, 8px and its 1px bottom rule; the first body text sits 8px in.
-	ada := ui.probe_bounds(&p, "Ada")
-	testing.expect_value(t, ada.y, 38 + 8)
-	testing.expect_value(t, ada.x, TABLE_EDGE_PADDING)
-	testing.expect_value(t, ui.probe_bounds(&p, "Linus").y, 38 + 2 * 37 + 8)
+@(private = "file")
+people_make :: proc(toolbar := true) -> ^People {
+	m := new(People, context.temp_allocator)
+	m.rows, m.toolbar = PEOPLE, toolbar
+	data_grid_init(&m.g, PEOPLE_COLS)
+	return m
 }
 
-@(test)
-test_data_table_condensed_and_spacious_pad_their_cells :: proc(t: ^testing.T) {
-	for c in ([?]struct {
-			padding:       Cell_Padding,
-			block, inline: f32,
-		}{{.Condensed, 4, 8}, {.Spacious, 12, 16}}) {
-		m := Table_Model{sort = {-1, .Ascending}, padding = c.padding}
-		p: ui.Probe
-		ui.probe_init(&p, table_view, &m, {700, 600}, allocator = context.temp_allocator)
-		header := 1 + 2 * c.block + 20 + 1
-		testing.expect_value(t, ui.probe_bounds(&p, "Ada").y, header + c.block)
-		testing.expect_value(t, ui.probe_bounds(&p, "Ada").x, TABLE_EDGE_PADDING) // 16px whatever the density
-		ui.probe_destroy(&p)
+@(private = "file")
+people_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^People)(user)
+	text :: proc(user: rawptr, row, col: int) -> string {
+		return (^People)(user).rows[row][col]
 	}
+	src := datagrid.Source {
+		user    = m,
+		rows    = len(m.rows),
+		text    = text,
+		loading = m.loading,
+	}
+	m.ev = data_grid(gtx, &m.g, PEOPLE_COLS, src, "People", toolbar = m.toolbar)
+}
+
+@(private = "file")
+people_open :: proc(p: ^ui.Probe, m: ^People, size := ops.Size{700, 400}) {
+	ui.probe_init(p, people_view, m, size, allocator = context.temp_allocator)
+}
+
+@(private = "file")
+people_close :: proc(p: ^ui.Probe, m: ^People) {
+	ui.probe_destroy(p)
+	data_grid_destroy(&m.g)
 	free_all(context.temp_allocator)
 }
 
 @(test)
-test_a_sortable_header_sorts_ascending_then_flips :: proc(t: ^testing.T) {
-	m := Table_Model{sort = {-1, .Ascending}}
-	p: ui.Probe
-	ui.probe_init(&p, table_view, &m, {700, 600}, allocator = context.temp_allocator)
-	defer ui.probe_destroy(&p)
-	defer free_all(context.temp_allocator)
+test_data_grid_rows_are_the_density_s_padding_tall :: proc(t: ^testing.T) {
+	for c in ([?]struct {
+			density: datagrid.Density,
+			header:  f32,
+			row:     f32,
+		}{{.Normal, 38, 37}, {.Condensed, 30, 29}, {.Spacious, 46, 45}}) {
+		m := people_make(toolbar = false)
+		m.g.grid.density = c.density
+		p: ui.Probe
+		people_open(&p, m)
+		ui.probe_frame(&p)
+		said := ui.probe_semantics(&p, context.temp_allocator)
+		// Normal: a 1px rule above and below the header's 8px, 20px line
+		// and 8px; a row is its 8px, 20px, 8px and its 1px rule.
+		at := []string{`row 3 at 0,`, ftoa(c.header + c.row), " 700x", ftoa(c.row)}
+		want := strings.concatenate(at, context.temp_allocator)
+		testing.expectf(t, strings.contains(said, want), "%v: want %q in %s", c.density, want, said)
+		people_close(&p, m)
+	}
+}
 
-	testing.expect(t, ui.probe_click(&p, "Role"))
-	testing.expect_value(t, m.sort, Table_Sort{1, .Ascending})
-	testing.expect_value(t, m.sorts, 1)
-	ui.probe_key(&p, .Enter) // keyboard activation flips it
-	testing.expect_value(t, m.sort, Table_Sort{1, .Descending})
-	testing.expect(t, ui.probe_click(&p, "Name"))
-	testing.expect_value(t, m.sort, Table_Sort{0, .Ascending})
-	testing.expect(t, ui.probe_click(&p, "Count")) // not sortable: its text is no button
-	testing.expect_value(t, m.sorts, 3)
-	// The sorted header shows its icon in --fgColor-default.
-	ui.probe_frame(&p)
+@(private = "file")
+ftoa :: proc(v: f32) -> string {
+	b := strings.builder_make(context.temp_allocator)
+	strings.write_int(&b, int(v))
+	return strings.to_string(b)
+}
+
+@(test)
+test_a_header_click_sorts_and_shows_its_octicon :: proc(t: ^testing.T) {
+	m := people_make()
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	testing.expect(t, ui.probe_click(&p, "Count"))
+	testing.expect_value(t, m.g.grid.view.sort[0], datagrid.Sort_Key{2, false})
 	testing.expect(t, icon_drawn(&p, .Sort_Asc, color(.Fg_Color_Default)))
+	ui.probe_click(&p, "Count")
+	testing.expect(t, icon_drawn(&p, .Sort_Desc, color(.Fg_Color_Default)))
+	first := datagrid.item_at(&m.g.grid, {rows = 3}, 0)
+	testing.expect_value(t, first.row, 1) // Grace Hopper's 100 first
 }
 
 @(private = "file")
@@ -143,38 +133,124 @@ icon_drawn :: proc(p: ^ui.Probe, i: Icon, c: ops.Color) -> bool {
 }
 
 @(test)
-test_an_empty_table_is_its_header_and_a_loading_one_draws_skeleton_bars :: proc(t: ^testing.T) {
-	m := Table_Model{sort = {-1, .Ascending}, empty = true}
+test_a_header_filter_panel_lists_values_with_counts_and_filters :: proc(t: ^testing.T) {
+	m := people_make()
 	p: ui.Probe
-	ui.probe_init(&p, table_view, &m, {700, 600}, allocator = context.temp_allocator)
-	defer ui.probe_destroy(&p)
-	defer free_all(context.temp_allocator)
-	// The pagination bar starts right under the 38px header row.
-	testing.expect_value(t, ui.probe_bounds(&p, "Previous page").y, 38 + 8)
-
-	m.empty, m.loading = false, true
+	people_open(&p, m)
+	defer people_close(&p, m)
+	testing.expect(t, ui.probe_click(&p, "Filter Role"))
+	testing.expect(t, m.g.filter.open)
+	testing.expect_value(t, len(m.g.filter.items), 2)
+	testing.expect_value(t, m.g.filter.items[1].text, "Engineer") // natural order
+	testing.expect_value(t, m.g.filter.items[1].description, "2") // its count
+	ui.probe_type(&p, "adm") // the panel's field has focus
 	ui.probe_frame(&p)
-	bars := 0
-	for op in p.scene.ops {
-		if f, ok := op.(ops.Fill); ok {
-			if c, solid := f.paint.(ops.Color); solid && c == color(.Skeleton_Loader_Bg_Color) {
-				bars += 1
-			}
-		}
-	}
-	testing.expect_value(t, bars, 3 * 3) // three items in each of three columns
-	testing.expect_value(t, ui.probe_bounds(&p, "Ada"), ops.Rect{})
+	testing.expect_value(t, len(m.g.filter.items), 1)
+	ui.probe_key(&p, .Enter)
+	testing.expect(t, datagrid.view_filtered(&m.g.grid.view, 1))
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "Grace Hopper"))
+	testing.expect(t, !ui.probe_tagged(&p, "Ada"), "an Engineer, filtered out")
+	ui.probe_key(&p, .Escape)
+	testing.expect(t, !m.g.filter.open)
+	testing.expect(t, ui.probe_click(&p, "Clear filters"))
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "Ada"))
+	testing.expect(t, !ui.probe_tagged(&p, "Clear filters"), "shown only while a filter is on")
 }
 
-// A hovered body row fills with the transparent control hover, whatever
-// control in it the pointer is over.
+@(test)
+test_the_keyboard_opens_a_header_s_filter_panel :: proc(t: ^testing.T) {
+	m := people_make()
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	ui.probe_click(&p, "Ada")
+	ui.probe_key(&p, .Up) // onto the header
+	ui.probe_key(&p, .Right)
+	ui.probe_key(&p, .Down, {.Alt})
+	ui.probe_frame(&p)
+	testing.expect(t, m.g.filter.open && m.g.filter.col == 1)
+}
+
+@(test)
+test_the_toolbar_search_finds_rows_and_counts_them :: proc(t: ^testing.T) {
+	m := people_make()
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	testing.expect(t, ui.probe_tagged(&p, "3 rows"))
+	ui.probe_click(&p, "Search People")
+	ui.probe_type(&p, "hop")
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.g.grid.view.search, "hop")
+	testing.expect(t, ui.probe_tagged(&p, "1 row"))
+	testing.expect(t, !ui.probe_tagged(&p, "Linus"))
+	ui.probe_click(&p, "Grace Hopper")
+	testing.expect(t, ui.probe_tagged(&p, "1 row · 1 selected"))
+}
+
+@(test)
+test_a_saved_view_comes_back_from_the_views_menu :: proc(t: ^testing.T) {
+	m := people_make()
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	datagrid.view_set_values(&m.g.grid.view, 1, {"Admiral"})
+	data_grid_save_view(&m.g, "Admirals")
+	datagrid.view_clear_filters(&m.g.grid.view)
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "Ada"))
+	testing.expect(t, ui.probe_click(&p, "Views · Admirals"))
+	testing.expect(t, ui.probe_click(&p, "Admirals"))
+	ui.probe_frame(&p)
+	testing.expect(t, !ui.probe_tagged(&p, "Ada"), "the view's filter is back")
+	testing.expect_value(t, m.g.applied, 0)
+	data_grid_delete_view(&m.g, 0)
+	testing.expect_value(t, len(m.g.views), 0)
+	testing.expect_value(t, m.g.applied, -1)
+}
+
+@(test)
+test_the_columns_menu_hides_a_column_and_downloads_csv :: proc(t: ^testing.T) {
+	m := people_make()
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	testing.expect(t, ui.probe_click(&p, "Columns"))
+	testing.expect(t, click_nth(&p, "Role", 1), "the menu's first Role, after the header's")
+	testing.expect(t, m.g.grid.view.cols[1].hidden)
+	ui.probe_key(&p, .Escape)
+	ui.probe_click(&p, "Columns")
+	testing.expect(t, ui.probe_click(&p, "Download CSV"))
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	want := "Name,Count\r\nAda,1\r\nGrace Hopper,100\r\nLinus,7\r\n"
+	testing.expect_value(t, strings.to_string(m.g.csv), want)
+	testing.expect(t, ui.probe_tagged(&p, "Exported 3 rows"))
+}
+
+@(test)
+test_a_group_shows_its_count_and_speaks_row_or_rows :: proc(t: ^testing.T) {
+	m := people_make(toolbar = false)
+	m.g.grid.view.group = 1
+	p: ui.Probe
+	people_open(&p, m)
+	defer people_close(&p, m)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expectf(t, strings.contains(said, `"Admiral, 1 row"`), "one row is singular: %s", said)
+	testing.expectf(t, strings.contains(said, `"Engineer, 2 rows"`), "two are plural: %s", said)
+	testing.expect(t, ui.probe_click(&p, "Engineer, 2 rows"))
+	testing.expect(t, !ui.probe_tagged(&p, "Ada"), "the group shut")
+}
+
+// A hovered body row fills with the transparent control hover.
 @(test)
 test_a_hovered_row_lights :: proc(t: ^testing.T) {
-	m := Table_Model{sort = {-1, .Ascending}}
+	m := people_make(toolbar = false)
 	p: ui.Probe
-	ui.probe_init(&p, table_view, &m, {700, 600}, allocator = context.temp_allocator)
-	defer ui.probe_destroy(&p)
-	defer free_all(context.temp_allocator)
+	people_open(&p, m)
+	defer people_close(&p, m)
 	lit :: proc(p: ^ui.Probe) -> int {
 		n := 0
 		for op in p.scene.ops {
@@ -186,40 +262,54 @@ test_a_hovered_row_lights :: proc(t: ^testing.T) {
 		}
 		return n
 	}
-	base := lit(&p)
-	c, _ := ui.probe_center(&p, "Engineer")
+	before := lit(&p)
+	c, _ := ui.probe_center(&p, "Linus")
 	ui.probe_move(&p, c.x, c.y)
 	ui.probe_frame(&p)
-	testing.expect_value(t, lit(&p), base + 1)
+	testing.expect_value(t, lit(&p), before + 1)
 }
 
-// A table wider than its box keeps its columns and scrolls sideways.
 @(test)
-test_a_wide_table_scrolls_rather_than_squeezes :: proc(t: ^testing.T) {
-	m := Table_Model{sort = {-1, .Ascending}}
+test_a_loading_grid_draws_skeleton_bars_and_an_empty_one_says_so :: proc(t: ^testing.T) {
+	m := people_make(toolbar = false)
+	m.rows, m.loading = nil, true
 	p: ui.Probe
-	ui.probe_init(&p, table_view, &m, {200, 600}, allocator = context.temp_allocator)
-	defer ui.probe_destroy(&p)
-	defer free_all(context.temp_allocator)
-	hundred := ui.probe_bounds(&p, "100")
-	testing.expect(t, hundred.x > 200)
+	people_open(&p, m)
+	defer people_close(&p, m)
+	bars := 0
+	for op in p.scene.ops {
+		if f, ok := op.(ops.Fill); ok {
+			if c, solid := f.paint.(ops.Color); solid && c == color(.Skeleton_Loader_Bg_Color) {
+				bars += 1
+			}
+		}
+	}
+	testing.expect(t, bars >= 3 * 9, "a view of skeleton rows, three bars each")
+	m.loading = false
+	ui.probe_frame(&p)
+	testing.expect(t, ui.probe_tagged(&p, "No rows"))
+}
+
+// A grid wider than its box keeps its columns and scrolls sideways.
+@(test)
+test_a_wide_grid_scrolls_rather_than_squeezes :: proc(t: ^testing.T) {
+	m := people_make(toolbar = false)
+	p: ui.Probe
+	people_open(&p, m, {200, 400})
+	defer people_close(&p, m)
 	c, _ := ui.probe_center(&p, "Ada")
 	ui.router_push(&p.router, {kind = .Scroll, pos = c, scroll = {1e6, 0}})
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
-	moved := ui.probe_bounds(&p, "100")
-	testing.expect(t, abs(moved.x + moved.w - (200 - 16)) < 0.01) // scrolled to its end
+	hundred := ui.probe_bounds(&p, "100")
+	testing.expect(t, hundred.w > 0 && hundred.x + hundred.w <= 200, "scrolled to the last column")
+	testing.expect(t, m.g.grid.scroll.x > 0)
 }
 
-@(test)
-test_compare_alphanumeric_orders_digit_runs_by_value :: proc(t: ^testing.T) {
-	testing.expect_value(t, compare_alphanumeric("item2", "item10"), -1)
-	testing.expect_value(t, compare_alphanumeric("item10", "item2"), 1)
-	testing.expect_value(t, compare_alphanumeric("b", "a"), 1)
-	testing.expect_value(t, compare_alphanumeric("same", "same"), 0) // the web says -1
-	testing.expect_value(t, compare_alphanumeric("", "a"), 1) // blanks last
-	testing.expect_value(t, compare_alphanumeric("a", ""), -1)
-	testing.expect_value(t, compare_alphanumeric("v1", "v1.2"), -1)
+@(private = "file")
+Pager_Model :: struct {
+	page:  int,
+	pages: int,
 }
 
 @(test)
@@ -229,10 +319,15 @@ test_pagination_shows_ends_and_two_either_side :: proc(t: ^testing.T) {
 	testing.expect(t, slice.equal(got, []int{0, -1, 7, 8, 9, 10, 11, -2, 19}))
 	got = page_numbers(0, 3, context.temp_allocator)
 	testing.expect(t, slice.equal(got, []int{0, 1, 2}))
-
-	m := Table_Model{sort = {-1, .Ascending}}
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		m := (^Pager_Model)(user)
+		if data_table_pagination(gtx, "People pages", &m.page, 200, 10) {
+			m.pages += 1
+		}
+	}
+	m: Pager_Model
 	p: ui.Probe
-	ui.probe_init(&p, table_view, &m, {900, 600}, allocator = context.temp_allocator)
+	ui.probe_init(&p, view, &m, {900, 600}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&p)
 	ui.probe_click(&p, "Previous page") // disabled on the first page
 	testing.expect_value(t, m.page, 0)
@@ -247,27 +342,21 @@ test_pagination_shows_ends_and_two_either_side :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_tagged(&p, "Page 10")) // truncated
 }
 
-
-@(test)
-test_a_group_shows_its_count_and_speaks_row_or_rows :: proc(t: ^testing.T) {
-	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
-		columns := []Column{{header = "Name"}}
-		sort := Table_Sort{-1, .Ascending}
-		tb, _ := data_table_open(gtx, columns, &sort, .Normal, label = "Groups")
-		data_table_group(gtx, tb, "Solo", 1)
-		data_table_cell(gtx, tb, "Ada")
-		data_table_group(gtx, tb, "Pair", 2)
-		data_table_cell(gtx, tb, "Grace")
-		data_table_cell(gtx, tb, "Linus")
-		data_table_close(tb)
+// click_nth clicks the nth area tagged name, from 0 in the order drawn:
+// of two, 1 is the one drawn over the other, as a menu's item over a
+// header of the same name.
+@(private = "file")
+click_nth :: proc(p: ^ui.Probe, name: string, n: int) -> bool {
+	seen := 0
+	for tag in ui.probe_current(p).tags {
+		if tag.name != name {
+			continue
+		}
+		if seen == n {
+			ui.probe_click_at(p, {tag.bounds.x + tag.bounds.w / 2, tag.bounds.y + tag.bounds.h / 2})
+			return true
+		}
+		seen += 1
 	}
-	p: ui.Probe
-	ui.probe_init(&p, view, nil, {400, 300}, allocator = context.temp_allocator)
-	defer ui.probe_destroy(&p)
-	defer free_all(context.temp_allocator)
-	said := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, strings.contains(said, "\"1 row\""), "one row is singular: %s", said)
-	testing.expectf(t, strings.contains(said, "\"2 rows\""), "two are plural: %s", said)
-	testing.expect(t, ui.probe_tagged(&p, "1"), "the count shows as a bare number")
-	testing.expect(t, !ui.probe_tagged(&p, "1 rows"))
+	return false
 }

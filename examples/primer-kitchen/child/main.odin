@@ -9,6 +9,7 @@
 //	primer-kitchen-child                                  run as the hot-reload subprocess
 //	primer-kitchen-child -page Button -png out.png        render one page headlessly
 //	primer-kitchen-child -theme "Dark dimmed" ...         another theme (see primer.THEME_NAMES)
+//	primer-kitchen-child -page "Data table" -grid-pause   hold the simulated server's answers
 //
 // The rest of the flags are kitchen.run's.
 package main
@@ -50,6 +51,7 @@ Model :: struct {
 	actions:  Actions,
 	icons:    Icons,
 	dates:    Dates,
+	grids:    Data_Grids,
 }
 
 // PAGES follows the primer-kit's families, in the plan's build order; a
@@ -253,5 +255,17 @@ kitchen_app :: proc(m: ^Model) -> kitchen.App {
 	for n, t in names {
 		themes[int(t)] = n
 	}
-	return {ui = kitchen_ui, user = m, fonts = kitchen_fonts(), size = {1400, 900}, pages = pages, themes = themes, page = &m.page, theme = &m.theme}
+	sim_init(&m.grids.server)
+	return {
+		ui = kitchen_ui,
+		user = m,
+		fonts = kitchen_fonts(),
+		size = {1400, 900},
+		pages = pages,
+		themes = themes,
+		page = &m.page,
+		theme = &m.theme,
+		flag = grid_flag,
+		data = &m.grids.server.host,
+	}
 }
