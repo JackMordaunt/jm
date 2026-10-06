@@ -24,7 +24,7 @@ new_york :: proc() -> Zone {
 @(private = "file")
 HOUR :: 3600
 
-@(private = "file")
+// DAY is a day in seconds.
 DAY :: 86400
 
 @(test)
