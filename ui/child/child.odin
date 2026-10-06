@@ -151,6 +151,7 @@ run :: proc(app: App) {
 			scene         = &sc,
 			constraints   = ui.exact(size),
 			viewport      = size,
+			density       = density,
 			font          = font,
 			shaper        = shaper,
 			router        = &router,
