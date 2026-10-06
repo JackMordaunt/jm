@@ -334,7 +334,9 @@ form_control_open :: proc(
 	id := ui.claim_id(gtx, key, loc)
 	f.target = ui.widget_data(gtx, id, ops.Area_Id)
 	form_push({label = ui.frame_string(gtx, label), caption = ui.frame_string(gtx, caption), message = ui.frame_string(gtx, validation), status = status, required = required, disabled = disabled})
-	f.col = ui.column_open(gtx, gap = FORM_GAP, align = .Start, key = key, loc = loc)
+	// A key claims id above, so the column takes one of its own.
+	col_key := key != 0 ? u64(ui.id_mix(id, 1)) : 0
+	f.col = ui.column_open(gtx, gap = FORM_GAP, align = .Start, key = col_key, loc = loc)
 	if !hide_label {
 		field_label(gtx, label, required, disabled, f.target^)
 	}
@@ -418,7 +420,9 @@ choice_group_open :: proc(gtx: ^ui.Ctx, label, caption_text, validation: string,
 	g.validation, g.status = ui.frame_string(gtx, validation), status
 	said := ui.frame_string(gtx, label)
 	form_push({label = said, caption = ui.frame_string(gtx, caption_text), message = g.validation, status = status, required = required, disabled = disabled, group = true, radios = g.ring})
-	g.outer = ui.column_open(gtx, align = .Start, key = key, loc = loc)
+	// A key claims id above, so the column takes one of its own.
+	col_key := key != 0 ? u64(ui.id_mix(id, 1)) : 0
+	g.outer = ui.column_open(gtx, align = .Start, key = col_key, loc = loc)
 	ui.container_semantics(gtx, {role = .Group, label = said, description = join_words(gtx, g.validation, caption_text), states = design.state_if(required, {.Required}) + design.state_if(disabled, {.Disabled})})
 	if !hide_label || caption_text != "" {
 		legend := ui.column_open(gtx, align = .Start)

@@ -651,3 +651,41 @@ test_a_segment_reserves_its_label_s_semibold_width :: proc(t: ^testing.T) {
 	raw = ui.probe_bounds(&p, "Raw") // selected, set in semibold: the same box
 	testing.expectf(t, testutil.near(raw.w, want), "selected Raw is %v wide, want %v", raw.w, want)
 }
+
+// A form control or group given a key claims its column apart from
+// itself: before, the two claims of one key failed ui's duplicate-id
+// assertion on the first frame.
+@(test)
+test_keyed_form_controls_and_groups_draw_without_an_id_clash :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		row := ui.row_open(gtx, gap = 8)
+		defer ui.close(&row)
+		for k in 1 ..= 2 {
+			f := form_control_open(gtx, k == 1 ? "First" : "Second", key = u64(k))
+			button(gtx, k == 1 ? "One" : "Two", key = u64(k))
+			form_control_close(gtx, &f)
+		}
+		g := choice_group_open(
+			gtx,
+			"Pick",
+			"",
+			"",
+			.None,
+			false,
+			false,
+			false,
+			false,
+			9,
+			#location(),
+		)
+		choice_group_close(gtx, &g)
+	}
+	p: ui.Probe
+	ui.probe_init(&p, view, nil, {600, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, ui.probe_tagged(&p, "One"))
+	testing.expect(t, ui.probe_tagged(&p, "Two"))
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(sem, "group \"Pick\""), sem)
+}
