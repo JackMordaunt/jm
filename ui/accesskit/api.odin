@@ -71,6 +71,11 @@ foreign lib {
 	node_set_hidden :: proc(node: ^Node) ---
 	node_set_live :: proc(node: ^Node, value: Live) ---
 	node_set_level :: proc(node: ^Node, value: c.size_t) ---
+	node_set_row_count :: proc(node: ^Node, value: c.size_t) ---
+	node_set_row_index :: proc(node: ^Node, value: c.size_t) ---
+	node_set_column_count :: proc(node: ^Node, value: c.size_t) ---
+	node_set_column_index :: proc(node: ^Node, value: c.size_t) ---
+	node_set_sort_direction :: proc(node: ^Node, value: Sort_Direction) ---
 	node_set_active_descendant :: proc(node: ^Node, value: Node_Id) ---
 	node_set_aria_current :: proc(node: ^Node, value: Aria_Current) ---
 	node_push_child :: proc(node: ^Node, item: Node_Id) ---

@@ -245,3 +245,11 @@ Live :: enum u8 {
 	Polite,
 	Assertive,
 }
+
+// Sort_Direction is accesskit_sort_direction (accesskit's SortDirection):
+// how a column header's column is sorted.
+Sort_Direction :: enum u8 {
+	Ascending,
+	Descending,
+	Other,
+}

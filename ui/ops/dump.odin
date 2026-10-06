@@ -261,7 +261,8 @@ write_kinds :: proc(sb: ^strings.Builder, ks: Event_Kinds) {
 
 // write_semantics writes s as `role "label"`, then ` value "…"`,
 // ` desc "…"`, the states that are set, ` level n` (a heading's or a
-// tree item's) and ` active_descendant id`, each only when present.
+// tree item's), ` active_descendant id`, and a table's ` rows n`,
+// ` cols n`, ` row n`, ` col n` and ` sort order`, each only when present.
 write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
 	fmt.sbprint(sb, s.role)
 	strings.write_byte(sb, ' ')
@@ -287,6 +288,16 @@ write_semantics :: proc(sb: ^strings.Builder, s: Semantics) {
 	}
 	if s.active_descendant != 0 {
 		fmt.sbprintf(sb, " active_descendant %d", s.active_descendant)
+	}
+	counts := [4]i32{s.row_count, s.col_count, s.row_index, s.col_index}
+	names := [4]string{"rows", "cols", "row", "col"}
+	for n, i in counts {
+		if n != 0 {
+			fmt.sbprintf(sb, " %s %d", names[i], n)
+		}
+	}
+	if s.sort != .None {
+		fmt.sbprintf(sb, " sort %v", s.sort)
 	}
 }
 

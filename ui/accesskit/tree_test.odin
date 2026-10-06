@@ -343,3 +343,36 @@ test_a_column_header_and_the_current_date_reach_accesskit :: proc(t: ^testing.T)
 	testing.expect(t, strings.contains(got, `role: ColumnHeader`), got)
 	testing.expect(t, strings.contains(got, `aria_current: Date`), got)
 }
+
+// table_view is a grid of 20,000 rows, of which it draws one: its header
+// sorted descending, and a cell at row 4,812, column 2.
+@(private = "file")
+table_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	g := ui.widget_open(gtx, 1)
+	ui.semantics(gtx, &g, {role = .Grid, label = "Rigs", row_count = 20_001, col_count = 3})
+	head := ui.id_mix(g.id, 1)
+	ui.part_semantics(gtx, &g, head, {0, 0, 300, 20}, {role = .Column_Header, label = "Serial", col_index = 2, sort = .Descending})
+	ui.part_semantics(gtx, &g, ui.id_mix(g.id, 2), {0, 20, 300, 20}, {role = .Grid_Cell, label = "SN-1", row_index = 4812, col_index = 2})
+	ui.widget_close(gtx, &g, {size = {300, 40}})
+}
+
+@(test)
+test_a_grid_counts_its_rows_and_places_a_virtual_cell :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, table_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(said, `grid "Rigs" rows 20001 cols 3`), said)
+	testing.expect(t, strings.contains(said, `column header "Serial" col 2 sorted descending`), said)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Table")
+	got := debug(&s, context.temp_allocator)
+	// set_table_place takes 1 off ARIA's 1-based places for AccessKit.
+	testing.expect(t, strings.contains(got, `row_count: 20001`), got)
+	testing.expect(t, strings.contains(got, `row_index: 4811`), got)
+	testing.expect(t, strings.contains(got, `column_index: 1`), got)
+	testing.expect(t, strings.contains(got, `sort_direction: Descending`), got)
+}

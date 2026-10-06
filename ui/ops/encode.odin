@@ -37,8 +37,9 @@ ENCODE_MAGIC :: "UIOP"
 // 32 turned Focus_Scope's trap into a flags byte (bit 0 trap, bit 1
 // wrap, bits 2-3 rove) and gave Focus_Scope_End an entry; 33 gave
 // Input_Area's flags no_tab, bit 2; 34 gave Path its fill rule; 35 added
-// Role Column_Header and State Current_Date.
-ENCODE_VERSION :: u8(35)
+// Role Column_Header and State Current_Date; 36 gave Semantic row and
+// column counts and indices and a sort.
+ENCODE_VERSION :: u8(36)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -444,6 +445,11 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_u32(w, u32(transmute(u16)v.semantics.states))
 		append(w, v.semantics.level)
 		put_u64(w, u64(v.semantics.active_descendant))
+		put_u32(w, u32(v.semantics.row_count))
+		put_u32(w, u32(v.semantics.row_index))
+		put_u32(w, u32(v.semantics.col_count))
+		put_u32(w, u32(v.semantics.col_index))
+		append(w, u8(v.semantics.sort))
 		put_rect(w, v.rect)
 	case Key_Interest:
 		append(w, 19)
@@ -801,6 +807,15 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.semantics.states = transmute(States)u16(states)
 		v.semantics.level = get_u8(r) or_return
 		v.semantics.active_descendant = Area_Id(get_u64(r) or_return)
+		v.semantics.row_count = i32(get_u32(r) or_return)
+		v.semantics.row_index = i32(get_u32(r) or_return)
+		v.semantics.col_count = i32(get_u32(r) or_return)
+		v.semantics.col_index = i32(get_u32(r) or_return)
+		sort := get_u8(r) or_return
+		if sort > u8(max(Sort_Order)) {
+			return nil, false
+		}
+		v.semantics.sort = Sort_Order(sort)
 		v.rect = get_rect(r) or_return
 		return v, true
 	case 19:

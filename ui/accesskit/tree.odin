@@ -47,10 +47,21 @@ Snapshot_Node :: struct {
 	hidden:      bool, // its box lies wholly outside its clip: scrolled away
 	live:        Live,
 	level:       u8, // a heading's, at least 1, or a tree item's depth
+	table:       Table_Place, // a table's counts, a row's or cell's place, a header's sort
 	current:     Aria_Current,
 	active:      Node_Id, // the active descendant a focused combo box points at, 0 for none
 	focusable:   bool, // an input area of the id wants Key or Focus
 	clickable:   bool, // one wants Press
+}
+
+// Table_Place is ops.Semantics' table fields as a node carries them: the
+// counts and 1-based indices (0 unset, a row count of -1 unknown), and a
+// header's sort, has_sort saying whether it has one.
+Table_Place :: struct {
+	row_count, row_index: i32,
+	col_count, col_index: i32,
+	sort:                 Sort_Direction,
+	has_sort:             bool,
 }
 
 Snapshot :: struct {
@@ -114,6 +125,7 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 		case .Current in n.semantics.states:
 			r.current = .True
 		}
+		r.table = table_place(n.semantics)
 		if .Mixed in n.semantics.states {
 			r.toggled, r.has_toggled = .Mixed, true
 		} else if checkable(n.semantics.role) {
@@ -308,4 +320,21 @@ role_of :: proc(r: ops.Role) -> Role {
 		return .Column_Header
 	}
 	return .Unknown
+}
+
+// table_place is s's table fields as a node carries them.
+@(private)
+table_place :: proc(s: ops.Semantics) -> (t: Table_Place) {
+	t.row_count, t.row_index = s.row_count, s.row_index
+	t.col_count, t.col_index = s.col_count, s.col_index
+	switch s.sort {
+	case .Ascending:
+		t.sort, t.has_sort = .Ascending, true
+	case .Descending:
+		t.sort, t.has_sort = .Descending, true
+	case .Other:
+		t.sort, t.has_sort = .Other, true
+	case .None:
+	}
+	return
 }
