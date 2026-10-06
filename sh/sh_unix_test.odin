@@ -35,10 +35,13 @@ dir_and_env :: proc(t: ^testing.T) {
 
 @(test)
 timeout_kills_a_slow_child :: proc(t: ^testing.T) {
-	r := exec({"sleep", "5"}, {timeout = 200 * time.Millisecond}, context.temp_allocator)
+	// Half the child's sleep: only a kill ends it so soon, however loaded.
+	started := time.tick_now()
+	r := exec({"sleep", "60"}, {timeout = 200 * time.Millisecond}, context.temp_allocator)
+	testing.expect(t, time.tick_since(started) < 30 * time.Second, "the child outlived its timeout")
 	testing.expect(t, r.timed_out, "the child was not timed out")
 	testing.expect(t, !r.ok)
-	quick := exec({"echo", "fast"}, {timeout = 5 * time.Second}, context.temp_allocator)
+	quick := exec({"echo", "fast"}, {timeout = 30 * time.Second}, context.temp_allocator)
 	testing.expect(t, quick.ok)
 	testing.expect(t, !quick.timed_out)
 	testing.expect_value(t, quick.stdout, "fast\n")

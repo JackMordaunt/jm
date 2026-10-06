@@ -51,8 +51,8 @@ hand_on :: proc(r: ^Rig) {
 }
 
 @(private = "file")
-settle :: proc(r: ^Rig, limit := 10 * time.Second) -> bool {
-	deadline := time.tick_now()._nsec + i64(limit)
+settle :: proc(r: ^Rig) -> bool {
+	deadline := time.tick_now()._nsec + i64(PATIENCE)
 	for time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -75,12 +75,18 @@ settle :: proc(r: ^Rig, limit := 10 * time.Second) -> bool {
 	return false
 }
 
-// A real folder: a picture, a text file and a subfolder with a file.
+// PATIENCE is how long a test waits for the host to answer. It bounds a
+// hang, never a speed: a loaded machine can take seconds to run a frame.
+@(private = "file")
+PATIENCE :: 30 * time.Second
+
+// A real folder: a picture, a text file and a subfolder with a file. Each
+// call makes a folder of its own. One shared folder was rewritten by every
+// test that asked for it, in parallel and by other test runs on the machine,
+// so a thumbnail could read the picture half written and fail.
 @(private = "file")
 fixture :: proc() -> string {
-	tmp, _ := os.temp_directory(context.temp_allocator)
-	dir, _ := filepath.join({tmp, "jm-files-app"}, context.temp_allocator)
-	_ = os.make_directory(dir)
+	dir, _ := os.make_directory_temp("", "jm-files-app-*", context.temp_allocator)
 	sub, _ := filepath.join({dir, "inner"}, context.temp_allocator)
 	_ = os.make_directory(sub)
 	pixels := make([]u32, 16, context.temp_allocator)
@@ -99,6 +105,7 @@ fixture :: proc() -> string {
 @(test)
 a_folder_is_read_and_its_picture_thumbnailed :: proc(t: ^testing.T) {
 	dir := fixture()
+	defer os.remove_all(dir)
 	r: Rig
 	testing.expect(t, rig_open(&r, dir))
 	defer rig_close(&r)
@@ -120,6 +127,7 @@ a_folder_is_read_and_its_picture_thumbnailed :: proc(t: ^testing.T) {
 @(test)
 entering_a_folder_reads_it_and_releases_the_old :: proc(t: ^testing.T) {
 	dir := fixture()
+	defer os.remove_all(dir)
 	r: Rig
 	testing.expect(t, rig_open(&r, dir))
 	defer rig_close(&r)
@@ -140,6 +148,7 @@ entering_a_folder_reads_it_and_releases_the_old :: proc(t: ^testing.T) {
 @(test)
 the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 	dir := fixture()
+	defer os.remove_all(dir)
 	r: Rig
 	testing.expect(t, rig_open(&r, dir))
 	defer rig_close(&r)
@@ -151,7 +160,7 @@ the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 	// query and the sidebar shows the folder.
 	testing.expect(t, ui.probe_click(&r.p, "Pin this folder"))
 	hand_on(&r)
-	deadline := time.tick_now()._nsec + i64(5 * time.Second)
+	deadline := time.tick_now()._nsec + i64(PATIENCE)
 	for !ui.probe_tagged(&r.p, "Unpin this folder") && time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -161,7 +170,7 @@ the_sidebar_fills_from_the_store_and_follows_pins :: proc(t: ^testing.T) {
 		time.sleep(5 * time.Millisecond)
 	}
 	testing.expect(t, ui.probe_tagged(&r.p, "Unpin this folder"), "the pin came back from the store")
-	testing.expect(t, ui.probe_tagged(&r.p, "jm-files-app"), "the pinned folder is listed")
+	testing.expect(t, ui.probe_tagged(&r.p, filepath.base(dir)), "the pinned folder is listed")
 }
 
 @(test)
@@ -197,8 +206,8 @@ own_fixture :: proc(name: string) -> string {
 // until runs frames, as the loop would whenever the inbox fills, until
 // name is tagged (or not), or the deadline passes.
 @(private = "file")
-until :: proc(r: ^Rig, name: string, present := true, limit := 5 * time.Second) -> bool {
-	deadline := time.tick_now()._nsec + i64(limit)
+until :: proc(r: ^Rig, name: string, present := true) -> bool {
+	deadline := time.tick_now()._nsec + i64(PATIENCE)
 	for time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -329,16 +338,24 @@ new_folders_take_free_names_and_trash_undoes :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&r.p, "New folder"))
 	hand_on(&r)
 	testing.expect(t, until(&r, "New folder 2"), "the second takes the next free name")
+	// The Trash is the machine's (see trash_and_restore_round_trip in fs):
+	// with six runs at once, one run's Undo found its "New folder 2" gone
+	// from the Trash. The folder goes there under a name of this run's own,
+	// the run folder's, which the path bar shows too, so with a prefix.
+	own := fmt.tprintf("trash-%s", filepath.base(dir))
 	testing.expect(t, select(&r, "New folder 2"))
+	testing.expect(t, rename_selected(&r, own))
+	testing.expect(t, until(&r, own))
+	testing.expect(t, select(&r, own))
 	testing.expect(t, ui.probe_click(&r.p, "Move to Trash"))
 	hand_on(&r)
-	testing.expect(t, until(&r, "New folder 2", present = false))
-	testing.expect(t, !os.exists(path_in(dir, "New folder 2")))
+	testing.expect(t, until(&r, own, present = false))
+	testing.expect(t, !os.exists(path_in(dir, own)))
 	when ODIN_OS != .Windows {
 		testing.expect(t, ui.probe_click(&r.p, "Undo"))
 		hand_on(&r)
-		testing.expect(t, until(&r, "New folder 2"), "the folder came back from the Trash")
-		testing.expect(t, os.exists(path_in(dir, "New folder 2")))
+		testing.expect(t, until(&r, own), "the folder came back from the Trash")
+		testing.expect(t, os.exists(path_in(dir, own)))
 	}
 }
 
@@ -379,5 +396,5 @@ a_change_made_elsewhere_shows_within_a_poll :: proc(t: ^testing.T) {
 	testing.expect(t, until(&r, "readme.txt"))
 	// Another application writes a file: no command, only the watcher.
 	_ = os.write_entire_file(path_in(dir, "from-elsewhere.txt"), "hi")
-	testing.expect(t, until(&r, "from-elsewhere.txt", limit = 3 * time.Second), "the poll saw the folder change")
+	testing.expect(t, until(&r, "from-elsewhere.txt"), "the poll saw the folder change")
 }

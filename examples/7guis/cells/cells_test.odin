@@ -1,9 +1,8 @@
 package main
 
+import "core:fmt"
 import "core:log"
-import "core:slice"
 import "core:testing"
-import "core:time"
 
 import "jm:ui"
 
@@ -97,23 +96,33 @@ the_sheet_scrolls_down_to_its_last_row :: proc(t: ^testing.T) {
 	testing.expect(t, last.y > 0 && last.y + last.h <= SIZE.y)
 }
 
-// A frame lays out all 2,727 cells, so it must stay cheap: this reports
-// the median and fails only far beyond a 60 Hz budget.
+// A frame lays out all 2,727 cells, so it must stay cheap. What a frame
+// costs is what it records for each cell, so this counts that rather
+// than timing it, which a loaded machine can stretch past any bound.
 @(test)
 a_frame_of_the_whole_sheet_is_cheap :: proc(t: ^testing.T) {
 	m: Model
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-
-	samples: [21]time.Duration
-	for &s in samples {
-		start := time.tick_now()
-		ui.probe_frame(&p)
-		s = time.tick_since(start)
+	for r in 0 ..< ROWS {
+		for c in 0 ..< COLS {
+			sheet_set(m.sheet, {c, r}, fmt.tprint(r * COLS + c))
+		}
 	}
-	slice.sort(samples[:])
-	median := samples[len(samples) / 2]
-	log.infof("frame: %v", median)
-	testing.expect(t, median < 50 * time.Millisecond)
+
+	ui.probe_frame(&p)
+	first := p.tray.last
+	ui.probe_frame(&p)
+	s := p.tray.last
+	log.infof("frame: %v", s)
+	WIDGETS :: (ROWS + 1) * (COLS + 1)
+	testing.expectf(t, s.ops <= 16 * WIDGETS, "%d ops for %d widgets", s.ops, WIDGETS)
+	testing.expectf(t, s.draws <= 4 * WIDGETS, "%d draws for %d widgets", s.draws, WIDGETS)
+	testing.expectf(t, s.hits <= WIDGETS, "%d hit areas for %d widgets", s.hits, WIDGETS)
+	testing.expectf(t, s.arena_bytes <= 128 * WIDGETS, "%d arena bytes", s.arena_bytes)
+	testing.expectf(t, s.states + s.data <= 8, "%d retained states", s.states + s.data)
+	// A frame like the one before costs the same: nothing accumulates.
+	testing.expect_value(t, s.ops, first.ops)
+	testing.expect_value(t, s.arena_bytes, first.arena_bytes)
 }

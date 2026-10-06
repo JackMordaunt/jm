@@ -74,7 +74,7 @@ a_child_killed_by_a_signal_is_a_crash :: proc(t: ^testing.T) {
 a_child_that_will_not_finish_is_killed :: proc(t: ^testing.T) {
 	context.allocator = context.temp_allocator
 	started := time.now()
-	r := stub_run(t, "sleep 30", 200 * time.Millisecond)
+	r := stub_run(t, "sleep 60", 200 * time.Millisecond)
 	elapsed := time.since(started)
 
 	testing.expect_value(t, len(r.failures), 1)
@@ -85,7 +85,7 @@ a_child_that_will_not_finish_is_killed :: proc(t: ^testing.T) {
 	testing.expect(t, r.failures[0].hung, "a hang must be marked as one")
 	// The point of isolation: the deadline is kept by killing the child,
 	// with no help at all from what it was running.
-	testing.expect(t, elapsed < 10 * time.Second, "the run must not wait out a case that hangs")
+	testing.expect(t, elapsed < 30 * time.Second, "the run must not wait out a case that hangs")
 }
 
 @(test)

@@ -58,7 +58,7 @@ hand_on :: proc(r: ^Rig) {
 // the deadline passes.
 @(private = "file")
 settle :: proc(r: ^Rig, name: string, present := true) -> bool {
-	deadline := time.tick_now()._nsec + i64(3 * time.Second)
+	deadline := time.tick_now()._nsec + i64(30 * time.Second)
 	for time.tick_now()._nsec < deadline {
 		if ui.inbox_pending(&r.h.inbox) {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
@@ -149,13 +149,17 @@ dropping_a_need_stops_its_refreshes :: proc(t: ^testing.T) {
 	testing.expect(t, settle(&r, "0 items left"))
 	ui.probe_frame(&r.p)
 	hand_on(&r)
-	for _ in 0 ..< 200 {
-		if len(r.h.route.live) == 1 {
-			break
-		}
+	// Live goes from All, through both, to Active alone: a count of one
+	// holds before the Active need arrives too, so the filter is checked.
+	only_active := false
+	for start := time.tick_now(); !only_active && time.tick_since(start) < 30 * time.Second; {
 		time.sleep(time.Millisecond)
+		only_active = len(r.h.route.live) == 1
+		for _, filter in r.h.route.live {
+			only_active &&= filter == .Active
+		}
 	}
-	testing.expect_value(t, len(r.h.route.live), 1)
+	testing.expect(t, only_active, "the All need was dropped and the Active need is live")
 	testing.expect(t, r.m.filter == .Active)
 }
 

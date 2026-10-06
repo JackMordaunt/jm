@@ -23,7 +23,7 @@ watcher polls the time of each folder shown, so a change another
 application makes shows within half a second. A thumbnail waits a short
 quiet first, so a row that scrolls past never starts one, and one whose
 need goes while its job runs is cancelled where the work next checks.
-Thumbnails go under the temp directory, a folder per run.
+Thumbnails go under the temp directory, a folder per run that stop removes.
 */
 package files_app
 
@@ -171,15 +171,12 @@ init :: proc(h: ^Host, wake: proc() = nil, db_path := "") -> bool {
 	h.sink = {&h.inbox, wake, h.allocator}
 	h.route.live = make(map[ui.Need_Key]Read_Kind, h.allocator)
 	h.route.out = make([dynamic]Desk_In, h.allocator)
-	tmp, err := os.temp_directory(context.temp_allocator)
-	if err != nil {
-		fmt.eprintln("files: no temp directory:", err)
-		return false
-	}
-	run := fmt.tprintf("jm-files-%d", time.now()._nsec / 1_000_000)
-	dir, _ := filepath.join({tmp, run}, h.allocator)
-	if merr := os.make_directory(dir); merr != nil && !os.exists(dir) {
-		fmt.eprintln("files: make directory:", dir, merr)
+	// A directory of this host's own: two hosts started in one millisecond,
+	// as a test's are, shared a name derived from the clock, and each saw the
+	// other's thumbnails.
+	dir, derr := os.make_directory_temp("", "jm-files-*", h.allocator)
+	if derr != nil {
+		fmt.eprintln("files: make thumbnail directory:", derr)
 		return false
 	}
 	h.dir = dir
@@ -286,6 +283,9 @@ stop :: proc(h: ^Host) {
 	delete(h.route.live)
 	delete(h.route.out)
 	ui.inbox_destroy(&h.inbox)
+	if err := os.remove_all(h.dir); err != nil {
+		fmt.eprintln("files: remove thumbnail directory:", h.dir, err)
+	}
 	delete(h.dir, h.allocator)
 	delete(h.home, h.allocator)
 }
@@ -571,34 +571,13 @@ places :: proc(home: string, allocator := context.allocator) -> []query.Place {
 	return out[:]
 }
 
-// deliver, on a pool thread, retires the job and hands its answer to the
-// ui, with the statistics.
+// deliver, on a pool thread, hands the job's answer to the ui, then retires
+// it with the statistics. A job stays pending until its answer is in the
+// inbox: one retired first let a reader find nothing pending and the inbox
+// empty while an answer was still on its way, and stop waiting for it.
 deliver :: proc(h: ^Host, d: Done) {
 	job := d.job
-	sync.mutex_lock(&h.mutex)
-	current := job.kind == .Open || h.jobs[job.key] == job
-	if current && job.kind != .Open {
-		delete_key(&h.jobs, job.key)
-		h.stats.pending -= 1
-	}
-	switch job.kind {
-	case .Listing:
-		if current && d.ok {
-			h.stats.listings += 1
-			if w, live := &h.listings[job.key]; live {
-				w.modified = d.modified
-			}
-		}
-	case .Thumb:
-		if d.cancelled || !current {
-			h.stats.cancelled += 1
-		} else if d.ok {
-			h.stats.thumbs += 1
-		}
-	case .Open, .Places:
-	}
-	stats := h.stats
-	sync.mutex_unlock(&h.mutex)
+	current := count_done(h, d)
 
 	buf: [2048]byte
 	stack: mem.Arena
@@ -620,11 +599,45 @@ deliver :: proc(h: ^Host, d: Done) {
 	if d.data != nil {
 		delete(d.data, h.allocator)
 	}
+	sync.mutex_lock(&h.mutex)
+	if current && job.kind != .Open {
+		h.stats.pending -= 1
+	}
+	stats := h.stats
+	sync.mutex_unlock(&h.mutex)
 	ui.inbox_put_value(&h.inbox, query.Stats{}, stats)
 	free(job, h.allocator)
 	if h.wake != nil {
 		h.wake()
 	}
+}
+
+// count_done forgets d's job and counts how it ended, and says whether it was
+// still the job for its need.
+count_done :: proc(h: ^Host, d: Done) -> (current: bool) {
+	job := d.job
+	sync.mutex_guard(&h.mutex)
+	current = job.kind == .Open || h.jobs[job.key] == job
+	if current && job.kind != .Open {
+		delete_key(&h.jobs, job.key)
+	}
+	switch job.kind {
+	case .Listing:
+		if current && d.ok {
+			h.stats.listings += 1
+			if w, live := &h.listings[job.key]; live {
+				w.modified = d.modified
+			}
+		}
+	case .Thumb:
+		if d.cancelled || !current {
+			h.stats.cancelled += 1
+		} else if d.ok {
+			h.stats.thumbs += 1
+		}
+	case .Open, .Places:
+	}
+	return
 }
 
 pool_main :: proc(h: ^Host) {

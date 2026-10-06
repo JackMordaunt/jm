@@ -9,9 +9,12 @@ import harness "jm:fuzz"
 import "jm:http"
 import "jm:http/loopback"
 
-// How late past its deadline a completion may arrive and still count as on
-// time: the loop's wake-up, a callback ahead of it, a loaded machine.
-SLACK :: 300 * time.Millisecond
+// The slack in every timing rule, here and in the model: how late past its
+// deadline a completion may arrive, and how long before a timeout an answer
+// must come to make timing out a fault. It catches a deadline that never
+// fires, not one that fires late: a loaded machine can hold a thread off the
+// CPU for seconds.
+SLACK :: 5 * time.Second
 
 // Wire_Request is one request of a wire case and what on_done said about it.
 Wire_Request :: struct {

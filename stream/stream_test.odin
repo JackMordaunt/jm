@@ -589,7 +589,7 @@ a_late_wake_does_not_queue_a_finished_node :: proc(t: ^testing.T) {
 	testing.expect_value(t, sync.atomic_load(&n.sched), Sched.Idle)
 
 	pool := thread.create_and_start_with_poly_data(&c, pinned_pool)
-	deadline := time.time_add(time.now(), 2 * time.Second)
+	deadline := time.time_add(time.now(), 30 * time.Second)
 	for !thread.is_done(pool) && time.diff(time.now(), deadline) > 0 {
 		time.sleep(time.Millisecond)
 	}

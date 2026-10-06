@@ -10,10 +10,11 @@ NODES :: 20_000
 
 @(private = "file")
 Visit :: struct {
-	seen:  [dynamic]int,
-	found: [dynamic]int,
-	stop:  int, // visit this node and the run ends; -1 for never
-	sink:  int, // keeps the busy loop below from being optimised away
+	seen:    [dynamic]int,
+	found:   [dynamic]int,
+	stop:    int, // visit this node and the run ends; -1 for never
+	meeting: ^Meeting, // set, every node but the root waits there for a second worker
+	met:     bool,
 }
 
 @(private = "file")
@@ -106,21 +107,17 @@ test_manage_agrees_with_one_worker :: proc(t: ^testing.T) {
 }
 
 @(private = "file")
-HEAVY :: 400
+SPLIT :: 400
 
-// A node has to cost appreciably more than starting a thread, or the calling thread
-// drains the queue before the others are scheduled and the split says nothing. That
-// is a property of the work, not of the traversal.
+// The root waits for nothing: its children reach the queue only once it returns.
 @(private = "file")
-descend_slowly :: proc(item: int, v: ^Visit) -> bool {
-	acc := 0
-	for i in 0 ..< 400_000 {
-		acc += i ~ item
+descend_meeting :: proc(item: int, v: ^Visit) -> bool {
+	if item != 0 {
+		meet(v.meeting, &v.met)
 	}
-	v.sink += acc & 1
 	append(&v.seen, item)
 	for c in ([]int{2 * item + 1, 2 * item + 2}) {
-		if c < HEAVY {
+		if c < SPLIT {
 			append(&v.found, c)
 		}
 	}
@@ -129,13 +126,17 @@ descend_slowly :: proc(item: int, v: ^Visit) -> bool {
 
 @(test)
 test_manage_spreads_across_workers :: proc(t: ^testing.T) {
+	m: Meeting
 	v := visitors(4)
 	defer release(v)
-	manage([]int{0}, v, descend_slowly, hand_over)
+	for &s in v {
+		s.meeting = &m
+	}
+	manage([]int{0}, v, descend_meeting, hand_over)
 
 	count, sum := totals(v)
-	testing.expect_value(t, count, HEAVY)
-	testing.expect_value(t, sum, HEAVY * (HEAVY - 1) / 2)
+	testing.expect_value(t, count, SPLIT)
+	testing.expect_value(t, sum, SPLIT * (SPLIT - 1) / 2)
 
 	busy := 0
 	for s in v {

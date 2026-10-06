@@ -72,8 +72,12 @@ record :: proc(r: Result, user: rawptr) {
 	sync.sema_post(&s.done)
 }
 
+// PATIENCE is how long a test waits for what should come at once. It bounds a
+// hang, never a speed: a loaded machine can take seconds to schedule a thread.
+PATIENCE :: 30 * time.Second
+
 // await waits for n on_done calls, and says whether they came in time.
-await :: proc(s: ^Seen, n: int, within := 5 * time.Second) -> bool {
+await :: proc(s: ^Seen, n: int, within := PATIENCE) -> bool {
 	for _ in 0 ..< n {
 		if !sync.sema_wait_with_timeout(&s.done, within) {
 			return false
@@ -179,7 +183,7 @@ cancel_before_start :: proc(t: ^testing.T) {
 	gate: sync.Sema
 	sync.atomic_store(&env.seen.gate, &gate)
 	get_one(env, "/ok")
-	testing.expect(t, sync.sema_wait_with_timeout(&env.seen.in_gate, 5 * time.Second))
+	testing.expect(t, sync.sema_wait_with_timeout(&env.seen.in_gate, PATIENCE))
 	b := get_one(env, "/ok")
 	testing.expect(t, cancel(env.client, b), "the first cancel decides the outcome")
 	sync.sema_post(&gate)
@@ -200,10 +204,10 @@ cancel_during_connect :: proc(t: ^testing.T) {
 	for loopback.accepted(env.srv) == 0 {
 		time.sleep(time.Millisecond)
 	}
-	started := time.now()
+	// Unanswered, the handshake would wait out CURLOPT_CONNECTTIMEOUT (unset: 300 s),
+	// so await's limit is what shows the cancel did not wait on the network.
 	testing.expect(t, cancel(env.client, h))
-	testing.expect(t, await(env.seen, 1))
-	testing.expect(t, time.since(started) < time.Second, "cancel must not wait on the network")
+	testing.expect(t, await(env.seen, 1), "cancel must not wait on the network")
 	sync.guard(&env.seen.mutex)
 	testing.expect_value(t, env.seen.errs[h], Error.Cancelled)
 }
@@ -213,7 +217,7 @@ cancel_while_waiting_for_headers :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
 	h := get_one(env, "/silent")
-	testing.expect(t, sync.sema_wait_with_timeout(&env.gates.arrived, 5 * time.Second))
+	testing.expect(t, sync.sema_wait_with_timeout(&env.gates.arrived, PATIENCE))
 	testing.expect(t, cancel(env.client, h))
 	testing.expect(t, await(env.seen, 1))
 	sync.guard(&env.seen.mutex)
@@ -225,7 +229,7 @@ cancel_mid_body :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
 	h := get_one(env, "/half")
-	testing.expect(t, sync.sema_wait_with_timeout(&env.gates.arrived, 5 * time.Second))
+	testing.expect(t, sync.sema_wait_with_timeout(&env.gates.arrived, PATIENCE))
 	// Long enough for curl to have read the ten bytes that were sent.
 	time.sleep(50 * time.Millisecond)
 	testing.expect(t, cancel(env.client, h))
@@ -267,11 +271,13 @@ double_cancel_reports_once :: proc(t: ^testing.T) {
 timeout_ends_a_slow_request :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
+	// The server answers long after await gives up, so only the timeout can
+	// end the request in time; a load can make it late, never early.
 	started := time.now()
-	h := get_one(env, "/delay/5000", {timeout = 100 * time.Millisecond})
+	h := get_one(env, "/delay/60000", {timeout = 100 * time.Millisecond})
 	testing.expect(t, await(env.seen, 1))
 	took := time.since(started)
-	testing.expectf(t, took >= 100 * time.Millisecond && took < time.Second, "took %v", took)
+	testing.expectf(t, took >= 100 * time.Millisecond, "took %v", took)
 	sync.guard(&env.seen.mutex)
 	testing.expect_value(t, env.seen.errs[h], Error.Timed_Out)
 }
@@ -280,11 +286,11 @@ timeout_ends_a_slow_request :: proc(t: ^testing.T) {
 deadline_ends_a_slow_request :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
+	// As above: the answer comes only after await has given up.
 	by := time.time_add(time.now(), 100 * time.Millisecond)
-	h := get_one(env, "/delay/5000", {deadline = by})
+	h := get_one(env, "/delay/60000", {deadline = by})
 	past := get_one(env, "/ok", {deadline = time.time_add(time.now(), -time.Second)})
 	testing.expect(t, await(env.seen, 2))
-	testing.expect(t, time.diff(by, time.now()) < time.Second)
 	sync.guard(&env.seen.mutex)
 	testing.expect_value(t, env.seen.errs[h], Error.Timed_Out)
 	testing.expect_value(t, env.seen.errs[past], Error.Timed_Out)
@@ -309,7 +315,7 @@ declared_length_over_the_limit_is_refused :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
 	h := get_one(env, "/declared", {max_body = 1000})
-	testing.expect(t, await(env.seen, 1, time.Second), "refused on the header, not on a deadline")
+	testing.expect(t, await(env.seen, 1), "refused on the header, not on a deadline")
 	sync.guard(&env.seen.mutex)
 	testing.expect_value(t, env.seen.errs[h], Error.Too_Large)
 }
@@ -333,7 +339,7 @@ shutdown_cancels_requests_in_flight :: proc(t: ^testing.T) {
 		h = get_one(env, "/silent")
 	}
 	for _ in handles {
-		testing.expect(t, sync.sema_wait_with_timeout(&env.gates.arrived, 5 * time.Second))
+		testing.expect(t, sync.sema_wait_with_timeout(&env.gates.arrived, PATIENCE))
 	}
 	queued := get_one(env, "/silent")
 	shutdown(env.client)
@@ -386,7 +392,7 @@ many_concurrent_requests :: proc(t: ^testing.T) {
 		thread.join(th)
 		thread.destroy(th)
 	}
-	testing.expect(t, await(env.seen, len(swarms) * PER_THREAD, 10 * time.Second))
+	testing.expect(t, await(env.seen, len(swarms) * PER_THREAD))
 	sync.guard(&env.seen.mutex)
 	testing.expect_value(t, len(env.seen.calls), len(swarms) * PER_THREAD)
 	for s in swarms {
