@@ -409,9 +409,19 @@ test_an_export_writes_the_view_as_csv :: proc(t: ^testing.T) {
 }
 
 // A steady frame allocates nothing: no heap, no temp, with a hundred
-// thousand rows, a sort and a filter in place.
+// thousand rows, a sort and a filter in place. The spies stand in for
+// both allocators from the start, so an allocator a part kept from
+// earlier is watched too, and count only while armed.
 @(test)
 test_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
+	spy := Spy {
+		inner = context.allocator,
+	}
+	spy_t := Spy {
+		inner = context.temp_allocator,
+	}
+	context.allocator = {spy_proc, &spy}
+	context.temp_allocator = {spy_proc, &spy_t}
 	m := rigs_make(100_000)
 	defer rigs_free(m)
 	view_sort_cycle(&m.g.view, 3, false)
@@ -422,37 +432,36 @@ test_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
 	focus_on(&p, "Serial") // the cursor's ring, the focus ring
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
-	spy := Spy {
-		inner = context.allocator,
-	}
-	spy_t := Spy {
-		inner = context.temp_allocator,
-	}
-	saved, saved_t := context.allocator, context.temp_allocator
-	context.allocator = {spy_proc, &spy}
-	context.temp_allocator = {spy_proc, &spy_t}
 	clear(&m.events)
+	spy.armed, spy_t.armed = true, true
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
-	context.allocator, context.temp_allocator = saved, saved_t
-	for i in 0 ..< min(spy.n, len(spy.at)) {
-		testing.expectf(t, false, "heap allocator called at %v", spy.at[i])
-	}
-	for i in 0 ..< min(spy_t.n, len(spy_t.at)) {
-		testing.expectf(t, false, "temp allocator called at %v", spy_t.at[i])
-	}
+	spy.armed, spy_t.armed = false, false
+	expect_no_allocations(t, &spy, &spy_t)
 	testing.expect(t, cells(&p) > 0)
 }
 
+// expect_no_allocations fails for every allocation the spies saw armed.
+@(private)
+expect_no_allocations :: proc(t: ^testing.T, heap, temp: ^Spy) {
+	for i in 0 ..< min(heap.n, len(heap.at)) {
+		testing.expectf(t, false, "heap allocator called at %v", heap.at[i])
+	}
+	for i in 0 ..< min(temp.n, len(temp.at)) {
+		testing.expectf(t, false, "temp allocator called at %v", temp.at[i])
+	}
+}
+
 // Spy records where allocations came from and passes them on.
-@(private = "file")
+@(private)
 Spy :: struct {
 	inner: mem.Allocator,
 	at:    [16]runtime.Source_Code_Location,
 	n:     int,
+	armed: bool, // count calls only while set
 }
 
-@(private = "file")
+@(private)
 spy_proc :: proc(
 	data: rawptr,
 	mode: mem.Allocator_Mode,
@@ -465,7 +474,7 @@ spy_proc :: proc(
 	mem.Allocator_Error,
 ) {
 	s := (^Spy)(data)
-	if mode != .Query_Features && mode != .Query_Info {
+	if s.armed && mode != .Query_Features && mode != .Query_Info {
 		if s.n < len(s.at) {
 			s.at[s.n] = loc
 		}

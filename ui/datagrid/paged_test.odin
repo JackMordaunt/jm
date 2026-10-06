@@ -338,3 +338,36 @@ test_a_memory_table_pages_by_offset_and_by_cursor_alike :: proc(t: ^testing.T) {
 	testing.expect_value(t, v.values[0], Value_Count{"M0", 9})
 	testing.expect_value(t, v.values[2].count, 8)
 }
+
+// A paged grid's steady frame, its pages in and nothing changing,
+// allocates nothing either: no heap, no temp, the need plumbing
+// included.
+@(test)
+test_a_steady_paged_frame_allocates_nothing :: proc(t: ^testing.T) {
+	spy := Spy {
+		inner = context.allocator,
+	}
+	spy_t := Spy {
+		inner = context.temp_allocator,
+	}
+	context.allocator = {spy_proc, &spy}
+	context.temp_allocator = {spy_proc, &spy_t}
+	m := pager_make(5000, {source = "rigs", page_size = 50})
+	defer pager_free(m)
+	view_sort_cycle(&m.g.view, 3, false)
+	view_set_values(&m.g.view, 2, {"Norway"})
+	p: ui.Probe
+	ui.probe_init(&p, pager_view, m, {600, 400})
+	defer ui.probe_destroy(&p)
+	for _ in 0 ..< 6 {
+		serve(&p, m)
+	}
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	spy.armed, spy_t.armed = true, true
+	ui.probe_frame(&p)
+	ui.probe_frame(&p)
+	spy.armed, spy_t.armed = false, false
+	expect_no_allocations(t, &spy, &spy_t)
+	testing.expect(t, ui.probe_tagged(&p, "SN-00000"), "the rows are in")
+}
