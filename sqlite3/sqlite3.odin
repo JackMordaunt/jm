@@ -75,9 +75,18 @@ Code :: enum i32 {
 // for it, which names the constraint or the file rather than restating the
 // code. The text is cloned, so it outlives the next call.
 Fault :: struct {
-	code: Code,
-	text: string,
+	code:     Code,
+	// The extended result code, which tells apart the failures one code
+	// covers: CONSTRAINT_DATATYPE from CONSTRAINT_UNIQUE, say. 0 when the
+	// failure did not come from the connection.
+	extended: i32,
+	text:     string,
 }
+
+// Extended result codes that callers tell apart. SQLite has many more; these
+// are the ones jm reads.
+CONSTRAINT_NOTNULL  :: 1299
+CONSTRAINT_DATATYPE :: 3091
 
 // Error is nil when a call succeeded, so `or_return` and prelude.must both
 // work on it.
@@ -434,6 +443,38 @@ name :: proc(stmt: Stmt, col: int) -> string {
 	return n == nil ? "" : strings.clone_from_cstring(n, stmt.allocator)
 }
 
+// parameter_count is how many parameters the statement takes. A named
+// parameter used twice counts once.
+parameter_count :: proc(stmt: Stmt) -> int {
+	return int(sqlite3_bind_parameter_count(stmt.handle))
+}
+
+// parameter_name is parameter i's name with its prefix, such as "@id", cloned
+// into the statement's allocator; "" for a bare ?. Parameters count from 0,
+// as columns do, in the order bind takes them.
+parameter_name :: proc(stmt: Stmt, i: int) -> string {
+	n := sqlite3_bind_parameter_name(stmt.handle, c.int(i + 1))
+	return n == nil ? "" : strings.clone_from_cstring(n, stmt.allocator)
+}
+
+// read_only reports whether the statement leaves the database unchanged.
+read_only :: proc(stmt: Stmt) -> bool {
+	return sqlite3_stmt_readonly(stmt.handle) != 0
+}
+
+// origin is the table and column a result column reads, cloned into the
+// statement's allocator, when it is a plain reference to one: through a view,
+// a subquery or a CTE, SQLite follows it to the base table. Both are "" for
+// an expression. A compound SELECT reports its leftmost arm only.
+origin :: proc(stmt: Stmt, col: int) -> (table, column: string) {
+	t := sqlite3_column_table_name(stmt.handle, c.int(col))
+	n := sqlite3_column_origin_name(stmt.handle, c.int(col))
+	if t == nil || n == nil {
+		return "", ""
+	}
+	return strings.clone_from_cstring(t, stmt.allocator), strings.clone_from_cstring(n, stmt.allocator)
+}
+
 // integer reads the column as an integer. A NULL or a non-numeric text reads
 // as 0, which is SQLite's own conversion.
 integer :: proc(stmt: Stmt, col: int) -> i64 {
@@ -587,12 +628,14 @@ prepare_one :: proc(
 @(private)
 fault :: proc(db: ^Connection, code: Code, allocator: mem.Allocator) -> Error {
 	msg: cstring
+	extended: i32
 	if db != nil {
 		msg = sqlite3_errmsg(db)
+		extended = i32(sqlite3_extended_errcode(db))
 	}
 	if msg == nil {
 		msg = sqlite3_errstr(c.int(code))
 	}
 	text := msg == nil ? "" : strings.clone_from_cstring(msg, allocator)
-	return Fault{code = code, text = text}
+	return Fault{code = code, extended = extended, text = text}
 }

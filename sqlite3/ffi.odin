@@ -86,6 +86,8 @@ foreign lib {
 	sqlite3_reset                :: proc(stmt: ^Statement) -> c.int ---
 	sqlite3_clear_bindings       :: proc(stmt: ^Statement) -> c.int ---
 	sqlite3_bind_parameter_count :: proc(stmt: ^Statement) -> c.int ---
+	sqlite3_bind_parameter_name  :: proc(stmt: ^Statement, i: c.int) -> cstring ---
+	sqlite3_stmt_readonly        :: proc(stmt: ^Statement) -> c.int ---
 
 	sqlite3_bind_null   :: proc(stmt: ^Statement, i: c.int) -> c.int ---
 	sqlite3_bind_int64  :: proc(stmt: ^Statement, i: c.int, v: i64) -> c.int ---
@@ -101,4 +103,9 @@ foreign lib {
 	sqlite3_column_double :: proc(stmt: ^Statement, col: c.int) -> f64 ---
 	sqlite3_column_text   :: proc(stmt: ^Statement, col: c.int) -> [^]u8 ---
 	sqlite3_column_blob   :: proc(stmt: ^Statement, col: c.int) -> rawptr ---
+
+	// SQLITE_ENABLE_COLUMN_METADATA, which the justfile's `sqlite` recipe sets:
+	// the table and column a result column reads, when it reads one directly.
+	sqlite3_column_table_name  :: proc(stmt: ^Statement, col: c.int) -> cstring ---
+	sqlite3_column_origin_name :: proc(stmt: ^Statement, col: c.int) -> cstring ---
 }

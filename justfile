@@ -289,15 +289,21 @@ odin-run-example: odin-run-build sqlite
 
 sqlite_lib := if os() == "windows" { "sqlite3/lib/sqlite3.lib" } else { "sqlite3/lib/sqlite3.a" }
 # SQLite compile-time options. sqlite.org's recommended set for 3.53.4, with
-# three deliberate changes: THREADSAFE=1 rather than 0, so a connection per
+# four deliberate changes: THREADSAFE=1 rather than 0, so a connection per
 # jm:flow worker is safe; OMIT_AUTOINIT left off, because omitting it makes
-# any call before sqlite3_initialize a segfault; and FTS5 compiled in for a
-# full-text index. OMIT_LOAD_EXTENSION keeps the build from needing libdl.
+# any call before sqlite3_initialize a segfault; FTS5 compiled in for a
+# full-text index; and ENABLE_COLUMN_METADATA in place of OMIT_DECLTYPE, the
+# two being exclusive, so tools/jm-sqlgen can ask which table column a result
+# column reads (1.7 KB of archive). OMIT_LOAD_EXTENSION keeps the build from
+# needing libdl.
 sqlite_defines := "-DSQLITE_DQS=0 -DSQLITE_THREADSAFE=1 -DSQLITE_DEFAULT_MEMSTATUS=0 " + \
   "-DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1 -DSQLITE_LIKE_DOESNT_MATCH_BLOBS " + \
-  "-DSQLITE_MAX_EXPR_DEPTH=0 -DSQLITE_OMIT_DECLTYPE -DSQLITE_OMIT_DEPRECATED " + \
+  "-DSQLITE_MAX_EXPR_DEPTH=0 -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_OMIT_DEPRECATED " + \
   "-DSQLITE_OMIT_PROGRESS_CALLBACK -DSQLITE_OMIT_SHARED_CACHE -DSQLITE_STRICT_SUBTYPE=1 " + \
   "-DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_MATH_FUNCTIONS"
+# The defines the archive was built with, so a change to them rebuilds it as a
+# newer amalgamation does.
+sqlite_stamp := "sqlite3/lib/defines"
 
 # The archive lands in sqlite3/lib rather than build/ because foreign import
 # resolves relative to the package directory. `just check` never needs it:
@@ -309,19 +315,26 @@ sqlite_defines := "-DSQLITE_DQS=0 -DSQLITE_THREADSAFE=1 -DSQLITE_DEFAULT_MEMSTAT
 [unix]
 sqlite: _worktree-libs
     @mkdir -p sqlite3/lib
-    @if [ ! -f {{sqlite_lib}} ] || [ sqlite3/vendor/sqlite3.c -nt {{sqlite_lib}} ]; then \
+    @if [ ! -f {{sqlite_lib}} ] || [ sqlite3/vendor/sqlite3.c -nt {{sqlite_lib}} ] \
+        || [ "$(cat {{sqlite_stamp}} 2>/dev/null)" != "{{sqlite_defines}}" ]; then \
         echo "{{cc}} sqlite3 amalgamation -> {{sqlite_lib}}"; \
         {{cc}} -O2 -fPIC -c sqlite3/vendor/sqlite3.c -o sqlite3/lib/sqlite3.o {{sqlite_defines}}; \
+        rm -f {{sqlite_lib}}; \
         ar rcs {{sqlite_lib}} sqlite3/lib/sqlite3.o; \
+        echo "{{sqlite_defines}}" > {{sqlite_stamp}}; \
     fi
 
 [group('sqlite3')]
 [windows]
 sqlite: _worktree-libs
-    @if (!(Test-Path {{sqlite_lib}}) -or (Get-Item sqlite3/vendor/sqlite3.c).LastWriteTime -gt (Get-Item {{sqlite_lib}}).LastWriteTime) { \
+    @if (!(Test-Path {{sqlite_lib}}) -or (Get-Item sqlite3/vendor/sqlite3.c).LastWriteTime -gt (Get-Item {{sqlite_lib}}).LastWriteTime -or !(Test-Path {{sqlite_stamp}}) -or (Get-Content {{sqlite_stamp}} -Raw).Trim() -ne '{{sqlite_defines}}') { \
+        New-Item -ItemType Directory -Force sqlite3/lib | Out-Null; \
         cl /nologo /O2 /c sqlite3/vendor/sqlite3.c /Fosqlite3/lib/sqlite3.obj {{sqlite_defines}}; \
-        lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj \
+        if (Test-Path {{sqlite_lib}}) { Remove-Item {{sqlite_lib}} }; \
+        lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj; \
+        Set-Content {{sqlite_stamp}} '{{sqlite_defines}}' \
     }
+
 
 # ============================================================================
 # zstd: jm:zstd and the zstd amalgamation it links.

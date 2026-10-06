@@ -33,6 +33,11 @@ version_is_vendored :: proc(t: ^testing.T) {
 	testing.expect(t, opts["ENABLE_FTS5"], "FTS5 is compiled in for a full-text index")
 	testing.expect(
 		t,
+		opts["ENABLE_COLUMN_METADATA"],
+		"column metadata is compiled in for tools/jm-sqlgen",
+	)
+	testing.expect(
+		t,
 		opts["OMIT_LOAD_EXTENSION"],
 		"load_extension is omitted so the link needs no libdl",
 	)
@@ -465,4 +470,75 @@ hooks_report_rows_commits_and_rollbacks :: proc(t: ^testing.T) {
 	hooks(db)
 	testing.expect(t, exec_args(db, "INSERT INTO todo(title) VALUES (?)", "d") == nil)
 	testing.expect_value(t, l.commits, 2)
+}
+
+// Column metadata is compiled in for tools/jm-sqlgen: origin follows a column
+// through a view to its table, and an expression has none.
+@(test)
+origin_names_the_table_column :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	db, err := open(MEMORY)
+	testing.expect_value(t, err, nil)
+	defer close(&db)
+	testing.expect_value(
+		t,
+		exec(db, `CREATE TABLE note(id INTEGER PRIMARY KEY, body TEXT);
+		CREATE VIEW short AS SELECT body AS b FROM note`),
+		nil,
+	)
+	stmt, perr := prepare(db, `SELECT b, length(b) FROM short WHERE b = @body AND b != @body`)
+	testing.expect_value(t, perr, nil)
+	defer finish(&stmt)
+
+	table, column := origin(stmt, 0)
+	testing.expect_value(t, table, "note")
+	testing.expect_value(t, column, "body")
+	table, column = origin(stmt, 1)
+	testing.expect_value(t, table, "")
+	testing.expect_value(t, column, "")
+
+	// @body appears twice and is one parameter.
+	testing.expect_value(t, parameter_count(stmt), 1)
+	testing.expect_value(t, parameter_name(stmt, 0), "@body")
+	testing.expect(t, read_only(stmt))
+
+	// A subquery and a CTE are followed too. A compound SELECT names its
+	// first arm, here id, though its second arm reads body.
+	cases := [?][2]string {
+		{`SELECT s.body FROM (SELECT body FROM note) s`, "body"},
+		{`WITH c AS (SELECT body FROM note) SELECT body FROM c`, "body"},
+		{`SELECT id FROM note UNION ALL SELECT body FROM note`, "id"},
+	}
+	for c in cases {
+		s, serr := prepare(db, c[0])
+		testing.expect_value(t, serr, nil)
+		_, column = origin(s, 0)
+		testing.expect_value(t, column, c[1])
+		finish(&s)
+	}
+}
+
+// The extended code is what tells a STRICT table's type refusal apart from
+// the other constraint failures, which share code Constraint.
+@(test)
+fault_carries_the_extended_code :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	db, err := open(MEMORY)
+	testing.expect_value(t, err, nil)
+	defer close(&db)
+	testing.expect_value(t, exec(db, `CREATE TABLE n(v INTEGER NOT NULL) STRICT`), nil)
+
+	f, ok := exec_args(db, `INSERT INTO n VALUES (?)`, "seven").(Fault)
+	testing.expect(t, ok)
+	testing.expect_value(t, f.code, Code.Constraint)
+	testing.expect_value(t, f.extended, CONSTRAINT_DATATYPE)
+
+	f, ok = exec_args(db, `INSERT INTO n VALUES (?)`, nil).(Fault)
+	testing.expect(t, ok)
+	testing.expect_value(t, f.extended, CONSTRAINT_NOTNULL)
+
+	stmt, perr := prepare(db, `DELETE FROM n`)
+	testing.expect_value(t, perr, nil)
+	testing.expect(t, !read_only(stmt))
+	finish(&stmt)
 }

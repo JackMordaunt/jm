@@ -77,12 +77,12 @@ taken from sqlite.org and verified against the SHA3-256 that page publishes.
 SQLite is public domain, so vendoring it carries no licence obligation.
 
 `just sqlite` compiles it once into `sqlite3/lib/sqlite3.a`, which is
-gitignored and rebuilt when the amalgamation changes. `foreign import`
-resolves that archive relative to the package directory. `odin check` never
+gitignored and rebuilt when the amalgamation or the compile options change.
+`foreign import` resolves that archive relative to the package directory. `odin check` never
 opens a foreign import, so `just check` still type-checks all three targets on
 one machine with no archive built.
 
-The compile options are sqlite.org's recommended set, with three deliberate
+The compile options are sqlite.org's recommended set, with four deliberate
 departures, all of them in the justfile:
 
 | Option | Recommended | Here | Why |
@@ -90,6 +90,7 @@ departures, all of them in the justfile:
 | `SQLITE_THREADSAFE` | `0` | `1` | A connection per `jm:flow` worker has to be safe. |
 | `SQLITE_OMIT_AUTOINIT` | set | **not** set | With it, any call made before `sqlite3_initialize` is a segfault rather than an error. |
 | `SQLITE_ENABLE_FTS5` | — | added | A full-text index. |
+| `SQLITE_ENABLE_COLUMN_METADATA` | — | added, in place of `SQLITE_OMIT_DECLTYPE` | `jm-sqlgen` asks which table column a result column reads. The two options exclude each other; the archive grows by 1.7 KB. |
 
 `SQLITE_OMIT_LOAD_EXTENSION` keeps the link from needing libdl.
 
