@@ -22,6 +22,7 @@ Rigs :: struct {
 	paged:   ^Paging,
 	label:   string,
 	loading: bool,
+	tall:    bool, // rows of their own heights: 20, 30 and 40px in turn
 }
 
 @(private = "file")
@@ -69,10 +70,23 @@ rigs_free :: proc(m: ^Rigs) {
 
 @(private = "file")
 rigs_source :: proc(m: ^Rigs) -> Source {
-	text :: proc(user: rawptr, row, col: int) -> string {
+	text   :: proc(user: rawptr, row, col: int) -> string {
 		return (^Rigs)(user).rows[row][col]
 	}
-	return {user = m, rows = len(m.rows), text = text, paged = m.paged, loading = m.loading}
+	height :: proc(user: rawptr, row: int) -> f32 {
+		return f32(20 + 10 * (row % 3))
+	}
+	src := Source {
+		user    = m,
+		rows    = len(m.rows),
+		text    = text,
+		paged   = m.paged,
+		loading = m.loading,
+	}
+	if m.tall {
+		src.height = height
+	}
+	return src
 }
 
 @(private = "file")
@@ -542,4 +556,26 @@ test_a_skin_slot_lays_out_in_its_cell :: proc(t: ^testing.T) {
 	defer ui.probe_destroy(&p)
 	testing.expect_value(t, ui.probe_bounds(&p, "slot Site"), ui.probe_bounds(&p, "Site"))
 	testing.expect(t, ui.probe_bounds(&p, "slot Site").x > 0)
+}
+
+// Rows of their own heights stand where their heights put them, found by
+// the index at any scroll, the last one at the bottom.
+@(test)
+test_rows_of_their_own_heights_stand_where_they_add_up :: proc(t: ^testing.T) {
+	m := rigs_make(30_000)
+	defer rigs_free(m)
+	m.tall = true
+	p: ui.Probe
+	open(&p, m)
+	defer ui.probe_destroy(&p)
+	// Rows 0 to 3 are 20, 30, 40 and 20px: row 4 starts 110px down.
+	testing.expect_value(t, ui.probe_bounds(&p, "SN-00004").y, 36 + 110)
+	said := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(said, `row 6 at 0,146 600x30`), said)
+	testing.expect_value(t, heights_total(&m.g.heights), 10_000 * 90)
+	ui.probe_click(&p, "SN-00001")
+	ui.probe_key(&p, .End, {ui.SHORTCUT})
+	testing.expect(t, ui.probe_tagged(&p, "SN-29999"), "the last row scrolled into view")
+	last := ui.probe_bounds(&p, "SN-29999") // 40px, ending where the body does
+	testing.expect_value(t, [2]f32{last.y + last.h, last.h}, [2]f32{36 + 363, 40})
 }
