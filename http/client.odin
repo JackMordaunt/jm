@@ -20,9 +20,21 @@ to draw never waits on the network.
 	http.cancel(client, h)   // from any thread; on_done still fires, with .Cancelled
 
 on_done fires exactly once for every request submit accepted: with a
-response, a transport error, .Too_Large, .Timed_Out or .Cancelled. It runs
-on the client's thread, never after shutdown returns, and is the whole of the
-seam to a UI: post what it carries into an inbox and wake the frame loop.
+response, a transport error, .Too_Large, .Timed_Out or .Cancelled, and never
+after shutdown returns. It runs on the client's I/O thread, the one thread
+that moves every transfer, so it must not block: while it runs, no other
+request sends or receives a byte and no deadline is enforced. Do no I/O, take
+no lock held for long, and wait on nothing. Hand the result on and return.
+
+That makes it the whole of the seam to a UI. Post what it carries into an
+inbox, which copies it, and wake the frame loop to drain it:
+
+	on_done :: proc(r: http.Result, user: rawptr) {
+		app := (^App)(user)
+		ui.inbox_put(&app.inbox, app.key, transmute([]byte)r.response.body)
+		shell.wake()
+	}
+
 The Result it is handed is borrowed; clone what must outlive the call.
 
 cancel returns true when it decided the outcome: that request's on_done will
@@ -67,8 +79,10 @@ Result :: struct {
 	message:  string,
 }
 
-// Done is called once per request, on the client's thread. It may submit
-// and cancel, but must not call shutdown, which would wait for itself.
+// Done is called once per request, on the client's I/O thread, and must not
+// block: every other transfer waits while it runs. Copy the result out, post
+// it to whoever needs it, and return. It may submit and cancel, but must not
+// call shutdown, which would wait for itself.
 // context.temp_allocator is the client thread's, freed soon after it returns.
 Done :: #type proc(result: Result, user: rawptr)
 

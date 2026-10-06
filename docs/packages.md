@@ -17,7 +17,7 @@ Everyday script work: the shell, the web, files, time and archives.
 |---------|-----|
 | `prelude` | `must`, `die`, `env`, `args`; arena or debug allocator; logfmt log file plus `deaths.log` audit trail |
 | `sh` | `out`, `lines`, `ok`, `run`, `capture` through the shell; `exec`, `exec_run` with argv; `which`, `quote`, `error` |
-| `http` | `get`, `post`, `post_json`, `get_json`, `download`, `request` over libcurl, and a `Client` whose requests run on its own thread and can be cancelled |
+| `http` | `get`, `post`, `post_json`, `get_json`, `download`, `request` over libcurl, and a `Client` whose requests run on its own thread and can be cancelled. Its `on_done` runs on that I/O thread and must not block, since every transfer waits on it: copy the result into a `ui.Inbox` with `inbox_put` and call `shell.wake`, nothing more |
 | `path` | `expand`, `join`, `mkdirs`, `read`, `read_lines`, `write`, `append_file`, `list`, `walk`, `temp_dir`, `same`, per-user app dirs |
 | `timefmt` | strftime `format`, `local`, `parse`; `iso`, `stamp`, `date`, `duration` |
 | `tar` | `read`, `extract`: `git archive` output without a tar program |
