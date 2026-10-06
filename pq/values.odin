@@ -36,7 +36,8 @@ exec_values :: proc(
 		return {}, refusal("the connection is closed", 0, allocator)
 	}
 	if i := strings.index_byte(sql, 0); i >= 0 {
-		return {}, refusal(fmt.tprintf("statement holds a NUL byte at offset %d, which libpq would read as its end", i), utf8.rune_count_in_string(sql[:i]) + 1, allocator)
+		msg := fmt.tprintf("statement holds a NUL byte at offset %d, %s", i, READ_AS_END)
+		return {}, refusal(msg, utf8.rune_count_in_string(sql[:i]) + 1, allocator)
 	}
 	values := make([]cstring, len(args), context.temp_allocator)
 	for arg, n in args {
@@ -45,7 +46,13 @@ exec_values :: proc(
 			continue
 		}
 		if i := strings.index_byte(text, 0); i >= 0 {
-			return {}, refusal(fmt.tprintf("argument %d holds a NUL byte at offset %d, which libpq would read as its end", n + 1, i), 0, allocator)
+			msg := fmt.tprintf(
+				"argument %d holds a NUL byte at offset %d, %s",
+				n + 1,
+				i,
+				READ_AS_END,
+			)
+			return {}, refusal(msg, 0, allocator)
 		}
 		values[n] = strings.clone_to_cstring(text, context.temp_allocator)
 	}
@@ -279,3 +286,6 @@ misread :: proc(err: ^Error, column, text: string, $T: typeid, allocator := cont
 		),
 	}
 }
+
+@(private = "file")
+READ_AS_END :: "which libpq would read as its end"
