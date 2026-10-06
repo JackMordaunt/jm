@@ -97,7 +97,7 @@ blocking_calls_still_work :: proc(t: ^testing.T) {
 	testing.expect_value(t, err, Error.None)
 	testing.expect_value(t, res.body, "")
 
-	_, err = get(loopback.url(srv, "/delay/5000"), {timeout = 100 * time.Millisecond})
+	_, err = get(loopback.url(srv, "/delay/60000"), {timeout = 100 * time.Millisecond})
 	testing.expect_value(t, err, Error.Timed_Out)
 
 	_, err = get("http://127.0.0.1:1/")
