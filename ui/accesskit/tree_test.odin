@@ -137,7 +137,7 @@ invalid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 @(private = "file")
 password_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	p := ui.widget_open(gtx, 1)
-	ui.semantics(gtx, &p, {role = .Password_Field, label = "Password", value = "•••"})
+	ui.semantics(gtx, &p, {role = .Password_Field, label = "Password", value = "●●●"})
 	ui.widget_close(gtx, &p, {size = {120, 24}})
 }
 

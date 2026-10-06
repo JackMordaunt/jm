@@ -10,7 +10,7 @@ test_a_secret_view_shows_a_bullet_per_rune_and_maps_the_caret :: proc(t: ^testin
 	s.cursor, s.anchor = 3, 1 // after "é", after "a"
 	v := secret_view(&s, context.temp_allocator)
 	defer free_all(context.temp_allocator)
-	testing.expect_value(t, string(v.buf[:]), "••••")
+	testing.expect_value(t, string(v.buf[:]), "●●●●")
 	testing.expect_value(t, v.cursor, 2 * len(SECRET_BULLET))
 	testing.expect_value(t, v.anchor, 1 * len(SECRET_BULLET))
 	v.cursor, v.anchor = 3 * len(SECRET_BULLET), 4 * len(SECRET_BULLET)

@@ -11,9 +11,9 @@ import "core:unicode/utf8"
 // the real one's, so a widget lays out, hit-tests and paints the view
 // exactly as it would plain text and maps what the pointer did back.
 
-// SECRET_BULLET is what a secret field shows for each character: U+2022,
-// BULLET.
-SECRET_BULLET :: "•"
+// SECRET_BULLET is what a secret field shows for each character: U+25CF,
+// BLACK CIRCLE: U+2022 BULLET drew too small to count at 14px.
+SECRET_BULLET :: "●"
 
 // secret_view is s as it shows: a bullet per rune of s, with its caret,
 // anchor and drag at the same character, in allocator.

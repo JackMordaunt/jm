@@ -33,7 +33,7 @@ test_a_secret_input_shows_bullets_and_keeps_its_text :: proc(t: ^testing.T) {
 		t,
 		strings.contains(
 			report,
-			`password field "Password" value "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"`,
+			`password field "Password" value "\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf"`,
 		),
 		report,
 	)
