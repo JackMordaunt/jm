@@ -75,9 +75,18 @@ Code :: enum i32 {
 // for it, which names the constraint or the file rather than restating the
 // code. The text is cloned, so it outlives the next call.
 Fault :: struct {
-	code: Code,
-	text: string,
+	code:     Code,
+	// The extended result code, which tells apart the failures one code
+	// covers: CONSTRAINT_DATATYPE from CONSTRAINT_UNIQUE, say. 0 when the
+	// failure did not come from the connection.
+	extended: i32,
+	text:     string,
 }
+
+// Extended result codes that callers tell apart. SQLite has many more; these
+// are the ones jm reads.
+CONSTRAINT_NOTNULL  :: 1299
+CONSTRAINT_DATATYPE :: 3091
 
 // Error is nil when a call succeeded, so `or_return` and prelude.must both
 // work on it.
@@ -434,6 +443,38 @@ name :: proc(stmt: Stmt, col: int) -> string {
 	return n == nil ? "" : strings.clone_from_cstring(n, stmt.allocator)
 }
 
+// parameter_count is how many parameters the statement takes. A named
+// parameter used twice counts once.
+parameter_count :: proc(stmt: Stmt) -> int {
+	return int(sqlite3_bind_parameter_count(stmt.handle))
+}
+
+// parameter_name is parameter i's name with its prefix, such as "@id", cloned
+// into the statement's allocator; "" for a bare ?. Parameters count from 0,
+// as columns do, in the order bind takes them.
+parameter_name :: proc(stmt: Stmt, i: int) -> string {
+	n := sqlite3_bind_parameter_name(stmt.handle, c.int(i + 1))
+	return n == nil ? "" : strings.clone_from_cstring(n, stmt.allocator)
+}
+
+// read_only reports whether the statement leaves the database unchanged.
+read_only :: proc(stmt: Stmt) -> bool {
+	return sqlite3_stmt_readonly(stmt.handle) != 0
+}
+
+// origin is the table and column a result column reads, cloned into the
+// statement's allocator, when it is a plain reference to one: through a view,
+// a subquery or a CTE, SQLite follows it to the base table. Both are "" for
+// an expression. A compound SELECT reports its leftmost arm only.
+origin :: proc(stmt: Stmt, col: int) -> (table, column: string) {
+	t := sqlite3_column_table_name(stmt.handle, c.int(col))
+	n := sqlite3_column_origin_name(stmt.handle, c.int(col))
+	if t == nil || n == nil {
+		return "", ""
+	}
+	return strings.clone_from_cstring(t, stmt.allocator), strings.clone_from_cstring(n, stmt.allocator)
+}
+
 // integer reads the column as an integer. A NULL or a non-numeric text reads
 // as 0, which is SQLite's own conversion.
 integer :: proc(stmt: Stmt, col: int) -> i64 {
@@ -496,6 +537,160 @@ type_of :: proc(stmt: Stmt, col: int) -> Type {
 // cannot tell apart from 0 or the empty string.
 is_null :: proc(stmt: Stmt, col: int) -> bool {
 	return type_of(stmt, col) == .Null
+}
+
+// read_exact reads the column as T without converting it, where the readers
+// above would: T is i64, f64, bool, string or []byte, and the value must be stored
+// as INTEGER, REAL, INTEGER 0 or 1, TEXT or BLOB respectively. Anything else,
+// NULL included, fails the statement with Mismatch, which next and finish
+// then report, and reads as T's zero. Text and blobs are cloned as text and
+// blob clone them. Code that tools/jm-sqlgen generates reads every column
+// this way, so a value of a type it did not expect stops the read.
+read_exact :: proc(
+	stmt: ^Stmt,
+	col: int,
+	$T: typeid,
+) -> (
+	v: T,
+) where T == i64 ||
+	T == f64 ||
+	T == bool ||
+	T == string ||
+	T == []byte {
+	when T == i64 {
+		if expect(stmt, col, .Integer) {
+			v = integer(stmt^, col)
+		}
+	} else when T == f64 {
+		if expect(stmt, col, .Real) {
+			v = real(stmt^, col)
+		}
+	} else when T == string {
+		if expect(stmt, col, .Text) {
+			v = text(stmt^, col)
+		}
+	} else when T == []byte {
+		if expect(stmt, col, .Blob) {
+			v = blob(stmt^, col)
+		}
+	} else {
+		if !expect(stmt, col, .Integer) {
+			return
+		}
+		switch n := integer(stmt^, col); n {
+		case 0, 1:
+			v = n == 1
+		case:
+			buf: [64]byte
+			mismatch(stmt, fmt.bprintf(buf[:], "holds %d, which is not a bool", n), col)
+		}
+	}
+	return
+}
+
+// read_exact_maybe reads the column as read_exact does, and as nil when it is
+// NULL.
+read_exact_maybe :: proc(stmt: ^Stmt, col: int, $T: typeid) -> (v: Maybe(T)) {
+	if !is_null(stmt^, col) {
+		v = read_exact(stmt, col, T)
+	}
+	return
+}
+
+// nullable is v as a bound value: its value, or NULL when it has none.
+nullable :: proc(v: Maybe($T)) -> Value {
+	if x, ok := v.?; ok {
+		return x
+	}
+	return nil
+}
+
+// check_statement prepares sql and compares it with the shape the calling
+// code was written for: params parameters, and columns named columns in
+// that order. It is how generated code finds that a database's schema has
+// drifted before a query runs. A difference is a Schema fault naming name.
+check_statement :: proc(
+	db: Db,
+	name, sql: string,
+	params: int,
+	columns: []string,
+	allocator := context.allocator,
+) -> Error {
+	stmt, err := prepare(db, sql, allocator)
+	if f, failed := err.(Fault); failed {
+		f.text = fmt.aprintf("%s: %s", name, f.text, allocator = allocator)
+		return f
+	}
+	defer finish(&stmt)
+	drift := Fault {
+		code = .Schema,
+	}
+	switch {
+	case parameter_count(stmt) != params:
+		drift.text = fmt.aprintf(
+			"%s takes %d parameters, not %d",
+			name,
+			parameter_count(stmt),
+			params,
+			allocator = allocator,
+		)
+		return drift
+	case column_count(stmt) != len(columns):
+		drift.text = fmt.aprintf(
+			"%s returns %d columns, not %d",
+			name,
+			column_count(stmt),
+			len(columns),
+			allocator = allocator,
+		)
+		return drift
+	}
+	for want, i in columns {
+		if got := name_of(stmt, i); got != want {
+			drift.text = fmt.aprintf(
+				"%s names column %d %q, not %q",
+				name,
+				i + 1,
+				got,
+				want,
+				allocator = allocator,
+			)
+			return drift
+		}
+	}
+	return nil
+}
+
+// expect reports whether the column holds want, and fails the statement
+// with Mismatch when it does not.
+@(private = "file")
+expect :: proc(stmt: ^Stmt, col: int, want: Type) -> bool {
+	got := type_of(stmt^, col)
+	if got == want {
+		return true
+	}
+	buf: [64]byte
+	mismatch(stmt, fmt.bprintf(buf[:], "holds %v where %v was expected", got, want), col)
+	return false
+}
+
+// mismatch fails the statement unless it has already failed, so the first
+// wrong value is the one reported.
+@(private = "file")
+mismatch :: proc(stmt: ^Stmt, what: string, col: int) {
+	if stmt.err == nil {
+		stmt.err = Fault {
+			code = .Mismatch,
+			text = fmt.aprintf("column %s %s", name_of(stmt^, col), what, allocator = stmt.allocator),
+		}
+	}
+}
+
+// name_of is the column's name without a copy, for a message about to copy
+// it anyway.
+@(private = "file")
+name_of :: proc(stmt: Stmt, col: int) -> string {
+	return string(sqlite3_column_name(stmt.handle, c.int(col)))
 }
 
 // interrupt is sqlite3_interrupt: it asks the connection to abandon what it
@@ -587,12 +782,14 @@ prepare_one :: proc(
 @(private)
 fault :: proc(db: ^Connection, code: Code, allocator: mem.Allocator) -> Error {
 	msg: cstring
+	extended: i32
 	if db != nil {
 		msg = sqlite3_errmsg(db)
+		extended = i32(sqlite3_extended_errcode(db))
 	}
 	if msg == nil {
 		msg = sqlite3_errstr(c.int(code))
 	}
 	text := msg == nil ? "" : strings.clone_from_cstring(msg, allocator)
-	return Fault{code = code, text = text}
+	return Fault{code = code, extended = extended, text = text}
 }

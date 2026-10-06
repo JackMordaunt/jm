@@ -1,0 +1,7 @@
+-- engine: sqlite
+
+CREATE TABLE IF NOT EXISTS todo(
+	id INTEGER PRIMARY KEY,
+	title TEXT NOT NULL,
+	done INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0, 1))
+) STRICT;

@@ -292,6 +292,38 @@ and runs no cases.
 own connection as an unprivileged role with a `statement_timeout`.
 `just fuzz "pq -for=1m"` runs it.
 
+## Typed queries
+
+`tools/jm-sqlgen` generates typed Odin over `jm:pq` from a package's
+`schema.sql` and `queries.sql`, as it does for SQLite
+([SQLite](sqlite.md#typed-queries) has the format). Both files open with
+`-- engine: postgres`:
+
+```sql
+-- name: rescore :rows
+UPDATE note SET score = @score WHERE id = @id;
+```
+
+`just sqlgen <dir>` describes each query on a throwaway server and writes
+`rescore :: proc(db: ^pq.Conn, score: f64, id: i64, allocator := ...)`.
+
+- **The server types everything.** Parameters need no annotation: `@score`
+  is `f64` because `score` is `float8`. Expressions are typed too, so
+  `count(*)` is `i64` without one. int2, int4 and float4 are `i16`, `i32` and
+  `f32`, so a value too wide for its column cannot be passed. numeric, uuid,
+  json, the date and time types and enums are their exact text.
+- **`@name` is found by the grammar.** pg_query reads `@score` as the prefix
+  operator `@`, so the generator rewrites exactly those sites to `$n`, and
+  never one inside a string, a comment or a dollar-quoted body.
+- **NULL follows the statement.** The server reports a column's source as
+  NOT NULL even on the far side of a LEFT JOIN or under ROLLUP. The parse
+  tree narrows it, so those columns are `Maybe`.
+- **The test needs a server.** The generated test runs every query on a
+  throwaway server and skips, with a warning, where `initdb` is missing.
+
+The generator links libpq and needs `initdb` and `pg_ctl` on `PATH`.
+`tools/jm-sqlgen/testdata/notes_pg` is a worked example.
+
 ## See also
 
 - [Fuzzing](fuzzing.md): both PostgreSQL suites and what they found
