@@ -133,3 +133,32 @@ test_formats_write_si_and_units :: proc(t: ^testing.T) {
 	l = format_tick(pct, a, -0.0)
 	testing.expect_value(t, label_text(&l), "0%")
 }
+
+@(test)
+test_log_ticks_write_each_on_its_own_magnitude :: proc(t: ^testing.T) {
+	hash := Number_Format {
+		unit  = "H/s",
+		short = .Metric,
+		space = true,
+	}
+	Case :: struct {
+		f:    Number_Format,
+		v:    f64,
+		want: string,
+	}
+	cases := [?]Case {
+		{hash, 1e-9, "1 nH/s"},
+		{hash, 20e-9, "20 nH/s"},
+		{hash, 500e12, "500 TH/s"},
+		{hash, 1e15, "1 PH/s"},
+		{hash, 1e-12, "1e−3 nH/s"}, // below the smallest prefix
+		{{}, 0.05, "0.05"},
+		{{}, 0.002, "2e−3"},
+		{{}, 1e6, "1e6"},
+		{{prefix = "$", short = .Finance}, 2e3, "$2k"},
+	}
+	for c in cases {
+		l := format_log_tick(c.f, c.v)
+		testing.expect_value(t, label_text(&l), c.want)
+	}
+}

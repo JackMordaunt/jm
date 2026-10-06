@@ -164,6 +164,37 @@ format_tick :: proc(f: Number_Format, a: Axis_Format, v: f64) -> (l: Label) {
 	return
 }
 
+// format_log_tick writes v as a tick of a log axis. Its ticks span
+// decades no one short-scale step writes apart, so each is written on its
+// own magnitude: in the short scale's step v reaches, as in 1 kH/s,
+// 10 kH/s, 100 kH/s, 1 MH/s, or as a power of ten, 1e−12, where that would
+// take more than two decimals or six digits.
+format_log_tick :: proc(f: Number_Format, v: f64) -> (l: Label) {
+	p := prefix_for(f.short, v)
+	x := v / math.pow(10, f64(p.exp))
+	if d := decimals_for(x); d <= 2 && x < 1e6 {
+		put_number(&l, f, p, x, d, f.grouped)
+		return
+	}
+	e, m := split_scientific(x)
+	put_number(&l, f, p, m, decimals_for(m), false, e)
+	return
+}
+
+// split_scientific splits x, above zero, into a mantissa m in [1, 10) and a
+// power of ten e. floor(log10(1e6)) is 5, which would write 1e6 as 10e5
+// (test_log_ticks_write_each_on_its_own_magnitude), so the guess is
+// corrected against m.
+@(private)
+split_scientific :: proc(x: f64) -> (e: int, m: f64) {
+	e = int(math.floor(math.log10(x)))
+	m = x / math.pow(10, f64(e))
+	if m >= 10 * (1 - 1e-12) {
+		e, m = e + 1, m / 10
+	}
+	return
+}
+
 // format_value writes v alone, as a tooltip shows it: grouped, or to
 // f.digits significant figures in the short-scale step v's own magnitude
 // calls for.
@@ -207,16 +238,7 @@ put_number :: proc(
 		x = -x
 	}
 	put_text(l, f.prefix)
-	digits: [64]u8
-	s := strconv.write_float(digits[:], x, 'f', decimals, 64)
-	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
-		s = s[1:]
-	}
-	if grouped {
-		put_grouped(l, s)
-	} else {
-		put_text(l, s)
-	}
+	put_digits(l, x, decimals, grouped)
 	if exp10 != 0 {
 		put_exponent(l, exp10)
 	}
@@ -228,6 +250,22 @@ put_number :: proc(
 	}
 	put_text(l, p.symbol)
 	put_text(l, f.unit)
+}
+
+// put_digits writes x, which is not negative, to decimals places, with
+// thousands separators when grouped.
+@(private)
+put_digits :: proc(l: ^Label, x: f64, decimals: int, grouped: bool) {
+	digits: [64]u8
+	s := strconv.write_float(digits[:], x, 'f', decimals, 64)
+	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
+		s = s[1:]
+	}
+	if grouped {
+		put_grouped(l, s)
+	} else {
+		put_text(l, s)
+	}
 }
 
 // put_exponent writes e as "e" and the power: e−11, e15.

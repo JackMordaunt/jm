@@ -103,13 +103,12 @@ value_labels :: proc(f: ^Frame, v: ^Value_Axis) {
 	for t in ts {
 		mag = max(mag, abs(t))
 	}
-	step := v.ticks.step
-	if v.axis.scale == .Log && len(ts) > 0 {
-		step = ts[0]
-	}
-	af := axis_format(v.axis.format, step, mag)
+	af := axis_format(v.axis.format, v.ticks.step, mag)
 	for t, i in ts {
 		l := format_tick(v.axis.format, af, t)
+		if v.axis.scale == .Log {
+			l = format_log_tick(v.axis.format, t)
+		}
 		v.runs[i] = shape_run(f.gtx, label_text(&l), f.style.tick_size, f.style.font)
 		v.width = max(v.width, v.runs[i].width)
 	}
