@@ -1,7 +1,9 @@
 package plot
 
+import "core:fmt"
 import "core:math"
 import "core:mem"
+import "core:slice"
 import "core:strings"
 import "core:testing"
 import "jm:ui"
@@ -487,4 +489,273 @@ test_x_ticks_stand_inside_the_plot :: proc(t: ^testing.T) {
 		)
 	}
 	testing.expect(t, marks >= 2, "the axis has tick marks to check")
+}
+
+// series_path is the points of the longest path stroked in color: a
+// series' line, which a legend key's short stroke in the same colour
+// would otherwise stand in for.
+@(private = "file")
+series_path :: proc(p: ^ui.Probe, color: ops.Color) -> (pts: []ops.Point) {
+	for op in p.scene.ops {
+		s, ok := op.(ops.Stroke)
+		ref, is_path := s.shape.(ops.Path_Ref)
+		c, solid := s.paint.(ops.Color)
+		if ok && is_path && solid && c == color && len(p.scene.paths[ref.id].points) > len(pts) {
+			pts = p.scene.paths[ref.id].points
+		}
+	}
+	return
+}
+
+@(private = "file")
+one_line :: proc(pg: ^Page, ys: []f64) {
+	xs := make([]f64, len(ys), context.temp_allocator)
+	for i in 0 ..< len(ys) {
+		xs[i] = f64(i)
+	}
+	series := make([]Line_Series, 1, context.temp_allocator)
+	series[0] = {
+		name = "Hashrate",
+		ys   = ys,
+	}
+	pg.style = default_style()
+	pg.kind = .Line
+	pg.line = {
+		label  = "Line",
+		xs     = xs,
+		series = series,
+	}
+}
+
+@(test)
+test_a_log_axis_spaces_decades_evenly :: proc(t: ^testing.T) {
+	pg: Page
+	one_line(&pg, {1, 10, 100, 1000})
+	pg.line.y.scale = .Log
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	pts := series_path(&p, pg.style.series[0].color)
+	testing.expect_value(t, len(pts), 4)
+	if len(pts) == 4 {
+		d0, d1, d2 := pts[1].y - pts[0].y, pts[2].y - pts[1].y, pts[3].y - pts[2].y
+		testing.expectf(t, d0 < 0, "the line rises: %v", pts)
+		testing.expectf(t, abs(d1 - d0) < 0.5 && abs(d2 - d0) < 0.5, "decades apart: %v", pts)
+	}
+}
+
+@(test)
+test_a_step_line_turns_at_each_point :: proc(t: ^testing.T) {
+	pg: Page
+	one_line(&pg, {1, 3, 2})
+	pg.line.step = .After
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	pts := series_path(&p, pg.style.series[0].color)
+	// Each point after the first is reached level, then up or down.
+	testing.expectf(t, len(pts) == 5, "a corner before each later point: %v", pts)
+	if len(pts) == 5 {
+		testing.expect(t, pts[1].y == pts[0].y && pts[1].x == pts[2].x, "level, then up")
+		testing.expect(t, pts[3].y == pts[2].y && pts[3].x == pts[4].x, "level, then down")
+	}
+}
+
+@(test)
+test_an_area_fills_a_wash_under_its_line :: proc(t: ^testing.T) {
+	pg: Page
+	one_line(&pg, {1, 3, 2})
+	pg.line.fill = .Area
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	wash := ops.with_alpha(pg.style.series[0].color, pg.style.area_alpha)
+	found := false
+	plot := ui.probe_bounds(&p, "Line")
+	for op in p.scene.ops {
+		f, ok := op.(ops.Fill)
+		ref, is_path := f.shape.(ops.Path_Ref)
+		c, solid := f.paint.(ops.Color)
+		if !ok || !is_path || !solid || c != wash {
+			continue
+		}
+		found = true
+		pts := p.scene.paths[ref.id].points
+		bottom := pts[len(pts) - 1].y
+		testing.expectf(
+			t,
+			abs(bottom - (plot.y + plot.h)) < 1,
+			"down to zero, the plot's foot: %v",
+			pts,
+		)
+	}
+	testing.expect(t, found, "the area is filled in a wash of the line's colour")
+}
+
+@(private = "file")
+two_axes :: proc(pg: ^Page) {
+	xs := make([]f64, 4, context.temp_allocator)
+	for i in 0 ..< 4 {
+		xs[i] = f64(i)
+	}
+	sales, rigs := [4]f64{12000, 18000, 9000, 20000}, [4]f64{3, 5, 2, 6}
+	series := make([]Line_Series, 2, context.temp_allocator)
+	series[0] = {
+		name = "Total sales",
+		ys   = slice.clone(sales[:], context.temp_allocator),
+	}
+	series[1] = {
+		name  = "Rig count",
+		ys    = slice.clone(rigs[:], context.temp_allocator),
+		right = true,
+	}
+	pg.style = default_style()
+	pg.kind = .Line
+	pg.line = {
+		label = "Sales",
+		xs = xs,
+		series = series,
+		y = {title = "Sales", format = {prefix = "$", short = .Finance}},
+		y2 = {title = "Rigs", format = {digits = 1}},
+	}
+}
+
+@(test)
+test_a_second_axis_reads_its_own_series :: proc(t: ^testing.T) {
+	pg: Page
+	two_axes(&pg)
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	plot := ui.probe_bounds(&p, "Sales")
+	right := 0
+	for op in p.scene.ops {
+		if g, ok := op.(ops.Glyphs); ok && g.origin.x > plot.x + plot.w {
+			right += 1
+		}
+	}
+	testing.expectf(t, right >= 2, "the right axis has %d labels", right)
+	// Both lines span the plot's height, each on its own scale.
+	for s in 0 ..< 2 {
+		pts := series_path(&p, pg.style.series[s].color)
+		lo, hi := max(f32), min(f32)
+		for q in pts {
+			lo, hi = min(lo, q.y), max(hi, q.y)
+		}
+		testing.expectf(t, hi - lo > plot.h / 3, "series %d spans %v of %v", s, hi - lo, plot.h)
+	}
+	ui.probe_move(&p, plot.x + plot.w / 3, plot.y + plot.h / 2)
+	ui.probe_frame(&p)
+	sem := semantics(&p)
+	testing.expectf(
+		t,
+		strings.contains(sem, "$18.0k Total sales; 5 Rig count"),
+		"each in its format:\n%s",
+		sem,
+	)
+}
+
+@(private = "file")
+bars :: proc(pg: ^Page, categories: []string, series: []Bar_Series) {
+	pg.style = default_style()
+	pg.kind = .Bar
+	pg.bar = {
+		label      = "Bars",
+		categories = categories,
+		series     = series,
+	}
+}
+
+@(test)
+test_horizontal_bars_read_the_category_under_the_pointer :: proc(t: ^testing.T) {
+	pg: Page
+	rigs := []Bar_Series{{name = "Rigs", values = {212, 1046, 588}}}
+	bars(&pg, {"Ethiopia", "Norway", "Paraguay"}, rigs)
+	pg.bar.horizontal = true
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	plot := ui.probe_bounds(&p, "Bars")
+	ui.probe_move(&p, plot.x + 10, plot.y + plot.h / 2)
+	ui.probe_frame(&p)
+	sem := semantics(&p)
+	testing.expectf(t, strings.contains(sem, `tooltip "Norway"`), "the middle row:\n%s", sem)
+	testing.expectf(
+		t,
+		strings.contains(sem, "1.05k Rigs") || strings.contains(sem, "1046 Rigs"),
+		"%s",
+		sem,
+	)
+}
+
+@(test)
+test_grouped_bars_walk_bar_by_bar :: proc(t: ^testing.T) {
+	pg: Page
+	series := []Bar_Series {
+		{name = "Invoices", values = {10, 12}},
+		{name = "Refunds", values = {-2, -3}},
+	}
+	bars(&pg, {"Jan", "Feb"}, series)
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	ui.probe_key(&p, .Tab) // the legend
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .Tab) // the plot
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .Right)
+	ui.probe_frame(&p)
+	ui.probe_key(&p, .Down)
+	ui.probe_frame(&p)
+	sem := semantics(&p)
+	testing.expectf(
+		t,
+		strings.contains(sem, `active "Refunds, Feb: \u22123.00"`),
+		"the second bar of the second group:\n%s",
+		sem,
+	)
+}
+
+@(test)
+test_a_crowded_category_axis_turns_and_thins_its_labels :: proc(t: ^testing.T) {
+	pg: Page
+	n :: 60
+	names := make([]string, n, context.temp_allocator)
+	values := make([]f64, n, context.temp_allocator)
+	for i in 0 ..< n {
+		names[i] = fmt.aprintf("Client account %02d", i, allocator = context.temp_allocator)
+		values[i] = f64(i)
+	}
+	bars(&pg, names, {{name = "Rigs", values = values}})
+	p: ui.Probe
+	open(&p, &pg)
+	defer ui.probe_destroy(&p)
+	turned, labels := 0, 0
+	for op in p.scene.ops {
+		#partial switch v in op {
+		case ops.Push_Transform:
+			turned += 1
+		case ops.Glyphs:
+			labels += 1
+		}
+	}
+	testing.expect(t, turned > 0, "the labels turn")
+	testing.expectf(t, labels < n, "%d labels drawn for %d categories: they thin", labels, n)
+	// Twelve short ones fit level.
+	bars(&pg, names[:12], {{name = "Rigs", values = values[:12]}})
+	for &name, i in names[:12] {
+		name = fmt.aprintf("%d", i, allocator = context.temp_allocator)
+	}
+	ui.probe_frame(&p)
+	turned, labels = 0, 0
+	for op in p.scene.ops {
+		#partial switch v in op {
+		case ops.Push_Transform:
+			turned += 1
+		case ops.Glyphs:
+			labels += 1
+		}
+	}
+	testing.expect_value(t, turned, 0)
+	testing.expectf(t, labels >= 12, "%d labels drawn: every category's is there", labels)
 }
