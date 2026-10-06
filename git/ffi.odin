@@ -28,8 +28,14 @@ when ODIN_OS == .Windows {
 	}
 } else when ODIN_OS == .Darwin {
 	when #exists("lib/libgit2.a") {
-		@(extra_linker_flags = "-framework Security -framework CoreFoundation -liconv -lz")
-		foreign import lib "lib/libgit2.a"
+		// zlib is a library here, not a -lz flag, so it is linked once in a
+		// program that also links vendor:curl, whose foreign import lists
+		// "system:z" too. ignore_duplicates makes Odin's linker step skip a
+		// library already on the line (src/linker.cpp, dev-2026-09);
+		// tools/jm-fuzz, which links both, shows one -lz and no ld warning.
+		@(extra_linker_flags = "-framework Security -framework CoreFoundation -liconv")
+		@(ignore_duplicates)
+		foreign import lib {"lib/libgit2.a", "system:z"}
 	} else {
 		foreign import lib "system:git2"
 	}
