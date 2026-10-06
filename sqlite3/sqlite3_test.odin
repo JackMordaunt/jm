@@ -542,3 +542,84 @@ fault_carries_the_extended_code :: proc(t: ^testing.T) {
 	testing.expect(t, !read_only(stmt))
 	finish(&stmt)
 }
+
+// read_exact reads a value only as the type it is stored as; anything else stops
+// the statement with Mismatch rather than converting.
+@(test)
+exact_refuses_what_it_would_have_to_convert :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	db, err := open(MEMORY)
+	testing.expect_value(t, err, nil)
+	defer close(&db)
+
+	stmt, qerr := query(db, `SELECT 7, 2.5, 1, 'x', x'00ff', NULL`)
+	testing.expect_value(t, qerr, nil)
+	testing.expect(t, next(&stmt))
+	testing.expect_value(t, read_exact(&stmt, 0, i64), 7)
+	testing.expect_value(t, read_exact(&stmt, 1, f64), 2.5)
+	testing.expect_value(t, read_exact(&stmt, 2, bool), true)
+	testing.expect_value(t, read_exact(&stmt, 3, string), "x")
+	testing.expect_value(t, len(read_exact(&stmt, 4, []byte)), 2)
+	testing.expect_value(t, read_exact_maybe(&stmt, 5, string), nil)
+	testing.expect_value(t, read_exact_maybe(&stmt, 0, i64), 7)
+	testing.expect_value(t, finish(&stmt), nil)
+
+	cases := [?]string{`SELECT '7'`, `SELECT 2`, `SELECT NULL`, `SELECT 7.0`}
+	for sql in cases {
+		s, serr := query(db, sql)
+		testing.expect_value(t, serr, nil)
+		testing.expect(t, next(&s))
+		switch sql {
+		case `SELECT 2`:
+			_ = read_exact(&s, 0, bool)
+		case:
+			_ = read_exact(&s, 0, i64)
+		}
+		testing.expect(t, !next(&s), "a mismatch stops the statement")
+		f, failed := finish(&s).(Fault)
+		testing.expectf(t, failed && f.code == .Mismatch, "%s: %v", sql, f)
+	}
+}
+
+@(test)
+nullable_binds_null_or_the_value :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	db, err := open(MEMORY)
+	testing.expect_value(t, err, nil)
+	defer close(&db)
+	none: Maybe(string)
+	stmt, qerr := query(db, `SELECT ?1 IS NULL, ?2`, nullable(none), nullable(Maybe(i64)(3)))
+	testing.expect_value(t, qerr, nil)
+	testing.expect(t, next(&stmt))
+	testing.expect_value(t, integer(stmt, 0), 1)
+	testing.expect_value(t, integer(stmt, 1), 3)
+	finish(&stmt)
+}
+
+// check_statement is what generated code runs at open, so each kind of
+// drift it exists to catch is a Schema fault here.
+@(test)
+check_statement_finds_drift :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	db, err := open(MEMORY)
+	testing.expect_value(t, err, nil)
+	defer close(&db)
+	testing.expect_value(t, exec(db, `CREATE TABLE note(id INTEGER PRIMARY KEY, body TEXT)`), nil)
+
+	sql := `SELECT id, body FROM note WHERE id = @id`
+	testing.expect_value(t, check_statement(db, "q", sql, 1, {"id", "body"}), nil)
+	drifts := [?]struct {
+		params:  int,
+		columns: []string,
+	} {
+		{2, {"id", "body"}},
+		{1, {"id"}},
+		{1, {"id", "text"}},
+	}
+	for d in drifts {
+		f, failed := check_statement(db, "q", sql, d.params, d.columns).(Fault)
+		testing.expectf(t, failed && f.code == .Schema, "%v: %v", d, f)
+	}
+	f, failed := check_statement(db, "q", `SELECT gone FROM note`, 0, {"gone"}).(Fault)
+	testing.expect(t, failed && f.code == .Error, f.text)
+}
