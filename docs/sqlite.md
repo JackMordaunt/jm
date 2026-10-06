@@ -36,6 +36,58 @@ for sqlite3.next(&rows) {
 }
 ```
 
+## Typed queries
+
+`tools/jm-sqlgen` turns a package's SQL into Odin that the compiler checks. A
+package keeps a `schema.sql` and a `queries.sql`, each opening with
+`-- engine: sqlite`:
+
+```sql
+-- name: todo_state :one
+-- Whether todo id exists, and whether it is done.
+-- params: id: i64
+SELECT done AS "done: bool" FROM todo WHERE id = @id;
+```
+
+`just sqlgen <dir>` writes `queries_gen.odin` beside them, which holds a
+`Todo_State_Row` struct and this proc:
+
+```odin
+todo_state :: proc(db: sqlite3.Db, id: i64, allocator := context.allocator) -> (
+	row: Todo_State_Row, found: bool, err: sqlite3.Error)
+```
+
+A `:many` query `todos` comes three ways: the cursor (`todos_open`,
+`todos_next`, `todos_close`); `todos`, the cursor as a guard that closes at
+the end of its block and leaves what stopped it in `rows.err`; and
+`todos_all`, every row in a slice in the caller's allocator.
+
+A swapped or missing argument is a compile error. A misspelt column fails the
+generator. Editing either SQL file without regenerating fails the build,
+through a compile-time hash of each. `check(db)` re-prepares every query
+against a live database, so a schema that drifted from `schema.sql` fails when
+the database is opened.
+
+SQLite supplies the types. A column that reads a table column directly takes
+its declared type. It is `Maybe` unless the column is NOT NULL and the
+statement's bytecode shows nothing that can produce a NULL, such as an outer
+join, an aggregate or a subquery. Tables must be STRICT, because only a STRICT
+table holds to its declared types. An expression, or a column of a
+compound SELECT, is annotated in its alias, as `done` is above.
+
+An annotation is a claim, so `queries_gen_test.odin` tests it. Every query
+runs against several data sets: empty tables, every nullable column NULL, the
+extremes of each type, and each table alone. Each value read is checked
+against its generated type. A parameter type that a STRICT column cannot
+convert fails too. One that it can convert, such as an `i64` written to a
+TEXT column, does not, so parameter annotations are only partly verified.
+
+The tool's doc comment (`tools/jm-sqlgen/main.odin`) has the full format.
+`examples/todo/store/db` is the todo app's SQL, generated this way, and
+`tools/jm-sqlgen/testdata/notes` covers the result kinds and an outer join.
+The same tool generates for PostgreSQL over `jm:pq`: see
+[PostgreSQL](postgres.md#typed-queries).
+
 ## Watch what changed
 
 `sqlite3.hooks` installs the connection's update, commit and rollback hooks.
@@ -77,12 +129,12 @@ taken from sqlite.org and verified against the SHA3-256 that page publishes.
 SQLite is public domain, so vendoring it carries no licence obligation.
 
 `just sqlite` compiles it once into `sqlite3/lib/sqlite3.a`, which is
-gitignored and rebuilt when the amalgamation changes. `foreign import`
-resolves that archive relative to the package directory. `odin check` never
+gitignored and rebuilt when the amalgamation or the compile options change.
+`foreign import` resolves that archive relative to the package directory. `odin check` never
 opens a foreign import, so `just check` still type-checks all three targets on
 one machine with no archive built.
 
-The compile options are sqlite.org's recommended set, with three deliberate
+The compile options are sqlite.org's recommended set, with four deliberate
 departures, all of them in the justfile:
 
 | Option | Recommended | Here | Why |
@@ -90,6 +142,7 @@ departures, all of them in the justfile:
 | `SQLITE_THREADSAFE` | `0` | `1` | A connection per `jm:flow` worker has to be safe. |
 | `SQLITE_OMIT_AUTOINIT` | set | **not** set | With it, any call made before `sqlite3_initialize` is a segfault rather than an error. |
 | `SQLITE_ENABLE_FTS5` | — | added | A full-text index. |
+| `SQLITE_ENABLE_COLUMN_METADATA` | — | added, in place of `SQLITE_OMIT_DECLTYPE` | `jm-sqlgen` asks which table column a result column reads. The two options exclude each other; the archive grows by 1.7 KB. |
 
 `SQLITE_OMIT_LOAD_EXTENSION` keeps the link from needing libdl.
 
