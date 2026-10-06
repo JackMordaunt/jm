@@ -347,6 +347,38 @@ probe_find :: proc(p: ^Probe, name: string) -> (Hit, bool) {
 	return {}, false
 }
 
+// probe_find_top is probe_find for the last-drawn area tagged name: the
+// one on top, which a hand would hit, where probe_find takes the first.
+// An open panel's item and the grid cell under it with the same text, or a
+// nav item and a heading of one name, tell apart this way.
+probe_find_top :: proc(p: ^Probe, name: string) -> (Hit, bool) {
+	f := probe_current(p)
+	#reverse for t in f.tags {
+		if t.name != name {
+			continue
+		}
+		#reverse for h in f.hits {
+			if h.area == t.id {
+				return h, true
+			}
+		}
+	}
+	return {}, false
+}
+
+// probe_click_top clicks the center of the last-drawn area tagged name
+// that takes input (probe_find_top). It returns false, and does nothing,
+// when there is none.
+probe_click_top :: proc(p: ^Probe, name: string, button: Button = .Left, clicks: u8 = 1) -> bool {
+	h, ok := probe_find_top(p, name)
+	if !ok {
+		return false
+	}
+	r := ops.transform_rect(h.transform, ops.shape_bounds(&p.scene, h.shape))
+	probe_click_at(p, {r.x + r.w / 2, r.y + r.h / 2}, button, clicks)
+	return true
+}
+
 // probe_center returns the device-space center of the bounding rect of the
 // area tagged name.
 probe_center :: proc(p: ^Probe, name: string) -> (ops.Point, bool) {
@@ -428,9 +460,16 @@ probe_scroll :: proc(p: ^Probe, name: string, dy: f32) -> bool {
 	if !ok {
 		return false
 	}
-	router_push(&p.router, {kind = .Scroll, pos = c, scroll = {0, dy}})
-	probe_frame(p)
+	probe_scroll_at(p, c, dy)
 	return true
+}
+
+// probe_scroll_at scrolls by dy with the pointer at device point pos and
+// runs a frame: for a region whose own name is ambiguous or untagged, such
+// as a grid's body, scrolled where its rows are.
+probe_scroll_at :: proc(p: ^Probe, pos: ops.Point, dy: f32) {
+	router_push(&p.router, {kind = .Scroll, pos = pos, scroll = {0, dy}})
+	probe_frame(p)
 }
 
 // probe_move moves the pointer to device point (x, y) and runs a frame.
