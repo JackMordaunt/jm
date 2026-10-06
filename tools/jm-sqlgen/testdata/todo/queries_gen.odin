@@ -245,8 +245,8 @@ SET_DONE_SQL :: `UPDATE todo SET done = @done WHERE id = @id`
 // set_done is :exec in queries.sql.
 set_done :: proc(
 	db: sqlite3.Db,
-	done: bool,
 	id: i64,
+	done: bool,
 	allocator := context.allocator,
 ) -> sqlite3.Error {
 	stmt := sqlite3.query(

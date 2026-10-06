@@ -55,7 +55,7 @@ emit_query :: proc(sb: ^strings.Builder, q: Query, used: ^Readers) {
 	}
 	fmt.sbprintf(sb, "// %s is %s in queries.sql.\n", q.name, QUERY_KIND_TAGS[q.kind])
 	fmt.sbprintf(sb, "%s :: proc(\n\tdb: sqlite3.Db,\n", q.name)
-	for param in q.params {
+	for param in q.annotations {
 		fmt.sbprintf(sb, "\t%s: %s,\n", param.name, type_name(param.type))
 		used.value = used.value || param.type.nullable
 	}
@@ -511,7 +511,7 @@ sqlgen_end :: proc(
 emit_test_call :: proc(sb: ^strings.Builder, q: Query) {
 	args: strings.Builder
 	strings.write_string(&args, "db")
-	for param in q.params {
+	for param in q.annotations {
 		value: string
 		switch param.type.kind {
 		case .I64:

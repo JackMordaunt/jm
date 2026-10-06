@@ -156,7 +156,7 @@ sqlgen_run :: proc(t: ^testing.T, db: sqlite3.Db, set: Sqlgen_Set) {
 	}
 	{
 		sqlgen_begin(t, db)
-		err := set_done(db, set.bool_v, set.int_v)
+		err := set_done(db, set.int_v, set.bool_v)
 		sqlgen_end(t, db, set, "set_done", err)
 	}
 	{

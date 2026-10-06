@@ -81,9 +81,11 @@ Query :: struct {
 	line:        int,
 	doc:         []string,
 	sql:         string,
-	// From the `-- params:` line, in the order written.
+	// From the `-- params:` line, in the order written, which is the order the
+	// generated proc takes them in.
 	annotations: []Param,
-	// In the order the engine binds them.
+	// In the order the engine binds them: the order each first appears in the
+	// SQL.
 	params:      []Param,
 	fields:      []Field,
 }

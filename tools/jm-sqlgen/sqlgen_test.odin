@@ -281,6 +281,20 @@ UPDATE todo SET done = @done WHERE id = @id AND done != @done`,
 	testing.expect_value(t, len(q.params), 2)
 	testing.expect_value(t, q.params[0].name, "done")
 	testing.expect_value(t, q.params[1].name, "id")
+
+	// The proc takes them as the -- params: line declares them, so rewriting
+	// the SQL cannot reorder a caller's arguments; the bind follows SQLite.
+	files, gen_problems := generate(
+		"p",
+		TEST_SCHEMA,
+		"-- engine: sqlite\n-- name: q :exec\n-- params: id: i64, done: bool\n" +
+		"UPDATE todo SET done = @done WHERE id = @id",
+	)
+	testing.expect_value(t, len(gen_problems), 0)
+	code := files[0].text
+	signature := strings.index(code, "\tid: i64,\n\tdone: bool,\n")
+	binding := strings.index(code, "\t\tdone,\n\t\tid,\n")
+	testing.expectf(t, signature > 0 && binding > signature, "signature at %d, binding at %d", signature, binding)
 }
 
 @(test)
