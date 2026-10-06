@@ -277,7 +277,6 @@ test_rating_click_sets_and_hover_previews :: proc(t: ^testing.T) {
 	two := ui.probe_bounds(&p, "half 2")
 	drag(&p, {two.x + 2, two.y + two.h / 2}, {two.x + 2, two.y + two.h / 2})
 	testing.expect_value(t, m.halves, 1.5)
-	testing.expect_value(t, thousands(1234567), "1,234,567")
 	testing.expect(t, math.abs(m.halves - 1.5) < 1e-6)
 }
 

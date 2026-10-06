@@ -1,5 +1,7 @@
 package design
 
+import "core:fmt"
+import "core:strings"
 import "jm:ui"
 import "jm:ui/ops"
 
@@ -108,4 +110,22 @@ draw_paragraph :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, color: ops
 		ui.paragraph_draw(gtx.scene, p, pos, sel.fg)
 		ops.clip_pop(gtx.scene)
 	}
+}
+
+// thousands writes n with a comma every three digits, in the one locale
+// jm:ui has: a count a design system shows (Fluent's rating count,
+// Primer's row and value counts).
+thousands :: proc(n: int, allocator := context.temp_allocator) -> string {
+	digits := fmt.tprintf("%d", abs(n))
+	b := strings.builder_make(allocator)
+	if n < 0 {
+		strings.write_byte(&b, '-')
+	}
+	for ch, i in digits {
+		if i > 0 && (len(digits) - i) % 3 == 0 {
+			strings.write_byte(&b, ',')
+		}
+		strings.write_rune(&b, ch)
+	}
+	return strings.to_string(b)
 }
