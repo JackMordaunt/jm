@@ -416,6 +416,7 @@ step :: proc(l: ^Loop) {
 		scene         = &l.scene,
 		constraints   = ui.exact(logical),
 		viewport      = logical,
+		density       = w.density,
 		font          = l.font,
 		shaper        = l.shaper,
 		router        = &l.router,

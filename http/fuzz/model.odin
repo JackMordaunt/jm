@@ -139,8 +139,13 @@ draw_request :: proc(src: ^harness.Source, m: ^Model, r: ^Model_Request, i, dire
 	if harness.integer_in(src, 0, 6) == 0 {
 		r.delay = HANG
 	}
-	if harness.boolean(src) {
+	switch harness.integer_in(src, 0, 4) {
+	case 0, 1:
 		r.timeout = time.Duration(harness.integer_in(src, 10, 400)) * time.Millisecond
+	case 2:
+		// Loose: timing this request out is a fault unless the answer came
+		// more than SLACK late, which the judge allows for.
+		r.timeout = r.delay + 2 * SLACK
 	}
 	r.max_body = harness.choice(src, []int{0, 50, 1000})
 	r.then_cancel, r.follow = -1, -1
@@ -267,10 +272,6 @@ on_model_done :: proc(res: http.Result, user: rawptr) {
 	}
 }
 
-// Slack for the model's timing rules: a fast request that still timed out,
-// or a timeout reported too long after it passed.
-MODEL_SLACK :: 250 * time.Millisecond
-
 // judge_model holds each request to what the model allows, after shutdown.
 judge_model :: proc(m: ^Model) -> string {
 	if m.late > 0 {
@@ -335,14 +336,14 @@ judge_request :: proc(m: ^Model, r: ^Model_Request) -> string {
 			return "Timed_Out with no timeout"
 		case took < r.timeout - time.Millisecond:
 			return fmt.tprintf("Timed_Out after %v, before its %v timeout", took, r.timeout)
-		case r.delay + MODEL_SLACK < r.timeout:
+		case r.delay + SLACK < r.timeout:
 			return fmt.tprintf("Timed_Out though the server answered after %v", r.delay)
 		}
 	case .Cancelled:
 	case .Transfer_Failed, .Init_Failed, .Write_Failed, .Encode_Failed, .Decode_Failed, .Closed:
 		return fmt.tprintf("%v from a well-formed server", r.err)
 	}
-	if r.timeout > 0 && r.err != .Cancelled && took > r.timeout + MODEL_SLACK {
+	if r.timeout > 0 && r.err != .Cancelled && took > r.timeout + SLACK {
 		return fmt.tprintf("%v after %v, past its %v timeout", r.err, took, r.timeout)
 	}
 	return ""

@@ -1,0 +1,480 @@
+/*
+Package fuzz is the jm:ui/plot suite for jm:fuzz: the promises an axis
+makes about its ticks and labels, and the ones decimation, box plots and
+stacks make about the data they draw.
+
+	report := fuzz.run({seed = 1, iterations = 10_000})
+
+	linear_ticks  ticks rise, stay in the domain (or cover it, loose), number
+	              at most what was asked, and their labels differ
+	fit_linear    an axis's domain covers its data and its ticks rise inside
+	              it, at most what was asked
+	log_ticks     ticks rise, stay in the domain and number at most asked
+	time_ticks    ticks rise, stay in the domain, number at most asked, and
+	              each reads uniquely with the context line in force
+	decimate      every column's lowest and highest point survive, and at
+	              most four points a column are kept
+	box_stats     the box is ordered inside the sample's range, the whiskers
+	              too, and its outliers lie past the whiskers
+	stack         stacked bounds tile from zero without overlapping
+
+Domains are drawn from jm:fuzz's edge values (NaN, the infinities, the ends
+of f64) as well as from ordinary magnitudes, so a degenerate axis must still
+keep its promises or give no ticks at all.
+*/
+package plot_fuzz
+
+import "core:fmt"
+import "core:math"
+import "core:time/datetime"
+
+import harness "jm:fuzz"
+import "jm:ui/ops"
+import "jm:ui/plot"
+
+// No subject: every case builds its own inputs.
+Subject :: struct {}
+
+properties := []harness.Property(Subject) {
+	{"linear_ticks", linear_ticks},
+	{"fit_linear", fit_linear},
+	{"log_ticks", log_ticks},
+	{"time_ticks", time_ticks},
+	{"decimate", decimate},
+	{"box_stats", box_stats},
+	{"stack", stack},
+}
+
+// suite is jm:ui/plot's pure parts and their promises, ready for harness.run.
+suite :: proc() -> harness.Suite(Subject) {
+	return harness.Suite(Subject) {
+		name = "ui_plot",
+		setup = proc() -> (Subject, bool) {return {}, true},
+		properties = properties,
+	}
+}
+
+// CORPUS is where this suite's regressions live, relative to the repository
+// root.
+CORPUS :: "ui/plot/fuzz/corpus"
+
+// run checks the suite. It is the whole package from a caller's side.
+run :: proc(opts := harness.Opts{}, allocator := context.allocator) -> harness.Report {
+	return harness.run(suite(), opts, allocator)
+}
+
+// value draws a number: an edge value, or one of a magnitude drawn from
+// 1e-12 to 1e15, either sign, as data on an axis is.
+value :: proc(src: ^harness.Source) -> f64 {
+	if harness.integer_in(src, 0, 8) == 0 {
+		return harness.real(src)
+	}
+	mag := math.pow(10, f64(harness.integer_in(src, -12, 16)))
+	v := f64(harness.integer_in(src, 0, 100_000)) / 1000 * mag
+	return -v if harness.boolean(src) else v
+}
+
+// domain draws two ends, often close together, as a zoomed axis has.
+domain :: proc(src: ^harness.Source) -> (lo, hi: f64) {
+	lo = value(src)
+	switch harness.integer_in(src, 0, 4) {
+	case 0:
+		hi = lo
+	case 1:
+		hi = lo + abs(lo) * math.pow(10, f64(-harness.integer_in(src, 0, 14)))
+	case:
+		hi = value(src)
+	}
+	return
+}
+
+FORMATS := []plot.Number_Format {
+	{},
+	{unit = "H/s", short = .Metric, space = true},
+	{prefix = "$", short = .Finance},
+	{unit = "%"},
+}
+
+linear_ticks :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	lo, hi := domain(src)
+	want := harness.integer_in(src, 0, 40)
+	loose := harness.boolean(src)
+	l := plot.linear_ticks(lo, hi, want, loose)
+	a, b := min(lo, hi), max(lo, hi)
+	ts := plot.ticks_of(&l)
+	where_ := fmt.tprintf("linear_ticks(%v, %v, %d, loose=%v) = %v", lo, hi, want, loose, ts)
+	finite := plot.is_finite(lo) && plot.is_finite(hi)
+	if msg, ok := check_count(ts, want, finite, where_); !ok {
+		return msg, false
+	}
+	if msg, ok := rising(ts, where_); !ok {
+		return msg, false
+	}
+	if detail, ok := in_domain(ts, a, b, loose && len(ts) > 1 && l.step > 0, where_); !ok {
+		return detail, false
+	}
+	f := harness.choice(src, FORMATS)
+	return check_unique(ts, f, l.step, where_)
+}
+
+fit_linear :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	lo, hi := domain(src)
+	lo, hi = min(lo, hi), max(lo, hi)
+	want := harness.integer_in(src, 2, 12)
+	d0, d1, tk := plot.fit_linear(lo, hi, want)
+	ts := plot.ticks_of(&tk)
+	where_ := fmt.tprintf("fit_linear(%v, %v, %d) = %v..%v %v", lo, hi, want, d0, d1, ts)
+	if !plot.is_finite(lo) || !plot.is_finite(hi) {
+		return "", true
+	}
+	if !(d0 <= lo && d1 >= hi) && max(abs(lo), abs(hi)) < 1e300 {
+		return fmt.tprint(where_, ": the domain leaves data out"), false
+	}
+	if msg, ok := check_count(ts, want, true, where_); !ok {
+		return msg, false
+	}
+	if msg, ok := rising(ts, where_); !ok {
+		return msg, false
+	}
+	return in_domain(ts, d0, d1, false, where_)
+}
+
+// check_count checks there are no more ticks than want asked for (one when it
+// asked for none), and some where the domain is finite.
+check_count :: proc(ts: []f64, want: int, finite: bool, where_: string) -> (string, bool) {
+	if finite && len(ts) == 0 {
+		return fmt.tprint(where_, ": a finite domain has no ticks"), false
+	}
+	if len(ts) > clamp(want, 1, plot.MAX_TICKS) {
+		return fmt.tprint(where_, ": more ticks than asked"), false
+	}
+	return "", true
+}
+
+// in_domain checks tight ticks lie in [a, b] and loose ones cover it,
+// short of where covering it would overflow f64.
+in_domain :: proc(ts: []f64, a, b: f64, loose: bool, where_: string) -> (string, bool) {
+	tight := !loose && len(ts) > 1
+	for v in ts {
+		if !plot.is_finite(v) {
+			return fmt.tprint(where_, ": a tick is not finite"), false
+		}
+		if tight && outside(v, a, b) {
+			return fmt.tprint(where_, ": a tick outside the domain"), false
+		}
+	}
+	if loose && !covers(ts, a, b) {
+		return fmt.tprint(where_, ": loose ticks do not cover the domain"), false
+	}
+	return "", true
+}
+
+outside :: proc(v, a, b: f64) -> bool {
+	return v < a || v > b
+}
+
+// covers reports whether ts reach from a to b, or a and b lie where
+// reaching past them would overflow f64.
+covers :: proc(ts: []f64, a, b: f64) -> bool {
+	if max(abs(a), abs(b)) >= 1e300 {
+		return true
+	}
+	return ts[0] <= a && ts[len(ts) - 1] >= b
+}
+
+rising :: proc(ts: []f64, where_: string) -> (string, bool) {
+	for i in 1 ..< len(ts) {
+		if !(ts[i] > ts[i - 1]) {
+			return fmt.tprint(where_, ": ticks do not rise"), false
+		}
+	}
+	return "", true
+}
+
+// check_unique checks the labels of ticks ts differ, written as a linear
+// axis at step writes them, or as a log axis does, each on its own, at
+// step 0.
+check_unique :: proc(
+	ts: []f64,
+	f: plot.Number_Format,
+	step: f64,
+	where_: string,
+) -> (
+	string,
+	bool,
+) {
+	mag: f64
+	for v in ts {
+		mag = max(mag, abs(v))
+	}
+	a := plot.axis_format(f, step, mag)
+	seen := make(map[string]int, context.temp_allocator)
+	for v, i in ts {
+		lab := plot.format_log_tick(f, v) if step == 0 else plot.format_tick(f, a, v)
+		s := fmt.tprint(plot.label_text(&lab))
+		if j, dup := seen[s]; dup {
+			return fmt.tprintf("%s: ticks %v and %v both read %q", where_, ts[j], v, s), false
+		}
+		seen[s] = i
+	}
+	return "", true
+}
+
+log_ticks :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	lo, hi := domain(src)
+	want := harness.integer_in(src, 0, 40)
+	l := plot.log_ticks(lo, hi, want)
+	ts := plot.ticks_of(&l)
+	a, b := min(lo, hi), max(lo, hi)
+	where_ := fmt.tprintf("log_ticks(%v, %v, %d) = %v", lo, hi, want, ts)
+	if msg, ok := check_count(ts, want, false, where_); !ok {
+		return msg, false
+	}
+	if msg, ok := rising(ts, where_); !ok {
+		return msg, false
+	}
+	for v in ts {
+		if !(v >= a * (1 - 1e-9) && v <= b * (1 + 1e-9) && v > 0) {
+			return fmt.tprint(where_, ": a tick outside the domain"), false
+		}
+	}
+	return check_unique(ts, harness.choice(src, FORMATS), 0, where_)
+}
+
+// new_york is America/New_York's offsets from 2025 to 2028, written out so
+// the suite needs no tz database.
+@(private)
+new_york :: proc() -> plot.Zone {
+	@(static) records := [?]datetime.TZ_Record {
+		{time = -2717650800, utc_offset = -18000},
+		{time = 1741503600, utc_offset = -14400, dst = true},
+		{time = 1762063200, utc_offset = -18000},
+		{time = 1772953200, utc_offset = -14400, dst = true},
+		{time = 1793512800, utc_offset = -18000},
+		{time = 1805007600, utc_offset = -14400, dst = true},
+		{time = 1825567200, utc_offset = -18000},
+		{time = 4102444800, utc_offset = -18000},
+	}
+	@(static) region: datetime.TZ_Region
+	region = {
+		name    = "America/New_York",
+		records = records[:],
+	}
+	return {region = &region}
+}
+
+time_ticks :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	// From 2025 to 2028, where the written-out zone has its transitions,
+	// spans from a minute to a century.
+	lo := 1735689600 + f64(harness.integer_in(src, 0, 3 * 365 * 86400))
+	span := math.pow(10, f64(harness.integer_in(src, 10, 95)) / 10) // 10 s to 3e9 s
+	z := zone(src)
+	want := harness.integer_in(src, 1, 40)
+	tk := plot.time_ticks(lo, lo + span, want, z)
+	ts := plot.ticks_of(&tk)
+	where_ := fmt.tprintf(
+		"time_ticks(%v, +%v s, %d, offset %v ny %v) at %v",
+		lo,
+		span,
+		want,
+		z.offset,
+		z.region != nil,
+		tk.unit,
+	)
+	// A domain shorter than its step may hold no boundary of it: no ticks.
+	if msg, ok := check_count(ts, want, false, where_); !ok {
+		return msg, false
+	}
+	if msg, ok := rising(ts, where_); !ok {
+		return msg, false
+	}
+	for v in ts {
+		if v < lo || v > lo + span {
+			return fmt.tprintf("%s: tick %v outside the domain", where_, v), false
+		}
+	}
+	return unique_time_labels(&tk, z, where_)
+}
+
+// zone draws a calendar: UTC, a whole number of quarter hours off it, or
+// New York's, which changes offset.
+zone :: proc(src: ^harness.Source) -> (z: plot.Zone) {
+	switch harness.integer_in(src, 0, 3) {
+	case 1:
+		z.offset = i64(harness.integer_in(src, -56, 57)) * 900 // ±14 h
+	case 2:
+		z = new_york()
+	}
+	return
+}
+
+// unique_time_labels checks each of tk's ticks reads uniquely: its main
+// line under the context line in force at it, its own or the last one
+// written.
+unique_time_labels :: proc(tk: ^plot.Time_Ticks, z: plot.Zone, where_: string) -> (string, bool) {
+	seen := make(map[string]bool, context.temp_allocator)
+	sub := ""
+	for i in 0 ..< tk.n {
+		l := plot.time_label(tk, i, z)
+		if l.sub.n > 0 {
+			sub = fmt.tprint(plot.label_text(&l.sub))
+		}
+		key := fmt.tprintf("%s|%s", sub, plot.label_text(&l.main))
+		if seen[key] {
+			return fmt.tprintf("%s: %q twice", where_, key), false
+		}
+		seen[key] = true
+	}
+	return "", true
+}
+
+decimate :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	n := harness.integer_in(src, 0, 3000)
+	cols := harness.integer_in(src, 1, 200)
+	line: plot.Polyline
+	line.points = make([dynamic]ops.Point, context.temp_allocator)
+	line.starts = make([dynamic]int, context.temp_allocator)
+	r := plot.Reducer {
+		out = &line,
+	}
+	lo := make([]f32, cols, context.temp_allocator)
+	hi := make([]f32, cols, context.temp_allocator)
+	for c in 0 ..< cols {
+		lo[c], hi[c] = max(f32), min(f32)
+	}
+	walk := f32(0)
+	for i in 0 ..< n {
+		x := f32(i) / f32(max(n, 1)) * f32(cols)
+		walk += f32(harness.integer_in(src, -100, 101))
+		reduce := harness.integer_in(src, 0, 50) != 0
+		if !reduce { 	// a gap
+			plot.reduce_break(&r)
+			continue
+		}
+		plot.reduce_push(&r, {x, walk}, i)
+		c := int(x)
+		lo[c], hi[c] = min(lo[c], walk), max(hi[c], walk)
+	}
+	plot.reduce_flush(&r)
+	if len(line.points) > 4 * cols + 4 * len(line.starts) {
+		return fmt.tprintf("%d points kept for %d columns", len(line.points), cols), false
+	}
+	for c in 0 ..< cols {
+		if lo[c] <= hi[c] && !column_keeps(line.points[:], c, lo[c], hi[c]) {
+			return fmt.tprintf("column %d of %d lost %v..%v, n %d", c, cols, lo[c], hi[c], n),
+				false
+		}
+	}
+	return "", true
+}
+
+// column_keeps reports whether points keep both lo and hi in column c.
+column_keeps :: proc(points: []ops.Point, c: int, lo, hi: f32) -> bool {
+	got_lo, got_hi := false, false
+	for p in points {
+		if int(p.x) == c {
+			got_lo ||= p.y == lo
+			got_hi ||= p.y == hi
+		}
+	}
+	return got_lo && got_hi
+}
+
+box_stats :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	n := harness.integer_in(src, 0, 60)
+	samples := make([]f64, n, context.temp_allocator)
+	scale := math.pow(10, f64(harness.integer_in(src, -3, 6)))
+	for &s in samples {
+		s = f64(harness.integer_in(src, -1000, 1000)) * scale
+		if harness.integer_in(src, 0, 20) == 0 {
+			s = harness.real(src)
+		}
+	}
+	b := plot.box_stats(samples, context.temp_allocator)
+	where_ := fmt.tprintf("box_stats(%v) = %v", samples, b)
+	if b.count == 0 {
+		return "", true
+	}
+	if !ordered(b) {
+		return fmt.tprint(where_, ": not ordered"), false
+	}
+	for o in b.outliers {
+		if o >= b.whisker_lo && o <= b.whisker_hi {
+			return fmt.tprint(where_, ": an outlier inside the whiskers"), false
+		}
+	}
+	return "", true
+}
+
+// ordered reports whether b's statistics fall in order: the box's inside
+// the sample's range, and the whiskers' too. A whisker may end inside the
+// box: when the sample a quartile is interpolated from is an outlier, the
+// nearest one inside the fence lies past the quartile, and the chart then
+// draws no whisker on that side.
+ordered :: proc(b: plot.Box_Stats) -> bool {
+	box := []f64{b.min, b.q1, b.median, b.q3, b.max}
+	whiskers := []f64{b.min, b.whisker_lo, b.whisker_hi, b.max}
+	return non_decreasing(box) && non_decreasing(whiskers)
+}
+
+non_decreasing :: proc(vs: []f64) -> bool {
+	for i in 1 ..< len(vs) {
+		if !(vs[i - 1] <= vs[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+stack :: proc(_: Subject, src: ^harness.Source) -> (string, bool) {
+	n := harness.integer_in(src, 0, 12)
+	values := make([]f64, n, context.temp_allocator)
+	lo := make([]f64, n, context.temp_allocator)
+	hi := make([]f64, n, context.temp_allocator)
+	shown: plot.Series_Set
+	for i in 0 ..< n {
+		values[i] = f64(harness.integer_in(src, -50, 51))
+		if harness.integer_in(src, 0, 8) == 0 {
+			values[i] = math.nan_f64()
+		}
+		if harness.integer_in(src, 0, 5) != 0 {
+			shown += {i}
+		}
+	}
+	plot.stack_bounds(values, shown, lo, hi)
+	ends: [2]f64 // the stacks' ends: up from zero and down from it
+	for v, i in values {
+		problem := check_stack_on(v, i in shown, lo[i], hi[i], &ends)
+		if problem != "" {
+			return fmt.tprintf("stack_bounds(%v) = %v..%v at %d: %s", values, lo, hi, i, problem),
+				false
+		}
+	}
+	return "", true
+}
+
+// check_stack_on checks one value's bounds lo..hi against the stacks' ends
+// before it, and moves the end it stacks on: "" when they hold, else what
+// is wrong.
+check_stack_on :: proc(v: f64, shown: bool, lo, hi: f64, ends: ^[2]f64) -> string {
+	if !shown || math.is_nan(v) {
+		return "" if hi == lo else "a missing value takes room"
+	}
+	if hi - lo != abs(v) {
+		return "the bar is not its value long"
+	}
+	if v >= 0 {
+		return sits_on(&ends[0], lo, hi)
+	}
+	return sits_on(&ends[1], hi, lo)
+}
+
+// sits_on checks a bar's base is the stack's end and moves the end to its
+// top.
+sits_on :: proc(end: ^f64, base, top: f64) -> string {
+	if base != end^ {
+		return "the bar does not sit on the stack"
+	}
+	end^ = top
+	return ""
+}

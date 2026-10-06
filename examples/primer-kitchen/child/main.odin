@@ -52,6 +52,7 @@ Model :: struct {
 	icons:    Icons,
 	dates:    Dates,
 	grids:    Data_Grids,
+	charts:   Charts,
 }
 
 // PAGES follows the primer-kit's families, in the plan's build order; a
@@ -134,6 +135,7 @@ PAGES := [?]Page {
 	{"Header", page_header, false},
 	{"Card", page_card, false},
 	{"Data table", page_data_table, false},
+	{"Charts", page_charts, false},
 	{"Icons", nil, true},
 	{"Octicons", page_octicons, false},
 }

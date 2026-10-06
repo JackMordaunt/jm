@@ -60,6 +60,8 @@ An immediate-mode UI whose frame is data, and three design systems on it.
 | `ui/ipc` | length-prefixed frames over a pipe, and spawning a child process wired up for exactly that — the transport under `ui/shell`'s host/subprocess split |
 | `ui/child` | the subprocess half of that split: owns the Model, the ui proc, `Router` and `Layout`, and speaks `ui`'s wire format over its own stdin/stdout |
 | `ui/diagram` | titled, accent-bordered groups of chips and arrows (solid or dashed) for an architecture diagram, over plain `ui` calls |
+| `ui/plot` | charts over caller-owned data: line and area (stacked, stepped, log, a second axis), bar (grouped, stacked, horizontal) and Tukey box plots, with nice and calendar ticks, SI labels, a legend that toggles series, a crosshair tooltip, keyboard walking and min/max decimation; all its look comes from a `Plot_Style` |
+| `ui/plot/primer`, `ui/plot/fluent` | a `Plot_Style` from a Primer or Fluent theme, its series palette measured for contrast and colour-vision separation in every theme |
 | `ui/design` | what every design system on `ui` shares: the interaction states and per-frame `Control`, per-corner geometry, text shaping in a line box, box-shadow layers drawn as exact Gaussian shadows, CSS easing, and a generic `Theme(Role, Context)` with axioms that `check` measures in every context (OKLab, APCA and WCAG metrics) |
 | `ui/base` | the smallest design system on `ui`: a five-role palette bound light and dark as an instance of `ui/design`, checked by its axioms, and the plain widgets every page needs — label, text, divider, panel; a full system maps its scheme down to it |
 | `ui/material` | Material 3 Expressive on `ui`: the colour scheme, type scale, shape, motion springs and state tokens generated from the m3e-kit (`tools/material`) into `ui/material/tokens`, Material Symbols icons as paths, and the components (buttons, text fields, selection controls, chips, cards, lists, navigation, app bars, tabs), each able to paint any spec state on demand |
@@ -101,6 +103,7 @@ The property fuzzer, its per-package suites, and the debug allocator.
 |------|-----|
 | `tools/odin-run` | the runner: see [Writing scripts](scripts.md#runner) |
 | `tools/mkpatch` | makes the compressed asset and the patches `jm:selfupdate` looks for, in a release's CI |
+| `tools/jm-sqlgen` | typed Odin procs and row structs from a package's `schema.sql` and `queries.sql`, typed by the engine itself, SQLite or PostgreSQL: see [SQLite](sqlite.md#typed-queries) and [PostgreSQL](postgres.md#typed-queries) |
 
 ## See also
 

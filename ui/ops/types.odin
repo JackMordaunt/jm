@@ -189,6 +189,11 @@ rect_intersect :: proc(a, b: Rect) -> Rect {
 	return {x0, y0, x1 - x0, y1 - y0}
 }
 
+// rect_outset is r grown by d on every side; a negative d shrinks it.
+rect_outset :: proc(r: Rect, d: f32) -> Rect {
+	return {r.x - d, r.y - d, r.w + 2 * d, r.h + 2 * d}
+}
+
 // shape_bounds is the axis-aligned bounding rect of s in its own space.
 shape_bounds :: proc(ops: ^Scene, s: Shape) -> Rect {
 	switch v in s {

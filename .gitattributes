@@ -1,0 +1,3 @@
+# The hash guards jm-sqlgen writes read the SQL files byte for byte, so a
+# checkout that turned their LF into CRLF would fail the build.
+*.sql text eol=lf

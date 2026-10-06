@@ -41,8 +41,11 @@ a_set_cancel_flag_stops_the_work :: proc(t: ^testing.T) {
 
 @(test)
 the_bmp_has_its_header_and_the_right_size :: proc(t: ^testing.T) {
-	dir, err := os.temp_directory(context.temp_allocator)
+	// A folder of its own: one file shared by name was written by every run
+	// on the machine at once.
+	dir, err := os.make_directory_temp("", "jm-gallery-gen-*", context.temp_allocator)
 	testing.expect(t, err == nil)
+	defer os.remove_all(dir)
 	path, _ := filepath.join({dir, "gallery-gen-test.bmp"}, context.temp_allocator)
 	cancel := false
 	testing.expect(t, tile(3, 8, path, &cancel))

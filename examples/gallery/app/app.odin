@@ -85,15 +85,12 @@ Host :: struct {
 init :: proc(h: ^Host, wake: proc() = nil, cache_budget := CACHE_BUDGET) -> bool {
 	h.wake = wake
 	h.allocator = context.allocator
-	tmp, err := os.temp_directory(context.temp_allocator)
-	if err != nil {
-		fmt.eprintln("gallery: no temp directory:", err)
-		return false
-	}
-	run := fmt.tprintf("jm-gallery-%d", time.now()._nsec / 1_000_000)
-	dir, _ := filepath.join({tmp, run}, h.allocator)
-	if merr := os.make_directory(dir); merr != nil && !os.exists(dir) {
-		fmt.eprintln("gallery: make directory:", dir, merr)
+	// A directory of this host's own: two hosts started in one millisecond,
+	// as a test's can be, shared a name derived from the clock, and one's
+	// cache could evict a picture of the same name from under the other.
+	dir, derr := os.make_directory_temp("", "jm-gallery-*", h.allocator)
+	if derr != nil {
+		fmt.eprintln("gallery: make picture directory:", derr)
 		return false
 	}
 	h.dir = dir
@@ -137,6 +134,9 @@ stop :: proc(h: ^Host) {
 	delete(h.live)
 	cache.destroy(&h.cache)
 	ui.inbox_destroy(&h.inbox)
+	if err := os.remove_all(h.dir); err != nil {
+		fmt.eprintln("gallery: remove picture directory:", h.dir, err)
+	}
 	delete(h.dir, h.allocator)
 }
 
