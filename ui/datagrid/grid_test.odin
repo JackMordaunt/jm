@@ -443,8 +443,10 @@ test_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
 	p: ui.Probe
 	open(&p, m)
 	defer ui.probe_destroy(&p)
-	focus_on(&p, "Serial") // the cursor's ring, the focus ring
-	ui.probe_frame(&p)
+	focus_on(&p, "Serial") // the cursor's ring, the focus ring; and a sort, built over frames
+	for frames := 0; m.g.build.target != 0 && frames < 1000; frames += 1 {
+		ui.probe_frame(&p)
+	}
 	ui.probe_frame(&p)
 	clear(&m.events)
 	spy.armed, spy_t.armed = true, true
@@ -598,4 +600,52 @@ test_a_grid_takes_the_share_a_column_offers :: proc(t: ^testing.T) {
 	ui.probe_init(&p, view, m, {600, 400})
 	defer ui.probe_destroy(&p)
 	testing.expect_value(t, m.g.geo.size, ops.Size{600, 340})
+}
+
+// A sort of many rows is built over frames: the old order stays drawn,
+// stale, and the grid asks for frames until the new one is whole. Going
+// back to the drawn order drops the build; new rows build at once.
+@(test)
+test_a_big_sort_builds_over_frames_drawing_the_old_order_stale :: proc(t: ^testing.T) {
+	m := rigs_make(5000)
+	defer rigs_free(m)
+	m.g.build.budget = 1 // a nanosecond: one chunk a frame
+	p: ui.Probe
+	open(&p, m)
+	defer ui.probe_destroy(&p)
+	src := rigs_source(m)
+	view_sort_cycle(&m.g.view, 3, false)
+	view_sort_cycle(&m.g.view, 3, false) // descending
+	ui.probe_frame(&p)
+	testing.expect(t, m.g.build.target != 0, "still building")
+	testing.expect(t, p.wants_frame, "a frame is asked for to go on")
+	testing.expect_value(t, item_at(&m.g, src, 0).state, Row_State.Stale)
+	testing.expect(t, ui.probe_tagged(&p, "SN-00000"), "the old order, drawn")
+	frames := 0
+	for ; m.g.build.target != 0 && frames < 1000; frames += 1 {
+		ui.probe_frame(&p)
+	}
+	testing.expect(t, frames > 5, "many frames")
+	testing.expect_value(t, item_at(&m.g, src, 0).state, Row_State.Ready)
+	testing.expect_value(t, m.rows[m.g.order.rows[0]][3], "99")
+	testing.expect(t, ui.probe_tagged(&p, "SN-00027")) // the first row hashing 99
+
+	view_sort_cycle(&m.g.view, 0, false)
+	ui.probe_frame(&p)
+	testing.expect(t, m.g.build.target != 0)
+	view_sort_cycle(&m.g.view, 3, false)
+	view_sort_cycle(&m.g.view, 3, false) // the descending hash sort again
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.g.build.target, u64(0))
+	testing.expect_value(t, item_at(&m.g, src, 0).state, Row_State.Ready)
+
+	view_sort_cycle(&m.g.view, 0, false)
+	ui.probe_frame(&p)
+	all := m.rows
+	m.rows = all[:4000] // fewer rows: built at once, naming none that are gone
+	ui.probe_frame(&p)
+	testing.expect_value(t, m.g.build.target, u64(0))
+	testing.expect_value(t, len(m.g.order.rows), 4000)
+	testing.expect_value(t, m.rows[m.g.order.rows[0]][0], "SN-00000")
+	m.rows = all
 }

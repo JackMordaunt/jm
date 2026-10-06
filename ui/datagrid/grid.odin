@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 import "core:mem"
 import "core:strings"
+import "core:time"
 import "jm:ui"
 import "jm:ui/ops"
 
@@ -32,6 +33,7 @@ Grid :: struct {
 	filter_at:  int, // the column whose filter a skin shows open, -1 for none
 	// What the grid keeps to draw.
 	order:      Order,
+	build:      Order_Build,
 	heights:    Heights,
 	place:      Placement,
 	pages:      Pages,
@@ -46,6 +48,22 @@ Grid :: struct {
 	names:      [dynamic]string, // and their strings
 	geo:        Geometry,
 	allocator:  mem.Allocator,
+}
+
+// Order_Build is a client grid's next order, built a slice a frame while
+// the last one is drawn, stale: after a change to the query, not to the
+// rows, which are built at once so the order never names a row that is
+// gone.
+Order_Build :: struct {
+	next:     Order,
+	job:      Order_Job,
+	target:   u64, // the built hash next is for, 0 when nothing is building
+	data:     u64, // the rows order was built from: their version, count and loading
+	frame:    u64, // grid calls so far
+	stepped:  u64, // the frame deadline is for, plus one
+	deadline: time.Tick, // when this frame stops building
+	anchor:   bool, // the query changed while building: anchor the scroll once built
+	budget:   time.Duration, // a frame's share of building; 0 is ORDER_BUDGET
 }
 
 // Cell_At is a cell by its place in the order and its column: item is
@@ -149,6 +167,7 @@ grid_init :: proc(
 	text_cache_init(&g.text, allocator)
 	g.collapsed = make(map[string]bool, allocator)
 	g.order.rows = make([dynamic]int, allocator)
+	g.build.next.rows = make([dynamic]int, allocator)
 	g.place.places = make([dynamic]Place, allocator)
 	g.visible = make([dynamic]int, allocator)
 	g.ids = make([dynamic]string, allocator)
@@ -178,6 +197,7 @@ grid_destroy :: proc(g: ^Grid) {
 	}
 	delete(g.collapsed)
 	order_destroy(&g.order)
+	order_destroy(&g.build.next)
 	heights_destroy(&g.heights)
 	placement_destroy(&g.place)
 	if g.pages.entries != nil {
@@ -232,6 +252,10 @@ grid :: proc(
 	}
 	export_step(gtx, g, columns, src, &ev)
 	paint(gtx, g, columns, src, skin, id, label)
+	g.build.frame += 1
+	if g.build.target != 0 {
+		ui.request_frame(gtx)
+	}
 	return
 }
 
@@ -323,18 +347,60 @@ update_query :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, ev: ^Ev
 		}
 		g.geo.items = max(g.pages.count, 0)
 	} else {
-		built := ui.fnv_u64(ui.fnv_u64(query, src.version), u64(src.rows))
-		built = ui.fnv_u64(ui.fnv_u64(built, collapsed_hash(g)), u64(src.loading))
-		if built != g.built {
-			g.built = built
-			order_build(&g.order, src, q, g.collapsed)
-			size_rows(g, src, skin)
+		data := ui.fnv_u64(ui.fnv_u64(src.version, u64(src.rows)), u64(src.loading))
+		built := ui.fnv_u64(ui.fnv_u64(collapsed_hash(g), query), data)
+		if built == g.built {
+			g.build.target = 0 // back to the order drawn: what was building is not wanted
+		} else if !order_update(g, src, q, built, data, skin) && changed {
+			g.build.anchor = true
+			changed = false
 		}
 		g.geo.items = len(g.order.items)
 	}
 	if changed {
 		anchor_scroll(g, src)
 	}
+}
+
+// order_update builds the client order for built, over rows named data:
+// at once on the first frame or when the rows changed, else a slice this
+// frame, false while it is unfinished.
+@(private)
+order_update :: proc(g: ^Grid, src: Source, q: Query, built, data: u64, skin: ^Skin) -> bool {
+	b := &g.build
+	if g.built == 0 || data != b.data {
+		b.target, b.data = 0, data
+		order_build(&g.order, src, q, g.collapsed)
+	} else {
+		if b.target != built {
+			b.target = built
+			order_start(&b.job, &b.next)
+		}
+		if !order_step(&b.job, &b.next, src, q, g.collapsed, build_deadline(b)) {
+			return false
+		}
+		g.order, b.next = b.next, g.order
+		b.target = 0
+	}
+	g.built = built
+	size_rows(g, src, skin)
+	if b.anchor {
+		b.anchor = false
+		anchor_scroll(g, src)
+	}
+	return true
+}
+
+// build_deadline is when this frame's building stops: a budget after the
+// frame first built.
+@(private)
+build_deadline :: proc(b: ^Order_Build) -> time.Tick {
+	if b.stepped != b.frame + 1 {
+		b.stepped = b.frame + 1
+		budget := b.budget if b.budget > 0 else ORDER_BUDGET
+		b.deadline = time.tick_add(time.tick_now(), budget)
+	}
+	return b.deadline
 }
 
 // collapsed_hash names which groups are shut, so shutting one rebuilds.
@@ -521,7 +587,8 @@ item_at :: proc(g: ^Grid, src: Source, i: int) -> (it: Item) {
 		it.group, it.state = -g.order.items[i] - 1, .Ready
 	case:
 		r := g.order.items[i]
-		it.row, it.state, it.key = r, .Ready, source_key(src, r)
+		it.row, it.key = r, source_key(src, r)
+		it.state = .Stale if g.build.target != 0 else .Ready
 	}
 	return
 }

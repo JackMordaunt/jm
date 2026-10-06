@@ -1,8 +1,10 @@
 package datagrid
 
+import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "core:testing"
+import "core:time"
 
 // The query (natural order, dates, filters, sorts, groups), saved views
 // and the page cache on worked examples.
@@ -312,3 +314,73 @@ test_an_empty_page_bounds_the_count_and_ends_it_after_a_full_one :: proc(t: ^tes
 	testing.expect_value(t, [2]int{p.count, int(p.end)}, [2]int{10, 1})
 	free_all(context.temp_allocator)
 }
+
+// Fresh is a source whose every text is made anew in the temp allocator,
+// as a source that formats its cells is: a build over several frames
+// must keep its own copies.
+@(private = "file")
+Fresh :: struct {
+	n: int,
+}
+
+@(private = "file")
+fresh_source :: proc(f: ^Fresh) -> Source {
+	text :: proc(user: rawptr, row, col: int) -> string {
+		switch col {
+		case 0:
+			return fmt.tprintf("rig%d", (row * 7919) % 1000)
+		case 1:
+			return SITE_NAMES[row % len(SITE_NAMES)]
+		case 2:
+			return fmt.tprintf("%d", (row * 37) % 500)
+		}
+		return fmt.tprintf("2026-0%d-1%d", 1 + row % 9, row % 10)
+	}
+	return {user = f, rows = f.n, text = text}
+}
+
+@(private = "file")
+SITE_NAMES := []string{"Norway", "Paraguay", "Ethiopia", "Wisconsin"}
+
+@(test)
+test_an_order_built_a_chunk_at_a_time_is_the_order_built_at_once :: proc(t: ^testing.T) {
+	f := Fresh{5000}
+	src := fresh_source(&f)
+	v: View
+	view_init(&v, COLS) // not the temp allocator, which each step frees
+	defer view_destroy(&v)
+	view_sort_cycle(&v, 0, false)
+	view_sort_cycle(&v, 2, true)
+	view_sort_cycle(&v, 2, true) // descending
+	view_set_values(&v, 1, {"Norway", "Ethiopia", "Wisconsin"})
+	view_set_range(&v, 2, 20, true, 0, false)
+	v.group = 1
+	shut := make(map[string]bool)
+	defer delete(shut)
+	shut["Ethiopia"] = true
+	visible: [dynamic]int
+	defer delete(visible)
+	q := view_query(&v, COLS, &visible)
+	whole: Order
+	defer order_destroy(&whole)
+	order_build(&whole, src, q, shut)
+	sliced: Order
+	defer order_destroy(&sliced)
+	job: Order_Job
+	order_start(&job, &sliced)
+	steps := 1
+	// A deadline long gone: each step does one chunk, the least it may.
+	for !order_step(&job, &sliced, src, q, shut, time.Tick{1}) {
+		free_all(context.temp_allocator) // the frame's texts go, as a frame's do
+		steps += 1
+	}
+	testing.expect(t, steps > 20, "the build took many steps")
+	testing.expect(t, len(whole.rows) > 1000)
+	testing.expect(t, slice.equal(whole.rows[:], sliced.rows[:]))
+	testing.expect(t, slice.equal(whole.items[:], sliced.items[:]))
+	testing.expect_value(t, len(sliced.groups), 3)
+	for g, i in whole.groups {
+		testing.expect_value(t, group_name(&sliced, sliced.groups[i]), group_name(&whole, g))
+	}
+}
+
