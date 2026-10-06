@@ -77,9 +77,11 @@ against its generated type. A parameter type that a STRICT column cannot
 convert fails too. One that it can convert, such as an `i64` written to a
 TEXT column, does not, so parameter annotations are only partly verified.
 
-The tool's doc comment (`tools/jm-sqlgen/main.odin`) has the full format, and
-`tools/jm-sqlgen/testdata/notes` is a worked example. Postgres is the other
-engine the header can name; generation for it is not built yet.
+The tool's doc comment (`tools/jm-sqlgen/main.odin`) has the full format.
+`examples/todo/store/db` is the todo app's SQL, generated this way, and
+`tools/jm-sqlgen/testdata/notes` covers the result kinds and an outer join.
+Postgres is the other engine the header can name; generation for it is not
+built yet.
 
 ## Watch what changed
 
