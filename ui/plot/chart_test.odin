@@ -875,17 +875,7 @@ test_a_narrow_chart_keeps_its_labels_apart :: proc(t: ^testing.T) {
 	defer ui.probe_destroy(&p)
 	plot := ui.probe_bounds(&p, "Hashrate")
 	testing.expect(t, plot.w > 150 && plot.x + plot.w <= 320, "the plot fits the width")
-	Span :: struct {
-		x0, x1, y: f32,
-	}
-	spans: [dynamic]Span
-	spans.allocator = context.temp_allocator
-	for op in p.scene.ops {
-		if g, ok := op.(ops.Glyphs); ok && g.origin.y > plot.y + plot.h {
-			w := p.scene.runs[g.run].advance
-			append(&spans, Span{g.origin.x, g.origin.x + w, g.origin.y})
-		}
-	}
+	spans := label_spans(&p, plot.y + plot.h)
 	testing.expect(t, len(spans) >= 2, "the x axis has labels")
 	for a, i in spans {
 		for b in spans[i + 1:] {
@@ -894,4 +884,22 @@ test_a_narrow_chart_keeps_its_labels_apart :: proc(t: ^testing.T) {
 			}
 		}
 	}
+}
+
+@(private = "file")
+Span :: struct {
+	x0, x1, y: f32,
+}
+
+// label_spans is where each run of text below y stands: an axis's labels.
+@(private = "file")
+label_spans :: proc(p: ^ui.Probe, below: f32) -> []Span {
+	spans := make([dynamic]Span, context.temp_allocator)
+	for op in p.scene.ops {
+		if g, ok := op.(ops.Glyphs); ok && g.origin.y > below {
+			w := p.scene.runs[g.run].advance
+			append(&spans, Span{g.origin.x, g.origin.x + w, g.origin.y})
+		}
+	}
+	return spans[:]
 }
