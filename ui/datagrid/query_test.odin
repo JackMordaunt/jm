@@ -384,3 +384,15 @@ test_an_order_built_a_chunk_at_a_time_is_the_order_built_at_once :: proc(t: ^tes
 	}
 }
 
+@(test)
+test_values_hash_moves_with_the_other_filters_only :: proc(t: ^testing.T) {
+	v: View
+	view_init(&v, COLS, context.temp_allocator)
+	visible := make([dynamic]int, context.temp_allocator)
+	before := values_hash(view_query(&v, COLS, &visible), 1)
+	view_set_values(&v, 1, {"Norway"}) // the column's own choice
+	view_set_search(&v, "rig") // the counts leave the search out
+	testing.expect_value(t, values_hash(view_query(&v, COLS, &visible), 1), before)
+	view_set_range(&v, 2, 100, true, 0, false)
+	testing.expect(t, values_hash(view_query(&v, COLS, &visible), 1) != before)
+}

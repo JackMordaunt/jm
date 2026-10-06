@@ -382,6 +382,19 @@ match_hash :: proc(q: Query) -> u64 {
 	return h
 }
 
+// values_hash names what distinct_values counts column col's values
+// under: every filter of q but col's own, so choosing a value of col
+// leaves the counts as they are.
+values_hash :: proc(q: Query, col: int) -> u64 {
+	h := ui.FNV_OFFSET
+	for f in q.filters {
+		if f.col != col && filter_active(f) {
+			h = filter_hash(h, q.cols[f.col].id, f)
+		}
+	}
+	return h
+}
+
 // filter_hash folds filter f, on the column named id, into seed.
 @(private)
 filter_hash :: proc(seed: u64, id: string, f: Filter) -> u64 {

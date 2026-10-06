@@ -452,12 +452,12 @@ filter_values :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) -> (loading: bool) 
 	if g.src.paged != nil {
 		return paged_values(gtx, g, col)
 	}
-	built := g.grid.match ~ u64(g.src.rows) ~ g.src.version << 32 | 1
+	visible := make([dynamic]int, gtx.allocator)
+	q := datagrid.view_query(&g.grid.view, g.cols, &visible)
+	built := datagrid.values_hash(q, col) ~ u64(g.src.rows) ~ g.src.version << 32 | 1
 	if built == f.built {
 		return false
 	}
-	visible := make([dynamic]int, gtx.allocator)
-	q := datagrid.view_query(&g.grid.view, g.cols, &visible)
 	keep_values(f, datagrid.distinct_values(g.src, q, col, gtx.allocator))
 	f.built = built
 	return false
