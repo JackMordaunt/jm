@@ -385,7 +385,7 @@ host_step :: proc(l: ^Host_Loop) {
 	// Sent with the next input, for the child's debug tray.
 	l.host_stats.present_ms, l.host_stats.roundtrip_ms = ui.ms(present_start), roundtrip_ms
 	l.host_stats.rss_bytes = ui.process_rss()
-	bridge_frame(&l.a11y, &l.frame, plat.focus, w.density)
+	bridge_frame(&l.a11y, &l.frame, plat.focus)
 	l.wants_frame, l.frame_after = wants_frame || flashing(w), frame_after
 	// The cursor and clipboard the child asked for; a read's Paste goes
 	// out with the next input, so a frame must follow to carry it.

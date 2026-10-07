@@ -65,14 +65,14 @@ bridge_destroy :: proc(b: ^Bridge) {
 	b^ = {}
 }
 
-// bridge_frame gives the adapter f, just presented at density, with focus
-// the focused area: a changed tree pushes the whole snapshot, a changed
-// focus alone pushes only that, the same frame pushes nothing.
-bridge_frame :: proc(b: ^Bridge, f: ^ui.Frame, focus: ops.Area_Id, density: f32) {
+// bridge_frame gives the adapter f, just presented, with focus the
+// focused area: a changed tree pushes the whole snapshot, a changed focus
+// alone pushes only that, the same frame pushes nothing.
+bridge_frame :: proc(b: ^Bridge, f: ^ui.Frame, focus: ops.Area_Id) {
 	if b.adapter == nil {
 		return
 	}
-	ak.snapshot_take(&b.next, f, focus, b.title, 1 / density)
+	ak.snapshot_take(&b.next, f, focus, b.title)
 	sync.mutex_lock(&b.mu)
 	same := ak.snapshot_equal(&b.tree, &b.next)
 	focus_moved := b.tree.focus != b.next.focus

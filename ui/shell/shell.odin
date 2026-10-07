@@ -470,7 +470,7 @@ step :: proc(l: ^Loop) {
 		ui.debug_tray_overlays(&l.tray, w.density, &keep_out),
 	)
 	host.present_ms = ui.ms(present_start)
-	bridge_frame(&l.a11y, frame, l.router.focus, w.density)
+	bridge_frame(&l.a11y, frame, l.router.focus)
 	ui.debug_tray_record(
 		&l.tray,
 		ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host),

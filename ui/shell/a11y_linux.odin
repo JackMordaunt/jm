@@ -29,13 +29,21 @@ adapter_window_focus :: proc(b: ^Bridge, focused: bool) {
 }
 
 // adapter_window_bounds gives the window's place on the screen, with
-// and without its frame, so node bounds place on it.
+// and without its frame, so node bounds place on it. Both are in physical
+// pixels, as the node bounds are: accesskit's
+// adapters/winit/src/platform_impl/unix.rs passes winit's physical
+// position and size. SDL's window coordinates are multiplied by
+// SDL_GetWindowPixelDensity, which is 1 where they are already pixels.
 adapter_window_bounds :: proc(b: ^Bridge) {
 	x, y, w, h, top, left, bottom, right: i32
 	sdl3.GetWindowPosition(b.window, &x, &y)
 	sdl3.GetWindowSize(b.window, &w, &h)
 	sdl3.GetWindowBordersSize(b.window, &top, &left, &bottom, &right)
-	outer := ak.Rect{f64(x - left), f64(y - top), f64(x + w + right), f64(y + h + bottom)}
-	inner := ak.Rect{f64(x), f64(y), f64(x + w), f64(y + h)}
+	d := f64(sdl3.GetWindowPixelDensity(b.window))
+	if d <= 0 {
+		d = 1
+	}
+	outer := ak.Rect{f64(x - left) * d, f64(y - top) * d, f64(x + w + right) * d, f64(y + h + bottom) * d}
+	inner := ak.Rect{f64(x) * d, f64(y) * d, f64(x + w) * d, f64(y + h) * d}
 	ak.unix_adapter_set_root_window_bounds(b.adapter, outer, inner)
 }

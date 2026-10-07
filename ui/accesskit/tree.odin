@@ -87,11 +87,12 @@ snapshot_destroy :: proc(s: ^Snapshot) {
 
 // snapshot_take fills s from f: one record per semantic node, in f's
 // order, the window titled title, focus the router's focused area when a
-// node has it, rects scaled by scale: 1 / the display density, since f
-// is in device pixels and the window bounds the bridge gives the adapter
-// are SDL's window size, in points. It reuses s's capacity, so a steady
-// frame allocates nothing.
-snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: string, scale: f32 = 1) {
+// node has it, rects in f's device pixels: AccessKit takes bounds in
+// physical pixels from the window's origin and scales them to points
+// itself where the platform wants points (accesskit 0.23, Node::bounds;
+// adapters/macos/src/util.rs to_ns_rect). It reuses s's capacity, so a
+// steady frame allocates nothing.
+snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: string) {
 	clear(&s.records)
 	clear(&s.text)
 	s.title = put_text(s, title)
@@ -105,7 +106,7 @@ snapshot_take :: proc(s: ^Snapshot, f: ^ui.Frame, focus: ops.Area_Id, title: str
 			value       = put_text(s, n.semantics.value),
 			description = put_text(s, n.semantics.description),
 			labelled_by = Node_Id(n.semantics.labelled_by),
-			rect        = {f64(n.rect.x * scale), f64(n.rect.y * scale), f64((n.rect.x + n.rect.w) * scale), f64((n.rect.y + n.rect.h) * scale)},
+			rect        = {f64(n.rect.x), f64(n.rect.y), f64(n.rect.x + n.rect.w), f64(n.rect.y + n.rect.h)},
 			selected    = .Selected in n.semantics.states,
 			expandable  = .Expandable in n.semantics.states || .Expanded in n.semantics.states,
 			expanded    = .Expanded in n.semantics.states,

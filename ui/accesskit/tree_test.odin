@@ -98,6 +98,30 @@ test_snapshot_builds_the_tree_accesskit_reads :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(debug(&again, context.temp_allocator), fmt.tprintf("focus: #%d }", p.router.focus)))
 }
 
+// dense_view is bridge_view under the scale the shell pushes on a display
+// of density 2, so the frame's rects are in device pixels.
+dense_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	ops.transform_push(gtx.scene, ops.scale(2, 2))
+	bridge_view(gtx, user)
+	ops.transform_pop(gtx.scene)
+}
+
+@(test)
+test_snapshot_bounds_are_device_pixels :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, dense_view, nil, {600, 600})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Bridge")
+	// AccessKit takes physical pixels and scales to points itself, so the
+	// 80 by 20 heading is reported at twice its size, not divided back.
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `role: Heading, label: "Fruit", value: "Fruit", level: 1, bounds: Rect { x0: 0.0, y0: 0.0, x1: 160.0, y1: 40.0 }`), got)
+}
+
 // scrolled_view is a list taller than its scroll box: items below the
 // box are clipped away.
 @(private = "file")
