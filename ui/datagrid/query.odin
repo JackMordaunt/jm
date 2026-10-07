@@ -19,29 +19,60 @@ Sort_Key :: struct {
 	desc: bool,
 }
 
-// Filter is one column's filter. Set keeps the rows whose text is one of
-// values, kept sorted; Text the rows whose text contains text, without
-// case; Range the rows whose value is at least lo (when has_lo) and at
-// most hi (when has_hi). A filter with nothing chosen keeps every row.
+// Filter is one column's filter: col and the rule it keeps rows by, nil
+// keeping every row.
 Filter :: struct {
-	col:            int,
-	kind:           Filter_Kind,
-	values:         [dynamic]string,
-	text:           string,
-	lo, hi:         f64,
-	has_lo, has_hi: bool,
+	col:  int,
+	rule: Filter_Rule,
+}
+
+// Filter_Rule is which rows a filter keeps. A rule with nothing chosen
+// keeps every row.
+Filter_Rule :: union {
+	Set_Filter,
+	Text_Filter,
+	Range_Filter,
+}
+
+// Set_Filter keeps the rows whose text is one of values, kept sorted
+// without duplicates.
+Set_Filter :: struct {
+	values: []string,
+}
+
+// Text_Filter keeps the rows whose text contains text, without case.
+Text_Filter :: struct {
+	text: string,
+}
+
+// Range_Filter keeps the rows whose value is at least lo and at most hi,
+// a nil bound keeping every value on its side.
+Range_Filter :: struct {
+	lo, hi: Maybe(f64),
+}
+
+// rule_kind is the kind of filter r is, .None for nil.
+rule_kind :: proc(r: Filter_Rule) -> Filter_Kind {
+	switch _ in r {
+	case Set_Filter:
+		return .Set
+	case Text_Filter:
+		return .Text
+	case Range_Filter:
+		return .Range
+	}
+	return .None
 }
 
 // filter_active reports whether f keeps fewer than every row.
 filter_active :: proc(f: Filter) -> bool {
-	switch f.kind {
-	case .Set:
-		return len(f.values) > 0
-	case .Text:
-		return f.text != ""
-	case .Range:
-		return f.has_lo || f.has_hi
-	case .None:
+	switch r in f.rule {
+	case Set_Filter:
+		return len(r.values) > 0
+	case Text_Filter:
+		return r.text != ""
+	case Range_Filter:
+		return r.lo != nil || r.hi != nil
 	}
 	return false
 }
@@ -395,18 +426,33 @@ values_hash :: proc(q: Query, col: int) -> u64 {
 	return h
 }
 
-// filter_hash folds filter f, on the column named id, into seed.
+// filter_hash folds filter f, on the column named id, into seed: its
+// kind and what its rule holds, nothing else.
 @(private)
 filter_hash :: proc(seed: u64, id: string, f: Filter) -> u64 {
-	h := fnv_str(seed, id)
-	h = ui.fnv_u64(h, u64(f.kind))
-	for v in f.values {
-		h = fnv_str(h, v)
+	h := ui.fnv_u64(fnv_str(seed, id), u64(rule_kind(f.rule)))
+	switch r in f.rule {
+	case Set_Filter:
+		for v in r.values {
+			h = fnv_str(h, v)
+		}
+	case Text_Filter:
+		h = fnv_str(h, r.text)
+	case Range_Filter:
+		h = bound_hash(bound_hash(h, r.lo), r.hi)
 	}
-	h = fnv_str(h, f.text)
-	h = ui.fnv_u64(h, transmute(u64)(f.lo if f.has_lo else 0))
-	h = ui.fnv_u64(h, transmute(u64)(f.hi if f.has_hi else 0))
-	return ui.fnv_u64(h, u64(f.has_lo) | u64(f.has_hi) << 1)
+	return h
+}
+
+// bound_hash folds a range's bound into h, an open one apart from every
+// number.
+@(private)
+bound_hash :: proc(h: u64, bound: Maybe(f64)) -> u64 {
+	v, ok := bound.?
+	if !ok {
+		return ui.fnv_u64(h, 0)
+	}
+	return ui.fnv_u64(ui.fnv_u64(h, 1), transmute(u64)v)
 }
 
 // order_hash names the rows q matches in the order it puts them.
@@ -444,24 +490,25 @@ row_matches :: proc(src: Source, q: Query, sets: []map[string]bool, row: int) ->
 // filter_keeps reports whether f keeps row.
 @(private)
 filter_keeps :: proc(src: Source, col: Column, f: Filter, set: map[string]bool, row: int) -> bool {
-	switch f.kind {
-	case .Set:
+	switch r in f.rule {
+	case Set_Filter:
 		return source_text(src, row, f.col) in set
-	case .Text:
-		return contains_fold(source_text(src, row, f.col), f.text)
-	case .Range:
+	case Text_Filter:
+		return contains_fold(source_text(src, row, f.col), r.text)
+	case Range_Filter:
 		v, ok := source_value(src, col.kind, row, f.col)
-		return ok && in_range(f, v)
-	case .None:
+		return ok && in_range(r, v)
 	}
 	return true
 }
 
-// in_range reports whether v lies within f's bounds, an open one keeping
+// in_range reports whether v lies within r's bounds, an open one keeping
 // every value on its side.
 @(private)
-in_range :: proc(f: Filter, v: f64) -> bool {
-	return (!f.has_lo || v >= f.lo) && (!f.has_hi || v <= f.hi)
+in_range :: proc(r: Range_Filter, v: f64) -> bool {
+	lo, has_lo := r.lo.?
+	hi, has_hi := r.hi.?
+	return (!has_lo || v >= lo) && (!has_hi || v <= hi)
 }
 
 // filter_sets is each Set filter's values as a lookup, by filter, in the
@@ -470,14 +517,16 @@ in_range :: proc(f: Filter, v: f64) -> bool {
 filter_sets :: proc(filters: []Filter) -> []map[string]bool {
 	sets := make([]map[string]bool, len(filters), context.temp_allocator)
 	for f, i in filters {
-		if f.kind != .Set || len(f.values) == 0 {
+		s, is_set := f.rule.(Set_Filter)
+		if !is_set || len(s.values) == 0 {
 			continue
 		}
-		sets[i] = make(map[string]bool, len(f.values), context.temp_allocator)
-		for v in f.values {
+		sets[i] = make(map[string]bool, len(s.values), context.temp_allocator)
+		for v in s.values {
 			sets[i][v] = true
 		}
 	}
+
 	return sets
 }
 

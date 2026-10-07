@@ -42,28 +42,27 @@ SECONDS_PER_DAY :: 86400
 panel_seed :: proc(g: ^Data_Grid, col: int) {
 	f := &g.filter
 	cur := datagrid.find_filter(&g.grid.view, col)
-	ui.text_set(&f.text, cur.text if cur != nil && cur.kind == .Text else "")
-	ui.text_set(&f.lo, bound_text(cur, true))
-	ui.text_set(&f.hi, bound_text(cur, false))
+	rule := cur.rule if cur != nil else nil
+	text, _ := rule.(datagrid.Text_Filter)
+	r, _ := rule.(datagrid.Range_Filter)
+	ui.text_set(&f.text, text.text)
+	ui.text_set(&f.lo, bound_text(r.lo))
+	ui.text_set(&f.hi, bound_text(r.hi))
 	f.lo_err, f.hi_err = "", ""
 	f.dates = {}
-	if cur != nil && cur.kind == .Range && cur.has_lo && cur.has_hi {
-		f.dates = {day_of(cur.lo), day_of(cur.hi)}
+	lo, has_lo := r.lo.?
+	hi, has_hi := r.hi.?
+	if has_lo && has_hi {
+		f.dates = {day_of(lo), day_of(hi)}
 	}
 }
 
-// bound_text is a Range filter's low or high bound as a field shows it,
-// empty when it is open.
+// bound_text is a Range filter's bound as a field shows it, empty when it
+// is open.
 @(private)
-bound_text :: proc(cur: ^datagrid.Filter, low: bool) -> string {
-	if cur == nil || cur.kind != .Range {
-		return ""
-	}
-	has, v := cur.has_lo, cur.lo
-	if !low {
-		has, v = cur.has_hi, cur.hi
-	}
-	return fmt.tprintf("%v", v) if has else ""
+bound_text :: proc(bound: Maybe(f64)) -> string {
+	v, ok := bound.?
+	return fmt.tprintf("%v", v) if ok else ""
 }
 
 // day_of is the date Unix seconds fall on.
@@ -170,22 +169,24 @@ bound_field :: proc(
 @(private)
 range_apply :: proc(g: ^Data_Grid, col: int) -> (lo_err, hi_err: string) {
 	f := &g.filter
-	lo, has_lo, lo_ok := parse_bound(ui.text_string(&f.lo))
-	hi, has_hi, hi_ok := parse_bound(ui.text_string(&f.hi))
+	lo, lo_ok := parse_bound(ui.text_string(&f.lo))
+	hi, hi_ok := parse_bound(ui.text_string(&f.hi))
 	if !lo_ok {
 		lo_err = ERR_NOT_A_NUMBER
 	}
 	if !hi_ok {
 		hi_err = ERR_NOT_A_NUMBER
 	}
-	if lo_ok && hi_ok && has_lo && has_hi && lo > hi {
+	l, has_lo := lo.?
+	h, has_hi := hi.?
+	if has_lo && has_hi && l > h {
 		hi_err = ERR_MAX_BELOW_MIN
 	}
 	if lo_err != "" || hi_err != "" {
 		return
 	}
-	if has_lo || has_hi {
-		datagrid.view_set_range(&g.grid.view, col, lo, has_lo, hi, has_hi)
+	if lo != nil || hi != nil {
+		datagrid.view_set_range(&g.grid.view, col, lo, hi)
 	} else {
 		datagrid.view_clear_filter(&g.grid.view, col)
 	}
@@ -193,20 +194,20 @@ range_apply :: proc(g: ^Data_Grid, col: int) -> (lo_err, hi_err: string) {
 	return
 }
 
-// parse_bound reads a number field: empty is an open bound; otherwise a
-// finite number, thousands separators allowed, or not ok.
+// parse_bound reads a number field: empty is an open bound, nil;
+// otherwise a finite number, thousands separators allowed, or not ok.
 @(private)
-parse_bound :: proc(s: string) -> (v: f64, has, ok: bool) {
+parse_bound :: proc(s: string) -> (bound: Maybe(f64), ok: bool) {
 	t := strings.trim_space(s)
 	if t == "" {
-		return 0, false, true
+		return nil, true
 	}
 	t, _ = strings.remove_all(t, ",", context.temp_allocator)
 	n, parsed := strconv.parse_f64(t)
 	if !parsed || math.is_nan(n) || math.is_inf(n) {
-		return 0, false, false
+		return nil, false
 	}
-	return n, true, true
+	return n, true
 }
 
 // date_fields is a Date Range panel's date range picker, with the
@@ -235,7 +236,8 @@ date_fields :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) {
 	} else {
 		lo := f64(date_days(f.dates.start)) * SECONDS_PER_DAY
 		hi := f64(date_days(f.dates.end) + 1) * SECONDS_PER_DAY - 1
-		datagrid.view_set_range(&g.grid.view, col, lo, true, hi, true)
+		datagrid.view_set_range(&g.grid.view, col, lo, hi)
+
 	}
 	g.applied = -1
 }

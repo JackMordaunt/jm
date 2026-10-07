@@ -1,6 +1,7 @@
 package datagrid
 
 import "core:fmt"
+import "core:mem"
 import "core:slice"
 import "core:strings"
 import "core:testing"
@@ -96,8 +97,8 @@ test_order_filters_searches_sorts_and_groups :: proc(t: ^testing.T) {
 	)
 
 	view_set_values(&v, 1, {"Norway", "Paraguay", "Norway"})
-	testing.expect_value(t, len(find_filter(&v, 1).values), 2)
-	view_set_range(&v, 2, 90, true, 150, true)
+	testing.expect_value(t, len(find_filter(&v, 1).rule.(Set_Filter).values), 2)
+	view_set_range(&v, 2, 90, 150)
 	order_build(&o, src, view_query(&v, COLS, &visible))
 	testing.expect(t, slice.equal(o.rows[:], []int{1, 4}))
 	view_set_search(&v, "PARA")
@@ -127,7 +128,7 @@ test_distinct_values_count_under_the_other_filters :: proc(t: ^testing.T) {
 	view_init(&v, COLS, context.temp_allocator)
 	visible := make([dynamic]int, context.temp_allocator)
 	view_set_values(&v, 1, {"Norway"}) // its own filter does not narrow its values
-	view_set_range(&v, 2, 100, true, 0, false)
+	view_set_range(&v, 2, 100, nil)
 	vals := distinct_values(src, view_query(&v, COLS, &visible), 1, context.temp_allocator)
 	testing.expect_value(t, len(vals), 2)
 	testing.expect_value(t, vals[0], Value_Count{"Ethiopia", 1})
@@ -165,7 +166,7 @@ test_a_view_round_trips_and_survives_a_dropped_column :: proc(t: ^testing.T) {
 	view_sort_cycle(&v, 2, false)
 	view_sort_cycle(&v, 0, true)
 	view_set_values(&v, 1, {"Norway", "say \"hi\"\n"})
-	view_set_range(&v, 2, 10.5, true, 0, false)
+	view_set_range(&v, 2, 10.5, nil)
 	view_set_search(&v, "rig\t2")
 	v.group = 1
 	b := strings.builder_make(context.temp_allocator)
@@ -179,9 +180,17 @@ test_a_view_round_trips_and_survives_a_dropped_column :: proc(t: ^testing.T) {
 	testing.expect(t, slice.equal(w.order[:], v.order[:]))
 	testing.expect(t, slice.equal(w.cols[:], v.cols[:]))
 	testing.expect(t, slice.equal(w.sort[:], v.sort[:]))
-	testing.expect(t, slice.equal(find_filter(&w, 1).values[:], find_filter(&v, 1).values[:]))
-	testing.expect_value(t, find_filter(&w, 2).lo, 10.5)
-	testing.expect(t, !find_filter(&w, 2).has_hi)
+	testing.expect(
+		t,
+		slice.equal(
+			find_filter(&w, 1).rule.(Set_Filter).values,
+			find_filter(&v, 1).rule.(Set_Filter).values,
+		),
+	)
+	hash := find_filter(&w, 2).rule.(Range_Filter)
+	testing.expect_value(t, hash.lo.? or_else -1, 10.5)
+	testing.expect(t, hash.hi == nil)
+
 	testing.expect_value(t, w.search, "rig\t2")
 	testing.expect_value(t, w.group, 1)
 
@@ -353,7 +362,7 @@ test_an_order_built_a_chunk_at_a_time_is_the_order_built_at_once :: proc(t: ^tes
 	view_sort_cycle(&v, 2, true)
 	view_sort_cycle(&v, 2, true) // descending
 	view_set_values(&v, 1, {"Norway", "Ethiopia", "Wisconsin"})
-	view_set_range(&v, 2, 20, true, 0, false)
+	view_set_range(&v, 2, 20, nil)
 	v.group = 1
 	shut := make(map[string]bool)
 	defer delete(shut)
@@ -393,6 +402,49 @@ test_values_hash_moves_with_the_other_filters_only :: proc(t: ^testing.T) {
 	view_set_values(&v, 1, {"Norway"}) // the column's own choice
 	view_set_search(&v, "rig") // the counts leave the search out
 	testing.expect_value(t, values_hash(view_query(&v, COLS, &visible), 1), before)
-	view_set_range(&v, 2, 100, true, 0, false)
+	view_set_range(&v, 2, 100, nil)
 	testing.expect(t, values_hash(view_query(&v, COLS, &visible), 1) != before)
+}
+
+@(test)
+test_a_filter_that_changes_kind_hashes_as_its_new_kind_alone :: proc(t: ^testing.T) {
+	visible := make([dynamic]int, context.temp_allocator)
+	clean: View
+	view_init(&clean, COLS, context.temp_allocator)
+	view_set_text(&clean, 0, "rig")
+	changed: View
+	view_init(&changed, COLS, context.temp_allocator)
+	view_set_values(&changed, 0, {"rig2"})
+	view_set_range(&changed, 0, 1, 9)
+	view_set_text(&changed, 0, "rig")
+	testing.expect_value(
+		t,
+		match_hash(view_query(&changed, COLS, &visible)),
+		match_hash(view_query(&clean, COLS, &visible)),
+	)
+	before := match_hash(view_query(&clean, COLS, &visible))
+	view_set_text(&clean, 0, "rig2")
+	testing.expect(t, match_hash(view_query(&clean, COLS, &visible)) != before)
+}
+
+@(test)
+test_toggling_values_keeps_a_sorted_set_and_frees_what_it_drops :: proc(t: ^testing.T) {
+	track: mem.Tracking_Allocator
+	mem.tracking_allocator_init(&track, context.allocator)
+	defer mem.tracking_allocator_destroy(&track)
+	v: View
+	view_init(&v, COLS, mem.tracking_allocator(&track))
+	view_set_text(&v, 1, "way")
+	view_toggle_value(&v, 1, "Paraguay")
+	view_toggle_value(&v, 1, "Norway")
+	view_toggle_value(&v, 1, "Wisconsin")
+	view_toggle_value(&v, 1, "Paraguay")
+	values := find_filter(&v, 1).rule.(Set_Filter).values
+	testing.expect(t, slice.equal(values, []string{"Norway", "Wisconsin"}), fmt.tprint(values))
+	view_set_values(&v, 1, values) // its own values, cloned before the old go
+	values = find_filter(&v, 1).rule.(Set_Filter).values
+	testing.expect(t, slice.equal(values, []string{"Norway", "Wisconsin"}), fmt.tprint(values))
+	view_destroy(&v)
+	testing.expect_value(t, len(track.allocation_map), 0)
+	testing.expect_value(t, len(track.bad_free_array), 0)
 }

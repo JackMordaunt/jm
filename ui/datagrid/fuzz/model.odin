@@ -410,31 +410,37 @@ draw_rows :: proc(src: ^harness.Source) -> Rows {
 // draw_filter draws one filter on a drawn column.
 @(private)
 draw_filter :: proc(src: ^harness.Source) -> datagrid.Filter {
-	f := datagrid.Filter {
-		values = make([dynamic]string),
-	}
+	f: datagrid.Filter
 	switch harness.integer_in(src, 0, 4) {
 	case 0:
-		f.col, f.kind = 3, .Set
+		values := make([dynamic]string)
 		for s in SITES {
 			if harness.boolean(src) {
-				append(&f.values, s)
+				append(&values, s)
 			}
 		}
+		f = {3, datagrid.Set_Filter{values[:]}}
 	case 1:
-		f.col, f.kind = harness.choice(src, []int{0, 3}), .Text
-		f.text = harness.text(src, PIECES, 2)
+		f = {harness.choice(src, []int{0, 3}), datagrid.Text_Filter{harness.text(src, PIECES, 2)}}
 	case 2:
-		f.col, f.kind = 1, .Range
-		f.lo, f.has_lo = f64(harness.integer_in(src, -60, 60)), harness.boolean(src)
-		f.hi, f.has_hi = f64(harness.integer_in(src, -60, 60)), harness.boolean(src)
+		lo := draw_bound(src, f64(harness.integer_in(src, -60, 60)))
+		hi := draw_bound(src, f64(harness.integer_in(src, -60, 60)))
+		f = {1, datagrid.Range_Filter{lo, hi}}
 	case:
-		f.col, f.kind = 2, .Range
 		lo, _ := datagrid.parse_date(fmt.tprintf("2026-01-%02d", harness.integer_in(src, 1, 30)))
 		hi, _ := datagrid.parse_date(fmt.tprintf("2026-01-%02d", harness.integer_in(src, 1, 30)))
-		f.lo, f.has_lo, f.hi, f.has_hi = lo, harness.boolean(src), hi, harness.boolean(src)
+		f = {2, datagrid.Range_Filter{draw_bound(src, lo), draw_bound(src, hi)}}
 	}
 	return f
+}
+
+// draw_bound is v as a range bound, or an open one.
+@(private)
+draw_bound :: proc(src: ^harness.Source, v: f64) -> Maybe(f64) {
+	if harness.boolean(src) {
+		return v
+	}
+	return nil
 }
 
 // query draws rows and a query, builds the order, and holds it to the rows
@@ -510,27 +516,32 @@ reference_keeps :: proc(rows: ^Rows, q: datagrid.Query, r: int) -> bool {
 
 @(private)
 reference_filter :: proc(cell: string, kind: datagrid.Value_Kind, f: datagrid.Filter) -> bool {
-	switch f.kind {
-	case .Set:
-		return len(f.values) == 0 || slice.contains(f.values[:], cell)
-	case .Text:
-		return strings.contains(strings.to_lower(cell), strings.to_lower(f.text))
-	case .Range:
-		return reference_range(cell, kind, f)
-	case .None:
+	switch r in f.rule {
+	case datagrid.Set_Filter:
+		return len(r.values) == 0 || slice.contains(r.values, cell)
+	case datagrid.Text_Filter:
+		return strings.contains(strings.to_lower(cell), strings.to_lower(r.text))
+	case datagrid.Range_Filter:
+		return reference_range(cell, kind, r)
 	}
 	return true
 }
 
-// reference_range reports whether f, a Range filter, keeps cell: any
-// cell when neither bound is set, else one whose value lies within them.
+// reference_range reports whether r keeps cell: any cell when neither
+// bound is set, else one whose value lies within them.
 @(private)
-reference_range :: proc(cell: string, kind: datagrid.Value_Kind, f: datagrid.Filter) -> bool {
-	if !f.has_lo && !f.has_hi {
+reference_range :: proc(
+	cell: string,
+	kind: datagrid.Value_Kind,
+	r: datagrid.Range_Filter,
+) -> bool {
+	lo, has_lo := r.lo.?
+	hi, has_hi := r.hi.?
+	if !has_lo && !has_hi {
 		return true
 	}
 	v, ok := reference_value(cell, kind)
-	return ok && (!f.has_lo || v >= f.lo) && (!f.has_hi || v <= f.hi)
+	return ok && (!has_lo || v >= lo) && (!has_hi || v <= hi)
 }
 
 @(private)
@@ -889,14 +900,8 @@ draw_view :: proc(v: ^datagrid.View, cols: []datagrid.Column, src: ^harness.Sour
 	datagrid.view_set_text(v, harness.integer_in(src, 0, n), harness.text(src, VIEW_TEXT, 3))
 	lo, hi :=
 		f64(harness.integer_in(src, -1000, 1000)) / 8, f64(harness.integer_in(src, -1000, 1000))
-	datagrid.view_set_range(
-		v,
-		harness.integer_in(src, 0, n),
-		lo,
-		harness.boolean(src),
-		hi,
-		harness.boolean(src),
-	)
+	col := harness.integer_in(src, 0, n)
+	datagrid.view_set_range(v, col, draw_bound(src, lo), draw_bound(src, hi))
 	datagrid.view_set_search(v, harness.text(src, VIEW_TEXT, 3))
 	v.group = harness.integer_in(src, -1, n)
 }
@@ -962,20 +967,17 @@ active_filters_equal :: proc(a, b: ^datagrid.View) -> (string, bool) {
 // a Text's text, a Range's bounds.
 @(private)
 filters_equal :: proc(a, b: datagrid.Filter) -> bool {
-	if a.col != b.col || a.kind != b.kind {
+	if a.col != b.col || datagrid.rule_kind(a.rule) != datagrid.rule_kind(b.rule) {
 		return false
 	}
-	switch a.kind {
-	case .Set:
-		return slice.equal(a.values[:], b.values[:])
-	case .Text:
-		return a.text == b.text
-	case .Range:
-		return(
-			bound_equal(a.lo, a.has_lo, b.lo, b.has_lo) &&
-			bound_equal(a.hi, a.has_hi, b.hi, b.has_hi) \
-		)
-	case .None:
+	switch r in a.rule {
+	case datagrid.Set_Filter:
+		return slice.equal(r.values, b.rule.(datagrid.Set_Filter).values)
+	case datagrid.Text_Filter:
+		return r.text == b.rule.(datagrid.Text_Filter).text
+	case datagrid.Range_Filter:
+		s := b.rule.(datagrid.Range_Filter)
+		return bound_equal(r.lo, s.lo) && bound_equal(r.hi, s.hi)
 	}
 	return true
 }
@@ -983,9 +985,12 @@ filters_equal :: proc(a, b: datagrid.Filter) -> bool {
 // bound_equal reports whether two bounds are both open, or both set to
 // one value.
 @(private)
-bound_equal :: proc(a: f64, has_a: bool, b: f64, has_b: bool) -> bool {
-	return has_a == has_b && (!has_a || a == b)
+bound_equal :: proc(a, b: Maybe(f64)) -> bool {
+	x, has_a := a.?
+	y, has_b := b.?
+	return has_a == has_b && (!has_a || x == y)
 }
+
 
 // view_holds checks v stands on cols: the order holds every column once,
 // and the sort, filters and grouping name columns there are.

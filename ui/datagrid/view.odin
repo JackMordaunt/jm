@@ -81,12 +81,23 @@ view_free_filters :: proc(v: ^View) {
 
 @(private)
 filter_free :: proc(f: ^Filter, allocator: mem.Allocator) {
-	for s in f.values {
-		delete(s, allocator)
-	}
-	delete(f.values)
-	delete(f.text, allocator)
+	rule_free(f.rule, allocator)
 	f^ = {}
+}
+
+// rule_free frees what r holds, allocated in allocator.
+@(private)
+rule_free :: proc(r: Filter_Rule, allocator: mem.Allocator) {
+	switch r in r {
+	case Set_Filter:
+		for s in r.values {
+			delete(s, allocator)
+		}
+		delete(r.values, allocator)
+	case Text_Filter:
+		delete(r.text, allocator)
+	case Range_Filter:
+	}
 }
 
 // view_copy makes dst the same view as src, in dst's allocator.
@@ -108,11 +119,23 @@ view_copy :: proc(dst: ^View, src: ^View) {
 @(private)
 filter_clone :: proc(f: Filter, allocator: mem.Allocator) -> Filter {
 	out := f
-	out.values = make([dynamic]string, 0, len(f.values), allocator)
-	for s in f.values {
-		append(&out.values, strings.clone(s, allocator))
+	switch r in f.rule {
+	case Set_Filter:
+		out.rule = Set_Filter{clone_strings(r.values, allocator)}
+	case Text_Filter:
+		out.rule = Text_Filter{strings.clone(r.text, allocator) if r.text != "" else ""}
+	case Range_Filter:
 	}
-	out.text = strings.clone(f.text, allocator)
+	return out
+}
+
+// clone_strings is a copy of ss and of each string in it, in allocator.
+@(private)
+clone_strings :: proc(ss: []string, allocator: mem.Allocator) -> []string {
+	out := make([]string, len(ss), allocator)
+	for s, i in ss {
+		out[i] = strings.clone(s, allocator)
+	}
 	return out
 }
 
@@ -162,15 +185,27 @@ sort_rank :: proc(v: ^View, col: int) -> int {
 	return -1
 }
 
-// view_filter is col's filter, made of kind when it has none.
-view_filter :: proc(v: ^View, col: int, kind: Filter_Kind) -> ^Filter {
-	for &f in v.filters {
-		if f.col == col {
-			return &f
-		}
+// view_set_rule makes col's filter keep rows by r, which v now owns,
+// freeing the rule it had.
+@(private)
+view_set_rule :: proc(v: ^View, col: int, r: Filter_Rule) {
+	f := find_filter(v, col)
+	if f == nil {
+		append(&v.filters, Filter{col = col})
+		f = &v.filters[len(v.filters) - 1]
 	}
-	append(&v.filters, Filter{col = col, kind = kind, values = make([dynamic]string, v.allocator)})
-	return &v.filters[len(v.filters) - 1]
+	rule_free(f.rule, v.allocator)
+	f.rule = r
+}
+
+// chosen_values is the values f's Set filter keeps, nil for no filter
+// or another rule.
+chosen_values :: proc(f: ^Filter) -> []string {
+	if f == nil {
+		return nil
+	}
+	s, _ := f.rule.(Set_Filter)
+	return s.values
 }
 
 // find_filter is col's filter, nil when it has none.
@@ -204,59 +239,58 @@ view_filters_active :: proc(v: ^View) -> bool {
 // view_set_values makes col's Set filter keep values, copied and sorted
 // with duplicates dropped; none clears it.
 view_set_values :: proc(v: ^View, col: int, values: []string) {
-	f := view_filter(v, col, .Set)
-	f.kind = .Set
-	for s in f.values {
-		delete(s, v.allocator)
-	}
-	clear(&f.values)
-	for s in values {
-		append(&f.values, strings.clone(s, v.allocator))
-	}
-	slice.sort(f.values[:])
+	out := clone_strings(values, v.allocator)
+	slice.sort(out)
 	n := 0
-	for s, i in f.values {
-		if i > 0 && s == f.values[n - 1] {
+	for s, i in out {
+		if i > 0 && s == out[n - 1] {
 			delete(s, v.allocator)
 			continue
 		}
-		f.values[n] = s
+		out[n] = s
 		n += 1
 	}
-	resize(&f.values, n)
+	view_set_rule(v, col, Set_Filter{out[:n]})
 }
 
 // view_toggle_value adds value to col's Set filter or takes it out.
 view_toggle_value :: proc(v: ^View, col: int, value: string) {
-	f := view_filter(v, col, .Set)
-	f.kind = .Set
-	at, found := slice.binary_search(f.values[:], value)
+	old := chosen_values(find_filter(v, col))
+	at, found := slice.binary_search(old, value)
+	out := make([]string, len(old) - 1 if found else len(old) + 1, v.allocator)
+	copy(out, old[:at])
 	if found {
-		delete(f.values[at], v.allocator)
-		ordered_remove(&f.values, at)
+		copy(out[at:], old[at + 1:])
+		delete(old[at], v.allocator)
+	} else {
+		out[at] = strings.clone(value, v.allocator)
+		copy(out[at + 1:], old[at:])
+	}
+	if len(old) > 0 {
+		// out took the old strings over: only the old slice goes.
+		delete(old, v.allocator)
+		find_filter(v, col).rule = Set_Filter{out}
 		return
 	}
-	inject_at(&f.values, at, strings.clone(value, v.allocator))
+	view_set_rule(v, col, Set_Filter{out})
 }
 
 // view_set_text makes col's Text filter keep the rows containing text.
 view_set_text :: proc(v: ^View, col: int, text: string) {
-	f := view_filter(v, col, .Text)
-	f.kind = .Text
-	if f.text == text {
-		return
+	if f := find_filter(v, col); f != nil {
+		if t, ok := f.rule.(Text_Filter); ok && t.text == text {
+			return
+		}
 	}
-	delete(f.text, v.allocator)
-	f.text = strings.clone(text, v.allocator) if text != "" else ""
+	view_set_rule(v, col, Text_Filter{strings.clone(text, v.allocator) if text != "" else ""})
 }
 
-// view_set_range makes col's Range filter keep values from lo to hi,
-// either bound left open by its has_ flag.
-view_set_range :: proc(v: ^View, col: int, lo: f64, has_lo: bool, hi: f64, has_hi: bool) {
-	f := view_filter(v, col, .Range)
-	f.kind = .Range
-	f.lo, f.has_lo, f.hi, f.has_hi = lo, has_lo, hi, has_hi
+// view_set_range makes col's Range filter keep values from lo to hi, a
+// nil bound left open.
+view_set_range :: proc(v: ^View, col: int, lo, hi: Maybe(f64)) {
+	view_set_rule(v, col, Range_Filter{lo, hi})
 }
+
 
 // view_clear_filter clears col's filter, freeing what it held: the
 // column's "Clear" in a filter popover.
@@ -370,29 +404,28 @@ encode_column :: proc(b: ^strings.Builder, id: string, s: Column_State) {
 encode_filter :: proc(b: ^strings.Builder, id: string, f: Filter) {
 	strings.write_string(b, "filter ")
 	write_quoted(b, id)
-	switch f.kind {
-	case .Set:
+	switch r in f.rule {
+	case Set_Filter:
 		strings.write_string(b, " set")
-		for s in f.values {
+		for s in r.values {
 			strings.write_byte(b, ' ')
 			write_quoted(b, s)
 		}
-	case .Text:
+	case Text_Filter:
 		strings.write_string(b, " text ")
-		write_quoted(b, f.text)
-	case .Range:
+		write_quoted(b, r.text)
+	case Range_Filter:
 		strings.write_string(b, " range ")
-		write_bound(b, f.lo, f.has_lo)
+		write_bound(b, r.lo)
 		strings.write_byte(b, ' ')
-		write_bound(b, f.hi, f.has_hi)
-	case .None:
+		write_bound(b, r.hi)
 	}
 	strings.write_byte(b, '\n')
 }
 
 @(private)
-write_bound :: proc(b: ^strings.Builder, v: f64, has: bool) {
-	if has {
+write_bound :: proc(b: ^strings.Builder, bound: Maybe(f64)) {
+	if v, ok := bound.?; ok {
 		write_number(b, v)
 	} else {
 		strings.write_byte(b, '-')
@@ -584,14 +617,22 @@ decode_filter :: proc(v: ^View, c: int, toks: []string) {
 		}
 	case "range":
 		if len(toks) > 2 {
-			lo, has_lo := strconv.parse_f64(toks[1])
-			hi, has_hi := strconv.parse_f64(toks[2])
-			view_set_range(v, c, lo, has_lo, hi, has_hi)
+			view_set_range(v, c, decode_bound(toks[1]), decode_bound(toks[2]))
 		}
 	}
 }
 
+// decode_bound is a range bound a view wrote, nil for an open one.
+@(private)
+decode_bound :: proc(tok: string) -> Maybe(f64) {
+	if v, ok := strconv.parse_f64(tok); ok {
+		return v
+	}
+	return nil
+}
+
 // tokens splits line into words and quoted strings, the quotes taken off
+
 // and the escapes undone. A quoted string left open runs to the line's
 // end.
 tokens :: proc(line: string, allocator := context.allocator) -> []string {

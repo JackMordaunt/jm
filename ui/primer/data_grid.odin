@@ -331,12 +331,9 @@ header_sort_mark :: proc(
 @(private)
 filter_button :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, h: ^datagrid.Header) {
 	f := datagrid.find_filter(&g.grid.view, h.col)
-	chosen := 0
-	if f != nil && f.kind == .Set {
-		chosen = len(f.values)
-	}
+	chosen := len(datagrid.chosen_values(f))
 	dot := Unread_Dot.None
-	if f != nil && f.kind != .Set && datagrid.filter_active(f^) {
+	if f != nil && datagrid.rule_kind(f.rule) != .Set && datagrid.filter_active(f^) {
 		dot = .Leading
 	}
 	s := ui.stack_open(gtx, key = h.key)
@@ -523,7 +520,7 @@ filter_items :: proc(g: ^Data_Grid, col: int) {
 		text := v.value if v.value != "" else "(blank)"
 		count := design.thousands(v.count)
 		append(&f.items, Select_Panel_Item{text = text, description = count, group = -1})
-		append(&f.selected, cur != nil && has_value(cur.values[:], v.value))
+		append(&f.selected, has_value(datagrid.chosen_values(cur), v.value))
 	}
 }
 
@@ -542,7 +539,6 @@ has_value :: proc(values: []string, v: string) -> bool {
 @(private)
 filter_apply :: proc(g: ^Data_Grid, col: int) {
 	f := &g.filter
-	cur := datagrid.find_filter(&g.grid.view, col)
 	keep := make([dynamic]string, context.temp_allocator)
 	shown := make(map[string]bool, len(f.shown), context.temp_allocator)
 	for i, k in f.shown {
@@ -552,11 +548,9 @@ filter_apply :: proc(g: ^Data_Grid, col: int) {
 			append(&keep, v)
 		}
 	}
-	if cur != nil {
-		for v in cur.values {
-			if !shown[v] {
-				append(&keep, v)
-			}
+	for v in datagrid.chosen_values(datagrid.find_filter(&g.grid.view, col)) {
+		if !shown[v] {
+			append(&keep, v)
 		}
 	}
 	datagrid.view_set_values(&g.grid.view, col, keep[:])

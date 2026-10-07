@@ -244,14 +244,7 @@ current_query :: proc(c: ^Paged_Case) -> datagrid.Page_Query {
 	filters := make([dynamic]datagrid.Query_Filter)
 	for f in v.filters {
 		if datagrid.filter_active(f) {
-			append(
-				&filters,
-				datagrid.Query_Filter {
-					column = PAGED_COLUMNS[f.col].id,
-					kind = f.kind,
-					values = f.values[:],
-				},
-			)
+			append(&filters, datagrid.Query_Filter{PAGED_COLUMNS[f.col].id, f.rule})
 		}
 	}
 	q.sort, q.filters = sort[:], filters[:]
@@ -387,9 +380,12 @@ same_query :: proc(a, b: datagrid.Page_Query) -> bool {
 	}
 	for f, i in a.filters {
 		g := b.filters[i]
-		if f.column != g.column || f.kind != g.kind || !slice.equal(f.values, g.values) {
+		fs, f_set := f.rule.(datagrid.Set_Filter)
+		gs, g_set := g.rule.(datagrid.Set_Filter)
+		if f.column != g.column || !f_set || !g_set || !slice.equal(fs.values, gs.values) {
 			return false
 		}
+
 	}
 	return true
 }

@@ -36,19 +36,8 @@ query_filters :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, except: int) -> []
 		if !filter_active(f) || f.col == except {
 			continue
 		}
-		append(
-			&out,
-			Query_Filter {
-				cols[f.col].id,
-				f.kind,
-				f.values[:],
-				f.text,
-				f.lo,
-				f.hi,
-				f.has_lo,
-				f.has_hi,
-			},
-		)
+		append(&out, Query_Filter{cols[f.col].id, f.rule})
+
 	}
 	return out[:]
 }

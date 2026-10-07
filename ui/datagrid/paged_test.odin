@@ -341,7 +341,7 @@ test_a_memory_table_pages_by_offset_and_by_cursor_alike :: proc(t: ^testing.T) {
 	q := Page_Query {
 		columns = {"serial", "model", "site", "hash"},
 		sort    = {{"hash", true}},
-		filters = {{column = "site", kind = .Set, values = {"Norway", "Wisconsin"}}},
+		filters = {{column = "site", rule = Set_Filter{{"Norway", "Wisconsin"}}}},
 		offset  = 10,
 		limit   = 10,
 	}
@@ -360,7 +360,7 @@ test_a_memory_table_pages_by_offset_and_by_cursor_alike :: proc(t: ^testing.T) {
 	}
 	vq := Values_Query {
 		column  = "model",
-		filters = {{column = "site", kind = .Set, values = {"Norway"}}},
+		filters = {{column = "site", rule = Set_Filter{{"Norway"}}}},
 		like    = "m",
 		limit   = 3,
 	}

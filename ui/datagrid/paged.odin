@@ -55,13 +55,10 @@ Query_Sort :: struct {
 }
 
 Query_Filter :: struct {
-	column:         string,
-	kind:           Filter_Kind,
-	values:         []string,
-	text:           string,
-	lo, hi:         f64,
-	has_lo, has_hi: bool,
+	column: string,
+	rule:   Filter_Rule,
 }
+
 
 // Cursor is the row before a page, for a keyset server: its key, and its
 // text in each sort column, in the sort's order. An empty key is no

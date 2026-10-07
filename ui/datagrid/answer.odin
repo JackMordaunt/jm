@@ -165,10 +165,14 @@ memory_filters :: proc(t: ^Memory_Table, filters: []Query_Filter) -> []Filter {
 		if c < 0 {
 			continue
 		}
-		values := make([dynamic]string, 0, len(f.values), context.temp_allocator)
-		append(&values, ..f.values)
-		slice.sort(values[:])
-		append(&out, Filter{c, f.kind, values, f.text, f.lo, f.hi, f.has_lo, f.has_hi})
+		rule := f.rule
+		if s, is_set := rule.(Set_Filter); is_set {
+			sorted := slice.clone(s.values, context.temp_allocator)
+			slice.sort(sorted)
+			rule = Set_Filter{sorted}
+		}
+		append(&out, Filter{c, rule})
+
 	}
 	return out[:]
 }

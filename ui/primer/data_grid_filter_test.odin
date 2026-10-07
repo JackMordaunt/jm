@@ -143,7 +143,10 @@ test_a_number_range_checks_its_fields_and_keeps_the_rows_between :: proc(t: ^tes
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "Max is less than min"))
 	f := datagrid.find_filter(&m.g.grid.view, 1)
-	testing.expect(t, f != nil && f.lo == 5 && f.hi == 1000, "the last good range stands")
+	rule := f.rule if f != nil else nil
+	r, _ := rule.(datagrid.Range_Filter)
+	lo, hi := r.lo.? or_else -1, r.hi.? or_else -1
+	testing.expect(t, lo == 5 && hi == 1000, "the last good range stands")
 
 	testing.expect(t, ui.probe_click(&p, "Clear"))
 	ui.probe_frame(&p)
@@ -165,7 +168,10 @@ test_a_date_range_preset_keeps_the_rows_dated_in_it :: proc(t: ^testing.T) {
 	ada, grace, linus := shows(&p)
 	testing.expect(t, ada && !grace && linus, "Sep 30 to the end of Oct 6, both days whole")
 	f := datagrid.find_filter(&m.g.grid.view, 2)
-	testing.expect(t, f != nil && f.has_lo && f.has_hi)
+	rule := f.rule if f != nil else nil
+	r, _ := rule.(datagrid.Range_Filter)
+	testing.expect(t, r.lo != nil && r.hi != nil)
+
 	testing.expect(t, ui.probe_click(&p, "Clear filters"), "the toolbar clears a range too")
 	ui.probe_frame(&p)
 	ada, grace, linus = shows(&p)
@@ -178,8 +184,8 @@ test_a_range_panel_opens_holding_the_filter_as_it_stands :: proc(t: ^testing.T) 
 	p: ui.Probe
 	m := crew_open(&p)
 	defer crew_close(&p, m)
-	datagrid.view_set_range(&m.g.grid.view, 1, 2, true, 0, false)
-	datagrid.view_set_range(&m.g.grid.view, 2, 1759276800, true, 1759795199, true)
+	datagrid.view_set_range(&m.g.grid.view, 1, 2, nil)
+	datagrid.view_set_range(&m.g.grid.view, 2, 1759276800, 1759795199)
 	testing.expect(t, ui.probe_click(&p, "Filter Count"))
 	testing.expect_value(t, ui.text_string(&m.g.filter.lo), "2")
 	testing.expect_value(t, ui.text_string(&m.g.filter.hi), "")
