@@ -11,13 +11,13 @@ COUNT_COLS := []datagrid.Column{{id = "serial", title = "Serial"}}
 @(private = "file")
 Count_Model :: struct {
 	g:      Data_Grid,
-	paging: datagrid.Paging,
+	remote: datagrid.Remote_Rows,
 }
 
 @(private = "file")
 count_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Count_Model)(user)
-	data_grid(gtx, &m.g, COUNT_COLS, {paged = &m.paging}, "Rigs")
+	data_grid(gtx, &m.g, COUNT_COLS, &m.remote, "Rigs")
 }
 
 // A paged grid says Loading… until its first page lands, never the room
@@ -25,11 +25,9 @@ count_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 @(test)
 test_a_paged_grid_counts_only_what_arrived :: proc(t: ^testing.T) {
 	m: Count_Model
-	m.paging = {
-		source    = "rigs",
-		page_size = 50,
-	}
-	data_grid_init(&m.g, COUNT_COLS, &m.paging)
+	datagrid.remote_rows_init(&m.remote, {source = "rigs", page_size = 50})
+	defer datagrid.remote_rows_destroy(&m.remote)
+	data_grid_init(&m.g, COUNT_COLS)
 	defer data_grid_destroy(&m.g)
 	p: ui.Probe
 	ui.probe_init(&p, count_view, &m, {600, 400}, allocator = context.temp_allocator)

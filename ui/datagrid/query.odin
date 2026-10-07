@@ -5,8 +5,8 @@ import "core:strconv"
 import "core:strings"
 import "jm:ui"
 
-// The query: which rows show, in what order. A client grid applies it to
-// the rows in memory (order_build); a paged grid sends it to its source
+// The query: which rows show, in what order. A Memory_Table applies it
+// to the rows it holds (order_build); a Remote_Rows sends it to its host
 // in every page request, and the rows come back already matched and
 // ordered. Both hash it the same way, so a change to the filters, the
 // search or the sort is a new query in either.
@@ -77,53 +77,17 @@ filter_active :: proc(f: Filter) -> bool {
 	return false
 }
 
-// Source is where a grid's rows come from. A client source has every row
-// in memory: rows of them, text giving column col of row as shown (a
-// field of the row, or a string in context.temp_allocator: the grid reads
-// it within the frame, and jm:ui's frame loops free that allocator only
-// after the frame), key naming each (nil: the row's index), value a
-// number or a date's Unix seconds for sorting and range filters (nil:
-// parsed from the text), height a row's own height for a grid whose rows
-// differ (nil: the density's). Bump version when the rows change, so the
-// order is built again.
-//
-// loading says more rows are on their way to a client source, as when
-// its host fetches every row before showing any: the grid draws a view
-// of skeleton rows after the rows it has.
-//
-// A paged source sets paged: then rows, text, key and value are unused,
-// and the grid asks for pages of rows by need (see paged.odin).
-Source :: struct {
-	user:    rawptr,
-	rows:    int,
-	text:    proc(user: rawptr, row, col: int) -> string,
-	key:     proc(user: rawptr, row: int) -> Row_Key,
-	value:   proc(user: rawptr, row, col: int) -> (f64, bool),
-	height:  proc(user: rawptr, row: int) -> f32,
-	version: u64,
-	loading: bool,
-	paged:   ^Paging,
+// row_text is column col of row r of rows as shown, "" past its cells.
+row_text :: proc(rows: []Page_Row, r, col: int) -> string {
+	cells := rows[r].cells
+	return cells[col] if col < len(cells) else ""
 }
 
-// source_text is column col of row, "" without a text proc.
-source_text :: proc(src: Source, row, col: int) -> string {
-	return src.text(src.user, row, col) if src.text != nil else ""
-}
-
-// source_key is row's key: its index when the source names none, which
-// keeps a selection only while the rows stay where they are.
-source_key :: proc(src: Source, row: int) -> Row_Key {
-	return src.key(src.user, row) if src.key != nil else Row_Key(row)
-}
-
-// source_value is column col of row as a number, for a column of kind:
-// the source's value, else its text parsed as a number or an ISO 8601
-// date. ok is false for a value that is not one.
-source_value :: proc(src: Source, kind: Value_Kind, row, col: int) -> (f64, bool) {
-	if src.value != nil {
-		return src.value(src.user, row, col)
-	}
-	return parse_value(kind, source_text(src, row, col))
+// row_value is column col of row r as a number, for a column of kind: its
+// text parsed as a number or an ISO 8601 date. ok is false for text that
+// is not one.
+row_value :: proc(rows: []Page_Row, kind: Value_Kind, r, col: int) -> (f64, bool) {
+	return parse_value(kind, row_text(rows, r, col))
 }
 
 // parse_value reads s as kind: a number for Number, Unix seconds for a
@@ -395,7 +359,7 @@ fnv_str :: proc(h: u64, s: string) -> u64 {
 	return ui.fnv_bytes(ui.fnv_bytes(h, transmute([]u8)s), {0xff})
 }
 
-// row_key is a paged row's key: the hash of its string key.
+// row_key is a row's key: the hash of its key string.
 row_key :: proc(s: string) -> Row_Key {
 	return Row_Key(ui.fnv_bytes(ui.FNV_OFFSET, transmute([]u8)s))
 }
@@ -462,14 +426,13 @@ order_hash :: proc(q: Query) -> u64 {
 		h = ui.fnv_u64(h, u64(s.desc))
 	}
 	return h
-
 }
 
-// row_matches reports whether row passes every filter of q and its
-// search; sets holds each Set filter's values as a lookup, by filter.
-row_matches :: proc(src: Source, q: Query, sets: []map[string]bool, row: int) -> bool {
+// row_matches reports whether row r of rows passes every filter of q and
+// its search; sets holds each Set filter's values as a lookup, by filter.
+row_matches :: proc(rows: []Page_Row, q: Query, sets: []map[string]bool, r: int) -> bool {
 	for f, i in q.filters {
-		if filter_active(f) && !filter_keeps(src, q.cols[f.col], f, sets[i], row) {
+		if filter_active(f) && !filter_keeps(rows, q.cols[f.col], f, sets[i], r) {
 			return false
 		}
 	}
@@ -477,24 +440,30 @@ row_matches :: proc(src: Source, q: Query, sets: []map[string]bool, row: int) ->
 		return true
 	}
 	for c in q.visible {
-		if contains_fold(source_text(src, row, c), q.search) {
+		if contains_fold(row_text(rows, r, c), q.search) {
 			return true
 		}
 	}
 	return false
 }
 
-// filter_keeps reports whether f keeps row.
+// filter_keeps reports whether f keeps row r of rows.
 @(private)
-filter_keeps :: proc(src: Source, col: Column, f: Filter, set: map[string]bool, row: int) -> bool {
-	switch r in f.rule {
+filter_keeps :: proc(
+	rows: []Page_Row,
+	col: Column,
+	f: Filter,
+	set: map[string]bool,
+	r: int,
+) -> bool {
+	switch rule in f.rule {
 	case Set_Filter:
-		return source_text(src, row, f.col) in set
+		return row_text(rows, r, f.col) in set
 	case Text_Filter:
-		return contains_fold(source_text(src, row, f.col), r.text)
+		return contains_fold(row_text(rows, r, f.col), rule.text)
 	case Range_Filter:
-		v, ok := source_value(src, col.kind, row, f.col)
-		return ok && in_range(r, v)
+		v, ok := row_value(rows, col.kind, r, f.col)
+		return ok && in_range(rule, v)
 	}
 	return true
 }
@@ -534,12 +503,12 @@ Value_Count :: struct {
 	count: int,
 }
 
-// distinct_values is column col's distinct texts among the rows of src
-// that pass every filter of q but col's own, with their counts, sorted
-// naturally: what the column's Set filter offers to choose from, so the
-// counts say what choosing one would show.
+// distinct_values is column col's distinct texts among rows that pass
+// every filter of q but col's own, with their counts, sorted naturally:
+// what the column's Set filter offers to choose from, so the counts say
+// what choosing one would show.
 distinct_values :: proc(
-	src: Source,
+	rows: []Page_Row,
 	q: Query,
 	col: int,
 	allocator := context.allocator,
@@ -555,9 +524,9 @@ distinct_values :: proc(
 	rest.search = ""
 	sets := filter_sets(others[:])
 	counts := make(map[string]int, 64, context.temp_allocator)
-	for r in 0 ..< max(src.rows, 0) {
-		if row_matches(src, rest, sets, r) {
-			counts[source_text(src, r, col)] += 1
+	for _, r in rows {
+		if row_matches(rows, rest, sets, r) {
+			counts[row_text(rows, r, col)] += 1
 		}
 	}
 	out := make([]Value_Count, len(counts), allocator)

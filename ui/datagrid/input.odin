@@ -27,7 +27,7 @@ handle_input :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	skin: ^Skin,
 	id: ops.Area_Id,
 	ev: ^Events,
@@ -82,7 +82,7 @@ header_events :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	id: ops.Area_Id,
 	col: int,
 	ev: ^Events,
@@ -216,7 +216,7 @@ resize_events :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	skin: ^Skin,
 	id: ops.Area_Id,
 	col: int,
@@ -265,7 +265,7 @@ resize_press :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	skin: ^Skin,
 	col: int,
 	e: ui.Event,
@@ -327,7 +327,7 @@ body_events :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	id: ops.Area_Id,
 	ev: ^Events,
 ) {
@@ -352,7 +352,7 @@ body_pointer_events :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	e: ui.Event,
 	ev: ^Events,
 ) {
@@ -390,7 +390,7 @@ focus_body :: proc(g: ^Grid) {
 // body_move follows the pointer over the body: the row it is over, and a
 // selection being swept.
 @(private)
-body_move :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) {
+body_move :: proc(g: ^Grid, src: Rows, e: ui.Event, ev: ^Events) {
 	item := hit_item(g, e.pos)
 	g.hover = item if item >= 0 else -1
 	if g.drag.kind == .Select {
@@ -403,7 +403,7 @@ body_move :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) {
 // and selects: alone, toggled with Cmd or Ctrl, as a range from the
 // anchor with Shift. A double click activates the row.
 @(private)
-press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
+press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Rows, e: ui.Event, ev: ^Events) {
 	item, col := hit(g, e.pos)
 	if item < 0 {
 		return
@@ -412,7 +412,7 @@ press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, 
 	it := item_at(g, src, item)
 	switch {
 	case it.state == .Failed:
-		pages_retry(&g.pages, item / g.pages.page_size, item / g.pages.page_size + 1)
+		rows_retry(src, item, item)
 	case !has_row(it):
 	case e.button == .Right:
 		press_menu(g, it, Cell_At{item, col, it.key}, e, ev)
@@ -445,7 +445,7 @@ press_menu :: proc(g: ^Grid, it: Item, at: Cell_At, e: ui.Event, ev: ^Events) {
 // press_row is a left press on a row: it selects by the modifiers, starts
 // a sweep, and on a double click activates the row.
 @(private)
-press_row :: proc(g: ^Grid, src: Source, it: Item, at: Cell_At, e: ui.Event, ev: ^Events) {
+press_row :: proc(g: ^Grid, src: Rows, it: Item, at: Cell_At, e: ui.Event, ev: ^Events) {
 	select_at(g, src, at, it.name, e.mods)
 	ev.selection = true
 	g.drag = {
@@ -459,7 +459,7 @@ press_row :: proc(g: ^Grid, src: Source, it: Item, at: Cell_At, e: ui.Event, ev:
 // select_at moves the cursor to at and selects its row by mods: Shift
 // extends from the anchor, Cmd or Ctrl toggles, nothing selects it alone.
 @(private)
-select_at :: proc(g: ^Grid, src: Source, at: Cell_At, name: string, mods: ui.Mods) {
+select_at :: proc(g: ^Grid, src: Rows, at: Cell_At, name: string, mods: ui.Mods) {
 	g.cursor = at
 	switch {
 	case .Shift in mods:
@@ -477,7 +477,7 @@ select_at :: proc(g: ^Grid, src: Source, at: Cell_At, name: string, mods: ui.Mod
 // item a to item b, in either order, that the grid holds; with no anchor
 // (a < 0) the range is b alone.
 @(private)
-select_range :: proc(g: ^Grid, src: Source, a, b: int) {
+select_range :: proc(g: ^Grid, src: Rows, a, b: int) {
 	clear(&g.keys)
 	clear(&g.names)
 	start := a if a >= 0 else b
@@ -494,7 +494,7 @@ select_range :: proc(g: ^Grid, src: Source, a, b: int) {
 // sweep extends a selection being swept with the pointer to the row
 // under p.
 @(private)
-sweep :: proc(g: ^Grid, src: Source, p: ops.Point, ev: ^Events) {
+sweep :: proc(g: ^Grid, src: Rows, p: ops.Point, ev: ^Events) {
 	item, col := hit(g, p)
 	if item < 0 || item == g.cursor.item {
 		return

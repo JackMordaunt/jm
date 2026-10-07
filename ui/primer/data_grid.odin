@@ -19,7 +19,8 @@ import tok "jm:ui/primer/tokens"
 //
 //	g: primer.Data_Grid
 //	primer.data_grid_init(&g, COLUMNS)
-//	ev := primer.data_grid(gtx, &g, COLUMNS, source, "Rigs")
+//	datagrid.memory_table_init(&table, COLUMNS, datagrid.rows_of(cells, 0))
+//	ev := primer.data_grid(gtx, &g, COLUMNS, &table, "Rigs")
 //	if ev.activated { open_rig(ev.row.key) }
 //
 // A caller draws its own cells (a Label, a Button that takes its own
@@ -46,7 +47,7 @@ Data_Grid :: struct {
 	csv:          strings.Builder, // the last finished export
 	notice:       string, // what the toolbar says last happened: "Copied 3 rows"
 	cols:         []datagrid.Column, // this frame's, for the slots
-	src:          datagrid.Source,
+	rows:         datagrid.Rows, // this frame's
 	today:        Date, // what a date filter's presets count from; zero for date_today
 }
 
@@ -81,10 +82,9 @@ Filter_Panel :: struct {
 // lays out every item, and a column of serial numbers has thousands.
 FILTER_SHOWN :: 300
 
-// data_grid_init readies g for columns, a paged source's settings when it
-// is paged.
-data_grid_init :: proc(g: ^Data_Grid, columns: []datagrid.Column, paged: ^datagrid.Paging = nil) {
-	datagrid.grid_init(&g.grid, columns, paged)
+// data_grid_init readies g for columns.
+data_grid_init :: proc(g: ^Data_Grid, columns: []datagrid.Column) {
+	datagrid.grid_init(&g.grid, columns)
 	g.filter.col = -1
 	g.applied = -1
 	g.views = make([dynamic]Saved_View)
@@ -122,7 +122,8 @@ values_free :: proc(values: ^[dynamic]datagrid.Value_Count) {
 	clear(values)
 }
 
-// data_grid is a Primer data grid of columns over src's rows, label naming
+// data_grid is a Primer data grid of columns over the rows rows holds or
+// asks for (datagrid.Rows), label naming
 // it, filling the room it is offered: the toolbar (unless toolbar is
 // false) over the grid. It returns what the grid did; a finished export's
 // CSV is in g.csv.
@@ -130,7 +131,7 @@ data_grid :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Data_Grid,
 	columns: []datagrid.Column,
-	src: datagrid.Source,
+	rows: datagrid.Rows,
 	label := "",
 	toolbar := true,
 	key: u64 = 0,
@@ -138,7 +139,7 @@ data_grid :: proc(
 ) -> (
 	ev: datagrid.Events,
 ) {
-	g.cols, g.src = columns, src
+	g.cols, g.rows = columns, rows
 	grid_skin(gtx, g)
 	col := ui.column_open(gtx, gap = tok.BASE_SIZE_8, align = .Fill, key = key, loc = loc)
 	defer ui.close(&col)
@@ -147,7 +148,7 @@ data_grid :: proc(
 	}
 	g.filter.seen = false
 	ui.flexible(gtx, 1)
-	ev = datagrid.grid(gtx, &g.grid, columns, src, &g.skin, label)
+	ev = datagrid.grid(gtx, &g.grid, columns, rows, &g.skin, label)
 	switch {
 	case ev.filter_asked >= 0:
 		filter_open(g, ev.filter_asked)
@@ -441,41 +442,17 @@ filter_panel :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int, anchor: ui.Last_Widg
 }
 
 // filter_values fills the panel's values for column col when the other
-// filters or the rows changed since: counted from the rows of a client
-// grid, needed from the source of a paged one. It reports whether they
-// are still on their way.
+// filters or the rows changed since: counted from a table's rows, needed
+// from a remote's host. It reports whether they are still on their way.
 @(private)
 filter_values :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) -> (loading: bool) {
 	f := &g.filter
-	if g.src.paged != nil {
-		return paged_values(gtx, g, col)
-	}
-	visible := make([dynamic]int, gtx.allocator)
-	q := datagrid.view_query(&g.grid.view, g.cols, &visible)
-	built := datagrid.values_hash(q, col) ~ u64(g.src.rows) ~ g.src.version << 32 | 1
-	if built == f.built {
-		return false
-	}
-	keep_values(f, datagrid.distinct_values(g.src, q, col, gtx.allocator))
-	f.built = built
-	return false
-}
-
-// paged_values needs column col's values from a paged grid's source and
-// keeps each delivery once; it reports whether they are on their way.
-@(private)
-paged_values :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, col: int) -> (loading: bool) {
-	f := &g.filter
-	q := datagrid.values_query(gtx, &g.grid, g.cols, g.src, col, "")
-	v, st, version := ui.need_versioned(gtx, q, datagrid.Values)
-	if v == nil || (st != .Ready && st != .Stale) {
-		return true
-	}
+	values, version, on_way := datagrid.rows_values(gtx, &g.grid, g.cols, g.rows, col, f.built)
 	if version != f.built {
-		keep_values(f, v.values)
+		keep_values(f, values)
 		f.built = version
 	}
-	return st == .Stale
+	return on_way
 }
 
 // keep_values makes the panel's values copies of values.
@@ -621,7 +598,7 @@ grid_toolbar :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 		start := ui.row_open(gtx, gap = tok.BASE_SIZE_8, align = .Center)
 		defer ui.close(&start)
 		toolbar_search(gtx, g, label)
-		datagrid.grid_sync(&g.grid, g.cols, g.src, &g.skin)
+		datagrid.grid_sync(&g.grid, g.cols, g.rows, &g.skin)
 		toolbar_counts(gtx, g)
 	}
 	end := ui.row_open(gtx, gap = tok.BASE_SIZE_8, align = .Center)
@@ -681,14 +658,16 @@ toolbar_search :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 	}
 }
 
-// toolbar_counts says how many rows match, about how many while a paged
-// count is an estimate, Loading… before a paged query has any answer, and how many are selected; then the notice.
+// toolbar_counts says how many rows match, about how many while a
+// remote's count is an estimate, Loading… before a remote query has any
+// answer, and how many are selected; then the notice.
 @(private)
 toolbar_counts :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
-	if g.src.paged != nil && !datagrid.pages_known(&g.grid.pages) {
+	n, kind, known := datagrid.rows_count(g.rows)
+	if !known {
 		// No page of this query yet: no number to give. Say it is coming,
 		// or nothing when the first page failed (its rows say why).
-		if datagrid.pages_loading(&g.grid.pages) {
+		if datagrid.rows_loading(g.rows) {
 			layout_text(
 				gtx,
 				"Loading…",
@@ -700,7 +679,7 @@ toolbar_counts :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 		}
 		return
 	}
-	n, about := grid_rows(g)
+	about := kind != .Exact
 	text := fmt.aprintf(
 		"%s%s %s",
 		"about " if about else "",
@@ -721,16 +700,6 @@ toolbar_counts :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 	if g.notice != "" {
 		layout_text(gtx, g.notice, style(.Body_Small), color(.Fg_Color_Success), .Status, key = 5)
 	}
-}
-
-// grid_rows is how many rows match: a client grid's ordered rows, a paged
-// grid's count, about when it is not exact.
-@(private)
-grid_rows :: proc(g: ^Data_Grid) -> (n: int, about: bool) {
-	if g.src.paged == nil {
-		return len(g.grid.order.rows), false
-	}
-	return g.grid.pages.count, g.grid.pages.kind != .Exact
 }
 
 // toolbar_naming is the field a saved view's name is typed in, with Save
@@ -826,7 +795,7 @@ columns_menu :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 	}
 	m := action_menu_open(gtx, &g.columns_open, ui.last_widget(gtx), align = .End, key = 13)
 	if action_menu_item(&m, "Download CSV", leading = .Download) {
-		datagrid.export_start(&g.grid, g.cols, g.src)
+		datagrid.export_start(&g.grid, g.cols, g.rows)
 	}
 	if action_menu_item(&m, "Copy CSV", leading = .Copy) {
 		copy_csv(gtx, g)
@@ -885,11 +854,11 @@ DENSITY_NAMES :: [datagrid.Density]string {
 	.Spacious  = "Spacious",
 }
 
-// copy_csv puts a client grid's view on the clipboard as CSV. A paged
-// grid's rows are not in hand: its CSV is downloaded, streamed by pages.
+// copy_csv puts a table's view on the clipboard as CSV. A remote's rows
+// are not in hand: its CSV is downloaded, streamed by pages.
 @(private)
 copy_csv :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
-	if !datagrid.export_all(&g.grid, g.cols, g.src) {
+	if !datagrid.export_all(&g.grid, g.cols, g.rows) {
 		set_notice(g, "A paged table's CSV streams: Download CSV, then copy it")
 		return
 	}

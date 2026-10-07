@@ -17,15 +17,19 @@ import "../../kitchen"
 // pagination bar Table.Pagination is on its own.
 
 Data_Grids :: struct {
-	ready:  bool,
-	rigs:   primer.Data_Grid,
-	cells:  [][RIG_COLUMN_COUNT]string,
-	remote: primer.Data_Grid,
-	paging: datagrid.Paging,
-	server: Sim_Server,
-	repos:  primer.Data_Grid,
-	empty:  primer.Data_Grid,
-	page:   int,
+	ready:       bool,
+	rigs:        primer.Data_Grid,
+	cells:       [][RIG_COLUMN_COUNT]string,
+	rig_rows:    []datagrid.Page_Row,
+	rig_table:   datagrid.Memory_Table,
+	remote:      primer.Data_Grid,
+	remote_rows: datagrid.Remote_Rows,
+	server:      Sim_Server,
+	repos:       primer.Data_Grid,
+	repo_rows:   []datagrid.Page_Row,
+	repo_table:  datagrid.Memory_Table,
+	empty:       primer.Data_Grid,
+	page:        int,
 }
 
 RIG_ROWS         :: 100_000
@@ -87,15 +91,20 @@ grids_ready :: proc(d: ^Data_Grids) {
 	for &c, i in d.cells {
 		c = rig_cells(i)
 	}
+	d.rig_rows = datagrid.rows_of(d.cells, 0)
+	datagrid.memory_table_init(&d.rig_table, RIG_COLUMNS[:], d.rig_rows)
 	primer.data_grid_init(&d.rigs, RIG_COLUMNS[:])
-	d.paging = {
+	paging := datagrid.Paging {
 		source     = "rigs",
 		page_size  = 100,
 		margin     = 2,
 		capacity   = 24,
 		keep_stale = true,
 	}
-	primer.data_grid_init(&d.remote, RIG_COLUMNS[:], &d.paging)
+	datagrid.remote_rows_init(&d.remote_rows, paging)
+	primer.data_grid_init(&d.remote, RIG_COLUMNS[:])
+	d.repo_rows = datagrid.rows_of(REPO_ROWS[:], 0)
+	datagrid.memory_table_init(&d.repo_table, REPO_COLUMNS[:], d.repo_rows)
 	primer.data_grid_init(&d.repos, REPO_COLUMNS[:])
 	d.repos.grid.density = .Condensed
 	primer.data_grid_init(&d.empty, REPO_COLUMNS[:])
@@ -115,7 +124,7 @@ page_data_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	)
 	{
 		ui.sized(gtx, {min = {0, 560}, max = {ui.INF, 560}})
-		primer.data_grid(gtx, &d.rigs, RIG_COLUMNS[:], rigs_source(d), "Rigs")
+		primer.data_grid(gtx, &d.rigs, RIG_COLUMNS[:], &d.rig_table, "Rigs")
 	}
 	remote_section(gtx, d)
 	kitchen.section(
@@ -129,14 +138,14 @@ page_data_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 			gtx,
 			&d.repos,
 			REPO_COLUMNS[:],
-			repos_source(),
+			&d.repo_table,
 			"Repositories",
 			toolbar = false,
 		)
 	}
 	{
 		ui.sized(gtx, {min = {0, 140}, max = {ui.INF, 140}})
-		primer.data_grid(gtx, &d.empty, REPO_COLUMNS[:], {}, "Empty", toolbar = false)
+		primer.data_grid(gtx, &d.empty, REPO_COLUMNS[:], nil, "Empty", toolbar = false)
 	}
 	kitchen.section(
 		gtx,
@@ -175,18 +184,11 @@ remote_section :: proc(gtx: ^ui.Ctx, d: ^Data_Grids) {
 	}
 	{
 		ui.sized(gtx, {min = {0, 420}, max = {ui.INF, 420}})
-		primer.data_grid(gtx, &d.remote, RIG_COLUMNS[:], {paged = &d.paging}, "Remote rigs")
+		primer.data_grid(gtx, &d.remote, RIG_COLUMNS[:], &d.remote_rows, "Remote rigs")
 	}
 	if sim_pump(s, gtx.time) {
 		ui.request_frame(gtx, 0.05)
 	}
-}
-
-rigs_source :: proc(d: ^Data_Grids) -> datagrid.Source {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Data_Grids)(user).cells[row][col]
-	}
-	return {user = d, rows = len(d.cells), text = text}
 }
 
 REPO_COLUMNS := [?]datagrid.Column {
@@ -206,13 +208,6 @@ REPO_ROWS := [?][4]string {
 	{"primer/behaviors", "TypeScript", "2026-07-02", "75"},
 	{"primer/doctocat", "JavaScript", "2025-12-15", "40"},
 	{"primer/figma", "Figma", "2026-05-20", "12"},
-}
-
-repos_source :: proc() -> datagrid.Source {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return REPO_ROWS[row][col]
-	}
-	return {rows = len(REPO_ROWS), text = text}
 }
 
 // Sim_Server is the paged grid's server, simulated in process: the

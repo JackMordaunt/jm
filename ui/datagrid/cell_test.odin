@@ -12,7 +12,9 @@ import "jm:ui/ops"
 Bumps :: struct {
 	g:      Grid,
 	skin:   Skin,
-	rows:   [3][2]string,
+	cells:  [3][2]string,
+	rows:   [3]Page_Row,
+	table:  Memory_Table,
 	ev:     Events,
 	bumps:  int,
 	bumped: Row_Key,
@@ -43,23 +45,20 @@ bump_cell :: proc(gtx: ^ui.Ctx, c: ^Cell, user: rawptr) -> bool {
 
 @(private = "file")
 bumps_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Bumps)(user).rows[row][col]
-	}
 	m := (^Bumps)(user)
-	src := Source {
-		user = m,
-		rows = len(m.rows),
-		text = text,
-	}
-	m.ev = grid(gtx, &m.g, BUMP_COLS, src, &m.skin, "Rigs")
+	m.ev = grid(gtx, &m.g, BUMP_COLS, &m.table, &m.skin, "Rigs")
 }
 
 @(test)
 test_a_widget_in_a_cell_takes_its_own_press_and_leaves_the_row :: proc(t: ^testing.T) {
 	m := new(Bumps)
 	defer free(m)
-	m.rows = {{"SN-0", "b0"}, {"SN-1", "b1"}, {"SN-2", "b2"}}
+	m.cells = {{"SN-0", "b0"}, {"SN-1", "b1"}, {"SN-2", "b2"}}
+	for &c, i in m.cells {
+		m.rows[i] = {c[0], c[:]}
+	}
+	memory_table_init(&m.table, BUMP_COLS, m.rows[:])
+	defer memory_table_destroy(&m.table)
 	grid_init(&m.g, BUMP_COLS)
 	defer grid_destroy(&m.g)
 	m.skin = {
@@ -73,9 +72,9 @@ test_a_widget_in_a_cell_takes_its_own_press_and_leaves_the_row :: proc(t: ^testi
 
 	testing.expect(t, ui.probe_click(&p, "Bump b1"))
 	testing.expect_value(t, m.bumps, 1)
-	testing.expect_value(t, m.bumped, source_key(Source{}, 1))
-	testing.expect(t, !selected(&m.g.sel, source_key(Source{}, 1)), "the row stays unselected")
+	testing.expect_value(t, m.bumped, row_key("SN-1"))
+	testing.expect(t, !selected(&m.g.sel, row_key("SN-1")), "the row stays unselected")
 	testing.expect(t, ui.probe_click(&p, "SN-1"), "a press beside the button")
-	testing.expect(t, selected(&m.g.sel, source_key(Source{}, 1)), "selects the row")
+	testing.expect(t, selected(&m.g.sel, row_key("SN-1")), "selects the row")
 	testing.expect_value(t, m.bumps, 1)
 }

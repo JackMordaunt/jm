@@ -10,19 +10,19 @@ import "jm:ui/ops"
 
 // The widget through ui.Probe: scrolling, the sticky header, sorting,
 // resizing, moving and pinning columns, the keyboard, selection, copy,
-// groups, and a paged source's skeletons, pages and needs.
+// and a loading table's skeletons.
 
 @(private = "file")
 Rigs :: struct {
 	g:       Grid,
 	skin:    Skin,
 	rows:    [][4]string,
+	keyed:   []Page_Row, // rows, keyed by serial
+	heights: []f32, // 20, 30 and 40px in turn, for a table of tall rows
+	table:   Memory_Table,
 	ev:      Events,
 	events:  [dynamic]Events,
-	paged:   ^Paging,
 	label:   string,
-	loading: bool,
-	tall:    bool, // rows of their own heights: 20, 30 and 40px in turn
 }
 
 @(private = "file")
@@ -37,9 +37,11 @@ RIG_COLS := []Column {
 SITES := []string{"Norway", "Paraguay", "Wisconsin"}
 
 @(private = "file")
-rigs_make :: proc(n: int, paged: ^Paging = nil) -> ^Rigs {
+rigs_make :: proc(n: int) -> ^Rigs {
 	m := new(Rigs)
 	m.rows = make([][4]string, n)
+	m.keyed = make([]Page_Row, n)
+	m.heights = make([]f32, n)
 	for i in 0 ..< n {
 		m.rows[i] = {
 			fmt.aprintf("SN-%05d", i),
@@ -47,9 +49,11 @@ rigs_make :: proc(n: int, paged: ^Paging = nil) -> ^Rigs {
 			SITES[i % 3],
 			fmt.aprintf("%d", (i * 37) % 100),
 		}
+		m.keyed[i] = {m.rows[i][0], m.rows[i][:]}
+		m.heights[i] = f32(20 + 10 * (i % 3))
 	}
-	m.paged = paged
-	grid_init(&m.g, RIG_COLS, paged)
+	memory_table_init(&m.table, RIG_COLS, m.keyed)
+	grid_init(&m.g, RIG_COLS)
 	m.skin.style = DEFAULT_STYLE
 	m.events = make([dynamic]Events)
 	return m
@@ -58,6 +62,9 @@ rigs_make :: proc(n: int, paged: ^Paging = nil) -> ^Rigs {
 @(private = "file")
 rigs_free :: proc(m: ^Rigs) {
 	grid_destroy(&m.g)
+	memory_table_destroy(&m.table)
+	delete(m.keyed)
+	delete(m.heights)
 	for r in m.rows {
 		delete(r[0])
 		delete(r[1])
@@ -68,31 +75,16 @@ rigs_free :: proc(m: ^Rigs) {
 	free(m)
 }
 
+// rig is the key of the rig serial-numbered i.
 @(private = "file")
-rigs_source :: proc(m: ^Rigs) -> Source {
-	text   :: proc(user: rawptr, row, col: int) -> string {
-		return (^Rigs)(user).rows[row][col]
-	}
-	height :: proc(user: rawptr, row: int) -> f32 {
-		return f32(20 + 10 * (row % 3))
-	}
-	src := Source {
-		user    = m,
-		rows    = len(m.rows),
-		text    = text,
-		paged   = m.paged,
-		loading = m.loading,
-	}
-	if m.tall {
-		src.height = height
-	}
-	return src
+rig :: proc(i: int) -> Row_Key {
+	return row_key(fmt.tprintf("SN-%05d", i))
 }
 
 @(private = "file")
 rigs_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Rigs)(user)
-	m.ev = grid(gtx, &m.g, RIG_COLS, rigs_source(m), &m.skin, m.label if m.label != "" else "Rigs")
+	m.ev = grid(gtx, &m.g, RIG_COLS, &m.table, &m.skin, m.label if m.label != "" else "Rigs")
 	append(&m.events, m.ev)
 }
 
@@ -169,11 +161,11 @@ test_a_header_click_sorts_and_shift_adds_a_column :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Hash"))
 	testing.expect_value(t, len(m.g.view.sort), 1)
 	testing.expect_value(t, m.g.view.sort[0], Sort_Key{3, false})
-	first := m.rows[m.g.order.rows[0]][3]
+	first := m.rows[m.table.order.rows[0]][3]
 	testing.expect_value(t, first, "0")
 	ui.probe_click(&p, "Hash")
 	testing.expect(t, m.g.view.sort[0].desc)
-	testing.expect_value(t, m.rows[m.g.order.rows[0]][3], "99")
+	testing.expect_value(t, m.rows[m.table.order.rows[0]][3], "99")
 	// Shift adds the site as a second key.
 	c, _ := ui.probe_center(&p, "Site")
 	ui.router_push(&p.router, {kind = .Move, pos = c})
@@ -276,7 +268,7 @@ test_the_keyboard_walks_cells_pages_and_ends :: proc(t: ^testing.T) {
 	testing.expect_value(t, m.g.cursor.item, 2)
 	ui.probe_key(&p, .Down)
 	ui.probe_key(&p, .Right)
-	testing.expect_value(t, m.g.cursor, Cell_At{3, 1, 3})
+	testing.expect_value(t, m.g.cursor, Cell_At{3, 1, row_key("SN-00003")})
 	ui.probe_key(&p, .End)
 	testing.expect_value(t, m.g.cursor.col, 3)
 	ui.probe_key(&p, .Home)
@@ -309,7 +301,7 @@ test_clicks_select_alone_toggle_and_range_and_survive_a_sort :: proc(t: ^testing
 	open(&p, m)
 	defer ui.probe_destroy(&p)
 	ui.probe_click(&p, "SN-00002")
-	testing.expect(t, selected(&m.g.sel, 2))
+	testing.expect(t, selected(&m.g.sel, rig(2)))
 	c, _ := ui.probe_center(&p, "SN-00005")
 	ui.router_push(
 		&p.router,
@@ -331,16 +323,16 @@ test_clicks_select_alone_toggle_and_range_and_survive_a_sort :: proc(t: ^testing
 	ui.probe_key(&p, .Down, {.Shift})
 	testing.expect(
 		t,
-		selected(&m.g.sel, 9) && selected(&m.g.sel, 2),
+		selected(&m.g.sel, rig(9)) && selected(&m.g.sel, rig(2)),
 		"Shift+Down extends from the anchor",
 	)
 	ui.probe_key(&p, .Space)
-	testing.expect(t, !selected(&m.g.sel, 9))
+	testing.expect(t, !selected(&m.g.sel, rig(9)))
 	view_sort_cycle(&m.g.view, 3, false)
 	ui.probe_frame(&p)
 	testing.expect(
 		t,
-		selected(&m.g.sel, 2) && selected(&m.g.sel, 8),
+		selected(&m.g.sel, rig(2)) && selected(&m.g.sel, rig(8)),
 		"kept by key through the sort",
 	)
 	ui.probe_key(&p, .A, {ui.SHORTCUT})
@@ -382,7 +374,7 @@ test_an_export_writes_the_view_as_csv :: proc(t: ^testing.T) {
 	p: ui.Probe
 	open(&p, m)
 	defer ui.probe_destroy(&p)
-	export_start(&m.g, RIG_COLS, rigs_source(m))
+	export_start(&m.g, RIG_COLS, &m.table)
 	ui.probe_frame(&p)
 	w, total := export_progress(&m.g)
 	testing.expect_value(t, w, EXPORT_CHUNK)
@@ -424,7 +416,7 @@ test_a_steady_frame_allocates_nothing :: proc(t: ^testing.T) {
 	open(&p, m)
 	defer ui.probe_destroy(&p)
 	focus_on(&p, "Serial") // the cursor's ring, the focus ring; and a sort, built over frames
-	for frames := 0; m.g.build.target != 0 && frames < 1000; frames += 1 {
+	for frames := 0; m.table.target != 0 && frames < 1000; frames += 1 {
 		ui.probe_frame(&p)
 	}
 	ui.probe_frame(&p)
@@ -483,7 +475,7 @@ spy_proc :: proc(
 test_a_loading_source_shows_skeletons_after_its_rows :: proc(t: ^testing.T) {
 	m := rigs_make(3)
 	defer rigs_free(m)
-	m.loading = true
+	m.table.loading = true
 	p: ui.Probe
 	open(&p, m)
 	defer ui.probe_destroy(&p)
@@ -491,7 +483,7 @@ test_a_loading_source_shows_skeletons_after_its_rows :: proc(t: ^testing.T) {
 	said := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, strings.contains(said, `row "" row 5 busy`), said) // item 3, after the rows
 	testing.expect_value(t, cells(&p), 3 * 4)
-	m.loading = false
+	m.table.loading = false
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.g.geo.items, 3)
 	testing.expect_value(t, heights_total(&m.g.heights), 3 * 33)
@@ -507,7 +499,7 @@ test_export_all_writes_the_view_at_once_and_reset_puts_columns_back :: proc(t: ^
 	p: ui.Probe
 	open(&p, m)
 	defer ui.probe_destroy(&p)
-	testing.expect(t, export_all(&m.g, RIG_COLS, rigs_source(m)))
+	testing.expect(t, export_all(&m.g, RIG_COLS, &m.table))
 	text := strings.to_string(m.g.export.text)
 	testing.expect(
 		t,
@@ -546,7 +538,7 @@ test_a_skin_slot_lays_out_in_its_cell :: proc(t: ^testing.T) {
 test_rows_of_their_own_heights_stand_where_they_add_up :: proc(t: ^testing.T) {
 	m := rigs_make(30_000)
 	defer rigs_free(m)
-	m.tall = true
+	m.table.heights = m.heights
 	p: ui.Probe
 	open(&p, m)
 	defer ui.probe_destroy(&p)
@@ -574,7 +566,7 @@ test_a_grid_takes_the_share_a_column_offers :: proc(t: ^testing.T) {
 		defer ui.close(&col)
 		ui.spacer(gtx, 60)
 		ui.flexible(gtx, 1)
-		grid(gtx, &m.g, RIG_COLS, rigs_source(m), &m.skin, "Rigs")
+		grid(gtx, &m.g, RIG_COLS, &m.table, &m.skin, "Rigs")
 	}
 	p: ui.Probe
 	ui.probe_init(&p, view, m, {600, 400})
@@ -593,39 +585,38 @@ test_a_big_sort_builds_over_frames_drawing_the_old_order_stale :: proc(t: ^testi
 	p: ui.Probe
 	open(&p, m)
 	defer ui.probe_destroy(&p)
-	src := rigs_source(m)
+	src := Rows(&m.table)
 	view_sort_cycle(&m.g.view, 3, false)
 	view_sort_cycle(&m.g.view, 3, false) // descending
 	ui.probe_frame(&p)
-	testing.expect(t, m.g.build.target != 0, "still building")
+	testing.expect(t, m.table.target != 0, "still building")
 	testing.expect(t, p.wants_frame, "a frame is asked for to go on")
 	testing.expect_value(t, item_at(&m.g, src, 0).state, Row_State.Stale)
 	testing.expect(t, ui.probe_tagged(&p, "SN-00000"), "the old order, drawn")
 	frames := 0
-	for ; m.g.build.target != 0 && frames < 1000; frames += 1 {
+	for ; m.table.target != 0 && frames < 1000; frames += 1 {
 		ui.probe_frame(&p)
 	}
 	testing.expect(t, frames > 5, "many frames")
 	testing.expect_value(t, item_at(&m.g, src, 0).state, Row_State.Ready)
-	testing.expect_value(t, m.rows[m.g.order.rows[0]][3], "99")
+	testing.expect_value(t, m.rows[m.table.order.rows[0]][3], "99")
 	testing.expect(t, ui.probe_tagged(&p, "SN-00027")) // the first row hashing 99
 
 	view_sort_cycle(&m.g.view, 0, false)
 	ui.probe_frame(&p)
-	testing.expect(t, m.g.build.target != 0)
+	testing.expect(t, m.table.target != 0)
 	view_sort_cycle(&m.g.view, 3, false)
 	view_sort_cycle(&m.g.view, 3, false) // the descending hash sort again
 	ui.probe_frame(&p)
-	testing.expect_value(t, m.g.build.target, u64(0))
+	testing.expect_value(t, m.table.target, u64(0))
 	testing.expect_value(t, item_at(&m.g, src, 0).state, Row_State.Ready)
 
 	view_sort_cycle(&m.g.view, 0, false)
 	ui.probe_frame(&p)
-	all := m.rows
-	m.rows = all[:4000] // fewer rows: built at once, naming none that are gone
+	// Fewer rows: built at once, naming none that are gone.
+	memory_table_changed(&m.table, m.keyed[:4000])
 	ui.probe_frame(&p)
-	testing.expect_value(t, m.g.build.target, u64(0))
-	testing.expect_value(t, len(m.g.order.rows), 4000)
-	testing.expect_value(t, m.rows[m.g.order.rows[0]][0], "SN-00000")
-	m.rows = all
+	testing.expect_value(t, m.table.target, u64(0))
+	testing.expect_value(t, len(m.table.order.rows), 4000)
+	testing.expect_value(t, m.rows[m.table.order.rows[0]][0], "SN-00000")
 }

@@ -4,18 +4,16 @@ import "core:mem"
 import "core:strings"
 
 // Row_Key names a row whatever its place: the order changes with a sort,
-// a filter or a page arriving, and what is selected must not. A client
-// source gives one per row; a paged row's key is the hash of the string
-// key its page carries (row_key).
+// a filter or a page arriving, and what is selected must not. It is the
+// hash of the row's own key string (row_key), a table's or a page's.
 Row_Key :: distinct u64
 
 // Selection is the selected rows, by key. Explicit, keys are the rows
 // selected. all selects every row that matches the filters and search of
 // match (a hash of them; see match_hash), keys then being the rows taken
-// back out of it: in a paged grid, "all matching" names rows that were
-// never loaded. A key's string is a paged row's own key, so the caller
-// can act on rows that have scrolled out of the cache; a client row's
-// string is "".
+// back out of it: over a remote, "all matching" names rows that were
+// never loaded. Each key keeps its row's key string, so the caller can
+// act on rows that have scrolled out of a remote's cache.
 //
 // anchor is where a Shift range starts, and base the selection as it
 // stood when the anchor was set, so a second Shift click replaces the

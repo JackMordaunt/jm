@@ -258,6 +258,8 @@ Files_Grid :: struct {
 	ready: bool,
 	g:     datagrid.Grid,
 	cells: [][4]string,
+	rows:  []datagrid.Page_Row,
+	table: datagrid.Memory_Table,
 }
 
 FILE_COLUMNS := [?]datagrid.Column {
@@ -280,14 +282,13 @@ page_data_grid :: proc(gtx: ^ui.Ctx, m: ^Model) {
 				fmt.aprintf("%d KB", (i * 37) % 9000),
 			}
 		}
+		f.rows = datagrid.rows_of(f.cells, 0)
+		datagrid.memory_table_init(&f.table, FILE_COLUMNS[:], f.rows)
 		datagrid.grid_init(&f.g, FILE_COLUMNS[:])
 	}
 	ui.column(gtx, gap = 10, align = .Fill)
 	kitchen.section(gtx, "Ten thousand files", "the datagrid core in the Table's look: 44px rows, Subtle hover, a header that sorts with an arrow; Shift adds a key, arrows walk the cells")
 	ui.sized(gtx, {min = {0, 480}, max = {ui.INF, 480}})
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Files_Grid)(user).cells[row][col]
-	}
 	skin := fluent.data_grid_skin(gtx, &f.g)
-	datagrid.grid(gtx, &f.g, FILE_COLUMNS[:], {user = f, rows = len(f.cells), text = text}, &skin, "Files")
+	datagrid.grid(gtx, &f.g, FILE_COLUMNS[:], &f.table, &skin, "Files")
 }

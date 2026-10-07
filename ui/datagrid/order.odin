@@ -3,8 +3,8 @@ package datagrid
 import "core:slice"
 import "core:time"
 
-// A client grid's order: the rows its query keeps, sorted. A
-// query change on rows that stay the same is built a slice at a time, so
+// A table's order: the rows its query keeps, sorted. A query change on
+// rows that stay the same is built a slice at a time (memory_table_step), so
 // a sort, a filter or a search keystroke over 100,000 rows costs a frame
 // no more than ORDER_BUDGET; the grid draws the order it had, stale,
 // until the new one is whole. An order_build does the whole job at once.
@@ -17,16 +17,15 @@ ORDER_BUDGET :: 4 * time.Millisecond
 @(private)
 ORDER_CHUNK :: 512
 
-// Order is a client grid's rows as its query shows them: rows, the
+// Order is a table's rows as its query shows them: rows, the
 // matching rows' indices in order. The rest is a build's scratch, kept
 // for its capacity.
 Order :: struct {
-	rows:      [dynamic]int,
-	key_nums:  [dynamic][dynamic]f64, // per sort key, each row's value
-	key_ok:    [dynamic][dynamic]bool,
-	key_bytes: [dynamic][dynamic]u8, // per sort key, each row's text end to end
-	key_spans: [dynamic][dynamic][2]u32, // where each row's text lies in key_bytes
-	pos, tmp:  [dynamic]i32, // the merge sort's two buffers of positions
+	rows:     [dynamic]int,
+	key_nums: [dynamic][dynamic]f64, // per sort key, each row's value
+	key_ok:   [dynamic][dynamic]bool,
+	key_text: [dynamic][dynamic]string, // per sort key, each row's text
+	pos, tmp: [dynamic]i32, // the merge sort's two buffers of positions
 }
 
 order_destroy :: proc(o: ^Order) {
@@ -34,13 +33,11 @@ order_destroy :: proc(o: ^Order) {
 	for ki in 0 ..< len(o.key_nums) {
 		delete(o.key_nums[ki])
 		delete(o.key_ok[ki])
-		delete(o.key_bytes[ki])
-		delete(o.key_spans[ki])
+		delete(o.key_text[ki])
 	}
 	delete(o.key_nums)
 	delete(o.key_ok)
-	delete(o.key_bytes)
-	delete(o.key_spans)
+	delete(o.key_text)
 	delete(o.pos)
 	delete(o.tmp)
 	o^ = {}
@@ -66,13 +63,13 @@ Order_Phase :: enum u8 {
 	Done,
 }
 
-// order_build fills o with the rows of src that q matches, sorted by q's
-// sort (stably: rows that tie keep their source order). It reads each
-// sorted cell once.
-order_build :: proc(o: ^Order, src: Source, q: Query) {
+// order_build fills o with the indices of the rows that q matches,
+// sorted by q's sort (stably: rows that tie keep their order in rows). It
+// reads each sorted cell once.
+order_build :: proc(o: ^Order, rows: []Page_Row, q: Query) {
 	job: Order_Job
 	order_start(&job, o)
-	order_step(&job, o, src, q, {})
+	order_step(&job, o, rows, q, {})
 }
 
 // order_start readies job to build o from the beginning.
@@ -86,7 +83,7 @@ order_start :: proc(job: ^Order_Job, o: ^Order) {
 order_step :: proc(
 	job: ^Order_Job,
 	o: ^Order,
-	src: Source,
+	rows: []Page_Row,
 	q: Query,
 	deadline: time.Tick,
 ) -> bool {
@@ -95,9 +92,9 @@ order_step :: proc(
 		finished: bool
 		switch job.phase {
 		case .Filter:
-			finished = filter_step(job, o, src, q, deadline)
+			finished = filter_step(job, o, rows, q, deadline)
 		case .Keys:
-			finished = len(keys) == 0 || keys_step(job, o, src, q.cols, keys, deadline)
+			finished = len(keys) == 0 || keys_step(job, o, rows, q.cols, keys, deadline)
 		case .Sort:
 			finished = len(keys) == 0 || sort_step(job, o, sorting(o, q.cols, keys), deadline)
 		case .Done:
@@ -122,16 +119,16 @@ past :: proc(deadline: time.Tick) -> bool {
 filter_step :: proc(
 	job: ^Order_Job,
 	o: ^Order,
-	src: Source,
+	rows: []Page_Row,
 	q: Query,
 	deadline: time.Tick,
 ) -> bool {
 	sets := filter_sets(q.filters)
-	n := max(src.rows, 0)
+	n := len(rows)
 	for job.at < n {
 		end := min(job.at + ORDER_CHUNK, n)
 		for r in job.at ..< end {
-			if row_matches(src, q, sets, r) {
+			if row_matches(rows, q, sets, r) {
 				append(&o.rows, r)
 			}
 		}
@@ -143,14 +140,13 @@ filter_step :: proc(
 	return true
 }
 
-
 // keys_step reads each sort key's cells for the kept rows into o's key
-// arrays, a text copied so it outlives the frame its source made it in.
+// arrays; a text is the row's own, which outlives the build.
 @(private)
 keys_step :: proc(
 	job: ^Order_Job,
 	o: ^Order,
-	src: Source,
+	rows: []Page_Row,
 	cols: []Column,
 	keys: []Sort_Key,
 	deadline: time.Tick,
@@ -158,8 +154,7 @@ keys_step :: proc(
 	for len(o.key_nums) < len(keys) {
 		append(&o.key_nums, [dynamic]f64{})
 		append(&o.key_ok, [dynamic]bool{})
-		append(&o.key_bytes, [dynamic]u8{})
-		append(&o.key_spans, [dynamic][2]u32{})
+		append(&o.key_text, [dynamic]string{})
 	}
 	n := len(o.rows)
 	for job.key < len(keys) {
@@ -170,7 +165,7 @@ keys_step :: proc(
 		}
 		for job.at < n {
 			end := min(job.at + ORDER_CHUNK, n)
-			key_fill(o, src, kind, col, ki, job.at, end)
+			key_fill(o, rows, kind, col, ki, job.at, end)
 			job.at = end
 			if job.at < n && past(deadline) {
 				return false
@@ -189,8 +184,7 @@ keys_step :: proc(
 @(private)
 key_reset :: proc(o: ^Order, ki: int, kind: Value_Kind, n: int) {
 	if kind == .Text {
-		clear(&o.key_bytes[ki])
-		clear(&o.key_spans[ki])
+		resize(&o.key_text[ki], n)
 		return
 	}
 	resize(&o.key_nums[ki], n)
@@ -199,18 +193,15 @@ key_reset :: proc(o: ^Order, ki: int, kind: Value_Kind, n: int) {
 
 // key_fill reads key ki's column for the kept rows from lo to hi.
 @(private)
-key_fill :: proc(o: ^Order, src: Source, kind: Value_Kind, col, ki, lo, hi: int) {
+key_fill :: proc(o: ^Order, rows: []Page_Row, kind: Value_Kind, col, ki, lo, hi: int) {
 	if kind != .Text {
 		for i in lo ..< hi {
-			o.key_nums[ki][i], o.key_ok[ki][i] = source_value(src, kind, o.rows[i], col)
+			o.key_nums[ki][i], o.key_ok[ki][i] = row_value(rows, kind, o.rows[i], col)
 		}
 		return
 	}
-	bytes := &o.key_bytes[ki]
 	for i in lo ..< hi {
-		start := u32(len(bytes))
-		append(bytes, source_text(src, o.rows[i], col))
-		append(&o.key_spans[ki], [2]u32{start, u32(len(bytes))})
+		o.key_text[ki][i] = row_text(rows, o.rows[i], col)
 	}
 }
 
@@ -221,8 +212,7 @@ Sorting :: struct {
 	keys:  []Sort_Key,
 	nums:  [][dynamic]f64,
 	ok:    [][dynamic]bool,
-	bytes: [][dynamic]u8,
-	spans: [][dynamic][2]u32,
+	texts: [][dynamic]string,
 	text:  []bool, // per key: compare text, not numbers
 }
 
@@ -233,8 +223,7 @@ sorting :: proc(o: ^Order, cols: []Column, keys: []Sort_Key) -> Sorting {
 		keys  = keys,
 		nums  = o.key_nums[:len(keys)],
 		ok    = o.key_ok[:len(keys)],
-		bytes = o.key_bytes[:len(keys)],
-		spans = o.key_spans[:len(keys)],
+		texts = o.key_text[:len(keys)],
 		text  = make([]bool, len(keys), context.temp_allocator),
 	}
 	for k, ki in keys {
@@ -336,8 +325,7 @@ compare_positions :: proc(a, b: i32, s: ^Sorting) -> slice.Ordering {
 @(private)
 compare_key :: proc(s: ^Sorting, ki: int, a, b: i32) -> (c: int, blank: bool) {
 	if s.text[ki] {
-		sa, sb := s.spans[ki][a], s.spans[ki][b]
-		ta, tb := string(s.bytes[ki][sa[0]:sa[1]]), string(s.bytes[ki][sb[0]:sb[1]])
+		ta, tb := s.texts[ki][a], s.texts[ki][b]
 		return compare_natural(ta, tb), (ta == "") != (tb == "")
 	}
 	na, nb := s.nums[ki][a], s.nums[ki][b]

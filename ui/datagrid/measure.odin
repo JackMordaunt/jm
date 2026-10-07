@@ -4,10 +4,10 @@ import "jm:ui"
 import "jm:ui/ops"
 
 // Auto widths: a column sized Auto or Grow is as wide as its widest cell,
-// sampled. A client grid samples MEASURE_SAMPLE rows spread through all
-// its rows when they change (not when they are sorted or filtered, which
-// would make the columns jump as the user types a search); a paged grid
-// samples the rows it holds once its query's first page is in.
+// sampled. A table's grid samples MEASURE_SAMPLE rows spread through
+// all its rows when they change (not when they are sorted or filtered,
+// which would make the columns jump as the user types a search); a
+// remote's samples the rows it holds once its query's first page is in.
 
 // MEASURE_SAMPLE is the most rows a measure reads.
 MEASURE_SAMPLE :: 200
@@ -15,8 +15,8 @@ MEASURE_SAMPLE :: 200
 // measure sets every Auto and Grow column's measured width when what it
 // was measured for has changed.
 @(private)
-measure :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, skin: ^Skin) {
-	key := measure_key(g, src)
+measure :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Rows, skin: ^Skin) {
+	key := measure_key(src)
 	if key == 0 || key == g.measured {
 		return
 	}
@@ -28,17 +28,20 @@ measure :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, skin: ^Skin
 	}
 }
 
-// measure_key names what the widths would be measured for: a client
-// grid's data, a paged grid's query once a page of it is in; 0 when
-// there is nothing to measure yet.
+// measure_key names what the widths would be measured for: a table's
+// rows, a remote's query once a page of it is in; 0 when there is
+// nothing to measure yet.
 @(private)
-measure_key :: proc(g: ^Grid, src: Source) -> u64 {
-	if src.paged == nil {
-		return ui.fnv_u64(ui.fnv_u64(ui.FNV_OFFSET, src.version), u64(src.rows)) | 1
-	}
-	for e in g.pages.entries {
-		if e.query == g.pages.query && e.state == .Ready {
-			return g.pages.query | 1
+measure_key :: proc(src: Rows) -> u64 {
+	switch r in src {
+	case ^Memory_Table:
+		h := ui.fnv_u64(ui.fnv_u64(ui.FNV_OFFSET, u64(uintptr(r))), r.version)
+		return ui.fnv_u64(h, u64(len(r.rows))) | 1
+	case ^Remote_Rows:
+		for e in r.pages.entries {
+			if e.query == r.pages.query && e.state == .Ready {
+				return r.pages.query | 1
+			}
 		}
 	}
 	return 0
@@ -50,7 +53,7 @@ fit_width :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	skin: ^Skin,
 	col: int,
 ) -> f32 {
@@ -65,13 +68,15 @@ fit_width :: proc(
 		cols[col].title,
 	)
 	w := title + st.header_extra
-	switch {
-	case cols[col].row_number:
+	if cols[col].row_number {
 		w = max(w, measure_text(gtx, font, size, "0") * f32(digit_count(g.geo.items)))
-	case src.paged == nil:
-		w = max(w, sample_client(gtx, src, font, size, col))
-	case:
-		w = max(w, sample_pages(gtx, g, font, size, col))
+	} else {
+		switch r in src {
+		case ^Memory_Table:
+			w = max(w, sample_table(gtx, r.rows, font, size, col))
+		case ^Remote_Rows:
+			w = max(w, sample_pages(gtx, &r.pages, font, size, col))
+		}
 	}
 	return w + 2 * st.pad + cols[col].extra
 }
@@ -86,16 +91,22 @@ digit_count :: proc(n: int) -> int {
 	return digits
 }
 
-// sample_client measures the first rows, which show first, and then rows
+// sample_table measures the first rows, which show first, and then rows
 // spread through the rest by a golden-ratio stride, which no period in
 // the data lines up with as a fixed stride can.
 @(private)
-sample_client :: proc(gtx: ^ui.Ctx, src: Source, font: ops.Font_Id, size: f32, col: int) -> f32 {
-	n := max(src.rows, 0)
+sample_table :: proc(
+	gtx: ^ui.Ctx,
+	rows: []Page_Row,
+	font: ops.Font_Id,
+	size: f32,
+	col: int,
+) -> f32 {
+	n := len(rows)
 	w: f32
 	head := min(n, MEASURE_SAMPLE / 4)
 	for r in 0 ..< head {
-		w = max(w, measure_text(gtx, font, size, source_text(src, r, col)))
+		w = max(w, measure_text(gtx, font, size, row_text(rows, r, col)))
 	}
 	if n <= head {
 		return w
@@ -104,17 +115,17 @@ sample_client :: proc(gtx: ^ui.Ctx, src: Source, font: ops.Font_Id, size: f32, c
 	for _ in head ..< min(n, MEASURE_SAMPLE) {
 		at += 0x9E3779B97F4A7C15
 		r := int((at >> 11) % u64(n))
-		w = max(w, measure_text(gtx, font, size, source_text(src, r, col)))
+		w = max(w, measure_text(gtx, font, size, row_text(rows, r, col)))
 	}
 	return w
 }
 
 @(private)
-sample_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, font: ops.Font_Id, size: f32, col: int) -> f32 {
+sample_pages :: proc(gtx: ^ui.Ctx, p: ^Pages, font: ops.Font_Id, size: f32, col: int) -> f32 {
 	w: f32
 	seen := 0
-	for e in g.pages.entries {
-		if e.query != g.pages.query || e.state != .Ready {
+	for e in p.entries {
+		if e.query != p.query || e.state != .Ready {
 			continue
 		}
 		for r in e.rows {

@@ -11,9 +11,10 @@ import "jm:ui/ops"
 // Grid is a data grid's state, the caller's to keep for the grid's life
 // (grid_init, grid_destroy): the user's view of the columns and query,
 // the selection, the keyboard's cell, the scroll, and what the grid
-// keeps to draw fast (the client order, the row heights, the page cache,
-// the shaped text). Everything the user arranges is in view, which a
-// saved view is made of; the rest is the grid's own.
+// keeps to draw fast (the row heights, the shaped text). Everything the
+// user arranges is in view, which a saved view is made of; the rest is
+// the grid's own. The rows themselves, ordered or paged, are the Rows
+// the caller passes each frame.
 Grid :: struct {
 	view:       View,
 	sel:        Selection,
@@ -31,13 +32,11 @@ Grid :: struct {
 	export:     Export,
 	filter_at:  int, // the column whose filter a skin shows open, -1 for none
 	// What the grid keeps to draw.
-	order:      Order,
 	build:      Order_Build,
 	heights:    Heights,
 	place:      Placement,
-	pages:      Pages,
 	text:       Text_Cache,
-	built:      u64, // what order and heights were built for
+	rebuild:    bool, // the columns changed: a table's order is built again, at once
 	match:      u64, // the view's match hash, as of the last frame
 	query:      u64, // its order hash
 	measured:   u64, // what the Auto widths were measured for
@@ -49,15 +48,11 @@ Grid :: struct {
 	allocator:  mem.Allocator,
 }
 
-// Order_Build is a client grid's next order, built a slice a frame while
-// the last one is drawn, stale: after a change to the query, not to the
-// rows, which are built at once so the order never names a row that is
-// gone.
+// Order_Build is the grid's side of a table's next order, which the
+// table builds a slice a frame while the last one is drawn, stale: the
+// frame's deadline, so every grid call in a frame shares one budget, and
+// whether the scroll is anchored once the order is built.
 Order_Build :: struct {
-	next:     Order,
-	job:      Order_Job,
-	target:   u64, // the built hash next is for, 0 when nothing is building
-	data:     u64, // the rows order was built from: their version, count and loading
 	frame:    u64, // grid calls so far
 	stepped:  u64, // the frame deadline is for, plus one
 	deadline: time.Tick, // when this frame stops building
@@ -143,8 +138,8 @@ Events :: struct {
 	exported:     bool,
 }
 
-// Row_Ref names a row: where it stands, its client index (-1 for a
-// paged row), its key and a paged row's own key string.
+// Row_Ref names a row: where it stands, its index in a table's rows (-1
+// for a remote row), its key and the key string it was made from.
 Row_Ref :: struct {
 	item: int,
 	row:  int,
@@ -152,20 +147,12 @@ Row_Ref :: struct {
 	name: string,
 }
 
-// grid_init readies g for columns, the source's paging settings when it
-// is paged. allocator holds everything g keeps.
-grid_init :: proc(
-	g: ^Grid,
-	columns: []Column,
-	paged: ^Paging = nil,
-	allocator := context.allocator,
-) {
+// grid_init readies g for columns. allocator holds everything g keeps.
+grid_init :: proc(g: ^Grid, columns: []Column, allocator := context.allocator) {
 	g.allocator = allocator
 	view_init(&g.view, columns, allocator)
 	selection_init(&g.sel, allocator)
 	text_cache_init(&g.text, allocator)
-	g.order.rows = make([dynamic]int, allocator)
-	g.build.next.rows = make([dynamic]int, allocator)
 	g.place.places = make([dynamic]Place, allocator)
 	g.visible = make([dynamic]int, allocator)
 	g.ids = make([dynamic]string, allocator)
@@ -180,9 +167,6 @@ grid_init :: proc(
 		col  = -1,
 	}
 	g.export.text.buf.allocator = allocator
-	if paged != nil {
-		pages_init(&g.pages, paged^, allocator)
-	}
 }
 
 grid_destroy :: proc(g: ^Grid) {
@@ -190,13 +174,8 @@ grid_destroy :: proc(g: ^Grid) {
 	view_destroy(&g.view)
 	selection_destroy(&g.sel)
 	text_cache_destroy(&g.text, g.allocator)
-	order_destroy(&g.order)
-	order_destroy(&g.build.next)
 	heights_destroy(&g.heights)
 	placement_destroy(&g.place)
-	if g.pages.entries != nil {
-		pages_destroy(&g.pages)
-	}
 	export_destroy(&g.export)
 	for id in g.ids {
 		delete(id, g.allocator)
@@ -208,7 +187,8 @@ grid_destroy :: proc(g: ^Grid) {
 	g^ = {}
 }
 
-// grid is a data grid of columns over src's rows, dressed by skin, label
+// grid is a data grid of columns over the rows src holds or asks for,
+// dressed by skin, label
 // naming it to assistive technology. It fills the room it is offered, a
 // sticky header over virtualised rows; with no bound on its height it is
 // twenty rows tall. Call it every frame with the same g; it returns what
@@ -217,7 +197,7 @@ grid :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	columns: []Column,
-	src: Source,
+	src: Rows,
 	skin: ^Skin,
 	label := "",
 	key: u64 = 0,
@@ -239,7 +219,7 @@ grid :: proc(
 	// not a frame late.
 	update_query(g, columns, src, skin, &ev)
 	geometry(g, columns, src, skin, size)
-	if src.paged != nil && want_pages(gtx, g, columns, src) {
+	if r, ok := src.(^Remote_Rows); ok && want_pages(gtx, g, columns, r) {
 		// The pages that came moved the count: the rows are laid out
 		// again, so this frame draws them where the next one will.
 		geometry(g, columns, src, skin, size)
@@ -247,7 +227,7 @@ grid :: proc(
 	export_step(gtx, g, columns, src, &ev)
 	paint(gtx, g, columns, src, skin, id, label)
 	g.build.frame += 1
-	if g.build.target != 0 {
+	if rows_building(src) {
 		ui.request_frame(gtx)
 	}
 	return
@@ -257,7 +237,7 @@ grid :: proc(
 // grid call, which does it again at no cost when nothing changed since:
 // for a skin's toolbar, laid out above the grid, to count the rows the
 // grid will show this frame.
-grid_sync :: proc(g: ^Grid, columns: []Column, src: Source, skin: ^Skin) {
+grid_sync :: proc(g: ^Grid, columns: []Column, src: Rows, skin: ^Skin) {
 	ev: Events
 	sync_columns(g, columns)
 	update_query(g, columns, src, skin, &ev)
@@ -305,7 +285,7 @@ sync_columns :: proc(g: ^Grid, columns: []Column) {
 	for c in columns {
 		append(&g.ids, clone_to(c.id, g.allocator))
 	}
-	g.built, g.measured = 0, 0
+	g.rebuild, g.measured = true, 0
 }
 
 // same_ids reports whether columns are the columns ids names, in order.
@@ -322,11 +302,11 @@ same_ids :: proc(ids: []string, columns: []Column) -> bool {
 	return true
 }
 
-// update_query hashes the view's query and, when it or the data changed,
-// rebuilds the client order or starts the paged query over, keeping the
-// selection by key and the scroll by the anchor policy.
+// update_query hashes the view's query and, when it or the rows changed,
+// orders a table's rows again or starts a remote's query over, keeping
+// the selection by key and the scroll by the anchor policy.
 @(private)
-update_query :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, ev: ^Events) {
+update_query :: proc(g: ^Grid, cols: []Column, src: Rows, skin: ^Skin, ev: ^Events) {
 	q := view_query(&g.view, cols, &g.visible)
 	match, query := match_hash(q), order_hash(q)
 	changed := query != g.query
@@ -335,54 +315,31 @@ update_query :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, ev: ^Ev
 		ev.selection = true
 	}
 	g.match, g.query = match, query
-	if src.paged != nil {
-		if pages_query(&g.pages, query) {
+	switch r in src {
+	case ^Remote_Rows:
+		if pages_query(&r.pages, query) {
 			changed = true
 		}
-		g.geo.items = max(g.pages.count, 0)
-	} else {
-		data := ui.fnv_u64(ui.fnv_u64(src.version, u64(src.rows)), u64(src.loading))
-		built := ui.fnv_u64(query, data)
-		if built == g.built {
-			g.build.target = 0 // back to the order drawn: what was building is not wanted
-		} else if !order_update(g, src, q, built, data, skin) && changed {
+	case ^Memory_Table:
+		if g.rebuild {
+			r.built, g.rebuild = 0, false
+		}
+		done, swapped := memory_table_step(r, q, build_deadline(&g.build))
+		if swapped {
+			size_rows(g, r, skin)
+		}
+		if !done && changed {
 			g.build.anchor = true
 			changed = false
+		} else if swapped && g.build.anchor {
+			g.build.anchor = false
+			changed = true
 		}
-		g.geo.items = len(g.order.rows)
 	}
+	g.geo.items, _, _ = rows_count(src)
 	if changed {
 		anchor_scroll(g, src)
 	}
-}
-
-// order_update builds the client order for built, over rows named data:
-// at once on the first frame or when the rows changed, else a slice this
-// frame, false while it is unfinished.
-@(private)
-order_update :: proc(g: ^Grid, src: Source, q: Query, built, data: u64, skin: ^Skin) -> bool {
-	b := &g.build
-	if g.built == 0 || data != b.data {
-		b.target, b.data = 0, data
-		order_build(&g.order, src, q)
-	} else {
-		if b.target != built {
-			b.target = built
-			order_start(&b.job, &b.next)
-		}
-		if !order_step(&b.job, &b.next, src, q, build_deadline(b)) {
-			return false
-		}
-		g.order, b.next = b.next, g.order
-		b.target = 0
-	}
-	g.built = built
-	size_rows(g, src, skin)
-	if b.anchor {
-		b.anchor = false
-		anchor_scroll(g, src)
-	}
-	return true
 }
 
 // build_deadline is when this frame's building stops: a budget after the
@@ -399,33 +356,22 @@ build_deadline :: proc(b: ^Order_Build) -> time.Tick {
 
 
 // keep_selection turns a select-all made under another match into the
-// rows it covered: for a client grid every row the old order held, for a
-// paged one the rows loaded.
+// rows it covered: every row a table's old order held, the rows a remote
+// has loaded.
 @(private)
-keep_selection :: proc(g: ^Grid, src: Source, match: u64) {
+keep_selection :: proc(g: ^Grid, src: Rows, match: u64) {
 	clear(&g.keys)
 	clear(&g.names)
-	if src.paged != nil {
-		for e in g.pages.entries {
-			for r in e.rows {
-				append(&g.keys, row_key(r.key))
-				append(&g.names, r.key)
-			}
-		}
-	} else {
-		for r in g.order.rows {
-			append(&g.keys, source_key(src, r))
-		}
-	}
+	rows_held(src, &g.keys, &g.names, false)
 	selection_settle(&g.sel, match, g.keys[:], g.names[:])
 }
 
 // anchor_scroll follows the policy for a new query: the rows scroll back
 // to the top, the keyboard's row to the first; or the keyboard's row is
-// found again and kept where it was on screen. A cursor on the header,
-// which sorted, stays there.
+// found again in a table's order and kept where it was on screen. A
+// cursor on the header, which sorted, stays there.
 @(private)
-anchor_scroll :: proc(g: ^Grid, src: Source) {
+anchor_scroll :: proc(g: ^Grid, src: Rows) {
 	g.anchor = {
 		item = -1,
 		col  = g.cursor.col,
@@ -434,8 +380,8 @@ anchor_scroll :: proc(g: ^Grid, src: Source) {
 		g.scroll.y = 0 if g.anchor_on == .Top else g.scroll.y
 		return
 	}
-	if g.anchor_on == .Cursor && src.paged == nil {
-		if at := item_of_key(g, src, g.cursor.key); at >= 0 {
+	if t, ok := src.(^Memory_Table); ok && g.anchor_on == .Cursor {
+		if at := item_of_key(t, g.cursor.key); at >= 0 {
 			screen := f32(heights_top(&g.heights, g.cursor.item)) - g.scroll.y
 			g.cursor.item = at
 			g.scroll.y = f32(heights_top(&g.heights, at)) - screen
@@ -447,55 +393,51 @@ anchor_scroll :: proc(g: ^Grid, src: Source) {
 	g.cursor.key = item_at(g, src, 0).key
 }
 
-// item_of_key is where the row keyed key stands in a client order, -1
-// when it is not there.
+// item_of_key is where the row keyed key stands in t's order, -1 when it
+// is not there.
 @(private)
-item_of_key :: proc(g: ^Grid, src: Source, key: Row_Key) -> int {
-	for r, i in g.order.rows {
-		if source_key(src, r) == key {
+item_of_key :: proc(t: ^Memory_Table, key: Row_Key) -> int {
+	for r, i in t.order.rows {
+		if row_key(t.rows[r].key) == key {
 			return i
 		}
 	}
 	return -1
 }
 
-// size_rows sizes the rows: uniform at the density, or per row when the
-// source gives each row its own.
+// size_rows sizes a table's rows: uniform at the density, or each its
+// own height when the table gives them.
 @(private)
-size_rows :: proc(g: ^Grid, src: Source, skin: ^Skin) {
-	rh := f64(row_height(&skin.style, g.density))
-	if src.height == nil {
-		heights_set_uniform(&g.heights, len(g.order.rows), rh)
+size_rows :: proc(g: ^Grid, t: ^Memory_Table, skin: ^Skin) {
+	if t.heights == nil {
+		heights_set_uniform(&g.heights, len(t.order.rows), f64(row_height(&skin.style, g.density)))
 		return
 	}
-	Ctx :: struct {
-		g:   ^Grid,
-		src: Source,
-	}
-	c := Ctx{g, src}
-	heights_build(&g.heights, len(g.order.rows), proc(user: rawptr, i: int) -> f64 {
-			c := (^Ctx)(user)
-			return f64(c.src.height(c.src.user, c.g.order.rows[i]))
-		}, &c)
+	heights_build(&g.heights, len(t.order.rows), proc(user: rawptr, i: int) -> f64 {
+			t := (^Memory_Table)(user)
+			return f64(t.heights[t.order.rows[i]])
+		}, t)
 }
 
 // geometry lays out this frame's parts: the columns, the regions, the
 // heights in paged mode, and the items in view.
 @(private)
-geometry :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, size: ops.Size) {
+geometry :: proc(g: ^Grid, cols: []Column, src: Rows, skin: ^Skin, size: ops.Size) {
 	geo := &g.geo
 	geo.size = size
 	geo.header_h = skin.style.header_height
 	geo.body = {0, geo.header_h, size.x, max(size.y - geo.header_h - foot_height(skin), 0)}
 	geo.row_h = row_height(&skin.style, g.density)
-	switch {
-	case src.paged != nil:
-		geo.items = max(g.pages.count, 0)
+	switch r in src {
+	case ^Remote_Rows:
+		geo.items = max(r.pages.count, 0)
 		heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
-	case src.loading:
-		// A view of skeletons after the rows there are.
-		geo.items = len(g.order.rows) + int(geo.body.h / max(geo.row_h, 1)) + 1
-		heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
+	case ^Memory_Table:
+		if r.loading {
+			// A view of skeletons after the rows there are.
+			geo.items = len(r.order.rows) + int(geo.body.h / max(geo.row_h, 1)) + 1
+			heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
+		}
 	}
 	place_columns(&g.place, cols, g.view.cols[:], g.view.order[:], size.x, g.fit)
 	geo.mid_x = g.place.left_w
@@ -534,9 +476,9 @@ clamp_scroll :: proc(g: ^Grid) {
 	g.scroll.x = clamp(g.scroll.x, 0, max(g.place.mid_w - geo.mid_w, 0))
 }
 
-// Item is what stands at one place in the order: a client row (row) or
-// a paged row (page_row), with what it shows, its key and a paged row's
-// key string.
+// Item is what stands at one place in the order: a row (page_row, and
+// for a table's row its index in the table, row), with what it shows,
+// its key and the key string it was made from.
 Item :: struct {
 	state:    Row_State,
 	row:      int,
@@ -547,26 +489,24 @@ Item :: struct {
 }
 
 // item_at is what stands at place i in the current order.
-item_at :: proc(g: ^Grid, src: Source, i: int) -> (it: Item) {
+item_at :: proc(g: ^Grid, src: Rows, i: int) -> (it: Item) {
 	it.row = -1
-	switch {
-	case i < 0 || i >= g.geo.items:
-	case src.paged != nil:
-		paged_item(g, i, &it)
-	case i >= len(g.order.rows):
-		it.state = .Loading // a skeleton while src is loading
-	case:
-		r := g.order.rows[i]
-		it.row, it.key = r, source_key(src, r)
-		it.state = .Stale if g.build.target != 0 else .Ready
+	if i < 0 || i >= g.geo.items {
+		return
+	}
+	switch r in src {
+	case ^Memory_Table:
+		memory_table_item(r, i, &it)
+	case ^Remote_Rows:
+		paged_item(&r.pages, i, &it)
 	}
 	return
 }
 
-// paged_item fills it with what stands at place i of a paged grid.
+// paged_item fills it with what stands at place i of p's rows.
 @(private)
-paged_item :: proc(g: ^Grid, i: int, it: ^Item) {
-	pr, st, page := pages_row(&g.pages, i)
+paged_item :: proc(p: ^Pages, i: int, it: ^Item) {
+	pr, st, page := pages_row(p, i)
 	it.state = st
 	if pr != nil {
 		it.page_row, it.key, it.name = pr, row_key(pr.key), pr.key
@@ -584,26 +524,23 @@ has_row :: proc(it: Item) -> bool {
 
 // cell_text is column col of it as shown; a row number column shows its
 // place.
-cell_text :: proc(gtx: ^ui.Ctx, src: Source, cols: []Column, it: Item, item, col: int) -> string {
+cell_text :: proc(gtx: ^ui.Ctx, cols: []Column, it: Item, item, col: int) -> string {
 	if cols[col].row_number {
 		return fmt.aprintf("%d", item + 1, allocator = gtx.allocator)
 	}
 	if it.page_row != nil {
 		return it.page_row.cells[col] if col < len(it.page_row.cells) else ""
 	}
-	if it.row >= 0 {
-		return source_text(src, it.row, col)
-	}
 	return ""
 }
 
 // selected_rows is the keys of the selected rows the grid holds, in the
-// current order, and their strings: every client row selected, the
-// loaded paged rows selected. A paged select-all reaches rows never
-// loaded, which only the source can list (Selection.all says so).
+// current order, and their strings: every table row selected, the loaded
+// remote rows selected. A remote select-all reaches rows never loaded,
+// which only the host can list (Selection.all says so).
 selected_rows :: proc(
 	g: ^Grid,
-	src: Source,
+	src: Rows,
 	allocator := context.allocator,
 ) -> (
 	keys: []Row_Key,

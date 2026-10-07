@@ -15,13 +15,13 @@ import "jm:ui"
 // rows the grid holds, every column, when more than the cursor's own row
 // is selected; else the cursor's cell, as a click then a copy means.
 // header puts the columns' titles first. It returns the cells copied.
-copy_cells :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, header := false) -> int {
+copy_cells :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Rows, header := false) -> int {
 	rows, places := copy_range(g, src)
 	text, n := copy_text(gtx, g, cols, src, rows, places, header)
 	if len(rows) == 1 && len(places) == 1 && !header {
 		// One cell pastes as text, not as a row of one.
 		if it := item_at(g, src, rows[0]); has_row(it) {
-			text = cell_text(gtx, src, cols, it, rows[0], places[0])
+			text = cell_text(gtx, cols, it, rows[0], places[0])
 		}
 	}
 	if n > 0 {
@@ -37,7 +37,7 @@ copy_text :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	rows, places: []int,
 	header: bool,
 ) -> (
@@ -59,7 +59,7 @@ copy_text :: proc(
 		}
 		clear(&fields)
 		for p in places {
-			append(&fields, cell_text(gtx, src, cols, it, item, p))
+			append(&fields, cell_text(gtx, cols, it, item, p))
 		}
 		write_record(&b, TSV, fields[:])
 		n += len(fields)
@@ -71,7 +71,7 @@ copy_text :: proc(
 // block from the anchor to the cursor, else the selected rows, else the
 // cursor's cell.
 @(private)
-copy_range :: proc(g: ^Grid, src: Source) -> (rows: []int, places: []int) {
+copy_range :: proc(g: ^Grid, src: Rows) -> (rows: []int, places: []int) {
 	a, c := g.anchor, g.cursor
 	switch {
 	case is_block(a, c):
@@ -120,7 +120,7 @@ block_range :: proc(g: ^Grid, a, c: Cell_At) -> (rows: []int, places: []int) {
 
 // selected_range is the selected rows the grid holds, every column.
 @(private)
-selected_range :: proc(g: ^Grid, src: Source) -> (rows: []int, places: []int) {
+selected_range :: proc(g: ^Grid, src: Rows) -> (rows: []int, places: []int) {
 	out := make([dynamic]int, context.temp_allocator)
 	cs := make([dynamic]int, context.temp_allocator)
 	for pl in g.place.places {
@@ -138,8 +138,8 @@ selected_range :: proc(g: ^Grid, src: Source) -> (rows: []int, places: []int) {
 
 // Export is an export in progress or done: its text so far, how far it
 // has got (rows written, the next item or offset), how many rows it
-// expects (-1 when unknown), the columns it writes, and for a paged
-// source the page size, the keyset cursor and an error that stopped it.
+// expects (-1 when unknown), the columns it writes, and for a remote the
+// page size, the keyset cursor and an error that stopped it.
 Export :: struct {
 	active:  bool,
 	done:    bool,
@@ -155,15 +155,15 @@ Export :: struct {
 	attempt: int,
 }
 
-// EXPORT_CHUNK is the rows a client export writes a frame; EXPORT_PAGE
-// the rows a paged export asks for at once.
+// EXPORT_CHUNK is the rows a table's export writes a frame; EXPORT_PAGE
+// the rows a remote's export asks for at once.
 EXPORT_CHUNK :: 20_000
 EXPORT_PAGE  :: 1000
 
 // export_start begins exporting g's current view as CSV: the titles of
 // the visible columns not marked no_export, then a chunk of rows a frame
 // (export_step, which grid calls), Events.exported on the frame it ends.
-export_start :: proc(g: ^Grid, cols: []Column, src: Source) {
+export_start :: proc(g: ^Grid, cols: []Column, src: Rows) {
 	x := &g.export
 	export_destroy(x)
 	x.text = strings.builder_make(g.allocator)
@@ -181,8 +181,8 @@ export_start :: proc(g: ^Grid, cols: []Column, src: Source) {
 	write_record(&x.text, CSV, titles[:])
 	x.active = true
 	x.limit = EXPORT_PAGE
-	x.total =
-		len(g.order.rows) if src.paged == nil else (g.pages.count if g.pages.kind != .Unknown else -1)
+	n, kind, _ := rows_count(src)
+	x.total = n if kind != .Unknown else -1
 }
 
 // export_cancel stops an export; what it wrote is dropped.
@@ -209,54 +209,56 @@ export_progress :: proc(g: ^Grid) -> (written, total: int) {
 
 // export_step writes the next chunk of an export.
 @(private)
-export_step :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, ev: ^Events) {
+export_step :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Rows, ev: ^Events) {
 	x := &g.export
 	if !x.active || x.done {
 		return
 	}
-	if src.paged != nil {
-		export_page(gtx, g, cols, src, ev)
-		return
-	}
-	if export_rows(g, cols, src) {
-		ev.exported = true
+	switch r in src {
+	case ^Remote_Rows:
+		export_page(gtx, g, cols, r, ev)
+	case ^Memory_Table:
+		if export_rows(g, cols, r) {
+			ev.exported = true
+		}
 	}
 }
 
-// export_rows writes a client export's next EXPORT_CHUNK rows and reports
+// export_rows writes the next EXPORT_CHUNK rows of t's order and reports
 // whether that was the last of them.
 @(private)
-export_rows :: proc(g: ^Grid, cols: []Column, src: Source) -> bool {
+export_rows :: proc(g: ^Grid, cols: []Column, t: ^Memory_Table) -> bool {
 	x := &g.export
 	fields := make([dynamic]string, 0, len(x.cols), context.temp_allocator)
-	end := min(x.next + EXPORT_CHUNK, len(g.order.rows))
-	for r in g.order.rows[x.next:end] {
+	end := min(x.next + EXPORT_CHUNK, len(t.order.rows))
+	for r in t.order.rows[x.next:end] {
 		clear(&fields)
 		for c in x.cols {
 			if cols[c].row_number {
 				append(&fields, fmt.tprint(x.written + 1))
 			} else {
-				append(&fields, source_text(src, r, c))
+				append(&fields, row_text(t.rows, r, c))
 			}
 		}
 		write_record(&x.text, CSV, fields[:])
 		x.written += 1
 	}
 	x.next = end
-	x.done = x.next >= len(g.order.rows)
+	x.done = x.next >= len(t.order.rows)
 	return x.done
 }
 
-// export_all writes a client grid's whole view as CSV now, into
+// export_all writes a table's whole view as CSV now, into
 // g.export.text, as export_start's frames would a chunk at a time: what
-// a Copy CSV puts on the clipboard. A paged grid's rows are not in hand,
-// so it does nothing and reports false; export_start streams them.
-export_all :: proc(g: ^Grid, cols: []Column, src: Source) -> bool {
-	if src.paged != nil {
+// a Copy CSV puts on the clipboard. A remote's rows are not in hand, so
+// it does nothing and reports false; export_start streams them.
+export_all :: proc(g: ^Grid, cols: []Column, src: Rows) -> bool {
+	t, ok := src.(^Memory_Table)
+	if !ok {
 		return false
 	}
 	export_start(g, cols, src)
-	for !export_rows(g, cols, src) {
+	for !export_rows(g, cols, t) {
 	}
 	return true
 }

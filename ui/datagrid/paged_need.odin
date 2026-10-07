@@ -11,9 +11,9 @@ import "jm:ui"
 // page_query is the request shared by every page of the current view,
 // without the rows: the source, the columns, the sort, the filters and
 // the search, in the frame's allocator.
-page_query :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source) -> Page_Query {
+page_query :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows) -> Page_Query {
 	q := Page_Query {
-		source  = src.paged.source,
+		source  = r.pages.source,
 		columns = make([]string, len(cols), gtx.allocator),
 		sort    = make([]Query_Sort, len(g.view.sort), gtx.allocator),
 		search  = g.view.search,
@@ -57,11 +57,11 @@ sort_columns :: proc(gtx: ^ui.Ctx, g: ^Grid) -> []int {
 // and evicts what the cache cannot keep. It reports whether the count
 // moved.
 @(private)
-want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source) -> bool {
-	p := &g.pages
+want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows) -> bool {
+	p := &r.pages
 	lo, hi := pages_window(p, g.geo.first, g.geo.last)
 	pages_want(p, lo, hi, sort_columns(gtx, g))
-	q := page_query(gtx, g, cols, src)
+	q := page_query(gtx, g, cols, r)
 	for i in lo ..< hi {
 		e := pages_find(p, p.query, i)
 		q.offset, q.limit = i * p.page_size, p.page_size
@@ -80,9 +80,9 @@ want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source) -> bool 
 // source gets the cursor every time. A short page is the end; an error
 // stops the export with it.
 @(private)
-export_page :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, ev: ^Events) {
+export_page :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows, ev: ^Events) {
 	x := &g.export
-	q := page_query(gtx, g, cols, src)
+	q := page_query(gtx, g, cols, r)
 	q.offset, q.limit, q.after, q.attempt = x.next, x.limit, x.after, x.attempt
 	pg, st := ui.need(gtx, q, Page)
 	switch {
@@ -147,19 +147,20 @@ export_keep_cursor :: proc(x: ^Export, r: Page_Row, sort_cols: []int) {
 
 // values_query is the request for column col's distinct values under
 // the other filters and the search, like a filter text, at most limit,
-// which a skin's Set filter needs (ui.need) from a paged source, whose
-// rows it cannot count itself.
+// which a Set filter needs (ui.need) from a remote's host, as the grid
+// cannot count rows it does not hold.
+@(private)
 values_query :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	r: ^Remote_Rows,
 	col: int,
 	like: string,
 	limit := 200,
 ) -> Values_Query {
 	return {
-		source = src.paged.source,
+		source = r.pages.source,
 		column = cols[col].id,
 		filters = query_filters(gtx, g, cols, col),
 		search = g.view.search,

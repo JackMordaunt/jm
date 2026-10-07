@@ -73,10 +73,10 @@ DEFAULT_STYLE :: Style {
 }
 
 // Cell is one cell as a skin's cell slot sees it: the grid, the column
-// and its index, the row (a client row's index, -1 for a paged one) and
-// its place in the current order (item), its key, its text, its box in
-// its own space, what its row shows, and how it is lit. fg is the text
-// colour the grid would use.
+// and its index, the row (its index in a table's rows, -1 for a
+// remote's) and its place in the current order (item), its key, its
+// text, its box in its own space, what its row shows, and how it is lit.
+// fg is the text colour the grid would use.
 Cell :: struct {
 	grid:     ^Grid,
 	col:      int,

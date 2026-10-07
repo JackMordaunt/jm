@@ -7,10 +7,11 @@ import "core:strings"
 
 // View is how the user has arranged a grid and what they asked it to
 // show: the columns' order, widths, visibility and pins, the sort, the
-// filters and the search. It is the part of a grid a saved
-// view keeps (view_encode), and the part a paged grid's query is made
-// of. Columns are indexed as the caller declared them; order lists every
-// column, hidden or not, in display order.
+// filters and the search. It is the part of a grid a saved view keeps
+// (view_encode), and its query (view_query), which a table orders its
+// rows by and a remote sends its host. Columns are indexed as the caller
+// declared them; order lists every column, hidden or not, in display
+// order.
 View :: struct {
 	order:     [dynamic]int,
 	cols:      [dynamic]Column_State,

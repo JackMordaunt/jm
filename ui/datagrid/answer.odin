@@ -1,28 +1,50 @@
 package datagrid
 
+import "core:fmt"
 import "core:mem"
 import "core:slice"
 import "core:strings"
+import "core:time"
+import "jm:ui"
 
-// Memory_Table answers a paged grid's requests from rows held in memory,
-// as a server would: the same filters, search and sort a client grid
-// applies (order_build), then the page by offset or by keyset cursor. A
-// host that has every row but wants the grid to page them uses it, as
-// do the kitchen's simulated source and the tests' reference server.
+// Memory_Table is rows held in memory, ordered by a query: the rows a
+// grid shows when it has every one (Rows), or a server's answers to a
+// paged grid's requests (answer_page, answer_values), as the kitchen's
+// simulated source and the tests' reference server use it.
 //
-// Its search looks in every column a request names, where a client grid
-// looks in its visible columns: a server does not know which are shown.
+// t borrows cols and rows, which must stay as they are until
+// memory_table_changed says they moved: an order a grid builds a slice a
+// frame reads the rows' strings across frames. Every row needs a key,
+// unique in the table: a grid keeps its selection, and a server its
+// keyset cursor, by it. One table orders rows for one grid; two grids
+// over the same rows each take a table over them.
+//
+// heights, when set, is each row's own height, by row; loading says more
+// rows are on their way, as when a host fetches every row before showing
+// any, and a grid draws a view of skeleton rows after the rows it has.
+//
+// A grid's search looks in its visible columns; a server's in every
+// column a request names, as a server does not know which are shown.
 Memory_Table :: struct {
 	cols:      []Column,
 	rows:      []Page_Row,
+	heights:   []f32,
+	loading:   bool,
+	version:   u64, // moved by memory_table_changed
 	order:     Order,
-	built:     u64, // the order hash order was built for, 0 for none
+	built:     u64, // what order was built for, 0 for nothing
 	place:     map[string]int, // a row's key to its place in order, for a cursor
+	placed:    u64, // what place was made for
+	next:      Order, // the next order, built a slice a frame while order is shown
+	job:       Order_Job,
+	target:    u64, // what next is for, 0 when nothing is building
+	data:      u64, // the rows order was built from: their version, count and loading
 	allocator: mem.Allocator,
 }
 
 // memory_table_init readies t over rows, whose cells come in the order of
-// cols, as a request's columns name them. t keeps both, not copies.
+// cols, as a grid's columns and a request's columns name them. t keeps
+// both, not copies.
 memory_table_init :: proc(
 	t: ^Memory_Table,
 	cols: []Column,
@@ -31,19 +53,112 @@ memory_table_init :: proc(
 ) {
 	t.cols, t.rows, t.allocator = cols, rows, allocator
 	t.order.rows = make([dynamic]int, allocator)
+	t.next.rows = make([dynamic]int, allocator)
 	t.place = make(map[string]int, allocator)
+	check_keys(rows)
+}
+
+// rows_of is cells as a table's rows, each keyed by its text in column
+// key: the rows' cells are slices of cells, which must outlive them; the
+// slice of rows is in allocator.
+rows_of :: proc(cells: [][$N]string, key: int, allocator := context.allocator) -> []Page_Row {
+	out := make([]Page_Row, len(cells), allocator)
+	for &c, i in cells {
+		out[i] = {c[key], c[:]}
+	}
+	return out
 }
 
 memory_table_destroy :: proc(t: ^Memory_Table) {
 	order_destroy(&t.order)
+	order_destroy(&t.next)
 	delete(t.place)
 	t^ = {}
+}
+
+// memory_table_changed takes rows as t's rows, the same slice changed in
+// place or another: the order is built again, at once, and a grid over t
+// measures its columns again.
+memory_table_changed :: proc(t: ^Memory_Table, rows: []Page_Row) {
+	t.rows = rows
+	t.version += 1
+	check_keys(rows)
+}
+
+// check_keys fails on a row without a key, and in a debug build on two
+// rows with one key, which would select or page as one row.
+@(private)
+check_keys :: proc(rows: []Page_Row) {
+	for r, i in rows {
+		fmt.assertf(r.key != "", "Memory_Table: row %d has no key; give every row a unique key", i)
+	}
+	when ODIN_DEBUG {
+		seen := make(map[string]int, len(rows), context.temp_allocator)
+		for r, i in rows {
+			at, dup := seen[r.key]
+			fmt.assertf(!dup, "Memory_Table: rows %d and %d share the key %q", at, i, r.key)
+			seen[r.key] = i
+		}
+	}
+}
+
+// memory_table_step brings t's order to q, a grid's query: at once the first
+// time and when the rows changed, else a slice of it until deadline (the
+// zero Tick: no limit). done reports whether order is q's; swapped
+// whether it became so in this call.
+@(private)
+memory_table_step :: proc(
+	t: ^Memory_Table,
+	q: Query,
+	deadline: time.Tick,
+) -> (
+	done, swapped: bool,
+) {
+	data := ui.fnv_u64(ui.fnv_u64(t.version, u64(len(t.rows))), u64(t.loading))
+	key := ui.fnv_u64(ui.fnv_u64(order_hash(q), visible_hash(q.visible)), data) | 1
+	if key == t.built {
+		t.target = 0 // back to the order shown: what was building is not wanted
+		return true, false
+	}
+	if t.built == 0 || data != t.data {
+		t.target, t.data = 0, data
+		order_build(&t.order, t.rows, q)
+	} else {
+		if t.target != key {
+			t.target = key
+			order_start(&t.job, &t.next)
+		}
+		if !order_step(&t.job, &t.next, t.rows, q, deadline) {
+			return false, false
+		}
+		t.order, t.next = t.next, t.order
+		t.target = 0
+	}
+	t.built = key
+	return true, true
+}
+
+// visible_hash names the columns a search looks in.
+@(private)
+visible_hash :: proc(visible: []int) -> u64 {
+	h := ui.FNV_OFFSET
+	for c in visible {
+		h = ui.fnv_u64(h, u64(c))
+	}
+	return h
 }
 
 // answer_page is the page q asks for, its rows pointing into t's and its
 // slice in allocator, with the exact count of rows that match.
 answer_page :: proc(t: ^Memory_Table, q: Page_Query, allocator := context.allocator) -> Page {
 	n := memory_order(t, q.sort, q.filters, q.search)
+	if t.placed != t.built {
+		clear(&t.place)
+		for r, i in t.order.rows {
+			t.place[t.rows[r].key] = i
+		}
+		t.placed = t.built
+	}
 	start := max(q.offset, 0)
 	if q.after.key != "" {
 		if at, ok := t.place[q.after.key]; ok {
@@ -74,7 +189,7 @@ answer_values :: proc(
 	memory_order(t, nil, q.filters, q.search)
 	counts := make(map[string]int, 64, context.temp_allocator)
 	for r in t.order.rows {
-		v := memory_cell(t, r, col)
+		v := row_text(t.rows, r, col)
 		if contains_fold(v, q.like) {
 			counts[v] += 1
 		}
@@ -97,16 +212,9 @@ answer_values :: proc(
 	return {values = out}
 }
 
-// memory_cell is column col of row r, "" past its cells.
-@(private)
-memory_cell :: proc(t: ^Memory_Table, r, col: int) -> string {
-	cells := t.rows[r].cells
-	return cells[col] if col < len(cells) else ""
-}
-
 // memory_order orders t's rows by a request's sort, filters and search,
-// unless they are what it was ordered by last, and returns how many
-// match. A sort or filter naming no column of t is left out.
+// at once, unless they are what it was ordered by last, and returns how
+// many match. A sort or filter naming no column of t is left out.
 @(private)
 memory_order :: proc(
 	t: ^Memory_Table,
@@ -125,22 +233,12 @@ memory_order :: proc(
 		search  = search,
 		visible = all,
 	}
-	h := order_hash(q) | 1
+	h := ui.fnv_u64(order_hash(q), t.version) | 1
 	if h == t.built {
 		return len(t.order.rows)
 	}
-	src := Source {
-		user = t,
-		rows = len(t.rows),
-		text = proc(user: rawptr, row, col: int) -> string {
-			return memory_cell((^Memory_Table)(user), row, col)
-		},
-	}
-	order_build(&t.order, src, q)
-	clear(&t.place)
-	for r, i in t.order.rows {
-		t.place[t.rows[r].key] = i
-	}
+	order_build(&t.order, t.rows, q)
+	t.target = 0
 	t.built = h
 	return len(t.order.rows)
 }
@@ -171,7 +269,6 @@ memory_filters :: proc(t: ^Memory_Table, filters: []Query_Filter) -> []Filter {
 			rule = Set_Filter{sorted}
 		}
 		append(&out, Filter{c, rule})
-
 	}
 	return out[:]
 }

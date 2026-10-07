@@ -18,11 +18,13 @@ import "jm:ui/render"
 // render.Compositor, which repaints only what changed and moves what
 // scrolled.
 
-GRID_ROWS :: 100_000
+GRID_ROWS         :: 100_000
 GRID_COLUMN_COUNT :: 12
 
 Grid_Bench :: struct {
 	cells: [][GRID_COLUMN_COUNT]string,
+	rows:  []datagrid.Page_Row,
+	table: datagrid.Memory_Table,
 	g:     datagrid.Grid,
 	skin:  datagrid.Skin,
 	step:  [2]f32, // scrolled each frame
@@ -71,6 +73,8 @@ grid_bench_make :: proc() -> ^Grid_Bench {
 			"" if i % 3 != 0 else "batch-7, retrofit",
 		}
 	}
+	b.rows = datagrid.rows_of(b.cells, 0)
+	datagrid.memory_table_init(&b.table, GRID_COLUMNS[:], b.rows)
 	datagrid.grid_init(&b.g, GRID_COLUMNS[:])
 	b.skin.style = datagrid.DEFAULT_STYLE
 	return b
@@ -88,14 +92,7 @@ grid_scene :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		b.g.scroll.y = 0
 	}
 	b.g.scroll += b.step
-	src := datagrid.Source {
-		user = b,
-		rows = GRID_ROWS,
-		text = proc(user: rawptr, row, col: int) -> string {
-			return (^Grid_Bench)(user).cells[row][col]
-		},
-	}
-	datagrid.grid(gtx, &b.g, GRID_COLUMNS[:], src, &b.skin, "Rigs")
+	datagrid.grid(gtx, &b.g, GRID_COLUMNS[:], &b.table, &b.skin, "Rigs")
 }
 
 grid_bench :: proc(w, h, frames: int) {

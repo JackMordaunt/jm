@@ -300,7 +300,9 @@ test_table_row_reports_a_context_press :: proc(t: ^testing.T) {
 
 @(private = "file")
 Grid_Model :: struct {
-	g: datagrid.Grid,
+	g:     datagrid.Grid,
+	keyed: []datagrid.Page_Row,
+	table: datagrid.Memory_Table,
 }
 
 @(private = "file")
@@ -312,11 +314,8 @@ GRID_ROWS := [][2]string{{"notes.txt", "3"}, {"plan.md", "12"}, {"budget.xlsx", 
 @(private = "file")
 grid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Grid_Model)(user)
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return GRID_ROWS[row][col]
-	}
 	skin := data_grid_skin(gtx, &m.g)
-	datagrid.grid(gtx, &m.g, GRID_COLUMNS, {rows = len(GRID_ROWS), text = text}, &skin, "Files")
+	datagrid.grid(gtx, &m.g, GRID_COLUMNS, &m.table, &skin, "Files")
 }
 
 // The data grid's skin: Table's 44px rows ruled in Stroke 2, and a sorted
@@ -324,6 +323,10 @@ grid_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 @(test)
 test_a_data_grid_wears_the_table_s_look :: proc(t: ^testing.T) {
 	m: Grid_Model
+	m.keyed = datagrid.rows_of(GRID_ROWS, 0)
+	defer delete(m.keyed)
+	datagrid.memory_table_init(&m.table, GRID_COLUMNS, m.keyed)
+	defer datagrid.memory_table_destroy(&m.table)
 	datagrid.grid_init(&m.g, GRID_COLUMNS)
 	defer datagrid.grid_destroy(&m.g)
 	p: ui.Probe
@@ -331,10 +334,10 @@ test_a_data_grid_wears_the_table_s_look :: proc(t: ^testing.T) {
 	defer ui.probe_destroy(&p)
 	said := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, strings.contains(said, `row 3 at 0,88 400x44`), said)
-	testing.expect_value(t, datagrid.item_at(&m.g, {rows = 3}, 1).row, 1)
+	testing.expect_value(t, datagrid.item_at(&m.g, &m.table, 1).row, 1)
 	testing.expect(t, ui.probe_click(&p, "Size"))
 	// 3, 7, 12: budget.xlsx's 7 moves up to second.
-	testing.expect_value(t, datagrid.item_at(&m.g, {rows = 3}, 1).row, 2)
+	testing.expect_value(t, datagrid.item_at(&m.g, &m.table, 1).row, 2)
 	arrows := 0
 	for op in p.scene.ops {
 		if f, ok := op.(ops.Fill); ok {

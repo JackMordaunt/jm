@@ -29,6 +29,7 @@ Paged_Case :: struct {
 	g:       datagrid.Grid,
 	skin:    datagrid.Skin,
 	paging:  datagrid.Paging,
+	remote:  datagrid.Remote_Rows,
 	rows:    []datagrid.Page_Row,
 	table:   datagrid.Memory_Table,
 	pending: [dynamic]Pending,
@@ -48,7 +49,7 @@ Pending :: struct {
 @(private)
 paged_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	c := (^Paged_Case)(user)
-	datagrid.grid(gtx, &c.g, PAGED_COLUMNS, {paged = &c.paging}, &c.skin, "Rows")
+	datagrid.grid(gtx, &c.g, PAGED_COLUMNS, &c.remote, &c.skin, "Rows")
 }
 
 // paged draws a table and a grid's paging over it, then a run of ops, and
@@ -57,6 +58,7 @@ paged :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 	c := new(Paged_Case)
 	paged_case_init(c, src)
 	defer datagrid.grid_destroy(&c.g)
+	defer datagrid.remote_rows_destroy(&c.remote)
 	defer datagrid.memory_table_destroy(&c.table)
 	p: ui.Probe
 	ui.probe_init(&p, paged_view, c, {400, f32(harness.integer_in(src, 60, 500))})
@@ -107,7 +109,8 @@ paged_case_init :: proc(c: ^Paged_Case, src: ^harness.Source) {
 	if harness.boolean(src) {
 		c.paging.estimate = harness.integer_in(src, 1, 400)
 	}
-	datagrid.grid_init(&c.g, PAGED_COLUMNS, &c.paging)
+	datagrid.remote_rows_init(&c.remote, c.paging)
+	datagrid.grid_init(&c.g, PAGED_COLUMNS)
 	c.skin.style = datagrid.DEFAULT_STYLE
 	c.pending = make([dynamic]Pending)
 }
@@ -212,7 +215,7 @@ click_row :: proc(c: ^Paged_Case, p: ^ui.Probe, src: ^harness.Source) {
 	g := &c.g
 	shown := make([dynamic]int)
 	for i in g.geo.first ..< g.geo.last {
-		it := datagrid.item_at(g, {paged = &c.paging}, i)
+		it := datagrid.item_at(g, &c.remote, i)
 		top := f32(datagrid.heights_top(&g.heights, i)) - g.scroll.y
 		if (it.state == .Ready || it.state == .Stale) && top >= 0 && top + 20 < g.geo.body.h {
 			append(&shown, i)
@@ -222,7 +225,7 @@ click_row :: proc(c: ^Paged_Case, p: ^ui.Probe, src: ^harness.Source) {
 		return
 	}
 	i := shown[harness.integer_in(src, 0, len(shown))]
-	it := datagrid.item_at(g, {paged = &c.paging}, i)
+	it := datagrid.item_at(g, &c.remote, i)
 	y := g.geo.body.y + f32(datagrid.heights_top(&g.heights, i)) - g.scroll.y + 10
 	ui.probe_click_at(p, ops.Point{10, y})
 	c.clicked, c.click = it.key, true
@@ -255,7 +258,6 @@ current_query :: proc(c: ^Paged_Case) -> datagrid.Page_Query {
 // the selection and the end.
 @(private)
 paged_holds :: proc(c: ^Paged_Case, p: ^ui.Probe) -> (string, bool) {
-	g := &c.g
 	want := current_query(c)
 	want.limit = 1
 	if detail, ok := rows_hold(c, want); !ok {
@@ -263,9 +265,13 @@ paged_holds :: proc(c: ^Paged_Case, p: ^ui.Probe) -> (string, bool) {
 	}
 	// The window the frame wanted, before what arrived in it moved the
 	// count: the cache may hold it until the next frame's window.
-	lo, hi := g.pages.wanted[0], g.pages.wanted[1]
-	if len(g.pages.entries) > max(g.pages.capacity, hi - lo) {
-		return fmt.tprintf("%d pages cached, capacity %d", len(g.pages.entries), g.pages.capacity),
+	lo, hi := c.remote.pages.wanted[0], c.remote.pages.wanted[1]
+	if len(c.remote.pages.entries) > max(c.remote.pages.capacity, hi - lo) {
+		return fmt.tprintf(
+				"%d pages cached, capacity %d",
+				len(c.remote.pages.entries),
+				c.remote.pages.capacity,
+			),
 			false
 	}
 	if detail, ok := needs_hold(c, p, want, lo, hi); !ok {
@@ -275,8 +281,8 @@ paged_holds :: proc(c: ^Paged_Case, p: ^ui.Probe) -> (string, bool) {
 		return detail, false
 	}
 	total := datagrid.answer_page(&c.table, want).total
-	ok := !g.pages.end || g.pages.count == total
-	return fmt.tprintf("an end at %d, %d rows match", g.pages.count, total), ok
+	ok := !c.remote.pages.end || c.remote.pages.count == total
+	return fmt.tprintf("an end at %d, %d rows match", c.remote.pages.count, total), ok
 }
 
 // selection_holds checks that a clicked row is the selection, alone and
@@ -299,7 +305,7 @@ selection_holds :: proc(c: ^Paged_Case) -> (string, bool) {
 rows_hold :: proc(c: ^Paged_Case, want: datagrid.Page_Query) -> (string, bool) {
 	g := &c.g
 	for i in g.geo.first ..< g.geo.last {
-		row, st, page := datagrid.pages_row(&g.pages, i)
+		row, st, page := datagrid.pages_row(&c.remote.pages, i)
 		if st != .Ready && st != .Stale {
 			continue
 		}
@@ -323,7 +329,7 @@ shown_row_holds :: proc(
 	st: datagrid.Row_State,
 	query: u64,
 ) -> bool {
-	if query != c.g.pages.query {
+	if query != c.remote.pages.query {
 		return st == .Stale && c.paging.keep_stale
 	}
 	return row_is(c, want, i, key)

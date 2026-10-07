@@ -7,20 +7,18 @@ import "core:strings"
 import "core:testing"
 import "core:time"
 
-// The query (natural order, dates, filters, sorts, groups), saved views
-// and the page cache on worked examples.
+// The query (natural order, dates, filters, sorts), saved views and the
+// page cache on worked examples.
 
+// page_rows is cells as rows, each keyed by its index, in the temp
+// allocator.
 @(private = "file")
-Table :: struct {
-	rows: [][]string,
-}
-
-@(private = "file")
-table_source :: proc(t: ^Table) -> Source {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Table)(user).rows[row][col]
+page_rows :: proc(cells: [][]string) -> []Page_Row {
+	out := make([]Page_Row, len(cells), context.temp_allocator)
+	for c, i in cells {
+		out[i] = {fmt.tprint(i), c}
 	}
-	return {user = t, rows = len(t.rows), text = text}
+	return out
 }
 
 @(private = "file")
@@ -71,9 +69,8 @@ test_parse_date_reads_iso_dates_with_and_without_a_time :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_order_filters_searches_sorts_and_groups :: proc(t: ^testing.T) {
-	tb := Table{ROWS}
-	src := table_source(&tb)
+test_order_filters_searches_and_sorts :: proc(t: ^testing.T) {
+	src := page_rows(ROWS)
 	v: View
 	view_init(&v, COLS, context.temp_allocator)
 	visible := make([dynamic]int, context.temp_allocator)
@@ -109,8 +106,7 @@ test_order_filters_searches_sorts_and_groups :: proc(t: ^testing.T) {
 
 @(test)
 test_distinct_values_count_under_the_other_filters :: proc(t: ^testing.T) {
-	tb := Table{ROWS}
-	src := table_source(&tb)
+	src := page_rows(ROWS)
 	v: View
 	view_init(&v, COLS, context.temp_allocator)
 	visible := make([dynamic]int, context.temp_allocator)
@@ -316,28 +312,20 @@ test_an_empty_page_bounds_the_count_and_ends_it_after_a_full_one :: proc(t: ^tes
 	free_all(context.temp_allocator)
 }
 
-// Fresh is a source whose every text is made anew in the temp allocator,
-// as a source that formats its cells is: a build over several frames
-// must keep its own copies.
+// fresh_rows is n rows of rigs, sites, hashrates and dates, their texts
+// in allocator.
 @(private = "file")
-Fresh :: struct {
-	n: int,
-}
-
-@(private = "file")
-fresh_source :: proc(f: ^Fresh) -> Source {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		switch col {
-		case 0:
-			return fmt.tprintf("rig%d", (row * 7919) % 1000)
-		case 1:
-			return SITE_NAMES[row % len(SITE_NAMES)]
-		case 2:
-			return fmt.tprintf("%d", (row * 37) % 500)
-		}
-		return fmt.tprintf("2026-0%d-1%d", 1 + row % 9, row % 10)
+fresh_rows :: proc(n: int, allocator: mem.Allocator) -> []Page_Row {
+	rows := make([]Page_Row, n, allocator)
+	for &r, i in rows {
+		r.key = fmt.aprint(i, allocator = allocator)
+		r.cells = make([]string, 4, allocator)
+		r.cells[0] = fmt.aprintf("rig%d", (i * 7919) % 1000, allocator = allocator)
+		r.cells[1] = SITE_NAMES[i % len(SITE_NAMES)]
+		r.cells[2] = fmt.aprintf("%d", (i * 37) % 500, allocator = allocator)
+		r.cells[3] = fmt.aprintf("2026-0%d-1%d", 1 + i % 9, i % 10, allocator = allocator)
 	}
-	return {user = f, rows = f.n, text = text}
+	return rows
 }
 
 @(private = "file")
@@ -345,8 +333,10 @@ SITE_NAMES := []string{"Norway", "Paraguay", "Ethiopia", "Wisconsin"}
 
 @(test)
 test_an_order_built_a_chunk_at_a_time_is_the_order_built_at_once :: proc(t: ^testing.T) {
-	f := Fresh{5000}
-	src := fresh_source(&f)
+	arena: mem.Dynamic_Arena
+	mem.dynamic_arena_init(&arena)
+	defer mem.dynamic_arena_destroy(&arena)
+	src := fresh_rows(5000, mem.dynamic_arena_allocator(&arena))
 	v: View
 	view_init(&v, COLS) // not the temp allocator, which each step frees
 	defer view_destroy(&v)
@@ -368,7 +358,7 @@ test_an_order_built_a_chunk_at_a_time_is_the_order_built_at_once :: proc(t: ^tes
 	steps := 1
 	// A deadline long gone: each step does one chunk, the least it may.
 	for !order_step(&job, &sliced, src, q, time.Tick{1}) {
-		free_all(context.temp_allocator) // the frame's texts go, as a frame's do
+		free_all(context.temp_allocator) // a frame's scratch goes between steps
 		steps += 1
 	}
 	testing.expect(t, steps > 20, "the build took many steps")

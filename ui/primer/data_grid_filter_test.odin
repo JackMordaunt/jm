@@ -11,8 +11,10 @@ import "jm:ui/ops"
 
 @(private = "file")
 Crew :: struct {
-	g:    Data_Grid,
-	rows: [][3]string,
+	g:     Data_Grid,
+	rows:  [][3]string,
+	keyed: []datagrid.Page_Row,
+	table: datagrid.Memory_Table,
 }
 
 @(private = "file")
@@ -32,21 +34,15 @@ CREW := [][3]string {
 @(private = "file")
 crew_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Crew)(user)
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Crew)(user).rows[row][col]
-	}
-	src := datagrid.Source {
-		user = m,
-		rows = len(m.rows),
-		text = text,
-	}
-	data_grid(gtx, &m.g, CREW_COLS, src, "Crew")
+	data_grid(gtx, &m.g, CREW_COLS, &m.table, "Crew")
 }
 
 @(private = "file")
 crew_open :: proc(p: ^ui.Probe) -> ^Crew {
 	m := new(Crew, context.temp_allocator)
 	m.rows = CREW
+	m.keyed = datagrid.rows_of(m.rows, 0)
+	datagrid.memory_table_init(&m.table, CREW_COLS, m.keyed)
 	data_grid_init(&m.g, CREW_COLS)
 	m.g.today = {2026, 10, 6}
 	ui.probe_init(p, crew_view, m, ops.Size{900, 600}, allocator = context.temp_allocator)
@@ -57,6 +53,8 @@ crew_open :: proc(p: ^ui.Probe) -> ^Crew {
 crew_close :: proc(p: ^ui.Probe, m: ^Crew) {
 	ui.probe_destroy(p)
 	data_grid_destroy(&m.g)
+	datagrid.memory_table_destroy(&m.table)
+	delete(m.keyed)
 	free_all(context.temp_allocator)
 }
 

@@ -13,6 +13,8 @@ import "jm:ui/ops"
 @(private = "file")
 Roster :: struct {
 	rows:   [][2]string,
+	keyed:  []datagrid.Page_Row,
+	table:  datagrid.Memory_Table,
 	bumped: [dynamic]string,
 	g:      Data_Grid, // not first, so a ^Data_Grid passed as user is no ^Roster
 }
@@ -22,11 +24,8 @@ ROSTER_COLS := []datagrid.Column{{id = "name", title = "Name"}, {id = "act", tit
 
 @(private = "file")
 roster_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Roster)(user).rows[row][col]
-	}
 	m := (^Roster)(user)
-	data_grid(gtx, &m.g, ROSTER_COLS, {user = m, rows = len(m.rows), text = text}, "Roster")
+	data_grid(gtx, &m.g, ROSTER_COLS, &m.table, "Roster")
 }
 
 // bump_cell draws a Bump button in each Act cell, noting whose was
@@ -49,6 +48,8 @@ test_a_button_in_a_cell_takes_its_press_and_leaves_the_row :: proc(t: ^testing.T
 	m := new(Roster, context.temp_allocator)
 	m.rows = {{"Ada", "a"}, {"Grace", "g"}}
 	m.bumped = make([dynamic]string, context.temp_allocator)
+	m.keyed = datagrid.rows_of(m.rows, 0)
+	datagrid.memory_table_init(&m.table, ROSTER_COLS, m.keyed)
 	data_grid_init(&m.g, ROSTER_COLS)
 	m.g.skin.cell, m.g.skin.cell_user = bump_cell, m
 	p: ui.Probe
@@ -56,14 +57,20 @@ test_a_button_in_a_cell_takes_its_press_and_leaves_the_row :: proc(t: ^testing.T
 	defer {
 		ui.probe_destroy(&p)
 		data_grid_destroy(&m.g)
+		datagrid.memory_table_destroy(&m.table)
+		delete(m.keyed)
 		free_all(context.temp_allocator)
 	}
 
 	testing.expect(t, ui.probe_click(&p, "Bump Grace"))
 	testing.expect_value(t, len(m.bumped), 1)
 	testing.expect(t, len(m.bumped) == 1 && m.bumped[0] == "Grace", fmt.tprint(m.bumped[:]))
-	testing.expect(t, !datagrid.selected(&m.g.grid.sel, 1), "the row stays unselected")
+	testing.expect(
+		t,
+		!datagrid.selected(&m.g.grid.sel, datagrid.row_key("Grace")),
+		"the row stays unselected",
+	)
 	testing.expect(t, ui.probe_click(&p, "Grace"), "a press on the row's name")
-	testing.expect(t, datagrid.selected(&m.g.grid.sel, 1), "selects it")
+	testing.expect(t, datagrid.selected(&m.g.grid.sel, datagrid.row_key("Grace")), "selects it")
 	testing.expect_value(t, len(m.bumped), 1)
 }

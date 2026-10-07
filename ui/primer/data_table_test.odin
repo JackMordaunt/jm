@@ -15,8 +15,8 @@ import "jm:ui/ops"
 @(private = "file")
 People :: struct {
 	g:       Data_Grid,
-	rows:    [][3]string,
-	loading: bool,
+	keyed:   []datagrid.Page_Row,
+	table:   datagrid.Memory_Table,
 	toolbar: bool,
 	ev:      datagrid.Events,
 }
@@ -38,7 +38,9 @@ PEOPLE := [][3]string {
 @(private = "file")
 people_make :: proc(toolbar := true) -> ^People {
 	m := new(People, context.temp_allocator)
-	m.rows, m.toolbar = PEOPLE, toolbar
+	m.toolbar = toolbar
+	m.keyed = datagrid.rows_of(PEOPLE, 0)
+	datagrid.memory_table_init(&m.table, PEOPLE_COLS, m.keyed)
 	data_grid_init(&m.g, PEOPLE_COLS)
 	return m
 }
@@ -46,16 +48,7 @@ people_make :: proc(toolbar := true) -> ^People {
 @(private = "file")
 people_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^People)(user)
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^People)(user).rows[row][col]
-	}
-	src := datagrid.Source {
-		user    = m,
-		rows    = len(m.rows),
-		text    = text,
-		loading = m.loading,
-	}
-	m.ev = data_grid(gtx, &m.g, PEOPLE_COLS, src, "People", toolbar = m.toolbar)
+	m.ev = data_grid(gtx, &m.g, PEOPLE_COLS, &m.table, "People", toolbar = m.toolbar)
 }
 
 @(private = "file")
@@ -67,6 +60,8 @@ people_open :: proc(p: ^ui.Probe, m: ^People, size := ops.Size{700, 400}) {
 people_close :: proc(p: ^ui.Probe, m: ^People) {
 	ui.probe_destroy(p)
 	data_grid_destroy(&m.g)
+	datagrid.memory_table_destroy(&m.table)
+	delete(m.keyed)
 	free_all(context.temp_allocator)
 }
 
@@ -110,7 +105,7 @@ test_a_header_click_sorts_and_shows_its_octicon :: proc(t: ^testing.T) {
 	testing.expect(t, icon_drawn(&p, .Sort_Asc, color(.Fg_Color_Default)))
 	ui.probe_click(&p, "Count")
 	testing.expect(t, icon_drawn(&p, .Sort_Desc, color(.Fg_Color_Default)))
-	first := datagrid.item_at(&m.g.grid, {rows = 3}, 0)
+	first := datagrid.item_at(&m.g.grid, &m.table, 0)
 	testing.expect_value(t, first.row, 1) // Grace Hopper's 100 first
 }
 
@@ -261,7 +256,8 @@ test_a_hovered_row_lights :: proc(t: ^testing.T) {
 @(test)
 test_a_loading_grid_draws_skeleton_bars_and_an_empty_one_says_so :: proc(t: ^testing.T) {
 	m := people_make(toolbar = false)
-	m.rows, m.loading = nil, true
+	datagrid.memory_table_changed(&m.table, nil)
+	m.table.loading = true
 	p: ui.Probe
 	people_open(&p, m)
 	defer people_close(&p, m)
@@ -274,7 +270,7 @@ test_a_loading_grid_draws_skeleton_bars_and_an_empty_one_says_so :: proc(t: ^tes
 		}
 	}
 	testing.expect(t, bars >= 3 * 9, "a view of skeleton rows, three bars each")
-	m.loading = false
+	m.table.loading = false
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "No rows"))
 }

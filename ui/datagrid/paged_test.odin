@@ -16,6 +16,7 @@ Pager :: struct {
 	g:      Grid,
 	skin:   Skin,
 	paging: Paging,
+	remote: Remote_Rows,
 	rows:   []Page_Row,
 	cells:  [][4]string,
 	table:  Memory_Table,
@@ -52,7 +53,8 @@ pager_make :: proc(n: int, paging: Paging) -> ^Pager {
 		}
 	}
 	memory_table_init(&m.table, PAGED_COLS, m.rows)
-	grid_init(&m.g, PAGED_COLS, &m.paging)
+	remote_rows_init(&m.remote, m.paging)
+	grid_init(&m.g, PAGED_COLS)
 	m.skin.style = DEFAULT_STYLE
 	return m
 }
@@ -60,6 +62,7 @@ pager_make :: proc(n: int, paging: Paging) -> ^Pager {
 @(private = "file")
 pager_free :: proc(m: ^Pager) {
 	grid_destroy(&m.g)
+	remote_rows_destroy(&m.remote)
 	memory_table_destroy(&m.table)
 	for c in m.cells {
 		delete(c[0])
@@ -74,7 +77,7 @@ pager_free :: proc(m: ^Pager) {
 @(private = "file")
 pager_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m := (^Pager)(user)
-	m.ev = grid(gtx, &m.g, PAGED_COLS, Source{paged = &m.paging}, &m.skin, "Rigs")
+	m.ev = grid(gtx, &m.g, PAGED_COLS, &m.remote, &m.skin, "Rigs")
 }
 
 // serve answers every page the last frame needed, then runs a frame.
@@ -131,7 +134,7 @@ test_a_paged_grid_shows_skeletons_then_rows_and_finds_its_end :: proc(t: ^testin
 	n, lo, _ = page_needs(&p)
 	testing.expect_value(t, [2]int{n, lo}, [2]int{3, 0})
 	testing.expect_value(t, m.g.geo.items, 95) // the server said
-	testing.expect_value(t, m.g.pages.kind, Count_Kind.Exact)
+	testing.expect_value(t, m.remote.pages.kind, Count_Kind.Exact)
 	m.g.scroll.y = 1e6
 	ui.probe_frame(&p)
 	// The pages left behind are needed no more: their host cancels them.
@@ -149,7 +152,7 @@ test_a_paged_grid_shows_skeletons_then_rows_and_finds_its_end :: proc(t: ^testin
 	testing.expect(t, ui.probe_tagged(&p, "SN-00094"), "the last row")
 	n, lo, _ = page_needs(&p)
 	testing.expect(t, n <= 4 && lo >= 70, fmt.tprint(n, lo))
-	testing.expect(t, len(m.g.pages.entries) <= m.g.pages.capacity)
+	testing.expect(t, len(m.remote.pages.entries) <= m.remote.pages.capacity)
 }
 
 @(test)
@@ -162,9 +165,9 @@ test_a_sort_is_a_new_query_its_pages_asked_with_the_sort :: proc(t: ^testing.T) 
 	for _ in 0 ..< 4 {
 		serve(&p, m)
 	}
-	before := m.g.pages.query
+	before := m.remote.pages.query
 	testing.expect(t, ui.probe_click(&p, "Hash"))
-	testing.expect(t, m.g.pages.query != before, "the sort changed the query key")
+	testing.expect(t, m.remote.pages.query != before, "the sort changed the query key")
 	sorted := false
 	for need in ui.probe_needs(&p) {
 		if q, ok := ui.need_as(need, Page_Query); ok {
@@ -177,7 +180,7 @@ test_a_sort_is_a_new_query_its_pages_asked_with_the_sort :: proc(t: ^testing.T) 
 	serve(&p, m)
 	// The rows come in the order the server sorted them.
 	for i in 0 ..< 3 {
-		it := item_at(&m.g, Source{paged = &m.paging}, i)
+		it := item_at(&m.g, &m.remote, i)
 		want := m.rows[m.table.order.rows[i]].key
 		testing.expect(t, it.page_row != nil && it.name == want, fmt.tprint(i, it.name, want))
 	}
@@ -206,13 +209,13 @@ test_kept_stand_ins_show_dimmed_until_the_new_query_arrives :: proc(t: ^testing.
 	view_set_values(&m.g.view, 2, {"Norway"})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "SN-00001"), "an old row stands in")
-	_, st, _ := pages_row(&m.g.pages, 1)
+	_, st, _ := pages_row(&m.remote.pages, 1)
 	testing.expect_value(t, st, Row_State.Stale)
 	testing.expect_value(t, m.seen.a, 127) // dimmed by half
 	serve(&p, m)
 	serve(&p, m)
 	testing.expect(t, !ui.probe_tagged(&p, "SN-00001"), "a Paraguay rig, filtered out")
-	_, st, _ = pages_row(&m.g.pages, 1)
+	_, st, _ = pages_row(&m.remote.pages, 1)
 	testing.expect_value(t, st, Row_State.Ready)
 	testing.expect_value(t, m.g.geo.items, 20)
 }
@@ -266,7 +269,7 @@ test_a_skin_draws_every_row_of_a_failed_page :: proc(t: ^testing.T) {
 	m.fail = true
 	serve(&p, m)
 	serve(&p, m)
-	_, st, _ := pages_row(&m.g.pages, 3)
+	_, st, _ := pages_row(&m.remote.pages, 3)
 	testing.expect_value(t, st, Row_State.Failed)
 	failed_slots = 0
 	ui.probe_frame(&p)
@@ -285,7 +288,7 @@ test_select_all_loaded_names_rows_and_all_matching_names_the_query :: proc(t: ^t
 	for _ in 0 ..< 6 {
 		serve(&p, m)
 	}
-	select_loaded(&m.g, Source{paged = &m.paging})
+	select_loaded(&m.g, &m.remote)
 	testing.expect(t, !m.g.sel.all)
 	testing.expect_value(t, len(m.g.sel.keys), 40) // pages 0 and 1
 	testing.expect_value(t, m.g.sel.keys[row_key("SN-00032")], "SN-00032")
@@ -310,7 +313,7 @@ test_a_paged_export_streams_every_page_with_progress_and_stops :: proc(t: ^testi
 	ui.probe_init(&p, pager_view, m, {600, 400})
 	defer ui.probe_destroy(&p)
 	serve(&p, m)
-	export_start(&m.g, PAGED_COLS, Source{paged = &m.paging})
+	export_start(&m.g, PAGED_COLS, &m.remote)
 	serve(&p, m)
 	serve(&p, m)
 	w, total := export_progress(&m.g)
@@ -323,8 +326,15 @@ test_a_paged_export_streams_every_page_with_progress_and_stops :: proc(t: ^testi
 	text := strings.to_string(m.g.export.text)
 	testing.expect_value(t, strings.count(text, "\r\n"), 2501)
 	testing.expect(t, strings.has_suffix(text, "SN-02499,M3,Norway,63\r\n"), text[len(text) - 40:])
-	export_start(&m.g, PAGED_COLS, Source{paged = &m.paging})
-	serve(&p, m)
+	export_start(&m.g, PAGED_COLS, &m.remote)
+	ui.probe_frame(&p)
+	testing.expect(t, m.g.export.active && !m.g.export.done, "a second export runs")
+	asked := false
+	for need in ui.probe_needs(&p) {
+		q, ok := ui.need_as(need, Page_Query)
+		asked ||= ok && q.limit == EXPORT_PAGE
+	}
+	testing.expect(t, asked, "and needs its first page")
 	export_cancel(&m.g)
 	serve(&p, m)
 	testing.expect(t, !m.g.export.active)
@@ -414,19 +424,23 @@ test_the_count_is_known_only_once_a_page_of_the_query_lands :: proc(t: ^testing.
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
 	defer ui.probe_destroy(&p)
-	testing.expect(t, !pages_known(&m.g.pages), "known before any page")
-	testing.expect(t, pages_loading(&m.g.pages))
+	testing.expect(t, !pages_known(&m.remote.pages), "known before any page")
+	testing.expect(t, pages_loading(&m.remote.pages))
 	for _ in 0 ..< 6 {
 		serve(&p, m) // a full page reaches for the next until the end shows
 	}
-	testing.expect(t, pages_known(&m.g.pages))
-	testing.expect(t, !pages_loading(&m.g.pages))
+	testing.expect(t, pages_known(&m.remote.pages))
+	testing.expect(t, !pages_loading(&m.remote.pages))
 	append(&m.g.view.sort, Sort_Key{col = 0, desc = true})
 	ui.probe_frame(&p)
-	testing.expect(t, !pages_known(&m.g.pages), "the last query's count stood for the new one")
+	testing.expect(
+		t,
+		!pages_known(&m.remote.pages),
+		"the last query's count stood for the new one",
+	)
 	serve(&p, m)
 	serve(&p, m)
-	testing.expect(t, pages_known(&m.g.pages))
+	testing.expect(t, pages_known(&m.remote.pages))
 	est: Pages
 	pages_init(&est, {page_size = 10, estimate = 500})
 	defer pages_destroy(&est)

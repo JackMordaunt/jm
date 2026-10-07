@@ -377,12 +377,14 @@ Rows :: struct {
 	cells: [][4]string,
 }
 
+// page_rows is r's cells as the rows an order reads.
 @(private)
-rows_source :: proc(r: ^Rows) -> datagrid.Source {
-	text :: proc(user: rawptr, row, col: int) -> string {
-		return (^Rows)(user).cells[row][col]
+page_rows :: proc(r: ^Rows) -> []datagrid.Page_Row {
+	out := make([]datagrid.Page_Row, len(r.cells))
+	for &c, i in r.cells {
+		out[i] = {fmt.aprint(i), c[:]}
 	}
-	return {user = r, rows = len(r.cells), text = text}
+	return out
 }
 
 // draw_rows draws up to 40 rows of the query columns.
@@ -465,7 +467,7 @@ query :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 	}
 	o: datagrid.Order
 	defer datagrid.order_destroy(&o)
-	datagrid.order_build(&o, rows_source(&rows), q)
+	datagrid.order_build(&o, page_rows(&rows), q)
 	want := reference_order(&rows, q)
 	if !equal_ints(o.rows[:], want) {
 		return fmt.tprintf("rows %v\nquery %v\ngot %v\nwant %v", rows.cells, q, o.rows[:], want),
@@ -618,7 +620,7 @@ filters_compose :: proc(rows: ^Rows, q: datagrid.Query, got: []int) -> (string, 
 	rest.filters, rest.sort, rest.search = q.filters[1:], nil, ""
 	o: datagrid.Order
 	defer datagrid.order_destroy(&o)
-	datagrid.order_build(&o, rows_source(rows), first)
+	datagrid.order_build(&o, page_rows(rows), first)
 	both := make([dynamic]int)
 	for r in o.rows {
 		if reference_keeps(rows, rest, r) {

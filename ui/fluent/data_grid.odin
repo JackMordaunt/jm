@@ -17,11 +17,11 @@ import "jm:ui/ops"
 //	datagrid.grid_init(&g, COLUMNS)
 //	skin := fluent.data_grid_skin(gtx, &g)
 //	skin.cell, skin.cell_user = draw_file_cell, &files // to draw cells of its own
-//	ev := datagrid.grid(gtx, &g, COLUMNS, source, &skin, "Files")
+//	ev := datagrid.grid(gtx, &g, COLUMNS, &table, &skin, "Files")
 //
 // The Table primitives (table_open, table_row_open and the cells) stay
 // the component for a table the caller composes row by row; this is for
-// one the grid lays out from a source.
+// one the grid lays out from its rows (datagrid.Rows).
 
 // data_grid_skin is a Fluent skin for g this frame: the density's row
 // height (Normal is Table's Medium, 44px; Condensed its Small, 34px;

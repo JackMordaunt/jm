@@ -34,7 +34,7 @@ Painter :: struct {
 	gtx:   ^ui.Ctx,
 	g:     ^Grid,
 	cols:  []Column,
-	src:   Source,
+	src:   Rows,
 	skin:  ^Skin,
 	st:    ^Style,
 	id:    ops.Area_Id,
@@ -79,7 +79,7 @@ paint :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	src: Source,
+	src: Rows,
 	skin: ^Skin,
 	id: ops.Area_Id,
 	label: string,
@@ -380,7 +380,7 @@ paint_cell :: proc(pc: ^Painter, it: Item, item, at: int, cell: ops.Rect, rid: o
 		return
 	}
 	paint_range(pc, item, at, cell)
-	text := cell_text(pc.gtx, pc.src, pc.cols, it, item, col)
+	text := cell_text(pc.gtx, pc.cols, it, item, col)
 	is_cursor := g.cursor.item == item && g.cursor.col == col
 	sel := selected(&g.sel, it.key)
 	fg := cell_ink(st, it.state, sel)
@@ -615,7 +615,7 @@ paint_failed :: proc(pc: ^Painter, err: string, box: ops.Rect, ri, item: int) {
 paint_empty :: proc(pc: ^Painter) {
 	gtx, g := pc.gtx, pc.g
 	body := g.geo.body
-	if pc.src.paged != nil && g.pages.kind != .Exact {
+	if _, kind, _ := rows_count(pc.src); kind != .Exact {
 		return // not known to be empty yet
 	}
 	if pc.skin.empty != nil {
@@ -732,7 +732,7 @@ paint_outline :: proc(pc: ^Painter) {
 grid_semantics :: proc(pc: ^Painter, label: string) {
 	g := pc.g
 	rows := i32(g.geo.items) + 1
-	if pc.src.paged != nil && g.pages.kind == .Unknown {
+	if _, kind, _ := rows_count(pc.src); kind == .Unknown {
 		rows = -1
 	}
 	active: ops.Area_Id

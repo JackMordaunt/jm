@@ -21,7 +21,7 @@ import "jm:ui"
 // handle_key applies one key: one that moves the cursor, else one that
 // acts.
 @(private)
-handle_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
+handle_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Rows, e: ui.Event, ev: ^Events) {
 	if !move_key(g, src, e, ev) {
 		act_on_key(gtx, g, cols, src, e, ev)
 	}
@@ -30,7 +30,7 @@ handle_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Ev
 // move_key applies a key that moves the cursor and reports whether e was
 // one. Cmd or Ctrl jumps to an end, Shift extends the range.
 @(private)
-move_key :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) -> bool {
+move_key :: proc(g: ^Grid, src: Rows, e: ui.Event, ev: ^Events) -> bool {
 	jump := ui.SHORTCUT in e.mods || .Ctrl in e.mods
 	extend := .Shift in e.mods
 	#partial switch e.key {
@@ -52,7 +52,7 @@ move_key :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) -> bool {
 // vertical_key is Up or Down: a row, or with jump the first or last;
 // Alt+Down on a header asks for its filter.
 @(private)
-vertical_key :: proc(g: ^Grid, src: Source, e: ui.Event, jump, extend: bool, ev: ^Events) {
+vertical_key :: proc(g: ^Grid, src: Rows, e: ui.Event, jump, extend: bool, ev: ^Events) {
 	if e.key == .Up {
 		move_to(g, src, 0 if jump else g.cursor.item - 1, extend, ev)
 		return
@@ -67,7 +67,7 @@ vertical_key :: proc(g: ^Grid, src: Source, e: ui.Event, jump, extend: bool, ev:
 // ends_key is Home (home) or End: the row's first or last cell, or with
 // jump the first or last row.
 @(private)
-ends_key :: proc(g: ^Grid, src: Source, home, jump, extend: bool, ev: ^Events) {
+ends_key :: proc(g: ^Grid, src: Rows, home, jump, extend: bool, ev: ^Events) {
 	if jump {
 		move_to(g, src, 0 if home else g.geo.items - 1, extend, ev)
 	} else {
@@ -77,7 +77,7 @@ ends_key :: proc(g: ^Grid, src: Source, home, jump, extend: bool, ev: ^Events) {
 
 // act_on_key applies a key that acts rather than moves.
 @(private)
-act_on_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
+act_on_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Rows, e: ui.Event, ev: ^Events) {
 	cmd := ui.SHORTCUT in e.mods
 	#partial switch e.key {
 	case .Enter, .Space:
@@ -102,7 +102,7 @@ act_on_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Ev
 // failed row it retries; on a row Enter activates and Space toggles its
 // selection.
 @(private)
-enter :: proc(g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
+enter :: proc(g: ^Grid, cols: []Column, src: Rows, e: ui.Event, ev: ^Events) {
 	c := g.cursor
 	if c.item < 0 {
 		if c.col >= 0 && !cols[c.col].no_sort {
@@ -114,8 +114,7 @@ enter :: proc(g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
 	it := item_at(g, src, c.item)
 	switch {
 	case it.state == .Failed:
-		page := c.item / g.pages.page_size
-		pages_retry(&g.pages, page, page + 1)
+		rows_retry(src, c.item, c.item)
 	case !has_row(it):
 	case:
 		enter_row(g, c, it, e.key == .Space, ev)
@@ -139,7 +138,7 @@ enter_row :: proc(g: ^Grid, c: Cell_At, it: Item, space: bool, ev: ^Events) {
 // its column, and scrolls it into view; extend selects the rows from the
 // anchor to it.
 @(private)
-move_to :: proc(g: ^Grid, src: Source, item: int, extend: bool, ev: ^Events) {
+move_to :: proc(g: ^Grid, src: Rows, item: int, extend: bool, ev: ^Events) {
 	to := clamp(item, -1, g.geo.items - 1)
 	it := item_at(g, src, to)
 	g.cursor.item, g.cursor.key = to, it.key
@@ -209,11 +208,11 @@ reveal :: proc(g: ^Grid) {
 	clamp_scroll(g)
 }
 
-// select_all selects every row: in a client grid, every row the filters
-// and search keep; in a paged one, every row that matches, loaded or not
-// (Selection.all), which a caller acting on it asks its source for.
-select_all :: proc(g: ^Grid, src: Source) {
-	if src.paged == nil {
+// select_all selects every row: over a table, every row the filters and
+// search keep; over a remote, every row that matches, loaded or not
+// (Selection.all), which a caller acting on it asks its host for.
+select_all :: proc(g: ^Grid, src: Rows) {
+	if _, is_table := src.(^Memory_Table); is_table {
 		// Explicit, so the keys are there to act on and survive a filter.
 		select_loaded(g, src)
 		return
@@ -221,28 +220,14 @@ select_all :: proc(g: ^Grid, src: Source) {
 	selection_all(&g.sel, g.match)
 }
 
-// select_loaded selects every row the grid holds, explicitly: in a client
-// grid every row the filters and search keep, in a paged one the rows of
-// the current query that have arrived. Unlike select_all it names its
-// rows, so an action on them needs nothing more from the source.
-select_loaded :: proc(g: ^Grid, src: Source) {
+// select_loaded selects every row the grid holds, explicitly: every row
+// a table's filters and search keep, the rows of a remote's current
+// query that have arrived. Unlike select_all it names its rows, so an
+// action on them needs nothing more from the host.
+select_loaded :: proc(g: ^Grid, src: Rows) {
 	selection_clear(&g.sel)
 	clear(&g.keys)
 	clear(&g.names)
-	if src.paged == nil {
-		for r in g.order.rows {
-			append(&g.keys, source_key(src, r))
-		}
-	} else {
-		for e in g.pages.entries {
-			if e.query != g.pages.query || e.state != .Ready {
-				continue
-			}
-			for r in e.rows {
-				append(&g.keys, row_key(r.key))
-				append(&g.names, r.key)
-			}
-		}
-	}
+	rows_held(src, &g.keys, &g.names, true)
 	selection_range(&g.sel, g.keys[:], g.names[:])
 }
