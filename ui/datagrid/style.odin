@@ -134,14 +134,21 @@ Group_Row :: struct {
 // handling, so a widget it draws there (a filter button that opens a
 // popover) takes its own presses. empty draws in the body of a grid with
 // no rows; failed on a row whose page could not be had.
+//
+// The cell slot is called with cell_user rather than user: it is the
+// application's, drawing its own cells (a badge, a button that takes its
+// own presses and leaves the row's selection alone), so a design system
+// that sets the other slots and user every frame leaves it as the caller
+// set it.
 Skin :: struct {
-	style:  Style,
-	user:   rawptr,
-	cell:   proc(gtx: ^ui.Ctx, c: ^Cell, user: rawptr) -> bool,
-	header: proc(gtx: ^ui.Ctx, h: ^Header, user: rawptr),
-	group:  proc(gtx: ^ui.Ctx, g: ^Group_Row, user: rawptr) -> bool,
-	empty:  proc(gtx: ^ui.Ctx, size: ops.Size, user: rawptr),
-	failed: proc(gtx: ^ui.Ctx, size: ops.Size, error: string, user: rawptr) -> bool,
+	style:     Style,
+	user:      rawptr,
+	cell:      proc(gtx: ^ui.Ctx, c: ^Cell, user: rawptr) -> bool,
+	cell_user: rawptr,
+	header:    proc(gtx: ^ui.Ctx, h: ^Header, user: rawptr),
+	group:     proc(gtx: ^ui.Ctx, g: ^Group_Row, user: rawptr) -> bool,
+	empty:     proc(gtx: ^ui.Ctx, size: ops.Size, user: rawptr),
+	failed:    proc(gtx: ^ui.Ctx, size: ops.Size, error: string, user: rawptr) -> bool,
 }
 
 // row_height is a row's height at density d, 33px where the style

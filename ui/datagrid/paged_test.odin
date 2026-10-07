@@ -200,7 +200,7 @@ test_kept_stand_ins_show_dimmed_until_the_new_query_arrives :: proc(t: ^testing.
 		}
 		return false
 	}
-	m.skin.user = m
+	m.skin.cell_user = m
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.seen.a, 255)
 	view_set_values(&m.g.view, 2, {"Norway"})

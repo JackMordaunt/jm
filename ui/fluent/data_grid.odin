@@ -16,6 +16,7 @@ import "jm:ui/ops"
 //	g: datagrid.Grid
 //	datagrid.grid_init(&g, COLUMNS)
 //	skin := fluent.data_grid_skin(gtx, &g)
+//	skin.cell, skin.cell_user = draw_file_cell, &files // to draw cells of its own
 //	ev := datagrid.grid(gtx, &g, COLUMNS, source, &skin, "Files")
 //
 // The Table primitives (table_open, table_row_open and the cells) stay

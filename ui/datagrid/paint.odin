@@ -483,7 +483,7 @@ skin_cell :: proc(
 		fg       = fg,
 	}
 	s := slot_open(gtx, c.size, ui.id_mix(ui.id_mix(pc.id, 7), u64(item) << 16 | u64(col)))
-	drew := pc.skin.cell(gtx, &c, pc.skin.user)
+	drew := pc.skin.cell(gtx, &c, pc.skin.cell_user)
 	slot_close(gtx, &s, {cell.x, cell.y})
 	return drew
 }

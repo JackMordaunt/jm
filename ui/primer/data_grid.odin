@@ -21,6 +21,10 @@ import tok "jm:ui/primer/tokens"
 //	primer.data_grid_init(&g, COLUMNS)
 //	ev := primer.data_grid(gtx, &g, COLUMNS, source, "Rigs")
 //	if ev.activated { open_rig(ev.row.key) }
+//
+// A caller draws its own cells (a Label, a Button that takes its own
+// presses) by setting g.skin.cell and g.skin.cell_user once: the grid
+// refills the rest of its skin every frame and leaves those alone.
 
 // Data_Grid is a Primer data grid's state, the caller's to keep for the
 // grid's life: the core grid (whose view a saved view is made of), the
