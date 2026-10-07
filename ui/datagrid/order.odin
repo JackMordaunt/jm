@@ -3,7 +3,7 @@ package datagrid
 import "core:slice"
 import "core:time"
 
-// A client grid's order: the rows its query keeps, sorted and grouped. A
+// A client grid's order: the rows its query keeps, sorted. A
 // query change on rows that stay the same is built a slice at a time, so
 // a sort, a filter or a search keystroke over 100,000 rows costs a frame
 // no more than ORDER_BUDGET; the grid draws the order it had, stale,
@@ -17,42 +17,20 @@ ORDER_BUDGET :: 4 * time.Millisecond
 @(private)
 ORDER_CHUNK :: 512
 
-// Group is a run of rows sharing the group column's text: where its text
-// lies in Order.group_text (group_name reads it), how many rows, and
-// where its header sits in Order.items.
-Group :: struct {
-	lo, hi: int,
-	count:  int,
-	item:   int,
-}
-
-// group_name is group g's text.
-group_name :: proc(o: ^Order, g: Group) -> string {
-	return string(o.group_text[g.lo:g.hi])
-}
-
 // Order is a client grid's rows as its query shows them: rows, the
-// matching rows' indices in order, and items, what the grid draws, which
-// is rows with a group header before each run when grouped (an item < 0
-// is header -item-1), and a collapsed group's rows left out. The rest is
-// a build's scratch, kept for its capacity.
+// matching rows' indices in order. The rest is a build's scratch, kept
+// for its capacity.
 Order :: struct {
-	rows:       [dynamic]int,
-	items:      [dynamic]int,
-	groups:     [dynamic]Group,
-	group_text: [dynamic]u8, // every group's text, end to end: a source's text may be the frame's
-	key_nums:   [dynamic][dynamic]f64, // per sort key, each row's value
-	key_ok:     [dynamic][dynamic]bool,
-	key_bytes:  [dynamic][dynamic]u8, // per sort key, each row's text end to end
-	key_spans:  [dynamic][dynamic][2]u32, // where each row's text lies in key_bytes
-	pos, tmp:   [dynamic]i32, // the merge sort's two buffers of positions
+	rows:      [dynamic]int,
+	key_nums:  [dynamic][dynamic]f64, // per sort key, each row's value
+	key_ok:    [dynamic][dynamic]bool,
+	key_bytes: [dynamic][dynamic]u8, // per sort key, each row's text end to end
+	key_spans: [dynamic][dynamic][2]u32, // where each row's text lies in key_bytes
+	pos, tmp:  [dynamic]i32, // the merge sort's two buffers of positions
 }
 
 order_destroy :: proc(o: ^Order) {
 	delete(o.rows)
-	delete(o.items)
-	delete(o.groups)
-	delete(o.group_text)
 	for ki in 0 ..< len(o.key_nums) {
 		delete(o.key_nums[ki])
 		delete(o.key_ok[ki])
@@ -70,34 +48,31 @@ order_destroy :: proc(o: ^Order) {
 
 // Order_Job is an order's build in progress: the step it is at and where
 // in it. A job is restarted (order_start) whenever what it builds for
-// changes; the query, rows and collapsed groups each step is given must
-// be the ones it started with.
+// changes; the query and rows each step is given must be the ones it
+// started with.
 Order_Job :: struct {
 	phase: Order_Phase,
-	at:    int, // the next row, position or item the phase takes
+	at:    int, // the next row or position the phase takes
 	key:   int, // the sort key Keys is reading
 	width: int, // the merge sort's run width
 	lo:    int, // where the pair being merged starts
 	i, j:  int, // the pair's next positions, while merging one
-	shut:  bool, // the group Items is in is collapsed
 }
 
 Order_Phase :: enum u8 {
 	Filter, // keep the rows the filters and the search keep
 	Keys, // read each sort key's cells
 	Sort, // merge sort the kept rows' positions
-	Items, // lay out the items, group headers included
 	Done,
 }
 
 // order_build fills o with the rows of src that q matches, sorted by q's
-// sort (stably: rows that tie keep their source order), grouped by q's
-// group column with the groups in collapsed shut. It reads each sorted
-// cell once.
-order_build :: proc(o: ^Order, src: Source, q: Query, collapsed: map[string]bool = nil) {
+// sort (stably: rows that tie keep their source order). It reads each
+// sorted cell once.
+order_build :: proc(o: ^Order, src: Source, q: Query) {
 	job: Order_Job
 	order_start(&job, o)
-	order_step(&job, o, src, q, collapsed, {})
+	order_step(&job, o, src, q, {})
 }
 
 // order_start readies job to build o from the beginning.
@@ -113,10 +88,9 @@ order_step :: proc(
 	o: ^Order,
 	src: Source,
 	q: Query,
-	collapsed: map[string]bool,
 	deadline: time.Tick,
 ) -> bool {
-	keys := sort_keys(q)
+	keys := q.sort
 	for job.phase != .Done {
 		finished: bool
 		switch job.phase {
@@ -126,8 +100,6 @@ order_step :: proc(
 			finished = len(keys) == 0 || keys_step(job, o, src, q.cols, keys, deadline)
 		case .Sort:
 			finished = len(keys) == 0 || sort_step(job, o, sorting(o, q.cols, keys), deadline)
-		case .Items:
-			finished = items_step(job, o, src, q.group, collapsed, deadline)
 		case .Done:
 		}
 		if !finished {
@@ -171,25 +143,6 @@ filter_step :: proc(
 	return true
 }
 
-// sort_keys is the keys q's rows sort by: the group column first, in the
-// direction the sort gives it, then the sort's other keys.
-@(private)
-sort_keys :: proc(q: Query) -> []Sort_Key {
-	keys := make([dynamic]Sort_Key, 0, len(q.sort) + 1, context.temp_allocator)
-	if q.group >= 0 {
-		group := Sort_Key{q.group, false}
-		for s in q.sort {
-			group.desc = s.desc if s.col == q.group else group.desc
-		}
-		append(&keys, group)
-	}
-	for s in q.sort {
-		if s.col != q.group {
-			append(&keys, s)
-		}
-	}
-	return keys[:]
-}
 
 // keys_step reads each sort key's cells for the kept rows into o's key
 // arrays, a text copied so it outlives the frame its source made it in.
@@ -405,56 +358,4 @@ compare_numbers :: proc(a: f64, ok_a: bool, b: f64, ok_b: bool) -> int {
 		return 0
 	}
 	return -1 if a < b else 1
-}
-
-// items_step lays out what the grid draws from o.rows, from job.at on:
-// the rows, or with a group column a header before each run of equal
-// text and the rows of a group in collapsed left out.
-@(private)
-items_step :: proc(
-	job: ^Order_Job,
-	o: ^Order,
-	src: Source,
-	group: int,
-	collapsed: map[string]bool,
-	deadline: time.Tick,
-) -> bool {
-	if job.at == 0 {
-		clear(&o.items)
-		clear(&o.groups)
-		clear(&o.group_text)
-	}
-	if group < 0 {
-		append(&o.items, ..o.rows[:])
-		return true
-	}
-	n := len(o.rows)
-	for job.at < n {
-		end := min(job.at + ORDER_CHUNK, n)
-		for i in job.at ..< end {
-			item_add(job, o, source_text(src, o.rows[i], group), o.rows[i], collapsed)
-		}
-		job.at = end
-		if job.at < n && past(deadline) {
-			return false
-		}
-	}
-	return true
-}
-
-// item_add lays out row r, whose group text is t: a header first when t
-// starts a group, then the row unless its group is shut.
-@(private)
-item_add :: proc(job: ^Order_Job, o: ^Order, t: string, r: int, collapsed: map[string]bool) {
-	if len(o.groups) == 0 || t != group_name(o, o.groups[len(o.groups) - 1]) {
-		lo := len(o.group_text)
-		append(&o.group_text, t)
-		append(&o.groups, Group{lo = lo, hi = len(o.group_text), item = len(o.items)})
-		append(&o.items, -len(o.groups))
-		job.shut = collapsed[t]
-	}
-	o.groups[len(o.groups) - 1].count += 1
-	if !job.shut {
-		append(&o.items, r)
-	}
 }

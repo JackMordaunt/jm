@@ -104,19 +104,6 @@ test_order_filters_searches_sorts_and_groups :: proc(t: ^testing.T) {
 	view_set_search(&v, "PARA")
 	order_build(&o, src, view_query(&v, COLS, &visible))
 	testing.expect(t, slice.equal(o.rows[:], []int{1}))
-
-	view_clear_filters(&v)
-	clear(&v.sort)
-	v.group = 1
-	order_build(&o, src, view_query(&v, COLS, &visible))
-	testing.expect_value(t, len(o.groups), 3)
-	testing.expect_value(t, group_name(&o, o.groups[1]), "Norway")
-	testing.expect_value(t, o.groups[1].count, 3)
-	testing.expect(t, slice.equal(o.items[:], []int{-1, 3, -2, 0, 2, 4, -3, 1}))
-	shut := make(map[string]bool, context.temp_allocator)
-	shut["Norway"] = true
-	order_build(&o, src, view_query(&v, COLS, &visible), shut)
-	testing.expect(t, slice.equal(o.items[:], []int{-1, 3, -2, -3, 1}))
 	free_all(context.temp_allocator)
 }
 
@@ -168,7 +155,6 @@ test_a_view_round_trips_and_survives_a_dropped_column :: proc(t: ^testing.T) {
 	view_set_values(&v, 1, {"Norway", "say \"hi\"\n"})
 	view_set_range(&v, 2, 10.5, nil)
 	view_set_search(&v, "rig\t2")
-	v.group = 1
 	b := strings.builder_make(context.temp_allocator)
 	view_encode(&b, &v, COLS, "Ops \"view\"")
 
@@ -192,7 +178,6 @@ test_a_view_round_trips_and_survives_a_dropped_column :: proc(t: ^testing.T) {
 	testing.expect(t, hash.hi == nil)
 
 	testing.expect_value(t, w.search, "rig\t2")
-	testing.expect_value(t, w.group, 1)
 
 	// The next build dropped "site" and added "owner".
 	drift := []Column{COLS[0], {id = "owner", title = "Owner", hidden = true}, COLS[2], COLS[3]}
@@ -203,8 +188,15 @@ test_a_view_round_trips_and_survives_a_dropped_column :: proc(t: ^testing.T) {
 	testing.expect(t, slice.equal(d.order[:], []int{3, 0, 2, 1}), "the new column goes last")
 	testing.expect(t, d.cols[1].hidden, "and keeps its declared state")
 	testing.expect_value(t, len(d.filters), 1) // site's filter went with it
-	testing.expect_value(t, d.group, -1)
 	testing.expect_value(t, d.cols[0].width, 180)
+
+	_, ok = view_decode(
+		&d,
+		drift,
+		"datagrid-view 1\nname \"old\"\ngroup \"serial\"\n",
+		context.temp_allocator,
+	)
+	testing.expect(t, ok, "a group line a grid wrote before grouping went is passed over")
 
 	_, ok = view_decode(&d, drift, "not a view")
 	testing.expect(t, !ok)
@@ -363,34 +355,25 @@ test_an_order_built_a_chunk_at_a_time_is_the_order_built_at_once :: proc(t: ^tes
 	view_sort_cycle(&v, 2, true) // descending
 	view_set_values(&v, 1, {"Norway", "Ethiopia", "Wisconsin"})
 	view_set_range(&v, 2, 20, nil)
-	v.group = 1
-	shut := make(map[string]bool)
-	defer delete(shut)
-	shut["Ethiopia"] = true
 	visible: [dynamic]int
 	defer delete(visible)
 	q := view_query(&v, COLS, &visible)
 	whole: Order
 	defer order_destroy(&whole)
-	order_build(&whole, src, q, shut)
+	order_build(&whole, src, q)
 	sliced: Order
 	defer order_destroy(&sliced)
 	job: Order_Job
 	order_start(&job, &sliced)
 	steps := 1
 	// A deadline long gone: each step does one chunk, the least it may.
-	for !order_step(&job, &sliced, src, q, shut, time.Tick{1}) {
+	for !order_step(&job, &sliced, src, q, time.Tick{1}) {
 		free_all(context.temp_allocator) // the frame's texts go, as a frame's do
 		steps += 1
 	}
 	testing.expect(t, steps > 20, "the build took many steps")
 	testing.expect(t, len(whole.rows) > 1000)
 	testing.expect(t, slice.equal(whole.rows[:], sliced.rows[:]))
-	testing.expect(t, slice.equal(whole.items[:], sliced.items[:]))
-	testing.expect_value(t, len(sliced.groups), 3)
-	for g, i in whole.groups {
-		testing.expect_value(t, group_name(&sliced, sliced.groups[i]), group_name(&whole, g))
-	}
 }
 
 @(test)

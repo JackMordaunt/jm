@@ -7,7 +7,7 @@ import "core:strings"
 
 // View is how the user has arranged a grid and what they asked it to
 // show: the columns' order, widths, visibility and pins, the sort, the
-// filters, the search and the grouping. It is the part of a grid a saved
+// filters and the search. It is the part of a grid a saved
 // view keeps (view_encode), and the part a paged grid's query is made
 // of. Columns are indexed as the caller declared them; order lists every
 // column, hidden or not, in display order.
@@ -17,7 +17,6 @@ View :: struct {
 	sort:      [dynamic]Sort_Key,
 	filters:   [dynamic]Filter,
 	search:    string,
-	group:     int, // the column rows are grouped by, -1 for none
 	allocator: mem.Allocator,
 }
 
@@ -49,7 +48,6 @@ view_reset :: proc(v: ^View, cols: []Column) {
 	clear(&v.sort)
 	view_free_filters(v)
 	view_set_search(v, "")
-	v.group = -1
 	for c, i in cols {
 		append(&v.order, i)
 		append(&v.cols, Column_State{hidden = c.hidden, pin = c.pin})
@@ -57,8 +55,8 @@ view_reset :: proc(v: ^View, cols: []Column) {
 }
 
 // view_reset_columns puts the columns back as declared (their order,
-// widths, visibility and pins), keeping the sort, filters, search and
-// grouping: the Reset columns of a column menu.
+// widths, visibility and pins), keeping the sort, filters and search:
+// the Reset columns of a column menu.
 view_reset_columns :: proc(v: ^View, cols: []Column) {
 	clear(&v.order)
 	for c, i in cols {
@@ -113,7 +111,6 @@ view_copy :: proc(dst: ^View, src: ^View) {
 		append(&dst.filters, filter_clone(f, dst.allocator))
 	}
 	view_set_search(dst, src.search)
-	dst.group = src.group
 }
 
 @(private)
@@ -325,7 +322,6 @@ view_query :: proc(v: ^View, cols: []Column, visible: ^[dynamic]int) -> Query {
 		filters = v.filters[:],
 		search = v.search,
 		visible = visible[:],
-		group = v.group,
 	}
 }
 
@@ -344,7 +340,6 @@ VIEW_MAGIC :: "datagrid-view 1"
 //	filter "hashrate" range 10 -
 //	filter "worker" text "sazsub_"
 //	search "s21"
-//	group "facility"
 //
 // A column line lists every column in display order; a width of 0 (not
 // dragged) is left out. Strings are quoted with \" \\ \n \r \t and \xHH
@@ -370,11 +365,6 @@ view_encode :: proc(b: ^strings.Builder, v: ^View, cols: []Column, name: string)
 	if v.search != "" {
 		strings.write_string(b, "search ")
 		write_quoted(b, v.search)
-		strings.write_byte(b, '\n')
-	}
-	if v.group >= 0 {
-		strings.write_string(b, "group ")
-		write_quoted(b, cols[v.group].id)
 		strings.write_byte(b, '\n')
 	}
 }
@@ -538,9 +528,8 @@ decode_line :: proc(v: ^View, cols: []Column, toks: []string, named: []bool) {
 		decode_sort(v, c, toks[2:])
 	case "filter":
 		decode_filter(v, c, toks[2:])
-	case "group":
-		v.group = c
 	}
+
 }
 
 // decode_sort adds column c to the sort in the direction toks give, the

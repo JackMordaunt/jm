@@ -54,7 +54,7 @@ copy_text :: proc(
 	}
 	for item in rows {
 		it := item_at(g, src, item)
-		if it.group >= 0 || !has_row(it) {
+		if !has_row(it) {
 			continue
 		}
 		clear(&fields)
@@ -128,7 +128,8 @@ selected_range :: proc(g: ^Grid, src: Source) -> (rows: []int, places: []int) {
 	}
 	for i in 0 ..< g.geo.items {
 		it := item_at(g, src, i)
-		if it.group < 0 && it.state == .Ready && selected(&g.sel, it.key) {
+		if it.state == .Ready && selected(&g.sel, it.key) {
+
 			append(&out, i)
 		}
 	}

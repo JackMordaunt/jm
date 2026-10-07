@@ -9,7 +9,7 @@ import "jm:ui/ops"
 
 // The Primer data grid through ui.Probe by tags: its density's rows, a
 // header's sort and filter panel, the toolbar's search, views and
-// Columns menu, groups, hover, a loading source; and the pagination
+// Columns menu, hover, a loading source; and the pagination
 // bar on its own.
 
 @(private = "file")
@@ -231,20 +231,6 @@ test_the_columns_menu_hides_a_column_and_downloads_csv :: proc(t: ^testing.T) {
 	want := "Name,Count\r\nAda,1\r\nGrace Hopper,100\r\nLinus,7\r\n"
 	testing.expect_value(t, strings.to_string(m.g.csv), want)
 	testing.expect(t, ui.probe_tagged(&p, "Exported 3 rows"))
-}
-
-@(test)
-test_a_group_shows_its_count_and_speaks_row_or_rows :: proc(t: ^testing.T) {
-	m := people_make(toolbar = false)
-	m.g.grid.view.group = 1
-	p: ui.Probe
-	people_open(&p, m)
-	defer people_close(&p, m)
-	said := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expectf(t, strings.contains(said, `"Admiral, 1 row"`), "one row is singular: %s", said)
-	testing.expectf(t, strings.contains(said, `"Engineer, 2 rows"`), "two are plural: %s", said)
-	testing.expect(t, ui.probe_click(&p, "Engineer, 2 rows"))
-	testing.expect(t, !ui.probe_tagged(&p, "Ada"), "the group shut")
 }
 
 // A hovered body row fills with the transparent control hover.

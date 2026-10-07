@@ -378,15 +378,14 @@ run_end :: proc(s: string, i: int) -> int {
 }
 
 // Query is a grid's query as order_build reads it: the columns, the
-// sort, the filters, the search text, the visible columns the search
-// looks in, and the column rows are grouped by (-1 for none).
+// sort, the filters, the search text, and the visible columns the search
+// looks in.
 Query :: struct {
 	cols:    []Column,
 	sort:    []Sort_Key,
 	filters: []Filter,
 	search:  string,
 	visible: []int,
-	group:   int,
 }
 
 // fnv_str folds s into h, ended by a byte no UTF-8 text holds, so two
@@ -462,10 +461,8 @@ order_hash :: proc(q: Query) -> u64 {
 		h = fnv_str(h, q.cols[s.col].id)
 		h = ui.fnv_u64(h, u64(s.desc))
 	}
-	if q.group >= 0 {
-		h = fnv_str(ui.fnv_u64(h, 0x6772), q.cols[q.group].id)
-	}
 	return h
+
 }
 
 // row_matches reports whether row passes every filter of q and its

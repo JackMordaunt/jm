@@ -187,7 +187,6 @@ grid_skin :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 	s.style = grid_style(gtx, g.grid.density)
 	s.user = g
 	s.header = grid_header
-	s.group = grid_group
 	s.empty = grid_empty
 	s.failed = grid_failed
 }
@@ -224,8 +223,6 @@ grid_style :: proc(gtx: ^ui.Ctx, d: datagrid.Density) -> (st: datagrid.Style) {
 	st.focus = color(.Focus_Outline_Color)
 	st.skeleton = color(.Skeleton_Loader_Bg_Color)
 	st.error_fg = color(.Fg_Color_Danger)
-	st.group_bg = color(.Bg_Color_Muted)
-	st.group_fg = color(.Fg_Color_Default)
 	st.pin_shadow = ops.with_alpha(color(.Border_Color_Default), 0.6)
 	st.handle = color(.Border_Color_Accent_Emphasis)
 	st.active = color(.Fg_Color_Accent)
@@ -559,36 +556,6 @@ filter_apply :: proc(g: ^Data_Grid, col: int) {
 	}
 	datagrid.view_set_values(&g.grid.view, col, keep[:])
 	g.applied = -1
-}
-
-// grid_group is the group slot: a group's name, semibold
-// --fgColor-default, then its count in --fgColor-muted, 8px apart on a
-// shared baseline, over --bgColor-muted (Table.module.css:291-319), after
-// a chevron that says whether it is shut.
-@(private)
-grid_group :: proc(gtx: ^ui.Ctx, gr: ^datagrid.Group_Row, user: rawptr) -> bool {
-	g := (^Data_Grid)(user)
-	block, inline := cell_padding(g.grid.density)
-	in_ := ui.inset_open(gtx, {inline, block, inline, block + tok.BORDER_WIDTH_THIN})
-	defer ui.close(&in_)
-	r := ui.row_open(gtx, gap = tok.BASE_SIZE_8, align = .Center)
-	defer ui.close(&r)
-	p := ui.widget_open(gtx)
-	icon(
-		gtx,
-		.Chevron_Right if gr.collapsed else .Chevron_Down,
-		{0, 2},
-		BUTTON_ICON,
-		color(.Fg_Color_Muted),
-	)
-	ui.widget_close(gtx, &p, {size = {BUTTON_ICON, BUTTON_ICON + 2}})
-	st := TABLE_TEXT
-	st.weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD
-	name := gr.text if gr.text != "" else "(blank)"
-	layout_text(gtx, name, st, color(.Fg_Color_Default), .Text, tagged = false)
-	count := fmt.aprintf("%d", gr.count, allocator = gtx.allocator)
-	layout_text(gtx, count, TABLE_TEXT, color(.Fg_Color_Muted), .Text, tagged = false)
-	return true
 }
 
 // grid_empty is the empty slot: a grid with no rows says so in the

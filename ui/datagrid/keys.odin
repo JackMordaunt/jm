@@ -98,9 +98,9 @@ act_on_key :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Ev
 	}
 }
 
-// enter is Enter or Space at the cursor: on a header it sorts, on a group
-// it shuts or opens it, on a failed row it retries; on a row Enter
-// activates and Space toggles its selection.
+// enter is Enter or Space at the cursor: on a header it sorts, on a
+// failed row it retries; on a row Enter activates and Space toggles its
+// selection.
 @(private)
 enter :: proc(g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
 	c := g.cursor
@@ -113,8 +113,6 @@ enter :: proc(g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
 	}
 	it := item_at(g, src, c.item)
 	switch {
-	case it.group >= 0:
-		toggle_group(g, c.item)
 	case it.state == .Failed:
 		page := c.item / g.pages.page_size
 		pages_retry(&g.pages, page, page + 1)

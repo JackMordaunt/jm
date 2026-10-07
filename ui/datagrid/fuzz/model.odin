@@ -445,7 +445,7 @@ draw_bound :: proc(src: ^harness.Source, v: f64) -> Maybe(f64) {
 
 // query draws rows and a query, builds the order, and holds it to the rows
 // filtered and stably sorted the plain way; then checks that the filters
-// compose as an intersection and the groups count every row.
+// compose as an intersection.
 query :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 	rows := draw_rows(src)
 	filters := make([]datagrid.Filter, harness.integer_in(src, 0, 4))
@@ -462,7 +462,6 @@ query :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 		filters = filters,
 		search  = harness.text(src, PIECES, 2),
 		visible = []int{0, 1, 2, 3},
-		group   = -1,
 	}
 	o: datagrid.Order
 	defer datagrid.order_destroy(&o)
@@ -472,10 +471,7 @@ query :: proc(_: Nothing, src: ^harness.Source) -> (string, bool) {
 		return fmt.tprintf("rows %v\nquery %v\ngot %v\nwant %v", rows.cells, q, o.rows[:], want),
 			false
 	}
-	if detail, ok := filters_compose(&rows, q, o.rows[:]); !ok {
-		return detail, false
-	}
-	return groups_hold(&rows, q, len(want))
+	return filters_compose(&rows, q, o.rows[:])
 }
 
 // reference_order is q's rows the plain way: every row tested against
@@ -638,36 +634,6 @@ filters_compose :: proc(rows: ^Rows, q: datagrid.Query, got: []int) -> (string, 
 		ok = ok && in_got[r]
 	}
 	return fmt.tprintf("one filter then the rest kept %v, all at once %v", both[:], got), ok
-}
-
-// groups_hold groups q's rows by a drawn column and checks every row is
-// counted once and each group's header comes first.
-@(private)
-groups_hold :: proc(rows: ^Rows, q: datagrid.Query, n: int) -> (string, bool) {
-	g := q
-	g.group = 3
-	o: datagrid.Order
-	defer datagrid.order_destroy(&o)
-	datagrid.order_build(&o, rows_source(rows), g)
-	counted := 0
-	for grp in o.groups {
-		counted += grp.count
-		if o.items[grp.item] != -1 - indexof(o.groups[:], grp) {
-			return fmt.tprintf("group %v heads item %d", grp, o.items[grp.item]), false
-		}
-	}
-	ok := counted == n && len(o.items) == n + len(o.groups)
-	return fmt.tprintf("%d rows, %d counted, %d items", n, counted, len(o.items)), ok
-}
-
-@(private)
-indexof :: proc(groups: []datagrid.Group, g: datagrid.Group) -> int {
-	for x, i in groups {
-		if x == g {
-			return i
-		}
-	}
-	return -1
 }
 
 // FIELD_PIECES are what a delimited field is made of: every byte that
@@ -871,7 +837,7 @@ draw_columns :: proc(src: ^harness.Source, from: int) -> []datagrid.Column {
 }
 
 // draw_view arranges v: columns moved, sized, hidden and pinned; a sort; a
-// filter of each kind; a search and a grouping.
+// filter of each kind; a search.
 @(private)
 draw_view :: proc(v: ^datagrid.View, cols: []datagrid.Column, src: ^harness.Source) {
 	n := len(cols)
@@ -903,11 +869,10 @@ draw_view :: proc(v: ^datagrid.View, cols: []datagrid.Column, src: ^harness.Sour
 	col := harness.integer_in(src, 0, n)
 	datagrid.view_set_range(v, col, draw_bound(src, lo), draw_bound(src, hi))
 	datagrid.view_set_search(v, harness.text(src, VIEW_TEXT, 3))
-	v.group = harness.integer_in(src, -1, n)
 }
 
 // views_equal compares what a view keeps: order, widths, visibility, pins,
-// sort, active filters, search and grouping.
+// sort, active filters and search.
 @(private)
 views_equal :: proc(a, b: ^datagrid.View) -> (string, bool) {
 	if !equal_ints(a.order[:], b.order[:]) {
@@ -924,15 +889,7 @@ views_equal :: proc(a, b: ^datagrid.View) -> (string, bool) {
 	if detail, same := active_filters_equal(a, b); !same {
 		return detail, false
 	}
-	same := a.search == b.search && a.group == b.group
-	return fmt.tprintf(
-			"search %q group %d read back as %q %d",
-			a.search,
-			a.group,
-			b.search,
-			b.group,
-		),
-		same
+	return fmt.tprintf("search %q read back as %q", a.search, b.search), a.search == b.search
 }
 
 // same_state reports whether two columns' states agree in what a view
@@ -993,7 +950,7 @@ bound_equal :: proc(a, b: Maybe(f64)) -> bool {
 
 
 // view_holds checks v stands on cols: the order holds every column once,
-// and the sort, filters and grouping name columns there are.
+// and the sort and filters name columns there are.
 @(private)
 view_holds :: proc(v: ^datagrid.View, cols: []datagrid.Column) -> (string, bool) {
 	n := len(cols)
@@ -1006,19 +963,12 @@ view_holds :: proc(v: ^datagrid.View, cols: []datagrid.Column) -> (string, bool)
 			return fmt.tprintf("sort %v", v.sort[:]), false
 		}
 	}
-	return filters_and_group_hold(v, n)
-}
-
-// filters_and_group_hold checks v's filters and grouping name one of its
-// n columns.
-@(private)
-filters_and_group_hold :: proc(v: ^datagrid.View, n: int) -> (string, bool) {
 	for f in v.filters {
 		if !column_in(f.col, n) {
 			return fmt.tprintf("filter on column %d", f.col), false
 		}
 	}
-	return fmt.tprintf("group %d", v.group), v.group == -1 || column_in(v.group, n)
+	return "", true
 }
 
 // column_in reports whether c is one of n columns.

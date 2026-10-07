@@ -398,11 +398,10 @@ body_move :: proc(g: ^Grid, src: Source, e: ui.Event, ev: ^Events) {
 	}
 }
 
-// press is a press in the body: on a group header it shuts or opens the
-// group, on a failed row it retries; on a row the right button asks for a
-// menu and the left one moves the cursor there and selects: alone,
-// toggled with Cmd or Ctrl, as a range from the anchor with Shift. A
-// double click activates the row.
+// press is a press in the body: on a failed row it retries; on a row the
+// right button asks for a menu and the left one moves the cursor there
+// and selects: alone, toggled with Cmd or Ctrl, as a range from the
+// anchor with Shift. A double click activates the row.
 @(private)
 press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, ev: ^Events) {
 	item, col := hit(g, e.pos)
@@ -412,12 +411,6 @@ press :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, src: Source, e: ui.Event, 
 	col = col if col >= 0 else last_col(g)
 	it := item_at(g, src, item)
 	switch {
-	case it.group >= 0:
-		g.cursor = {
-			item = item,
-			col  = col,
-		}
-		toggle_group(g, item)
 	case it.state == .Failed:
 		pages_retry(&g.pages, item / g.pages.page_size, item / g.pages.page_size + 1)
 	case !has_row(it):
@@ -490,7 +483,7 @@ select_range :: proc(g: ^Grid, src: Source, a, b: int) {
 	start := a if a >= 0 else b
 	for i in min(start, b) ..= max(start, b) {
 		it := item_at(g, src, i)
-		if it.group < 0 && has_row(it) {
+		if has_row(it) {
 			append(&g.keys, it.key)
 			append(&g.names, it.name)
 		}
@@ -507,7 +500,7 @@ sweep :: proc(g: ^Grid, src: Source, p: ops.Point, ev: ^Events) {
 		return
 	}
 	it := item_at(g, src, item)
-	if it.group >= 0 || !has_row(it) {
+	if !has_row(it) {
 		return
 	}
 	g.cursor = {item, col if col >= 0 else g.cursor.col, it.key}
@@ -515,17 +508,3 @@ sweep :: proc(g: ^Grid, src: Source, p: ops.Point, ev: ^Events) {
 	ev.selection = true
 }
 
-// toggle_group shuts the group whose header stands at item, or opens it.
-@(private)
-toggle_group :: proc(g: ^Grid, item: int) {
-	it := g.order.items[item]
-	if it >= 0 {
-		return
-	}
-	name := group_name(&g.order, g.order.groups[-it - 1])
-	if shut, ok := g.collapsed[name]; ok {
-		g.collapsed[name] = !shut
-		return
-	}
-	g.collapsed[clone_to(name, g.allocator)] = true
-}

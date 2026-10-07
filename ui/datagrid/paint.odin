@@ -147,7 +147,7 @@ cell_range :: proc(g: ^Grid) -> (r: Range) {
 // (render.find_scrolls; test_compose_meeting_regions_both_scroll), so each
 // region is one rect clip holding everything drawn over its rows that is
 // not the same in every frame (the bars, the pinned edges' shade, the
-// focus ring's sides, its slice of a group's header), while the
+// focus ring's sides, a failed page's message), while the
 // background under them is one solid fill and the outline's sides lie
 // outside them, each under a clip of its own.
 @(private)
@@ -315,7 +315,7 @@ paint_region_row :: proc(pc: ^Painter, r: Region, ri, item: int) {
 	band := ops.Rect{0, 0, region_width(g, r.pin), box.h}
 	ops.transform_push(o, ops.translate(r.shift, box.y))
 	defer ops.transform_pop(o)
-	if it.group >= 0 || it.state == .Failed {
+	if it.state == .Failed {
 		paint_span(pc, r, ri, it, item, band)
 		return
 	}
@@ -350,7 +350,7 @@ paint_row_fills :: proc(pc: ^Painter, it: Item, item: int, band: ops.Rect) {
 }
 
 // paint_span draws region r's slice of a row that spans the grid, a
-// group's header or a failed page's message, band being the region's
+// failed page's message, band being the region's
 // part of the row. Each region draws the whole row in the grid's space
 // and its clip keeps its slice, so the slices meet as one row that does
 // not scroll sideways.
@@ -360,11 +360,7 @@ paint_span :: proc(pc: ^Painter, r: Region, ri: int, it: Item, item: int, band: 
 	ops.transform_push(o, ops.translate(-r.shift, 0))
 	defer ops.transform_pop(o)
 	box := ops.Rect{0, 0, pc.g.geo.size.x, band.h}
-	if it.group >= 0 {
-		paint_group(pc, it.group, item, box, ri)
-	} else {
-		paint_failed(pc, it.error, box, ri, item)
-	}
+	paint_failed(pc, it.error, box, ri, item)
 }
 
 // paint_cell draws one cell: a skeleton while its page loads, else the
@@ -559,7 +555,7 @@ paint_skeleton :: proc(pc: ^Painter, cell: ops.Rect, item, at: int) {
 }
 
 // row_semantics declares the row at item to readers, with what a reader
-// hears for a group's header or a failed page.
+// hears for a failed page.
 @(private)
 row_semantics :: proc(pc: ^Painter, item: int) {
 	g := pc.g
@@ -569,9 +565,6 @@ row_semantics :: proc(pc: ^Painter, item: int) {
 	label := ""
 	states: ops.States
 	switch {
-	case it.group >= 0:
-		label, states = group_semantics(pc, it.group)
-		ops.tag(pc.gtx.scene, rid, label, box)
 	case it.state == .Failed:
 		label = it.error
 	case has_row(it):
@@ -586,71 +579,6 @@ row_semantics :: proc(pc: ^Painter, item: int) {
 		states    = states,
 	}
 	ops.semantic(pc.gtx.scene, rid, pc.id, sem, box)
-}
-
-// group_semantics is what a reader hears for group gi's header, its name
-// and how many rows, and whether it is open.
-@(private)
-group_semantics :: proc(pc: ^Painter, gi: int) -> (label: string, states: ops.States) {
-	g := pc.g
-	grp := g.order.groups[gi]
-	name := group_name(&g.order, grp)
-	rows := "row" if grp.count == 1 else "rows"
-	label = fmt.aprintf("%s, %d %s", name, grp.count, rows, allocator = pc.gtx.allocator)
-	states = {.Expandable}
-	if !g.collapsed[name] {
-		states += {.Expanded}
-	}
-	return
-}
-
-// paint_group draws group gi's header, at item, across box, the skin's
-// slot keyed apart for each region ri that draws its slice.
-@(private)
-paint_group :: proc(pc: ^Painter, gi, item: int, box: ops.Rect, ri: int) {
-	g, st, gtx := pc.g, pc.st, pc.gtx
-	grp := g.order.groups[gi]
-	name := group_name(&g.order, grp)
-	shut := g.collapsed[name]
-	is_cursor := g.cursor.item == item
-	if ui.painted(st.group_bg) {
-		ops.fill(gtx.scene, box, st.group_bg)
-	}
-	drew := false
-	if pc.skin.group != nil {
-		gr := Group_Row{g, name, grp.count, shut, {box.w, box.h}, is_cursor}
-		key := ui.id_mix(ui.id_mix(pc.id, 8), u64(gi) << 2 | u64(ri))
-		s := slot_open(gtx, gr.size, key)
-		drew = pc.skin.group(gtx, &gr, pc.skin.user)
-		slot_close(gtx, &s, {box.x, box.y})
-	}
-	if !drew {
-		paint_group_title(pc, name, grp.count, shut, box)
-	}
-	if is_cursor && g.focused && ui.painted(st.cursor) {
-		ring := ops.Rect{box.x + 1, box.y + 1, box.w - 2, box.h - 2}
-		ops.stroke(gtx.scene, ring, st.cursor, {width = 2})
-	}
-	if ui.painted(st.rule) {
-		ops.fill(gtx.scene, ops.Rect{box.x, box.y + box.h - 1, box.w, 1}, st.rule)
-	}
-}
-
-// paint_group_title is a group's header without a skin's slot: a
-// disclosure mark and the name, then the count, muted.
-@(private)
-paint_group_title :: proc(pc: ^Painter, name: string, count: int, shut: bool, box: ops.Rect) {
-	g, st, gtx := pc.g, pc.st, pc.gtx
-	mark := "▸ " if shut else "▾ "
-	shown := name if name != "" else "(blank)"
-	title := fmt.aprintf("%s%s", mark, shown, allocator = gtx.allocator)
-	x := box.x + st.pad
-	w := text_width(gtx, &g.text, pc.bold.font, pc.bold.size, title)
-	line := ops.Rect{x, box.y, box.w - 2 * st.pad, box.h}
-	draw_line(gtx, &g.text, pc.bold, title, line, .Start, st.group_fg)
-	n := fmt.aprintf("%d", count, allocator = gtx.allocator)
-	rest := ops.Rect{x + w + 8, box.y, max(box.w - w - 8 - 2 * st.pad, 0), box.h}
-	draw_line(gtx, &g.text, pc.body, n, rest, .Start, st.muted)
 }
 
 // paint_failed draws a failed page's message across row item of it, the
@@ -814,9 +742,6 @@ grid_semantics :: proc(pc: ^Painter, label: string) {
 	} else if c.col >= 0 && c.item >= g.geo.first && c.item < g.geo.last {
 		it := item_at(g, pc.src, c.item)
 		active = ui.id_mix(row_id(pc, it, c.item), u64(c.col) + 1)
-		if it.group >= 0 {
-			active = row_id(pc, it, c.item)
-		}
 	}
 	ui.container_semantics(
 		pc.gtx,

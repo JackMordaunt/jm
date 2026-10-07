@@ -13,7 +13,7 @@ import "../../kitchen"
 // Primer's DataTable as jm:ui/datagrid draws it. A hundred thousand rigs
 // in memory, the admin dashboard's biggest table; fifty thousand more
 // paged from a simulated server that answers late, out of order and now
-// and then not at all; a grouped table and an empty one; and the
+// and then not at all; a condensed table and an empty one; and the
 // pagination bar Table.Pagination is on its own.
 
 Data_Grids :: struct {
@@ -97,7 +97,6 @@ grids_ready :: proc(d: ^Data_Grids) {
 	}
 	primer.data_grid_init(&d.remote, RIG_COLUMNS[:], &d.paging)
 	primer.data_grid_init(&d.repos, REPO_COLUMNS[:])
-	d.repos.grid.view.group = 1
 	d.repos.grid.density = .Condensed
 	primer.data_grid_init(&d.empty, REPO_COLUMNS[:])
 	sim_ready(&d.server)
@@ -121,8 +120,8 @@ page_data_table :: proc(gtx: ^ui.Ctx, m: ^Model) {
 	remote_section(gtx, d)
 	kitchen.section(
 		gtx,
-		"Grouped and empty",
-		"rows grouped by a column, a group shut by a click or Enter; a table with no rows says so",
+		"Condensed and empty",
+		"rows at the condensed density; a table with no rows says so",
 	)
 	{
 		ui.sized(gtx, {min = {0, 300}, max = {ui.INF, 300}})

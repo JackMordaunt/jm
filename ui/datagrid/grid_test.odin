@@ -374,26 +374,6 @@ test_copy_puts_cells_rows_or_a_range_on_the_clipboard_as_tsv :: proc(t: ^testing
 }
 
 @(test)
-test_groups_head_their_rows_with_counts_and_shut :: proc(t: ^testing.T) {
-	m := rigs_make(9)
-	defer rigs_free(m)
-	m.g.view.group = 2
-	p: ui.Probe
-	open(&p, m)
-	defer ui.probe_destroy(&p)
-	said := ui.probe_semantics(&p, context.temp_allocator)
-	testing.expect(
-		t,
-		strings.contains(said, `row "Norway, 3 rows" row 2 expandable expanded`),
-		said,
-	)
-	testing.expect(t, ui.probe_click(&p, "Paraguay, 3 rows"))
-	testing.expect(t, m.g.collapsed["Paraguay"])
-	testing.expect_value(t, m.g.geo.items, 3 + 3 + 3) // three headers, Paraguay's rows gone
-	testing.expect(t, !ui.probe_tagged(&p, "SN-00001")) // a Paraguay rig
-}
-
-@(test)
 test_an_export_writes_the_view_as_csv :: proc(t: ^testing.T) {
 	m := rigs_make(90_000)
 	defer rigs_free(m)

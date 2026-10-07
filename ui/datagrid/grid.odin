@@ -29,7 +29,6 @@ Grid :: struct {
 	hover_grip: int, // the column whose resize grip is, -1 for none
 	drag:       Drag,
 	export:     Export,
-	collapsed:  map[string]bool, // the groups shut
 	filter_at:  int, // the column whose filter a skin shows open, -1 for none
 	// What the grid keeps to draw.
 	order:      Order,
@@ -165,7 +164,6 @@ grid_init :: proc(
 	view_init(&g.view, columns, allocator)
 	selection_init(&g.sel, allocator)
 	text_cache_init(&g.text, allocator)
-	g.collapsed = make(map[string]bool, allocator)
 	g.order.rows = make([dynamic]int, allocator)
 	g.build.next.rows = make([dynamic]int, allocator)
 	g.place.places = make([dynamic]Place, allocator)
@@ -192,10 +190,6 @@ grid_destroy :: proc(g: ^Grid) {
 	view_destroy(&g.view)
 	selection_destroy(&g.sel)
 	text_cache_destroy(&g.text, g.allocator)
-	for k in g.collapsed {
-		delete(k, g.allocator)
-	}
-	delete(g.collapsed)
 	order_destroy(&g.order)
 	order_destroy(&g.build.next)
 	heights_destroy(&g.heights)
@@ -241,7 +235,7 @@ grid :: proc(
 	measure(gtx, g, columns, src, skin)
 	geometry(g, columns, src, skin, size)
 	handle_input(gtx, g, columns, src, skin, id, &ev)
-	// What the input changed (a sort, a filter, a group shut) shows now,
+	// What the input changed (a sort, a filter) shows now,
 	// not a frame late.
 	update_query(g, columns, src, skin, &ev)
 	geometry(g, columns, src, skin, size)
@@ -348,14 +342,14 @@ update_query :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, ev: ^Ev
 		g.geo.items = max(g.pages.count, 0)
 	} else {
 		data := ui.fnv_u64(ui.fnv_u64(src.version, u64(src.rows)), u64(src.loading))
-		built := ui.fnv_u64(ui.fnv_u64(collapsed_hash(g), query), data)
+		built := ui.fnv_u64(query, data)
 		if built == g.built {
 			g.build.target = 0 // back to the order drawn: what was building is not wanted
 		} else if !order_update(g, src, q, built, data, skin) && changed {
 			g.build.anchor = true
 			changed = false
 		}
-		g.geo.items = len(g.order.items)
+		g.geo.items = len(g.order.rows)
 	}
 	if changed {
 		anchor_scroll(g, src)
@@ -370,13 +364,13 @@ order_update :: proc(g: ^Grid, src: Source, q: Query, built, data: u64, skin: ^S
 	b := &g.build
 	if g.built == 0 || data != b.data {
 		b.target, b.data = 0, data
-		order_build(&g.order, src, q, g.collapsed)
+		order_build(&g.order, src, q)
 	} else {
 		if b.target != built {
 			b.target = built
 			order_start(&b.job, &b.next)
 		}
-		if !order_step(&b.job, &b.next, src, q, g.collapsed, build_deadline(b)) {
+		if !order_step(&b.job, &b.next, src, q, build_deadline(b)) {
 			return false
 		}
 		g.order, b.next = b.next, g.order
@@ -403,17 +397,6 @@ build_deadline :: proc(b: ^Order_Build) -> time.Tick {
 	return b.deadline
 }
 
-// collapsed_hash names which groups are shut, so shutting one rebuilds.
-@(private)
-collapsed_hash :: proc(g: ^Grid) -> u64 {
-	h: u64
-	for k, shut in g.collapsed {
-		if shut {
-			h ~= fnv_str(ui.FNV_OFFSET, k)
-		}
-	}
-	return h
-}
 
 // keep_selection turns a select-all made under another match into the
 // rows it covered: for a client grid every row the old order held, for a
@@ -468,41 +451,31 @@ anchor_scroll :: proc(g: ^Grid, src: Source) {
 // when it is not there.
 @(private)
 item_of_key :: proc(g: ^Grid, src: Source, key: Row_Key) -> int {
-	for it, i in g.order.items {
-		if it >= 0 && source_key(src, it) == key {
+	for r, i in g.order.rows {
+		if source_key(src, r) == key {
 			return i
 		}
 	}
 	return -1
 }
 
-// size_rows sizes the rows: uniform at the density, or per item when
-// rows are grouped (a header has its own height) or the source gives
-// each row its own.
+// size_rows sizes the rows: uniform at the density, or per row when the
+// source gives each row its own.
 @(private)
 size_rows :: proc(g: ^Grid, src: Source, skin: ^Skin) {
 	rh := f64(row_height(&skin.style, g.density))
-	if g.view.group < 0 && src.height == nil {
-		heights_set_uniform(&g.heights, len(g.order.items), rh)
+	if src.height == nil {
+		heights_set_uniform(&g.heights, len(g.order.rows), rh)
 		return
 	}
 	Ctx :: struct {
-		g:    ^Grid,
-		src:  Source,
-		row:  f64,
-		head: f64,
+		g:   ^Grid,
+		src: Source,
 	}
-	c := Ctx{g, src, rh, f64(group_height(&skin.style, g.density))}
-	heights_build(&g.heights, len(g.order.items), proc(user: rawptr, i: int) -> f64 {
+	c := Ctx{g, src}
+	heights_build(&g.heights, len(g.order.rows), proc(user: rawptr, i: int) -> f64 {
 			c := (^Ctx)(user)
-			it := c.g.order.items[i]
-			if it < 0 {
-				return c.head
-			}
-			if c.src.height != nil {
-				return f64(c.src.height(c.src.user, it))
-			}
-			return c.row
+			return f64(c.src.height(c.src.user, c.g.order.rows[i]))
 		}, &c)
 }
 
@@ -521,7 +494,7 @@ geometry :: proc(g: ^Grid, cols: []Column, src: Source, skin: ^Skin, size: ops.S
 		heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
 	case src.loading:
 		// A view of skeletons after the rows there are.
-		geo.items = len(g.order.items) + int(geo.body.h / max(geo.row_h, 1)) + 1
+		geo.items = len(g.order.rows) + int(geo.body.h / max(geo.row_h, 1)) + 1
 		heights_set_uniform(&g.heights, geo.items, f64(geo.row_h))
 	}
 	place_columns(&g.place, cols, g.view.cols[:], g.view.order[:], size.x, g.fit)
@@ -561,14 +534,13 @@ clamp_scroll :: proc(g: ^Grid) {
 	g.scroll.x = clamp(g.scroll.x, 0, max(g.place.mid_w - geo.mid_w, 0))
 }
 
-// Item is what stands at one place in the order: a client row (row), a
-// paged row (page_row), or a group header (group >= 0), with what it
-// shows, its key and a paged row's key string.
+// Item is what stands at one place in the order: a client row (row) or
+// a paged row (page_row), with what it shows, its key and a paged row's
+// key string.
 Item :: struct {
 	state:    Row_State,
 	row:      int,
 	page_row: ^Page_Row,
-	group:    int,
 	key:      Row_Key,
 	name:     string,
 	error:    string,
@@ -576,17 +548,15 @@ Item :: struct {
 
 // item_at is what stands at place i in the current order.
 item_at :: proc(g: ^Grid, src: Source, i: int) -> (it: Item) {
-	it.row, it.group = -1, -1
+	it.row = -1
 	switch {
 	case i < 0 || i >= g.geo.items:
 	case src.paged != nil:
 		paged_item(g, i, &it)
-	case i >= len(g.order.items):
+	case i >= len(g.order.rows):
 		it.state = .Loading // a skeleton while src is loading
-	case g.order.items[i] < 0:
-		it.group, it.state = -g.order.items[i] - 1, .Ready
 	case:
-		r := g.order.items[i]
+		r := g.order.rows[i]
 		it.row, it.key = r, source_key(src, r)
 		it.state = .Stale if g.build.target != 0 else .Ready
 	}
@@ -643,8 +613,7 @@ selected_rows :: proc(
 	ns := make([dynamic]string, allocator)
 	for i in 0 ..< g.geo.items {
 		it := item_at(g, src, i)
-		if it.group < 0 &&
-		   it.state != .Missing &&
+		if it.state != .Missing &&
 		   it.state != .Loading &&
 		   it.state != .Failed &&
 		   selected(&g.sel, it.key) {

@@ -61,8 +61,6 @@ data_grid_skin :: proc(
 	st.focus = color(.Stroke_Focus2)
 	st.skeleton = color(.Neutral_Stencil1)
 	st.error_fg = color(.Status_Danger_Foreground1)
-	st.group_bg = color(.Neutral_Background2)
-	st.group_fg = color(.Neutral_Foreground1)
 	st.pin_shadow = ops.with_alpha(color(.Neutral_Stroke1), 0.6)
 	st.handle = color(.Brand_Stroke1)
 	st.active = color(.Brand_Foreground1)

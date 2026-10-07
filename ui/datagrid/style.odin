@@ -21,13 +21,12 @@ Style :: struct {
 	header_size:   f32, // 0 is text_size
 	row_height:    [Density]f32,
 	header_height: f32,
-	group_height:  f32, // a group header's row; 0 is the row height
 	pad:           f32, // a cell's inline padding
 	header_extra:  f32, // what a header's controls take beside its title: sort mark, filter button
 	radius:        f32, // the outer corners
 	bg:            ops.Color,
 	fg:            ops.Color,
-	muted:         ops.Color, // a group's count, an empty grid's message
+	muted:         ops.Color, // an empty grid's message
 	header_bg:     ops.Color,
 	header_fg:     ops.Color,
 	border:        ops.Color, // the outline
@@ -41,8 +40,6 @@ Style :: struct {
 	focus:         ops.Color, // the grid's outline while it has focus
 	skeleton:      ops.Color,
 	error_fg:      ops.Color,
-	group_bg:      ops.Color,
-	group_fg:      ops.Color,
 	pin_shadow:    ops.Color, // the edge of a pinned group over scrolled columns
 	handle:        ops.Color, // a resize handle under the pointer, a drop marker
 	active:        ops.Color, // a header's sort and filter marks when on
@@ -70,8 +67,6 @@ DEFAULT_STYLE :: Style {
 	focus = {9, 105, 218, 255},
 	skeleton = {129, 139, 152, 46},
 	error_fg = {209, 36, 47, 255},
-	group_bg = {246, 248, 250, 255},
-	group_fg = {31, 35, 40, 255},
 	pin_shadow = {31, 35, 40, 40},
 	handle = {9, 105, 218, 255},
 	active = {9, 105, 218, 255},
@@ -116,15 +111,6 @@ Header :: struct {
 	key:      u64,
 }
 
-// Group_Row is a group header as a skin's group slot sees it.
-Group_Row :: struct {
-	grid:      ^Grid,
-	text:      string,
-	count:     int,
-	collapsed: bool,
-	size:      ops.Size,
-	cursor:    bool,
-}
 
 // Skin is how a design system dresses a grid: its style, and slots for
 // what it draws itself, each called inside the part's box with the
@@ -146,7 +132,6 @@ Skin :: struct {
 	cell:      proc(gtx: ^ui.Ctx, c: ^Cell, user: rawptr) -> bool,
 	cell_user: rawptr,
 	header:    proc(gtx: ^ui.Ctx, h: ^Header, user: rawptr),
-	group:     proc(gtx: ^ui.Ctx, g: ^Group_Row, user: rawptr) -> bool,
 	empty:     proc(gtx: ^ui.Ctx, size: ops.Size, user: rawptr),
 	failed:    proc(gtx: ^ui.Ctx, size: ops.Size, error: string, user: rawptr) -> bool,
 }
@@ -158,10 +143,6 @@ row_height :: proc(s: ^Style, d: Density) -> f32 {
 	return h > 0 ? h : 33
 }
 
-// group_height is a group header's height.
-group_height :: proc(s: ^Style, d: Density) -> f32 {
-	return s.group_height > 0 ? s.group_height : row_height(s, d)
-}
 
 // scale_alpha scales c's alpha by a, where ops.with_alpha sets it: a
 // stale row dims whatever colour its text had.

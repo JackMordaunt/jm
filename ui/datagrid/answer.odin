@@ -124,7 +124,6 @@ memory_order :: proc(
 		filters = memory_filters(t, filters),
 		search  = search,
 		visible = all,
-		group   = -1,
 	}
 	h := order_hash(q) | 1
 	if h == t.built {
