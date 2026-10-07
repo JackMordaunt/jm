@@ -278,10 +278,14 @@ set_hints :: proc() {
 	sdl3.SetHint(sdl3.HINT_MAC_SCROLL_MOMENTUM, "1")
 }
 
-// run opens the window and loops until it is closed or Escape is pressed.
+// run opens the window and loops until it is closed, Escape is pressed, or
+// the process is sent SIGINT or SIGTERM (interrupt_posix.odin); each
+// returns the same way, so the caller's shutdown runs after any of them.
 // It reports failure to open on stderr and returns.
 run :: proc(app: App) {
 	set_hints()
+	interrupt_start()
+	defer interrupt_stop()
 	if !sdl3.Init({.VIDEO, .EVENTS}) {
 		fmt.eprintln("shell: init:", sdl3.GetError())
 		return
