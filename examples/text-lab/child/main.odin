@@ -15,6 +15,7 @@
 //	text-lab-child -page Bidi -png out.png      render one page headlessly
 //	text-lab-child -size 950x1040 ...           at another window size
 //	text-lab-child -full -page Scripts -png out.png  the whole page, trimmed
+//	text-lab-child -scrub build/session.rec     step through a recording (jm:ui/scrub)
 //
 // The remaining flags are ui/render's headless steps, as in
 // examples/fluent-kitchen. The page, sample size and overlay switch
@@ -32,6 +33,7 @@ import "jm:ui/child"
 import "jm:ui/fluent"
 import "jm:ui/ops"
 import "jm:ui/render"
+import "jm:ui/scrub"
 
 WIDTH :: 1400
 HEIGHT :: 900
@@ -525,8 +527,25 @@ main :: proc() {
 			os.exit(2)
 		}
 	}
+	picked := false // -page or -plain chose where a scrub starts
 	for i := 0; i < len(args); i += 1 {
 		switch args[i] {
+		case "-scrub":
+			setup(open, args[i])
+			if i + 1 >= len(args) {
+				fmt.eprintln("-scrub needs a recording")
+				os.exit(2)
+			}
+			// A live session starts from the saved page, size and overlay
+			// switch. The file holds where the last session ended, so -page
+			// or -plain before -scrub sets a start that file has lost.
+			if !picked {
+				restore(&m)
+			}
+			if !scrub.run({ui = lab_ui, user = &m, fonts = fonts, fallbacks = lab_fallbacks(&m)}, args[i + 1]) {
+				os.exit(1)
+			}
+			return
 		case "-reveal":
 			setup(open, args[i])
 			debug += {.Reveal}
@@ -547,6 +566,7 @@ main :: proc() {
 			}
 		case "-plain":
 			m.plain = true
+			picked = true
 		case "-page":
 			if i + 1 >= len(args) {
 				fmt.eprintln("-page needs a name")
@@ -563,6 +583,7 @@ main :: proc() {
 				fmt.eprintfln("no page %q", args[i])
 				os.exit(2)
 			}
+			picked = true
 		case:
 			if !open {
 				render.headless_init(&h, lab_ui, &m, size, fonts, debug, full = full, fallbacks = lab_fallbacks(&m))

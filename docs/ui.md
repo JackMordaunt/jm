@@ -238,6 +238,44 @@ build/debug/material-kitchen-child -page Buttons -png out.png   render it headle
 `tools/img-diff` is built over `ui/render`'s `diff_files`. Confirming an edit changed what it
 should needs looking at neither picture.
 
+### Record a session, replay it, scrub through it
+
+`JM_UI_RECORD=path` makes a running app write every frame's input to `path`: its events, size, dt,
+and the shapes the application answered. Since the shapes are in the recording, a replay needs no
+application, and it runs nothing a command would have done. A frame is a function of that data, so
+the app's headless binary replays it exactly:
+
+```
+JM_UI_RECORD=build/session.rec just material-kitchen       use it, then close it
+build/debug/material-kitchen-child -replay build/session.rec -dump        the last frame
+build/debug/material-kitchen-child -replay-to build/session.rec 40 -png out.png   frame 40
+build/debug/material-kitchen-child -bless build/session.rec      keep each frame's digest
+build/debug/material-kitchen-child -check build/session.rec      fail on the first that differs
+build/debug/material-kitchen-child -scrub build/session.rec      step through it in a window
+```
+
+A recording is also a regression test. `-bless` writes `session.rec.digests`, one hash per frame
+of what that frame shows: its draws, clips and semantic tree. Area ids are left out, because they
+hash the source line. Editing code that moves a line, or building in another folder, therefore
+keeps the digests. Commit both files; `-check` replays the recording and names the first frame that
+looks or reads differently, which `-replay-to` then shows.
+
+`jm:ui/scrub` is the scrubber. It replays the recording once and keeps each distinct picture, so
+it can go backwards without rewinding the app.
+
+| Input | What it does |
+|-------|--------------|
+| Left, Right | Step one frame |
+| Shift+Left, Shift+Right | Jump to the previous or next change |
+| Home, End | Go to the first or last frame |
+| Space | Play at the recorded pace |
+| Press or drag on the timeline | Seek |
+
+The timeline marks each change, and marks in red each frame `-check` would fail. The pointer over
+the picture inspects that frame: the widget, its source line and its box. Any app with a headless
+main gets these steps from `render.headless_step` and `scrub.run`; the kitchens wire up all of
+them.
+
 ## Data in, data out
 
 A frame is a function of plain data, and the data goes both ways.

@@ -23,6 +23,7 @@ import "jm:ui/child"
 import "jm:ui/design"
 import "jm:ui/ops"
 import "jm:ui/render"
+import "jm:ui/scrub"
 
 // MAX_PAGES sizes the per-page state a kitchen keeps: it cannot be a
 // kitchen's page count, since its pages' procs take its model.
@@ -164,7 +165,8 @@ Flag :: proc(user: rawptr, args: []string, i: ^int) -> bool
 
 // run is a kitchen's main: with no arguments it is the hot-reload host's
 // child; with -lint alone it prints lint's lines for every page and
-// theme; otherwise it renders headlessly, running its flags in order:
+// theme; with -scrub PATH alone it opens the replay scrubber on the
+// recording at PATH (jm:ui/scrub); otherwise it renders headlessly, running its flags in order:
 // the size (-size WxH), whole-page capture (-full) and debug overlays
 // (-reveal, -bounds) before any step; the page (-page), theme (-theme)
 // and the kitchen's own flags (App.flag) anywhere, so one run can capture
@@ -177,6 +179,13 @@ run :: proc(app: App) {
 	if len(os.args) == 1 {
 		host := app.data^ if app.data != nil else {}
 		child.run({ui = app.ui, user = app.user, fonts = app.fonts, data = host})
+		return
+	}
+	if len(os.args) == 3 && os.args[1] == "-scrub" {
+		// Alone: the recording began with the kitchen as it starts.
+		if !scrub.run({ui = app.ui, user = app.user, fonts = app.fonts}, os.args[2]) {
+			os.exit(1)
+		}
 		return
 	}
 	if len(os.args) == 2 && os.args[1] == "-lint" {
