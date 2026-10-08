@@ -112,7 +112,7 @@ Frame :: struct {
 	tags:  [dynamic]ops.Tag,
 	nodes: [dynamic]Semantic_Node, // every Semantic, in close order
 	keys:  [dynamic]ops.Key_Interest, // every Key_Interest, for the router
-	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect, every widget's layout
+	boxes: [dynamic]Layout_Box, // under Debug_Flag.Inspect or Boxes, every widget's layout
 	placed: [dynamic]Placed, // every popup flatten placed, and the side it chose
 	scopes: [dynamic]Focus_Scope_Node, // every Focus_Scope, in the order met: the last trap is the active one
 	tab_order: [dynamic]i32, // hits' indices in reading order, which Tab walks (see Tab_Key)

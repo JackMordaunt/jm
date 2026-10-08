@@ -117,7 +117,7 @@ inspect_report :: proc(f: ^Frame, layout: ^Layout, p: ops.Point, allocator := co
 // the box, and the constraints it was given.
 layout_report :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	if len(f.boxes) == 0 {
-		return strings.clone("no layout boxes: record the frame with Debug_Flag.Inspect\n", allocator)
+		return strings.clone("no layout boxes: record the frame with Debug_Flag.Inspect or Boxes\n", allocator)
 	}
 	tags := make(map[ops.Area_Id]string, context.temp_allocator)
 	for t in f.tags {

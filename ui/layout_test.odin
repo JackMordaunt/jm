@@ -1,5 +1,6 @@
 package ui
 
+import "core:slice"
 import "core:strings"
 import "jm:ui/ops"
 import "core:testing"
@@ -1080,6 +1081,33 @@ test_inspect_flag_records_each_widgets_box :: proc(t: ^testing.T) {
 		testing.expect_value(t, kinds[0].kind, "column")
 		testing.expect_value(t, kinds[1].kind, "row")
 	}
+}
+
+@(test)
+test_boxes_flag_records_boxes_as_inspect_does :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	sizes :: proc(h: ^Harness) -> (out: [dynamic]ops.Size) {
+		out = make([dynamic]ops.Size, context.temp_allocator)
+		for op in h.scene.ops {
+			if b, ok := op.(ops.Debug_Box); ok {
+				append(&out, b.size)
+			}
+		}
+		return
+	}
+	harness_frame(&h)
+	h.gtx.debug = {.Inspect}
+	label(&h.gtx, "a")
+	label(&h.gtx, "bb")
+	inspected := sizes(&h)
+	harness_frame(&h)
+	h.gtx.debug = {.Boxes}
+	label(&h.gtx, "a")
+	label(&h.gtx, "bb")
+	testing.expect_value(t, len(inspected), 2)
+	testing.expect(t, slice.equal(sizes(&h)[:], inspected[:]))
 }
 
 @(test)

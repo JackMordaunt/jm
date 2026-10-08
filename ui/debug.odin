@@ -24,6 +24,10 @@ Debug_Flag :: enum u8 {
 	// so nested ones darken, numbers the stops in Tab's order, and rings
 	// the focused area.
 	Focus,
+	// Boxes records each widget's layout (Debug_Box), as Inspect does,
+	// and draws nothing: a frame kept to be inspected later, as the replay
+	// scrubber keeps each it shows, looks as it did without it.
+	Boxes,
 }
 
 Debug_Flags :: bit_set[Debug_Flag;u8]
@@ -63,8 +67,16 @@ debug_flag_name :: proc(f: Debug_Flag) -> string {
 		return "inspect"
 	case .Focus:
 		return "focus"
+	case .Boxes:
+		return "boxes"
 	}
 	return ""
+}
+
+// records_boxes reports whether widgets record their layout boxes under
+// flags: with Inspect, or Boxes alone.
+records_boxes :: proc(flags: Debug_Flags) -> bool {
+	return flags & {.Inspect, .Boxes} != {}
 }
 
 // SLOW_FACTOR is how much Debug_Flag.Slow slows time.

@@ -17,6 +17,16 @@ test_debug_from_env_reads_jm_ui_debug :: proc(t: ^testing.T) {
 	testing.expect_value(t, debug_from_env(), Debug_Flags{.Reveal, .Bounds})
 	os.set_env(DEBUG_ENV, "focus,inspect,slow")
 	testing.expect_value(t, debug_from_env(), Debug_Flags{.Focus, .Inspect, .Slow})
+	os.set_env(DEBUG_ENV, "boxes")
+	testing.expect_value(t, debug_from_env(), Debug_Flags{.Boxes})
+}
+
+@(test)
+test_records_boxes_under_inspect_or_boxes_alone :: proc(t: ^testing.T) {
+	testing.expect(t, !records_boxes({}))
+	testing.expect(t, !records_boxes({.Reveal, .Bounds, .Slow, .Focus}))
+	testing.expect(t, records_boxes({.Inspect}))
+	testing.expect(t, records_boxes({.Boxes}))
 }
 
 @(test)

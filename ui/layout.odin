@@ -452,7 +452,7 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 		// In the widget's own space, before its transform or macro closes.
 		ops.stroke(gtx.scene, ops.Rect{0, 0, d.size.x, d.size.y}, BOUNDS_COLOR, {width = 1})
 	}
-	if .Inspect in gtx.debug {
+	if records_boxes(gtx.debug) {
 		depth := i32(depth(gtx.layout))
 		append(
 			&gtx.scene.ops,
