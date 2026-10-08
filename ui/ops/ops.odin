@@ -1,3 +1,4 @@
+//review:ignore history-coupled-file dump.odin prints every Event_Kind by name already; documenting delivery needs nothing there
 package ops
 
 import "core:mem"
@@ -181,6 +182,9 @@ Image :: struct {
 Input_Area :: struct {
 	id:     Area_Id,
 	shape:  Shape,
+	// kinds is what the area asks for. Paste, Picked, Expand and Collapse are
+	// not hit-tested: each goes to the area it names, whether that area asks
+	// for it here or has no input area at all.
 	kinds:  Event_Kinds,
 	cursor: Cursor, // the pointer's look while it is over this area
 	// yields: a press here goes to the area under it that wants Press, if

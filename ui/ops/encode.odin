@@ -1,3 +1,4 @@
+//review:ignore history-coupled-file dump.odin prints every Event_Kind by name already; a wider set needs nothing there
 package ops
 
 import "core:encoding/endian"
@@ -390,7 +391,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, 12)
 		put_u64(w, u64(v.id))
 		put_shape(w, v.shape)
-		put_u32(w, u32(transmute(u16)v.kinds))
+		put_u32(w, transmute(u32)v.kinds)
 		append(w, u8(v.cursor))
 		append(w, u8(v.yields) | u8(v.observes) << 1 | u8(v.no_tab) << 2)
 	case Tag:
@@ -690,7 +691,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		if bits >= 1 << (uint(max(Event_Kind)) + 1) {
 			return nil, false
 		}
-		v.kinds = transmute(Event_Kinds)u16(bits)
+		v.kinds = transmute(Event_Kinds)bits
 		c := get_u8(r) or_return
 		if c > u8(max(Cursor)) {
 			return nil, false

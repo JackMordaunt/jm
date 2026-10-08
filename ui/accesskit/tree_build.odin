@@ -51,6 +51,8 @@ tree_update :: proc(s: ^Snapshot) -> ^Tree_Update {
 		}
 		if r.expandable {
 			node_set_expanded(n, r.expanded)
+			// The one that applies, delivered as an Expand or Collapse event.
+			node_add_action(n, .Collapse if r.expanded else .Expand)
 		}
 		if r.disabled {
 			node_set_disabled(n)

@@ -841,3 +841,48 @@ test_a_trap_that_stops_trapping_gives_focus_back_while_still_drawn :: proc(t: ^t
 	probe_frame(&p)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(3))
 }
+
+// Requests is what a test ui heard: for two tree items with no input area
+// of their own, as a chart's items are, each Expand and Collapse sent them.
+@(private = "file")
+Requests :: struct {
+	expand, collapse: [2]int,
+}
+
+@(private = "file")
+assisted_view :: proc(gtx: ^Ctx, user: rawptr) {
+	a := (^Requests)(user)
+	for id, i in ([2]ops.Area_Id{301, 302}) {
+		for e in events(gtx, id) {
+			#partial switch e.kind {
+			case .Expand:
+				a.expand[i] += 1
+			case .Collapse:
+				a.collapse[i] += 1
+			}
+		}
+	}
+}
+
+// An assistive technology's Expand or Collapse reaches the area it names, and
+// only that one, though the area takes no pointer input at all.
+@(test)
+test_expand_and_collapse_reach_only_the_area_named :: proc(t: ^testing.T) {
+	a: Requests
+	p: Probe
+	probe_init(&p, assisted_view, &a, {100, 50}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	router_push(&p.router, {kind = .Expand, area = 302})
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, a.expand, [2]int{0, 1})
+	testing.expect_value(t, a.collapse, [2]int{0, 0})
+	router_push(&p.router, {kind = .Collapse, area = 301})
+	probe_frame(&p)
+	testing.expect_value(t, a.expand, [2]int{0, 1})
+	testing.expect_value(t, a.collapse, [2]int{1, 0})
+	// One that names no area goes nowhere.
+	router_push(&p.router, {kind = .Expand})
+	probe_frame(&p)
+	testing.expect_value(t, a.expand, [2]int{0, 1})
+}

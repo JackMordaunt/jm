@@ -310,6 +310,12 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 				append(&r.events, Event{kind = .Picked, area = e.area, text = clone_string(e.text, r.allocator)})
 			}
 			free_strings(r, e)
+		case .Expand, .Collapse:
+			// Pushed by a platform for an assistive technology's request: to
+			// the area named, wherever the pointer and focus are.
+			if e.area != 0 {
+				append(&r.events, Event{kind = e.kind, area = e.area})
+			}
 		case .Focus:
 			// Pushed by a platform for an assistive technology's request:
 			// focus the area, shown as keyboard focus, when the frame has it.

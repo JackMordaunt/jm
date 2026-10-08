@@ -33,6 +33,8 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.key_interest(&src, 8, .Z, {.Ctrl}, {.Shift}, topmost = true, claim = true)
 	ops.outside_area(&src, 7, ops.Rect{1, 2, 3, 4})
 	ops.input_area(&src, 11, ops.Rect{0, 0, 8, 8}, {.Press, .Key}, .Text, yields = true, no_tab = true)
+	// Kinds past the sixteenth, which a 16-bit set could not hold.
+	ops.input_area(&src, 12, ops.Rect{0, 0, 8, 8}, {.Press, .Expand, .Collapse})
 	ops.sticky_push(&src, 12, 300)
 	ops.fill(&src, ops.Rect{0, 0, 5, 5}, ops.Color{9, 9, 9, 255})
 	ops.transform_pop(&src)
