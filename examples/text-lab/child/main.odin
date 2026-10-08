@@ -3,7 +3,8 @@
 // direction, emoji — drawn with what the shaper produced laid over them:
 // baseline and advance box, glyph origins, cluster starts and every caret
 // stop. The Editing and Paragraph pages put the same text in live inputs
-// to poke carets, hit-testing and wrapping by hand. The Stress page finds
+// to poke carets, hit-testing and wrapping by hand; the Input method page
+// composes into them, by a system input method or scripted steps. The Stress page finds
 // how much text a frame can lay out and still hold 60 fps.
 //
 // Each specimen names the font it asks for; every other script's font
@@ -162,6 +163,7 @@ PAGES := [?]Page {
 	{"Bidi", page_bidi, true, false},
 	{"Emoji", page_emoji, true, false},
 	{"Editing", page_editing, false, false},
+	{"Input method", page_ime, false, false},
 	{"Paragraph", page_paragraph, true, false},
 	{"Stress", page_stress, false, true},
 }
@@ -177,6 +179,7 @@ Model :: struct {
 	seeded:    bool,
 	edits:     [len(EDIT)]ui.Text_State,
 	paragraph: ui.Text_State,
+	ime:       Ime_Lab,
 	stress:    Stress,
 }
 

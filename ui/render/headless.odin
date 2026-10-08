@@ -138,6 +138,8 @@ inspecting :: proc(h: ^Headless) {
 //	                   with modifiers before it joined by +: Shift+Left,
 //	                   Shortcut+A (Cmd on macOS, Ctrl elsewhere), Word+Right
 //	-type TEXT         type TEXT into the focused area
+//	-compose TEXT      send TEXT as an input method's preedit to the focused
+//	                   area, its caret at the end; "" ends it
 //	-move X Y          move the pointer to X, Y
 //	-hover NAME        move the pointer to the middle of the area tagged NAME
 //	-advance N         run N frames at 1/60 s
@@ -221,6 +223,16 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 			return true, false
 		}
 		ui.probe_type(&h.p, args[i^])
+	case "-compose":
+		if !need(args, i, 1, flag) {
+			return true, false
+		}
+		i^ += 1
+		if !utf8.valid_string(args[i^]) {
+			fmt.eprintln("-compose: the text is not UTF-8")
+			return true, false
+		}
+		ui.probe_compose(&h.p, args[i^])
 	case "-move":
 		if !need(args, i, 2, flag) {
 			return true, false

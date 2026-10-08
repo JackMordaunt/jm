@@ -119,6 +119,13 @@ text_input_update :: proc(r: ^Router, f: ^Frame) {
 	}
 }
 
+// input_method is the input method as the router last asked the platform
+// for it (Text_Input; off, zero, until a text area takes focus): what a
+// lab or debug view shows. Its rect is in device pixels.
+input_method :: proc(gtx: ^Ctx) -> Text_Input {
+	return gtx.router.ime_sent if gtx.router != nil else {}
+}
+
 // open_url asks the platform to open url once the frame is done, as a
 // click on a link would. The ui learns nothing back: whether a handler
 // exists is the platform's business. Each call is one request; url is
