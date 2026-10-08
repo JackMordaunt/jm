@@ -451,6 +451,7 @@ text_input :: proc(
 				}
 			}
 		}
+		ui.text_claim_keys(gtx, s, p.id)
 	}
 	// What shows: the text, or for a secret its bullets, caret and all.
 	shown := s
@@ -688,6 +689,7 @@ textarea :: proc(
 				r.changed |= ui.text_edit_lines(gtx, s, p.id, e, field_stops(gtx, s, st), para)
 			}
 		}
+		ui.text_claim_keys(gtx, s, p.id)
 		if r.changed {
 			str = string(s.buf[:])
 			para = design.layout_style(gtx, str, st, font, wrap)

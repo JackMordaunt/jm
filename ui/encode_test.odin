@@ -30,6 +30,7 @@ test_encode_round_trip :: proc(t: ^testing.T) {
 	ops.semantic(&src, 9, 0, {role = .Region, label = "Saved"}, {0, 0, 30, 20})
 	ops.semantic(&src, 10, 0, {role = .Menu_Item_Radio, label = "Light", states = {.Checked}, active_descendant = 7}, {0, 0, 30, 20})
 	ops.key_interest(&src, 7, .Escape, {.Ctrl}, {.Shift}, topmost = true)
+	ops.key_interest(&src, 8, .Z, {.Ctrl}, {.Shift}, topmost = true, claim = true)
 	ops.outside_area(&src, 7, ops.Rect{1, 2, 3, 4})
 	ops.input_area(&src, 11, ops.Rect{0, 0, 8, 8}, {.Press, .Key}, .Text, yields = true, no_tab = true)
 	ops.sticky_push(&src, 12, 300)

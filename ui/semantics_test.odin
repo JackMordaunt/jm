@@ -225,15 +225,15 @@ topmost_key_interest_goes_to_the_top_layer_alone :: proc(t: ^testing.T) {
 
 @(test)
 key_interest_matches_by_key_and_modifiers :: proc(t: ^testing.T) {
-	save := ops.Key_Interest{1, .S, {.Ctrl}, {.Shift}, false}
+	save := ops.Key_Interest{1, .S, {.Ctrl}, {.Shift}, false, false}
 	testing.expect(t, key_interest_matches(save, .S, {.Ctrl}))
 	testing.expect(t, key_interest_matches(save, .S, {.Ctrl, .Shift}))
 	testing.expect(t, !key_interest_matches(save, .S, {}))
 	testing.expect(t, !key_interest_matches(save, .S, {.Ctrl, .Alt}))
 	testing.expect(t, !key_interest_matches(save, .A, {.Ctrl}))
-	any := ops.Key_Interest{1, .None, {}, {.Shift, .Ctrl, .Alt, .Super}, false}
+	any := ops.Key_Interest{1, .None, {}, {.Shift, .Ctrl, .Alt, .Super}, false, false}
 	testing.expect(t, key_interest_matches(any, .F11, {.Alt}))
-	testing.expect(t, !key_interest_matches(ops.Key_Interest{1, .None, {}, {}, false}, .A, {.Shift}))
+	testing.expect(t, !key_interest_matches(ops.Key_Interest{1, .None, {}, {}, false, false}, .A, {.Shift}))
 }
 
 @(test)

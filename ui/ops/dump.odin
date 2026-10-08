@@ -116,6 +116,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			if v.topmost {
 				strings.write_string(&sb, " topmost")
 			}
+			if v.claim {
+				strings.write_string(&sb, " claim")
+			}
 		case Focus_Scope:
 			fmt.sbprintf(&sb, "focus scope %d%s", v.id, v.trap ? " trap" : "")
 			if v.rove != .None {

@@ -19,7 +19,7 @@ secret_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 @(test)
 test_a_secret_input_shows_bullets_and_keeps_its_text :: proc(t: ^testing.T) {
 	m: Secret_Model
-	defer delete(m.password.buf)
+	defer ui.text_destroy(&m.password)
 	p: ui.Probe
 	ui.probe_init(&p, secret_ui, &m, {400, 100}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&p)
@@ -64,7 +64,7 @@ test_a_secret_input_shows_bullets_and_keeps_its_text :: proc(t: ^testing.T) {
 @(test)
 test_a_click_in_a_secret_input_places_the_caret_in_the_text :: proc(t: ^testing.T) {
 	m: Secret_Model
-	defer delete(m.password.buf)
+	defer ui.text_destroy(&m.password)
 	ui.text_set(&m.password, "é€x")
 	p: ui.Probe
 	ui.probe_init(&p, secret_ui, &m, {400, 100}, allocator = context.temp_allocator)

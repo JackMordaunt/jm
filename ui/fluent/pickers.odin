@@ -559,6 +559,9 @@ combobox :: proc(
 				}
 			}
 		}
+		if typed {
+			ui.text_claim_keys(gtx, s, p.id)
+		}
 		sel_text := selected^ >= 0 && selected^ < len(options) ? options[selected^] : ""
 		if typed && d.was_focused && !c.focused && !flag^ && !freeform && string(s.buf[:]) != sel_text {
 			// Blur: revert text that matches no option (behaviour filter).
@@ -1157,6 +1160,7 @@ search_box :: proc(
 				}
 			}
 		}
+		ui.text_claim_keys(gtx, s, p.id)
 		if cd.clicked && showing_dismiss {
 			ui.text_set(s, "")
 			r.changed = true
@@ -1362,6 +1366,7 @@ tag_picker :: proc(
 				}
 			}
 		}
+		ui.text_claim_keys(gtx, s, p.id)
 	}
 
 	k := field_colors(appearance, c, invalid, .Outline_Only)

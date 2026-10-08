@@ -67,9 +67,9 @@ present :: proc(p: ^ui.Probe, name: string) -> bool {
 
 @(private = "file")
 model_destroy :: proc(m: ^Pickers_Model) {
-	delete(m.fruit.buf)
-	delete(m.query.buf)
-	delete(m.people.buf)
+	ui.text_destroy(&m.fruit)
+	ui.text_destroy(&m.query)
+	ui.text_destroy(&m.people)
 }
 
 @(private = "file")

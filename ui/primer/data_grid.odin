@@ -95,12 +95,12 @@ data_grid_init :: proc(g: ^Data_Grid, columns: []datagrid.Column) {
 
 data_grid_destroy :: proc(g: ^Data_Grid) {
 	datagrid.grid_destroy(&g.grid)
-	delete(g.search.buf)
-	delete(g.name.buf)
+	ui.text_destroy(&g.search)
+	ui.text_destroy(&g.name)
 	f := &g.filter
-	delete(f.text.buf)
-	delete(f.lo.buf)
-	delete(f.hi.buf)
+	ui.text_destroy(&f.text)
+	ui.text_destroy(&f.lo)
+	ui.text_destroy(&f.hi)
 	values_free(&f.values)
 	delete(f.values)
 	delete(f.shown)

@@ -231,12 +231,18 @@ Semantic :: struct {
 // matches, only the last recorded (the top-most layer's) is sent it. It
 // is how Escape closes the newest of several open popups and leaves the
 // ones beneath open.
+//
+// A claim keeps the key from every other interest while area holds focus:
+// a text field claims its undo shortcut while it has an edit to undo, so
+// the key reaches an app's own undo only once the field's has run out. A
+// claim is never sent the key itself: the focused area has it already.
 Key_Interest :: struct {
 	area:     Area_Id,
 	key:      Key,
 	mods:     Mods, // required
 	optional: Mods, // allowed as well
 	topmost:  bool,
+	claim:    bool,
 }
 
 // Tag names an area for the dump and the probe: probe.find("Save").
@@ -546,8 +552,16 @@ semantic :: proc(o: ^Scene, id, parent: Area_Id, s: Semantics, rect: Rect) {
 
 // key_interest records a Key_Interest for area; ui.key_interest is the
 // usual caller.
-key_interest :: proc(o: ^Scene, area: Area_Id, key: Key, mods: Mods = {}, optional: Mods = {}, topmost := false) {
-	append(&o.ops, Key_Interest{area, key, mods, optional, topmost})
+key_interest :: proc(
+	o: ^Scene,
+	area: Area_Id,
+	key: Key,
+	mods: Mods = {},
+	optional: Mods = {},
+	topmost := false,
+	claim := false,
+) {
+	append(&o.ops, Key_Interest{area, key, mods, optional, topmost, claim})
 }
 
 // macro_open opens a macro; ops recorded until macro_close are not run

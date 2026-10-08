@@ -313,6 +313,7 @@ input :: proc(
 				}
 			}
 		}
+		ui.text_claim_keys(gtx, s, p.id)
 	}
 	r.focused = c.focused && !c.disabled
 	r.id = p.id
@@ -457,6 +458,7 @@ textarea :: proc(
 				r.changed |= ui.text_edit_lines(gtx, s, p.id, e, text_stops(gtx, s, m.style), para)
 			}
 		}
+		ui.text_claim_keys(gtx, s, p.id)
 		if r.changed {
 			str = string(s.buf[:])
 			para = layout_style(gtx, str, m.style, inner_w)

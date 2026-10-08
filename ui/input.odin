@@ -53,7 +53,8 @@ import "jm:ui/ops"
 // - Key and Text go to the focused area, else they are dropped. A Key
 //   also goes to every area with a Key_Interest it matches (ui.key_interest),
 //   focused or not, once per area, after the focused area has had it: a
-//   dialog's Escape, an app's shortcuts. The match is Gio v0.10.2's
+//   dialog's Escape, an app's shortcuts. A focused area's claiming
+//   interest that matches keeps the key from all of them. The match is Gio v0.10.2's
 //   keyFilterMatch (io/input/key.go) for a key.Filter with no Focus. Of
 //   the topmost interests a key matches only the last in the frame, the
 //   top-most layer's, gets it.
@@ -314,6 +315,9 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 // matches it, except had, which has it already, and once per area.
 @(private = "file")
 route_key_interest :: proc(r: ^Router, f: ^Frame, e: Raw_Event, had: ops.Area_Id) {
+	if claims_key(f, had, e.key, e.mods) {
+		return
+	}
 	first := len(r.events)
 	top := -1 // the last topmost interest that matches: the only one of them to get the key
 	for k, i in f.keys {
@@ -322,7 +326,10 @@ route_key_interest :: proc(r: ^Router, f: ^Frame, e: Raw_Event, had: ops.Area_Id
 		}
 	}
 	for k, i in f.keys {
-		if k.area == had || !key_interest_matches(k, e.key, e.mods) || (k.topmost && i != top) {
+		if k.claim ||
+		   k.area == had ||
+		   !key_interest_matches(k, e.key, e.mods) ||
+		   (k.topmost && i != top) {
 			continue
 		}
 		again := false
@@ -910,6 +917,21 @@ keeps_key :: proc(f: ^Frame, focus: ops.Area_Id, key: Key, mods: Mods) -> bool {
 	}
 	for k in f.keys {
 		if k.area == focus && k.key == key && key_interest_matches(k, key, mods) {
+			return true
+		}
+	}
+	return false
+}
+
+// claims_key reports whether the focused area holds a claiming
+// Key_Interest matching key with mods, keeping it from every other.
+@(private = "file")
+claims_key :: proc(f: ^Frame, focus: ops.Area_Id, key: Key, mods: Mods) -> bool {
+	if focus == 0 {
+		return false
+	}
+	for k in f.keys {
+		if k.area == focus && k.claim && key_interest_matches(k, key, mods) {
 			return true
 		}
 	}

@@ -332,6 +332,7 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 			r.changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, g.input_font), o.read_only)
 		}
 	}
+	ui.text_claim_keys(gtx, s, id)
 	fi.hovered, fi.focused = st.hovered, st.focused
 	// Horizontal scroll that keeps the caret in view (ui.text_scroll).
 	str := string(s.buf[:])

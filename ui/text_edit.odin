@@ -9,13 +9,15 @@ import "jm:ui/ops"
 
 // Text_State is a text buffer, its caret and its selection. cursor is the
 // caret, anchor the other end of the selection: equal when nothing is
-// selected. Both are byte offsets on caret stops. The caller owns it;
-// text_destroy frees the buffer.
+// selected. Both are byte offsets on caret stops. history is its undo
+// history (text_history.odin). The caller owns it; text_destroy frees
+// the buffer and the history.
 Text_State :: struct {
-	buf:    [dynamic]u8,
-	cursor: int,
-	anchor: int,
-	drag:   Text_Drag, // the pointer gesture in progress, see text_follow_pointer
+	buf:     [dynamic]u8,
+	cursor:  int,
+	anchor:  int,
+	drag:    Text_Drag, // the pointer gesture in progress, see text_follow_pointer
+	history: Text_History,
 }
 
 // Text_Drag is a press-and-drag on text: what unit a double or triple
@@ -37,17 +39,20 @@ text_string :: proc(s: ^Text_State) -> string {
 }
 
 // text_set replaces the buffer with str and puts the caret at its end,
-// selecting nothing.
+// selecting nothing. It clears the undo history: text the program puts in
+// is not the user's edit to undo.
 text_set :: proc(s: ^Text_State, str: string) {
 	clear(&s.buf)
 	append(&s.buf, str)
 	s.cursor = len(s.buf)
 	s.anchor = s.cursor
+	history_clear(s)
 }
 
-// text_destroy frees the buffer.
+// text_destroy frees the buffer and the history.
 text_destroy :: proc(s: ^Text_State) {
 	delete(s.buf)
+	history_destroy(&s.history)
 	s^ = {}
 }
 
@@ -86,13 +91,27 @@ text_clamp :: proc(s: ^Text_State) {
 }
 
 // text_replace puts text in place of the selection (at the caret when
-// nothing is selected) and leaves the caret after it.
+// nothing is selected) and leaves the caret after it, an edit of its own
+// in the undo history.
 text_replace :: proc(s: ^Text_State, text: string) {
+	replace_as(s, text, .Other, 0)
+}
+
+// replace_as is text_replace for an edit of kind made at time now, which
+// joins a run of its kind in the history; a secret field keeps none.
+@(private = "file")
+replace_as :: proc(s: ^Text_State, text: string, kind: Text_Step_Kind, now: f64, secret := false) {
 	lo, hi := text_selection(s)
+	if secret {
+		history_clear(s)
+	} else {
+		history_record(s, lo, hi, text, kind, now)
+	}
 	remove_range(&s.buf, lo, hi)
 	inject_at_elems(&s.buf, lo, ..transmute([]u8)text)
 	s.cursor = lo + len(text)
 	s.anchor = s.cursor
+	s.history.length = len(s.buf)
 }
 
 // Text_Stops are where a caret may stop in a text and where its words
@@ -165,13 +184,13 @@ text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: T
 		if read_only {
 			return false
 		}
-		text_replace(s, e.text)
+		replace_as(s, e.text, .Typing, gtx.time, secret)
 		return true
 	case .Paste:
 		if read_only || e.mime != TEXT_MIME {
 			return false
 		}
-		text_replace(s, e.text)
+		replace_as(s, e.text, .Other, gtx.time, secret)
 		return true
 	case .Key:
 		return edit_key(gtx, s, id, e.key, e.mods, stops, read_only, secret)
@@ -197,13 +216,27 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 		case .X:
 			if lo < hi && !read_only && !secret {
 				clipboard_write(gtx, string(s.buf[lo:hi]))
-				text_replace(s, "")
+				replace_as(s, "", .Other, gtx.time)
 				return true
 			}
 			return false
 		case .V:
 			if !read_only {
 				clipboard_read(gtx, id)
+			}
+			return false
+		case .Z:
+			// The field's history first; an empty one leaves the key to
+			// the app's own undo (text_claim_keys).
+			if read_only || secret {
+				return false
+			}
+			return text_redo(s) if extend else text_undo(s)
+		case .Y:
+			when ODIN_OS != .Darwin {
+				if !read_only && !secret && !extend {
+					return text_redo(s)
+				}
 			}
 			return false
 		}
@@ -221,7 +254,7 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 					return false
 				}
 				text_select(s, 0, hi)
-				text_replace(s, "")
+				replace_as(s, "", .Other, gtx.time, secret)
 				return true
 			}
 		}
@@ -260,7 +293,7 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 		if text_selection_empty(s) {
 			return false
 		}
-		text_replace(s, "")
+		replace_as(s, "", .Backspace if lo == hi else .Other, gtx.time, secret)
 		return true
 	case .Delete:
 		if read_only {
@@ -272,7 +305,7 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 		if text_selection_empty(s) {
 			return false
 		}
-		text_replace(s, "")
+		replace_as(s, "", .Delete if lo == hi else .Other, gtx.time, secret)
 		return true
 	}
 	return false

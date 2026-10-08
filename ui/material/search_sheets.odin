@@ -293,6 +293,7 @@ search_text_events :: proc(
 			}
 		}
 	}
+	ui.text_claim_keys(gtx, s, id)
 	return
 }
 

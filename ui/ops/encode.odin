@@ -38,8 +38,10 @@ ENCODE_MAGIC :: "UIOP"
 // wrap, bits 2-3 rove) and gave Focus_Scope_End an entry; 33 gave
 // Input_Area's flags no_tab, bit 2; 34 gave Path its fill rule; 35 added
 // Role Column_Header and State Current_Date; 36 gave Semantic row and
-// column counts and indices and a sort; 37 added Role Password_Field.
-ENCODE_VERSION :: u8(37)
+// column counts and indices and a sort; 37 added Role Password_Field; 38
+// turned Key_Interest's topmost into a flags byte (bit 0 topmost, bit 1
+// claim).
+ENCODE_VERSION :: u8(38)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -457,7 +459,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		append(w, u8(v.key))
 		append(w, transmute(u8)v.mods)
 		append(w, transmute(u8)v.optional)
-		append(w, u8(v.topmost))
+		append(w, u8(v.topmost) | u8(v.claim) << 1)
 	case Focus_Scope:
 		append(w, 21)
 		put_u64(w, u64(v.id))
@@ -833,11 +835,11 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		}
 		v.mods = transmute(Mods)mods
 		v.optional = transmute(Mods)optional
-		topmost := get_u8(r) or_return
-		if topmost > 1 {
+		flags := get_u8(r) or_return
+		if flags > 3 {
 			return nil, false
 		}
-		v.topmost = topmost == 1
+		v.topmost, v.claim = flags & 1 != 0, flags & 2 != 0
 		return v, true
 	case 20:
 		v: Push_Sticky

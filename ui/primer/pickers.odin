@@ -453,6 +453,7 @@ bare_input :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, id: ops.Area_Id, size: ops.S
 				}
 			}
 		}
+		ui.text_claim_keys(gtx, s, id)
 	}
 	str := string(s.buf[:])
 	t := design.layout_style(gtx, str, st, font)
