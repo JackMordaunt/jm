@@ -75,7 +75,7 @@ test_a_table_counts_its_values_now_and_says_when_they_change :: proc(t: ^testing
 @(test)
 test_a_remote_asks_for_its_values_and_keeps_each_delivery_once :: proc(t: ^testing.T) {
 	r: Remote_Rows
-	remote_rows_init(&r, {source = "rigs", page_size = 10})
+	remote_rows_init(&r, {page_size = 10}, test_fetch_page, test_fetch_values, nil)
 	defer remote_rows_destroy(&r)
 	m := Values_Model {
 		src = &r,
@@ -90,16 +90,18 @@ test_a_remote_asks_for_its_values_and_keeps_each_delivery_once :: proc(t: ^testi
 	testing.expect(t, m.values == nil)
 	asked := false
 	for n in ui.probe_needs(&p) {
-		if q, ok := ui.need_as(n, Values_Query); ok {
-			asked = q.source == "rigs" && q.column == "site"
+		if q, ok := ui.need_as(n, Test_Values); ok {
+			asked = q.column == "site"
 			values := []Value_Count{{"Norway", 2}, {"Paraguay", 1}}
 			ui.probe_deliver(&p, q, Values{values = values})
 		}
 	}
-	testing.expect(t, asked, "a Values_Query for the site column")
+	testing.expect(t, asked, "a Test_Values for the site column")
 	ui.probe_frame(&p)
 	testing.expect(t, !m.loading)
 	testing.expect_value(t, len(m.values), 2)
+	testing.expect_value(t, m.values[0], Value_Count{"Norway", 2})
+	testing.expect_value(t, m.values[1], Value_Count{"Paraguay", 1})
 	m.since = m.version
 	ui.probe_frame(&p)
 	testing.expect(t, m.values == nil, "the same delivery: nothing to copy again")

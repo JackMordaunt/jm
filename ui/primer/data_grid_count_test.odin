@@ -20,12 +20,29 @@ count_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	data_grid(gtx, &m.g, COUNT_COLS, &m.remote, "Rigs")
 }
 
+// Count_Page is the test's own need for a page.
+@(private = "file")
+Count_Page :: distinct datagrid.Page_Query
+
+@(private = "file")
+count_fetch :: proc(
+	_: rawptr,
+	gtx: ^ui.Ctx,
+	q: datagrid.Page_Query,
+) -> (
+	^datagrid.Page,
+	ui.Status,
+	u64,
+) {
+	return ui.need_versioned(gtx, Count_Page(q), datagrid.Page)
+}
+
 // A paged grid says Loading… until its first page lands, never the room
 // it keeps for a page of skeletons as if it were the rows' number.
 @(test)
 test_a_paged_grid_counts_only_what_arrived :: proc(t: ^testing.T) {
 	m: Count_Model
-	datagrid.remote_rows_init(&m.remote, {source = "rigs", page_size = 50})
+	datagrid.remote_rows_init(&m.remote, {page_size = 50}, count_fetch, nil, nil)
 	defer datagrid.remote_rows_destroy(&m.remote)
 	data_grid_init(&m.g, COUNT_COLS)
 	defer data_grid_destroy(&m.g)
@@ -37,7 +54,7 @@ test_a_paged_grid_counts_only_what_arrived :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_tagged(&p, "Loading…"))
 	testing.expect(t, !ui.probe_tagged(&p, "about 50 rows"))
 	for n in ui.probe_needs(&p) {
-		if q, ok := ui.need_as(n, datagrid.Page_Query); ok {
+		if q, ok := ui.need_as(n, Count_Page); ok {
 			rows := []datagrid.Page_Row {
 				{key = "a", cells = {"SN-1"}},
 				{key = "b", cells = {"SN-2"}},

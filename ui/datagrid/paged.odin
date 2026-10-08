@@ -16,18 +16,16 @@ import "core:mem"
 //
 // The pure half is here: which pages to want (pages_window), what to do
 // with one that arrives (pages_arrive), what to evict (pages_evict) and
-// what a row shows (pages_row). The grid's frame turns the wanted pages
-// into needs and their answers into arrivals.
+// what a row shows (pages_row). The grid's frame asks the caller's fetch
+// for the wanted pages and turns what it returns into arrivals.
 
-// Paging is a paged source's settings. source names the table to the
-// host, which may serve several. A page is page_size rows; margin pages
-// either side of those in view are wanted too, so a scroll finds them
-// loaded; at most capacity pages are cached, the farthest from the view
-// evicted first. On a new query (a sort, a filter, the search) the old
-// pages go, or with keep_stale stay drawn, dimmed, until the new ones
+// Paging is a paged source's settings. A page is page_size rows; margin
+// pages either side of those in view are wanted too, so a scroll finds
+// them loaded; at most capacity pages are cached, the farthest from the
+// view evicted first. On a new query (a sort, a filter, the search) the
+// old pages go, or with keep_stale stay drawn, dimmed, until the new ones
 // arrive. estimate is a row count to show before the first page says.
 Paging :: struct {
-	source:     string,
 	page_size:  int,
 	margin:     int,
 	capacity:   int,
@@ -68,13 +66,12 @@ Cursor :: struct {
 	values: []string,
 }
 
-// Page_Query is a page request, the need a paged grid records for each
-// page it wants: the source, every column's id in declared order (the
+// Page_Query is a page request, what a paged grid asks its fetch for
+// each page it wants: every column's id in declared order (the
 // order a page's cells come in), the query, which rows (offset and
 // limit), the keyset cursor when the grid has it, and attempt, which a
 // retry bumps so a failed page is asked for afresh.
 Page_Query :: struct {
-	source:  string,
 	columns: []string,
 	sort:    []Query_Sort,
 	filters: []Query_Filter,
@@ -93,7 +90,7 @@ Page_Row :: struct {
 }
 
 // Page answers a Page_Query: up to limit rows, fewer only at the table's
-// end; the row count when the host knows it (total_kind); or error when
+// end; the row count when the source knows it (total_kind); or error when
 // the page could not be had, which the grid shows on its rows with a
 // retry.
 Page :: struct {
@@ -105,10 +102,9 @@ Page :: struct {
 
 // Values_Query asks for a column's distinct values among the rows that
 // pass the other filters and the search, for its Set filter, matching
-// like: Values answers it, the most common first or as the host likes,
+// like: Values answers it, the most common first or as the source likes,
 // at most limit of them.
 Values_Query :: struct {
-	source:  string,
 	column:  string,
 	filters: []Query_Filter,
 	search:  string,

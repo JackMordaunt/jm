@@ -3,17 +3,17 @@ package datagrid
 import "core:fmt"
 import "jm:ui"
 
-// The frame's side of a paged grid: the pages near the view become needs
-// (ui.need), and what arrives under them goes into the cache. A page
-// scrolled far away is needed no more, so its host cancels the request;
-// a page that comes back into view is needed again.
+// The frame's side of a paged grid: the pages near the view are asked of
+// the caller's fetch, and what arrives under them goes into the cache. A
+// page scrolled far away is asked for no more, so a fetch that asks by
+// need has its host cancel the request; a page that comes back into view
+// is asked for again.
 
 // page_query is the request shared by every page of the current view,
-// without the rows: the source, the columns, the sort, the filters and
-// the search, in the frame's allocator.
-page_query :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows) -> Page_Query {
+// without the rows: the columns, the sort, the filters and the search,
+// in the frame's allocator.
+page_query :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column) -> Page_Query {
 	q := Page_Query {
-		source  = r.pages.source,
 		columns = make([]string, len(cols), gtx.allocator),
 		sort    = make([]Query_Sort, len(g.view.sort), gtx.allocator),
 		search  = g.view.search,
@@ -53,20 +53,23 @@ sort_columns :: proc(gtx: ^ui.Ctx, g: ^Grid) -> []int {
 	return out
 }
 
-// want_pages needs the pages near the view, takes in those that arrived,
-// and evicts what the cache cannot keep. It reports whether the count
-// moved.
+// want_pages asks fetch for the pages near the view, takes in those that
+// arrived, and evicts what the cache cannot keep. It reports whether the
+// count moved.
 @(private)
 want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows) -> bool {
 	p := &r.pages
 	lo, hi := pages_window(p, g.geo.first, g.geo.last)
 	pages_want(p, lo, hi, sort_columns(gtx, g))
-	q := page_query(gtx, g, cols, r)
+	q := page_query(gtx, g, cols)
 	for i in lo ..< hi {
+		if r.fetch == nil {
+			break
+		}
 		e := pages_find(p, p.query, i)
 		q.offset, q.limit = i * p.page_size, p.page_size
 		q.after, q.attempt = e.after, e.attempt
-		pg, st, version := ui.need_versioned(gtx, q, Page)
+		pg, st, version := r.fetch(r.user, gtx, q)
 		if pg != nil && (st == .Ready || st == .Stale) {
 			pages_arrive(p, p.query, i, pg, version, st == .Stale)
 		}
@@ -82,9 +85,12 @@ want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows) -> b
 @(private)
 export_page :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows, ev: ^Events) {
 	x := &g.export
-	q := page_query(gtx, g, cols, r)
+	if r.fetch == nil {
+		return
+	}
+	q := page_query(gtx, g, cols)
 	q.offset, q.limit, q.after, q.attempt = x.next, x.limit, x.after, x.attempt
-	pg, st := ui.need(gtx, q, Page)
+	pg, st, _ := r.fetch(r.user, gtx, q)
 	switch {
 	case pg == nil || st != .Ready:
 		return
@@ -147,20 +153,18 @@ export_keep_cursor :: proc(x: ^Export, r: Page_Row, sort_cols: []int) {
 
 // values_query is the request for column col's distinct values under
 // the other filters and the search, like a filter text, at most limit,
-// which a Set filter needs (ui.need) from a remote's host, as the grid
+// which a Set filter asks a remote's fetch_values for, as the grid
 // cannot count rows it does not hold.
 @(private)
 values_query :: proc(
 	gtx: ^ui.Ctx,
 	g: ^Grid,
 	cols: []Column,
-	r: ^Remote_Rows,
 	col: int,
 	like: string,
 	limit := 200,
 ) -> Values_Query {
 	return {
-		source = r.pages.source,
 		column = cols[col].id,
 		filters = query_filters(gtx, g, cols, col),
 		search = g.view.search,

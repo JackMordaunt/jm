@@ -100,7 +100,6 @@ paged_case_init :: proc(c: ^Paged_Case, src: ^harness.Source) {
 	}
 	datagrid.memory_table_init(&c.table, PAGED_COLUMNS, c.rows)
 	c.paging = {
-		source     = "rows",
 		page_size  = harness.integer_in(src, 1, 30),
 		margin     = harness.integer_in(src, 0, 3),
 		capacity   = harness.integer_in(src, 1, 10),
@@ -109,7 +108,7 @@ paged_case_init :: proc(c: ^Paged_Case, src: ^harness.Source) {
 	if harness.boolean(src) {
 		c.paging.estimate = harness.integer_in(src, 1, 400)
 	}
-	datagrid.remote_rows_init(&c.remote, c.paging)
+	datagrid.remote_rows_init(&c.remote, c.paging, fetch_page, nil, nil)
 	datagrid.grid_init(&c.g, PAGED_COLUMNS)
 	c.skin.style = datagrid.DEFAULT_STYLE
 	c.pending = make([dynamic]Pending)
@@ -150,6 +149,24 @@ filter_sites :: proc(v: ^datagrid.View, src: ^harness.Source) {
 	datagrid.view_set_values(v, harness.choice(src, []int{1, 2}), values[:])
 }
 
+// Fuzz_Page is the harness's own need for a page: the contract between
+// the grid's caller and the simulated host.
+Fuzz_Page :: distinct datagrid.Page_Query
+
+// fetch_page asks for page q as a Fuzz_Page need.
+@(private)
+fetch_page :: proc(
+	_: rawptr,
+	gtx: ^ui.Ctx,
+	q: datagrid.Page_Query,
+) -> (
+	^datagrid.Page,
+	ui.Status,
+	u64,
+) {
+	return ui.need_versioned(gtx, Fuzz_Page(q), datagrid.Page)
+}
+
 // host_sync starts what the grid needs that the host was not asked for,
 // and marks what it needs no more.
 @(private)
@@ -162,7 +179,7 @@ host_sync :: proc(c: ^Paged_Case, p: ^ui.Probe) {
 		}
 	}
 	outer: for n in needs {
-		q, ok := ui.need_as(n, datagrid.Page_Query, context.allocator)
+		q, ok := ui.need_as(n, Fuzz_Page, context.allocator)
 		if !ok {
 			continue
 		}
@@ -171,7 +188,7 @@ host_sync :: proc(c: ^Paged_Case, p: ^ui.Probe) {
 				continue outer
 			}
 		}
-		append(&c.pending, Pending{n.key, q, true})
+		append(&c.pending, Pending{n.key, datagrid.Page_Query(q), true})
 	}
 }
 
@@ -358,10 +375,11 @@ needs_hold :: proc(
 ) {
 	n := 0
 	for need in ui.probe_needs(p) {
-		q, ok := ui.need_as(need, datagrid.Page_Query, context.allocator)
+		fq, ok := ui.need_as(need, Fuzz_Page, context.allocator)
 		if !ok {
 			continue
 		}
+		q := datagrid.Page_Query(fq)
 		n += 1
 		index := q.offset / c.paging.page_size
 		if index < lo || index >= hi {

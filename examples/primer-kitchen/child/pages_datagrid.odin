@@ -95,13 +95,12 @@ grids_ready :: proc(d: ^Data_Grids) {
 	datagrid.memory_table_init(&d.rig_table, RIG_COLUMNS[:], d.rig_rows)
 	primer.data_grid_init(&d.rigs, RIG_COLUMNS[:])
 	paging := datagrid.Paging {
-		source     = "rigs",
 		page_size  = 100,
 		margin     = 2,
 		capacity   = 24,
 		keep_stale = true,
 	}
-	datagrid.remote_rows_init(&d.remote_rows, paging)
+	datagrid.remote_rows_init(&d.remote_rows, paging, fetch_rig_page, fetch_rig_values, nil)
 	primer.data_grid_init(&d.remote, RIG_COLUMNS[:])
 	d.repo_rows = datagrid.rows_of(REPO_ROWS[:], 0)
 	datagrid.memory_table_init(&d.repo_table, REPO_COLUMNS[:], d.repo_rows)
@@ -210,6 +209,40 @@ REPO_ROWS := [?][4]string {
 	{"primer/figma", "Figma", "2026-05-20", "12"},
 }
 
+// Rig_Page and Rig_Values are the page's needs of its server: a page of
+// the remote rigs and a column's values. They are the grid's requests
+// under the kitchen's own names, so the server answers the kitchen's
+// contract, not the grid's.
+Rig_Page   :: distinct datagrid.Page_Query
+Rig_Values :: distinct datagrid.Values_Query
+
+// fetch_rig_page is the remote grid's fetch: page q as a Rig_Page need.
+fetch_rig_page :: proc(
+	_: rawptr,
+	gtx: ^ui.Ctx,
+	q: datagrid.Page_Query,
+) -> (
+	^datagrid.Page,
+	ui.Status,
+	u64,
+) {
+	return ui.need_versioned(gtx, Rig_Page(q), datagrid.Page)
+}
+
+// fetch_rig_values is its Set filters' fetch: q's values as a
+// Rig_Values need.
+fetch_rig_values :: proc(
+	_: rawptr,
+	gtx: ^ui.Ctx,
+	q: datagrid.Values_Query,
+) -> (
+	^datagrid.Values,
+	ui.Status,
+	u64,
+) {
+	return ui.need_versioned(gtx, Rig_Values(q), datagrid.Values)
+}
+
 // Sim_Server is the paged grid's server, simulated in process: the
 // application side of the kitchen's Data_Host. Each page or value list
 // the grid needs is answered from a Memory_Table once the frame clock
@@ -275,7 +308,7 @@ sim_on_need :: proc(user: rawptr, n: ui.Need, added: bool) {
 		}
 		return
 	}
-	if !ui.need_is(n, datagrid.Page_Query) && !ui.need_is(n, datagrid.Values_Query) {
+	if !ui.need_is(n, Rig_Page) && !ui.need_is(n, Rig_Values) {
 		return
 	}
 	draw := u64(n.key) * 0x9E3779B97F4A7C15
@@ -322,20 +355,24 @@ sim_pump :: proc(s: ^Sim_Server, now: f64) -> bool {
 // sim_answer puts r's answer in the inbox for the next frame.
 sim_answer :: proc(s: ^Sim_Server, r: Sim_Request) {
 	bytes: []u8
-	if q, ok := ui.need_as(r.need, datagrid.Page_Query); ok {
+	if q, ok := ui.need_as(r.need, Rig_Page); ok {
 		page := datagrid.Page {
 			error = "the server timed out",
 		}
 		if !r.fail {
-			page = datagrid.answer_page(&s.table, q, context.temp_allocator)
+			page = datagrid.answer_page(&s.table, datagrid.Page_Query(q), context.temp_allocator)
 		}
 		bytes, _ = cbor.marshal_into_bytes(
 			page,
 			allocator = context.temp_allocator,
 			temp_allocator = context.temp_allocator,
 		)
-	} else if v, vok := ui.need_as(r.need, datagrid.Values_Query); vok {
-		values := datagrid.answer_values(&s.table, v, context.temp_allocator)
+	} else if v, vok := ui.need_as(r.need, Rig_Values); vok {
+		values := datagrid.answer_values(
+			&s.table,
+			datagrid.Values_Query(v),
+			context.temp_allocator,
+		)
 		bytes, _ = cbor.marshal_into_bytes(
 			values,
 			allocator = context.temp_allocator,

@@ -53,7 +53,7 @@ pager_make :: proc(n: int, paging: Paging) -> ^Pager {
 		}
 	}
 	memory_table_init(&m.table, PAGED_COLS, m.rows)
-	remote_rows_init(&m.remote, m.paging)
+	remote_rows_init(&m.remote, m.paging, test_fetch_page, test_fetch_values, nil)
 	grid_init(&m.g, PAGED_COLS)
 	m.skin.style = DEFAULT_STYLE
 	return m
@@ -80,15 +80,31 @@ pager_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	m.ev = grid(gtx, &m.g, PAGED_COLS, &m.remote, &m.skin, "Rigs")
 }
 
+// Test_Page and Test_Values are the tests' own needs for a page and a
+// column's values: the contract a caller of a Remote_Rows makes with its
+// host, here no more than the grid's requests under a name of their own.
+Test_Page   :: distinct Page_Query
+Test_Values :: distinct Values_Query
+
+// test_fetch_page asks for page q as a Test_Page need.
+test_fetch_page :: proc(_: rawptr, gtx: ^ui.Ctx, q: Page_Query) -> (^Page, ui.Status, u64) {
+	return ui.need_versioned(gtx, Test_Page(q), Page)
+}
+
+// test_fetch_values asks for q's values as a Test_Values need.
+test_fetch_values :: proc(_: rawptr, gtx: ^ui.Ctx, q: Values_Query) -> (^Values, ui.Status, u64) {
+	return ui.need_versioned(gtx, Test_Values(q), Values)
+}
+
 // serve answers every page the last frame needed, then runs a frame.
 @(private = "file")
 serve :: proc(p: ^ui.Probe, m: ^Pager) {
 	for n in ui.probe_needs(p) {
-		q, ok := ui.need_as(n, Page_Query)
+		q, ok := ui.need_as(n, Test_Page)
 		if !ok {
 			continue
 		}
-		pg := answer_page(&m.table, q, context.temp_allocator)
+		pg := answer_page(&m.table, Page_Query(q), context.temp_allocator)
 		if m.fail {
 			pg = {
 				error = "timed out",
@@ -106,7 +122,7 @@ page_needs :: proc(p: ^ui.Probe) -> (n, lo, hi: int) {
 	lo = max(int)
 	hi = -1
 	for need in ui.probe_needs(p) {
-		if q, ok := ui.need_as(need, Page_Query); ok {
+		if q, ok := ui.need_as(need, Test_Page); ok {
 			n += 1
 			lo, hi = min(lo, q.offset), max(hi, q.offset)
 		}
@@ -116,7 +132,7 @@ page_needs :: proc(p: ^ui.Probe) -> (n, lo, hi: int) {
 
 @(test)
 test_a_paged_grid_shows_skeletons_then_rows_and_finds_its_end :: proc(t: ^testing.T) {
-	m := pager_make(95, {source = "rigs", page_size = 10, margin = 1})
+	m := pager_make(95, {page_size = 10, margin = 1})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
@@ -140,7 +156,7 @@ test_a_paged_grid_shows_skeletons_then_rows_and_finds_its_end :: proc(t: ^testin
 	// The pages left behind are needed no more: their host cancels them.
 	dropped_first := false
 	for d in ui.probe_dropped(&p) {
-		if q, ok := ui.need_as(d, Page_Query); ok && q.offset == 0 {
+		if q, ok := ui.need_as(d, Test_Page); ok && q.offset == 0 {
 			dropped_first = true
 		}
 	}
@@ -157,7 +173,7 @@ test_a_paged_grid_shows_skeletons_then_rows_and_finds_its_end :: proc(t: ^testin
 
 @(test)
 test_a_sort_is_a_new_query_its_pages_asked_with_the_sort :: proc(t: ^testing.T) {
-	m := pager_make(60, {source = "rigs", page_size = 20})
+	m := pager_make(60, {page_size = 20})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
@@ -170,7 +186,7 @@ test_a_sort_is_a_new_query_its_pages_asked_with_the_sort :: proc(t: ^testing.T) 
 	testing.expect(t, m.remote.pages.query != before, "the sort changed the query key")
 	sorted := false
 	for need in ui.probe_needs(&p) {
-		if q, ok := ui.need_as(need, Page_Query); ok {
+		if q, ok := ui.need_as(need, Test_Page); ok {
 			sorted = len(q.sort) == 1 && q.sort[0] == Query_Sort{"hash", false}
 		}
 	}
@@ -188,7 +204,7 @@ test_a_sort_is_a_new_query_its_pages_asked_with_the_sort :: proc(t: ^testing.T) 
 
 @(test)
 test_kept_stand_ins_show_dimmed_until_the_new_query_arrives :: proc(t: ^testing.T) {
-	m := pager_make(60, {source = "rigs", page_size = 20, keep_stale = true})
+	m := pager_make(60, {page_size = 20, keep_stale = true})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
@@ -222,7 +238,7 @@ test_kept_stand_ins_show_dimmed_until_the_new_query_arrives :: proc(t: ^testing.
 
 @(test)
 test_a_failed_page_shows_its_error_and_retries_on_a_click :: proc(t: ^testing.T) {
-	m := pager_make(30, {source = "rigs", page_size = 50})
+	m := pager_make(30, {page_size = 50})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
@@ -236,7 +252,7 @@ test_a_failed_page_shows_its_error_and_retries_on_a_click :: proc(t: ^testing.T)
 	ui.probe_click_at(&p, {100, 60})
 	attempt := -1
 	for need in ui.probe_needs(&p) {
-		if q, ok := ui.need_as(need, Page_Query); ok {
+		if q, ok := ui.need_as(need, Test_Page); ok {
 			attempt = q.attempt
 		}
 	}
@@ -254,7 +270,7 @@ failed_slots: int
 // a page of many failed rows once claimed one id for all of them.
 @(test)
 test_a_skin_draws_every_row_of_a_failed_page :: proc(t: ^testing.T) {
-	m := pager_make(30, {source = "rigs", page_size = 50})
+	m := pager_make(30, {page_size = 50})
 	defer pager_free(m)
 	m.skin.failed = proc(gtx: ^ui.Ctx, size: ops.Size, err: string, user: rawptr) -> bool {
 		failed_slots += 1
@@ -280,7 +296,7 @@ test_a_skin_draws_every_row_of_a_failed_page :: proc(t: ^testing.T) {
 
 @(test)
 test_select_all_loaded_names_rows_and_all_matching_names_the_query :: proc(t: ^testing.T) {
-	m := pager_make(500, {source = "rigs", page_size = 20, margin = 1})
+	m := pager_make(500, {page_size = 20, margin = 1})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
@@ -307,7 +323,7 @@ test_select_all_loaded_names_rows_and_all_matching_names_the_query :: proc(t: ^t
 
 @(test)
 test_a_paged_export_streams_every_page_with_progress_and_stops :: proc(t: ^testing.T) {
-	m := pager_make(2500, {source = "rigs", page_size = 50})
+	m := pager_make(2500, {page_size = 50})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
@@ -331,7 +347,7 @@ test_a_paged_export_streams_every_page_with_progress_and_stops :: proc(t: ^testi
 	testing.expect(t, m.g.export.active && !m.g.export.done, "a second export runs")
 	asked := false
 	for need in ui.probe_needs(&p) {
-		q, ok := ui.need_as(need, Page_Query)
+		q, ok := ui.need_as(need, Test_Page)
 		asked ||= ok && q.limit == EXPORT_PAGE
 	}
 	testing.expect(t, asked, "and needs its first page")
@@ -339,7 +355,7 @@ test_a_paged_export_streams_every_page_with_progress_and_stops :: proc(t: ^testi
 	serve(&p, m)
 	testing.expect(t, !m.g.export.active)
 	for need in ui.probe_needs(&p) {
-		q, ok := ui.need_as(need, Page_Query)
+		q, ok := ui.need_as(need, Test_Page)
 		testing.expect(t, !ok || q.limit != EXPORT_PAGE, "a stopped export needs no page")
 	}
 }
@@ -394,7 +410,7 @@ test_a_steady_paged_frame_allocates_nothing :: proc(t: ^testing.T) {
 	}
 	context.allocator = {spy_proc, &spy}
 	context.temp_allocator = {spy_proc, &spy_t}
-	m := pager_make(5000, {source = "rigs", page_size = 50})
+	m := pager_make(5000, {page_size = 50})
 	defer pager_free(m)
 	view_sort_cycle(&m.g.view, 3, false)
 	view_set_values(&m.g.view, 2, {"Norway"})
@@ -419,7 +435,7 @@ test_a_steady_paged_frame_allocates_nothing :: proc(t: ^testing.T) {
 // sort it is the last query's.
 @(test)
 test_the_count_is_known_only_once_a_page_of_the_query_lands :: proc(t: ^testing.T) {
-	m := pager_make(30, {source = "rigs", page_size = 10, keep_stale = true})
+	m := pager_make(30, {page_size = 10, keep_stale = true})
 	defer pager_free(m)
 	p: ui.Probe
 	ui.probe_init(&p, pager_view, m, {600, 400})
