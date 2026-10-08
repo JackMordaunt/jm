@@ -250,6 +250,32 @@ test_an_expanded_icon_button_shows_no_tooltip :: proc(t: ^testing.T) {
 	testing.expect_value(t, tooltips_shown(&p), 0) // open: its menu shows instead
 }
 
+@(private = "file")
+own_tooltip_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, gap = 16, align = .Start)
+	defer ui.close(&col)
+	st := ui.stack_open(gtx)
+	defer ui.close(&st)
+	icon_button(gtx, .Bold, "Bold", description = "Make it bold", no_tooltip = true)
+	tooltip(gtx, "Bold, the caller's words", ui.last_widget(gtx))
+}
+
+@(test)
+test_an_icon_button_without_its_tooltip_leaves_the_callers_to_fade_in :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, own_tooltip_view, nil, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	c, _ := ui.probe_center(&p, "Bold")
+	ui.probe_move(&p, c.x, c.y)
+	ui.probe_advance(&p, 30, 1.0 / 60) // past the delay and the 100ms fade
+	testing.expect_value(t, tooltips_shown(&p), 1)
+	for op in p.scene.ops {
+		_, fading := op.(ops.Push_Opacity)
+		testing.expect(t, !fading, "the caller's tooltip is still fading in, half a second on")
+	}
+}
+
 @(test)
 test_a_button_out_of_the_tab_order_is_skipped_by_tab_and_still_clicks :: proc(t: ^testing.T) {
 	m: Expanded_Model

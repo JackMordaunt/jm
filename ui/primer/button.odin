@@ -713,9 +713,12 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	listen(gtx, c.st, p.id, area, CLICK_KINDS, no_tab = st.no_tab)
 	said := ui.frame_string(gtx, name)
 	ops.tag(gtx.scene, p.id, said)
-	if c.st != nil {
+	// no_tooltip leaves the trigger's tooltip state alone: a caller that
+	// draws its own tooltip on this button shares it, and a hidden one
+	// here would hide that one again each frame, restarting its fade.
+	if c.st != nil && !st.no_tooltip {
 		tip := st.description if st.description != "" else name
-		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || st.no_tooltip || name == "" || open, false, st.keybinding)
+		tooltip_run(gtx, p.id, area, tip, st.tooltip_direction, .Short, c.disabled || name == "" || open, false, st.keybinding)
 	}
 	heard := said if st.description != "" else tooltip_label(gtx, name, st.keybinding)
 	ui.semantics(gtx, &p, {role = .Button, label = heard, description = ui.frame_string(gtx, st.description), states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(st.expanded)})
