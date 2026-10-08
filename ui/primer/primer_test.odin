@@ -230,3 +230,47 @@ test_a_shadow_paints_its_layers_last_first_in_the_active_theme :: proc(t: ^testi
 	testing.expect_value(t, shadows[0].blur, f32(3))
 	testing.expect_value(t, shadows[0].color, s[dark.layers[1].color])
 }
+
+@(private = "file")
+Custom_Model :: struct {
+	icon: Icon,
+}
+
+@(private = "file")
+custom_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Custom_Model)(user)
+	button(gtx, "Coins", leading = m.icon)
+}
+
+@(test)
+test_a_registered_icon_draws_wherever_an_icon_does :: proc(t: ^testing.T) {
+	square := design.Icon_Paths {
+		d        = {0 = "M0 0h16v16H0Z M4 4v8h8V4Z", 1 = "M6 6h4v4H6Z"},
+		even_odd = {0},
+	}
+	i := register_icon(square)
+	testing.expect(t, u16(i) > u16(max(Icon)), "past the octicons")
+	paths, height := icon_paths(i, 32)
+	testing.expect_value(t, len(paths), 2)
+	testing.expect_value(t, height, 16)
+	testing.expect_value(t, paths[0].rule, ops.Fill_Rule.Even_Odd)
+	testing.expect_value(t, icon_width(i, 32), 32)
+	wide := register_icon({d = {0 = "M0 0h24v12H0Z"}}, 12, 24)
+	testing.expect(t, wide != i)
+	testing.expect_value(t, icon_width(wide, 12), 24)
+	// As a button's leading icon: its two paths are filled.
+	m := Custom_Model{icon = i}
+	p: ui.Probe
+	ui.probe_init(&p, custom_view, &m, {200, 60}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	path_fills := 0
+	for op in p.scene.ops {
+		if f, ok := op.(ops.Fill); ok {
+			if _, is_path := f.shape.(ops.Path_Ref); is_path {
+				path_fills += 1
+			}
+		}
+	}
+	testing.expect_value(t, path_fills, 2)
+}

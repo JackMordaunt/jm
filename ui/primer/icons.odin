@@ -1,5 +1,7 @@
 package primer
 
+import "core:mem/virtual"
+
 import "jm:ui"
 import "jm:ui/design"
 import "jm:ui/ops"
@@ -65,10 +67,66 @@ natural_index :: proc(i: Icon, size: f32) -> int {
 	return pick
 }
 
+// An app's own icons, beside the octicons. register_icon gives one an
+// Icon past the last octicon, which every proc taking an Icon draws: a
+// nav item's, a button's, a label's. Its paths are parsed once, when it
+// is registered, so registration happens before the frames that draw
+// it, as an app starts; drawing only reads them.
+
+// Custom_Icon is a registered icon: its parsed paths in its own units,
+// and the height and width those units are drawn at.
+@(private = "file")
+Custom_Icon :: struct {
+	paths:         []ops.Path,
+	height, width: f32,
+}
+
+@(private = "file")
+customs: [dynamic]Custom_Icon
+
+@(private = "file")
+custom_arena: virtual.Arena
+
+// register_icon adds an icon drawn from data, SVG paths in a box height
+// units tall and width wide (height when 0), as an octicon's are, and is
+// the Icon that draws it. Not safe to call while another thread draws.
+register_icon :: proc(data: design.Icon_Paths, height: f32 = 16, width: f32 = 0) -> Icon {
+	a := virtual.arena_allocator(&custom_arena)
+	paths := make([dynamic]ops.Path, 0, design.ICON_MAX_PATHS, a)
+	for d, n in data.d {
+		if d == "" {
+			continue
+		}
+		p, _ := design.parse_svg_path(d, a)
+		if n in data.even_odd {
+			p.rule = .Even_Odd
+		}
+		append(&paths, p)
+	}
+	if customs == nil {
+		customs = make([dynamic]Custom_Icon, a)
+	}
+	append(&customs, Custom_Icon{paths[:], height, width > 0 ? width : height})
+	return Icon(u16(max(Icon)) + u16(len(customs)))
+}
+
+// custom_of is the registered icon i is, if it is one.
+@(private = "file")
+custom_of :: proc(i: Icon) -> (c: ^Custom_Icon, ok: bool) {
+	n := int(u16(i)) - int(u16(max(Icon))) - 1
+	if n < 0 || n >= len(customs) {
+		return nil, false
+	}
+	return &customs[n], true
+}
+
 // icon_paths is i's outline at the natural height drawn for size, one
 // path per <path> of its design, in that height's units with the origin
 // at the top-left, and that height.
 icon_paths :: proc(i: Icon, size: f32) -> (paths: []ops.Path, height: f32) {
+	if c, ok := custom_of(i); ok {
+		return c.paths, c.height
+	}
 	n := natural_index(i, size)
 	if n < 0 {
 		return
@@ -79,6 +137,9 @@ icon_paths :: proc(i: Icon, size: f32) -> (paths: []ops.Path, height: f32) {
 // icon_width is i's drawn width at size: size for a square icon, wider
 // for the few that are not (logo-gist, feed-issue-reopen).
 icon_width :: proc(i: Icon, size: f32) -> f32 {
+	if c, ok := custom_of(i); ok {
+		return size * c.width / c.height
+	}
 	n := natural_index(i, size)
 	if n < 0 {
 		return 0
@@ -101,6 +162,18 @@ icon_width :: proc(i: Icon, size: f32) -> f32 {
 // icon fills i at size pixels tall with its top-left at pos; None draws
 // nothing.
 icon :: proc(gtx: ^ui.Ctx, i: Icon, pos: ops.Point, size: f32, color: ops.Color) {
+	if c, ok := custom_of(i); ok {
+		if !ui.painted(color) || len(c.paths) == 0 {
+			return
+		}
+		k := size / c.height
+		ops.transform_push(gtx.scene, ops.mul(ops.scale(k, k), ops.translate(pos.x, pos.y)))
+		for p in c.paths {
+			ops.fill(gtx.scene, ops.Path_Ref{ops.add_path(gtx.scene, p)}, color)
+		}
+		ops.transform_pop(gtx.scene)
+		return
+	}
 	n := natural_index(i, size)
 	if n < 0 {
 		return
