@@ -185,6 +185,11 @@ run :: proc(app: App) {
 		if scaled {
 			ops.transform_pop(&sc)
 		}
+		// With the application here, what the frame needs and asks goes
+		// to it now, before the frame is flattened and sent.
+		if local {
+			ui.data_after_frame(&app.data, &subs, &router)
+		}
 		build_start := t.tick_now()
 		ui.flatten(
 			&sc,
@@ -224,11 +229,10 @@ run :: proc(app: App) {
 		}
 		// The data block: what the frame began and stopped needing, and
 		// its commands, for the host's application; or, with the
-		// application here, dispatched now and not sent.
+		// application here, dispatched already and not sent.
 		rd: ui.Reply_Data
 		wants := gtx.wants_frame || tray.open
 		if local {
-			ui.data_after_frame(&app.data, &subs, &router)
 			if app.data.inbox != nil && ui.inbox_pending(app.data.inbox) {
 				wants = true
 			}

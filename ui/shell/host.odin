@@ -382,6 +382,9 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame = false
 		return
 	}
+	// The child's needs and commands go to the application here before
+	// the frame renders, so a request does not wait on presenting it.
+	ui.data_dispatch(&l.app.data, rd.added, rd.dropped, rd.commands)
 	ui.flatten(&l.scene, &l.frame, {0, 0, f32(w.size.x), f32(w.size.y)}, ops.scale(w.density, w.density))
 	present_start := time.tick_now()
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
@@ -399,9 +402,7 @@ host_step :: proc(l: ^Host_Loop) {
 		}
 	}
 	apply_platform(w, plat.cursor, plat.changed, reqs, host_sink, l, virtual.arena_allocator(&l.text))
-	// The child's needs and commands, to the application here; an answer
-	// already waiting wants a frame to carry it over.
-	ui.data_dispatch(&l.app.data, rd.added, rd.dropped, rd.commands)
+	// An answer already waiting wants a frame to carry it over.
 	if l.app.data.inbox != nil && ui.inbox_pending(l.app.data.inbox) {
 		l.wants_frame, l.frame_after = true, 0
 	}

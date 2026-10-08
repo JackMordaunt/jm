@@ -537,7 +537,8 @@ inbox_pending :: proc(ib: ^Inbox) -> bool {
 // and asks, and where the application's answers come back: shell.App,
 // shell.Host_App and child.App carry one. on_need is called once when a need
 // appears and once when it goes; on_command for each command, in order;
-// both on the loop's thread, after the frame. An answer is put in inbox
+// both on the loop's thread, once the frame is built and before it is
+// rendered, so a callback should only hand the work on, never do it. An answer is put in inbox
 // from any thread (inbox_put_value) and reaches the next frame; a loop
 // with no inbox delivers nothing. Nil callbacks drop what they would get.
 Data_Host :: struct {
@@ -565,7 +566,7 @@ data_dispatch :: proc(h: ^Data_Host, added, dropped: []Need, commands: []Command
 }
 
 // data_after_frame is what a loop does with the router once a frame is
-// done: diff its needs against the last frame's through subs, dispatch
+// built, before it renders: diff its needs against the last frame's through subs, dispatch
 // the diff and the commands to h, and clear the router for the next frame.
 data_after_frame :: proc(h: ^Data_Host, subs: ^Subscriptions, r: ^Router) {
 	added, dropped := subscriptions_update(subs, router_needs(r))

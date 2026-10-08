@@ -453,6 +453,10 @@ step :: proc(l: ^Loop) {
 	if scaled {
 		ops.transform_pop(&l.scene)
 	}
+	// What the frame needs and asks goes to the application now: the set
+	// is whole once the frame is built, and a request should not wait on
+	// the frame flattening and presenting.
+	ui.data_after_frame(&l.app.data, &l.subs, &l.router)
 	build_start := time.tick_now()
 	ui.flatten(
 		&l.scene,
@@ -490,9 +494,8 @@ step :: proc(l: ^Loop) {
 	}
 	apply_platform(w, ui.router_cursor(&l.router), true, reqs, router_sink, &l.router)
 	ui.router_requests_clear(&l.router)
-	// What the frame needs and asks goes to the application; an answer
-	// that landed meanwhile wants a frame to show it.
-	ui.data_after_frame(&l.app.data, &l.subs, &l.router)
+	// An answer that landed while the frame rendered wants a frame to
+	// show it.
 	if l.app.data.inbox != nil && ui.inbox_pending(l.app.data.inbox) {
 		l.wants_frame, l.frame_after = true, 0
 	}
