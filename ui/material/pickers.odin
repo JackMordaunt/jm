@@ -1260,7 +1260,10 @@ carousel :: proc(
 	view := ops.Rect{0, 0, size.x, size.y}
 	ops.input_area(gtx.scene, p.id, view, {.Scroll, .Press, .Release, .Move, .Key, .Focus, .Blur})
 	ops.tag(gtx.scene, p.id, "carousel")
-	ops.clip_push(gtx.scene, view)
+	// The viewport's corners are the focus ring's, so an item cut at an
+	// edge follows the ring's curve rather than poking past it square.
+	frame := ops.Round_Rect{view, CORNER_EXTRA_LARGE}
+	ops.clip_push(gtx.scene, frame)
 	on := color(.On_Primary)
 	for i in 0 ..< n {
 		r, ok := carousel_item_rect(kl, pos, i, n, item_spacing, size.y)
@@ -1286,7 +1289,7 @@ carousel :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	if focused {
-		paint_focus_ring(gtx, {focused = true}, {view, CORNER_EXTRA_LARGE})
+		paint_focus_ring(gtx, {focused = true}, frame)
 	}
 	ui.widget_close(gtx, &p, {size = size})
 	return clicked
