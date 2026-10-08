@@ -25,13 +25,15 @@ Event :: struct {
 	mime:   string, // Paste: the type of text
 	clicks: u8, // Press: 1 for a single click, 2 for a double, 3 a triple, as the OS counts them
 	span:   [2]int, // Compose: the input method's caret (equal ends) or selection in text, byte offsets
+	time:   f64, // seconds on the platform's monotonic clock when the device made it, for velocities; only differences mean anything, and 0 is unknown
 }
 
 // Raw_Event is what a platform (ui/shell, the probe) feeds the router: the
 // same fields as Event but with pos in device pixels and, for a pointer
 // or key event, no area: the router resolves it and converts pos to local
 // space. A Focus carries the area to focus, as an assistive technology
-// asks for one; the router focuses it as focus_request would.
+// asks for one; the router focuses it as focus_request would. One pushed
+// with time 0 takes the router's now.
 Raw_Event :: struct {
 	kind:   ops.Event_Kind,
 	area:   ops.Area_Id, // Focus only: the area to focus
@@ -44,6 +46,7 @@ Raw_Event :: struct {
 	mime:   string,
 	clicks: u8,
 	span:   [2]int,
+	time:   f64,
 }
 
 // SHORTCUT is the platform's command modifier, Cmd on macOS and Ctrl

@@ -14,6 +14,7 @@ pipe, ui/ipc the framing underneath that.
 */
 package child
 
+import "core:fmt"
 import "core:os"
 import t "core:time"
 import "jm:ui/ops"
@@ -122,6 +123,11 @@ run :: proc(app: App) {
 			&shapes,
 		)
 		if !dok {
+			// A host built from other sources is the usual cause: say so,
+			// since the host sees only that its child went away.
+			if v, vok := ui.input_version(payload); vok && v != ui.INPUT_VERSION {
+				fmt.eprintfln("ui/child: the host sends input version %d, this child reads %d: rebuild the host", v, ui.INPUT_VERSION)
+			}
 			return // a corrupt request; nothing salvageable
 		}
 

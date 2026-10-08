@@ -297,6 +297,24 @@ input_router_scroll_passes_through :: proc(t: ^testing.T) {
 }
 
 @(test)
+input_router_events_keep_their_time_or_take_now :: proc(t: ^testing.T) {
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+	r: Router
+	router_init(&r)
+	defer router_destroy(&r)
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 100}, {.Press, .Move})
+
+	r.now = 7.5
+	evs := route(&r, &f, {kind = .Move, pos = {10, 10}, time = 2.25}, {kind = .Press, pos = {10, 10}, button = .Left})
+	if testing.expect_value(t, len(evs), 2) {
+		testing.expect_value(t, evs[0].time, 2.25)
+		testing.expect_value(t, evs[1].time, 7.5)
+	}
+}
+
+@(test)
 input_router_nil_frame :: proc(t: ^testing.T) {
 	r: Router
 	router_init(&r)

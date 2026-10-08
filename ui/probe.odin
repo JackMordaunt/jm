@@ -143,6 +143,9 @@ probe_frame :: proc(p: ^Probe) {
 	}
 	dt := debug_dt(debug, p.dt)
 	p.time += f64(dt)
+	// Events pushed after this frame are stamped with its time, so a move
+	// a frame is dt after the last and a drag has a velocity.
+	p.router.now = p.time
 	gtx := Ctx {
 		scene         = &p.scene,
 		constraints = exact(p.size),

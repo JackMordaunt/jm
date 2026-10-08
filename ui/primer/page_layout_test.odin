@@ -228,6 +228,9 @@ test_a_resizable_pane_drags_steps_and_resets :: proc(t: ^testing.T) {
 	ui.router_push(&p.router, {kind = .Release, pos = c, button = .Left})
 	ui.probe_frame(&p)
 	testing.expect_value(t, m.width, 296)
+	// A drag by a fraction of a pixel settles on a whole one when let go.
+	testing.expect(t, ui.probe_drag(&p, handle, 10.4, 0))
+	testing.expect_value(t, m.width, 306)
 }
 
 // A sticky pane stays pinned at the top of the page's scroll box, its

@@ -19,6 +19,8 @@ List_Item :: proc(gtx: ^Ctx, i: int, user: rawptr)
 // so items need no keys. Scroll events move the offset SCROLL_STEP pixels
 // per unit, as scroll_box does (positive scrolls down), clamped to [0,
 // content - viewport], and a scroll bar on the right drags and pages it.
+// drag_scroll lets a drag on the list move it and a fast release sling
+// it, as scroll_box_open's does; rows that take presses keep them.
 // The viewport is the content height clamped to the constraints. Needs
 // gtx.layout; without one it draws nothing.
 list :: proc(
@@ -29,6 +31,7 @@ list :: proc(
 	user: rawptr = nil,
 	key: u64 = 0,
 	loc := #caller_location,
+	drag_scroll := false,
 ) -> Dims {
 	p := widget_open(gtx, key, loc)
 	l := gtx.layout
@@ -59,13 +62,20 @@ list :: proc(
 			s.offset += e.scroll.y * SCROLL_STEP
 		}
 	}
+	if drag_scroll {
+		s.offset = scroll_by_drag(gtx, p.id, {0, s.offset}, {0, content - view}).y
+	}
 	s.offset = clamp(s.offset, 0, max(content - view, 0))
 	size := constrain(cs, {width, view})
 	// The bar takes its input before the rows are placed, so a drag moves
 	// them this frame; it is painted after them, so it sits on top.
 	s.offset = scroll_bar_handle(gtx, id_mix(p.id, 1), .Vertical, size, content, s.offset)
 
-	ops.input_area(o, p.id, ops.Rect{0, 0, size.x, size.y}, {.Scroll})
+	kinds := ops.Event_Kinds{.Scroll}
+	if drag_scroll {
+		kinds += {.Press, .Move, .Release}
+	}
+	ops.input_area(o, p.id, ops.Rect{0, 0, size.x, size.y}, kinds)
 	ops.clip_push(o, ops.Rect{0, 0, size.x, size.y})
 	lo := int(s.offset / row)
 	hi := min(count, int(math.ceil((s.offset + size.y) / row)))

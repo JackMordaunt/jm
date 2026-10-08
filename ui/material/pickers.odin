@@ -1000,21 +1000,18 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, edit
 	inner := DIAL * TIME_INNER_RING
 	id := ui.id_mix(pid, 30)
 	st := ui.widget_state(gtx, id)
-	grab := ui.widget_data(gtx, id, Dial_Grab)
+	// A press that moves at all is a drag (whole minutes), one that does
+	// not a tap (minutes snapped to five).
+	grab := ui.drag(gtx, id, slop = 0)
 	if live {
 		for e in ui.events(gtx, id) {
 			#partial switch e.kind {
 			case .Press:
 				st.pressed = true
-				grab.moved = false
-			case .Move:
-				if st.pressed {
-					grab.moved = true
-				}
 			case .Release:
 				if st.pressed && !editing_minute^ {
 					editing_minute^ = true // an hour picked: on to minutes
-				} else if st.pressed && !grab.moved {
+				} else if st.pressed && grab.tapped {
 					// A tap snaps minutes to the nearest five.
 					t.minute = (t.minute + 2) / 5 * 5 % 60
 				}
@@ -1045,7 +1042,7 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, edit
 		ops.input_area(gtx.scene, id, face, {.Press, .Release, .Move})
 		ops.tag(gtx.scene, id, "clock dial")
 	}
-	dragging := st.pressed && grab.moved
+	dragging := st.pressed && grab.phase == .Dragging
 
 	// The handle's angle, in turns, springs to the value (default-spatial)
 	// the short way round; a drag follows the pointer directly.
@@ -1104,14 +1101,6 @@ clock_dial :: proc(gtx: ^ui.Ctx, pid: ops.Area_Id, dc: ops.Point, t: ^Time, edit
 	ops.clip_pop(gtx.scene)
 }
 
-// Dial_Grab is the clock dial's grab: whether the pointer has moved since
-// the press, which makes it a drag (whole minutes) rather than a tap
-// (minutes snapped to five).
-@(private)
-Dial_Grab :: struct {
-	moved: bool,
-}
-
 // Carousel_Item is one carousel tile: a two-colour gradient standing in
 // for an image, and a label.
 Carousel_Item :: struct {
@@ -1145,7 +1134,12 @@ CAROUSEL_SETTLE_DELAY :: f32(0.15) // how long scrolling must rest before a snap
 // large item and small peeks; uncontained keeps item_width throughout.
 // Wheel, trackpad or a drag scrolls it; Left/Right step while focused; a
 // snapping strategy settles on the nearest item with the spec's spring
-// once scrolling rests. Items are corner extra-large (the kit has no
+// once wheel scrolling rests. Letting go of a drag snaps at once: a fling
+// of CAROUSEL_FLING_VELOCITY or more moves on one item its way, a slower
+// release settles on the nearest, never more than one item from where the
+// press landed, and the spring starts at the pointer's speed (states
+// fling-snap). Uncontained has no snap: a fling glides on and slows
+// (ui.Sling) until it stops or meets an end; a press catches it. Items are corner extra-large (the kit has no
 // carousel tokens; M3's carousel item shape). Returns the index of an
 // item clicked this frame, or -1.
 //
@@ -1187,22 +1181,26 @@ carousel :: proc(
 	// internally the snap's value always ends a frame equal to it.
 	scrolled := cs.position != st.springs[0].value
 	clicked := -1
+	pitch := kl.large + item_spacing
+	ui.drag_update(&cs.drag, ui.events(gtx, p.id), .Horizontal, CAROUSEL_SLOP)
+	if cs.drag.phase != .Idle {
+		ui.sling_stop(&cs.glide) // a press catches a glide
+	}
+	if cs.drag.delta.x != 0 {
+		cs.position -= cs.drag.delta.x / pitch
+		scrolled = true
+	}
+	flung := cs.drag.released
 	for e in ui.events(gtx, p.id) {
 		#partial switch e.kind {
 		case .Scroll:
-			cs.position += (e.scroll.x + e.scroll.y) * ui.SCROLL_STEP / (kl.large + item_spacing)
+			cs.position += (e.scroll.x + e.scroll.y) * ui.SCROLL_STEP / pitch
 			scrolled = true
 		case .Press:
 			st.pressed = true
-			cs.grab_x, cs.grab_position, cs.moved = e.pos.x, cs.position, false
-		case .Move:
-			if st.pressed {
-				cs.position = cs.grab_position - (e.pos.x - cs.grab_x) / (kl.large + item_spacing)
-				cs.moved |= abs(e.pos.x - cs.grab_x) > 4
-				scrolled = true
-			}
+			cs.from = math.round(cs.position)
 		case .Release:
-			if st.pressed && !cs.moved {
+			if st.pressed && cs.drag.tapped {
 				clicked = carousel_hit(kl, cs.position, n, e.pos.x, item_spacing)
 			}
 			st.pressed = false
@@ -1222,17 +1220,39 @@ carousel :: proc(
 			}
 		}
 	}
+	if flung && strategy == .Uncontained {
+		ui.sling_start(&cs.glide, cs.drag.velocity, gtx.time)
+	}
+	if glide, gliding := ui.sling_step(&cs.glide, gtx.time); glide.x != 0 || gliding {
+		cs.position -= glide.x / pitch
+		scrolled = true
+		if cs.position <= 0 || cs.position >= max_pos {
+			ui.sling_stop(&cs.glide) // it met an end
+		} else if gliding {
+			ui.request_frame(gtx)
+		}
+	}
 	cs.position = clamp(cs.position, 0, max_pos)
-	if scrolled || st.pressed {
+	if (scrolled || st.pressed) && !flung {
 		st.springs[0] = {value = cs.position, target = cs.position, started = true}
 		rest^ = {to = 1, duration = CAROUSEL_SETTLE_DELAY}
+		cs.aimed = false
 	} else if strategy != .Uncontained {
-		// Resting: once the delay runs out, snap to the nearest item.
+		if flung {
+			// Let go: snap at once to the item the fling aims at, the
+			// spring starting at the pointer's speed.
+			cs.aim = carousel_fling_aim(cs.position, cs.from, -cs.drag.velocity.x, max_pos)
+			cs.aimed = true
+			st.springs[0] = {value = cs.position, velocity = -cs.drag.velocity.x / pitch, target = cs.position, started = true}
+			rest^ = {to = 1, duration = CAROUSEL_SETTLE_DELAY, t = CAROUSEL_SETTLE_DELAY}
+		}
+		// Resting: once the delay runs out, snap to the aimed or nearest item.
 		resting := rest.t >= rest.duration
 		if !resting {
 			ui.tween_update(rest, gtx)
 		} else {
-			cs.position = ui.spring_update(&st.springs[0], gtx, clamp(math.round(cs.position), 0, max_pos), CAROUSEL_SNAP, 0.001)
+			target := cs.aim if cs.aimed else math.round(cs.position)
+			cs.position = ui.spring_update(&st.springs[0], gtx, clamp(target, 0, max_pos), CAROUSEL_SNAP, 0.001)
 		}
 	}
 	pos := cs.position
@@ -1277,10 +1297,40 @@ carousel :: proc(
 Carousel_State :: struct {
 	// position is the scroll position in items: 0 puts the first item on
 	// the first focal keyline, 1 the second, and fractions lie between.
-	position:      f32,
-	grab_x:        f32, // the pointer's x where the press landed
-	grab_position: f32, // position when the press landed
-	moved:         bool, // the press has moved past 4dp: a drag, not a click
+	position: f32,
+	drag:     ui.Drag, // a press, a drag once past CAROUSEL_SLOP rather than a click
+	from:     f32, // the item the press landed on: a fling leaves it by one item at most
+	aim:      f32, // with aimed, the item the last fling settles on
+	aimed:    bool,
+	glide:    ui.Sling, // uncontained: a fling carrying on after the release
+}
+
+// CAROUSEL_SLOP is how far, in dp, a press on a carousel moves sideways
+// before it scrolls rather than clicks an item.
+CAROUSEL_SLOP :: f32(4)
+
+// CAROUSEL_FLING_VELOCITY is the release speed, in dp/s, at which a fling
+// moves on to the next item rather than settling on the nearest: Compose's
+// MinFlingVelocityDp (foundation SnapFlingBehavior.kt:432), which the
+// carousel's pager snapping uses.
+CAROUSEL_FLING_VELOCITY :: f32(400)
+
+// carousel_fling_aim is the item a fling released at pos settles on.
+// velocity is the release's, in dp/s toward later items. Fast enough, it
+// is the next item that way; slower, the nearest (snapPositionalThreshold
+// 0.5, foundation Pager.kt:478). Either way it stays within one item of
+// from, the item the press landed on (CarouselDefaults.
+// singleAdvanceFlingBehavior's PagerSnapDistance.atMost(1), material3
+// Carousel.kt:737-745), and in [0, max_pos]. Line numbers are androidx
+// 1358a48e, the commit the m3e-kit pins.
+carousel_fling_aim :: proc(pos, from, velocity, max_pos: f32) -> f32 {
+	aim := math.round(pos)
+	if velocity >= CAROUSEL_FLING_VELOCITY {
+		aim = math.floor(pos) + 1
+	} else if velocity <= -CAROUSEL_FLING_VELOCITY {
+		aim = math.ceil(pos) - 1
+	}
+	return clamp(aim, max(from - 1, 0), min(from + 1, max_pos))
 }
 
 // Carousel_Rest is how long a carousel's scrolling has rested, counting

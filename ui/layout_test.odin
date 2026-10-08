@@ -722,7 +722,14 @@ test_scroll_box_bar_drags_and_pages :: proc(t: ^testing.T) {
 	harness_frame(&h)
 	event_push(&h, {kind = .Press, area = bar, pos = {edge + 4, SCROLL_BAR_INSET + 1}})
 	scroll_frame(&h)
-	testing.expect(t, testutil.near(f32(-scroll_offset(&h)), (314 - 100) / 2.0 - 100))
+	paged := f32((314 - 100) / 2.0 - 100)
+	testing.expect(t, testutil.near(f32(-scroll_offset(&h)), paged))
+	// Moving while that track press is held drags nothing: only the thumb drags.
+	clear(&h.router.events)
+	harness_frame(&h)
+	event_push(&h, {kind = .Move, area = bar, travel = {0, 30}})
+	scroll_frame(&h)
+	testing.expect(t, testutil.near(f32(-scroll_offset(&h)), paged))
 }
 
 @(test)
@@ -2062,4 +2069,152 @@ test_container_id_names_the_innermost_container :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, nodes["outer"], ids.outer)
 	testing.expect_value(t, nodes["inner"], ids.inner)
+}
+
+// A 100 px tall box over 1000 px of content, a tagged strip at its top
+// for the probe to drag, and a button lower down.
+@(private = "file")
+Drag_Scroll_Model :: struct {
+	offset:  Scroll_Offset,
+	drag:    bool,
+	clicked: int,
+}
+
+@(private = "file")
+TALL :: f32(1000)
+
+@(private = "file")
+drag_scroll_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Drag_Scroll_Model)(user)
+	sb := scroll_box_open(gtx, offset = &m.offset, drag_scroll = m.drag)
+	defer close(&sb)
+	col := column_open(gtx)
+	defer close(&col)
+	strip := widget_open(gtx, 1)
+	ops.tag(gtx.scene, strip.id, "strip", {0, 0, 200, 20})
+	widget_close(gtx, &strip, {size = {200, 20}})
+	b := widget_open(gtx, 2)
+	ops.input_area(gtx.scene, b.id, ops.Rect{0, 0, 200, 20}, {.Press, .Release, .Move})
+	ops.tag(gtx.scene, b.id, "button")
+	for e in events(gtx, b.id) {
+		if e.kind == .Release {
+			m.clicked += 1
+		}
+	}
+	widget_close(gtx, &b, {size = {200, 20}})
+	spacer(gtx, TALL - 40)
+}
+
+@(private = "file")
+open :: proc(p: ^Probe, m: ^Drag_Scroll_Model) {
+	probe_init(p, drag_scroll_view, m, {200, 100})
+}
+
+@(private = "file")
+settle :: proc(p: ^Probe) -> int {
+	frames := 0
+	for p.wants_frame && frames < 600 {
+		probe_frame(p)
+		frames += 1
+	}
+	return frames
+}
+
+@(test)
+drag_scroll_is_off_unless_asked_for :: proc(t: ^testing.T) {
+	m: Drag_Scroll_Model
+	p: Probe
+	open(&p, &m)
+	defer probe_destroy(&p)
+	testing.expect(t, probe_drag(&p, "strip", 0, -60, steps = 30))
+	testing.expect_value(t, m.offset.y, 0)
+}
+
+@(test)
+drag_scroll_follows_a_slow_drag_and_stays :: proc(t: ^testing.T) {
+	m := Drag_Scroll_Model{drag = true}
+	p: Probe
+	open(&p, &m)
+	defer probe_destroy(&p)
+	// 60 px over half a second: 120 px/s, and the last move stops short
+	// of the release by a frame, so it glides only a little.
+	testing.expect(t, probe_drag(&p, "strip", 0, -60, steps = 30))
+	testing.expect_value(t, m.offset.y, 60)
+	settle(&p)
+	testing.expect(t, m.offset.y >= 60 && m.offset.y < 60 + 120 / -SLING_DECAY + 1)
+}
+
+@(test)
+drag_scroll_slings_a_fast_release_and_stops :: proc(t: ^testing.T) {
+	m := Drag_Scroll_Model{drag = true}
+	p: Probe
+	open(&p, &m)
+	defer probe_destroy(&p)
+	// 80 px in four frames: 1200 px/s, which glides 1200 / -k further.
+	testing.expect(t, probe_drag(&p, "strip", 0, -80, steps = 4))
+	testing.expect_value(t, m.offset.y, 80)
+	testing.expect(t, p.wants_frame)
+	frames := settle(&p)
+	want := 80 + 1200 / -SLING_DECAY
+	testing.expectf(t, abs(m.offset.y - want) < 2, "glided to %v, want %v", m.offset.y, want)
+	testing.expect(t, frames > 30 && !p.wants_frame)
+}
+
+@(test)
+drag_scroll_sling_stops_at_the_edge :: proc(t: ^testing.T) {
+	m := Drag_Scroll_Model{drag = true}
+	p: Probe
+	open(&p, &m)
+	defer probe_destroy(&p)
+	// 150 px a frame is past SLING_MAX, which glides further than the 600
+	// px left whatever the decay.
+	testing.expect(t, probe_drag(&p, "strip", 0, -300, steps = 2))
+	s := box_sling(&p)
+	testing.expect(t, s != nil && sling_active(s))
+	for _ in 0 ..< 60 {
+		probe_frame(&p)
+		if m.offset.y == TALL - 100 {
+			break
+		}
+	}
+	testing.expect_value(t, m.offset.y, TALL - 100)
+	testing.expect(t, !sling_active(s)) // it ended at the edge, still fast
+}
+
+// box_sling is the scroll box's Sling, the only one the view keeps.
+@(private = "file")
+box_sling :: proc(p: ^Probe) -> ^Sling {
+	for k, v in p.layout.data {
+		if k.type == Sling {
+			return (^Sling)(v.ptr)
+		}
+	}
+	return nil
+}
+
+@(test)
+drag_scroll_press_stops_a_glide_and_children_keep_theirs :: proc(t: ^testing.T) {
+	m := Drag_Scroll_Model{drag = true}
+	p: Probe
+	open(&p, &m)
+	defer probe_destroy(&p)
+	testing.expect(t, probe_drag(&p, "strip", 0, -20, steps = 2)) // 600 px/s
+	probe_frame(&p)
+	gliding := m.offset.y
+	testing.expect(t, gliding > 20)
+	// A press on the box's own area (the gap below the button) stops it.
+	router_push(&p.router, {kind = .Move, pos = {100, 90}})
+	router_push(&p.router, {kind = .Press, pos = {100, 90}, button = .Left})
+	probe_frame(&p)
+	held := m.offset.y
+	probe_advance(&p, 30, 1.0 / 60)
+	testing.expect_value(t, m.offset.y, held)
+	router_push(&p.router, {kind = .Release, pos = {100, 90}, button = .Left})
+	probe_frame(&p)
+	// The button above the box's area still takes its own press.
+	m.offset.y = 0
+	probe_frame(&p)
+	testing.expect(t, probe_click(&p, "button"))
+	testing.expect_value(t, m.clicked, 1)
+	testing.expect_value(t, m.offset.y, 0)
 }

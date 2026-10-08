@@ -658,22 +658,14 @@ bottom_sheet_open :: proc(
 
 	// Drags: from the sheet body and from its handle, one gesture state.
 	d := &ss.drag
-	settle, clicked, escape := false, false, false
-	areas := [2]ops.Area_Id{drag_id, handle_id}
-	for area in areas {
-		for e in ui.events(gtx, area) {
-			s, c, esc := sheet_drag_event(d, e, area == handle_id, gtx.dt)
-			settle |= s
-			clicked |= c
-			escape |= esc
-		}
-	}
+	settle, clicked, escape := sheet_drag(gtx, d, drag_id, handle_id)
+	dragging := d.gesture.phase != .Idle
 	if clicked && anchor != .Hidden {
 		// The handle's click cycles: Expanded hides, Partially_Expanded expands.
 		anchor = anchor == .Expanded ? .Hidden : .Expanded
 	}
 	if settle {
-		anchor = sheet_settle(anchor, d.delta, d.velocity, partial_at, hidden_at, skip_partial)
+		anchor = sheet_settle(anchor, d.gesture.total.y, d.gesture.velocity.y, partial_at, hidden_at, skip_partial)
 	}
 	if escape {
 		anchor = .Hidden
@@ -700,14 +692,14 @@ bottom_sheet_open :: proc(
 	case .Expanded:
 	}
 	offset: f32
-	if d.dragging {
-		offset = clamp(d.start + d.delta, 0, hidden_at)
+	if dragging {
+		offset = clamp(d.start + d.gesture.total.y, 0, hidden_at)
 		st.springs[0] = {value = offset, target = offset, started = true}
 	} else {
 		offset = animate(gtx, c, 0, target, anchor == .Hidden ? .Fast_Effects : .Default_Spatial, 0.1)
 	}
 	scrim := animate(gtx, c, 1, open^ ? 1 : 0, .Default_Effects)
-	if !d.dragging {
+	if !dragging {
 		d.start = offset
 	}
 
@@ -769,48 +761,49 @@ Sheet_State :: struct {
 	height: f32, // the sheet's height as last painted; 0 before it first shows
 }
 
-// Sheet_Drag is a bottom sheet's drag gesture, kept across frames.
+// Sheet_Drag is a bottom sheet's drag gesture, kept across frames: one
+// ui.Drag over the body's and the handle's events, since either starts it.
 Sheet_Drag :: struct {
-	dragging: bool,
-	delta:    f32, // how far the pointer has moved since the press
-	start:    f32, // the sheet's offset when the press landed
-	velocity: f32, // dp/s, from the last move
+	gesture:   ui.Drag, // vertical, down positive
+	start:     f32, // the sheet's offset when the press landed
+	on_handle: bool, // that press landed on the handle
 }
 
-// sheet_drag_event applies e, from the sheet body or its handle, to d.
-// It adds up each Move's travel, which does not change as the sheet
-// itself moves, so the sheet following the pointer cannot feed back into
-// the drag. settle reports a release after a drag, click a
-// release on the handle that did not move; dt is the frame's, for velocity.
+// SHEET_CLICK_SLOP is how near its press, in dp, a release on the handle
+// must end to be a click rather than a drag that settles.
+SHEET_CLICK_SLOP :: f32(4)
+
+// sheet_drag reads the sheet body's and handle's events into d. The sheet
+// follows the pointer from its first pixel, by the travel that does not
+// change as the sheet itself moves; a release within SHEET_CLICK_SLOP of
+// the press clicks when on the handle, and any other settles. Escape on
+// either asks to close; Enter or Space on the handle clicks.
 @(private)
-sheet_drag_event :: proc(d: ^Sheet_Drag, e: ui.Event, on_handle: bool, dt: f32) -> (settle, click, escape: bool) {
-	#partial switch e.kind {
-	case .Press:
-		d.dragging = true
-		d.delta = 0
-		d.velocity = 0
-	case .Move:
-		if d.dragging {
-			if dt > 0 {
-				d.velocity = e.travel.y / dt
-			}
-			d.delta += e.travel.y
-		}
-	case .Release:
-		if d.dragging {
-			d.dragging = false
-			if abs(d.delta) < 4 {
-				click = on_handle
-			} else {
-				settle = true
+sheet_drag :: proc(gtx: ^ui.Ctx, d: ^Sheet_Drag, body, handle: ops.Area_Id) -> (settle, click, escape: bool) {
+	evs := make([dynamic]ui.Event, 0, 8, gtx.allocator)
+	for area in ([2]ops.Area_Id{body, handle}) {
+		for e in ui.events(gtx, area) {
+			append(&evs, e)
+			#partial switch e.kind {
+			case .Press:
+				d.on_handle = area == handle
+			case .Key:
+				#partial switch e.key {
+				case .Escape:
+					escape = true
+				case .Enter, .Space:
+					click |= area == handle
+				}
 			}
 		}
-	case .Key:
-		#partial switch e.key {
-		case .Escape:
-			escape = true
-		case .Enter, .Space:
-			click = on_handle
+	}
+	g := &d.gesture
+	ui.drag_update(g, evs[:], .Vertical, slop = 0)
+	if g.released || g.tapped {
+		if abs(g.total.y) < SHEET_CLICK_SLOP {
+			click |= d.on_handle
+		} else {
+			settle = true
 		}
 	}
 	return
@@ -1102,11 +1095,12 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	#partial switch state {
 	case .Live:
 		st := ui.widget_state(gtx, p.id)
-		grab := ui.widget_data(gtx, p.id, Handle_Grab)
-		// Each Move adds its travel, which (unlike a difference of positions
-		// local to the handle) does not change when the handle itself moves,
-		// so the handle following the pointer cannot feed back into the next
-		// delta.
+		// ui.drag sums each Move's travel, which (unlike a difference of
+		// positions local to the handle) does not change when the handle
+		// itself moves, so the handle following the pointer cannot feed
+		// back into the next delta. Any sideways travel makes it a drag.
+		d := ui.drag(gtx, p.id, .Horizontal, slop = 0)
+		dx = d.delta.x
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
 			case .Enter:
@@ -1119,21 +1113,12 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 				st.focused = false
 			case .Press:
 				st.pressed = true
-				grab.moved = false
-			case .Move:
-				if st.pressed {
-					dx += e.travel.x
-					if e.travel.x != 0 {
-						grab.moved = true
-					}
-				}
 			case .Release:
 				st.pressed = false
-				grab.moved = false
 			}
 		}
 		c = {st = st, hovered = st.hovered, pressed = st.pressed, focused = st.focused}
-		dragged = st.pressed && grab.moved
+		dragged = d.phase == .Dragging
 	case:
 		c = control(gtx, p.id, hit, state)
 	}
@@ -1158,13 +1143,6 @@ drag_handle :: proc(gtx: ^ui.Ctx, state := Interaction.Live, key: u64 = 0, loc :
 	ops.tag(gtx.scene, p.id, "drag_handle")
 	ui.widget_close(gtx, &p, {size = {W, H}})
 	return dx
-}
-
-// Handle_Grab is a drag handle's grab: whether it has moved since the
-// press, which makes it a drag (the Dragged look) rather than a press.
-@(private)
-Handle_Grab :: struct {
-	moved: bool,
 }
 
 // strut is an empty widget w wide and 0 tall: a minimum width for the

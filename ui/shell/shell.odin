@@ -903,6 +903,8 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			sink(user, take_pick(&e, allocator))
 			continue
 		}
+		// Every SDL event starts with the common header: ns since SDL_Init.
+		at := f64(e.common.timestamp) / 1e9 //review:ignore history-coupled-file host_sink forwards each Raw_Event whole, time with it
 		#partial switch e.type {
 		case .QUIT, .WINDOW_CLOSE_REQUESTED:
 			return false
@@ -935,6 +937,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 					kind = .Move,
 					pos = {e.motion.x * d, e.motion.y * d},
 					mods = mods(sdl3.GetModState()),
+					time = at,
 				},
 			)
 		case .MOUSE_BUTTON_DOWN, .MOUSE_BUTTON_UP:
@@ -949,6 +952,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 							kind = .Key,
 							key = .Browser_Back if e.button.button == sdl3.BUTTON_X1 else .Browser_Forward,
 							mods = mods(sdl3.GetModState()),
+							time = at,
 						},
 					)
 				}
@@ -969,6 +973,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 					pos = {e.button.x * d, e.button.y * d},
 					button = btn,
 					mods = mods(sdl3.GetModState()),
+					time = at,
 					clicks = e.button.clicks,
 				},
 			)
@@ -992,6 +997,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 					pos = {e.wheel.mouse_x * d, e.wheel.mouse_y * d},
 					scroll = s,
 					mods = mods(sdl3.GetModState()),
+					time = at,
 				},
 			)
 		case .KEY_DOWN:
@@ -1006,16 +1012,16 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				return false
 			}
 			if k != .None {
-				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod)})
+				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod), time = at})
 			}
 		case .TEXT_INPUT:
 			w.composing = false
 			text := strings.clone_from_cstring(e.text.text, allocator)
-			sink(user, {kind = .Text, text = text, mods = mods(sdl3.GetModState())})
+			sink(user, {kind = .Text, text = text, mods = mods(sdl3.GetModState()), time = at})
 		case .TEXT_EDITING:
 			text := strings.clone_from_cstring(e.edit.text, allocator)
 			w.composing = len(text) > 0
-			sink(user, {kind = .Compose, text = text, span = compose_span(text, e.edit.start, e.edit.length)})
+			sink(user, {kind = .Compose, text = text, span = compose_span(text, e.edit.start, e.edit.length), time = at})
 		}
 	}
 	return true

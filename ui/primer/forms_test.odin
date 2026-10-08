@@ -461,6 +461,7 @@ resizable_textareas :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	defer ui.close(&col)
 	textarea(gtx, &m.bio, name = "Notes")
 	textarea(gtx, &m.search, name = "Fixed", rows = 2, resize = .None)
+	textarea(gtx, &m.limited, name = "Tall", rows = 2, resize = .Vertical)
 }
 
 @(test)
@@ -481,10 +482,18 @@ test_a_textarea_is_rows_tall_and_its_grip_resizes_it :: proc(t: ^testing.T) {
 	grown := ui.probe_bounds(&p, "Notes")
 	testing.expect_value(t, grown.w, notes.w + 40)
 	testing.expect_value(t, grown.h, notes.h + 30)
+	testing.expect(t, ui.probe_tagged(&p, "Fixed")) // the field is there
 	testing.expect(t, !ui.probe_tagged(&p, "Fixed resize")) // resize none has no grip
 	ui.probe_move(&p, grown.x + grown.w - 4, grown.y + grown.h - 4)
 	ui.probe_move(&p, grown.x + grown.w + 20, grown.y + grown.h + 20) // hovering moves nothing
 	testing.expect_value(t, ui.probe_bounds(&p, "Notes"), grown)
+	// A vertical grip dragged on a slant grows only taller.
+	tall := ui.probe_bounds(&p, "Tall")
+	testing.expect(t, ui.probe_drag(&p, "Tall resize", 40, 30))
+	ui.probe_frame(&p)
+	taller := ui.probe_bounds(&p, "Tall")
+	testing.expect_value(t, taller.w, tall.w)
+	testing.expect_value(t, taller.h, tall.h + 30)
 }
 
 @(private = "file")

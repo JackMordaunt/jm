@@ -130,6 +130,7 @@ Router :: struct {
 	traps:       [dynamic]Scope_Memory, // each trap the last route saw: focus to give back, and the area it held
 	cursor:      ops.Cursor,
 	pointed:     bool, // a pointer event has set pointer
+	now:         f64, // the time stamped on an event pushed without one; a probe keeps it at its clock
 
 	yielder:     Hit, // a yielding area whose press went to the one under it; area 0 when none
 	yield_press: Raw_Event, // that press, replayed to the yielder if it takes over
@@ -203,9 +204,13 @@ router_destroy :: proc(r: ^Router) {
 }
 
 // router_push queues a device event for the next route. Text and Paste
-// strings are copied, so the caller's need not outlive the call.
+// strings are copied, so the caller's need not outlive the call. An event
+// with no time takes r.now.
 router_push :: proc(r: ^Router, e: Raw_Event) {
 	e := e
+	if e.time == 0 {
+		e.time = r.now
+	}
 	if owns_strings(e.kind) {
 		e.text = clone_string(e.text, r.allocator)
 		e.mime = clone_string(e.mime, r.allocator)
@@ -592,6 +597,7 @@ deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: ops.Point) -> bool {
 			mime = e.mime,
 			clicks = e.clicks,
 			span = e.span,
+			time = e.time,
 		},
 	)
 	return true
@@ -610,7 +616,7 @@ deliver_pointer :: proc(r: ^Router, h: Hit, e: Raw_Event) {
 // synth delivers a router-made event of kind to h.
 @(private = "file")
 synth :: proc(r: ^Router, h: Hit, kind: ops.Event_Kind, pos: ops.Point) {
-	deliver(r, h, Raw_Event{kind = kind}, pos)
+	deliver(r, h, Raw_Event{kind = kind, time = r.now}, pos)
 }
 
 @(private = "file")

@@ -499,6 +499,26 @@ LIST_PAD_Y :: f32(8)
 @(private)
 LIST_PAD_Y_THREE :: f32(12)
 
+// REVEAL_FLING_VELOCITY is the release speed, in dp/s, past which a reveal
+// row opens or closes the way it was flung however far it moved:
+// DismissVelocityThreshold of Compose's SwipeToDismissBox (material3
+// SwipeToDismissBox.kt:405 at androidx 1358a48e), the nearest swipe-reveal
+// Compose has, since the kit infers reveal-list (list.json).
+REVEAL_FLING_VELOCITY :: f32(125)
+
+// reveal_rest is where a reveal row released at offset (0 closed, -width
+// open) with horizontal velocity (dp/s, left negative) comes to rest: open
+// or closed the way a fling went, else whichever half it is in.
+reveal_rest :: proc(offset, velocity, width: f32) -> f32 {
+	switch {
+	case velocity <= -REVEAL_FLING_VELOCITY:
+		return -width
+	case velocity >= REVEAL_FLING_VELOCITY:
+		return 0
+	}
+	return -width if offset < -width / 2 else 0
+}
+
 // DRAG_SLOP is how far a press must move before it is a drag, not a click.
 @(private)
 DRAG_SLOP :: f32(8)
@@ -509,8 +529,7 @@ DRAG_SLOP :: f32(8)
 // list, to persist it, or to open or close a reveal row from outside by
 // setting reveal.target.
 List_Item_State :: struct {
-	drag:   f32, // the pointer's travel along the row's drag axis since the press, once past DRAG_SLOP; 0 when not dragging
-	grab:   ops.Point, // where that press landed, local to the row
+	drag:   ui.Drag, // the press on the row, a drag once past DRAG_SLOP along the row's axis
 	reveal: ui.Spring, // a reveal row's offset (dp, 0 or less); its target is where it rests: 0 closed, minus the actions' width open
 }
 
@@ -530,7 +549,9 @@ List_Item_State :: struct {
 // rows travelled — Up/Down while focused move it by one, list.json's
 // keyboard affordance; Reveal slides left on a horizontal drag, or
 // Left/Right while focused, to uncover actions and sets action^ to the
-// one clicked. Compose at the kit's pinned commit has none of these three
+// one clicked; let go, it rests open past half the actions' width or
+// flung left at REVEAL_FLING_VELOCITY, closed otherwise. Compose at the
+// kit's pinned commit (androidx 1358a48e) has none of these three
 // (list.json behaviour compose-gap): their interaction is list.json's
 // inference. A long press (onLongClick) has no jm:ui event.
 //
@@ -584,19 +605,11 @@ list_item :: proc(
 	gs: ^List_Item_State
 	if c.st != nil && (it.kind == .Reorder || it.kind == .Reveal) {
 		gs = row_state if row_state != nil else ui.widget_data(gtx, p.id, List_Item_State)
+		axis := ui.Drag_Axis.Vertical if it.kind == .Reorder else .Horizontal
+		ui.drag_update(&gs.drag, ui.events(gtx, p.id), axis, DRAG_SLOP)
+		along := gs.drag.total.y if it.kind == .Reorder else gs.drag.total.x
 		for e in ui.events(gtx, p.id) {
 			#partial switch e.kind {
-			case .Press:
-				if e.button == .Left {
-					gs.grab = e.pos
-				}
-			case .Move:
-				if c.st.pressed {
-					d := it.kind == .Reorder ? e.pos.y - gs.grab.y : e.pos.x - gs.grab.x
-					if abs(d) > DRAG_SLOP || gs.drag != 0 {
-						gs.drag = d
-					}
-				}
 			case .Key:
 				#partial switch e.key {
 				case .Up:
@@ -618,22 +631,29 @@ list_item :: proc(
 				}
 			}
 		}
-		drag = gs.drag
-		if !c.st.pressed && drag != 0 {
+		if gs.drag.phase == .Dragging {
+			drag = along
+		}
+		if gs.drag.released {
 			// Released after a drag: it was not a click.
 			activated = false
 			if it.kind == .Reorder && it.moved != nil {
-				it.moved^ = int(math.round(drag / size.y))
+				it.moved^ = int(math.round(along / size.y))
 			}
 			if it.kind == .Reveal {
 				rv := &gs.reveal
-				rv.value = clamp(rv.target + drag, -reveal_w, 0)
-				rv.velocity = 0
-				rv.target = rv.value < -reveal_w / 2 ? -reveal_w : 0
+				rv.value = clamp(rv.target + along, -reveal_w, 0)
+				rv.target = reveal_rest(rv.value, gs.drag.velocity.x, reveal_w)
+				// The spring starts at the pointer's speed, unless the row
+				// is already pinned at an end.
+				v := gs.drag.velocity.x
+				if rv.value == 0 || rv.value == -reveal_w {
+					v = 0
+				}
+				rv.velocity = v
 				rv.x0 = rv.value - rv.target
-				rv.v0, rv.t = 0, 0
+				rv.v0, rv.t = v, 0
 			}
-			gs.drag, drag = 0, 0
 		}
 	}
 	if activated {
@@ -712,7 +732,9 @@ list_item :: proc(
 		if gs != nil {
 			offset = clamp(gs.reveal.target + drag, -reveal_w, 0)
 			if drag == 0 {
-				offset = ui.spring_update(&gs.reveal, gtx, gs.reveal.target, spring_params(.Fast_Spatial), 0.5)
+				// Clamped: a fast fling's spring would slide past shut or open.
+				sprung := ui.spring_update(&gs.reveal, gtx, gs.reveal.target, spring_params(.Fast_Spatial), 0.5)
+				offset = clamp(sprung, -reveal_w, 0)
 			}
 		}
 		ops.clip_push(gtx.scene, area)

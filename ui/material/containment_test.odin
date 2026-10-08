@@ -134,6 +134,132 @@ test_reveal_row_uncovers_its_actions :: proc(t: ^testing.T) {
 	testing.expect(t, !ui.probe_click(&p, "Reveal action 1"))
 }
 
+@(test)
+test_reveal_rest_follows_a_fling_else_the_nearer_half :: proc(t: ^testing.T) {
+	F :: REVEAL_FLING_VELOCITY
+	testing.expect_value(t, reveal_rest(-10, -F, 100), -100) // flung open from nearly shut
+	testing.expect_value(t, reveal_rest(-90, F, 100), 0) // flung shut from nearly open
+	testing.expect_value(t, reveal_rest(-60, -F / 2, 100), -100) // slow: past half, open
+	testing.expect_value(t, reveal_rest(-40, F / 2, 100), 0)
+}
+
+// swipe drags the Reveal row by dx in steps moves a frame apart, lets go
+// and lets it settle.
+@(private = "file")
+swipe :: proc(p: ^ui.Probe, dx: f32, steps: int) {
+	c, ok := ui.probe_center(p, "Reveal")
+	assert(ok)
+	ui.router_push(&p.router, {kind = .Move, pos = c})
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Left})
+	ui.probe_frame(p)
+	for i in 1 ..= steps {
+		ui.router_push(&p.router, {kind = .Move, pos = c + {dx * f32(i) / f32(steps), 0}})
+		ui.probe_frame(p)
+	}
+	ui.router_push(&p.router, {kind = .Release, pos = c + {dx, 0}, button = .Left})
+	ui.probe_frame(p)
+	ui.probe_advance(p, 60, 1.0 / 60)
+}
+
+@(test)
+test_reveal_row_opens_on_a_flick_and_not_a_slow_nudge :: proc(t: ^testing.T) {
+	m := Rows{action = -1}
+	p: ui.Probe
+	ui.probe_init(&p, rows, &m, {400, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	testing.expect(t, list_reveal_width(2) > 60) // so 30 dp is short of half
+
+	// 30 dp left over half a second: 60 dp/s, short of half: stays shut.
+	swipe(&p, -30, 30)
+	hit, _ := ui.probe_find(&p, "Reveal")
+	testing.expect_value(t, hit.shape.(ops.Rect).w, 300)
+	// The same 30 dp in three frames, 600 dp/s: a flick, it opens.
+	swipe(&p, -30, 3)
+	hit, _ = ui.probe_find(&p, "Reveal")
+	testing.expect_value(t, hit.shape.(ops.Rect).w, 300 - list_reveal_width(2))
+	// A flick right shuts it again.
+	swipe(&p, 30, 3)
+	hit, _ = ui.probe_find(&p, "Reveal")
+	testing.expect_value(t, hit.shape.(ops.Rect).w, 300)
+
+	// Flung shut hard from open, it springs to shut without sliding past.
+	swipe(&p, -30, 3)
+	c, _ := ui.probe_center(&p, "Reveal")
+	ui.router_push(&p.router, {kind = .Move, pos = c})
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Left})
+	ui.probe_frame(&p)
+	for i in 1 ..= 2 {
+		ui.router_push(&p.router, {kind = .Move, pos = c + {40 * f32(i), 0}})
+		ui.probe_frame(&p)
+	}
+	ui.router_push(&p.router, {kind = .Release, pos = c + {80, 0}, button = .Left})
+	widest: f32
+	for _ in 0 ..< 60 {
+		ui.probe_frame(&p)
+		hit, _ = ui.probe_find(&p, "Reveal")
+		widest = max(widest, hit.shape.(ops.Rect).w)
+	}
+	testing.expect_value(t, widest, 300)
+}
+
+// released_width drags the Reveal row 20 dp left at 2 a frame, holds for hold
+// frames, lets go, and returns the row's pressable width on that frame.
+@(private = "file")
+released_width :: proc(hold: int) -> f32 {
+	m := Rows{action = -1}
+	p: ui.Probe
+	ui.probe_init(&p, rows, &m, {400, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	c, _ := ui.probe_center(&p, "Reveal")
+	ui.router_push(&p.router, {kind = .Move, pos = c})
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Left})
+	ui.probe_frame(&p)
+	for i in 1 ..= 10 {
+		ui.router_push(&p.router, {kind = .Move, pos = c - {2 * f32(i), 0}})
+		ui.probe_frame(&p)
+	}
+	ui.probe_advance(&p, hold, 1.0 / 60)
+	ui.router_push(&p.router, {kind = .Release, pos = c - {20, 0}, button = .Left})
+	ui.probe_frame(&p)
+	ui.probe_frame(&p) // the release frame drew the row; this one's hit has its width
+	hit, _ := ui.probe_find(&p, "Reveal")
+	return hit.shape.(ops.Rect).w
+}
+
+@(test)
+test_reveal_row_springs_back_from_the_pointer_speed :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	// Both rest 20 dp open and spring shut (120 dp/s is no flick). Let go
+	// while still moving left, the row carries on left before it turns, so
+	// it is less far shut than one let go after holding still.
+	moving := released_width(0)
+	still := released_width(10)
+	testing.expectf(t, moving < still, "moving %v, still %v", moving, still)
+}
+
+@(test)
+test_reveal_row_follows_the_pointer_while_dragged :: proc(t: ^testing.T) {
+	m := Rows{action = -1}
+	p: ui.Probe
+	ui.probe_init(&p, rows, &m, {400, 900}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	// Held 30 dp left, before any release, the row has slid by 30: its
+	// pressable part, all that is still over the row, is 30 narrower.
+	before, ok := ui.probe_find(&p, "Reveal")
+	testing.expect(t, ok)
+	c, _ := ui.probe_center(&p, "Reveal")
+	ui.router_push(&p.router, {kind = .Move, pos = c})
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Left})
+	ui.probe_frame(&p)
+	ui.router_push(&p.router, {kind = .Move, pos = c + {-30, 0}})
+	ui.probe_frame(&p)
+	held, _ := ui.probe_find(&p, "Reveal")
+	testing.expect_value(t, held.shape.(ops.Rect).w, before.shape.(ops.Rect).w - 30)
+}
+
 @(private = "file")
 Menus :: struct {
 	open, dialog: bool,

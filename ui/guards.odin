@@ -108,8 +108,8 @@ centered :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> bool {
 }
 
 @(deferred_in = scroll_box_guard_close)
-scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false, fit := false) -> bool {
-	scroll_box_open(gtx, key, min_width, offset, loc, wide, fit)
+scroll_box :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false, fit := false, drag_scroll := false) -> bool {
+	scroll_box_open(gtx, key, min_width, offset, loc, wide, fit, drag_scroll)
 	return true
 }
 
@@ -239,6 +239,7 @@ scroll_box_guard_close :: proc(
 	loc: runtime.Source_Code_Location,
 	wide: bool,
 	fit: bool,
+	drag_scroll: bool,
 ) {
 	innermost_close(gtx, .Scroll)
 }

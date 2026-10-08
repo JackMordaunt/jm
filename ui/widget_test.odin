@@ -116,3 +116,39 @@ test_list_lays_out_only_visible_rows :: proc(t: ^testing.T) {
 item_list :: proc(h: ^Harness, s: ^List_State, m: ^List_Model) -> Dims {
 	return list(&h.gtx, s, 100, list_item, m)
 }
+
+@(private = "file")
+List_Drag_Model :: struct {
+	state: List_State,
+}
+
+@(private = "file")
+list_row :: proc(gtx: ^Ctx, i: int, user: rawptr) {
+	r := widget_open(gtx, 1)
+	if i == 0 {
+		ops.tag(gtx.scene, r.id, "row 0", {0, 0, 200, 20})
+	}
+	widget_close(gtx, &r, {size = {200, 20}})
+}
+
+@(private = "file")
+list_drag_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^List_Drag_Model)(user)
+	list(gtx, &m.state, 50, list_row, drag_scroll = true)
+}
+
+@(test)
+drag_scroll_moves_and_slings_a_list :: proc(t: ^testing.T) {
+	m: List_Drag_Model
+	p: Probe
+	probe_init(&p, list_drag_view, &m, {200, 100})
+	defer probe_destroy(&p)
+	testing.expect(t, probe_drag(&p, "row 0", 0, -80, steps = 4)) // 1200 px/s
+	testing.expect_value(t, m.state.offset, 80)
+	for _ in 0 ..< 600 {
+		probe_frame(&p)
+	}
+	want := 80 + 1200 / -SLING_DECAY
+	testing.expectf(t, abs(m.state.offset - want) < 2, "glided to %v, want %v", m.state.offset, want)
+}
+

@@ -55,10 +55,10 @@ test_bottom_sheet_keeps_its_state_where_told :: proc(t: ^testing.T) {
 	ui.router_push(&p.router, {kind = .Move, pos = c})
 	ui.router_push(&p.router, {kind = .Press, pos = c})
 	ui.probe_frame(&p)
-	testing.expect(t, m.state.drag.dragging)
+	testing.expect(t, m.state.drag.gesture.phase != .Idle)
 	ui.router_push(&p.router, {kind = .Release, pos = c})
 	ui.probe_frame(&p)
-	testing.expect(t, !m.state.drag.dragging)
+	testing.expect_value(t, m.state.drag.gesture.phase, ui.Drag_Phase.Idle)
 	// The handle's click expanded it; the caller's anchor says so.
 	testing.expect_value(t, m.state.anchor, Sheet_Value.Expanded)
 

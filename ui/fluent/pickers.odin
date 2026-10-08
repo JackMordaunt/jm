@@ -252,7 +252,8 @@ Listbox_Data :: struct {
 	was_open: bool,
 	active:   int,
 	by_keys:  bool, // the active option was reached by keyboard, so it draws its ring
-	scroll:   int, // the first row shown
+	scroll:    int, // the first row shown
+	scroll_px: f32, // scrolled pixels not yet a whole row
 }
 
 // Listbox_Pick is what one frame of an open listbox did.
@@ -310,9 +311,13 @@ listbox :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, open: ^bool, options: []string, s
 	lb := ui.overlay_semantics(gtx, &ov, {role = .List_Box}, 0x11b1)
 	ops.input_area(gtx.scene, scrim_id, ops.Rect{-1e5, -1e5, 2e5, 2e5}, {.Press, .Release, .Move, .Enter, .Leave, .Scroll})
 	box_id := ui.id_mix(id, 0xfffe)
+	// A trackpad sends many small scrolls: they add up to whole rows.
 	for e in ui.events(gtx, box_id) {
 		if e.kind == .Scroll {
-			d.scroll = clamp(d.scroll + (e.scroll.y > 0 ? 1 : -1), 0, max(n - rows, 0))
+			d.scroll_px += e.scroll.y * ui.SCROLL_STEP
+			step := int(d.scroll_px / row_h)
+			d.scroll_px -= f32(step) * row_h
+			d.scroll = clamp(d.scroll + step, 0, max(n - rows, 0))
 		}
 	}
 	area := ops.Rect{0, 0, pw, ph}

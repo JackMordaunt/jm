@@ -202,6 +202,7 @@ Container :: struct {
 	span_next:  bool, // grid_span was called for the next child
 	grid_paint: Grid_Paint, // called with style.user
 	fit:      bool, // scroll: take the content's height up to the height offered
+	drag_scroll: bool, // scroll: a drag on the box moves its content, and a fast release slings it
 }
 
 Layout :: struct {
@@ -1535,6 +1536,40 @@ SCROLL_THUMB_COLOR :: ops.Color{128, 128, 128, 255}
 // as the fingers.
 SCROLL_STEP :: f32(48)
 
+// scroll_by_drag moves offset by area's drag and sling and returns it
+// clamped to [0, limit]: the content follows the pointer, and a release
+// with speed glides on until it slows below a pixel a second or meets an
+// edge. A press stops a glide. The area must ask for Press, Move and
+// Release; an axis with no room to scroll is locked out of the drag.
+@(private)
+scroll_by_drag :: proc(gtx: ^Ctx, area: ops.Area_Id, offset, limit: ops.Point) -> ops.Point {
+	axis := Drag_Axis.Both
+	if limit.x <= 0 {
+		axis = .Vertical
+	} else if limit.y <= 0 {
+		axis = .Horizontal
+	}
+	d := drag(gtx, area, axis)
+	s := widget_data(gtx, area, Sling)
+	if d.phase != .Idle {
+		sling_stop(s)
+	}
+	if d.released {
+		sling_start(s, -d.velocity, gtx.time)
+	}
+	travel, moving := sling_step(s, gtx.time)
+	off := offset - d.delta + travel
+	held := ops.Point{clamp(off.x, 0, max(limit.x, 0)), clamp(off.y, 0, max(limit.y, 0))}
+	if held != off {
+		sling_stop(s)
+		moving = false
+	}
+	if moving {
+		request_frame(gtx)
+	}
+	return held
+}
+
 // scroll_box is a vertical viewport over content of any height: children
 // get the box's width constraints and an unbounded height, and the box
 // takes the height it is offered (the content's, when unbounded). Scroll
@@ -1556,7 +1591,13 @@ SCROLL_STEP :: f32(48)
 // With fit the box takes its content's height, up to the height offered
 // and at least the least it is offered, and scrolls only beyond that: a
 // popup's CSS max-height with overflow auto.
-scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false, fit := false) -> Scroll_Box {
+//
+// With drag_scroll a left-button drag on the box moves the content with
+// the pointer, and a fast release slings it on (ui.drag, ui.Sling), as a
+// touch screen scrolls. It is off by default, since on a desktop a drag
+// selects text or moves a handle. The box's own area lies under its
+// children, so a drag starts only where no child takes the press.
+scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Scroll_Offset = nil, loc := #caller_location, wide := false, fit := false, drag_scroll := false) -> Scroll_Box {
 	p := widget_open(gtx, key, loc)
 	cs := gtx.constraints
 	inner := Constraints{min = {max(cs.min.x, min_width), 0}, max = {max(cs.max.x, min_width), INF}}
@@ -1569,6 +1610,7 @@ scroll_box_open :: proc(gtx: ^Ctx, key: u64 = 0, min_width: f32 = 0, offset: ^Sc
 		inner  = inner,
 		scroll = offset,
 		fit    = fit,
+		drag_scroll = drag_scroll,
 	}
 	return {gtx, container_push(gtx, c, p)}
 }
@@ -1741,6 +1783,10 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size
 	}
 	off := offset
 	st := widget_state(gtx, id)
+	// The thumb follows the drag from its first pixel; a press on the
+	// track pages instead and drags nothing.
+	d := drag(gtx, id, .Vertical if axis == .Vertical else .Horizontal, slop = 0)
+	on_thumb := st.pressed
 	for e in events(gtx, id) {
 		along := main_of(axis, e.pos) - main_of(axis, ops.Point{b.track.x, b.track.y})
 		#partial switch e.kind {
@@ -1756,15 +1802,14 @@ scroll_bar_handle :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size
 			case along > at + b.thumb_len:
 				off += b.view
 			case:
-				st.pressed = true
-			}
-		case .Move:
-			if st.pressed {
-				off += main_of(axis, e.travel) * b.range / b.travel
+				st.pressed, on_thumb = true, true
 			}
 		case .Release, .Cancel:
 			st.pressed = false
 		}
+	}
+	if on_thumb {
+		off += main_of(axis, d.delta) * b.range / b.travel
 	}
 	return clamp(off, 0, b.range)
 }
@@ -1878,6 +1923,10 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 				sc.x += e.scroll.x * SCROLL_STEP
 			}
 		}
+		if c.drag_scroll {
+			at := scroll_by_drag(gtx, c.place.id, {sc.x, sc.y}, content - size)
+			sc.x, sc.y = at.x, at.y
+		}
 		if r, ok := find_reveal(gtx, c.body); ok {
 			sc.y = nearest_offset(sc.y, size.y, r.y, r.h)
 			sc.x = nearest_offset(sc.x, size.x, r.x, r.w)
@@ -1892,7 +1941,11 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 		sc.x = scroll_bar_handle(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
 		view := ops.Rect{0, 0, size.x, size.y}
 		if content.y > size.y || content.x > size.x {
-			ops.input_area(o, c.place.id, view, {.Scroll})
+			kinds := ops.Event_Kinds{.Scroll}
+			if c.drag_scroll {
+				kinds += {.Press, .Move, .Release}
+			}
+			ops.input_area(o, c.place.id, view, kinds)
 		}
 		ops.clip_push(o, view)
 		ops.transform_push(o, ops.translate(-sc.x, -sc.y))
