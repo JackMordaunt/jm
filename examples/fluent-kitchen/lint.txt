@@ -1,5 +1,6 @@
 Avatar group: fill cut at both sides near "" (every theme)
 Avatar group: stroke cut at both sides near "" (every theme)
+Avatar group: text cut at both sides near "" (every theme)
 Avatar group: text cut at the right near "" (every theme)
 Carousel: shadow cut at both sides near "" (every theme)
 Image: fill cut at both sides near "" (every theme)
