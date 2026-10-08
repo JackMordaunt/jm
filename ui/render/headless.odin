@@ -149,6 +149,11 @@ inspecting :: proc(h: ^Headless) {
 //	                   PATH.digests, which -check holds later replays to
 //	-check PATH        replay a recording and fail, naming the first frame,
 //	                   if what any frame shows differs from PATH.digests
+//	-timeline PATH     replay a recording and list, a line each, the frames
+//	                   where the picture changed, input other than pointer
+//	                   moves arrived, or the digest differs from PATH.digests
+//	-diff PATH N       replay a recording to frame N and print its input and
+//	                   the lines of the frame that differ from frame N-1's
 //	-png PATH          write the current frame
 //	-dump              print the current frame's sc as text
 //	-overflow          print what the window or a clip cuts off at the sides
@@ -318,6 +323,35 @@ headless_step :: proc(h: ^Headless, args: []string, i: ^int) -> (handled, ok: bo
 		}
 		i^ += 1
 		return true, replay_digests(h, args[i^], bless = flag == "-bless")
+	case "-timeline":
+		if !need(args, i, 1, flag) {
+			return true, false
+		}
+		i^ += 1
+		return true, replay_timeline(h, args[i^])
+	case "-diff":
+		if !need(args, i, 2, flag) {
+			return true, false
+		}
+		path := args[i^ + 1]
+		frame, frame_ok := strconv.parse_int(args[i^ + 2])
+		i^ += 2
+		if !frame_ok || frame < 1 {
+			fmt.eprintfln("-diff: %q is not a frame number", args[i^])
+			return true, false
+		}
+		data, rerr := os.read_entire_file(path, context.temp_allocator)
+		if rerr != nil {
+			fmt.eprintfln("-diff: cannot read %s: %v", path, rerr)
+			return true, false
+		}
+		before, after, input, dok := ui.probe_replay_diff(&h.p, data, frame, context.temp_allocator)
+		if !dok {
+			fmt.eprintfln("-diff: %s has no frame %d", path, frame)
+			return true, false
+		}
+		fmt.printfln("frame %d input: %s", frame, input.line if input.line != "" else "none")
+		fmt.print(ui.picture_diff(before, after, context.temp_allocator))
 	case "-png":
 		if !need(args, i, 1, flag) {
 			return true, false
@@ -402,6 +436,34 @@ replay_digests :: proc(h: ^Headless, path: string, bless: bool) -> bool {
 	}
 	fmt.eprintfln("-check: %s: all %d frame(s) the same", path, len(got))
 	return true
+}
+
+// replay_timeline replays the recording at path through h and prints its
+// timeline_report, marking frames that differ from path +
+// ui.DIGESTS_EXT when that file is there. It is whether the recording
+// read whole.
+@(private = "file")
+replay_timeline :: proc(h: ^Headless, path: string) -> bool {
+	data, rerr := os.read_entire_file(path, context.temp_allocator)
+	if rerr != nil {
+		fmt.eprintfln("-timeline: cannot read %s: %v", path, rerr)
+		return false
+	}
+	blessed: []u64
+	sums := strings.concatenate({path, ui.DIGESTS_EXT}, context.temp_allocator)
+	if text, terr := os.read_entire_file(sums, context.temp_allocator); terr == nil {
+		parsed, pok := ui.digests_parse(string(text), context.temp_allocator)
+		if !pok {
+			fmt.eprintfln("-timeline: %s is not a digests file; marking nothing", sums)
+		}
+		blessed = parsed
+	}
+	frames, tok := ui.probe_replay_timeline(&h.p, data, context.temp_allocator)
+	fmt.print(ui.timeline_report(frames, blessed, context.temp_allocator))
+	if !tok {
+		fmt.eprintfln("-timeline: %s stops being a recording after %d frame(s)", path, len(frames))
+	}
+	return tok
 }
 
 // parse_chord reads a -key argument: a ui.Key name, after any modifiers

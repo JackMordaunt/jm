@@ -2,6 +2,7 @@ package ops
 
 import "core:fmt"
 import "core:math"
+import "core:mem"
 import "core:strings"
 
 // Canonical text form of Scene (ui's dump_frame does Frame). Tests compare
@@ -211,7 +212,11 @@ write_fill_rule :: proc(sb: ^strings.Builder, o: ^Scene, s: Shape) {
 	}
 }
 
-write_shape :: proc(sb: ^strings.Builder, s: Shape) {
+// write_shape prints s. A path prints as path#id, its index in the
+// scene; with o and by_content, as what it is instead, "path <hash>
+// bounds x y w h", since an index moves when a path is added before it
+// (content_hash).
+write_shape :: proc(sb: ^strings.Builder, s: Shape, o: ^Scene = nil, by_content := false) {
 	switch v in s {
 	case Rect:
 		strings.write_string(sb, "rect ")
@@ -223,10 +228,57 @@ write_shape :: proc(sb: ^strings.Builder, s: Shape) {
 		strings.write_string(sb, "ellipse ")
 		write_rect(sb, v.rect)
 	case Path_Ref:
-		fmt.sbprintf(sb, "path#%d", v.id)
+		if by_content && o != nil && int(v.id) < len(o.paths) {
+			path := o.paths[v.id]
+			fmt.sbprintf(sb, "path %08x bounds ", u32(content_hash(mem.slice_to_bytes(path.verbs), mem.slice_to_bytes(path.points), []byte{u8(path.rule)})))
+			write_rect(sb, path_bounds(path))
+		} else {
+			fmt.sbprintf(sb, "path#%d", v.id)
+		}
 	case:
 		strings.write_string(sb, "none")
 	}
+}
+
+// content_hash is an FNV-1a hash of each of parts in turn: what a
+// by-content dump names a path or a glyph run by.
+content_hash :: proc(parts: ..[]byte) -> u64 {
+	hash := u64(0xcbf29ce484222325)
+	for part in parts {
+		for b in part {
+			hash ~= u64(b)
+			hash *= 0x100000001b3
+		}
+	}
+	return hash
+}
+
+// image_path is the file o registered image id under.
+@(private)
+image_path :: proc(o: ^Scene, id: Image_Id) -> (path: string, known: bool) {
+	if o == nil {
+		return
+	}
+	for ref in o.images {
+		if ref.id == id {
+			return ref.path, true
+		}
+	}
+	return
+}
+
+// path_bounds is the rect around path's points, control points included.
+@(private)
+path_bounds :: proc(path: Path) -> Rect {
+	if len(path.points) == 0 {
+		return {}
+	}
+	lo, hi := path.points[0], path.points[0]
+	for point in path.points[1:] {
+		lo = {min(lo.x, point.x), min(lo.y, point.y)}
+		hi = {max(hi.x, point.x), max(hi.y, point.y)}
+	}
+	return {lo.x, lo.y, hi.x - lo.x, hi.y - lo.y}
 }
 
 write_paint :: proc(sb: ^strings.Builder, p: Paint) {
@@ -332,17 +384,19 @@ write_tag :: proc(sb: ^strings.Builder, t: Tag) {
 
 // write_draw writes a draw op — a Fill, Stroke, Glyphs, Image or Shadow — as dump
 // prints one; ui's dump_frame prints a Frame's Draw_Cmd through it too.
-write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
+// by_content names paths, glyph runs and images by what they are, not
+// their index in o (write_shape).
+write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op, by_content := false) {
 	#partial switch v in cmd {
 	case Fill:
 		strings.write_string(sb, "fill ")
-		write_shape(sb, v.shape)
+		write_shape(sb, v.shape, o, by_content)
 		write_fill_rule(sb, o, v.shape)
 		strings.write_byte(sb, ' ')
 		write_paint(sb, v.paint)
 	case Stroke:
 		strings.write_string(sb, "stroke ")
-		write_shape(sb, v.shape)
+		write_shape(sb, v.shape, o, by_content)
 		strings.write_byte(sb, ' ')
 		write_paint(sb, v.paint)
 		strings.write_string(sb, " w=")
@@ -355,7 +409,11 @@ write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
 			r := o.runs[v.run]
 			fmt.sbprintf(sb, "glyphs font=%d size=", r.font)
 			write_num(sb, f64(r.size))
-			fmt.sbprintf(sb, " run#%d n=%d adv=", v.run, len(r.glyphs))
+			if by_content {
+				fmt.sbprintf(sb, " run %08x n=%d adv=", u32(content_hash(mem.slice_to_bytes(r.glyphs))), len(r.glyphs))
+			} else {
+				fmt.sbprintf(sb, " run#%d n=%d adv=", v.run, len(r.glyphs))
+			}
 			write_num(sb, f64(r.advance))
 		} else {
 			fmt.sbprintf(sb, "glyphs font=? size=? run#%d n=? adv=?", v.run)
@@ -365,7 +423,11 @@ write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op) {
 		strings.write_string(sb, " @ ")
 		write_nums(sb, v.origin.x, v.origin.y)
 	case Image:
-		fmt.sbprintf(sb, "image#%d dst ", v.id)
+		if path, known := image_path(o, v.id); by_content && known {
+			fmt.sbprintf(sb, "image %s dst ", path)
+		} else {
+			fmt.sbprintf(sb, "image#%d dst ", v.id)
+		}
 		write_rect(sb, v.dst)
 		strings.write_string(sb, " src ")
 		write_rect(sb, v.src)

@@ -252,6 +252,8 @@ build/debug/material-kitchen-child -replay-to build/session.rec 40 -png out.png 
 build/debug/material-kitchen-child -bless build/session.rec      keep each frame's digest
 build/debug/material-kitchen-child -check build/session.rec      fail on the first that differs
 build/debug/material-kitchen-child -scrub build/session.rec      step through it in a window
+build/debug/material-kitchen-child -timeline build/session.rec   the frames where something happened
+build/debug/material-kitchen-child -diff build/session.rec 22    what frame 22 changed
 ```
 
 A recording is also a regression test. `-bless` writes `session.rec.digests`, one hash per frame
@@ -259,6 +261,19 @@ of what that frame shows: its draws, clips and semantic tree. Area ids are left 
 hash the source line. Editing code that moves a line, or building in another folder, therefore
 keeps the digests. Commit both files; `-check` replays the recording and names the first frame that
 looks or reads differently, which `-replay-to` then shows.
+
+`-timeline` and `-diff` give the same view as text, for a reader who cannot watch the window.
+`-timeline` lists a line for each frame where the picture changed, the input did something other
+than move the pointer, or the digest differs from the blessed one. A press that changed nothing
+still gets a line, without `changed`. An animation's run of changing frames is a single line.
+`-diff` prints a frame's input and the lines of its picture that differ from the frame before.
+Paths, glyph runs and clips are named by what they are, not by their index, so a press reads as a
+handful of lines: a state layer's alpha, a ripple, a focus ring.
+
+```
+22  0.367 s  changed  Move 220,330  Press 220,330
+24-52  0.400-0.867 s  changed on all 29
+```
 
 `jm:ui/scrub` is the scrubber. It replays the recording once and keeps each distinct picture, so
 it can go backwards without rewinding the app.

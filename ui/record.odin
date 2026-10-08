@@ -23,7 +23,8 @@ import "jm:ui/ops"
 // digest of what it shows (frame_digest); -bless keeps a recording's
 // digests beside it, and -check replays it again and names the first
 // frame that no longer shows the same. -replay-to stops at a frame, to
-// look at it.
+// look at it. -timeline lists the frames where something happened and
+// -diff says what one frame changed, both as text (timeline.odin).
 
 // RECORD_ENV is the environment variable naming the file a frame loop
 // appends its inputs to; unset, nothing is recorded.
@@ -195,29 +196,39 @@ probe_replay_digests :: proc(probe: ^Probe, data: []byte, allocator := context.a
 	return out[:], ok
 }
 
-// frame_digest is a hash of what frame shows: its draws and clips as
-// dump_frame prints them, and its semantic tree without the nodes'
-// ids. Area ids hash the call site's file and line, so an edit that moves
-// a line, or a build in another folder, changes them while the frame
-// looks and reads the same; the digest leaves them out, so it changes
-// only when the picture or what a screen reader says does.
-frame_digest :: proc(frame: ^Frame) -> u64 {
-	sb := strings.builder_make()
-	defer strings.builder_destroy(&sb)
-	write_frame_draws(&sb, frame)
-	write_frame_clips(&sb, frame)
+// frame_picture is what frame shows, as text on allocator, a line each:
+// its draws and clips as dump_frame prints them but named by content
+// (write_frame_draws), and its semantic tree without the nodes' ids.
+// Area ids hash the call site's file and line, so an edit that moves a
+// line, or a build in another folder, changes them while the frame looks
+// and reads the same; they are left out, and indices are, so one draw
+// added changes one line. frame_digest hashes it and -diff compares two
+// of it.
+frame_picture :: proc(frame: ^Frame, allocator := context.allocator) -> string {
+	sb := strings.builder_make(allocator)
+	write_frame_draws(&sb, frame, by_content = true)
+	write_frame_clips(&sb, frame, by_content = true)
+	strings.write_string(&sb, "semantics\n")
 	for node in frame.nodes {
 		semantics := node.semantics
 		// Whether it points at another node, not which one's id.
 		semantics.labelled_by = 1 if semantics.labelled_by != 0 else 0
 		semantics.active_descendant = 1 if semantics.active_descendant != 0 else 0
-		fmt.sbprintf(&sb, "node layer=%d ", node.layer)
+		fmt.sbprintf(&sb, "  node layer=%d ", node.layer)
 		ops.write_rect(&sb, node.rect)
 		strings.write_byte(&sb, ' ')
 		ops.write_semantics(&sb, semantics)
 		strings.write_byte(&sb, '\n')
 	}
-	return fnv_bytes(FNV_OFFSET, transmute([]u8)strings.to_string(sb))
+	return strings.to_string(sb)
+}
+
+// frame_digest is a hash of what frame shows: of its frame_picture, so
+// it changes only when the picture or what a screen reader says does.
+frame_digest :: proc(frame: ^Frame) -> u64 {
+	picture := frame_picture(frame)
+	defer delete(picture)
+	return fnv_bytes(FNV_OFFSET, transmute([]u8)picture)
 }
 
 // DIGESTS_EXT is what -bless appends to a recording's path to name the

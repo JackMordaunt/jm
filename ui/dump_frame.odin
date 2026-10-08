@@ -69,26 +69,39 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 
 
 // write_frame_draws writes dump_frame's draws section: what frame paints,
-// in order. frame_digest hashes it too.
-write_frame_draws :: proc(sb: ^strings.Builder, frame: ^Frame) {
+// in order. by_content writes it as frame_picture does: unnumbered, each
+// clip named by clip_name and each path, glyph run and image by what it
+// is (ops.write_draw), so one draw, clip or path added changes one line,
+// not every line after it.
+write_frame_draws :: proc(sb: ^strings.Builder, frame: ^Frame, by_content := false) {
+	names: []u32
+	if by_content {
+		names = clip_names(frame)
+	}
+	defer delete(names)
 	strings.write_string(sb, "draws\n")
 	for draw, ii in frame.draws {
-		fmt.sbprintf(sb, "  draw %d clip=", ii)
-		write_clip_id(sb, draw.clip)
+		if by_content {
+			strings.write_string(sb, "  draw clip=")
+			write_clip_name(sb, names, draw.clip)
+		} else {
+			fmt.sbprintf(sb, "  draw %d clip=", ii)
+			write_clip_id(sb, draw.clip)
+		}
 		strings.write_string(sb, " [")
 		ops.write_affine(sb, draw.transform)
 		strings.write_string(sb, "] ")
 		switch cmd in draw.cmd {
 		case ops.Fill:
-			ops.write_draw(sb, frame.scene, cmd)
+			ops.write_draw(sb, frame.scene, cmd, by_content)
 		case ops.Stroke:
-			ops.write_draw(sb, frame.scene, cmd)
+			ops.write_draw(sb, frame.scene, cmd, by_content)
 		case ops.Glyphs:
-			ops.write_draw(sb, frame.scene, cmd)
+			ops.write_draw(sb, frame.scene, cmd, by_content)
 		case ops.Image:
-			ops.write_draw(sb, frame.scene, cmd)
+			ops.write_draw(sb, frame.scene, cmd, by_content)
 		case ops.Shadow:
-			ops.write_draw(sb, frame.scene, cmd)
+			ops.write_draw(sb, frame.scene, cmd, by_content)
 		}
 		if draw.fade != 0 {
 			fmt.sbprintf(sb, " fade=%v", draw.fade)
@@ -97,17 +110,60 @@ write_frame_draws :: proc(sb: ^strings.Builder, frame: ^Frame) {
 	}
 }
 
-// write_frame_clips writes dump_frame's clips section.
-write_frame_clips :: proc(sb: ^strings.Builder, frame: ^Frame) {
+// write_frame_clips writes dump_frame's clips section, by_content as
+// write_frame_draws.
+write_frame_clips :: proc(sb: ^strings.Builder, frame: ^Frame, by_content := false) {
+	names: []u32
+	if by_content {
+		names = clip_names(frame)
+	}
+	defer delete(names)
 	strings.write_string(sb, "clips\n")
 	for clip, ii in frame.clips {
-		fmt.sbprintf(sb, "  clip %d parent=", ii)
-		write_clip_id(sb, clip.parent)
+		if by_content {
+			strings.write_string(sb, "  clip ")
+			write_clip_name(sb, names, Clip_Id(ii))
+			strings.write_string(sb, " parent=")
+			write_clip_name(sb, names, clip.parent)
+		} else {
+			fmt.sbprintf(sb, "  clip %d parent=", ii)
+			write_clip_id(sb, clip.parent)
+		}
 		strings.write_string(sb, " [")
 		ops.write_affine(sb, clip.transform)
 		strings.write_string(sb, "] ")
-		ops.write_shape(sb, clip.shape)
+		ops.write_shape(sb, clip.shape, frame.scene, by_content)
 		strings.write_byte(sb, '\n')
+	}
+}
+
+// clip_names is a name for each of frame's clips, on the default
+// allocator: a hash of its shape, its transform and its parent's name,
+// so a clip keeps its name when one is added before it.
+@(private = "file")
+clip_names :: proc(frame: ^Frame) -> []u32 {
+	names := make([]u32, len(frame.clips))
+	sb := strings.builder_make()
+	defer strings.builder_destroy(&sb)
+	for clip, ii in frame.clips {
+		strings.builder_reset(&sb)
+		if clip.parent != NO_CLIP && int(clip.parent) < ii {
+			fmt.sbprintf(&sb, "%08x ", names[clip.parent])
+		}
+		ops.write_affine(&sb, clip.transform)
+		ops.write_shape(&sb, clip.shape, frame.scene, true)
+		names[ii] = u32(fnv_bytes(FNV_OFFSET, transmute([]u8)strings.to_string(sb)))
+	}
+	return names
+}
+
+// write_clip_name prints a clip by its clip_names name, none for NO_CLIP.
+@(private = "file")
+write_clip_name :: proc(sb: ^strings.Builder, names: []u32, clip: Clip_Id) {
+	if clip == NO_CLIP || int(clip) >= len(names) {
+		strings.write_string(sb, "none")
+	} else {
+		fmt.sbprintf(sb, "#%08x", names[clip])
 	}
 }
 

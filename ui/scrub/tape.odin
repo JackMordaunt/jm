@@ -15,9 +15,7 @@
 // is under it in that frame: the widget, its source line and its box.
 package scrub
 
-import "core:fmt"
 import "core:mem/virtual"
-import "core:strings"
 
 import "jm:ui"
 import "jm:ui/ops"
@@ -59,9 +57,6 @@ Tape :: struct {
 	arena:   virtual.Arena, // pictures' bytes and moments' text
 }
 
-// INPUT_TEXT_MAX caps a Moment's input line, in bytes.
-INPUT_TEXT_MAX :: 200
-
 // tape_record replays data, a recording, through app headlessly and keeps
 // it in tape. blessed, when not nil, is the recording's blessed digests
 // (ui.digests_parse); a frame whose digest differs is marked. It returns
@@ -90,11 +85,11 @@ tape_record :: proc(tape: ^Tape, app: App, data: []byte, blessed: []u64 = nil) -
 	last: u64
 	for !ui.replay_done(&replay) {
 		payload, _ := ui.replay_input(&replay)
-		dt, input := read_input(payload, keep)
+		input, _ := ui.input_summary(payload, keep)
 		if !ui.probe_replay_step(&headless.p, &replay) {
 			return false
 		}
-		time += f64(dt)
+		time += f64(input.dt)
 		frame := ui.probe_current(&headless.p)
 		digest := ui.frame_digest(frame)
 		if len(tape.pictures) == 0 || digest != last {
@@ -106,7 +101,7 @@ tape_record :: proc(tape: ^Tape, app: App, data: []byte, blessed: []u64 = nil) -
 		if differs {
 			tape.differ += 1
 		}
-		append(&tape.moments, Moment{len(tape.pictures) - 1, time, dt, input, differs})
+		append(&tape.moments, Moment{len(tape.pictures) - 1, time, input.dt, input.line, differs})
 	}
 	return true
 }
@@ -143,68 +138,4 @@ tape_change_before :: proc(tape: ^Tape, index: int) -> int {
 		}
 	}
 	return 0
-}
-
-// read_input decodes a recorded frame's input from payload: its dt, and
-// its events as a line on allocator, positions in logical units. A run
-// of moves reads as one, with where it ended.
-@(private)
-read_input :: proc(payload: []byte, allocator := context.allocator) -> (dt: f32, text: string) {
-	scratch: virtual.Arena
-	if virtual.arena_init_growing(&scratch) != nil {
-		return
-	}
-	defer virtual.arena_destroy(&scratch)
-	_, density, dt_got, events, _, _, ok := ui.decode_input(payload, virtual.arena_allocator(&scratch))
-	if !ok {
-		return 0, ""
-	}
-	dt = dt_got
-	scale := density if density > 0 else 1
-	sb := strings.builder_make(virtual.arena_allocator(&scratch))
-	moves := 0
-	for event, ii in events {
-		if event.kind == .Move {
-			moves += 1
-			following := ii + 1 < len(events) && events[ii + 1].kind == .Move
-			if following {
-				continue
-			}
-		}
-		if strings.builder_len(sb) > 0 {
-			strings.write_string(&sb, "  ")
-		}
-		at := ops.Point{event.pos.x / scale, event.pos.y / scale}
-		#partial switch event.kind {
-		case .Move:
-			if moves > 1 {
-				fmt.sbprintf(&sb, "Move×%d %.0f,%.0f", moves, at.x, at.y)
-			} else {
-				fmt.sbprintf(&sb, "Move %.0f,%.0f", at.x, at.y)
-			}
-			moves = 0
-		case .Press, .Release:
-			fmt.sbprintf(&sb, "%v %.0f,%.0f", event.kind, at.x, at.y)
-		case .Scroll:
-			fmt.sbprintf(&sb, "Scroll %.1f,%.1f", event.scroll.x, event.scroll.y)
-		case .Key:
-			fmt.sbprintf(&sb, "Key %v", event.key)
-			if event.mods != {} {
-				fmt.sbprintf(&sb, " %v", event.mods)
-			}
-		case .Text, .Paste, .Compose:
-			fmt.sbprintf(&sb, "%v %q", event.kind, event.text)
-		case:
-			fmt.sbprintf(&sb, "%v", event.kind)
-		}
-	}
-	line := strings.to_string(sb)
-	if len(line) > INPUT_TEXT_MAX {
-		cut := INPUT_TEXT_MAX
-		for cut > 0 && (line[cut] & 0xC0) == 0x80 {
-			cut -= 1 // not inside a UTF-8 sequence
-		}
-		line = strings.concatenate({line[:cut], "…"}, virtual.arena_allocator(&scratch))
-	}
-	return dt, strings.clone(line, allocator)
 }
