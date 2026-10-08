@@ -294,6 +294,24 @@ test_a_text_input_edits_submits_and_ignores_input_when_disabled :: proc(t: ^test
 }
 
 @(test)
+test_a_text_input_shows_a_preedit_without_touching_the_model :: proc(t: ^testing.T) {
+	m: Forms_Model
+	defer forms_model_destroy(&m)
+	p: ui.Probe
+	fields_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Name"))
+	ui.probe_compose(&p, "かな")
+	testing.expect_value(t, ui.text_string(&m.name), "")
+	testing.expect_value(t, ui.text_display(&m.name).text, "かな")
+	ui.probe_type(&p, "仮名")
+	testing.expect(t, !ui.text_composing(&m.name))
+	testing.expect_value(t, ui.text_string(&m.name), "仮名")
+}
+
+@(test)
 test_a_form_label_focuses_its_input :: proc(t: ^testing.T) {
 	m: Forms_Model
 	defer forms_model_destroy(&m)

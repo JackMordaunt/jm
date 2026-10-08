@@ -288,6 +288,7 @@ Field_Input :: struct {
 	st:                         ^ui.Widget_State, // nil unless Live
 	hovered, focused, disabled: bool,
 	scroll:                     f32, // the input's horizontal scroll, keeping the caret in view
+	shown:                      ui.Text_Display, // the text as drawn, an input method's preedit and all
 }
 
 // field_input reads the field's events (Live) or its forced state, edits s,
@@ -295,6 +296,7 @@ Field_Input :: struct {
 @(private = "file")
 field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_Opts, g: Field_Geom, r: ^Field_Result) -> (fi: Field_Input) {
 	ui.text_clamp(s)
+	fi.shown = ui.text_display(s, gtx.allocator)
 	if o.state != .Live {
 		fi.hovered = o.state == .Hovered
 		fi.focused = o.state == .Focused || o.state == .Pressed // a field has no pressed look
@@ -314,12 +316,13 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 			st.focused = true
 		case .Blur:
 			st.focused = false
+			ui.text_compose_end(s)
 		case .Press, .Move, .Release:
 			if e.kind == .Press {
 				r.pressed = true
 			}
 			ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), g.input_font), e, {e.pos.x - g.in_x + cs.x, 0}, text_stops(gtx, s, g.input_font))
-		case .Text, .Paste:
+		case .Text, .Paste, .Compose:
 			r.changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, g.input_font), o.read_only)
 		case .Key:
 			if o.menu && (e.key == .Up || e.key == .Down || e.key == .Enter || e.key == .Escape) {
@@ -335,9 +338,9 @@ field_input :: proc(gtx: ^ui.Ctx, id: ops.Area_Id, s: ^ui.Text_State, o: Field_O
 	ui.text_claim_keys(gtx, s, id)
 	fi.hovered, fi.focused = st.hovered, st.focused
 	// Horizontal scroll that keeps the caret in view (ui.text_scroll).
-	str := string(s.buf[:])
-	t := layout_style(gtx, str, g.input_font)
-	_, caret := ui.paragraph_caret(t, s.cursor)
+	fi.shown = ui.text_display(s, gtx.allocator)
+	t := layout_style(gtx, fi.shown.text, g.input_font)
+	_, caret := ui.paragraph_caret(t, fi.shown.caret)
 	cs.x = ui.text_scroll(cs.x, t.width + CARET_W, caret, CARET_W, g.inner)
 	fi.scroll = cs.x
 	return
@@ -398,7 +401,7 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 		w_target = w_hover
 	}
 	thick := max(animate(gtx, c, 1, w_target, .Fast_Spatial, 0.1), 0.5)
-	show_ph := o.placeholder != "" && len(str) == 0 && (!g.inside || floated)
+	show_ph := o.placeholder != "" && len(fi.shown.text) == 0 && (!g.inside || floated)
 	ph_a := animate(gtx, c, 2, show_ph ? 1 : 0, show_ph ? .Fast_Effects : .Slow_Effects)
 	focus_f := animate(gtx, c, 3, fi.focused ? 1 : 0, .Fast_Effects)
 	hover_f := animate(gtx, cx, 0, fi.hovered ? 1 : 0, .Fast_Effects)
@@ -461,14 +464,18 @@ draw_field :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: ^ui.Text_State, o: Field_O
 		draw_text(gtx, g.suf, {g.text_r - g.suf.width, input_y}, fade(col.suffix, affix_a))
 	}
 	ops.clip_push(gtx.scene, ops.Rect{g.in_x, field.y, g.inner, field.h})
-	t := layout_style(gtx, str, g.input_font)
+	t := layout_style(gtx, fi.shown.text, g.input_font)
 	draw_paragraph(gtx, t, {g.in_x - fi.scroll, input_y}, col.input, selection_paint(s, fi.focused))
+	draw_preedit(gtx, t, {g.in_x - fi.scroll, input_y}, fi.shown, col.input)
 	if ph_a > 0 && o.placeholder != "" {
 		draw_text(gtx, shape_style(gtx, o.placeholder, g.input_font), {g.in_x, input_y}, fade(col.placeholder, ph_a))
 	}
+	_, cw := ui.paragraph_caret(t, fi.shown.caret)
 	if fi.focused && !fi.disabled && !o.read_only {
-		_, cw := ui.paragraph_caret(t, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{g.in_x + cw - fi.scroll, input_y + 2, CARET_W, g.input_font.line_height - 4}, col.caret)
+	}
+	if o.state == .Live {
+		ui.text_caret(gtx, p.id, ops.Rect{g.in_x, field.y, g.inner, field.h}, g.in_x + cw - fi.scroll, read_only = o.read_only)
 	}
 	ops.clip_pop(gtx.scene)
 

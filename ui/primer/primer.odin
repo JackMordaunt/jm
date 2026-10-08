@@ -303,6 +303,7 @@ Text :: design.Text
 draw_text :: design.draw_text
 baseline_of :: design.baseline_of
 draw_paragraph :: design.draw_paragraph
+draw_preedit :: design.draw_preedit
 
 // style is role's composite style from the scale.
 style :: proc(role: Type_Role) -> tok.Type_Style {

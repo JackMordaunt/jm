@@ -80,6 +80,24 @@ test_search_bar_owned_expansion_escape_and_submit :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_search_bar_shows_a_preedit_without_touching_the_model :: proc(t: ^testing.T) {
+	m := Search_Model{view = .Docked_With_Gap}
+	defer ui.text_destroy(&m.q)
+	p: ui.Probe
+	ui.probe_init(&p, search_ui, &m, {600, 500}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	testing.expect(t, ui.probe_click(&p, "Find"))
+	ui.probe_compose(&p, "かな")
+	testing.expect_value(t, ui.text_string(&m.q), "")
+	testing.expect_value(t, ui.text_display(&m.q).text, "かな")
+	ui.probe_type(&p, "仮名")
+	testing.expect(t, !ui.text_composing(&m.q))
+	testing.expect_value(t, ui.text_string(&m.q), "仮名")
+}
+
+@(test)
 test_full_screen_search_opens_over_the_window_and_backs_out :: proc(t: ^testing.T) {
 	m := Search_Model{view = .Full_Screen}
 	defer ui.text_destroy(&m.q)

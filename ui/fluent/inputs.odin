@@ -303,7 +303,7 @@ input :: proc(
 			#partial switch e.kind {
 			case .Press, .Move, .Release:
 				ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), m.style), e, {e.pos.x - left + sc.x, 0}, text_stops(gtx, s, m.style))
-			case .Text, .Paste:
+			case .Text, .Paste, .Compose:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:
 				if e.key == .Enter {
@@ -311,15 +311,17 @@ input :: proc(
 				} else {
 					r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 				}
+			case .Blur:
+				ui.text_compose_end(s)
 			}
 		}
 		ui.text_claim_keys(gtx, s, p.id)
 	}
 	r.focused = c.focused && !c.disabled
 	r.id = p.id
-	str := string(s.buf[:])
-	t := layout_style(gtx, str, m.style)
-	_, caret := ui.paragraph_caret(t, s.cursor)
+	shown := ui.text_display(s, gtx.allocator)
+	t := layout_style(gtx, shown.text, m.style)
+	_, caret := ui.paragraph_caret(t, shown.caret)
 	scroll: f32
 	if sc != nil {
 		sc.x = ui.text_scroll(sc.x, t.width + CARET_W, caret, CARET_W, inner)
@@ -351,8 +353,9 @@ input :: proc(
 		icon(gtx, after, {sz.x - m.root_pad - m.icon, (sz.y - m.icon) / 2}, m.icon, k.content)
 	}
 	ops.clip_push(gtx.scene, ops.Rect{left, BORDER, inner, sz.y - 2 * BORDER})
-	if len(str) > 0 {
+	if len(shown.text) > 0 {
 		draw_paragraph(gtx, t, {left - scroll, y_text}, k.text, selection_paint(s, r.focused))
+		draw_preedit(gtx, t, {left - scroll, y_text}, shown, k.text)
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {left, y_text}, k.placeholder)
 	}
@@ -361,9 +364,12 @@ input :: proc(
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, area, underline ? 0 : BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
+	if c.st != nil {
+		ui.text_caret(gtx, p.id, area, left + caret - scroll)
+	}
 	listen(gtx, c.st, p.id, area, design.EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
-	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, str), c.disabled))
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, string(s.buf[:])), c.disabled))
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
@@ -449,27 +455,33 @@ textarea :: proc(
 				ui.text_follow_pointer(s, para, e, {e.pos.x - text_x, e.pos.y - text_y + sc.y}, text_stops(gtx, s, m.style))
 			case .Scroll:
 				sc.y += e.scroll.y * ui.SCROLL_STEP
-			case .Text, .Paste:
+			case .Text, .Paste, .Compose:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style))
 			case .Key:
 				if r.changed {
 					para = layout_style(gtx, string(s.buf[:]), m.style, inner_w)
 				}
 				r.changed |= ui.text_edit_lines(gtx, s, p.id, e, text_stops(gtx, s, m.style), para)
+			case .Blur:
+				ui.text_compose_end(s)
 			}
 		}
 		ui.text_claim_keys(gtx, s, p.id)
 		if r.changed {
 			str = string(s.buf[:])
 			para = layout_style(gtx, str, m.style, inner_w)
-			sz, box = box_for(cs, w, len(para.lines), m)
 		}
 	}
+	// The shown text, its preedit spliced in: what the box grows to fit
+	// and what is drawn and scrolled to, in place of para from here on.
+	shown := ui.text_display(s, gtx.allocator)
+	disp := layout_style(gtx, shown.text, m.style, inner_w)
+	sz, box = box_for(cs, w, len(disp.lines), m)
 	text_h := box.h - 2 * BORDER
 	r.focused = c.focused && !c.disabled
 	r.id = p.id
-	li, cx := ui.paragraph_caret(para, s.cursor)
-	content_h := para.height
+	li, cx := ui.paragraph_caret(disp, shown.caret)
+	content_h := disp.height
 	view_h := text_h - 2 * m.pad_v
 	scroll: f32
 	if sc != nil {
@@ -498,19 +510,23 @@ textarea :: proc(
 		ops.fill(gtx.scene, ops.Rect{box.x + rad, box.y + box.h - BORDER, box.w - 2 * rad, BORDER}, bottom)
 	}
 	ops.clip_push(gtx.scene, ops.Rect{BORDER, text_y, box.w - 2 * BORDER, view_h})
-	if len(str) == 0 && placeholder != "" {
+	if len(shown.text) == 0 && placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {text_x, text_y}, k.placeholder)
 	}
-	draw_paragraph(gtx, para, {text_x, text_y - scroll}, k.text, selection_paint(s, r.focused))
+	draw_paragraph(gtx, disp, {text_x, text_y - scroll}, k.text, selection_paint(s, r.focused))
+	draw_preedit(gtx, disp, {text_x, text_y - scroll}, shown, k.text)
 	if r.focused {
 		ops.fill(gtx.scene, ops.Rect{text_x + cx, text_y + f32(li) * lh - scroll + 2, CARET_W, lh - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
 	paint_focus_line(gtx, box, BORDER, rad, focus_line_scale(gtx, c, p.id), k.line)
+	if c.st != nil {
+		ui.text_caret(gtx, p.id, ops.Rect{BORDER, text_y + f32(li) * lh - scroll, box.w - 2 * BORDER, lh}, text_x + cx)
+	}
 	listen(gtx, c.st, p.id, box, design.EDIT_KINDS, .Text)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
 	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, string(s.buf[:])), c.disabled))
-	ui.widget_close(gtx, &p, {sz, text_y + para.lines[0].baseline})
+	ui.widget_close(gtx, &p, {sz, text_y + disp.lines[0].baseline})
 	return
 }
 

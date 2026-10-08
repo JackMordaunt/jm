@@ -439,7 +439,9 @@ bare_input :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, id: ops.Area_Id, size: ops.S
 			case .Press, .Move, .Release:
 				str := string(s.buf[:])
 				ui.text_follow_pointer(s, design.layout_style(gtx, str, st, font), e, {e.pos.x + scroll^, 0}, stops)
-			case .Text, .Paste:
+			case .Blur:
+				ui.text_compose_end(s)
+			case .Text, .Paste, .Compose:
 				r.changed |= ui.text_edit(gtx, s, id, e, stops)
 			case .Key:
 				lo, hi := ui.text_selection(s)
@@ -456,20 +458,25 @@ bare_input :: proc(gtx: ^ui.Ctx, s: ^ui.Text_State, id: ops.Area_Id, size: ops.S
 		ui.text_claim_keys(gtx, s, id)
 	}
 	str := string(s.buf[:])
-	t := design.layout_style(gtx, str, st, font)
-	_, caret := ui.paragraph_caret(t, s.cursor)
+	shown := ui.text_display(s, gtx.allocator)
+	t := design.layout_style(gtx, shown.text, st, font)
+	_, caret := ui.paragraph_caret(t, shown.caret)
 	scroll^ = ui.text_scroll(scroll^, t.width + FIELD_CARET_W, caret, FIELD_CARET_W, size.x)
 	r.focused = field_focused(c)
 	r.id = id
 	fg := color(c.disabled ? .Fg_Color_Disabled : .Fg_Color_Default)
 	ops.clip_push(gtx.scene, box)
-	if len(str) > 0 {
+	if len(shown.text) > 0 {
 		design.draw_paragraph(gtx, t, {-scroll^, text_y}, fg, selection_paint(s, r.focused))
+		draw_preedit(gtx, t, {-scroll^, text_y}, shown, fg)
 	} else if placeholder != "" {
 		draw_text(gtx, design.shape_style(gtx, placeholder, st, font), {0, text_y}, color(.Fg_Color_Muted))
 	}
 	if r.focused && c.st != nil {
 		ops.fill(gtx.scene, ops.Rect{caret - scroll^, text_y + 2, FIELD_CARET_W, FIELD_LINE - 4}, fg)
+	}
+	if state == .Live {
+		ui.text_caret(gtx, id, box, caret - scroll^)
 	}
 	ops.clip_pop(gtx.scene)
 	listen(gtx, c.st, id, box, design.EDIT_KINDS, .Text)

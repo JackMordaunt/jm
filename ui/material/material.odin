@@ -499,6 +499,7 @@ shape_style :: proc(gtx: ^ui.Ctx, s: string, st: tok.Type_Style) -> Text {
 }
 
 draw_paragraph :: design.draw_paragraph
+draw_preedit :: design.draw_preedit
 
 // selection_paint is a Text_State's selection in the base theme's
 // selection colours, which this system maps in base_theme.

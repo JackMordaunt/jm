@@ -97,9 +97,10 @@ search_bar :: proc(
 		focused, hovered, bar_pressed = st.focused, st.hovered, st.pressed
 	}
 	str := string(s.buf[:])
-	typed := layout_style(gtx, str, tok.SEARCH_BAR_INPUT_TEXT_FONT)
+	shown := ui.text_display(s, gtx.allocator)
+	typed := layout_style(gtx, shown.text, tok.SEARCH_BAR_INPUT_TEXT_FONT)
 	full := typed.width
-	_, caret := ui.paragraph_caret(typed, s.cursor)
+	_, caret := ui.paragraph_caret(typed, shown.caret)
 	if live {
 		vs.scroll = max(clamp(min(vs.scroll, max(full + 2 - inner, 0)), caret + 2 - inner, caret), 0)
 		scroll = vs.scroll
@@ -159,11 +160,12 @@ search_bar :: proc(
 	bar_k := corners(tok.SEARCH_BAR_CONTAINER_SHAPE, bar)
 	if !(t > 0 && (mode == .Docked || mode == .Full_Screen_Contained)) {
 		// Docked and Contained repaint the bar as their header.
-		paint_search_field(gtx, bar, bar_k, s, str, placeholder, leading, trailing, scroll, caret, show_caret, fc, false)
+		paint_search_field(gtx, bar, bar_k, s, shown, placeholder, leading, trailing, scroll, caret, show_caret, fc, false)
 		paint_focus_ring_corners(gtx, fc, bar, bar_k)
 	}
 	if live {
 		ops.input_area(gtx.scene, p.id, bar, SEARCH_KINDS, .Text)
+		ui.text_caret(gtx, p.id, bar, pad_l + caret - scroll)
 	}
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, placeholder))
 	full_screen := mode == .Full_Screen || mode == .Full_Screen_Contained
@@ -183,7 +185,7 @@ search_bar :: proc(
 
 	picked := -1
 	if t > 0.001 {
-		picked = search_view(gtx, p.id, mode, s, str, placeholder, leading, trailing, suggestions, size.x, window, vs.origin, t, open, live, scroll, caret, focused)
+		picked = search_view(gtx, p.id, mode, s, str, shown, placeholder, leading, trailing, suggestions, size.x, window, vs.origin, t, open, live, scroll, caret, focused)
 	}
 	if picked >= 0 {
 		ui.text_set(s, suggestions[picked])
@@ -271,6 +273,7 @@ search_text_events :: proc(
 		case .Blur:
 			st.focused = false
 			blurred = true
+			ui.text_compose_end(s)
 		case .Press, .Move, .Release:
 			if e.kind == .Press {
 				st.pressed = true
@@ -280,7 +283,7 @@ search_text_events :: proc(
 			}
 			font := tok.SEARCH_BAR_INPUT_TEXT_FONT
 			ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), font), e, {e.pos.x - pad_l + scroll, 0}, text_stops(gtx, s, font))
-		case .Text, .Paste:
+		case .Text, .Paste, .Compose:
 			changed |= ui.text_edit(gtx, s, id, e, text_stops(gtx, s, tok.SEARCH_BAR_INPUT_TEXT_FONT))
 		case .Key:
 			#partial switch e.key {
@@ -307,7 +310,8 @@ paint_search_field :: proc(
 	r: ops.Rect,
 	k: Corners,
 	s: ^ui.Text_State,
-	str, placeholder: string,
+	shown: ui.Text_Display, // the text as drawn, an input method's preedit and all
+	placeholder: string,
 	leading, trailing: Icon,
 	scroll, caret: f32,
 	show_caret: bool,
@@ -339,8 +343,10 @@ paint_search_field :: proc(
 	inner := max(r.w - pad_l - pad_r, 0)
 	ops.clip_push(gtx.scene, ops.Rect{r.x + pad_l, r.y, inner, r.h})
 	font := header ? tok.SEARCH_VIEW_HEADER_INPUT_TEXT_FONT : tok.SEARCH_BAR_INPUT_TEXT_FONT
-	if len(str) > 0 {
-		draw_paragraph(gtx, layout_style(gtx, str, font), {r.x + pad_l - scroll, cy - font.line_height / 2}, input, selection_paint(s, show_caret))
+	if len(shown.text) > 0 {
+		t := layout_style(gtx, shown.text, font)
+		draw_paragraph(gtx, t, {r.x + pad_l - scroll, cy - font.line_height / 2}, input, selection_paint(s, show_caret))
+		draw_preedit(gtx, t, {r.x + pad_l - scroll, cy - font.line_height / 2}, shown, input)
 	} else {
 		t := shape_style(gtx, placeholder, header ? tok.SEARCH_VIEW_HEADER_SUPPORTING_TEXT_FONT : tok.SEARCH_BAR_SUPPORTING_TEXT_FONT)
 		draw_text(gtx, t, {r.x + pad_l, cy - t.height / 2}, hint)
@@ -364,7 +370,9 @@ search_view :: proc(
 	id: ops.Area_Id,
 	mode: Search_View,
 	s: ^ui.Text_State,
-	str, placeholder: string,
+	str: string, // the committed text, for filtering suggestions
+	shown: ui.Text_Display, // the text as drawn, an input method's preedit and all
+	placeholder: string,
 	leading, trailing: Icon,
 	suggestions: []string,
 	w: f32,
@@ -479,14 +487,16 @@ search_view :: proc(
 	}
 	hc := Control{}
 	if mode == .Docked || mode == .Full_Screen {
-		paint_search_field(gtx, header, {}, s, str, placeholder, lead, trailing, scroll, caret, focused, hc, true, fill = false)
+		paint_search_field(gtx, header, {}, s, shown, placeholder, lead, trailing, scroll, caret, focused, hc, true, fill = false)
 	} else if mode == .Full_Screen_Contained {
-		paint_search_field(gtx, header, corners(tok.SEARCH_BAR_CONTAINER_SHAPE, header), s, str, placeholder, lead, trailing, scroll, caret, focused, hc, false)
+		paint_search_field(gtx, header, corners(tok.SEARCH_BAR_CONTAINER_SHAPE, header), s, shown, placeholder, lead, trailing, scroll, caret, focused, hc, false)
 	}
 	if live && open && mode != .Docked_With_Gap {
 		// The header takes the bar's own input: the same id, on top.
+		pad_l, _ := search_padding(leading, trailing)
 		ops.transform_push(gtx.scene, ops.translate(header.x, header.y + (header.h - H) / 2))
 		ops.input_area(gtx.scene, id, ops.Rect{0, 0, header.w, H}, SEARCH_KINDS, .Text)
+		ui.text_caret(gtx, id, ops.Rect{0, 0, header.w, H}, pad_l + caret - scroll)
 		ops.transform_pop(gtx.scene)
 	} else if live && open {
 		ops.input_area(gtx.scene, id, ops.Rect{0, 0, w, H}, SEARCH_KINDS, .Text)

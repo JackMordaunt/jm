@@ -441,7 +441,9 @@ text_input :: proc(
 			#partial switch e.kind {
 			case .Press, .Move, .Release:
 				input_pointer(gtx, s, e, {e.pos.x - row.text_x + sc.x, 0}, st, secret)
-			case .Text, .Paste:
+			case .Blur:
+				ui.text_compose_end(s)
+			case .Text, .Paste, .Compose:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, input_stops(gtx, s, st, secret), secret = secret)
 			case .Key:
 				if e.key == .Enter {
@@ -453,13 +455,15 @@ text_input :: proc(
 		}
 		ui.text_claim_keys(gtx, s, p.id)
 	}
-	// What shows: the text, or for a secret its bullets, caret and all.
+	// What shows: the text, or for a secret its bullets, caret and all; a
+	// secret never composes, so its view is never spliced with a preedit.
 	shown := s
 	if secret {
 		view := ui.secret_view(s, gtx.allocator)
 		shown = &view
 	}
 	str := string(shown.buf[:])
+	display := ui.text_display(shown, gtx.allocator)
 	length := utf16_len(string(s.buf[:]))
 	msg, over := "", false
 	if character_limit > 0 {
@@ -468,8 +472,8 @@ text_input :: proc(
 	status := over ? Validation_Status.Error : fc.status
 	r.focused = field_focused(c)
 	r.id = p.id
-	t := design.layout_style(gtx, str, st, font_for(gtx, st.weight))
-	_, caret := ui.paragraph_caret(t, shown.cursor)
+	t := design.layout_style(gtx, display.text, st, font_for(gtx, st.weight))
+	_, caret := ui.paragraph_caret(t, display.caret)
 	scroll: f32
 	if sc != nil {
 		sc.x = ui.text_scroll(sc.x, t.width + FIELD_CARET_W, caret, FIELD_CARET_W, inner)
@@ -489,13 +493,17 @@ text_input :: proc(
 	text_y := (box.h - FIELD_LINE) / 2
 	fg := color(c.disabled ? .Fg_Color_Disabled : .Fg_Color_Default)
 	ops.clip_push(gtx.scene, ops.Rect{row.text_x, 0, inner, box.h})
-	if len(str) > 0 {
+	if len(display.text) > 0 {
 		design.draw_paragraph(gtx, t, {row.text_x - scroll, text_y}, fg, selection_paint(shown, r.focused))
+		draw_preedit(gtx, t, {row.text_x - scroll, text_y}, display, fg)
 	} else if placeholder != "" {
 		draw_text(gtx, design.shape_style(gtx, placeholder, st, font_for(gtx, st.weight)), {row.text_x, text_y}, color(.Fg_Color_Muted))
 	}
 	if r.focused && c.st != nil {
 		ops.fill(gtx.scene, ops.Rect{row.text_x + caret - scroll, text_y + 2, FIELD_CARET_W, FIELD_LINE - 4}, fg)
+	}
+	if state == .Live {
+		ui.text_caret(gtx, p.id, ops.Rect{row.text_x, 0, inner, box.h}, row.text_x + caret - scroll, kind = .Password if secret else .Text)
 	}
 	ops.clip_pop(gtx.scene)
 	ops.clip_pop(gtx.scene)
@@ -682,7 +690,9 @@ textarea :: proc(
 				ui.text_follow_pointer(s, para, e, {e.pos.x - text_at.x, e.pos.y - text_at.y + view.scroll}, field_stops(gtx, s, st))
 			case .Scroll:
 				view.scroll += e.scroll.y * ui.SCROLL_STEP
-			case .Text, .Paste, .Key:
+			case .Blur:
+				ui.text_compose_end(s)
+			case .Text, .Paste, .Compose, .Key:
 				if r.changed {
 					para = design.layout_style(gtx, string(s.buf[:]), st, font, wrap)
 				}
@@ -699,8 +709,17 @@ textarea :: proc(
 	}
 	r.focused = field_focused(c)
 	r.id = p.id
+	// shown splices in an input method's preedit over the selection; para
+	// and box.h follow it while composing, so a clause that wraps still
+	// fits.
+	shown := ui.text_display(s, gtx.allocator)
+	if ui.text_composing(s) {
+		para = design.layout_style(gtx, shown.text, st, font, wrap)
+		text_h = textarea_height(len(para.lines), rows, auto_size, view.h, min_height, max_height)
+		box.h = max(text_h + 2 * b, tok.CONTROL_MEDIUM_SIZE)
+	}
 	view_h := box.h - 2 * b
-	line, cx := ui.paragraph_caret(para, s.cursor)
+	line, cx := ui.paragraph_caret(para, shown.caret)
 	view.scroll = clamp(view.scroll, 0, max(para.height + 2 * pad - view_h, 0))
 	if r.focused {
 		view.scroll = ui.text_scroll(view.scroll, para.height + 2 * pad, f32(line) * FIELD_LINE, FIELD_LINE + 2 * pad, view_h)
@@ -715,12 +734,16 @@ textarea :: proc(
 	fg := color(c.disabled ? .Fg_Color_Disabled : .Fg_Color_Default)
 	ops.clip_push(gtx.scene, ops.Rect{b, b, box.w - 2 * b, view_h})
 	y := text_at.y - view.scroll
-	if len(str) == 0 && placeholder != "" {
+	if len(shown.text) == 0 && placeholder != "" {
 		draw_text(gtx, design.shape_style(gtx, placeholder, st, font), {text_at.x, y}, color(.Fg_Color_Muted))
 	}
 	design.draw_paragraph(gtx, para, {text_at.x, y}, fg, selection_paint(s, r.focused))
+	draw_preedit(gtx, para, {text_at.x, y}, shown, fg)
 	if r.focused && c.st != nil {
 		ops.fill(gtx.scene, ops.Rect{text_at.x + cx, y + f32(line) * FIELD_LINE + 2, FIELD_CARET_W, FIELD_LINE - 4}, fg)
+	}
+	if live {
+		ui.text_caret(gtx, p.id, ops.Rect{b, y + f32(line) * FIELD_LINE, box.w - 2 * b, FIELD_LINE}, text_at.x + cx)
 	}
 	ops.clip_pop(gtx.scene)
 	paint_well_focus(gtx, box, well)

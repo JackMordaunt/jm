@@ -514,7 +514,7 @@ combobox :: proc(
 				if typed && !c.disabled {
 					ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), m.style), e, {e.pos.x - m.pad_start, 0}, text_stops(gtx, s, m.style))
 				}
-			case .Text, .Paste:
+			case .Text, .Paste, .Compose:
 				if typed && !c.disabled && ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, m.style)) {
 					r.edited = true
 					flag^ = true
@@ -563,9 +563,12 @@ combobox :: proc(
 			ui.text_claim_keys(gtx, s, p.id)
 		}
 		sel_text := selected^ >= 0 && selected^ < len(options) ? options[selected^] : ""
-		if typed && d.was_focused && !c.focused && !flag^ && !freeform && string(s.buf[:]) != sel_text {
-			// Blur: revert text that matches no option (behaviour filter).
-			ui.text_set(s, sel_text)
+		if typed && d.was_focused && !c.focused {
+			ui.text_compose_end(s)
+			if !flag^ && !freeform && string(s.buf[:]) != sel_text {
+				// Blur: revert text that matches no option (behaviour filter).
+				ui.text_set(s, sel_text)
+			}
 		}
 		d.was_focused = c.focused
 	}
@@ -575,23 +578,38 @@ combobox :: proc(
 
 	k := field_colors(appearance, c, invalid, .Outline_Only)
 	rad := paint_field(gtx, area, appearance, k)
-	// The text: typed, or the selection's, else the placeholder.
-	shown_text := typed ? query : sel_text
+	// The text: typed (its preedit spliced in), or the selection's, else
+	// the placeholder.
+	disp: ui.Text_Display
+	if typed {
+		disp = ui.text_display(s, gtx.allocator)
+	}
+	shown_text := typed ? disp.text : sel_text
 	t := layout_style(gtx, shown_text, m.style)
 	inner_w := sz.x - m.pad_start - m.pad_end - m.icon - m.gap
 	y_text := (sz.y - m.style.line_height) / 2
 	ops.clip_push(gtx.scene, ops.Rect{m.pad_start, tok.STROKE_WIDTH_THIN, max(inner_w, 0), sz.y - 2 * tok.STROKE_WIDTH_THIN})
+	caret_x: f32
 	if shown_text != "" {
 		// Only typed text has a selection; a picked option's text has none.
 		draw_paragraph(gtx, t, {m.pad_start, y_text}, k.text, selection_paint(s, c.focused) if typed else {})
+		if typed {
+			draw_preedit(gtx, t, {m.pad_start, y_text}, disp, k.text)
+		}
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, m.style), {m.pad_start, y_text}, k.placeholder)
 	}
-	if typed && c.focused && !c.disabled {
-		_, caret := ui.paragraph_caret(t, s.cursor)
-		ops.fill(gtx.scene, ops.Rect{m.pad_start + caret, y_text + 2, 1, m.style.line_height - 4}, k.text)
+	if typed {
+		_, caret := ui.paragraph_caret(t, disp.caret)
+		caret_x = m.pad_start + caret
+		if c.focused && !c.disabled {
+			ops.fill(gtx.scene, ops.Rect{caret_x, y_text + 2, 1, m.style.line_height - 4}, k.text)
+		}
 	}
 	ops.clip_pop(gtx.scene)
+	if typed && c.st != nil {
+		ui.text_caret(gtx, p.id, area, caret_x)
+	}
 	// The field's area first, so the clear control sits on top of it.
 	listen(gtx, c.st, p.id, area, typed ? FIELD_KINDS : CLICK_KINDS, typed ? .Text : .Default)
 	// The expand icon, or the clear control in its place.
@@ -1144,7 +1162,7 @@ search_box :: proc(
 			#partial switch e.kind {
 			case .Press, .Move, .Release:
 				ui.text_follow_pointer(s, layout_style(gtx, string(s.buf[:]), tst), e, {e.pos.x - left, 0}, text_stops(gtx, s, tst))
-			case .Text, .Paste:
+			case .Text, .Paste, .Compose:
 				r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, tst))
 			case .Key:
 				#partial switch e.key {
@@ -1158,6 +1176,8 @@ search_box :: proc(
 				case:
 					r.changed |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, tst))
 				}
+			case .Blur:
+				ui.text_compose_end(s)
 			}
 		}
 		ui.text_claim_keys(gtx, s, p.id)
@@ -1175,20 +1195,24 @@ search_box :: proc(
 	icon(gtx, .Search, {pad, (sz.y - icon_size) / 2}, icon_size, content)
 	right := showing_dismiss ? pad + icon_size + tok.SPACING_HORIZONTAL_M : pad
 	inner := max(sz.x - left - right, 0)
-	str := string(s.buf[:])
-	t := layout_style(gtx, str, tst)
+	shown := ui.text_display(s, gtx.allocator)
+	t := layout_style(gtx, shown.text, tst)
 	y_text := (sz.y - tst.line_height) / 2
 	ops.clip_push(gtx.scene, ops.Rect{left, tok.STROKE_WIDTH_THIN, inner, sz.y - 2 * tok.STROKE_WIDTH_THIN})
-	if len(str) > 0 {
+	if len(shown.text) > 0 {
 		draw_paragraph(gtx, t, {left, y_text}, k.text, selection_paint(s, r.focused))
+		draw_preedit(gtx, t, {left, y_text}, shown, k.text)
 	} else if placeholder != "" {
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {left, y_text}, k.placeholder)
 	}
+	_, caret := ui.paragraph_caret(t, shown.caret)
 	if r.focused {
-		_, caret := ui.paragraph_caret(t, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{left + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
+	if c.st != nil {
+		ui.text_caret(gtx, p.id, area, left + caret)
+	}
 	listen(gtx, c.st, p.id, area, FIELD_KINDS, .Text) // under the dismiss control
 	if showing_dismiss {
 		icon(gtx, .Dismiss, {sz.x - pad - icon_size, (sz.y - icon_size) / 2}, icon_size, color_for({.Neutral_Foreground3, .Neutral_Foreground3_Hover, .Neutral_Foreground3_Pressed, .Neutral_Foreground_Disabled}, cd))
@@ -1197,7 +1221,7 @@ search_box :: proc(
 	}
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id), k.line)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))
-	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, str), c.disabled))
+	ui.semantics(gtx, &p, field_semantics(gtx, .Text_Field, name, placeholder, ui.frame_string(gtx, string(s.buf[:])), c.disabled))
 	ui.widget_close(gtx, &p, {sz, y_text + t.lines[0].baseline})
 	return
 }
@@ -1326,7 +1350,7 @@ tag_picker :: proc(
 					flag^ = true
 					ui.text_move(s, len(s.buf))
 				}
-			case .Text, .Paste:
+			case .Text, .Paste, .Compose:
 				if ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, style(.Body1))) {
 					r.edited = true
 					flag^ = true
@@ -1364,6 +1388,8 @@ tag_picker :: proc(
 				case:
 					r.edited |= ui.text_edit(gtx, s, p.id, e, text_stops(gtx, s, style(.Body1)))
 				}
+			case .Blur:
+				ui.text_compose_end(s)
 			}
 		}
 		ui.text_claim_keys(gtx, s, p.id)
@@ -1393,21 +1419,26 @@ tag_picker :: proc(
 	}
 	// The text slot takes the rest, at least TAG_INPUT_MIN_WIDTH.
 	tst := style(.Body1)
-	t := layout_style(gtx, query, tst)
+	disp := ui.text_display(s, gtx.allocator)
+	t := layout_style(gtx, disp.text, tst)
 	y_text := (sz.y - tst.line_height) / 2
 	slot_w := max(sz.x - end_pad - x, TAG_INPUT_MIN_WIDTH)
 	ops.clip_push(gtx.scene, ops.Rect{x, tok.STROKE_WIDTH_THIN, slot_w, sz.y - 2 * tok.STROKE_WIDTH_THIN})
-	if query != "" {
+	if disp.text != "" {
 		draw_paragraph(gtx, t, {x, y_text}, k.text, selection_paint(s, c.focused))
+		draw_preedit(gtx, t, {x, y_text}, disp, k.text)
 	} else if placeholder != "" && x == tok.SPACING_HORIZONTAL_M {
 		draw_text(gtx, shape_style(gtx, placeholder, tst), {x, y_text}, k.placeholder)
 	}
+	_, caret := ui.paragraph_caret(t, disp.caret)
 	if c.focused && !c.disabled {
-		_, caret := ui.paragraph_caret(t, s.cursor)
 		ops.fill(gtx.scene, ops.Rect{x + caret, y_text + 2, 1, tst.line_height - 4}, k.text)
 	}
 	ops.clip_pop(gtx.scene)
 	ops.clip_pop(gtx.scene)
+	if c.st != nil {
+		ui.text_caret(gtx, p.id, area, x + caret)
+	}
 	icon(gtx, .Chevron_Down, {sz.x - tok.SPACING_HORIZONTAL_M - m.icon, (m.min_h - m.icon) / 2}, m.icon, k.icon)
 	paint_growth(gtx, area, rad, focus_growth(gtx, c, p.id, flag^), k.line)
 	ops.tag(gtx.scene, p.id, ui.frame_string(gtx, name != "" ? name : placeholder))

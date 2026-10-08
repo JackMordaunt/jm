@@ -279,3 +279,22 @@ test_drag_and_triple_click_select_in_an_input :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect_value(t, ui.text_selected(&m.name), "grace hopper")
 }
+
+@(test)
+test_input_shows_a_preedit_without_committing_it :: proc(t: ^testing.T) {
+	m: Inputs_Model
+	p: ui.Probe
+	ui.probe_init(&p, inputs, &m, {600, 500}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+	defer ui.text_destroy(&m.name)
+	defer ui.text_destroy(&m.notes)
+
+	testing.expect(t, ui.probe_click(&p, "First and last"))
+	ui.probe_compose(&p, "かな")
+	testing.expect_value(t, ui.text_string(&m.name), "")
+	testing.expect_value(t, ui.text_display(&m.name).text, "かな")
+	ui.probe_type(&p, "仮名")
+	testing.expect(t, !ui.text_composing(&m.name))
+	testing.expect_value(t, ui.text_string(&m.name), "仮名")
+}
