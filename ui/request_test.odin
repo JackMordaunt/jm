@@ -275,3 +275,60 @@ test_clearing_requests_releases_their_copies :: proc(t: ^testing.T) {
 	testing.expect(t, jdebug.expect_released(&da, before), "every request's copies are freed")
 	testing.expect_value(t, jdebug.issue_count(&da), 0)
 }
+
+// Picker is a test ui: two areas, each asking for a folder when pressed,
+// and keeping what its Picked brings.
+@(private = "file")
+Picker :: struct {
+	picked: [2]string,
+	heard:  [2]int,
+}
+
+@(private = "file")
+pick_view :: proc(gtx: ^Ctx, user: rawptr) {
+	pk := (^Picker)(user)
+	for id, i in ([2]ops.Area_Id{201, 202}) {
+		ops.input_area(gtx.scene, id, ops.Rect{f32(i) * 50, 0, 50, 50}, {.Press, .Release})
+		ops.tag(gtx.scene, id, "a" if i == 0 else "b")
+		for e in events(gtx, id) {
+			#partial switch e.kind {
+			case .Press:
+				pick_folder(gtx, id, "/start")
+			case .Picked:
+				pk.picked[i] = clone_string(e.text, context.temp_allocator)
+				pk.heard[i] += 1
+			}
+		}
+	}
+}
+
+@(test)
+test_a_pick_answers_only_the_area_that_asked :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	pk: Picker
+	p: Probe
+	probe_init(&p, pick_view, &pk, {100, 50})
+	defer probe_destroy(&p)
+	_, open := probe_picking(&p)
+	testing.expect(t, !open)
+	probe_click(&p, "b")
+	q, asked := probe_picking(&p)
+	testing.expect(t, asked)
+	testing.expect_value(t, q.area, ops.Area_Id(202))
+	testing.expect(t, q.folder)
+	testing.expect_value(t, q.start, "/start")
+	// The dialog stays open over frames; the answer lands when it closes.
+	probe_frame(&p)
+	testing.expect_value(t, pk.heard, [2]int{0, 0})
+	testing.expect(t, probe_pick(&p, "/home/me/vault"))
+	probe_frame(&p)
+	testing.expect_value(t, pk.heard, [2]int{0, 1})
+	testing.expect_value(t, pk.picked[1], "/home/me/vault")
+	// A cancel is an empty answer, and nothing is left open.
+	probe_click(&p, "b")
+	testing.expect(t, probe_pick(&p, ""))
+	probe_frame(&p)
+	testing.expect_value(t, pk.heard, [2]int{0, 2})
+	testing.expect_value(t, pk.picked[1], "")
+	testing.expect(t, !probe_pick(&p, "late"))
+}

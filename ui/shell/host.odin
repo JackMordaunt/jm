@@ -30,6 +30,7 @@ import "jm:ui/ops"
 import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -94,6 +95,10 @@ Host_Loop :: struct {
 	saved:       [dynamic]u8, // what the child last asked to persist (ui.persist), for the next child
 	restoring:   bool, // a child was just spawned with saved to give it: the next input carries it
 	a11y:        Bridge, // what assistive technology reads of the child's frames
+	// The child's needs, as its diffs left them: the host's own copies, so
+	// a respawn can drop the old child's needs the application still
+	// serves, which no later diff would name.
+	needs:       map[ui.Need_Key]ui.Need,
 }
 
 // run_host_from_args is run_host with the child named by the one
@@ -218,6 +223,10 @@ host_loop_destroy :: proc(l: ^Host_Loop) {
 	delete(l.child_path)
 	delete(l.events)
 	delete(l.saved)
+	for _, n in l.needs {
+		need_delete(n)
+	}
+	delete(l.needs)
 	virtual.arena_destroy(&l.text)
 	render.compositor_destroy(&l.comp)
 	ui.frame_destroy(&l.frame)
@@ -299,6 +308,9 @@ host_maybe_respawn :: proc(l: ^Host_Loop) {
 	// window's goes off with it, or a field focused before the rebuild
 	// would leave it on with nothing to say where.
 	apply_text_input(&l.w, {})
+	// The new child asks again for what it shows; what the old one asked
+	// for is let go, or the application would serve it for good.
+	host_drop_needs(l)
 	argv := child_argv(&l.app, path, context.temp_allocator)
 	child, sok := ipc.spawn(argv, l.app.dir)
 	delete(l.child_path)
@@ -389,6 +401,7 @@ host_step :: proc(l: ^Host_Loop) {
 	// The child's needs and commands go to the application here before
 	// the frame renders, so a request does not wait on presenting it.
 	ui.data_dispatch(&l.app.data, rd.added, rd.dropped, rd.commands)
+	host_track_needs(l, rd.added, rd.dropped)
 	ui.flatten(&l.scene, &l.frame, {0, 0, f32(w.size.x), f32(w.size.y)}, ops.scale(w.density, w.density))
 	present_start := time.tick_now()
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
@@ -411,6 +424,47 @@ host_step :: proc(l: ^Host_Loop) {
 		l.wants_frame, l.frame_after = true, 0
 	}
 	l.n += 1
+}
+
+// host_track_needs applies a frame's need diff to l.needs.
+@(private)
+host_track_needs :: proc(l: ^Host_Loop, added, dropped: []ui.Need) {
+	for n in added {
+		if old, ok := l.needs[n.key]; ok {
+			need_delete(old)
+		}
+		l.needs[n.key] = {key = n.key, kind = strings.clone(n.kind), query = slice.clone(n.query)}
+	}
+	for n in dropped {
+		if old, ok := l.needs[n.key]; ok {
+			need_delete(old)
+			delete_key(&l.needs, n.key)
+		}
+	}
+}
+
+// host_drop_needs tells the application every need in l.needs is gone,
+// and forgets them.
+@(private)
+host_drop_needs :: proc(l: ^Host_Loop) {
+	if len(l.needs) == 0 {
+		return
+	}
+	gone := make([dynamic]ui.Need, 0, len(l.needs), context.temp_allocator)
+	for _, n in l.needs {
+		append(&gone, n)
+	}
+	ui.data_dispatch(&l.app.data, nil, gone[:], nil)
+	for n in gone {
+		need_delete(n)
+	}
+	clear(&l.needs)
+}
+
+@(private)
+need_delete :: proc(n: ui.Need) {
+	delete(n.kind)
+	delete(n.query)
 }
 
 // host_rebuilt reports whether this host's executable on disk is newer

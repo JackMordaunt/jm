@@ -46,6 +46,8 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 			}
 		case ui.Text_Input:
 			apply_text_input(w, v)
+		case ui.Pick_Path:
+			show_pick(w, v)
 		}
 	}
 }

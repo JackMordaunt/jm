@@ -148,7 +148,8 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	p.requests_buf[2] = Open_Url{"https://example.com/a?b=c"}
 	ime := Text_Input{active = true, area = 9, rect = {10, 20, 300, 40}, caret = 12.5, kind = .Email}
 	p.requests_buf[3] = ime
-	p.requests_n = 4
+	p.requests_buf[4] = Pick_Path{area = 77, folder = true, start = "/home/me"}
+	p.requests_n = 5
 	sc_bytes := []byte{1, 2, 3}
 	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, platform = &p)
 	got: Reply_Platform
@@ -158,12 +159,13 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	testing.expect(t, got.changed)
 	testing.expect_value(t, got.cursor, ops.Cursor.Text)
 	reqs := reply_requests(&got)
-	testing.expect_value(t, len(reqs), 4)
-	if len(reqs) == 4 {
+	testing.expect_value(t, len(reqs), 5)
+	if len(reqs) == 5 {
 		testing.expect_value(t, reqs[0].(Clipboard_Write).data, "copied")
 		testing.expect_value(t, reqs[1].(Clipboard_Read).mime, TEXT_MIME)
 		testing.expect_value(t, reqs[2].(Open_Url).url, "https://example.com/a?b=c")
 		testing.expect_value(t, reqs[3].(Text_Input), ime)
+		testing.expect_value(t, reqs[4].(Pick_Path), Pick_Path{area = 77, folder = true, start = "/home/me"})
 	}
 
 	// A reply with nothing for the platform is the old layout, byte for byte.

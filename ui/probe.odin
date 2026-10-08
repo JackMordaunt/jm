@@ -47,6 +47,8 @@ Probe :: struct {
 	opened:      [dynamic]u8, // the last URL a frame asked to open
 	text_input:  Text_Input, // the last Text_Input a frame asked for
 	text_inputs: int, // how many Text_Inputs frames have asked for
+	picking:     Pick_Path, // the last path pick a frame asked for, until probe_pick answers it; its start in picked_start
+	picked_start: [dynamic]u8,
 	persisted:   [dynamic]u8, // what the last frame that called persist asked to keep: the host's copy, in a live loop
 	persists:    int, // frames that called persist
 	restore:     [dynamic]u8, // probe_restore's bytes, given to the next frame as restored
@@ -82,6 +84,7 @@ probe_init :: proc(
 	p.allocator = allocator
 	p.clipboard = make([dynamic]u8, allocator)
 	p.opened = make([dynamic]u8, allocator)
+	p.picked_start = make([dynamic]u8, allocator)
 	p.persisted = make([dynamic]u8, allocator)
 	p.restore = make([dynamic]u8, allocator)
 	p.shaper = stub_shaper()
@@ -109,6 +112,7 @@ probe_destroy :: proc(p: ^Probe) {
 	ops.frame_arena_destroy(&p.arena)
 	delete(p.clipboard)
 	delete(p.opened)
+	delete(p.picked_start)
 	delete(p.persisted)
 	delete(p.restore)
 	subscriptions_destroy(&p.subs)
@@ -200,6 +204,11 @@ probe_platform :: proc(p: ^Probe) {
 		case Text_Input:
 			p.text_input = v
 			p.text_inputs += 1
+		case Pick_Path:
+			p.picking = {area = v.area, folder = v.folder}
+			clear(&p.picked_start)
+			append(&p.picked_start, v.start)
+			p.picking.start = string(p.picked_start[:])
 		}
 	}
 	router_requests_clear(&p.router)
@@ -215,6 +224,24 @@ probe_clipboard :: proc(p: ^Probe) -> string {
 // valid until the next frame that opens one.
 probe_opened_url :: proc(p: ^Probe) -> string {
 	return string(p.opened[:])
+}
+
+// probe_picking is the path pick a frame asked for and no probe_pick has
+// answered: what the platform's dialog would show.
+probe_picking :: proc(p: ^Probe) -> (q: Pick_Path, open: bool) {
+	return p.picking, p.picking.area != 0
+}
+
+// probe_pick answers the open path pick as the person would: with path,
+// or "" for a cancel, delivered at the next frame. It is whether a pick
+// was open.
+probe_pick :: proc(p: ^Probe, path: string) -> bool {
+	if p.picking.area == 0 {
+		return false
+	}
+	router_push(&p.router, {kind = .Picked, area = p.picking.area, text = path})
+	p.picking = {}
+	return true
 }
 
 // probe_persisted is what the last frame that called persist asked the

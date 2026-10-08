@@ -299,6 +299,12 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 		case .Paste:
 			route_paste(r, e)
+		case .Picked:
+			// To the area that asked, wherever the pointer and focus are.
+			if e.area != 0 {
+				append(&r.events, Event{kind = .Picked, area = e.area, text = clone_string(e.text, r.allocator)})
+			}
+			free_strings(r, e)
 		case .Focus:
 			// Pushed by a platform for an assistive technology's request:
 			// focus the area, shown as keyboard focus, when the frame has it.
@@ -1206,7 +1212,7 @@ release_text :: proc(r: ^Router) {
 // copied and must free.
 @(private = "file")
 owns_strings :: proc(kind: ops.Event_Kind) -> bool {
-	return kind == .Text || kind == .Paste || kind == .Compose
+	return kind == .Text || kind == .Paste || kind == .Compose || kind == .Picked
 }
 
 // free_strings frees a queued event's copied strings.

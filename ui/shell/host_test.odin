@@ -139,6 +139,63 @@ test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
 	testing.expect(t, rok)
 }
 
+// Drop_Log is the needs an application was told are gone.
+@(private = "file")
+Drop_Log :: struct {
+	keys: [dynamic]ui.Need_Key,
+}
+
+// test_a_respawn_drops_the_old_childs_needs: the application is told
+// every need the old child still held is gone, since the new child's
+// diffs start from nothing and would never name them.
+@(test)
+test_a_respawn_drops_the_old_childs_needs :: proc(t: ^testing.T) {
+	if !require_child_exe(t) {
+		return
+	}
+	context.allocator = context.temp_allocator
+	copy_path := fmt.tprintf("%s.drops%s", CHILD_EXE, ".exe" when ODIN_OS == .Windows else "")
+	data, rerr := os.read_entire_file(CHILD_EXE, context.temp_allocator)
+	testing.expect(t, rerr == nil)
+	os.remove(copy_path)
+	testing.expect(t, os.write_entire_file(copy_path, data, os.Permissions_Read_All + os.Permissions_Execute_All + {.Write_User}) == nil)
+	defer os.remove(copy_path)
+	pointer := "build/debug/host_test_drops.pointer"
+	defer os.remove(pointer)
+	testing.expect(t, os.write_entire_file(pointer, CHILD_EXE) == nil)
+
+	d: Drop_Log
+	l: Host_Loop
+	l.app = {watch = pointer}
+	l.app.data = {
+		user = &d,
+		on_need = proc(user: rawptr, n: ui.Need, added: bool) {
+			if !added {
+				append(&(^Drop_Log)(user).keys, n.key)
+			}
+		},
+	}
+	path, _ := resolve_child_path(&l.app)
+	child, ok := ipc.spawn(child_argv(&l.app, path))
+	testing.expect(t, ok)
+	l.child, l.child_path = child, path
+	defer ipc.kill(&l.child)
+
+	// The old child needed 1 and 2, then let 2 go: only 1 is still held.
+	host_track_needs(&l, {{key = 1, kind = "a.One"}, {key = 2, kind = "a.Two"}}, nil)
+	host_track_needs(&l, nil, {{key = 2, kind = "a.Two"}})
+	host_maybe_respawn(&l) // pointer unchanged: no respawn, nothing dropped
+	testing.expect_value(t, len(d.keys), 0)
+	testing.expect(t, os.write_entire_file(pointer, copy_path) == nil)
+	host_maybe_respawn(&l)
+	testing.expect(t, !l.child_dead)
+	testing.expect_value(t, len(d.keys), 1)
+	if len(d.keys) == 1 {
+		testing.expect_value(t, d.keys[0], ui.Need_Key(1))
+	}
+	testing.expect_value(t, len(l.needs), 0)
+}
+
 // ask runs one round trip with c, as host_step does: events (and, once,
 // what a previous child persisted) go in, the reply's scene comes back
 // flattened; persist, when given, receives what the child asked to keep.

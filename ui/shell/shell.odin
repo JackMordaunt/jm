@@ -898,6 +898,11 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 	d := w.density
 	e: sdl3.Event
 	for sdl3.PollEvent(&e) {
+		// A path pick's answer, posted by its SDL callback.
+		if pick_event != 0 && u32(e.type) == pick_event {
+			sink(user, take_pick(&e, allocator))
+			continue
+		}
 		#partial switch e.type {
 		case .QUIT, .WINDOW_CLOSE_REQUESTED:
 			return false
@@ -917,6 +922,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			bridge_window_bounds(w.a11y)
 		case .RENDER_TARGETS_RESET:
 			w.stale = true
+
 		case .RENDER_DEVICE_RESET:
 			destroy_textures(w)
 			if !resize(w) {

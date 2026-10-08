@@ -259,6 +259,11 @@ encode_reply :: proc(
 				ops.put_rect(&w, v.rect)
 				ops.put_f32(&w, v.caret)
 				append(&w, u8(v.kind))
+			case Pick_Path:
+				append(&w, 5)
+				ops.put_u64(&w, u64(v.area))
+				append(&w, u8(v.folder))
+				ops.put_str(&w, v.start)
 			}
 		}
 	}
@@ -368,6 +373,10 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 				}
 				ti.kind = Text_Input_Kind(kind)
 				q = ti
+			case 5:
+				area := ops.Area_Id(ops.get_u64(&r) or_return)
+				folder := ops.get_u8(&r) or_return
+				q = Pick_Path{area, folder != 0, ops.get_str(&r) or_return}
 			case:
 				return false, 0, nil, false
 			}
@@ -423,7 +432,7 @@ Reply_Data :: struct {
 Reply_Platform :: struct {
 	cursor:       ops.Cursor,
 	changed:      bool,
-	requests_buf: [4]Request,
+	requests_buf: [8]Request, // room for one of each kind a frame makes, and more
 	requests_n:   int,
 	focus:        ops.Area_Id, // the child's focused area, every reply
 }

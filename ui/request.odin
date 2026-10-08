@@ -28,6 +28,7 @@ Request :: union {
 	Clipboard_Read,
 	Open_Url,
 	Text_Input,
+	Pick_Path,
 }
 
 // Clipboard_Write puts data on the clipboard as mime.
@@ -38,6 +39,16 @@ Clipboard_Write :: struct {
 // Clipboard_Read asks for the clipboard as mime, answered with a Paste.
 Clipboard_Read :: struct {
 	mime: string,
+}
+
+// Pick_Path asks the platform's own dialog for a folder, or a file to
+// open, for area, which is answered with a Picked event; pick_folder
+// asks for a folder. start is where
+// the dialog opens; "" leaves it to the platform.
+Pick_Path :: struct {
+	area:   ops.Area_Id,
+	folder: bool,
+	start:  string,
 }
 
 // Open_Url asks the platform to open url with the system's handler for
@@ -136,6 +147,18 @@ open_url :: proc(gtx: ^Ctx, url: string) {
 		return
 	}
 	append(&r.requests, Open_Url{clone_string(url, r.allocator)})
+}
+
+// pick_folder opens the platform's folder dialog once the frame is done.
+// area receives a Picked event when the person chooses: the folder's
+// path, or "" for a cancel, a frame or more later, since the dialog
+// stays open as long as the person takes. start is copied.
+pick_folder :: proc(gtx: ^Ctx, area: ops.Area_Id, start := "") {
+	r := gtx.router
+	if r == nil || area == 0 {
+		return
+	}
+	append(&r.requests, Pick_Path{area, true, clone_string(start, r.allocator)})
 }
 
 // clipboard_write puts text on the clipboard once the frame is done. The
@@ -283,5 +306,7 @@ free_request :: proc(r: ^Router, q: Request) {
 	case Open_Url:
 		delete(v.url, r.allocator)
 	case Text_Input:
+	case Pick_Path:
+		delete(v.start, r.allocator)
 	}
 }
