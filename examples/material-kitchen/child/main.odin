@@ -258,7 +258,9 @@ kitchen_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		m.nav_open = false
 	}
 	ui.flexible(gtx, 1)
-	ui.column(gtx)
+	// Fill stretches the page's scroll box across the pane, so its bar
+	// sits at the window's edge rather than beside the content.
+	ui.column(gtx, align = .Fill)
 	app_bar(gtx, m, docked)
 	ui.flexible(gtx, 1)
 	{
