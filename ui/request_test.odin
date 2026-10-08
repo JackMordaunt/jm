@@ -293,7 +293,12 @@ pick_view :: proc(gtx: ^Ctx, user: rawptr) {
 		for e in events(gtx, id) {
 			#partial switch e.kind {
 			case .Press:
-				pick_folder(gtx, id, "/start")
+				// a asks for a file, b for a folder.
+				if i == 0 {
+					pick_file(gtx, id, "/start/notes.md")
+				} else {
+					pick_folder(gtx, id, "/start")
+				}
 			case .Picked:
 				pk.picked[i] = clone_string(e.text, context.temp_allocator)
 				pk.heard[i] += 1
@@ -331,4 +336,15 @@ test_a_pick_answers_only_the_area_that_asked :: proc(t: ^testing.T) {
 	testing.expect_value(t, pk.heard, [2]int{0, 2})
 	testing.expect_value(t, pk.picked[1], "")
 	testing.expect(t, !probe_pick(&p, "late"))
+	// A file pick is the same, its dialog for a file.
+	probe_click(&p, "a")
+	q, asked = probe_picking(&p)
+	testing.expect(t, asked)
+	testing.expect_value(t, q.area, ops.Area_Id(201))
+	testing.expect(t, !q.folder, "a file dialog")
+	testing.expect_value(t, q.start, "/start/notes.md")
+	testing.expect(t, probe_pick(&p, "/start/other.md"))
+	probe_frame(&p)
+	testing.expect_value(t, pk.heard, [2]int{1, 2})
+	testing.expect_value(t, pk.picked[0], "/start/other.md")
 }

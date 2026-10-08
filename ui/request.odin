@@ -42,8 +42,8 @@ Clipboard_Read :: struct {
 }
 
 // Pick_Path asks the platform's own dialog for a folder, or a file to
-// open, for area, which is answered with a Picked event; pick_folder
-// asks for a folder. start is where
+// open, for area, which is answered with a Picked event: pick_folder and
+// pick_file ask. start is where
 // the dialog opens; "" leaves it to the platform.
 Pick_Path :: struct {
 	area:   ops.Area_Id,
@@ -154,11 +154,21 @@ open_url :: proc(gtx: ^Ctx, url: string) {
 // path, or "" for a cancel, a frame or more later, since the dialog
 // stays open as long as the person takes. start is copied.
 pick_folder :: proc(gtx: ^Ctx, area: ops.Area_Id, start := "") {
+	pick(gtx, area, true, start)
+}
+
+// pick_file is pick_folder for a file to open.
+pick_file :: proc(gtx: ^Ctx, area: ops.Area_Id, start := "") {
+	pick(gtx, area, false, start)
+}
+
+@(private = "file")
+pick :: proc(gtx: ^Ctx, area: ops.Area_Id, folder: bool, start: string) {
 	r := gtx.router
 	if r == nil || area == 0 {
 		return
 	}
-	append(&r.requests, Pick_Path{area, true, clone_string(start, r.allocator)})
+	append(&r.requests, Pick_Path{area, folder, clone_string(start, r.allocator)})
 }
 
 // clipboard_write puts text on the clipboard once the frame is done. The

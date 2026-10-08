@@ -152,7 +152,7 @@ Event_Kind :: enum u8 {
 	// in span. An empty text ends the composition; the commit, if any,
 	// comes as a Text. It goes to an area that asks for Text.
 	Compose,
-	// Picked answers a path pick (ui.pick_folder): delivered
+	// Picked answers a path pick (ui.pick_folder, ui.pick_file): delivered
 	// to the area that asked, never hit-tested, the path chosen in text,
 	// or "" when the person cancelled the dialog.
 	Picked,

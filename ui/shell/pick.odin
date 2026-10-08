@@ -6,7 +6,7 @@ import "jm:ui"
 import "jm:ui/ops"
 import "vendor:sdl3"
 
-// A path pick (ui.pick_folder) opens the platform's own dialog through
+// A path pick (ui.pick_folder, ui.pick_file) opens the platform's own dialog through
 // SDL's ShowOpenFolderDialog or ShowOpenFileDialog, whichever backend SDL
 // has for the platform. SDL may call back on another thread
 // (SDL_dialog.h: "the callback may be invoked from the same thread or
