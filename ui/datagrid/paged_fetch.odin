@@ -1,6 +1,5 @@
 package datagrid
 
-import "core:fmt"
 import "jm:ui"
 
 // The frame's side of a paged grid: the pages near the view are asked of
@@ -63,92 +62,16 @@ want_pages :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows) -> b
 	pages_want(p, lo, hi, sort_columns(gtx, g))
 	q := page_query(gtx, g, cols)
 	for i in lo ..< hi {
-		if r.fetch == nil {
-			break
-		}
 		e := pages_find(p, p.query, i)
 		q.offset, q.limit = i * p.page_size, p.page_size
 		q.after, q.attempt = e.after, e.attempt
-		pg, st, version := r.fetch(r.user, gtx, q)
+		pg, st, version := remote_rows_fetch(r, gtx, q)
 		if pg != nil && (st == .Ready || st == .Stale) {
 			pages_arrive(p, p.query, i, pg, version, st == .Stale)
 		}
 	}
 	pages_evict(p, lo, hi)
 	return max(p.count, 0) != g.geo.items
-}
-
-// export_page asks for the export's next page and writes it when it
-// arrives: in order, a page at a time, each after the last, so a keyset
-// source gets the cursor every time. A short page is the end; an error
-// stops the export with it.
-@(private)
-export_page :: proc(gtx: ^ui.Ctx, g: ^Grid, cols: []Column, r: ^Remote_Rows, ev: ^Events) {
-	x := &g.export
-	if r.fetch == nil {
-		return
-	}
-	q := page_query(gtx, g, cols)
-	q.offset, q.limit, q.after, q.attempt = x.next, x.limit, x.after, x.attempt
-	pg, st, _ := r.fetch(r.user, gtx, q)
-	switch {
-	case pg == nil || st != .Ready:
-		return
-	case pg.error != "":
-		x.error = clone_to(pg.error, x.text.buf.allocator)
-		x.done = true
-	case:
-		export_rows_of(gtx, x, cols, pg.rows)
-		x.next += len(pg.rows)
-		x.done = len(pg.rows) < x.limit
-		if !x.done {
-			export_keep_cursor(x, pg.rows[len(pg.rows) - 1], sort_columns(gtx, g))
-		}
-	}
-	ev.exported = x.done
-}
-
-// export_rows_of writes a page's rows to x, the export's columns of each.
-@(private)
-export_rows_of :: proc(gtx: ^ui.Ctx, x: ^Export, cols: []Column, rows: []Page_Row) {
-	fields := make([dynamic]string, 0, len(x.cols), gtx.allocator)
-	for r in rows {
-		clear(&fields)
-		for c in x.cols {
-			switch {
-			case cols[c].row_number:
-				append(&fields, fmt.aprint(x.written + 1, allocator = gtx.allocator))
-			case c < len(r.cells):
-				append(&fields, r.cells[c])
-			case:
-				append(&fields, "")
-			}
-		}
-		write_record(&x.text, CSV, fields[:])
-		x.written += 1
-	}
-}
-
-// export_keep_cursor keeps the last row written as the next page's cursor.
-@(private)
-export_keep_cursor :: proc(x: ^Export, r: Page_Row, sort_cols: []int) {
-	clear(&x.keep)
-	append(&x.keep, r.key)
-	spans := make([dynamic][2]int, 0, len(sort_cols), context.temp_allocator)
-	for c in sort_cols {
-		lo := len(x.keep)
-		if c < len(r.cells) {
-			append(&x.keep, r.cells[c])
-		}
-		append(&spans, [2]int{lo, len(x.keep)})
-	}
-	alloc := x.text.buf.allocator
-	delete(x.after.values, alloc)
-	x.after.key = string(x.keep[:len(r.key)])
-	x.after.values = make([]string, len(spans), alloc)
-	for s, i in spans {
-		x.after.values[i] = string(x.keep[s[0]:s[1]])
-	}
 }
 
 // values_query is the request for column col's distinct values under

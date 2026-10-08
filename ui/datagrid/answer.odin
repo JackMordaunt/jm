@@ -76,6 +76,13 @@ memory_table_destroy :: proc(t: ^Memory_Table) {
 	t^ = {}
 }
 
+// memory_table_view is t's rows, the places of its current view in
+// order (indices into rows), and the version of the rows, which
+// memory_table_changed moves. order is t's own: a new order replaces it.
+memory_table_view :: proc(t: ^Memory_Table) -> (rows: []Page_Row, order: []int, version: u64) {
+	return t.rows, t.order.rows[:], t.version
+}
+
 // memory_table_changed takes rows as t's rows, the same slice changed in
 // place or another: the order is built again, at once, and a grid over t
 // measures its columns again.

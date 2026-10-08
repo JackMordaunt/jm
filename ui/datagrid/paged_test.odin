@@ -9,7 +9,7 @@ import "jm:ui/ops"
 // A paged grid through ui.Probe, against a Memory_Table as its server:
 // skeletons, then rows; the need set as the view moves; a new query key on
 // a sort; stand-ins kept while a new query loads; a failed page and its
-// retry; selecting all loaded or all matching; a streamed export.
+// retry; selecting all loaded or all matching.
 
 @(private = "file")
 Pager :: struct {
@@ -319,45 +319,6 @@ test_select_all_loaded_names_rows_and_all_matching_names_the_query :: proc(t: ^t
 	testing.expect(t, !m.g.sel.all)
 	testing.expect(t, selected(&m.g.sel, row_key("SN-00001")))
 	testing.expect(t, !selected(&m.g.sel, row_key("SN-00499")))
-}
-
-@(test)
-test_a_paged_export_streams_every_page_with_progress_and_stops :: proc(t: ^testing.T) {
-	m := pager_make(2500, {page_size = 50})
-	defer pager_free(m)
-	p: ui.Probe
-	ui.probe_init(&p, pager_view, m, {600, 400})
-	defer ui.probe_destroy(&p)
-	serve(&p, m)
-	export_start(&m.g, PAGED_COLS, &m.remote)
-	serve(&p, m)
-	serve(&p, m)
-	w, total := export_progress(&m.g)
-	testing.expect_value(t, w, EXPORT_PAGE)
-	testing.expect_value(t, total, 2500)
-	for _ in 0 ..< 4 {
-		serve(&p, m)
-	}
-	testing.expect(t, m.g.export.done)
-	text := strings.to_string(m.g.export.text)
-	testing.expect_value(t, strings.count(text, "\r\n"), 2501)
-	testing.expect(t, strings.has_suffix(text, "SN-02499,M3,Norway,63\r\n"), text[len(text) - 40:])
-	export_start(&m.g, PAGED_COLS, &m.remote)
-	ui.probe_frame(&p)
-	testing.expect(t, m.g.export.active && !m.g.export.done, "a second export runs")
-	asked := false
-	for need in ui.probe_needs(&p) {
-		q, ok := ui.need_as(need, Test_Page)
-		asked ||= ok && q.limit == EXPORT_PAGE
-	}
-	testing.expect(t, asked, "and needs its first page")
-	export_cancel(&m.g)
-	serve(&p, m)
-	testing.expect(t, !m.g.export.active)
-	for need in ui.probe_needs(&p) {
-		q, ok := ui.need_as(need, Test_Page)
-		testing.expect(t, !ok || q.limit != EXPORT_PAGE, "a stopped export needs no page")
-	}
 }
 
 @(test)

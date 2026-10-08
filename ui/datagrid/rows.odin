@@ -57,6 +57,23 @@ Fetch_Values :: #type proc(
 	version: u64,
 )
 
+// remote_rows_fetch asks r's fetch for page q, as Fetch_Page says; a remote
+// without one has nothing on its way.
+remote_rows_fetch :: proc(
+	r: ^Remote_Rows,
+	gtx: ^ui.Ctx,
+	q: Page_Query,
+) -> (
+	^Page,
+	ui.Status,
+	u64,
+) {
+	if r.fetch == nil {
+		return nil, .Missing, 0
+	}
+	return r.fetch(r.user, gtx, q)
+}
+
 // remote_rows_init readies r to ask fetch for pages as paging says, and
 // values (nil for none) for a Set filter's values, each called with user.
 remote_rows_init :: proc(

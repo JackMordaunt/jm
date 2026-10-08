@@ -29,7 +29,6 @@ Grid :: struct {
 	hover_head: int, // the column whose header is under the pointer, -1 for none
 	hover_grip: int, // the column whose resize grip is, -1 for none
 	drag:       Drag,
-	export:     Export,
 	filter_at:  int, // the column whose filter a skin shows open, -1 for none
 	// What the grid keeps to draw.
 	build:      Order_Build,
@@ -121,8 +120,7 @@ Geometry :: struct {
 // order, a pin), when a caller that keeps it persists it; selection that
 // the selection changed; copied that many cells went to the clipboard;
 // filter_asked the column whose filter the keyboard asked for (Alt+Down
-// on its header), -1 for none; exported that an export finished, its
-// text in Grid.export.
+// on its header), -1 for none.
 Events :: struct {
 	activated:    bool,
 	context_menu: bool,
@@ -135,7 +133,6 @@ Events :: struct {
 	selection:    bool,
 	copied:       int,
 	filter_asked: int,
-	exported:     bool,
 }
 
 // Row_Ref names a row: where it stands, its index in a table's rows (-1
@@ -166,7 +163,6 @@ grid_init :: proc(g: ^Grid, columns: []Column, allocator := context.allocator) {
 		item = 0,
 		col  = -1,
 	}
-	g.export.text.buf.allocator = allocator
 }
 
 grid_destroy :: proc(g: ^Grid) {
@@ -176,7 +172,6 @@ grid_destroy :: proc(g: ^Grid) {
 	text_cache_destroy(&g.text, g.allocator)
 	heights_destroy(&g.heights)
 	placement_destroy(&g.place)
-	export_destroy(&g.export)
 	for id in g.ids {
 		delete(id, g.allocator)
 	}
@@ -224,7 +219,6 @@ grid :: proc(
 		// again, so this frame draws them where the next one will.
 		geometry(g, columns, src, skin, size)
 	}
-	export_step(gtx, g, columns, src, &ev)
 	paint(gtx, g, columns, src, skin, id, label)
 	g.build.frame += 1
 	if rows_building(src) {

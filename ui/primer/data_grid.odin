@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:strings"
 import "jm:ui"
 import "jm:ui/datagrid"
+import "jm:ui/datagrid/export"
 import "jm:ui/design"
 import "jm:ui/ops"
 import tok "jm:ui/primer/tokens"
@@ -30,7 +31,7 @@ import tok "jm:ui/primer/tokens"
 // Data_Grid is a Primer data grid's state, the caller's to keep for the
 // grid's life: the core grid (whose view a saved view is made of), the
 // toolbar's search field, the open filter panel and menus, the saved
-// views, and the CSV of the last export.
+// views, the export running, and the CSV of the last one.
 Data_Grid :: struct {
 	grid:         datagrid.Grid,
 	skin:         datagrid.Skin,
@@ -44,6 +45,7 @@ Data_Grid :: struct {
 	views:        [dynamic]Saved_View,
 	applied:      int, // the saved view last applied, -1 for none
 	applied_view: u64, // the view's query when it was, to notice a change
+	export:       export.Export,
 	csv:          strings.Builder, // the last finished export
 	notice:       string, // what the toolbar says last happened: "Copied 3 rows"
 	cols:         []datagrid.Column, // this frame's, for the slots
@@ -109,6 +111,7 @@ data_grid_destroy :: proc(g: ^Data_Grid) {
 		delete(v.text)
 	}
 	delete(g.views)
+	export.destroy(&g.export)
 	strings.builder_destroy(&g.csv)
 	delete(g.notice)
 	g^ = {}
@@ -155,18 +158,19 @@ data_grid :: proc(
 	case g.filter.open && !g.filter.seen:
 		g.filter.open = false // its column scrolled away
 	}
-	grid_notices(g, ev)
+	exported := export.step(&g.export, gtx, columns, rows)
+	grid_notices(g, ev, exported)
 	return
 }
 
-// grid_notices keeps the CSV of a finished export and says in the
-// toolbar what an export or a copy did.
+// grid_notices keeps the CSV of an export that finished this frame and
+// says in the toolbar what an export or a copy did.
 @(private)
-grid_notices :: proc(g: ^Data_Grid, ev: datagrid.Events) {
-	if ev.exported && g.grid.export.error == "" {
+grid_notices :: proc(g: ^Data_Grid, ev: datagrid.Events, exported: bool) {
+	if exported && g.export.error == "" {
 		strings.builder_reset(&g.csv)
-		strings.write_string(&g.csv, strings.to_string(g.grid.export.text))
-		w, _ := datagrid.export_progress(&g.grid)
+		strings.write_string(&g.csv, export.text(&g.export))
+		w, _ := export.progress(&g.export)
 		set_notice(g, fmt.tprintf("Exported %d rows", w))
 	}
 	if ev.copied > 0 {
@@ -603,8 +607,8 @@ grid_toolbar :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 	}
 	end := ui.row_open(gtx, gap = tok.BASE_SIZE_8, align = .Center)
 	defer ui.close(&end)
-	if g.grid.export.active && !g.grid.export.done {
-		w, total := datagrid.export_progress(&g.grid)
+	if export.running(&g.export) {
+		w, total := export.progress(&g.export)
 		of := fmt.tprintf(" of %s", design.thousands(total)) if total >= 0 else ""
 		progress := fmt.aprintf(
 			"Exporting %s%s rows",
@@ -614,7 +618,7 @@ grid_toolbar :: proc(gtx: ^ui.Ctx, g: ^Data_Grid, label: string) {
 		)
 		layout_text(gtx, progress, style(.Body_Small), color(.Fg_Color_Muted), .Status)
 		if button(gtx, "Cancel", .Invisible, .Small, key = 1) {
-			datagrid.export_cancel(&g.grid)
+			export.cancel(&g.export)
 		}
 	}
 	if g.naming {
@@ -795,7 +799,7 @@ columns_menu :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
 	}
 	m := action_menu_open(gtx, &g.columns_open, ui.last_widget(gtx), align = .End, key = 13)
 	if action_menu_item(&m, "Download CSV", leading = .Download) {
-		datagrid.export_start(&g.grid, g.cols, g.rows)
+		export.start(&g.export, gtx, &g.grid, g.cols, g.rows)
 	}
 	if action_menu_item(&m, "Copy CSV", leading = .Copy) {
 		copy_csv(gtx, g)
@@ -858,14 +862,15 @@ DENSITY_NAMES :: [datagrid.Density]string {
 // are not in hand: its CSV is downloaded, streamed by pages.
 @(private)
 copy_csv :: proc(gtx: ^ui.Ctx, g: ^Data_Grid) {
-	if !datagrid.export_all(&g.grid, g.cols, g.rows) {
+	x: export.Export
+	defer export.destroy(&x)
+	if !export.write_all(&x, gtx, &g.grid, g.cols, g.rows) {
 		set_notice(g, "A paged table's CSV streams: Download CSV, then copy it")
 		return
 	}
-	ui.clipboard_write(gtx, strings.to_string(g.grid.export.text))
-	w, _ := datagrid.export_progress(&g.grid)
+	ui.clipboard_write(gtx, export.text(&x))
+	w, _ := export.progress(&x)
 	set_notice(g, fmt.tprintf("Copied %d rows as CSV", w))
-	datagrid.export_cancel(&g.grid)
 }
 
 // view_index is the saved view named name, -1 for none.

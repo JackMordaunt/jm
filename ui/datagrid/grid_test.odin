@@ -365,35 +365,6 @@ test_copy_puts_cells_rows_or_a_range_on_the_clipboard_as_tsv :: proc(t: ^testing
 	testing.expect(t, saw(m, proc(e: Events) -> bool {return e.copied == 8}))
 }
 
-@(test)
-test_an_export_writes_the_view_as_csv :: proc(t: ^testing.T) {
-	m := rigs_make(90_000)
-	defer rigs_free(m)
-	view_set_values(&m.g.view, 2, {"Norway"})
-	m.g.view.cols[1].hidden = true
-	p: ui.Probe
-	open(&p, m)
-	defer ui.probe_destroy(&p)
-	export_start(&m.g, RIG_COLS, &m.table)
-	ui.probe_frame(&p)
-	w, total := export_progress(&m.g)
-	testing.expect_value(t, w, EXPORT_CHUNK)
-	testing.expect_value(t, total, 30_000)
-	ui.probe_frame(&p)
-	testing.expect(t, m.g.export.done)
-	testing.expect(t, saw(m, proc(e: Events) -> bool {return e.exported}))
-	text := strings.to_string(m.g.export.text)
-	testing.expect(
-		t,
-		strings.has_prefix(
-			text,
-			"Serial,Site,Hash\r\nSN-00000,Norway,0\r\nSN-00003,Norway,11\r\n",
-		),
-		text[:60],
-	)
-	testing.expect_value(t, strings.count(text, "\r\n"), 30_001)
-}
-
 // A steady frame allocates nothing: no heap, no temp, with a hundred
 // thousand rows, a sort and a filter in place. The spies stand in for
 // both allocators from the start, so an allocator a part kept from
@@ -490,23 +461,12 @@ test_a_loading_source_shows_skeletons_after_its_rows :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_export_all_writes_the_view_at_once_and_reset_puts_columns_back :: proc(t: ^testing.T) {
-	m := rigs_make(50_000)
+test_reset_puts_columns_back_and_keeps_filters :: proc(t: ^testing.T) {
+	m := rigs_make(50)
 	defer rigs_free(m)
 	view_set_values(&m.g.view, 2, {"Paraguay"})
 	m.g.view.cols[1].hidden = true
 	move_column(m.g.view.order[:], 3, 0)
-	p: ui.Probe
-	open(&p, m)
-	defer ui.probe_destroy(&p)
-	testing.expect(t, export_all(&m.g, RIG_COLS, &m.table))
-	text := strings.to_string(m.g.export.text)
-	testing.expect(
-		t,
-		strings.has_prefix(text, "Hash,Serial,Site\r\n37,SN-00001,Paraguay\r\n"),
-		text[:50],
-	)
-	testing.expect_value(t, strings.count(text, "\r\n"), 16_668) // the titles and a third of the rows
 	view_reset_columns(&m.g.view, RIG_COLS)
 	testing.expect(t, !m.g.view.cols[1].hidden)
 	testing.expect_value(t, m.g.view.order[0], 0)

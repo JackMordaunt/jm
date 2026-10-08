@@ -363,6 +363,16 @@ mid_visible :: proc(p: ^Placement, x, view: f32) -> (lo, hi: int) {
 	return
 }
 
+// shown_columns is the visible columns as the grid last laid them out, in
+// navigation order: pinned left, the scrolling middle, pinned right.
+shown_columns :: proc(g: ^Grid, allocator := context.temp_allocator) -> []int {
+	out := make([]int, len(g.place.places), allocator)
+	for pl, i in g.place.places {
+		out[i] = pl.col
+	}
+	return out
+}
+
 // place_of is where column col sits in p, -1 when it is not visible.
 place_of :: proc(p: ^Placement, col: int) -> int {
 	for pl, i in p.places {
