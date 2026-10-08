@@ -404,12 +404,18 @@ step :: proc(l: ^Loop) {
 	l.time += f64(dt)
 
 	w := &l.w
+	// The shapes the application answered since the last frame: taken
+	// here, so a recording has them and its replay needs no application.
+	shapes: []ui.Delivery
+	if l.app.data.inbox != nil {
+		shapes = ui.inbox_take(l.app.data.inbox, allocator)
+	}
 	if l.rec.f != nil {
 		// The frame's input as the hot-reload host would have sent it.
 		logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 		ui.recorder_write(
 			&l.rec,
-			ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator),
+			ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator, shapes = shapes),
 		)
 	}
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
@@ -418,9 +424,8 @@ step :: proc(l: ^Loop) {
 	l.scene.outline_areas = .Bounds in debug
 	ui.frame_reset(frame)
 	ui.layout_reset(&l.layout)
-	if l.app.data.inbox != nil {
-		// The shapes the application answered since the last frame.
-		ui.inbox_drain(l.app.data.inbox, &l.layout)
+	for shape in shapes {
+		ui.deliver(&l.layout, shape.key, shape.data, shape.status)
 	}
 
 	logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}

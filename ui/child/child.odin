@@ -115,7 +115,6 @@ run :: proc(app: App) {
 		if !ok {
 			return // the host closed the pipe: exit clean
 		}
-		ui.recorder_write(&rec, payload)
 		shapes: []ui.Delivery
 		size, density, raw_dt, events, host, restore, dok := ui.decode_input(
 			payload,
@@ -129,6 +128,20 @@ run :: proc(app: App) {
 				fmt.eprintfln("ui/child: the host sends input version %d, this child reads %d: rebuild the host", v, ui.INPUT_VERSION)
 			}
 			return // a corrupt request; nothing salvageable
+		}
+		// With the application here, its answers since the last frame
+		// join the host's, so a recording has them all.
+		local_shapes: []ui.Delivery
+		if app.data.inbox != nil {
+			local_shapes = ui.inbox_take(app.data.inbox, allocator)
+		}
+		if len(local_shapes) == 0 {
+			ui.recorder_write(&rec, payload)
+		} else if rec.f != nil {
+			all := make([]ui.Delivery, len(shapes) + len(local_shapes), allocator)
+			copy(all, shapes)
+			copy(all[len(shapes):], local_shapes)
+			ui.recorder_write(&rec, ui.encode_input(size, density, raw_dt, events, allocator, host, restore, all))
 		}
 
 		for e in events {
@@ -149,8 +162,8 @@ run :: proc(app: App) {
 		for d in shapes {
 			ui.deliver(&layout, d.key, d.data, d.status)
 		}
-		if app.data.inbox != nil {
-			ui.inbox_drain(app.data.inbox, &layout)
+		for shape in local_shapes {
+			ui.deliver(&layout, shape.key, shape.data, shape.status)
 		}
 
 		gtx := ui.Ctx {

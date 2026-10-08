@@ -56,6 +56,7 @@ Probe :: struct {
 	subs:        Subscriptions, // the host's view of the frame's needs; see probe_added
 	inbox:       Inbox, // shapes on their way to the next frame; see probe_deliver
 	data:        ^Data_Host, // an application answering the needs itself, as a live loop's
+	replaying:   bool, // a recorded frame is running: its input carries the platform's answers and the application's shapes, so the probe gives neither (probe_replay_step)
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -138,7 +139,7 @@ probe_frame :: proc(p: ^Probe) {
 	router_needs_clear(&p.router)
 	router_commands_clear(&p.router)
 	inbox_drain(&p.inbox, &p.layout)
-	if p.data != nil && p.data.inbox != nil {
+	if p.data != nil && p.data.inbox != nil && !p.replaying {
 		inbox_drain(p.data.inbox, &p.layout)
 	}
 	dt := debug_dt(debug, p.dt)
@@ -183,7 +184,7 @@ probe_frame :: proc(p: ^Probe) {
 	p.frame_no += 1
 	probe_platform(p)
 	added, dropped := subscriptions_update(&p.subs, router_needs(&p.router))
-	if p.data != nil {
+	if p.data != nil && !p.replaying {
 		data_dispatch(p.data, added, dropped, router_commands(&p.router))
 	}
 }
@@ -200,6 +201,9 @@ probe_platform :: proc(p: ^Probe) {
 			clear(&p.clipboard)
 			append(&p.clipboard, v.data)
 		case Clipboard_Read:
+			if p.replaying {
+				break // the recording has the Paste the platform answered with
+			}
 			router_push(&p.router, {kind = .Paste, text = string(p.clipboard[:]), mime = v.mime})
 		case Open_Url:
 			clear(&p.opened)

@@ -13,40 +13,8 @@ import "jm:ui/ops"
 // a missing clip prints as clip=none.
 dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	sb := strings.builder_make(allocator)
-	strings.write_string(&sb, "draws\n")
-	for d, i in f.draws {
-		fmt.sbprintf(&sb, "  draw %d clip=", i)
-		write_clip_id(&sb, d.clip)
-		strings.write_string(&sb, " [")
-		ops.write_affine(&sb, d.transform)
-		strings.write_string(&sb, "] ")
-		switch v in d.cmd {
-		case ops.Fill:
-			ops.write_draw(&sb, f.scene, v)
-		case ops.Stroke:
-			ops.write_draw(&sb, f.scene, v)
-		case ops.Glyphs:
-			ops.write_draw(&sb, f.scene, v)
-		case ops.Image:
-			ops.write_draw(&sb, f.scene, v)
-		case ops.Shadow:
-			ops.write_draw(&sb, f.scene, v)
-		}
-		if d.fade != 0 {
-			fmt.sbprintf(&sb, " fade=%v", d.fade)
-		}
-		strings.write_byte(&sb, '\n')
-	}
-	strings.write_string(&sb, "clips\n")
-	for c, i in f.clips {
-		fmt.sbprintf(&sb, "  clip %d parent=", i)
-		write_clip_id(&sb, c.parent)
-		strings.write_string(&sb, " [")
-		ops.write_affine(&sb, c.transform)
-		strings.write_string(&sb, "] ")
-		ops.write_shape(&sb, c.shape)
-		strings.write_byte(&sb, '\n')
-	}
+	write_frame_draws(&sb, f)
+	write_frame_clips(&sb, f)
 	strings.write_string(&sb, "hits\n")
 	for h, i in f.hits {
 		fmt.sbprintf(&sb, "  hit %d area=%d order=%d clip=", i, h.area, h.order)
@@ -99,6 +67,49 @@ dump_frame :: proc(f: ^Frame, allocator := context.allocator) -> string {
 	return strings.to_string(sb)
 }
 
+
+// write_frame_draws writes dump_frame's draws section: what frame paints,
+// in order. frame_digest hashes it too.
+write_frame_draws :: proc(sb: ^strings.Builder, frame: ^Frame) {
+	strings.write_string(sb, "draws\n")
+	for draw, ii in frame.draws {
+		fmt.sbprintf(sb, "  draw %d clip=", ii)
+		write_clip_id(sb, draw.clip)
+		strings.write_string(sb, " [")
+		ops.write_affine(sb, draw.transform)
+		strings.write_string(sb, "] ")
+		switch cmd in draw.cmd {
+		case ops.Fill:
+			ops.write_draw(sb, frame.scene, cmd)
+		case ops.Stroke:
+			ops.write_draw(sb, frame.scene, cmd)
+		case ops.Glyphs:
+			ops.write_draw(sb, frame.scene, cmd)
+		case ops.Image:
+			ops.write_draw(sb, frame.scene, cmd)
+		case ops.Shadow:
+			ops.write_draw(sb, frame.scene, cmd)
+		}
+		if draw.fade != 0 {
+			fmt.sbprintf(sb, " fade=%v", draw.fade)
+		}
+		strings.write_byte(sb, '\n')
+	}
+}
+
+// write_frame_clips writes dump_frame's clips section.
+write_frame_clips :: proc(sb: ^strings.Builder, frame: ^Frame) {
+	strings.write_string(sb, "clips\n")
+	for clip, ii in frame.clips {
+		fmt.sbprintf(sb, "  clip %d parent=", ii)
+		write_clip_id(sb, clip.parent)
+		strings.write_string(sb, " [")
+		ops.write_affine(sb, clip.transform)
+		strings.write_string(sb, "] ")
+		ops.write_shape(sb, clip.shape)
+		strings.write_byte(sb, '\n')
+	}
+}
 
 // write_draw prints the four drawing sc, shared by dump and dump_frame.
 // sc may be nil or lack the run a Glyphs names; the run fields then print ?.
