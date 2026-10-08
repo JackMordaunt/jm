@@ -18,6 +18,16 @@ Text_State :: struct {
 	anchor:  int,
 	drag:    Text_Drag, // the pointer gesture in progress, see text_follow_pointer
 	history: Text_History,
+	compose: Text_Compose,
+}
+
+// Text_Compose is an input method's preedit: the text it is composing at
+// the caret, not yet committed, with its own caret or selection lo to hi
+// (byte offsets into text). It is never in buf, so neither the undo
+// history nor the caller's text sees it; text_display shows it.
+Text_Compose :: struct {
+	text:   [dynamic]u8,
+	lo, hi: int,
 }
 
 // Text_Drag is a press-and-drag on text: what unit a double or triple
@@ -42,6 +52,7 @@ text_string :: proc(s: ^Text_State) -> string {
 // selecting nothing. It clears the undo history: text the program puts in
 // is not the user's edit to undo.
 text_set :: proc(s: ^Text_State, str: string) {
+	clear(&s.compose.text)
 	clear(&s.buf)
 	append(&s.buf, str)
 	s.cursor = len(s.buf)
@@ -49,11 +60,58 @@ text_set :: proc(s: ^Text_State, str: string) {
 	history_clear(s)
 }
 
-// text_destroy frees the buffer and the history.
+// text_destroy frees the buffer, the preedit and the history.
 text_destroy :: proc(s: ^Text_State) {
 	delete(s.buf)
+	delete(s.compose.text)
 	history_destroy(&s.history)
 	s^ = {}
+}
+
+// text_composing reports whether an input method is composing in s.
+text_composing :: proc(s: ^Text_State) -> bool {
+	return len(s.compose.text) > 0
+}
+
+// text_compose_end drops the preedit: what a field does on Blur, since
+// the platform drops the composition as focus leaves.
+text_compose_end :: proc(s: ^Text_State) {
+	clear(&s.compose.text)
+}
+
+// Text_Display is a Text_State's text as a field shows it: while an input
+// method composes, its preedit spliced in over the selection at pre_lo to
+// pre_hi, the part it has selected (the clause it converts) at target_lo
+// to target_hi, and the caret where it puts it; else the buffer, an empty
+// preedit and target at the caret, and the caret. Offsets are bytes of
+// text.
+Text_Display :: struct {
+	text:                 string,
+	pre_lo, pre_hi:       int,
+	target_lo, target_hi: int,
+	caret:                int,
+}
+
+// text_display is s as shown (Text_Display). Its text is in allocator only
+// while composing; else it views the buffer, valid until the next edit.
+text_display :: proc(s: ^Text_State, allocator := context.temp_allocator) -> Text_Display {
+	if !text_composing(s) {
+		return {string(s.buf[:]), s.cursor, s.cursor, s.cursor, s.cursor, s.cursor}
+	}
+	lo, hi := text_selection(s)
+	pre := s.compose.text[:]
+	out := make([]u8, len(s.buf) - (hi - lo) + len(pre), allocator)
+	n := copy(out, s.buf[:lo])
+	n += copy(out[n:], pre)
+	copy(out[n:], s.buf[hi:])
+	return {
+		text = string(out),
+		pre_lo = lo,
+		pre_hi = lo + len(pre),
+		target_lo = lo + s.compose.lo,
+		target_hi = lo + s.compose.hi,
+		caret = lo + s.compose.lo,
+	}
 }
 
 // text_selection is the selected byte range, lo <= hi; empty when the
@@ -152,7 +210,9 @@ text_stops :: proc(gtx: ^Ctx, s: ^Text_State, font: ops.Font_Id, size: f32) -> T
 }
 
 // text_edit applies e to s and reports whether the text changed. It
-// takes Text and Paste (replacing the selection), and editing keys with
+// takes Text and Paste (replacing the selection), Compose (an input
+// method's preedit, kept in s.compose; keys are ignored while it lasts),
+// and editing keys with
 // the platform's modifiers (SHORTCUT, WORD_MOD, Shift):
 //
 //	Left, Right             a grapheme; with a selection, collapse to its side
@@ -180,7 +240,17 @@ text_stops :: proc(gtx: ^Ctx, s: ^Text_State, font: ops.Font_Id, size: f32) -> T
 text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: Text_Stops, read_only := false, secret := false) -> bool {
 	text_clamp(s)
 	#partial switch e.kind {
+	case .Compose:
+		clear(&s.compose.text)
+		if !read_only && !secret {
+			append(&s.compose.text, e.text)
+			s.compose.lo = clamp(e.span[0], 0, len(e.text))
+			s.compose.hi = clamp(e.span[1], s.compose.lo, len(e.text))
+		}
+		return false
 	case .Text:
+		// A commit ends the composition, whichever of the two arrives first.
+		clear(&s.compose.text)
 		if read_only {
 			return false
 		}
@@ -193,6 +263,10 @@ text_edit :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: T
 		replace_as(s, e.text, .Other, gtx.time, secret)
 		return true
 	case .Key:
+		// The input method owns the keys while it composes.
+		if text_composing(s) {
+			return false
+		}
 		return edit_key(gtx, s, id, e.key, e.mods, stops, read_only, secret)
 	}
 	return false
@@ -319,7 +393,7 @@ edit_key :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, k: Key, mods: Mods,
 // moves do. Every other event is text_edit's. p must be s's text as it is
 // before e; lay it out again after a change.
 text_edit_lines :: proc(gtx: ^Ctx, s: ^Text_State, id: ops.Area_Id, e: Event, stops: Text_Stops, p: Paragraph, read_only := false) -> bool {
-	if e.kind != .Key || len(p.lines) == 0 {
+	if e.kind != .Key || len(p.lines) == 0 || text_composing(s) {
 		return text_edit(gtx, s, id, e, stops, read_only)
 	}
 	text_clamp(s)

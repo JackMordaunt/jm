@@ -21,9 +21,10 @@ Event :: struct {
 	scroll: [2]f32,
 	key:    Key, // Focus: the key that moved focus (Tab, an arrow), None for a press or request
 	mods:   Mods,
-	text:   string, // Text: the inserted UTF-8; Paste: the clipboard's bytes
+	text:   string, // Text: the inserted UTF-8; Paste: the clipboard's bytes; Compose: the preedit
 	mime:   string, // Paste: the type of text
 	clicks: u8, // Press: 1 for a single click, 2 for a double, 3 a triple, as the OS counts them
+	span:   [2]int, // Compose: the input method's caret (equal ends) or selection in text, byte offsets
 }
 
 // Raw_Event is what a platform (ui/shell, the probe) feeds the router: the
@@ -42,6 +43,7 @@ Raw_Event :: struct {
 	text:   string,
 	mime:   string,
 	clicks: u8,
+	span:   [2]int,
 }
 
 // SHORTCUT is the platform's command modifier, Cmd on macOS and Ctrl

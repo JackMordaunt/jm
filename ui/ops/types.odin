@@ -147,6 +147,11 @@ Event_Kind :: enum u8 {
 	// so a press inside a parent popup closes only the children above it.
 	// The press itself is routed as usual. See ops.outside_area.
 	Outside,
+	// Compose is the focused text area's preedit: what an input method is
+	// composing and has not committed, in text, with its caret or selection
+	// in span. An empty text ends the composition; the commit, if any,
+	// comes as a Text. It goes to an area that asks for Text.
+	Compose,
 }
 
 // Cursor is the pointer's look over an input area. An area that sets none

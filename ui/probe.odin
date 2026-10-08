@@ -45,6 +45,8 @@ Probe :: struct {
 	allocator:   mem.Allocator,
 	clipboard:   [dynamic]u8, // the fake system clipboard frames write and read
 	opened:      [dynamic]u8, // the last URL a frame asked to open
+	text_input:  Text_Input, // the last Text_Input a frame asked for
+	text_inputs: int, // how many Text_Inputs frames have asked for
 	persisted:   [dynamic]u8, // what the last frame that called persist asked to keep: the host's copy, in a live loop
 	persists:    int, // frames that called persist
 	restore:     [dynamic]u8, // probe_restore's bytes, given to the next frame as restored
@@ -168,6 +170,7 @@ probe_frame :: proc(p: ^Probe) {
 	p.wants_frame, p.frame_after = gtx.wants_frame, gtx.frame_after
 	build_start := time.tick_now()
 	flatten(&p.scene, &p.frame, {0, 0, p.size.x, p.size.y})
+	text_input_update(&p.router, &p.frame)
 	debug_tray_record(&p.tray, frame_stats(&gtx, &p.frame, ui_ms, ms(build_start), ops.frame_arena_used(&p.arena)))
 	p.frame, p.prev = p.prev, p.frame
 	p.frame_no += 1
@@ -180,7 +183,8 @@ probe_frame :: proc(p: ^Probe) {
 
 // probe_platform carries out the frame's requests as a host would, on
 // the probe's fake clipboard: a write replaces it, a read answers with a
-// Paste for the next frame. An opened URL is kept for probe_opened_url.
+// Paste for the next frame. An opened URL is kept for probe_opened_url,
+// a Text_Input in p.text_input.
 @(private = "file")
 probe_platform :: proc(p: ^Probe) {
 	for q in router_requests(&p.router) {
@@ -193,6 +197,9 @@ probe_platform :: proc(p: ^Probe) {
 		case Open_Url:
 			clear(&p.opened)
 			append(&p.opened, v.url)
+		case Text_Input:
+			p.text_input = v
+			p.text_inputs += 1
 		}
 	}
 	router_requests_clear(&p.router)
@@ -444,6 +451,16 @@ probe_drag :: proc(p: ^Probe, name: string, dx, dy: f32, steps := 4, button: But
 probe_type :: proc(p: ^Probe, text: string) {
 	assert(utf8.valid_string(text), "probe_type: text is not UTF-8")
 	router_push(&p.router, {kind = .Text, text = text})
+	probe_frame(p)
+}
+
+// probe_compose sends an input method's preedit text, its caret or
+// selection lo to hi in bytes, to the focused area and runs a frame; ""
+// ends the composition. A commit is a probe_type.
+probe_compose :: proc(p: ^Probe, text: string, lo := -1, hi := -1) {
+	assert(utf8.valid_string(text), "probe_compose: text is not UTF-8")
+	at := lo if lo >= 0 else len(text)
+	router_push(&p.router, {kind = .Compose, text = text, span = {at, hi if hi >= at else at}})
 	probe_frame(p)
 }
 

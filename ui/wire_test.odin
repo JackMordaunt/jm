@@ -20,6 +20,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Text, text = "héllo\nworld"},
 		{kind = .Paste, text = "pasted", mime = TEXT_MIME},
 		{kind = .Focus, area = 77},
+		{kind = .Compose, text = "かな", span = {3, 6}},
 	}
 	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
 	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
@@ -145,7 +146,9 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	p.requests_buf[0] = Clipboard_Write{TEXT_MIME, "copied"}
 	p.requests_buf[1] = Clipboard_Read{TEXT_MIME}
 	p.requests_buf[2] = Open_Url{"https://example.com/a?b=c"}
-	p.requests_n = 3
+	ime := Text_Input{active = true, area = 9, rect = {10, 20, 300, 40}, caret = 12.5, kind = .Email}
+	p.requests_buf[3] = ime
+	p.requests_n = 4
 	sc_bytes := []byte{1, 2, 3}
 	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, platform = &p)
 	got: Reply_Platform
@@ -155,11 +158,12 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	testing.expect(t, got.changed)
 	testing.expect_value(t, got.cursor, ops.Cursor.Text)
 	reqs := reply_requests(&got)
-	testing.expect_value(t, len(reqs), 3)
-	if len(reqs) == 3 {
+	testing.expect_value(t, len(reqs), 4)
+	if len(reqs) == 4 {
 		testing.expect_value(t, reqs[0].(Clipboard_Write).data, "copied")
 		testing.expect_value(t, reqs[1].(Clipboard_Read).mime, TEXT_MIME)
 		testing.expect_value(t, reqs[2].(Open_Url).url, "https://example.com/a?b=c")
+		testing.expect_value(t, reqs[3].(Text_Input), ime)
 	}
 
 	// A reply with nothing for the platform is the old layout, byte for byte.

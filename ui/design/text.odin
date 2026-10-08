@@ -112,6 +112,27 @@ draw_paragraph :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, color: ops
 	}
 }
 
+// draw_preedit underlines an input method's preedit in p, drawn with its
+// top-left at pos, where d (ui.text_display, whose text p is) placed it:
+// a 1dp line under the preedit and a 2dp line under the clause the input
+// method has selected. Nothing when no input method is composing.
+draw_preedit :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, d: ui.Text_Display, color: ops.Color) {
+	underline_range(gtx, p, pos, d.pre_lo, d.pre_hi, 1, color)
+	underline_range(gtx, p, pos, d.target_lo, d.target_hi, 2, color)
+}
+
+// underline_range draws a line thick high along the bottom of each line
+// box bytes lo to hi of p cover.
+@(private = "file")
+underline_range :: proc(gtx: ^ui.Ctx, p: ui.Paragraph, pos: ops.Point, lo, hi: int, thick: f32, color: ops.Color) {
+	if lo >= hi {
+		return
+	}
+	for r in ui.paragraph_selection_rects(p, lo, hi, gtx.allocator) {
+		ops.fill(gtx.scene, ops.Rect{pos.x + r.x, pos.y + r.y + r.h - thick, r.w, thick}, color)
+	}
+}
+
 // thousands writes n with a comma every three digits, in the one locale
 // jm:ui has: a count a design system shows (Fluent's rating count,
 // Primer's row and value counts).

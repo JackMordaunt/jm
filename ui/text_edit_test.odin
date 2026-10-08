@@ -319,3 +319,89 @@ test_text_scroll_moves_only_as_far_as_the_caret_needs :: proc(t: ^testing.T) {
 	testing.expect_value(t, text_scroll(250, 300, 290, 1, 100), 200) // never past the content
 	testing.expect_value(t, text_scroll(40, 60, 10, 1, 100), 0) // content shorter than the view
 }
+
+@(test)
+test_a_preedit_shows_at_the_caret_and_commits_as_one_edit :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("ab", 1)
+	defer text_destroy(&s)
+
+	testing.expect(t, !text_edit(&g.gtx, &s, 1, Event{kind = .Compose, text = "にほ", span = {6, 6}}, {}))
+	testing.expect_value(t, text_string(&s), "ab")
+	testing.expect(t, !text_can_undo(&s))
+	shown := text_display(&s)
+	testing.expect_value(t, shown.text, "aにほb")
+	testing.expect_value(t, shown.pre_lo, 1)
+	testing.expect_value(t, shown.pre_hi, 7)
+	testing.expect_value(t, shown.caret, 7)
+
+	testing.expect(t, text_edit(&g.gtx, &s, 1, Event{kind = .Text, text = "日本"}, {}))
+	testing.expect(t, !text_composing(&s))
+	testing.expect_value(t, text_string(&s), "a日本b")
+	testing.expect_value(t, text_display(&s).text, "a日本b")
+	testing.expect(t, text_undo(&s))
+	testing.expect_value(t, text_string(&s), "ab")
+}
+
+@(test)
+test_a_preedit_replaces_the_selection_only_on_show :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("abc", 0)
+	defer text_destroy(&s)
+	text_select(&s, 0, 2)
+
+	text_edit(&g.gtx, &s, 1, Event{kind = .Compose, text = "zy", span = {0, 1}}, {})
+	shown := text_display(&s)
+	testing.expect_value(t, shown.text, "zyc")
+	testing.expect_value(t, shown.target_lo, 0)
+	testing.expect_value(t, shown.target_hi, 1)
+	testing.expect_value(t, shown.caret, 0)
+	testing.expect_value(t, text_string(&s), "abc")
+
+	// An empty preedit cancels: the selection is back as it was.
+	text_edit(&g.gtx, &s, 1, Event{kind = .Compose}, {})
+	testing.expect_value(t, text_display(&s).text, "abc")
+	testing.expect_value(t, text_selected(&s), "ab")
+}
+
+@(test)
+test_keys_belong_to_the_input_method_while_it_composes :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("ab", 2)
+	defer text_destroy(&s)
+
+	text_edit(&g.gtx, &s, 1, Event{kind = .Compose, text = "k", span = {1, 1}}, {})
+	testing.expect(t, !press(&g.gtx, &s, .Backspace))
+	testing.expect(t, !press(&g.gtx, &s, .Left))
+	testing.expect_value(t, text_string(&s), "ab")
+	testing.expect_value(t, s.cursor, 2)
+
+	text_compose_end(&s)
+	testing.expect(t, press(&g.gtx, &s, .Backspace))
+	testing.expect_value(t, text_string(&s), "a")
+}
+
+@(test)
+test_a_secret_or_read_only_field_keeps_no_preedit :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g)
+	defer rig_destroy(&g)
+	s := state("ab", 2)
+	defer text_destroy(&s)
+
+	compose := Event{kind = .Compose, text = "k"}
+	text_edit(&g.gtx, &s, 1, compose, {})
+	testing.expect(t, text_composing(&s))
+	text_edit(&g.gtx, &s, 1, compose, {}, secret = true)
+	testing.expect(t, !text_composing(&s))
+	text_edit(&g.gtx, &s, 1, compose, {})
+	testing.expect(t, text_composing(&s))
+	text_edit(&g.gtx, &s, 1, compose, {}, read_only = true)
+	testing.expect(t, !text_composing(&s))
+}

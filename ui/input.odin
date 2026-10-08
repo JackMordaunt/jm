@@ -50,7 +50,8 @@ import "jm:ui/ops"
 //   focus among the members of the focused area's nearest roving scope,
 //   after the focused area has heard the key, unless that area shows the
 //   text cursor (a field to edit) or holds a Key_Interest for the key.
-// - Key and Text go to the focused area, else they are dropped. A Key
+// - Key and Text go to the focused area, else they are dropped; so does
+//   Compose, when the focused area wants Text. A Key
 //   also goes to every area with a Key_Interest it matches (ui.key_interest),
 //   focused or not, once per area, after the focused area has had it: a
 //   dialog's Escape, an app's shortcuts. A focused area's claiming
@@ -136,6 +137,8 @@ Router :: struct {
 	press_seen:  bool, // the last route routed a Press
 	keyboard:    bool, // a Key came after the last Press: focus is visible
 	observed:    [dynamic]Hit, // the observers the pointer is over, each sent its Enter
+	caret_ask:   Caret_Ask, // the focused area's text_caret this frame
+	ime_sent:    Text_Input, // the last Text_Input queued; zero, off, until one is
 }
 
 // Scope_Memory is what the router keeps of a focus scope between routes:
@@ -284,6 +287,14 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 					route_rove(r, f, e.key)
 				}
 			} else if !focused {
+				free_strings(r, e)
+			}
+		case .Compose:
+			// To the focused area that takes Text: no area asks for
+			// Compose by name. Else no one is composing, and it is dropped.
+			if r.focus != 0 && .Text in r.focus_hit.kinds {
+				append(&r.events, Event{kind = .Compose, area = r.focus, text = e.text, span = e.span})
+			} else {
 				free_strings(r, e)
 			}
 		case .Paste:
@@ -541,7 +552,7 @@ to_local :: proc(h: Hit, p: ops.Point) -> ops.Point {
 // refresh replaces last with area's hit in f when f still has it, and
 // reports whether it did; the top-most one wins when an id is recorded
 // twice.
-@(private = "file")
+@(private)
 refresh :: proc(f: ^Frame, area: ops.Area_Id, last: ^Hit) -> bool {
 	if f == nil || area == 0 {
 		return false
@@ -574,6 +585,7 @@ deliver :: proc(r: ^Router, h: Hit, e: Raw_Event, pos: ops.Point) -> bool {
 			text = e.text,
 			mime = e.mime,
 			clicks = e.clicks,
+			span = e.span,
 		},
 	)
 	return true
@@ -1194,7 +1206,7 @@ release_text :: proc(r: ^Router) {
 // copied and must free.
 @(private = "file")
 owns_strings :: proc(kind: ops.Event_Kind) -> bool {
-	return kind == .Text || kind == .Paste
+	return kind == .Text || kind == .Paste || kind == .Compose
 }
 
 // free_strings frees a queued event's copied strings.

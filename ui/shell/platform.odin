@@ -7,7 +7,7 @@ import "jm:ui/ops"
 import "vendor:sdl3"
 
 // What a frame asks of the platform beyond pixels (ui/request.odin): the
-// pointer's cursor, the clipboard and URLs to open. A single-process App takes both
+// pointer's cursor, the clipboard, URLs to open and the input method. A single-process App takes both
 // from its own Router; a host takes them from the child's Reply. Either
 // way they come here once the frame is done.
 
@@ -44,8 +44,57 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 			if !sdl3.OpenURL(strings.clone_to_cstring(v.url, context.temp_allocator)) {
 				log.warnf("ui/shell: cannot open %q: %s", v.url, sdl3.GetError())
 			}
+		case ui.Text_Input:
+			apply_text_input(w, v)
 		}
 	}
+}
+
+// apply_text_input turns the input method on for the area v names, at its
+// caret, or off. A composition in progress is dropped as focus leaves its
+// area, as the field drops its preedit on Blur. SDL_SetTextInputArea takes
+// window coordinates (SDL_keyboard.h), so v's device pixels are divided by
+// the density.
+@(private)
+apply_text_input :: proc(w: ^Window, v: ui.Text_Input) {
+	was := w.ime
+	w.ime = v
+	if w.composing && (!v.active || v.area != was.area) {
+		_ = sdl3.ClearComposition(w.window)
+		w.composing = false
+	}
+	if !v.active {
+		_ = sdl3.StopTextInput(w.window)
+		return
+	}
+	if !was.active || v.kind != was.kind {
+		// The kind is a property SDL_StartTextInputWithProperties takes
+		// (SDL_keyboard.h), so a new one starts text input again.
+		_ = sdl3.StopTextInput(w.window)
+		props := sdl3.CreateProperties()
+		_ = sdl3.SetNumberProperty(props, sdl3.PROP_TEXTINPUT_TYPE_NUMBER, i64(input_type(v.kind)))
+		_ = sdl3.StartTextInputWithProperties(w.window, props)
+		sdl3.DestroyProperties(props)
+	}
+	density := w.density if w.density > 0 else 1
+	rect := sdl3.Rect{i32(v.rect.x / density), i32(v.rect.y / density), i32(v.rect.w / density), i32(v.rect.h / density)}
+	_ = sdl3.SetTextInputArea(w.window, &rect, i32(v.caret / density))
+}
+
+// input_type is SDL's SDL_TextInputType for a kind of text.
+@(private)
+input_type :: proc(kind: ui.Text_Input_Kind) -> sdl3.TextInputType {
+	switch kind {
+	case .Text, .Url:
+		return .TEXT
+	case .Number:
+		return .NUMBER
+	case .Email:
+		return .TEXT_EMAIL
+	case .Password:
+		return .TEXT_PASSWORD_HIDDEN
+	}
+	return .TEXT
 }
 
 // show_cursor sets the system cursor for c, making each SDL cursor once.

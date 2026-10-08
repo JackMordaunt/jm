@@ -155,6 +155,8 @@ Window :: struct {
 	cursor_shown: ops.Cursor,
 	cursor_set:   bool, // cursor_shown has been applied
 	a11y:         ^Bridge, // the loop's bridge to assistive technology, for window events; nil without one
+	ime:          ui.Text_Input, // what the input method was last set to; off until a text area takes focus
+	composing:    bool, // the input method holds a preedit: it owns the keys
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -273,9 +275,15 @@ Loop :: struct {
 // scroll events the system sends; SDL drops those unless asked, so a
 // scroll stopped dead where the fingers left (SDL_HINT_MAC_SCROLL_MOMENTUM,
 // "0" by default). Elsewhere the hint does nothing.
+//
+// An input method's composition is drawn by the field it is for, inline
+// and underlined (ui.text_display), so SDL is told the app renders it:
+// "composition" in SDL_HINT_IME_IMPLEMENTED_UI (SDL_hints.h), which leaves
+// the candidate list out of the app's hands.
 @(private)
 set_hints :: proc() {
 	sdl3.SetHint(sdl3.HINT_MAC_SCROLL_MOMENTUM, "1")
+	sdl3.SetHint(sdl3.HINT_IME_IMPLEMENTED_UI, "composition")
 }
 
 // run opens the window and loops until it is closed, Escape is pressed, or
@@ -465,6 +473,7 @@ step :: proc(l: ^Loop) {
 		ops.scale(w.density, w.density),
 	)
 	build_ms := ui.ms(build_start)
+	ui.text_input_update(&l.router, frame)
 	present_start := time.tick_now()
 	host: ui.Host_Stats
 	keep_out: [2]ops.Rect
@@ -584,7 +593,9 @@ open :: proc(w: ^Window, app: App) -> bool {
 	sdl3.SetRenderVSync(w.renderer, 1)
 	bl.image_init(&w.pixels)
 	bl.image_init(&w.view)
-	_ = sdl3.StartTextInput(w.window)
+	// Text input is off, as SDL starts a window ("Text input events are not
+	// received by default", SDL_keyboard.h), until a text area takes focus
+	// (apply_text_input).
 	return resize(w)
 }
 
@@ -978,6 +989,12 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				},
 			)
 		case .KEY_DOWN:
+			// While an input method composes, no key reaches the ui: a
+			// Backspace or Escape there edits or cancels the composition,
+			// never the field or the window.
+			if w.composing {
+				continue
+			}
 			k := key(e.key.key)
 			if k == .Escape {
 				return false
@@ -986,11 +1003,45 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod)})
 			}
 		case .TEXT_INPUT:
+			w.composing = false
 			text := strings.clone_from_cstring(e.text.text, allocator)
 			sink(user, {kind = .Text, text = text, mods = mods(sdl3.GetModState())})
+		case .TEXT_EDITING:
+			text := strings.clone_from_cstring(e.edit.text, allocator)
+			w.composing = len(text) > 0
+			sink(user, {kind = .Compose, text = text, span = compose_span(text, e.edit.start, e.edit.length)})
 		}
 	}
 	return true
+}
+
+// compose_span is an input method's caret or selection, start and length
+// in characters as SDL gives them (SDL_TextEditingEvent; -1 when unset),
+// as byte offsets lo, hi into text; unset is the end of text.
+@(private)
+compose_span :: proc(text: string, start, length: i32) -> [2]int {
+	if start < 0 {
+		return {len(text), len(text)}
+	}
+	lo := byte_of_rune(text, int(start))
+	hi := lo
+	if length > 0 {
+		hi = lo + byte_of_rune(text[lo:], int(length))
+	}
+	return {lo, hi}
+}
+
+// byte_of_rune is the byte offset of rune n in text, len(text) past its end.
+@(private)
+byte_of_rune :: proc(text: string, n: int) -> int {
+	count := 0
+	for _, at in text {
+		if count == n {
+			return at
+		}
+		count += 1
+	}
+	return len(text)
 }
 
 // router_sink is poll's Event_Sink for a single-process App: user is the

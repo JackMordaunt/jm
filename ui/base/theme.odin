@@ -154,8 +154,12 @@ font :: proc(gtx: ^ui.Ctx) -> ops.Font_Id {
 
 // selection_paint is s's selection in the active theme's selection
 // colours, for design.draw_paragraph: the focused pair while the text has
-// focus, the inactive pair when it has not.
+// focus, the inactive pair when it has not; none while an input method
+// composes, whose preedit stands where the selection was.
 selection_paint :: proc(s: ^ui.Text_State, focused: bool) -> design.Selection_Paint {
+	if ui.text_composing(s) {
+		return {}
+	}
 	lo, hi := ui.text_selection(s)
 	return selection_colors(lo, hi, focused)
 }

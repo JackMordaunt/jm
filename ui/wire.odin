@@ -16,7 +16,8 @@ import "jm:ui/ops"
 //	       n × (u64 key, u8 status, str data), written only when there
 //	       are any: what the host delivers for the child's needs]
 //	Raw_Event: u8 kind, f32 x, f32 y, u8 button, f32 sx, f32 sy, u8 key,
-//	           u8 mods, str text, str mime, u8 clicks, u64 area
+//	           u8 mods, str text, str mime, u8 clicks, u64 area, and for a
+//	           Compose only u32 lo, u32 hi (its span)
 //	Reply: u8 flags, f32 frame_after, u64 focus (the focused area, 0 for
 //	       none: what the host tells assistive technology), [debug block],
 //	       [platform block], [persist], then
@@ -25,7 +26,8 @@ import "jm:ui/ops"
 //	       they end. Flags: 1 wants a frame, 2 full frames, 4 flash (a count
 //	       and rects follow), 8 platform (u8 cursor, u8 n, n × request:
 //	       u8 1 str mime str data for a clipboard write, u8 2 str mime for a
-//	       read), 16 persist (str data the host keeps for the next child),
+//	       read, u8 3 str url, u8 4 u8 active u64 area rect f32 caret u8 kind
+//	       for a Text_Input), 16 persist (str data the host keeps for the next child),
 //	       32 needs (u32 n, n × need, u32 m, m × need: what the frame began
 //	       to need and what it stopped needing; a need is u64 key, str kind,
 //	       str query), 64 commands (u32 n, n × str kind, str data).
@@ -158,6 +160,10 @@ encode_raw_event :: proc(w: ^[dynamic]byte, e: Raw_Event) {
 	ops.put_str(w, e.mime)
 	append(w, e.clicks)
 	ops.put_u64(w, u64(e.area))
+	if e.kind == .Compose {
+		ops.put_u32(w, u32(e.span[0]))
+		ops.put_u32(w, u32(e.span[1]))
+	}
 }
 
 @(private = "file")
@@ -190,6 +196,10 @@ decode_raw_event :: proc(r: ^ops.Reader) -> (e: Raw_Event, ok: bool) {
 	e.mime = ops.get_str(r) or_return
 	e.clicks = ops.get_u8(r) or_return
 	e.area = ops.Area_Id(ops.get_u64(r) or_return)
+	if e.kind == .Compose {
+		e.span[0] = int(ops.get_u32(r) or_return)
+		e.span[1] = int(ops.get_u32(r) or_return)
+	}
 	return e, true
 }
 
@@ -242,6 +252,13 @@ encode_reply :: proc(
 			case Open_Url:
 				append(&w, 3)
 				ops.put_str(&w, v.url)
+			case Text_Input:
+				append(&w, 4)
+				append(&w, u8(v.active))
+				ops.put_u64(&w, u64(v.area))
+				ops.put_rect(&w, v.rect)
+				ops.put_f32(&w, v.caret)
+				append(&w, u8(v.kind))
 			}
 		}
 	}
@@ -339,6 +356,18 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 				q = Clipboard_Read{ops.get_str(&r) or_return}
 			case 3:
 				q = Open_Url{ops.get_str(&r) or_return}
+			case 4:
+				ti: Text_Input
+				ti.active = (ops.get_u8(&r) or_return) != 0
+				ti.area = ops.Area_Id(ops.get_u64(&r) or_return)
+				ti.rect = ops.get_rect(&r) or_return
+				ti.caret = ops.get_f32(&r) or_return
+				kind := ops.get_u8(&r) or_return
+				if kind > u8(max(Text_Input_Kind)) {
+					return false, 0, nil, false
+				}
+				ti.kind = Text_Input_Kind(kind)
+				q = ti
 			case:
 				return false, 0, nil, false
 			}

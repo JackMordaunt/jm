@@ -3,7 +3,8 @@ package ui
 import "jm:ui/ops"
 
 // Requests are what a frame asks of the platform, beyond pixels: the
-// clipboard written or read, a URL opened. A widget makes one during layout; the Router
+// clipboard written or read, a URL opened, the input method turned on at
+// a caret or off. A widget makes one during layout; the Router
 // queues it, and whatever runs the frame (ui/shell's loop, a host over the
 // wire, the probe) drains the queue once the frame is done, with
 // router_requests then router_requests_clear. Gio calls these commands.
@@ -26,6 +27,7 @@ Request :: union {
 	Clipboard_Write,
 	Clipboard_Read,
 	Open_Url,
+	Text_Input,
 }
 
 // Clipboard_Write puts data on the clipboard as mime.
@@ -42,6 +44,79 @@ Clipboard_Read :: struct {
 // its scheme: a browser for http and https, a mail client for mailto.
 Open_Url :: struct {
 	url: string,
+}
+
+// Text_Input is what the focused area wants of the platform's input
+// method: on, while an editable text area holds focus, else off. area is
+// the area it is for; rect, in device pixels, is the text the method must
+// not cover, a field or the caret's line, and caret the caret's x offset
+// into rect, where a candidate window opens. kind tells an on-screen
+// keyboard what to show, and Password turns composition off. The router
+// queues one only when it differs from the last (text_input_update).
+Text_Input :: struct {
+	active: bool,
+	area:   ops.Area_Id,
+	rect:   ops.Rect,
+	caret:  f32,
+	kind:   Text_Input_Kind,
+}
+
+Text_Input_Kind :: enum u8 {
+	Text,
+	Number,
+	Email,
+	Url,
+	Password,
+}
+
+// Caret_Ask is a text_caret call for the focused area, in its local space,
+// kept by the router from layout until text_input_update.
+@(private)
+Caret_Ask :: struct {
+	area:      ops.Area_Id,
+	rect:      ops.Rect,
+	caret:     f32,
+	kind:      Text_Input_Kind,
+	read_only: bool,
+}
+
+// text_caret tells the input method, during layout, where text area id
+// has its caret: rect is the field (or, in a multi-line field, the caret's
+// line) and caret_x the caret's x, both in the space id's input area was
+// recorded in. Only the focused area's call counts; one that never calls
+// it gets its whole area and a caret at its left edge. A read_only area
+// turns the input method off.
+text_caret :: proc(gtx: ^Ctx, id: ops.Area_Id, rect: ops.Rect, caret_x: f32, kind := Text_Input_Kind.Text, read_only := false) {
+	r := gtx.router
+	if r == nil || id == 0 || id != r.focus {
+		return
+	}
+	r.caret_ask = {id, rect, caret_x, kind, read_only}
+}
+
+// text_input_update queues a Text_Input when what the focused area wants
+// of the input method changed: call it once f, the frame just laid out,
+// is flattened, before taking router_requests.
+text_input_update :: proc(r: ^Router, f: ^Frame) {
+	want: Text_Input
+	h: Hit
+	if r.focus != 0 && f != nil && refresh(f, r.focus, &h) && .Text in h.kinds {
+		a := r.caret_ask
+		switch {
+		case a.area != r.focus:
+			bounds := ops.transform_rect(h.transform, ops.shape_bounds(f.scene, h.shape))
+			want = {active = true, area = r.focus, rect = bounds}
+		case !a.read_only:
+			rect := ops.transform_rect(h.transform, a.rect)
+			caret := ops.apply(h.transform, {a.caret, a.rect.y}).x - rect.x
+			want = {active = true, area = r.focus, rect = rect, caret = clamp(caret, 0, rect.w), kind = a.kind}
+		}
+	}
+	r.caret_ask = {}
+	if want != r.ime_sent {
+		r.ime_sent = want
+		append(&r.requests, want)
+	}
 }
 
 // open_url asks the platform to open url once the frame is done, as a
@@ -200,5 +275,6 @@ free_request :: proc(r: ^Router, q: Request) {
 		delete(v.mime, r.allocator)
 	case Open_Url:
 		delete(v.url, r.allocator)
+	case Text_Input:
 	}
 }

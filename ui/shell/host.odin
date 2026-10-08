@@ -295,6 +295,10 @@ host_maybe_respawn :: proc(l: ^Host_Loop) {
 		return
 	}
 	ipc.kill(&l.child)
+	// The new child's router starts with the input method off, so the
+	// window's goes off with it, or a field focused before the rebuild
+	// would leave it on with nothing to say where.
+	apply_text_input(&l.w, {})
 	argv := child_argv(&l.app, path, context.temp_allocator)
 	child, sok := ipc.spawn(argv, l.app.dir)
 	delete(l.child_path)

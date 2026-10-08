@@ -197,6 +197,7 @@ run :: proc(app: App) {
 			{0, 0, size.x * density, size.y * density},
 			ops.scale(density, density),
 		)
+		ui.text_input_update(&router, frame)
 
 		ops_bytes := ops.encode(&sc, allocator)
 		// host is what the host said presenting the frame before cost.
