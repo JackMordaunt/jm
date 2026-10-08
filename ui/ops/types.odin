@@ -156,6 +156,12 @@ Event_Kind :: enum u8 {
 	// to the area that asked, never hit-tested, the path chosen in text,
 	// or "" when the person cancelled the dialog.
 	Picked,
+	// Expand and Collapse are an assistive technology asking an area to show
+	// or hide what it holds, a tree item's children say: delivered to the
+	// area named, never hit-tested. Only an area whose semantics say it is
+	// expandable is offered them (States .Expandable or .Expanded).
+	Expand,
+	Collapse,
 }
 
 // Cursor is the pointer's look over an input area. An area that sets none
@@ -179,7 +185,10 @@ Cursor :: enum u8 {
 	None, // hidden
 }
 
-Event_Kinds :: bit_set[Event_Kind;u16]
+// Event_Kinds is a set of kinds, as an input area asks for them. It is 32 bits,
+// as the wire has always carried it (encode.odin), so kinds can be added
+// without changing what is encoded.
+Event_Kinds :: bit_set[Event_Kind;u32]
 
 // rect_contains reports whether p lies inside r (half-open on max edges).
 rect_contains :: proc(r: Rect, p: Point) -> bool {

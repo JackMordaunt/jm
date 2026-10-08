@@ -91,9 +91,9 @@ bridge_frame :: proc(b: ^Bridge, f: ^ui.Frame, focus: ops.Area_Id) {
 }
 
 // bridge_take_actions turns the reader's requests since the last call
-// into input through sink: a focus request names its area, a click is a
-// press and release at the node's middle, as the pointer would make it,
-// read from f, the frame the nodes came from.
+// into input through sink: a focus, expand or collapse request names its
+// area, a click is a press and release at the node's middle, as the
+// pointer would make it, read from f, the frame the nodes came from.
 bridge_take_actions :: proc(b: ^Bridge, f: ^ui.Frame, sink: Event_Sink, user: rawptr) {
 	if b.adapter == nil {
 		return
@@ -109,6 +109,10 @@ bridge_take_actions :: proc(b: ^Bridge, f: ^ui.Frame, sink: Event_Sink, user: ra
 		#partial switch a.action {
 		case .Focus:
 			sink(user, {kind = .Focus, area = ops.Area_Id(a.target)})
+		case .Expand:
+			sink(user, {kind = .Expand, area = ops.Area_Id(a.target)})
+		case .Collapse:
+			sink(user, {kind = .Collapse, area = ops.Area_Id(a.target)})
 		case .Click:
 			for node in f.nodes {
 				if ak.Node_Id(node.id) != a.target {

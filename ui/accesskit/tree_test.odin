@@ -1,4 +1,5 @@
 #+build linux, darwin, windows
+//review:ignore history-coupled-file tree.odin already carries expandable and expanded; only tree_build.odin offers the new actions
 package accesskit
 
 import "core:fmt"
@@ -420,4 +421,39 @@ test_a_grid_counts_its_rows_and_places_a_virtual_cell :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(got, `row_index: 4811`), got)
 	testing.expect(t, strings.contains(got, `column_index: 1`), got)
 	testing.expect(t, strings.contains(got, `sort_direction: Descending`), got)
+}
+
+// expander_view is a tree of two folders, one closed and one open, and a file.
+@(private = "file")
+expander_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	col := ui.column_open(gtx, key = 1)
+	defer ui.close(&col)
+	ui.container_semantics(gtx, {role = .Tree, label = "Files"})
+	items := []struct {
+		name:   string,
+		states: ops.States,
+	}{{"closed", {.Expandable}}, {"open", {.Expandable, .Expanded}}, {"file", {}}}
+	for it, i in items {
+		p := ui.widget_open(gtx, u64(10 + i))
+		ui.semantics(gtx, &p, {role = .Tree_Item, label = it.name, states = it.states})
+		ui.widget_close(gtx, &p, {size = {80, 20}})
+	}
+}
+
+// A closed item offers Expand and an open one Collapse, which the bridge hands
+// on as events; an item that holds nothing offers neither.
+@(test)
+test_an_expandable_node_offers_the_action_that_applies :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	p: ui.Probe
+	ui.probe_init(&p, expander_view, nil, {300, 300})
+	defer ui.probe_destroy(&p)
+	s: Snapshot
+	snapshot_init(&s)
+	defer snapshot_destroy(&s)
+	snapshot_take(&s, ui.probe_current(&p), 0, "Tree")
+	got := debug(&s, context.temp_allocator)
+	testing.expect(t, strings.contains(got, `actions: [Expand], label: "closed"`), got)
+	testing.expect(t, strings.contains(got, `actions: [Collapse], label: "open"`), got)
+	testing.expect(t, strings.contains(got, `role: TreeItem, label: "file"`), got)
 }

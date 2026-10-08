@@ -36,7 +36,7 @@ Event :: struct {
 // with time 0 takes the router's now.
 Raw_Event :: struct {
 	kind:   ops.Event_Kind,
-	area:   ops.Area_Id, // Focus only: the area to focus
+	area:   ops.Area_Id, // Focus, Picked, Expand and Collapse: the area it is for
 	pos:    ops.Point,
 	button: Button,
 	scroll: [2]f32,
