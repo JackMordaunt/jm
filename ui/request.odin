@@ -41,14 +41,36 @@ Clipboard_Read :: struct {
 	mime: string,
 }
 
-// Pick_Path asks the platform's own dialog for a folder, or a file to
-// open, for area, which is answered with a Picked event: pick_folder and
-// pick_file ask. start is where
-// the dialog opens; "" leaves it to the platform.
+// Pick_Path asks the platform's own dialog for a file to open, a folder,
+// or where to save a file, for area, which is answered with a Picked
+// event, or Pick_Failed when the dialog cannot be shown: pick_file,
+// pick_folder and pick_save ask. start is the folder the dialog opens in;
+// "" leaves it to the platform. A save also suggests name for the file
+// and offers filters, the first of them chosen to begin with; an open
+// leaves both empty.
 Pick_Path :: struct {
-	area:   ops.Area_Id,
-	folder: bool,
-	start:  string,
+	area:    ops.Area_Id,
+	kind:    Pick_Kind,
+	start:   string,
+	name:    string,
+	filters: []Pick_Filter,
+}
+
+// Pick_Kind is which dialog a Pick_Path opens. File and Folder keep the
+// byte the wire once gave a bool folder.
+Pick_Kind :: enum u8 {
+	File,
+	Folder,
+	Save,
+}
+
+// Pick_Filter is one entry of a save dialog's file types, as SDL's
+// DialogFileFilter (SDL_dialog.h): label is what the person reads ("PDF
+// document"), and patterns "a semicolon-separated list of file
+// extensions (for example, "doc;docx")", or a single "*" for any file.
+Pick_Filter :: struct {
+	label:    string,
+	patterns: string,
 }
 
 // Open_Url asks the platform to open url with the system's handler for
@@ -152,23 +174,63 @@ open_url :: proc(gtx: ^Ctx, url: string) {
 // pick_folder opens the platform's folder dialog once the frame is done.
 // area receives a Picked event when the person chooses: the folder's
 // path, or "" for a cancel, a frame or more later, since the dialog
-// stays open as long as the person takes. start is copied.
+// stays open as long as the person takes. When the platform cannot show
+// the dialog at all, area receives Pick_Failed instead. start is copied.
 pick_folder :: proc(gtx: ^Ctx, area: ops.Area_Id, start := "") {
-	pick(gtx, area, true, start)
+	pick(gtx, area, .Folder, start)
 }
 
 // pick_file is pick_folder for a file to open.
 pick_file :: proc(gtx: ^Ctx, area: ops.Area_Id, start := "") {
-	pick(gtx, area, false, start)
+	pick(gtx, area, .File, start)
 }
 
-@(private = "file")
-pick :: proc(gtx: ^Ctx, area: ops.Area_Id, folder: bool, start: string) {
+// pick_save is pick_folder for where to save a file: the dialog opens in
+// start with suggested_name filled in, offering filters, the first
+// chosen. Whether a file already at the path is replaced is the dialog's
+// question: SDL 3.4 asks for overwrite confirmation on Windows
+// (FOS_OVERWRITEPROMPT) and through zenity (--confirm-overwrite), macOS's
+// NSSavePanel asks itself, and over the XDG portal the portal's backend
+// decides. Every string is copied.
+pick_save :: proc(
+	gtx: ^Ctx,
+	area: ops.Area_Id,
+	suggested_name := "",
+	start := "",
+	filters: []Pick_Filter = nil,
+) {
+	pick(gtx, area, .Save, start, suggested_name, filters)
+}
+
+@(private)
+pick :: proc(
+	gtx: ^Ctx,
+	area: ops.Area_Id,
+	kind: Pick_Kind,
+	start: string,
+	name := "",
+	filters: []Pick_Filter = nil,
+) {
 	r := gtx.router
 	if r == nil || area == 0 {
 		return
 	}
-	append(&r.requests, Pick_Path{area, folder, clone_string(start, r.allocator)})
+	q := Pick_Path {
+		area  = area,
+		kind  = kind,
+		start = clone_string(start, r.allocator),
+		name  = clone_string(name, r.allocator),
+	}
+	if len(filters) > 0 {
+		q.filters = make([]Pick_Filter, len(filters), r.allocator)
+		for f, i in filters {
+			q.filters[i] = {
+				clone_string(f.label, r.allocator),
+				clone_string(f.patterns, r.allocator),
+			}
+		}
+	}
+	append(&r.requests, q)
 }
 
 // clipboard_write puts text on the clipboard once the frame is done. The
@@ -318,5 +380,11 @@ free_request :: proc(r: ^Router, q: Request) {
 	case Text_Input:
 	case Pick_Path:
 		delete(v.start, r.allocator)
+		delete(v.name, r.allocator)
+		for f in v.filters {
+			delete(f.label, r.allocator)
+			delete(f.patterns, r.allocator)
+		}
+		delete(v.filters, r.allocator)
 	}
 }

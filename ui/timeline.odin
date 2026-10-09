@@ -69,7 +69,7 @@ input_summary :: proc(payload: []byte, allocator := context.allocator) -> (summa
 			if event.mods != {} {
 				fmt.sbprintf(&sb, " %v", event.mods)
 			}
-		case .Text, .Paste, .Compose, .Picked:
+		case .Text, .Paste, .Compose, .Picked, .Pick_Failed:
 			fmt.sbprintf(&sb, "%v %q", event.kind, event.text)
 		case:
 			fmt.sbprintf(&sb, "%v", event.kind)

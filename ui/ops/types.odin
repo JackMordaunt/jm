@@ -152,9 +152,9 @@ Event_Kind :: enum u8 {
 	// in span. An empty text ends the composition; the commit, if any,
 	// comes as a Text. It goes to an area that asks for Text.
 	Compose,
-	// Picked answers a path pick (ui.pick_folder, ui.pick_file): delivered
-	// to the area that asked, never hit-tested, the path chosen in text,
-	// or "" when the person cancelled the dialog.
+	// Picked answers a path pick (ui.pick_folder, ui.pick_file,
+	// ui.pick_save): delivered to the area that asked, never hit-tested,
+	// the path chosen in text, or "" when the person cancelled the dialog.
 	Picked,
 	// Expand and Collapse are an assistive technology asking an area to show
 	// or hide what it holds, a tree item's children say: delivered to the
@@ -162,6 +162,11 @@ Event_Kind :: enum u8 {
 	// expandable is offered them (States .Expandable or .Expanded).
 	Expand,
 	Collapse,
+	// Pick_Failed answers a path pick the platform could not show a dialog
+	// for, as Picked would have: no dialog backend, or one that failed.
+	// The platform's reason is in text, for a log; what the person sees
+	// instead is the asker's to decide.
+	Pick_Failed,
 }
 
 // Cursor is the pointer's look over an input area. An area that sets none

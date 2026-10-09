@@ -47,8 +47,9 @@ Probe :: struct {
 	opened:      [dynamic]u8, // the last URL a frame asked to open
 	text_input:  Text_Input, // the last Text_Input a frame asked for
 	text_inputs: int, // how many Text_Inputs frames have asked for
-	picking:     Pick_Path, // the last path pick a frame asked for, until probe_pick answers it; its start in picked_start
-	picked_start: [dynamic]u8,
+	picking:     Pick_Path, // the last path pick a frame asked for, until probe_pick answers it; its strings in picked_text, its filters in picked_filters
+	picked_text: [dynamic]u8,
+	picked_filters: [dynamic]Pick_Filter,
 	persisted:   [dynamic]u8, // what the last frame that called persist asked to keep: the host's copy, in a live loop
 	persists:    int, // frames that called persist
 	restore:     [dynamic]u8, // probe_restore's bytes, given to the next frame as restored
@@ -85,7 +86,8 @@ probe_init :: proc(
 	p.allocator = allocator
 	p.clipboard = make([dynamic]u8, allocator)
 	p.opened = make([dynamic]u8, allocator)
-	p.picked_start = make([dynamic]u8, allocator)
+	p.picked_text = make([dynamic]u8, allocator)
+	p.picked_filters = make([dynamic]Pick_Filter, allocator)
 	p.persisted = make([dynamic]u8, allocator)
 	p.restore = make([dynamic]u8, allocator)
 	p.shaper = stub_shaper()
@@ -113,7 +115,8 @@ probe_destroy :: proc(p: ^Probe) {
 	ops.frame_arena_destroy(&p.arena)
 	delete(p.clipboard)
 	delete(p.opened)
-	delete(p.picked_start)
+	delete(p.picked_text)
+	delete(p.picked_filters)
 	delete(p.persisted)
 	delete(p.restore)
 	subscriptions_destroy(&p.subs)
@@ -212,10 +215,7 @@ probe_platform :: proc(p: ^Probe) {
 			p.text_input = v
 			p.text_inputs += 1
 		case Pick_Path:
-			p.picking = {area = v.area, folder = v.folder}
-			clear(&p.picked_start)
-			append(&p.picked_start, v.start)
-			p.picking.start = string(p.picked_start[:])
+			probe_keep_pick(p, v)
 		}
 	}
 	router_requests_clear(&p.router)
@@ -233,6 +233,36 @@ probe_opened_url :: proc(p: ^Probe) -> string {
 	return string(p.opened[:])
 }
 
+// probe_keep_pick holds q as the open pick, its strings copied into
+// picked_text and its filters into picked_filters: offsets first, as
+// the buffer may move while it grows, then the strings sliced from it.
+@(private)
+probe_keep_pick :: proc(p: ^Probe, q: Pick_Path) {
+	clear(&p.picked_text)
+	clear(&p.picked_filters)
+	put :: proc(b: ^[dynamic]u8, s: string) -> [2]int {
+		at := len(b)
+		append(b, s)
+		return {at, len(b)}
+	}
+	start, name := put(&p.picked_text, q.start), put(&p.picked_text, q.name)
+	spans := make([][2][2]int, len(q.filters), context.temp_allocator)
+	for f, i in q.filters {
+		spans[i] = {put(&p.picked_text, f.label), put(&p.picked_text, f.patterns)}
+	}
+	text := string(p.picked_text[:])
+	for s in spans {
+		append(&p.picked_filters, Pick_Filter{text[s[0][0]:s[0][1]], text[s[1][0]:s[1][1]]})
+	}
+	p.picking = {
+		area    = q.area,
+		kind    = q.kind,
+		start   = text[start[0]:start[1]],
+		name    = text[name[0]:name[1]],
+		filters = p.picked_filters[:],
+	}
+}
+
 // probe_picking is the path pick a frame asked for and no probe_pick has
 // answered: what the platform's dialog would show.
 probe_picking :: proc(p: ^Probe) -> (q: Pick_Path, open: bool) {
@@ -247,6 +277,18 @@ probe_pick :: proc(p: ^Probe, path: string) -> bool {
 		return false
 	}
 	router_push(&p.router, {kind = .Picked, area = p.picking.area, text = path})
+	p.picking = {}
+	return true
+}
+
+// probe_pick_fail answers the open path pick as a platform with no dialog
+// would: a Pick_Failed with reason, delivered at the next frame. It is
+// whether a pick was open.
+probe_pick_fail :: proc(p: ^Probe, reason := "no file dialog") -> bool {
+	if p.picking.area == 0 {
+		return false
+	}
+	router_push(&p.router, {kind = .Pick_Failed, area = p.picking.area, text = reason})
 	p.picking = {}
 	return true
 }

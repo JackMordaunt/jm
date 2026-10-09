@@ -27,7 +27,8 @@ import "jm:ui/ops"
 //	       and rects follow), 8 platform (u8 cursor, u8 n, n × request:
 //	       u8 1 str mime str data for a clipboard write, u8 2 str mime for a
 //	       read, u8 3 str url, u8 4 u8 active u64 area rect f32 caret u8 kind
-//	       for a Text_Input), 16 persist (str data the host keeps for the next child),
+//	       for a Text_Input, u8 5 u64 area u8 kind str start str name
+//	       u8 n n × (str label, str patterns) for a Pick_Path), 16 persist (str data the host keeps for the next child),
 //	       32 needs (u32 n, n × need, u32 m, m × need: what the frame began
 //	       to need and what it stopped needing; a need is u64 key, str kind,
 //	       str query), 64 commands (u32 n, n × str kind, str data).
@@ -282,8 +283,15 @@ encode_reply :: proc(
 			case Pick_Path:
 				append(&w, 5)
 				ops.put_u64(&w, u64(v.area))
-				append(&w, u8(v.folder))
+				append(&w, u8(v.kind))
 				ops.put_str(&w, v.start)
+				ops.put_str(&w, v.name)
+				filters := v.filters[:min(len(v.filters), 255)]
+				append(&w, u8(len(filters)))
+				for f in filters {
+					ops.put_str(&w, f.label)
+					ops.put_str(&w, f.patterns)
+				}
 			}
 		}
 	}
@@ -394,9 +402,24 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 				ti.kind = Text_Input_Kind(kind)
 				q = ti
 			case 5:
-				area := ops.Area_Id(ops.get_u64(&r) or_return)
-				folder := ops.get_u8(&r) or_return
-				q = Pick_Path{area, folder != 0, ops.get_str(&r) or_return}
+				pp: Pick_Path
+				pp.area = ops.Area_Id(ops.get_u64(&r) or_return)
+				kind := ops.get_u8(&r) or_return
+				if kind > u8(max(Pick_Kind)) {
+					return false, 0, nil, false
+				}
+				pp.kind = Pick_Kind(kind)
+				pp.start = ops.get_str(&r) or_return
+				pp.name = ops.get_str(&r) or_return
+				nf := int(ops.get_u8(&r) or_return)
+				if nf > 0 {
+					pp.filters = make([]Pick_Filter, nf, r.allocator)
+					for &f in pp.filters {
+						f.label = ops.get_str(&r) or_return
+						f.patterns = ops.get_str(&r) or_return
+					}
+				}
+				q = pp
 			case:
 				return false, 0, nil, false
 			}

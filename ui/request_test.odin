@@ -269,39 +269,55 @@ test_clearing_requests_releases_their_copies :: proc(t: ^testing.T) {
 	clipboard_write(&ctx, "one")
 	clipboard_write(&ctx, "two") // replaces one, freeing it
 	clipboard_read(&ctx, 7)
-	testing.expect_value(t, len(router_requests(&r)), 2)
+	pick_save(&ctx, 8, "report.pdf", "/home/me", {{"PDF document", "pdf"}, {"Any file", "*"}})
+	testing.expect_value(t, len(router_requests(&r)), 3)
 	router_requests_clear(&r)
 	clear(&r.readers)
 	testing.expect(t, jdebug.expect_released(&da, before), "every request's copies are freed")
 	testing.expect_value(t, jdebug.issue_count(&da), 0)
 }
 
-// Picker is a test ui: two areas, each asking for a folder when pressed,
-// and keeping what its Picked brings.
+// Picker is a test ui: three areas, asking for a file, a folder and where
+// to save when pressed, and keeping what their Picked or Pick_Failed
+// brings.
 @(private = "file")
 Picker :: struct {
-	picked: [2]string,
-	heard:  [2]int,
+	picked: [3]string,
+	heard:  [3]int,
+	failed: [3]int,
 }
 
 @(private = "file")
 pick_view :: proc(gtx: ^Ctx, user: rawptr) {
 	pk := (^Picker)(user)
-	for id, i in ([2]ops.Area_Id{201, 202}) {
+	tags := [3]string{"a", "b", "c"}
+	for id, i in ([3]ops.Area_Id{201, 202, 203}) {
 		ops.input_area(gtx.scene, id, ops.Rect{f32(i) * 50, 0, 50, 50}, {.Press, .Release})
-		ops.tag(gtx.scene, id, "a" if i == 0 else "b")
+		ops.tag(gtx.scene, id, tags[i])
 		for e in events(gtx, id) {
 			#partial switch e.kind {
 			case .Press:
-				// a asks for a file, b for a folder.
-				if i == 0 {
+				// a asks for a file, b for a folder, c where to save.
+				switch i {
+				case 0:
 					pick_file(gtx, id, "/start/notes.md")
-				} else {
+				case 1:
 					pick_folder(gtx, id, "/start")
+				case 2:
+					pick_save(
+						gtx,
+						id,
+						"report.pdf",
+						"/start",
+						{{"PDF document", "pdf"}, {"Any file", "*"}},
+					)
 				}
 			case .Picked:
 				pk.picked[i] = clone_string(e.text, context.temp_allocator)
 				pk.heard[i] += 1
+			case .Pick_Failed:
+				pk.picked[i] = clone_string(e.text, context.temp_allocator)
+				pk.failed[i] += 1
 			}
 		}
 	}
@@ -312,7 +328,7 @@ test_a_pick_answers_only_the_area_that_asked :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
 	pk: Picker
 	p: Probe
-	probe_init(&p, pick_view, &pk, {100, 50})
+	probe_init(&p, pick_view, &pk, {150, 50})
 	defer probe_destroy(&p)
 	_, open := probe_picking(&p)
 	testing.expect(t, !open)
@@ -320,20 +336,20 @@ test_a_pick_answers_only_the_area_that_asked :: proc(t: ^testing.T) {
 	q, asked := probe_picking(&p)
 	testing.expect(t, asked)
 	testing.expect_value(t, q.area, ops.Area_Id(202))
-	testing.expect(t, q.folder)
+	testing.expect_value(t, q.kind, Pick_Kind.Folder)
 	testing.expect_value(t, q.start, "/start")
 	// The dialog stays open over frames; the answer lands when it closes.
 	probe_frame(&p)
-	testing.expect_value(t, pk.heard, [2]int{0, 0})
+	testing.expect_value(t, pk.heard, [3]int{0, 0, 0})
 	testing.expect(t, probe_pick(&p, "/home/me/vault"))
 	probe_frame(&p)
-	testing.expect_value(t, pk.heard, [2]int{0, 1})
+	testing.expect_value(t, pk.heard, [3]int{0, 1, 0})
 	testing.expect_value(t, pk.picked[1], "/home/me/vault")
 	// A cancel is an empty answer, and nothing is left open.
 	probe_click(&p, "b")
 	testing.expect(t, probe_pick(&p, ""))
 	probe_frame(&p)
-	testing.expect_value(t, pk.heard, [2]int{0, 2})
+	testing.expect_value(t, pk.heard, [3]int{0, 2, 0})
 	testing.expect_value(t, pk.picked[1], "")
 	testing.expect(t, !probe_pick(&p, "late"))
 	// A file pick is the same, its dialog for a file.
@@ -341,10 +357,49 @@ test_a_pick_answers_only_the_area_that_asked :: proc(t: ^testing.T) {
 	q, asked = probe_picking(&p)
 	testing.expect(t, asked)
 	testing.expect_value(t, q.area, ops.Area_Id(201))
-	testing.expect(t, !q.folder, "a file dialog")
+	testing.expect_value(t, q.kind, Pick_Kind.File)
 	testing.expect_value(t, q.start, "/start/notes.md")
 	testing.expect(t, probe_pick(&p, "/start/other.md"))
 	probe_frame(&p)
-	testing.expect_value(t, pk.heard, [2]int{1, 2})
+	testing.expect_value(t, pk.heard, [3]int{1, 2, 0})
 	testing.expect_value(t, pk.picked[0], "/start/other.md")
+}
+
+@(test)
+test_a_save_pick_carries_its_name_and_filters :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	pk: Picker
+	p: Probe
+	probe_init(&p, pick_view, &pk, {150, 50})
+	defer probe_destroy(&p)
+	probe_click(&p, "c")
+	q, asked := probe_picking(&p)
+	testing.expect(t, asked)
+	testing.expect_value(t, q.area, ops.Area_Id(203))
+	testing.expect_value(t, q.kind, Pick_Kind.Save)
+	testing.expect_value(t, q.start, "/start")
+	testing.expect_value(t, q.name, "report.pdf")
+	testing.expect_value(t, len(q.filters), 2)
+	if len(q.filters) == 2 {
+		testing.expect_value(t, q.filters[0], Pick_Filter{"PDF document", "pdf"})
+		testing.expect_value(t, q.filters[1], Pick_Filter{"Any file", "*"})
+	}
+	// Answered as an open is: the path, then a cancel.
+	testing.expect(t, probe_pick(&p, "/elsewhere/mine.pdf"))
+	probe_frame(&p)
+	testing.expect_value(t, pk.heard, [3]int{0, 0, 1})
+	testing.expect_value(t, pk.picked[2], "/elsewhere/mine.pdf")
+	probe_click(&p, "c")
+	testing.expect(t, probe_pick(&p, ""))
+	probe_frame(&p)
+	testing.expect_value(t, pk.heard, [3]int{0, 0, 2})
+	testing.expect_value(t, pk.picked[2], "")
+	// A platform that cannot show the dialog says so, and only to the asker.
+	probe_click(&p, "c")
+	testing.expect(t, probe_pick_fail(&p, "no portal"))
+	probe_frame(&p)
+	testing.expect_value(t, pk.failed, [3]int{0, 0, 1})
+	testing.expect_value(t, pk.heard, [3]int{0, 0, 2})
+	testing.expect_value(t, pk.picked[2], "no portal")
+	testing.expect(t, !probe_pick_fail(&p))
 }
