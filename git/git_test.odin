@@ -3,6 +3,7 @@ package git
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "core:time"
 import "jm:path"
 
 SIG :: Signature{"Test Author", "test@example.com"}
@@ -228,4 +229,200 @@ pull_from_unborn :: proc(t: ^testing.T) {
 	testing.expect(t, born && branch == want, "the unborn repository took the remote's branch name")
 	body, _ := path.read(path.join(empty_dir, "a.md"))
 	testing.expect_value(t, body, "a\n")
+}
+
+// commit_file writes body to name in the repository at dir and commits it.
+@(private = "file")
+commit_file :: proc(t: ^testing.T, repo: Repo, dir, name, body, msg: string) -> string {
+	write(t, path.join(dir, name), body)
+	testing.expect(t, add(repo, {"."}) == nil, "add")
+	id, err := commit(repo, msg, SIG)
+	testing.expect(t, err == nil, msg)
+	return id
+}
+
+// What a repository says about itself: its settings, a file as a commit
+// had it, how many commits lie between two, one commit's change, and
+// opening it from a directory inside.
+@(test)
+settings_files_counts_and_changes :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	dir := temp_root(t)
+	defer os.remove_all(dir)
+	repo, err := init(dir)
+	testing.expect(t, err == nil, "init")
+	defer close(&repo)
+
+	_, found := config_get(repo, "brain.unset")
+	testing.expect(t, !found, "an unset key is not found")
+	testing.expect(t, config_set(repo, "core.hooksPath", "/x/hooks") == nil, "config set")
+	v, vfound := config_get(repo, "core.hooksPath")
+	testing.expect(t, vfound && v == "/x/hooks", v)
+
+	n, cerr := count(repo, "", "HEAD")
+	testing.expect(t, cerr == nil && n == 0, "an unborn branch counts nothing")
+	first := commit_file(t, repo, dir, "a.md", "one\n", "a: one")
+	path.mkdirs(path.join(dir, "sub"))
+	commit_file(t, repo, dir, "sub/b.txt", "b\n", "b: add")
+	commit_file(t, repo, dir, "a.md", "one\ntwo\n", "a: two")
+
+	id, ok := resolve(repo, "HEAD~2")
+	testing.expect(t, ok && id == first, "HEAD~2 is the first commit")
+	short, sok := resolve(repo, first[:7])
+	testing.expect(t, sok && short == first, "a short id resolves")
+	_, nok := resolve(repo, "nope")
+	testing.expect(t, !nok, "a name of nothing does not resolve")
+
+	body, bfound := read_file(repo, "HEAD~1", "a.md")
+	testing.expect(t, bfound && body == "one\n", body)
+	_, gone := read_file(repo, "HEAD", "missing.md")
+	testing.expect(t, !gone, "a missing file is not found")
+
+	n, cerr = count(repo, "", "HEAD")
+	testing.expect(t, cerr == nil && n == 3, "three commits")
+	n, _ = count(repo, first, "HEAD")
+	testing.expect_value(t, n, 2)
+	recent, _ := log(repo, since = time.time_add(time.now(), -time.Hour))
+	testing.expect_value(t, len(recent), 3)
+	none, _ := log(repo, since = time.time_add(time.now(), time.Hour))
+	testing.expect_value(t, len(none), 0)
+
+	files, patch, xerr := changes(repo, "HEAD", context_lines = 0)
+	testing.expect(t, xerr == nil && len(files) == 1 && files[0] == "a.md", "the last commit touched a.md")
+	testing.expect(t, strings.contains(patch, "+two") && !strings.contains(patch, "\n one\n"), patch)
+	files, _, _ = changes(repo, first)
+	testing.expect(t, len(files) == 1 && files[0] == "a.md", "a root commit is diffed against nothing")
+	files, _, _ = changes(repo, "HEAD~1", paths = {"*.md"})
+	testing.expect_value(t, len(files), 0)
+
+	sub, derr := discover(path.join(dir, "sub"))
+	testing.expect(t, derr == nil, "discover from a subdirectory")
+	_, sub_head, _ := head(sub)
+	_, top_head, _ := head(repo)
+	testing.expect(t, sub_head == top_head, "the subdirectory's repository is this one")
+	close(&sub)
+}
+
+// What is staged can be read as a patch limited to some paths and framed
+// by no context, and put back without touching the working tree.
+@(test)
+diff_paths_and_unstage :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	dir := temp_root(t)
+	defer os.remove_all(dir)
+	repo, err := init(dir)
+	testing.expect(t, err == nil, "init")
+	defer close(&repo)
+	path.mkdirs(path.join(dir, "AI"))
+	commit_file(t, repo, dir, "AI/m.md", "a\nb\nc\n", "start")
+	write(t, path.join(dir, "AI", "m.md"), "a\nb\nc\nd\n")
+	write(t, path.join(dir, "x.txt"), "x\n")
+	testing.expect(t, add(repo, {"."}) == nil, "add")
+
+	patch, derr := diff(repo, staged = true, context_lines = 0, paths = {"*.md"})
+	testing.expect(t, derr == nil, "diff")
+	testing.expect(t, strings.contains(patch, "+++ b/AI/m.md") && strings.contains(patch, "+d"), patch)
+	testing.expect(t, !strings.contains(patch, "\n c\n") && !strings.contains(patch, "x.txt"), patch)
+
+	testing.expect(t, unstage(repo) == nil, "unstage")
+	patch, _ = diff(repo, staged = true)
+	testing.expect_value(t, patch, "")
+	body, _ := path.read(path.join(dir, "x.txt"))
+	testing.expect_value(t, body, "x\n")
+}
+
+// Two machines that both wrote: the one behind replays its commit on
+// top of the other's, and a commit that cannot be replayed cleanly
+// changes nothing and names the file.
+@(test)
+rebase_replays_or_names_the_conflict :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	root := temp_root(t)
+	defer os.remove_all(root)
+	bare := path.join(root, "hub.git")
+	hub, _ := init(bare, bare = true)
+	close(&hub)
+	a_dir := path.join(root, "a")
+	a, _ := init(a_dir)
+	defer close(&a)
+	commit_file(t, a, a_dir, "f.md", "1\n2\n3\n", "start")
+	remote_add(a, "origin", bare)
+	testing.expect(t, push(a, "origin") == nil, "push start")
+	b_dir := path.join(root, "b")
+	b, berr := clone(bare, b_dir)
+	testing.expect(t, berr == nil, "clone")
+	defer close(&b)
+
+	commit_file(t, a, a_dir, "f.md", "1\n2\n3\nfrom a\n", "a: end")
+	testing.expect(t, push(a, "origin") == nil, "push a")
+	commit_file(t, b, b_dir, "g.md", "from b\n", "b: g")
+	testing.expect(t, fetch(b, "origin") == nil, "fetch")
+	branch, _, _ := head(b)
+	onto := strings.concatenate({"origin/", branch})
+	conflicts, rerr := rebase(b, onto, SIG)
+	testing.expect(t, rerr == nil && len(conflicts) == 0, "a clean replay")
+	bl, _ := log(b)
+	testing.expect(t, len(bl) == 3 && bl[0].summary == "b: g" && bl[1].summary == "a: end", "b's commit sits on a's")
+	testing.expect_value(t, bl[0].author.name, SIG.name)
+	f, _ := path.read(path.join(b_dir, "f.md"))
+	testing.expect_value(t, f, "1\n2\n3\nfrom a\n")
+	n, _ := count(b, onto, "HEAD")
+	testing.expect_value(t, n, 1)
+	testing.expect(t, push(b, "origin") == nil, "the replayed branch pushes")
+	_, pushed, _ := head(b)
+	conflicts, rerr = rebase(b, onto, SIG)
+	_, still, _ := head(b)
+	testing.expect(t, rerr == nil && still == pushed, "a branch onto adds nothing to is left alone")
+
+	// Both change the same line: the replay stops before it starts.
+	sync, perr := pull(a, "origin")
+	testing.expect(t, perr == nil && sync == .Fast_Forwarded, "a takes b's commit")
+	commit_file(t, a, a_dir, "f.md", "1\nA\n3\nfrom a\n", "a: two")
+	testing.expect(t, push(a, "origin") == nil, "push a's two")
+	_, before, _ := head(b)
+	commit_file(t, b, b_dir, "f.md", "1\nB\n3\nfrom a\n", "b: two")
+	_, mine, _ := head(b)
+	testing.expect(t, mine != before, "b committed")
+	testing.expect(t, fetch(b, "origin") == nil, "fetch two")
+	conflicts, rerr = rebase(b, onto, SIG)
+	testing.expect(t, rerr == nil && len(conflicts) == 1 && conflicts[0] == "f.md", "the conflict is named")
+	_, after, _ := head(b)
+	testing.expect_value(t, after, mine)
+	f, _ = path.read(path.join(b_dir, "f.md"))
+	testing.expect_value(t, f, "1\nB\n3\nfrom a\n")
+	st, _ := status(b)
+	testing.expect_value(t, len(st), 0)
+}
+
+// Uncommitted work put aside and brought back, untracked files included;
+// a branch taken from a commit, the working tree with it.
+@(test)
+stash_and_checkout :: proc(t: ^testing.T) {
+	context.allocator = context.temp_allocator
+	dir := temp_root(t)
+	defer os.remove_all(dir)
+	repo, _ := init(dir)
+	defer close(&repo)
+	first := commit_file(t, repo, dir, "a.md", "one\n", "one")
+	commit_file(t, repo, dir, "a.md", "one\ntwo\n", "two")
+
+	stashed, serr := stash(repo, "aside", SIG)
+	testing.expect(t, serr == nil && !stashed, "a clean tree has nothing to put aside")
+	write(t, path.join(dir, "a.md"), "edited\n")
+	write(t, path.join(dir, "new.md"), "new\n")
+	stashed, serr = stash(repo, "aside", SIG)
+	testing.expect(t, serr == nil && stashed, "stash")
+	st, _ := status(repo)
+	testing.expect_value(t, len(st), 0)
+	testing.expect(t, unstash(repo) == nil, "unstash")
+	body, _ := path.read(path.join(dir, "a.md"))
+	testing.expect_value(t, body, "edited\n")
+	body, _ = path.read(path.join(dir, "new.md"))
+	testing.expect_value(t, body, "new\n")
+
+	testing.expect(t, checkout(repo, "old", first) == nil, "checkout -f -B old first")
+	branch, id, _ := head(repo)
+	testing.expect(t, branch == "old" && id == first, branch)
+	body, _ = path.read(path.join(dir, "a.md"))
+	testing.expect_value(t, body, "one\n")
 }
