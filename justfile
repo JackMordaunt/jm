@@ -1032,6 +1032,29 @@ todo-test: sqlite blend2d kb
       {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
     done
 
+# examples/i18n: Atlas, a project-management app in the twenty-one locales
+# jm:i18n knows, chosen from the globe in the top bar and saved in SQLite
+# for the next start. `just i18n` keeps atlas.db in the working
+# directory; `just i18n -memory` keeps nothing, and `just i18n path.db`
+# opens that database.
+#
+# Build and open the internationalised Atlas application
+[group('ui/example')]
+i18n args="": sqlite blend2d kb sdl3
+    mkdir -p build/debug
+    {{odin}} build examples/i18n -debug {{flags}} {{link}} -out:build/debug/i18n{{exe}}
+    build/debug/i18n{{exe}} {{args}}
+
+# Run Atlas's suites: every locale checked, the end-to-end one on a database
+[group('ui/example')]
+i18n-test: sqlite blend2d kb
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p build/test
+    for p in i18n examples/i18n/msg examples/i18n/store examples/i18n/view examples/i18n/app; do
+      {{odin}} test "$p" {{flags}} {{link}} -out:build/test/$(echo "$p" | tr / -){{exe}}
+    done
+
 # examples/gallery: a grid of ten thousand pictures made on demand, each a
 # need while its row is in view, abandoned when scrolled away before it
 # is done. Pictures go under the temp directory, a folder per run.

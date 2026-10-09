@@ -1,0 +1,123 @@
+# Atlas, Bahasa Indonesia (id).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = Ruang kerja
+nav_home = Beranda
+nav_inbox = Kotak masuk
+nav_projects = Proyek
+nav_calendar = Kalender
+nav_team = Tim
+nav_settings = Setelan
+nav_help = Bantuan dan masukan
+nav_sign_out = Keluar
+
+# Toolbar
+search = Cari
+search_placeholder = Cari proyek, orang, dan file
+notifications = Notifikasi
+language = Bahasa
+language_menu_title = Bahasa tampilan
+account = Akun
+refresh = Muat ulang
+
+# Common actions
+save = Simpan
+cancel = Batal
+delete = Hapus
+edit = Edit
+share = Bagikan
+archive = Arsipkan
+duplicate = Duplikat
+rename = Ganti nama
+download = Unduh
+upload = Unggah
+export = Ekspor
+close = Tutup
+back = Kembali
+next = Berikutnya
+done = Selesai
+more_options = Opsi lainnya
+
+# Home
+greeting = Selamat datang kembali, {0}
+home_summary = Berikut yang terjadi di ruang kerja Anda hari ini.
+tasks_due_today = {0} tugas jatuh tempo hari ini
+unread_messages = {0} pesan belum dibaca
+active_projects = {0} proyek aktif
+members_online = {0} anggota tim online
+recent_activity = Aktivitas terbaru
+view_all = Lihat semua
+quick_actions = Tindakan cepat
+new_task = Tugas baru
+new_project = Proyek baru
+invite_member = Undang anggota
+bulk_edit = Edit massal
+
+# Activity
+activity_commented = {0} mengomentari {1}
+activity_completed = {0} menyelesaikan {1}
+activity_created = {0} membuat {1}
+just_now = Baru saja
+minutes_ago = {0} menit yang lalu
+hours_ago = {0} jam yang lalu
+days_ago = {0} hari yang lalu
+
+# Inbox
+inbox_empty = Semua sudah terbaca
+inbox_empty_body = Pesan baru akan muncul di sini.
+mark_all_read = Tandai semua telah dibaca
+mark_read = Tandai telah dibaca
+mark_unread = Tandai belum dibaca
+reply = Balas
+forward = Teruskan
+filter_all = Semua
+filter_unread = Belum dibaca
+filter_mentions = Sebutan
+
+# Projects
+status_on_track = Sesuai rencana
+status_at_risk = Berisiko
+status_off_track = Tidak sesuai rencana
+status_completed = Selesai
+project_progress = {0}% selesai
+project_tasks = {0} tugas
+due_in_days = Jatuh tempo dalam {0} hari
+project_owner = Pemilik: {0}
+sort_by = Urutkan berdasarkan
+sort_name = Nama
+sort_due_date = Tanggal jatuh tempo
+
+# Calendar
+today = Hari ini
+week = Minggu
+month = Bulan
+events_scheduled = {0} acara terjadwal
+no_events = Tidak ada acara terjadwal
+all_day = Sepanjang hari
+
+# Team
+invite_by_email = Undang lewat email
+role_admin = Admin
+role_member = Anggota
+role_guest = Tamu
+members_count = {0} anggota
+last_active = Terakhir aktif {0}
+
+# Settings
+settings_profile = Profil
+settings_appearance = Tampilan
+theme_light = Terang
+theme_dark = Gelap
+theme_system = Gunakan setelan sistem
+language_saved = Bahasa disimpan. {0} akan digunakan saat Anda membuka Atlas berikutnya.
+email_notifications = Kirimi saya email tentang aktivitas yang saya ikuti
+storage_used = {0} dari {1} GB terpakai
+files_count = {0} file
+
+# Feedback
+confirm_delete = Hapus {0}?
+cannot_undo = Tindakan ini tidak dapat dibatalkan.
+changes_saved = Perubahan disimpan
+error_generic = Terjadi kesalahan. Coba lagi.
+items_selected = {0} item dipilih

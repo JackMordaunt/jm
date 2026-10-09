@@ -1,0 +1,139 @@
+# Atlas, Nederlands (nl).
+# Eén bericht per regel: `key = tekst`; `key.one = tekst` is het enkelvoud,
+# een losse key is de meervoudsvorm. {0} en {1} zijn argumenten, {{ is een
+# letterlijke accolade.
+
+# App en navigatie
+app_name = Atlas
+nav_workspace = Werkruimte
+nav_home = Start
+nav_inbox = Postvak IN
+nav_projects = Projecten
+nav_calendar = Agenda
+nav_team = Team
+nav_settings = Instellingen
+nav_help = Help en feedback
+nav_sign_out = Afmelden
+
+# Werkbalk
+search = Zoeken
+search_placeholder = Zoek in projecten, mensen en bestanden
+notifications = Meldingen
+language = Taal
+language_menu_title = Weergavetaal
+account = Account
+refresh = Vernieuwen
+
+# Algemene acties
+save = Opslaan
+cancel = Annuleren
+delete = Verwijderen
+edit = Bewerken
+share = Delen
+archive = Archiveren
+duplicate = Dupliceren
+rename = Naam wijzigen
+download = Downloaden
+upload = Uploaden
+export = Exporteren
+close = Sluiten
+back = Terug
+next = Volgende
+done = Klaar
+more_options = Meer opties
+
+# Start
+greeting = Welkom terug, {0}
+home_summary = Dit gebeurt er vandaag in je werkruimte.
+tasks_due_today.one = {0} taak moet vandaag worden afgerond
+tasks_due_today.other = {0} taken moeten vandaag worden afgerond
+unread_messages.one = {0} ongelezen bericht
+unread_messages.other = {0} ongelezen berichten
+active_projects.one = {0} actief project
+active_projects.other = {0} actieve projecten
+members_online.one = {0} teamlid online
+members_online.other = {0} teamleden online
+recent_activity = Recente activiteit
+view_all = Alles bekijken
+quick_actions = Snelle acties
+new_task = Nieuwe taak
+new_project = Nieuw project
+invite_member = Lid uitnodigen
+bulk_edit = Bulkbewerken
+
+# Activiteit
+activity_commented = {0} heeft gereageerd op {1}
+activity_completed = {0} heeft {1} afgerond
+activity_created = {0} heeft {1} aangemaakt
+just_now = Net nu
+minutes_ago.one = {0} minuut geleden
+minutes_ago.other = {0} minuten geleden
+hours_ago.one = {0} uur geleden
+hours_ago.other = {0} uur geleden
+days_ago.one = {0} dag geleden
+days_ago.other = {0} dagen geleden
+
+# Postvak IN
+inbox_empty = Je bent helemaal bij
+inbox_empty_body = Nieuwe berichten verschijnen hier.
+mark_all_read = Alles als gelezen markeren
+mark_read = Als gelezen markeren
+mark_unread = Als ongelezen markeren
+reply = Beantwoorden
+forward = Doorsturen
+filter_all = Alle
+filter_unread = Ongelezen
+filter_mentions = Vermeldingen
+
+# Projecten
+status_on_track = Op schema
+status_at_risk = Risico
+status_off_track = Niet op schema
+status_completed = Afgerond
+project_progress = {0}% voltooid
+project_tasks.one = {0} taak
+project_tasks.other = {0} taken
+due_in_days.one = Over {0} dag
+due_in_days.other = Over {0} dagen
+project_owner = Eigenaar: {0}
+sort_by = Sorteren op
+sort_name = Naam
+sort_due_date = Einddatum
+
+# Agenda
+today = Vandaag
+week = Week
+month = Maand
+events_scheduled.one = {0} gepland evenement
+events_scheduled.other = {0} geplande evenementen
+no_events = Geen geplande evenementen
+all_day = Hele dag
+
+# Team
+invite_by_email = Uitnodigen via e-mail
+role_admin = Beheerder
+role_member = Lid
+role_guest = Gast
+members_count.one = {0} lid
+members_count.other = {0} leden
+last_active = Laatst actief: {0}
+
+# Instellingen
+settings_profile = Profiel
+settings_appearance = Weergave
+theme_light = Licht
+theme_dark = Donker
+theme_system = Systeeminstelling gebruiken
+language_saved = Taal opgeslagen. {0} wordt gebruikt de volgende keer dat je Atlas opent.
+email_notifications = Mail me over activiteit waar ik bij betrokken ben
+storage_used = {0} van {1} GB gebruikt
+files_count.one = {0} bestand
+files_count.other = {0} bestanden
+
+# Feedback
+confirm_delete = {0} verwijderen?
+cannot_undo = Dit kan niet ongedaan worden gemaakt.
+changes_saved = Wijzigingen opgeslagen
+error_generic = Er is iets misgegaan. Probeer het opnieuw.
+items_selected.one = {0} item geselecteerd
+items_selected.other = {0} items geselecteerd

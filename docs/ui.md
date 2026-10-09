@@ -40,6 +40,7 @@ Open a demo:
 just material-kitchen     # every Material 3 component, a page each
 just files                # a file browser over your home folder
 just gallery              # ten thousand pictures made on demand
+just i18n                 # one app in twenty-one languages
 ```
 
 ## The example apps
@@ -122,6 +123,46 @@ open, the pictures made and abandoned, and the cache's images, bytes, hits, miss
 
 `just gallery` opens it, and `just gallery-test` runs its suites, the last against the real
 workers and files.
+
+</details>
+
+### Internationalisation
+
+<img src="images/i18n.png" alt="Atlas, a project-management app, with its globe menu open on a list of twenty-one languages" width="100%">
+
+Atlas, a small project-management app, showcases jm:i18n: a hundred messages in twenty-one
+languages, chosen from the globe in the top bar and remembered in SQLite for the next start.
+`just i18n` · `examples/i18n`
+
+<details>
+<summary>How it works</summary>
+
+The app names every message in one enum, `msg.Msg`, and ships each language as a text file of
+`key = text` lines embedded in the binary with `#load`. jm:i18n parses the one in use into a fixed
+array indexed by that enum, with English filling any gap. A lookup is one index and allocates
+nothing: the text is a slice of the embedded file. A message with arguments is written once into
+the frame's arena.
+
+Plural messages pick their form by the language's CLDR rule: one and other in English; one, few
+and many in Russian and Polish; all six in Arabic. Counts are written in the language's digits and
+grouping (1,234 · 1.234 · 1 234 · 12,34,567 · ١٬٢٣٤). The bulk-edit buttons on the home page step
+through counts that reach every form some language has. A message can carry another as an
+argument: the team page's "Last active 2 hours ago".
+
+The globe opens a menu of each language in its own name. Choosing one reloads the table, a parse of
+a few kilobytes, and saves its tag to a settings table. At start the app opens in the saved
+language, else the first of `LC_ALL`, `LC_MESSAGES` and `LANG` that it ships, else English. Text
+in scripts the Latin font lacks comes from fallback fonts. Right-to-left text shapes and orders
+correctly, but rows are not yet mirrored.
+
+`msg`'s tests run `i18n.check` over every language: a missing message, an argument a translation
+does not use, or a plural form some count would need fails the build's tests.
+
+```
+just i18n                        atlas.db in the working directory
+just i18n -memory                a database gone when the window closes
+just i18n-test                   its suites, the last a restart against a real database
+```
 
 </details>
 

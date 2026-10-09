@@ -1,0 +1,123 @@
+# Atlas, 한국어 (ko).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = 워크스페이스
+nav_home = 홈
+nav_inbox = 수신함
+nav_projects = 프로젝트
+nav_calendar = 캘린더
+nav_team = 팀
+nav_settings = 설정
+nav_help = 도움말 및 의견 보내기
+nav_sign_out = 로그아웃
+
+# Toolbar
+search = 검색
+search_placeholder = 프로젝트, 사용자, 파일 검색
+notifications = 알림
+language = 언어
+language_menu_title = 표시 언어
+account = 계정
+refresh = 새로고침
+
+# Common actions
+save = 저장
+cancel = 취소
+delete = 삭제
+edit = 편집
+share = 공유
+archive = 보관
+duplicate = 복제
+rename = 이름 바꾸기
+download = 다운로드
+upload = 업로드
+export = 내보내기
+close = 닫기
+back = 뒤로
+next = 다음
+done = 완료
+more_options = 추가 옵션
+
+# Home
+greeting = {0}님, 다시 오신 것을 환영합니다
+home_summary = 오늘 워크스페이스에서 일어나는 일입니다.
+tasks_due_today = 오늘 마감 작업 {0}건
+unread_messages = 읽지 않은 메시지 {0}건
+active_projects = 진행 중인 프로젝트 {0}개
+members_online = 온라인 상태인 팀원 {0}명
+recent_activity = 최근 활동
+view_all = 전체 보기
+quick_actions = 빠른 작업
+new_task = 새 작업
+new_project = 새 프로젝트
+invite_member = 팀원 초대
+bulk_edit = 일괄 편집
+
+# Activity
+activity_commented = {0}님이 {1}에 댓글을 남겼습니다
+activity_completed = {0}님이 {1}을 완료했습니다
+activity_created = {0}님이 {1}을 생성했습니다
+just_now = 방금
+minutes_ago = {0}분 전
+hours_ago = {0}시간 전
+days_ago = {0}일 전
+
+# Inbox
+inbox_empty = 모두 확인했습니다
+inbox_empty_body = 새 메시지가 여기에 표시됩니다.
+mark_all_read = 모두 읽음으로 표시
+mark_read = 읽음으로 표시
+mark_unread = 안 읽음으로 표시
+reply = 답장
+forward = 전달
+filter_all = 전체
+filter_unread = 읽지 않음
+filter_mentions = 멘션
+
+# Projects
+status_on_track = 정상 진행
+status_at_risk = 위험
+status_off_track = 지연
+status_completed = 완료
+project_progress = {0}% 완료
+project_tasks = 작업 {0}개
+due_in_days = {0}일 후 마감
+project_owner = 소유자: {0}
+sort_by = 정렬 기준
+sort_name = 이름
+sort_due_date = 마감일
+
+# Calendar
+today = 오늘
+week = 주
+month = 월
+events_scheduled = 예정된 일정 {0}건
+no_events = 예정된 일정이 없습니다
+all_day = 종일
+
+# Team
+invite_by_email = 이메일로 초대
+role_admin = 관리자
+role_member = 멤버
+role_guest = 게스트
+members_count = 멤버 {0}명
+last_active = 마지막 활동: {0}
+
+# Settings
+settings_profile = 프로필
+settings_appearance = 화면
+theme_light = 라이트
+theme_dark = 다크
+theme_system = 시스템 설정 사용
+language_saved = 언어가 저장되었습니다. 다음에 Atlas를 열 때 {0} 언어가 사용됩니다.
+email_notifications = 내가 참여한 활동에 대해 이메일 받기
+storage_used = {1}GB 중 {0}GB 사용
+files_count = 파일 {0}개
+
+# Feedback
+confirm_delete = 다음 항목을 삭제하시겠습니까: {0}
+cannot_undo = 이 작업은 취소할 수 없습니다.
+changes_saved = 변경사항이 저장되었습니다
+error_generic = 문제가 발생했습니다. 다시 시도해 주세요.
+items_selected = {0}개 항목 선택됨

@@ -1,0 +1,149 @@
+# Atlas, Español (es).
+
+# App y navegación
+app_name = Atlas
+nav_workspace = Espacio de trabajo
+nav_home = Inicio
+nav_inbox = Bandeja de entrada
+nav_projects = Proyectos
+nav_calendar = Calendario
+nav_team = Equipo
+nav_settings = Configuración
+nav_help = Ayuda y comentarios
+nav_sign_out = Cerrar sesión
+
+# Barra de herramientas
+search = Buscar
+search_placeholder = Busca proyectos, personas y archivos
+notifications = Notificaciones
+language = Idioma
+language_menu_title = Idioma de visualización
+account = Cuenta
+refresh = Actualizar
+
+# Acciones comunes
+save = Guardar
+cancel = Cancelar
+delete = Eliminar
+edit = Editar
+share = Compartir
+archive = Archivar
+duplicate = Duplicar
+rename = Cambiar nombre
+download = Descargar
+upload = Subir
+export = Exportar
+close = Cerrar
+back = Atrás
+next = Siguiente
+done = Listo
+more_options = Más opciones
+
+# Inicio
+greeting = Hola de nuevo, {0}
+home_summary = Esto es lo que pasa hoy en tu espacio de trabajo.
+tasks_due_today.one = {0} tarea vence hoy
+tasks_due_today.many = {0} de tareas vencen hoy
+tasks_due_today.other = {0} tareas vencen hoy
+unread_messages.one = {0} mensaje sin leer
+unread_messages.many = {0} de mensajes sin leer
+unread_messages.other = {0} mensajes sin leer
+active_projects.one = {0} proyecto activo
+active_projects.many = {0} de proyectos activos
+active_projects.other = {0} proyectos activos
+members_online.one = {0} miembro del equipo conectado
+members_online.many = {0} de miembros del equipo conectados
+members_online.other = {0} miembros del equipo conectados
+recent_activity = Actividad reciente
+view_all = Ver todo
+quick_actions = Acciones rápidas
+new_task = Nueva tarea
+new_project = Nuevo proyecto
+invite_member = Invitar miembro
+bulk_edit = Edición masiva
+
+# Actividad
+activity_commented = {0} comentó en {1}
+activity_completed = {0} completó {1}
+activity_created = {0} creó {1}
+just_now = Ahora mismo
+minutes_ago.one = Hace {0} minuto
+minutes_ago.many = Hace {0} de minutos
+minutes_ago.other = Hace {0} minutos
+hours_ago.one = Hace {0} hora
+hours_ago.many = Hace {0} de horas
+hours_ago.other = Hace {0} horas
+days_ago.one = Hace {0} día
+days_ago.many = Hace {0} de días
+days_ago.other = Hace {0} días
+
+# Bandeja de entrada
+inbox_empty = Ya estás al día
+inbox_empty_body = Los mensajes nuevos aparecerán aquí.
+mark_all_read = Marcar todo como leído
+mark_read = Marcar como leído
+mark_unread = Marcar como no leído
+reply = Responder
+forward = Reenviar
+filter_all = Todos
+filter_unread = Sin leer
+filter_mentions = Menciones
+
+# Proyectos
+status_on_track = En curso
+status_at_risk = En riesgo
+status_off_track = Retrasado
+status_completed = Completado
+project_progress = {0}% completado
+project_tasks.one = {0} tarea
+project_tasks.many = {0} de tareas
+project_tasks.other = {0} tareas
+due_in_days.one = Vence en {0} día
+due_in_days.many = Vence en {0} de días
+due_in_days.other = Vence en {0} días
+project_owner = Propietario: {0}
+sort_by = Ordenar por
+sort_name = Nombre
+sort_due_date = Fecha de vencimiento
+
+# Calendario
+today = Hoy
+week = Semana
+month = Mes
+events_scheduled.one = {0} evento programado
+events_scheduled.many = {0} de eventos programados
+events_scheduled.other = {0} eventos programados
+no_events = No hay eventos programados
+all_day = Todo el día
+
+# Equipo
+invite_by_email = Invitar por correo electrónico
+role_admin = Administrador
+role_member = Miembro
+role_guest = Invitado
+members_count.one = {0} miembro
+members_count.many = {0} de miembros
+members_count.other = {0} miembros
+last_active = Última actividad: {0}
+
+# Configuración
+settings_profile = Perfil
+settings_appearance = Apariencia
+theme_light = Claro
+theme_dark = Oscuro
+theme_system = Usar configuración del sistema
+language_saved = Idioma guardado. {0} se usará la próxima vez que abras Atlas.
+email_notifications = Enviarme un correo sobre la actividad en la que participo
+storage_used = {0} de {1} GB usados
+files_count.one = {0} archivo
+files_count.many = {0} de archivos
+files_count.other = {0} archivos
+
+# Comentarios
+confirm_delete = ¿Eliminar {0}?
+cannot_undo = Esta acción no se puede deshacer.
+changes_saved = Cambios guardados
+error_generic = Algo salió mal. Inténtalo de nuevo.
+items_selected.one = {0} elemento seleccionado
+items_selected.many = {0} de elementos seleccionados
+items_selected.other = {0} elementos seleccionados

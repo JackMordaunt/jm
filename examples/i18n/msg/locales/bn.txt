@@ -1,0 +1,136 @@
+# Atlas, বাংলা (bn).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = ওয়ার্কস্পেস
+nav_home = হোম
+nav_inbox = ইনবক্স
+nav_projects = প্রজেক্ট
+nav_calendar = ক্যালেন্ডার
+nav_team = টিম
+nav_settings = সেটিংস
+nav_help = সহায়তা ও মতামত
+nav_sign_out = সাইন আউট
+
+# Toolbar
+search = সার্চ
+search_placeholder = প্রজেক্ট, মানুষ ও ফাইল সার্চ করুন
+notifications = নোটিফিকেশন
+language = ভাষা
+language_menu_title = প্রদর্শন ভাষা
+account = অ্যাকাউন্ট
+refresh = রিফ্রেশ
+
+# Common actions
+save = সেভ করুন
+cancel = বাতিল করুন
+delete = ডিলিট করুন
+edit = এডিট করুন
+share = শেয়ার করুন
+archive = আর্কাইভ করুন
+duplicate = ডুপ্লিকেট করুন
+rename = নাম পরিবর্তন করুন
+download = ডাউনলোড করুন
+upload = আপলোড করুন
+export = এক্সপোর্ট করুন
+close = বন্ধ করুন
+back = পেছনে
+next = পরবর্তী
+done = সম্পন্ন
+more_options = আরও বিকল্প
+
+# Home
+greeting = আবার স্বাগতম, {0}
+home_summary = আজ আপনার ওয়ার্কস্পেসে যা ঘটছে তা দেখুন।
+tasks_due_today.one = আজ {0}টি টাস্কের মেয়াদ শেষ হচ্ছে
+tasks_due_today.other = আজ {0}টি টাস্কের মেয়াদ শেষ হচ্ছে
+unread_messages.one = {0}টি অপঠিত মেসেজ
+unread_messages.other = {0}টি অপঠিত মেসেজ
+active_projects.one = {0}টি সক্রিয় প্রজেক্ট
+active_projects.other = {0}টি সক্রিয় প্রজেক্ট
+members_online.one = {0} জন টিম সদস্য অনলাইনে আছেন
+members_online.other = {0} জন টিম সদস্য অনলাইনে আছেন
+recent_activity = সাম্প্রতিক কার্যক্রম
+view_all = সব দেখুন
+quick_actions = দ্রুত কাজ
+new_task = নতুন টাস্ক
+new_project = নতুন প্রজেক্ট
+invite_member = সদস্য আমন্ত্রণ করুন
+bulk_edit = একসাথে এডিট করুন
+
+# Activity
+activity_commented = {0} {1}-এ মন্তব্য করেছেন
+activity_completed = {0} {1} সম্পন্ন করেছেন
+activity_created = {0} {1} তৈরি করেছেন
+just_now = এইমাত্র
+minutes_ago.one = {0} মিনিট আগে
+minutes_ago.other = {0} মিনিট আগে
+hours_ago.one = {0} ঘণ্টা আগে
+hours_ago.other = {0} ঘণ্টা আগে
+days_ago.one = {0} দিন আগে
+days_ago.other = {0} দিন আগে
+
+# Inbox
+inbox_empty = আপনি সব দেখে নিয়েছেন
+inbox_empty_body = নতুন মেসেজ এখানে দেখা যাবে।
+mark_all_read = সব পঠিত হিসেবে চিহ্নিত করুন
+mark_read = পঠিত হিসেবে চিহ্নিত করুন
+mark_unread = অপঠিত হিসেবে চিহ্নিত করুন
+reply = উত্তর দিন
+forward = ফরওয়ার্ড করুন
+filter_all = সব
+filter_unread = অপঠিত
+filter_mentions = মেনশন
+
+# Projects
+status_on_track = সঠিক পথে
+status_at_risk = ঝুঁকিতে
+status_off_track = পথ থেকে বিচ্যুত
+status_completed = সম্পন্ন
+project_progress = {0}% সম্পন্ন
+project_tasks.one = {0}টি টাস্ক
+project_tasks.other = {0}টি টাস্ক
+due_in_days.one = {0} দিনের মধ্যে শেষ তারিখ
+due_in_days.other = {0} দিনের মধ্যে শেষ তারিখ
+project_owner = মালিক: {0}
+sort_by = সাজানোর মাধ্যম
+sort_name = নাম
+sort_due_date = শেষ তারিখ
+
+# Calendar
+today = আজ
+week = সপ্তাহ
+month = মাস
+events_scheduled.one = {0}টি ইভেন্ট নির্ধারিত আছে
+events_scheduled.other = {0}টি ইভেন্ট নির্ধারিত আছে
+no_events = কোনো ইভেন্ট নির্ধারিত নেই
+all_day = সারাদিন
+
+# Team
+invite_by_email = ইমেলের মাধ্যমে আমন্ত্রণ করুন
+role_admin = অ্যাডমিন
+role_member = সদস্য
+role_guest = অতিথি
+members_count.one = {0} জন সদস্য
+members_count.other = {0} জন সদস্য
+last_active = সর্বশেষ সক্রিয় {0}
+
+# Settings
+settings_profile = প্রোফাইল
+settings_appearance = অ্যাপিয়ারেন্স
+theme_light = লাইট
+theme_dark = ডার্ক
+theme_system = সিস্টেম সেটিং ব্যবহার করুন
+language_saved = ভাষা সেভ হয়েছে। পরের বার Atlas খোলার সময় {0} ব্যবহার করা হবে।
+email_notifications = আমি জড়িত থাকা কার্যক্রম সম্পর্কে আমাকে ইমেল করুন
+storage_used = {1} GB-এর মধ্যে {0} ব্যবহৃত
+files_count.one = {0}টি ফাইল
+files_count.other = {0}টি ফাইল
+
+# Feedback
+confirm_delete = {0} ডিলিট করবেন?
+cannot_undo = এটি পূর্বাবস্থায় ফেরানো যাবে না।
+changes_saved = পরিবর্তন সেভ হয়েছে
+error_generic = কিছু ভুল হয়েছে। আবার চেষ্টা করুন।
+items_selected.one = {0}টি আইটেম নির্বাচিত
+items_selected.other = {0}টি আইটেম নির্বাচিত

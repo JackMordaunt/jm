@@ -1,0 +1,136 @@
+# Atlas, हिन्दी (hi).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = वर्कस्पेस
+nav_home = होम
+nav_inbox = इनबॉक्स
+nav_projects = प्रोजेक्ट
+nav_calendar = कैलेंडर
+nav_team = टीम
+nav_settings = सेटिंग्स
+nav_help = सहायता और फ़ीडबैक
+nav_sign_out = साइन आउट करें
+
+# Toolbar
+search = खोजें
+search_placeholder = प्रोजेक्ट, लोग और फ़ाइलें खोजें
+notifications = सूचनाएं
+language = भाषा
+language_menu_title = डिस्प्ले भाषा
+account = खाता
+refresh = रीफ़्रेश करें
+
+# Common actions
+save = सहेजें
+cancel = रद्द करें
+delete = हटाएं
+edit = संपादित करें
+share = शेयर करें
+archive = संग्रहित करें
+duplicate = डुप्लिकेट करें
+rename = नाम बदलें
+download = डाउनलोड करें
+upload = अपलोड करें
+export = एक्सपोर्ट करें
+close = बंद करें
+back = वापस
+next = आगे
+done = हो गया
+more_options = अधिक विकल्प
+
+# Home
+greeting = वापसी पर स्वागत है, {0}
+home_summary = आज आपके वर्कस्पेस में यह सब हो रहा है।
+tasks_due_today.one = आज {0} टास्क ड्यू है
+tasks_due_today.other = आज {0} टास्क ड्यू हैं
+unread_messages.one = {0} अपठित मैसेज है
+unread_messages.other = {0} अपठित मैसेज हैं
+active_projects.one = {0} सक्रिय प्रोजेक्ट है
+active_projects.other = {0} सक्रिय प्रोजेक्ट हैं
+members_online.one = {0} टीम सदस्य ऑनलाइन है
+members_online.other = {0} टीम सदस्य ऑनलाइन हैं
+recent_activity = हाल की गतिविधि
+view_all = सभी देखें
+quick_actions = त्वरित कार्य
+new_task = नया टास्क
+new_project = नया प्रोजेक्ट
+invite_member = सदस्य को आमंत्रित करें
+bulk_edit = बल्क संपादन
+
+# Activity
+activity_commented = {0} ने {1} पर टिप्पणी की
+activity_completed = {0} ने {1} पूरा किया
+activity_created = {0} ने {1} बनाया
+just_now = अभी
+minutes_ago.one = {0} मिनट पहले
+minutes_ago.other = {0} मिनट पहले
+hours_ago.one = {0} घंटा पहले
+hours_ago.other = {0} घंटे पहले
+days_ago.one = {0} दिन पहले
+days_ago.other = {0} दिन पहले
+
+# Inbox
+inbox_empty = आप पूरी तरह अपडेट हैं
+inbox_empty_body = नए मैसेज यहां दिखाई देंगे।
+mark_all_read = सभी को पढ़ा हुआ चिह्नित करें
+mark_read = पढ़ा हुआ चिह्नित करें
+mark_unread = अपठित चिह्नित करें
+reply = जवाब दें
+forward = फ़ॉरवर्ड करें
+filter_all = सभी
+filter_unread = अपठित
+filter_mentions = मेंशन
+
+# Projects
+status_on_track = समय पर
+status_at_risk = जोखिम में
+status_off_track = पिछड़ रहा है
+status_completed = पूरा हुआ
+project_progress = {0}% पूरा हुआ
+project_tasks.one = {0} टास्क
+project_tasks.other = {0} टास्क
+due_in_days.one = {0} दिन में देय
+due_in_days.other = {0} दिनों में देय
+project_owner = स्वामी: {0}
+sort_by = इस आधार पर क्रमबद्ध करें
+sort_name = नाम
+sort_due_date = नियत तारीख
+
+# Calendar
+today = आज
+week = सप्ताह
+month = महीना
+events_scheduled.one = {0} इवेंट शेड्यूल है
+events_scheduled.other = {0} इवेंट शेड्यूल हैं
+no_events = कोई इवेंट शेड्यूल नहीं है
+all_day = पूरे दिन
+
+# Team
+invite_by_email = ईमेल से आमंत्रित करें
+role_admin = एडमिन
+role_member = सदस्य
+role_guest = गेस्ट
+members_count.one = {0} सदस्य
+members_count.other = {0} सदस्य
+last_active = अंतिम बार सक्रिय {0}
+
+# Settings
+settings_profile = प्रोफ़ाइल
+settings_appearance = दिखावट
+theme_light = लाइट
+theme_dark = डार्क
+theme_system = सिस्टम सेटिंग का उपयोग करें
+language_saved = भाषा सहेजी गई। अगली बार जब आप Atlas खोलेंगे, तो {0} का उपयोग किया जाएगा।
+email_notifications = मेरी भागीदारी वाली गतिविधि के बारे में मुझे ईमेल करें
+storage_used = {1} GB में से {0} उपयोग हुआ
+files_count.one = {0} फ़ाइल
+files_count.other = {0} फ़ाइलें
+
+# Feedback
+confirm_delete = {0} हटाएं?
+cannot_undo = इसे पूर्ववत नहीं किया जा सकता।
+changes_saved = बदलाव सहेजे गए
+error_generic = कुछ गड़बड़ हो गई। फिर से प्रयास करें।
+items_selected.one = {0} आइटम चयनित है
+items_selected.other = {0} आइटम चयनित हैं
