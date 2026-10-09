@@ -57,6 +57,7 @@ Host_App :: struct {
 	clear:         Color, // shown before the child's first reply arrives
 	threads:       u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 	no_accessibility: bool, // leave assistive technology unserved: no bridge is made
+	keep_escape:   bool, // Escape goes to the child's ui as a key, rather than closing the window
 	// The application, here in the host: the child's frames send their
 	// needs and commands over the wire, this dispatches them, and what is
 	// put in its inbox goes to the child with the next input. See
@@ -126,7 +127,8 @@ host_app_for :: proc(app: Host_App, args: []string) -> Host_App {
 }
 
 // run_host opens the window, spawns app.child, and loops until the window
-// is closed, Escape is pressed, or the process is sent SIGINT or SIGTERM.
+// is closed, Escape is pressed (unless Host_App.keep_escape), or the
+// process is sent SIGINT or SIGTERM.
 // It reports failure to open or spawn on stderr and returns; the child, if
 // it started, is killed first.
 run_host :: proc(app: Host_App) {
@@ -183,7 +185,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 		fmt.eprintln("shell: no child to spawn (check Host_App.child / watch)")
 		return false
 	}
-	if !open(&l.w, App{title = app.title, width = app.width, height = app.height, min_width = app.min_width, min_height = app.min_height}) {
+	if !open(&l.w, App{title = app.title, width = app.width, height = app.height, min_width = app.min_width, min_height = app.min_height, keep_escape = app.keep_escape}) {
 		return false
 	}
 	argv := child_argv(&l.app, path, context.temp_allocator)

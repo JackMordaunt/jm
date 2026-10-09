@@ -101,6 +101,7 @@ App :: struct {
 	clear:                 Color,
 	threads:               u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 	no_accessibility:      bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
+	keep_escape:           bool, // Escape goes to the ui as a key, rather than closing the window: for an app whose dialogs and fields close on it
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
 }
 
@@ -157,6 +158,7 @@ Window :: struct {
 	a11y:         ^Bridge, // the loop's bridge to assistive technology, for window events; nil without one
 	ime:          ui.Text_Input, // what the input method was last set to; off until a text area takes focus
 	composing:    bool, // the input method holds a preedit: it owns the keys
+	keep_escape:  bool, // App.keep_escape: Escape is a key for the ui, not the end of the run
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -286,8 +288,9 @@ set_hints :: proc() {
 	sdl3.SetHint(sdl3.HINT_IME_IMPLEMENTED_UI, "composition")
 }
 
-// run opens the window and loops until it is closed, Escape is pressed, or
-// the process is sent SIGINT or SIGTERM (interrupt_posix.odin); each
+// run opens the window and loops until it is closed, Escape is pressed
+// (unless App.keep_escape), or the process is sent SIGINT or SIGTERM
+// (interrupt_posix.odin); each
 // returns the same way, so the caller's shutdown runs after any of them.
 // It reports failure to open on stderr and returns.
 run :: proc(app: App) {
@@ -563,6 +566,7 @@ go_live :: proc(w: ^Window) {
 
 @(private)
 open :: proc(w: ^Window, app: App) -> bool {
+	w.keep_escape = app.keep_escape
 	title := strings.clone_to_cstring(
 		app.title if app.title != "" else "ui",
 		context.temp_allocator,
@@ -1013,7 +1017,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 				continue
 			}
 			k := key(e.key.key)
-			if k == .Escape {
+			if k == .Escape && !w.keep_escape {
 				return false
 			}
 			if k != .None {
