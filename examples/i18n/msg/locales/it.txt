@@ -1,0 +1,149 @@
+# Atlas, Italiano (it).
+
+# App e navigazione
+app_name = Atlas
+nav_workspace = Area di lavoro
+nav_home = Home
+nav_inbox = Posta in arrivo
+nav_projects = Progetti
+nav_calendar = Calendario
+nav_team = Team
+nav_settings = Impostazioni
+nav_help = Guida e feedback
+nav_sign_out = Esci
+
+# Barra degli strumenti
+search = Cerca
+search_placeholder = Cerca progetti, persone e file
+notifications = Notifiche
+language = Lingua
+language_menu_title = Lingua di visualizzazione
+account = Account
+refresh = Aggiorna
+
+# Azioni comuni
+save = Salva
+cancel = Annulla
+delete = Elimina
+edit = Modifica
+share = Condividi
+archive = Archivia
+duplicate = Duplica
+rename = Rinomina
+download = Scarica
+upload = Carica
+export = Esporta
+close = Chiudi
+back = Indietro
+next = Avanti
+done = Fine
+more_options = Altre opzioni
+
+# Home
+greeting = Bentornato, {0}
+home_summary = Ecco cosa succede oggi nella tua area di lavoro.
+tasks_due_today.one = {0} attività in scadenza oggi
+tasks_due_today.many = {0} di attività in scadenza oggi
+tasks_due_today.other = {0} attività in scadenza oggi
+unread_messages.one = {0} messaggio non letto
+unread_messages.many = {0} di messaggi non letti
+unread_messages.other = {0} messaggi non letti
+active_projects.one = {0} progetto attivo
+active_projects.many = {0} di progetti attivi
+active_projects.other = {0} progetti attivi
+members_online.one = {0} membro del team online
+members_online.many = {0} di membri del team online
+members_online.other = {0} membri del team online
+recent_activity = Attività recente
+view_all = Visualizza tutto
+quick_actions = Azioni rapide
+new_task = Nuova attività
+new_project = Nuovo progetto
+invite_member = Invita membro
+bulk_edit = Modifica in blocco
+
+# Attività
+activity_commented = {0} ha commentato {1}
+activity_completed = {0} ha completato {1}
+activity_created = {0} ha creato {1}
+just_now = Proprio ora
+minutes_ago.one = {0} minuto fa
+minutes_ago.many = {0} di minuti fa
+minutes_ago.other = {0} minuti fa
+hours_ago.one = {0} ora fa
+hours_ago.many = {0} di ore fa
+hours_ago.other = {0} ore fa
+days_ago.one = {0} giorno fa
+days_ago.many = {0} di giorni fa
+days_ago.other = {0} giorni fa
+
+# Posta in arrivo
+inbox_empty = Sei in pari
+inbox_empty_body = I nuovi messaggi appariranno qui.
+mark_all_read = Segna tutti come letti
+mark_read = Segna come letto
+mark_unread = Segna come non letto
+reply = Rispondi
+forward = Inoltra
+filter_all = Tutti
+filter_unread = Non letti
+filter_mentions = Menzioni
+
+# Progetti
+status_on_track = In linea con i tempi
+status_at_risk = A rischio
+status_off_track = In ritardo
+status_completed = Completato
+project_progress = {0}% completato
+project_tasks.one = {0} attività
+project_tasks.many = {0} di attività
+project_tasks.other = {0} attività
+due_in_days.one = Scade in {0} giorno
+due_in_days.many = Scade in {0} di giorni
+due_in_days.other = Scade in {0} giorni
+project_owner = Proprietario: {0}
+sort_by = Ordina per
+sort_name = Nome
+sort_due_date = Data di scadenza
+
+# Calendario
+today = Oggi
+week = Settimana
+month = Mese
+events_scheduled.one = {0} evento in programma
+events_scheduled.many = {0} di eventi in programma
+events_scheduled.other = {0} eventi in programma
+no_events = Nessun evento in programma
+all_day = Tutto il giorno
+
+# Team
+invite_by_email = Invita tramite e-mail
+role_admin = Amministratore
+role_member = Membro
+role_guest = Ospite
+members_count.one = {0} membro
+members_count.many = {0} di membri
+members_count.other = {0} membri
+last_active = Ultima attività: {0}
+
+# Impostazioni
+settings_profile = Profilo
+settings_appearance = Aspetto
+theme_light = Chiaro
+theme_dark = Scuro
+theme_system = Usa le impostazioni di sistema
+language_saved = Lingua salvata. {0} sarà utilizzata la prossima volta che apri Atlas.
+email_notifications = Inviami un'e-mail per le attività a cui partecipo
+storage_used = {0} di {1} GB utilizzati
+files_count.one = {0} file
+files_count.many = {0} di file
+files_count.other = {0} file
+
+# Feedback
+confirm_delete = Eliminare {0}?
+cannot_undo = Questa azione non può essere annullata.
+changes_saved = Modifiche salvate
+error_generic = Qualcosa è andato storto. Riprova.
+items_selected.one = {0} elemento selezionato
+items_selected.many = {0} di elementi selezionati
+items_selected.other = {0} elementi selezionati

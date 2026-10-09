@@ -1,0 +1,165 @@
+# Atlas, Українська (uk).
+# Одне повідомлення на рядок: `ключ = текст`; `ключ.one` тощо — форми
+# множини, а сам ключ без суфікса — форма «other». {0} і {1} — аргументи,
+# {{ — буквальна фігурна дужка.
+
+# Застосунок і навігація
+app_name = Atlas
+nav_workspace = Робочий простір
+nav_home = Головна
+nav_inbox = Вхідні
+nav_projects = Проєкти
+nav_calendar = Календар
+nav_team = Команда
+nav_settings = Налаштування
+nav_help = Довідка та відгуки
+nav_sign_out = Вийти
+
+# Панель інструментів
+search = Пошук
+search_placeholder = Пошук проєктів, людей і файлів
+notifications = Сповіщення
+language = Мова
+language_menu_title = Мова інтерфейсу
+account = Обліковий запис
+refresh = Оновити
+
+# Типові дії
+save = Зберегти
+cancel = Скасувати
+delete = Видалити
+edit = Редагувати
+share = Поділитися
+archive = Архівувати
+duplicate = Дублювати
+rename = Перейменувати
+download = Завантажити
+upload = Вивантажити
+export = Експортувати
+close = Закрити
+back = Назад
+next = Далі
+done = Готово
+more_options = Більше опцій
+
+# Головна
+greeting = Вітаємо знову, {0}
+home_summary = Ось що відбувається у вашому робочому просторі сьогодні.
+tasks_due_today.one = {0} завдання на сьогодні
+tasks_due_today.few = {0} завдання на сьогодні
+tasks_due_today.many = {0} завдань на сьогодні
+tasks_due_today.other = {0} завдання на сьогодні
+unread_messages.one = {0} непрочитане повідомлення
+unread_messages.few = {0} непрочитані повідомлення
+unread_messages.many = {0} непрочитаних повідомлень
+unread_messages.other = {0} непрочитаного повідомлення
+active_projects.one = {0} активний проєкт
+active_projects.few = {0} активні проєкти
+active_projects.many = {0} активних проєктів
+active_projects.other = {0} активного проєкту
+members_online.one = {0} учасник команди онлайн
+members_online.few = {0} учасники команди онлайн
+members_online.many = {0} учасників команди онлайн
+members_online.other = {0} учасника команди онлайн
+recent_activity = Остання активність
+view_all = Переглянути всі
+quick_actions = Швидкі дії
+new_task = Нове завдання
+new_project = Новий проєкт
+invite_member = Запросити учасника
+bulk_edit = Масове редагування
+
+# Активність
+activity_commented = {0}: коментар до «{1}»
+activity_completed = {0}: завершення «{1}»
+activity_created = {0}: створення «{1}»
+just_now = Щойно
+minutes_ago.one = {0} хвилину тому
+minutes_ago.few = {0} хвилини тому
+minutes_ago.many = {0} хвилин тому
+minutes_ago.other = {0} хвилини тому
+hours_ago.one = {0} годину тому
+hours_ago.few = {0} години тому
+hours_ago.many = {0} годин тому
+hours_ago.other = {0} години тому
+days_ago.one = {0} день тому
+days_ago.few = {0} дні тому
+days_ago.many = {0} днів тому
+days_ago.other = {0} дня тому
+
+# Вхідні
+inbox_empty = Усе опрацьовано
+inbox_empty_body = Нові повідомлення з'являтимуться тут.
+mark_all_read = Позначити все як прочитане
+mark_read = Позначити як прочитане
+mark_unread = Позначити як непрочитане
+reply = Відповісти
+forward = Переслати
+filter_all = Усі
+filter_unread = Непрочитані
+filter_mentions = Згадування
+
+# Проєкти
+status_on_track = За планом
+status_at_risk = Під загрозою
+status_off_track = Відхилення від плану
+status_completed = Завершено
+project_progress = {0}% виконано
+project_tasks.one = {0} завдання
+project_tasks.few = {0} завдання
+project_tasks.many = {0} завдань
+project_tasks.other = {0} завдання
+due_in_days.one = Термін через {0} день
+due_in_days.few = Термін через {0} дні
+due_in_days.many = Термін через {0} днів
+due_in_days.other = Термін через {0} дня
+project_owner = Власник: {0}
+sort_by = Сортувати за
+sort_name = Назва
+sort_due_date = Термін виконання
+
+# Календар
+today = Сьогодні
+week = Тиждень
+month = Місяць
+events_scheduled.one = {0} запланована подія
+events_scheduled.few = {0} заплановані події
+events_scheduled.many = {0} запланованих подій
+events_scheduled.other = {0} запланованої події
+no_events = Немає запланованих подій
+all_day = Увесь день
+
+# Команда
+invite_by_email = Запросити електронною поштою
+role_admin = Адміністратор
+role_member = Учасник
+role_guest = Гість
+members_count.one = {0} учасник
+members_count.few = {0} учасники
+members_count.many = {0} учасників
+members_count.other = {0} учасника
+last_active = Був(ла) онлайн: {0}
+
+# Налаштування
+settings_profile = Профіль
+settings_appearance = Вигляд
+theme_light = Світла
+theme_dark = Темна
+theme_system = Як у системі
+language_saved = Мову збережено. {0} буде використовуватися під час наступного відкриття Atlas.
+email_notifications = Надсилати мені листи про активність, у якій я беру участь
+storage_used = Використано {0} з {1} ГБ
+files_count.one = {0} файл
+files_count.few = {0} файли
+files_count.many = {0} файлів
+files_count.other = {0} файлу
+
+# Відгуки
+confirm_delete = Видалити «{0}»?
+cannot_undo = Цю дію не можна скасувати.
+changes_saved = Зміни збережено
+error_generic = Щось пішло не так. Спробуйте ще раз.
+items_selected.one = Вибрано {0} елемент
+items_selected.few = Вибрано {0} елементи
+items_selected.many = Вибрано {0} елементів
+items_selected.other = Вибрано {0} елемента

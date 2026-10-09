@@ -1,0 +1,139 @@
+# Atlas, Türkçe (tr).
+# Her satırda bir ileti: `anahtar = metin`; `anahtar.one` tekil biçim, düz
+# anahtar ise çoğul (other) biçimdir. {0} ve {1} birer bağımsız değişkendir,
+# {{ gerçek bir küme ayracıdır.
+
+# Uygulama ve gezinme
+app_name = Atlas
+nav_workspace = Çalışma alanı
+nav_home = Ana sayfa
+nav_inbox = Gelen kutusu
+nav_projects = Projeler
+nav_calendar = Takvim
+nav_team = Takım
+nav_settings = Ayarlar
+nav_help = Yardım ve geri bildirim
+nav_sign_out = Oturumu kapat
+
+# Araç çubuğu
+search = Ara
+search_placeholder = Proje, kişi ve dosya ara
+notifications = Bildirimler
+language = Dil
+language_menu_title = Görüntüleme dili
+account = Hesap
+refresh = Yenile
+
+# Ortak işlemler
+save = Kaydet
+cancel = İptal
+delete = Sil
+edit = Düzenle
+share = Paylaş
+archive = Arşivle
+duplicate = Çoğalt
+rename = Yeniden adlandır
+download = İndir
+upload = Yükle
+export = Dışa aktar
+close = Kapat
+back = Geri
+next = İleri
+done = Tamam
+more_options = Diğer seçenekler
+
+# Ana sayfa
+greeting = Tekrar hoş geldin, {0}
+home_summary = İşte bugün çalışma alanında olup bitenler.
+tasks_due_today.one = Bugün son tarihi olan {0} görev
+tasks_due_today.other = Bugün son tarihi olan {0} görev
+unread_messages.one = {0} okunmamış mesaj
+unread_messages.other = {0} okunmamış mesaj
+active_projects.one = {0} aktif proje
+active_projects.other = {0} aktif proje
+members_online.one = {0} çevrimiçi takım üyesi
+members_online.other = {0} çevrimiçi takım üyesi
+recent_activity = Son etkinlikler
+view_all = Tümünü görüntüle
+quick_actions = Hızlı işlemler
+new_task = Yeni görev
+new_project = Yeni proje
+invite_member = Üye davet et
+bulk_edit = Toplu düzenle
+
+# Etkinlik
+activity_commented = {0}, {1} üzerine yorum yaptı
+activity_completed = {0}, {1} öğesini tamamladı
+activity_created = {0}, {1} öğesini oluşturdu
+just_now = Az önce
+minutes_ago.one = {0} dakika önce
+minutes_ago.other = {0} dakika önce
+hours_ago.one = {0} saat önce
+hours_ago.other = {0} saat önce
+days_ago.one = {0} gün önce
+days_ago.other = {0} gün önce
+
+# Gelen kutusu
+inbox_empty = Her şey güncel
+inbox_empty_body = Yeni mesajlar burada görünecek.
+mark_all_read = Tümünü okundu olarak işaretle
+mark_read = Okundu olarak işaretle
+mark_unread = Okunmadı olarak işaretle
+reply = Yanıtla
+forward = İlet
+filter_all = Tümü
+filter_unread = Okunmamış
+filter_mentions = Bahsedilmeler
+
+# Projeler
+status_on_track = Yolunda
+status_at_risk = Riskli
+status_off_track = Planın dışında
+status_completed = Tamamlandı
+project_progress = %{0} tamamlandı
+project_tasks.one = {0} görev
+project_tasks.other = {0} görev
+due_in_days.one = {0} gün içinde son tarih
+due_in_days.other = {0} gün içinde son tarih
+project_owner = Sahip: {0}
+sort_by = Sıralama ölçütü
+sort_name = Ad
+sort_due_date = Son tarih
+
+# Takvim
+today = Bugün
+week = Hafta
+month = Ay
+events_scheduled.one = {0} planlanmış etkinlik
+events_scheduled.other = {0} planlanmış etkinlik
+no_events = Planlanmış etkinlik yok
+all_day = Tüm gün
+
+# Takım
+invite_by_email = E-posta ile davet et
+role_admin = Yönetici
+role_member = Üye
+role_guest = Misafir
+members_count.one = {0} üye
+members_count.other = {0} üye
+last_active = Son çevrimiçi: {0}
+
+# Ayarlar
+settings_profile = Profil
+settings_appearance = Görünüm
+theme_light = Açık
+theme_dark = Koyu
+theme_system = Sistem ayarını kullan
+language_saved = Dil kaydedildi. Atlas'ı bir dahaki açışınızda {0} kullanılacak.
+email_notifications = Dahil olduğum etkinlikler için bana e-posta gönder
+storage_used = {0} GB / {1} GB kullanıldı
+files_count.one = {0} dosya
+files_count.other = {0} dosya
+
+# Geri bildirim
+confirm_delete = {0} silinsin mi?
+cannot_undo = Bu işlem geri alınamaz.
+changes_saved = Değişiklikler kaydedildi
+error_generic = Bir şeyler ters gitti. Yeniden deneyin.
+items_selected.one = {0} öğe seçildi
+items_selected.other = {0} öğe seçildi

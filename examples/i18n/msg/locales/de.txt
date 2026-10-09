@@ -1,0 +1,136 @@
+# Atlas, Deutsch (de).
+
+# App und Navigation
+app_name = Atlas
+nav_workspace = Arbeitsbereich
+nav_home = Startseite
+nav_inbox = Posteingang
+nav_projects = Projekte
+nav_calendar = Kalender
+nav_team = Team
+nav_settings = Einstellungen
+nav_help = Hilfe und Feedback
+nav_sign_out = Abmelden
+
+# Symbolleiste
+search = Suchen
+search_placeholder = Projekte, Personen und Dateien durchsuchen
+notifications = Benachrichtigungen
+language = Sprache
+language_menu_title = Anzeigesprache
+account = Konto
+refresh = Aktualisieren
+
+# Häufige Aktionen
+save = Speichern
+cancel = Abbrechen
+delete = Löschen
+edit = Bearbeiten
+share = Teilen
+archive = Archivieren
+duplicate = Duplizieren
+rename = Umbenennen
+download = Herunterladen
+upload = Hochladen
+export = Exportieren
+close = Schließen
+back = Zurück
+next = Weiter
+done = Fertig
+more_options = Weitere Optionen
+
+# Start
+greeting = Willkommen zurück, {0}
+home_summary = Das passiert heute in deinem Arbeitsbereich.
+tasks_due_today.one = {0} Aufgabe ist heute fällig
+tasks_due_today.other = {0} Aufgaben sind heute fällig
+unread_messages.one = {0} ungelesene Nachricht
+unread_messages.other = {0} ungelesene Nachrichten
+active_projects.one = {0} aktives Projekt
+active_projects.other = {0} aktive Projekte
+members_online.one = {0} Teammitglied online
+members_online.other = {0} Teammitglieder online
+recent_activity = Letzte Aktivitäten
+view_all = Alle anzeigen
+quick_actions = Schnellaktionen
+new_task = Neue Aufgabe
+new_project = Neues Projekt
+invite_member = Mitglied einladen
+bulk_edit = Massenbearbeitung
+
+# Aktivität
+activity_commented = {0} hat {1} kommentiert
+activity_completed = {0} hat {1} abgeschlossen
+activity_created = {0} hat {1} erstellt
+just_now = Gerade eben
+minutes_ago.one = Vor {0} Minute
+minutes_ago.other = Vor {0} Minuten
+hours_ago.one = Vor {0} Stunde
+hours_ago.other = Vor {0} Stunden
+days_ago.one = Vor {0} Tag
+days_ago.other = Vor {0} Tagen
+
+# Posteingang
+inbox_empty = Du bist auf dem neuesten Stand
+inbox_empty_body = Neue Nachrichten werden hier angezeigt.
+mark_all_read = Alle als gelesen markieren
+mark_read = Als gelesen markieren
+mark_unread = Als ungelesen markieren
+reply = Antworten
+forward = Weiterleiten
+filter_all = Alle
+filter_unread = Ungelesen
+filter_mentions = Erwähnungen
+
+# Projekte
+status_on_track = Im Zeitplan
+status_at_risk = Gefährdet
+status_off_track = Im Rückstand
+status_completed = Abgeschlossen
+project_progress = {0} % abgeschlossen
+project_tasks.one = {0} Aufgabe
+project_tasks.other = {0} Aufgaben
+due_in_days.one = Fällig in {0} Tag
+due_in_days.other = Fällig in {0} Tagen
+project_owner = Verantwortlich: {0}
+sort_by = Sortieren nach
+sort_name = Name
+sort_due_date = Fälligkeitsdatum
+
+# Kalender
+today = Heute
+week = Woche
+month = Monat
+events_scheduled.one = {0} geplanter Termin
+events_scheduled.other = {0} geplante Termine
+no_events = Keine geplanten Termine
+all_day = Ganztägig
+
+# Team
+invite_by_email = Per E-Mail einladen
+role_admin = Administrator
+role_member = Mitglied
+role_guest = Gast
+members_count.one = {0} Mitglied
+members_count.other = {0} Mitglieder
+last_active = Zuletzt aktiv: {0}
+
+# Einstellungen
+settings_profile = Profil
+settings_appearance = Erscheinungsbild
+theme_light = Hell
+theme_dark = Dunkel
+theme_system = Systemeinstellung verwenden
+language_saved = Sprache gespeichert. {0} wird verwendet, wenn du Atlas das nächste Mal öffnest.
+email_notifications = Mich über Aktivitäten benachrichtigen, an denen ich beteiligt bin
+storage_used = {0} von {1} GB verwendet
+files_count.one = {0} Datei
+files_count.other = {0} Dateien
+
+# Feedback
+confirm_delete = {0} löschen?
+cannot_undo = Diese Aktion kann nicht widerrufen werden.
+changes_saved = Änderungen gespeichert
+error_generic = Etwas ist schiefgelaufen. Versuch es erneut.
+items_selected.one = {0} Element ausgewählt
+items_selected.other = {0} Elemente ausgewählt

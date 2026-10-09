@@ -1,0 +1,123 @@
+# Atlas, 简体中文 (zh-Hans).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = 工作区
+nav_home = 主页
+nav_inbox = 收件箱
+nav_projects = 项目
+nav_calendar = 日历
+nav_team = 团队
+nav_settings = 设置
+nav_help = 帮助与反馈
+nav_sign_out = 退出登录
+
+# Toolbar
+search = 搜索
+search_placeholder = 搜索项目、人员和文件
+notifications = 通知
+language = 语言
+language_menu_title = 显示语言
+account = 账户
+refresh = 刷新
+
+# Common actions
+save = 保存
+cancel = 取消
+delete = 删除
+edit = 编辑
+share = 共享
+archive = 归档
+duplicate = 复制
+rename = 重命名
+download = 下载
+upload = 上传
+export = 导出
+close = 关闭
+back = 返回
+next = 下一步
+done = 完成
+more_options = 更多选项
+
+# Home
+greeting = 欢迎回来，{0}
+home_summary = 以下是您工作区今天的最新动态。
+tasks_due_today = 今天有 {0} 个任务到期
+unread_messages = {0} 条未读消息
+active_projects = {0} 个进行中的项目
+members_online = {0} 位团队成员在线
+recent_activity = 最近动态
+view_all = 查看全部
+quick_actions = 快捷操作
+new_task = 新建任务
+new_project = 新建项目
+invite_member = 邀请成员
+bulk_edit = 批量编辑
+
+# Activity
+activity_commented = {0} 评论了 {1}
+activity_completed = {0} 完成了 {1}
+activity_created = {0} 创建了 {1}
+just_now = 刚刚
+minutes_ago = {0} 分钟前
+hours_ago = {0} 小时前
+days_ago = {0} 天前
+
+# Inbox
+inbox_empty = 全部已处理
+inbox_empty_body = 新消息将显示在这里。
+mark_all_read = 全部标为已读
+mark_read = 标为已读
+mark_unread = 标为未读
+reply = 回复
+forward = 转发
+filter_all = 全部
+filter_unread = 未读
+filter_mentions = 提及我的
+
+# Projects
+status_on_track = 进展顺利
+status_at_risk = 有风险
+status_off_track = 进度滞后
+status_completed = 已完成
+project_progress = 已完成 {0}%
+project_tasks = {0} 个任务
+due_in_days = {0} 天后到期
+project_owner = 负责人：{0}
+sort_by = 排序方式
+sort_name = 名称
+sort_due_date = 到期日期
+
+# Calendar
+today = 今天
+week = 周
+month = 月
+events_scheduled = {0} 个日程安排
+no_events = 没有日程安排
+all_day = 全天
+
+# Team
+invite_by_email = 通过电子邮件邀请
+role_admin = 管理员
+role_member = 成员
+role_guest = 访客
+members_count = {0} 位成员
+last_active = 最近活跃：{0}
+
+# Settings
+settings_profile = 个人资料
+settings_appearance = 外观
+theme_light = 浅色
+theme_dark = 深色
+theme_system = 跟随系统设置
+language_saved = 语言已保存。下次打开 Atlas 时将使用 {0}。
+email_notifications = 通过电子邮件通知我与我相关的动态
+storage_used = 已使用 {0} GB，共 {1} GB
+files_count = {0} 个文件
+
+# Feedback
+confirm_delete = 删除“{0}”？
+cannot_undo = 此操作无法撤销。
+changes_saved = 更改已保存
+error_generic = 出了点问题，请重试。
+items_selected = 已选择 {0} 项

@@ -1,0 +1,123 @@
+# Atlas, 日本語 (ja).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = ワークスペース
+nav_home = ホーム
+nav_inbox = 受信トレイ
+nav_projects = プロジェクト
+nav_calendar = カレンダー
+nav_team = チーム
+nav_settings = 設定
+nav_help = ヘルプとフィードバック
+nav_sign_out = サインアウト
+
+# Toolbar
+search = 検索
+search_placeholder = プロジェクト、メンバー、ファイルを検索
+notifications = 通知
+language = 言語
+language_menu_title = 表示言語
+account = アカウント
+refresh = 更新
+
+# Common actions
+save = 保存
+cancel = キャンセル
+delete = 削除
+edit = 編集
+share = 共有
+archive = アーカイブ
+duplicate = 複製
+rename = 名前を変更
+download = ダウンロード
+upload = アップロード
+export = 書き出し
+close = 閉じる
+back = 戻る
+next = 次へ
+done = 完了
+more_options = その他のオプション
+
+# Home
+greeting = {0}さん、おかえりなさい
+home_summary = 今日のワークスペースの状況です。
+tasks_due_today = 今日が期限のタスク: {0} 件
+unread_messages = 未読メッセージ: {0} 件
+active_projects = 進行中のプロジェクト: {0} 件
+members_online = オンラインのチームメンバー: {0} 人
+recent_activity = 最近のアクティビティ
+view_all = すべて表示
+quick_actions = クイックアクション
+new_task = 新規タスク
+new_project = 新規プロジェクト
+invite_member = メンバーを招待
+bulk_edit = 一括編集
+
+# Activity
+activity_commented = {0}さんが{1}にコメントしました
+activity_completed = {0}さんが{1}を完了しました
+activity_created = {0}さんが{1}を作成しました
+just_now = たった今
+minutes_ago = {0}分前
+hours_ago = {0}時間前
+days_ago = {0}日前
+
+# Inbox
+inbox_empty = 新着メッセージはありません
+inbox_empty_body = 新しいメッセージはここに表示されます。
+mark_all_read = すべて既読にする
+mark_read = 既読にする
+mark_unread = 未読にする
+reply = 返信
+forward = 転送
+filter_all = すべて
+filter_unread = 未読
+filter_mentions = メンション
+
+# Projects
+status_on_track = 順調
+status_at_risk = リスクあり
+status_off_track = 遅延
+status_completed = 完了
+project_progress = {0}% 完了
+project_tasks = タスク: {0} 件
+due_in_days = あと{0}日で期限
+project_owner = 担当者: {0}
+sort_by = 並べ替え
+sort_name = 名前
+sort_due_date = 期限日
+
+# Calendar
+today = 今日
+week = 週
+month = 月
+events_scheduled = 予定されているイベント: {0} 件
+no_events = 予定されているイベントはありません
+all_day = 終日
+
+# Team
+invite_by_email = メールで招待
+role_admin = 管理者
+role_member = メンバー
+role_guest = ゲスト
+members_count = メンバー: {0} 人
+last_active = 最終アクティブ: {0}
+
+# Settings
+settings_profile = プロフィール
+settings_appearance = 外観
+theme_light = ライト
+theme_dark = ダーク
+theme_system = システム設定を使用
+language_saved = 言語を保存しました。次回Atlasを開くときに{0}が使用されます。
+email_notifications = 自分が関わるアクティビティについてメールを受け取る
+storage_used = {1} GB中{0} GBを使用
+files_count = ファイル: {0} 件
+
+# Feedback
+confirm_delete = {0}を削除しますか?
+cannot_undo = この操作は元に戻せません。
+changes_saved = 変更を保存しました
+error_generic = 問題が発生しました。もう一度お試しください。
+items_selected = {0} 件を選択中

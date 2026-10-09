@@ -1,0 +1,165 @@
+# Atlas, Русский (ru).
+# Одно сообщение на строку: `ключ = текст`; `ключ.one` и т.д. — формы
+# множественного числа, а сам ключ без суффикса — форма «other». {0} и {1} —
+# аргументы, {{ — литерная фигурная скобка.
+
+# Приложение и навигация
+app_name = Atlas
+nav_workspace = Рабочая область
+nav_home = Главная
+nav_inbox = Входящие
+nav_projects = Проекты
+nav_calendar = Календарь
+nav_team = Команда
+nav_settings = Настройки
+nav_help = Справка и отзывы
+nav_sign_out = Выйти
+
+# Панель инструментов
+search = Поиск
+search_placeholder = Поиск проектов, людей и файлов
+notifications = Уведомления
+language = Язык
+language_menu_title = Язык интерфейса
+account = Аккаунт
+refresh = Обновить
+
+# Общие действия
+save = Сохранить
+cancel = Отмена
+delete = Удалить
+edit = Изменить
+share = Поделиться
+archive = Архивировать
+duplicate = Дублировать
+rename = Переименовать
+download = Скачать
+upload = Загрузить
+export = Экспортировать
+close = Закрыть
+back = Назад
+next = Далее
+done = Готово
+more_options = Больше опций
+
+# Главная
+greeting = С возвращением, {0}
+home_summary = Вот что происходит в вашей рабочей области сегодня.
+tasks_due_today.one = {0} задача на сегодня
+tasks_due_today.few = {0} задачи на сегодня
+tasks_due_today.many = {0} задач на сегодня
+tasks_due_today.other = {0} задачи на сегодня
+unread_messages.one = {0} непрочитанное сообщение
+unread_messages.few = {0} непрочитанных сообщения
+unread_messages.many = {0} непрочитанных сообщений
+unread_messages.other = {0} непрочитанного сообщения
+active_projects.one = {0} активный проект
+active_projects.few = {0} активных проекта
+active_projects.many = {0} активных проектов
+active_projects.other = {0} активного проекта
+members_online.one = {0} участник команды онлайн
+members_online.few = {0} участника команды онлайн
+members_online.many = {0} участников команды онлайн
+members_online.other = {0} участника команды онлайн
+recent_activity = Недавняя активность
+view_all = Показать все
+quick_actions = Быстрые действия
+new_task = Новая задача
+new_project = Новый проект
+invite_member = Пригласить участника
+bulk_edit = Массовое редактирование
+
+# Активность
+activity_commented = {0}: комментарий к «{1}»
+activity_completed = {0}: завершение «{1}»
+activity_created = {0}: создание «{1}»
+just_now = Только что
+minutes_ago.one = {0} минуту назад
+minutes_ago.few = {0} минуты назад
+minutes_ago.many = {0} минут назад
+minutes_ago.other = {0} минуты назад
+hours_ago.one = {0} час назад
+hours_ago.few = {0} часа назад
+hours_ago.many = {0} часов назад
+hours_ago.other = {0} часа назад
+days_ago.one = {0} день назад
+days_ago.few = {0} дня назад
+days_ago.many = {0} дней назад
+days_ago.other = {0} дня назад
+
+# Входящие
+inbox_empty = Все обработано
+inbox_empty_body = Новые сообщения будут отображаться здесь.
+mark_all_read = Отметить все как прочитанные
+mark_read = Отметить как прочитанное
+mark_unread = Отметить как непрочитанное
+reply = Ответить
+forward = Переслать
+filter_all = Все
+filter_unread = Непрочитанные
+filter_mentions = Упоминания
+
+# Проекты
+status_on_track = По плану
+status_at_risk = Под угрозой
+status_off_track = Не по плану
+status_completed = Завершён
+project_progress = {0}% готово
+project_tasks.one = {0} задача
+project_tasks.few = {0} задачи
+project_tasks.many = {0} задач
+project_tasks.other = {0} задачи
+due_in_days.one = Срок через {0} день
+due_in_days.few = Срок через {0} дня
+due_in_days.many = Срок через {0} дней
+due_in_days.other = Срок через {0} дня
+project_owner = Владелец: {0}
+sort_by = Сортировать по
+sort_name = Название
+sort_due_date = Срок выполнения
+
+# Календарь
+today = Сегодня
+week = Неделя
+month = Месяц
+events_scheduled.one = {0} запланированное событие
+events_scheduled.few = {0} запланированных события
+events_scheduled.many = {0} запланированных событий
+events_scheduled.other = {0} запланированного события
+no_events = Нет запланированных событий
+all_day = Весь день
+
+# Команда
+invite_by_email = Пригласить по email
+role_admin = Администратор
+role_member = Участник
+role_guest = Гость
+members_count.one = {0} участник
+members_count.few = {0} участника
+members_count.many = {0} участников
+members_count.other = {0} участника
+last_active = Был(а) в сети: {0}
+
+# Настройки
+settings_profile = Профиль
+settings_appearance = Оформление
+theme_light = Светлая
+theme_dark = Тёмная
+theme_system = Как в системе
+language_saved = Язык сохранён. {0} будет использоваться при следующем открытии Atlas.
+email_notifications = Уведомлять меня по email об активности с моим участием
+storage_used = Использовано {0} из {1} ГБ
+files_count.one = {0} файл
+files_count.few = {0} файла
+files_count.many = {0} файлов
+files_count.other = {0} файла
+
+# Обратная связь
+confirm_delete = Удалить «{0}»?
+cannot_undo = Это действие нельзя отменить.
+changes_saved = Изменения сохранены
+error_generic = Что-то пошло не так. Попробуйте снова.
+items_selected.one = Выбран {0} элемент
+items_selected.few = Выбрано {0} элемента
+items_selected.many = Выбрано {0} элементов
+items_selected.other = Выбрано {0} элемента

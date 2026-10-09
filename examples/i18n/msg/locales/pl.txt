@@ -1,0 +1,165 @@
+# Atlas, Polski (pl).
+# Jeden komunikat na linię: `klucz = tekst`; `klucz.one` itd. to formy liczby
+# mnogiej, a sam klucz to forma „other”. {0} i {1} to argumenty, {{ to
+# dosłowny nawias klamrowy.
+
+# Aplikacja i nawigacja
+app_name = Atlas
+nav_workspace = Obszar roboczy
+nav_home = Strona główna
+nav_inbox = Skrzynka odbiorcza
+nav_projects = Projekty
+nav_calendar = Kalendarz
+nav_team = Zespół
+nav_settings = Ustawienia
+nav_help = Pomoc i opinie
+nav_sign_out = Wyloguj się
+
+# Pasek narzędzi
+search = Szukaj
+search_placeholder = Szukaj projektów, osób i plików
+notifications = Powiadomienia
+language = Język
+language_menu_title = Język wyświetlania
+account = Konto
+refresh = Odśwież
+
+# Typowe akcje
+save = Zapisz
+cancel = Anuluj
+delete = Usuń
+edit = Edytuj
+share = Udostępnij
+archive = Archiwizuj
+duplicate = Duplikuj
+rename = Zmień nazwę
+download = Pobierz
+upload = Wyślij
+export = Eksportuj
+close = Zamknij
+back = Wstecz
+next = Dalej
+done = Gotowe
+more_options = Więcej opcji
+
+# Strona główna
+greeting = Witaj z powrotem, {0}
+home_summary = Oto co się dzieje w Twoim obszarze roboczym dzisiaj.
+tasks_due_today.one = {0} zadanie na dziś
+tasks_due_today.few = {0} zadania na dziś
+tasks_due_today.many = {0} zadań na dziś
+tasks_due_today.other = {0} zadania na dziś
+unread_messages.one = {0} nieprzeczytana wiadomość
+unread_messages.few = {0} nieprzeczytane wiadomości
+unread_messages.many = {0} nieprzeczytanych wiadomości
+unread_messages.other = {0} nieprzeczytanej wiadomości
+active_projects.one = {0} aktywny projekt
+active_projects.few = {0} aktywne projekty
+active_projects.many = {0} aktywnych projektów
+active_projects.other = {0} aktywnego projektu
+members_online.one = {0} członek zespołu online
+members_online.few = {0} członkowie zespołu online
+members_online.many = {0} członków zespołu online
+members_online.other = {0} członka zespołu online
+recent_activity = Ostatnia aktywność
+view_all = Wyświetl wszystkie
+quick_actions = Szybkie akcje
+new_task = Nowe zadanie
+new_project = Nowy projekt
+invite_member = Zaproś członka
+bulk_edit = Edycja zbiorcza
+
+# Aktywność
+activity_commented = {0}: komentarz do „{1}”
+activity_completed = {0}: zakończono „{1}”
+activity_created = {0}: utworzono „{1}”
+just_now = Przed chwilą
+minutes_ago.one = {0} minutę temu
+minutes_ago.few = {0} minuty temu
+minutes_ago.many = {0} minut temu
+minutes_ago.other = {0} minuty temu
+hours_ago.one = {0} godzinę temu
+hours_ago.few = {0} godziny temu
+hours_ago.many = {0} godzin temu
+hours_ago.other = {0} godziny temu
+days_ago.one = {0} dzień temu
+days_ago.few = {0} dni temu
+days_ago.many = {0} dni temu
+days_ago.other = {0} dnia temu
+
+# Skrzynka odbiorcza
+inbox_empty = Wszystko masz na bieżąco
+inbox_empty_body = Nowe wiadomości będą się tutaj wyświetlać.
+mark_all_read = Oznacz wszystkie jako przeczytane
+mark_read = Oznacz jako przeczytane
+mark_unread = Oznacz jako nieprzeczytane
+reply = Odpowiedz
+forward = Przekaż
+filter_all = Wszystkie
+filter_unread = Nieprzeczytane
+filter_mentions = Wzmianki
+
+# Projekty
+status_on_track = Zgodnie z planem
+status_at_risk = Zagrożony
+status_off_track = Niezgodny z planem
+status_completed = Zakończony
+project_progress = {0}% ukończone
+project_tasks.one = {0} zadanie
+project_tasks.few = {0} zadania
+project_tasks.many = {0} zadań
+project_tasks.other = {0} zadania
+due_in_days.one = Termin za {0} dzień
+due_in_days.few = Termin za {0} dni
+due_in_days.many = Termin za {0} dni
+due_in_days.other = Termin za {0} dnia
+project_owner = Właściciel: {0}
+sort_by = Sortuj według
+sort_name = Nazwa
+sort_due_date = Termin
+
+# Kalendarz
+today = Dziś
+week = Tydzień
+month = Miesiąc
+events_scheduled.one = {0} zaplanowane wydarzenie
+events_scheduled.few = {0} zaplanowane wydarzenia
+events_scheduled.many = {0} zaplanowanych wydarzeń
+events_scheduled.other = {0} zaplanowanego wydarzenia
+no_events = Brak zaplanowanych wydarzeń
+all_day = Cały dzień
+
+# Zespół
+invite_by_email = Zaproś e-mailem
+role_admin = Administrator
+role_member = Członek
+role_guest = Gość
+members_count.one = {0} członek
+members_count.few = {0} członkowie
+members_count.many = {0} członków
+members_count.other = {0} członka
+last_active = Ostatnia aktywność: {0}
+
+# Ustawienia
+settings_profile = Profil
+settings_appearance = Wygląd
+theme_light = Jasny
+theme_dark = Ciemny
+theme_system = Użyj ustawień systemowych
+language_saved = Język zapisany. {0} będzie używany od następnego otwarcia Atlas.
+email_notifications = Wysyłaj e-mail o aktywności, w której biorę udział
+storage_used = Wykorzystano {0} z {1} GB
+files_count.one = {0} plik
+files_count.few = {0} pliki
+files_count.many = {0} plików
+files_count.other = {0} pliku
+
+# Informacje zwrotne
+confirm_delete = Usunąć {0}?
+cannot_undo = Tej operacji nie można cofnąć.
+changes_saved = Zmiany zapisane
+error_generic = Coś poszło nie tak. Spróbuj ponownie.
+items_selected.one = {0} wybrany element
+items_selected.few = {0} wybrane elementy
+items_selected.many = {0} wybranych elementów
+items_selected.other = {0} wybranego elementu

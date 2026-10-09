@@ -1,0 +1,123 @@
+# Atlas, Tiếng Việt (vi).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = Không gian làm việc
+nav_home = Trang chủ
+nav_inbox = Hộp thư
+nav_projects = Dự án
+nav_calendar = Lịch
+nav_team = Nhóm
+nav_settings = Cài đặt
+nav_help = Trợ giúp và phản hồi
+nav_sign_out = Đăng xuất
+
+# Toolbar
+search = Tìm kiếm
+search_placeholder = Tìm dự án, người và tệp
+notifications = Thông báo
+language = Ngôn ngữ
+language_menu_title = Ngôn ngữ hiển thị
+account = Tài khoản
+refresh = Làm mới
+
+# Common actions
+save = Lưu
+cancel = Hủy
+delete = Xóa
+edit = Chỉnh sửa
+share = Chia sẻ
+archive = Lưu trữ
+duplicate = Tạo bản sao
+rename = Đổi tên
+download = Tải xuống
+upload = Tải lên
+export = Xuất
+close = Đóng
+back = Quay lại
+next = Tiếp theo
+done = Xong
+more_options = Tùy chọn khác
+
+# Home
+greeting = Chào mừng trở lại, {0}
+home_summary = Đây là những gì đang diễn ra trong không gian làm việc của bạn hôm nay.
+tasks_due_today = {0} công việc đến hạn hôm nay
+unread_messages = {0} tin nhắn chưa đọc
+active_projects = {0} dự án đang hoạt động
+members_online = {0} thành viên nhóm đang trực tuyến
+recent_activity = Hoạt động gần đây
+view_all = Xem tất cả
+quick_actions = Thao tác nhanh
+new_task = Công việc mới
+new_project = Dự án mới
+invite_member = Mời thành viên
+bulk_edit = Chỉnh sửa hàng loạt
+
+# Activity
+activity_commented = {0} đã bình luận về {1}
+activity_completed = {0} đã hoàn thành {1}
+activity_created = {0} đã tạo {1}
+just_now = Vừa xong
+minutes_ago = {0} phút trước
+hours_ago = {0} giờ trước
+days_ago = {0} ngày trước
+
+# Inbox
+inbox_empty = Bạn đã xem hết
+inbox_empty_body = Tin nhắn mới sẽ xuất hiện ở đây.
+mark_all_read = Đánh dấu tất cả là đã đọc
+mark_read = Đánh dấu là đã đọc
+mark_unread = Đánh dấu là chưa đọc
+reply = Trả lời
+forward = Chuyển tiếp
+filter_all = Tất cả
+filter_unread = Chưa đọc
+filter_mentions = Lượt nhắc đến
+
+# Projects
+status_on_track = Đúng tiến độ
+status_at_risk = Có rủi ro
+status_off_track = Chậm tiến độ
+status_completed = Đã hoàn thành
+project_progress = Đã hoàn thành {0}%
+project_tasks = {0} công việc
+due_in_days = Còn {0} ngày đến hạn
+project_owner = Chủ sở hữu: {0}
+sort_by = Sắp xếp theo
+sort_name = Tên
+sort_due_date = Ngày hết hạn
+
+# Calendar
+today = Hôm nay
+week = Tuần
+month = Tháng
+events_scheduled = {0} sự kiện đã lên lịch
+no_events = Không có sự kiện nào được lên lịch
+all_day = Cả ngày
+
+# Team
+invite_by_email = Mời qua email
+role_admin = Quản trị viên
+role_member = Thành viên
+role_guest = Khách
+members_count = {0} thành viên
+last_active = Hoạt động lần cuối {0}
+
+# Settings
+settings_profile = Hồ sơ
+settings_appearance = Giao diện
+theme_light = Sáng
+theme_dark = Tối
+theme_system = Dùng cài đặt hệ thống
+language_saved = Đã lưu ngôn ngữ. {0} sẽ được dùng vào lần tới bạn mở Atlas.
+email_notifications = Gửi email cho tôi về hoạt động tôi tham gia
+storage_used = Đã dùng {0} trên {1} GB
+files_count = {0} tệp
+
+# Feedback
+confirm_delete = Xóa {0}?
+cannot_undo = Hành động này không thể hoàn tác.
+changes_saved = Đã lưu thay đổi
+error_generic = Đã xảy ra lỗi. Vui lòng thử lại.
+items_selected = Đã chọn {0} mục

@@ -1,0 +1,149 @@
+# Atlas, Français (fr).
+
+# Application et navigation
+app_name = Atlas
+nav_workspace = Espace de travail
+nav_home = Accueil
+nav_inbox = Boîte de réception
+nav_projects = Projets
+nav_calendar = Calendrier
+nav_team = Équipe
+nav_settings = Paramètres
+nav_help = Aide et commentaires
+nav_sign_out = Se déconnecter
+
+# Barre d'outils
+search = Rechercher
+search_placeholder = Rechercher des projets, des personnes et des fichiers
+notifications = Notifications
+language = Langue
+language_menu_title = Langue d'affichage
+account = Compte
+refresh = Actualiser
+
+# Actions courantes
+save = Enregistrer
+cancel = Annuler
+delete = Supprimer
+edit = Modifier
+share = Partager
+archive = Archiver
+duplicate = Dupliquer
+rename = Renommer
+download = Télécharger
+upload = Importer
+export = Exporter
+close = Fermer
+back = Retour
+next = Suivant
+done = Terminé
+more_options = Plus d'options
+
+# Accueil
+greeting = Bon retour, {0}
+home_summary = Voici ce qui se passe dans votre espace de travail aujourd'hui.
+tasks_due_today.one = {0} tâche à échéance aujourd'hui
+tasks_due_today.many = {0} de tâches à échéance aujourd'hui
+tasks_due_today.other = {0} tâches à échéance aujourd'hui
+unread_messages.one = {0} message non lu
+unread_messages.many = {0} de messages non lus
+unread_messages.other = {0} messages non lus
+active_projects.one = {0} projet actif
+active_projects.many = {0} de projets actifs
+active_projects.other = {0} projets actifs
+members_online.one = {0} membre de l'équipe en ligne
+members_online.many = {0} de membres de l'équipe en ligne
+members_online.other = {0} membres de l'équipe en ligne
+recent_activity = Activité récente
+view_all = Tout afficher
+quick_actions = Actions rapides
+new_task = Nouvelle tâche
+new_project = Nouveau projet
+invite_member = Inviter un membre
+bulk_edit = Modification groupée
+
+# Activité
+activity_commented = {0} a commenté {1}
+activity_completed = {0} a terminé {1}
+activity_created = {0} a créé {1}
+just_now = À l'instant
+minutes_ago.one = Il y a {0} minute
+minutes_ago.many = Il y a {0} de minutes
+minutes_ago.other = Il y a {0} minutes
+hours_ago.one = Il y a {0} heure
+hours_ago.many = Il y a {0} d'heures
+hours_ago.other = Il y a {0} heures
+days_ago.one = Il y a {0} jour
+days_ago.many = Il y a {0} de jours
+days_ago.other = Il y a {0} jours
+
+# Boîte de réception
+inbox_empty = Vous êtes à jour
+inbox_empty_body = Les nouveaux messages apparaîtront ici.
+mark_all_read = Tout marquer comme lu
+mark_read = Marquer comme lu
+mark_unread = Marquer comme non lu
+reply = Répondre
+forward = Transférer
+filter_all = Tous
+filter_unread = Non lus
+filter_mentions = Mentions
+
+# Projets
+status_on_track = En bonne voie
+status_at_risk = À risque
+status_off_track = En retard
+status_completed = Terminé
+project_progress = {0} % terminé
+project_tasks.one = {0} tâche
+project_tasks.many = {0} de tâches
+project_tasks.other = {0} tâches
+due_in_days.one = Échéance dans {0} jour
+due_in_days.many = Échéance dans {0} de jours
+due_in_days.other = Échéance dans {0} jours
+project_owner = Propriétaire : {0}
+sort_by = Trier par
+sort_name = Nom
+sort_due_date = Date d'échéance
+
+# Calendrier
+today = Aujourd'hui
+week = Semaine
+month = Mois
+events_scheduled.one = {0} événement prévu
+events_scheduled.many = {0} d'événements prévus
+events_scheduled.other = {0} événements prévus
+no_events = Aucun événement prévu
+all_day = Toute la journée
+
+# Équipe
+invite_by_email = Inviter par e-mail
+role_admin = Administrateur
+role_member = Membre
+role_guest = Invité
+members_count.one = {0} membre
+members_count.many = {0} de membres
+members_count.other = {0} membres
+last_active = Dernière activité : {0}
+
+# Paramètres
+settings_profile = Profil
+settings_appearance = Apparence
+theme_light = Clair
+theme_dark = Sombre
+theme_system = Utiliser les paramètres système
+language_saved = Langue enregistrée. {0} sera utilisé la prochaine fois que vous ouvrirez Atlas.
+email_notifications = M'envoyer un e-mail pour les activités auxquelles je participe
+storage_used = {0} sur {1} Go utilisés
+files_count.one = {0} fichier
+files_count.many = {0} de fichiers
+files_count.other = {0} fichiers
+
+# Retours
+confirm_delete = Supprimer {0} ?
+cannot_undo = Cette action est irréversible.
+changes_saved = Modifications enregistrées
+error_generic = Une erreur s'est produite. Veuillez réessayer.
+items_selected.one = {0} élément sélectionné
+items_selected.many = {0} d'éléments sélectionnés
+items_selected.other = {0} éléments sélectionnés

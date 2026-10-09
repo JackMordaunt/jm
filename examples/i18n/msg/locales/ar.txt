@@ -1,0 +1,188 @@
+# Atlas, العربية (ar).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = مساحة العمل
+nav_home = الرئيسية
+nav_inbox = البريد الوارد
+nav_projects = المشاريع
+nav_calendar = التقويم
+nav_team = الفريق
+nav_settings = الإعدادات
+nav_help = المساعدة والملاحظات
+nav_sign_out = تسجيل الخروج
+
+# Toolbar
+search = البحث
+search_placeholder = البحث في المشاريع والأشخاص والملفات
+notifications = الإشعارات
+language = اللغة
+language_menu_title = لغة العرض
+account = الحساب
+refresh = تحديث
+
+# Common actions
+save = حفظ
+cancel = إلغاء
+delete = حذف
+edit = تعديل
+share = مشاركة
+archive = أرشفة
+duplicate = تكرار
+rename = إعادة التسمية
+download = تنزيل
+upload = تحميل
+export = تصدير
+close = إغلاق
+back = رجوع
+next = التالي
+done = تم
+more_options = خيارات إضافية
+
+# Home
+greeting = مرحبًا بعودتك، {0}
+home_summary = إليك آخر مستجدات مساحة عملك اليوم.
+tasks_due_today.zero = {0} مهام مستحقة اليوم
+tasks_due_today.one = {0} مهمة مستحقة اليوم
+tasks_due_today.two = {0} مهمتان مستحقتان اليوم
+tasks_due_today.few = {0} مهام مستحقة اليوم
+tasks_due_today.many = {0} مهمة مستحقة اليوم
+tasks_due_today.other = {0} مهمة مستحقة اليوم
+unread_messages.zero = {0} رسائل غير مقروءة
+unread_messages.one = {0} رسالة غير مقروءة
+unread_messages.two = {0} رسالتان غير مقروءتان
+unread_messages.few = {0} رسائل غير مقروءة
+unread_messages.many = {0} رسالة غير مقروءة
+unread_messages.other = {0} رسالة غير مقروءة
+active_projects.zero = {0} مشاريع نشطة
+active_projects.one = {0} مشروع نشط
+active_projects.two = {0} مشروعان نشطان
+active_projects.few = {0} مشاريع نشطة
+active_projects.many = {0} مشروع نشط
+active_projects.other = {0} مشروع نشط
+members_online.zero = {0} أعضاء من الفريق متصلون
+members_online.one = {0} عضو من الفريق متصل
+members_online.two = {0} عضوان من الفريق متصلان
+members_online.few = {0} أعضاء من الفريق متصلون
+members_online.many = {0} عضو من الفريق متصل
+members_online.other = {0} عضو من الفريق متصل
+recent_activity = النشاط الأخير
+view_all = عرض الكل
+quick_actions = إجراءات سريعة
+new_task = مهمة جديدة
+new_project = مشروع جديد
+invite_member = دعوة عضو
+bulk_edit = تعديل جماعي
+
+# Activity
+activity_commented = علّق {0} على {1}
+activity_completed = أكمل {0} {1}
+activity_created = أنشأ {0} {1}
+just_now = الآن
+minutes_ago.zero = منذ {0} دقائق
+minutes_ago.one = منذ {0} دقيقة
+minutes_ago.two = منذ {0} دقيقتين
+minutes_ago.few = منذ {0} دقائق
+minutes_ago.many = منذ {0} دقيقة
+minutes_ago.other = منذ {0} دقيقة
+hours_ago.zero = منذ {0} ساعات
+hours_ago.one = منذ {0} ساعة
+hours_ago.two = منذ {0} ساعتين
+hours_ago.few = منذ {0} ساعات
+hours_ago.many = منذ {0} ساعة
+hours_ago.other = منذ {0} ساعة
+days_ago.zero = منذ {0} أيام
+days_ago.one = منذ {0} يوم
+days_ago.two = منذ {0} يومين
+days_ago.few = منذ {0} أيام
+days_ago.many = منذ {0} يوم
+days_ago.other = منذ {0} يوم
+
+# Inbox
+inbox_empty = لا توجد رسائل جديدة
+inbox_empty_body = ستظهر الرسائل الجديدة هنا.
+mark_all_read = تحديد الكل كمقروء
+mark_read = تحديد كمقروء
+mark_unread = تحديد كغير مقروء
+reply = رد
+forward = إعادة توجيه
+filter_all = الكل
+filter_unread = غير مقروء
+filter_mentions = الإشارات
+
+# Projects
+status_on_track = على المسار الصحيح
+status_at_risk = معرّض للخطر
+status_off_track = خارج المسار
+status_completed = مكتمل
+project_progress = {0}٪ مكتمل
+project_tasks.zero = {0} مهام
+project_tasks.one = {0} مهمة
+project_tasks.two = {0} مهمتان
+project_tasks.few = {0} مهام
+project_tasks.many = {0} مهمة
+project_tasks.other = {0} مهمة
+due_in_days.zero = يُستحق خلال {0} أيام
+due_in_days.one = يُستحق خلال {0} يوم
+due_in_days.two = يُستحق خلال {0} يومين
+due_in_days.few = يُستحق خلال {0} أيام
+due_in_days.many = يُستحق خلال {0} يوم
+due_in_days.other = يُستحق خلال {0} يوم
+project_owner = المالك: {0}
+sort_by = ترتيب حسب
+sort_name = الاسم
+sort_due_date = تاريخ الاستحقاق
+
+# Calendar
+today = اليوم
+week = الأسبوع
+month = الشهر
+events_scheduled.zero = {0} أحداث مُجدولة
+events_scheduled.one = {0} حدث مُجدول
+events_scheduled.two = {0} حدثان مُجدولان
+events_scheduled.few = {0} أحداث مُجدولة
+events_scheduled.many = {0} حدث مُجدول
+events_scheduled.other = {0} حدث مُجدول
+no_events = لا توجد أحداث مُجدولة
+all_day = طوال اليوم
+
+# Team
+invite_by_email = الدعوة عبر البريد الإلكتروني
+role_admin = مسؤول
+role_member = عضو
+role_guest = ضيف
+members_count.zero = {0} أعضاء
+members_count.one = {0} عضو
+members_count.two = {0} عضوان
+members_count.few = {0} أعضاء
+members_count.many = {0} عضو
+members_count.other = {0} عضو
+last_active = آخر نشاط {0}
+
+# Settings
+settings_profile = الملف الشخصي
+settings_appearance = المظهر
+theme_light = فاتح
+theme_dark = داكن
+theme_system = استخدام إعداد النظام
+language_saved = تم حفظ اللغة. سيتم استخدام {0} في المرة القادمة التي تفتح فيها Atlas.
+email_notifications = إرسال بريد إلكتروني لي بشأن النشاط الذي أشارك فيه
+storage_used = تم استخدام {0} من {1} غيغابايت
+files_count.zero = {0} ملفات
+files_count.one = {0} ملف
+files_count.two = {0} ملفان
+files_count.few = {0} ملفات
+files_count.many = {0} ملف
+files_count.other = {0} ملف
+
+# Feedback
+confirm_delete = هل تريد حذف {0}؟
+cannot_undo = لا يمكن التراجع عن هذا الإجراء.
+changes_saved = تم حفظ التغييرات
+error_generic = حدث خطأ ما. حاول مرة أخرى.
+items_selected.zero = {0} عناصر محددة
+items_selected.one = {0} عنصر محدد
+items_selected.two = {0} عنصران محددان
+items_selected.few = {0} عناصر محددة
+items_selected.many = {0} عنصر محدد
+items_selected.other = {0} عنصر محدد

@@ -1,0 +1,149 @@
+# Atlas, Português (Brasil) (pt-BR).
+
+# Aplicativo e navegação
+app_name = Atlas
+nav_workspace = Espaço de trabalho
+nav_home = Início
+nav_inbox = Caixa de entrada
+nav_projects = Projetos
+nav_calendar = Calendário
+nav_team = Equipe
+nav_settings = Configurações
+nav_help = Ajuda e feedback
+nav_sign_out = Sair
+
+# Barra de ferramentas
+search = Pesquisar
+search_placeholder = Pesquise projetos, pessoas e arquivos
+notifications = Notificações
+language = Idioma
+language_menu_title = Idioma de exibição
+account = Conta
+refresh = Atualizar
+
+# Ações comuns
+save = Salvar
+cancel = Cancelar
+delete = Excluir
+edit = Editar
+share = Compartilhar
+archive = Arquivar
+duplicate = Duplicar
+rename = Renomear
+download = Baixar
+upload = Enviar
+export = Exportar
+close = Fechar
+back = Voltar
+next = Próximo
+done = Concluído
+more_options = Mais opções
+
+# Início
+greeting = Bem-vindo de volta, {0}
+home_summary = Veja o que está acontecendo no seu espaço de trabalho hoje.
+tasks_due_today.one = {0} tarefa com vencimento hoje
+tasks_due_today.many = {0} de tarefas com vencimento hoje
+tasks_due_today.other = {0} tarefas com vencimento hoje
+unread_messages.one = {0} mensagem não lida
+unread_messages.many = {0} de mensagens não lidas
+unread_messages.other = {0} mensagens não lidas
+active_projects.one = {0} projeto ativo
+active_projects.many = {0} de projetos ativos
+active_projects.other = {0} projetos ativos
+members_online.one = {0} membro da equipe online
+members_online.many = {0} de membros da equipe online
+members_online.other = {0} membros da equipe online
+recent_activity = Atividade recente
+view_all = Ver tudo
+quick_actions = Ações rápidas
+new_task = Nova tarefa
+new_project = Novo projeto
+invite_member = Convidar membro
+bulk_edit = Edição em massa
+
+# Atividade
+activity_commented = {0} comentou em {1}
+activity_completed = {0} concluiu {1}
+activity_created = {0} criou {1}
+just_now = Agora mesmo
+minutes_ago.one = Há {0} minuto
+minutes_ago.many = Há {0} de minutos
+minutes_ago.other = Há {0} minutos
+hours_ago.one = Há {0} hora
+hours_ago.many = Há {0} de horas
+hours_ago.other = Há {0} horas
+days_ago.one = Há {0} dia
+days_ago.many = Há {0} de dias
+days_ago.other = Há {0} dias
+
+# Caixa de entrada
+inbox_empty = Você está em dia
+inbox_empty_body = As novas mensagens vão aparecer aqui.
+mark_all_read = Marcar tudo como lido
+mark_read = Marcar como lido
+mark_unread = Marcar como não lido
+reply = Responder
+forward = Encaminhar
+filter_all = Todas
+filter_unread = Não lidas
+filter_mentions = Menções
+
+# Projetos
+status_on_track = No prazo
+status_at_risk = Em risco
+status_off_track = Atrasado
+status_completed = Concluído
+project_progress = {0}% concluído
+project_tasks.one = {0} tarefa
+project_tasks.many = {0} de tarefas
+project_tasks.other = {0} tarefas
+due_in_days.one = Vence em {0} dia
+due_in_days.many = Vence em {0} de dias
+due_in_days.other = Vence em {0} dias
+project_owner = Proprietário: {0}
+sort_by = Ordenar por
+sort_name = Nome
+sort_due_date = Data de vencimento
+
+# Calendário
+today = Hoje
+week = Semana
+month = Mês
+events_scheduled.one = {0} evento agendado
+events_scheduled.many = {0} de eventos agendados
+events_scheduled.other = {0} eventos agendados
+no_events = Nenhum evento agendado
+all_day = Dia todo
+
+# Equipe
+invite_by_email = Convidar por e-mail
+role_admin = Administrador
+role_member = Membro
+role_guest = Convidado
+members_count.one = {0} membro
+members_count.many = {0} de membros
+members_count.other = {0} membros
+last_active = Última atividade: {0}
+
+# Configurações
+settings_profile = Perfil
+settings_appearance = Aparência
+theme_light = Claro
+theme_dark = Escuro
+theme_system = Usar configuração do sistema
+language_saved = Idioma salvo. {0} será usado na próxima vez que você abrir o Atlas.
+email_notifications = Me enviar e-mails sobre atividades das quais participo
+storage_used = {0} de {1} GB usados
+files_count.one = {0} arquivo
+files_count.many = {0} de arquivos
+files_count.other = {0} arquivos
+
+# Feedback
+confirm_delete = Excluir {0}?
+cannot_undo = Essa ação não pode ser desfeita.
+changes_saved = Alterações salvas
+error_generic = Algo deu errado. Tente novamente.
+items_selected.one = {0} item selecionado
+items_selected.many = {0} de itens selecionados
+items_selected.other = {0} itens selecionados

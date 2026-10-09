@@ -1,0 +1,123 @@
+# Atlas, ไทย (th).
+
+# App and navigation
+app_name = Atlas
+nav_workspace = พื้นที่ทำงาน
+nav_home = หน้าแรก
+nav_inbox = กล่องข้อความ
+nav_projects = โปรเจ็กต์
+nav_calendar = ปฏิทิน
+nav_team = ทีม
+nav_settings = การตั้งค่า
+nav_help = ช่วยเหลือและแสดงความคิดเห็น
+nav_sign_out = ออกจากระบบ
+
+# Toolbar
+search = ค้นหา
+search_placeholder = ค้นหาโปรเจ็กต์ ผู้คน และไฟล์
+notifications = การแจ้งเตือน
+language = ภาษา
+language_menu_title = ภาษาที่แสดง
+account = บัญชี
+refresh = รีเฟรช
+
+# Common actions
+save = บันทึก
+cancel = ยกเลิก
+delete = ลบ
+edit = แก้ไข
+share = แชร์
+archive = เก็บเข้าคลัง
+duplicate = ทำซ้ำ
+rename = เปลี่ยนชื่อ
+download = ดาวน์โหลด
+upload = อัปโหลด
+export = ส่งออก
+close = ปิด
+back = กลับ
+next = ถัดไป
+done = เสร็จสิ้น
+more_options = ตัวเลือกเพิ่มเติม
+
+# Home
+greeting = ยินดีต้อนรับกลับมา {0}
+home_summary = นี่คือความเคลื่อนไหวในพื้นที่ทำงานของคุณวันนี้
+tasks_due_today = มีงานที่ครบกำหนดวันนี้ {0} งาน
+unread_messages = ข้อความที่ยังไม่อ่าน {0} ข้อความ
+active_projects = โปรเจ็กต์ที่ดำเนินการอยู่ {0} โปรเจ็กต์
+members_online = สมาชิกทีมออนไลน์ {0} คน
+recent_activity = ความเคลื่อนไหวล่าสุด
+view_all = ดูทั้งหมด
+quick_actions = การดำเนินการด่วน
+new_task = งานใหม่
+new_project = โปรเจ็กต์ใหม่
+invite_member = เชิญสมาชิก
+bulk_edit = แก้ไขหลายรายการ
+
+# Activity
+activity_commented = {0} แสดงความคิดเห็นเกี่ยวกับ {1}
+activity_completed = {0} ทำ {1} เสร็จแล้ว
+activity_created = {0} สร้าง {1}
+just_now = เมื่อสักครู่
+minutes_ago = {0} นาทีที่แล้ว
+hours_ago = {0} ชั่วโมงที่แล้ว
+days_ago = {0} วันที่แล้ว
+
+# Inbox
+inbox_empty = คุณอ่านข้อความครบแล้ว
+inbox_empty_body = ข้อความใหม่จะปรากฏที่นี่
+mark_all_read = ทำเครื่องหมายว่าอ่านแล้วทั้งหมด
+mark_read = ทำเครื่องหมายว่าอ่านแล้ว
+mark_unread = ทำเครื่องหมายว่ายังไม่อ่าน
+reply = ตอบกลับ
+forward = ส่งต่อ
+filter_all = ทั้งหมด
+filter_unread = ยังไม่อ่าน
+filter_mentions = การกล่าวถึง
+
+# Projects
+status_on_track = เป็นไปตามแผน
+status_at_risk = มีความเสี่ยง
+status_off_track = ไม่เป็นไปตามแผน
+status_completed = เสร็จสมบูรณ์
+project_progress = เสร็จแล้ว {0}%
+project_tasks = {0} งาน
+due_in_days = ครบกำหนดใน {0} วัน
+project_owner = เจ้าของ: {0}
+sort_by = จัดเรียงตาม
+sort_name = ชื่อ
+sort_due_date = วันครบกำหนด
+
+# Calendar
+today = วันนี้
+week = สัปดาห์
+month = เดือน
+events_scheduled = มีกำหนดการ {0} รายการ
+no_events = ไม่มีกำหนดการ
+all_day = ตลอดวัน
+
+# Team
+invite_by_email = เชิญทางอีเมล
+role_admin = ผู้ดูแลระบบ
+role_member = สมาชิก
+role_guest = แขก
+members_count = สมาชิก {0} คน
+last_active = ใช้งานล่าสุด {0}
+
+# Settings
+settings_profile = โปรไฟล์
+settings_appearance = ลักษณะที่ปรากฏ
+theme_light = สว่าง
+theme_dark = มืด
+theme_system = ใช้ค่าตั้งต้นของระบบ
+language_saved = บันทึกภาษาแล้ว ระบบจะใช้ {0} ในครั้งถัดไปที่คุณเปิด Atlas
+email_notifications = ส่งอีเมลแจ้งฉันเมื่อมีความเคลื่อนไหวที่ฉันเกี่ยวข้อง
+storage_used = ใช้ไปแล้ว {0} จาก {1} GB
+files_count = ไฟล์ {0} ไฟล์
+
+# Feedback
+confirm_delete = ลบ {0} ใช่หรือไม่
+cannot_undo = ไม่สามารถย้อนกลับการดำเนินการนี้ได้
+changes_saved = บันทึกการเปลี่ยนแปลงแล้ว
+error_generic = เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง
+items_selected = เลือกไว้ {0} รายการ
