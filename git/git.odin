@@ -377,8 +377,9 @@ commit :: proc(repo: Repo, message: string, sig := Signature{}, allocator := con
 }
 
 // log is the newest limit commits reachable from HEAD, newest first; 0 is
-// all of them. An unborn branch logs nothing.
-log :: proc(repo: Repo, limit := 0, allocator := context.allocator) -> (commits: []Commit, err: Error) {
+// all of them. since, when set, stops the walk at the first commit made
+// before it, as `git log --since` does. An unborn branch logs nothing.
+log :: proc(repo: Repo, limit := 0, allocator := context.allocator, since := time.Time{}) -> (commits: []Commit, err: Error) {
 	if git_repository_head_unborn(repo.ptr) != 0 {
 		return nil, nil
 	}
@@ -401,6 +402,10 @@ log :: proc(repo: Repo, limit := 0, allocator := context.allocator) -> (commits:
 		cm: ^git_commit
 		if rc := git_commit_lookup(&cm, repo.ptr, &oid); rc < 0 {
 			return out[:], fault(rc)
+		}
+		if since != {} && time.unix(git_commit_time(cm), 0)._nsec < since._nsec {
+			git_commit_free(cm)
+			break
 		}
 		a := git_commit_author(cm)
 		append(
@@ -581,9 +586,10 @@ push :: proc(repo: Repo, remote: string, branch := "", creds := Credentials{}) -
 }
 
 // default_branch asks remote which branch it checks out by default, the
-// short name ("main"), which takes a connection of its own.
-@(private)
-default_branch :: proc(repo: Repo, remote: string, creds: Credentials) -> (name: string, err: Error) {
+// short name ("main"), which takes a connection of its own. A remote
+// with no commit yet answers GIT_ENOTFOUND.
+default_branch :: proc(repo: Repo, remote: string, creds := Credentials{}, allocator := context.temp_allocator) -> (name: string, err: Error) {
+	reject_nul("remote name", remote) or_return
 	r: ^git_remote
 	if rc := git_remote_lookup(&r, repo.ptr, cstr(remote)); rc < 0 {
 		return "", fault(rc)
@@ -604,7 +610,7 @@ default_branch :: proc(repo: Repo, remote: string, creds: Credentials) -> (name:
 	}
 	defer git_buf_dispose(&buf)
 	full := string(buf.ptr[:buf.size])
-	return strings.clone(strings.trim_prefix(full, "refs/heads/"), context.temp_allocator), nil
+	return strings.clone(strings.trim_prefix(full, "refs/heads/"), allocator), nil
 }
 
 // upstream_id is the commit remote's copy of branch is on, after a fetch.
@@ -694,8 +700,12 @@ ahead_behind :: proc(repo: Repo, remote: string) -> (ahead, behind: int, err: Er
 
 // diff is the patch text of what is staged (HEAD to index) or, with
 // staged false, of what is not (index to working tree), in the format
-// `git diff` prints, empty when nothing differs.
-diff :: proc(repo: Repo, staged: bool, allocator := context.allocator) -> (patch: string, err: Error) {
+// `git diff` prints, empty when nothing differs. context_lines is how
+// many unchanged lines frame each hunk (`-U`); paths, when given, are
+// pathspecs the patch is limited to, matched as git matches them, so
+// "*.md" takes markdown in every directory.
+diff :: proc(repo: Repo, staged: bool, allocator := context.allocator, context_lines := 3, paths: []string = nil) -> (patch: string, err: Error) {
+	reject_nul("pathspec", ..paths) or_return
 	index: ^git_index
 	if rc := git_repository_index(&index, repo.ptr); rc < 0 {
 		return "", fault(rc)
@@ -703,6 +713,12 @@ diff :: proc(repo: Repo, staged: bool, allocator := context.allocator) -> (patch
 	defer git_index_free(index)
 	opts: git_diff_options
 	git_diff_options_init(&opts, GIT_DIFF_OPTIONS_VERSION)
+	opts.context_lines = u32(max(context_lines, 0))
+	opts.pathspec = strarray(paths)
+	// a/ and b/ whatever the user's config says: with diff.mnemonicPrefix
+	// set, libgit2 printed c/ and i/ (2026-10-09), and a reader of the
+	// patch could no longer find the file after "+++ b/".
+	opts.old_prefix, opts.new_prefix = "a/", "b/"
 	d: ^git_diff
 	if staged {
 		tree: ^git_tree
@@ -737,4 +753,463 @@ diff :: proc(repo: Repo, staged: bool, allocator := context.allocator) -> (patch
 	}
 	defer git_buf_dispose(&buf)
 	return strings.clone(string(buf.ptr[:buf.size]), allocator), nil
+}
+
+// --- beyond the everyday --------------------------------------------------
+//
+// What a program that keeps its data in git also needs once it does the
+// whole job itself, with no git to fall back on: settings, a file as it
+// was, counting commits, one commit's change, putting work aside, and
+// taking a branch onto another's commits.
+
+// discover opens the repository path is inside: path itself, or the
+// nearest directory above it that is one, as git finds a repository from
+// a subdirectory.
+discover :: proc(path: string) -> (repo: Repo, err: Error) {
+	ready()
+	reject_nul("path", path) or_return
+	if rc := git_repository_open_ext(&repo.ptr, cstr(path), 0, nil); rc < 0 {
+		return {}, fault(rc)
+	}
+	return
+}
+
+// config_get is key's value ("user.email"), looked up as git does: the
+// repository's own config, then the user's, then the system's. found is
+// false when no level sets it.
+config_get :: proc(repo: Repo, key: string, allocator := context.allocator) -> (value: string, found: bool) {
+	if reject_nul("config key", key) != nil {
+		return
+	}
+	cfg: ^git_config
+	if git_repository_config(&cfg, repo.ptr) < 0 {
+		return
+	}
+	defer git_config_free(cfg)
+	buf: git_buf
+	if git_config_get_string_buf(&buf, cfg, cstr(key)) < 0 {
+		return
+	}
+	defer git_buf_dispose(&buf)
+	return strings.clone(string(buf.ptr[:buf.size]), allocator), true
+}
+
+// config_set writes key in the repository's own config, .git/config.
+config_set :: proc(repo: Repo, key, value: string) -> Error {
+	reject_nul("config key or value", key, value) or_return
+	cfg: ^git_config
+	if rc := git_repository_config(&cfg, repo.ptr); rc < 0 {
+		return fault(rc)
+	}
+	defer git_config_free(cfg)
+	if rc := git_config_set_string(cfg, cstr(key), cstr(value)); rc < 0 {
+		return fault(rc)
+	}
+	return nil
+}
+
+// resolve is the commit spec names ("HEAD", "origin/main", a full or
+// short id, "HEAD~2"), as 40 hex digits. ok is false when it names no
+// commit, as `git rev-parse --verify -q spec^{commit}` prints nothing.
+resolve :: proc(repo: Repo, spec: string, allocator := context.allocator) -> (id: string, ok: bool) {
+	oid, found := resolve_oid(repo, spec)
+	if !found {
+		return
+	}
+	return oid_string(&oid, allocator), true
+}
+
+@(private)
+resolve_oid :: proc(repo: Repo, spec: string) -> (id: git_oid, ok: bool) {
+	if spec == "" || reject_nul("revision", spec) != nil {
+		return
+	}
+	obj: ^git_object
+	if git_revparse_single(&obj, repo.ptr, cstr(spec)) < 0 {
+		return
+	}
+	defer git_object_free(obj)
+	peeled: ^git_object
+	if git_object_peel(&peeled, obj, GIT_OBJECT_COMMIT) < 0 {
+		return
+	}
+	defer git_object_free(peeled)
+	return git_object_id(peeled)^, true
+}
+
+// read_file is path's contents as of the commit rev names ("HEAD"),
+// `git show rev:path`. found is false when rev names no commit or the
+// commit has no file at path.
+read_file :: proc(repo: Repo, rev, path: string, allocator := context.allocator) -> (data: string, found: bool) {
+	if reject_nul("revision or path", rev, path) != nil {
+		return
+	}
+	obj: ^git_object
+	if git_revparse_single(&obj, repo.ptr, cstr(fmt.tprintf("%s:%s", rev, path))) < 0 {
+		return
+	}
+	defer git_object_free(obj)
+	if git_object_type(obj) != GIT_OBJECT_BLOB {
+		return
+	}
+	blob := (^git_blob)(obj)
+	n := int(git_blob_rawsize(blob))
+	bytes := ([^]u8)(git_blob_rawcontent(blob))[:n]
+	return strings.clone(string(bytes), allocator), true
+}
+
+// count is how many commits are reachable from to and not from from,
+// `git rev-list --count from..to`; from "" counts all of to's history.
+// A spec that names no commit is an error, except an empty to on an
+// unborn branch, which counts nothing.
+count :: proc(repo: Repo, from, to: string) -> (n: int, err: Error) {
+	if to == "HEAD" && git_repository_head_unborn(repo.ptr) != 0 {
+		return 0, nil
+	}
+	tip, ok := resolve_oid(repo, to)
+	if !ok {
+		return 0, Fault{GIT_ENOTFOUND, strings.clone(fmt.tprintf("no commit named %q", to))}
+	}
+	walk: ^git_revwalk
+	if rc := git_revwalk_new(&walk, repo.ptr); rc < 0 {
+		return 0, fault(rc)
+	}
+	defer git_revwalk_free(walk)
+	if rc := git_revwalk_push(walk, &tip); rc < 0 {
+		return 0, fault(rc)
+	}
+	if from != "" {
+		base, bok := resolve_oid(repo, from)
+		if !bok {
+			return 0, Fault{GIT_ENOTFOUND, strings.clone(fmt.tprintf("no commit named %q", from))}
+		}
+		if rc := git_revwalk_hide(walk, &base); rc < 0 {
+			return 0, fault(rc)
+		}
+	}
+	oid: git_oid
+	for git_revwalk_next(&oid, walk) == 0 {
+		n += 1
+	}
+	return n, nil
+}
+
+// changes is what the commit id changed against its first parent (a
+// root commit, against nothing): the paths it touched and the patch, as
+// `git show --format= id -- paths` prints it, limited to paths when they
+// are given. context_lines frames each hunk as diff's does.
+changes :: proc(repo: Repo, id: string, paths: []string = nil, context_lines := 3, allocator := context.allocator) -> (files: []string, patch: string, err: Error) {
+	reject_nul("pathspec", ..paths) or_return
+	oid, ok := resolve_oid(repo, id)
+	if !ok {
+		return nil, "", Fault{GIT_ENOTFOUND, strings.clone(fmt.tprintf("no commit named %q", id))}
+	}
+	cm: ^git_commit
+	if rc := git_commit_lookup(&cm, repo.ptr, &oid); rc < 0 {
+		return nil, "", fault(rc)
+	}
+	defer git_commit_free(cm)
+	tree, parent_tree: ^git_tree
+	if rc := git_commit_tree(&tree, cm); rc < 0 {
+		return nil, "", fault(rc)
+	}
+	defer git_tree_free(tree)
+	if git_commit_parentcount(cm) > 0 {
+		parent: ^git_commit
+		if rc := git_commit_parent(&parent, cm, 0); rc < 0 {
+			return nil, "", fault(rc)
+		}
+		defer git_commit_free(parent)
+		if rc := git_commit_tree(&parent_tree, parent); rc < 0 {
+			return nil, "", fault(rc)
+		}
+	}
+	defer if parent_tree != nil {
+		git_tree_free(parent_tree)
+	}
+	opts: git_diff_options
+	git_diff_options_init(&opts, GIT_DIFF_OPTIONS_VERSION)
+	opts.context_lines = u32(max(context_lines, 0))
+	opts.pathspec = strarray(paths)
+	// a/ and b/ whatever the user's config says: with diff.mnemonicPrefix
+	// set, libgit2 printed c/ and i/ (2026-10-09), and a reader of the
+	// patch could no longer find the file after "+++ b/".
+	opts.old_prefix, opts.new_prefix = "a/", "b/"
+	d: ^git_diff
+	if rc := git_diff_tree_to_tree(&d, repo.ptr, parent_tree, tree, &opts); rc < 0 {
+		return nil, "", fault(rc)
+	}
+	defer git_diff_free(d)
+	n := int(git_diff_num_deltas(d))
+	list := make([]string, n, allocator)
+	for i in 0 ..< n {
+		delta := git_diff_get_delta(d, c.size_t(i))
+		p := delta.new_file.path != nil ? delta.new_file.path : delta.old_file.path
+		list[i] = strings.clone(string(p), allocator)
+	}
+	buf: git_buf
+	if rc := git_diff_to_buf(&buf, d, GIT_DIFF_FORMAT_PATCH); rc < 0 {
+		return list, "", fault(rc)
+	}
+	defer git_buf_dispose(&buf)
+	return list, strings.clone(string(buf.ptr[:buf.size]), allocator), nil
+}
+
+// unstage puts the index back to HEAD, everything staged unstaged and
+// the working tree untouched, as `git reset` does; on an unborn branch it
+// empties the index.
+unstage :: proc(repo: Repo) -> Error {
+	index: ^git_index
+	if rc := git_repository_index(&index, repo.ptr); rc < 0 {
+		return fault(rc)
+	}
+	defer git_index_free(index)
+	if git_repository_head_unborn(repo.ptr) != 0 {
+		if rc := git_index_clear(index); rc < 0 {
+			return fault(rc)
+		}
+	} else {
+		oid, _ := resolve_oid(repo, "HEAD")
+		cm: ^git_commit
+		if rc := git_commit_lookup(&cm, repo.ptr, &oid); rc < 0 {
+			return fault(rc)
+		}
+		defer git_commit_free(cm)
+		tree: ^git_tree
+		if rc := git_commit_tree(&tree, cm); rc < 0 {
+			return fault(rc)
+		}
+		defer git_tree_free(tree)
+		if rc := git_index_read_tree(index, tree); rc < 0 {
+			return fault(rc)
+		}
+	}
+	if rc := git_index_write(index); rc < 0 {
+		return fault(rc)
+	}
+	return nil
+}
+
+// remote_set_url points the remote name at url.
+remote_set_url :: proc(repo: Repo, name, url: string) -> Error {
+	reject_nul("remote name or url", name, url) or_return
+	if rc := git_remote_set_url(repo.ptr, cstr(name), cstr(url)); rc < 0 {
+		return fault(rc)
+	}
+	return nil
+}
+
+// checkout points branch at the commit start names, makes it the current
+// branch, and sets the index and working tree to that commit, discarding
+// whatever differs: `git checkout -f -B branch start`.
+checkout :: proc(repo: Repo, branch, start: string) -> Error {
+	reject_nul("branch", branch) or_return
+	oid, ok := resolve_oid(repo, start)
+	if !ok {
+		return Fault{GIT_ENOTFOUND, strings.clone(fmt.tprintf("no commit named %q", start))}
+	}
+	cm: ^git_commit
+	if rc := git_commit_lookup(&cm, repo.ptr, &oid); rc < 0 {
+		return fault(rc)
+	}
+	defer git_commit_free(cm)
+	ref: ^git_reference
+	if rc := git_branch_create(&ref, repo.ptr, cstr(branch), cm, 1); rc < 0 {
+		return fault(rc)
+	}
+	git_reference_free(ref)
+	if rc := git_repository_set_head(repo.ptr, cstr(fmt.tprintf("refs/heads/%s", branch))); rc < 0 {
+		return fault(rc)
+	}
+	return reset_hard(repo, &oid)
+}
+
+// reset_hard moves the current branch to id, index and working tree with it.
+@(private)
+reset_hard :: proc(repo: Repo, id: ^git_oid) -> Error {
+	target: ^git_object
+	if rc := git_object_lookup(&target, repo.ptr, id, GIT_OBJECT_COMMIT); rc < 0 {
+		return fault(rc)
+	}
+	defer git_object_free(target)
+	if rc := git_reset(repo.ptr, target, GIT_RESET_HARD, nil); rc < 0 {
+		return fault(rc)
+	}
+	return nil
+}
+
+// signature is sig, or the repository's identity when sig is zero.
+@(private)
+signature :: proc(repo: Repo, sig: Signature) -> (out: ^git_signature, err: Error) {
+	reject_nul("signature", sig.name, sig.email) or_return
+	if sig == {} {
+		if rc := git_signature_default(&out, repo.ptr); rc < 0 {
+			return nil, fault(rc)
+		}
+	} else if rc := git_signature_now(&out, cstr(sig.name), cstr(sig.email)); rc < 0 {
+		return nil, fault(rc)
+	}
+	return
+}
+
+// rebase takes the current branch's commits that onto ("origin/main")
+// lacks and replays them, oldest first, on top of onto, then moves the
+// branch and the working tree there, as `git rebase onto` does: merge
+// commits are dropped, a commit whose change onto already has is
+// skipped, and a branch onto adds nothing to is left alone. It replays in memory first, so a commit that conflicts
+// changes nothing: conflicts names the paths, and the branch stays where
+// it was. Anything uncommitted fails it with GIT_EUNCOMMITTED. committer
+// is who replays them; zero is the repository's identity. Each commit
+// keeps its author and message.
+rebase :: proc(repo: Repo, onto: string, committer := Signature{}, allocator := context.allocator) -> (conflicts: []string, err: Error) {
+	base_id, ok := resolve_oid(repo, onto)
+	if !ok {
+		return nil, Fault{GIT_ENOTFOUND, strings.clone(fmt.tprintf("no commit named %q", onto))}
+	}
+	if git_repository_head_unborn(repo.ptr) != 0 {
+		return nil, reset_hard(repo, &base_id)
+	}
+	// onto has nothing the branch lacks: the branch is already on it, and
+	// replaying would only rewrite commits that need nothing.
+	if behind := count(repo, "HEAD", onto) or_return; behind == 0 {
+		return nil, nil
+	}
+	entries := status(repo, context.temp_allocator) or_return
+	if len(entries) > 0 {
+		return nil, Fault{GIT_EUNCOMMITTED, strings.clone("uncommitted changes would be overwritten; commit or put them aside first")}
+	}
+	sig := signature(repo, committer) or_return
+	defer git_signature_free(sig)
+	tip, _ := resolve_oid(repo, "HEAD")
+
+	walk: ^git_revwalk
+	if rc := git_revwalk_new(&walk, repo.ptr); rc < 0 {
+		return nil, fault(rc)
+	}
+	defer git_revwalk_free(walk)
+	git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME | GIT_SORT_REVERSE)
+	git_revwalk_push(walk, &tip)
+	git_revwalk_hide(walk, &base_id)
+	todo := make([dynamic]git_oid, context.temp_allocator)
+	oid: git_oid
+	for git_revwalk_next(&oid, walk) == 0 {
+		append(&todo, oid)
+	}
+	if len(todo) == 0 {
+		// Nothing of ours to replay: onto already has it all.
+		return nil, reset_hard(repo, &base_id)
+	}
+
+	base: ^git_commit
+	if rc := git_commit_lookup(&base, repo.ptr, &base_id); rc < 0 {
+		return nil, fault(rc)
+	}
+	defer git_commit_free(base)
+	for &id in todo {
+		cm: ^git_commit
+		if rc := git_commit_lookup(&cm, repo.ptr, &id); rc < 0 {
+			return nil, fault(rc)
+		}
+		defer git_commit_free(cm)
+		if git_commit_parentcount(cm) > 1 {
+			continue
+		}
+		index: ^git_index
+		if rc := git_cherrypick_commit(&index, repo.ptr, cm, base, 0, nil); rc < 0 {
+			return nil, fault(rc)
+		}
+		defer git_index_free(index)
+		if git_index_has_conflicts(index) != 0 {
+			return index_conflicts(index, allocator), nil
+		}
+		tree_id: git_oid
+		if rc := git_index_write_tree_to(&tree_id, index, repo.ptr); rc < 0 {
+			return nil, fault(rc)
+		}
+		base_tree: ^git_tree
+		if rc := git_commit_tree(&base_tree, base); rc < 0 {
+			return nil, fault(rc)
+		}
+		same := git_tree_id(base_tree)^ == tree_id
+		git_tree_free(base_tree)
+		if same {
+			continue
+		}
+		tree: ^git_tree
+		if rc := git_tree_lookup(&tree, repo.ptr, &tree_id); rc < 0 {
+			return nil, fault(rc)
+		}
+		defer git_tree_free(tree)
+		parents := [1]^git_commit{base}
+		next: git_oid
+		if rc := git_commit_create(&next, repo.ptr, nil, git_commit_author(cm), sig, nil, git_commit_message_raw(cm), tree, 1, raw_data(parents[:])); rc < 0 {
+			return nil, fault(rc)
+		}
+		replayed: ^git_commit
+		if rc := git_commit_lookup(&replayed, repo.ptr, &next); rc < 0 {
+			return nil, fault(rc)
+		}
+		git_commit_free(base)
+		base = replayed
+	}
+	return nil, reset_hard(repo, git_commit_id(base))
+}
+
+// index_conflicts is each path with a conflict in index, once.
+@(private)
+index_conflicts :: proc(index: ^git_index, allocator := context.allocator) -> []string {
+	out := make([dynamic]string, allocator)
+	for i in 0 ..< int(git_index_entrycount(index)) {
+		e := git_index_get_byindex(index, c.size_t(i))
+		if e == nil || (e.flags & GIT_INDEX_STAGE_MASK) == 0 {
+			continue
+		}
+		p := string(e.path)
+		if len(out) > 0 && out[len(out) - 1] == p {
+			continue
+		}
+		append(&out, strings.clone(p, allocator))
+	}
+	return out[:]
+}
+
+// stash puts away everything uncommitted, untracked files included, and
+// leaves the working tree as HEAD has it, `git stash -u`. stashed is
+// false when there was nothing to put away.
+stash :: proc(repo: Repo, message: string, sig := Signature{}) -> (stashed: bool, err: Error) {
+	reject_nul("message", message) or_return
+	who := signature(repo, sig) or_return
+	defer git_signature_free(who)
+	oid: git_oid
+	rc := git_stash_save(&oid, repo.ptr, who, cstr(message), GIT_STASH_INCLUDE_UNTRACKED)
+	if rc == GIT_ENOTFOUND {
+		return false, nil
+	}
+	if rc < 0 {
+		return false, fault(rc)
+	}
+	return true, nil
+}
+
+// unstash brings back what the newest stash put away and drops it, `git
+// stash pop`. One that no longer applies cleanly is kept, and the error
+// says so.
+unstash :: proc(repo: Repo) -> Error {
+	if rc := git_stash_pop(repo.ptr, 0, nil); rc < 0 {
+		return fault(rc)
+	}
+	return nil
+}
+
+// set_timeouts bounds, for every fetch and push in the process, how long
+// connecting may take and how long one read or write may wait. Zero
+// leaves libgit2's default, which waits as long as the OS does.
+set_timeouts :: proc(connect, io: time.Duration) {
+	ready()
+	if connect > 0 {
+		git_libgit2_opts(GIT_OPT_SET_SERVER_CONNECT_TIMEOUT, c.int(time.duration_milliseconds(connect)))
+	}
+	if io > 0 {
+		git_libgit2_opts(GIT_OPT_SET_SERVER_TIMEOUT, c.int(time.duration_milliseconds(io)))
+	}
 }

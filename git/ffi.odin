@@ -63,6 +63,8 @@ git_remote :: struct {}
 git_annotated_commit :: struct {}
 git_diff :: struct {}
 git_credential :: struct {}
+git_config :: struct {}
+git_blob :: struct {}
 
 GIT_OID_SHA1_SIZE :: 20
 
@@ -200,6 +202,20 @@ git_push_options :: struct {
 	remote_push_options: git_strarray,
 }
 
+git_index_time :: struct {
+	seconds:     i32,
+	nanoseconds: u32,
+}
+
+git_index_entry :: struct {
+	ctime, mtime:          git_index_time,
+	dev, ino, mode:        u32,
+	uid, gid, file_size:   u32,
+	id:                    git_oid,
+	flags, flags_extended: u16,
+	path:                  cstring,
+}
+
 // Struct versions the *_init procs are given (GIT_*_OPTIONS_VERSION).
 GIT_STATUS_OPTIONS_VERSION :: 1
 GIT_FETCH_OPTIONS_VERSION :: 1
@@ -243,6 +259,17 @@ GIT_DIRECTION_FETCH :: 0
 GIT_ERROR_NET :: 12 // git_error_t: the class a credential problem is reported under
 GIT_SORT_TOPOLOGICAL :: 1 << 0
 GIT_SORT_TIME :: 1 << 1
+GIT_SORT_REVERSE :: 1 << 2
+GIT_OBJECT_BLOB :: 3
+GIT_INDEX_STAGE_MASK :: 0x3000 // an entry's stage, in its flags: nonzero is one side of a conflict
+GIT_STASH_INCLUDE_UNTRACKED :: 1 << 1
+
+// git_libgit2_opt_t values for the network timeouts. The enum is
+// positional, so these are its ordinals in the 1.9.7 common.h, printed by
+// a C program compiled against that header on 2026-10-09; a libgit2
+// upgrade has to check them again.
+GIT_OPT_SET_SERVER_CONNECT_TIMEOUT :: 39
+GIT_OPT_SET_SERVER_TIMEOUT :: 41
 
 // What git_merge_analysis reports, from merge.h.
 GIT_MERGE_ANALYSIS_NORMAL :: 1 << 0
@@ -349,4 +376,43 @@ foreign lib {
 	git_credential_ssh_key_from_agent :: proc(out: ^^git_credential, username: cstring) -> c.int ---
 	git_credential_default_new :: proc(out: ^^git_credential) -> c.int ---
 	git_credential_free :: proc(cred: ^git_credential) ---
+
+	git_libgit2_opts :: proc(option: c.int, #c_vararg args: ..any) -> c.int ---
+	git_repository_open_ext :: proc(out: ^^git_repository, path: cstring, flags: c.uint, ceiling_dirs: cstring) -> c.int ---
+	git_repository_config :: proc(out: ^^git_config, repo: ^git_repository) -> c.int ---
+	git_repository_set_head :: proc(repo: ^git_repository, refname: cstring) -> c.int ---
+	git_config_get_string_buf :: proc(out: ^git_buf, cfg: ^git_config, name: cstring) -> c.int ---
+	git_config_set_string :: proc(cfg: ^git_config, name, value: cstring) -> c.int ---
+	git_config_free :: proc(cfg: ^git_config) ---
+
+	git_revparse_single :: proc(out: ^^git_object, repo: ^git_repository, spec: cstring) -> c.int ---
+	git_object_peel :: proc(peeled: ^^git_object, object: ^git_object, target_type: c.int) -> c.int ---
+	git_object_id :: proc(obj: ^git_object) -> ^git_oid ---
+	git_object_type :: proc(obj: ^git_object) -> c.int ---
+	git_blob_rawcontent :: proc(blob: ^git_blob) -> rawptr ---
+	git_blob_rawsize :: proc(blob: ^git_blob) -> i64 ---
+
+	git_revwalk_push :: proc(walk: ^git_revwalk, id: ^git_oid) -> c.int ---
+	git_revwalk_hide :: proc(walk: ^git_revwalk, id: ^git_oid) -> c.int ---
+	git_commit_parentcount :: proc(commit: ^git_commit) -> c.uint ---
+	git_commit_parent :: proc(out: ^^git_commit, commit: ^git_commit, n: c.uint) -> c.int ---
+	git_tree_id :: proc(tree: ^git_tree) -> ^git_oid ---
+	git_commit_committer :: proc(commit: ^git_commit) -> ^git_signature ---
+
+	git_diff_tree_to_tree :: proc(out: ^^git_diff, repo: ^git_repository, old_tree, new_tree: ^git_tree, opts: ^git_diff_options) -> c.int ---
+	git_diff_num_deltas :: proc(diff: ^git_diff) -> c.size_t ---
+	git_diff_get_delta :: proc(diff: ^git_diff, idx: c.size_t) -> ^git_diff_delta ---
+
+	git_index_read_tree :: proc(index: ^git_index, tree: ^git_tree) -> c.int ---
+	git_index_clear :: proc(index: ^git_index) -> c.int ---
+	git_index_has_conflicts :: proc(index: ^git_index) -> c.int ---
+	git_index_entrycount :: proc(index: ^git_index) -> c.size_t ---
+	git_index_get_byindex :: proc(index: ^git_index, n: c.size_t) -> ^git_index_entry ---
+	git_index_write_tree_to :: proc(out: ^git_oid, index: ^git_index, repo: ^git_repository) -> c.int ---
+
+	git_remote_set_url :: proc(repo: ^git_repository, remote, url: cstring) -> c.int ---
+	git_branch_create :: proc(out: ^^git_reference, repo: ^git_repository, branch_name: cstring, target: ^git_commit, force: c.int) -> c.int ---
+	git_cherrypick_commit :: proc(out: ^^git_index, repo: ^git_repository, cherrypick_commit, our_commit: ^git_commit, mainline: c.uint, merge_options: rawptr) -> c.int ---
+	git_stash_save :: proc(out: ^git_oid, repo: ^git_repository, stasher: ^git_signature, message: cstring, flags: u32) -> c.int ---
+	git_stash_pop :: proc(repo: ^git_repository, index: c.size_t, options: rawptr) -> c.int ---
 }
