@@ -29,6 +29,7 @@ eye
 eye_off
 filter
 folder
+globe
 grid
 home
 image
