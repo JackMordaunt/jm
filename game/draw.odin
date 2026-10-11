@@ -10,6 +10,13 @@ import "jm:ui/ops"
 // was drawn. This package adds a draw call only where ops has none.
 //
 //	ops.fill(canvas.scene, ops.Rect{world.box.x, world.box.y, 16, 16}, ops.Color{255, 200, 0, 255})
+//
+// An entity is named for the tools with a tag of id 0 and its bounds:
+// ui.probe_bounds and the dump then find "player" where it was drawn. A
+// tag whose id is an input area's would be found as that area instead
+// (ui/probe.odin probe_find looks for a hit of the tag's id first).
+//
+//	ops.tag(canvas.scene, 0, "player", ops.Rect{world.player.x, world.player.y, 16, 16})
 Canvas :: struct {
 	gtx:   ^ui.Ctx,
 	scene: ^ops.Scene,
@@ -29,4 +36,52 @@ letterbox :: proc(size, view: [2]f32) -> (transform: ops.Affine, covers: ops.Rec
 	scale := min(view.x / size.x, view.y / size.y)
 	covers = {(view.x - size.x * scale) / 2, (view.y - size.y * scale) / 2, size.x * scale, size.y * scale}
 	return ops.mul(ops.scale(scale, scale), ops.translate(covers.x, covers.y)), covers
+}
+
+// Sheet is a sprite sheet: one image cut into a grid of equal frames,
+// numbered from 0 along each row, then down. Pixel art is its default: a
+// frame scales by nearest neighbour, each pixel a hard-edged block.
+//
+//	HERO :: game.Sheet{path = "art/hero.png", frame = {16, 16}, columns = 4}
+Sheet :: struct {
+	path:    string,
+	frame:   [2]f32, // a frame's size, in the image's pixels
+	columns: int, // frames across the image
+	smooth:  bool, // scale smoothly instead, as a painted image wants
+}
+
+// Flip mirrors a sprite: X left for right, Y top for bottom.
+Flip :: enum u8 {
+	X,
+	Y,
+}
+
+Flips :: bit_set[Flip;u8]
+
+// sprite draws frame of sheet into dst, mirrored by flip within dst.
+sprite :: proc(canvas: ^Canvas, sheet: Sheet, frame: int, dst: ops.Rect, flip: Flips = {}) {
+	id := ops.add_image(canvas.scene, sheet.path)
+	columns := max(sheet.columns, 1)
+	src := ops.Rect{f32(frame % columns) * sheet.frame.x, f32(frame / columns) * sheet.frame.y, sheet.frame.x, sheet.frame.y}
+	if flip == {} {
+		ops.image(canvas.scene, id, dst, src, pixelated = !sheet.smooth)
+		return
+	}
+	ops.transform_push(canvas.scene, mirror(dst, flip))
+	ops.image(canvas.scene, id, dst, src, pixelated = !sheet.smooth)
+	ops.transform_pop(canvas.scene)
+}
+
+// mirror is the transform that flips the plane across the centre lines of
+// bounds that flip names, leaving bounds where they were.
+@(private)
+mirror :: proc(bounds: ops.Rect, flip: Flips) -> ops.Affine {
+	transform := ops.IDENTITY
+	if .X in flip {
+		transform.a, transform.e = -1, f64(2 * bounds.x + bounds.w)
+	}
+	if .Y in flip {
+		transform.d, transform.f = -1, f64(2 * bounds.y + bounds.h)
+	}
+	return transform
 }

@@ -543,11 +543,47 @@ test_an_image_draws_at_its_alpha :: proc(t: ^testing.T) {
 	setup(&fx)
 	defer teardown(&fx)
 	id := ops.add_image(&fx.scene, path)
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {0, 0, 16, 16}, {}, 128}, 0})
-	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id, {32, 0, 16, 16}, {}, 255}, 0})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id = id, dst = {0, 0, 16, 16}, alpha = 128}, 0})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id = id, dst = {32, 0, 16, 16}, alpha = 255}, 0})
 	render(&fx.r, &fx.frame, &fx.img, WHITE)
 	half := at(&fx, {8, 8})
 	testing.expect_value(t, half.r, 255)
 	testing.expectf(t, abs(int(half.g) - 127) <= 1 && half.g == half.b, "half alpha over white: %v", half)
 	testing.expect_value(t, at(&fx, {40, 8}), RED)
+}
+
+// A pixelated image scales by nearest neighbour: a black and a white
+// pixel stretched across 16 stay a hard-edged black half and white half,
+// where smooth scaling grades between them.
+@(test)
+test_a_pixelated_image_keeps_hard_edges :: proc(t: ^testing.T) {
+	os.make_directory("build/test")
+	path := "build/test/black_white.png"
+	defer os.remove(path)
+	src: bl.ImageCore
+	bl.image_init(&src)
+	defer bl.image_destroy(&src)
+	bl.image_create(&src, 2, 1, .PRGB32)
+	ctx: bl.ContextCore
+	bl.context_init(&ctx)
+	defer bl.context_destroy(&ctx)
+	bl.context_begin(&ctx, &src, nil)
+	bl.context_fill_all_rgba32(&ctx, 0xFF000000)
+	white := bl.RectI{1, 0, 1, 1}
+	bl.context_fill_rect_i_rgba32(&ctx, &white, 0xFFFFFFFF)
+	bl.context_end(&ctx)
+	cpath := strings.clone_to_cstring(path, context.temp_allocator)
+	testing.expect_value(t, bl.image_write_to_file(&src, cpath, nil), bl.Result(0))
+
+	fx: Fixture
+	setup(&fx)
+	defer teardown(&fx)
+	id := ops.add_image(&fx.scene, path)
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id = id, dst = {0, 0, 16, 4}, alpha = 255, pixelated = true}, 0})
+	append(&fx.frame.draws, ui.Draw{ops.IDENTITY, ui.NO_CLIP, ops.Image{id = id, dst = {0, 8, 16, 4}, alpha = 255}, 0})
+	render(&fx.r, &fx.frame, &fx.img, WHITE)
+	testing.expect_value(t, at(&fx, {6, 2}).r, 0)
+	testing.expect_value(t, at(&fx, {9, 2}).r, 255)
+	smooth := at(&fx, {6, 10}).r
+	testing.expectf(t, smooth > 0 && smooth < 255, "smooth scaling grades the edge: %v", smooth)
 }

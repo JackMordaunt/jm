@@ -588,6 +588,13 @@ draw_cmd :: proc(r: ^Renderer, ctx: ^bl.ContextCore, f: ^ui.Frame, d: ^ui.Draw) 
 		defer if cmd.alpha < 255 {
 			bl.context_set_global_alpha(ctx, whole)
 		}
+		quality := bl.context_get_hint(ctx, .PATTERN_QUALITY)
+		if cmd.pixelated {
+			bl.context_set_hint(ctx, .PATTERN_QUALITY, u32(bl.PatternQuality.NEAREST))
+		}
+		defer if cmd.pixelated {
+			bl.context_set_hint(ctx, .PATTERN_QUALITY, quality)
+		}
 		if cmd.dst.w > 0 && cmd.dst.h > 0 {
 			dst := bl.Rect{f64(cmd.dst.x), f64(cmd.dst.y), f64(cmd.dst.w), f64(cmd.dst.h)}
 			bl.context_blit_scaled_image_d(ctx, &dst, img, src)

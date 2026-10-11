@@ -44,8 +44,8 @@ ENCODE_MAGIC :: "UIOP"
 // claim); 39 added Event_Kind Pick_Failed, with the reply's Pick_Path
 // given a kind for its folder bool and a save's name and filters; 40
 // added Event_Kind Key_Up and Key F1 to F12, Shift, Ctrl, Alt and Super,
-// which renumbered the keys after N9.
-ENCODE_VERSION :: u8(40)
+// which renumbered the keys after N9; 41 gave Image pixelated.
+ENCODE_VERSION :: u8(41)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -390,6 +390,7 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 		put_rect(w, v.dst)
 		put_rect(w, v.src)
 		append(w, v.alpha)
+		append(w, u8(v.pixelated))
 	case Input_Area:
 		append(w, 12)
 		put_u64(w, u64(v.id))
@@ -685,6 +686,7 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		v.dst = get_rect(r) or_return
 		v.src = get_rect(r) or_return
 		v.alpha = get_u8(r) or_return
+		v.pixelated = (get_u8(r) or_return) != 0
 		return v, true
 	case 12:
 		v: Input_Area

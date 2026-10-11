@@ -434,6 +434,9 @@ write_draw :: proc(sb: ^strings.Builder, o: ^Scene, cmd: Op, by_content := false
 		if v.alpha < 255 {
 			fmt.sbprintf(sb, " alpha %d", v.alpha)
 		}
+		if v.pixelated {
+			strings.write_string(sb, " pixelated")
+		}
 	case Shadow:
 		strings.write_string(sb, "shadow ")
 		write_rect(sb, v.rect)
