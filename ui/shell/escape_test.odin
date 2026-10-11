@@ -5,19 +5,7 @@ import "core:testing"
 import "vendor:sdl3"
 
 import "jm:ui"
-
-@(private = "file")
-Key_Log :: struct {
-	keys: [dynamic]ui.Key,
-}
-
-@(private = "file")
-log_sink :: proc(user: rawptr, e: ui.Raw_Event) {
-	s := (^Key_Log)(user)
-	if e.kind == .Key {
-		append(&s.keys, e.key)
-	}
-}
+import "jm:ui/ops"
 
 @(private = "file")
 push_escape :: proc() {
@@ -47,21 +35,22 @@ test_escape_closes_unless_the_app_keeps_it :: proc(t: ^testing.T) {
 		testing.fail_now(t, "SDL's events subsystem would not start")
 	}
 	defer sdl3.Quit()
-	keys: Key_Log
-	defer delete(keys.keys)
+	keys: Event_Log
+	defer delete(keys.events)
 
 	w: Window
 	w.density = 1
 	push_escape()
 	testing.expect(t, !poll(&w, log_sink, &keys), "Escape ends the run by default")
-	testing.expect_value(t, len(keys.keys), 0)
+	testing.expect_value(t, len(keys.events), 0)
 	drain()
 
 	w.keep_escape = true
 	push_escape()
 	testing.expect(t, poll(&w, log_sink, &keys), "a kept Escape does not")
-	testing.expect_value(t, len(keys.keys), 1)
-	if len(keys.keys) == 1 {
-		testing.expect_value(t, keys.keys[0], ui.Key.Escape)
+	testing.expect_value(t, len(keys.events), 1)
+	if len(keys.events) == 1 {
+		testing.expect_value(t, keys.events[0].kind, ops.Event_Kind.Key)
+		testing.expect_value(t, keys.events[0].key, ui.Key.Escape)
 	}
 }

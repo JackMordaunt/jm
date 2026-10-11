@@ -60,3 +60,59 @@ when ODIN_OS == .Darwin {
 	SHORTCUT :: Mod.Ctrl
 	WORD_MOD :: Mod.Ctrl
 }
+
+// Keys is a set of keys: those held down, or pressed or released in a
+// frame (Key_State).
+Keys :: bit_set[Key]
+
+// Key_State is the keyboard as a game reads it, polled rather than routed:
+// held is every key down now; pressed and released are the keys that went
+// down or came up in this frame's input, so a tap that starts and ends
+// between two frames is in both and never in held. A key's repeats are
+// not presses. The router keeps it from Key and Key_Up whatever has focus.
+Key_State :: struct {
+	held:     Keys,
+	pressed:  Keys,
+	released: Keys,
+}
+
+// key_state is the keyboard this frame: see Key_State.
+key_state :: proc(gtx: ^Ctx) -> Key_State {
+	return gtx.router.keys
+}
+
+// key_held reports whether key is down this frame.
+key_held :: proc(gtx: ^Ctx, key: Key) -> bool {
+	return key in gtx.router.keys.held
+}
+
+// is_modifier_key reports whether key is a modifier, which a Key only
+// marks held and never routes.
+is_modifier_key :: proc(key: Key) -> bool {
+	return key == .Shift || key == .Ctrl || key == .Alt || key == .Super
+}
+
+// press_key marks key held in s, and pressed unless it was held already: a
+// repeat.
+@(private)
+press_key :: proc(s: ^Key_State, key: Key) {
+	if key == .None || key in s.held {
+		return
+	}
+	s.held += {key}
+	s.pressed += {key}
+}
+
+// release_key lets go of key in s, or of every held key for None.
+@(private)
+release_key :: proc(s: ^Key_State, key: Key) {
+	if key == .None {
+		s.released += s.held
+		s.held = {}
+		return
+	}
+	if key in s.held {
+		s.held -= {key}
+		s.released += {key}
+	}
+}

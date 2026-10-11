@@ -38,8 +38,10 @@ import "jm:ui/ops"
 
 // INPUT_VERSION leads every Input and changes with its layout, so a child
 // and a host built apart name the mismatch instead of misreading events:
-// 1 is the first versioned Input, whose events carry their time.
-INPUT_VERSION :: u8(1)
+// 1 is the first versioned Input, whose events carry their time; 2
+// renumbered the keys after N9 and added Event_Kind Key_Up (see
+// ops.ENCODE_VERSION 40).
+INPUT_VERSION :: u8(2)
 
 // input_version is the version byte an Input starts with, false when data
 // is empty.

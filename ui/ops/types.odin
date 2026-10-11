@@ -167,6 +167,13 @@ Event_Kind :: enum u8 {
 	// The platform's reason is in text, for a log; what the person sees
 	// instead is the asker's to decide.
 	Pick_Failed,
+	// Key_Up is a key let go, the end of a Key. The router keeps the keys
+	// held down from Key and Key_Up (ui.key_state), which is what a game
+	// reads; the event itself goes to the focused area when it asks for
+	// Key_Up. One with key None lets go of every key: ui/shell sends it
+	// when its window loses focus, so a key let go while another window
+	// has focus is not held for ever.
+	Key_Up,
 }
 
 // Cursor is the pointer's look over an input area. An area that sets none
@@ -269,7 +276,16 @@ Key :: enum u8 {
 	A, B, C, D, E, F, G, H, I, J, K, L, M,
 	N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
 	N0, N1, N2, N3, N4, N5, N6, N7, N8, N9,
+	F1, F2, F3, F4, F5, F6, F7, F8, F9, F10,
 	F11, // ui.DEBUG_TOGGLE_KEY: the frame loops take it before routing
+	F12,
+	// The modifiers as keys, either side: a Key of one only marks it held
+	// (ui.key_state) and is never routed, since a widget reads modifiers
+	// from an event's mods.
+	Shift,
+	Ctrl,
+	Alt,
+	Super,
 	// The mouse's back and forward buttons arrive as keys, as a browser
 	// takes them: an app reads them app-wide with ui.key_interest, like
 	// Alt with Left and Right, which mean the same.

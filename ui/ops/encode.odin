@@ -42,8 +42,10 @@ ENCODE_MAGIC :: "UIOP"
 // column counts and indices and a sort; 37 added Role Password_Field; 38
 // turned Key_Interest's topmost into a flags byte (bit 0 topmost, bit 1
 // claim); 39 added Event_Kind Pick_Failed, with the reply's Pick_Path
-// given a kind for its folder bool and a save's name and filters.
-ENCODE_VERSION :: u8(39)
+// given a kind for its folder bool and a save's name and filters; 40
+// added Event_Kind Key_Up and Key F1 to F12, Shift, Ctrl, Alt and Super,
+// which renumbered the keys after N9.
+ENCODE_VERSION :: u8(40)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.

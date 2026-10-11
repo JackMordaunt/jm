@@ -17,6 +17,9 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Press, pos = {5, 6}, button = .Right, mods = {.Shift, .Ctrl}, clicks = 2, time = 1234.016},
 		{kind = .Scroll, pos = {1, 2}, scroll = {0, -3.5}},
 		{kind = .Key, key = .Enter, mods = {.Alt}},
+		{kind = .Key, key = .Shift, mods = {.Shift}},
+		{kind = .Key_Up, key = .F12},
+		{kind = .Key_Up, key = .None}, // the window lost focus
 		{kind = .Text, text = "héllo\nworld"},
 		{kind = .Paste, text = "pasted", mime = TEXT_MIME},
 		{kind = .Focus, area = 77},

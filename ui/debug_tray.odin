@@ -142,7 +142,7 @@ event_log_lines :: proc(t: ^Debug_Tray, most: int, allocator := context.allocato
 		}
 		detail := ""
 		#partial switch e.kind {
-		case .Key:
+		case .Key, .Key_Up:
 			detail = fmt.tprintf(" %v", e.key)
 		case .Press, .Release, .Scroll:
 			detail = fmt.tprintf(" at %.0f,%.0f", e.pos.x, e.pos.y)

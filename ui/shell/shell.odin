@@ -929,6 +929,9 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			bridge_window_focus(w.a11y, true)
 		case .WINDOW_FOCUS_LOST:
 			bridge_window_focus(w.a11y, false)
+			// Let go of every key, in case one is let go while another
+			// window has focus.
+			sink(user, {kind = .Key_Up, key = .None, time = at})
 		case .WINDOW_MOVED, .WINDOW_SHOWN, .WINDOW_MAXIMIZED, .WINDOW_RESTORED:
 			bridge_window_bounds(w.a11y)
 		case .RENDER_TARGETS_RESET:
@@ -1022,6 +1025,13 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			}
 			if k != .None {
 				sink(user, {kind = .Key, key = k, mods = mods(e.key.mod), time = at})
+			}
+		case .KEY_UP:
+			// Even while composing: a key held when the composition began
+			// is let go.
+			k := key(e.key.key)
+			if k != .None {
+				sink(user, {kind = .Key_Up, key = k, mods = mods(e.key.mod), time = at})
 			}
 		case .TEXT_INPUT:
 			w.composing = false
@@ -1139,8 +1149,16 @@ key :: proc(k: sdl3.Keycode) -> ui.Key {
 		return ui.Key(int(ui.Key.A) + int(k - sdl3.K_A))
 	case sdl3.K_0 ..= sdl3.K_9:
 		return ui.Key(int(ui.Key.N0) + int(k - sdl3.K_0))
-	case sdl3.K_F11:
-		return .F11
+	case sdl3.K_F1 ..= sdl3.K_F12:
+		return ui.Key(int(ui.Key.F1) + int(k - sdl3.K_F1))
+	case sdl3.K_LSHIFT, sdl3.K_RSHIFT:
+		return .Shift
+	case sdl3.K_LCTRL, sdl3.K_RCTRL:
+		return .Ctrl
+	case sdl3.K_LALT, sdl3.K_RALT:
+		return .Alt
+	case sdl3.K_LGUI, sdl3.K_RGUI:
+		return .Super
 	}
 	return .None
 }

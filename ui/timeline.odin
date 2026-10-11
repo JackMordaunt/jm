@@ -64,8 +64,8 @@ input_summary :: proc(payload: []byte, allocator := context.allocator) -> (summa
 			fmt.sbprintf(&sb, "%v %.0f,%.0f", event.kind, at.x, at.y)
 		case .Scroll:
 			fmt.sbprintf(&sb, "Scroll %.1f,%.1f", event.scroll.x, event.scroll.y)
-		case .Key:
-			fmt.sbprintf(&sb, "Key %v", event.key)
+		case .Key, .Key_Up:
+			fmt.sbprintf(&sb, "%v %v", event.kind, event.key)
 			if event.mods != {} {
 				fmt.sbprintf(&sb, " %v", event.mods)
 			}

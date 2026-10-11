@@ -140,6 +140,7 @@ Router :: struct {
 	observed:    [dynamic]Hit, // the observers the pointer is over, each sent its Enter
 	caret_ask:   Caret_Ask, // the focused area's text_caret this frame
 	ime_sent:    Text_Input, // the last Text_Input queued; zero, off, until one is
+	keys:        Key_State, // the keys held, and those pressed and released by this route's events
 }
 
 // Scope_Memory is what the router keeps of a focus scope between routes:
@@ -228,6 +229,7 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 	release_text(r)
 	clear(&r.events)
 	clear(&r.placed)
+	r.keys.pressed, r.keys.released = {}, {}
 	if f != nil {
 		append(&r.placed, ..f.placed[:])
 	}
@@ -281,6 +283,10 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			}
 		case .Key, .Text:
 			if e.kind == .Key {
+				press_key(&r.keys, e.key)
+				if is_modifier_key(e.key) {
+					continue
+				}
 				r.keyboard = true
 			}
 			focused := r.focus != 0 && deliver(r, r.focus_hit, e, {})
@@ -293,6 +299,11 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 				}
 			} else if !focused {
 				free_strings(r, e)
+			}
+		case .Key_Up:
+			release_key(&r.keys, e.key)
+			if r.focus != 0 && e.key != .None {
+				deliver(r, r.focus_hit, e, {})
 			}
 		case .Compose:
 			// To the focused area that takes Text: no area asks for

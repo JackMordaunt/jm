@@ -540,9 +540,28 @@ probe_compose :: proc(p: ^Probe, text: string, lo := -1, hi := -1) {
 	probe_frame(p)
 }
 
-// probe_key sends key with mods to the focused area and runs a frame.
+// probe_key taps key with mods, down and up again, and runs a frame: the
+// focused area gets the Key, and the frame sees key pressed and released
+// but never held.
 probe_key :: proc(p: ^Probe, key: Key, mods: Mods = {}) {
 	router_push(&p.router, {kind = .Key, key = key, mods = mods})
+	router_push(&p.router, {kind = .Key_Up, key = key, mods = mods})
+	probe_frame(p)
+}
+
+// probe_key_down presses key with mods and holds it, and runs a frame:
+// key is held in every frame until probe_key_up. Pressing a held key again
+// is a repeat: the area gets the Key, and key_state does not count it
+// pressed.
+probe_key_down :: proc(p: ^Probe, key: Key, mods: Mods = {}) {
+	router_push(&p.router, {kind = .Key, key = key, mods = mods})
+	probe_frame(p)
+}
+
+// probe_key_up lets go of key, or of every held key for None, and runs a
+// frame.
+probe_key_up :: proc(p: ^Probe, key: Key, mods: Mods = {}) {
+	router_push(&p.router, {kind = .Key_Up, key = key, mods = mods})
 	probe_frame(p)
 }
 
