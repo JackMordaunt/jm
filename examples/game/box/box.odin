@@ -18,6 +18,7 @@ step :: proc(world: ^World, input: game.Input) {
 	world.box = {clamp(world.box.x + 2 * move.x, 0, 304), clamp(world.box.y + 2 * move.y, 0, 164)}
 	world.moving = move != {}
 	world.left = move.x < 0 || (world.left && move.x == 0)
+	game.debug_rect({world.box.x, world.box.y, 16, 16}) // F3 shows it
 }
 
 draw :: proc(world: ^World, canvas: ^game.Canvas) {

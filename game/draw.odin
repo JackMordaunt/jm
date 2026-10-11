@@ -21,6 +21,7 @@ Canvas :: struct {
 	gtx:   ^ui.Ctx,
 	scene: ^ops.Scene,
 	size:  [2]f32, // the game's size in its own units
+	scale: f32, // device pixels a game unit is drawn at
 	alpha: f32, // how far the frame is between the last tick and the next, 0 to 1: see clock_alpha
 	tick:  u64, // the ticks run so far
 }

@@ -57,6 +57,7 @@ Game :: struct($W: typeid) {
 	seed:        u64, // given to init
 	clear:       ops.Color, // the game's background; the letterbox is black
 	keep_escape: bool, // Escape goes to the game as a key, rather than closing the window
+	overlay:     bool, // start with the debug overlay showing (overlay.odin); OVERLAY_KEY turns it on and off
 	init:        proc(world: ^W, seed: u64), // optional
 	step:        proc(world: ^W, input: Input),
 	draw:        proc(world: ^W, canvas: ^Canvas),
@@ -85,6 +86,7 @@ Runner_Core :: struct {
 	gather: Input_Gather,
 	writer: Tape_Writer, // where each tick's Input is recorded, when open
 	replay: ^Tape, // where the ticks' Input comes from instead of the devices, when set: runner_replay
+	overlay: Overlay,
 }
 
 // POINTER_AREA is the input area over the game that hears the pointer.
@@ -96,9 +98,15 @@ runner_init :: proc(runner: ^Runner($W), game: Game(W), world: ^W) {
 	runner^ = {
 		world = world,
 		game = game,
-		core = {size = game.size, clear = game.clear},
+		core = {size = game.size, clear = game.clear, overlay = {on = game.overlay}},
 	}
 	clock_init(&runner.core.clock, game.dt, game.max_ticks)
+}
+
+// runner_destroy frees what runner holds; its World is the caller's.
+runner_destroy :: proc(runner: ^Runner($W)) {
+	runner_record_stop(runner)
+	overlay_destroy(&runner.core.overlay)
 }
 
 // runner_frame is the ui proc that runs a Runner(W): the ticks the frame's
@@ -111,8 +119,12 @@ runner_frame :: proc($W: typeid) -> ui.UI_Proc {
 			input := core_input(&runner.core, first + u64(ii)) or_break
 			runner.game.step(runner.world, input)
 		}
+		overlay_target = nil
 		canvas := canvas_open(&runner.core, gtx)
+		overlay_aim(&runner.core.overlay, &runner.core.overlay.frame)
 		runner.game.draw(runner.world, &canvas)
+		overlay_target = nil
+		overlay_paint(&runner.core.overlay, &canvas, canvas.scale)
 		canvas_close(&canvas)
 	}
 }
@@ -122,7 +134,11 @@ runner_frame :: proc($W: typeid) -> ui.UI_Proc {
 @(private)
 core_advance :: proc(core: ^Runner_Core, gtx: ^ui.Ctx) -> (ticks: int, first: u64) {
 	ui.request_frame(gtx)
-	gather_keys(&core.gather, ui.key_state(gtx))
+	keys := ui.key_state(gtx)
+	if OVERLAY_KEY in keys.pressed {
+		core.overlay.on = !core.overlay.on
+	}
+	gather_keys(&core.gather, keys)
 	for event in ui.events(gtx, POINTER_AREA) {
 		gather_pointer(&core.gather, event)
 	}
@@ -140,6 +156,7 @@ core_input :: proc(core: ^Runner_Core, tick: u64) -> (input: Input, ok: bool) {
 		input = take_input(&core.gather, tick)
 	}
 	tape_write(&core.writer, input)
+	overlay_aim(&core.overlay, &core.overlay.tick)
 	return input, true
 }
 
@@ -182,6 +199,7 @@ canvas_open :: proc(core: ^Runner_Core, gtx: ^ui.Ctx) -> Canvas {
 		gtx = gtx,
 		scene = gtx.scene,
 		size = core.size,
+		scale = f32(transform.a),
 		alpha = clock_alpha(&core.clock),
 		tick = core.clock.tick,
 	}
@@ -212,7 +230,7 @@ run :: proc(game: Game($W), world: ^W) {
 		}
 	}
 	play_in_window(runner_frame(W), &runner, game.size, game.title, game.scale, game.keep_escape)
-	runner_record_stop(&runner)
+	runner_destroy(&runner)
 }
 
 // ROLLING_TAPES is how many of its last runs a debug build keeps.
