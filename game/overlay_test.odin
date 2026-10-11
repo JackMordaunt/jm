@@ -121,3 +121,37 @@ the_overlay_cannot_change_a_run :: proc(t: ^testing.T) {
 	with, without := play(true), play(false)
 	testing.expect(t, transmute([size_of(Ball)]u8)with == transmute([size_of(Ball)]u8)without)
 }
+
+// Distant_World is a World far from the origin, looked at through a camera.
+@(private = "file")
+Distant_World :: struct {
+	at: [2]f32,
+}
+
+@(test)
+the_overlay_lies_over_the_world_through_the_camera :: proc(t: ^testing.T) {
+	far_step :: proc(world: ^Distant_World, input: Input) {
+		debug_rect({world.at.x - 5, world.at.y - 5, 10, 10})
+	}
+	far_draw :: proc(world: ^Distant_World, canvas: ^Canvas) {
+		camera(canvas, world.at)
+	}
+	world := Distant_World{at = {1000, -400}}
+	runner: Runner(Distant_World)
+	runner_init(&runner, Game(Distant_World){size = {100, 50}, overlay = true, step = far_step, draw = far_draw}, &world)
+	defer runner_destroy(&runner)
+	probe: ui.Probe
+	ui.probe_init(&probe, runner_frame(Distant_World), &runner, {200, 100})
+	defer ui.probe_destroy(&probe)
+
+	// The outline round the World's point lies round the window's middle.
+	found := false
+	for draw in ui.probe_current(&probe).draws {
+		if stroke, ok := draw.cmd.(ops.Stroke); ok {
+			bounds := ops.transform_rect(draw.transform, ops.shape_bounds(&probe.scene, stroke.shape))
+			testing.expect(t, abs(bounds.x + bounds.w / 2 - 100) < 1 && abs(bounds.y + bounds.h / 2 - 50) < 1, "the outline is centred")
+			found = true
+		}
+	}
+	testing.expect(t, found)
+}

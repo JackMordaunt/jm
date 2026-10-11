@@ -200,6 +200,7 @@ canvas_open :: proc(core: ^Runner_Core, gtx: ^ui.Ctx) -> Canvas {
 		scene = gtx.scene,
 		size = core.size,
 		scale = f32(transform.a),
+		world = ops.IDENTITY,
 		alpha = clock_alpha(&core.clock),
 		tick = core.clock.tick,
 	}

@@ -24,6 +24,44 @@ Canvas :: struct {
 	scale: f32, // device pixels a game unit is drawn at
 	alpha: f32, // how far the frame is between the last tick and the next, 0 to 1: see clock_alpha
 	tick:  u64, // the ticks run so far
+	world: ops.Affine, // the last camera's transform from the World's units to the game's: what the overlay draws through
+}
+
+// camera_open looks at the World from at: until camera_close, what is
+// drawn at at lands in the middle of the game, zoom times its size. The
+// overlay draws through the last camera opened, so what step outlined
+// in the World's units lies over what draw drew there; a HUD drawn after
+// camera_close stays put. A game without a camera draws in the game's
+// units, which are then the World's.
+//
+//	game.camera_open(canvas, world.player.at)
+//	// the field, the enemies, the player
+//	game.camera_close(canvas)
+//	// the HUD
+camera_open :: proc(canvas: ^Canvas, at: [2]f32, zoom: f32 = 1) {
+	middle := canvas.size / 2
+	canvas.world = ops.mul(ops.mul(ops.translate(-at.x, -at.y), ops.scale(zoom, zoom)), ops.translate(middle.x, middle.y))
+	ops.transform_push(canvas.scene, canvas.world)
+}
+
+// camera_close ends what camera_open began.
+camera_close :: proc(canvas: ^Canvas) {
+	ops.transform_pop(canvas.scene)
+}
+
+// camera is camera_open as a guard: the camera closes at the end of the
+// if, or of the block the call is in, as ui's guards do (ui/guards.odin).
+//
+//	if game.camera(canvas, world.player.at) { ... }
+@(deferred_in = camera_guard_close)
+camera :: proc(canvas: ^Canvas, at: [2]f32, zoom: f32 = 1) -> bool {
+	camera_open(canvas, at, zoom)
+	return true
+}
+
+@(private)
+camera_guard_close :: proc(canvas: ^Canvas, at: [2]f32, zoom: f32 = 1) {
+	camera_close(canvas)
 }
 
 // letterbox is the transform that fits a game of size into view, centred

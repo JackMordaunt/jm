@@ -120,7 +120,11 @@ overlay_paint :: proc(overlay: ^Overlay, canvas: ^Canvas, scale: f32) {
 	if !overlay.on {
 		return
 	}
-	pixel := 1 / max(scale, 1e-3)
+	// The overlay is in the World's units: through the last camera, and a
+	// pixel is as many of those units as the camera's zoom makes it.
+	ops.transform_push(canvas.scene, canvas.world)
+	defer ops.transform_pop(canvas.scene)
+	pixel := 1 / max(scale * f32(canvas.world.a), 1e-3)
 	style := ops.Stroke_Style{width = pixel, cap = .Round, join = .Round}
 	for list in ([]^Overlay_List{&overlay.tick, &overlay.frame}) {
 		for shape in list.shapes {
