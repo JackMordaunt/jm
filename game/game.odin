@@ -40,7 +40,9 @@ same units.
 package game
 
 import "core:fmt"
+import "core:os"
 
+import jm_path "jm:path"
 import "jm:ui"
 import "jm:ui/ops"
 import "jm:ui/shell"
@@ -81,6 +83,8 @@ Runner_Core :: struct {
 	clear:  ops.Color,
 	clock:  Clock,
 	gather: Input_Gather,
+	writer: Tape_Writer, // where each tick's Input is recorded, when open
+	replay: ^Tape, // where the ticks' Input comes from instead of the devices, when set: runner_replay
 }
 
 // POINTER_AREA is the input area over the game that hears the pointer.
@@ -104,7 +108,8 @@ runner_frame :: proc($W: typeid) -> ui.UI_Proc {
 		runner := (^Runner(W))(user)
 		ticks, first := core_advance(&runner.core, gtx)
 		for ii in 0 ..< ticks {
-			runner.game.step(runner.world, take_input(&runner.core.gather, first + u64(ii)))
+			input := core_input(&runner.core, first + u64(ii)) or_break
+			runner.game.step(runner.world, input)
 		}
 		canvas := canvas_open(&runner.core, gtx)
 		runner.game.draw(runner.world, &canvas)
@@ -123,6 +128,44 @@ core_advance :: proc(core: ^Runner_Core, gtx: ^ui.Ctx) -> (ticks: int, first: u6
 	}
 	ticks = clock_advance(&core.clock, gtx.dt)
 	return ticks, core.clock.tick - u64(ticks)
+}
+
+// core_input is tick's Input: the replay's when there is one, false once
+// it has run out, else the devices'. It is recorded either way.
+@(private)
+core_input :: proc(core: ^Runner_Core, tick: u64) -> (input: Input, ok: bool) {
+	if core.replay != nil {
+		input = tape_next(core.replay) or_return
+	} else {
+		input = take_input(&core.gather, tick)
+	}
+	tape_write(&core.writer, input)
+	return input, true
+}
+
+// runner_record records runner's ticks from now to a tape at path, with
+// its World as it is now, until runner_record_stop.
+runner_record :: proc(runner: ^Runner($W), path: string) -> bool {
+	return tape_writer_open(&runner.core.writer, path, runner.world, runner.game.seed, runner.core.clock.dt)
+}
+
+// runner_record_stop ends the tape runner_record began.
+runner_record_stop :: proc(runner: ^Runner($W)) {
+	tape_writer_close(&runner.core.writer)
+}
+
+// runner_replay plays tape through runner as it would have run live:
+// the World becomes the one the tape began with, and each tick takes its
+// Input from the tape, until the tape runs out and the game stands still.
+// tape must outlive the runner's frames. It is false, and changes
+// nothing, when the tape's World is not a W.
+runner_replay :: proc(runner: ^Runner($W), tape: ^Tape) -> bool {
+	if len(tape.world) != size_of(W) {
+		return false
+	}
+	runner.world^ = (^W)(raw_data(tape.world))^
+	runner.core.replay = tape
+	return true
 }
 
 // canvas_open paints the letterbox and returns a Canvas in the game's
@@ -163,7 +206,47 @@ run :: proc(game: Game($W), world: ^W) {
 	}
 	runner: Runner(W)
 	runner_init(&runner, game, world)
+	when ODIN_DEBUG {
+		if path, ok := rolling_tape(game.title); ok && runner_record(&runner, path) {
+			fmt.eprintln("game: recording to", path)
+		}
+	}
 	play_in_window(runner_frame(W), &runner, game.size, game.title, game.scale, game.keep_escape)
+	runner_record_stop(&runner)
+}
+
+// ROLLING_TAPES is how many of its last runs a debug build keeps.
+ROLLING_TAPES :: 3
+
+// rolling_tape is where a debug build records its run: last.tape in the
+// game's state directory, with the runs before it moved down to
+// last-1.tape and on, the oldest of ROLLING_TAPES dropped.
+@(private)
+rolling_tape :: proc(title: string) -> (path: string, ok: bool) {
+	// The title as a directory name: letters lowered, digits kept, the
+	// rest a dash.
+	name := make([]byte, len(title), context.temp_allocator)
+	for char, ii in transmute([]byte)title {
+		switch char {
+		case 'a' ..= 'z', '0' ..= '9':
+			name[ii] = char
+		case 'A' ..= 'Z':
+			name[ii] = char - 'A' + 'a'
+		case:
+			name[ii] = '-'
+		}
+	}
+	dir, err := jm_path.state_dir(fmt.tprintf("jm-game/%s", string(name) if len(name) > 0 else "game"), context.temp_allocator)
+	if err != nil || jm_path.mkdirs(dir) != nil {
+		return "", false
+	}
+	tape_name :: proc(dir: string, run: int) -> string {
+		return jm_path.join(dir, "last.tape" if run == 0 else fmt.tprintf("last-%d.tape", run), allocator = context.temp_allocator)
+	}
+	for run := ROLLING_TAPES - 1; run > 0; run -= 1 {
+		os.rename(tape_name(dir, run - 1), tape_name(dir, run))
+	}
+	return tape_name(dir, 0), true
 }
 
 // world_is_plain reports whether world passes check_world, and names on
