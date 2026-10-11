@@ -1122,6 +1122,13 @@ sevenguis-test: blend2d kb
       {{odin}} test examples/7guis/$task {{flags}} {{link}} -out:build/test/7guis-$task{{exe}}
     done
 
+# Run a jm:game example: just game box
+[group('game')]
+game name *args: blend2d kb sdl3
+    mkdir -p build/debug
+    {{odin}} build examples/game/{{name}} -debug {{flags}} {{link}} -out:build/debug/game-{{name}}{{exe}}
+    build/debug/game-{{name}}{{exe}} {{args}}
+
 # Fetch Selawik regular, semibold and bold (OFL-1.1) from microsoft/Selawik
 # release 1.01 into ~/.local/share/fonts/selawik for the fluent kitchen.
 #
