@@ -34,10 +34,10 @@ last :: proc(log: ^Input_Log) -> Input {
 @(test)
 a_key_held_across_ticks_is_pressed_in_the_first_only :: proc(t: ^testing.T) {
 	log: Input_Log
-	runner: Runner
+	runner: Runner(Input_Log)
 	runner_init(&runner, INPUT_LOG, &log)
 	probe: ui.Probe
-	ui.probe_init(&probe, runner_frame, &runner, {200, 100})
+	ui.probe_init(&probe, runner_frame(Input_Log), &runner, {200, 100})
 	defer ui.probe_destroy(&probe)
 
 	ui.probe_key_down(&probe, .Right)
@@ -57,10 +57,10 @@ a_key_held_across_ticks_is_pressed_in_the_first_only :: proc(t: ^testing.T) {
 @(test)
 a_tap_in_a_frame_that_runs_no_tick_waits_for_the_next :: proc(t: ^testing.T) {
 	log: Input_Log
-	runner: Runner
+	runner: Runner(Input_Log)
 	runner_init(&runner, INPUT_LOG, &log)
 	probe: ui.Probe
-	ui.probe_init(&probe, runner_frame, &runner, {200, 100})
+	ui.probe_init(&probe, runner_frame(Input_Log), &runner, {200, 100})
 	defer ui.probe_destroy(&probe)
 
 	ui.probe_set_dt(&probe, 1.0 / 240) // four frames a tick
@@ -84,11 +84,11 @@ a_tap_in_a_frame_that_runs_no_tick_waits_for_the_next :: proc(t: ^testing.T) {
 @(test)
 the_pointer_comes_back_in_the_games_units :: proc(t: ^testing.T) {
 	log: Input_Log
-	runner: Runner
+	runner: Runner(Input_Log)
 	runner_init(&runner, INPUT_LOG, &log)
 	probe: ui.Probe
 	// Twice the game's size: one game unit is two pixels, with no letterbox.
-	ui.probe_init(&probe, runner_frame, &runner, {200, 100})
+	ui.probe_init(&probe, runner_frame(Input_Log), &runner, {200, 100})
 	defer ui.probe_destroy(&probe)
 
 	ui.probe_click_at(&probe, {50, 40})

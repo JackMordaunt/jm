@@ -60,25 +60,27 @@ Game :: struct($W: typeid) {
 	draw:        proc(world: ^W, canvas: ^Canvas),
 }
 
-// Runner runs a Game's World frame by frame: runner_frame is the ui proc,
-// with the Runner as its user. game.run makes one for a window; a test
-// makes one for a ui.Probe:
+// Runner runs a Game over its World frame by frame: runner_frame(W) is
+// the ui proc, with the Runner as its user. game.run makes one for a
+// window; a test makes one for a ui.Probe:
 //
-//	runner: game.Runner
+//	runner: game.Runner(World)
 //	game.runner_init(&runner, my_game, &world)
-//	ui.probe_init(&probe, game.runner_frame, &runner, {640, 360})
-//
-// It holds the Game's procs with the World's type erased, so one
-// non-generic ui proc runs any game.
-Runner :: struct {
-	world:       rawptr,
-	world_type:  typeid,
-	step:        proc(world: rawptr, input: Input),
-	draw:        proc(world: rawptr, canvas: ^Canvas),
-	size:        [2]f32,
-	clear:       ops.Color,
-	clock:       Clock,
-	gather:      Input_Gather,
+//	ui.probe_init(&probe, game.runner_frame(World), &runner, {640, 360})
+Runner :: struct($W: typeid) {
+	world: ^W,
+	game:  Game(W),
+	core:  Runner_Core,
+}
+
+// Runner_Core is the part of a Runner that does not depend on the World:
+// one copy of its code serves every game.
+@(private)
+Runner_Core :: struct {
+	size:   [2]f32,
+	clear:  ops.Color,
+	clock:  Clock,
+	gather: Input_Gather,
 }
 
 // POINTER_AREA is the input area over the game that hears the pointer.
@@ -86,50 +88,67 @@ Runner :: struct {
 POINTER_AREA :: ops.Area_Id(0x6a6d_6761_6d65) // "jmgame"
 
 // runner_init readies runner to run game over world. It does not call init.
-runner_init :: proc(runner: ^Runner, game: Game($W), world: ^W) {
+runner_init :: proc(runner: ^Runner($W), game: Game(W), world: ^W) {
 	runner^ = {
-		world      = world,
-		world_type = W,
-		step       = auto_cast game.step,
-		draw       = auto_cast game.draw,
-		size       = game.size,
-		clear      = game.clear,
+		world = world,
+		game = game,
+		core = {size = game.size, clear = game.clear},
 	}
-	clock_init(&runner.clock, game.dt, game.max_ticks)
+	clock_init(&runner.core.clock, game.dt, game.max_ticks)
 }
 
-// runner_frame is the ui proc that runs a Runner: the ticks the frame's dt
-// is due, then the draw.
-runner_frame :: proc(gtx: ^ui.Ctx, user: rawptr) {
-	runner := (^Runner)(user)
+// runner_frame is the ui proc that runs a Runner(W): the ticks the frame's
+// dt is due, then the draw.
+runner_frame :: proc($W: typeid) -> ui.UI_Proc {
+	return proc(gtx: ^ui.Ctx, user: rawptr) {
+		runner := (^Runner(W))(user)
+		ticks, first := core_advance(&runner.core, gtx)
+		for ii in 0 ..< ticks {
+			runner.game.step(runner.world, take_input(&runner.core.gather, first + u64(ii)))
+		}
+		canvas := canvas_open(&runner.core, gtx)
+		runner.game.draw(runner.world, &canvas)
+		canvas_close(&canvas)
+	}
+}
+
+// core_advance gathers the frame's input and returns how many ticks its
+// dt is due, and the first of them.
+@(private)
+core_advance :: proc(core: ^Runner_Core, gtx: ^ui.Ctx) -> (ticks: int, first: u64) {
 	ui.request_frame(gtx)
-	gather_keys(&runner.gather, ui.key_state(gtx))
+	gather_keys(&core.gather, ui.key_state(gtx))
 	for event in ui.events(gtx, POINTER_AREA) {
-		gather_pointer(&runner.gather, event)
+		gather_pointer(&core.gather, event)
 	}
+	ticks = clock_advance(&core.clock, gtx.dt)
+	return ticks, core.clock.tick - u64(ticks)
+}
 
-	ticks := clock_advance(&runner.clock, gtx.dt)
-	first := runner.clock.tick - u64(ticks)
-	for ii in 0 ..< ticks {
-		runner.step(runner.world, take_input(&runner.gather, first + u64(ii)))
-	}
-
-	transform, covers := letterbox(runner.size, gtx.viewport)
+// canvas_open paints the letterbox and returns a Canvas in the game's
+// units, clipped to the game, with the pointer's input area over it.
+@(private)
+canvas_open :: proc(core: ^Runner_Core, gtx: ^ui.Ctx) -> Canvas {
+	transform, covers := letterbox(core.size, gtx.viewport)
 	ops.fill(gtx.scene, ops.Rect{0, 0, gtx.viewport.x, gtx.viewport.y}, ops.Color{0, 0, 0, 255})
-	ops.fill(gtx.scene, covers, runner.clear)
+	ops.fill(gtx.scene, covers, core.clear)
 	ops.transform_push(gtx.scene, transform)
-	ops.clip_push(gtx.scene, ops.Rect{0, 0, runner.size.x, runner.size.y})
-	ops.input_area(gtx.scene, POINTER_AREA, ops.Rect{0, 0, runner.size.x, runner.size.y}, {.Press, .Release, .Move})
-	canvas := Canvas {
-		gtx   = gtx,
+	ops.clip_push(gtx.scene, ops.Rect{0, 0, core.size.x, core.size.y})
+	ops.input_area(gtx.scene, POINTER_AREA, ops.Rect{0, 0, core.size.x, core.size.y}, {.Press, .Release, .Move})
+	return {
+		gtx = gtx,
 		scene = gtx.scene,
-		size  = runner.size,
-		alpha = clock_alpha(&runner.clock),
-		tick  = runner.clock.tick,
+		size = core.size,
+		alpha = clock_alpha(&core.clock),
+		tick = core.clock.tick,
 	}
-	runner.draw(runner.world, &canvas)
-	ops.clip_pop(gtx.scene)
-	ops.transform_pop(gtx.scene)
+}
+
+// canvas_close ends what canvas_open began.
+@(private)
+canvas_close :: proc(canvas: ^Canvas) {
+	ops.clip_pop(canvas.scene)
+	ops.transform_pop(canvas.scene)
 }
 
 // run checks world is plain data, calls game.init, and plays the game in
@@ -142,9 +161,9 @@ run :: proc(game: Game($W), world: ^W) {
 	if game.init != nil {
 		game.init(world, game.seed)
 	}
-	runner: Runner
+	runner: Runner(W)
 	runner_init(&runner, game, world)
-	open_window(&runner, game.title, game.scale, game.keep_escape)
+	play_in_window(runner_frame(W), &runner, game.size, game.title, game.scale, game.keep_escape)
 }
 
 // world_is_plain reports whether world passes check_world, and names on
@@ -162,17 +181,17 @@ world_is_plain :: proc(world: typeid) -> bool {
 	return false
 }
 
-// open_window plays runner in a window of runner.size times scale (0 is 2) until
-// it closes.
+// play_in_window plays frame over runner in a window of size times scale (0
+// is 2) until it closes.
 @(private)
-open_window :: proc(runner: ^Runner, title: string, scale: f32, keep_escape: bool) {
+play_in_window :: proc(frame: ui.UI_Proc, runner: rawptr, size: [2]f32, title: string, scale: f32, keep_escape: bool) {
 	scale := scale if scale > 0 else 2
 	shell.run(
 		{
 			title = title,
-			width = int(runner.size.x * scale),
-			height = int(runner.size.y * scale),
-			ui = runner_frame,
+			width = int(size.x * scale),
+			height = int(size.y * scale),
+			ui = frame,
 			user = runner,
 			fonts = {{0, ui.default_font(), 0}},
 			clear = {0, 0, 0, 255},
