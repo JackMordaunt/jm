@@ -81,6 +81,9 @@ blocking_calls_still_work :: proc(t: ^testing.T) {
 	testing.expect_value(t, err, Error.None)
 	testing.expect_value(t, res.body, "hello")
 	testing.expect(t, strings.contains(res.headers, "Content-Length: 5"))
+	// loopback closes after one request, and says so, so no client reuses
+	// the connection as it closes.
+	testing.expect(t, strings.contains(res.headers, "Connection: close"), res.headers)
 
 	res, err = get(loopback.url(srv, "/404"))
 	testing.expect_value(t, err, Error.None)

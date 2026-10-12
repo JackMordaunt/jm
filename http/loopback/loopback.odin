@@ -11,7 +11,11 @@ malformed one, half of one, or nothing.
 	url := loopback.url(srv, "/items")
 
 Each connection runs its handler on a thread of its own, and the connection
-closes when the handler returns. stop unblocks every handler still waiting:
+closes when the handler returns. So the client knows, the first thing send
+writes, when it begins a response head without a Connection header, gains
+"Connection: close": a client that took the connection for keep-alive would
+reuse it for its next request just as the server closes it, and fail that
+request. stop unblocks every handler still waiting:
 send and pause return false from then on, and hold returns.
 */
 package loopback
@@ -59,6 +63,7 @@ Conn :: struct {
 	socket: net.TCP_Socket,
 	thread: ^thread.Thread,
 	closed: bool,
+	sent:   bool, // send has written something
 }
 
 // The most request bytes read: a client that sends more is cut off.
@@ -149,13 +154,51 @@ accepted :: proc(s: ^Server) -> int {
 	return sync.atomic_load(&s.accepted)
 }
 
-// send writes data whole, and says whether the peer took it.
+// send writes data whole, and says whether the peer took it. The first data
+// sent on a connection, when it starts a response head that names no
+// Connection, says Connection: close (see the package's comment).
 send :: proc(c: ^Conn, data: string) -> bool {
 	if stopping(c.server) {
 		return false
 	}
+	data := data
+	if !c.sent {
+		c.sent = true
+		data = closing(data)
+	}
 	n, err := net.send_tcp(c.socket, transmute([]byte)data)
 	return err == nil && n == len(data)
+}
+
+/*
+closing is data with "Connection: close" after its status line when it starts
+an HTTP response whose head, as far as data holds it, has no Connection
+header; else data as it is. In the temp allocator.
+*/
+@(private)
+closing :: proc(data: string) -> string {
+	if !strings.has_prefix(data, "HTTP/") {
+		return data
+	}
+	line_end := strings.index(data, "\r\n")
+	if line_end < 0 {
+		return data
+	}
+	head := data
+	if end := strings.index(data, "\r\n\r\n"); end >= 0 {
+		head = data[:end]
+	}
+	rest := head[line_end + 2:]
+	for line in strings.split_lines_iterator(&rest) {
+		colon := strings.index_byte(line, ':')
+		if colon >= 0 && strings.equal_fold(strings.trim_space(line[:colon]), "connection") {
+			return data
+		}
+	}
+	return strings.concatenate(
+		{data[:line_end + 2], "Connection: close\r\n", data[line_end + 2:]},
+		context.temp_allocator,
+	)
 }
 
 // pause waits for d, and says false if stop began meanwhile.
