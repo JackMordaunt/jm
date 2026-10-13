@@ -1,5 +1,6 @@
 package flow
 
+import "core:sync"
 import "core:testing"
 
 // A binary tree flattened into indices: node i holds 2i+1 and 2i+2. Walking it is
@@ -212,4 +213,175 @@ test_manage_requeues_a_failed_item :: proc(t: ^testing.T) {
 		}
 	}
 	testing.expect_value(t, tries, 3)
+}
+
+// A tree as wide as a directory full of directories: node i queues FAN children,
+// FAN*i+1 through FAN*i+FAN, below FAN_NODES. Each worker counts and sums what it
+// saw, and what it queued, so a run can be balanced against itself.
+@(private = "file")
+FAN :: 16
+
+@(private = "file")
+FAN_NODES :: 50_000
+
+// More workers than any one item queues children, so most of them sleep at once and
+// contend for each item queued.
+@(private = "file")
+FAN_WORKERS :: 64
+
+@(private = "file")
+Fan :: struct {
+	count:  int,
+	sum:    int,
+	queued: int, // children this worker's manager calls queued, seed not counted
+	found:  [dynamic]int,
+	stop:   int, // working this node ends the run; -1 for never
+}
+
+@(private = "file")
+fan_out :: proc(item: int, f: ^Fan) -> bool {
+	f.count += 1
+	f.sum += item
+	if item == f.stop {
+		return false
+	}
+	for c in FAN * item + 1 ..= FAN * item + FAN {
+		if c < FAN_NODES {
+			append(&f.found, c)
+		}
+	}
+	return true
+}
+
+@(private = "file")
+fan_hand_over :: proc(item: int, ok: bool, f: ^Fan, queue: ^[dynamic]int) -> bool {
+	for c in f.found {
+		append(queue, c)
+	}
+	f.queued += len(f.found)
+	clear(&f.found)
+	return ok
+}
+
+@(private = "file")
+fans :: proc(n: int, stop := -1) -> []Fan {
+	f := make([]Fan, n, context.temp_allocator)
+	for &s in f {
+		s.found = make([dynamic]int, context.allocator)
+		s.stop = stop
+	}
+	return f
+}
+
+@(private = "file")
+fan_release :: proc(f: []Fan) {
+	for s in f {
+		delete(s.found)
+	}
+}
+
+@(private = "file")
+fan_totals :: proc(f: []Fan) -> (count, sum, queued: int) {
+	for s in f {
+		count += s.count
+		sum += s.sum
+		queued += s.queued
+	}
+	return
+}
+
+// What `discard` saw, per test, since it is handed nothing but the item.
+@(private = "file")
+Discards :: struct {
+	count: int, // atomic
+	sum:   int, // atomic
+}
+
+@(private = "file")
+fan_discards: Discards
+
+@(private = "file")
+stop_discards: Discards
+
+@(private = "file")
+discard_fan :: proc(item: int) {
+	sync.atomic_add(&fan_discards.count, 1)
+}
+
+@(private = "file")
+discard_stopped :: proc(item: int) {
+	sync.atomic_add(&stop_discards.count, 1)
+	sync.atomic_add(&stop_discards.sum, item)
+}
+
+@(test)
+test_manage_fans_out_to_every_node_once :: proc(t: ^testing.T) {
+	// Repeated, since a lost wakeup shows as a hang only on some interleavings, and a
+	// woken worker finding its item already taken only under contention.
+	for _ in 0 ..< 10 {
+		f := fans(FAN_WORKERS)
+		manage([]int{0}, f, fan_out, fan_hand_over, discard_fan)
+		count, sum, queued := fan_totals(f)
+		fan_release(f)
+		testing.expect_value(t, count, FAN_NODES)
+		testing.expect_value(t, sum, FAN_NODES * (FAN_NODES - 1) / 2)
+		testing.expect_value(t, queued, FAN_NODES - 1)
+	}
+	testing.expect_value(t, sync.atomic_load(&fan_discards.count), 0)
+}
+
+@(test)
+test_manage_discards_what_a_stopped_run_left_queued :: proc(t: ^testing.T) {
+	// Node 1 is among the root's first children, so the run ends with nearly the
+	// whole tree still to come and most of the root's children still queued.
+	f := fans(FAN_WORKERS, stop = 1)
+	defer fan_release(f)
+	manage([]int{0}, f, fan_out, fan_hand_over, discard_stopped)
+	count, sum, queued := fan_totals(f)
+
+	// Every item queued, the seed with them, reached `work` or `discard`, and the
+	// sums show none reached both: an item worked and discarded would count twice
+	// while another went missing, and the sums would not agree.
+	discarded := sync.atomic_load(&stop_discards.count)
+	testing.expect_value(t, count + discarded, queued + 1)
+	all := 0
+	for i in 0 ..= queued {
+		all += i
+	}
+	testing.expect_value(t, sum + sync.atomic_load(&stop_discards.sum), all)
+	testing.expect(t, count >= 2, "a run ended before working the seed and the node that stops it")
+	testing.expect(t, discarded > 0, "a run stopped early discarded nothing")
+	testing.expect(t, count < FAN_NODES, "a stopped run kept going")
+}
+
+@(private = "file")
+Calls :: struct {
+	count: int,
+}
+
+@(private = "file")
+do_nothing :: proc(item: int, s: ^Calls) -> bool {
+	s.count += 1
+	return true
+}
+
+@(private = "file")
+queue_nothing :: proc(item: int, ok: bool, s: ^Calls, queue: ^[dynamic]int) -> bool {
+	return true
+}
+
+@(test)
+test_manage_ends_when_a_wide_seed_spawns_nothing :: proc(t: ^testing.T) {
+	// Every worker but those given a seed item finds the queue empty and sleeps; the
+	// last item finished has to wake them all to leave, or this test never returns.
+	for round in 0 ..< 100 {
+		s := make([]Calls, FAN_WORKERS, context.temp_allocator)
+		seed := []int{0, 1, 2}
+		manage(seed[:1 + round % 3], s, do_nothing, queue_nothing)
+		n := 0
+		for w in s {
+			n += w.count
+		}
+		testing.expect_value(t, n, 1 + round % 3)
+	}
 }

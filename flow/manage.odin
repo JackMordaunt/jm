@@ -85,6 +85,7 @@ Queue :: struct($I: typeid, $S: typeid) {
 	items:   [dynamic]I,
 	head:    int,
 	active:  int, // workers holding an item, which may yet produce more
+	idle:    int, // workers asleep in `wake`, the most a signal can rouse
 	over:    bool,
 	mutex:   sync.Mutex,
 	wake:    sync.Cond,
@@ -104,19 +105,45 @@ hand_entry :: proc(h: Hand($I, $S)) {
 	drain(h.queue, h.index)
 }
 
+/*
+Take items until the run is over, handing each to `work` and then to `manager`.
+
+A worker wakes only as many sleepers as it queued items for, less the one it takes
+itself, and never more than are asleep. Broadcasting after every item instead woke
+every idle worker for an item only one of them could take, and sent the rest back
+to sleep.
+
+Holding the lock from `manager` straight into taking the next item saves a second
+round trip through it per item, and means the worker that found more work is the
+first to start on it, with no wakeup at all.
+
+Nothing can be stranded by waking too few. A worker sleeps only on an empty queue,
+and whoever fills it again is awake and comes back for more until it is empty, so
+a signal decides only how soon an item starts, never whether. A signal whose item
+was taken first is harmless: the sleeper finds the queue empty and sleeps again,
+and since the wait rechecks the queue in a loop, a spurious wakeup does the same.
+
+The broadcasts stay where every sleeper must act: when the run is over, whether
+`manager` ended it or the last item finished with nothing queued, each must wake to
+leave.
+*/
 @(private)
 drain :: proc(q: ^Queue($I, $S), index: int) {
 	state := &q.states[index]
+	sync.mutex_lock(&q.mutex)
 	for {
-		sync.mutex_lock(&q.mutex)
 		// Wait while the queue is empty but someone still holds an item, since that
 		// worker may yet discover more. Empty with nobody working means finished.
 		for q.head >= len(q.items) && q.active > 0 && !q.over {
+			q.idle += 1
 			sync.cond_wait(&q.wake, &q.mutex)
+			q.idle -= 1
 		}
 		if q.over || q.head >= len(q.items) {
 			q.over = true
-			sync.cond_broadcast(&q.wake)
+			if q.idle > 0 {
+				sync.cond_broadcast(&q.wake)
+			}
 			sync.mutex_unlock(&q.mutex)
 			return
 		}
@@ -134,13 +161,20 @@ drain :: proc(q: ^Queue($I, $S), index: int) {
 
 		ok := q.work(item, state)
 
-		sync.mutex_guard(&q.mutex)
+		sync.mutex_lock(&q.mutex)
 		q.active -= 1
+		queued := len(q.items)
 		// The manager runs for a failed item too: deciding what a failure means is
 		// the whole of its job.
 		if !q.manager(item, ok, state, &q.items) {
 			q.over = true
+			continue // the top of the loop wakes everyone to leave
 		}
-		sync.cond_broadcast(&q.wake)
+		// This worker takes one of what it queued at the top of the loop; the rest
+		// are for sleepers.
+		rouse := min(len(q.items) - queued - 1, q.idle)
+		for _ in 0 ..< rouse {
+			sync.cond_signal(&q.wake)
+		}
 	}
 }
