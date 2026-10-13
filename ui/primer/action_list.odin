@@ -229,6 +229,7 @@ List_Item :: struct {
 	desc_variant:                                                   Description_Variant,
 	truncate:                                                       bool,
 	leading, trailing, action:                                      Icon,
+	leading_color:                                                  ops.Color,
 	variant:                                                        List_Item_Variant,
 	size:                                                           List_Item_Size,
 	selected, active, disabled, loading, link:                      bool,
@@ -328,7 +329,9 @@ action_list_item_id :: proc(base: ops.Area_Id, index: int) -> ops.Area_Id {
 // item*). label wraps by word; description sits beside it (Inline) or
 // under it (Block), in small muted type, cut to one line with an
 // ellipsis and shown whole in a tooltip when truncate and it is cut.
-// leading is a 16px octicon before the text; trailing an octicon,
+// leading is a 16px octicon before the text, in leading_color when set
+// (an identity colour, as a project's; a disabled item keeps its muted
+// one); trailing an octicon,
 // trailing_text short text, or hint a keybinding hint after it, read as
 // part of the name. variant, size, selected (with a selection in force),
 // active (the current item: selected fill, semibold label, accent bar),
@@ -366,6 +369,7 @@ action_list_item :: proc(
 	action_name := "",
 	action_clicked: ^bool = nil,
 	state := Interaction.Live,
+	leading_color := ops.Color{},
 ) -> bool {
 	gtx := l.gtx
 	i := l.n
@@ -378,6 +382,7 @@ action_list_item :: proc(
 		desc_variant  = description_variant,
 		truncate      = truncate,
 		leading       = leading,
+		leading_color = leading_color,
 		trailing      = trailing,
 		trailing_text = ui.frame_string(gtx, trailing_text),
 		hint          = ui.frame_string(gtx, hint),
@@ -1261,7 +1266,11 @@ paint_list_item :: proc(l: ^Action_List, it: ^List_Item, g: Item_Geom, m: List_M
 	switch g.lead {
 	case .None:
 	case .Icon:
-		icon(gtx, it.leading, {g.lead_x, icon_y}, LIST_VISUAL, k.visual)
+		lead := k.visual
+		if it.leading_color != {} && !it.disabled && it.inactive == "" {
+			lead = it.leading_color
+		}
+		icon(gtx, it.leading, {g.lead_x, icon_y}, LIST_VISUAL, lead)
 	case .Spinner:
 		paint_spinner(gtx, {g.lead_x, icon_y}, LIST_VISUAL, k.visual)
 	case .Inactive:

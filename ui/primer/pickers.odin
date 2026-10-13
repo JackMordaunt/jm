@@ -915,12 +915,14 @@ Select_Panel_Variant :: enum u8 {
 }
 
 // Select_Panel_Item is one option, as the caller has filtered it: its
-// text and ActionList's description, visuals, variant and state, and the
-// group it shows under (an index into the groups, -1 for none).
+// text and ActionList's description, visuals (leading_color as
+// action_list_item's), variant and state, and the group it shows under
+// (an index into the groups, -1 for none).
 Select_Panel_Item :: struct {
 	text, description: string,
 	desc_variant:      Description_Variant,
 	leading, trailing: Icon,
+	leading_color:     ops.Color,
 	variant:           List_Item_Variant,
 	disabled:          bool,
 	group:             int,
@@ -1281,7 +1283,7 @@ panel_natural_width :: proc(gtx: ^ui.Ctx, p: ^Panel) -> f32 {
 	m.mixed = described && plain
 	w: f32
 	for it in p.items {
-		li := List_Item{label = it.text, description = it.description, desc_variant = it.desc_variant, leading = it.leading, trailing = it.trailing, selection = sel}
+		li := List_Item{label = it.text, description = it.description, desc_variant = it.desc_variant, leading = it.leading, leading_color = it.leading_color, trailing = it.trailing, selection = sel}
 		w = max(w, item_natural(gtx, li, m))
 	}
 	gst := tok.Type_Style{weight = tok.BASE_TEXT_WEIGHT_SEMIBOLD, size = tok.TEXT_BODY_SIZE_SMALL, line_height = LIST_GROUP_LINE}
@@ -1417,7 +1419,7 @@ panel_list :: proc(gtx: ^ui.Ctx, p: ^Panel, room: f32, r: ^Select_Panel_Result) 
 		if sel == .Radio {
 			on = d.pending == i + 1
 		}
-		action_list_item(&l, it.text, it.description, it.desc_variant, leading = it.leading, trailing = it.trailing, variant = it.variant, selected = on, disabled = it.disabled)
+		action_list_item(&l, it.text, it.description, it.desc_variant, leading = it.leading, trailing = it.trailing, variant = it.variant, selected = on, disabled = it.disabled, leading_color = it.leading_color)
 	}
 	action_list_close(&l)
 	if l.hovered >= 0 {
