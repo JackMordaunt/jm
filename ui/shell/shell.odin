@@ -102,6 +102,7 @@ App :: struct {
 	threads:               u32, // workers repainting changed regions; 0 or 1 repaints on the main thread
 	no_accessibility:      bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
 	keep_escape:           bool, // Escape goes to the ui as a key, rather than closing the window: for an app whose dialogs and fields close on it
+	fullscreen:            bool, // the window opens fullscreen on its display; width and height are the size it leaves fullscreen at
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
 }
 
@@ -584,7 +585,7 @@ open :: proc(w: ^Window, app: App) -> bool {
 		title,
 		i32(width),
 		i32(height),
-		{.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN},
+		{.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN} + ({.FULLSCREEN} if app.fullscreen else {}),
 	)
 	if w.window == nil {
 		fmt.eprintln("shell: window:", sdl3.GetError())
