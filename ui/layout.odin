@@ -154,6 +154,7 @@ Container_Kind :: enum u8 {
 	List,
 	Scroll,
 	Grid,
+	Scale,
 }
 
 @(private)
@@ -203,6 +204,7 @@ Container :: struct {
 	grid_paint: Grid_Paint, // called with style.user
 	fit:      bool, // scroll: take the content's height up to the height offered
 	drag_scroll: bool, // scroll: a drag on the box moves its content, and a fast release slings it
+	zoom:     f32, // scale: how much bigger its children are drawn than laid out
 }
 
 Layout :: struct {
@@ -407,7 +409,7 @@ widget_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location, self := #c
 		gtx.constraints = grid_child_constraints(c)
 		p.deferred = true
 		p.macro = ops.macro_open(gtx.scene)
-	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
+	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll, .Scale:
 		gtx.constraints = c.inner
 		if c.offset != {} {
 			ops.transform_push(gtx.scene, translate_to(c.offset))
@@ -433,7 +435,7 @@ offer :: proc(gtx: ^Ctx) -> Constraints {
 		return flex_child_constraints(l, c, c.next)
 	case .Grid:
 		return grid_child_constraints(c)
-	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
+	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll, .Scale:
 	}
 	return c.inner
 }
@@ -497,7 +499,7 @@ widget_close :: proc(gtx: ^Ctx, p: ^Placement, dims: Dims) -> Dims {
 		)
 	case .Grid:
 		grid_add(l, c, {size = d.size, baseline = d.baseline, macro = p.macro, deferred = true})
-	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll:
+	case .Stack, .Inset, .Box, .Clip, .Center, .List, .Scroll, .Scale:
 		c.extent = {max(c.extent.x, d.size.x), max(c.extent.y, d.size.y)}
 		if c.baseline == 0 && d.baseline > 0 {
 			c.baseline = d.baseline + c.offset.y
@@ -585,6 +587,7 @@ close :: proc {
 	inset_close,
 	box_close,
 	clip_box_close,
+	scaled_close,
 	centered_close,
 	scroll_box_close,
 	grid_close,
@@ -593,11 +596,11 @@ close :: proc {
 }
 
 // PAINT_AFTER_CHILDREN are the kinds whose own paint (a background, a
-// clip, a centring offset, a scroll) needs the children's size first, so
+// clip, a centring offset, a scroll, a scale) needs the children's size first, so
 // container_push records their children into a body macro that the end
 // proc calls after painting.
 @(private)
-PAINT_AFTER_CHILDREN :: bit_set[Container_Kind]{.Box, .Clip, .Center, .Scroll}
+PAINT_AFTER_CHILDREN :: bit_set[Container_Kind]{.Box, .Clip, .Center, .Scroll, .Scale}
 
 // container_push makes c the innermost container, for the widget placed
 // as p. An opener says what c is — its kind and how it lays out, complete
@@ -1260,6 +1263,30 @@ clip_box_open :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> Clip_
 
 // clip_box_close emits the clip around the body.
 clip_box_close :: proc(s: ^Clip_Box) {
+	container_close(s.gtx, &s.index)
+}
+
+// Scaled is a scaled container, from scaled_open.
+Scaled :: struct {
+	gtx:   ^Ctx,
+	index: int,
+}
+
+// scaled_open draws its children zoom times their size, text, padding and
+// hit areas alike: they are laid out in the room offered divided by zoom,
+// and the box is their size times zoom. A zoom under 1 fits more in, as a
+// list whose text shrinks with the column it is in. The body is a macro,
+// called under the scale.
+scaled_open :: proc(gtx: ^Ctx, zoom: f32, key: u64 = 0, loc := #caller_location) -> Scaled {
+	p := widget_open(gtx, key, loc)
+	z := max(zoom, 0.01)
+	cs := gtx.constraints
+	inner := Constraints{min = cs.min / z, max = {is_finite(cs.max.x) ? cs.max.x / z : INF, is_finite(cs.max.y) ? cs.max.y / z : INF}}
+	return {gtx, container_push(gtx, {kind = .Scale, inner = inner, zoom = z}, p)}
+}
+
+// scaled_close draws the body under the scale.
+scaled_close :: proc(s: ^Scaled) {
 	container_close(s.gtx, &s.index)
 }
 
@@ -1955,6 +1982,13 @@ container_close :: proc(gtx: ^Ctx, index: ^int) {
 		scroll_bar_paint(gtx, id_mix(c.place.id, 2), .Horizontal, size, content.x, sc.x, both)
 		ops.clip_pop(o)
 		baseline = 0
+	case .Scale:
+		ops.macro_close(o, c.body)
+		size = constrain(c.cs, content * c.zoom)
+		ops.transform_push(o, ops.scale(c.zoom, c.zoom))
+		ops.call(o, c.body)
+		ops.transform_pop(o)
+		baseline *= c.zoom
 	case .Center:
 		ops.macro_close(o, c.body)
 		want := ops.Size {

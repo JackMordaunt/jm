@@ -2246,3 +2246,30 @@ drag_scroll_press_stops_a_glide_and_children_keep_theirs :: proc(t: ^testing.T) 
 	testing.expect_value(t, m.clicked, 1)
 	testing.expect_value(t, m.offset.y, 0)
 }
+
+@(test)
+test_scaled_lays_out_in_room_over_zoom_and_draws_zoomed :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h)
+	defer harness_destroy(&h)
+	gtx := &h.gtx
+	inner: Constraints
+	{
+		col := column_open(gtx); defer close(&col)
+		{
+			s := scaled_open(gtx, 0.5); defer close(&s)
+			p := widget_open(gtx)
+			inner = gtx.constraints
+			widget_close(gtx, &p, {size = {100, 40}})
+		}
+		testing.expect_value(t, last_widget(gtx).size, ops.Size{50, 20})
+	}
+	testing.expect_value(t, inner.max.x, 800)
+	scaled := false
+	for op in h.scene.ops {
+		if tr, ok := op.(ops.Push_Transform); ok && tr.m.a == 0.5 && tr.m.d == 0.5 {
+			scaled = true
+		}
+	}
+	testing.expect(t, scaled, "the body is drawn under the scale")
+}

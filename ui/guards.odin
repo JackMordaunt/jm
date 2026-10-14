@@ -77,6 +77,13 @@ stack :: proc(gtx: ^Ctx, key: u64 = 0, loc := #caller_location) -> bool {
 	return true
 }
 
+// scaled is scaled_open as a guard.
+@(deferred_in = scaled_guard_close)
+scaled :: proc(gtx: ^Ctx, zoom: f32, key: u64 = 0, loc := #caller_location) -> bool {
+	scaled_open(gtx, zoom, key, loc)
+	return true
+}
+
 @(deferred_in = inset_guard_close)
 inset :: proc(gtx: ^Ctx, padding: Padding, key: u64 = 0, loc := #caller_location) -> bool {
 	inset_open(gtx, padding, key, loc)
@@ -203,6 +210,11 @@ sized_guard_close :: proc(gtx: ^Ctx, limits: Size_Limits, key: u64, loc: runtime
 @(private = "file")
 stack_guard_close :: proc(gtx: ^Ctx, key: u64, loc: runtime.Source_Code_Location) {
 	innermost_close(gtx, .Stack)
+}
+
+@(private = "file")
+scaled_guard_close :: proc(gtx: ^Ctx, zoom: f32, key: u64, loc: runtime.Source_Code_Location) {
+	innermost_close(gtx, .Scale)
 }
 
 @(private = "file")
