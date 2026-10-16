@@ -103,6 +103,7 @@ App :: struct {
 	no_accessibility:      bool, // leave assistive technology unserved: no bridge (a11y_linux.odin) is made
 	keep_escape:           bool, // Escape goes to the ui as a key, rather than closing the window: for an app whose dialogs and fields close on it
 	fullscreen:            bool, // the window opens fullscreen on its display; width and height are the size it leaves fullscreen at
+	animation_hz:          Maybe(f32), // the most frames a second an animation alone gets on a faster display (pace.odin): nil for ANIMATION_HZ, 0 for the display's rate
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
 }
 
@@ -152,6 +153,8 @@ Window :: struct {
 	ime:          ui.Text_Input, // what the input method was last set to; off until a text area takes focus
 	composing:    bool, // the input method holds a preedit: it owns the keys
 	keep_escape:  bool, // App.keep_escape: Escape is a key for the ui, not the end of the run
+	pacer:        Pacer, // holds animation-only frames to App.animation_hz
+	stirred:      bool, // the last poll took an event that was not a wake: the frame it fed was not an animation's alone
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -321,7 +324,7 @@ run :: proc(app: App) {
 		}
 		step(l)
 		settle(&l.w)
-		wait(&l.w, l.wants_frame, l.frame_after, l.shown)
+		wait(&l.w, l.wants_frame, l.frame_after, l.shown, l.last)
 	}
 }
 
@@ -569,6 +572,7 @@ go_live :: proc(w: ^Window) {
 @(private)
 open :: proc(w: ^Window, app: App) -> bool {
 	w.keep_escape = app.keep_escape
+	w.pacer.hz = animation_hz(app.animation_hz)
 	title := strings.clone_to_cstring(
 		app.title if app.title != "" else "ui",
 		context.temp_allocator,
@@ -744,14 +748,24 @@ settle :: proc(w: ^Window) {
 // wait blocks until the next frame is due: until input when the ui asked
 // for no frame, else for at most the time it asked for. A frame that
 // showed nothing did not wait on the display's refresh, so an immediate
-// request waits one refresh here instead of spinning.
+// request waits one refresh here instead of spinning. A frame that only
+// an animation asked for, after a frame that took no input, waits out
+// the pacer's cap (pace.odin), and a wake alone does not cut that short:
+// what it brings is shown by the frame the cap lands. start is when the
+// last frame began, in ns ticks.
 @(private)
-wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
+wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool, start: u64) {
 	ms := i32(-1)
+	hold: u64 // ticks, in ns, until which a wake alone does not end the wait; 0 when any event does
 	if wants {
 		ms = i32(after * 1000)
 		if !shown {
 			ms = max(ms, refresh_ms(w))
+		}
+		now := sdl3.GetTicksNS()
+		if paced := pace(&w.pacer, start, now, !w.stirred, refresh_hz(w)); paced > ms {
+			ms = paced
+			hold = now + u64(paced) * NS_PER_MS
 		}
 	}
 	// A resize in progress, or oversized buffers, wake the loop in time for
@@ -769,19 +783,56 @@ wait :: proc(w: ^Window, wants: bool, after: f32, shown: bool) {
 	}
 	if ms < 0 {
 		_ = sdl3.WaitEvent(nil)
-	} else if ms > 0 {
-		_ = sdl3.WaitEventTimeout(nil, ms)
+		return
 	}
+	for left := ms; left > 0; {
+		if !sdl3.WaitEventTimeout(nil, left) {
+			return
+		}
+		if hold == 0 || !drain_wakes() {
+			return
+		}
+		now := sdl3.GetTicksNS()
+		left = i32((hold - now) / NS_PER_MS) if now < hold else 0
+	}
+}
+
+// drain_wakes takes the wakes off SDL's queue when nothing else is
+// queued, and reports whether it did: whether the wait that saw them
+// can go on. A queue with anything else in it, or too full to look
+// through, is left as it is for poll.
+@(private)
+drain_wakes :: proc() -> bool {
+	queued: [16]sdl3.Event
+	n := sdl3.PeepEvents(&queued[0], len(queued), .PEEKEVENT, .FIRST, .LAST)
+	if n <= 0 || n == len(queued) {
+		return false
+	}
+	for &e in queued[:n] {
+		if !woken(&e) {
+			return false
+		}
+	}
+	wake := sdl3.EventType(wake_event)
+	return sdl3.PeepEvents(&queued[0], i32(n), .GETEVENT, wake, wake) == n
 }
 
 // refresh_ms is one refresh of the display showing w, 60 Hz when unknown.
 @(private)
 refresh_ms :: proc(w: ^Window) -> i32 {
-	if mode := sdl3.GetCurrentDisplayMode(sdl3.GetDisplayForWindow(w.window));
-	   mode != nil && mode.refresh_rate > 0 {
-		return max(i32(1000 / mode.refresh_rate), 1)
+	if hz := refresh_hz(w); hz > 0 {
+		return max(i32(1000 / hz), 1)
 	}
 	return 16
+}
+
+// refresh_hz is the rate of the display showing w, 0 when unknown.
+@(private)
+refresh_hz :: proc(w: ^Window) -> f32 {
+	if mode := sdl3.GetCurrentDisplayMode(sdl3.GetDisplayForWindow(w.window)); mode != nil {
+		return mode.refresh_rate
+	}
+	return 0
 }
 
 // present repaints what f changed in the window's image and brings the
@@ -908,6 +959,7 @@ Event_Sink :: proc(user: rawptr, e: ui.Raw_Event)
 @(private)
 poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.allocator) -> bool {
 	d := w.density
+	w.stirred = false
 	e: sdl3.Event
 	for sdl3.PollEvent(&e) {
 		// The shell's own types (event.odin): a wake asks only for the
@@ -915,6 +967,7 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 		if woken(&e) {
 			continue
 		}
+		w.stirred = true
 		// A path pick's answer, posted by its SDL callback.
 		if pick_event != 0 && u32(e.type) == pick_event {
 			sink(user, take_pick(&e, allocator))

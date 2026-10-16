@@ -163,7 +163,7 @@ run_host :: proc(app: Host_App) {
 		if l.wants_frame {
 			after = min(after, l.frame_after)
 		}
-		wait(&l.w, true, after, l.shown)
+		wait(&l.w, true, after, l.shown, l.last)
 	}
 }
 
