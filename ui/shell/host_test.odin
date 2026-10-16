@@ -139,6 +139,44 @@ test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
 	testing.expect(t, rok)
 }
 
+// test_the_childs_tray_asks_one_frame_when_toggled_and_none_open drives
+// the real child over the pipe, as the host does: the frame that opens
+// the tray asks one more, for stats drawn with it; after that an open
+// tray asks for nothing, so the host sleeps with it open. Closing is the
+// same, one frame then none. The child used to ask for a frame on every
+// reply while the tray was open, and the host presented at the display's
+// rate, both processes busy, with nothing on screen changing.
+@(test)
+test_the_childs_tray_asks_one_frame_when_toggled_and_none_open :: proc(t: ^testing.T) {
+	if !require_child_exe(t) {
+		return
+	}
+	c, ok := ipc.spawn({CHILD_EXE})
+	testing.expect(t, ok)
+	defer ipc.kill(&c)
+	size := ops.Size{360, 200}
+	testing.expect(t, !wants_after(t, &c, size, nil))
+	testing.expect(t, wants_after(t, &c, size, {{kind = .Key, key = ui.DEBUG_TOGGLE_KEY}}))
+	for _ in 0 ..< 3 {
+		testing.expect(t, !wants_after(t, &c, size, nil))
+	}
+	testing.expect(t, wants_after(t, &c, size, {{kind = .Key, key = ui.DEBUG_TOGGLE_KEY}}))
+	testing.expect(t, !wants_after(t, &c, size, nil))
+}
+
+// wants_after runs one round trip with c and reports whether its reply
+// asks for another frame.
+@(private = "file")
+wants_after :: proc(t: ^testing.T, c: ^ipc.Child, size: ops.Size, events: []ui.Raw_Event) -> bool {
+	input := ui.encode_input(size, 1, 1.0 / 60, events, context.temp_allocator)
+	testing.expect(t, ipc.write_frame(c.stdin, input))
+	reply, rok := ipc.read_frame(c.stdout, context.temp_allocator)
+	testing.expect(t, rok)
+	wants, _, _, dok := ui.decode_reply(reply)
+	testing.expect(t, dok)
+	return wants
+}
+
 // Drop_Log is the needs an application was told are gone.
 @(private = "file")
 Drop_Log :: struct {

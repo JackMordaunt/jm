@@ -149,7 +149,7 @@ run :: proc(app: App) {
 			ui.router_push(&router, e)
 		}
 		if ui.debug_take_toggles(&router) {
-			tray.open = !tray.open
+			ui.debug_tray_toggle(&tray)
 		}
 		debug := env_debug | ui.debug_tray_flags(&tray)
 		dt := ui.debug_dt(debug, raw_dt)
@@ -251,8 +251,10 @@ run :: proc(app: App) {
 		// The data block: what the frame began and stopped needing, and
 		// its commands, for the host's application; or, with the
 		// application here, dispatched already and not sent.
+		// The tray asks for none of its own (ui.debug_tray_toggle): what
+		// the frame wants is what the ui asked, or an answer waiting.
 		rd: ui.Reply_Data
-		wants := gtx.wants_frame || tray.open
+		wants := gtx.wants_frame
 		if local {
 			if app.data.inbox != nil && ui.inbox_pending(app.data.inbox) {
 				wants = true
