@@ -422,6 +422,7 @@ step :: proc(l: ^Loop) {
 	}
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
 	ui.debug_tray_log(&l.tray, &l.router, prev if l.n > 0 else nil, l.n)
+	ui.shaper_tick(l.shaper)
 	ops.reset(&l.scene)
 	l.scene.outline_areas = .Bounds in debug
 	ui.frame_reset(frame)
