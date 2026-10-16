@@ -22,6 +22,7 @@ test_guards_take_their_openers_parameters :: proc(t: ^testing.T) {
 		{"radio_group", type_of(radio_group), type_of(radio_group_open)},
 		{"topic_tag_group", type_of(topic_tag_group), type_of(topic_tag_group_open)},
 		{"stack", type_of(stack), type_of(stack_open)},
+		{"slot", type_of(slot), type_of(slot_open)},
 		{"card", type_of(card), type_of(card_open)},
 		{"card_action", type_of(card_action), type_of(card_action_open)},
 		{"card_metadata", type_of(card_metadata), type_of(card_metadata_open)},
@@ -117,6 +118,17 @@ test_container_guards_draw_what_their_pairs_draw :: proc(t: ^testing.T) {
 		}
 		button(gtx, "One")
 		button(gtx, "Two")
+	})
+	expect_guard_matches_pair(t, "slot", proc(gtx: ^ui.Ctx, guarded: bool) {
+		if guarded {
+			slot(gtx, lines = 2)
+		} else {
+			s := slot_open(gtx, lines = 2)
+			defer ui.close(&s)
+		}
+		ui.column(gtx)
+		text(gtx, "Warning")
+		text(gtx, "Details")
 	})
 	expect_guard_matches_pair(t, "card", proc(gtx: ^ui.Ctx, guarded: bool) {
 		if guarded {

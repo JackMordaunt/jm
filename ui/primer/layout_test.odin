@@ -316,3 +316,66 @@ test_header_scrolls_sideways_when_its_items_overflow :: proc(t: ^testing.T) {
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_bounds(&p, "avatar").x < avatar.x)
 }
+
+@(private = "file")
+Slot_Model :: struct {
+	body:  f32, // the slot's body height; 0 leaves it empty
+	lines: int,
+}
+
+@(private = "file")
+slot_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Slot_Model)(user)
+	col := ui.column_open(gtx, align = .Fill)
+	defer ui.close(&col)
+	if slot(gtx, lines = m.lines) {
+		if m.body > 0 {
+			block(gtx, "body", {50, m.body})
+		}
+	}
+	block(gtx, "below", {50, 10})
+}
+
+@(test)
+test_slot_keeps_its_height_as_its_body_comes_and_goes :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	line := text_style(.Medium).line_height
+	m := Slot_Model{lines = 2}
+	p: ui.Probe
+	probe_view(&p, slot_view, &m, {300, 400})
+	defer ui.probe_destroy(&p)
+	empty := ui.probe_bounds(&p, "below")
+	testing.expect_value(t, empty.y, 2 * line) // empty: the slot still takes its two lines
+	m.body = 10
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "below"), empty) // a short body moves nothing
+	testing.expect_value(t, ui.probe_bounds(&p, "body").w, 300) // and fills the column's width
+	m.body = 3 * line
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "below").y, 3 * line) // a taller body grows the slot
+}
+
+@(test)
+test_a_slot_of_one_line_fits_one_line_of_text_exactly :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		said := (^bool)(user)
+		col := ui.column_open(gtx, align = .Fill)
+		defer ui.close(&col)
+		if slot(gtx) {
+			if said^ {
+				text(gtx, "Saved")
+			}
+		}
+		block(gtx, "below", {50, 10})
+	}
+	said := false
+	p: ui.Probe
+	probe_view(&p, view, &said, {300, 400})
+	defer ui.probe_destroy(&p)
+	empty := ui.probe_bounds(&p, "below")
+	testing.expect_value(t, empty.y, text_style(.Medium).line_height)
+	said = true
+	ui.probe_frame(&p)
+	testing.expect_value(t, ui.probe_bounds(&p, "below"), empty) // a line of text neither grows nor shrinks it
+}

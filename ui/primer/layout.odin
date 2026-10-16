@@ -209,6 +209,32 @@ stack_guard_close :: proc(
 	stack_close(h)
 }
 
+// slot is where a row that comes and goes sits: a warning, a status line,
+// anything shown on some frames and not others above content that is in
+// use. It lays its body out as ui.sized does and is at least lines lines
+// of body text at size tall, body or no body, so what is laid out below
+// it keeps its place when the body appears, disappears or changes. A body
+// taller than that grows the slot, so a message that wraps in a narrow
+// window still shows whole; the caller picks lines for the common case.
+// The rule it serves: no conditional row goes above live content outside
+// a slot.
+slot_open :: proc(gtx: ^ui.Ctx, lines := 1, size := Text_Size.Medium, key: u64 = 0, loc := #caller_location) -> ui.Inset {
+	h := f32(lines) * text_style(size).line_height
+	return ui.sized_open(gtx, {min = {0, h}}, key, loc)
+}
+
+// slot is slot_open as a guard.
+@(deferred_in = slot_guard_close)
+slot :: proc(gtx: ^ui.Ctx, lines := 1, size := Text_Size.Medium, key: u64 = 0, loc := #caller_location) -> bool {
+	slot_open(gtx, lines, size, key, loc)
+	return true
+}
+
+@(private = "file")
+slot_guard_close :: proc(gtx: ^ui.Ctx, lines: int, size: Text_Size, key: u64, loc: runtime.Source_Code_Location) {
+	ui.innermost_close(gtx, .Inset)
+}
+
 // stack_flex_align maps a stack's align onto jm:ui's: stretch is Fill.
 @(private)
 stack_flex_align :: proc(a: Stack_Align) -> ui.Align {

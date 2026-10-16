@@ -34,6 +34,13 @@ A container is a guard: it closes itself at the end of the block it is called in
 `if` when written `if ui.row(gtx) { … }`. The explicit `ui.row_open` and `ui.close` pair is for
 a body that spans procs or needs the container's handle.
 
+A row that comes and goes above live content goes in a slot. A warning or status line that appears
+mid-session in a column pushes everything under it down; `primer.slot(gtx, lines = 2)` lays its
+body out but is at least two lines of body text tall whether the body is there or not, so the
+content below keeps its place, and a body taller than that grows it rather than being cut. The slot
+is `ui.sized` with a minimum height, so a design system without one writes
+`ui.sized(gtx, {min = {0, h}})`.
+
 Open a demo:
 
 ```sh
