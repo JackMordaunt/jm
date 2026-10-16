@@ -23,6 +23,14 @@ TILE :: 64
 // else changed stay dirty. A region only scrolls when everything else drawn
 // over it looks the same after the move.
 //
+// The work scales with what changed, not with the scene: each draw is
+// compared with the draw at its index in the previous frame, byte for byte
+// with whatever it refers to in the scene, and one that is the same under
+// the same clip chain keeps its record; a tile that no changed draw touches
+// keeps its hash; and only changed draws vote for scrolls. A draw inserted
+// or removed shifts every index after it, so that frame pays the full cost
+// once, as a scroll does, whose draws all move.
+//
 // Zero it, or damage_init it to choose the allocator. Its buffers keep their
 // capacity between frames, so a steady stream of similar frames allocates
 // nothing. damage_update does one frame. To share the per-draw work out,
@@ -39,8 +47,12 @@ Damage :: struct {
 	clips:      [dynamic]Clip_Rec,
 	old_draws:  [dynamic]Draw_Rec, // the previous frame
 	old_clips:  [dynamic]Clip_Rec,
+	cmds, old_cmds: [dynamic]ui.Draw, // each frame's draws as given, to compare the next frame's with
+	blob, old_blob: [dynamic]u8, // what each frame's draws refer to in the scene; Draw_Rec.ref
 	rects:      [dynamic]ops.Rect, // to repaint
 	scrolls:    [dynamic]Scroll, // to apply before repainting
+	hashed:     int, // last frame: draws whose record was worked out, not kept
+	rebinned:   int, // last frame: tiles whose hash was folded again, not kept
 	glyph_box:  map[Font_Key]ops.Rect, // per font and size: the box every glyph fits, from its origin
 	// resize_in_place says the target keeps its pixels across a change of
 	// size, as a view into one buffer does. A new size then repaints only
@@ -72,6 +84,7 @@ Draw_Rec :: struct {
 	flat_local: ops.Rect,
 	flat_key:   u64,
 	hole:    ops.Rect, // device rect where it paints nothing, else empty
+	ref:     [2]i32, // offset and length in its frame's blob of what it refers to
 }
 
 @(private)
@@ -98,9 +111,25 @@ Damage_Scratch :: struct {
 	sigs:       [dynamic]u64, // per draw anchored to an all-rect clip chain: its signature
 	old_anchor: [dynamic]int,
 	anchoring:  bool, // damage_draws fills anchors and sigs this frame
+	anchored:   bool, // the previous frame did, so old_anchor and old_sigs describe old_draws
+	old_sigs:   [dynamic]u64,
 	scrolled:   bool, // this frame found scrolls to model
+	// memo says this frame's draws may keep the previous frame's records:
+	// the target holds that frame at this size, and text was bounded the
+	// same way. clip_same is per clip: its chain is the previous frame's at
+	// the same index. ref is per draw: where its scene data starts in blob,
+	// with one more entry for the end. same is per draw: it kept its record
+	// and its tiles; kept: it also kept its anchor, so its placed entry.
+	memo:       bool,
+	had_fonts:  bool,
+	clip_same:  [dynamic]bool,
+	ref:        [dynamic]i32,
+	same:       [dynamic]bool,
+	kept:       [dynamic]bool,
+	redo:       [dynamic]bool, // per tile: a changed draw touches it
 	old_placed: [dynamic]Placed,
 	new_placed: [dynamic]Placed,
+	fresh:      [dynamic]Placed, // this frame's placed draws that are not kept, sorted
 	sort_tmp:   [dynamic]Placed,
 	groups:     [dynamic]Group,
 	votes:      map[[3]i64]int, // {region, dx, dy} -> pairs agreeing
@@ -134,6 +163,10 @@ damage_init :: proc(d: ^Damage, allocator := context.allocator) {
 	d.clips = make([dynamic]Clip_Rec, allocator)
 	d.old_draws = make([dynamic]Draw_Rec, allocator)
 	d.old_clips = make([dynamic]Clip_Rec, allocator)
+	d.cmds = make([dynamic]ui.Draw, allocator)
+	d.old_cmds = make([dynamic]ui.Draw, allocator)
+	d.blob = make([dynamic]u8, allocator)
+	d.old_blob = make([dynamic]u8, allocator)
 	d.rects = make([dynamic]ops.Rect, allocator)
 	d.scrolls = make([dynamic]Scroll, allocator)
 	d.glyph_box = make(map[Font_Key]ops.Rect, allocator)
@@ -143,8 +176,15 @@ damage_init :: proc(d: ^Damage, allocator := context.allocator) {
 	s.anchors = make([dynamic]int, allocator)
 	s.sigs = make([dynamic]u64, allocator)
 	s.old_anchor = make([dynamic]int, allocator)
+	s.old_sigs = make([dynamic]u64, allocator)
+	s.clip_same = make([dynamic]bool, allocator)
+	s.ref = make([dynamic]i32, allocator)
+	s.same = make([dynamic]bool, allocator)
+	s.kept = make([dynamic]bool, allocator)
+	s.redo = make([dynamic]bool, allocator)
 	s.old_placed = make([dynamic]Placed, allocator)
 	s.new_placed = make([dynamic]Placed, allocator)
+	s.fresh = make([dynamic]Placed, allocator)
 	s.sort_tmp = make([dynamic]Placed, allocator)
 	s.groups = make([dynamic]Group, allocator)
 	s.votes = make(map[[3]i64]int, allocator)
@@ -169,6 +209,10 @@ damage_destroy :: proc(d: ^Damage) {
 	delete(d.clips)
 	delete(d.old_draws)
 	delete(d.old_clips)
+	delete(d.cmds)
+	delete(d.old_cmds)
+	delete(d.blob)
+	delete(d.old_blob)
 	delete(d.rects)
 	delete(d.scrolls)
 	delete(d.glyph_box)
@@ -178,8 +222,15 @@ damage_destroy :: proc(d: ^Damage) {
 	delete(s.anchors)
 	delete(s.sigs)
 	delete(s.old_anchor)
+	delete(s.old_sigs)
+	delete(s.clip_same)
+	delete(s.ref)
+	delete(s.same)
+	delete(s.kept)
+	delete(s.redo)
 	delete(s.old_placed)
 	delete(s.new_placed)
+	delete(s.fresh)
 	delete(s.sort_tmp)
 	delete(s.groups)
 	delete(s.votes)
@@ -236,7 +287,11 @@ damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ops.Color, fonts: ^
 	if d.resized && d.valid {
 		regrid(d, old_size, old_cols)
 	}
+	s := &d.scratch
+	s.memo = d.valid && !d.resized && s.had_fonts == (fonts != nil)
+	s.had_fonts = fonts != nil
 	resize(&d.clips, len(f.clips))
+	resize(&s.clip_same, len(f.clips))
 	for c, i in f.clips {
 		rec := Clip_Rec {
 			parent = c.parent,
@@ -256,6 +311,13 @@ damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ops.Color, fonts: ^
 		rec.reach = ops.rect_intersect(clip_pixels(rec.rect, ops.transform_rect(rec.t, rec.local)), parent_reach)
 		rec.all_rects = rec.rect && parent_rects
 		d.clips[i] = rec
+		same := s.memo && i < len(d.old_clips)
+		if same {
+			o := &d.old_clips[i]
+			same = o.parent == c.parent && o.shape == rec.shape && o.t == rec.t
+			same = same && (c.parent == ui.NO_CLIP || s.clip_same[c.parent])
+		}
+		s.clip_same[i] = same
 	}
 	if fonts != nil {
 		// A box for every font a glyph is drawn in: a fallback's glyphs
@@ -280,13 +342,29 @@ damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ops.Color, fonts: ^
 			}
 		}
 	}
-	resize(&d.draws, len(f.draws))
+	n := len(f.draws)
+	resize(&d.draws, n)
+	resize(&d.cmds, n)
+	resize(&s.same, n)
+	resize(&s.kept, n)
+	resize(&s.ref, n + 1)
+	s.ref[0] = 0
+	for &dr, i in f.draws {
+		parts, count := ref_parts(f.scene, &dr)
+		total := 0
+		for p in parts[:count] {
+			total += len(p)
+		}
+		s.ref[i + 1] = s.ref[i] + i32(total)
+	}
+	resize(&d.blob, int(s.ref[n]))
 
 	// Scroll detection anchors each draw to the innermost clip the previous
 	// frame also has; damage_draws does it alongside the hashing. The
 	// previous frame's anchors are kept for find_scrolls to reuse.
-	s := &d.scratch
 	s.old_anchor, s.anchors = s.anchors, s.old_anchor
+	s.old_sigs, s.sigs = s.sigs, s.old_sigs
+	s.anchored = s.anchoring
 	s.anchoring = d.valid && len(d.clips) > 0 && len(d.old_clips) > 0
 	if s.anchoring {
 		clear(&s.old_keys)
@@ -305,15 +383,179 @@ damage_open :: proc(d: ^Damage, f: ^ui.Frame, w, h: i32, bg: ops.Color, fonts: ^
 damage_draws :: proc(d: ^Damage, f: ^ui.Frame, lo, hi: int) {
 	s := &d.scratch
 	for i in lo ..< hi {
-		d.draws[i] = draw_rec(f, d.clips[:], &d.glyph_box, &f.draws[i])
+		dr := &f.draws[i]
+		d.cmds[i] = dr^
+		ref := [2]i32{s.ref[i], s.ref[i + 1] - s.ref[i]}
+		ref_write(f.scene, dr, d.blob[ref.x:][:ref.y])
+		same := s.memo && i < len(d.old_draws) && draw_same(d, i, dr, ref)
+		s.same[i] = same
+		if same {
+			d.draws[i] = d.old_draws[i]
+		} else {
+			d.draws[i] = draw_rec(f, d.clips[:], &d.glyph_box, dr)
+		}
+		d.draws[i].ref = ref
 		if !s.anchoring {
 			continue
 		}
-		a := anchor(d.clips[:], f.draws[i].clip, &s.old_keys)
+		// A draw kept under a kept clip chain is anchored to its own clip,
+		// which the previous frame has; so was it then, unless that clip
+		// was new, when its signature was relative to an ancestor.
+		kept := same && s.anchored && s.old_anchor[i] == int(dr.clip)
+		s.kept[i] = kept
+		if kept {
+			s.anchors[i] = int(dr.clip)
+			s.sigs[i] = s.old_sigs[i]
+			continue
+		}
+		a := anchor(d.clips[:], dr.clip, &s.old_keys)
 		s.anchors[i] = a
 		if a >= 0 && d.clips[a].all_rects {
 			s.sigs[i] = signature(d.clips[:], &d.draws[i], a)
 		}
+	}
+}
+
+// draw_same reports whether dr, draw i of this frame, is the previous
+// frame's draw i under the same clip chain, so its record can be kept: the
+// same command, transform and fade, and the same bytes referred to in the
+// scene, which ref locates in blob and the old record's ref in old_blob.
+@(private)
+draw_same :: proc(d: ^Damage, i: int, dr: ^ui.Draw, ref: [2]i32) -> bool {
+	s := &d.scratch
+	o := &d.old_cmds[i]
+	if o.clip != dr.clip || o.fade != dr.fade || o.transform != dr.transform {
+		return false
+	}
+	if dr.clip != ui.NO_CLIP && !s.clip_same[dr.clip] {
+		return false
+	}
+	if !cmd_same(&o.cmd, &dr.cmd) {
+		return false
+	}
+	old_ref := d.old_draws[i].ref
+	if old_ref.y != ref.y {
+		return false
+	}
+	return mem.compare(d.old_blob[old_ref.x:][:old_ref.y], d.blob[ref.x:][:ref.y]) == 0
+}
+
+// cmd_same compares two commands but for what they refer to in the scene,
+// which ref_parts gives and draw_same compares as bytes: a path's or run's
+// id may differ while its content is the same.
+@(private)
+cmd_same :: proc(a, b: ^ui.Draw_Cmd) -> bool {
+	switch x in a^ {
+	case ops.Fill:
+		y, ok := b^.(ops.Fill)
+		return ok && shape_same(x.shape, y.shape) && paint_same(x.paint, y.paint)
+	case ops.Stroke:
+		y, ok := b^.(ops.Stroke)
+		return ok && shape_same(x.shape, y.shape) && paint_same(x.paint, y.paint) && x.style == y.style
+	case ops.Glyphs:
+		y, ok := b^.(ops.Glyphs)
+		return ok && x.origin == y.origin && x.color == y.color
+	case ops.Image:
+		y, ok := b^.(ops.Image)
+		return ok && x == y
+	case ops.Shadow:
+		y, ok := b^.(ops.Shadow)
+		return ok && x == y
+	}
+	return b^ == nil
+}
+
+@(private)
+shape_same :: proc(a, b: ops.Shape) -> bool {
+	switch x in a {
+	case ops.Rect:
+		y, ok := b.(ops.Rect)
+		return ok && x == y
+	case ops.Round_Rect:
+		y, ok := b.(ops.Round_Rect)
+		return ok && x == y
+	case ops.Ellipse:
+		y, ok := b.(ops.Ellipse)
+		return ok && x == y
+	case ops.Path_Ref:
+		_, ok := b.(ops.Path_Ref)
+		return ok
+	}
+	return b == nil
+}
+
+@(private)
+paint_same :: proc(a, b: ops.Paint) -> bool {
+	switch x in a {
+	case ops.Color:
+		y, ok := b.(ops.Color)
+		return ok && x == y
+	case ops.Linear_Gradient:
+		y, ok := b.(ops.Linear_Gradient)
+		return ok && x.p0 == y.p0 && x.p1 == y.p1
+	case ops.Radial_Gradient:
+		y, ok := b.(ops.Radial_Gradient)
+		return ok && x.center == y.center && x.radius == y.radius
+	case ops.Image_Paint:
+		y, ok := b.(ops.Image_Paint)
+		return ok && x == y
+	}
+	return b == nil
+}
+
+// ref_parts is what d refers to in sc, as the byte slices that decide its
+// pixels: a path's rule, verbs and points, a gradient's stops, a glyph
+// run's font, size, advance and glyphs. A reference past the scene's end
+// refers to nothing, as draw_rec hashes nothing for it.
+@(private)
+ref_parts :: proc(sc: ^ops.Scene, d: ^ui.Draw) -> (parts: [4][]u8, n: int) {
+	shape: ops.Shape
+	paint: ops.Paint
+	switch c in d.cmd {
+	case ops.Fill:
+		shape, paint = c.shape, c.paint
+	case ops.Stroke:
+		shape, paint = c.shape, c.paint
+	case ops.Glyphs:
+		if int(c.run) < len(sc.runs) {
+			run := &sc.runs[c.run]
+			parts[0] = mem.ptr_to_bytes(&run.font)
+			parts[1] = mem.ptr_to_bytes(&run.size)
+			parts[2] = mem.ptr_to_bytes(&run.advance)
+			parts[3] = mem.slice_to_bytes(run.glyphs)
+			n = 4
+		}
+		return
+	case ops.Image, ops.Shadow:
+		return
+	}
+	if r, ok := shape.(ops.Path_Ref); ok && int(r.id) < len(sc.paths) {
+		p := &sc.paths[r.id]
+		parts[0] = mem.ptr_to_bytes(&p.rule)
+		parts[1] = mem.slice_to_bytes(p.verbs)
+		parts[2] = mem.slice_to_bytes(p.points)
+		n = 3
+	}
+	#partial switch v in paint {
+	case ops.Linear_Gradient:
+		parts[n] = mem.slice_to_bytes(v.stops)
+		n += 1
+	case ops.Radial_Gradient:
+		parts[n] = mem.slice_to_bytes(v.stops)
+		n += 1
+	}
+	return
+}
+
+// ref_write copies what d refers to into out, which holds exactly as many
+// bytes as ref_parts gives.
+@(private)
+ref_write :: proc(sc: ^ops.Scene, d: ^ui.Draw, out: []u8) {
+	parts, n := ref_parts(sc, d)
+	at := 0
+	for p in parts[:n] {
+		copy(out[at:], p)
+		at += len(p)
 	}
 }
 
@@ -368,8 +610,13 @@ damage_find :: proc(d: ^Damage) -> int {
 	resize(&d.prev, n)
 	clear(&d.rects)
 	clear(&d.scrolls)
-	bin(d.curr[:], d.cols, d.rows, d.draws[:], d.clips[:], &d.scratch.last_run)
 	s := &d.scratch
+	if s.memo {
+		keep_tiles(d)
+	} else {
+		d.hashed, d.rebinned = len(d.draws), n
+		bin(d.curr[:], d.cols, d.rows, d.draws[:], d.clips[:], &s.last_run)
+	}
 	s.scrolled = false
 	if !d.valid {
 		s.placed_ok = false
@@ -428,8 +675,97 @@ damage_close :: proc(d: ^Damage) -> ([]ops.Rect, []Scroll) {
 	d.prev, d.curr = d.curr, d.prev
 	d.old_draws, d.draws = d.draws, d.old_draws
 	d.old_clips, d.clips = d.clips, d.old_clips
+	d.old_cmds, d.cmds = d.cmds, d.old_cmds
+	d.old_blob, d.blob = d.blob, d.old_blob
 	d.valid = true
 	return d.rects[:], d.scrolls[:]
+}
+
+// keep_tiles folds this frame's draws into the tiles a changed draw touches,
+// at its bounds in either frame, and keeps the previous frame's hash for
+// every other tile: the draws touching it are the same, in the same order.
+//
+// A run of consecutive draws under a clip that needs a mask is drawn as
+// one group (see bin), so a draw's pixels change when its run gains or
+// loses a draw anywhere; such a draw is kept only when its whole run is
+// the previous frame's run, draw for draw.
+@(private)
+keep_tiles :: proc(d: ^Damage) {
+	s := &d.scratch
+	n := len(d.draws)
+	d.hashed = 0
+	for i in 0 ..< n {
+		if !s.same[i] {
+			d.hashed += 1
+		}
+	}
+	for lo := 0; lo < n; {
+		hi := lo + 1
+		clip := d.draws[lo].clip
+		for hi < n && d.draws[hi].clip == clip {
+			hi += 1
+		}
+		if clip != ui.NO_CLIP && !d.clips[clip].all_rects {
+			whole := true
+			for i in lo ..< hi {
+				whole = whole && s.same[i]
+			}
+			old := d.old_draws[:]
+			if whole && lo > 0 && !s.same[lo - 1] && old[lo - 1].clip == old[lo].clip {
+				whole = false
+			}
+			if whole && hi < len(old) && (hi >= n || !s.same[hi]) && old[hi].clip == old[hi - 1].clip {
+				whole = false
+			}
+			if !whole {
+				for i in lo ..< hi {
+					s.same[i] = false
+				}
+			}
+		}
+		lo = hi
+	}
+
+	tiles := d.cols * d.rows
+	resize(&s.redo, tiles)
+	mem.zero_slice(s.redo[:])
+	for i in 0 ..< n {
+		if s.same[i] {
+			continue
+		}
+		mark_tiles(s.redo[:], d.cols, d.rows, d.draws[i].bounds)
+		if i < len(d.old_draws) {
+			mark_tiles(s.redo[:], d.cols, d.rows, d.old_draws[i].bounds)
+		}
+	}
+	for j in n ..< len(d.old_draws) {
+		mark_tiles(s.redo[:], d.cols, d.rows, d.old_draws[j].bounds)
+	}
+	d.rebinned = 0
+	for r in s.redo {
+		if r {
+			d.rebinned += 1
+		}
+	}
+	copy(d.curr[:], d.prev[:])
+	bin(d.curr[:], d.cols, d.rows, d.draws[:], d.clips[:], &s.last_run, redo = s.redo[:])
+}
+
+// mark_tiles flags the tiles b touches, as bin folds into them.
+@(private)
+mark_tiles :: proc(redo: []bool, cols, rows: int, b: ops.Rect) {
+	if b.w <= 0 || b.h <= 0 {
+		return
+	}
+	x0 := clamp(int(b.x) / TILE, 0, cols - 1)
+	y0 := clamp(int(b.y) / TILE, 0, rows - 1)
+	x1 := clamp(int(b.x + b.w - 1) / TILE, 0, cols - 1)
+	y1 := clamp(int(b.y + b.h - 1) / TILE, 0, rows - 1)
+	for ty in y0 ..= y1 {
+		for tx in x0 ..= x1 {
+			redo[ty * cols + tx] = true
+		}
+	}
 }
 
 // subtract cuts b out of a, leaving up to four rects: full-width bands
@@ -610,11 +946,15 @@ clip_pixels :: proc(rect: bool, dev: ops.Rect) -> ops.Rect {
 // so a background or panel that grows with the window changes only the
 // tiles along its edges. Whole tiles are tested, not the part inside the
 // target, so a tile does not change key when only the target's size does.
-// flats, given with keys, are the draws' flat rects as moved.
+// flats, given with keys, are the draws' flat rects as moved. redo, when
+// given, is per tile: only a flagged tile is folded, the rest keep their
+// hashes.
 @(private)
-bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec, last: ^[dynamic]int, keys: []u64 = nil, boxes: []ops.Rect = nil, flats: []ops.Rect = nil) {
-	for &t in tiles {
-		t = ui.FNV_OFFSET
+bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec, last: ^[dynamic]int, keys: []u64 = nil, boxes: []ops.Rect = nil, flats: []ops.Rect = nil, redo: []bool = nil) {
+	for &t, i in tiles {
+		if redo == nil || redo[i] {
+			t = ui.FNV_OFFSET
+		}
 	}
 	resize(last, len(tiles))
 	for &l in last {
@@ -640,6 +980,9 @@ bin :: proc(tiles: []u64, cols, rows: int, draws: []Draw_Rec, clips: []Clip_Rec,
 		for ty in y0 ..= y1 {
 			for tx in x0 ..= x1 {
 				t := ty * cols + tx
+				if redo != nil && !redo[t] {
+					continue
+				}
 				kt := k
 				if flat.w > 0 {
 					tile := ops.Rect{f32(tx * TILE), f32(ty * TILE), TILE, TILE}
@@ -736,7 +1079,7 @@ Group :: struct {
 }
 
 // Placed is a draw under a candidate region: its signature, the region and
-// where the draw sits, exactly and quantized.
+// where the draw sits, exactly and quantized, and which draw it is.
 @(private)
 Placed :: struct {
 	sig:    u64,
@@ -744,6 +1087,7 @@ Placed :: struct {
 	e, f:   f64,
 	q:      [2]i64,
 	at:     u64, // pos(q)
+	draw:   int,
 }
 
 // pos packs a quantized position into one ordered key. Each axis keeps 32
@@ -767,7 +1111,7 @@ placed :: proc(out, tmp: ^[dynamic]Placed, draws: []Draw_Rec, clips: []Clip_Rec,
 		if a >= 0 && clips[a].all_rects {
 			q := [2]i64{quantize(dr.t.e), quantize(dr.t.f)}
 			sig := sigs[i] if sigs != nil else signature(clips, &dr, a)
-			append(out, Placed{sig, a, dr.t.e, dr.t.f, q, pos(q)})
+			append(out, Placed{sig, a, dr.t.e, dr.t.f, q, pos(q), i})
 		}
 	}
 	sort_placed(out, tmp)
@@ -869,28 +1213,25 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 	if !reuse {
 		placed(&s.old_placed, &s.sort_tmp, d.old_draws[:], d.old_clips[:], s.old_anchor[:])
 	}
-	placed(&s.new_placed, &s.sort_tmp, d.draws[:], d.clips[:], s.anchors[:], s.sigs[:])
+	placed_kept(s, d)
 	s.placed_ok = true
-	old_p, new_p := s.old_placed[:], s.new_placed[:]
+	old_p, new_p, fresh := s.old_placed[:], s.new_placed[:], s.fresh[:]
+	if len(fresh) == 0 {
+		return false
+	}
+	// Only a draw that is not kept can have moved, and a scroll moves at
+	// least half of a region's draws, so only those vote.
 	clear(&s.groups)
-	for i, j := 0, 0; i < len(old_p) && j < len(new_p); {
-		if old_p[i].sig < new_p[j].sig {
-			i += 1
-			continue
-		}
-		if new_p[j].sig < old_p[i].sig {
-			j += 1
-			continue
-		}
-		i1, j1 := i, j
-		for i1 < len(old_p) && old_p[i1].sig == old_p[i].sig {
-			i1 += 1
-		}
-		for j1 < len(new_p) && new_p[j1].sig == new_p[j].sig {
+	for j := 0; j < len(fresh); {
+		j1 := j + 1
+		for j1 < len(fresh) && fresh[j1].sig == fresh[j].sig {
 			j1 += 1
 		}
-		append(&s.groups, Group{i, i1, j, j1})
-		i, j = i1, j1
+		i, i1 := sig_range(old_p, fresh[j].sig)
+		if i1 > i {
+			append(&s.groups, Group{i, i1, j, j1})
+		}
+		j = j1
 	}
 	slice.sort_by(s.groups[:], proc(x, y: Group) -> bool {
 		return (x.old_hi - x.old_lo) * (x.new_hi - x.new_lo) < (y.old_hi - y.old_lo) * (y.new_hi - y.new_lo)
@@ -903,7 +1244,7 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 			break
 		}
 		budget -= pairs
-		for n in new_p[g.new_lo:g.new_hi] {
+		for n in fresh[g.new_lo:g.new_hi] {
 			for o in old_p[g.old_lo:g.old_hi] {
 				// Pairs that did not move vote too: content that repeats can
 				// look scrolled by its period when nothing moved at all.
@@ -974,6 +1315,66 @@ find_scrolls :: proc(d: ^Damage) -> bool {
 		}
 	}
 	return len(s.found) > 0
+}
+
+// placed_kept lists this frame's placed draws as placed does, from the
+// previous frame's list: a kept draw's entry carries over, but for its
+// region, which is its own clip in this frame; the rest are placed afresh,
+// sorted into fresh, and merged in.
+@(private)
+placed_kept :: proc(s: ^Damage_Scratch, d: ^Damage) {
+	clear(&s.fresh)
+	for &dr, i in d.draws {
+		if s.kept[i] {
+			continue
+		}
+		a := s.anchors[i]
+		if a >= 0 && d.clips[a].all_rects {
+			q := [2]i64{quantize(dr.t.e), quantize(dr.t.f)}
+			append(&s.fresh, Placed{s.sigs[i], a, dr.t.e, dr.t.f, q, pos(q), i})
+		}
+	}
+	sort_placed(&s.fresh, &s.sort_tmp)
+	clear(&s.new_placed)
+	j := 0
+	for &o in s.old_placed {
+		if o.draw >= len(s.kept) || !s.kept[o.draw] {
+			continue
+		}
+		for j < len(s.fresh) && placed_before(&s.fresh[j], &o) {
+			append(&s.new_placed, s.fresh[j])
+			j += 1
+		}
+		p := o
+		p.region = s.anchors[o.draw]
+		append(&s.new_placed, p)
+	}
+	append(&s.new_placed, ..s.fresh[j:])
+}
+
+// placed_before orders as sort_placed does: by signature, then position.
+@(private)
+placed_before :: proc(a, b: ^Placed) -> bool {
+	return a.sig < b.sig || (a.sig == b.sig && a.at < b.at)
+}
+
+// sig_range is the run of entries with sig in sorted list, as lo ..< hi.
+@(private)
+sig_range :: proc(list: []Placed, sig: u64) -> (lo, hi: int) {
+	lo, hi = 0, len(list)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if list[mid].sig < sig {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	hi = lo
+	for hi < len(list) && list[hi].sig == sig {
+		hi += 1
+	}
+	return lo, hi
 }
 
 // inner_pixels is the whole pixels fully inside r and the target.

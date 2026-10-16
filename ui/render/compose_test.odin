@@ -892,3 +892,70 @@ test_compose_meeting_regions_both_scroll :: proc(t: ^testing.T) {
 		testing.expectf(t, d <= 1, "at %v the composed target differs from a whole render by %d", offset, d)
 	}
 }
+
+// A list drawn again unchanged keeps every draw's record; scrolled, its rows
+// are worked out again and the scroll is found as before; then an
+// unchanged frame once more keeps everything, scrolls included.
+@(test)
+test_compose_kept_draws_still_scroll :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 2)
+	defer rig_destroy(&g)
+	step(t, &g, {origin = {40, 20}, offset = 30})
+	step(t, &g, {origin = {40, 20}, offset = 30})
+	testing.expect_value(t, g.c.damage.hashed, 0)
+	testing.expect_value(t, g.c.damage.rebinned, 0)
+	step(t, &g, {origin = {40, 20}, offset = 37})
+	testing.expect_value(t, g.c.damage.hashed, 80) // the 40 rows' two draws each
+	testing.expectf(t, len(g.c.damage.scrolls) == 1, "expected one scroll, got %v", g.c.damage.scrolls[:])
+	step(t, &g, {origin = {40, 20}, offset = 37})
+	testing.expect_value(t, g.c.damage.hashed, 0)
+	testing.expect_value(t, len(g.c.damage.scrolls), 0)
+}
+
+// A draw added between two under a masked clip, then taken out, shifts the
+// draws after it; each frame must still be what a whole render draws.
+@(test)
+test_compose_inserted_draw_under_mask :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	build :: proc(s: ^Scene, extra: bool) {
+		reset(s)
+		append(&s.frame.clips, ui.Clip{ui.NO_CLIP, ops.Round_Rect{{0, 0, 200, 120}, 6}, ops.mul(ops.rotate(0.1), ops.translate(100, 80))})
+		append(&s.frame.draws, ui.Draw{ops.translate(150, 70), 0, ops.Fill{ops.Rect{0, 0, 60, 40}, ops.Color{200, 40, 40, 150}}, 0})
+		if extra {
+			append(&s.frame.draws, ui.Draw{ops.translate(60, 60), 0, ops.Fill{ops.Rect{0, 0, 30, 30}, ops.Color{40, 200, 40, 150}}, 0})
+		}
+		append(&s.frame.draws, ui.Draw{ops.translate(170, 75), 0, ops.Fill{ops.Rect{0, 0, 60, 40}, ops.Color{40, 40, 200, 150}}, 0})
+		append(&s.frame.draws, ui.Draw{ops.translate(10, 200), ui.NO_CLIP, ops.Fill{ops.Rect{0, 0, 30, 20}, ops.Color{40, 40, 200, 255}}, 0})
+	}
+	for extra in ([]bool{false, true, true, false, false}) {
+		build(&g.scene, extra)
+		compose(&g.c, &g.scene.frame, &g.img, BG)
+		d := off_render(&g)
+		testing.expectf(t, d <= SEAM, "extra=%v: composed differs from a whole render by %d", extra, d)
+	}
+	testing.expect_value(t, g.c.damage.hashed, 0)
+}
+
+// B between A and C leaves their group when its clip changes, though it
+// keeps its place and lies in other tiles: the clip's edge then covers A
+// and C each, where it covered them once, so their tiles must repaint.
+@(test)
+test_compose_regrouping_in_place_repaints :: proc(t: ^testing.T) {
+	g: Rig
+	rig_init(&g, 1)
+	defer rig_destroy(&g)
+	build :: proc(s: ^Scene, b_clip: ui.Clip_Id) {
+		split_groups(s, true)
+		s.frame.draws[1].clip = b_clip
+	}
+	build(&g.scene, 0)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	build(&g.scene, ui.NO_CLIP)
+	compose(&g.c, &g.scene.frame, &g.img, BG)
+	testing.expect_value(t, g.c.damage.hashed, 1)
+	d := off_render(&g)
+	testing.expectf(t, d <= SEAM, "composed differs from a whole render by %d", d)
+}
