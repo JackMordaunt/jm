@@ -150,10 +150,9 @@ destroy :: proc(s: ^Shaper) {
 		return
 	}
 	a := s.allocator^
-	clear_cache(s)
+	drop_contexts(s)
 	delete(s.cache)
 	delete(s.breaks)
-	drop_contexts(s)
 	for _, f in s.faces {
 		if f.ok {
 			kb.FreeFont(&f.font)
