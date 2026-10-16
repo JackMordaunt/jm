@@ -36,6 +36,15 @@ Pick_Wait :: struct {
 @(private)
 pick_event: u32
 
+// pick_register registers pick_event, once, and is whether there is one.
+@(private)
+pick_register :: proc() -> bool {
+	if pick_event == 0 {
+		pick_event = register_event("a file dialog's answer")
+	}
+	return pick_event != 0
+}
+
 // show_pick opens the dialog q asks for, over w's window. A pick that
 // cannot even be posted is failed at once through sink, its reason in
 // allocator.
@@ -47,22 +56,19 @@ show_pick :: proc(
 	user: rawptr,
 	allocator := context.temp_allocator,
 ) {
-	if pick_event == 0 {
-		pick_event = sdl3.RegisterEvents(1)
-		if pick_event == 0 {
-			sink(
-				user,
-				{
-					kind = .Pick_Failed,
-					area = q.area,
-					text = strings.clone(
-						"no SDL event type left for a file dialog's answer",
-						allocator,
-					),
-				},
-			)
-			return
-		}
+	if !pick_register() {
+		sink(
+			user,
+			{
+				kind = .Pick_Failed,
+				area = q.area,
+				text = strings.clone(
+					"no SDL event type left for a file dialog's answer",
+					allocator,
+				),
+			},
+		)
+		return
 	}
 	a := runtime.default_allocator()
 	wait := new(Pick_Wait, a)

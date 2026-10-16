@@ -110,14 +110,6 @@ App :: struct {
 // caller in this codebase spells it shell.default_font.
 default_font :: ui.default_font
 
-// wake runs a frame soon, as input would. Any thread may call it, for
-// instance when work the ui shows has finished.
-wake :: proc() {
-	e: sdl3.Event
-	e.type = .USER
-	_ = sdl3.PushEvent(&e)
-}
-
 // MAX_DT caps ui.Ctx.dt, so an animation that starts after an idle wait
 // does not jump by the whole wait.
 @(private)
@@ -308,6 +300,7 @@ run :: proc(app: App) {
 		return
 	}
 	defer sdl3.Quit()
+	wake_register()
 	scroll_watch_start()
 	defer scroll_watch_stop()
 
@@ -914,6 +907,11 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 	d := w.density
 	e: sdl3.Event
 	for sdl3.PollEvent(&e) {
+		// The shell's own types (event.odin): a wake asks only for the
+		// frame that follows the poll.
+		if woken(&e) {
+			continue
+		}
 		// A path pick's answer, posted by its SDL callback.
 		if pick_event != 0 && u32(e.type) == pick_event {
 			sink(user, take_pick(&e, allocator))

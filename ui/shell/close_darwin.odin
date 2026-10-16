@@ -16,8 +16,11 @@ import "vendor:sdl3"
 // posts reopen_event for poll. Should a later SDL add the method itself,
 // class_addMethod refuses, and reopen_watch says so.
 
-@(private = "file")
+@(private)
 reopen_event: u32
+
+@(private = "file")
+watched: bool
 
 // close_window closes the window as macOS does: hidden, and kept.
 @(private)
@@ -26,17 +29,22 @@ close_window :: proc(w: ^Window) -> (kept: bool) {
 	return true
 }
 
+// reopen_register registers reopen_event, once, and is whether there is one.
+@(private)
+reopen_register :: proc() -> bool {
+	if reopen_event == 0 {
+		reopen_event = register_event("reopen from the Dock")
+	}
+	return reopen_event != 0
+}
+
 // reopen_watch gives SDL's application delegate the reopen method, once.
 @(private)
 reopen_watch :: proc() {
-	if reopen_event != 0 {
+	if watched || !reopen_register() {
 		return
 	}
-	reopen_event = sdl3.RegisterEvents(1)
-	if reopen_event == 0 {
-		log.warn("ui/shell: no event type left for reopen; the window cannot be brought back from the Dock")
-		return
-	}
+	watched = true
 	app := intrinsics.objc_send(^NS.Application, NS.Application, "sharedApplication")
 	delegate := intrinsics.objc_send(NS.id, app, "delegate")
 	if delegate == nil {
@@ -67,10 +75,16 @@ should_handle_reopen :: proc "c" (self: NS.id, cmd: NS.SEL, app: NS.id, visible:
 	return false
 }
 
+// reopen_asked is whether e is the Dock asking the hidden window back.
+@(private)
+reopen_asked :: proc(e: ^sdl3.Event) -> bool {
+	return reopen_event != 0 && u32(e.type) == reopen_event
+}
+
 // reopened is whether e asks the hidden window back, shown and raised.
 @(private)
 reopened :: proc(w: ^Window, e: ^sdl3.Event) -> bool {
-	if reopen_event == 0 || u32(e.type) != reopen_event {
+	if !reopen_asked(e) {
 		return false
 	}
 	_ = sdl3.ShowWindow(w.window)
