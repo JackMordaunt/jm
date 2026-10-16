@@ -397,7 +397,7 @@ step :: proc(l: ^Loop) {
 
 	now := sdl3.GetTicksNS()
 	if ui.debug_take_toggles(&l.router) {
-		l.tray.open = !l.tray.open
+		ui.debug_tray_toggle(&l.tray)
 	}
 	debug := ui.debug_from_env() | ui.debug_tray_flags(&l.tray)
 	raw_dt := min(f32(now - l.last) / 1e9, MAX_DT)
@@ -499,7 +499,9 @@ step :: proc(l: ^Loop) {
 		&l.tray,
 		ui.frame_stats(&gtx, frame, ui_ms, build_ms, ops.frame_arena_used(arena), host),
 	)
-	l.wants_frame, l.frame_after = gtx.wants_frame || l.tray.open || flashing(w), gtx.frame_after
+	// The tray asks for none of its own: it rides the frames input, the
+	// app and the flash cause, so an idle window stays idle with it open.
+	l.wants_frame, l.frame_after = gtx.wants_frame || flashing(w), gtx.frame_after
 	// The cursor and clipboard, once the frame is done; a clipboard read
 	// queues its Paste, so a frame must follow to deliver it.
 	reqs := ui.router_requests(&l.router)

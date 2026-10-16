@@ -171,3 +171,55 @@ test_tray_collapses_to_its_title_and_sits_over_a_modal :: proc(t: ^testing.T) {
 	testing.expect(t, !p.tray.collapsed)
 	testing.expect_value(t, p.tray.rect.h, open_h)
 }
+
+@(test)
+test_debug_tray_asks_one_frame_when_it_changes_and_none_idle :: proc(t: ^testing.T) {
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		label(gtx, "page")
+	}
+	p: Probe
+	probe_init(&p, view, nil, {800, 600}, allocator = context.temp_allocator)
+	defer probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	// Opening draws the tray and asks one frame, for stats drawn with it;
+	// that frame asks nothing, nor does any idle frame after.
+	probe_key(&p, DEBUG_TOGGLE_KEY)
+	testing.expect(t, p.tray.open)
+	testing.expect(t, p.wants_frame)
+	for _ in 0 ..< 5 {
+		probe_frame(&p)
+		testing.expect(t, !p.wants_frame) // open and idle, the loop sleeps
+	}
+	testing.expect_value(t, p.tray.count, 7) // the graph moved only with the frames run
+
+	// A switch, the fold and a drag each ask the frame that shows them.
+	testing.expect(t, probe_click(&p, "Slow motion (quarter speed)"))
+	testing.expect(t, p.wants_frame)
+	probe_frame(&p)
+	testing.expect(t, !p.wants_frame)
+	testing.expect(t, probe_click(&p, "Collapse tray"))
+	testing.expect(t, p.tray.collapsed && p.wants_frame)
+	probe_frame(&p)
+	testing.expect(t, !p.wants_frame)
+	grip, ok := probe_center(&p, "Debug tray")
+	testing.expect(t, ok)
+	router_push(&p.router, {kind = .Move, pos = grip})
+	router_push(&p.router, {kind = .Press, pos = grip, button = .Left})
+	probe_frame(&p)
+	testing.expect(t, p.wants_frame)
+	router_push(&p.router, {kind = .Move, pos = grip - {50, 50}})
+	probe_frame(&p)
+	testing.expect(t, p.tray.dragging && p.wants_frame)
+	router_push(&p.router, {kind = .Release, pos = grip - {50, 50}, button = .Left})
+	probe_frame(&p)
+	testing.expect(t, !p.tray.dragging && p.wants_frame)
+	probe_frame(&p)
+	testing.expect(t, !p.wants_frame)
+
+	// Closing asks its one frame too, then settles.
+	probe_key(&p, DEBUG_TOGGLE_KEY)
+	testing.expect(t, !p.tray.open && p.wants_frame)
+	probe_frame(&p)
+	testing.expect(t, !p.wants_frame)
+}

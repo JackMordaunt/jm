@@ -131,7 +131,7 @@ probe_destroy :: proc(p: ^Probe) {
 // record the ui, flatten it. Afterwards probe_current is the new frame.
 probe_frame :: proc(p: ^Probe) {
 	if debug_take_toggles(&p.router) {
-		p.tray.open = !p.tray.open
+		debug_tray_toggle(&p.tray)
 	}
 	debug := p.debug | debug_tray_flags(&p.tray)
 	router_route(&p.router, &p.prev)

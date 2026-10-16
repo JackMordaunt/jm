@@ -73,12 +73,24 @@ Debug_Tray :: struct {
 	offset:      ops.Point, // where its title bar has dragged it from the bottom-right corner
 	dragging:    bool,
 	collapsed:   bool, // only the title bar shows, to see more of the ui
+	toggled:     bool, // opened or closed since it was last drawn: debug_tray asks one frame
 }
 
 // debug_tray_init gives t its opening toggles: what F11 turned on before
 // the tray existed.
 debug_tray_init :: proc(t: ^Debug_Tray) {
 	t.flags = DEBUG_TOGGLE
+}
+
+// debug_tray_toggle opens t when closed and closes it when open, as
+// DEBUG_TOGGLE_KEY does. The frame that draws the change asks for one
+// more, so the stats the tray shows are a frame's drawn with it. Beyond
+// that the tray never asks for frames: its stats and graph move with the
+// frames input, the app or the repaint flash cause, and an idle window
+// stays idle with it open, its graph flat.
+debug_tray_toggle :: proc(t: ^Debug_Tray) {
+	t.open = !t.open
+	t.toggled = true
 }
 
 // debug_tray_flags is what t adds to the environment's debug flags: its
@@ -285,6 +297,10 @@ TRAY_WIDTH :: f32(340)
 // so it neither outlines nor inspects itself. The frame loops call it
 // after the app's ui, under the display scale.
 debug_tray :: proc(gtx: ^Ctx, t: ^Debug_Tray) {
+	if t.toggled {
+		t.toggled = false
+		request_frame(gtx)
+	}
 	if !t.open {
 		return
 	}
