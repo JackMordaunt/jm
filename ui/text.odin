@@ -23,6 +23,16 @@ Shaper :: struct {
 	// shape_text is optional: without it, shape_text builds one
 	// left-to-right run from shape (see shaped.odin).
 	shape_text: proc(data: rawptr, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> Shaped_Text,
+	// tick is optional: a frame loop calls it once a frame, so a shaper
+	// that keeps shaped text across frames knows when one has passed.
+	tick:       proc(data: rawptr),
+}
+
+// shaper_tick tells s a frame has passed; see Shaper.tick.
+shaper_tick :: proc(s: Shaper) {
+	if s.tick != nil {
+		s.tick(s.data)
+	}
 }
 
 shape :: proc(s: Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ops.Glyph_Run {

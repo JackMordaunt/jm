@@ -36,12 +36,26 @@ Memory: faces are parsed once per Font_Id and live until destroy. Each
 font asked for gets a kb context with its fallbacks pushed under it, kept
 until the fallbacks change. A shape call allocates only what it returns.
 
-Threads: a Shaper is not thread-safe.
+Cache: a paragraph is shaped once and its glyphs, runs and breaks kept,
+keyed by the text, the font and the size, which is all kb reads: wrap
+width is ui.paragraph_from_shaped's, a later pass over the shaped text,
+so one shaping serves every width. The caller's copy is made from its
+allocator, so what it gets back lives as long as before. Call tick once
+a frame: an entry not used for KEEP_FRAMES whole frames is dropped at the
+next tick, and when the cache passes budget it drops its least recently
+used half, so a list that scrolls holds a bounded amount. A change of
+fallbacks clears it, as does clear_cache. hits and misses count lookups.
+
+Threads: a Shaper is not thread-safe; ui/shell shapes on the main thread
+only, its compositor's workers draw glyph ids.
 */
 package shape
 
+import "core:hash/xxhash"
 import "core:mem"
 import "core:os"
+import "core:slice"
+import "core:strings"
 import "jm:ui/ops"
 import "jm:ui"
 import "jm:ui/kb"
@@ -60,7 +74,49 @@ Shaper :: struct {
 	contexts:  map[ops.Font_Id]^kb.Shape_Context,
 	scratch:   [dynamic]ui.Shaped_Glyph, // text under construction, reused
 	runs:      [dynamic]ui.Shaped_Run,
+	breaks:    [dynamic]ui.Text_Break,
 	allocator: ^mem.Allocator, // boxed: kb keeps a pointer to it
+	cache:     map[Cache_Key]^Entry, // paragraphs shaped before, see the package doc
+	bytes:     int, // what cache's entries hold
+	budget:    int, // bytes cache may hold before it drops half; CACHE_BUDGET from init
+	frame:     u64, // ticks so far
+	seq:       u64, // cache uses so far, so the least recent is known
+	hits:      int, // shape_text calls answered from cache
+	misses:    int, // and those that shaped
+}
+
+// KEEP_FRAMES is how many whole frames a shaped paragraph outlives its
+// last use: a label that leaves the view and is back within that many
+// ticks is not shaped again; one away longer is dropped at the next tick.
+KEEP_FRAMES :: 2
+
+// CACHE_BUDGET is what init sets budget to, 16 MiB: a window of some three
+// thousand labels holds 4 MiB (leita's, its debug tray open, 2026-10-16),
+// so the budget is the bound for a frame loop that never ticks, not a
+// trim a window meets.
+CACHE_BUDGET :: 16 << 20
+
+// Cache_Key names a shaping: the text's hash with the font and size that
+// shaped it. The entry keeps the text, compared on every hit, so two
+// texts of one hash never share glyphs.
+@(private)
+Cache_Key :: struct {
+	font: ops.Font_Id,
+	size: u32, // the f32's bits
+	hash: u64,
+}
+
+// Entry is one shaped paragraph the cache owns, with when it was last
+// used: the tick and the order among uses.
+@(private)
+Entry :: struct {
+	text:   string,
+	rtl:    bool,
+	glyphs: []ui.Shaped_Glyph,
+	runs:   []ui.Shaped_Run,
+	breaks: []ui.Text_Break,
+	frame:  u64,
+	seq:    u64,
 }
 
 // Face is a parsed font file. ok is false when the file could not be read
@@ -83,6 +139,9 @@ init :: proc(s: ^Shaper, allocator := context.allocator) {
 	s.fallbacks = make([dynamic]ops.Font_Id, allocator)
 	s.scratch = make([dynamic]ui.Shaped_Glyph, allocator)
 	s.runs = make([dynamic]ui.Shaped_Run, allocator)
+	s.breaks = make([dynamic]ui.Text_Break, allocator)
+	s.cache = make(map[Cache_Key]^Entry, allocator)
+	s.budget = CACHE_BUDGET
 }
 
 // destroy releases every face and kb's context.
@@ -91,6 +150,9 @@ destroy :: proc(s: ^Shaper) {
 		return
 	}
 	a := s.allocator^
+	clear_cache(s)
+	delete(s.cache)
+	delete(s.breaks)
 	drop_contexts(s)
 	for _, f in s.faces {
 		if f.ok {
@@ -123,9 +185,11 @@ set_fallbacks :: proc(s: ^Shaper, fonts: []ops.Font_Id) {
 	append(&s.fallbacks, ..fonts)
 }
 
-// drop_contexts destroys every context, to be made again on next use.
+// drop_contexts destroys every context, to be made again on next use, and
+// with them what was shaped through them.
 @(private)
 drop_contexts :: proc(s: ^Shaper) {
+	clear_cache(s)
 	for _, c in s.contexts {
 		if c != nil {
 			kb.DestroyShapeContext(c)
@@ -210,18 +274,41 @@ shape :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, allocator:
 // ui.paragraph_layout: kb's runs with their directions, the paragraph's
 // direction, and kb's grapheme and line breaks, each glyph in the font it
 // came from. Text is horizontal: a glyph's vertical advance is dropped. An
-// unknown or unreadable font yields no glyphs, runs or breaks.
+// unknown or unreadable font yields no glyphs, runs or breaks. A paragraph
+// shaped before, in the same font at the same size, comes from the cache.
 shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, allocator: mem.Allocator) -> ui.Shaped_Text {
 	st := ui.Shaped_Text{font = font, size = size}
-	c := context_for(s, font)
-	if c == nil || len(text) == 0 {
+	if len(text) == 0 {
 		return st
 	}
+	key := Cache_Key{font, transmute(u32)size, xxhash.XXH3_64(transmute([]u8)text)}
+	if e := lookup(s, key, text); e != nil {
+		s.hits += 1
+		return copy_out(e, st, allocator)
+	}
+	c := context_for(s, font)
+	if c == nil {
+		return st
+	}
+	s.misses += 1
+	rtl, ok := shape_runs(s, c, font, size, text)
+	if !ok {
+		return st
+	}
+	collect_breaks(s, c)
+	return copy_out(store(s, key, text, rtl), st, allocator)
+}
+
+// shape_runs shapes text through c into s.scratch and s.runs, in logical
+// order, and reports the paragraph's direction; ok is false when kb
+// could not shape it.
+@(private)
+shape_runs :: proc(s: ^Shaper, c: ^kb.Shape_Context, font: ops.Font_Id, size: f32, text: string) -> (rtl, ok: bool) {
 	kb.ShapeBegin(c, .Dont_Know, .Dont_Know)
 	kb.ShapeUtf8(c, text, .Source_Index)
 	kb.ShapeEnd(c)
 	if kb.ShapeError(c) != .None {
-		return st
+		return false, false
 	}
 
 	clear(&s.scratch)
@@ -232,7 +319,7 @@ shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, alloc
 			break
 		}
 		if len(s.runs) == 0 {
-			st.rtl = r.paragraph_direction == .RTL
+			rtl = r.paragraph_direction == .RTL
 		}
 		id, f, known := face_of(s, r.font)
 		if !known {
@@ -250,11 +337,11 @@ shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, alloc
 		if len(s.scratch) == first {
 			continue
 		}
-		rtl := r.direction == .RTL
-		if rtl {
+		run_rtl := r.direction == .RTL
+		if run_rtl {
 			reverse(s.scratch[first:]) // kb mirrored it; clusters want logical order
 		}
-		append(&s.runs, ui.Shaped_Run{first = first, last = len(s.scratch), rtl = rtl})
+		append(&s.runs, ui.Shaped_Run{first = first, last = len(s.scratch), rtl = run_rtl})
 	}
 	merge_clusters(s.scratch[:])
 	for &r, i in s.runs {
@@ -264,8 +351,14 @@ shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, alloc
 	if len(s.runs) > 0 {
 		s.runs[0].start = 0
 	}
+	return rtl, true
+}
 
-	breaks := make([dynamic]ui.Text_Break, 0, len(text), allocator)
+// collect_breaks gathers the breaks of the text c last shaped into
+// s.breaks.
+@(private)
+collect_breaks :: proc(s: ^Shaper, c: ^kb.Shape_Context) {
+	clear(&s.breaks)
 	cp: kb.Shape_Codepoint
 	for i: i32 = 0; kb.ShapeGetShapeCodepoint(c, i, &cp); i += 1 {
 		kinds: ui.Break_Kinds
@@ -282,15 +375,140 @@ shape_text :: proc(s: ^Shaper, font: ops.Font_Id, size: f32, text: string, alloc
 			kinds += {.Word}
 		}
 		if kinds != {} {
-			append(&breaks, ui.Text_Break{int(cp.user_id), kinds})
+			append(&s.breaks, ui.Text_Break{int(cp.user_id), kinds})
 		}
 	}
-	st.breaks = breaks[:]
-	st.glyphs = make([]ui.Shaped_Glyph, len(s.scratch), allocator)
-	copy(st.glyphs, s.scratch[:])
-	st.runs = make([]ui.Shaped_Run, len(s.runs), allocator)
-	copy(st.runs, s.runs[:])
+}
+
+// lookup is the cached shaping of text under key, marked used now; nil
+// when there is none. An entry of the same hash but another text goes,
+// so its key is free for the text asked for.
+@(private)
+lookup :: proc(s: ^Shaper, key: Cache_Key, text: string) -> ^Entry {
+	e, ok := s.cache[key]
+	if !ok {
+		return nil
+	}
+	if e.text != text {
+		evict(s, key)
+		return nil
+	}
+	touch(s, e)
+	return e
+}
+
+// store keeps what shape_runs and collect_breaks left in s as text's
+// shaping under key, trimming the cache when it passes its budget.
+@(private)
+store :: proc(s: ^Shaper, key: Cache_Key, text: string, rtl: bool) -> ^Entry {
+	a := s.allocator^
+	e := new(Entry, a)
+	e.text = strings.clone(text, a)
+	e.rtl = rtl
+	e.glyphs = slice.clone(s.scratch[:], a)
+	e.runs = slice.clone(s.runs[:], a)
+	e.breaks = slice.clone(s.breaks[:], a)
+	touch(s, e)
+	s.cache[key] = e
+	s.bytes += entry_bytes(e)
+	if s.bytes > s.budget {
+		trim(s)
+	}
+	return e
+}
+
+@(private)
+touch :: proc(s: ^Shaper, e: ^Entry) {
+	s.seq += 1
+	e.seq = s.seq
+	e.frame = s.frame
+}
+
+@(private)
+entry_bytes :: proc(e: ^Entry) -> int {
+	return size_of(Entry) + len(e.text) + len(e.glyphs) * size_of(ui.Shaped_Glyph) + len(e.runs) * size_of(ui.Shaped_Run) + len(e.breaks) * size_of(ui.Text_Break)
+}
+
+// copy_out is e as st for the caller, its slices from allocator.
+@(private)
+copy_out :: proc(e: ^Entry, st: ui.Shaped_Text, allocator: mem.Allocator) -> ui.Shaped_Text {
+	st := st
+	st.rtl = e.rtl
+	st.glyphs = slice.clone(e.glyphs, allocator)
+	st.runs = slice.clone(e.runs, allocator)
+	st.breaks = slice.clone(e.breaks, allocator)
 	return st
+}
+
+// tick ends a frame: an entry not used in the last KEEP_FRAMES whole
+// frames is dropped.
+tick :: proc(s: ^Shaper) {
+	s.frame += 1
+	if s.frame <= KEEP_FRAMES {
+		return
+	}
+	stale := make([dynamic]Cache_Key, context.temp_allocator)
+	for key, e in s.cache {
+		if e.frame < s.frame - KEEP_FRAMES {
+			append(&stale, key)
+		}
+	}
+	for key in stale {
+		evict(s, key)
+	}
+}
+
+// trim drops the least recently used half of the cache's entries.
+@(private)
+trim :: proc(s: ^Shaper) {
+	seqs := make([]u64, len(s.cache), context.temp_allocator)
+	i := 0
+	for _, e in s.cache {
+		seqs[i] = e.seq
+		i += 1
+	}
+	slice.sort(seqs)
+	cutoff := seqs[len(seqs) / 2]
+	stale := make([dynamic]Cache_Key, context.temp_allocator)
+	for key, e in s.cache {
+		if e.seq < cutoff {
+			append(&stale, key)
+		}
+	}
+	for key in stale {
+		evict(s, key)
+	}
+}
+
+// clear_cache drops every shaped paragraph, to be shaped again on next
+// use: for when the faces behind the font ids change.
+clear_cache :: proc(s: ^Shaper) {
+	for _, e in s.cache {
+		free_entry(s, e)
+	}
+	clear(&s.cache)
+	s.bytes = 0
+}
+
+@(private)
+evict :: proc(s: ^Shaper, key: Cache_Key) {
+	e, ok := s.cache[key]
+	if !ok {
+		return
+	}
+	s.bytes -= entry_bytes(e)
+	free_entry(s, e)
+	delete_key(&s.cache, key)
+}
+
+@(private)
+free_entry :: proc(s: ^Shaper, e: ^Entry) {
+	a := s.allocator^
+	delete(e.text, a)
+	delete(e.glyphs, a)
+	delete(e.runs, a)
+	delete(e.breaks, a)
+	free(e, a)
 }
 
 // merge_clusters lowers each glyph's cluster to the smallest that follows

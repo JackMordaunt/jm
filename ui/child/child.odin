@@ -110,6 +110,7 @@ run :: proc(app: App) {
 		arena := &arenas[n % 2]
 		ops.frame_arena_reset(arena)
 		allocator := ops.frame_arena_allocator(arena)
+		ui.shaper_tick(shaper)
 
 		payload, ok := ipc.read_frame(os.stdin, allocator)
 		if !ok {

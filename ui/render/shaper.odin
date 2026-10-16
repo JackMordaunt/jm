@@ -26,12 +26,18 @@ SHAPER_ENV :: "JM_UI_SHAPER"
 shaper :: proc(r: ^Renderer, fonts: []ops.Font_Ref, fallbacks: []ops.Font_Id = nil) -> ui.Shaper {
 	r.font_refs = fonts
 	r.text.refs = fonts
+	shape.clear_cache(&r.text) // the ids may name other faces now
 	shape.set_fallbacks(&r.text, fallbacks)
 	buf: [64]u8
 	if os.get_env(buf[:], SHAPER_ENV) == "blend2d" {
 		return {data = r, shape = shape_blend2d, metrics = metrics}
 	}
-	return {data = r, shape = shape_kb, metrics = metrics, shape_text = shape_text_kb}
+	return {data = r, shape = shape_kb, metrics = metrics, shape_text = shape_text_kb, tick = tick_kb}
+}
+
+@(private)
+tick_kb :: proc(data: rawptr) {
+	shape.tick(&(^Renderer)(data).text)
 }
 
 @(private)
