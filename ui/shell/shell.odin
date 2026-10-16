@@ -287,6 +287,11 @@ Loop :: struct {
 set_hints :: proc() {
 	sdl3.SetHint(sdl3.HINT_MAC_SCROLL_MOMENTUM, "1")
 	sdl3.SetHint(sdl3.HINT_IME_IMPLEMENTED_UI, "composition")
+	// SDL quits as its last window asks to close (SDL_windowevents.c). On macOS the
+	// window hides instead (close_darwin.odin), and Cmd+Q alone quits.
+	when ODIN_OS == .Darwin {
+		sdl3.SetHint(sdl3.HINT_QUIT_ON_LAST_WINDOW_CLOSE, "0")
+	}
 }
 
 // run opens the window and loops until it is closed, Escape is pressed
@@ -594,6 +599,7 @@ open :: proc(w: ^Window, app: App) -> bool {
 	if app.min_width > 0 || app.min_height > 0 {
 		_ = sdl3.SetWindowMinimumSize(w.window, i32(app.min_width), i32(app.min_height))
 	}
+	reopen_watch()
 	w.renderer = sdl3.CreateRenderer(w.window, nil)
 	if w.renderer == nil {
 		fmt.eprintln("shell: renderer:", sdl3.GetError())
@@ -913,11 +919,19 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			sink(user, take_pick(&e, allocator))
 			continue
 		}
+		if reopened(w, &e) {
+			continue
+		}
 		// Every SDL event starts with the common header: ns since SDL_Init.
 		at := f64(e.common.timestamp) / 1e9 //review:ignore history-coupled-file host_sink forwards each Raw_Event whole, time with it
 		#partial switch e.type {
-		case .QUIT, .WINDOW_CLOSE_REQUESTED:
+		case .QUIT:
 			return false
+		case .WINDOW_CLOSE_REQUESTED:
+			// Quit, or on macOS hide and stay for the Dock (close_darwin.odin).
+			if !close_window(w) {
+				return false
+			}
 		case .WINDOW_PIXEL_SIZE_CHANGED, .WINDOW_RESIZED, .WINDOW_DISPLAY_SCALE_CHANGED:
 			if !resize(w) {
 				return false
