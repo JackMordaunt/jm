@@ -15,6 +15,11 @@ just  := quote(just_executable())
 libpq_link := if os() == "macos" { `d="$(brew --prefix libpq 2>/dev/null)/lib"; [ -d "$d" ] && echo "-L$d" || true` } else { "" }
 linkflags := env("LINKFLAGS", libpq_link)
 link := if linkflags == "" { "" } else { "-extra-linker-flags:\"" + linkflags + "\"" }
+# Every native library here is built for macOS 11.0, the oldest Odin targets,
+# so a program built with -minimum-os-version:11.0 links them without ld
+# warning that an object was built for a newer macOS. cmake and cc both read
+# it; other systems ignore it.
+export MACOSX_DEPLOYMENT_TARGET := "11.0"
 
 # `just` alone lists the recipes.
 default:
@@ -160,7 +165,7 @@ _dirs kind:
 # and touched so the recipe's staleness check keeps it. A library whose
 # inputs differ builds here as usual. Compile flags are not compared:
 # delete the copied lib after changing one.
-native_libs := "sqlite3:sqlite3/vendor zstd:zstd/vendor wasm:wasm/vendor pg_query:pg_query/vendor ui/kb:ui/kb/vendor ui/blend2d:=blend2d_rev,asmjit_rev git:=libgit2_rev ui/accesskit:=accesskit_ver,accesskit_sha"
+native_libs := "sqlite3:sqlite3/vendor zstd:zstd/vendor wasm:wasm/vendor pg_query:pg_query/vendor ui/kb:ui/kb/vendor ui/blend2d:=blend2d_rev,asmjit_rev git:=libgit2_rev ui/accesskit:=accesskit_ver,accesskit_sha ui/shell:=sdl3_rev"
 
 [private]
 _worktree-libs:
@@ -211,7 +216,7 @@ fetch dir url rev:
 # Remove build/, every package's compiled C library and the kits' pages
 [group('general')]
 clean:
-    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib ui/accesskit/lib git/lib ui/kb/lib tools/*/kit/index.html
+    rm -rf build sqlite3/lib wasm/lib pg_query/lib ui/blend2d/lib ui/accesskit/lib git/lib ui/kb/lib ui/shell/lib tools/*/kit/index.html
 
 # A Windows root starts with its drive letter, which a file URL puts after a slash.
 root_url := if root =~ '^/' { "file://" + root } else { "file:///" + root }
@@ -730,9 +735,37 @@ sdl3:
     @cp "$({{odin}} root)/vendor/sdl3/SDL3.dll" build/debug/
     @cp ui/accesskit/lib/accesskit.dll build/debug/ 2>/dev/null || true
 
-# Nothing to do: SDL3 is a system library off Windows
+# vendor:sdl3 names system:SDL3 off Windows. Linux finds it in a system lib
+# directory, from a package or built there; macOS has none, so the shell
+# links a static one built here into ui/shell/lib, at the release the binding
+# in the Odin toolchain is generated from (3.4.2), and a program then starts
+# on a Mac without Homebrew. A static SDL3 needs Apple's frameworks on the
+# link line: sdl3.pc comes along, and its Libs line names them, for a
+# program's justfile to copy (leita's does). Odin appends
+# -L/opt/homebrew/lib itself, before any -L a program adds, so where Homebrew's
+# dylib exists ld takes it for -lSDL3: a program links the archive by path with
+# -force_load and drops the unused dylib with -dead_strip_dylibs.
+sdl3_rev := "683181b47cfabd293e3ea409f838915b8297a4fd"
+sdl3_lib := "ui/shell/lib/libSDL3.a"
+
+# Compile SDL3 into ui/shell/lib if it is missing
 [group('ui')]
-[unix]
+[macos]
+sdl3: _worktree-libs
+    @mkdir -p ui/shell/lib build
+    @if [ ! -f {{sdl3_lib}} ]; then \
+        {{just}} fetch build/src/sdl3 https://github.com/libsdl-org/SDL {{sdl3_rev}} || exit 1; \
+        echo "cmake sdl3 -> {{sdl3_lib}}"; \
+        cmake --fresh -S build/src/sdl3 -B build/sdl3 -DCMAKE_BUILD_TYPE=Release \
+            -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF > build/sdl3.log 2>&1 || exit 1; \
+        cmake --build build/sdl3 --parallel >> build/sdl3.log 2>&1 || exit 1; \
+        cp build/sdl3/libSDL3.a {{sdl3_lib}}; \
+        cp build/sdl3/sdl3.pc ui/shell/lib/; \
+    fi
+
+# Nothing to do: SDL3 is a system library on Linux
+[group('ui')]
+[linux]
 sdl3:
 
 # examples/hot-counter/child, the real subprocess ui/shell's own test

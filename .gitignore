@@ -6,6 +6,7 @@ ui/blend2d/lib/
 ui/accesskit/lib/
 git/lib/
 ui/kb/lib/
+ui/shell/lib/
 # the kits' pages for people, bundled by just material-kit-page and fluent-kit-page
 tools/*/kit/index.html
 zstd/lib/
