@@ -155,6 +155,7 @@ Window :: struct {
 	keep_escape:  bool, // App.keep_escape: Escape is a key for the ui, not the end of the run
 	pacer:        Pacer, // holds animation-only frames to App.animation_hz
 	stirred:      bool, // the last poll took an event that was not a wake: the frame it fed was not an animation's alone
+	woke:         bool, // the last poll took a wake: a frame was asked for, with nothing to route
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -960,11 +961,13 @@ Event_Sink :: proc(user: rawptr, e: ui.Raw_Event)
 poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.allocator) -> bool {
 	d := w.density
 	w.stirred = false
+	w.woke = false
 	e: sdl3.Event
 	for sdl3.PollEvent(&e) {
 		// The shell's own types (event.odin): a wake asks only for the
 		// frame that follows the poll.
 		if woken(&e) {
+			w.woke = true
 			continue
 		}
 		w.stirred = true

@@ -20,9 +20,10 @@
 // writing each new build to its own path and republishing the pointer
 // rather than touching the path the running child was started from. It
 // polls for that at least every RESPAWN_POLL_S seconds even with an idle
-// child,
-// so a rebuild is never left waiting on the next real input event to be
-// seen.
+// child, so a rebuild is never left waiting on the next real input event
+// to be seen. The poll alone costs no frame: an idle host and its child
+// both sleep between polls, and a frame runs only for what asks one
+// (host_step_due).
 package shell
 
 import "base:runtime"
@@ -157,7 +158,10 @@ run_host :: proc(app: Host_App) {
 		if !poll(&l.w, host_sink, l, virtual.arena_allocator(&l.text)) {
 			break
 		}
-		host_step(l)
+		respawned := host_maybe_respawn(l)
+		if host_step_due(l.w.stirred || l.w.woke || len(l.events) > 0, l.wants_frame, respawned) {
+			host_step(l)
+		}
 		settle(&l.w)
 		after := RESPAWN_POLL_S
 		if l.wants_frame {
@@ -294,16 +298,28 @@ child_argv :: proc(app: ^Host_App, path: string, allocator := context.allocator)
 	return argv
 }
 
+// host_step_due reports whether the loop runs a frame now: when the poll
+// took something (an event, a wake, or an action assistive technology
+// sent), when the last frame asked for another, or when a child was just
+// spawned and has yet to be given its first input. A wait that only ran
+// out, the respawn poll's, is none of those, and the window and its
+// child stay asleep.
+@(private)
+host_step_due :: proc(polled, wants_frame, respawned: bool) -> bool {
+	return polled || wants_frame || respawned
+}
+
 // host_maybe_respawn kills and replaces l.child when resolve_child_path no
 // longer matches l.child_path — a rebuild landed, whether l.child was
 // still running or already dead. The old child's Router, Layout and Model
 // go with it; the new one starts cold, same as if the host itself had
-// just opened.
+// just opened. It reports whether it respawned, or tried to: a child that
+// failed to spawn is dead until the pointer changes again.
 @(private)
-host_maybe_respawn :: proc(l: ^Host_Loop) {
+host_maybe_respawn :: proc(l: ^Host_Loop) -> bool {
 	path, ok := resolve_child_path(&l.app, context.temp_allocator)
 	if !ok || path == l.child_path {
-		return
+		return false
 	}
 	ipc.kill(&l.child)
 	// The new child's router starts with the input method off, so the
@@ -319,12 +335,13 @@ host_maybe_respawn :: proc(l: ^Host_Loop) {
 	l.child_path = strings.clone(path)
 	if !sok {
 		l.child_dead = true
-		return
+		return true
 	}
 	l.child = child
 	l.child_dead = false
 	// The new child starts from the state the last one persisted.
 	l.restoring = len(l.saved) > 0
+	return true
 }
 
 // host_step sends this frame's polled events to the child, decodes its
@@ -336,7 +353,6 @@ host_step :: proc(l: ^Host_Loop) {
 	l.in_frame = true
 	defer l.in_frame = false
 	defer free_all(context.temp_allocator)
-	host_maybe_respawn(l)
 	if l.child_dead {
 		clear(&l.events) // nobody to send them to
 		virtual.arena_free_all(&l.text)

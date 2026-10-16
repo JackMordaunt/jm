@@ -139,6 +139,18 @@ test_maybe_respawn_follows_the_watch_pointer_file :: proc(t: ^testing.T) {
 	testing.expect(t, rok)
 }
 
+// test_the_host_steps_only_for_input_a_wanted_frame_or_a_new_child: a
+// wait that only ran out — the respawn poll's — runs no frame, so an idle
+// host and its child sleep between polls; what the poll brought, a frame
+// the last one asked for, or a child just spawned each run one.
+@(test)
+test_the_host_steps_only_for_input_a_wanted_frame_or_a_new_child :: proc(t: ^testing.T) {
+	testing.expect(t, !host_step_due(polled = false, wants_frame = false, respawned = false))
+	testing.expect(t, host_step_due(polled = true, wants_frame = false, respawned = false))
+	testing.expect(t, host_step_due(polled = false, wants_frame = true, respawned = false))
+	testing.expect(t, host_step_due(polled = false, wants_frame = false, respawned = true))
+}
+
 // test_the_childs_tray_asks_one_frame_when_toggled_and_none_open drives
 // the real child over the pipe, as the host does: the frame that opens
 // the tray asks one more, for stats drawn with it; after that an open
