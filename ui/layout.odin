@@ -1867,8 +1867,12 @@ scroll_bar_paint :: proc(gtx: ^Ctx, id: ops.Area_Id, axis: Axis, size: ops.Size,
 		m.idle += gtx.dt
 	}
 	m.offset = offset
-	shown := m.idle < SCROLL_BAR_LINGER || revealing(gtx)
-	if shown && !held {
+	// The linger times the fade out, so a bar it holds up asks for the
+	// frame that fade starts in. A bar Reveal holds up has no fade coming,
+	// and asks none: with the debug tray open the window still idles.
+	lingering := m.idle < SCROLL_BAR_LINGER
+	shown := lingering || revealing(gtx)
+	if lingering && !held {
 		request_frame(gtx, SCROLL_BAR_LINGER - m.idle)
 	}
 	vis := spring_update(&st.springs[1], gtx, shown ? 1 : 0, SCROLL_BAR_FADE)

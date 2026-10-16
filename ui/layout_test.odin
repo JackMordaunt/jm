@@ -1010,6 +1010,30 @@ test_scroll_box_bar_shows_at_once_when_revealing :: proc(t: ^testing.T) {
 	testing.expect(t, testutil.near(thumb.w, SCROLL_BAR_THIN))
 }
 
+// A revealed bar has no fade to time, so once its fade in settles it asks
+// for no frame: the debug tray, which reveals, leaves an idle window idle.
+@(test)
+test_a_revealed_scroll_bar_settles_and_asks_no_frame :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+	settled := false
+	for _ in 0 ..< 60 {
+		harness_frame(&h)
+		h.gtx.debug = {.Reveal}
+		h.gtx.dt = 0.05
+		scroll_frame(&h)
+		if !h.gtx.wants_frame {
+			settled = true
+			break
+		}
+	}
+	testing.expect(t, settled) // the fade in ends, and nothing asks on
+	w := h.scene.ops[index_of(&h.scene, ops.Push_Clip)].(ops.Push_Clip).shape.(ops.Rect).w
+	_, ok := thumb_of(&h, w - SCROLL_BAR_THICKNESS - SCROLL_BAR_INSET)
+	testing.expect(t, ok) // and the bar is still up
+}
+
 @(test)
 test_bounds_flag_outlines_each_widget :: proc(t: ^testing.T) {
 	h: Harness
