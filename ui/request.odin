@@ -4,7 +4,7 @@ import "jm:ui/ops"
 
 // Requests are what a frame asks of the platform, beyond pixels: the
 // clipboard written or read, a URL opened, the input method turned on at
-// a caret or off. A widget makes one during layout; the Router
+// a caret or off, the window named. A widget makes one during layout; the Router
 // queues it, and whatever runs the frame (ui/shell's loop, a host over the
 // wire, the probe) drains the queue once the frame is done, with
 // router_requests then router_requests_clear. Gio calls these commands.
@@ -29,6 +29,7 @@ Request :: union {
 	Open_Url,
 	Text_Input,
 	Pick_Path,
+	Window_Title,
 }
 
 // Clipboard_Write puts data on the clipboard as mime.
@@ -77,6 +78,12 @@ Pick_Filter :: struct {
 // its scheme: a browser for http and https, a mail client for mailto.
 Open_Url :: struct {
 	url: string,
+}
+
+// Window_Title asks the platform to name the window title, in its title bar
+// and wherever else it lists windows.
+Window_Title :: struct {
+	title: string,
 }
 
 // Text_Input is what the focused area wants of the platform's input
@@ -169,6 +176,17 @@ open_url :: proc(gtx: ^Ctx, url: string) {
 		return
 	}
 	append(&r.requests, Open_Url{clone_string(url, r.allocator)})
+}
+
+// set_window_title asks the platform to name the window once the frame is
+// done, as its title bar shows it. Each call is one request, so a ui asks
+// when the name changes, not every frame; title is copied.
+set_window_title :: proc(gtx: ^Ctx, title: string) {
+	r := gtx.router
+	if r == nil {
+		return
+	}
+	append(&r.requests, Window_Title{clone_string(title, r.allocator)})
 }
 
 // pick_folder opens the platform's folder dialog once the frame is done.
@@ -386,5 +404,7 @@ free_request :: proc(r: ^Router, q: Request) {
 			delete(f.patterns, r.allocator)
 		}
 		delete(v.filters, r.allocator)
+	case Window_Title:
+		delete(v.title, r.allocator)
 	}
 }

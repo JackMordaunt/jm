@@ -182,7 +182,8 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 		name    = "report.pdf",
 		filters = filters,
 	}
-	p.requests_n = 6
+	p.requests_buf[6] = Window_Title{"Documents"}
+	p.requests_n = 7
 	sc_bytes := []byte{1, 2, 3}
 	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, platform = &p)
 	got: Reply_Platform
@@ -192,8 +193,9 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	testing.expect(t, got.changed)
 	testing.expect_value(t, got.cursor, ops.Cursor.Text)
 	reqs := reply_requests(&got)
-	testing.expect_value(t, len(reqs), 6)
-	if len(reqs) == 6 {
+	testing.expect_value(t, len(reqs), 7)
+	if len(reqs) == 7 {
+		testing.expect_value(t, reqs[6].(Window_Title).title, "Documents")
 		testing.expect_value(t, reqs[0].(Clipboard_Write).data, "copied")
 		testing.expect_value(t, reqs[1].(Clipboard_Read).mime, TEXT_MIME)
 		testing.expect_value(t, reqs[2].(Open_Url).url, "https://example.com/a?b=c")

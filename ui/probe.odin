@@ -45,6 +45,7 @@ Probe :: struct {
 	allocator:   mem.Allocator,
 	clipboard:   [dynamic]u8, // the fake system clipboard frames write and read
 	opened:      [dynamic]u8, // the last URL a frame asked to open
+	title:       [dynamic]u8, // the last name a frame gave the window
 	text_input:  Text_Input, // the last Text_Input a frame asked for
 	text_inputs: int, // how many Text_Inputs frames have asked for
 	picking:     Pick_Path, // the last path pick a frame asked for, until probe_pick answers it; its strings in picked_text, its filters in picked_filters
@@ -86,6 +87,7 @@ probe_init :: proc(
 	p.allocator = allocator
 	p.clipboard = make([dynamic]u8, allocator)
 	p.opened = make([dynamic]u8, allocator)
+	p.title = make([dynamic]u8, allocator)
 	p.picked_text = make([dynamic]u8, allocator)
 	p.picked_filters = make([dynamic]Pick_Filter, allocator)
 	p.persisted = make([dynamic]u8, allocator)
@@ -115,6 +117,7 @@ probe_destroy :: proc(p: ^Probe) {
 	ops.frame_arena_destroy(&p.arena)
 	delete(p.clipboard)
 	delete(p.opened)
+	delete(p.title)
 	delete(p.picked_text)
 	delete(p.picked_filters)
 	delete(p.persisted)
@@ -216,6 +219,9 @@ probe_platform :: proc(p: ^Probe) {
 			p.text_inputs += 1
 		case Pick_Path:
 			probe_keep_pick(p, v)
+		case Window_Title:
+			clear(&p.title)
+			append(&p.title, v.title)
 		}
 	}
 	router_requests_clear(&p.router)
@@ -231,6 +237,12 @@ probe_clipboard :: proc(p: ^Probe) -> string {
 // valid until the next frame that opens one.
 probe_opened_url :: proc(p: ^Probe) -> string {
 	return string(p.opened[:])
+}
+
+// probe_title is the last name a frame gave the window, "" if none; valid
+// until the next frame that names it.
+probe_title :: proc(p: ^Probe) -> string {
+	return string(p.title[:])
 }
 
 // probe_keep_pick holds q as the open pick, its strings copied into

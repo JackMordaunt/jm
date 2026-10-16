@@ -6,7 +6,8 @@ import "jm:ui/ops"
 
 // Board is a test ui: two focusable text areas, "a" over the left half
 // and "b" over the right, that copy "a says hi" on SHORTCUT+C, ask for
-// the clipboard on SHORTCUT+V, open a URL on SHORTCUT+O, and keep what a
+// the clipboard on SHORTCUT+V, open a URL on SHORTCUT+O, name the window on
+// SHORTCUT+T, and keep what a
 // Paste brings.
 @(private = "file")
 Board :: struct {
@@ -45,6 +46,8 @@ board :: proc(gtx: ^Ctx, user: rawptr) {
 					}
 				case .O:
 					open_url(gtx, "https://example.com/docs")
+				case .T:
+					set_window_title(gtx, "a's window")
 				case .V:
 					clipboard_read(gtx, id)
 					if b.both_read {
@@ -176,6 +179,22 @@ test_open_url_reaches_the_platform_once_the_frame_is_done :: proc(t: ^testing.T)
 	probe_key(&p, .O, {SHORTCUT})
 	testing.expect_value(t, probe_opened_url(&p), "https://example.com/docs")
 	testing.expect_value(t, len(router_requests(&p.router)), 0) // carried out and forgotten
+}
+
+@(test)
+test_window_title_reaches_the_platform_once_the_frame_is_done :: proc(t: ^testing.T) {
+	b: Board
+	defer board_destroy(&b)
+	p: Probe
+	probe_init(&p, board, &b, {100, 50})
+	defer probe_destroy(&p)
+	probe_click(&p, "a")
+	testing.expect_value(t, probe_title(&p), "")
+	probe_key(&p, .T, {SHORTCUT})
+	testing.expect_value(t, probe_title(&p), "a's window")
+	testing.expect_value(t, len(router_requests(&p.router)), 0)
+	probe_frame(&p)
+	testing.expect_value(t, probe_title(&p), "a's window") // kept until renamed
 }
 
 @(test)

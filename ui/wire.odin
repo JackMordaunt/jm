@@ -294,6 +294,9 @@ encode_reply :: proc(
 					ops.put_str(&w, f.label)
 					ops.put_str(&w, f.patterns)
 				}
+			case Window_Title:
+				append(&w, 6)
+				ops.put_str(&w, v.title)
 			}
 		}
 	}
@@ -422,6 +425,8 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 					}
 				}
 				q = pp
+			case 6:
+				q = Window_Title{ops.get_str(&r) or_return}
 			case:
 				return false, 0, nil, false
 			}

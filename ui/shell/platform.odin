@@ -15,7 +15,8 @@ import "vendor:sdl3"
 // requests: a clipboard write goes to the system clipboard, and a read is
 // answered at once with a Paste pushed through sink for the next frame,
 // its text in allocator, which must last until sink's events are used.
-// A URL goes to SDL_OpenURL, the system's handler for its scheme.
+// A URL goes to SDL_OpenURL, the system's handler for its scheme, and a
+// title to the window's title bar.
 @(private)
 apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: []ui.Request, sink: Event_Sink, user: rawptr, allocator := context.temp_allocator) {
 	if changed {
@@ -48,6 +49,8 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 			apply_text_input(w, v)
 		case ui.Pick_Path:
 			show_pick(w, v, sink, user, allocator)
+		case ui.Window_Title:
+			_ = sdl3.SetWindowTitle(w.window, strings.clone_to_cstring(v.title, context.temp_allocator))
 		}
 	}
 }
