@@ -2,7 +2,9 @@
 Package http is a small client over vendor:curl. The foreign import block in
 vendor/curl/curl.odin links system libcurl on Linux and macOS and the bundled
 lib/libcurl.lib on Windows, so TLS, proxies and redirects come from whatever
-curl build is linked rather than from here.
+curl build is linked rather than from here. With -define:JM_HTTP_DLOPEN=true
+on Linux, libcurl is opened at run time instead (jm:http/libcurl), and every
+call returns .No_Library on a system without it.
 
 	res := must(http.get("https://api.example.com/items"))
 	if !res.ok { die("HTTP %d: %s", res.status, res.body) }
@@ -35,7 +37,7 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 
-import curl "vendor:curl"
+import curl "jm:http/libcurl"
 
 Response :: struct {
 	status:  int,
@@ -61,6 +63,9 @@ Error :: enum {
 	Cancelled,
 	// submit was refused because the client is shutting down.
 	Closed,
+	// libcurl could not be opened: built with JM_HTTP_DLOPEN on a system
+	// without it (libcurl package).
+	No_Library,
 }
 
 Opts :: struct {
@@ -197,14 +202,23 @@ Wire :: struct {
 @(private)
 global_once: sync.Once
 
-// global_init runs curl_global_init once per process, before the first
-// handle is made; sync.Once makes the first caller pay for it while the rest
-// wait.
+// global_loaded is whether libcurl could be opened, set under global_once.
 @(private)
-global_init :: proc() {
+global_loaded: bool
+
+// global_init opens libcurl where it is opened at run time and runs
+// curl_global_init, once per process, before the first handle is made;
+// sync.Once makes the first caller pay for it while the rest wait. It reports
+// whether libcurl is there; without it, no curl procedure may be called.
+@(private)
+global_init :: proc() -> bool {
 	sync.once_do(&global_once, proc() {
-		curl.global_init(curl.GLOBAL_DEFAULT)
+		global_loaded = curl.load()
+		if global_loaded {
+			curl.global_init(curl.GLOBAL_DEFAULT)
+		}
 	})
+	return global_loaded
 }
 
 // prepare makes an easy handle configured for spec, its bytes going to the
@@ -212,7 +226,9 @@ global_init :: proc() {
 @(private)
 prepare :: proc(spec: Spec, wire: ^Wire) -> ^curl.CURL {
 	runtime.DEFAULT_TEMP_ALLOCATOR_TEMP_GUARD()
-	global_init()
+	if !global_init() {
+		return nil
+	}
 	h := curl.easy_init()
 	if h == nil {
 		return nil
@@ -336,6 +352,9 @@ perform :: proc(
 	wire := Wire {
 		body = {ctx = context, w = body},
 		head = {ctx = context, w = headers_w},
+	}
+	if !global_init() {
+		return {}, .No_Library
 	}
 	h := prepare(spec, &wire)
 	if h == nil {
