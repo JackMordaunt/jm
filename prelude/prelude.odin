@@ -1,5 +1,14 @@
 /*
-Package prelude is the first import of every script.
+Package prelude provides an api to make scripting easier.
+
+Scripting is the act of writing a short program that prioritizes
+code terseness over code robustness. To that end, the prelude
+configures a context designed to help make writing those kinds of
+programs easier in Odin.
+
+In the following exmaple, observe typical scripting behaviors:
+- exit on operation error using `must`
+- exit with a label using `die`
 
 	main :: proc() {
 		context = prelude.init()
@@ -9,24 +18,9 @@ Package prelude is the first import of every script.
 		}
 	}
 
-init picks the allocator and the logger, opens the audit log, and returns the
-context the script should run under. finish runs at the end of the caller's
-scope through @(deferred_none), writes the exit line, and reports allocator
-issues when the debug allocator is in use.
-
-Allocation policy: a growing virtual arena is context.allocator. Scripts never
-free; the process exit reclaims everything. Set Options.debug (or ODIN_DEBUG,
-or the environment variable ODIN_SCRIPT_DEBUG=1) to swap in the debug
-allocator from jm:debug, which reports overflow, double free, and write after
-free at exit, and to wrap context.temp_allocator in a jm:debug Arena, so temp
-memory kept past a free_all reads as 0xDD (or traps under -sanitize:address)
-and a temp allocator that keeps growing is reported.
-
-Logging: one logfmt line per record in <log_dir>/<name>/<name>.log, plus a
-human line on stderr for warning and above. die appends one line to
-<log_dir>/deaths.log so every failed run across every script is auditable
-from a single file. log_dir defaults to os.user_log_dir()/odin, which the
-doc comments in core/os/user.odin place at:
+Logging: log lines write to <log_dir>/<name>/<name>.log and stderr.
+die appends one line to <log_dir>/deaths.log for auditing script runs.
+Logs are housed according to os.user_log_dir():
 
 	Linux:   ~/.local/state/odin
 	macOS:   ~/Library/Logs/odin
@@ -93,10 +87,12 @@ State :: struct {
 
 state: State
 
-// init prepares the allocator and logger and returns the context to run under.
+// init prepares a growing virtual allocator and logger and returns the context
+// to run under. Scripts never free.
+//
 // Call it once at the top of main as `context = prelude.init()`. finish runs
 // automatically when the calling scope ends.
-@(deferred_none=finish)
+@(deferred_none = finish)
 init :: proc(opts := Options{}, loc := #caller_location) -> runtime.Context {
 	assert(!state.initialised, "prelude.init called twice", loc)
 	state.initialised = true
@@ -104,10 +100,9 @@ init :: proc(opts := Options{}, loc := #caller_location) -> runtime.Context {
 	state.started = time.tick_now()
 	state.report_clean = opts.report_clean
 
-	name := opts.name
-	if name == "" {
-		name = default_name(state.internals)
-	}
+	platform_init()
+
+	name := opts.name != "" ? opts.name : default_name()
 	state.name = strings.clone(name, state.internals)
 
 	state.debugging = opts.debug.? or_else (ODIN_DEBUG || env_truthy("ODIN_SCRIPT_DEBUG"))
@@ -128,15 +123,12 @@ init :: proc(opts := Options{}, loc := #caller_location) -> runtime.Context {
 	state.file_level = opts.file_level.? or_else log.Level.Debug
 
 	if !opts.no_log_file {
-		open_log_file(opts)
+		open_log_file(opts.log_dir, opts.max_log_bytes)
 	}
-	platform_init()
 
 	ctx := context
 	ctx.allocator = state.allocator
-	if state.temp_wrapped {
-		ctx.temp_allocator = state.wrapped_temp
-	}
+	if state.temp_wrapped do ctx.temp_allocator = state.wrapped_temp
 	ctx.logger = log.Logger {
 		procedure    = logger_proc,
 		data         = &state,
@@ -169,7 +161,7 @@ die :: proc(format: string, args: ..any, loc := #caller_location) -> ! {
 		log.log(.Fatal, msg, location = loc)
 		record_death(msg, loc)
 	} else {
-		fmt.eprintf("%s: fatal: %s\n", default_name(context.temp_allocator), msg)
+		fmt.eprintf("%s: fatal: %s\n", default_name(), msg)
 	}
 	exit(1)
 }
@@ -196,7 +188,11 @@ must_ok :: proc(v: $T, ok: bool, loc := #caller_location) -> T {
 }
 
 @(require_results)
-must_err :: proc(v: $T, err: $E, loc := #caller_location) -> T where !intrinsics.type_is_boolean(E) {
+must_err :: proc(
+	v: $T,
+	err: $E,
+	loc := #caller_location,
+) -> T where !intrinsics.type_is_boolean(E) {
 	if failed(err) {
 		die("must: %v", err, loc = loc)
 	}
@@ -283,48 +279,36 @@ finish_with_code :: proc(code: int) {
 	}
 }
 
-default_name :: proc(allocator: mem.Allocator) -> string {
-	if len(os.args) == 0 {
-		return "odin-script"
-	}
-	stem := filepath.stem(os.args[0])
-	return strings.clone(stem, allocator)
+default_name :: proc() -> string {
+	return len(os.args) == 0 ? "odin-script" : filepath.stem(os.args[0])
 }
 
 env_truthy :: proc(key: string) -> bool {
-	v, found := os.lookup_env(key, context.temp_allocator)
-	if !found {
+	buf: [512]byte
+	env_value, env_value_err := os.lookup_env(buf[:], key)
+	if env_value_err != nil {
 		return false
 	}
-	switch strings.to_lower(v, context.temp_allocator) {
-	case "1", "true", "yes", "on":
-		return true
+	for truthy_term in ([]string{"1", "true", "yes", "on"}) {
+		if strings.equal_fold(env_value, truthy_term) do return true
 	}
 	return false
 }
 
 console_level_from_env :: proc() -> log.Level {
-	v, found := os.lookup_env("ODIN_LOG", context.temp_allocator)
-	if !found {
+	buf: [512]byte
+	env_value, env_value_err := os.lookup_env(buf[:], "ODIN_LOG")
+	if env_value_err != nil {
 		return .Warning
 	}
-	switch strings.to_lower(v, context.temp_allocator) {
-	case "debug":
-		return .Debug
-	case "info":
-		return .Info
-	case "warn", "warning":
-		return .Warning
-	case "error":
-		return .Error
-	case "fatal":
-		return .Fatal
+	for level in ([]log.Level{.Debug, .Info, .Warning, .Warning, .Error, .Fatal}) {
+		if strings.equal_fold(env_value, level_name(level)) do return level
 	}
 	return .Warning
 }
 
-open_log_file :: proc(opts: Options) {
-	root := opts.log_dir
+open_log_file :: proc(log_dir: string, log_max_bytes: i64) {
+	root := log_dir
 	if root == "" {
 		base, err := os.user_log_dir(context.temp_allocator)
 		if err != nil {
@@ -333,20 +317,21 @@ open_log_file :: proc(opts: Options) {
 		}
 		root = join(base, "odin")
 	}
+
 	dir := join(root, state.name)
-	if err := os.make_directory_all(dir); err != nil && !(err == os.General_Error.Exist && os.is_dir(dir)) {
+	if err := os.make_directory_all(dir);
+	   err != nil && !(err == os.General_Error.Exist && os.is_dir(dir)) {
 		fmt.eprintf("%s: warning: cannot create %s: %v\n", state.name, dir, err)
 		return
 	}
+
 	file_name := strings.concatenate({state.name, ".log"}, context.temp_allocator)
 	state.log_path = join(dir, file_name, state.internals)
 	state.deaths_path = join(root, "deaths.log", state.internals)
 
-	max_bytes := opts.max_log_bytes
-	if max_bytes <= 0 {
-		max_bytes = DEFAULT_MAX_LOG_BYTES
-	}
-	rotate(state.log_path, max_bytes)
+	log_max_bytes := log_max_bytes <= 0 ? DEFAULT_MAX_LOG_BYTES : log_max_bytes
+
+	rotate(state.log_path, log_max_bytes)
 
 	f, err := os.open(state.log_path, {.Write, .Append, .Create}, LOG_PERMISSIONS)
 	if err != nil {
@@ -361,12 +346,12 @@ LOG_PERMISSIONS :: os.Permissions_Read_All + {.Write_User}
 // rotate moves path to path.1 when it exceeds max_bytes. os.rename replaces an
 // existing target on every platform (core:os uses MOVEFILE_REPLACE_EXISTING on
 // Windows), so the previous .1 needs no separate removal.
-rotate :: proc(path: string, max_bytes: i64) {
-	info, err := os.stat(path, context.temp_allocator)
+rotate :: proc(path: string, max_bytes: i64, allocator := context.temp_allocator) {
+	info, err := os.stat(path, allocator)
 	if err != nil || info.size <= max_bytes {
 		return
 	}
-	old := strings.concatenate({path, ".1"}, context.temp_allocator)
+	old := strings.concatenate({path, ".1"}, allocator)
 	os.rename(path, old)
 }
 
@@ -384,7 +369,13 @@ record_death :: proc(msg: string, loc: runtime.Source_Code_Location) {
 	os.write_string(f, strings.to_string(b))
 }
 
-logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.Options, location := #caller_location) {
+logger_proc :: proc(
+	data: rawptr,
+	level: log.Level,
+	text: string,
+	options: log.Options,
+	location := #caller_location,
+) {
 	st := (^State)(data)
 	if st.log_file != nil && level >= st.file_level {
 		b := strings.builder_make(context.temp_allocator)
@@ -393,16 +384,36 @@ logger_proc :: proc(data: rawptr, level: log.Level, text: string, options: log.O
 	}
 	if level >= st.console_level {
 		if level >= .Error {
-			fmt.eprintf("%s: %s: %s:%d: %s\n", st.name, level_name(level), filepath.base(location.file_path), location.line, text)
+			fmt.eprintf(
+				"%s: %s: %s:%d: %s\n",
+				st.name,
+				level_name(level),
+				filepath.base(location.file_path),
+				location.line,
+				text,
+			)
 		} else {
 			fmt.eprintf("%s: %s: %s\n", st.name, level_name(level), text)
 		}
 	}
 }
 
-write_logfmt_line :: proc(b: ^strings.Builder, level: log.Level, text: string, loc: runtime.Source_Code_Location) {
+write_logfmt_line :: proc(
+	b: ^strings.Builder,
+	level: log.Level,
+	text: string,
+	loc: runtime.Source_Code_Location,
+) {
 	stamp, _ := time.time_to_rfc3339(time.now(), 0, false, context.temp_allocator)
-	fmt.sbprintf(b, "t=%s lvl=%s prog=%s loc=%s:%d ", stamp, level_name(level), state.name, filepath.base(loc.file_path), loc.line)
+	fmt.sbprintf(
+		b,
+		"t=%s lvl=%s prog=%s loc=%s:%d ",
+		stamp,
+		level_name(level),
+		state.name,
+		filepath.base(loc.file_path),
+		loc.line,
+	)
 	// Text that is already logfmt (event=... from this package) goes through as is.
 	if strings.has_prefix(text, "event=") {
 		strings.write_string(b, text)
