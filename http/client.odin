@@ -7,7 +7,7 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 
-import curl "vendor:curl"
+import curl "jm:http/libcurl"
 
 /*
 A Client runs requests on one I/O thread of its own, so a caller with a frame
@@ -98,7 +98,9 @@ Client :: struct {}
 // start makes a client and its I/O thread. allocator must be thread-safe:
 // submit allocates on the caller's thread and the I/O thread frees.
 start :: proc(allocator := context.allocator) -> (^Client, Error) {
-	global_init()
+	if !global_init() {
+		return nil, .No_Library
+	}
 	s := new(State, allocator)
 	s.allocator = allocator
 	s.logger = context.logger
