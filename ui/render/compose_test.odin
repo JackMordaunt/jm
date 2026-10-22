@@ -8,7 +8,6 @@ import "core:testing"
 
 import "jm:ui"
 import "jm:ui/base"
-import m3 "jm:ui/material"
 import bl "jm:ui/blend2d"
 
 @(private = "file")
@@ -359,7 +358,6 @@ when ODIN_OS == .Windows {
 @(private = "file")
 Widgets :: struct {
 	list: ui.List_State,
-	on:   bool,
 }
 
 @(private = "file")
@@ -370,13 +368,16 @@ widgets_ui :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	card := ui.box_open(gtx)
 	defer ui.close(&card)
 	ui.list(gtx, &w.list, 200, proc(gtx: ^ui.Ctx, i: int, user: rawptr) {
-		w := (^Widgets)(user)
 		r := ui.row_open(gtx, gap = 8, align = .Center)
 		defer ui.close(&r)
 		base.label(gtx, fmt.tprintf("Row %d", i))
-		m3.checkbox(gtx, &w.on)
+		if base.box(gtx, width = 18, height = 18) {
+			base.panel(gtx) // where a checkbox would sit
+		}
 		ui.fill_space(gtx)
-		m3.button(gtx, "Pick")
+		if base.panel(gtx) {
+			base.label(gtx, "Pick")
+		}
 	}, w)
 }
 
