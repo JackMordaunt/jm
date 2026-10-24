@@ -1,7 +1,9 @@
 package flow
 
 import "core:sync"
+import "core:thread"
 import "core:testing"
+import "core:time"
 
 // A binary tree flattened into indices: node i holds 2i+1 and 2i+2. Walking it is
 // the shape manage is for, since a worker only learns of a node by visiting its
@@ -234,15 +236,31 @@ Fan :: struct {
 	count:  int,
 	sum:    int,
 	queued: int, // children this worker's manager calls queued, seed not counted
+	queued_sum: int, // the sum of those children
 	found:  [dynamic]int,
 	stop:   int, // working this node ends the run; -1 for never
 }
 
+// Set once the node that stops the run has been worked. The other workers wait
+// for it, so the stop lands with the root's children still queued however the
+// scheduler orders the workers: left to run, a worker that gets node 1 late
+// finds the rest of the tree already worked.
+@(private = "file")
+fan_stopped: bool // atomic
+
 @(private = "file")
 fan_out :: proc(item: int, f: ^Fan) -> bool {
+	if f.stop >= 0 && item != 0 && item != f.stop {
+		// Bounded, so a broken manager fails the test instead of hanging it.
+		deadline := time.tick_add(time.tick_now(), 5 * time.Second)
+		for !sync.atomic_load(&fan_stopped) && time.tick_diff(time.tick_now(), deadline) > 0 {
+			thread.yield()
+		}
+	}
 	f.count += 1
 	f.sum += item
 	if item == f.stop {
+		sync.atomic_store(&fan_stopped, true)
 		return false
 	}
 	for c in FAN * item + 1 ..= FAN * item + FAN {
@@ -257,6 +275,7 @@ fan_out :: proc(item: int, f: ^Fan) -> bool {
 fan_hand_over :: proc(item: int, ok: bool, f: ^Fan, queue: ^[dynamic]int) -> bool {
 	for c in f.found {
 		append(queue, c)
+		f.queued_sum += c
 	}
 	f.queued += len(f.found)
 	clear(&f.found)
@@ -281,11 +300,12 @@ fan_release :: proc(f: []Fan) {
 }
 
 @(private = "file")
-fan_totals :: proc(f: []Fan) -> (count, sum, queued: int) {
+fan_totals :: proc(f: []Fan) -> (count, sum, queued, queued_sum: int) {
 	for s in f {
 		count += s.count
 		sum += s.sum
 		queued += s.queued
+		queued_sum += s.queued_sum
 	}
 	return
 }
@@ -321,7 +341,7 @@ test_manage_fans_out_to_every_node_once :: proc(t: ^testing.T) {
 	for _ in 0 ..< 10 {
 		f := fans(FAN_WORKERS)
 		manage([]int{0}, f, fan_out, fan_hand_over, discard_fan)
-		count, sum, queued := fan_totals(f)
+		count, sum, queued, _ := fan_totals(f)
 		fan_release(f)
 		testing.expect_value(t, count, FAN_NODES)
 		testing.expect_value(t, sum, FAN_NODES * (FAN_NODES - 1) / 2)
@@ -334,21 +354,20 @@ test_manage_fans_out_to_every_node_once :: proc(t: ^testing.T) {
 test_manage_discards_what_a_stopped_run_left_queued :: proc(t: ^testing.T) {
 	// Node 1 is among the root's first children, so the run ends with nearly the
 	// whole tree still to come and most of the root's children still queued.
+	sync.atomic_store(&fan_stopped, false)
 	f := fans(FAN_WORKERS, stop = 1)
 	defer fan_release(f)
 	manage([]int{0}, f, fan_out, fan_hand_over, discard_stopped)
-	count, sum, queued := fan_totals(f)
+	count, sum, queued, queued_sum := fan_totals(f)
 
 	// Every item queued, the seed with them, reached `work` or `discard`, and the
 	// sums show none reached both: an item worked and discarded would count twice
-	// while another went missing, and the sums would not agree.
+	// while another went missing, and the sums would not agree. Which nodes were
+	// worked, and so which were queued, depends on how the workers interleave:
+	// the sum to match is of the items queued, the seed with them.
 	discarded := sync.atomic_load(&stop_discards.count)
 	testing.expect_value(t, count + discarded, queued + 1)
-	all := 0
-	for i in 0 ..= queued {
-		all += i
-	}
-	testing.expect_value(t, sum + sync.atomic_load(&stop_discards.sum), all)
+	testing.expect_value(t, sum + sync.atomic_load(&stop_discards.sum), queued_sum)
 	testing.expect(t, count >= 2, "a run ended before working the seed and the node that stops it")
 	testing.expect(t, discarded > 0, "a run stopped early discarded nothing")
 	testing.expect(t, count < FAN_NODES, "a stopped run kept going")
