@@ -2,12 +2,14 @@ package libcurl
 
 import "core:c"
 import "core:dynlib"
+import "core:sync"
 
 import curl "vendor:curl"
 
 // Used only when DLOPEN is set.
 _ :: c
 _ :: dynlib
+_ :: sync
 _ :: curl
 
 when DLOPEN {
@@ -33,23 +35,35 @@ when DLOPEN {
 	multi_info_read: proc "c" (m: ^CURLM, queued: ^c.int) -> ^curl.Msg
 
 	// load opens libcurl under the first of SONAMES the system has and finds
-	// every procedure above in it, reporting whether it did. It is not safe to
-	// call from two threads at once; jm:http calls it once, under a sync.Once.
-	// A library missing any procedure is closed again and the next tried, so
-	// either every procedure is set or none is called.
+	// every procedure above in it, reporting whether it did. The first call
+	// does that, whichever thread makes it, and the others wait for it and
+	// report the same: the procedures are written once, before any caller
+	// has been told they are there, and never again. A library missing any
+	// procedure is closed again and the next tried, so either every
+	// procedure is set or none is called.
 	load :: proc() -> bool {
-		for name in SONAMES {
-			lib, ok := dynlib.load_library(name)
-			if !ok {
-				continue
+		sync.once_do(&load_once, proc() {
+			for name in SONAMES {
+				lib, ok := dynlib.load_library(name)
+				if !ok {
+					continue
+				}
+				if bind(lib) {
+					loaded = true
+					return
+				}
+				dynlib.unload_library(lib)
 			}
-			if bind(lib) {
-				return true
-			}
-			dynlib.unload_library(lib)
-		}
-		return false
+		})
+		return loaded
 	}
+
+	@(private)
+	load_once: sync.Once
+
+	// loaded is whether load found libcurl, set under load_once.
+	@(private)
+	loaded: bool
 
 	@(private)
 	bind :: proc(lib: dynlib.Library) -> bool {
@@ -76,15 +90,19 @@ when DLOPEN {
 			{"curl_multi_cleanup", (^rawptr)(&multi_cleanup)},
 			{"curl_multi_info_read", (^rawptr)(&multi_info_read)},
 		}
-		for s in table {
-			p, found := dynlib.symbol_address(lib, s.name)
-			if !found {
-				for t in table {
-					t.addr^ = nil
-				}
+		// Find every procedure before setting any. A library missing one
+		// leaves the procedures as they were, since a thread may be calling
+		// them: clearing them was a segmentation fault for it.
+		found: [len(table)]rawptr
+		for s, i in table {
+			p, ok := dynlib.symbol_address(lib, s.name)
+			if !ok {
 				return false
 			}
-			s.addr^ = p
+			found[i] = p
+		}
+		for s, i in table {
+			s.addr^ = found[i]
 		}
 		return true
 	}
