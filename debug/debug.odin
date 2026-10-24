@@ -1033,6 +1033,7 @@ site_stats :: proc(da: ^Allocator, loc: runtime.Source_Code_Location) -> ^Site_S
 
 @(private)
 raise :: proc(da: ^Allocator, issue: Issue) {
+	context = unwrap_temp(context)
 	iss := issue
 	iss.id = len(da.issues) + 1
 	append(&da.issues, iss)
@@ -1409,6 +1410,7 @@ report :: proc(
 	loc := #caller_location,
 ) {
 	context.allocator = da.internals
+	context = unwrap_temp(context)
 	sync.guard(&da.mutex)
 	verify_all(da, "exit", loc)
 

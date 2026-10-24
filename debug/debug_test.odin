@@ -226,6 +226,29 @@ test_arena_allocation_inside_forbid_alloc_is_reported :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_an_issue_prints_with_the_temp_allocator_wrapped :: proc(t: ^testing.T) {
+	da: Allocator
+	setup(&da)
+	defer destroy(&da)
+
+	a: Arena
+	temp, ok := temp_init(&a, &da)
+	if !testing.expect(t, ok, "temp_init refused the thread's temp allocator") {
+		return
+	}
+	defer temp_destroy(&a)
+
+	context.temp_allocator = temp
+	context.allocator = allocator(&da)
+	p := new(int)
+	free(p)
+	// Printing the issue draws on the temp allocator while holding the
+	// allocator's lock; through the wrapper this second free never returned.
+	free(p)
+	testing.expect_value(t, kinds(&da), bit_set[Issue_Kind]{.Double_Free})
+}
+
+@(test)
 test_temp_wrapper_keeps_the_temp_guard_working :: proc(t: ^testing.T) {
 	da: Allocator
 	setup(&da)

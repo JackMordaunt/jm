@@ -174,6 +174,19 @@ temp_destroy :: proc(a: ^Arena) {
 @(private, thread_local)
 thread_temp: ^Arena
 
+// c with the runtime's own temp allocator in place of the wrapper. What prints
+// an issue holds the debug allocator's lock and draws on the temp allocator;
+// through the wrapper, which reports to that allocator, it would wait on its
+// own lock.
+@(private)
+unwrap_temp :: proc(c: runtime.Context) -> runtime.Context {
+	c := c
+	if c.temp_allocator.procedure == temp_proc {
+		c.temp_allocator.procedure = runtime.default_temp_allocator_proc
+	}
+	return c
+}
+
 @(private)
 temp_proc :: proc(
 	data: rawptr,
