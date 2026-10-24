@@ -109,7 +109,7 @@ url :: proc(s: ^Server, path: string, allocator := context.temp_allocator) -> st
 // the server.
 stop :: proc(s: ^Server) {
 	sync.lock(&s.mutex)
-	s.stopping = true
+	sync.atomic_store(&s.stopping, true)
 	for c in s.conns {
 		if !c.closed {
 			net.shutdown(c.socket, .Both)
