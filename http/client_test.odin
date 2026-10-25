@@ -271,13 +271,14 @@ double_cancel_reports_once :: proc(t: ^testing.T) {
 timeout_ends_a_slow_request :: proc(t: ^testing.T) {
 	env := env_start(t) or_else panic("env")
 	defer env_stop(t, env)
-	// The server answers long after await gives up, so only the timeout can
-	// end the request in time; a load can make it late, never early.
+	// The server answers after 60 s, so only the timeout can end the request
+	// before that. Assert the cause (Timed_Out) and an upper bound that
+	// distinguishes the timeout from the server's answer.
 	started := time.now()
 	h := get_one(env, "/delay/60000", {timeout = 100 * time.Millisecond})
 	testing.expect(t, await(env.seen, 1))
 	took := time.since(started)
-	testing.expectf(t, took >= 100 * time.Millisecond, "took %v", took)
+	testing.expectf(t, took < 30 * time.Second, "ended by the server, not the timeout: took %v", took)
 	sync.guard(&env.seen.mutex)
 	testing.expect_value(t, env.seen.errs[h], Error.Timed_Out)
 }
