@@ -81,3 +81,17 @@ app_dirs_exist :: proc(t: ^testing.T) {
 	testing.expect(t, strings.has_suffix(d, "jm-path-test"), "cache_dir must use the app name")
 	remove_all(d)
 }
+
+// Every test is seeded alike, so os.make_directory_temp hands two tests the
+// same name; temp_dir must not.
+@(test)
+temp_dirs_differ_under_one_seed :: proc(t: ^testing.T) {
+	a, ea := temp_dir("jm-path-same-", context.temp_allocator)
+	b, eb := temp_dir("jm-path-same-", context.temp_allocator)
+	defer remove_all(a)
+	defer remove_all(b)
+	testing.expect_value(t, ea, nil)
+	testing.expect_value(t, eb, nil)
+	testing.expect(t, a != b, "two fresh folders share a name")
+	testing.expect(t, is_dir(a) && is_dir(b), "both folders exist")
+}

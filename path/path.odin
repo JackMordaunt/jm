@@ -14,11 +14,14 @@ Pure helpers (expand, join, base, dir, ext, stem, same) never fail.
 */
 package path
 
+import "base:intrinsics"
 import "base:runtime"
+import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
+import "core:time"
 
 // Re-exports, so a script needs one import for path work.
 base     :: filepath.base
@@ -162,7 +165,50 @@ walk :: proc(root: string, allocator := context.allocator) -> ([]string, os.Erro
 // caller removes it with remove_all.
 temp_dir :: proc(prefix := "odin-", allocator := context.allocator) -> (string, os.Error) {
 	pattern := strings.concatenate({prefix, "*"}, context.temp_allocator)
-	return os.make_directory_temp("", pattern, allocator)
+	return make_directory_temp("", pattern, allocator)
+}
+
+@(private = "file")
+temp_counter: u64
+
+// make_directory_temp is os.make_directory_temp with names that cannot
+// collide inside one process. The last "*" of pattern (or its end) becomes
+// "<pid>-<n>"; a parent of "" is the system temp location.
+//
+// os.make_directory_temp draws its names from context.random_generator, and
+// the core:testing runner seeds that generator with one value for every
+// test. Tests that run at once then ask for the same names; on Windows the
+// loser of a race with a remove_all of the winner's folder is refused with
+// Permission_Denied (the name is delete-pending), not Exist.
+make_directory_temp :: proc(parent, pattern: string, allocator := context.allocator) -> (string, os.Error) {
+	ta := context.temp_allocator
+	root := parent
+	if root == "" {
+		terr: os.Error
+		root, terr = os.temp_directory(ta)
+		if terr != nil {
+			return "", terr
+		}
+	}
+	prefix, suffix := pattern, ""
+	if star := strings.last_index_byte(pattern, '*'); star >= 0 {
+		prefix, suffix = pattern[:star], pattern[star + 1:]
+	}
+	err: os.Error
+	for _ in 0 ..< 1000 {
+		n := intrinsics.atomic_add(&temp_counter, 1)
+		leaf := fmt.tprintf("%s%d-%d%s", prefix, os.get_pid(), n, suffix)
+		full := join(root, leaf, allocator = ta)
+		err = os.make_directory(full)
+		if err == nil {
+			return strings.clone(full, allocator), nil
+		}
+		if err != .Exist && err != .Permission_Denied {
+			return "", err
+		}
+		time.sleep(10 * time.Millisecond)
+	}
+	return "", err
 }
 
 // same reports whether two paths name the same location after cleaning. Case
