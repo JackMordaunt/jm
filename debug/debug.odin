@@ -1033,7 +1033,13 @@ site_stats :: proc(da: ^Allocator, loc: runtime.Source_Code_Location) -> ^Site_S
 
 @(private)
 raise :: proc(da: ^Allocator, issue: Issue) {
-	context = unwrap_temp(context)
+	// Diagnostics must neither re-enter the tracked allocator nor allocate in
+	// the wrapped temp arena's poisoned tail.
+	scratch: mem.Dynamic_Arena
+	mem.dynamic_arena_init(&scratch, da.internals, da.internals)
+	defer mem.dynamic_arena_destroy(&scratch)
+	context.temp_allocator = mem.dynamic_arena_allocator(&scratch)
+
 	iss := issue
 	iss.id = len(da.issues) + 1
 	append(&da.issues, iss)
@@ -1410,7 +1416,11 @@ report :: proc(
 	loc := #caller_location,
 ) {
 	context.allocator = da.internals
-	context = unwrap_temp(context)
+	scratch: mem.Dynamic_Arena
+	mem.dynamic_arena_init(&scratch, da.internals, da.internals)
+	defer mem.dynamic_arena_destroy(&scratch)
+	context.temp_allocator = mem.dynamic_arena_allocator(&scratch)
+
 	sync.guard(&da.mutex)
 	verify_all(da, "exit", loc)
 

@@ -240,12 +240,23 @@ test_an_issue_prints_with_the_temp_allocator_wrapped :: proc(t: ^testing.T) {
 
 	context.temp_allocator = temp
 	context.allocator = allocator(&da)
+	kept := make([]byte, 32, context.temp_allocator)
+	for &b in kept {
+		b = 'x'
+	}
+	used := a.temp.total_used
 	p := new(int)
 	free(p)
 	// Printing the issue draws on the temp allocator while holding the
 	// allocator's lock; through the wrapper this second free never returned.
 	free(p)
+	report(&da)
+
 	testing.expect_value(t, kinds(&da), bit_set[Issue_Kind]{.Double_Free})
+	testing.expect_value(t, a.temp.total_used, used)
+	for b in kept {
+		testing.expect_value(t, b, u8('x'))
+	}
 }
 
 @(test)
