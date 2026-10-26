@@ -1,5 +1,6 @@
 package path
 
+import "core:math/rand"
 import "core:os"
 import "core:strings"
 import "core:testing"
@@ -80,4 +81,40 @@ app_dirs_exist :: proc(t: ^testing.T) {
 	testing.expect(t, is_dir(d))
 	testing.expect(t, strings.has_suffix(d, "jm-path-test"), "cache_dir must use the app name")
 	remove_all(d)
+}
+
+// Resetting the random seed must not make temp_dir reuse a removed directory's name.
+@(test)
+temp_dirs_differ_under_one_seed :: proc(t: ^testing.T) {
+	rand.reset(t.seed)
+	a, ea := temp_dir("jm-path-same-", context.temp_allocator)
+	if !testing.expect_value(t, ea, nil) {
+		return
+	}
+	testing.expect_value(t, remove_all(a), nil)
+	rand.reset(t.seed)
+	b, eb := temp_dir("jm-path-same-", context.temp_allocator)
+	defer remove_all(b)
+
+	testing.expect_value(t, eb, nil)
+	testing.expect(t, a != b, "two fresh folders share a name")
+	testing.expect(t, is_dir(b), "the second folder exists")
+}
+
+@(test)
+temp_directory_preserves_pattern_and_parent :: proc(t: ^testing.T) {
+	root, err := temp_dir("jm-path-pattern-", context.temp_allocator)
+	if !testing.expect_value(t, err, nil) {
+		return
+	}
+	defer remove_all(root)
+
+	name, nerr := make_directory_temp(root, "before-*-after", context.temp_allocator)
+	testing.expect_value(t, nerr, nil)
+	testing.expect_value(t, dir(name), root)
+	testing.expect(t, strings.has_prefix(base(name), "before-"))
+	testing.expect(t, strings.has_suffix(base(name), "-after"))
+	testing.expect(t, is_dir(name))
+	_, invalid := make_directory_temp(root, "nested/name", context.temp_allocator)
+	testing.expect_value(t, invalid, os.Error(.Pattern_Has_Separator))
 }
