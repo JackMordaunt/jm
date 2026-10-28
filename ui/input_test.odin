@@ -886,3 +886,103 @@ test_expand_and_collapse_reach_only_the_area_named :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	testing.expect_value(t, a.expand, [2]int{0, 1})
 }
+
+// Lost_Focus is a page button, then a scope holding keep, gone and the
+// scope's entry. hide drops gone. ask, set for one frame, requests focus.
+// trap makes the scope a trap, so the page button is outside it.
+@(private = "file")
+Lost_Focus :: struct {
+	hide:  bool,
+	ask:   ops.Area_Id,
+	trap:  bool,
+	entry: ops.Area_Id,
+	bare:  bool, // no scope: the page button is the first stop
+}
+
+@(private = "file")
+lost_focus_view :: proc(gtx: ^Ctx, user: rawptr) {
+	m := (^Lost_Focus)(user)
+	area :: proc(gtx: ^Ctx, id: ops.Area_Id, name: string, x: f32) {
+		ops.input_area(
+			gtx.scene,
+			id,
+			ops.Rect{x, 0, 40, 20},
+			{.Press, .Release, .Key, .Focus, .Blur},
+		)
+		ops.tag(gtx.scene, id, name)
+	}
+	area(gtx, 1, "page", 0)
+	if !m.bare {
+		focus_scope_open(gtx, 50, trap = m.trap)
+	}
+	area(gtx, 2, "keep", 50)
+	if !m.hide {
+		area(gtx, 3, "gone", 100)
+	}
+	area(gtx, 4, "entry", 150)
+	if !m.bare {
+		focus_scope_close(gtx, m.entry)
+	}
+	if m.ask != 0 {
+		focus_request(gtx, m.ask)
+		m.ask = 0
+	}
+}
+
+// hide_gone clicks gone, then drops it. The frame that drops it still
+// routed against the one that drew it; the next route is what moves focus.
+@(private = "file")
+hide_gone :: proc(p: ^Probe, m: ^Lost_Focus) {
+	probe_click(p, "gone")
+	m.hide = true
+	probe_frame(p)
+	probe_frame(p)
+}
+
+// Dropping the focused area moves to its scope's entry, not the first
+// stop, and with no scope to the first stop.
+@(test)
+test_lost_focus_moves_to_the_scope_entry_or_the_first_stop :: proc(t: ^testing.T) {
+	m := Lost_Focus {
+		entry = 4,
+	}
+	p: Probe
+	probe_init(&p, lost_focus_view, &m, {300, 80})
+	defer probe_destroy(&p)
+	hide_gone(&p, &m)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(4)) // the scope's entry, not page
+
+	m = Lost_Focus {
+		bare = true,
+	}
+	probe_destroy(&p)
+	probe_init(&p, lost_focus_view, &m, {300, 80})
+	hide_gone(&p, &m)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(1)) // no scope: the first stop
+}
+
+// A trap keeps the move inside it. A focus_request for an area the frame
+// drew wins over the move.
+@(test)
+test_lost_focus_stays_in_a_trap_and_yields_to_a_request :: proc(t: ^testing.T) {
+	m := Lost_Focus {
+		trap  = true,
+		entry = 4,
+	}
+	p: Probe
+	probe_init(&p, lost_focus_view, &m, {300, 80})
+	defer probe_destroy(&p)
+	hide_gone(&p, &m)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(4)) // not the page, outside the trap
+
+	m = Lost_Focus {
+		bare = true,
+	}
+	probe_destroy(&p)
+	probe_init(&p, lost_focus_view, &m, {300, 80})
+	testing.expect(t, probe_click(&p, "gone"))
+	m.hide, m.ask = true, 2
+	probe_frame(&p)
+	probe_frame(&p)
+	testing.expect_value(t, p.router.focus, ops.Area_Id(2)) // the request, not the first stop
+}

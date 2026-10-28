@@ -177,6 +177,7 @@ test_time_picker_lists_times_and_picks_one :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "12:30 AM"))
 	ui.probe_frame(&p)
 	testing.expect(t, !m.time_open)
+	testing.expect(t, !m.open) // the date field is laid out first and must stay closed
 	testing.expect(t, m.time_valid)
 	testing.expect_value(t, m.time, Time{0, 30, 0})
 	testing.expect_value(t, ui.text_string(&m.time_text), "12:30 AM")

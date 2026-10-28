@@ -593,9 +593,11 @@ DATE_POPUP_GAP :: f32(4)
 // popup below it (date-picker.json). selected is the value, the zero
 // Date for none; s is the input's text, which the picker writes on a
 // pick. It opens when the input takes focus or Enter is pressed, and
-// closes on a pick, Escape in the calendar or a press outside. With
-// allow_text_input the text is parsed on Enter, on losing focus and
-// on close, and validation says what it found. Returns true on the
+// closes on a pick, Escape in the calendar or a press outside. Focus
+// that returns on the frame after a close does not open it: the day
+// that held the keyboard is gone, and the router puts it back here.
+// With allow_text_input the text is parsed on Enter, on losing focus
+// and on close, and validation says what it found. Returns true on the
 // frame a day is picked.
 date_picker :: proc(
 	gtx: ^ui.Ctx,
@@ -631,9 +633,13 @@ date_picker :: proc(
 	case .Filled_Lighter:
 		ia = .Filled_Lighter
 	}
+	// The field is the scope's entry. A day is inside the popup, so when
+	// a pick removes that day the router returns focus here.
+	ui.focus_scope_open(gtx, ui.id_mix(id, 6))
 	r := input(gtx, s, placeholder, ia, size, after = .Calendar, width = width, name = name != "" ? name : placeholder, state = state, key = u64(ui.id_mix(id, 1)))
+	defer ui.focus_scope_close(gtx, r.id)
 	if state == .Live {
-		if r.focused && !d.was_focused {
+		if r.focused && !d.was_focused && !d.was_open {
 			open^ = true // focus opens it (date-picker.json behaviour open)
 		}
 		if r.submitted {
@@ -844,7 +850,9 @@ remember_submitted :: proc(d: ^Time_Picker_Data, text: string) {
 // times time_options gives (time-picker.json). selected is the value
 // and valid whether one is held; s is the input's text, which a pick
 // writes. It opens when the input takes focus or Enter is pressed and
-// closes on a pick or a press outside. In freeform, Enter or losing
+// closes on a pick or a press outside. Focus that returns on the frame
+// after a close does not open it: the row that held the keyboard is
+// gone, and the router puts it back here. In freeform, Enter or losing
 // focus submits the text when it changed: parsed into selected, or
 // reported as an error. Returns true on the frame the value changes.
 time_picker :: proc(
@@ -874,9 +882,13 @@ time_picker :: proc(
 	d := ui.widget_data(gtx, id, Time_Picker_Data)
 	st := ui.stack_open(gtx, u64(ui.id_mix(id, 5)), loc)
 	defer ui.close(&st)
+	// The field is the scope's entry, so a pick that removes its row
+	// returns the keyboard here rather than to whatever is first.
+	ui.focus_scope_open(gtx, ui.id_mix(id, 6))
 	r := input(gtx, s, placeholder, appearance, size, after = .Chevron_Down, width = width, name = name != "" ? name : placeholder, state = state, key = u64(ui.id_mix(id, 1)))
+	defer ui.focus_scope_close(gtx, r.id)
 	if state == .Live {
-		if r.focused && !d.was_focused {
+		if r.focused && !d.was_focused && !d.was_open {
 			open^ = true
 		}
 		if r.submitted {

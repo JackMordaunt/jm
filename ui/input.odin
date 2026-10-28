@@ -128,6 +128,7 @@ Router :: struct {
 	stops:       [dynamic]Hit, // scratch for Tab: the focusable areas in order
 	roved:       [dynamic]Scope_Memory, // each roving scope's member that last held focus
 	traps:       [dynamic]Scope_Memory, // each trap the last route saw: focus to give back, and the area it held
+	focus_line:  [dynamic]ops.Area_Id, // ancestor scopes of focus, nearest first
 	cursor:      ops.Cursor,
 	pointed:     bool, // a pointer event has set pointer
 	now:         f64, // the time stamped on an event pushed without one; a probe keeps it at its clock
@@ -176,6 +177,7 @@ router_init :: proc(r: ^Router, allocator := context.allocator) {
 	r.stops = make([dynamic]Hit, allocator)
 	r.roved = make([dynamic]Scope_Memory, allocator)
 	r.traps = make([dynamic]Scope_Memory, allocator)
+	r.focus_line = make([dynamic]ops.Area_Id, allocator)
 }
 
 // router_destroy frees everything r owns.
@@ -201,6 +203,7 @@ router_destroy :: proc(r: ^Router) {
 	delete(r.stops)
 	delete(r.roved)
 	delete(r.traps)
+	delete(r.focus_line)
 	r^ = {}
 }
 
@@ -255,6 +258,12 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 		if f != nil && focus_stops(r, f, r.focus_into) > 0 {
 			set_focus(r, r.stops[0])
 		}
+	}
+	// An area this frame did not draw cannot keep the keyboard. Move it
+	// before this route's keys, so Tab and Enter start from a stop it drew.
+	// A request above wins: it already moved focus onto an area f has.
+	if f != nil {
+		recover_lost_focus(r, f)
 	}
 	for e in r.queue {
 		switch e.kind {
@@ -1113,9 +1122,54 @@ track_traps :: proc(r: ^Router, f: ^Frame) {
 	}
 }
 
+// recover_lost_focus moves focus off an area f did not draw. The nearest
+// ancestor scope f still has gives it that scope's entry, when the entry
+// is a stop f drew; otherwise the first stop, inside the active trap when
+// there is one. With nowhere to move, focus is cleared.
+@(private = "file")
+recover_lost_focus :: proc(r: ^Router, f: ^Frame) {
+	if r.focus == 0 || refresh(f, r.focus, &r.focus_hit) {
+		return
+	}
+	trap := active_trap(f)
+	if h, ok := drawn_ancestor_entry(r, f, trap); ok {
+		set_focus(r, h)
+		return
+	}
+	if focus_stops(r, f) > 0 {
+		set_focus(r, r.stops[0])
+		return
+	}
+	set_focus(r, {})
+}
+
+// drawn_ancestor_entry is the entry of the nearest scope in r.focus_line
+// that f still drew, when that entry is a stop inside trap. It stops
+// there: an entry that is not a stop, or a scope outside trap, is none.
+@(private = "file")
+drawn_ancestor_entry :: proc(r: ^Router, f: ^Frame, trap: Scope_Ref) -> (h: Hit, ok: bool) {
+	for id in r.focus_line {
+		g := scope_named(f, id)
+		if g == 0 {
+			continue
+		}
+		if trap != 0 && !in_scope(f, g, trap) {
+			return
+		}
+		entry := f.scopes[g - 1].entry
+		if entry != 0 && refresh(f, entry, &h) && tab_reachable(f, h, trap, 0) {
+			return h, true
+		}
+		return
+	}
+	return
+}
+
 // remember_focus keeps, once a route is done, which member of each
 // roving scope around the focused area holds focus, and which area each
-// trap holds, and forgets the scopes f no longer has.
+// trap holds, and forgets the scopes f no longer has. focus_line is the
+// same scopes, nearest first, including those that do not rove, so a
+// later frame that drops the focused area can find an ancestor it drew.
 @(private = "file")
 remember_focus :: proc(r: ^Router, f: ^Frame) {
 	for i := len(r.roved) - 1; i >= 0; i -= 1 {
@@ -1131,11 +1185,13 @@ remember_focus :: proc(r: ^Router, f: ^Frame) {
 			m.held = r.focus
 		}
 	}
+	clear(&r.focus_line)
 	if !focused {
 		return
 	}
 	scopes: for at := h.scope; at > 0 && int(at) <= len(f.scopes); at = f.scopes[at - 1].parent {
 		s := f.scopes[at - 1]
+		append(&r.focus_line, s.id)
 		if s.rove == .None {
 			continue
 		}
