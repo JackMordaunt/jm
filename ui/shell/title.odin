@@ -8,6 +8,10 @@ import "jm:ui/ops"
 @(private)
 TITLE_DRAG_CAP :: 16
 
+// TITLE_BUTTON_CAP is how many caption buttons a Drawn frame may publish.
+@(private)
+TITLE_BUTTON_CAP :: 4
+
 // Title_Hit is where a client point lands in a unified title bar.
 @(private)
 Title_Hit :: enum u8 {
@@ -21,12 +25,13 @@ Title_Hit :: enum u8 {
 	Close,
 }
 
-// title_set_drags publishes drags for the hit test. The reader keeps the
-// previous slot, so a hit test reentered while this copies still sees a
-// whole frame. n == 0 is published too, which clears the last frame's
-// rects. drags are device pixels.
+// title_set_drags publishes drags, and the caption buttons a Drawn frame
+// drew, for the hit test. The reader keeps the previous slot, so a hit
+// test reentered while this copies still sees a whole frame. n == 0 is
+// published too, which clears the last frame's rects. Both are device
+// pixels.
 @(private)
-title_set_drags :: proc(w: ^Window, drags: []ops.Rect) {
+title_set_drags :: proc(w: ^Window, drags: []ops.Rect, buttons: []ops.Window_Button = nil) {
 	slot := 1 - w.drag_read
 	n := len(drags)
 	if n > TITLE_DRAG_CAP {
@@ -36,15 +41,37 @@ title_set_drags :: proc(w: ^Window, drags: []ops.Rect) {
 		w.drags[slot][i] = drags[i]
 	}
 	w.drag_n[slot] = n
+	m := len(buttons)
+	if m > TITLE_BUTTON_CAP {
+		m = TITLE_BUTTON_CAP
+	}
+	for i in 0 ..< m {
+		w.drawn[slot][i] = buttons[i]
+	}
+	w.drawn_n[slot] = m
 	w.drag_read = slot
 }
 
-// title_hit reports where p, in client pixels, lands. buttons wins over
-// the resize strip and over any drag rect underneath. border is the top
-// resize strip; 0 (a maximized window) has none. An empty buttons rect
-// draws no caption buttons. The outer edge of a rect is inside it.
+// title_hit reports where p, in client pixels, lands. drawn, the caption
+// buttons a Drawn frame drew, wins over the platform's buttons; both win
+// over the resize strip and over any drag rect underneath. border is the
+// top resize strip; 0 (a maximized window) has none. An empty buttons
+// rect draws no caption buttons. The outer edge of a rect is inside it.
 @(private)
-title_hit :: proc "contextless" (p: ops.Point, client: ops.Size, buttons: ops.Rect, border: f32, drags: []ops.Rect, rtl: bool) -> Title_Hit {
+title_hit :: proc "contextless" (p: ops.Point, client: ops.Size, buttons: ops.Rect, border: f32, drags: []ops.Rect, rtl: bool, drawn: []ops.Window_Button = nil) -> Title_Hit {
+	for b in drawn {
+		if title_contains(b.rect, p) {
+			switch b.button {
+			case .None:
+			case .Minimize:
+				return .Minimize
+			case .Maximize:
+				return .Maximize
+			case .Close:
+				return .Close
+			}
+		}
+	}
 	if title_contains(buttons, p) {
 		return title_button(buttons, p, rtl)
 	}
@@ -65,12 +92,13 @@ title_hit :: proc "contextless" (p: ops.Point, client: ops.Size, buttons: ops.Re
 	return .Client
 }
 
-// title_button_pixels is the caption buttons in image pixels, clamped to
-// the image. Zero when the title bar is off or the buttons are empty. A
+// title_button_pixels is the platform's caption buttons in image pixels,
+// clamped to the image: the hole Unified clears for them. Zero when the
+// mode is not Unified, the title bar is off or the buttons are empty. A
 // fractional edge rounds outward so the frame is not left a sliver.
 @(private)
 title_button_pixels :: proc "contextless" (w: ^Window, width, height: int) -> ops.Rect {
-	if w == nil || !w.title_on || width <= 0 || height <= 0 {
+	if w == nil || !w.title_on || w.title_mode != .Unified || width <= 0 || height <= 0 {
 		return {}
 	}
 	b := w.buttons_px

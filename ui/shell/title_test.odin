@@ -36,6 +36,15 @@ test_title_hit_edges_buttons_and_drags :: proc(t: ^testing.T) {
 	// The resize strip still wins over that drag.
 	testing.expect_value(t, title_hit({740, 10}, client, {}, border, over, false), Title_Hit.Caption)
 	testing.expect_value(t, title_hit({740, 2}, client, {}, border, over, false), Title_Hit.Top)
+
+	// A Drawn frame's buttons win over the resize strip and the drags, at
+	// any height, and leave the rest of the caption to them.
+	drawn := []ops.Window_Button{{{662, 0, 46, 48}, .Minimize}, {{708, 0, 46, 48}, .Maximize}, {{754, 0, 46, 48}, .Close}}
+	testing.expect_value(t, title_hit({680, 40}, client, {}, border, over, false, drawn), Title_Hit.Minimize)
+	testing.expect_value(t, title_hit({730, 2}, client, {}, border, over, false, drawn), Title_Hit.Maximize)
+	testing.expect_value(t, title_hit({799, 47}, client, {}, border, over, false, drawn), Title_Hit.Close)
+	testing.expect_value(t, title_hit({600, 20}, client, {}, border, over, false, drawn), Title_Hit.Caption)
+	testing.expect_value(t, title_hit({700, 52}, client, {}, border, drags, false, drawn), Title_Hit.Client)
 }
 
 @(test)
@@ -44,6 +53,7 @@ test_title_button_pixels_covers_the_caption_buttons :: proc(t: ^testing.T) {
 	testing.expect_value(t, title_button_pixels(&w, 80, 40), ops.Rect{})
 
 	w.title_on = true
+	w.title_mode = .Unified
 	w.buttons_px = {2, 1, 3, 2}
 	testing.expect_value(t, title_button_pixels(&w, 80, 40), ops.Rect{2, 1, 3, 2})
 
@@ -56,6 +66,11 @@ test_title_button_pixels_covers_the_caption_buttons :: proc(t: ^testing.T) {
 	w.buttons_px = {70, 30, 40, 20}
 	testing.expect_value(t, title_button_pixels(&w, 80, 40), ops.Rect{70, 30, 10, 10})
 
+	// Drawn draws its own buttons: there is no hole to clear.
+	w.title_mode = .Drawn
+	testing.expect_value(t, title_button_pixels(&w, 80, 40), ops.Rect{})
+
+	w.title_mode = .Unified
 	w.title_on = false
 	testing.expect_value(t, title_button_pixels(&w, 80, 40), ops.Rect{})
 }
@@ -68,8 +83,10 @@ test_title_set_drags_publishes_one_slot :: proc(t: ^testing.T) {
 	testing.expect_value(t, w.drag_n[1], 2)
 	testing.expect_value(t, w.drags[1][0], ops.Rect{1, 2, 3, 4})
 
-	title_set_drags(&w, nil)
+	title_set_drags(&w, nil, []ops.Window_Button{{{1, 2, 3, 4}, .Close}})
 	testing.expect_value(t, w.drag_read, 0)
+	testing.expect_value(t, w.drawn_n[0], 1)
+	testing.expect_value(t, w.drawn[0][0], ops.Window_Button{{1, 2, 3, 4}, .Close})
 	testing.expect_value(t, w.drag_n[0], 0)
 	testing.expect_value(t, w.drags[1][0], ops.Rect{1, 2, 3, 4})
 

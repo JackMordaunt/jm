@@ -107,7 +107,7 @@ App :: struct {
 	fullscreen:            bool, // the window opens fullscreen on its display; width and height are the size it leaves fullscreen at
 	animation_hz:          Maybe(f32), // the most frames a second an animation alone gets on a faster display (pace.odin): nil for ANIMATION_HZ, 0 for the display's rate
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
-	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows; elsewhere the frame reports a zero Title_Bar
+	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows, and .Drawn has the frame draw the caption buttons too; elsewhere the frame reports a zero Title_Bar
 	icon_light:            []byte, // PNG for a light window, dark ink. Empty keeps the executable's icon
 	icon_dark:             []byte, // PNG for a dark window, light ink
 }
@@ -175,6 +175,11 @@ Window :: struct {
 	drags:         [2][TITLE_DRAG_CAP]ops.Rect, // device pixels; the wndproc reads drags[drag_read]
 	drag_n:        [2]int,
 	drag_read:     int,
+	drawn:         [2][TITLE_BUTTON_CAP]ops.Window_Button, // Drawn's caption buttons, device pixels; read with drags[drag_read]
+	drawn_n:       [2]int,
+	caption_hover:    ops.Caption_Button, // Drawn: the button the pointer is over, from WM_NCMOUSEMOVE
+	caption_pressed:  ops.Caption_Button, // Drawn: the button pressed over and not yet released
+	caption_tracking: bool, // Drawn: TrackMouseEvent has asked for WM_NCMOUSELEAVE
 	icon_png:      [2][]byte, // [0] a light window, [1] a dark one; borrowed from App
 	icon_surf:     [2]^sdl3.Surface, // decoded from icon_png on first use
 	icon_handle:   rawptr, // the HICON the window shows, on Windows; owned here
@@ -511,7 +516,7 @@ step :: proc(l: ^Loop) {
 		{0, 0, f32(w.size.x), f32(w.size.y)},
 		ops.scale(w.density, w.density),
 	)
-	title_set_drags(w, frame.drags[:])
+	title_set_drags(w, frame.drags[:], frame.buttons[:])
 	// Before present, so this frame's caption matches the appearance.
 	apply_themes(w, ui.router_requests(&l.router))
 	build_ms := ui.ms(build_start)

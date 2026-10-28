@@ -1,11 +1,13 @@
 #+build windows
 package shell
 
+import "base:runtime"
 import "core:log"
 import win "core:sys/windows"
 import sdl3 "vendor:sdl3"
 
 import "jm:ui"
+import "jm:ui/ops"
 
 // DwmDefWindowProc and RemoveWindowSubclass are not in core:sys/windows.
 // Bound here: this tree does not patch the core collection. Core's
@@ -56,7 +58,7 @@ TITLE_SUBCLASS_ID :: win.UINT_PTR(0x6A6D7462)
 
 @(private)
 title_attach :: proc(w: ^Window) -> bool {
-	if w.title_mode != .Unified || w.window == nil {
+	if (w.title_mode != .Unified && w.title_mode != .Drawn) || w.window == nil {
 		return true
 	}
 	raw := sdl3.GetPointerProperty(sdl3.GetWindowProperties(w.window), sdl3.PROP_WINDOW_WIN32_HWND_POINTER, nil)
@@ -103,10 +105,11 @@ title_detach :: proc(w: ^Window) {
 
 // title_metrics is the caption in window points. Zero when the mode is
 // off, the subclass is not installed, or the window has no caption
-// (fullscreen). active is whether the window is in front.
+// (fullscreen). active is whether the window is in front. Under Drawn,
+// pressed is reported only while the pointer is still over that button.
 @(private)
 title_metrics :: proc(w: ^Window) -> ui.Title_Bar {
-	if w.title_mode != .Unified || !w.title_on || w.hwnd == nil {
+	if (w.title_mode != .Unified && w.title_mode != .Drawn) || !w.title_on || w.hwnd == nil {
 		return {}
 	}
 	title_cache(w)
@@ -124,6 +127,9 @@ title_metrics :: proc(w: ^Window) -> ui.Title_Bar {
 		},
 		maximized = w.maximized,
 		active = win.GetForegroundWindow() == title_hwnd(w.hwnd),
+		drawn = w.title_mode == .Drawn,
+		hover = w.caption_hover,
+		pressed = w.caption_pressed if w.caption_pressed == w.caption_hover else .None,
 	}
 }
 
@@ -156,8 +162,103 @@ title_proc :: proc "system" (
 		return 0
 	case win.WM_SIZE:
 		title_cache(w)
+	case win.WM_NCMOUSEMOVE, win.WM_NCMOUSELEAVE, win.WM_NCLBUTTONDOWN, win.WM_NCLBUTTONDBLCLK, win.WM_NCLBUTTONUP:
+		if w.title_mode == .Drawn && title_caption_mouse(w, hwnd, msg, wparam) {
+			return 0
+		}
 	}
 	return win.DefSubclassProc(hwnd, msg, wparam, lparam)
+}
+
+// title_caption_mouse follows the pointer over a Drawn frame's caption
+// buttons, which the hit test reports as HTMINBUTTON, HTMAXBUTTON and
+// HTCLOSE. A press over a button is kept here, so DefWindowProc does not
+// run its own button loop; a release over the same button performs it
+// through WM_SYSCOMMAND. Leaving the buttons drops both. Returns whether
+// the message was taken. Moves are passed on: Windows 11 opens snap
+// layouts from them.
+@(private)
+title_caption_mouse :: proc "contextless" (w: ^Window, hwnd: win.HWND, msg: win.UINT, wparam: win.WPARAM) -> bool {
+	b := title_caption_button(wparam)
+	switch msg {
+	case win.WM_NCMOUSELEAVE:
+		w.caption_tracking = false
+		title_caption_set(w, .None, .None)
+		return false
+	case win.WM_NCMOUSEMOVE:
+		if !w.caption_tracking && b != .None {
+			tme := win.TRACKMOUSEEVENT {
+				cbSize    = size_of(win.TRACKMOUSEEVENT),
+				dwFlags   = win.TME_LEAVE | win.TME_NONCLIENT,
+				hwndTrack = hwnd,
+			}
+			w.caption_tracking = win.TrackMouseEvent(&tme) == win.TRUE
+		}
+		title_caption_set(w, b, w.caption_pressed if b != .None else .None)
+		return false
+	case win.WM_NCLBUTTONDOWN, win.WM_NCLBUTTONDBLCLK:
+		if b == .None {
+			title_caption_set(w, w.caption_hover, .None)
+			return false
+		}
+		title_caption_set(w, b, b)
+		return true
+	case win.WM_NCLBUTTONUP:
+		held := w.caption_pressed
+		title_caption_set(w, b, .None)
+		if b == .None {
+			return false
+		}
+		if b == held {
+			title_caption_perform(hwnd, b)
+		}
+		return true
+	}
+	return false
+}
+
+// title_caption_button is the caption button a non-client hit code names.
+@(private)
+title_caption_button :: proc "contextless" (hit: win.WPARAM) -> ops.Caption_Button {
+	switch win.LRESULT(hit) {
+	case win.HTMINBUTTON:
+		return .Minimize
+	case win.HTMAXBUTTON:
+		return .Maximize
+	case win.HTCLOSE:
+		return .Close
+	}
+	return .None
+}
+
+// title_caption_set records hover and pressed, and asks for a frame that
+// shows them when either changed.
+@(private)
+title_caption_set :: proc "contextless" (w: ^Window, hover, pressed: ops.Caption_Button) {
+	if w.caption_hover == hover && w.caption_pressed == pressed {
+		return
+	}
+	w.caption_hover, w.caption_pressed = hover, pressed
+	context = runtime.default_context()
+	wake()
+}
+
+// title_caption_perform does what button does, as the system's own
+// caption buttons would.
+@(private)
+title_caption_perform :: proc "contextless" (hwnd: win.HWND, button: ops.Caption_Button) {
+	command: win.WPARAM
+	switch button {
+	case .None:
+		return
+	case .Minimize:
+		command = win.SC_MINIMIZE
+	case .Maximize:
+		command = win.SC_RESTORE if win.IsZoomed(hwnd) == win.TRUE else win.SC_MAXIMIZE
+	case .Close:
+		command = win.SC_CLOSE
+	}
+	_ = win.PostMessageW(hwnd, win.WM_SYSCOMMAND, command, 0)
 }
 
 @(private)
@@ -191,14 +292,18 @@ title_nccalc :: proc "contextless" (hwnd: win.HWND, wparam: win.WPARAM, lparam: 
 	return 0
 }
 
+// title_nchit hit-tests the caption. Under Drawn the frame's own buttons
+// stand in for the platform's: DWM's, which it does not draw there, are
+// not asked.
 @(private)
 title_nchit :: proc "contextless" (w: ^Window, hwnd: win.HWND, lparam: win.LPARAM) -> win.LRESULT {
+	drawn := w.title_mode == .Drawn
 	handled: win.LRESULT
-	if DwmDefWindowProc(hwnd, win.WM_NCHITTEST, 0, lparam, &handled) == win.TRUE {
+	if !drawn && DwmDefWindowProc(hwnd, win.WM_NCHITTEST, 0, lparam, &handled) == win.TRUE {
 		return handled
 	}
 	def := win.DefSubclassProc(hwnd, win.WM_NCHITTEST, 0, lparam)
-	if title_keep(def) {
+	if title_keep(def, drawn) {
 		return def
 	}
 	pt := win.POINT{win.LONG(win.GET_X_LPARAM(lparam)), win.LONG(win.GET_Y_LPARAM(lparam))}
@@ -214,7 +319,18 @@ title_nchit :: proc "contextless" (w: ^Window, hwnd: win.HWND, lparam: win.LPARA
 	if n > TITLE_DRAG_CAP {
 		n = TITLE_DRAG_CAP
 	}
-	hit := title_hit({f32(pt.x), f32(pt.y)}, w.client_px, w.buttons_px, w.border_px, w.drags[slot][:n], w.rtl)
+	m := w.drawn_n[slot]
+	if m < 0 {
+		m = 0
+	}
+	if m > TITLE_BUTTON_CAP {
+		m = TITLE_BUTTON_CAP
+	}
+	buttons := w.buttons_px
+	if drawn {
+		buttons = {}
+	}
+	hit := title_hit({f32(pt.x), f32(pt.y)}, w.client_px, buttons, w.border_px, w.drags[slot][:n], w.rtl, w.drawn[slot][:m])
 	if hit == .Client {
 		return def
 	}
@@ -319,6 +435,12 @@ title_cache :: proc "contextless" (w: ^Window) {
 	if !title_buttons(w, hwnd) {
 		title_buttons_fallback(w, hwnd)
 	}
+	// Drawn draws its own buttons: the frame is not extended, so DWM has
+	// nowhere to draw its own.
+	if w.title_mode == .Drawn {
+		title_extend(w, hwnd, 0)
+		return
+	}
 	cy := i32(w.buttons_px.y + w.buttons_px.h)
 	if cy < 0 {
 		cy = 0
@@ -408,10 +530,15 @@ title_frame :: proc "contextless" (dpi: win.UINT, metric: win.INT) -> win.LONG {
 	return win.LONG(win.GetSystemMetricsForDpi(metric, dpi) + win.GetSystemMetricsForDpi(win.SM_CXPADDEDBORDER, dpi))
 }
 
+// title_keep is whether DefWindowProc's hit stands: a resize edge, and
+// unless drawn, the platform's buttons and system menu.
 @(private)
-title_keep :: proc "contextless" (hit: win.LRESULT) -> bool {
+title_keep :: proc "contextless" (hit: win.LRESULT, drawn := false) -> bool {
 	if hit >= win.HTLEFT && hit <= win.HTBOTTOMRIGHT {
 		return true
+	}
+	if drawn {
+		return false
 	}
 	return hit == win.HTMINBUTTON || hit == win.HTMAXBUTTON || hit == win.HTCLOSE || hit == win.HTSYSMENU
 }
@@ -458,8 +585,9 @@ window_hwnd :: proc(w: ^Window) -> win.HWND {
 }
 
 // title_theme paints the caption for a dark or light window. caption is
-// the page colour. The caption buttons are the system's, drawn over a
-// hole in the frame, so that colour is the page showing through the hole.
+// the page colour. Under Unified the caption buttons are the system's,
+// drawn over a hole in the frame, so that colour is the page showing
+// through the hole; under Drawn it colours only the border.
 // 19 is the dark-mode attribute before Windows 10 2004; 20 is the one
 // after. An unknown attribute fails and is ignored.
 @(private)

@@ -424,7 +424,7 @@ host_step :: proc(l: ^Host_Loop) {
 	ui.data_dispatch(&l.app.data, rd.added, rd.dropped, rd.commands)
 	host_track_needs(l, rd.added, rd.dropped)
 	ui.flatten(&l.scene, &l.frame, {0, 0, f32(w.size.x), f32(w.size.y)}, ops.scale(w.density, w.density))
-	title_set_drags(w, l.frame.drags[:])
+	title_set_drags(w, l.frame.drags[:], l.frame.buttons[:])
 	apply_themes(w, ui.reply_requests(&plat))
 	present_start := time.tick_now()
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
