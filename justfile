@@ -1,11 +1,19 @@
 # jm's recipes, in sections by the package or tool each serves, the recipe
 # that compiles a package's C library among them; `just` lists them by
 # section. The settings every section shares come first.
+#
+# Shebangs are `/bin/bash`. On Windows just maps that through cygpath to Git's
+# bash.exe. `bash` on PATH is the WSL launcher.
 
 odin  := env("ODIN", "odin")
 root  := replace(justfile_directory(), "\\", "/")
 flags := "-vet -strict-style -collection:jm=" + root
 exe   := if os() == "windows" { ".exe" } else { "" }
+# In-script calls. /usr/bin/bash is Git Bash, not the WSL launcher on PATH.
+bash  := if os() == "windows" { "/usr/bin/bash" } else { "bash" }
+# Windows compile lines are batch, piped to tools/msvc. That script calls
+# vcvars64.bat when cl is not on PATH. A recipe does not call it itself.
+msvc  := bash + " " + quote(root / "tools/msvc")
 cc    := env("CC", "cc")
 just  := quote(just_executable())
 
@@ -49,7 +57,7 @@ serial_tests := "wasm wasm/fuzz tools/wasm-bench ui/shell tar"
 [group('general')]
 [positional-arguments]
 check *pkgs:
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     if [ $# -eq 0 ]; then
       { {{just}} _dirs package | sed 's/$/ -no-entry-point/'; {{just}} _dirs program | sed 's/$/ -entry-point/'; }
@@ -79,7 +87,7 @@ check *pkgs:
 [group('general')]
 [positional-arguments]
 test *args: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-child
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/test
     # vendor:sdl3 loads SDL3.dll at start-up on Windows, so ui/shell's test
@@ -115,7 +123,7 @@ test *args: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-c
     done
     failed=0
     if [ ${#parallel[@]} -gt 0 ]; then
-      printf '%s\n' "${parallel[@]}" | xargs -P {{num_cpus()}} -n 1 bash -c 'run "$0"' || failed=1
+      printf '%s\n' "${parallel[@]}" | xargs -P {{num_cpus()}} -n 1 "{{bash}}" -c 'run "$0"' || failed=1
     fi
     for d in "${serial[@]+"${serial[@]}"}"; do run "$d" -define:ODIN_TEST_THREADS=1 || failed=1; done
     exit $failed
@@ -126,7 +134,7 @@ test *args: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit hot-counter-c
 # Build every program into build/debug
 [group('general')]
 link: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/debug
     {{just}} _dirs program | xargs -P {{num_cpus()}} -n 1 sh -c '
@@ -143,7 +151,7 @@ link: sqlite zstd wasm pg_query blend2d kb libgit2 accesskit
 # main`, `test` keeps those holding an @(test) proc. CI reads them here too.
 [group('general')]
 _dirs kind:
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     case "{{kind}}" in package|program|test) ;; *) echo "_dirs: no kind {{kind}}" >&2; exit 1;; esac
     git ls-files --cached --others --exclude-standard -- '*.odin' | sed -e 's|/[^/]*$||' -e 's|^[^/]*\.odin$|.|' | sort -u \
@@ -169,7 +177,7 @@ native_libs := "sqlite3:sqlite3/vendor zstd:zstd/vendor wasm:wasm/vendor pg_quer
 
 [private]
 _worktree-libs:
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     common=$(git rev-parse --path-format=absolute --git-common-dir)
     [ "$common" != "$(git rev-parse --path-format=absolute --git-dir)" ] || exit 0
@@ -229,7 +237,7 @@ root_url := if root =~ '^/' { "file://" + root } else { "file:///" + root }
 # Render the README, its docs and THIRD_PARTY.md to HTML and open the README
 [group('general')]
 readme:
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     if ! command -v comrak >/dev/null; then
       echo "readme: comrak is missing; brew install comrak, or cargo install comrak" >&2
@@ -331,13 +339,17 @@ sqlite: _worktree-libs
 [group('sqlite3')]
 [windows]
 sqlite: _worktree-libs
-    @if (!(Test-Path {{sqlite_lib}}) -or (Get-Item sqlite3/vendor/sqlite3.c).LastWriteTime -gt (Get-Item {{sqlite_lib}}).LastWriteTime -or !(Test-Path {{sqlite_stamp}}) -or (Get-Content {{sqlite_stamp}} -Raw).Trim() -ne '{{sqlite_defines}}') { \
-        New-Item -ItemType Directory -Force sqlite3/lib | Out-Null; \
-        cl /nologo /O2 /c sqlite3/vendor/sqlite3.c /Fosqlite3/lib/sqlite3.obj {{sqlite_defines}}; \
-        if (Test-Path {{sqlite_lib}}) { Remove-Item {{sqlite_lib}} }; \
-        lib /nologo /OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj; \
-        Set-Content {{sqlite_stamp}} '{{sqlite_defines}}' \
-    }
+    @if [ ! -f {{sqlite_lib}} ] || [ sqlite3/vendor/sqlite3.c -nt {{sqlite_lib}} ] \
+        || [ ! -f {{sqlite_stamp}} ] || [ "$(tr -d '\r' < {{sqlite_stamp}})" != "{{sqlite_defines}}" ]; then \
+        mkdir -p sqlite3/lib; \
+        echo "cl sqlite3 amalgamation -> {{sqlite_lib}}"; \
+        { \
+          printf '%s\n' "cl -nologo -O2 -c sqlite3/vendor/sqlite3.c -Fosqlite3/lib/sqlite3.obj {{sqlite_defines}} || exit /b 1"; \
+          printf '%s\n' "if exist {{sqlite_lib}} del /q {{sqlite_lib}}"; \
+          printf '%s\n' "lib -nologo -OUT:{{sqlite_lib}} sqlite3/lib/sqlite3.obj || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
+        printf '%s\n' "{{sqlite_defines}}" > {{sqlite_stamp}}; \
+    fi
 
 
 # ============================================================================
@@ -365,11 +377,15 @@ zstd: _worktree-libs
 [group('zstd')]
 [windows]
 zstd: _worktree-libs
-    @if (!(Test-Path {{zstd_lib}}) -or (Get-Item zstd/vendor/zstd.c).LastWriteTime -gt (Get-Item {{zstd_lib}}).LastWriteTime) { \
-        New-Item -ItemType Directory -Force zstd/lib | Out-Null; \
-        cl /nologo /O2 /c zstd/vendor/zstd.c /Fozstd/lib/zstd.obj; \
-        lib /nologo /OUT:{{zstd_lib}} zstd/lib/zstd.obj \
-    }
+    @if [ ! -f {{zstd_lib}} ] || [ zstd/vendor/zstd.c -nt {{zstd_lib}} ]; then \
+        mkdir -p zstd/lib; \
+        echo "cl zstd amalgamation -> {{zstd_lib}}"; \
+        { \
+          printf '%s\n' "cl -nologo -O2 -c zstd/vendor/zstd.c -Fozstd/lib/zstd.obj || exit /b 1"; \
+          printf '%s\n' "if exist {{zstd_lib}} del /q {{zstd_lib}}"; \
+          printf '%s\n' "lib -nologo -OUT:{{zstd_lib}} zstd/lib/zstd.obj || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
+    fi
 
 # ============================================================================
 # wasm: jm:wasm, the wasm3 it links, and tools/wasm-bench.
@@ -399,14 +415,23 @@ wasm: _worktree-libs
         ar rcs {{wasm_lib}} wasm/lib/obj/*.o; \
     fi
 
+# wasm3 is C11 that MSVC's cl rejects (m3_exec.h); clang-cl takes it.
 [group('wasm')]
 [windows]
 wasm: _worktree-libs
-    @if (!(Test-Path {{wasm_lib}})) { \
-        New-Item -ItemType Directory -Force wasm/lib/obj | Out-Null; \
-        Get-ChildItem wasm/vendor/*.c | ForEach-Object { cl /nologo /O2 /I wasm/vendor {{wasm_defines}} /c $_.FullName /Fowasm/lib/obj/ }; \
-        lib /nologo /OUT:{{wasm_lib}} wasm/lib/obj/*.obj \
-    }
+    @if [ ! -f {{wasm_lib}} ] || [ -n "$(find wasm/vendor -name '*.[ch]' -newer {{wasm_lib}} -print -quit)" ]; then \
+        mkdir -p wasm/lib/obj; \
+        rm -f wasm/lib/obj/*.obj; \
+        echo "clang-cl wasm3 -> {{wasm_lib}}"; \
+        objs=""; \
+        { \
+          for f in wasm/vendor/*.c; do \
+            objs="$objs wasm/lib/obj/$(basename "$f" .c).obj"; \
+            printf '%s\n' "clang-cl -nologo -O2 -I wasm/vendor {{wasm_defines}} -c $f -Fowasm/lib/obj/ || exit /b 1"; \
+          done; \
+          printf '%s\n' "lib -nologo -OUT:{{wasm_lib}}$objs || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
+    fi
 
 # `just bench "-n=64"` fixes the work per call; without one each workload is
 # calibrated to take about 25ms.
@@ -489,16 +514,26 @@ pg_query: _worktree-libs
     fi
 
 # Windows wants the win32 port headers, and win32_msvc's shims for the
-# unistd.h and dirent.h the sources include (CI compiles this file set
-# with these flags on windows-latest).
+# unistd.h and dirent.h the sources include. The shared flags are GCC's;
+# cl gets them with the ones it rejects removed. The file set is the unix
+# recipe's: a recursive find also sweeps .c files under the include trees.
 [group('pg_query')]
 [windows]
 pg_query: _worktree-libs
-    @if (!(Test-Path {{pg_query_lib}})) { \
-        New-Item -ItemType Directory -Force pg_query/lib/obj | Out-Null; \
-        Get-ChildItem -Recurse pg_query/vendor/src/*.c, pg_query/vendor/protobuf/*.c, pg_query/vendor/vendor/*.c | ForEach-Object { cl /nologo /O2 {{pg_query_flags}} /I pg_query/vendor/src/postgres/include/port/win32 /I pg_query/vendor/src/postgres/include/port/win32_msvc /c $_.FullName /Fopg_query/lib/obj/ }; \
-        lib /nologo /OUT:{{pg_query_lib}} pg_query/lib/obj/*.obj \
-    }
+    @if [ ! -f {{pg_query_lib}} ] || [ -n "$(find pg_query/vendor -name '*.[ch]' -newer {{pg_query_lib}} -print -quit)" ]; then \
+        mkdir -p pg_query/lib/obj; \
+        rm -f pg_query/lib/obj/*.obj; \
+        echo "cl libpg_query -> {{pg_query_lib}}"; \
+        flags=$(printf '%s\n' "{{pg_query_flags}}" | sed 's/-fno-strict-aliasing//; s/-fwrapv//; s/-fPIC//; s/-O2//; s/-Wno-[a-z-]*//g'); \
+        objs=""; \
+        { \
+          for f in pg_query/vendor/src/*.c pg_query/vendor/src/postgres/*.c pg_query/vendor/protobuf/*.c pg_query/vendor/vendor/*/*.c; do \
+            objs="$objs pg_query/lib/obj/$(basename "$f" .c).obj"; \
+            printf '%s\n' "cl -nologo -O2 $flags -I pg_query/vendor/src/postgres/include/port/win32 -I pg_query/vendor/src/postgres/include/port/win32_msvc -c $f -Fopg_query/lib/obj/ || exit /b 1"; \
+          done; \
+          printf '%s\n' "lib -nologo -OUT:{{pg_query_lib}}$objs || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
+    fi
 
 # nodes.odin is generated and checked in, so nothing here depends on it: this
 # is for after the vendored parser is bumped. The schema it reads is
@@ -551,12 +586,11 @@ libgit2: _worktree-libs
     @if [ ! -f {{libgit2_lib}} ]; then \
         {{just}} fetch build/src/libgit2 https://github.com/libgit2/libgit2 {{libgit2_rev}} || exit 1; \
         echo "cmake libgit2 -> {{libgit2_lib}}"; \
-        cmake --fresh -S build/src/libgit2 -B build/libgit2 -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
-            -DCMAKE_C_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
-            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_CLI=OFF \
-            -DUSE_SSH=exec -DUSE_HTTPS=WinHTTP -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin \
-            -DUSE_HTTP_PARSER=builtin -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1 || exit 1; \
-        cmake --build build/libgit2 --parallel >> build/libgit2.log 2>&1 || exit 1; \
+        ninja=$(cygpath -w "$(command -v ninja.exe)"); \
+        { \
+          printf '%s\n' "cmake --fresh -S build/src/libgit2 -B build/libgit2 -G Ninja -DCMAKE_MAKE_PROGRAM=\"$ninja\" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_CLI=OFF -DUSE_SSH=exec -DUSE_HTTPS=WinHTTP -DUSE_BUNDLED_ZLIB=ON -DREGEX_BACKEND=builtin -DUSE_HTTP_PARSER=builtin -DUSE_NTLMCLIENT=OFF -DUSE_SHA256=builtin > build/libgit2.log 2>&1 || exit /b 1"; \
+          printf '%s\n' "cmake --build build/libgit2 --parallel >> build/libgit2.log 2>&1 || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
         cp build/libgit2/git2.lib {{libgit2_lib}}; \
     fi
 
@@ -619,7 +653,9 @@ kb_lib := if os() == "windows" { "ui/kb/lib/kb_text_shape.lib" } else { "ui/kb/l
 # (46 MB to 8 MB; the code the linker takes is under 2 MB); Windows keeps
 # the DLL and its import library, since the static archive there was built
 # against the dynamic C runtime, which Odin does not link. The DLL goes
-# beside whatever runs: `test` and `sdl3` copy it.
+# beside whatever runs: `test` and `sdl3` copy it. BusyBox is the `uname`
+# on PATH in the non-login bash just uses for this shebang, and it reports
+# Windows_NT rather than MINGW64_NT or MSYS_NT.
 accesskit_lib := if os() == "windows" { "ui/accesskit/lib/accesskit.lib" } else { "ui/accesskit/lib/libaccesskit.a" }
 accesskit_ver := "0.23.1"
 accesskit_sha := "35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc7043f"
@@ -627,7 +663,7 @@ accesskit_sha := "35b7ca8a6f1e038b5da35e1e9e5a0adaed9bfcf21e1496d29598fbbadcc704
 # Fetch AccessKit's prebuilt library into ui/accesskit/lib if it is missing
 [group('ui')]
 accesskit: _worktree-libs
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p ui/accesskit/lib build
     [ -f {{accesskit_lib}} ] && exit 0
@@ -643,7 +679,7 @@ accesskit: _worktree-libs
       Linux-i686) sub=linux/x86/static; files="libaccesskit.a" ;;
       Darwin-arm64) sub=macos/arm64/static; files="libaccesskit.a" ;;
       Darwin-x86_64) sub=macos/x86_64/static; files="libaccesskit.a" ;;
-      MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) sub=windows/x86_64/msvc/shared; files="accesskit.lib accesskit.dll" ;;
+      MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64|Windows_NT-x86_64) sub=windows/x86_64/msvc/shared; files="accesskit.lib accesskit.dll" ;;
       *) echo "accesskit: no prebuilt library for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
     esac
     for f in $files; do
@@ -690,11 +726,11 @@ blend2d: _worktree-libs
         {{just}} fetch build/src/blend2d https://github.com/blend2d/blend2d {{blend2d_rev}} || exit 1; \
         {{just}} fetch build/src/asmjit https://github.com/asmjit/asmjit {{asmjit_rev}} || exit 1; \
         echo "cmake blend2d -> {{blend2d_lib}}"; \
-        cmake --fresh -S build/src/blend2d -B build/blend2d -DASMJIT_DIR="{{root}}/build/src/asmjit" \
-            -G Ninja -DCMAKE_MAKE_PROGRAM="$(command -v ninja.exe)" \
-            -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded \
-            -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit 1; \
-        cmake --build build/blend2d --parallel >> build/blend2d.log 2>&1 || exit 1; \
+        ninja=$(cygpath -w "$(command -v ninja.exe)"); \
+        { \
+          printf '%s\n' "cmake --fresh -S build/src/blend2d -B build/blend2d -DASMJIT_DIR=\"{{root}}/build/src/asmjit\" -G Ninja -DCMAKE_MAKE_PROGRAM=\"$ninja\" -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit /b 1"; \
+          printf '%s\n' "cmake --build build/blend2d --parallel >> build/blend2d.log 2>&1 || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
         cp build/blend2d/blend2d.lib {{blend2d_lib}}; \
     fi
 
@@ -718,11 +754,14 @@ kb: _worktree-libs
 [group('ui')]
 [windows]
 kb: _worktree-libs
-    @New-Item -ItemType Directory -Force ui/kb/lib | Out-Null
-    @if (!(Test-Path {{kb_lib}}) -or (Get-Item ui/kb/vendor/kb_text_shape.c).LastWriteTime -gt (Get-Item {{kb_lib}}).LastWriteTime -or (Get-Item ui/kb/vendor/kb_text_shape.h).LastWriteTime -gt (Get-Item {{kb_lib}}).LastWriteTime) { \
-        cl /nologo /std:c11 /O2 /c ui/kb/vendor/kb_text_shape.c /Foui/kb/lib/kb_text_shape.obj; \
-        lib /nologo /OUT:{{kb_lib}} ui/kb/lib/kb_text_shape.obj \
-    }
+    @if [ ! -f {{kb_lib}} ] || [ ui/kb/vendor/kb_text_shape.c -nt {{kb_lib}} ] || [ ui/kb/vendor/kb_text_shape.h -nt {{kb_lib}} ]; then \
+        mkdir -p ui/kb/lib; \
+        echo "cl kb_text_shape -> {{kb_lib}}"; \
+        { \
+          printf '%s\n' "cl -nologo -std:c11 -O2 -c ui/kb/vendor/kb_text_shape.c -Foui/kb/lib/kb_text_shape.obj || exit /b 1"; \
+          printf '%s\n' "lib -nologo -OUT:{{kb_lib}} ui/kb/lib/kb_text_shape.obj || exit /b 1"; \
+        } | {{msvc}} || exit 1; \
+    fi
 
 # vendor:sdl3 links SDL3.dll at load time on Windows, so the demo cannot start
 # without it beside the exe.
@@ -793,7 +832,7 @@ bench-ui args="": blend2d kb
 [private]
 [arg("mode", pattern="debug|release")]
 _hot name mode dirs: blend2d kb sdl3
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eu
     mkdir -p build/debug
     {{odin}} build tools/hot-watch -debug {{flags}} -out:build/debug/hot-watch{{exe}}
@@ -835,7 +874,7 @@ hot-architecture: blend2d kb sdl3
 [arg("kit", pattern="primer|fluent|material")]
 [arg("action", pattern="|accept")]
 kitchen-lint kit action="": blend2d kb
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/debug
     {{odin}} build examples/{{kit}}-kitchen/child -debug {{flags}} {{link}} -out:build/debug/{{kit}}-kitchen-child{{exe}}
@@ -930,7 +969,7 @@ material-kit-shapes:
 # Pull the kit's Compose token sources at androidx-main
 [group('ui/material')]
 material-kit-fetch:
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     sha=$(gh api repos/androidx/androidx/commits/androidx-main --jq .sha)
     tmp=$(mktemp -d)
@@ -1058,7 +1097,7 @@ todo args="": sqlite blend2d kb sdl3
 # Run the todo application's suites, the end-to-end one on real threads and a database
 [group('ui/example')]
 todo-test: sqlite blend2d kb
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/test
     for p in examples/todo/title examples/todo/completion examples/todo/logic examples/todo/store examples/todo/view examples/todo/app; do
@@ -1081,7 +1120,7 @@ i18n args="": sqlite blend2d kb sdl3
 # Run Atlas's suites: every locale checked, the end-to-end one on a database
 [group('ui/example')]
 i18n-test: sqlite blend2d kb
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/test
     for p in i18n examples/i18n/msg examples/i18n/store examples/i18n/view examples/i18n/app; do
@@ -1103,7 +1142,7 @@ gallery mode="debug": blend2d kb sdl3
 # Run the gallery's suites, the end-to-end one on real workers and files
 [group('ui/example')]
 gallery-test: blend2d kb
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/test
     for p in examples/gallery/shapes examples/gallery/gen examples/gallery/cache examples/gallery/view examples/gallery/app; do
@@ -1126,7 +1165,7 @@ files path="": sqlite blend2d kb sdl3
 # Run the file browser's suites, the end-to-end one on a real folder
 [group('ui/example')]
 files-test: sqlite blend2d kb
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/test
     for p in examples/files/naming examples/files/placement examples/files/protection examples/files/logic examples/files/fs examples/files/store examples/files/view examples/files/app; do
@@ -1148,7 +1187,7 @@ sevenguis task *args: blend2d kb sdl3
 # Run the suites of all seven 7GUIs tasks
 [group('ui/example')]
 sevenguis-test: blend2d kb
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     mkdir -p build/test
     for task in counter temperature flight timer crud circles cells; do
@@ -1168,7 +1207,7 @@ game name *args: blend2d kb sdl3
 # Fetch Selawik into ~/.local/share/fonts/selawik
 [group('ui/fluent')]
 fluent-fonts:
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -eu
     dir="$HOME/.local/share/fonts/selawik"
     mkdir -p "$dir"
@@ -1203,7 +1242,7 @@ fluent-icons:
 # Fetch the icons icons.txt names at a pinned commit
 [group('ui/fluent')]
 fluent-icons-fetch ref="":
-    #!/usr/bin/env bash
+    #!/bin/bash
     set -euo pipefail
     dir={{fluent_kit}}/icons
     ref="{{ref}}"

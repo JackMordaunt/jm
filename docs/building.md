@@ -128,7 +128,7 @@ root; `ODIN_RUN_COLLECTION` overrides it.
 - `pq` runs on all three, each runner having libpq and a PostgreSQL server.
 - `wasm-windows.yml` builds wasm3 with clang-cl at two optimisation levels, runs the trap tests
   one process each, and reruns a faulting one under cdb for its stack.
-- The recipe's own cl build of wasm3 does not compile; clang-cl is what Windows uses.
+- The Windows `wasm` recipe compiles wasm3 with clang-cl. MSVC's cl rejects it (`m3_exec.h`).
 
 </details>
 
