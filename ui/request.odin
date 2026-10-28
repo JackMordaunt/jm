@@ -4,7 +4,8 @@ import "jm:ui/ops"
 
 // Requests are what a frame asks of the platform, beyond pixels: the
 // clipboard written or read, a URL opened, the input method turned on at
-// a caret or off, the window named. A widget makes one during layout; the Router
+// a caret or off, the window named, the caption and icon matched to a
+// theme. A widget makes one during layout; the Router
 // queues it, and whatever runs the frame (ui/shell's loop, a host over the
 // wire, the probe) drains the queue once the frame is done, with
 // router_requests then router_requests_clear. Gio calls these commands.
@@ -30,6 +31,7 @@ Request :: union {
 	Text_Input,
 	Pick_Path,
 	Window_Title,
+	Window_Theme,
 }
 
 // Clipboard_Write puts data on the clipboard as mime.
@@ -84,6 +86,14 @@ Open_Url :: struct {
 // and wherever else it lists windows.
 Window_Title :: struct {
 	title: string,
+}
+
+// Window_Theme asks the platform to draw a dark or light caption and to
+// show the icon for that appearance. caption is the RGB behind the caption
+// buttons. The last call in a frame wins.
+Window_Theme :: struct {
+	dark:    bool,
+	caption: [3]u8,
 }
 
 // Text_Input is what the focused area wants of the platform's input
@@ -179,14 +189,38 @@ open_url :: proc(gtx: ^Ctx, url: string) {
 }
 
 // set_window_title asks the platform to name the window once the frame is
-// done, as its title bar shows it. Each call is one request, so a ui asks
-// when the name changes, not every frame; title is copied.
+// done: the taskbar and Alt-Tab name. The in-window title is drawn by
+// the ui. Each call is one request, so a ui asks when the name changes,
+// not every frame; title is copied.
 set_window_title :: proc(gtx: ^Ctx, title: string) {
 	r := gtx.router
 	if r == nil {
 		return
 	}
 	append(&r.requests, Window_Title{clone_string(title, r.allocator)})
+}
+
+// set_window_theme asks the platform, once the frame is done, to draw a
+// dark or light caption and to show the matching icon. caption is the
+// colour behind the caption buttons. Call it when the appearance changes,
+// and on the first frame; the last call in a frame wins.
+set_window_theme :: proc(gtx: ^Ctx, dark: bool, caption: ops.Color) {
+	r := gtx.router
+	if r == nil {
+		return
+	}
+	q := Window_Theme {
+		dark    = dark,
+		caption = {caption[0], caption[1], caption[2]},
+	}
+	for &old, i in r.requests {
+		if _, ok := old.(Window_Theme); ok {
+			free_request(r, old)
+			r.requests[i] = q
+			return
+		}
+	}
+	append(&r.requests, q)
 }
 
 // pick_folder opens the platform's folder dialog once the frame is done.
@@ -406,5 +440,6 @@ free_request :: proc(r: ^Router, q: Request) {
 		delete(v.filters, r.allocator)
 	case Window_Title:
 		delete(v.title, r.allocator)
+	case Window_Theme:
 	}
 }

@@ -10,7 +10,9 @@ import "jm:ui/ops"
 // plain encode/decode round-trip tests with no process or pipe involved.
 // Both reuse encode.odin's put_*/get_* helpers and its little-endian rule.
 //
-//	Input: u8 INPUT_VERSION, f32 w, f32 h, f32 density, f32 dt, u32 n, n × Raw_Event,
+//	Input: u8 INPUT_VERSION, f32 w, f32 h, f32 density, f32 dt,
+//	       f32 title height, f32 bx, f32 by, f32 bw, f32 bh, u8 title flags
+//	       (bit 0 maximized, bit 1 active), u32 n, n × Raw_Event,
 //	       [host stats], str restore (what the last child persisted,
 //	       sent once to a respawned child; "" otherwise), [shapes: u32 n,
 //	       n × (u64 key, u8 status, str data), written only when there
@@ -40,8 +42,9 @@ import "jm:ui/ops"
 // and a host built apart name the mismatch instead of misreading events:
 // 1 is the first versioned Input, whose events carry their time; 2
 // renumbered the keys after N9 and added Event_Kind Key_Up (see
-// ops.ENCODE_VERSION 40).
-INPUT_VERSION :: u8(2)
+// ops.ENCODE_VERSION 40); 3 added the title bar after dt. A zero title
+// bar is Title_Bar_Mode.System.
+INPUT_VERSION :: u8(3)
 
 // input_version is the version byte an Input starts with, false when data
 // is empty.
@@ -54,13 +57,23 @@ input_version :: proc(data: []byte) -> (u8, bool) {
 
 // encode_input serializes size, density, dt and events into a new byte
 // slice, the host's half of one frame's round trip.
-encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}, restore: []byte = nil, shapes: []Delivery = nil) -> []byte {
+encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allocator := context.allocator, host: Host_Stats = {}, restore: []byte = nil, shapes: []Delivery = nil, title_bar: Title_Bar = {}) -> []byte {
 	w := make([dynamic]byte, 0, 64, allocator)
 	append(&w, INPUT_VERSION)
 	ops.put_f32(&w, size.x)
 	ops.put_f32(&w, size.y)
 	ops.put_f32(&w, density)
 	ops.put_f32(&w, dt)
+	ops.put_f32(&w, title_bar.height)
+	ops.put_rect(&w, title_bar.buttons)
+	flags: u8
+	if title_bar.maximized {
+		flags |= 1
+	}
+	if title_bar.active {
+		flags |= 2
+	}
+	append(&w, flags)
 	ops.put_u32(&w, u32(len(events)))
 	for e in events {
 		encode_raw_event(&w, e)
@@ -103,6 +116,7 @@ decode_input :: proc(
 	events: []Raw_Event,
 	host: Host_Stats,
 	restore: []byte,
+	title_bar: Title_Bar,
 	ok: bool,
 ) {
 	r := ops.Reader {
@@ -119,6 +133,13 @@ decode_input :: proc(
 	size.y = ops.get_f32(&r) or_return
 	density = ops.get_f32(&r) or_return
 	dt = ops.get_f32(&r) or_return
+	title_bar.height = ops.get_f32(&r) or_return
+	title_bar.buttons = ops.get_rect(&r) or_return
+	flags := ops.get_u8(&r) or_return
+	if flags > 3 {
+		return {}, 0, 0, nil, {}, nil, {}, false
+	}
+	title_bar.maximized, title_bar.active = flags & 1 != 0, flags & 2 != 0
 	n := ops.get_count(&r, 1) or_return
 	out := make([]Raw_Event, n, allocator)
 	for &e in out {
@@ -149,7 +170,7 @@ decode_input :: proc(
 			d.key = Need_Key(ops.get_u64(&r) or_return)
 			status := ops.get_u8(&r) or_return
 			if status > u8(max(Status)) {
-				return {}, 0, 0, nil, {}, nil, false
+				return {}, 0, 0, nil, {}, nil, {}, false
 			}
 			d.status = Status(status)
 			s := ops.get_str(&r) or_return
@@ -162,9 +183,9 @@ decode_input :: proc(
 		}
 	}
 	if r.pos != len(r.data) {
-		return {}, 0, 0, nil, {}, nil, false
+		return {}, 0, 0, nil, {}, nil, {}, false
 	}
-	return size, density, dt, out, host, restore, true
+	return size, density, dt, out, host, restore, title_bar, true
 }
 
 @(private = "file")
@@ -297,6 +318,10 @@ encode_reply :: proc(
 			case Window_Title:
 				append(&w, 6)
 				ops.put_str(&w, v.title)
+			case Window_Theme:
+				append(&w, 7)
+				append(&w, 1 if v.dark else 0)
+				append(&w, v.caption[0], v.caption[1], v.caption[2])
 			}
 		}
 	}
@@ -427,6 +452,13 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 				q = pp
 			case 6:
 				q = Window_Title{ops.get_str(&r) or_return}
+			case 7:
+				cap: [3]u8
+				dark := (ops.get_u8(&r) or_return) != 0
+				cap[0] = ops.get_u8(&r) or_return
+				cap[1] = ops.get_u8(&r) or_return
+				cap[2] = ops.get_u8(&r) or_return
+				q = Window_Theme{dark, cap}
 			case:
 				return false, 0, nil, false
 			}

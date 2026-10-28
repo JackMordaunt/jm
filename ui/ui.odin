@@ -88,6 +88,39 @@ Ctx :: struct {
 	// decorative loop (a shimmer, a pulse) stands still while it is
 	// true, and motion that shows progress, such as a spinner, keeps going.
 	reduce_motion: bool,
+	title_bar:     Title_Bar, // the caption this frame, in viewport units; zero when the mode is System or this system draws none
+}
+
+// Title_Bar_Mode chooses who draws the caption. System is the platform's
+// own bar. Unified extends the client over it: the frame draws there, and
+// the platform keeps its caption buttons where it has them. Only Windows
+// implements Unified; elsewhere the shell reports a zero Title_Bar.
+Title_Bar_Mode :: enum u8 {
+	System,
+	Unified,
+}
+
+// Title_Bar is the caption as the platform reports it, in the same units
+// as Ctx.viewport. height is the strip at the top; 0 when the mode is
+// System, the window is fullscreen, or this system does not extend the
+// client. buttons is the platform's caption buttons; the zero rect means
+// it draws none. maximized and active are the window's.
+Title_Bar :: struct {
+	height:    f32,
+	buttons:   ops.Rect,
+	maximized: bool,
+	active:    bool,
+}
+
+// window_drag offers rect, in the widget's space, as a place the window
+// can be dragged from. A control in the title strip does not call it.
+// The shell reads these when App.title_bar is .Unified; elsewhere they
+// are recorded and unused.
+window_drag :: proc(gtx: ^Ctx, rect: ops.Rect) {
+	if gtx.scene == nil {
+		return
+	}
+	ops.window_drag(gtx.scene, rect)
 }
 
 // pixel is the size of one device pixel in the units constraints use,

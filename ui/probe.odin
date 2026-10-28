@@ -45,7 +45,10 @@ Probe :: struct {
 	allocator:   mem.Allocator,
 	clipboard:   [dynamic]u8, // the fake system clipboard frames write and read
 	opened:      [dynamic]u8, // the last URL a frame asked to open
-	title:       [dynamic]u8, // the last name a frame gave the window
+	title:         [dynamic]u8, // the last name a frame gave the window
+	theme_set:     bool, // a frame has asked set_window_theme
+	theme_dark:    bool, // that ask's appearance
+	theme_caption: [3]u8, // and the colour behind the caption buttons
 	text_input:  Text_Input, // the last Text_Input a frame asked for
 	text_inputs: int, // how many Text_Inputs frames have asked for
 	picking:     Pick_Path, // the last path pick a frame asked for, until probe_pick answers it; its strings in picked_text, its filters in picked_filters
@@ -59,6 +62,7 @@ Probe :: struct {
 	inbox:       Inbox, // shapes on their way to the next frame; see probe_deliver
 	data:        ^Data_Host, // an application answering the needs itself, as a live loop's
 	replaying:   bool, // a recorded frame is running: its input carries the platform's answers and the application's shapes, so the probe gives neither (probe_replay_step)
+	title_bar:   Title_Bar, // gtx.title_bar; a replay takes it from the recording
 }
 
 // probe_init prepares p to drive ui with user at a window of size, then
@@ -169,6 +173,7 @@ probe_frame :: proc(p: ^Probe) {
 		debug       = debug,
 		restored    = p.restore[:] if p.restoring else nil,
 		reduce_motion = p.reduce_motion,
+		title_bar   = p.title_bar,
 	}
 	p.restoring = false
 	ui_start := time.tick_now()
@@ -222,6 +227,10 @@ probe_platform :: proc(p: ^Probe) {
 		case Window_Title:
 			clear(&p.title)
 			append(&p.title, v.title)
+		case Window_Theme:
+			p.theme_set = true
+			p.theme_dark = v.dark
+			p.theme_caption = v.caption
 		}
 	}
 	router_requests_clear(&p.router)
@@ -243,6 +252,12 @@ probe_opened_url :: proc(p: ^Probe) -> string {
 // until the next frame that names it.
 probe_title :: proc(p: ^Probe) -> string {
 	return string(p.title[:])
+}
+
+// probe_window_theme is the last appearance a frame asked the window to
+// take. ok is false until a frame asks.
+probe_window_theme :: proc(p: ^Probe) -> (dark: bool, caption: [3]u8, ok: bool) {
+	return p.theme_dark, p.theme_caption, p.theme_set
 }
 
 // probe_keep_pick holds q as the open pick, its strings copied into

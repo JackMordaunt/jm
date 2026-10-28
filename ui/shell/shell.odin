@@ -88,6 +88,8 @@ Font_Ref :: ops.Font_Ref
 Data_Host :: ui.Data_Host
 @(private)
 Color :: ops.Color
+@(private)
+Title_Bar_Mode :: ui.Title_Bar_Mode
 
 // App describes a window and the ui proc that fills it.
 App :: struct {
@@ -105,6 +107,9 @@ App :: struct {
 	fullscreen:            bool, // the window opens fullscreen on its display; width and height are the size it leaves fullscreen at
 	animation_hz:          Maybe(f32), // the most frames a second an animation alone gets on a faster display (pace.odin): nil for ANIMATION_HZ, 0 for the display's rate
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
+	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows; elsewhere the frame reports a zero Title_Bar
+	icon_light:            []byte, // PNG for a light window, dark ink. Empty keeps the executable's icon
+	icon_dark:             []byte, // PNG for a dark window, light ink
 }
 
 // default_font is ui.default_font: kept here too since every existing
@@ -156,6 +161,26 @@ Window :: struct {
 	pacer:        Pacer, // holds animation-only frames to App.animation_hz
 	stirred:      bool, // the last poll took an event that was not a wake: the frame it fed was not an animation's alone
 	woke:         bool, // the last poll took a wake: a frame was asked for, with nothing to route
+	title_mode:   ui.Title_Bar_Mode, // App.title_bar, or .System when the subclass did not attach
+	title_on:     bool, // the subclass is installed; the wndproc reads this with no Odin context
+	hwnd:         rawptr, // the SDL window's HWND while title_on
+	dpi:          u32, // last dpi. WM_DPICHANGED's GetDpiForWindow may already be the new one
+	extended:     i32, // cyTopHeight last passed to DwmExtendFrameIntoClientArea
+	client_px:    ops.Size, // client size, device pixels
+	buttons_px:   ops.Rect, // caption buttons, client pixels
+	button_hole:  ops.Rect, // caption buttons cleared in the front texture; the image stays opaque
+	border_px:    f32, // top resize strip, client pixels; 0 when maximized
+	maximized:    bool,
+	rtl:          bool, // WS_EX_LAYOUTRTL: caption buttons run close, max, min from the left
+	drags:         [2][TITLE_DRAG_CAP]ops.Rect, // device pixels; the wndproc reads drags[drag_read]
+	drag_n:        [2]int,
+	drag_read:     int,
+	icon_png:      [2][]byte, // [0] a light window, [1] a dark one; borrowed from App
+	icon_surf:     [2]^sdl3.Surface, // decoded from icon_png on first use
+	icon_handle:   rawptr, // the HICON the window shows, on Windows; owned here
+	theme_set:     bool, // apply_window_theme has run
+	theme_dark:    bool,
+	theme_caption: [3]u8,
 }
 
 // Flash is one repainted rect tinted over the window until FLASH_MS after
@@ -410,6 +435,7 @@ step :: proc(l: ^Loop) {
 	l.time += f64(dt)
 
 	w := &l.w
+	bar := title_metrics(w)
 	// The shapes the application answered since the last frame: taken
 	// here, so a recording has them and its replay needs no application.
 	shapes: []ui.Delivery
@@ -421,7 +447,7 @@ step :: proc(l: ^Loop) {
 		logical := ops.Size{f32(w.size.x) / w.density, f32(w.size.y) / w.density}
 		ui.recorder_write(
 			&l.rec,
-			ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator, shapes = shapes),
+			ui.encode_input(logical, w.density, raw_dt, l.router.queue[:], context.temp_allocator, shapes = shapes, title_bar = bar),
 		)
 	}
 	ui.router_route(&l.router, prev if l.n > 0 else nil)
@@ -451,6 +477,7 @@ step :: proc(l: ^Loop) {
 		allocator     = allocator,
 		debug         = debug,
 		reduce_motion = ui.reduce_motion_preferred(),
+		title_bar     = bar,
 	}
 	scaled := w.density != 1
 	if scaled {
@@ -484,6 +511,9 @@ step :: proc(l: ^Loop) {
 		{0, 0, f32(w.size.x), f32(w.size.y)},
 		ops.scale(w.density, w.density),
 	)
+	title_set_drags(w, frame.drags[:])
+	// Before present, so this frame's caption matches the appearance.
+	apply_themes(w, ui.router_requests(&l.router))
 	build_ms := ui.ms(build_start)
 	ui.text_input_update(&l.router, frame)
 	present_start := time.tick_now()
@@ -587,12 +617,19 @@ open :: proc(w: ^Window, app: App) -> bool {
 	}
 	// Hidden until the loop has its bridge to assistive technology: the
 	// Windows adapter must attach before the window is first shown.
-	w.window = sdl3.CreateWindow(
-		title,
-		i32(width),
-		i32(height),
-		{.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN} + ({.FULLSCREEN} if app.fullscreen else {}),
-	)
+	// A unified window is transparent so the blit swap chain keeps alpha.
+	// The flip chain ignores it, and the caption buttons, which are the
+	// frame behind the client, show only through alpha 0.
+	flags: sdl3.WindowFlags = {.RESIZABLE, .HIGH_PIXEL_DENSITY, .HIDDEN}
+	if app.fullscreen {
+		flags += {.FULLSCREEN}
+	}
+	when ODIN_OS == .Windows {
+		if !app.fullscreen && app.title_bar == .Unified {
+			flags += {.TRANSPARENT}
+		}
+	}
+	w.window = sdl3.CreateWindow(title, i32(width), i32(height), flags)
 	if w.window == nil {
 		fmt.eprintln("shell: window:", sdl3.GetError())
 		return false
@@ -613,11 +650,19 @@ open :: proc(w: ^Window, app: App) -> bool {
 	// Text input is off, as SDL starts a window ("Text input events are not
 	// received by default", SDL_keyboard.h), until a text area takes focus
 	// (apply_text_input).
+	w.title_mode = app.title_bar
+	w.icon_png[0] = app.icon_light
+	w.icon_png[1] = app.icon_dark
+	if !title_attach(w) {
+		w.title_mode = .System
+	}
 	return resize(w)
 }
 
 @(private)
 close :: proc(w: ^Window) {
+	title_detach(w)
+	icon_destroy(w)
 	_ = sdl3.StopTextInput(w.window)
 	destroy_textures(w)
 	bl.image_destroy(&w.view)
@@ -889,8 +934,15 @@ present :: proc(
 	if w.stale {
 		upload(w.textures[w.front], &data, {0, 0, f32(w.size.x), f32(w.size.y)})
 		w.stale = false
+		w.button_hole = {}
 	} else if len(changed) > 0 {
 		if scrolls := c.damage.scrolls[:]; len(scrolls) > 0 {
+			// The hole is not part of the image. Put the image back there
+			// before the copy, or the hole scrolls into the content.
+			if w.button_hole.w > 0 {
+				upload(w.textures[w.front], &data, w.button_hole)
+				w.button_hole = {}
+			}
 			// Draw the front texture into the back one, then each scrolled
 			// region again, moved, from the front: the source never
 			// overlaps what is being written.
@@ -911,6 +963,7 @@ present :: proc(
 			upload(w.textures[w.front], &data, r)
 		}
 	}
+	title_punch_buttons(w, &data)
 	sdl3.RenderClear(w.renderer)
 	src := sdl3.FRect{0, 0, f32(w.size.x), f32(w.size.y)}
 	sdl3.RenderTexture(w.renderer, w.textures[w.front], &src, nil)
@@ -923,6 +976,51 @@ present :: proc(
 		w.sized = false
 	}
 	return true, repaint_rects, repaint_px
+}
+
+// title_punch_buttons clears the caption buttons in the front texture.
+// The image stays opaque, so a later upload of it fills the rect again;
+// this runs after those uploads. A rect that moved is filled from the
+// image first.
+@(private)
+title_punch_buttons :: proc(w: ^Window, data: ^bl.ImageData) {
+	hole := title_button_pixels(w, int(w.size.x), int(w.size.y))
+	tex := w.textures[w.front]
+	if tex == nil {
+		return
+	}
+	if w.button_hole.w > 0 && w.button_hole != hole {
+		upload(tex, data, w.button_hole)
+		w.button_hole = {}
+	}
+	if hole.w <= 0 {
+		return
+	}
+	title_upload_clear(tex, hole)
+	w.button_hole = hole
+}
+
+// title_upload_clear sets r in t to transparent black, a row at a time.
+@(private)
+title_upload_clear :: proc(t: ^sdl3.Texture, r: ops.Rect) {
+	w := int(r.w)
+	h := int(r.h)
+	if t == nil || w <= 0 || h <= 0 {
+		return
+	}
+	CHUNK :: 256
+	zeros: [CHUNK * 4]u8
+	x0 := int(r.x)
+	y0 := int(r.y)
+	done := 0
+	for done < w {
+		n := min(w - done, CHUNK)
+		for y in 0 ..< h {
+			area := sdl3.Rect{i32(x0 + done), i32(y0 + y), i32(n), 1}
+			sdl3.UpdateTexture(t, &area, &zeros[0], i32(n * 4))
+		}
+		done += n
+	}
 }
 
 // upload copies r of the image into the same place in t.

@@ -26,11 +26,13 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Compose, text = "かな", span = {3, 6}},
 	}
 	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
-	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host)
+	bar := Title_Bar{height = 32, buttons = {700, 0, 100, 32}, maximized = true, active = true}
+	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host, title_bar = bar)
 
-	size, density, dt, got, got_host, restore, ok := decode_input(data)
+	size, density, dt, got, got_host, restore, got_bar, ok := decode_input(data)
 	testing.expect_value(t, len(restore), 0)
 	testing.expect_value(t, got_host, host)
+	testing.expect_value(t, got_bar, bar)
 	testing.expect(t, ok)
 	testing.expect_value(t, size, ops.Size{800, 600})
 	testing.expect_value(t, density, f32(2))
@@ -41,7 +43,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 	}
 
 	// Re-encoding the decoded events gives the same bytes.
-	testing.expect(t, slice.equal(encode_input(size, density, dt, got, host = got_host), data))
+	testing.expect(t, slice.equal(encode_input(size, density, dt, got, host = got_host, title_bar = got_bar), data))
 }
 
 @(test)
@@ -54,7 +56,7 @@ test_decode_input_refuses_another_version :: proc(t: ^testing.T) {
 	v, vok := input_version(data)
 	testing.expect(t, vok && v == INPUT_VERSION)
 	data[0] = INPUT_VERSION + 1
-	_, _, _, _, _, _, ok := decode_input(data)
+	_, _, _, _, _, _, _, ok := decode_input(data)
 	testing.expect(t, !ok)
 	v, vok = input_version(data)
 	testing.expect_value(t, v, INPUT_VERSION + 1)
@@ -65,7 +67,7 @@ test_decode_input_refuses_another_version :: proc(t: ^testing.T) {
 @(test)
 test_encode_input_no_events :: proc(t: ^testing.T) {
 	data := encode_input({0, 0}, 1, 0, nil, context.temp_allocator)
-	size, density, dt, events, _, _, ok := decode_input(data, context.temp_allocator)
+	size, density, dt, events, _, _, _, ok := decode_input(data, context.temp_allocator)
 	testing.expect(t, ok)
 	testing.expect_value(t, size, ops.Size{0, 0})
 	testing.expect_value(t, density, f32(1))
@@ -122,7 +124,7 @@ test_decode_input_survives_random_bytes :: proc(t: ^testing.T) {
 		if i % 2 == 1 && n >= 16 {
 			copy(b, valid[:16])
 		}
-		_, _, _, _, _, _, _ = decode_input(b, context.temp_allocator)
+		_, _, _, _, _, _, _, _ = decode_input(b, context.temp_allocator)
 		free_all(context.temp_allocator)
 	}
 }
@@ -148,7 +150,7 @@ test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) 
 	// the resident memory, and from before the restore string (4 bytes
 	// for its empty length).
 	for cut, i in ([]int{len(full) - 28, len(full) - 12, len(full) - 4}) {
-		size, _, dt, _, host, restore, ok := decode_input(full[:cut], context.temp_allocator)
+		size, _, dt, _, host, restore, _, ok := decode_input(full[:cut], context.temp_allocator)
 		testing.expect(t, ok)
 		testing.expect_value(t, size, ops.Size{800, 600})
 		testing.expect_value(t, dt, f32(0.5))
@@ -156,7 +158,7 @@ test_decode_input_reads_input_from_before_the_host_stats :: proc(t: ^testing.T) 
 		testing.expect_value(t, host.present_ms, f32(0) if i == 0 else 2) // the timings, when sent, still read
 		testing.expect_value(t, len(restore), 0)
 	}
-	_, _, _, _, host, _, ok := decode_input(full, context.temp_allocator)
+	_, _, _, _, host, _, _, ok := decode_input(full, context.temp_allocator)
 	testing.expect(t, ok && host.rss_bytes == 1 << 20 && host.present_ms == 2)
 }
 
@@ -183,7 +185,8 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 		filters = filters,
 	}
 	p.requests_buf[6] = Window_Title{"Documents"}
-	p.requests_n = 7
+	p.requests_buf[7] = Window_Theme{dark = true, caption = {12, 16, 20}}
+	p.requests_n = 8
 	sc_bytes := []byte{1, 2, 3}
 	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, platform = &p)
 	got: Reply_Platform
@@ -193,9 +196,10 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	testing.expect(t, got.changed)
 	testing.expect_value(t, got.cursor, ops.Cursor.Text)
 	reqs := reply_requests(&got)
-	testing.expect_value(t, len(reqs), 7)
-	if len(reqs) == 7 {
+	testing.expect_value(t, len(reqs), 8)
+	if len(reqs) == 8 {
 		testing.expect_value(t, reqs[6].(Window_Title).title, "Documents")
+		testing.expect_value(t, reqs[7].(Window_Theme), Window_Theme{dark = true, caption = {12, 16, 20}})
 		testing.expect_value(t, reqs[0].(Clipboard_Write).data, "copied")
 		testing.expect_value(t, reqs[1].(Clipboard_Read).mime, TEXT_MIME)
 		testing.expect_value(t, reqs[2].(Open_Url).url, "https://example.com/a?b=c")
@@ -256,7 +260,7 @@ test_reply_with_an_unknown_pick_kind_is_rejected :: proc(t: ^testing.T) {
 @(test)
 test_input_carries_what_the_last_child_persisted :: proc(t: ^testing.T) {
 	data := encode_input({800, 600}, 1, 0, nil, context.temp_allocator, restore = transmute([]byte)string("page 3"))
-	_, _, _, _, _, restore, ok := decode_input(data, context.temp_allocator)
+	_, _, _, _, _, restore, _, ok := decode_input(data, context.temp_allocator)
 	testing.expect(t, ok)
 	testing.expect_value(t, string(restore), "page 3")
 }
@@ -320,7 +324,7 @@ input_carries_shapes :: proc(t: ^testing.T) {
 	shapes := []Delivery{{7, .Ready, {1, 2, 3}}, {8, .Stale, nil}}
 	data := encode_input({10, 10}, 1, 0, nil, context.temp_allocator, shapes = shapes)
 	got: []Delivery
-	_, _, _, _, _, _, ok := decode_input(data, context.temp_allocator, &got)
+	_, _, _, _, _, _, _, ok := decode_input(data, context.temp_allocator, &got)
 	testing.expect(t, ok)
 	testing.expect_value(t, len(got), 2)
 	testing.expect_value(t, got[0].key, Need_Key(7))
@@ -332,7 +336,7 @@ input_carries_shapes :: proc(t: ^testing.T) {
 	// No shapes, no block: the input reads as before the block existed.
 	bare := encode_input({10, 10}, 1, 0, nil, context.temp_allocator)
 	testing.expect(t, slice.equal(bare, encode_input({10, 10}, 1, 0, nil, context.temp_allocator, shapes = {})))
-	_, _, _, _, _, _, ok = decode_input(bare, context.temp_allocator, &got)
+	_, _, _, _, _, _, _, ok = decode_input(bare, context.temp_allocator, &got)
 	testing.expect(t, ok)
 	testing.expect_value(t, len(got), 0)
 }

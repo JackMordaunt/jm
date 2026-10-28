@@ -15,8 +15,8 @@ import "vendor:sdl3"
 // requests: a clipboard write goes to the system clipboard, and a read is
 // answered at once with a Paste pushed through sink for the next frame,
 // its text in allocator, which must last until sink's events are used.
-// A URL goes to SDL_OpenURL, the system's handler for its scheme, and a
-// title to the window's title bar.
+// A URL goes to SDL_OpenURL, the system's handler for its scheme, a title
+// to the window, and a theme to its caption and icon.
 @(private)
 apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: []ui.Request, sink: Event_Sink, user: rawptr, allocator := context.temp_allocator) {
 	if changed {
@@ -51,6 +51,9 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 			show_pick(w, v, sink, user, allocator)
 		case ui.Window_Title:
 			_ = sdl3.SetWindowTitle(w.window, strings.clone_to_cstring(v.title, context.temp_allocator))
+		case ui.Window_Theme:
+			// Also applied before present. A repeat is a no-op.
+			apply_window_theme(w, v.dark, v.caption)
 		}
 	}
 }

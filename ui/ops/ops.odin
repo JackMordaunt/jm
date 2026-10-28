@@ -285,6 +285,7 @@ Op :: union {
 	Focus_Scope_End,
 	Push_Opacity,
 	Pop_Opacity,
+	Window_Drag,
 }
 
 // Push_Opacity fades what is drawn until its Pop_Opacity, and the layers
@@ -301,6 +302,13 @@ Push_Opacity :: struct {
 
 // Pop_Opacity ends the innermost Push_Opacity.
 Pop_Opacity :: struct {}
+
+// Window_Drag names a rect, in the space ops are recorded in, from which
+// the window can be dragged. flatten writes it to Frame.drags in device
+// pixels. A rect with no area is dropped.
+Window_Drag :: struct {
+	rect: Rect,
+}
 
 // Focus_Scope opens a region of keyboard focus, ended by the next
 // Focus_Scope_End: the areas recorded in between, and in every layer
@@ -514,6 +522,15 @@ opacity_push :: proc(o: ^Scene, alpha: f32) {
 
 opacity_pop :: proc(o: ^Scene) {
 	append(&o.ops, Pop_Opacity{})
+}
+
+// window_drag records rect as a window-drag region. A rect with no area
+// is not recorded.
+window_drag :: proc(o: ^Scene, rect: Rect) {
+	if rect.w <= 0 || rect.h <= 0 {
+		return
+	}
+	append(&o.ops, Window_Drag{rect})
 }
 
 // focus_scope opens a Focus_Scope; focus_scope_end closes it.

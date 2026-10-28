@@ -46,8 +46,8 @@ import sdl3 "vendor:sdl3"
 RESPAWN_POLL_S :: f32(0.5)
 
 // Host_App describes a window and the child process that fills it. Unlike
-// App, it carries no ui proc, theme or fonts: those belong to the child,
-// over the wire, not to the host.
+// App, it carries no ui proc or fonts: those belong to the child, over the
+// wire, not to the host. The icons are the host's: it owns the window.
 Host_App :: struct {
 	title:         string,
 	width, height: int, // initial size in logical units
@@ -64,6 +64,9 @@ Host_App :: struct {
 	// put in its inbox goes to the child with the next input. See
 	// ui/need.odin.
 	data:          ui.Data_Host,
+	title_bar:     ui.Title_Bar_Mode, // passed to the window; see App.title_bar
+	icon_light:    []byte, // PNG for a light window; see App.icon_light
+	icon_dark:     []byte, // PNG for a dark window; see App.icon_dark
 }
 
 @(private)
@@ -189,7 +192,7 @@ host_loop_init :: proc(l: ^Host_Loop, app: Host_App) -> bool {
 		fmt.eprintln("shell: no child to spawn (check Host_App.child / watch)")
 		return false
 	}
-	if !open(&l.w, App{title = app.title, width = app.width, height = app.height, min_width = app.min_width, min_height = app.min_height, keep_escape = app.keep_escape}) {
+	if !open(&l.w, App{title = app.title, width = app.width, height = app.height, min_width = app.min_width, min_height = app.min_height, keep_escape = app.keep_escape, title_bar = app.title_bar, icon_light = app.icon_light, icon_dark = app.icon_dark}) {
 		return false
 	}
 	argv := child_argv(&l.app, path, context.temp_allocator)
@@ -370,7 +373,7 @@ host_step :: proc(l: ^Host_Loop) {
 	if l.app.data.inbox != nil {
 		shapes = ui.inbox_take(l.app.data.inbox, context.temp_allocator)
 	}
-	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats, l.saved[:] if l.restoring else nil, shapes)
+	input := ui.encode_input(logical, w.density, dt, l.events[:], context.temp_allocator, l.host_stats, l.saved[:] if l.restoring else nil, shapes, title_bar = title_metrics(w))
 	l.restoring = false
 	clear(&l.events)
 	virtual.arena_free_all(&l.text) // encode_input copied every Text string
@@ -421,6 +424,8 @@ host_step :: proc(l: ^Host_Loop) {
 	ui.data_dispatch(&l.app.data, rd.added, rd.dropped, rd.commands)
 	host_track_needs(l, rd.added, rd.dropped)
 	ui.flatten(&l.scene, &l.frame, {0, 0, f32(w.size.x), f32(w.size.y)}, ops.scale(w.density, w.density))
+	title_set_drags(w, l.frame.drags[:])
+	apply_themes(w, ui.reply_requests(&plat))
 	present_start := time.tick_now()
 	l.shown, l.host_stats.repaint_rects, l.host_stats.repaint_px = present(w, &l.comp, &l.frame, l.app.clear, dbg.full_frames, dbg.flash, ui.reply_keep_out(&dbg))
 	// Sent with the next input, for the child's debug tray.

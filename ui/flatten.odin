@@ -194,6 +194,11 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 		case ops.Pop_Opacity:
 			assert(len(st.alphas) > base_a, "flatten: opacity_pop with nothing pushed")
 			st.alpha = pop(&st.alphas)
+		case ops.Window_Drag:
+			r := ops.transform_rect(st.transform, op.rect)
+			if r.w > 0 && r.h > 0 {
+				append(&st.f.drags, r)
+			}
 		}
 		i += 1
 	}

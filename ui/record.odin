@@ -122,7 +122,7 @@ probe_replay_step :: proc(probe: ^Probe, replay: ^Replay) -> bool {
 		return false
 	}
 	shapes: []Delivery
-	size, density, dt, events, _, restore, dok := decode_input(payload, ops.frame_arena_allocator(&probe.arena), &shapes)
+	size, density, dt, events, _, restore, title_bar, dok := decode_input(payload, ops.frame_arena_allocator(&probe.arena), &shapes)
 	if !dok {
 		return false
 	}
@@ -140,6 +140,7 @@ probe_replay_step :: proc(probe: ^Probe, replay: ^Replay) -> bool {
 	if restore != nil {
 		probe_restore(probe, restore)
 	}
+	probe.title_bar = title_bar
 	probe.replaying = true
 	defer probe.replaying = false
 	probe_advance(probe, 1, dt)

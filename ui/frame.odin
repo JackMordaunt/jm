@@ -118,6 +118,7 @@ Frame :: struct {
 	tab_order: [dynamic]i32, // hits' indices in reading order, which Tab walks (see Tab_Key)
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images //review:ignore odin-destroy-incomplete borrowed: flatten points it at the caller's scene
 	stacks:  Flatten_Stacks, // flatten's scratch, not part of the result
+	drags:   [dynamic]ops.Rect, // window-drag rects, device pixels; the shell's hit test reads them
 }
 
 // Flatten_Stacks are flatten's working stacks. They live on the Frame so
@@ -196,6 +197,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.stacks.deferred = make([dynamic]Deferred, allocator)
 	f.stacks.held = make([dynamic]Covering, allocator)
 	f.stacks.top = make([dynamic]Deferred, allocator)
+	f.drags = make([dynamic]ops.Rect, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -217,6 +219,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.stacks.deferred)
 	clear(&f.stacks.held)
 	clear(&f.stacks.top)
+	clear(&f.drags)
 	f.scene = nil
 }
 
@@ -239,5 +242,6 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.stacks.deferred)
 	delete(f.stacks.held)
 	delete(f.stacks.top)
+	delete(f.drags)
 	f^ = {}
 }

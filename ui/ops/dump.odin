@@ -134,6 +134,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 			fmt.sbprintf(&sb, "opacity %v", v.alpha)
 		case Pop_Opacity:
 			strings.write_string(&sb, "opacity end")
+		case Window_Drag:
+			strings.write_string(&sb, "window drag ")
+			write_rect(&sb, v.rect)
 		}
 		strings.write_byte(&sb, '\n')
 	}

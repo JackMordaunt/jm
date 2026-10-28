@@ -31,7 +31,7 @@ input_summary :: proc(payload: []byte, allocator := context.allocator) -> (summa
 		return
 	}
 	defer virtual.arena_destroy(&scratch)
-	_, density, dt, events, _, _, decoded := decode_input(payload, virtual.arena_allocator(&scratch))
+	_, density, dt, events, _, _, _, decoded := decode_input(payload, virtual.arena_allocator(&scratch))
 	if !decoded {
 		return
 	}

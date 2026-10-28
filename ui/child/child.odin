@@ -117,7 +117,7 @@ run :: proc(app: App) {
 			return // the host closed the pipe: exit clean
 		}
 		shapes: []ui.Delivery
-		size, density, raw_dt, events, host, restore, dok := ui.decode_input(
+		size, density, raw_dt, events, host, restore, title_bar, dok := ui.decode_input(
 			payload,
 			allocator,
 			&shapes,
@@ -142,7 +142,7 @@ run :: proc(app: App) {
 			all := make([]ui.Delivery, len(shapes) + len(local_shapes), allocator)
 			copy(all, shapes)
 			copy(all[len(shapes):], local_shapes)
-			ui.recorder_write(&rec, ui.encode_input(size, density, raw_dt, events, allocator, host, restore, all))
+			ui.recorder_write(&rec, ui.encode_input(size, density, raw_dt, events, allocator, host, restore, all, title_bar = title_bar))
 		}
 
 		for e in events {
@@ -183,6 +183,7 @@ run :: proc(app: App) {
 			debug         = debug,
 			restored      = restore,
 			reduce_motion = ui.reduce_motion_preferred(),
+			title_bar     = title_bar,
 		}
 		scaled := density != 1
 		if scaled {
