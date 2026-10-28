@@ -119,6 +119,7 @@ Frame :: struct {
 	scene:   ^ops.Scene, // resources: paths, runs, fonts, images //review:ignore odin-destroy-incomplete borrowed: flatten points it at the caller's scene
 	stacks:  Flatten_Stacks, // flatten's scratch, not part of the result
 	drags:   [dynamic]ops.Rect, // window-drag rects, device pixels; the shell's hit test reads them
+	buttons: [dynamic]ops.Window_Button, // caption buttons the frame draws, device pixels; the shell's hit test reads them
 }
 
 // Flatten_Stacks are flatten's working stacks. They live on the Frame so
@@ -198,6 +199,7 @@ frame_init :: proc(f: ^Frame, allocator := context.allocator) {
 	f.stacks.held = make([dynamic]Covering, allocator)
 	f.stacks.top = make([dynamic]Deferred, allocator)
 	f.drags = make([dynamic]ops.Rect, allocator)
+	f.buttons = make([dynamic]ops.Window_Button, allocator)
 }
 
 frame_reset :: proc(f: ^Frame) {
@@ -220,6 +222,7 @@ frame_reset :: proc(f: ^Frame) {
 	clear(&f.stacks.held)
 	clear(&f.stacks.top)
 	clear(&f.drags)
+	clear(&f.buttons)
 	f.scene = nil
 }
 
@@ -243,5 +246,6 @@ frame_destroy :: proc(f: ^Frame) {
 	delete(f.stacks.held)
 	delete(f.stacks.top)
 	delete(f.drags)
+	delete(f.buttons)
 	f^ = {}
 }

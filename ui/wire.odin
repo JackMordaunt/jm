@@ -12,7 +12,8 @@ import "jm:ui/ops"
 //
 //	Input: u8 INPUT_VERSION, f32 w, f32 h, f32 density, f32 dt,
 //	       f32 title height, f32 bx, f32 by, f32 bw, f32 bh, u8 title flags
-//	       (bit 0 maximized, bit 1 active), u32 n, n × Raw_Event,
+//	       (bit 0 maximized, bit 1 active, bit 2 drawn), u8 hover,
+//	       u8 pressed (ops.Caption_Button), u32 n, n × Raw_Event,
 //	       [host stats], str restore (what the last child persisted,
 //	       sent once to a respawned child; "" otherwise), [shapes: u32 n,
 //	       n × (u64 key, u8 status, str data), written only when there
@@ -42,9 +43,10 @@ import "jm:ui/ops"
 // and a host built apart name the mismatch instead of misreading events:
 // 1 is the first versioned Input, whose events carry their time; 2
 // renumbered the keys after N9 and added Event_Kind Key_Up (see
-// ops.ENCODE_VERSION 40); 3 added the title bar after dt. A zero title
-// bar is Title_Bar_Mode.System.
-INPUT_VERSION :: u8(3)
+// ops.ENCODE_VERSION 40); 3 added the title bar after dt; 4 gave it
+// drawn (flag bit 2), hover and pressed. A zero title bar is
+// Title_Bar_Mode.System.
+INPUT_VERSION :: u8(4)
 
 // input_version is the version byte an Input starts with, false when data
 // is empty.
@@ -73,7 +75,11 @@ encode_input :: proc(size: ops.Size, density, dt: f32, events: []Raw_Event, allo
 	if title_bar.active {
 		flags |= 2
 	}
+	if title_bar.drawn {
+		flags |= 4
+	}
 	append(&w, flags)
+	append(&w, u8(title_bar.hover), u8(title_bar.pressed))
 	ops.put_u32(&w, u32(len(events)))
 	for e in events {
 		encode_raw_event(&w, e)
@@ -136,10 +142,13 @@ decode_input :: proc(
 	title_bar.height = ops.get_f32(&r) or_return
 	title_bar.buttons = ops.get_rect(&r) or_return
 	flags := ops.get_u8(&r) or_return
-	if flags > 3 {
+	hover := ops.get_u8(&r) or_return
+	pressed := ops.get_u8(&r) or_return
+	if flags > 7 || hover > u8(max(ops.Caption_Button)) || pressed > u8(max(ops.Caption_Button)) {
 		return {}, 0, 0, nil, {}, nil, {}, false
 	}
-	title_bar.maximized, title_bar.active = flags & 1 != 0, flags & 2 != 0
+	title_bar.maximized, title_bar.active, title_bar.drawn = flags & 1 != 0, flags & 2 != 0, flags & 4 != 0
+	title_bar.hover, title_bar.pressed = ops.Caption_Button(hover), ops.Caption_Button(pressed)
 	n := ops.get_count(&r, 1) or_return
 	out := make([]Raw_Event, n, allocator)
 	for &e in out {

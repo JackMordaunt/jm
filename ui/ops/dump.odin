@@ -137,6 +137,9 @@ dump :: proc(ops: ^Scene, allocator := context.allocator) -> string {
 		case Window_Drag:
 			strings.write_string(&sb, "window drag ")
 			write_rect(&sb, v.rect)
+		case Window_Button:
+			fmt.sbprintf(&sb, "window button %v ", v.button)
+			write_rect(&sb, v.rect)
 		}
 		strings.write_byte(&sb, '\n')
 	}

@@ -45,8 +45,8 @@ ENCODE_MAGIC :: "UIOP"
 // given a kind for its folder bool and a save's name and filters; 40
 // added Event_Kind Key_Up and Key F1 to F12, Shift, Ctrl, Alt and Super,
 // which renumbered the keys after N9; 41 gave Image pixelated; 42 added
-// Window_Drag.
-ENCODE_VERSION :: u8(42)
+// Window_Drag; 43 added Window_Button.
+ENCODE_VERSION :: u8(43)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.
@@ -481,6 +481,10 @@ put_op :: proc(w: ^[dynamic]byte, op: Op) {
 	case Window_Drag:
 		append(w, 25)
 		put_rect(w, v.rect)
+	case Window_Button:
+		append(w, 26)
+		put_rect(w, v.rect)
+		append(w, u8(v.button))
 	case:
 		append(w, 0)
 	}
@@ -873,6 +877,15 @@ get_op :: proc(r: ^Reader, ops: ^Scene) -> (op: Op, ok: bool) {
 		return Pop_Opacity{}, true
 	case 25:
 		return Window_Drag{get_rect(r) or_return}, true
+	case 26:
+		v: Window_Button
+		v.rect = get_rect(r) or_return
+		b := get_u8(r) or_return
+		if b > u8(max(Caption_Button)) {
+			return nil, false
+		}
+		v.button = Caption_Button(b)
+		return v, true
 	}
 	return nil, false
 }

@@ -199,6 +199,11 @@ flatten_range :: proc(st: ^Flattener, lo, hi: int, depth: int) {
 			if r.w > 0 && r.h > 0 {
 				append(&st.f.drags, r)
 			}
+		case ops.Window_Button:
+			r := ops.transform_rect(st.transform, op.rect)
+			if r.w > 0 && r.h > 0 && op.button != .None {
+				append(&st.f.buttons, ops.Window_Button{r, op.button})
+			}
 		}
 		i += 1
 	}

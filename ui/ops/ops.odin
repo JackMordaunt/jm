@@ -286,6 +286,7 @@ Op :: union {
 	Push_Opacity,
 	Pop_Opacity,
 	Window_Drag,
+	Window_Button,
 }
 
 // Push_Opacity fades what is drawn until its Pop_Opacity, and the layers
@@ -308,6 +309,23 @@ Pop_Opacity :: struct {}
 // pixels. A rect with no area is dropped.
 Window_Drag :: struct {
 	rect: Rect,
+}
+
+// Caption_Button names a window's caption buttons. None is no button.
+Caption_Button :: enum u8 {
+	None,
+	Minimize,
+	Maximize, // maximizes a restored window and restores a maximized one
+	Close,
+}
+
+// Window_Button names a rect, in the space ops are recorded in, that acts
+// as one of the window's caption buttons: the platform hit-tests it as
+// that button and performs it. flatten writes it to Frame.buttons in
+// device pixels. A rect with no area, or button None, is dropped.
+Window_Button :: struct {
+	rect:   Rect,
+	button: Caption_Button,
 }
 
 // Focus_Scope opens a region of keyboard focus, ended by the next
@@ -531,6 +549,15 @@ window_drag :: proc(o: ^Scene, rect: Rect) {
 		return
 	}
 	append(&o.ops, Window_Drag{rect})
+}
+
+// window_button records rect as the caption button button. A rect with no
+// area, or None, is not recorded.
+window_button :: proc(o: ^Scene, rect: Rect, button: Caption_Button) {
+	if rect.w <= 0 || rect.h <= 0 || button == .None {
+		return
+	}
+	append(&o.ops, Window_Button{rect, button})
 }
 
 // focus_scope opens a Focus_Scope; focus_scope_end closes it.

@@ -26,7 +26,7 @@ test_encode_input_round_trip :: proc(t: ^testing.T) {
 		{kind = .Compose, text = "かな", span = {3, 6}},
 	}
 	host := Host_Stats{present_ms = 1.5, roundtrip_ms = 3.25, repaint_rects = 4, repaint_px = 12000, rss_bytes = 64 << 20}
-	bar := Title_Bar{height = 32, buttons = {700, 0, 100, 32}, maximized = true, active = true}
+	bar := Title_Bar{height = 32, buttons = {700, 0, 100, 32}, maximized = true, active = true, drawn = true, hover = .Maximize, pressed = .Close}
 	data := encode_input({800, 600}, 2, 1.0 / 60, events, host = host, title_bar = bar)
 
 	size, density, dt, got, got_host, restore, got_bar, ok := decode_input(data)
