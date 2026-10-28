@@ -340,7 +340,7 @@ judge_request :: proc(m: ^Model, r: ^Model_Request) -> string {
 			return fmt.tprintf("Timed_Out though the server answered after %v", r.delay)
 		}
 	case .Cancelled:
-	case .Transfer_Failed, .Init_Failed, .Write_Failed, .Encode_Failed, .Decode_Failed, .Closed:
+	case .Transfer_Failed, .Init_Failed, .Write_Failed, .Encode_Failed, .Decode_Failed, .Closed, .No_Library:
 		return fmt.tprintf("%v from a well-formed server", r.err)
 	}
 	if r.timeout > 0 && r.err != .Cancelled && took > r.timeout + SLACK {
