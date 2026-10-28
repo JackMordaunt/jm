@@ -1,0 +1,39 @@
+#!/bin/bash
+# Run the batch script on stdin where cl, lib and the Windows SDK are on PATH.
+#
+# This is the one Windows compile setup. A recipe, in this repo or another
+# that has this checkout, pipes its cl, lib, clang-cl or cmake lines here
+# instead of calling vcvars itself:
+#
+#   printf '%s\n' "cl -nologo -c file.c -Fofile.obj || exit /b 1" | tools/msvc
+#
+# Outside a Visual Studio prompt cl is missing, so the script calls
+# vcvars64.bat first. The lines are written to a batch file and run with
+# cmd: the environment vcvars sets stays for every line, and MSYS does not
+# turn a leading /flag into a Git path.
+set -eu
+
+bat=$(mktemp)
+mv "$bat" "$bat.bat"
+bat=$bat.bat
+trap 'rm -f "$bat"' EXIT
+
+{
+  printf '%s\n' '@echo off'
+  if ! command -v cl >/dev/null 2>&1; then
+    vswhere="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+    if [ ! -f "$vswhere" ]; then
+      echo "msvc: cl is not on PATH and vswhere was not found" >&2
+      exit 1
+    fi
+    vcvars=$(MSYS_NO_PATHCONV=1 "$vswhere" -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Auxiliary\Build\vcvars64.bat' | head -n 1 | tr -d '\r')
+    if [ -z "$vcvars" ]; then
+      echo "msvc: cl is not on PATH and vcvars64.bat was not found" >&2
+      exit 1
+    fi
+    printf 'call "%s" >nul\n' "$vcvars"
+  fi
+  cat
+} > "$bat"
+
+MSYS_NO_PATHCONV=1 cmd /c "$(cygpath -w "$bat")"
