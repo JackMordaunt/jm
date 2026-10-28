@@ -3,7 +3,11 @@
 # section. The settings every section shares come first.
 #
 # Shebangs are `/bin/bash`. On Windows just maps that through cygpath to Git's
-# bash.exe. `bash` on PATH is the WSL launcher.
+# bash.exe. `bash` on PATH is the WSL launcher. That bash is not a login
+# shell, so System32 stays ahead of Git's coreutils and `sort` is Windows
+# sort.exe, whose `-u` is a file name. Prepend Git's usr\bin. The branch is
+# lazy, so a non-Windows parse never runs cygpath.
+export PATH := if os() == "windows" { `cygpath -w /usr/bin` + ";" + env("PATH", "") } else { env("PATH", "") }
 
 odin  := env("ODIN", "odin")
 root  := replace(justfile_directory(), "\\", "/")
