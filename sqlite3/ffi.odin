@@ -74,6 +74,13 @@ foreign lib {
 	sqlite3_extended_errcode  :: proc(db: ^Connection) -> c.int ---
 	sqlite3_busy_timeout      :: proc(db: ^Connection, ms: c.int) -> c.int ---
 	sqlite3_interrupt         :: proc(db: ^Connection) ---
+	// Public file-control and memory-image APIs used for guarded read-only
+	// recovery when a full or read-only directory cannot create WAL sidecars.
+	sqlite3_db_filename       :: proc(db: ^Connection, name: cstring) -> cstring ---
+	sqlite3_file_control      :: proc(db: ^Connection, name: cstring, op: c.int, arg: rawptr) -> c.int ---
+	sqlite3_malloc64          :: proc(n: u64) -> rawptr ---
+	sqlite3_free              :: proc(p: rawptr) ---
+	sqlite3_deserialize       :: proc(db: ^Connection, name: cstring, data: [^]u8, n, capacity: i64, flags: c.uint) -> c.int ---
 	sqlite3_changes64         :: proc(db: ^Connection) -> i64 ---
 	sqlite3_last_insert_rowid :: proc(db: ^Connection) -> i64 ---
 	sqlite3_update_hook       :: proc(db: ^Connection, cb: Update_Proc, user: rawptr) -> rawptr ---
