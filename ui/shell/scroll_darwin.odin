@@ -36,13 +36,6 @@ record_start, record_count: int
 @(private = "file")
 monitor: rawptr
 
-foreign import libSystem "system:System"
-
-@(private = "file")
-foreign libSystem {
-	_NSConcreteGlobalBlock: intrinsics.objc_class
-}
-
 // The monitor's handler is a block that returns the event it is given:
 // returning nil would swallow every scroll. Foundation's block helpers
 // make only blocks that return nothing, so this one is built by hand, a

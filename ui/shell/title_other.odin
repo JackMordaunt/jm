@@ -1,9 +1,10 @@
 #+build !windows
+#+build !darwin
 package shell
 
 import "jm:ui"
 
-// Unified is implemented on Windows. Attaching succeeds and the frame
+// Unified is implemented on Windows and macOS. Attaching succeeds and the frame
 // reports no title bar, so a caller that sets the mode still runs.
 @(private)
 title_attach :: proc(_: ^Window) -> bool {

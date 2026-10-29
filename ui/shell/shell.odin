@@ -107,7 +107,7 @@ App :: struct {
 	fullscreen:            bool, // the window opens fullscreen on its display; width and height are the size it leaves fullscreen at
 	animation_hz:          Maybe(f32), // the most frames a second an animation alone gets on a faster display (pace.odin): nil for ANIMATION_HZ, 0 for the display's rate
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
-	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows, and .Drawn has the frame draw the caption buttons too; elsewhere the frame reports a zero Title_Bar
+	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows and macOS; .Drawn draws the Windows caption buttons too; elsewhere the frame reports a zero Title_Bar
 	icon_light:            []byte, // PNG for a light window, dark ink. Empty keeps the executable's icon
 	icon_dark:             []byte, // PNG for a dark window, light ink
 }
@@ -161,8 +161,10 @@ Window :: struct {
 	pacer:        Pacer, // holds animation-only frames to App.animation_hz
 	stirred:      bool, // the last poll took an event that was not a wake: the frame it fed was not an animation's alone
 	woke:         bool, // the last poll took a wake: a frame was asked for, with nothing to route
-	title_mode:   ui.Title_Bar_Mode, // App.title_bar, or .System when the subclass did not attach
-	title_on:     bool, // the subclass is installed; the wndproc reads this with no Odin context
+	title_mode:   ui.Title_Bar_Mode, // App.title_bar, or .System when native integration did not attach
+	title_on:     bool, // native title-bar integration is installed; the wndproc reads this with no Odin context
+	cocoa_title_events: rawptr, // the macOS title bar's local event monitor and block
+	cocoa_window: rawptr, // the NSWindow while the macOS unified title bar is attached
 	hwnd:         rawptr, // the SDL window's HWND while title_on
 	dpi:          u32, // last dpi. WM_DPICHANGED's GetDpiForWindow may already be the new one
 	extended:     i32, // cyTopHeight last passed to DwmExtendFrameIntoClientArea
