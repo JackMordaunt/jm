@@ -222,6 +222,11 @@ local_parts :: proc(t: time.Time) -> Parts {
 @(private)
 region_parts :: proc(t: time.Time, region: ^datetime.TZ_Region) -> Parts {
 	seconds := time.time_to_unix(t)
+	// Integer division truncates toward zero. A negative fractional instant
+	// still precedes the transition at the following integer UTC second.
+	if time.to_unix_nanoseconds(t) < 0 && time.to_unix_nanoseconds(t) % i64(time.Second) != 0 {
+		seconds -= 1
+	}
 	records := region.records
 	if len(records) > 0 && seconds <= records[len(records) - 1].time {
 		// A transition applies at its UTC second, not the second after it.

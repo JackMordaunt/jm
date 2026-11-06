@@ -162,3 +162,23 @@ local_transition_preserves_the_instant_and_fraction :: proc(t: ^testing.T) {
 		"17:45:00.123 +0545 NPT 1800014400",
 	)
 }
+
+// Negative fractional Unix seconds belong before the next integer second.
+@(test)
+local_transition_before_epoch_keeps_the_previous_record :: proc(t: ^testing.T) {
+	records := []datetime.TZ_Record {
+		{time = -100, utc_offset = 0, shortname = "PRE"},
+		{time = 0, utc_offset = 3600, shortname = "DST", dst = true},
+		{time = 100, utc_offset = 0, shortname = "POST"},
+	}
+	region := datetime.TZ_Region{records = records}
+	before := region_parts(time.unix(-1, 500_000_000), &region)
+	testing.expect_value(t, before.offset, 0)
+	testing.expect_value(t, before.zone, "PRE")
+	at := region_parts(time.unix(0, 0), &region)
+	testing.expect_value(t, at.offset, 3600)
+	testing.expect_value(t, at.zone, "DST")
+	after := region_parts(time.unix(0, 500_000_000), &region)
+	testing.expect_value(t, after.offset, 3600)
+	testing.expect_value(t, after.zone, "DST")
+}
