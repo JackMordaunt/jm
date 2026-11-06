@@ -308,8 +308,17 @@ banner :: proc(
 	row := ui.row_open(gtx)
 	defer ui.close(&row)
 	banner_icon_cell(gtx, banner_icon(variant, leading), look)
-	ui.flexible(gtx, 1)
+	// Reserve the trailing control before laying out the body: a weighted
+	// child before Dismiss would use last frame's rigid-child estimates.
+	body_limits: ui.Size_Limits
+	if ui.is_finite(content_w) {
+		dismiss_w := dismissible ? tok.BASE_SIZE_4 + button_metrics(.Medium).height : 0
+		body_w := max(content_w - BANNER_GLYPH - 2 * tok.BASE_SIZE_8 - dismiss_w, 0)
+		body_limits.min.x, body_limits.max.x = body_w, body_w
+	}
+	body := ui.sized_open(gtx, body_limits)
 	event = banner_body(gtx, title, description, primary, secondary, look)
+	ui.close(&body)
 	if dismissible {
 		top := look.has_actions ? tok.BASE_SIZE_2 : 0
 		in_ := ui.inset_open(gtx, {left = tok.BASE_SIZE_4, top = top})
@@ -343,8 +352,18 @@ banner_body :: proc(gtx: ^ui.Ctx, title, description, primary, secondary: string
 	if look.pl.beside {
 		r := ui.row_open(gtx, gap = tok.BASE_SIZE_4)
 		defer ui.close(&r)
-		ui.flexible(gtx, 1)
+		// Actions follow the content in reading and keyboard order. Measure
+		// their labels so the first frame can reserve their actual width.
+		limits: ui.Size_Limits
+		if ui.is_finite(gtx.constraints.max.x) {
+			actions_w := banner_actions_width(gtx, primary, secondary)
+			gap := look.has_actions ? tok.BASE_SIZE_4 : 0
+			content_w := max(gtx.constraints.max.x - actions_w - gap, 0)
+			limits.min.x, limits.max.x = content_w, content_w
+		}
+		content := ui.sized_open(gtx, limits)
 		banner_content(gtx, title, description, look)
+		ui.close(&content)
 		if look.has_actions {
 			event = banner_actions(gtx, primary, secondary, look)
 		}
@@ -387,6 +406,24 @@ banner_content :: proc(gtx: ^ui.Ctx, title, description: string, look: Banner_Lo
 		}
 	}
 	text_block(gtx, description, {style = body, color = fg, wrap = true, semantics = {role = .Text}}, 0, #location())
+}
+
+// banner_actions_width uses the same label style and button metrics as
+// banner_actions, including the gap only when both actions are present.
+@(private)
+banner_actions_width :: proc(gtx: ^ui.Ctx, primary, secondary: string) -> f32 {
+	mt := button_metrics(.Medium)
+	w: f32
+	for label in ([2]string{primary, secondary}) {
+		if label != "" {
+			shaped := design.shape_style(gtx, label, mt.style, font_for(gtx, mt.style.weight))
+			w += button_width(shaped.width)
+		}
+	}
+	if primary != "" && secondary != "" {
+		w += tok.BASE_SIZE_12
+	}
+	return w
 }
 
 // banner_actions is the action row: 12px apart, centred, 2px above and

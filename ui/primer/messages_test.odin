@@ -30,6 +30,54 @@ banner_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 	}
 }
 
+// The first frame is the frame a caller can aim a click at. Its controls
+// must already be where a subsequent frame will route that click.
+@(test)
+test_banner_geometry_is_exact_before_a_settling_frame :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+	for window in ([2]f32{700, 1000}) {
+		for width in ([4]f32{300, 517, 518, 800}) {
+			for layout in ([2]Banner_Actions{.Default, .Inline}) {
+				for dismiss in ([2]bool{false, true}) {
+					m := Banner_Model {
+						width   = width,
+						layout  = layout,
+						dismiss = dismiss,
+					}
+					p: ui.Probe
+					ui.probe_init(
+						&p,
+						banner_view,
+						&m,
+						{window, 600},
+						allocator = context.temp_allocator,
+					)
+					first := ui.probe_semantics(&p, context.temp_allocator)
+					available := min(window, width)
+					if dismiss {
+						x := ui.probe_bounds(&p, "Dismiss banner")
+						testing.expect_value(t, x.x + x.w, available - 9)
+					}
+					ui.probe_frame(&p)
+					testing.expect_value(t, ui.probe_semantics(&p, context.temp_allocator), first)
+					// A resize changes the wrapping and action placement in the very
+					// next frame, without borrowing the previous width's estimates.
+					m.width = 400
+					ui.probe_frame(&p)
+					resized := ui.probe_semantics(&p, context.temp_allocator)
+					ui.probe_frame(&p)
+					testing.expect_value(
+						t,
+						ui.probe_semantics(&p, context.temp_allocator),
+						resized,
+					)
+					ui.probe_destroy(&p)
+				}
+			}
+		}
+	}
+}
+
 @(test)
 test_banner_puts_its_actions_beside_or_under_by_its_own_width :: proc(t: ^testing.T) {
 	defer free_all(context.temp_allocator)
@@ -37,7 +85,6 @@ test_banner_puts_its_actions_beside_or_under_by_its_own_width :: proc(t: ^testin
 	p: ui.Probe
 	ui.probe_init(&p, banner_view, &m, {1000, 600}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&p)
-	ui.probe_frame(&p) // the flexible body takes its share from the first frame's totals
 	title := ui.probe_bounds(&p, "Update available")
 	upd, later := ui.probe_bounds(&p, "Update"), ui.probe_bounds(&p, "Later")
 	// Wide (an 800px banner's content box is 782px): secondary then
@@ -49,11 +96,9 @@ test_banner_puts_its_actions_beside_or_under_by_its_own_width :: proc(t: ^testin
 	// 518px wide leaves a 500px content box: still beside (500 counts as wide).
 	m.width = 518
 	ui.probe_frame(&p)
-	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_bounds(&p, "Later").x < ui.probe_bounds(&p, "Update").x)
 	// 517px: under the content, primary first.
 	m.width = 517
-	ui.probe_frame(&p)
 	ui.probe_frame(&p)
 	desc := ui.probe_bounds(&p, "A new version is ready.")
 	upd, later = ui.probe_bounds(&p, "Update"), ui.probe_bounds(&p, "Later")
@@ -73,7 +118,6 @@ test_a_dismissible_banner_stacks_and_reports_each_action :: proc(t: ^testing.T) 
 	p: ui.Probe
 	ui.probe_init(&p, banner_view, &m, {1000, 600}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&p)
-	ui.probe_frame(&p)
 	title := ui.probe_bounds(&p, "Update available")
 	testing.expect(t, ui.probe_bounds(&p, "Update").y > title.y + title.h) // wide, but stacked
 	testing.expect(t, ui.probe_bounds(&p, "Update").x < ui.probe_bounds(&p, "Later").x)
@@ -98,12 +142,10 @@ test_an_inline_banner_follows_the_window_not_its_width :: proc(t: ^testing.T) {
 	p: ui.Probe
 	ui.probe_init(&p, banner_view, &m, {800, 600}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&p)
-	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_bounds(&p, "Later").x < ui.probe_bounds(&p, "Update").x) // a 300px banner, but beside
 	q: ui.Probe
 	ui.probe_init(&q, banner_view, &m, {700, 600}, allocator = context.temp_allocator)
 	defer ui.probe_destroy(&q)
-	ui.probe_frame(&q)
 	testing.expect(t, ui.probe_bounds(&q, "Update").x < ui.probe_bounds(&q, "Later").x) // a window under 768px: under
 }
 
