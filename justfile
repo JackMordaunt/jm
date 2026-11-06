@@ -701,7 +701,8 @@ accesskit: _worktree-libs
 blend2d_rev := "3525b5fc1506cf1845901f0c2469d7d13758f573"
 asmjit_rev  := "5134d396bd00c1b63259387acdbb12dfdf009f9b"
 
-# Compile Blend2D into ui/blend2d/lib if it is missing
+# Compile Blend2D into ui/blend2d/lib if it is missing. Give --parallel a count:
+# Unix Makefiles otherwise runs make -j with no limit on compiler processes.
 [group('ui')]
 [unix]
 blend2d: _worktree-libs
@@ -712,7 +713,7 @@ blend2d: _worktree-libs
         echo "cmake blend2d -> {{blend2d_lib}}"; \
         cmake --fresh -S build/src/blend2d -B build/blend2d -DASMJIT_DIR="{{root}}/build/src/asmjit" \
             -DCMAKE_BUILD_TYPE=Release -DBLEND2D_STATIC=ON -DBLEND2D_TEST=OFF > build/blend2d.log 2>&1 || exit 1; \
-        cmake --build build/blend2d --config Release --parallel >> build/blend2d.log 2>&1 || exit 1; \
+        cmake --build build/blend2d --config Release --parallel {{num_cpus()}} >> build/blend2d.log 2>&1 || exit 1; \
         cp build/blend2d/libblend2d.a {{blend2d_lib}}; \
     fi
 
