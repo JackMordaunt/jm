@@ -215,6 +215,34 @@ local_parts :: proc(t: time.Time) -> Parts {
 	if !ok || region == nil {
 		return utc_parts(t)
 	}
+	return region_parts(t, region)
+}
+
+// region_parts keeps zone selection separate from the instant being formatted.
+@(private)
+region_parts :: proc(t: time.Time, region: ^datetime.TZ_Region) -> Parts {
+	seconds := time.time_to_unix(t)
+	records := region.records
+	if len(records) > 0 && seconds <= records[len(records) - 1].time {
+		// A transition applies at its UTC second, not the second after it.
+		// Use that same record for the offset and name: looking up the shifted
+		// wall clock again can cross a transition or confuse the repeated hour.
+		left, right := 0, len(records)
+		for left < right {
+			mid := left + (right - left) / 2
+			if records[mid].time <= seconds {
+				left = mid + 1
+			} else {
+				right = mid
+			}
+		}
+		record := records[max(0, left - 1)]
+		p := parts_from_datetime(t, int(record.utc_offset))
+		p.zone = record.shortname
+		return p
+	}
+	// Windows and instants beyond the TZif table use the core's recurrence
+	// rules. Keep that path, selecting the name by the original UTC instant.
 	utc_dt, dt_ok := time.time_to_datetime(t)
 	if !dt_ok {
 		return utc_parts(t)
@@ -223,7 +251,8 @@ local_parts :: proc(t: time.Time) -> Parts {
 	if !tz_ok {
 		return utc_parts(t)
 	}
-	zone, _ := timezone.shortname(local_dt)
+	utc_dt.tz = region
+	zone, _ := timezone.shortname(utc_dt)
 	naive := local_dt
 	naive.tz = nil
 	shifted, time_ok := time.datetime_to_time(naive)

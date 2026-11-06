@@ -2,6 +2,8 @@ package timefmt
 
 import "core:testing"
 import "core:time"
+import "core:time/datetime"
+import "core:time/timezone"
 
 @(test)
 format_directives :: proc(t: ^testing.T) {
@@ -48,4 +50,115 @@ durations :: proc(t: ^testing.T) {
 local_has_zone :: proc(t: ^testing.T) {
 	s := local(time.now(), "%Z", context.temp_allocator)
 	testing.expect(t, len(s) > 0, "zone name must not be empty")
+}
+
+// Values are Python zoneinfo's UTC-to-local answers at the 2026 transitions.
+// Named zones are loaded independently; no process-wide TZ mutation is needed.
+@(test)
+local_transition_boundaries :: proc(t: ^testing.T) {
+	when ODIN_OS == .Windows {
+		// Windows uses recurrence rules instead of the TZif transition table.
+		return
+	}
+	cases := [?]struct {
+		zone:                    string,
+		at:                      i64,
+		before, boundary, after: string,
+	} {
+		{
+			"Europe/London",
+			1774746000,
+			"2026-03-29 00:59:59 +0000 GMT",
+			"2026-03-29 02:00:00 +0100 BST",
+			"2026-03-29 02:00:01 +0100 BST",
+		},
+		{
+			"Europe/London",
+			1792890000,
+			"2026-10-25 01:59:59 +0100 BST",
+			"2026-10-25 01:00:00 +0000 GMT",
+			"2026-10-25 01:00:01 +0000 GMT",
+		},
+		{
+			"America/New_York",
+			1772953200,
+			"2026-03-08 01:59:59 -0500 EST",
+			"2026-03-08 03:00:00 -0400 EDT",
+			"2026-03-08 03:00:01 -0400 EDT",
+		},
+		{
+			"America/New_York",
+			1793512800,
+			"2026-11-01 01:59:59 -0400 EDT",
+			"2026-11-01 01:00:00 -0500 EST",
+			"2026-11-01 01:00:01 -0500 EST",
+		},
+		{
+			"Australia/Lord_Howe",
+			1775314800,
+			"2026-04-05 01:59:59 +1100 +11",
+			"2026-04-05 01:30:00 +1030 +1030",
+			"2026-04-05 01:30:01 +1030 +1030",
+		},
+		{
+			"Australia/Lord_Howe",
+			1791041400,
+			"2026-10-04 01:59:59 +1030 +1030",
+			"2026-10-04 02:30:00 +1100 +11",
+			"2026-10-04 02:30:01 +1100 +11",
+		},
+	}
+	for c in cases {
+		region, ok := timezone.region_load(c.zone, context.temp_allocator)
+		testing.expectf(t, ok && region != nil, "cannot load %s", c.zone)
+		if !ok || region == nil {
+			continue
+		}
+		wants := [3]string{c.before, c.boundary, c.after}
+		for want, i in wants {
+			at := c.at + i64(i) - 1
+			p := region_parts(time.unix(at, 0), region)
+			said := format_parts(p, "%Y-%m-%d %H:%M:%S %z %Z", context.temp_allocator)
+			testing.expectf(t, said == want, "%s at %d: %q, want %q", c.zone, at, said, want)
+		}
+	}
+}
+
+// This table does not depend on a system zone database, so Windows exercises
+// the transition search too. A repeated hour must keep its distinct instant.
+@(test)
+local_transition_preserves_the_instant_and_fraction :: proc(t: ^testing.T) {
+	records := []datetime.TZ_Record {
+		{time = 0, utc_offset = 3600, shortname = "DST", dst = true},
+		{time = 7200, utc_offset = 0, shortname = "STD"},
+	}
+	region := datetime.TZ_Region {
+		records = records,
+	}
+	cases := [?]struct {
+		seconds: i64,
+		nanos:   i64,
+		want:    string,
+	} {
+		{7199, 999_000_000, "02:59:59.999 +0100 DST 7199"},
+		{7200, 0, "02:00:00.000 +0000 STD 7200"},
+		{7200, 123_000_000, "02:00:00.123 +0000 STD 7200"},
+	}
+	for c in cases {
+		p := region_parts(time.unix(c.seconds, c.nanos), &region)
+		testing.expect_value(
+			t,
+			format_parts(p, "%H:%M:%S.%f %z %Z %s", context.temp_allocator),
+			c.want,
+		)
+	}
+	fixed := datetime.TZ_Region {
+		rrule = {std_name = "NPT", std_offset = 5 * 3600 + 45 * 60},
+	}
+	p := region_parts(time.unix(1800014400, 123_000_000), &fixed)
+	testing.expect_value(
+		t,
+		format_parts(p, "%H:%M:%S.%f %z %Z %s", context.temp_allocator),
+		"17:45:00.123 +0545 NPT 1800014400",
+	)
 }
