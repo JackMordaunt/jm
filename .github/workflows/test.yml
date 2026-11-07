@@ -30,8 +30,6 @@ concurrency:
 env:
   ODIN_RELEASE: dev-2026-09
   LIBGIT2_TAG: v1.9.7
-  BLEND2D_REF: 58ca9460b4138af6e793184682e9324e0a8053b2
-  ASMJIT_REF: 0d7f01052f2d3f6d6b9bb6714ef32bd7b80177eb
   # The release vendor:sdl3 in ODIN_RELEASE is bound against.
   SDL3_TAG: release-3.4.2
 jobs:
@@ -54,6 +52,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    # Bound a stuck native test independently of its in-process deadlines.
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -72,6 +72,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release: ${{ env.ODIN_RELEASE }}
       - uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b  # v3.1.0
+      - name: native library revisions
+        run: |
+          echo "BLEND2D_REF=$(just --evaluate blend2d_rev)" >> "$GITHUB_ENV"
+          echo "ASMJIT_REF=$(just --evaluate asmjit_rev)" >> "$GITHUB_ENV"
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1.13.0
         if: runner.os == 'Windows'
 
