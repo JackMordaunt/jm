@@ -9,32 +9,28 @@ import "core:time"
 
 @(private = "file")
 ROW_ASSERTION_TEST :: "-tests:datagrid.test_a_table_row_without_a_key_fails_at_once"
-@(private = "file")
+@(private)
 ROW_ASSERTION_MESSAGE :: "Memory_Table: row 1 has no key; give every row a unique key"
 @(private = "file")
 ROW_ASSERTION_MARKER :: "JM_DATAGRID_EXPECTED_ROW_ASSERTION_OBSERVED"
-
-@(private = "file", thread_local)
-row_assertion_forward: runtime.Assertion_Failure_Proc
 
 @(private)
 row_assertion_child_selected :: proc() -> bool {
 	return len(os.args) == 2 && os.args[1] == ROW_ASSERTION_TEST
 }
 
+// This selected child succeeds only by raising this exact assertion. Avoid
+// Core's Windows trap recovery; normal return or an unrelated assertion cannot
+// produce the proof the parent requires. POSIX keeps its original Core handler.
 @(private)
-observe_row_assertion :: proc(forward: runtime.Assertion_Failure_Proc) -> runtime.Assertion_Failure_Proc {
-	row_assertion_forward = forward
-	return row_assertion_observed
-}
-
-// Observe the exact assertion before the original testing handler traps.
-// Merely returning from a test with an expected assertion is not proof that
-// the assertion happened. The parent requires this marker and runner success.
-@(private)
-row_assertion_observed :: proc(prefix, message: string, loc: runtime.Source_Code_Location) -> ! {
-	if message == ROW_ASSERTION_MESSAGE {fmt.println(ROW_ASSERTION_MARKER)}
-	row_assertion_forward(prefix, message, loc)
+row_assertion_exit :: proc(prefix, message: string, loc: runtime.Source_Code_Location) -> ! {
+	if message != ROW_ASSERTION_MESSAGE {
+		fmt.eprintfln("unexpected row assertion at %w: %s: %s", loc, prefix, message)
+		os.exit(1)
+	}
+	n, err := os.write_string(os.stdout, ROW_ASSERTION_MARKER + "\n")
+	if err == nil && n == len(ROW_ASSERTION_MARKER) + 1 && os.flush(os.stdout) == nil {os.exit(0)}
+	os.exit(1)
 }
 
 when ODIN_OS != .Windows {
@@ -84,7 +80,6 @@ expect_row_assertion_child :: proc(t: ^testing.T) {
 	testing.expectf(t, read_err == nil, "cannot read the row assertion child: %v", read_err)
 	said := string(text)
 	completed := state.exited && state.success && state.exit_code == 0 &&
-		strings.contains(said, ROW_ASSERTION_MARKER) &&
-		strings.contains(said, "Finished 1 test") && strings.contains(said, "The test was successful.")
-	testing.expectf(t, completed, "row assertion child did not observe the expected assertion and complete: exit %d, output:\n%s", state.exit_code, said)
+		strings.contains(said, ROW_ASSERTION_MARKER + "\n")
+	testing.expectf(t, completed, "row assertion child did not observe the expected assertion and exit normally: exit %d, output:\n%s", state.exit_code, said)
 }

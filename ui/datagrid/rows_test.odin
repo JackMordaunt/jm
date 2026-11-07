@@ -19,15 +19,15 @@ VALUE_CELLS := [][2]string{{"SN-1", "Norway"}, {"SN-2", "Paraguay"}, {"SN-3", "N
 @(test)
 test_a_table_row_without_a_key_fails_at_once :: proc(t: ^testing.T) {
 	when ODIN_OS == .Windows {
-		// The Windows runner cannot reliably recover an expected trap while
-		// sibling tests run. Keep this assertion in its own selected child.
+		// Observe the Windows assertion in a selected child without asking
+		// the Core runner to recover a trap among sibling tests.
 		if !row_assertion_child_selected() {
 			expect_row_assertion_child(t)
 			return
 		}
-		context.assertion_failure_proc = observe_row_assertion(context.assertion_failure_proc)
+		context.assertion_failure_proc = row_assertion_exit
 	}
-	testing.expect_assert_message(t, "Memory_Table: row 1 has no key; give every row a unique key")
+	testing.expect_assert_message(t, ROW_ASSERTION_MESSAGE)
 	rows := []Page_Row{{"a", nil}, {"", nil}}
 	tb: Memory_Table
 	memory_table_init(&tb, VALUE_COLS, rows)
