@@ -7,7 +7,16 @@ import "core:testing"
 
 import "../files"
 
-P :: files.path_make
+// Plans use native absolute paths; naming.Platform varies name rules only.
+P :: proc(path: string) -> files.Path {
+	when ODIN_OS == .Windows {
+		p := files.path_make(fmt.tprintf("C:%s", path))
+		for &c in p.buf[:p.len] {if c == '/' {c = '\\'}}
+		return p
+	} else {
+		return files.path_make(path)
+	}
+}
 
 @(private = "file")
 plan_of :: proc(effects: ..Effect) -> (p: Plan) {

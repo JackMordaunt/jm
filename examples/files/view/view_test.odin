@@ -1,6 +1,7 @@
 package files_view
 
 import "core:fmt"
+import "core:path/filepath"
 import "core:testing"
 
 import "jm:ui"
@@ -9,6 +10,58 @@ import "jm:ui/fluent"
 
 import "../files"
 import "../query"
+
+// Fixtures use the host's absolute path syntax, as filesystem listings do.
+ROOT_PATH :: "C:\\" when ODIN_OS == .Windows else "/"
+HOME_PATH :: ROOT_PATH + "home" + SEP + "me"
+DOCS_PATH :: HOME_PATH + SEP + "docs"
+WORK_PATH :: DOCS_PATH + SEP + "work"
+CAT_PATH :: HOME_PATH + SEP + "cat.png"
+NOTES_PATH :: HOME_PATH + SEP + "notes.txt"
+DEEP_PATH :: HOME_PATH + SEP + "projects" + SEP + "client" + SEP + "archive" + SEP + "2026" + SEP + "reports"
+TEMP_PATH :: ROOT_PATH + "tmp"
+ROOT_LABEL :: ROOT_PATH when ODIN_OS == .Windows else "Computer"
+
+@(test)
+crumbs_keep_the_volume_root_absolute :: proc(t: ^testing.T) {
+	paths := []string{ROOT_PATH, HOME_PATH, WORK_PATH}
+	for path in paths {
+		crumbs := crumbs_of(path, context.temp_allocator)
+		testing.expect_value(t, crumbs[0], ROOT_PATH)
+		testing.expect_value(t, crumb_path(crumbs, len(crumbs) - 1, context.temp_allocator), path)
+		for _, ii in crumbs {
+			testing.expect(t, filepath.is_abs(crumb_path(crumbs, ii, context.temp_allocator)), path)
+		}
+	}
+	when ODIN_OS == .Windows {
+		for path in ([]string{`\\server\share`, `\\server\share\`, `\\server\share\docs\work`}) {
+			crumbs := crumbs_of(path, context.temp_allocator)
+			testing.expect_value(t, crumb_path(crumbs, len(crumbs) - 1, context.temp_allocator), path)
+			testing.expect(t, crumbs[0] == `\\server\share` || crumbs[0] == `\\server\share\`)
+			for _, ii in crumbs {
+				testing.expect(t, filepath.is_abs(crumb_path(crumbs, ii, context.temp_allocator)), path)
+			}
+		}
+	}
+}
+
+@(test)
+clicking_the_root_crumb_stays_on_its_volume :: proc(t: ^testing.T) {
+	roots := []string{ROOT_PATH}
+	when ODIN_OS == .Windows {roots = {ROOT_PATH, `\\server\share\`}}
+	for root in roots {
+		m: Model
+		model_init(&m, fmt.tprintf("%sdocs%swork", root, SEP))
+		p: ui.Probe
+		ui.probe_init(&p, view, &m, {1200, 600})
+		ui.probe_frame(&p)
+		label := "Computer" if root == "/" else root
+		testing.expect(t, ui.probe_click(&p, label), label)
+		testing.expect_value(t, path_of(&m), root)
+		ui.probe_destroy(&p)
+		model_destroy(&m)
+	}
+}
 
 // command_of decodes a frame's command as the host does; nil if it is
 // not a files.Command.
@@ -20,14 +73,14 @@ command_of :: proc(c: ui.Command) -> files.Command {
 
 @(private = "file")
 fixture_entries :: []query.Entry {
-	{name = "docs", path = "/home/me/docs", dir = true},
-	{name = "cat.png", path = "/home/me/cat.png", image = true, size = 2048},
-	{name = "notes.txt", path = "/home/me/notes.txt", size = 100},
+	{name = "docs", path = DOCS_PATH, dir = true},
+	{name = "cat.png", path = CAT_PATH, image = true, size = 2048},
+	{name = "notes.txt", path = NOTES_PATH, size = 100},
 }
 
 @(private = "file")
 open :: proc(m: ^Model) -> ui.Probe {
-	model_init(m, "/home/me")
+	model_init(m, HOME_PATH)
 	p: ui.Probe
 	ui.probe_init(&p, view, m, {1200, 600})
 	return p
@@ -55,14 +108,14 @@ the_folder_is_needed_and_its_entries_drawn_with_thumbnails_for_pictures :: proc(
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	testing.expect(t, ui.probe_needs_q(&p, query.Listing{path = "/home/me"}))
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	testing.expect(t, ui.probe_needs_q(&p, query.Listing{path = HOME_PATH}))
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "docs"))
 	testing.expect(t, ui.probe_tagged(&p, "cat.png"))
-	testing.expect(t, ui.probe_needs_q(&p, query.Thumb{path = "/home/me/cat.png", px = THUMB}))
-	testing.expect(t, !ui.probe_needs_q(&p, query.Thumb{path = "/home/me/notes.txt", px = THUMB}))
-	ui.probe_deliver(&p, query.Thumb{path = "/home/me/cat.png", px = THUMB}, query.Thumb_Result{image = "/tmp/cat-thumb.bmp"})
+	testing.expect(t, ui.probe_needs_q(&p, query.Thumb{path = CAT_PATH, px = THUMB}))
+	testing.expect(t, !ui.probe_needs_q(&p, query.Thumb{path = NOTES_PATH, px = THUMB}))
+	ui.probe_deliver(&p, query.Thumb{path = CAT_PATH, px = THUMB}, query.Thumb_Result{image = TEMP_PATH + SEP + "cat-thumb.bmp"})
 	ui.probe_frame(&p)
 	dump := ui.probe_dump(&p)
 	defer delete(dump)
@@ -77,13 +130,13 @@ a_click_selects_and_the_details_show_it_large :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_click(&p, "cat.png"))
 	ui.probe_frame(&p)
-	testing.expect_value(t, selected_path(&m), "/home/me/cat.png")
+	testing.expect_value(t, selected_path(&m), CAT_PATH)
 	testing.expect(t, ui.probe_tagged(&p, "Open"))
-	testing.expect(t, ui.probe_needs_q(&p, query.Thumb{path = "/home/me/cat.png", px = PREVIEW}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Thumb{path = CAT_PATH, px = PREVIEW}))
 	testing.expect(t, ui.probe_tagged(&p, "Picture"))
 }
 
@@ -93,7 +146,7 @@ the_header_sorts_and_the_search_filters :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
 	// The table's first column is weighted, so its first frame asks for
 	// another, which the probe runs by hand.
@@ -124,33 +177,33 @@ a_double_click_enters_a_folder_or_opens_a_file :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
 	testing.expect(t, double_click(&p, "notes.txt"))
 	cmds := ui.probe_commands(&p)
 	testing.expect_value(t, len(cmds), 2) // Open, and the Visited the sidebar's Recent is kept from
 	o, ok := command_of(cmds[0]).(files.Open)
 	testing.expect(t, ok)
-	testing.expect_value(t, files.path_of(&o.path), "/home/me/notes.txt")
+	testing.expect_value(t, files.path_of(&o.path), NOTES_PATH)
 	_, visited := command_of(cmds[1]).(files.Visited)
 	testing.expect(t, visited)
-	testing.expect_value(t, path_of(&m), "/home/me")
+	testing.expect_value(t, path_of(&m), HOME_PATH)
 
 	testing.expect(t, double_click(&p, "docs"))
-	testing.expect_value(t, path_of(&m), "/home/me/docs")
+	testing.expect_value(t, path_of(&m), DOCS_PATH)
 	v, vok := command_of(ui.probe_commands(&p)[0]).(files.Visited)
 	testing.expect(t, vok && v.dir)
 	testing.expect_value(t, files.name_of(&v.name), "docs")
 	ui.probe_frame(&p)
-	testing.expect(t, ui.probe_needs_q(&p, query.Listing{path = "/home/me/docs"}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Listing{path = DOCS_PATH}))
 	// The old listing stays drawn and needed until the new one lands.
-	testing.expect(t, ui.probe_needs_q(&p, query.Listing{path = "/home/me"}))
+	testing.expect(t, ui.probe_needs_q(&p, query.Listing{path = HOME_PATH}))
 	testing.expect(t, ui.probe_tagged(&p, "docs"))
-	ui.probe_deliver(&p, query.Listing{path = "/home/me/docs"}, query.Listing_Result{entries = {{name = "a.txt", path = "/home/me/docs/a.txt"}}})
+	ui.probe_deliver(&p, query.Listing{path = DOCS_PATH}, query.Listing_Result{entries = {{name = "a.txt", path = DOCS_PATH + SEP + "a.txt"}}})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "a.txt"))
 	testing.expect(t, !ui.probe_tagged(&p, "cat.png"), "the old listing's rows are gone")
-	testing.expect(t, !ui.probe_needs_q(&p, query.Listing{path = "/home/me"}))
+	testing.expect(t, !ui.probe_needs_q(&p, query.Listing{path = HOME_PATH}))
 }
 
 @(test)
@@ -159,7 +212,7 @@ the_path_bar_goes_back_out :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	navigate(&m, "/home/me/docs/work")
+	navigate(&m, WORK_PATH)
 	ui.probe_frame(&p)
 	// The path bar, pinned under the content: a crumb per folder. (The
 	// folder's own name is the toolbar's title too, so a parent is
@@ -168,13 +221,13 @@ the_path_bar_goes_back_out :: proc(t: ^testing.T) {
 	testing.expect(t, docs.y >= 600 - PATH_H - STATUS_H, "the path bar is at the bottom")
 	testing.expect(t, docs.y + docs.h <= 600 - STATUS_H, "and above the status line")
 	testing.expect(t, ui.probe_click(&p, "docs"))
-	testing.expect_value(t, path_of(&m), "/home/me/docs")
+	testing.expect_value(t, path_of(&m), DOCS_PATH)
 	ui.probe_frame(&p)
-	testing.expect(t, ui.probe_click(&p, "Computer"))
-	testing.expect_value(t, path_of(&m), "/")
+	testing.expect(t, ui.probe_click(&p, ROOT_LABEL))
+	testing.expect_value(t, path_of(&m), ROOT_PATH)
 	// Back walks the folders visited.
 	testing.expect(t, ui.probe_click(&p, "Back"))
-	testing.expect_value(t, path_of(&m), "/home/me/docs")
+	testing.expect_value(t, path_of(&m), DOCS_PATH)
 }
 
 @(test)
@@ -183,7 +236,7 @@ an_unreadable_folder_shows_its_error :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{error = "cannot read /home/me: permission denied"})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{error = "cannot read /home/me: permission denied"})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "cannot read /home/me: permission denied"))
 }
@@ -205,31 +258,31 @@ back_and_forward_walk_the_folders_visited :: proc(t: ^testing.T) {
 	p := open(&m)
 	defer ui.probe_destroy(&p)
 	testing.expect(t, !can_go_back(&m))
-	navigate(&m, "/home/me/docs")
-	navigate(&m, "/home/me/docs/work")
+	navigate(&m, DOCS_PATH)
+	navigate(&m, WORK_PATH)
 	ui.probe_frame(&p)
 	testing.expect(t, can_go_back(&m) && !can_go_forward(&m))
 	// The mouse's back button arrives as a key, from wherever the pointer is.
 	ui.probe_key(&p, .Browser_Back)
-	testing.expect_value(t, path_of(&m), "/home/me/docs")
+	testing.expect_value(t, path_of(&m), DOCS_PATH)
 	ui.probe_key(&p, .Left, {.Alt})
-	testing.expect_value(t, path_of(&m), "/home/me")
+	testing.expect_value(t, path_of(&m), HOME_PATH)
 	testing.expect(t, !can_go_back(&m) && can_go_forward(&m))
 	ui.probe_key(&p, .Browser_Forward)
-	testing.expect_value(t, path_of(&m), "/home/me/docs")
+	testing.expect_value(t, path_of(&m), DOCS_PATH)
 	// The toolbar's buttons do the same, and a new folder cuts the forward.
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_click(&p, "Forward"))
-	testing.expect_value(t, path_of(&m), "/home/me/docs/work")
+	testing.expect_value(t, path_of(&m), WORK_PATH)
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_click(&p, "Back"))
-	testing.expect_value(t, path_of(&m), "/home/me/docs")
-	navigate(&m, "/tmp")
+	testing.expect_value(t, path_of(&m), DOCS_PATH)
+	navigate(&m, TEMP_PATH)
 	testing.expect(t, !can_go_forward(&m))
 	ui.probe_key(&p, .Browser_Forward)
-	testing.expect_value(t, path_of(&m), "/tmp")
+	testing.expect_value(t, path_of(&m), TEMP_PATH)
 	ui.probe_key(&p, .Right, {.Alt})
-	testing.expect_value(t, path_of(&m), "/tmp")
+	testing.expect_value(t, path_of(&m), TEMP_PATH)
 }
 
 @(test)
@@ -241,9 +294,9 @@ the_sidebar_lists_places_pins_and_recent_and_pins_the_folder_shown :: proc(t: ^t
 	testing.expect(t, ui.probe_needs_q(&p, query.Places{}))
 	testing.expect(t, ui.probe_needs_q(&p, query.Pins{}))
 	testing.expect(t, ui.probe_needs_q(&p, query.Recent_Places{}))
-	ui.probe_deliver(&p, query.Places{}, query.Places_Result{items = {{"Home", "/home/me", true}, {"Pictures", "/home/me/Pictures", true}}})
-	ui.probe_deliver(&p, query.Pins{}, query.Pins_Result{items = {{"work", "/home/me/work", true}}})
-	ui.probe_deliver(&p, query.Recent_Places{}, query.Recent_Places_Result{items = {{"cat.png", "/home/me/cat.png", false}, {"Pictures", "/home/me/Pictures", true}}})
+	ui.probe_deliver(&p, query.Places{}, query.Places_Result{items = {{"Home", HOME_PATH, true}, {"Pictures", HOME_PATH + SEP + "Pictures", true}}})
+	ui.probe_deliver(&p, query.Pins{}, query.Pins_Result{items = {{"work", HOME_PATH + SEP + "work", true}}})
+	ui.probe_deliver(&p, query.Recent_Places{}, query.Recent_Places_Result{items = {{"cat.png", CAT_PATH, false}, {"Pictures", HOME_PATH + SEP + "Pictures", true}}})
 	ui.probe_frame(&p)
 	for name in ([]string{"Home", "Pictures", "work", "cat.png", "Pin this folder"}) {
 		testing.expect(t, ui.probe_tagged(&p, name), name)
@@ -262,15 +315,15 @@ the_sidebar_lists_places_pins_and_recent_and_pins_the_folder_shown :: proc(t: ^t
 	testing.expect_value(t, len(cmds), 1)
 	pin, ok := command_of(cmds[0]).(files.Pin)
 	testing.expect(t, ok)
-	testing.expect_value(t, files.path_of(&pin.path), "/home/me")
+	testing.expect_value(t, files.path_of(&pin.path), HOME_PATH)
 	testing.expect_value(t, files.name_of(&pin.name), "me")
-	ui.probe_deliver(&p, query.Pins{}, query.Pins_Result{items = {{"work", "/home/me/work", true}, {"me", "/home/me", true}}})
+	ui.probe_deliver(&p, query.Pins{}, query.Pins_Result{items = {{"work", HOME_PATH + SEP + "work", true}, {"me", HOME_PATH, true}}})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_tagged(&p, "Unpin this folder"))
 	// A place goes there with no visit to remember; a recent file opens
 	// and is a visit.
 	testing.expect(t, ui.probe_click(&p, "Pictures"))
-	testing.expect_value(t, path_of(&m), "/home/me/Pictures")
+	testing.expect_value(t, path_of(&m), HOME_PATH + SEP + "Pictures")
 	testing.expect_value(t, len(ui.probe_commands(&p)), 0)
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_click(&p, "cat.png"))
@@ -292,9 +345,9 @@ the_sidebar_scrolls_when_its_rows_outgrow_the_window :: proc(t: ^testing.T) {
 	pins := make([]query.Place, 40, context.temp_allocator)
 	for &pl, ii in pins {
 		name := fmt.tprintf("pin %02d", ii)
-		pl = {name, fmt.tprintf("/home/me/%s", name), true}
+		pl = {name, fmt.tprintf(HOME_PATH + SEP + "%s", name), true}
 	}
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_deliver(&p, query.Pins{}, query.Pins_Result{items = pins})
 	ui.probe_frame(&p)
 	ui.probe_frame(&p)
@@ -323,12 +376,12 @@ the_sidebar_scrolls_when_its_rows_outgrow_the_window :: proc(t: ^testing.T) {
 // sidebar's lists delivered.
 @(private = "file")
 at_size :: proc(m: ^Model, size: ops.Size) -> ui.Probe {
-	model_init(m, "/home/me/projects/client/archive/2026/reports")
+	model_init(m, DEEP_PATH)
 	p: ui.Probe
 	ui.probe_init(&p, view, m, size)
-	dir :: "/home/me/projects/client/archive/2026/reports"
-	ui.probe_deliver(&p, query.Listing{path = dir}, query.Listing_Result{entries = {{name = "summary.txt", path = dir + "/summary.txt", size = 10}}})
-	ui.probe_deliver(&p, query.Places{}, query.Places_Result{items = {{"Home", "/home/me", true}}})
+	dir :: DEEP_PATH
+	ui.probe_deliver(&p, query.Listing{path = dir}, query.Listing_Result{entries = {{name = "summary.txt", path = dir + SEP + "summary.txt", size = 10}}})
+	ui.probe_deliver(&p, query.Places{}, query.Places_Result{items = {{"Home", HOME_PATH, true}}})
 	ui.probe_deliver(&p, query.Pins{}, query.Pins_Result{})
 	ui.probe_deliver(&p, query.Recent_Places{}, query.Recent_Places_Result{})
 	ui.probe_frame(&p)
@@ -437,11 +490,11 @@ the_sidebar_opens_over_a_narrow_window :: proc(t: ^testing.T) {
 	testing.expect(t, ui.probe_click(&p, "Sidebar"))
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_needs_q(&p, query.Places{}), "the drawer needs the places")
-	ui.probe_deliver(&p, query.Places{}, query.Places_Result{items = {{"Home", "/home/me", true}}})
+	ui.probe_deliver(&p, query.Places{}, query.Places_Result{items = {{"Home", HOME_PATH, true}}})
 	ui.probe_advance(&p, 20, 0.05) // the drawer slides in
 	testing.expect(t, ui.probe_tagged(&p, "Places"), "the drawer shows the sidebar")
 	testing.expect(t, ui.probe_click(&p, "Home"))
-	testing.expect_value(t, path_of(&m), "/home/me")
+	testing.expect_value(t, path_of(&m), HOME_PATH)
 	ui.probe_frame(&p)
 	testing.expect(t, !m.sidebar_over, "a visit closes the drawer")
 	// Wide, the toggle hides and shows the sidebar beside the content.
@@ -661,12 +714,12 @@ a_right_click_on_an_entry_opens_its_menu_under_the_pointer :: proc(t: ^testing.T
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
 	row := ui.probe_bounds(&p, "notes.txt")
 	at := ops.Point{row.x + 40, row.y + row.h / 2}
 	right_click(&p, at)
-	testing.expect_value(t, selected_path(&m), "/home/me/notes.txt")
+	testing.expect_value(t, selected_path(&m), NOTES_PATH)
 	for item in ([]string{"Open", "Cut", "Copy", "Duplicate", "Rename", "Copy path", "Move to Trash"}) {
 		testing.expectf(t, menu_item_bounds(&p, item).w > 0, "the menu offers %q", item)
 	}
@@ -681,20 +734,20 @@ a_right_click_on_an_entry_opens_its_menu_under_the_pointer :: proc(t: ^testing.T
 	testing.expect_value(t, len(cmds), 1)
 	dup, ok := command_of(cmds[0]).(files.Paste)
 	testing.expect(t, ok && dup.mode == .Copy)
-	testing.expect_value(t, files.path_of(&dup.source), "/home/me/notes.txt")
-	testing.expect_value(t, files.path_of(&dup.dest), "/home/me")
+	testing.expect_value(t, files.path_of(&dup.source), NOTES_PATH)
+	testing.expect_value(t, files.path_of(&dup.dest), HOME_PATH)
 	ui.probe_frame(&p)
 	testing.expect(t, menu_item_bounds(&p, "Duplicate").w == 0, "a pick closes the menu")
 
 	// Copy path puts the path on the clipboard; Move to Trash asks for it.
 	right_click(&p, at)
 	testing.expect(t, pick(&p, "Copy path"))
-	testing.expect_value(t, ui.probe_clipboard(&p), "/home/me/notes.txt")
+	testing.expect_value(t, ui.probe_clipboard(&p), NOTES_PATH)
 	right_click(&p, at)
 	testing.expect(t, pick(&p, "Move to Trash"))
 	trash, tok := command_of(ui.probe_commands(&p)[0]).(files.Trash)
 	testing.expect(t, tok)
-	testing.expect_value(t, files.path_of(&trash.path), "/home/me/notes.txt")
+	testing.expect_value(t, files.path_of(&trash.path), NOTES_PATH)
 }
 
 @(test)
@@ -703,16 +756,16 @@ a_folder_offers_to_be_pinned_and_pasted_into :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
-	take(&m, "/home/me/notes.txt", .Copy)
+	take(&m, NOTES_PATH, .Copy)
 	row := ui.probe_bounds(&p, "docs")
 	right_click(&p, {row.x + 40, row.y + row.h / 2})
 	testing.expect(t, menu_item_bounds(&p, "Pin to sidebar").w > 0)
 	testing.expect(t, pick(&p, "Paste into folder"))
 	paste, ok := command_of(ui.probe_commands(&p)[0]).(files.Paste)
 	testing.expect(t, ok)
-	testing.expect_value(t, files.path_of(&paste.dest), "/home/me/docs")
+	testing.expect_value(t, files.path_of(&paste.dest), DOCS_PATH)
 }
 
 @(test)
@@ -721,7 +774,7 @@ a_right_click_on_no_entry_opens_the_folders_menu :: proc(t: ^testing.T) {
 	defer model_destroy(&m)
 	p := open(&m)
 	defer ui.probe_destroy(&p)
-	ui.probe_deliver(&p, query.Listing{path = "/home/me"}, query.Listing_Result{entries = fixture_entries})
+	ui.probe_deliver(&p, query.Listing{path = HOME_PATH}, query.Listing_Result{entries = fixture_entries})
 	ui.probe_frame(&p)
 	testing.expect(t, ui.probe_click(&p, "notes.txt"))
 	ui.probe_frame(&p)

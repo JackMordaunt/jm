@@ -31,11 +31,17 @@ reason :: proc(path, home: string, places: []string) -> Reason {
 	return .None
 }
 
-// root says whether path is a filesystem's root: "/" or a Windows
-// drive's "C:\".
+// root guards native filesystem roots, including a Windows UNC share.
+// A bare drive name is guarded too: it must never become a mutation target.
 root :: proc(path: string) -> bool {
-	if path == filepath.SEPARATOR_STRING {
+	if len(path) == 1 && filepath.is_separator(path[0]) {
 		return true
 	}
-	return len(path) <= 3 && len(path) >= 2 && path[1] == ':'
+	when ODIN_OS == .Windows {
+		volume := filepath.volume_name(path)
+		rest := path[len(volume):]
+		return volume != "" && (rest == "" || len(rest) == 1 && filepath.is_separator(rest[0]))
+	} else {
+		return false
+	}
 }

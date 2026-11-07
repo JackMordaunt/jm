@@ -1340,10 +1340,17 @@ selected_entry :: proc(m: ^Model, listing: ^query.Listing_Result) -> (e: query.E
 // crumbs_of is the path as its components, the root first.
 crumbs_of :: proc(path: string, allocator := context.allocator) -> []string {
 	out := make([dynamic]string, allocator)
-	if strings.has_prefix(path, SEP) {
-		append(&out, SEP)
+	volume := filepath.volume_name(path)
+	rest := path[len(volume):]
+	if strings.has_prefix(rest, SEP) {
+		// Keep the separator with the volume: "C:" is drive-relative,
+		// while "C:\" and a UNC share root are absolute destinations.
+		append(&out, path[:len(volume) + len(SEP)])
+		rest = rest[len(SEP):]
+	} else if volume != "" {
+		append(&out, volume)
 	}
-	for part in strings.split(path, SEP, allocator) {
+	for part in strings.split(rest, SEP, allocator) {
 		if part != "" {
 			append(&out, part)
 		}
@@ -1359,7 +1366,7 @@ crumb_path :: proc(crumbs: []string, index: int, allocator := context.allocator)
 			strings.write_string(&b, SEP)
 			continue
 		}
-		if ii > 0 && crumbs[ii - 1] != SEP {
+		if ii > 0 && !strings.has_suffix(crumbs[ii - 1], SEP) {
 			strings.write_string(&b, SEP)
 		}
 		strings.write_string(&b, c)
