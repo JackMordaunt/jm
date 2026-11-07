@@ -52,7 +52,9 @@ when ODIN_OS != .Windows {
 expect_row_assertion_child :: proc(t: ^testing.T) {
 	self, err := os.get_executable_path(context.temp_allocator)
 	if !testing.expectf(t, err == nil, "cannot find this test executable: %v", err) {return}
-	out, open_err := os.create_temp_file("", "jm-datagrid-assert-*")
+	// Windows process_start forwards this handle directly as stdout/stderr;
+	// it must be inheritable before CreateProcess receives it.
+	out, open_err := os.create_temp_file("", "jm-datagrid-assert-*", {.Inheritable})
 	if !testing.expectf(t, open_err == nil, "cannot capture the assertion child: %v", open_err) {return}
 	path := strings.clone(os.name(out), context.temp_allocator)
 	defer {
