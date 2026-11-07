@@ -2,7 +2,6 @@ package http_fuzz
 
 import "core:fmt"
 import "core:os"
-import "core:path/filepath"
 import "core:testing"
 import "core:time"
 
@@ -55,9 +54,11 @@ model_holds :: proc(t: ^testing.T) {
 // Smoke runs save the original failing entropy and stop; jm-fuzz can replay and
 // minimize it later, without retrying a hung case hundreds of times in CI.
 smoke_child_command :: proc(t: ^testing.T, name: string) -> []string {
-	self, err := filepath.abs(os.args[0], context.temp_allocator)
+	// odin test supplies only the output basename in argv[0], even when
+	// the executable is in build/test and the working directory is the repo.
+	self, err := os.get_executable_path(context.temp_allocator)
 	if err != nil {
-		testing.expect(t, false, "cannot find this test binary to isolate HTTP cases")
+		testing.expectf(t, false, "cannot find this test binary to isolate HTTP cases: %v", err)
 		return nil
 	}
 	command := make([]string, 2, context.temp_allocator)
