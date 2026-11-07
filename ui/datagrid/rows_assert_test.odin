@@ -37,6 +37,17 @@ row_assertion_observed :: proc(prefix, message: string, loc: runtime.Source_Code
 	row_assertion_forward(prefix, message, loc)
 }
 
+when ODIN_OS != .Windows {
+	@(private)
+	wait_row_assertion_child :: proc(child: os.Process, timeout: time.Duration) -> (state: os.Process_State, err: os.Error, owned: bool) {
+		state, err = os.process_wait(child, timeout)
+		return state, err, !state.exited
+	}
+
+	@(private)
+	close_row_assertion_child :: proc(_: os.Process) {}
+}
+
 @(private)
 expect_row_assertion_child :: proc(t: ^testing.T) {
 	self, err := os.get_executable_path(context.temp_allocator)
@@ -51,17 +62,23 @@ expect_row_assertion_child :: proc(t: ^testing.T) {
 	// A file cannot keep a pipe reader waiting after the child has ended.
 	child, start_err := os.process_start({command = {self, ROW_ASSERTION_TEST}, stdout = out, stderr = out})
 	if !testing.expectf(t, start_err == nil, "cannot start the assertion child: %v", start_err) {return}
-	state, wait_err := os.process_wait(child, 30 * time.Second)
+	state, wait_err, owned := wait_row_assertion_child(child, 30 * time.Second)
+	defer if owned {close_row_assertion_child(child)}
 	timed_out := wait_err == os.General_Error.Timeout
-	if timed_out {
-		_ = os.process_kill(child)
-		state, wait_err = os.process_wait(child) // reap after the forced kill
+	if wait_err != nil && owned {
+		kill_err := os.process_kill(child)
+		reap_err: os.Error
+		state, reap_err, owned = wait_row_assertion_child(child, 5 * time.Second)
+		// A child may have exited between the failed wait and the kill.
+		testing.expectf(t, kill_err == nil || reap_err == nil && state.exited,
+			"cannot kill the row assertion child: %v", kill_err)
+		testing.expectf(t, reap_err == nil, "cannot reap the row assertion child within 5 seconds: %v", reap_err)
 	}
 	_ = os.close(out)
 	out = nil
 	text, read_err := os.read_entire_file_from_path(path, context.temp_allocator)
 	testing.expectf(t, !timed_out, "the row assertion child exceeded 30 seconds")
-	testing.expectf(t, wait_err == nil, "cannot reap the row assertion child: %v", wait_err)
+	testing.expectf(t, wait_err == nil, "cannot wait for the row assertion child: %v", wait_err)
 	testing.expectf(t, read_err == nil, "cannot read the row assertion child: %v", read_err)
 	said := string(text)
 	completed := state.exited && state.success && state.exit_code == 0 &&
