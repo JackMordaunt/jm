@@ -186,7 +186,9 @@ closing :: proc(data: string) -> string {
 	}
 	head := data
 	if end := strings.index(data, "\r\n\r\n"); end >= 0 {
-		head = data[:end]
+		// Include the last line's CRLF. With no headers this is the
+		// status line's, so the slice after it is empty, not out of range.
+		head = data[:end + 2]
 	}
 	rest := head[line_end + 2:]
 	for line in strings.split_lines_iterator(&rest) {
