@@ -212,9 +212,23 @@ jobs:
           MSYS_NO_PATHCONV: 1
         run: |
           python - <<'PY_DIAG'
-          import json, pathlib, re, shlex, subprocess
+          import json, pathlib, re, shlex, shutil, subprocess
           output = pathlib.Path("build/datagrid-diagnostic")
           output.mkdir(parents=True, exist_ok=True)
+          # Match just test's runtime DLL staging in this different output directory.
+          odin_root = pathlib.Path(subprocess.check_output(["odin", "root"], text=True).strip())
+          runtime_dlls = []
+          for source, required in [(odin_root / "vendor/sdl3/SDL3.dll", True),
+                                   (pathlib.Path("ui/accesskit/lib/accesskit.dll"), False)]:
+              present = source.is_file()
+              status = "copied" if present else ("missing-required" if required else "optional-absent")
+              if present: shutil.copy2(source, output / source.name)
+              runtime_dlls.append({"source": str(source), "name": source.name,
+                                   "required": required, "present": present, "status": status})
+          print(json.dumps({"runtime_dlls": runtime_dlls}), flush=True)
+          (output / "runtime-dlls.json").write_text(json.dumps(runtime_dlls, indent=2) + "\n")
+          if any(r["required"] and not r["present"] for r in runtime_dlls):
+              raise SystemExit("Required runtime DLL is unavailable; no test probes started.")
           names = []
           for path in sorted(pathlib.Path("ui/datagrid").glob("*_test.odin")):
               source = path.read_text()
