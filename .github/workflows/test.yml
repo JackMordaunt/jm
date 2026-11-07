@@ -18,7 +18,7 @@
 # are not on PATH; the package still has to link libpq, so SKIP leaves pq
 # and jm-fuzz out where there is no libpq to link. wasm-windows.yml is the
 # shorter loop for jm:wasm on Windows alone.
-name: test
+name: datagrid diagnostic
 on:
   push:
     branches: [main, "ci/**"]
@@ -50,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [windows-latest]
     runs-on: ${{ matrix.os }}
     # Bound a stuck native test independently of its in-process deadlines.
     timeout-minutes: 30
@@ -205,14 +205,114 @@ jobs:
           MSYS_NO_PATHCONV: 1
         run: just accesskit
 
-      # Every program linked, then the suite, as `just link test` runs them
-      # anywhere. --no-deps: the native libraries were built in the step above.
-      - name: build and test
+      # Temporary diagnosis only: this branch separates an expected-assert
+      # trap from ordinary tests. Neither subset is removed from the candidate.
+      - name: datagrid subsets with raw runner output
         env:
           MSYS_NO_PATHCONV: 1
-        run: just --no-deps hot-counter-child link test
+        run: |
+          python - <<'PY_DIAG'
+          import json, pathlib, re, shlex, subprocess
+          output = pathlib.Path("build/datagrid-diagnostic")
+          output.mkdir(parents=True, exist_ok=True)
+          names = []
+          for path in sorted(pathlib.Path("ui/datagrid").glob("*_test.odin")):
+              source = path.read_text()
+              found = re.findall(r"@\(test\)\s*([A-Za-z_][A-Za-z_0-9]*)\s*::\s*proc", source)
+              assert len(found) == len(re.findall(r"@\(test\)", source)), path
+              names.extend("datagrid." + name for name in found)
+          assertion = "datagrid.test_a_table_row_without_a_key_fails_at_once"
+          assert names.count(assertion) == 1
+          assert len(names) == len(set(names)) and len(names) > 1
+          subsets = [("without-assertion", [n for n in names if n != assertion]),
+                     ("assertion-only", [assertion])]
+          common = []
+          for value in ["flags", "link"]:
+              common.extend(shlex.split(subprocess.check_output(
+                  ["just", "--evaluate", value], text=True)))
+          results = []
+          for label, selected in subsets:
+              binary = output / (label + ".exe")
+              command = ["odin", "test", "ui/datagrid", *common,
+                         "-define:ODIN_TEST_LOG_STATE_CHANGES=true",
+                         "-define:ODIN_TEST_NAMES=" + ",".join(selected),
+                         "-out:" + str(binary)]
+              print(json.dumps({"subset": label, "count": len(selected),
+                                "selected": selected, "command": command}), flush=True)
+              try:
+                  process = subprocess.Popen(command, text=True, errors="replace",
+                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                  try:
+                      stdout, stderr = process.communicate(timeout=300)
+                      code = process.returncode
+                  except subprocess.TimeoutExpired:
+                      subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                                     capture_output=True, timeout=15)
+                      stdout, stderr = process.communicate(timeout=15)
+                      code = 124
+                      stderr += "\nDiagnostic process tree exceeded 300 seconds.\n"
+              except OSError as error:
+                  code, stdout, stderr = 125, "", str(error)
+              if isinstance(stdout, bytes): stdout = stdout.decode(errors="replace")
+              if isinstance(stderr, bytes): stderr = stderr.decode(errors="replace")
+              (output / (label + ".stdout.log")).write_text(stdout)
+              (output / (label + ".stderr.log")).write_text(stderr)
+              print(stdout, end="", flush=True)
+              print(stderr, end="", flush=True)
+              if code == 0 and "No tests to run" in stdout + stderr:
+                  code = 126
+              print(json.dumps({"subset": label, "odin_driver_exit_code": code}), flush=True)
+              results.append({"subset": label, "selected": selected, "command": command,
+                              "odin_driver_exit_code": code, "binary_exists": binary.exists()})
+              (output / "results.json").write_text(json.dumps(results, indent=2) + "\n")
+          raise SystemExit(int(any(r["odin_driver_exit_code"] != 0 for r in results)))
+          PY_DIAG
 
-      # The one network step: an anonymous HTTPS clone through the static
-      # libgit2 and the platform's own TLS.
-      - name: git-probe (anonymous https)
-        run: build/debug/tools-git-probe https://github.com/octocat/Hello-World.git
+      - name: assertion binary raw Windows exit status
+        if: always()
+        shell: pwsh
+        run: |
+          $directory = Join-Path $PWD 'build/datagrid-diagnostic'
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          $binary = Join-Path $directory 'assertion-only.exe'
+          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) {
+            'Assertion binary was not produced; raw process observation unavailable.' | Tee-Object -FilePath (Join-Path $directory 'raw-exit-unavailable.txt')
+            exit 0
+          }
+          $info = [System.Diagnostics.ProcessStartInfo]::new()
+          $info.FileName = $binary
+          $info.UseShellExecute = $false
+          $info.RedirectStandardOutput = $true
+          $info.RedirectStandardError = $true
+          $process = [System.Diagnostics.Process]::new()
+          $process.StartInfo = $info
+          try {
+            [void]$process.Start()
+            $stdout = $process.StandardOutput.ReadToEndAsync()
+            $stderr = $process.StandardError.ReadToEndAsync()
+            $timedOut = -not $process.WaitForExit(120000)
+            if ($timedOut) { $process.Kill(); $process.WaitForExit() }
+            $stdout.Result | Set-Content -LiteralPath (Join-Path $directory 'assertion-native.stdout.log')
+            $stderr.Result | Set-Content -LiteralPath (Join-Path $directory 'assertion-native.stderr.log')
+            Write-Output $stdout.Result
+            Write-Output $stderr.Result
+            $unsigned = [System.BitConverter]::ToUInt32([System.BitConverter]::GetBytes([int]$process.ExitCode), 0)
+            $result = [ordered]@{
+              executable = $binary
+              exit_code_signed = $process.ExitCode
+              exit_code_unsigned = $unsigned
+              exit_code_hex = ('0x{0:X8}' -f $unsigned)
+              timed_out = $timedOut
+            }
+            $json = $result | ConvertTo-Json
+            $json | Set-Content -LiteralPath (Join-Path $directory 'assertion-native-exit.json')
+            Write-Output $json
+          } finally { $process.Dispose() }
+
+      - name: keep datagrid diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: datagrid-diagnostic-${{ runner.os }}-${{ github.run_attempt }}
+          path: build/datagrid-diagnostic/*
+          if-no-files-found: warn
