@@ -47,19 +47,57 @@ crumbs_keep_the_volume_root_absolute :: proc(t: ^testing.T) {
 
 @(test)
 clicking_the_root_crumb_stays_on_its_volume :: proc(t: ^testing.T) {
-	roots := []string{ROOT_PATH}
-	when ODIN_OS == .Windows {roots = {ROOT_PATH, `\\server\share\`}}
-	for root in roots {
+	cases := []struct {path, root: string} {{WORK_PATH, ROOT_PATH}}
+	when ODIN_OS == .Windows {
+		cases = {
+			{WORK_PATH, ROOT_PATH},
+			{`\\server\share\docs\work`, `\\server\share\`},
+			{"C:/docs/work", ROOT_PATH},
+			{`C:\docs/work`, ROOT_PATH},
+			{"//server/share/docs/work", `\\server\share\`},
+			{`\\server/share\docs/work`, `\\server\share\`},
+		}
+	}
+	for c in cases {
 		m: Model
-		model_init(&m, fmt.tprintf("%sdocs%swork", root, SEP))
+		model_init(&m, c.path)
 		p: ui.Probe
 		ui.probe_init(&p, view, &m, {1200, 600})
 		ui.probe_frame(&p)
-		label := "Computer" if root == "/" else root
+		label := "Computer" if c.root == "/" else c.root
 		testing.expect(t, ui.probe_click(&p, label), label)
-		testing.expect_value(t, path_of(&m), root)
+		testing.expect_value(t, path_of(&m), c.root)
 		ui.probe_destroy(&p)
 		model_destroy(&m)
+	}
+}
+
+@(test)
+crumbs_follow_native_separator_rules :: proc(t: ^testing.T) {
+	when ODIN_OS == .Windows {
+		cases := []struct {path, native, root: string} {
+			{"C:/home/me", `C:\home\me`, `C:\`},
+			{`C:\home/me`, `C:\home\me`, `C:\`},
+			{`C:/home\me`, `C:\home\me`, `C:\`},
+			{"C:/", `C:\`, `C:\`},
+			{"//server/share/docs/work", `\\server\share\docs\work`, `\\server\share\`},
+			{`\\server/share\docs/work`, `\\server\share\docs\work`, `\\server\share\`},
+			{"//server/share", `\\server\share`, `\\server\share`},
+			{"//server/share/", `\\server\share\`, `\\server\share\`},
+		}
+		for c in cases {
+			crumbs := crumbs_of(c.path, context.temp_allocator)
+			testing.expect_value(t, crumbs[0], c.root)
+			testing.expect_value(t, crumb_path(crumbs, len(crumbs) - 1, context.temp_allocator), c.native)
+			for _, ii in crumbs {
+				testing.expect(t, filepath.is_abs(crumb_path(crumbs, ii, context.temp_allocator)), c.path)
+			}
+		}
+	} else {
+		path := `/home/me/back\slash`
+		crumbs := crumbs_of(path, context.temp_allocator)
+		testing.expect_value(t, crumbs[len(crumbs) - 1], `back\slash`)
+		testing.expect_value(t, crumb_path(crumbs, len(crumbs) - 1, context.temp_allocator), path)
 	}
 }
 

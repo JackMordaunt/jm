@@ -1339,6 +1339,15 @@ selected_entry :: proc(m: ^Model, listing: ^query.Listing_Result) -> (e: query.E
 
 // crumbs_of is the path as its components, the root first.
 crumbs_of :: proc(path: string, allocator := context.allocator) -> []string {
+	path := path
+	when ODIN_OS == .Windows {
+		// The command line may use either Windows separator, or mix them.
+		// Normalize only here: a backslash is a filename byte on Unix.
+		if strings.contains(path, "/") {
+			native, _ := strings.replace_all(path, "/", SEP, allocator)
+			path = native
+		}
+	}
 	out := make([dynamic]string, allocator)
 	volume := filepath.volume_name(path)
 	rest := path[len(volume):]
