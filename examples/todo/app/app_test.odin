@@ -54,8 +54,8 @@ hand_on :: proc(r: ^Rig) {
 }
 
 // settle waits for the host to answer, drains the answers into the probe
-// and runs a frame, until a frame finds the name present (or absent), or
-// the deadline passes.
+// and runs a frame, until the current ready frame has the name present
+// (or absent), or the deadline passes. One batch can satisfy several waits.
 @(private = "file")
 settle :: proc(r: ^Rig, name: string, present := true) -> bool {
 	deadline := time.tick_now()._nsec + i64(30 * time.Second)
@@ -64,13 +64,73 @@ settle :: proc(r: ^Rig, name: string, present := true) -> bool {
 			ui.inbox_drain(&r.h.inbox, &r.p.layout)
 			ui.probe_frame(&r.p)
 			hand_on(r)
-			if ui.probe_tagged(&r.p, name) == present {
-				return true
-			}
+		}
+		if settle_matches(r, name, present) {
+			return true
 		}
 		time.sleep(time.Millisecond)
 	}
 	return false
+}
+
+// Absence while a shape is missing, loading, or stale is not a completed
+// read. In particular, a filter change may still be drawing its old list.
+@(private = "file")
+settle_matches :: proc(r: ^Rig, name: string, present: bool) -> bool {
+	for key in ([]ui.Need_Key{ui.key_of(query.Todos{filter = r.m.filter}), ui.key_of(query.Problems{})}) {
+		shape, found := r.p.layout.shapes[key]
+		if !found || shape.status != .Ready {
+			return false
+		}
+	}
+	return ui.probe_tagged(&r.p, name) == present
+}
+
+@(test)
+settle_observes_a_delete_and_problem_delivered_together :: proc(t: ^testing.T) {
+	// Script the legal delivery order without relying on worker timing.
+	r: Rig
+	ui.inbox_init(&r.h.inbox)
+	ui.subscriptions_init(&r.needs)
+	ui.probe_init(&r.p, view.view, &r.m, {800, 600})
+	defer {
+		ui.probe_destroy(&r.p)
+		ui.subscriptions_destroy(&r.needs)
+		view.model_destroy(&r.m)
+		ui.inbox_destroy(&r.h.inbox)
+	}
+	// An initially absent row must not pass before its reads arrive.
+	testing.expect(t, !settle_matches(&r, "Delete brief", false))
+	ui.inbox_put_value(&r.h.inbox, query.Todos{}, query.Todos_Result{})
+	ui.inbox_put_value(&r.h.inbox, query.Problems{}, query.Problems_Result{}, .Loading)
+	ui.inbox_drain(&r.h.inbox, &r.p.layout)
+	ui.probe_frame(&r.p)
+	testing.expect(t, !settle_matches(&r, "Delete brief", false), "loading is not settled")
+	ui.inbox_put_value(&r.h.inbox, query.Todos{}, query.Todos_Result{
+		items = []query.Todo{{id = 1, title = "brief"}}, active = 1,
+	})
+	ui.inbox_put_value(&r.h.inbox, query.Problems{}, query.Problems_Result{})
+	testing.expect(t, settle(&r, "Delete brief"), "the original row arrived")
+
+	// Both refreshes can land before the next frame. Waiting for the
+	// problem consumes the deletion too; no second notification is due.
+	ui.inbox_put_value(&r.h.inbox, query.Todos{}, query.Todos_Result{})
+	ui.inbox_put_value(&r.h.inbox, query.Problems{}, query.Problems_Result{
+		items = []query.Problem{{id = 1, message = "The todo is already gone."}},
+	})
+	testing.expect(t, settle(&r, "Dismiss"), "the problem arrived")
+	testing.expect(t, !ui.probe_tagged(&r.p, "Delete brief"), "the same batch removed the row")
+	testing.expect(t, !ui.inbox_pending(&r.h.inbox), "no redundant notification remains")
+	testing.expect(t, settle(&r, "Delete brief", false), "the delete already landed")
+	// An old ready list cannot satisfy a wait for a new filter.
+	r.m.filter = .Active
+	testing.expect(t, !settle_matches(&r, "Delete brief", false), "the new filter has no result")
+	ui.inbox_put_value(&r.h.inbox, query.Todos{filter = .Active}, query.Todos_Result{}, .Stale)
+	ui.inbox_drain(&r.h.inbox, &r.p.layout)
+	ui.probe_frame(&r.p)
+	testing.expect(t, !settle_matches(&r, "Delete brief", false), "a stale filter is not settled")
+	ui.inbox_put_value(&r.h.inbox, query.Todos{filter = .Active}, query.Todos_Result{})
+	testing.expect(t, settle(&r, "Delete brief", false), "the new filter is ready")
 }
 
 @(test)
