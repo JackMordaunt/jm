@@ -31,11 +31,14 @@ Button_Variant :: enum u8 {
 	Link, // text that acts, no box
 }
 
-// Button_Size is a button's height: 28, 32 or 40px.
+// Button_Size is a button's height: 28, 32 or 40px, or for XSmall the
+// 24px of a small switch and a segmented control, which a row of them
+// shares (Primer's --control-xsmall tokens, with no Button size of its own).
 Button_Size :: enum u8 {
 	Small,
 	Medium,
 	Large,
+	XSmall,
 }
 
 // Align_Content is where a wide (block) button's content sits.
@@ -83,6 +86,14 @@ button_metrics :: proc(size: Button_Size) -> Button_Metrics {
 			tok.CONTROL_LARGE_GAP,
 			tok.CONTROL_LARGE_PADDING_INLINE_NORMAL,
 			body(tok.TEXT_BODY_SIZE_MEDIUM, tok.TEXT_BODY_LINE_HEIGHT_MEDIUM),
+		}
+	case .XSmall:
+		return {
+			tok.CONTROL_XSMALL_SIZE,
+			tok.CONTROL_XSMALL_PADDING_INLINE_NORMAL,
+			tok.CONTROL_XSMALL_GAP,
+			tok.CONTROL_XSMALL_PADDING_INLINE_CONDENSED,
+			body(tok.TEXT_BODY_SIZE_SMALL, tok.TEXT_BODY_LINE_HEIGHT_SMALL),
 		}
 	case .Medium:
 	}

@@ -373,6 +373,8 @@ Progress_Item :: struct {
 // shimmers the fill unless the platform asks for reduced motion. Progress
 // is not clamped: below 0 draws nothing, past 100 is clipped by the
 // track. label is what a reader hears; the value is the rounded percent.
+// tint, when it is not transparent, is the fill's colour in place of bg's, for
+// a bar that borrows a chart's colour.
 progress_bar :: proc(
 	gtx: ^ui.Ctx,
 	progress: f32,
@@ -381,11 +383,12 @@ progress_bar :: proc(
 	animated := false,
 	label := "",
 	width: f32 = 0,
+	tint: ops.Color = {},
 	key: u64 = 0,
 	loc := #caller_location,
 ) {
 	item := [1]Progress_Item{{progress, bg, label}}
-	progress_track(gtx, item[:], size, width, animated, key, loc)
+	progress_track(gtx, item[:], size, width, animated, key, loc, tint)
 }
 
 // progress_bar_items is a ProgressBar of several segments laid side by
@@ -399,7 +402,7 @@ progress_bar_items :: proc(gtx: ^ui.Ctx, items: []Progress_Item, size := Progres
 
 // progress_track is progress_bar and progress_bar_items.
 @(private)
-progress_track :: proc(gtx: ^ui.Ctx, items: []Progress_Item, size: Progress_Size, width: f32, animated: bool, key: u64, loc: runtime.Source_Code_Location) {
+progress_track :: proc(gtx: ^ui.Ctx, items: []Progress_Item, size: Progress_Size, width: f32, animated: bool, key: u64, loc: runtime.Source_Code_Location, tint := ops.Color{}) {
 	p := ui.widget_open(gtx, key, loc)
 	h := PROGRESS_HEIGHT[size]
 	w := width > 0 ? width : fill_width(gtx)
@@ -419,10 +422,11 @@ progress_track :: proc(gtx: ^ui.Ctx, items: []Progress_Item, size: Progress_Size
 			continue
 		}
 		seg := ops.Rect{x, y, sw, h}
+		fill := tint if tint[3] != 0 else color(it.bg)
 		if animated {
-			paint_shimmer(gtx, seg, seg, color(it.bg))
+			paint_shimmer(gtx, seg, seg, fill)
 		} else {
-			ops.fill(gtx.scene, seg, color(it.bg))
+			ops.fill(gtx.scene, seg, fill)
 		}
 		x += sw
 	}

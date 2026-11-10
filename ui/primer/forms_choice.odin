@@ -180,7 +180,8 @@ check_reveal :: proc(gtx: ^ui.Ctx, c: Control, id: ops.Area_Id, on: bool) -> f32
 // fades and the check is revealed from the bottom (the spec's notes on
 // the CSS's 0s fill transition). Keyboard focus draws a 2px outline 2px
 // outside the box. validation only marks it invalid: a single checkbox
-// has no validation look.
+// has no validation look. name, when given, is the checkbox's accessible
+// name in place of its label.
 //
 // Departures: the dash shows with the box rather than after the CSS's
 // 230ms visibility delay, as the spec permits; forced colours are the
@@ -195,6 +196,7 @@ checkbox :: proc(
 	required := false,
 	validation := Validation_Status.None,
 	state := Interaction.Live,
+	name := "",
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -237,7 +239,9 @@ checkbox :: proc(
 	paint_focus_outline(gtx, c, rr, CHOICE_FOCUS_OFFSET)
 	paint_choice_text(gtx, cp, k, leading, c.disabled)
 	listen(gtx, c.st, p.id, k.hit, cursor = .Pointer)
-	said := ui.frame_string(gtx, label)
+	// name is what it is called when that is more than the label draws, as a
+	// path cut short to its room is called by the whole path.
+	said := ui.frame_string(gtx, name if name != "" else label)
 	ops.tag(gtx.scene, p.id, said)
 	states := design.state_if(checked^ && !indeterminate, {.Checked}) + design.state_if(indeterminate, {.Mixed}) + design.state_if(c.disabled, {.Disabled}) + design.state_if(fc.required, {.Required}) + design.state_if(fc.status == .Error, {.Invalid})
 	ui.semantics(gtx, &p, {role = .Checkbox, label = said, description = ui.frame_string(gtx, caption), states = states})

@@ -260,7 +260,9 @@ BANNER_GLYPH :: tok.BASE_SIZE_16
 // at title_level (2 to 6) and, with hide_title, is told to assistive
 // technology but not drawn. leading replaces the info and upsell icon.
 // Returns the action taken this frame; the caller removes a dismissed
-// banner.
+// banner. trailing, if given, is drawn in the top-right corner, beside
+// the dismiss X: the caller says how wide it is in trailing_width, so the
+// body leaves it room on the first frame.
 //
 // Departures: the description is plain text, where Primer takes any
 // children after it; the banner cannot be focused programmatically
@@ -283,6 +285,10 @@ banner :: proc(
 	hide_title := false,
 	title_level := 2,
 	key: u64 = 0,
+	//review:ignore odin-allocator-parameter the frame's allocator is gtx.allocator, as in every proc of this file
+	trailing: proc(gtx: ^ui.Ctx, user: rawptr) = nil,
+	trailing_user: rawptr = nil,
+	trailing_width: f32 = 0,
 	loc := #caller_location,
 ) -> (event: Banner_Event) {
 	pad := layout == .Compact ? tok.BASE_SIZE_4 : tok.BASE_SIZE_8
@@ -313,21 +319,32 @@ banner :: proc(
 	body_limits: ui.Size_Limits
 	if ui.is_finite(content_w) {
 		dismiss_w := dismissible ? tok.BASE_SIZE_4 + button_metrics(.Medium).height : 0
+		if trailing != nil {
+			dismiss_w += tok.BASE_SIZE_4 + trailing_width
+		}
 		body_w := max(content_w - BANNER_GLYPH - 2 * tok.BASE_SIZE_8 - dismiss_w, 0)
 		body_limits.min.x, body_limits.max.x = body_w, body_w
 	}
 	body := ui.sized_open(gtx, body_limits)
 	event = banner_body(gtx, title, description, primary, secondary, look)
 	ui.close(&body)
-	if dismissible {
+	if dismissible || trailing != nil {
 		top := look.has_actions ? tok.BASE_SIZE_2 : 0
 		in_ := ui.inset_open(gtx, {left = tok.BASE_SIZE_4, top = top})
 		defer ui.close(&in_)
-		same := State_Roles{fg, fg, fg, .Control_Fg_Color_Disabled}
-		r := variant_roles(.Invisible)
-		r.visual = same
-		if icon_button_in(gtx, .X, "Dismiss banner", .Invisible, .Medium, r, {state = .Live}, 0, #location()) {
-			event = .Dismiss
+		corner := ui.row_open(gtx, gap = tok.BASE_SIZE_4, align = .Center)
+		defer ui.close(&corner)
+
+		if trailing != nil {
+			trailing(gtx, trailing_user)
+		}
+		if dismissible {
+			same := State_Roles{fg, fg, fg, .Control_Fg_Color_Disabled}
+			r := variant_roles(.Invisible)
+			r.visual = same
+			if icon_button_in(gtx, .X, "Dismiss banner", .Invisible, .Medium, r, {state = .Live}, 0, #location()) {
+				event = .Dismiss
+			}
 		}
 	}
 	return

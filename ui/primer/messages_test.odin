@@ -405,3 +405,31 @@ test_a_narrow_clipped_timeline_moves_actions_under_and_trims_its_line :: proc(t:
 	ui.probe_frame(&p)
 	testing.expect_value(t, ui.probe_bounds(&p, "Reply").x + ui.probe_bounds(&p, "Reply").w, 100 + 480) // 480 is wide
 }
+
+@(private = "file")
+corner_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	corner :: proc(gtx: ^ui.Ctx, user: rawptr) {
+		text(gtx, "1 of 4", .Small)
+	}
+	banner(gtx, "Update available", "A new version is ready.", .Info, dismissible = true, trailing = corner, trailing_width = 40)
+}
+
+// A banner's trailing content stands in its top-right corner, left of the
+// dismiss X, in the banner's first row.
+@(test)
+test_a_banner_keeps_its_trailing_content_in_the_corner :: proc(t: ^testing.T) {
+	defer free_all(context.temp_allocator)
+
+	p: ui.Probe
+	ui.probe_init(&p, corner_view, nil, {600, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+
+	tip := ui.probe_bounds(&p, "1 of 4")
+	x := ui.probe_bounds(&p, "Dismiss banner")
+	testing.expect(t, tip.w > 0, "the trailing text is drawn")
+	testing.expect(t, tip.x + tip.w <= x.x, "left of the X")
+	testing.expect(t, tip.y < 40, "in the top row, not under the banner")
+	// Its room is reserved from the first frame: the body ends before it.
+	body := ui.probe_bounds(&p, "A new version is ready.")
+	testing.expect(t, body.x + body.w <= tip.x, "the description leaves it room")
+}

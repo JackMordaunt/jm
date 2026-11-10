@@ -1304,6 +1304,10 @@ tooltip_owner: ops.Area_Id
 // shows: true then. A Description tooltip reaches a reader as a tooltip
 // node; a Label tooltip names its trigger, which the trigger declares.
 //
+// near, when given, is the box the bubble sits against in place of the
+// trigger's, in the trigger's space: a chart's tooltip stands by the pointer,
+// the chart being what the pointer must be over for it to show.
+//
 // keybinding is shortcuts shown after the text as small on-emphasis key
 // caps, 6px after it (8px for several, joined by "or"), and said after the
 // label as "(keys or keys)" (Tooltip.tsx:390-415, Tooltip.module.css:126-
@@ -1323,8 +1327,9 @@ tooltip :: proc(
 	delay := Tooltip_Delay.Short,
 	disabled := false,
 	keybinding: []string = nil,
+	near: Maybe(ops.Rect) = nil,
 ) -> bool {
-	return tooltip_run(gtx, trigger.id, {0, 0, trigger.size.x, trigger.size.y}, text, direction, delay, disabled, type == .Description, keybinding)
+	return tooltip_run(gtx, trigger.id, {0, 0, trigger.size.x, trigger.size.y}, text, direction, delay, disabled, type == .Description, keybinding, near)
 }
 
 // tooltip_run runs the tooltip of trigger, whose box is area in the space
@@ -1340,6 +1345,7 @@ tooltip_run :: proc(
 	delay: Tooltip_Delay,
 	disabled, node: bool,
 	keybinding: []string = nil,
+	near: Maybe(ops.Rect) = nil,
 ) -> bool {
 	watch := ui.id_mix(trigger, 0x7700)
 	bubble := ui.id_mix(trigger, 0x7701)
@@ -1405,7 +1411,7 @@ tooltip_run :: proc(
 		d.on_bubble = false
 		return false
 	}
-	paint_tooltip(gtx, d, bubble, dismiss, area, text, direction, node, keybinding)
+	paint_tooltip(gtx, d, bubble, dismiss, near.? or_else area, text, direction, node, keybinding)
 	return true
 }
 

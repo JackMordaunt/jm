@@ -271,3 +271,31 @@ test_a_stack_with_expand_disabled_stays_folded :: proc(t: ^testing.T) {
 	testing.expect_value(t, al[0], 179) // the third still at 70%
 	testing.expect(t, !p.wants_frame)
 }
+
+@(private = "file")
+tinted_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	progress_bar(gtx, 50, label = "Tinted", tint = {10, 20, 30, 255}, key = 1)
+}
+
+@(test)
+test_progress_bar_fills_in_its_tint_when_given_one :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, tinted_view, nil, {400, 400}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	tint, role := 0, 0
+	for op in p.scene.ops {
+		f, ok := op.(ops.Fill)
+		if !ok {
+			continue
+		}
+		got, solid := f.paint.(ops.Color)
+		if r, isr := f.shape.(ops.Rect); isr && solid {
+			tint += int(got == ops.Color{10, 20, 30, 255} && r.w == 200)
+			role += int(got == color(.Bg_Color_Success_Emphasis))
+		}
+	}
+	testing.expect_value(t, tint, 1)
+	testing.expect_value(t, role, 0)
+}

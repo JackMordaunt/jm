@@ -116,19 +116,39 @@ well_border :: proc(w: Well) -> tok.Role {
 	return .Control_Border_Color_Rest
 }
 
+// well_fill is the role a well is filled with.
+@(private)
+well_fill :: proc(w: Well) -> tok.Role {
+	if w.disabled {
+		return .Control_Bg_Color_Disabled
+	}
+	return w.contrast ? .Bg_Color_Inset : .Bg_Color_Default
+}
+
+// PLACEHOLDER_MIX is how far a placeholder moves from the well's fill toward
+// fgColor muted: 0.7 reads about 3:1 against the fill in light and dark, so
+// a hint is clearly fainter than the typed text and the muted copy around it.
+PLACEHOLDER_MIX :: 0.7
+
+// placeholder_color is the hint colour over w: muted text mixed toward the
+// well's fill.
+@(private)
+placeholder_color :: proc(w: Well) -> ops.Color {
+	m, f := color(.Fg_Color_Muted), color(well_fill(w))
+	out: ops.Color
+	for i in 0 ..< 4 {
+		out[i] = u8(f32(f[i]) + (f32(m[i]) - f32(f[i])) * PLACEHOLDER_MIX + 0.5)
+	}
+	return out
+}
+
 // paint_well draws a field's well in box: its fill (--bgColor-default,
 // --bgColor-inset for contrast, the disabled control fill), the 1px inset
 // top shadow unless disabled, and its border.
 @(private)
 paint_well :: proc(gtx: ^ui.Ctx, box: ops.Rect, w: Well) {
 	rr := ops.Round_Rect{box, tok.BORDER_RADIUS_MEDIUM}
-	fill := tok.Role.Bg_Color_Default
-	if w.contrast {
-		fill = .Bg_Color_Inset
-	}
-	if w.disabled {
-		fill = .Control_Bg_Color_Disabled
-	}
+	fill := well_fill(w)
 	ops.fill(gtx.scene, rr, color(fill))
 	if !w.disabled {
 		b := FIELD_BORDER
@@ -497,7 +517,7 @@ text_input :: proc(
 		design.draw_paragraph(gtx, t, {row.text_x - scroll, text_y}, fg, selection_paint(shown, r.focused))
 		draw_preedit(gtx, t, {row.text_x - scroll, text_y}, display, fg)
 	} else if placeholder != "" {
-		draw_text(gtx, design.shape_style(gtx, placeholder, st, font_for(gtx, st.weight)), {row.text_x, text_y}, color(.Fg_Color_Muted))
+		draw_text(gtx, design.shape_style(gtx, placeholder, st, font_for(gtx, st.weight)), {row.text_x, text_y}, placeholder_color(well))
 	}
 	if r.focused && c.st != nil {
 		ops.fill(gtx.scene, ops.Rect{row.text_x + caret - scroll, text_y + 2, FIELD_CARET_W, FIELD_LINE - 4}, fg)
@@ -735,7 +755,7 @@ textarea :: proc(
 	ops.clip_push(gtx.scene, ops.Rect{b, b, box.w - 2 * b, view_h})
 	y := text_at.y - view.scroll
 	if len(shown.text) == 0 && placeholder != "" {
-		draw_text(gtx, design.shape_style(gtx, placeholder, st, font), {text_at.x, y}, color(.Fg_Color_Muted))
+		draw_text(gtx, design.shape_style(gtx, placeholder, st, font), {text_at.x, y}, placeholder_color(well))
 	}
 	design.draw_paragraph(gtx, para, {text_at.x, y}, fg, selection_paint(s, r.focused))
 	draw_preedit(gtx, para, {text_at.x, y}, shown, fg)
