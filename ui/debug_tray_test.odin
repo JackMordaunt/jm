@@ -201,6 +201,9 @@ test_debug_tray_asks_one_frame_when_it_changes_and_none_idle :: proc(t: ^testing
 	testing.expect(t, probe_click(&p, "Collapse tray"))
 	testing.expect(t, p.tray.collapsed && p.wants_frame)
 	probe_frame(&p)
+	// The pointer rests where the fold was, and what lies under it now takes
+	// its hover: one frame more, for the paint, then none.
+	probe_frame(&p)
 	testing.expect(t, !p.wants_frame)
 	grip, ok := probe_center(&p, "Debug tray")
 	testing.expect(t, ok)

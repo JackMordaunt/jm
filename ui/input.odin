@@ -355,15 +355,14 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			r.pointed = true
 		}
 	}
-	// A layer drawn over the hovered area while the pointer rests, as a dialog
-	// opened by a click is, takes the pointer from it: no Move says so, and
-	// the area would keep its hover under the scrim until the pointer stirs.
-	if r.pointed && f != nil && r.pressed == 0 && r.hover != 0 {
-		still: Hit
-		if refresh(f, r.hover, &still) {
-			if h, ok := hit_test_any(f, r.pointer, HOVER_KINDS, past_yields = true); ok && h.area != r.hover {
-				update_hover(r, f, r.pointer)
-			}
+	// The area under a resting pointer changes with no Move to say so: a layer
+	// drawn over the hovered area, as a dialog opened by a click is, takes the
+	// pointer from it; one gone, as a menu's shield is once the menu closes,
+	// hands it back to what lay under; a widget laid out under it is new to it.
+	// Re-resolve whenever the top-most area is not the hovered one.
+	if r.pointed && f != nil && r.pressed == 0 {
+		if h, ok := hit_test_any(f, r.pointer, HOVER_KINDS, past_yields = true); (h.area if ok else 0) != r.hover {
+			update_hover(r, f, r.pointer)
 		}
 	}
 	clear(&r.queue)

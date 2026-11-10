@@ -670,8 +670,19 @@ anchored_overlay_open :: proc(
 	// The page under an open panel takes no hover, cursor or tooltip: a
 	// pointer outside the panel is outside it, and a press there still
 	// reaches what it lands on, as it dismisses the panel.
-	shield := ui.overlay_open(gtx, cs = ui.exact(gtx.viewport), root = true)
-	ops.input_area(gtx.scene, ui.id_mix(a.id, 0x5b1d), ops.Rect{0, 0, gtx.viewport.x, gtx.viewport.y}, {.Move, .Enter, .Leave})
+	// The anchor stays hoverable: it is the control the panel hangs from, and
+	// dropping its hover as the panel opens under the pointer flickers it. The
+	// shield is the page around the anchor's rect, in the anchor's own
+	// coordinates (a layer opens at the enclosing container's origin), cut
+	// into four rects far larger than any window.
+	shield := ui.overlay_open(gtx, cs = ui.exact(gtx.viewport))
+	sid := ui.id_mix(a.id, 0x5b1d)
+	kinds := ops.Event_Kinds{.Move, .Enter, .Leave}
+	far :: f32(1 << 20)
+	ops.input_area(gtx.scene, sid, ops.Rect{-far, -far, 2 * far, far}, kinds)
+	ops.input_area(gtx.scene, sid, ops.Rect{-far, rect.h, 2 * far, far}, kinds)
+	ops.input_area(gtx.scene, sid, ops.Rect{-far, 0, far, rect.h}, kinds)
+	ops.input_area(gtx.scene, sid, ops.Rect{rect.w, 0, far, rect.h}, kinds)
 	ui.overlay_close(&shield)
 	layer := ui.popup_place(gtx, place)
 	a.surface = surface_open(gtx, a.id, d, layer, spec)

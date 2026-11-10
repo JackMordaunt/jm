@@ -715,3 +715,51 @@ test_an_overlay_opened_under_a_resting_pointer_takes_the_hover :: proc(t: ^testi
 	testing.expect(t, m.open)
 	testing.expect(t, p.router.hover != page.area, "the page is not hovered, though the pointer did not move")
 }
+
+// The control a panel hangs from keeps its hover through the press that opens
+// it and after: no frame drops it, as the panel's shield once did.
+@(test)
+test_an_anchor_keeps_its_hover_as_its_overlay_opens :: proc(t: ^testing.T) {
+	m: Shield_Model
+	p: ui.Probe
+	ui.probe_init(&p, shield_view, &m, {800, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	anchor, _ := ui.probe_find(&p, "Anchor")
+	c, _ := ui.probe_center(&p, "Anchor")
+	ui.probe_move(&p, c.x, c.y)
+	testing.expect_value(t, p.router.hover, anchor.area)
+	ui.router_push(&p.router, {kind = .Press, pos = c, button = .Left, clicks = 1})
+	ui.probe_frame(&p)
+	ui.router_push(&p.router, {kind = .Release, pos = c, button = .Left})
+	for _ in 0 ..< 8 {
+		ui.probe_frame(&p)
+		testing.expect_value(t, p.router.hover, anchor.area)
+	}
+	testing.expect(t, m.open)
+}
+
+// Hover follows a resting pointer when the layer over it goes: a menu closed
+// under a pointer that sits on the page hands the page its hover back.
+@(test)
+test_closing_an_overlay_returns_hover_to_a_resting_pointer :: proc(t: ^testing.T) {
+	m: Shield_Model
+	p: ui.Probe
+	ui.probe_init(&p, shield_view, &m, {800, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	page, _ := ui.probe_find(&p, "Page")
+	c, _ := ui.probe_center(&p, "Page")
+	m.open = true
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	ui.probe_move(&p, c.x, c.y)
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	testing.expect(t, p.router.hover != page.area)
+	m.open = false
+	ui.probe_advance(&p, 3, 1.0 / 60)
+	testing.expect_value(t, p.router.hover, page.area)
+}
