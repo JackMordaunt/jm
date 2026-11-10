@@ -71,9 +71,14 @@ Dialog_Align :: enum u8 {
 // variant (Default, Primary or Danger; Primer's normal is Default),
 // whether it takes focus as the dialog opens, its loading and disabled
 // states, and clicked, set true on the frame it is activated. The dialog
-// does not close on a footer button (Dialog.tsx:514-528).
+// does not close on a footer button (Dialog.tsx:514-528). A leading button
+// sits at the start of the footer, away from the rest, which stay at the
+// end; trailing is an icon after its label. Both are departures from
+// Primer, whose footer has neither.
 Dialog_Button :: struct {
 	content:    string,
+	trailing:   Icon,
+	leading:    bool,
 	type:       Button_Variant,
 	auto_focus: bool,
 	loading:    bool,
@@ -87,6 +92,8 @@ Dialog_Button :: struct {
 // (Dialog.module.css:132-139,242-245).
 DIALOG_MIN_WIDTH :: f32(296)
 DIALOG_VIEWPORT_INSET :: tok.BASE_SIZE_64
+// DIALOG_FOOTER_MIN_HEIGHT is the least a footer is: a row of buttons in its padding.
+DIALOG_FOOTER_MIN_HEIGHT :: 2 * tok.BASE_SIZE_16 + tok.BASE_SIZE_32
 DIALOG_SHORT_HEIGHT :: f32(280)
 DIALOG_SHORT_INSET :: f32(12)
 
@@ -139,7 +146,8 @@ Dialog :: struct {
 // 200ms, and the window: --overlay-bgColor under --shadow-floating-small
 // with --borderRadius-large corners, a column of header, body and footer.
 // The header pads 8px round the title (14px semibold) and subtitle (12px
-// --fgColor-muted, 4px under it), each block padded 6px by 8px, and an
+// --fgColor-muted, 4px under it, or 8px after it on the title's line
+// with subtitle_inline), each block padded 6px by 8px, and an
 // invisible Close button; a 1px --borderColor-default rule runs under it.
 // The body pads 16px and scrolls; the footer pads 16px round footer's
 // buttons, 8px apart, at its end, wrapping, with a 1px rule over it while
@@ -183,6 +191,8 @@ dialog_open :: proc(
 	focus := Overlay_Focus{},
 	key: u64 = 0,
 	loc := #caller_location,
+	//review:ignore odin-allocator-parameter the frame's allocator is gtx.allocator, as in every proc of this file
+	subtitle_inline := false,
 ) -> (dl: Dialog) {
 	dl.id = ui.claim_id(gtx, key, loc)
 	dl.open = open
@@ -227,7 +237,7 @@ dialog_open :: proc(
 	dl.box = ui.box_open(gtx, {paint = paint_surface, user = look}, key = u64(ui.id_mix(dl.id, 3)))
 	ui.container_semantics(gtx, {role = .Dialog, label = ui.frame_string(gtx, title), description = ui.frame_string(gtx, subtitle), states = {.Modal}})
 	dl.col = ui.column_open(gtx, align = .Fill, key = u64(ui.id_mix(dl.id, 4)))
-	dialog_header(gtx, &dl, title, subtitle)
+	dialog_header(gtx, &dl, title, subtitle, subtitle_inline)
 	header_h := ui.last_widget(gtx).size.y
 	// The body takes what the header and footer leave: all of a fixed
 	// height, or up to the cap of an auto one.
@@ -395,7 +405,7 @@ dialog_place_open :: proc(gtx: ^ui.Ctx, mode: Dialog_Mode, align: Dialog_Align) 
 // dialog_header draws the title bar: the title and subtitle block, the
 // Close button, and the rule under them.
 @(private)
-dialog_header :: proc(gtx: ^ui.Ctx, dl: ^Dialog, title, subtitle: string) {
+dialog_header :: proc(gtx: ^ui.Ctx, dl: ^Dialog, title, subtitle: string, inline := false) {
 	cap := ui.sized_open(gtx, {max = {0, gtx.viewport.y * DIALOG_HEADER_MAX}}, key = u64(ui.id_mix(dl.id, 20)))
 	defer ui.close(&cap)
 	box := ui.box_open(gtx, {padding = ui.pad_all(tok.BASE_SIZE_8), paint = paint_header_rule}, key = u64(ui.id_mix(dl.id, 21)))
@@ -406,7 +416,8 @@ dialog_header :: proc(gtx: ^ui.Ctx, dl: ^Dialog, title, subtitle: string) {
 	{
 		block := ui.inset_open(gtx, {tok.BASE_SIZE_8, tok.BASE_SIZE_6, tok.BASE_SIZE_8, tok.BASE_SIZE_6}, key = u64(ui.id_mix(dl.id, 23)))
 		defer ui.close(&block)
-		col := ui.column_open(gtx, gap = tok.BASE_SIZE_4, key = u64(ui.id_mix(dl.id, 24)))
+		// Inline, the subtitle follows the title on its line, 8px after it.
+		col := ui.row_open(gtx, gap = tok.BASE_SIZE_8, align = .Baseline, key = u64(ui.id_mix(dl.id, 24))) if inline else ui.column_open(gtx, gap = tok.BASE_SIZE_4, key = u64(ui.id_mix(dl.id, 24)))
 		defer ui.close(&col)
 		title_style := tok.Type_Style {
 			weight      = tok.TEXT_TITLE_WEIGHT_LARGE,
@@ -463,7 +474,9 @@ dialog_close :: proc(dl: ^Dialog) {
 	shown := ui.last_widget(gtx).size.y
 	ui.close(&dl.cap)
 	if len(dl.footer) > 0 {
+		rule := f32(0)
 		if content > shown + 0.5 {
+			rule = tok.BORDER_WIDTH_THIN
 			// The body scrolls: a rule between it and the footer
 			// (Dialog.module.css:302-321).
 			p := ui.widget_open(gtx, u64(ui.id_mix(dl.id, 30)))
@@ -472,7 +485,13 @@ dialog_close :: proc(dl: ^Dialog) {
 			ui.widget_close(gtx, &p, {size = {w, tok.BORDER_WIDTH_THIN}})
 		}
 		dialog_footer(gtx, dl)
-		dl.data.body.y = ui.last_widget(gtx).size.y
+		// What the body leaves room for is the footer and the rule over it.
+		// Left out, the rule squeezes the footer by its width, and each frame
+		// the footer measures smaller gives the body more room, until the
+		// footer is cut off. A footer the body already squeezed measures
+		// shorter than it is, and would give that room away again, so it
+		// counts for no less than one row of buttons between its padding.
+		dl.data.body.y = max(ui.last_widget(gtx).size.y, DIALOG_FOOTER_MIN_HEIGHT) + rule
 	} else {
 		dl.data.body.y = 0
 	}
@@ -505,33 +524,57 @@ dialog_close :: proc(dl: ^Dialog) {
 dialog_footer :: proc(gtx: ^ui.Ctx, dl: ^Dialog) {
 	pad := ui.inset_open(gtx, ui.pad_all(tok.BASE_SIZE_16), key = u64(ui.id_mix(dl.id, 31)))
 	defer ui.close(&pad)
-	row := ui.wrap_open(gtx, gap = tok.BASE_SIZE_8, justify = .End, key = u64(ui.id_mix(dl.id, 32)))
+	// With a leading button the footer is a row, the leading buttons at the
+	// start and a gap between them and the rest; without, a wrap that moves
+	// buttons to a line of their own when they do not fit.
+	lead := false
+	for b in dl.footer {
+		lead ||= b.leading
+	}
+	row: ui.Flex
+	if lead {
+		row = ui.row_open(gtx, gap = tok.BASE_SIZE_8, align = .Center, key = u64(ui.id_mix(dl.id, 32)))
+	} else {
+		row = ui.wrap_open(gtx, gap = tok.BASE_SIZE_8, justify = .End, key = u64(ui.id_mix(dl.id, 32)))
+	}
 	defer ui.close(&row)
-	ids := make([]ops.Area_Id, len(dl.footer), gtx.allocator)
+	//review:ignore odin-allocator-parameter the frame's allocator is gtx.allocator, as in every proc of this file
+	ids := make([dynamic]ops.Area_Id, 0, len(dl.footer), gtx.allocator)
 	focused := false
-	for b, i in dl.footer {
-		// The scope goes inside a stack of its own: recorded between the
-		// wrap's children it would not wrap the button, which the wrap
-		// places later.
-		scoped := b.auto_focus && !focused
-		holder: ui.Stack
-		if scoped {
-			holder = ui.stack_open(gtx, key = u64(ui.id_mix(dl.id, 33)))
-			ui.focus_scope_open(gtx, ui.id_mix(dl.id, 9))
-			focused = true
+	for pass in 0 ..< 2 {
+		if lead && pass == 1 {
+			ui.fill_space(gtx)
 		}
-		st := Interaction.Disabled if b.disabled else Interaction.Live
-		variant := b.type
-		if variant != .Primary && variant != .Danger {
-			variant = .Default
+		for b, i in dl.footer {
+			if lead && b.leading != (pass == 0) {
+				continue
+			}
+			// The scope goes inside a stack of its own: recorded between the
+			// wrap's children it would not wrap the button, which the wrap
+			// places later.
+			scoped := b.auto_focus && !focused
+			holder: ui.Stack
+			if scoped {
+				holder = ui.stack_open(gtx, key = u64(ui.id_mix(dl.id, 33)))
+				ui.focus_scope_open(gtx, ui.id_mix(dl.id, 9))
+				focused = true
+			}
+			st := Interaction.Disabled if b.disabled else Interaction.Live
+			variant := b.type
+			if variant != .Primary && variant != .Danger {
+				variant = .Default
+			}
+			if button(gtx, b.content, variant, trailing = b.trailing, loading = b.loading, state = st, key = u64(ui.id_mix(dl.id, u64(40 + i)))) && b.clicked != nil {
+				b.clicked^ = true
+			}
+			append(&ids, ui.last_widget(gtx).id)
+			if scoped {
+				ui.focus_scope_close(gtx)
+				ui.close(&holder)
+			}
 		}
-		if button(gtx, b.content, variant, loading = b.loading, state = st, key = u64(ui.id_mix(dl.id, u64(40 + i)))) && b.clicked != nil {
-			b.clicked^ = true
-		}
-		ids[i] = ui.last_widget(gtx).id
-		if scoped {
-			ui.focus_scope_close(gtx)
-			ui.close(&holder)
+		if !lead {
+			break
 		}
 	}
 	for id, i in ids {
@@ -567,9 +610,10 @@ dialog :: proc(
 	focus := Overlay_Focus{},
 	key: u64 = 0,
 	loc := #caller_location,
+	subtitle_inline := false,
 ) -> bool {
 	h := ui.guard_hold(gtx, Dialog)
-	h^ = dialog_open(gtx, open, title, subtitle, footer, width, custom_width, height, position, narrow, align, focus, key, loc)
+	h^ = dialog_open(gtx, open, title, subtitle, footer, width, custom_width, height, position, narrow, align, focus, key, loc, subtitle_inline)
 	return h.visible
 }
 
@@ -589,6 +633,7 @@ dialog_guard_close :: proc(
 	focus: Overlay_Focus,
 	key: u64,
 	loc: runtime.Source_Code_Location,
+	subtitle_inline: bool,
 ) {
 	dialog_close(ui.guard_take(gtx, Dialog))
 }

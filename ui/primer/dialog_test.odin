@@ -25,6 +25,7 @@ Dialog_Model :: struct {
 	answer:     Confirmation,
 	confirm:    bool, // show the confirmation dialog instead
 	danger:     bool,
+	lead:       bool, // Cancel sits at the footer's start, with a trailing icon
 }
 
 @(private = "file")
@@ -43,7 +44,7 @@ dialog_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
 		return
 	}
 	save, cancel := false, false
-	buttons := [2]Dialog_Button{{content = "Cancel", clicked = &cancel}, {content = "Save", type = .Primary, auto_focus = m.auto_focus, clicked = &save}}
+	buttons := [2]Dialog_Button{{content = "Cancel", leading = m.lead, trailing = .Link_External if m.lead else .None, clicked = &cancel}, {content = "Save", type = .Primary, auto_focus = m.auto_focus, clicked = &save}}
 	d := dialog_open(gtx, &m.open, "Edit", "Subtitle", buttons[:], m.width, height = m.height, position = m.position, narrow = m.narrow, align = m.align)
 	if d.visible {
 		c := ui.column_open(gtx)
@@ -277,4 +278,47 @@ test_confirmation_dialog_answers_and_focuses_by_danger :: proc(t: ^testing.T) {
 	ui.probe_advance(&p, 3, 1.0 / 60)
 	ui.probe_key(&p, .Escape)
 	testing.expect_value(t, m.answer, Confirmation.Escape)
+}
+
+@(test)
+test_a_leading_footer_button_sits_at_the_start :: proc(t: ^testing.T) {
+	for narrow in ([]bool{false, true}) {
+		m := Dialog_Model{open = true, lead = true, width = .Medium}
+		p: ui.Probe
+		size := [2]f32{300, 500} if narrow else [2]f32{800, 600}
+		ui.probe_init(&p, dialog_view, &m, size, allocator = context.temp_allocator)
+		defer ui.probe_destroy(&p)
+		defer free_all(context.temp_allocator)
+
+		ui.probe_advance(&p, 20, 1.0 / 60)
+		cancel := ui.probe_bounds(&p, "Cancel")
+		save := ui.probe_bounds(&p, "Save")
+		win := ui.probe_bounds(&p, "Edit")
+		testing.expect(t, cancel.w > 0 && save.w > 0, "both buttons are drawn")
+		testing.expect(t, cancel.x < win.x + win.w / 2, "Cancel is at the start")
+		testing.expect(t, save.x + save.w > win.x + win.w - 40, "Save stays at the end")
+		testing.expect(t, cancel.x + cancel.w <= save.x, "they do not overlap")
+		testing.expect(t, ui.probe_click(&p, "Cancel"))
+		testing.expect_value(t, m.cancels, 1)
+	}
+}
+
+// A body taller than the dialog scrolls and leaves the footer whole: the rule
+// between them is room the body does not have, or each frame squeezes the
+// footer by its width and gives the body that room, until the buttons are cut
+// off by the window's edge.
+@(test)
+test_a_scrolling_dialog_keeps_its_footer_on_the_window :: proc(t: ^testing.T) {
+	m := Dialog_Model{open = true, width = .Small, lines = 40}
+	p: ui.Probe
+	dialog_probe(&p, &m)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_advance(&p, 120, 1.0 / 60)
+	win := ui.probe_bounds(&p, "Edit")
+	save := ui.probe_bounds(&p, "Save")
+	testing.expect_value(t, win.h, 800 - DIALOG_VIEWPORT_INSET)
+	testing.expectf(t, near(save.y + save.h, win.y + win.h - tok.BASE_SIZE_16), "Save ends at %v, the window at %v", save.y + save.h, win.y + win.h)
+	testing.expectf(t, save.h == 32, "Save is %v tall", save.h)
 }
