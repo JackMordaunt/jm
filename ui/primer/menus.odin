@@ -318,6 +318,82 @@ action_menu_item :: proc(
 	return chosen
 }
 
+// action_menu_item_switch declares a menu item with a small toggle switch
+// at its end, bound to on^ (Item_Control). Choosing the label, or Enter or
+// Space on the item, returns chosen as action_menu_item does and closes
+// the menu unless keep_open. A press on the switch flips on^ and nothing
+// else: the menu stays open and the item is not chosen. ArrowLeft on the
+// item turns the switch off and ArrowRight on. flipped is true on the frame
+// on^ changed, by either. switch_name is the switch's accessible name,
+// defaulting to the label.
+action_menu_item_switch :: proc(
+	m: ^Action_Menu,
+	label: string,
+	on: ^bool,
+	switch_name := "",
+	description := "",
+	leading := Icon.None,
+	hint := "",
+	disabled := false,
+	keep_open := false,
+	state := Interaction.Live,
+) -> (chosen, flipped: bool) {
+	if !m.visible {
+		return
+	}
+	chosen = action_list_item(
+		&m.list,
+		label,
+		description,
+		leading = leading,
+		hint = hint,
+		disabled = disabled,
+		state = state,
+		inline = {kind = .Switch, on = on, name = switch_name != "" ? switch_name : label, changed = &flipped},
+	)
+	if chosen && !keep_open {
+		m.chosen = true
+	}
+	return
+}
+
+// action_menu_item_segmented declares a menu item with a compact segmented
+// control at its end: segments, one always selected^ (Item_Control). A press
+// on a segment selects it, and ArrowLeft and ArrowRight on the item select
+// the previous and next, stopping at the ends. Choosing the label, or Enter
+// or Space, selects the next segment, wrapping to the first. The menu stays
+// open for every one of them. name is the control's accessible name,
+// defaulting to the label. Returns true on the frame selected^ changed.
+action_menu_item_segmented :: proc(
+	m: ^Action_Menu,
+	label: string,
+	segments: []Segment,
+	selected: ^int,
+	name := "",
+	description := "",
+	leading := Icon.None,
+	disabled := false,
+	state := Interaction.Live,
+) -> (changed: bool) {
+	if !m.visible || len(segments) == 0 {
+		return
+	}
+	chosen := action_list_item(
+		&m.list,
+		label,
+		description,
+		leading = leading,
+		disabled = disabled,
+		state = state,
+		inline = {kind = .Segmented, segments = segments, selected = selected, name = name != "" ? name : label, changed = &changed},
+	)
+	if chosen {
+		selected^ = (clamp(selected^, 0, len(segments) - 1) + 1) % len(segments)
+		changed = true
+	}
+	return
+}
+
 // action_menu_divider declares a divider between items.
 action_menu_divider :: proc(m: ^Action_Menu) {
 	if m.visible {

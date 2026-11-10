@@ -239,6 +239,36 @@ List_Item :: struct {
 	index:                                                          int,
 	id, group:                                                      ops.Area_Id,
 	c, ac:                                                          Control,
+	control:                                                        Item_Control,
+	ctl:                                                            Control, // the switch
+	value:                                                          int, // the control's value after this frame's input: 1 for a switch that is on, else the segment
+	segs:                                                           []Control,
+}
+
+// Item_Control_Kind is the interactive widget an item hosts at its end.
+Item_Control_Kind :: enum u8 {
+	None,
+	Switch,
+	Segmented,
+}
+
+// Item_Control is a small interactive widget in an item's trailing slot,
+// in place of its trailing visual: a 40 by 24px toggle switch on on^, or
+// a 24px tall segmented control choosing selected^ among segments. It is
+// not a tab stop, so the item is the one stop in a roving list: ArrowLeft
+// and ArrowRight on the focused item operate it (a switch: Left turns it
+// off, Right on; segments: the previous and next, stopping at the ends),
+// and a press on the control operates it without activating the item.
+// name is the control's accessible name (a segment's is its label).
+// changed, when set, is true on the frame the value changed. A segment
+// with an icon draws only the icon and shows its label in a tooltip.
+Item_Control :: struct {
+	kind:     Item_Control_Kind,
+	on:       ^bool,
+	segments: []Segment,
+	selected: ^int,
+	name:     string,
+	changed:  ^bool,
 }
 
 @(private)
@@ -344,7 +374,8 @@ action_list_item_id :: proc(base: ops.Area_Id, index: int) -> ops.Area_Id {
 // is a trailing invisible icon button named action_name, which sets
 // action_clicked; menus and listboxes take none. Returns true on the
 // frame it is activated: a click, Enter or Space while focused, or the
-// owner's activate while it is the active descendant.
+// owner's activate while it is the active descendant. inline puts a
+// switch or segmented control in the trailing slot (Item_Control).
 action_list_item :: proc(
 	l: ^Action_List,
 	label: string,
@@ -370,6 +401,7 @@ action_list_item :: proc(
 	action_clicked: ^bool = nil,
 	state := Interaction.Live,
 	leading_color := ops.Color{},
+	inline := Item_Control{},
 ) -> bool {
 	gtx := l.gtx
 	i := l.n
@@ -401,6 +433,7 @@ action_list_item :: proc(
 		id            = id,
 		action        = l.o.role == .List ? action : .None,
 		action_name   = ui.frame_string(gtx, action_name),
+		control       = item_control_copy(gtx, inline),
 	}
 	it.c = control(gtx, id, memo.rect, state)
 	if disabled {
@@ -411,6 +444,7 @@ action_list_item :: proc(
 	if it.c.st != nil {
 		list_item_events(l, &it)
 	}
+	item_control_events(l, &it, memo, dead, disabled ? .Disabled : state)
 	activated := it.c.clicked && !dead
 	if l.o.focus == .Descendant && l.o.activate && i == l.o.active && !dead {
 		activated = true
@@ -669,6 +703,8 @@ lead_of :: proc(it: List_Item, menu: bool) -> Lead {
 @(private)
 trail_of :: proc(gtx: ^ui.Ctx, it: List_Item, menu: bool) -> (t: Trail) {
 	switch {
+	case it.control.kind != .None:
+		// The control is the trailing slot, laid out apart from the visuals.
 	case it.leading == .None && it.inactive != "" && !menu:
 		t.kind, t.w = .Inactive, LIST_VISUAL
 	case it.leading == .None && it.loading:
@@ -734,6 +770,9 @@ item_natural :: proc(gtx: ^ui.Ctx, it: List_Item, m: List_Metrics) -> f32 {
 	if t := trail_of(gtx, it, m.menu); t.kind != .None {
 		w += tok.CONTROL_MEDIUM_GAP + t.w
 	}
+	if cw, _ := control_widths(gtx, it.control); cw > 0 {
+		w += tok.CONTROL_MEDIUM_GAP + cw
+	}
 	if it.action != .None {
 		w += tok.CONTROL_MEDIUM_SIZE
 	}
@@ -774,7 +813,10 @@ layout_item :: proc(gtx: ^ui.Ctx, it: List_Item, y: f32, m: List_Metrics) -> (g:
 	g.text_r = margin + cw - pad_x
 	g.trail = trail_of(gtx, it, m.menu)
 	label_r := g.text_r
-	if g.trail.kind != .None {
+	ctl_w, _ := control_widths(gtx, it.control)
+	if ctl_w > 0 {
+		label_r = g.text_r - ctl_w - gap
+	} else if g.trail.kind != .None {
 		g.trail_x = g.text_r - g.trail.w
 		label_r = g.trail_x - gap
 	}
@@ -806,6 +848,9 @@ layout_item :: proc(gtx: ^ui.Ctx, it: List_Item, y: f32, m: List_Metrics) -> (g:
 	g.rect = {margin, y, iw, row}
 	if it.action != .None {
 		g.action = {margin + cw, y, tok.CONTROL_MEDIUM_SIZE, row}
+	}
+	if ctl_w > 0 {
+		g.action = {g.text_r - ctl_w, y + (row - INLINE_HEIGHT) / 2, ctl_w, INLINE_HEIGHT}
 	}
 	return
 }
@@ -1297,6 +1342,9 @@ paint_list_item :: proc(l: ^Action_List, it: ^List_Item, g: Item_Geom, m: List_M
 	ops.tag(gtx.scene, it.id, it.label, g.rect)
 	if it.truncate && g.desc_cut && it.c.st != nil {
 		tooltip_run(gtx, it.id, g.rect, it.description, .E, .Medium, false, true)
+	}
+	if it.control.kind != .None {
+		paint_item_control(l, it, g, dead)
 	}
 	ui.part_semantics(gtx, &l.p, it.id, g.rect, item_semantics(gtx, l, it, g), under = group)
 	return lit
