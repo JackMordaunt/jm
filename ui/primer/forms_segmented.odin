@@ -12,6 +12,7 @@ import tok "jm:ui/primer/tokens"
 // the subtle variant draws.
 Segment :: struct {
 	label:     string,
+	tooltip:   string, // said in a bubble by the segment, when the pointer rests on it or it has focus
 	icon:      Icon,
 	count:     string,
 	icon_only: bool,
@@ -298,6 +299,9 @@ segment_button :: proc(gtx: ^ui.Ctx, p: ^ui.Placement, s: Segment, sc: Segment_C
 		design.paint_focus_ring(gtx, c.base, {r, radius + inset / 2}, {tok.BASE_SIZE_2, -tok.BORDER_WIDTH_THIN, color(.Fg_Color_Accent)})
 	}
 	listen(gtx, c.st, id, r, cursor = .Pointer)
+	if s.tooltip != "" {
+		tooltip_run(gtx, id, r, s.tooltip, .S, .Short, c.disabled, true)
+	}
 	said := ui.frame_string(gtx, s.label)
 	ops.tag(gtx.scene, id, said)
 	ui.part_semantics(gtx, p, id, r, {role = .Button, label = said, states = design.state_if(selected, {.Selected}) + design.state_if(c.disabled, {.Disabled})})
