@@ -628,3 +628,90 @@ test_details_toggles_its_content_from_its_summary :: proc(t: ^testing.T) {
 	got := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, len(got) > 0)
 }
+
+@(private = "file")
+Shield_Model :: struct {
+	open:    bool,
+	clicked: int,
+}
+
+@(private = "file")
+shield_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Shield_Model)(user)
+	if ui.row(gtx, gap = 300) {
+		if button(gtx, "Page") {
+			m.clicked += 1
+		}
+		tooltip(gtx, "About the page", ui.last_widget(gtx))
+		st := ui.stack_open(gtx)
+		defer ui.close(&st)
+
+		if button(gtx, "Anchor") {
+			m.open = !m.open
+		}
+		a := anchored_overlay_open(gtx, &m.open, ui.last_widget(gtx), name = "Menu")
+		if a.visible {
+			ov := ui.sized_open(gtx, {min = {100, 50}, max = {100, 50}})
+			button(gtx, "Copy")
+			ui.close(&ov)
+		}
+		anchored_overlay_close(&a)
+	}
+}
+
+// An open panel is not modal, but the page under it takes no hover, cursor or
+// tooltip; a press on the page still lands,
+// as it is what dismisses the panel.
+@(test)
+test_an_open_anchored_overlay_keeps_hover_and_tooltips_from_the_page :: proc(t: ^testing.T) {
+	m: Shield_Model
+	p: ui.Probe
+	ui.probe_init(&p, shield_view, &m, {800, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	page, _ := ui.probe_find(&p, "Page")
+	c, _ := ui.probe_center(&p, "Page")
+	ui.probe_move(&p, c.x, c.y)
+	ui.probe_advance(&p, 60, 1.0 / 60)
+	testing.expect_value(t, p.router.hover, page.area)
+	testing.expect(t, ui.probe_tagged(&p, "About the page"), "with nothing open the page hovers and its tooltip shows")
+
+	m.open = true
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	ui.probe_move(&p, c.x + 1, c.y)
+	ui.probe_advance(&p, 60, 1.0 / 60)
+	testing.expect(t, m.open)
+	testing.expect(t, p.router.hover != page.area, "the page is not hovered")
+	testing.expect(t, !ui.probe_tagged(&p, "About the page"), "the page tooltip is down")
+	testing.expect_value(t, len(p.router.observed), 0)
+
+	ui.probe_click_at(&p, c)
+	testing.expect_value(t, m.clicked, 1)
+	testing.expect(t, !m.open, "the press outside closed it")
+}
+
+// An overlay opened under a resting pointer takes the hover from what it covers
+// without the pointer moving: a click that opens a dialog leaves the pointer on
+// the button it pressed.
+@(test)
+test_an_overlay_opened_under_a_resting_pointer_takes_the_hover :: proc(t: ^testing.T) {
+	m: Shield_Model
+	p: ui.Probe
+	ui.probe_init(&p, shield_view, &m, {800, 600}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	page, _ := ui.probe_find(&p, "Page")
+	c, _ := ui.probe_center(&p, "Page")
+	ui.probe_move(&p, c.x, c.y)
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	testing.expect_value(t, p.router.hover, page.area)
+
+	m.open = true
+	ui.probe_advance(&p, 10, 1.0 / 60)
+	testing.expect(t, m.open)
+	testing.expect(t, p.router.hover != page.area, "the page is not hovered, though the pointer did not move")
+}

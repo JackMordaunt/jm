@@ -667,6 +667,12 @@ anchored_overlay_open :: proc(
 	if a.inside_center {
 		a.centre = place.gap
 	}
+	// The page under an open panel takes no hover, cursor or tooltip: a
+	// pointer outside the panel is outside it, and a press there still
+	// reaches what it lands on, as it dismisses the panel.
+	shield := ui.overlay_open(gtx, cs = ui.exact(gtx.viewport), root = true)
+	ops.input_area(gtx.scene, ui.id_mix(a.id, 0x5b1d), ops.Rect{0, 0, gtx.viewport.x, gtx.viewport.y}, {.Move, .Enter, .Leave})
+	ui.overlay_close(&shield)
 	layer := ui.popup_place(gtx, place)
 	a.surface = surface_open(gtx, a.id, d, layer, spec)
 	overlay_semantics(gtx, role, name)

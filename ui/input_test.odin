@@ -986,3 +986,34 @@ test_lost_focus_stays_in_a_trap_and_yields_to_a_request :: proc(t: ^testing.T) {
 	probe_frame(&p)
 	testing.expect_value(t, p.router.focus, ops.Area_Id(2)) // the request, not the first stop
 }
+
+@(test)
+test_an_observer_under_a_higher_layer_hears_nothing_there :: proc(t: ^testing.T) {
+	f: Frame
+	frame_init(&f)
+	defer frame_destroy(&f)
+
+	r: Router
+	router_init(&r)
+	defer router_destroy(&r)
+
+	// A page observer (1) and a button (2), a hit of the same layer recorded
+	// after the observer (3, as a card's area is, at its end), and an overlay's
+	// backdrop (4, layer 1) over the right half only.
+	add_hit(&f, 1, ops.Rect{0, 0, 100, 50}, {.Enter, .Leave}, observes = true)
+	add_hit(&f, 2, ops.Rect{0, 0, 100, 50}, {.Press, .Release, .Enter, .Leave})
+	add_hit(&f, 3, ops.Rect{0, 0, 100, 50}, {.Press, .Move})
+	add_hit(&f, 4, ops.Rect{50, 0, 50, 50}, {.Move, .Enter, .Leave})
+	f.hits[3].layer = 1
+
+	route(&r, &f, {kind = .Move, pos = {10, 10}})
+	testing.expect_value(t, len(r.observed), 1) // a later hit of its own layer does not hide it
+	evs := route(&r, &f, {kind = .Move, pos = {70, 10}})
+	testing.expect_value(t, len(r.observed), 0) // the backdrop does
+	for e in evs {
+		testing.expect(t, e.kind != .Enter || e.area == 4, "only the backdrop is entered")
+	}
+	testing.expect_value(t, r.hover, ops.Area_Id(4))
+	route(&r, &f, {kind = .Move, pos = {10, 10}})
+	testing.expect_value(t, len(r.observed), 1) // and it is heard again outside the backdrop
+}

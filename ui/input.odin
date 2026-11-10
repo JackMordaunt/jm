@@ -355,6 +355,17 @@ router_route :: proc(r: ^Router, f: ^Frame) {
 			r.pointed = true
 		}
 	}
+	// A layer drawn over the hovered area while the pointer rests, as a dialog
+	// opened by a click is, takes the pointer from it: no Move says so, and
+	// the area would keep its hover under the scrim until the pointer stirs.
+	if r.pointed && f != nil && r.pressed == 0 && r.hover != 0 {
+		still: Hit
+		if refresh(f, r.hover, &still) {
+			if h, ok := hit_test_any(f, r.pointer, HOVER_KINDS, past_yields = true); ok && h.area != r.hover {
+				update_hover(r, f, r.pointer)
+			}
+		}
+	}
 	clear(&r.queue)
 	r.cursor = resolve_cursor(r, f)
 	if f != nil {
@@ -763,7 +774,7 @@ update_observers :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 	for i < len(r.observed) {
 		o := r.observed[i]
 		now: Hit
-		if refresh(f, o.area, &now) && hit_contains(f, now, p) {
+		if refresh(f, o.area, &now) && hit_contains(f, now, p) && !observer_covered(f, now, p) {
 			r.observed[i] = now
 			i += 1
 			continue
@@ -775,7 +786,7 @@ update_observers :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 		return
 	}
 	outer: for h in f.hits {
-		if !h.observes || !hit_contains(f, h, p) {
+		if !h.observes || !hit_contains(f, h, p) || observer_covered(f, h, p) {
 			continue
 		}
 		for o in r.observed {
@@ -786,6 +797,24 @@ update_observers :: proc(r: ^Router, f: ^Frame, p: ops.Point) {
 		append(&r.observed, h)
 		synth(r, h, .Enter, to_local(h, p))
 	}
+}
+
+// observer_covered reports whether an overlay drawn over observer h takes
+// the pointer at p: a hit in a higher layer that wants a pointer kind, as a
+// menu's backdrop or a dialog's does. Beneath it an observer, as a tooltip's,
+// hears nothing, as the areas under it hear no hover. A hit of its own layer
+// never covers it, since a widget may record its area after its children's.
+@(private = "file")
+observer_covered :: proc(f: ^Frame, h: Hit, p: ops.Point) -> bool {
+	#reverse for c in f.hits {
+		if c.layer <= h.layer || c.observes || c.yields || c.kinds & HOVER_KINDS == {} {
+			continue
+		}
+		if hit_contains(f, c, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // active_trap is the trapping focus scope that holds focus in f: the
