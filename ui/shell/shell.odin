@@ -1336,6 +1336,8 @@ key :: proc(k: sdl3.Keycode) -> ui.Key {
 		return .Alt
 	case sdl3.K_LGUI, sdl3.K_RGUI:
 		return .Super
+	case sdl3.K_APPLICATION:
+		return .Menu
 	}
 	return .None
 }

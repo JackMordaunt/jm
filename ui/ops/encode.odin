@@ -45,8 +45,8 @@ ENCODE_MAGIC :: "UIOP"
 // given a kind for its folder bool and a save's name and filters; 40
 // added Event_Kind Key_Up and Key F1 to F12, Shift, Ctrl, Alt and Super,
 // which renumbered the keys after N9; 41 gave Image pixelated; 42 added
-// Window_Drag; 43 added Window_Button.
-ENCODE_VERSION :: u8(43)
+// Window_Drag; 43 added Window_Button; 44 added Key Menu.
+ENCODE_VERSION :: u8(44)
 
 // encoded_version is the version byte of an encoded stream, false when
 // data does not start with ENCODE_MAGIC and a version.

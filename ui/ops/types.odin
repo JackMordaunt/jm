@@ -291,6 +291,9 @@ Key :: enum u8 {
 	// Alt with Left and Right, which mean the same.
 	Browser_Back,
 	Browser_Forward,
+	// The context-menu key, which the shell reads from SDL's Application key:
+	// an app opens the menu of what holds focus, as Shift with F10 does.
+	Menu,
 }
 
 Mod :: enum u8 {
