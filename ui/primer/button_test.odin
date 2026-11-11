@@ -382,3 +382,59 @@ test_a_button_says_its_description_after_its_name :: proc(t: ^testing.T) {
 	sem := ui.probe_semantics(&p, context.temp_allocator)
 	testing.expect(t, strings.contains(sem, `button "Photos" desc "Charged 3.9 MB"`), sem)
 }
+
+@(private = "file")
+Faded_Model :: struct {
+	faded:   bool,
+	pressed: int,
+}
+
+@(private = "file")
+faded_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	m := (^Faded_Model)(user)
+	col := ui.column_open(gtx, align = .Start)
+	defer ui.close(&col)
+
+	if icon_button(gtx, .Copy, "Copy path", .Invisible, faded = m.faded) {
+		m.pressed += 1
+	}
+}
+
+// faded_draws counts the draws of the frame, and those faded out entirely.
+@(private = "file")
+faded_draws :: proc(p: ^ui.Probe) -> (drawn, invisible: int) {
+	for d in ui.probe_current(p).draws {
+		drawn += 1
+		if d.fade >= 1 {
+			invisible += 1
+		}
+	}
+	return
+}
+
+// A faded icon button paints nothing a person can see, and is still there: in
+// the tab order, named, and pressed by a click, so a row can show it only when
+// the row is in use.
+@(test)
+test_a_faded_icon_button_is_invisible_but_still_works :: proc(t: ^testing.T) {
+	m := Faded_Model{faded = true}
+	p: ui.Probe
+	ui.probe_init(&p, faded_view, &m, {200, 100}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	drawn, invisible := faded_draws(&p)
+	testing.expect(t, drawn > 0 && invisible == drawn, "everything it draws is faded out")
+	testing.expect(t, ui.probe_tagged(&p, "Copy path"), "it is still named")
+	ui.probe_key(&p, .Tab)
+	ui.probe_advance(&p, 2, 1.0 / 60)
+	testing.expect_value(t, ui.probe_focus_name(&p), "Copy path")
+	ui.probe_key(&p, .Enter)
+	ui.probe_advance(&p, 2, 1.0 / 60)
+	testing.expect_value(t, m.pressed, 1)
+
+	m.faded = false
+	ui.probe_advance(&p, 2, 1.0 / 60)
+	drawn, invisible = faded_draws(&p)
+	testing.expect(t, drawn > 0 && invisible == 0, "lifted, it is drawn")
+}

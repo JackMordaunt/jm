@@ -636,6 +636,10 @@ paint_dot :: proc(gtx: ^ui.Ctx, pos: ops.Point) {
 // disabled button, an empty name or no_tooltip shows none
 // (IconButton.tsx:28-80).
 //
+// faded draws it fully transparent, a control that stays where it is, in the
+// tab order and under the pointer: a row's action that shows once the row is
+// the one in use, the caller lifting faded then.
+//
 // expanded and tab_stop are button's. While expanded is true the tooltip
 // stays down (IconButton.tsx: a button with aria-haspopup and
 // aria-expanded shows none; icon-button.json states).
@@ -659,6 +663,7 @@ icon_button :: proc(
 	group: ^Button_Group = nil,
 	keybinding: []string = nil,
 	state := Interaction.Live,
+	faded := false,
 	key: u64 = 0,
 	loc := #caller_location,
 ) -> bool {
@@ -672,7 +677,7 @@ icon_button :: proc(
 	case .Primary, .Danger:
 		r.visual = r.fg
 	}
-	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, expanded, !tab_stop, group, keybinding}
+	st := Icon_Button_State{loading, inactive, dot, state, description, tooltip_direction, no_tooltip, expanded, !tab_stop, group, keybinding, faded}
 	return icon_button_in(gtx, ic, name, variant, size, r, st, key, loc)
 }
 
@@ -689,6 +694,7 @@ Icon_Button_State :: struct {
 	no_tab:            bool, // out of Tab's order: tab_stop false
 	group:             ^Button_Group, // nil unless in a ButtonGroup
 	keybinding:        []string, // shortcuts its tooltip shows and its label says
+	faded:             bool, // painted fully transparent; still laid out, focusable and clickable
 }
 
 // icon_button_in is icon_button in roles r: a component that sets an
@@ -713,6 +719,9 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	if st.group != nil {
 		bp.group, bp.member = st.group, group_join(st.group)
 	}
+	if st.faded {
+		ops.opacity_push(gtx.scene, 0)
+	}
 	paint_button(gtx, c, bp)
 	// The dot sits 2px outside the top-right corner, or 12px up and right
 	// of the centre over the icon (ButtonBase.module.css:67-75).
@@ -723,6 +732,9 @@ icon_button_in :: proc(gtx: ^ui.Ctx, ic: Icon, name: string, variant: Button_Var
 	case .Leading:
 		paint_dot(gtx, {area.w / 2 + tok.BASE_SIZE_12 - d, area.h / 2 - tok.BASE_SIZE_12})
 	case .None:
+	}
+	if st.faded {
+		ops.opacity_pop(gtx.scene)
 	}
 	listen(gtx, c.st, p.id, area, CLICK_KINDS, no_tab = st.no_tab)
 	said := ui.frame_string(gtx, name)
