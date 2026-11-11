@@ -298,7 +298,9 @@ content_width :: proc(bc: Button_Content, gap: f32) -> f32 {
 // a visual (or the label) for a spinner and ignores clicks while keeping
 // focus; inactive looks disabled but stays live. name is what assistive
 // technology hears when it differs from the visible label (a "+3" that
-// means "Show +3 more"); the label when empty. expanded, when set, says
+// means "Show +3 more"); the label when empty. description is what it
+// hears after the name, the hint a sighted user gets from a tooltip or the
+// row's marker. expanded, when set, says
 // the button controls a menu or panel and whether it is open
 // (aria-expanded): open, it keeps its pressed fill, border and shadow
 // until hovered (ButtonBase.module.css:308-311,360-363,417-422,516-518).
@@ -321,6 +323,7 @@ button :: proc(
 	inactive := false,
 	dot := Unread_Dot.None,
 	name := "",
+	description := "",
 	expanded: Maybe(bool) = nil,
 	tab_stop := true,
 	group: ^Button_Group = nil,
@@ -367,7 +370,7 @@ button :: proc(
 	said := ui.frame_string(gtx, label)
 	ops.tag(gtx.scene, p.id, said)
 	heard := said if name == "" else ui.frame_string(gtx, name)
-	ui.semantics(gtx, &p, {role = variant == .Link ? .Link : .Button, label = heard, states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(expanded)})
+	ui.semantics(gtx, &p, {role = variant == .Link ? .Link : .Button, label = heard, description = ui.frame_string(gtx, description), states = design.state_if(c.disabled || loading, {.Disabled}) + expanded_states(expanded)})
 	ui.widget_close(gtx, &p, {sz, (sz.y - bc.label.height) / 2 + baseline_of(bc.label)})
 	return c.clicked && !loading
 }

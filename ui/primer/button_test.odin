@@ -366,3 +366,19 @@ test_a_block_buttons_action_sits_at_its_end :: proc(t: ^testing.T) {
 	want := fmt.tprintf("transform 1 0 0 1 %v ", x)
 	testing.expectf(t, strings.contains(dump, want), "want x %v in\n%s", x, dump)
 }
+
+@(private = "file")
+described_view :: proc(gtx: ^ui.Ctx, user: rawptr) {
+	button(gtx, "Photos", description = "Charged 3.9 MB")
+}
+
+@(test)
+test_a_button_says_its_description_after_its_name :: proc(t: ^testing.T) {
+	p: ui.Probe
+	ui.probe_init(&p, described_view, nil, {400, 200}, allocator = context.temp_allocator)
+	defer ui.probe_destroy(&p)
+	defer free_all(context.temp_allocator)
+
+	sem := ui.probe_semantics(&p, context.temp_allocator)
+	testing.expect(t, strings.contains(sem, `button "Photos" desc "Charged 3.9 MB"`), sem)
+}
