@@ -11,6 +11,9 @@ List_State :: struct {
 // List_Item lays out item i; user is list's user pointer.
 List_Item :: proc(gtx: ^Ctx, i: int, user: rawptr)
 
+// List_Height is how tall item i is, in pixels, for a list whose items differ.
+List_Height :: proc(i: int, user: rawptr) -> f32
+
 // list is a clipped, virtualised vertical viewport over count items. It
 // measures item 0 to get the row height and assumes every row is that tall;
 // then it lays out only the rows that intersect the viewport, each under
@@ -21,6 +24,11 @@ List_Item :: proc(gtx: ^Ctx, i: int, user: rawptr)
 // content - viewport], and a scroll bar on the right drags and pages it.
 // drag_scroll lets a drag on the list move it and a fast release sling
 // it, as scroll_box_open's does; rows that take presses keep them.
+// With height_of the items may differ in height: item 0 is not measured, each
+// item is placed at the sum of the heights before it, the first in view is
+// found by binary search over those sums (worked out each frame, count calls
+// of height_of, in gtx.allocator), and the item is expected to be as tall as
+// height_of said. Without it the path above is unchanged.
 // The viewport is the content height clamped to the constraints. Needs
 // gtx.layout; without one it draws nothing.
 list :: proc(
@@ -32,6 +40,7 @@ list :: proc(
 	key: u64 = 0,
 	loc := #caller_location,
 	drag_scroll := false,
+	height_of: List_Height = nil,
 ) -> Dims {
 	p := widget_open(gtx, key, loc)
 	l := gtx.layout
@@ -45,17 +54,30 @@ list :: proc(
 
 	o := gtx.scene
 	l.scope = id_mix(p.id, 0)
-	first_item := ops.macro_open(o)
-	needs_mark := needs_count(gtx)
-	item(gtx, 0, user)
-	ops.macro_close(o, first_item)
-	measured := container_at(l, idx).extent
-	row := max(measured.y, 1)
-	if !is_finite(cs.max.x) {
-		width = measured.x
+	variable := height_of != nil
+	first_item: ops.Macro_Id
+	needs_mark: int
+	row: f32
+	tops: []f32 // tops[i] is where item i starts; tops[count] is the content
+	if variable {
+		//review:ignore odin-allocator-parameter the frame's allocator is gtx.allocator, as in every ui proc
+		tops = make([]f32, count + 1, gtx.allocator)
+		for i in 0 ..< count {
+			tops[i + 1] = tops[i] + max(height_of(i, user), 0)
+		}
+	} else {
+		first_item = ops.macro_open(o)
+		needs_mark = needs_count(gtx)
+		item(gtx, 0, user)
+		ops.macro_close(o, first_item)
+		measured := container_at(l, idx).extent
+		row = max(measured.y, 1)
+		if !is_finite(cs.max.x) {
+			width = measured.x
+		}
 	}
 
-	content := row * f32(count)
+	content := tops[count] if variable else row * f32(count)
 	view := clamp(content, cs.min.y, cs.max.y)
 	for e in events(gtx, p.id) {
 		if e.kind == .Scroll {
@@ -77,17 +99,28 @@ list :: proc(
 	}
 	ops.input_area(o, p.id, ops.Rect{0, 0, size.x, size.y}, kinds)
 	ops.clip_push(o, ops.Rect{0, 0, size.x, size.y})
-	lo := int(s.offset / row)
-	hi := min(count, int(math.ceil((s.offset + size.y) / row)))
-	if lo > 0 {
+
+	lo, hi: int
+	if variable {
+		// lo is the item that holds the offset: the first whose foot is
+		// below it. hi is the first that starts at or past the viewport's foot.
+		lo = bisect(tops[1:], s.offset, true)
+		lo = min(lo, count - 1)
+		hi = max(bisect(tops[:count], s.offset + size.y, false), lo + 1)
+	} else {
+		lo = int(s.offset / row)
+		hi = min(count, int(math.ceil((s.offset + size.y) / row)))
+	}
+	if !variable && lo > 0 {
 		// Row 0 was laid out to be measured, not shown: what it needed
 		// is not needed (see need.odin), or a scrolled list would keep
 		// its first row's data live.
 		needs_rewind(gtx, needs_mark)
 	}
 	for i in lo ..< hi {
-		ops.transform_push(o, ops.translate(0, f32(i) * row - s.offset))
-		if i == 0 {
+		top := tops[i] if variable else f32(i) * row
+		ops.transform_push(o, ops.translate(0, top - s.offset))
+		if !variable && i == 0 {
 			ops.call(o, first_item)
 		} else {
 			l.scope = id_mix(p.id, u64(i))
@@ -106,4 +139,19 @@ list :: proc(
 	l.scope = saved
 	container_pop(gtx, idx)
 	return widget_close(gtx, &p, {size = size})
+}
+
+// bisect is how many of the ascending xs are below v, or at most v if inclusive.
+@(private = "file")
+bisect :: proc(xs: []f32, v: f32, inclusive: bool) -> int {
+	lo, hi := 0, len(xs)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if xs[mid] < v || (inclusive && xs[mid] == v) {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	return lo
 }

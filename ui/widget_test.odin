@@ -152,3 +152,90 @@ drag_scroll_moves_and_slings_a_list :: proc(t: ^testing.T) {
 	testing.expectf(t, abs(m.state.offset - want) < 2, "glided to %v, want %v", m.state.offset, want)
 }
 
+
+// Items of two heights: a heading of 10 over each three rows of 30.
+@(private = "file")
+Mixed_Model :: struct {
+	laid: [dynamic]int,
+}
+
+@(private = "file")
+mixed_height :: proc(i: int, user: rawptr) -> f32 {
+	return 10 if i % 4 == 0 else 30
+}
+
+@(private = "file")
+mixed_item :: proc(gtx: ^Ctx, i: int, user: rawptr) {
+	m := (^Mixed_Model)(user)
+	append(&m.laid, i)
+	r := widget_open(gtx, 1)
+	h := mixed_height(i, nil)
+	ops.tag(gtx.scene, r.id, fmt.tprintf("mixed %d", i), {0, 0, 200, h})
+	widget_close(gtx, &r, {size = {200, h}})
+}
+
+@(private = "file")
+mixed_list :: proc(h: ^Harness, s: ^List_State, m: ^Mixed_Model, count := 100) -> Dims {
+	return list(&h.gtx, s, count, mixed_item, m, height_of = mixed_height)
+}
+
+@(test)
+test_list_mixed_heights_lay_out_at_the_right_y :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+
+	m: Mixed_Model
+	m.laid = make([dynamic]int, context.temp_allocator)
+	s: List_State
+	d := mixed_list(&h, &s, &m)
+	testing.expect_value(t, d.size, ops.Size{200, 100})
+	// Tops 0, 10, 40, 70, 100: items 0..3 intersect 100px, item 4 starts at its foot.
+	testing.expect(t, slice.equal(m.laid[:], []int{0, 1, 2, 3}))
+	p := pushes(&h.scene)
+	testing.expect_value(t, len(p), 4)
+	testing.expect_value(t, p[0], ops.Point{0, 0})
+	testing.expect_value(t, p[1], ops.Point{0, 10})
+	testing.expect_value(t, p[2], ops.Point{0, 40})
+	testing.expect_value(t, p[3], ops.Point{0, 70})
+}
+
+@(test)
+test_list_mixed_heights_build_only_what_is_visible :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+
+	m: Mixed_Model
+	m.laid = make([dynamic]int, context.temp_allocator)
+	s := List_State{offset = 125} // inside item 5, which spans 110..140
+	mixed_list(&h, &s, &m)
+	// Item 4 ends at 110, so 5 (110..140) is the first; 9 starts at 210, 10 at 240, past the foot at 225.
+	testing.expect(t, slice.equal(m.laid[:], []int{5, 6, 7, 8, 9}), fmt.tprint(m.laid[:]))
+	p := pushes(&h.scene)
+	testing.expect_value(t, p[0], ops.Point{0, -15})
+	testing.expect_value(t, p[1], ops.Point{0, 15})
+	testing.expect_value(t, p[4], ops.Point{0, 85})
+}
+
+@(test)
+test_list_mixed_heights_scroll_to_the_last_row_whole :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, {200, 100})
+	defer harness_destroy(&h)
+
+	m: Mixed_Model
+	m.laid = make([dynamic]int, context.temp_allocator)
+	s: List_State
+	mixed_list(&h, &s, &m)
+	ia := h.scene.ops[index_of(&h.scene, ops.Input_Area)].(ops.Input_Area)
+	harness_frame(&h)
+	clear(&m.laid)
+	event_push(&h, {kind = .Scroll, area = ia.id, scroll = {0, 1e6}})
+	mixed_list(&h, &s, &m)
+	// 25 headings of 10 and 75 rows of 30: 2500 px.
+	testing.expect_value(t, s.offset, 2500 - 100)
+	testing.expect_value(t, m.laid[len(m.laid) - 1], 99)
+	p := pushes(&h.scene)
+	testing.expect_value(t, p[len(p) - 1], ops.Point{0, 70}) // the last row, 30px, ends at 100
+}
