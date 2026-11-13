@@ -38,9 +38,33 @@ title_detach :: proc(w: ^Window) {
 	if w.title_on {
 		_ = sdl3.SetWindowHitTest(w.window, nil, nil)
 	}
+	if w.title_on && w.cocoa_window != nil {
+		title_mac_restore(w)
+	}
 	title_mac_unwatch(w)
 	w.title_on = false
 	w.cocoa_window = nil
+}
+
+// title_mac_restore undoes what title_metrics did to the style mask, with
+// the same responder-chain dance, so the system title bar returns.
+@(private)
+title_mac_restore :: proc(w: ^Window) {
+	native := cast(^NS.Window)w.cocoa_window
+	style := intrinsics.objc_send(NS.WindowStyleMask, native, "styleMask")
+	if .FullSizeContentView not_in style {
+		return
+	}
+	content := native->contentView()
+	if content == nil {
+		return
+	}
+	responder := intrinsics.objc_send(NS.id, content, "nextResponder")
+	intrinsics.objc_send(nil, content, "setNextResponder:", NS.id(nil))
+	intrinsics.objc_send(nil, native, "setStyleMask:", style - {.FullSizeContentView})
+	intrinsics.objc_send(nil, content, "setNextResponder:", responder)
+	intrinsics.objc_send(nil, native, "setTitleVisibility:", NS.Integer(0)) // NSWindowTitleVisible
+	intrinsics.objc_send(nil, native, "setTitlebarAppearsTransparent:", NS.BOOL(false))
 }
 
 // AppKit lays the title bar out again on resize and when returning from
@@ -239,4 +263,10 @@ title_mac_action :: proc "contextless" (action: ^NS.String) -> Title_Mac_Action 
 @(private)
 title_caption_event :: proc(_: ^Window, _: ^sdl3.Event) -> bool {
 	return false
+}
+
+// title_can_unify is whether a running window can take .Unified.
+@(private)
+title_can_unify :: proc(_: ^Window) -> bool {
+	return true
 }

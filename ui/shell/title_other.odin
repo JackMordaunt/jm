@@ -175,3 +175,9 @@ title_caption_perform :: proc(w: ^Window, button: ops.Caption_Button) {
 		_ = sdl3.PushEvent(&ev)
 	}
 }
+
+// title_can_unify is whether a running window can take .Unified.
+@(private)
+title_can_unify :: proc(_: ^Window) -> bool {
+	return true
+}

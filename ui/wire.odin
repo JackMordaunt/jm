@@ -331,6 +331,9 @@ encode_reply :: proc(
 				append(&w, 7)
 				append(&w, 1 if v.dark else 0)
 				append(&w, v.caption[0], v.caption[1], v.caption[2])
+			case Window_Title_Bar:
+				append(&w, 8)
+				append(&w, u8(v.mode))
 			}
 		}
 	}
@@ -468,6 +471,12 @@ decode_reply :: proc(data: []byte, dbg: ^Reply_Debug = nil, platform: ^Reply_Pla
 				cap[1] = ops.get_u8(&r) or_return
 				cap[2] = ops.get_u8(&r) or_return
 				q = Window_Theme{dark, cap}
+			case 8:
+				mode := ops.get_u8(&r) or_return
+				if mode > u8(max(Title_Bar_Mode)) {
+					return false, 0, nil, false
+				}
+				q = Window_Title_Bar{Title_Bar_Mode(mode)}
 			case:
 				return false, 0, nil, false
 			}
@@ -523,7 +532,7 @@ Reply_Data :: struct {
 Reply_Platform :: struct {
 	cursor:       ops.Cursor,
 	changed:      bool,
-	requests_buf: [8]Request, // room for one of each kind a frame makes, and more
+	requests_buf: [10]Request, // room for one of each kind a frame makes, and more
 	requests_n:   int,
 	focus:        ops.Area_Id, // the child's focused area, every reply
 }

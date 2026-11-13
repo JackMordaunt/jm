@@ -54,6 +54,8 @@ apply_platform :: proc(w: ^Window, cursor: ops.Cursor, changed: bool, requests: 
 		case ui.Window_Theme:
 			// Also applied before present. A repeat is a no-op.
 			apply_window_theme(w, v.dark, v.caption)
+		case ui.Window_Title_Bar:
+			apply_title_bar(w, v.mode)
 		}
 	}
 }

@@ -186,7 +186,8 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	}
 	p.requests_buf[6] = Window_Title{"Documents"}
 	p.requests_buf[7] = Window_Theme{dark = true, caption = {12, 16, 20}}
-	p.requests_n = 8
+	p.requests_buf[8] = Window_Title_Bar{.Drawn}
+	p.requests_n = 9
 	sc_bytes := []byte{1, 2, 3}
 	data := encode_reply(true, 0, sc_bytes, context.temp_allocator, platform = &p)
 	got: Reply_Platform
@@ -196,10 +197,11 @@ test_reply_carries_cursor_and_requests :: proc(t: ^testing.T) {
 	testing.expect(t, got.changed)
 	testing.expect_value(t, got.cursor, ops.Cursor.Text)
 	reqs := reply_requests(&got)
-	testing.expect_value(t, len(reqs), 8)
-	if len(reqs) == 8 {
+	testing.expect_value(t, len(reqs), 9)
+	if len(reqs) == 9 {
 		testing.expect_value(t, reqs[6].(Window_Title).title, "Documents")
 		testing.expect_value(t, reqs[7].(Window_Theme), Window_Theme{dark = true, caption = {12, 16, 20}})
+		testing.expect_value(t, reqs[8].(Window_Title_Bar).mode, Title_Bar_Mode.Drawn)
 		testing.expect_value(t, reqs[0].(Clipboard_Write).data, "copied")
 		testing.expect_value(t, reqs[1].(Clipboard_Read).mime, TEXT_MIME)
 		testing.expect_value(t, reqs[2].(Open_Url).url, "https://example.com/a?b=c")

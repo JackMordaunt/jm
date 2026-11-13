@@ -95,12 +95,27 @@ title_detach :: proc(w: ^Window) {
 	if !w.title_on {
 		return
 	}
-	w.title_on = false
 	hwnd := title_hwnd(w.hwnd)
+	if hwnd != nil {
+		title_extend(w, hwnd, 0)
+	}
+	w.title_on = false
 	w.hwnd = nil
 	if hwnd != nil {
 		_ = RemoveWindowSubclass(hwnd, title_proc, TITLE_SUBCLASS_ID)
+		// Without the subclass NCCALCSIZE gives the standard frame back.
+		_ = win.SetWindowPos(
+			hwnd,
+			nil,
+			0,
+			0,
+			0,
+			0,
+			win.UINT(win.SWP_FRAMECHANGED | win.SWP_NOSIZE | win.SWP_NOMOVE | win.SWP_NOZORDER | win.SWP_NOACTIVATE),
+		)
 	}
+	w.buttons_px, w.button_hole, w.border_px = {}, {}, 0
+	w.caption_hover, w.caption_pressed, w.caption_tracking = .None, .None, false
 }
 
 // title_metrics is the caption in window points. Zero when the mode is
@@ -630,5 +645,17 @@ title_theme :: proc(w: ^Window, dark: bool, caption: [3]u8) {
 // carry the caption buttons.
 @(private)
 title_caption_event :: proc(_: ^Window, _: ^sdl3.Event) -> bool {
+	return false
+}
+
+// title_can_unify is whether a running window can take .Unified: only one
+// created transparent (App.title_bar == .Unified at open), as the buttons'
+// hole needs alpha. Otherwise the switch becomes .Drawn.
+@(private)
+title_can_unify :: proc(w: ^Window) -> bool {
+	if .TRANSPARENT in sdl3.GetWindowFlags(w.window) {
+		return true
+	}
+	log.warn("ui/shell: Unified needs a window opened Unified; using Drawn")
 	return false
 }

@@ -49,6 +49,8 @@ Probe :: struct {
 	theme_set:     bool, // a frame has asked set_window_theme
 	theme_dark:    bool, // that ask's appearance
 	theme_caption: [3]u8, // and the colour behind the caption buttons
+	title_bar_set: bool, // a frame has asked set_title_bar
+	title_bar_mode: Title_Bar_Mode, // that ask's mode
 	text_input:  Text_Input, // the last Text_Input a frame asked for
 	text_inputs: int, // how many Text_Inputs frames have asked for
 	picking:     Pick_Path, // the last path pick a frame asked for, until probe_pick answers it; its strings in picked_text, its filters in picked_filters
@@ -231,6 +233,9 @@ probe_platform :: proc(p: ^Probe) {
 			p.theme_set = true
 			p.theme_dark = v.dark
 			p.theme_caption = v.caption
+		case Window_Title_Bar:
+			p.title_bar_set = true
+			p.title_bar_mode = v.mode
 		}
 	}
 	router_requests_clear(&p.router)
@@ -258,6 +263,12 @@ probe_title :: proc(p: ^Probe) -> string {
 // take. ok is false until a frame asks.
 probe_window_theme :: proc(p: ^Probe) -> (dark: bool, caption: [3]u8, ok: bool) {
 	return p.theme_dark, p.theme_caption, p.theme_set
+}
+
+// probe_title_bar is the last caption mode a frame asked the window to
+// take. ok is false until a frame asks.
+probe_title_bar :: proc(p: ^Probe) -> (mode: Title_Bar_Mode, ok: bool) {
+	return p.title_bar_mode, p.title_bar_set
 }
 
 // probe_keep_pick holds q as the open pick, its strings copied into

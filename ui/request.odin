@@ -32,6 +32,7 @@ Request :: union {
 	Pick_Path,
 	Window_Title,
 	Window_Theme,
+	Window_Title_Bar,
 }
 
 // Clipboard_Write puts data on the clipboard as mime.
@@ -94,6 +95,12 @@ Window_Title :: struct {
 Window_Theme :: struct {
 	dark:    bool,
 	caption: [3]u8,
+}
+
+// Window_Title_Bar asks the platform to switch who draws the caption to
+// mode (see Title_Bar_Mode). The last call in a frame wins.
+Window_Title_Bar :: struct {
+	mode: Title_Bar_Mode,
 }
 
 // Text_Input is what the focused area wants of the platform's input
@@ -216,6 +223,28 @@ set_window_theme :: proc(gtx: ^Ctx, dark: bool, caption: ops.Color) {
 	for &old, i in r.requests {
 		if _, ok := old.(Window_Theme); ok {
 			free_request(r, old)
+			r.requests[i] = q
+			return
+		}
+	}
+	append(&r.requests, q)
+}
+
+// set_title_bar asks the platform, once the frame is done, to switch the
+// window's caption to mode: the platform's own bar (.System), the client
+// extended under it (.Unified), or the client drawing the caption buttons
+// too (.Drawn). A mode the platform does not implement falls back as
+// App.title_bar does. Call it when the choice changes, and on the first
+// frame; the last call in a frame wins, and the mode the window already
+// has is left alone.
+set_title_bar :: proc(gtx: ^Ctx, mode: Title_Bar_Mode) {
+	r := gtx.router
+	if r == nil {
+		return
+	}
+	q := Window_Title_Bar{mode}
+	for &old, i in r.requests {
+		if _, ok := old.(Window_Title_Bar); ok {
 			r.requests[i] = q
 			return
 		}
@@ -441,5 +470,6 @@ free_request :: proc(r: ^Router, q: Request) {
 	case Window_Title:
 		delete(v.title, r.allocator)
 	case Window_Theme:
+	case Window_Title_Bar:
 	}
 }

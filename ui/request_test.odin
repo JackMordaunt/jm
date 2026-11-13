@@ -198,6 +198,35 @@ test_window_title_reaches_the_platform_once_the_frame_is_done :: proc(t: ^testin
 }
 
 @(test)
+test_title_bar_mode_reaches_the_platform_and_the_last_ask_wins :: proc(t: ^testing.T) {
+	// probe_init runs one frame before any ask. The next frame asks twice,
+	// and the second replaces the first.
+	Ask :: struct {
+		frames: int,
+	}
+	view :: proc(gtx: ^Ctx, user: rawptr) {
+		a := (^Ask)(user)
+		a.frames += 1
+		if a.frames == 1 {
+			return
+		}
+		set_title_bar(gtx, .Unified)
+		set_title_bar(gtx, .Drawn)
+	}
+	a: Ask
+	p: Probe
+	probe_init(&p, view, &a, {100, 50})
+	defer probe_destroy(&p)
+	_, ok := probe_title_bar(&p)
+	testing.expect(t, !ok)
+	probe_frame(&p)
+	mode: Title_Bar_Mode
+	mode, ok = probe_title_bar(&p)
+	testing.expect(t, ok)
+	testing.expect_value(t, mode, Title_Bar_Mode.Drawn)
+}
+
+@(test)
 test_focus_is_visible_from_a_key_until_the_next_press :: proc(t: ^testing.T) {
 	b: Board
 	defer board_destroy(&b)
