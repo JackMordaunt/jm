@@ -1,5 +1,7 @@
 package shell
 
+import sdl3 "vendor:sdl3"
+
 import "jm:ui/ops"
 
 // TITLE_DRAG_CAP is how many drag rects a frame may publish. The hit
@@ -182,4 +184,68 @@ title_button :: proc "contextless" (buttons: ops.Rect, p: ops.Point, rtl: bool) 
 	case:
 		return .Close
 	}
+}
+
+// title_sdl_hit classifies p, in client device pixels, for SDL's hit test
+// where the shell draws the caption (not Windows or macOS, which answer
+// their own messages). A drawn caption button is NORMAL, so the shell
+// gets its clicks; then the window's edge, border pixels wide (0 when
+// maximized: none), is a resize; then a drag rect moves the window; the
+// rest is the client.
+@(private)
+title_sdl_hit :: proc "contextless" (p: ops.Point, client: ops.Size, border: f32, drags: []ops.Rect, drawn: []ops.Window_Button) -> sdl3.HitTestResult {
+	for b in drawn {
+		if b.button != .None && title_contains(b.rect, p) {
+			return .NORMAL
+		}
+	}
+
+	if border > 0 {
+		left := p.x >= 0 && p.x < border
+		right := p.x < client.x && p.x >= client.x - border
+		top := p.y >= 0 && p.y < border
+		bottom := p.y < client.y && p.y >= client.y - border
+		switch {
+		case top && left:
+			return .RESIZE_TOPLEFT
+		case top && right:
+			return .RESIZE_TOPRIGHT
+		case bottom && left:
+			return .RESIZE_BOTTOMLEFT
+		case bottom && right:
+			return .RESIZE_BOTTOMRIGHT
+		case top:
+			return .RESIZE_TOP
+		case bottom:
+			return .RESIZE_BOTTOM
+		case left:
+			return .RESIZE_LEFT
+		case right:
+			return .RESIZE_RIGHT
+		}
+	}
+
+	for r in drags {
+		if title_contains(r, p) {
+			return .DRAGGABLE
+		}
+	}
+	return .NORMAL
+}
+
+// title_drawn_at is the caption button of the published Drawn frame under
+// p, in device pixels; None when p is over none.
+@(private)
+title_drawn_at :: proc "contextless" (w: ^Window, p: ops.Point) -> ops.Caption_Button {
+	slot := w.drag_read
+	if slot != 0 && slot != 1 {
+		slot = 0
+	}
+	n := min(max(w.drawn_n[slot], 0), TITLE_BUTTON_CAP)
+	for b in w.drawn[slot][:n] {
+		if b.button != .None && title_contains(b.rect, p) {
+			return b.button
+		}
+	}
+	return .None
 }

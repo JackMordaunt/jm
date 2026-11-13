@@ -233,3 +233,10 @@ title_mac_action :: proc "contextless" (action: ^NS.String) -> Title_Mac_Action 
 	}
 	return .None
 }
+
+// title_caption_event has nothing to do here: the platform's own messages
+// carry the caption buttons.
+@(private)
+title_caption_event :: proc(_: ^Window, _: ^sdl3.Event) -> bool {
+	return false
+}

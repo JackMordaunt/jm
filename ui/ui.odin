@@ -97,7 +97,9 @@ Ctx :: struct {
 // Unified with the caption buttons drawn by the frame too, at any height:
 // it records them with window_button, and the platform hit-tests and
 // performs them. Windows implements Unified and Drawn; macOS implements
-// Unified with native traffic lights. Elsewhere the shell reports a zero Title_Bar.
+// Unified with native traffic lights. Elsewhere (Linux and the other SDL
+// platforms) Unified and Drawn both draw the caption buttons in the frame,
+// as Drawn does on Windows, and the shell reports drawn = true.
 Title_Bar_Mode :: enum u8 {
 	System,
 	Unified,

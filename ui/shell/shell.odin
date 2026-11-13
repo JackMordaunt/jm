@@ -107,7 +107,7 @@ App :: struct {
 	fullscreen:            bool, // the window opens fullscreen on its display; width and height are the size it leaves fullscreen at
 	animation_hz:          Maybe(f32), // the most frames a second an animation alone gets on a faster display (pace.odin): nil for ANIMATION_HZ, 0 for the display's rate
 	data:                  Data_Host, // where the frames' needs and commands go, and where shapes come back from; see ui/need.odin
-	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows and macOS; .Drawn draws the Windows caption buttons too; elsewhere the frame reports a zero Title_Bar
+	title_bar:             Title_Bar_Mode, // .System keeps the platform caption. .Unified extends the client over it on Windows and macOS; .Drawn draws the caption buttons too, as does .Unified on Linux and other SDL platforms.
 	icon_light:            []byte, // PNG for a light window, dark ink. Empty keeps the executable's icon
 	icon_dark:             []byte, // PNG for a dark window, light ink
 }
@@ -1085,6 +1085,9 @@ poll :: proc(w: ^Window, sink: Event_Sink, user: rawptr, allocator := context.al
 			continue
 		}
 		// Every SDL event starts with the common header: ns since SDL_Init.
+		if title_caption_event(w, &e) {
+			continue
+		}
 		at := f64(e.common.timestamp) / 1e9 //review:ignore history-coupled-file host_sink forwards each Raw_Event whole, time with it
 		#partial switch e.type {
 		case .QUIT:

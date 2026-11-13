@@ -625,3 +625,10 @@ title_theme :: proc(w: ^Window, dark: bool, caption: [3]u8) {
 		win.DWORD(size_of(page)),
 	)
 }
+
+// title_caption_event has nothing to do here: the platform's own messages
+// carry the caption buttons.
+@(private)
+title_caption_event :: proc(_: ^Window, _: ^sdl3.Event) -> bool {
+	return false
+}

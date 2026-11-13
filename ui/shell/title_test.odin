@@ -1,6 +1,7 @@
 package shell
 
 import "core:testing"
+import sdl3 "vendor:sdl3"
 import "jm:ui/ops"
 
 @(test)
@@ -97,4 +98,41 @@ test_title_set_drags_publishes_one_slot :: proc(t: ^testing.T) {
 	title_set_drags(&w, many[:])
 	testing.expect_value(t, w.drag_n[w.drag_read], TITLE_DRAG_CAP)
 	testing.expect_value(t, w.drags[w.drag_read][TITLE_DRAG_CAP - 1], ops.Rect{f32(TITLE_DRAG_CAP - 1), 0, 1, 1})
+}
+
+@(test)
+test_title_sdl_hit_classifies_buttons_edges_and_drags :: proc(t: ^testing.T) {
+	client := ops.Size{800, 600}
+	drags := []ops.Rect{{0, 0, 662, 32}}
+	buttons := []ops.Window_Button{
+		{{662, 0, 46, 32}, .Minimize},
+		{{708, 0, 46, 32}, .Maximize},
+		{{754, 0, 46, 32}, .Close},
+	}
+	hit :: proc(p: ops.Point, client: ops.Size, border: f32, drags: []ops.Rect, b: []ops.Window_Button) -> sdl3.HitTestResult {
+		return title_sdl_hit(p, client, border, drags, b)
+	}
+	testing.expect_value(t, hit({400, 300}, client, 5, drags, buttons), sdl3.HitTestResult.NORMAL)
+	testing.expect_value(t, hit({300, 16}, client, 5, drags, buttons), sdl3.HitTestResult.DRAGGABLE)
+	testing.expect_value(t, hit({300, 2}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_TOP)
+	testing.expect_value(t, hit({2, 2}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_TOPLEFT)
+	testing.expect_value(t, hit({2, 300}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_LEFT)
+	testing.expect_value(t, hit({798, 300}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_RIGHT)
+	testing.expect_value(t, hit({400, 598}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_BOTTOM)
+	testing.expect_value(t, hit({2, 598}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_BOTTOMLEFT)
+	testing.expect_value(t, hit({798, 598}, client, 5, drags, buttons), sdl3.HitTestResult.RESIZE_BOTTOMRIGHT)
+	// A caption button beats the resize strip over it.
+	testing.expect_value(t, hit({780, 2}, client, 5, drags, buttons), sdl3.HitTestResult.NORMAL)
+	testing.expect_value(t, hit({730, 16}, client, 5, drags, buttons), sdl3.HitTestResult.NORMAL)
+	// Maximized has no edges: the drag stays, the rest is client.
+	testing.expect_value(t, hit({300, 2}, client, 0, drags, buttons), sdl3.HitTestResult.DRAGGABLE)
+	testing.expect_value(t, hit({2, 300}, client, 0, drags, buttons), sdl3.HitTestResult.NORMAL)
+}
+
+@(test)
+test_title_drawn_at_reads_the_published_buttons :: proc(t: ^testing.T) {
+	w: Window
+	title_set_drags(&w, nil, []ops.Window_Button{{{10, 0, 20, 10}, .Close}})
+	testing.expect_value(t, title_drawn_at(&w, {15, 5}), ops.Caption_Button.Close)
+	testing.expect_value(t, title_drawn_at(&w, {50, 5}), ops.Caption_Button.None)
 }
